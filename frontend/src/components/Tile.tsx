@@ -5,6 +5,7 @@ import {
   RegularMan3M,
   RegularMan4M,
   RegularMan5M,
+  RegularMan5DoraM,
   RegularMan6M,
   RegularMan7M,
   RegularMan8M,
@@ -14,6 +15,7 @@ import {
   RegularPin3M,
   RegularPin4M,
   RegularPin5M,
+  RegularPin5DoraM,
   RegularPin6M,
   RegularPin7M,
   RegularPin8M,
@@ -23,6 +25,7 @@ import {
   RegularSou3M,
   RegularSou4M,
   RegularSou5M,
+  RegularSou5DoraM,
   RegularSou6M,
   RegularSou7M,
   RegularSou8M,
@@ -80,20 +83,33 @@ const TILE_MAP: Record<string, TileSvg> = {
   '7z': RegularChunM,
 };
 
+/** Red-five (aka dora) variants of the five tiles. */
+const RED_FIVE_MAP: Record<string, TileSvg> = {
+  '5m': RegularMan5DoraM,
+  '5p': RegularPin5DoraM,
+  '5s': RegularSou5DoraM,
+};
+
 interface TileProps {
   /** Tile code such as "1m", "5p", or "7z". */
   code: string;
   className?: string;
+  /** Render the red-five variant of a 5 tile. */
+  isRedFive?: boolean;
 }
 
-export function Tile({ code, className }: TileProps) {
-  const TileSvg = TILE_MAP[code] ?? RegularBlankM;
+export function Tile({ code, className, isRedFive = false }: TileProps) {
+  const TileSvg =
+    (isRedFive ? RED_FIVE_MAP[code] : undefined) ??
+    TILE_MAP[code] ??
+    RegularBlankM;
+  const label = isRedFive ? `red five ${code}` : code;
 
   return (
     <TileSvg
       className={className}
       role="img"
-      aria-label={code}
+      aria-label={label}
       focusable="false"
     />
   );

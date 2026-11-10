@@ -27,6 +27,18 @@ export function HandDock({
   const isAnswered = feedback !== null;
   const selectedType = callRiichi ? 'Riichi' : 'Dama';
 
+  // Mark specific copies as red fives; a tile code can appear more than once.
+  const redFiveCounts = new Map<string, number>();
+  for (const code of player.red_fives) {
+    redFiveCounts.set(code, (redFiveCounts.get(code) ?? 0) + 1);
+  }
+  const redFiveFlags = tiles.map((tile) => {
+    const remaining = redFiveCounts.get(tile) ?? 0;
+    if (remaining === 0) return false;
+    redFiveCounts.set(tile, remaining - 1);
+    return true;
+  });
+
   return (
     <section className="hand-dock" aria-label="Your hand">
       <button
@@ -74,9 +86,15 @@ export function HandDock({
               className={`hand-tile-button${stateClass}`}
               onClick={() => onSelectTile(tile)}
               disabled={isAnswered}
-              aria-label={`Discard ${tile}${callRiichi ? ' and call Riichi' : ''}`}
+              aria-label={`Discard ${redFiveFlags[index] ? 'red five ' : ''}${tile}${
+                callRiichi ? ' and call Riichi' : ''
+              }`}
             >
-              <Tile code={tile} className="tile hand-tile" />
+              <Tile
+                code={tile}
+                className="tile hand-tile"
+                isRedFive={redFiveFlags[index]}
+              />
             </button>
           );
         })}

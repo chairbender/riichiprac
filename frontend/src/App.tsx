@@ -1,10 +1,18 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import init, { generate_puzzle } from 'riichiprac';
 import wasmUrl from 'riichiprac/riichiprac_bg.wasm?url';
 import { HandDock } from './components/HandDock';
 import { FeedbackToast } from './components/FeedbackToast';
 import { PlayerRow } from './components/PlayerRow';
+import { ScenarioExplanation } from './components/ScenarioExplanation';
 import { TableInfo } from './components/TableInfo';
+import {
+  SCENARIOS,
+  pickRandomScenario,
+  scenarioLabel,
+} from './scenarios';
+import type { ScenarioSelection } from './scenarios';
 import { useGameStore } from './store/useGameStore';
 import './App.css';
 
@@ -33,34 +41,43 @@ export const App = () => {
   const reset = useGameStore((state) => state.reset);
   const setError = useGameStore((state) => state.setError);
 
-  useEffect(() => {
-    let active = true;
+  const [selection, setSelection] = useState<ScenarioSelection>('all');
+  const loadRequestId = useRef(0);
 
-    const setupWasm = async () => {
+  const loadPuzzle = useCallback(
+    async (scenarioSelection: ScenarioSelection) => {
+      const requestId = ++loadRequestId.current;
+      reset();
+
       try {
         await ensureWasmReady();
-        if (!active) return;
-        loadFromJson(generate_puzzle('ryanmen_protorun'));
+        if (requestId !== loadRequestId.current) return;
+
+        const category =
+          scenarioSelection === 'all'
+            ? pickRandomScenario()
+            : scenarioSelection;
+        loadFromJson(generate_puzzle(category));
       } catch (err) {
-        if (!active) return;
+        if (requestId !== loadRequestId.current) return;
         setError(err instanceof Error ? err.message : String(err));
       }
-    };
+    },
+    [loadFromJson, reset, setError],
+  );
 
-    void setupWasm();
+  useEffect(() => {
+    void loadPuzzle('all');
+  }, [loadPuzzle]);
 
-    return () => {
-      active = false;
-    };
-  }, [loadFromJson, setError]);
+  const handleScenarioChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const next = event.target.value as ScenarioSelection;
+    setSelection(next);
+    void loadPuzzle(next);
+  };
 
   const handleNextScenario = () => {
-    reset();
-    try {
-      loadFromJson(generate_puzzle('ryanmen_protorun'));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
+    void loadPuzzle(selection);
   };
 
   const orderedPlayers = gameState
@@ -78,21 +95,54 @@ export const App = () => {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1 className="app-title">Riichi Trainer</h1>
-        {gameState && (
+        <div className="app-title-group">
+          <h1 className="app-title">Riichi Trainer</h1>
+          {gameState && (
+            <span className="scenario-current">
+              {scenarioLabel(gameState.category)}
+            </span>
+          )}
+        </div>
+
+        <div className="app-controls">
+          <label className="scenario-picker">
+            <span className="scenario-picker-label">Scenario</span>
+            <select
+              className="scenario-select"
+              value={selection}
+              onChange={handleScenarioChange}
+              aria-label="Scenario"
+            >
+              <option value="all">All scenarios (random)</option>
+              {SCENARIOS.map((scenario) => (
+                <option key={scenario.id} value={scenario.id}>
+                  {scenario.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <button
             className="new-hand-button"
             type="button"
             onClick={handleNextScenario}
+            disabled={isLoading}
           >
             Next Scenario
           </button>
-        )}
+        </div>
       </header>
 
-      {feedback && <FeedbackToast feedback={feedback} />}
+      {feedback && humanPlayer && (
+        <FeedbackToast
+          feedback={feedback}
+          redFives={humanPlayer.red_fives}
+        />
+      )}
 
       {gameState && <TableInfo state={gameState} />}
+
+      {feedback && gameState && <ScenarioExplanation state={gameState} />}
 
       <main className="table-stack">
         {isLoading && <div className="status-msg">Loading table…</div>}

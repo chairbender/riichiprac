@@ -4,6 +4,8 @@ import { Tile } from './Tile';
 
 interface FeedbackToastProps {
   feedback: AnswerFeedback;
+  /** Red-five tile codes held by the human, used to render answer tiles. */
+  redFives: string[];
 }
 
 const ACTION_LABELS: Record<CorrectActionType, string> = {
@@ -16,11 +18,12 @@ const ACTION_LABELS: Record<CorrectActionType, string> = {
  * independently so the player can see whether the action type, the discard
  * tile, or both were wrong.
  */
-export function FeedbackToast({ feedback }: FeedbackToastProps) {
+export function FeedbackToast({ feedback, redFives }: FeedbackToastProps) {
   const gradeClass = (isCorrect: boolean) =>
     isCorrect
       ? 'feedback-grade feedback-grade--correct'
       : 'feedback-grade feedback-grade--incorrect';
+  const isRedFive = (tile: string) => redFives.includes(tile);
 
   return (
     <div
@@ -62,6 +65,7 @@ export function FeedbackToast({ feedback }: FeedbackToastProps) {
             <Tile
               code={feedback.selectedTile}
               className="tile feedback-tile"
+              isRedFive={isRedFive(feedback.selectedTile)}
             />
             <span className="feedback-code">{feedback.selectedTile}</span>
           </span>
@@ -78,6 +82,7 @@ export function FeedbackToast({ feedback }: FeedbackToastProps) {
               <Tile
                 code={feedback.correctTile}
                 className="tile feedback-tile"
+                isRedFive={isRedFive(feedback.correctTile)}
               />
               <span className="feedback-code">{feedback.correctTile}</span>
             </span>

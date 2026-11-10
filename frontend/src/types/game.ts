@@ -18,6 +18,15 @@ export type RiichiTrigger =
   | 'wait_outside_456'
   | 'score_below_mangan';
 
+/** Reasons a scenario recommends staying in dama. */
+export type DamaReason =
+  | 'not_dealer'
+  | 'no_tanyao'
+  | 'middle_wait'
+  | 'no_red_five_wait'
+  | 'no_suji_trap'
+  | 'mangan';
+
 /** Action kinds the trainer can expect alongside the discard. */
 export type CorrectActionType = 'riichi' | 'dama';
 
@@ -67,6 +76,8 @@ export interface GameState {
   correct_action: CorrectAction;
   /** Heuristics that justify Riichi for this scenario. */
   riichi_triggers: RiichiTrigger[];
+  /** Conditions that justify staying in dama for this scenario. */
+  dama_reasons: DamaReason[];
 
   hand_string: string;
   tiles: string[];

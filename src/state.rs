@@ -87,6 +87,24 @@ pub enum RiichiTrigger {
     ScoreBelowMangan,
 }
 
+/// Reasons a scenario recommends staying in dama.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DamaReason {
+    /// The player is not the dealer, reducing Riichi's value.
+    NotDealer,
+    /// A terminal/honor pair prevents Tanyao.
+    NoTanyao,
+    /// The wait is a middle tile (4, 5, or 6).
+    MiddleWait,
+    /// The wait is not a red five.
+    NoRedFiveWait,
+    /// The river contains no suji of the wait.
+    NoSujiTrap,
+    /// The hand is already Mangan or better without Riichi.
+    Mangan,
+}
+
 /// Discard tile in a player's river.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DiscardTile {
@@ -174,6 +192,8 @@ pub struct GameState {
     pub correct_action: CorrectAction,
     /// Reasons this scenario recommends Riichi (empty when not applicable).
     pub riichi_triggers: Vec<RiichiTrigger>,
+    /// Reasons this scenario recommends staying in dama (empty when not applicable).
+    pub dama_reasons: Vec<DamaReason>,
 
     // Hand evaluation (Human player)
     pub hand_string: String,

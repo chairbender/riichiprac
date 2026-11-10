@@ -126,6 +126,7 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
             .as_array()
             .expect("riichi_triggers array");
         assert!(!triggers.is_empty(), "run {run}: no triggers applied");
+        assert!(val["dama_reasons"].as_array().unwrap().is_empty());
         for trigger in triggers {
             let trigger = trigger.as_str().expect("trigger string");
             assert!(
@@ -257,6 +258,23 @@ fn test_chiitoitsu_dama_100_hands() {
         assert_eq!(val["target_action"], "Dama");
         assert_eq!(val["correct_action"]["type"], "dama");
         assert!(val["riichi_triggers"].as_array().unwrap().is_empty());
+        let dama_reasons: Vec<&str> = val["dama_reasons"]
+            .as_array()
+            .expect("dama_reasons array")
+            .iter()
+            .map(|reason| reason.as_str().expect("dama reason string"))
+            .collect();
+        assert_eq!(
+            dama_reasons,
+            vec![
+                "not_dealer",
+                "no_tanyao",
+                "middle_wait",
+                "no_red_five_wait",
+                "no_suji_trap",
+                "mangan",
+            ]
+        );
 
         let discard_code = val["correct_action"]["discard"]
             .as_str()

@@ -31,14 +31,22 @@
   z-index: 20;
 
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
 
   padding: 10px 12px;
   padding-top: calc(10px + env(safe-area-inset-top));
   border-bottom: 1px solid #262b36;
   background-color: #12141a;
+}
+
+.app-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .app-title {
@@ -47,6 +55,55 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #e7ecf3;
+}
+
+.scenario-current {
+  overflow: hidden;
+  color: #8b94a7;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.scenario-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scenario-picker-label {
+  color: #8b94a7;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scenario-select {
+  max-width: 190px;
+  padding: 6px 8px;
+  border: 1px solid #34506e;
+  border-radius: 8px;
+  background-color: #1a2a3c;
+  color: #a5d8ff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.scenario-select:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
 }
 
 .new-hand-button {
@@ -62,6 +119,11 @@
 
 .new-hand-button:active {
   background-color: #213b56;
+}
+
+.new-hand-button:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 /* Global table info ------------------------------------------------------- */
@@ -128,6 +190,53 @@
   display: block;
   width: 24px;
   height: auto;
+}
+
+/* Scenario explanation ---------------------------------------------------- */
+
+.scenario-explanation {
+  margin: 8px 10px 0;
+  padding: 8px 10px;
+  border: 1px solid #303748;
+  border-left-width: 4px;
+  border-radius: 10px;
+  background-color: #171a21;
+}
+
+.scenario-explanation--riichi {
+  border-left-color: #e03131;
+}
+
+.scenario-explanation--dama {
+  border-left-color: #2f9e44;
+}
+
+.scenario-explanation-title {
+  margin: 0 0 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.scenario-explanation--riichi .scenario-explanation-title {
+  color: #ff8787;
+}
+
+.scenario-explanation--dama .scenario-explanation-title {
+  color: #8ce99a;
+}
+
+.scenario-explanation-list {
+  margin: 0;
+  padding-left: 16px;
+  color: #ced4da;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.scenario-explanation-list li + li {
+  margin-top: 2px;
 }
 
 /* Stacked player rows ----------------------------------------------------- */

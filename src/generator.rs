@@ -10,8 +10,8 @@ use agari::yaku::{Yaku, detect_yaku_with_context};
 
 use crate::rng::{choose, gen_bool, gen_range, shuffle};
 use crate::state::{
-    CalledMeld, CorrectAction, CorrectActionType, DiscardTile, GameState, MeldType, PlayerState,
-    RiichiTrigger, TargetAction, Wind,
+    CalledMeld, CorrectAction, CorrectActionType, DamaReason, DiscardTile, GameState, MeldType,
+    PlayerState, RiichiTrigger, TargetAction, Wind,
 };
 
 pub type PuzzleResponse = GameState;
@@ -941,6 +941,7 @@ impl ScenarioGenerator {
                 discard: skeleton.correct_tile.to_string(),
             },
             riichi_triggers: Vec::new(),
+            dama_reasons: Vec::new(),
             hand_string,
             tiles: tile_strings,
             shanten: shanten_res.shanten,
@@ -1631,6 +1632,17 @@ impl ScenarioGenerator {
             ChiitoitsuDecision::Riichi => (TargetAction::Riichi, CorrectActionType::Riichi),
             ChiitoitsuDecision::Dama => (TargetAction::Dama, CorrectActionType::Dama),
         };
+        let dama_reasons = match skeleton.decision {
+            ChiitoitsuDecision::Riichi => Vec::new(),
+            ChiitoitsuDecision::Dama => vec![
+                DamaReason::NotDealer,
+                DamaReason::NoTanyao,
+                DamaReason::MiddleWait,
+                DamaReason::NoRedFiveWait,
+                DamaReason::NoSujiTrap,
+                DamaReason::Mangan,
+            ],
+        };
 
         Ok(GameState {
             category: category.to_string(),
@@ -1640,6 +1652,7 @@ impl ScenarioGenerator {
                 discard: skeleton.discard_tile.to_string(),
             },
             riichi_triggers: skeleton.triggers.to_vec(),
+            dama_reasons,
             hand_string,
             tiles: tile_strings,
             shanten: shanten.shanten,
@@ -1845,6 +1858,7 @@ impl ScenarioGenerator {
                 discard: correct_discard,
             },
             riichi_triggers: Vec::new(),
+            dama_reasons: Vec::new(),
 
             hand_string,
             tiles: tile_strings,
@@ -2136,6 +2150,7 @@ mod tests {
                         !state.riichi_triggers.is_empty(),
                         "run {run}: at least one Riichi trigger must apply"
                     );
+                    assert!(state.dama_reasons.is_empty());
                     assert_eq!(state.dora_indicators.len(), 1);
 
                     for trigger in &state.riichi_triggers {
@@ -2161,6 +2176,17 @@ mod tests {
                     dama_count += 1;
                     assert_eq!(state.target_action, TargetAction::Dama);
                     assert!(state.riichi_triggers.is_empty());
+                    assert_eq!(
+                        state.dama_reasons,
+                        vec![
+                            DamaReason::NotDealer,
+                            DamaReason::NoTanyao,
+                            DamaReason::MiddleWait,
+                            DamaReason::NoRedFiveWait,
+                            DamaReason::NoSujiTrap,
+                            DamaReason::Mangan,
+                        ]
+                    );
                     assert_eq!(state.dora_indicators.len(), 2);
                     assert_ne!(human.wind, Wind::East);
                     assert!(matches!(wait.value(), Some(4..=6)));
@@ -2239,6 +2265,17 @@ mod tests {
             assert_eq!(state.target_action, TargetAction::Dama);
             assert_eq!(state.correct_action.action_type, CorrectActionType::Dama);
             assert!(state.riichi_triggers.is_empty());
+            assert_eq!(
+                state.dama_reasons,
+                vec![
+                    DamaReason::NotDealer,
+                    DamaReason::NoTanyao,
+                    DamaReason::MiddleWait,
+                    DamaReason::NoRedFiveWait,
+                    DamaReason::NoSujiTrap,
+                    DamaReason::Mangan,
+                ]
+            );
 
             let human = &state.players[0];
             let (winning, wait, _) = chiitoitsu_state_tiles(&state);
