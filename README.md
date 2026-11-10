@@ -71,7 +71,7 @@ review tool; it does not affect the browser app or the WASM build.
 Generate the weights first (see `scripts/README.md`), then run:
 
 ```bash
-# All scenarios, 200 generation attempts, at most 20 report files.
+# Every fuzzable scenario, 200 generation attempts, at most 20 report files.
 cargo run --release --bin fuzz_scenarios
 
 # Smaller run with an explicit output directory.
