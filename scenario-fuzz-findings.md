@@ -139,6 +139,51 @@ never be detected, and the exported report echoes the app's tile instead of
 Mortal's. For riichi-vs-dama scenarios the comparison is effectively
 action-only.
 
+## 6. Update after the EV / required-tile / SP-table planes (2026-11-10)
+
+`am/sp-planes` fills rows 875-877 and 889-1011 from libriichi's shanten and
+single-player EV solver. Re-running the same fuzz protocol with the same
+weights changed both families substantially.
+
+### chiitoitsu_riichi_vs_dama
+
+Exact acceptance command (`--iterations 200 --limit 20`):
+
+```
+iterations: 34, agreements: 14, discrepancies: 20
+```
+
+Larger sample for a stable Riichi number (`--iterations 400 --limit 100`):
+
+| Metric | Before (`e306c63`) | After |
+| --- | --- | --- |
+| Evaluations | 132 | 187 |
+| All agreements | 32 (24.2%) | 87 (46.5%) |
+| App-Riichi cases | 58 (all disagree) | 86 |
+| App-Riichi agreements | **0 / 58** | **56 / 86 (65%)** |
+| Mortal Riichi probability, median | 0.032 | 0.57 |
+| Mortal Riichi probability, median on agreements | — | 0.78 |
+
+The old documented baseline (0 of 16, median 0.01) reproduces in kind: the
+pre-change worktree gives 58 app-Riichi disagreements with median Riichi
+probability 0.032 in the larger sample. The remaining 30 after-change
+disagreements are no longer a floor: their median Riichi probability is 0.27,
+and the cases Mortal does agree on are mostly confident Riichi (median 0.78).
+
+### ryanmen_protorun
+
+Same command (`--iterations 200 --limit 20`) on the pre-change worktree and on
+this branch:
+
+| Run | Evaluations | Agreements | Discrepancies |
+| --- | --- | --- | --- |
+| Before (`e306c63`) | 46 | 26 (56.5%) | 20 |
+| After (`am/sp-planes`) | 106 | 86 (81.1%) | 20 |
+
+Phase A did not regress discard-tile decisions; the agreement rate improved
+from 56.5% to 81.1% on this sample and the remaining misses are the same
+off-by-one tile class described in §2.
+
 ## Suggested next steps
 
 - [x] Fix the red-five double legality in `self_turn_actions`, and extend

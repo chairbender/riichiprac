@@ -278,6 +278,68 @@ libriichi explicitly; then verify against the golden oracle below.
   only held copy is red. If you re-derive the required-tile or SP-table planes,
   keep using the fixed action list as the candidate set.
 
+## Implementation notes (2026-11-10)
+
+Status: implemented in `am/sp-planes` (phases A+B+C landed together; no
+half-populated planes are shipped).
+
+- `src/ai/sp.rs` is a direct port of `libriichi/src/algo/sp/` with the
+  production flags `sort_result: true`, `maximize_win_prob: false`,
+  `calc_tegawari: false`, `calc_shanten_down: false`. `std::collections` and
+  fixed arrays replace `ahash`/`tinyvec`; the wasm dependency surface is
+  unchanged.
+- Shanten is a port of `agari`'s recursive algorithm on `[u8; 34]`. It was
+  compared against libriichi's table-based `shanten::calc_all` on 2000 random
+  13- and 14-tile hands with zero mismatches.
+- Win values use `agari`'s fu/yaku/payment functions plus the copied uradora
+  expectation table. A throwaway libriichi test that dumped its own
+  `SPCalculator` candidates for four fixed hands matched this port exactly
+  (EV, win probability, tenpai probability, required tiles).
+- Golden oracle: `testdata/sp_oracle.json` holds four `encode_obs(4, false)`
+  snapshots generated from mjai logs in `libriichi/src/state/test.rs`:
+  a self-turn, a genuine reaction (pon on 1p), a shanten-4 hand, and a
+  synthetic `tiles_left < 4` solver refusal. `src/ai/oracle_test.rs` asserts
+  exact equality for rows 0..=888 and `1e-4` for rows 889..=1011.
+- The encoder now also writes the two required-tile blocks for reaction
+  decisions in row 960, which the reference uses even though the plan table
+  calls it padding.
+- Round/seat wind were being written to columns 0..=3; libriichi writes the
+  wind tile id (columns 27..=30). The golden oracle exposed this pre-existing
+  bug, so it was fixed and the encoder test updated.
+
+Documented deviations / limits:
+
+- `calc_tegawari` is not implemented because production encoding always passes
+  `false` (`agent_helper.rs:567-583`).
+- Red-five discards now carry `DiscardTile::is_red` (serde-defaulted to false)
+  and feed the solver's `akas_seen`. Aces hidden in opponents' hands, and aces
+  inside called melds (where `CalledMeld` has no aka flag), are still unknown
+  and assumed to remain in the wall. libriichi tracks every witnessed aka.
+- `GameState` has no kuikae (`forbidden_tiles`) or river-padding offset. The
+  unconditional-tenpai row omits kuikae restrictions, and the oracle fixture
+  represents libriichi's start-of-game `None` river padding as empty discard
+  entries (which the encoder skips). This is a pre-existing state-model gap for
+  rows 35..=716, not part of this change.
+- Solver refusal writes the minimum tsumo agari value from `agari` scoring (or
+  zero when the hand is not a winning hand), then leaves the solver rows zero,
+  matching `obs_repr.rs:607-623`.
+
+Performance (release, this machine):
+
+| Position | Before | After, first encode | After, repeat |
+| --- | --- | --- | --- |
+| chiitoitsu generated | 68 µs | 144 µs | ~same |
+| ryanmen generated | 59 µs | 48 µs | ~same |
+| oracle 3-shanten self-turn | 13 µs | 49 ms | 0.2 ms |
+| oracle shanten-4 | 12 µs | 11 ms | 0.2 ms |
+
+Generated app scenarios stay in the tens-to-hundreds of microseconds. Deep
+3-shanten solver positions cost ~50 ms on the first encode, so `solve_cached`
+keeps a bounded (32-entry) thread-local memo keyed by
+`(hand, wall, tiles_seen/akas_seen, melds, flags)`; repeated encodes of the same
+position drop to ~0.2 ms. We chose memoization over an opt-in feature flag so
+the default observation stays faithful to Mortal.
+
 ## Reference material
 
 - `/tmp/opencode/mortal/libriichi/src/state/obs_repr.rs` — v4 observation

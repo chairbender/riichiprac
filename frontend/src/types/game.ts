@@ -78,6 +78,8 @@ export interface DiscardTile {
   is_riichi: boolean;
   /** True when the tile was discarded straight off the draw. */
   is_tsumogiri: boolean;
+  /** True when this was the red five of its suit (defaults to false). */
+  is_red?: boolean;
 }
 
 export interface CalledMeld {
