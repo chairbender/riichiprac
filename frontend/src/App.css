@@ -363,7 +363,8 @@
 
 .feedback-toast {
   position: fixed;
-  top: calc(56px + env(safe-area-inset-top));
+  top: auto;
+  bottom: calc(88px + env(safe-area-inset-bottom));
   left: 50%;
   z-index: 50;
 
@@ -425,7 +426,7 @@
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -6px);
+    transform: translate(-50%, 6px);
   }
   to {
     opacity: 1;

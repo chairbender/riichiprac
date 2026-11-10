@@ -5,7 +5,7 @@ use agari::parse::{to_counts, validate_hand};
 use agari::shanten::{calculate_shanten, calculate_ukeire};
 use agari::tile::{Honor, Suit, Tile};
 
-use crate::rng::{choose, gen_bool};
+use crate::rng::{choose, gen_bool, gen_range};
 use crate::state::{
     CalledMeld, CorrectAction, CorrectActionType, DiscardTile, GameState, MeldType, PlayerState,
     TargetAction, Wind,
@@ -137,6 +137,25 @@ pub const ALL_TILES: [Tile; 34] = [
     Tile::Honor(Honor::Red),
 ];
 
+/// Builds a fresh 136-tile deck with four copies of every tile.
+fn fresh_deck() -> HashMap<Tile, u8> {
+    ALL_TILES.iter().map(|&tile| (tile, 4)).collect()
+}
+
+/// The constructed parts of a "Ryanmen protorun + 1" hand.
+struct RyanmenSkeleton {
+    /// All 14 tiles for evaluation, including the open Yakuhai meld.
+    full_tiles: Vec<Tile>,
+    /// The 11 concealed tiles before the duplicate is discarded.
+    concealed_tiles: Vec<Tile>,
+    /// The three-tile shape (XXY or XYY).
+    shape_tiles: [Tile; 3],
+    /// The three tiles of the open Yakuhai meld.
+    open_meld_tiles: Vec<Tile>,
+    /// The duplicate tile that should be discarded.
+    correct_tile: Tile,
+}
+
 /// Formats a list of tiles into standard compact Mahjong notation (e.g. "123m456p789s11122z").
 pub fn format_hand_compact(tiles: &[Tile]) -> String {
     let mut sorted = tiles.to_vec();
@@ -217,10 +236,7 @@ impl ScenarioGenerator {
     /// Generates a randomized 14-tile hand using 5-block theory (4 melds + 1 pair)
     /// sampled from a fresh 136-tile pool.
     pub fn generate_random_hand(&self) -> Vec<Tile> {
-        let mut deck: HashMap<Tile, u8> = HashMap::new();
-        for &tile in &ALL_TILES {
-            deck.insert(tile, 4);
-        }
+        let mut deck = fresh_deck();
 
         let mut hand: Vec<Tile> = Vec::with_capacity(14);
 
@@ -342,8 +358,237 @@ impl ScenarioGenerator {
         }
     }
 
-    /// Evaluates a 14-tile hand and populates the complete `GameState` table.
+    /// Generates the first Block Theory scenario: a ryanmen protorun (XXY/XYY)
+    /// with an open Yakuhai meld, two completed sets, and a separate pair.
+    ///
+    /// The duplicate tile is the correct discard because it leaves the
+    /// consecutive pair intact as a live ryanmen wait.
+    pub fn generate_ryanmen_protorun(&self, category: &str) -> Result<GameState, String> {
+        let mut state = self.generate_mock_puzzle(category)?;
+        let skeleton = self.build_ryanmen_skeleton()?;
+        let correct_tile = skeleton.correct_tile;
+        if !skeleton.shape_tiles.contains(&correct_tile) {
+            return Err("Ryanmen skeleton is missing its duplicate tile".to_string());
+        }
+
+        let mut full_tiles = skeleton.full_tiles.clone();
+        full_tiles.sort();
+
+        // Evaluate the resulting 13-tile hand after the correct discard so
+        // shanten/ukeire describe the intended ryanmen wait.
+        let mut post_discard_tiles = full_tiles.clone();
+        let post_discard_index = post_discard_tiles
+            .iter()
+            .position(|tile| *tile == correct_tile)
+            .ok_or_else(|| "Ryanmen skeleton is missing its duplicate tile".to_string())?;
+        post_discard_tiles.remove(post_discard_index);
+
+        let counts = to_counts(&post_discard_tiles);
+        let shanten_res = calculate_shanten(&counts);
+        let decompositions = decompose_hand(&counts);
+        let ukeire_res = calculate_ukeire(&counts);
+
+        let hand_string = format_hand_compact(&full_tiles);
+        let tile_strings: Vec<String> = full_tiles.iter().map(|t| t.to_string()).collect();
+        let ukeire_tiles: Vec<String> = ukeire_res
+            .tiles
+            .iter()
+            .map(|u| u.tile.to_string())
+            .collect();
+
+        // The drawn tile is the duplicate, so it is immediately discardable.
+        let mut human_hand = skeleton.concealed_tiles.clone();
+        let duplicate_index = human_hand
+            .iter()
+            .position(|tile| *tile == correct_tile)
+            .ok_or_else(|| "Ryanmen skeleton is missing its duplicate tile".to_string())?;
+        human_hand.remove(duplicate_index);
+        human_hand.sort();
+
+        let meld_tiles: Vec<String> = skeleton
+            .open_meld_tiles
+            .iter()
+            .map(|tile| tile.to_string())
+            .collect();
+
+        state.category = category.to_string();
+        state.target_action = TargetAction::NaniKiru;
+        state.correct_action = CorrectAction {
+            action_type: CorrectActionType::Discard,
+            tile: correct_tile.to_string(),
+        };
+        state.hand_string = hand_string;
+        state.tiles = tile_strings;
+        state.shanten = shanten_res.shanten;
+        state.is_agari = shanten_res.shanten == -1;
+        state.decompositions_count = decompositions.len();
+        state.ukeire_tiles = ukeire_tiles;
+        state.ukeire_total = ukeire_res.total_count;
+        state.current_turn = 0;
+
+        state.players[0] = PlayerState {
+            seat: 0,
+            name: "You".to_string(),
+            is_human: true,
+            wind: Wind::East,
+            score: 25000,
+            hand: human_hand.iter().map(|tile| tile.to_string()).collect(),
+            draw: Some(correct_tile.to_string()),
+            discards: Vec::new(),
+            melds: vec![CalledMeld {
+                meld_type: MeldType::Pon,
+                tiles: meld_tiles,
+                called_from: Some(1),
+            }],
+            is_riichi: false,
+            riichi_discard_index: None,
+        };
+
+        Ok(state)
+    }
+
+    /// Constructs a valid "Ryanmen protorun + 1" skeleton from a fresh deck.
+    fn build_ryanmen_skeleton(&self) -> Result<RyanmenSkeleton, String> {
+        'attempt: for _ in 0..256 {
+            let mut deck = fresh_deck();
+
+            let suits = [Suit::Man, Suit::Pin, Suit::Sou];
+            let suit = choose(&suits).ok_or_else(|| "No suits available".to_string())?;
+
+            // X and X+1 stay inside 2..=8 so the remaining two tiles are a
+            // true ryanmen (23, 34, ... 78) rather than a terminal penchan.
+            let base = gen_range(2, 8) as u8;
+            let x = Tile::Suited { suit, value: base };
+            let y = Tile::Suited {
+                suit,
+                value: base + 1,
+            };
+
+            // XXY leaves X as the duplicate; XYY leaves Y as the duplicate.
+            let (shape_tiles, correct_tile) = if gen_bool(0.5) {
+                ([x, x, y], x)
+            } else {
+                ([x, y, y], y)
+            };
+
+            let mut shape_can_be_removed = true;
+            for tile in &shape_tiles {
+                match deck.get_mut(tile) {
+                    Some(count) if *count > 0 => *count -= 1,
+                    _ => shape_can_be_removed = false,
+                }
+            }
+            if !shape_can_be_removed {
+                continue 'attempt;
+            }
+
+            // Open Yakuhai triplet: any dragon guarantees a yaku.
+            let dragons = [
+                Tile::Honor(Honor::White),
+                Tile::Honor(Honor::Green),
+                Tile::Honor(Honor::Red),
+            ];
+            let dragon = choose(&dragons).ok_or_else(|| "No dragons available".to_string())?;
+            let open_meld_tiles = vec![dragon, dragon, dragon];
+            for _ in 0..3 {
+                if let Some(count) = deck.get_mut(&dragon) {
+                    *count -= 1;
+                }
+            }
+
+            // Two completed sets, either sequences or triplets.
+            let mut concealed_tiles = Vec::with_capacity(11);
+            for _ in 0..2 {
+                let added = if gen_bool(0.65) {
+                    self.try_add_sequence(&mut concealed_tiles, &mut deck)
+                        || self.try_add_triplet(&mut concealed_tiles, &mut deck)
+                } else {
+                    self.try_add_triplet(&mut concealed_tiles, &mut deck)
+                        || self.try_add_sequence(&mut concealed_tiles, &mut deck)
+                };
+                if !added {
+                    continue 'attempt;
+                }
+            }
+
+            // A separate pair, deliberately not overlapping the special shape.
+            let pair_candidates: Vec<Tile> = ALL_TILES
+                .iter()
+                .copied()
+                .filter(|tile| {
+                    !shape_tiles.contains(tile) && deck.get(tile).copied().unwrap_or(0) >= 2
+                })
+                .collect();
+            let pair_tile = match choose(&pair_candidates) {
+                Some(tile) => tile,
+                None => continue 'attempt,
+            };
+            concealed_tiles.push(pair_tile);
+            concealed_tiles.push(pair_tile);
+            *deck
+                .get_mut(&pair_tile)
+                .expect("pair tile must exist in the deck") -= 2;
+
+            concealed_tiles.extend(shape_tiles.iter().copied());
+
+            let mut full_tiles = concealed_tiles.clone();
+            full_tiles.extend(open_meld_tiles.iter().copied());
+
+            if validate_hand(&full_tiles).is_err() {
+                continue 'attempt;
+            }
+
+            // Confirm the duplicate discard leaves a tenpai hand, and that
+            // both sides of the ryanmen are still available in the wall.
+            let wait_low = Tile::Suited {
+                suit,
+                value: base - 1,
+            };
+            let wait_high = Tile::Suited {
+                suit,
+                value: base + 2,
+            };
+            if deck.get(&wait_low).copied().unwrap_or(0) == 0
+                || deck.get(&wait_high).copied().unwrap_or(0) == 0
+            {
+                continue 'attempt;
+            }
+
+            let mut post_discard = full_tiles.clone();
+            let Some(duplicate_index) = post_discard.iter().position(|tile| *tile == correct_tile)
+            else {
+                continue 'attempt;
+            };
+            post_discard.remove(duplicate_index);
+            if calculate_shanten(&to_counts(&post_discard)).shanten != 0 {
+                continue 'attempt;
+            }
+
+            return Ok(RyanmenSkeleton {
+                full_tiles,
+                concealed_tiles,
+                shape_tiles,
+                open_meld_tiles,
+                correct_tile,
+            });
+        }
+
+        Err("Failed to construct a valid ryanmen protorun hand".to_string())
+    }
+
+    /// Dispatches to the requested scenario. Unknown categories fall back to
+    /// the first real Block Theory scenario; "mock_table" keeps the Phase 2
+    /// fixture available for UI scaffolding and tests.
     pub fn generate_puzzle(&self, category: &str) -> Result<GameState, String> {
+        match category {
+            "mock_table" => self.generate_mock_puzzle(category),
+            _ => self.generate_ryanmen_protorun(category),
+        }
+    }
+
+    /// Evaluates a random 14-tile hand and populates the complete mocked
+    /// `GameState` table used by the Phase 2 UI fixture.
+    fn generate_mock_puzzle(&self, category: &str) -> Result<GameState, String> {
         let tiles = self.generate_random_hand();
         validate_hand(&tiles)?;
 
@@ -560,10 +805,11 @@ mod tests {
     fn test_generate_puzzle_game_state() {
         let generator = ScenarioGenerator::new();
         let state = generator
-            .generate_puzzle("phase2_test")
+            .generate_puzzle("ryanmen_protorun")
             .expect("Puzzle generation must succeed");
 
-        assert_eq!(state.category, "phase2_test");
+        assert_eq!(state.category, "ryanmen_protorun");
+        assert_eq!(state.target_action, TargetAction::NaniKiru);
         assert_eq!(state.tiles.len(), 14);
         assert_eq!(state.players.len(), 4);
 
@@ -579,10 +825,43 @@ mod tests {
         assert_eq!(state.dora_indicators, vec!["5p"]);
         assert_eq!(state.tiles_remaining, 62);
 
-        // Verify players
-        assert!(state.players[0].is_human);
-        assert_eq!(state.players[0].hand.len(), 13);
-        assert!(state.players[0].draw.is_some());
+        // The human has one open Yakuhai meld, 10 concealed tiles, and a draw.
+        let human = &state.players[0];
+        assert!(human.is_human);
+        assert_eq!(human.hand.len(), 10);
+        assert_eq!(
+            human.draw.as_deref(),
+            Some(state.correct_action.tile.as_str())
+        );
+        assert_eq!(human.melds.len(), 1);
+        assert_eq!(human.melds[0].meld_type, MeldType::Pon);
+        assert_eq!(human.melds[0].tiles.len(), 3);
+        assert!(
+            human.melds[0]
+                .tiles
+                .iter()
+                .all(|tile| tile == &human.melds[0].tiles[0])
+        );
+        assert!(matches!(
+            human.melds[0].tiles[0].as_str(),
+            "5z" | "6z" | "7z"
+        ));
+        assert_eq!(human.hand.len() + 1 + human.melds[0].tiles.len(), 14);
+
+        // Discarding the duplicate leaves a tenpai ryanmen wait.
+        let mut post_discard = state.tiles.clone();
+        let duplicate_index = post_discard
+            .iter()
+            .position(|tile| tile == &state.correct_action.tile)
+            .expect("correct tile must be in the full hand");
+        post_discard.remove(duplicate_index);
+        let post_tiles =
+            parse_hand(&post_discard.join("")).expect("post-discard hand must parse in agari");
+        let post_counts = to_counts(&post_tiles);
+        assert_eq!(calculate_shanten(&post_counts).shanten, 0);
+        let ukeire = calculate_ukeire(&post_counts);
+        assert!(ukeire.total_count > 0, "ryanmen wait must be live");
+        assert!(ukeire.tiles.len() >= 2, "ryanmen wait must have two sides");
 
         // Verify Toimen is in Riichi
         let toimen = &state.players[2];
@@ -590,10 +869,115 @@ mod tests {
         assert_eq!(toimen.riichi_discard_index, Some(5));
         assert!(toimen.discards[5].is_riichi);
 
-        // Verify open melds exist
+        // Verify the reused fixture opponents keep their open melds
         assert_eq!(state.players[1].melds.len(), 1);
         assert_eq!(state.players[1].melds[0].meld_type, MeldType::Chi);
         assert_eq!(state.players[3].melds.len(), 1);
         assert_eq!(state.players[3].melds[0].meld_type, MeldType::Pon);
+    }
+
+    #[test]
+    fn test_mock_table_fixture_still_serves_phase2_shape() {
+        let generator = ScenarioGenerator::new();
+        let state = generator
+            .generate_puzzle("mock_table")
+            .expect("Mock table fixture must build");
+
+        assert_eq!(state.category, "mock_table");
+        assert_eq!(state.players[0].hand.len(), 13);
+        assert!(state.players[2].is_riichi);
+    }
+
+    #[test]
+    fn test_ryanmen_skeleton_generalizes() {
+        use std::collections::HashSet;
+
+        let generator = ScenarioGenerator::new();
+        let mut suits = HashSet::new();
+        let mut bases = HashSet::new();
+
+        for _ in 0..100 {
+            let skeleton = generator
+                .build_ryanmen_skeleton()
+                .expect("Ryanmen skeleton must build");
+
+            assert_eq!(skeleton.full_tiles.len(), 14);
+            assert_eq!(skeleton.concealed_tiles.len(), 11);
+            assert_eq!(skeleton.open_meld_tiles.len(), 3);
+            assert!(validate_hand(&skeleton.full_tiles).is_ok());
+
+            let mut assembled = skeleton.concealed_tiles.clone();
+            assembled.extend(skeleton.open_meld_tiles.iter().copied());
+            assembled.sort();
+            let mut full = skeleton.full_tiles.clone();
+            full.sort();
+            assert_eq!(assembled, full);
+
+            let [a, b, c] = skeleton.shape_tiles;
+            assert!(a == b || b == c, "shape must be XXY or XYY");
+            let duplicate = if a == b { a } else { c };
+            assert_eq!(skeleton.correct_tile, duplicate);
+
+            let (x, y) = if a == b { (a, c) } else { (a, b) };
+            let (wait_low, wait_high) = match (x, y) {
+                (
+                    Tile::Suited {
+                        suit: suit_x,
+                        value: value_x,
+                    },
+                    Tile::Suited {
+                        suit: suit_y,
+                        value: value_y,
+                    },
+                ) => {
+                    assert_eq!(suit_x, suit_y);
+                    assert_eq!(value_y, value_x + 1, "ryanmen tiles must be adjacent");
+                    assert!(
+                        (2..=7).contains(&value_x),
+                        "lower ryanmen tile must stay within 2-7"
+                    );
+                    suits.insert(suit_x);
+                    bases.insert(value_x);
+
+                    (
+                        Tile::Suited {
+                            suit: suit_x,
+                            value: value_x - 1,
+                        },
+                        Tile::Suited {
+                            suit: suit_x,
+                            value: value_x + 2,
+                        },
+                    )
+                }
+                _ => panic!("ryanmen shape must use suited tiles"),
+            };
+
+            // The duplicate is the only discard that preserves the ryanmen.
+            let mut post_discard = skeleton.full_tiles.clone();
+            let duplicate_index = post_discard
+                .iter()
+                .position(|tile| *tile == skeleton.correct_tile)
+                .expect("duplicate must be present");
+            post_discard.remove(duplicate_index);
+            assert_eq!(
+                calculate_shanten(&to_counts(&post_discard)).shanten,
+                0,
+                "discarding the duplicate must leave tenpai"
+            );
+
+            let post_ukeire = calculate_ukeire(&to_counts(&post_discard));
+            let wait_tiles: Vec<Tile> = post_ukeire.tiles.iter().map(|u| u.tile).collect();
+            assert!(
+                wait_tiles.contains(&wait_low) && wait_tiles.contains(&wait_high),
+                "both sides of the ryanmen must remain live"
+            );
+        }
+
+        assert!(suits.len() > 1, "generator must cover multiple suits");
+        assert!(
+            bases.len() > 1,
+            "generator must cover multiple base numbers"
+        );
     }
 }

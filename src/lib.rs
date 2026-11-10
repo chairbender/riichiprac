@@ -56,6 +56,12 @@ mod tests {
         assert_eq!(parsed["players"].as_array().unwrap().len(), 4);
         assert_eq!(parsed["round_wind"], "East");
 
+        let human = &parsed["players"][0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 10);
+        assert_eq!(human["melds"][0]["meld_type"], "Pon");
+        assert_eq!(human["melds"][0]["tiles"].as_array().unwrap().len(), 3);
+        assert_eq!(parsed["target_action"], "NaniKiru");
+
         assert_eq!(parsed["correct_action"]["type"], "discard");
         let correct_tile = parsed["correct_action"]["tile"]
             .as_str()
@@ -68,5 +74,6 @@ mod tests {
                 .any(|tile| tile.as_str() == Some(correct_tile)),
             "correct_action tile must be present in the human hand"
         );
+        assert_eq!(human["draw"], correct_tile);
     }
 }

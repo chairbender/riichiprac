@@ -126,7 +126,8 @@ pub struct PlayerState {
     pub wind: Wind,
     /// Current point total (e.g. 25000).
     pub score: i32,
-    /// Hand tiles (for human: 13 standing tiles; the active draw is in `draw`).
+    /// Concealed tiles (normally 13, or 3 fewer per open meld).
+    /// The active draw is kept separately in `draw`.
     pub hand: Vec<String>,
     /// The active drawn tile (14th tile), if currently this player's turn.
     pub draw: Option<String>,

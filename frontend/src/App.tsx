@@ -38,7 +38,7 @@ export const App = () => {
       try {
         await ensureWasmReady();
         if (!active) return;
-        loadFromJson(generate_puzzle('phase3_scenario'));
+        loadFromJson(generate_puzzle('ryanmen_protorun'));
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : String(err));
@@ -55,7 +55,7 @@ export const App = () => {
   const handleNextScenario = () => {
     reset();
     try {
-      loadFromJson(generate_puzzle('phase3_scenario'));
+      loadFromJson(generate_puzzle('ryanmen_protorun'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }

@@ -102,6 +102,13 @@ fn test_generate_puzzle_wasm_api() {
             tiles.iter().any(|tile| tile.as_str() == Some(correct_tile)),
             "correct_action tile must be present in the human hand"
         );
+
+        // New scenario: one open Yakuhai meld plus 10 concealed tiles + draw.
+        let human = &val["players"][0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 10);
+        assert_eq!(human["draw"], correct_tile);
+        assert_eq!(human["melds"][0]["meld_type"], "Pon");
+        assert_eq!(human["melds"][0]["tiles"].as_array().unwrap().len(), 3);
     }
 }
 
@@ -127,8 +134,15 @@ fn test_generate_puzzle_full_table_state() {
     assert_eq!(players[0]["is_human"], true);
     assert_eq!(players[0]["wind"], "East");
     assert_eq!(players[0]["score"], 25000);
-    assert_eq!(players[0]["hand"].as_array().unwrap().len(), 13);
+    assert_eq!(players[0]["hand"].as_array().unwrap().len(), 10);
     assert!(players[0]["draw"].as_str().is_some());
+    assert_eq!(players[0]["melds"][0]["meld_type"], "Pon");
+    assert_eq!(players[0]["melds"][0]["tiles"].as_array().unwrap().len(), 3);
+
+    // Verify the scenario answer
+    assert_eq!(val["target_action"], "NaniKiru");
+    assert_eq!(val["correct_action"]["type"], "discard");
+    assert_eq!(val["correct_action"]["tile"], players[0]["draw"]);
 
     // Verify at least one player in Riichi (Toimen, seat 2)
     let toimen = &players[2];
