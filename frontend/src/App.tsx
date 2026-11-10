@@ -3,6 +3,7 @@ import init, { generate_puzzle } from 'riichiprac';
 import wasmUrl from 'riichiprac/riichiprac_bg.wasm?url';
 import { HandDock } from './components/HandDock';
 import { PlayerRow } from './components/PlayerRow';
+import { TableInfo } from './components/TableInfo';
 import { useGameStore } from './store/useGameStore';
 import './App.css';
 
@@ -77,6 +78,8 @@ export const App = () => {
           </button>
         )}
       </header>
+
+      {gameState && <TableInfo state={gameState} />}
 
       <main className="table-stack">
         {isLoading && <div className="status-msg">Loading table…</div>}

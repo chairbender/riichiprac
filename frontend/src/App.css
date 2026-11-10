@@ -64,6 +64,72 @@
   background-color: #213b56;
 }
 
+/* Global table info ------------------------------------------------------- */
+
+.table-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #262b36;
+  background-color: #14171e;
+}
+
+.table-stat,
+.table-dora {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid #262b36;
+  border-radius: 8px;
+  background-color: #171a21;
+}
+
+.table-dora {
+  grid-column: 1 / -1;
+}
+
+.table-stat-label {
+  color: #8b94a7;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table-stat-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #e7ecf3;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.table-riichi-stick {
+  display: block;
+  width: 30px;
+  height: auto;
+}
+
+.dora-tiles {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.dora-tile {
+  display: block;
+  width: 24px;
+  height: auto;
+}
+
 /* Stacked player rows ----------------------------------------------------- */
 
 .table-stack {
