@@ -5,7 +5,7 @@ wasm_bindgen_test_configure!(run_in_browser);
 use agari::hand::decompose_hand;
 use agari::parse::{parse_hand, to_counts, validate_hand};
 use agari::shanten::{calculate_shanten, calculate_ukeire};
-use riichiprac::generator::{format_hand_compact, ScenarioGenerator};
+use riichiprac::generator::{ScenarioGenerator, format_hand_compact};
 use riichiprac::{check_wasm_status, generate_puzzle};
 
 #[wasm_bindgen_test]
@@ -94,4 +94,40 @@ fn test_generate_puzzle_wasm_api() {
         assert!(val.get("ukeire_total").is_some());
         assert!(val.get("ukeire_tiles").is_some());
     }
+}
+
+#[wasm_bindgen_test]
+fn test_generate_puzzle_full_table_state() {
+    let json_output = generate_puzzle("full_table_test".to_string());
+    let val: serde_json::Value = serde_json::from_str(&json_output)
+        .expect("generate_puzzle must return valid serialized JSON");
+
+    // Verify Global State
+    assert_eq!(val["round_wind"], "East");
+    assert_eq!(val["hand_number"], 1);
+    assert_eq!(val["honba"], 1);
+    assert_eq!(val["riichi_sticks"], 1);
+    assert_eq!(val["dora_indicators"][0], "5p");
+    assert_eq!(val["tiles_remaining"], 62);
+
+    // Verify 4 Players
+    let players = val["players"].as_array().expect("players must be an array");
+    assert_eq!(players.len(), 4);
+
+    // Verify Human player (seat 0)
+    assert_eq!(players[0]["is_human"], true);
+    assert_eq!(players[0]["wind"], "East");
+    assert_eq!(players[0]["score"], 25000);
+    assert_eq!(players[0]["hand"].as_array().unwrap().len(), 13);
+    assert!(players[0]["draw"].as_str().is_some());
+
+    // Verify at least one player in Riichi (Toimen, seat 2)
+    let toimen = &players[2];
+    assert_eq!(toimen["is_riichi"], true);
+    assert_eq!(toimen["riichi_discard_index"], 5);
+    assert_eq!(toimen["discards"][5]["is_riichi"], true);
+
+    // Verify open melds (Shimocha has Chi, Kamicha has Pon)
+    assert_eq!(players[1]["melds"][0]["meld_type"], "Chi");
+    assert_eq!(players[3]["melds"][0]["meld_type"], "Pon");
 }

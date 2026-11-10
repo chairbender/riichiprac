@@ -4,42 +4,125 @@ use agari::hand::decompose_hand;
 use agari::parse::{to_counts, validate_hand};
 use agari::shanten::{calculate_shanten, calculate_ukeire};
 use agari::tile::{Honor, Suit, Tile};
-use serde::{Deserialize, Serialize};
 
 use crate::rng::{choose, gen_bool};
+use crate::state::{CalledMeld, DiscardTile, GameState, MeldType, PlayerState, TargetAction, Wind};
+
+pub type PuzzleResponse = GameState;
 
 /// All 34 standard Mahjong tile types.
 pub const ALL_TILES: [Tile; 34] = [
     // Manzu (Characters)
-    Tile::Suited { suit: Suit::Man, value: 1 },
-    Tile::Suited { suit: Suit::Man, value: 2 },
-    Tile::Suited { suit: Suit::Man, value: 3 },
-    Tile::Suited { suit: Suit::Man, value: 4 },
-    Tile::Suited { suit: Suit::Man, value: 5 },
-    Tile::Suited { suit: Suit::Man, value: 6 },
-    Tile::Suited { suit: Suit::Man, value: 7 },
-    Tile::Suited { suit: Suit::Man, value: 8 },
-    Tile::Suited { suit: Suit::Man, value: 9 },
+    Tile::Suited {
+        suit: Suit::Man,
+        value: 1,
+    },
+    Tile::Suited {
+        suit: Suit::Man,
+        value: 2,
+    },
+    Tile::Suited {
+        suit: Suit::Man,
+        value: 3,
+    },
+    Tile::Suited {
+        suit: Suit::Man,
+        value: 4,
+    },
+    Tile::Suited {
+        suit: Suit::Man,
+        value: 5,
+    },
+    Tile::Suited {
+        suit: Suit::Man,
+        value: 6,
+    },
+    Tile::Suited {
+        suit: Suit::Man,
+        value: 7,
+    },
+    Tile::Suited {
+        suit: Suit::Man,
+        value: 8,
+    },
+    Tile::Suited {
+        suit: Suit::Man,
+        value: 9,
+    },
     // Pinzu (Dots)
-    Tile::Suited { suit: Suit::Pin, value: 1 },
-    Tile::Suited { suit: Suit::Pin, value: 2 },
-    Tile::Suited { suit: Suit::Pin, value: 3 },
-    Tile::Suited { suit: Suit::Pin, value: 4 },
-    Tile::Suited { suit: Suit::Pin, value: 5 },
-    Tile::Suited { suit: Suit::Pin, value: 6 },
-    Tile::Suited { suit: Suit::Pin, value: 7 },
-    Tile::Suited { suit: Suit::Pin, value: 8 },
-    Tile::Suited { suit: Suit::Pin, value: 9 },
+    Tile::Suited {
+        suit: Suit::Pin,
+        value: 1,
+    },
+    Tile::Suited {
+        suit: Suit::Pin,
+        value: 2,
+    },
+    Tile::Suited {
+        suit: Suit::Pin,
+        value: 3,
+    },
+    Tile::Suited {
+        suit: Suit::Pin,
+        value: 4,
+    },
+    Tile::Suited {
+        suit: Suit::Pin,
+        value: 5,
+    },
+    Tile::Suited {
+        suit: Suit::Pin,
+        value: 6,
+    },
+    Tile::Suited {
+        suit: Suit::Pin,
+        value: 7,
+    },
+    Tile::Suited {
+        suit: Suit::Pin,
+        value: 8,
+    },
+    Tile::Suited {
+        suit: Suit::Pin,
+        value: 9,
+    },
     // Souzu (Bamboo)
-    Tile::Suited { suit: Suit::Sou, value: 1 },
-    Tile::Suited { suit: Suit::Sou, value: 2 },
-    Tile::Suited { suit: Suit::Sou, value: 3 },
-    Tile::Suited { suit: Suit::Sou, value: 4 },
-    Tile::Suited { suit: Suit::Sou, value: 5 },
-    Tile::Suited { suit: Suit::Sou, value: 6 },
-    Tile::Suited { suit: Suit::Sou, value: 7 },
-    Tile::Suited { suit: Suit::Sou, value: 8 },
-    Tile::Suited { suit: Suit::Sou, value: 9 },
+    Tile::Suited {
+        suit: Suit::Sou,
+        value: 1,
+    },
+    Tile::Suited {
+        suit: Suit::Sou,
+        value: 2,
+    },
+    Tile::Suited {
+        suit: Suit::Sou,
+        value: 3,
+    },
+    Tile::Suited {
+        suit: Suit::Sou,
+        value: 4,
+    },
+    Tile::Suited {
+        suit: Suit::Sou,
+        value: 5,
+    },
+    Tile::Suited {
+        suit: Suit::Sou,
+        value: 6,
+    },
+    Tile::Suited {
+        suit: Suit::Sou,
+        value: 7,
+    },
+    Tile::Suited {
+        suit: Suit::Sou,
+        value: 8,
+    },
+    Tile::Suited {
+        suit: Suit::Sou,
+        value: 9,
+    },
     // Honors: Winds
     Tile::Honor(Honor::East),
     Tile::Honor(Honor::South),
@@ -64,9 +147,18 @@ pub fn format_hand_compact(tiles: &[Tile]) -> String {
 
     for tile in sorted {
         match tile {
-            Tile::Suited { suit: Suit::Man, value } => m_vals.push(value),
-            Tile::Suited { suit: Suit::Pin, value } => p_vals.push(value),
-            Tile::Suited { suit: Suit::Sou, value } => s_vals.push(value),
+            Tile::Suited {
+                suit: Suit::Man,
+                value,
+            } => m_vals.push(value),
+            Tile::Suited {
+                suit: Suit::Pin,
+                value,
+            } => p_vals.push(value),
+            Tile::Suited {
+                suit: Suit::Sou,
+                value,
+            } => s_vals.push(value),
             Tile::Honor(h) => {
                 let v = match h {
                     Honor::East => 1,
@@ -110,19 +202,6 @@ pub fn format_hand_compact(tiles: &[Tile]) -> String {
     result
 }
 
-/// Serialized payload representing a generated puzzle and its evaluation by `agari`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PuzzleResponse {
-    pub category: String,
-    pub hand_string: String,
-    pub tiles: Vec<String>,
-    pub shanten: i8,
-    pub is_agari: bool,
-    pub decompositions_count: usize,
-    pub ukeire_tiles: Vec<String>,
-    pub ukeire_total: u8,
-}
-
 /// Scenario generator that implements 5-block theory hand generation.
 #[derive(Debug, Default, Clone)]
 pub struct ScenarioGenerator;
@@ -143,7 +222,6 @@ impl ScenarioGenerator {
         let mut hand: Vec<Tile> = Vec::with_capacity(14);
 
         // Block 1: The Pair (Jantou)
-        // Find tiles with at least 2 remaining copies in the deck
         let pair_candidates: Vec<Tile> = ALL_TILES
             .iter()
             .copied()
@@ -208,9 +286,18 @@ impl ScenarioGenerator {
 
         for &suit in &suits {
             for start_val in 1..=7 {
-                let t1 = Tile::Suited { suit, value: start_val };
-                let t2 = Tile::Suited { suit, value: start_val + 1 };
-                let t3 = Tile::Suited { suit, value: start_val + 2 };
+                let t1 = Tile::Suited {
+                    suit,
+                    value: start_val,
+                };
+                let t2 = Tile::Suited {
+                    suit,
+                    value: start_val + 1,
+                };
+                let t3 = Tile::Suited {
+                    suit,
+                    value: start_val + 2,
+                };
 
                 if deck.get(&t1).copied().unwrap_or(0) >= 1
                     && deck.get(&t2).copied().unwrap_or(0) >= 1
@@ -252,21 +339,165 @@ impl ScenarioGenerator {
         }
     }
 
-    /// Evaluates a 14-tile hand using the `agari` crate.
-    pub fn evaluate_hand(&self, tiles: &[Tile]) -> Result<PuzzleResponse, String> {
-        validate_hand(tiles)?;
+    /// Evaluates a 14-tile hand and populates the complete `GameState` table.
+    pub fn generate_puzzle(&self, category: &str) -> Result<GameState, String> {
+        let tiles = self.generate_random_hand();
+        validate_hand(&tiles)?;
 
-        let counts = to_counts(tiles);
+        let counts = to_counts(&tiles);
         let shanten_res = calculate_shanten(&counts);
         let decompositions = decompose_hand(&counts);
         let ukeire_res = calculate_ukeire(&counts);
 
-        let hand_string = format_hand_compact(tiles);
-        let tile_strings = tiles.iter().map(|t| t.to_string()).collect();
-        let ukeire_tiles = ukeire_res.tiles.iter().map(|u| u.tile.to_string()).collect();
+        let hand_string = format_hand_compact(&tiles);
+        let tile_strings: Vec<String> = tiles.iter().map(|t| t.to_string()).collect();
+        let ukeire_tiles: Vec<String> = ukeire_res
+            .tiles
+            .iter()
+            .map(|u| u.tile.to_string())
+            .collect();
 
-        Ok(PuzzleResponse {
-            category: "random".to_string(),
+        // Separate human hand into 13 standing hand tiles + 1 active draw
+        let human_standing_hand: Vec<String> = tile_strings[0..13].to_vec();
+        let human_draw: Option<String> = tile_strings.get(13).cloned();
+
+        // Player 0: Human User (Dealer / East)
+        let player0 = PlayerState {
+            seat: 0,
+            name: "You".to_string(),
+            is_human: true,
+            wind: Wind::East,
+            score: 25000,
+            hand: human_standing_hand,
+            draw: human_draw,
+            discards: vec![
+                DiscardTile::new("1z"),
+                DiscardTile::new("9m"),
+                DiscardTile::new("1p"),
+                DiscardTile::tsumogiri("9s"),
+                DiscardTile::new("2z"),
+                DiscardTile::tsumogiri("8s"),
+            ],
+            melds: Vec::new(),
+            is_riichi: false,
+            riichi_discard_index: None,
+        };
+
+        // Player 1: Shimocha (South) - Has called Chi
+        let player1 = PlayerState {
+            seat: 1,
+            name: "Shimocha".to_string(),
+            is_human: false,
+            wind: Wind::South,
+            score: 25000,
+            hand: vec![
+                "1m".into(),
+                "1m".into(),
+                "2m".into(),
+                "3m".into(),
+                "4p".into(),
+                "5p".into(),
+                "6p".into(),
+                "7s".into(),
+                "8s".into(),
+                "9s".into(),
+            ],
+            draw: None,
+            discards: vec![
+                DiscardTile::new("9m"),
+                DiscardTile::new("1s"),
+                DiscardTile::new("4z"),
+                DiscardTile::tsumogiri("8p"),
+                DiscardTile::new("2m"),
+                DiscardTile::tsumogiri("3p"),
+            ],
+            melds: vec![CalledMeld {
+                meld_type: MeldType::Chi,
+                tiles: vec!["2s".to_string(), "3s".to_string(), "4s".to_string()],
+                called_from: Some(0),
+            }],
+            is_riichi: false,
+            riichi_discard_index: None,
+        };
+
+        // Player 2: Toimen (West) - In Riichi! Discard #5 ("6p") was the Riichi declaration tile
+        let player2 = PlayerState {
+            seat: 2,
+            name: "Toimen".to_string(),
+            is_human: false,
+            wind: Wind::West,
+            score: 24000, // Deducted 1000 for Riichi stick
+            hand: vec![
+                "1p".into(),
+                "2p".into(),
+                "3p".into(),
+                "4s".into(),
+                "5s".into(),
+                "6s".into(),
+                "7m".into(),
+                "8m".into(),
+                "9m".into(),
+                "1m".into(),
+                "2m".into(),
+                "3m".into(),
+                "7z".into(),
+            ],
+            draw: None,
+            discards: vec![
+                DiscardTile::new("1z"),
+                DiscardTile::new("9p"),
+                DiscardTile::new("1m"),
+                DiscardTile::tsumogiri("7s"),
+                DiscardTile::new("3z"),
+                DiscardTile::riichi("6p"), // Riichi declaration tile (rotated in UI)
+                DiscardTile::tsumogiri("8m"),
+            ],
+            melds: Vec::new(),
+            is_riichi: true,
+            riichi_discard_index: Some(5),
+        };
+
+        // Player 3: Kamicha (North) - Has called Pon of White Dragons
+        let player3 = PlayerState {
+            seat: 3,
+            name: "Kamicha".to_string(),
+            is_human: false,
+            wind: Wind::North,
+            score: 26000,
+            hand: vec![
+                "3m".into(),
+                "4m".into(),
+                "5m".into(),
+                "2p".into(),
+                "3p".into(),
+                "4p".into(),
+                "6s".into(),
+                "7s".into(),
+                "8s".into(),
+                "1z".into(),
+            ],
+            draw: None,
+            discards: vec![
+                DiscardTile::new("7z"),
+                DiscardTile::new("1s"),
+                DiscardTile::new("9s"),
+                DiscardTile::tsumogiri("2m"),
+                DiscardTile::new("1m"),
+                DiscardTile::tsumogiri("4p"),
+            ],
+            melds: vec![CalledMeld {
+                meld_type: MeldType::Pon,
+                tiles: vec!["5z".to_string(), "5z".to_string(), "5z".to_string()],
+                called_from: Some(2),
+            }],
+            is_riichi: false,
+            riichi_discard_index: None,
+        };
+
+        Ok(GameState {
+            category: category.to_string(),
+            target_action: TargetAction::Riichi,
+
             hand_string,
             tiles: tile_strings,
             shanten: shanten_res.shanten,
@@ -274,15 +505,18 @@ impl ScenarioGenerator {
             decompositions_count: decompositions.len(),
             ukeire_tiles,
             ukeire_total: ukeire_res.total_count,
-        })
-    }
 
-    /// Generates a randomized hand and returns its evaluated puzzle payload.
-    pub fn generate_puzzle(&self, category: &str) -> Result<PuzzleResponse, String> {
-        let tiles = self.generate_random_hand();
-        let mut puzzle = self.evaluate_hand(&tiles)?;
-        puzzle.category = category.to_string();
-        Ok(puzzle)
+            round_wind: Wind::East,
+            hand_number: 1,
+            honba: 1,
+            riichi_sticks: 1,
+            dora_indicators: vec!["5p".to_string()],
+            ura_dora_indicators: vec!["9s".to_string()],
+            tiles_remaining: 62,
+
+            current_turn: 0,
+            players: vec![player0, player1, player2, player3],
+        })
     }
 }
 
@@ -303,10 +537,8 @@ mod tests {
             let hand = generator.generate_random_hand();
             assert_eq!(hand.len(), 14, "Hand must have exactly 14 tiles");
 
-            // Verify with agari validate_hand
             assert!(validate_hand(&hand).is_ok());
 
-            // Verify formatting round-trip
             let compact = format_hand_compact(&hand);
             let parsed = parse_hand(&compact).expect("Compact notation must parse in agari");
             assert_eq!(parsed.len(), 14);
@@ -314,11 +546,39 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_puzzle() {
+    fn test_generate_puzzle_game_state() {
         let generator = ScenarioGenerator::new();
-        let puzzle = generator.generate_puzzle("test_category").expect("Puzzle generation must succeed");
-        assert_eq!(puzzle.category, "test_category");
-        assert_eq!(puzzle.tiles.len(), 14);
-        assert!(!puzzle.hand_string.is_empty());
+        let state = generator
+            .generate_puzzle("phase2_test")
+            .expect("Puzzle generation must succeed");
+
+        assert_eq!(state.category, "phase2_test");
+        assert_eq!(state.tiles.len(), 14);
+        assert_eq!(state.players.len(), 4);
+
+        // Verify global state
+        assert_eq!(state.round_wind, Wind::East);
+        assert_eq!(state.hand_number, 1);
+        assert_eq!(state.honba, 1);
+        assert_eq!(state.riichi_sticks, 1);
+        assert_eq!(state.dora_indicators, vec!["5p"]);
+        assert_eq!(state.tiles_remaining, 62);
+
+        // Verify players
+        assert!(state.players[0].is_human);
+        assert_eq!(state.players[0].hand.len(), 13);
+        assert!(state.players[0].draw.is_some());
+
+        // Verify Toimen is in Riichi
+        let toimen = &state.players[2];
+        assert!(toimen.is_riichi);
+        assert_eq!(toimen.riichi_discard_index, Some(5));
+        assert!(toimen.discards[5].is_riichi);
+
+        // Verify open melds exist
+        assert_eq!(state.players[1].melds.len(), 1);
+        assert_eq!(state.players[1].melds[0].meld_type, MeldType::Chi);
+        assert_eq!(state.players[3].melds.len(), 1);
+        assert_eq!(state.players[3].melds[0].meld_type, MeldType::Pon);
     }
 }
