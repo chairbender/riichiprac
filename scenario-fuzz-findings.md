@@ -145,7 +145,8 @@ action-only.
       report files.
 - [ ] Decide whether riichi-vs-dama cases should be excluded or flagged until
       the required-tile and sp-table planes are populated; as-is they always
-      fill the 20-file budget.
+      fill the 20-file budget. The implementation work is planned in
+      `sp-planes-plan.md`.
 - [ ] Human-review the Kan report and tighten the `late_game` trigger semantics.
 - [ ] Consider encoding the riichi discard tile so riichi answers can be
       compared on the tile as well as the action.
