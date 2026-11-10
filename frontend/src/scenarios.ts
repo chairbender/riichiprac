@@ -1,8 +1,5 @@
-/** Scenario categories understood by the WASM `generate_puzzle` dispatcher. */
-export type ScenarioId =
-  | 'ryanmen_protorun'
-  | 'chiitoitsu_riichi_vs_dama'
-  | 'shouminkan_decision';
+/** Scenario IDs understood by the WASM `generate_puzzle` dispatcher. */
+export type ScenarioId = string;
 
 export type ScenarioSelection = 'all' | ScenarioId;
 
@@ -10,34 +7,59 @@ export interface ScenarioOption {
   id: ScenarioId;
   label: string;
   description: string;
+  category: string;
+  tags: string[];
 }
 
-export const SCENARIOS: ScenarioOption[] = [
+/**
+ * Minimal fallback used only if the WASM manifest cannot be loaded. The Rust
+ * `list_scenarios()` export is the source of truth for the full catalogue.
+ */
+export const FALLBACK_SCENARIOS: ScenarioOption[] = [
   {
     id: 'ryanmen_protorun',
     label: 'Ryanmen Protorun',
     description: 'Block theory: choose the discard that keeps the ryanmen wait.',
-  },
-  {
-    id: 'chiitoitsu_riichi_vs_dama',
-    label: 'Chiitoitsu Riichi vs Dama',
-    description: 'Seven pairs: decide whether to declare Riichi or stay dama.',
-  },
-  {
-    id: 'shouminkan_decision',
-    label: 'Added Kan Decision',
-    description:
-      'Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan.',
+    category: 'tile_efficiency',
+    tags: ['block_theory', 'discard', 'ryanmen'],
   },
 ];
 
-const SCENARIO_BY_ID = new Map(SCENARIOS.map((scenario) => [scenario.id, scenario]));
+/** Parse the JSON catalogue returned by the WASM `list_scenarios()` export. */
+export function parseScenarioManifest(json: string): ScenarioOption[] {
+  try {
+    const parsed: unknown = JSON.parse(json);
+    if (!Array.isArray(parsed)) return [];
 
-export function scenarioLabel(category: string): string {
-  return SCENARIO_BY_ID.get(category as ScenarioId)?.label ?? category;
+    return parsed.filter((entry): entry is ScenarioOption => {
+      if (typeof entry !== 'object' || entry === null) return false;
+      const candidate = entry as Partial<ScenarioOption>;
+      return (
+        typeof candidate.id === 'string' &&
+        typeof candidate.label === 'string' &&
+        typeof candidate.description === 'string' &&
+        typeof candidate.category === 'string' &&
+        Array.isArray(candidate.tags) &&
+        candidate.tags.every((tag) => typeof tag === 'string')
+      );
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** Human-readable label for a scenario ID. */
+export function scenarioLabel(
+  category: string,
+  scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
+): string {
+  return scenarios.find((scenario) => scenario.id === category)?.label ?? category;
 }
 
 /** Pick one real scenario at random for the "All scenarios" option. */
-export function pickRandomScenario(): ScenarioId {
-  return SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)].id;
+export function pickRandomScenario(
+  scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
+): ScenarioId {
+  const pool = scenarios.length > 0 ? scenarios : FALLBACK_SCENARIOS;
+  return pool[Math.floor(Math.random() * pool.length)].id;
 }

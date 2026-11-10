@@ -1,6 +1,6 @@
 # Generator Refactor Plan
 
-Status: core refactor complete; optional follow-ups in progress.
+Status: complete.
 
 This document is the working reference for the `src/generator` refactor. It captures the target architecture, the completed work, the remaining improvements, and the acceptance criteria we verify after each phase.
 
@@ -52,10 +52,10 @@ src/generator/
 │   │   ├── shapes.rs               # waits, pairs, sets
 │   │   └── value.rs                # han checks
 │   └── board.rs                    # score / round / river assembly
-└── mock_table.rs                   # Phase 2 fixture, not a lesson
+└── (fixtures live in src/fixtures/)
 ```
 
-The final layout moves `mock_table` out of the generator registry and removes the temporary `ScenarioGenerator` compatibility facade once call sites are migrated.
+The final layout moves `mock_table` out of the generator registry into `src/fixtures/mock_table.rs` and removes the temporary `ScenarioGenerator` compatibility facade.
 
 ## Completed
 
@@ -66,11 +66,16 @@ The final layout moves `mock_table` out of the generator registry and removes th
 - [x] `shouminkan_decision` split into triggers/skeleton/board.
 - [x] Board builders split into named phases (`prepare_hand`, `build_deck`, `validate_*`, `assemble_state`).
 - [x] `ScenarioId` registry introduced with `ALL`, `from_id`, and `generate`.
+- [x] `ScenarioMeta` / `SCENARIO_MANIFEST` added with labels, descriptions, categories, and tags.
+- [x] `list_scenarios()` WASM export added and consumed by the React picker.
+- [x] `mock_table` moved to `src/fixtures` and excluded from the lesson manifest.
+- [x] `ScenarioGenerator` compatibility facade removed.
 - [x] Unit tests co-located with the scenario they exercise.
 - [x] Public API preserved during the structural refactor.
-- [x] Native tests: 37 passed.
+- [x] Native tests: 40 passed.
 - [x] Clippy with `-D warnings`: clean.
-- [x] WASM browser tests: 8 passed.
+- [x] WASM browser tests: 9 passed.
+- [x] Frontend `npm run build` and `npm run lint`: clean.
 
 ## Remaining Improvements
 
@@ -84,22 +89,22 @@ Target: no production file above roughly 350 lines, with board orchestration fun
 
 ### 2. Scenario metadata manifest
 
-- [ ] Add `ScenarioCategory` and `ScenarioMeta`.
-- [ ] Add a single `SCENARIO_MANIFEST` containing label, description, category, and tags.
-- [ ] Expose `list_scenarios()` from WASM as JSON.
-- [ ] Update `frontend/src/scenarios.ts` and `App.tsx` to consume the WASM manifest instead of duplicating scenario metadata.
+- [x] Add `ScenarioCategory` and `ScenarioMeta`.
+- [x] Add a single `SCENARIO_MANIFEST` containing label, description, category, and tags.
+- [x] Expose `list_scenarios()` from WASM as JSON.
+- [x] Update `frontend/src/scenarios.ts` and `App.tsx` to consume the WASM manifest instead of duplicating scenario metadata.
 
 ### 3. Fixture separation
 
-- [ ] Move the `mock_table` fixture out of the scenario registry.
-- [ ] Keep the fixture available for UI scaffolding and existing payload tests without treating it as a lesson.
-- [ ] Ensure `list_scenarios()` contains only real scenario IDs.
+- [x] Move the `mock_table` fixture out of the scenario registry.
+- [x] Keep the fixture available for UI scaffolding and existing payload tests without treating it as a lesson.
+- [x] Ensure `list_scenarios()` contains only real scenario IDs.
 
 ### 4. Remove the compatibility facade
 
-- [ ] Migrate `src/lib.rs` and `tests/wasm_tests.rs` off `ScenarioGenerator`.
-- [ ] Remove `ScenarioGenerator` from the public API.
-- [ ] Keep `generate_puzzle`, `generate_random_hand`, `format_hand_compact`, and `PuzzleResponse` stable.
+- [x] Migrate `src/lib.rs` and `tests/wasm_tests.rs` off `ScenarioGenerator`.
+- [x] Remove `ScenarioGenerator` from the public API.
+- [x] Keep `generate_puzzle`, `generate_random_hand`, `format_hand_compact`, and `PuzzleResponse` stable.
 
 ## Verification Gates
 

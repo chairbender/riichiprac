@@ -1,16 +1,14 @@
 use agari::parse::validate_hand;
 
-use crate::generator::block_theory::random_hand;
-use crate::generator::support::analysis::evaluate_hand;
-use crate::generator::support::format::format_hand_compact;
+use crate::generator::{evaluate_hand, format_hand_compact, generate_random_hand};
 use crate::state::{
     CalledMeld, CorrectAction, DiscardTile, GameState, MeldType, PlayerState, TargetAction, Wind,
 };
 
 /// Evaluates a random 14-tile hand and populates the complete mocked
 /// `GameState` table used by the Phase 2 UI fixture.
-pub fn generate(category: &str) -> Result<GameState, String> {
-    let tiles = random_hand::generate();
+pub(crate) fn generate(category: &str) -> Result<GameState, String> {
+    let tiles = generate_random_hand();
     validate_hand(&tiles)?;
 
     let metrics = evaluate_hand(&tiles);

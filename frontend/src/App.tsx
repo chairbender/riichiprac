@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import init, { generate_puzzle } from 'riichiprac';
+import init, { generate_puzzle, list_scenarios } from 'riichiprac';
 import wasmUrl from 'riichiprac/riichiprac_bg.wasm?url';
 import { HandDock } from './components/HandDock';
 import { FeedbackToast } from './components/FeedbackToast';
@@ -8,11 +8,12 @@ import { PlayerRow } from './components/PlayerRow';
 import { ScenarioExplanation } from './components/ScenarioExplanation';
 import { TableInfo } from './components/TableInfo';
 import {
-  SCENARIOS,
+  FALLBACK_SCENARIOS,
+  parseScenarioManifest,
   pickRandomScenario,
   scenarioLabel,
 } from './scenarios';
-import type { ScenarioSelection } from './scenarios';
+import type { ScenarioOption, ScenarioSelection } from './scenarios';
 import { useGameStore } from './store/useGameStore';
 import './App.css';
 
@@ -44,6 +45,9 @@ export const App = () => {
   const setError = useGameStore((state) => state.setError);
 
   const [selection, setSelection] = useState<ScenarioSelection>('all');
+  const [scenarios, setScenarios] =
+    useState<ScenarioOption[]>(FALLBACK_SCENARIOS);
+  const manifestRef = useRef<ScenarioOption[] | null>(null);
   const loadRequestId = useRef(0);
 
   const loadPuzzle = useCallback(
@@ -55,9 +59,19 @@ export const App = () => {
         await ensureWasmReady();
         if (requestId !== loadRequestId.current) return;
 
+        if (!manifestRef.current) {
+          const manifest = parseScenarioManifest(list_scenarios());
+          manifestRef.current =
+            manifest.length > 0 ? manifest : FALLBACK_SCENARIOS;
+          if (manifest.length > 0) {
+            setScenarios(manifest);
+          }
+        }
+
+        const options = manifestRef.current ?? FALLBACK_SCENARIOS;
         const category =
           scenarioSelection === 'all'
-            ? pickRandomScenario()
+            ? pickRandomScenario(options)
             : scenarioSelection;
         loadFromJson(generate_puzzle(category));
       } catch (err) {
@@ -101,7 +115,7 @@ export const App = () => {
           <h1 className="app-title">Riichi Trainer</h1>
           {gameState && (
             <span className="scenario-current">
-              {scenarioLabel(gameState.category)}
+              {scenarioLabel(gameState.category, scenarios)}
             </span>
           )}
         </div>
@@ -116,7 +130,7 @@ export const App = () => {
               aria-label="Scenario"
             >
               <option value="all">All scenarios (random)</option>
-              {SCENARIOS.map((scenario) => (
+              {scenarios.map((scenario) => (
                 <option key={scenario.id} value={scenario.id}>
                   {scenario.label}
                 </option>
