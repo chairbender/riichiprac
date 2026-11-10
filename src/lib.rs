@@ -5,6 +5,7 @@ pub mod state;
 
 use wasm_bindgen::prelude::*;
 
+pub use ai::WasmMortalEvaluator;
 pub use generator::{PuzzleResponse, ScenarioGenerator, generate_random_hand};
 pub use state::{
     CalledMeld, CorrectAction, CorrectActionType, DamaReason, DiscardTile, GameState, MeldType,
