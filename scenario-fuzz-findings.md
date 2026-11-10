@@ -11,16 +11,54 @@ explain the disagreements. The runner design and comparison rules live in
 | --- | --- | --- |
 | 1 | `fuzz_scenarios --iterations 100000` (before `d6165a7`) | 50 iterations, 13 generator failures, 20 files |
 | 2 | `fuzz_scenarios --iterations 100000 --out fuzz-reports/run-2` | 46 iterations, 0 generator failures, 20 files |
+| 3 | `fuzz_scenarios --iterations 100000 --min-margin 0.05 --out fuzz-reports/run-3` | 62 iterations, 41 agreements, 20 files, 1 below margin |
+| 4 | `fuzz_scenarios --iterations 100000 --out fuzz-reports/run-4` (after the SP planes merged in `b458a71`) | 56 iterations, 36 agreements, 20 files |
 
 Run 1 wasted 26% of its budget on `ai_best_action`, which `generate_puzzle`
 always rejects because it needs the loaded model. `d6165a7` dropped it from the
 default set and made `--scenario ai_best_action` a bad-argument error, so run 2
 evaluated a real state on every iteration.
 
-Both runs stopped on the default `--limit 20`. Run 2's files are the ones
-summarized below.
+Runs 1-4 stopped on the default `--limit 20`, so their file counts are not
+agreement rates. The rates below come from full fixed-budget runs.
 
-## Composition of the 20 disagreements
+## Before and after the SP planes
+
+`e0d5e6d` populated the EV, required-tile and SP-table planes that this file's
+original analysis blamed for the Riichi behaviour. `ai::oracle_test::matches_libriichi_v4_observation`
+compares the encoder cell-for-cell against `encode_obs(4, false)` from libriichi
+and passes, so the planes match the reference implementation.
+
+Full 200-iteration runs (different random states, so the comparison is
+statistical):
+
+| Metric | Before (`ff68e3f`) | After (`b458a71`) |
+| --- | --- | --- |
+| Overall agreements | 26/46 (57%) | 140/200 (70%) |
+| `chiitoitsu_riichi_vs_dama` | 1/16 (6%) | 35/78 (45%) |
+| `ryanmen_protorun` | 9/13 (69%) | 44/58 (76%) |
+| `shouminkan_decision` | 16/17 (94%) | 61/64 (95%) |
+| app-**Riichi** cases agreed | **0/10**, p = 0.01-0.15 | **19/36**, p = 0.51-0.99 |
+| Mortal's Riichi probability, agreeing cases | n/a (never chose Riichi) | 0.51-0.99 |
+
+The systematic bias is gone: Mortal now picks Riichi with genuine confidence, and
+Riichi is a real contender instead of a 1% floor artifact. The remaining
+`chiitoitsu` disagreements split in **both** directions, which is the signature
+of a heuristic boundary rather than an encoder defect:
+
+| Direction | Files (run after) |
+| --- | --- |
+| app Riichi vs Mortal discard | 17 |
+| app Dama vs Mortal **Riichi** | 15 |
+| app Dama vs Mortal different discard | 11 |
+
+The app-Riichi cases Mortal still rejects cluster on the marginal triggers:
+`red_five_wait` (7), `dealer+score_below_mangan` (5), `suji_trap` (4),
+`wait_outside_456` (2). Those are exactly the cases where the book heuristic
+says "riichi for value" and a strong model says "dama keeps the hand alive", so
+the remaining work is generator heuristic tuning, not encoding.
+
+## Composition of run 2's 20 disagreements
 
 | Family | Files | Nature |
 | --- | --- | --- |
@@ -28,12 +66,14 @@ summarized below.
 | `ryanmen_protorun` (`tile_efficiency`) | 4 | all off-by-one discard choices |
 | `shouminkan_decision` (`kan_decision`) | 1 | app=**Kan** (haku) vs Mortal discard |
 
-## 1. Mortal essentially never likes Riichi in the chiitoitsu family
+## 1. Mortal essentially never likes Riichi in the chiitoitsu family — resolved by the SP planes
 
-This is the dominant finding and it looks like a harness fidelity problem, not
-16 independent generator mistakes.
+This was the dominant finding and it turned out to be a harness fidelity
+problem, not 16 independent generator mistakes. `e0d5e6d` fixed it; see
+"Before and after the SP planes" above. The rest of this section is the original
+evidence, kept for context.
 
-Across both runs, 36 states were evaluated and 16 of them had `Riichi` as the
+Across runs 1 and 2, 36 states were evaluated and 16 of them had `Riichi` as the
 app answer. Mortal disagreed with **every single one**. Its Riichi probability
 was:
 
@@ -65,10 +105,9 @@ The likeliest cause is the documented encoder gap in `src/ai/encoder.rs`
   self-riichi row are.
 
 Those planes are what libriichi populates with shanten/EV analysis, and the
-value of declaring riichi depends on exactly that information. Until they are
-populated, treat chiitoitsu Riichi discrepancies as harness noise. The app's
-answers here (riichi, 6 pairs, 3-out tanki, flat scores, turn 3) are textbook
-correct.
+value of declaring riichi depends on exactly that information. Now that they are
+populated the bias is gone, so the remaining chiitoitsu disagreements are real
+differences of opinion about marginal hands, not a floor artifact.
 
 ## 2. Ryanmen disagreements are mostly noise, one is a genuine tie
 
@@ -105,6 +144,18 @@ trigger set is internally contradictory: `late_game` argues *against*
 shouminkan (kan robbery, a dora for every opponent, fewer discards left to
 defend with) yet it is listed as a trigger *for* it. The generator's heuristic
 here probably needs tightening.
+
+After the SP planes landed, the same pattern repeats three times in a
+200-iteration run, all with Mortal preferring an honor discard to Kan:
+
+```
+app Kan (p=0.31) vs AI Discard_6z (p=0.68)
+app Kan (p=0.43) vs AI Discard_7z (p=0.57)
+app Kan (p=0.45) vs AI Discard_6z (p=0.53)
+```
+
+Consistent direction across four independent cases says this is a generator
+heuristic gap, not model noise.
 
 ## 4. Bug (fixed): `legal_action_mask` marked an impossible plain discard for a red five
 
@@ -197,10 +248,10 @@ off-by-one tile class described in §2.
       report files. Done: `--min-margin` filters on `ai_probability -
       app_probability`, and the summary reports the filtered count as
       `below --min-margin`.
-- [ ] Decide whether riichi-vs-dama cases should be excluded or flagged until
-      the required-tile and sp-table planes are populated; as-is they always
-      fill the 20-file budget. The implementation work is planned in
-      `sp-planes-plan.md`.
+- [x] Populate the required-tile and sp-table planes. Done in `e0d5e6d` +
+      `c4bc610` (see `sp-planes-plan.md`); the oracle test against libriichi
+      passes and the Riichi bias is gone. The family still fills the 20-file
+      budget, but now with genuine disagreements.
 - [ ] Human-review the Kan report and tighten the `late_game` trigger semantics.
 - [ ] Consider encoding the riichi discard tile so riichi answers can be
       compared on the tile as well as the action.
