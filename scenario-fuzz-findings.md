@@ -126,27 +126,71 @@ no margin by default (per `scenario-fuzz-plan.md` step 5), so this class of
 noise is expected; `--min-margin 0.05` filters it and counts the skipped cases
 as `below --min-margin`. Only the 0.00 vs 0.85 case is a clear real miss.
 
-## 3. The one Kan case is a legitimate judgment call
+## 3. The Kan disagreements are Mortal vs the book, not a generator defect
 
-The `shouminkan_decision` report is the only disagreement of its kind so far and
-is the one worth human review:
+Reviewed against the source text of Riichi Book 1, cloned at
+`/home/kylehipke/workspaces/RiichiBooks` (LaTeX, so greppable):
+`RiichiBook1-ch9-call.tex`, subsection *From an open set to an open quad
+(kakan)*, starting at the `\subsection{From an open set to an open quad` line.
 
-```
-hand      45678m335555666z, pon of 5z (haku), holding the fourth 5z
-board     13 discards, 17 tiles left, score 30,723
-app       Kan (p=0.33), triggers: good_wait_and_value, late_game,
-          placement_desperation
-Mortal    Discard_5z 63.66%, Kan 32.77%       (EV -3.3689)
-```
+The book's conditions for extending a pon to a kan, verbatim:
 
-32.8% vs 63.7% is a real disagreement rather than an artifact. Note that the
-trigger set is internally contradictory: `late_game` argues *against*
-shouminkan (kan robbery, a dora for every opponent, fewer discards left to
-defend with) yet it is listed as a trigger *for* it. The generator's heuristic
-here probably needs tightening.
+> You can extend an open set to an open quad in any of the following situations:
+>
+> - the hand is 1-away or better with a good wait, and it has two han or more;
+> - the hand is 1-away or better, and there are not many turns left to draw
+>   tiles;
+> - you need more dora or minipoints to improve the placement (especially in
+>   South-4);
+> - you are losing badly.
 
-After the SP planes landed, the same pattern repeats three times in a
-200-iteration run, all with Mortal preferring an honor discard to Kan:
+with the accompanying examples: 1-away + two han + good wait means kan is
+justifiable, and three han + good wait but 2-away is *not* justifiable.
+
+### The generator mirrors the book one-to-one
+
+| Book bullet | Trigger | Enforced by |
+| --- | --- | --- |
+| 1-away or better, good wait, two han or more | `good_wait_and_value` | `skeleton` builds a ready hand with a ryanmen or three-sided wait; a second dragon triplet guarantees two han, and `shouminkan_min_wait_han` re-checks every wait tile |
+| 1-away or better, few turns left | `late_game` | `tiles_remaining < 20` and every seat has 13 or more discards (`validate_board_constraints`, `choose_discard_count`) |
+| need dora/minipoints for placement, South-4 | `placement_desperation` | round wind South, hand 4, human 2nd/3rd within 2,000 points |
+| losing badly | `losing_badly` | human 4th, more than 12,000 behind third |
+
+Every generated state is tenpai (`shanten == 0`) with a 2- or 3-tile wait, so
+the "1-away or better" precondition holds in all four variants, including the
+`late_game` one. `src/generator/shouminkan_decision/mod.rs` asserts each
+emitted trigger against the finished state (`shouminkan_trigger_holds`), so the
+labels cannot drift from the board.
+
+The five reports sampled across runs confirm it — every one is South-4 with the
+human 2nd or 3rd, e.g. `South 4`, scores `30723/26629/31649/10999`, 17 tiles
+left, waits `3m 6m 9m`.
+
+### Correction to the earlier claim
+
+An earlier revision of this file said `late_game` was a contradictory trigger
+because late game argues *against* kanning. That was wrong: the book lists late
+game as an explicit justification (bullet 2), conditioned on being 1-away or
+better, which the generator always satisfies. There is no trigger mismatch.
+
+### What the book counts as cost, and which costs apply here
+
+The book names two costs: you may lose safety tiles, and the new dora may go to
+the opponents. It also warns that kakan risks chankan (robbing the kong). For
+this scenario:
+
+- **Chankan is structurally impossible.** The pon holds three copies and the
+  fourth is in hand, so no opponent can be waiting on that tile. The generator
+  never puts opponents in riichi either.
+- **The new dora to opponents is the real cost**, and it is exactly where
+  Mortal disagrees. Those reports cluster on `placement_desperation` (2nd/3rd
+  within 2,000 points), where handing the table a new dora is genuinely risky.
+  Discarding the fourth dragon is also a 100% safe tile for the same reason
+  chankan is impossible: nobody can ron a tile with zero live copies.
+
+So the scenario's answer is book-faithful and should not change. The
+disagreements are Mortal weighing the book's *costs* more heavily than the
+book's *criteria* on near-tied table positions:
 
 ```
 app Kan (p=0.31) vs AI Discard_6z (p=0.68)
@@ -154,8 +198,15 @@ app Kan (p=0.43) vs AI Discard_7z (p=0.57)
 app Kan (p=0.45) vs AI Discard_6z (p=0.53)
 ```
 
-Consistent direction across four independent cases says this is a generator
-heuristic gap, not model noise.
+### The one real gap: coverage, not correctness
+
+The generator is *stricter* than the book. Every puzzle is ready with a good
+wait, so all four triggers land comfortably inside the book's safest zone.
+The book explicitly allows kanning when the hand is not close to ready if you
+need dora or are desperate (bullets 3 and 4), and its second worked example is a
+*negative* case (three han, good wait, 2-away, do not kan) that we never
+generate. Adding those marginal and negative cases would test the boundary the
+book actually cares about; today's puzzles test only the easy side of it.
 
 ## 4. Bug (fixed): `legal_action_mask` marked an impossible plain discard for a red five
 
@@ -252,6 +303,12 @@ off-by-one tile class described in §2.
       `c4bc610` (see `sp-planes-plan.md`); the oracle test against libriichi
       passes and the Riichi bias is gone. The family still fills the 20-file
       budget, but now with genuine disagreements.
-- [ ] Human-review the Kan report and tighten the `late_game` trigger semantics.
+- [x] Human-review the Kan report against the book. Done: the generator maps
+      1:1 onto the book's four kakan criteria and every state satisfies them
+      (see section 3). No generator change needed; the earlier `late_game`
+      complaint was wrong.
+- [ ] Extend `shouminkan_decision` coverage to the book's boundary: the
+      not-close-to-ready desperation cases (book bullets 3 and 4) and the
+      book's negative example (three han, good wait, 2-away, do not kan).
 - [ ] Consider encoding the riichi discard tile so riichi answers can be
       compared on the tile as well as the action.
