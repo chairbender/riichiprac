@@ -1,6 +1,6 @@
 # Scenario Report Plan: Export / Import a Disputed Decision
 
-Status: proposed.
+Status: implemented.
 
 This document describes a self-contained bug-report format and the UI needed to
 export a disputed puzzle, re-import it into the trainer, and re-run the Mortal
@@ -212,7 +212,12 @@ Example (`jsonc`; the `table` value is the complete serialized `GameState`):
   },
 
   // Derived, informational. Rebuilt on import; never parsed for correctness.
-  "human_readable": "Riichi Trainer report ..."
+  // One string per line keeps the pretty-printed JSON readable.
+  "human_readable": [
+    "Riichi Trainer scenario report",
+    "Scenario: Chiitoitsu Riichi vs Dama (chiitoitsu_riichi_vs_dama)",
+    "..."
+  ]
 }
 ```
 
@@ -237,11 +242,12 @@ Example (`jsonc`; the `table` value is the complete serialized `GameState`):
 - `decision.verdict` mirrors the app's `AnswerFeedback` at export time. It is
   recomputed on import and compared, not trusted.
 - `ai` is `null`/absent when no evaluation exists.
-- `human_readable` is a text rendering containing: round/honba/sticks, dora,
-  all four hands/melds/rivers, the prompt, the app's answer, the reporter's
-  answer, the triggers/reasons, the AI top actions, and the note. It is
-  deliberately redundant so a human or an LLM can read the file without
-  understanding the schema.
+- `human_readable` is an array of text lines containing: round/honba/sticks,
+  dora, all four hands/melds/rivers, the prompt, the app's answer, the
+  reporter's answer, the triggers/reasons, the AI top actions, and the note. It
+  is deliberately redundant so a human or an LLM can read the file without
+  understanding the schema, and the line array keeps the pretty-printed JSON
+  readable.
 
 ## Import Semantics
 
@@ -557,3 +563,15 @@ cd frontend && npm run build && npm run lint
 - Invalid imports show an actionable error and never replace the current puzzle.
 - Puzzle generation, scoring, and existing UI behavior are unchanged.
 - All verification gates pass.
+
+## Implementation Notes
+
+- The Rust module lives in `src/report/` and the CLI in
+  `src/bin/verify_report.rs`.
+- `tests/fixtures/scenario_report_v1.json` is a committed sample report used by
+  the importer tests and the CLI.
+- Bare `GameState` imports are accepted through the UI as a debugging
+  convenience; they load the table without a reported answer.
+- Clicked tile indices are recorded as `decision.answer.tile_index` so an
+  ambiguous physical copy (for example a red five) can be reproduced.
+- Seeded generation remains future work; reports embed the exact state instead.

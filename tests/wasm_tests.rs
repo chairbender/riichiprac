@@ -10,12 +10,101 @@ use agari::shanten::{calculate_shanten, calculate_ukeire};
 use agari::tile::{Honor, Tile};
 use agari::yaku::detect_yaku_with_context;
 use riichiprac::generator::{format_hand_compact, generate_random_hand};
-use riichiprac::{check_wasm_status, generate_puzzle};
+use riichiprac::{
+    build_scenario_report, check_wasm_status, generate_puzzle, parse_scenario_report,
+};
 
 #[wasm_bindgen_test]
 fn test_wasm_status() {
     let status = check_wasm_status();
     assert_eq!(status, "WASM module initialized successfully");
+}
+
+#[wasm_bindgen_test]
+fn test_scenario_report_builds_and_parses_through_wasm() {
+    let table: serde_json::Value = serde_json::from_str(&generate_puzzle("mock_table".to_string()))
+        .expect("mock table must be valid JSON");
+    let tile = table["correct_action"]["discard"]
+        .as_str()
+        .expect("mock table is a Riichi puzzle")
+        .to_string();
+
+    let request = serde_json::json!({
+        "table": table,
+        "answer": { "action": "dama", "tile": tile },
+        "reason": "expected_action_wrong",
+        "note": "Round-trip test",
+        "created_at": "2026-11-10T08:42:11.031Z",
+        "report_id": "test-report",
+        "commit": "test-commit",
+        "build_time": "2026-11-10T08:00:00.000Z"
+    });
+
+    let report_json = build_scenario_report(&request.to_string());
+    let report: serde_json::Value =
+        serde_json::from_str(&report_json).expect("build must return valid JSON");
+
+    assert_eq!(report["schema"], "riichiprac.scenario-report");
+    assert_eq!(report["version"], 1);
+    assert_eq!(report["table"]["category"], "mock_table");
+    assert_eq!(report["decision"]["verdict"]["is_correct"], false);
+    assert_eq!(report["decision"]["verdict"]["is_action_correct"], false);
+    assert_eq!(report["decision"]["verdict"]["is_tile_correct"], true);
+    let summary = report["human_readable"]
+        .as_array()
+        .expect("summary lines")
+        .iter()
+        .filter_map(|line| line.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(summary.contains("Riichi Trainer scenario report"));
+
+    let parsed_json = parse_scenario_report(&report_json);
+    let parsed: serde_json::Value =
+        serde_json::from_str(&parsed_json).expect("parse must return valid JSON");
+    assert!(parsed.get("error").is_none(), "parse error: {parsed_json}");
+    assert_eq!(parsed["report"]["table"], report["table"]);
+    assert_eq!(parsed["verdict"]["is_correct"], false);
+    assert!(
+        parsed["warnings"]
+            .as_array()
+            .expect("warnings array")
+            .is_empty(),
+        "warnings: {parsed_json}"
+    );
+}
+
+#[wasm_bindgen_test]
+fn test_scenario_report_rejects_a_future_version() {
+    let table: serde_json::Value = serde_json::from_str(&generate_puzzle("mock_table".to_string()))
+        .expect("mock table must be valid JSON");
+    let tile = table["correct_action"]["discard"]
+        .as_str()
+        .expect("mock table is a Riichi puzzle")
+        .to_string();
+    let request = serde_json::json!({
+        "table": table,
+        "answer": { "action": "dama", "tile": tile },
+        "reason": "other",
+        "created_at": "2026-11-10T08:42:11.031Z",
+        "report_id": "test-report"
+    });
+
+    let mut report: serde_json::Value =
+        serde_json::from_str(&build_scenario_report(&request.to_string()))
+            .expect("build must return valid JSON");
+    report["version"] = serde_json::json!(99);
+
+    let parsed: serde_json::Value =
+        serde_json::from_str(&parse_scenario_report(&report.to_string()))
+            .expect("parse must return valid JSON");
+
+    assert!(
+        parsed["error"]
+            .as_str()
+            .expect("error string")
+            .contains("Unsupported report version")
+    );
 }
 
 #[wasm_bindgen_test]

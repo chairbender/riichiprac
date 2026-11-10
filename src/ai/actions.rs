@@ -67,6 +67,39 @@ pub fn legal_action_mask(state: &GameState) -> Vec<bool> {
     mask
 }
 
+/// State-free description of one Mortal action index.
+///
+/// Kept for diagnostics and the offline fuzz runner; the live evaluator uses
+/// [`legal_actions`] so labels include concrete call tiles.
+pub fn describe_action(index: usize) -> (String, String, Option<usize>) {
+    match index {
+        0..=33 => (
+            format!("Discard_{}", tile_name(index).expect("valid tile index")),
+            "discard".to_string(),
+            Some(index),
+        ),
+        34..=36 => {
+            let tile = 4 + (index - FIRST_RED_DISCARD) * 9;
+            let name = tile_name(tile).expect("valid tile index");
+            (
+                format!("Discard_{name}r"),
+                "discard".to_string(),
+                Some(tile),
+            )
+        }
+        RIICHI_ACTION => ("Riichi".to_string(), "riichi".to_string(), None),
+        CHI_LOW_ACTION => ("Chi_Low".to_string(), "chi".to_string(), None),
+        CHI_MID_ACTION => ("Chi_Mid".to_string(), "chi".to_string(), None),
+        CHI_HIGH_ACTION => ("Chi_High".to_string(), "chi".to_string(), None),
+        PON_ACTION => ("Pon".to_string(), "pon".to_string(), None),
+        KAN_ACTION => ("Kan".to_string(), "kan".to_string(), None),
+        AGARI_ACTION => ("Agari".to_string(), "agari".to_string(), None),
+        RYUKYOKU_ACTION => ("Ryukyoku".to_string(), "ryukyoku".to_string(), None),
+        PASS_ACTION => ("Pass".to_string(), "pass".to_string(), None),
+        other => (format!("Action_{other}"), "unknown".to_string(), None),
+    }
+}
+
 /// Mortal action index for a machine-readable action name.
 pub fn action_index(action: &str) -> Option<usize> {
     match action {

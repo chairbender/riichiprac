@@ -6,8 +6,11 @@ import {
   isCorrectAction,
   isKanDecision,
 } from '../actions';
+import { WEIGHTS_URL } from '../aiModel';
+import { parseImportedState } from '../report';
 import type { AiActionInfo, AiEvaluation, AiStatus } from '../types/ai';
 import type { CorrectActionType, GameState } from '../types/game';
+import type { ReportVerdict, ScenarioReport } from '../types/report';
 import { ensureWasmReady } from '../wasm';
 
 export interface PlayerChoice {
@@ -30,6 +33,8 @@ export interface AnswerFeedback {
   correctType: CorrectActionType;
   isActionCorrect: boolean;
   selectedTile: string;
+  /** Index of the clicked copy in the rendered hand, when known. */
+  selectedTileIndex?: number;
   correctTile: string;
   isTileCorrect: boolean;
   /** Human-readable labels for AI-scenario feedback. */
@@ -39,6 +44,15 @@ export interface AnswerFeedback {
   selectedTiles: string[];
   correctTiles: string[];
   isMortalDecision: boolean;
+  /** Mortal action name for an AI-scenario answer. */
+  selectedAction?: string;
+}
+
+/** An imported report being reviewed in the UI. */
+export interface ReportMode {
+  report: ScenarioReport;
+  verdict: ReportVerdict;
+  warnings: string[];
 }
 
 interface GameStore {
@@ -52,6 +66,15 @@ interface GameStore {
   callKan: boolean;
   /** Result of the player's action + tile choice, or null before answering. */
   feedback: AnswerFeedback | null;
+
+  /** Imported report currently under review, or null in normal practice. */
+  reportMode: ReportMode | null;
+  /** Import/export error shown beside the report controls. */
+  reportError: string | null;
+  /** Non-error notice, e.g. after importing a bare game state. */
+  reportNotice: string | null;
+  /** True after "Try this puzzle", so normal answer feedback is shown again. */
+  isReportRetry: boolean;
 
   /** Model weight loading state for the Mortal evaluator. */
   aiStatus: AiStatus;
@@ -69,7 +92,7 @@ interface GameStore {
   /** Arm or disarm the Added Kan before choosing the fourth tile. */
   toggleKan: () => void;
   /** Submit the armed call state and clicked hand tile as one answer. */
-  selectTile: (tile: string) => void;
+  selectTile: (tile: string, tileIndex?: number) => void;
   /** Submit a generic AI-scenario choice. */
   submitChoice: (choice: PlayerChoice) => void;
   /** Submit a non-discard action from the generic action bar. */
@@ -77,6 +100,17 @@ interface GameStore {
   /** Clear the current table and answer before loading the next scenario. */
   reset: () => void;
   setError: (error: string) => void;
+
+  /** Import a report (or a bare game state) from file text. */
+  importReport: (text: string) => Promise<void>;
+  /** Clear the imported answer so the reviewer can try the puzzle again. */
+  retryImportedPuzzle: () => void;
+  /** Leave report mode without changing the table. */
+  exitReportMode: () => void;
+  /** Show or clear an import/export error. */
+  setReportError: (error: string | null) => void;
+  /** Dismiss the bare-state notice. */
+  clearReportNotice: () => void;
 
   /** Fetch the Safetensors weights and build the WASM evaluator once. */
   initializeAi: () => Promise<void>;
@@ -89,8 +123,6 @@ interface GameStore {
 interface WasmErrorPayload {
   error?: string;
 }
-
-const WEIGHTS_URL = `${import.meta.env.BASE_URL}models/mortal_298k.safetensors`;
 
 const LEGACY_LABELS: Record<CorrectActionType, string> = {
   riichi: 'Riichi',
@@ -139,6 +171,10 @@ const emptyState = {
   callKan: false,
   feedback: null,
   evaluation: null,
+  reportMode: null,
+  reportError: null,
+  reportNotice: null,
+  isReportRetry: false,
 } satisfies Pick<
   GameStore,
   | 'gameState'
@@ -148,6 +184,10 @@ const emptyState = {
   | 'callKan'
   | 'feedback'
   | 'evaluation'
+  | 'reportMode'
+  | 'reportError'
+  | 'reportNotice'
+  | 'isReportRetry'
 >;
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -179,6 +219,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
         callKan: false,
         feedback: null,
         evaluation: null,
+        reportMode: null,
+        reportError: null,
+        reportNotice: null,
+        isReportRetry: false,
       });
     } catch (err) {
       set({
@@ -188,6 +232,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
         callKan: false,
         feedback: null,
         evaluation: null,
+        reportMode: null,
+        reportError: null,
+        reportNotice: null,
+        isReportRetry: false,
       });
     }
   },
@@ -214,7 +262,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return { callKan: !state.callKan, callRiichi: false };
     }),
 
-  selectTile: (tile) => {
+  selectTile: (tile, tileIndex) => {
     const state = get();
     if (!state.gameState || state.feedback) return;
 
@@ -257,6 +305,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           correctType: correctAction.type,
           isActionCorrect,
           selectedTile: tile,
+          selectedTileIndex: tileIndex,
           correctTile,
           isTileCorrect,
           selectedLabel: LEGACY_LABELS[selectedType],
@@ -311,6 +360,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           selectedTiles: choice.tiles ?? info?.tiles ?? [],
           correctTiles: correctAction.tiles ?? [],
           isMortalDecision: true,
+          selectedAction: choice.action,
         },
       };
     }),
@@ -338,7 +388,95 @@ export const useGameStore = create<GameStore>((set, get) => ({
       callKan: false,
       feedback: null,
       evaluation: null,
+      reportMode: null,
+      reportError: null,
+      reportNotice: null,
+      isReportRetry: false,
     }),
+
+  importReport: async (text) => {
+    try {
+      await ensureWasmReady();
+      const imported = parseImportedState(text);
+
+      if (imported.kind === 'bare') {
+        get().loadFromJson(imported.json);
+        if (!get().error) {
+          set({
+            reportNotice:
+              'Loaded a bare game state. No reported answer was attached.',
+          });
+        }
+        return;
+      }
+
+      const { report, verdict, warnings } = imported.parsed;
+      const human = report.table.players.find((player) => player.is_human);
+      if (!human) {
+        throw new Error('The report does not contain a human player.');
+      }
+
+      const answer = report.decision.answer;
+      const correctAction = report.table.correct_action;
+      const feedback: AnswerFeedback = {
+        isCorrect: verdict.is_correct,
+        selectedType: answer.action,
+        correctType: verdict.expected_action,
+        isActionCorrect: verdict.is_action_correct,
+        selectedTile: answer.tile,
+        selectedTileIndex: answer.tile_index,
+        correctTile: verdict.expected_tile,
+        isTileCorrect: verdict.is_tile_correct,
+        selectedLabel:
+          answer.action === 'best'
+            ? (answer.action_name ?? answer.tile)
+            : LEGACY_LABELS[answer.action],
+        correctLabel:
+          correctAction.type === 'best'
+            ? correctAction.label
+            : LEGACY_LABELS[correctAction.type],
+        selectedTiles: answer.tile ? [answer.tile] : [],
+        correctTiles: verdict.expected_tile ? [verdict.expected_tile] : [],
+        isMortalDecision:
+          answer.action === 'best' || correctAction.type === 'best',
+        selectedAction: answer.action_name,
+      };
+
+      set({
+        gameState: report.table,
+        isLoading: false,
+        error: null,
+        callRiichi: false,
+        callKan: false,
+        feedback,
+        evaluation: null,
+        reportMode: { report, verdict, warnings },
+        reportError: null,
+        reportNotice: null,
+        isReportRetry: false,
+      });
+
+      if (get().aiStatus === 'ready') {
+        // Fire and forget: the banner shows the "Checking…" state and the
+        // import button should not stay busy while the model runs.
+        void get().evaluateWithAi();
+      }
+    } catch (err) {
+      set({
+        reportError: err instanceof Error ? err.message : String(err),
+      });
+    }
+  },
+
+  retryImportedPuzzle: () =>
+    set({ feedback: null, isReportRetry: true }),
+
+  exitReportMode: () =>
+    set({ reportMode: null, isReportRetry: false }),
+
+  setReportError: (reportError) => set({ reportError }),
+
+  clearReportNotice: () => set({ reportNotice: null }),
 
   initializeAi: () => {
     if (aiInitPromise) return aiInitPromise;

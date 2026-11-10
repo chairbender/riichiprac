@@ -25,24 +25,26 @@ use std::collections::HashMap;
 
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use super::actions::{action_index, legal_actions};
 use super::encoder::{OBS_CHANNELS, TILE_KINDS, encode_v4_observation};
 use super::model::{ACTION_SPACE, MortalV4Model};
-use crate::decision::{ActionEvaluation, ActionInfo};
+pub use crate::decision::ActionEvaluation;
+use crate::decision::ActionInfo;
 use crate::state::GameState;
 
-pub use super::actions::legal_action_mask;
+pub use super::actions::{describe_action, legal_action_mask};
 
 /// Expected value is output 0; the 46 action logits are outputs 1..=46.
 const VALUE_INDEX: usize = 0;
 
 /// Full evaluation payload returned to JavaScript.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Evaluation {
     /// Exact model identity, e.g. `mortal_298k.safetensors`.
+    #[serde(default)]
     pub model: String,
     /// Output 0 of the network (Mortal's expected-value head).
     pub expected_value: f32,

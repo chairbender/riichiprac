@@ -34,6 +34,7 @@ pub struct ActionInfo {
     /// Mortal action name, e.g. `Discard_3m`, `Riichi`, `Chi_Low`, `Pon`.
     pub action: String,
     /// Human-readable label, e.g. `Discard 3m`, `Chi 2m 3m on 4m`.
+    #[serde(default)]
     pub label: String,
     /// Coarse family. Serialized as `type` to match the existing AI payload.
     #[serde(rename = "type")]
@@ -67,6 +68,49 @@ pub struct ActionEvaluation {
     pub info: ActionInfo,
     /// Softmax probability over the legal actions.
     pub probability: f32,
+}
+
+impl ActionEvaluation {
+    /// Build a scored action from the legacy `(action, kind, probability)`
+    /// tuple used by report and fuzz tests.
+    pub fn from_parts(
+        action: &str,
+        kind: &str,
+        tile_index: Option<usize>,
+        probability: f32,
+    ) -> Self {
+        let kind = match kind {
+            "discard" => ActionKind::Discard,
+            "riichi" => ActionKind::Riichi,
+            "chi" => ActionKind::Chi,
+            "pon" => ActionKind::Pon,
+            "kan" => ActionKind::Kan,
+            "agari" => ActionKind::Agari,
+            "ryukyoku" => ActionKind::Ryukyoku,
+            "pass" => ActionKind::Pass,
+            _ => ActionKind::Discard,
+        };
+        Self {
+            info: ActionInfo {
+                action: action.to_string(),
+                label: action.to_string(),
+                kind,
+                tile_index,
+                tile: None,
+                tiles: Vec::new(),
+                kan_kind: None,
+            },
+            probability,
+        }
+    }
+}
+
+impl std::ops::Deref for ActionEvaluation {
+    type Target = ActionInfo;
+
+    fn deref(&self) -> &Self::Target {
+        &self.info
+    }
 }
 
 /// The model-derived decision attached to an AI scenario payload.
