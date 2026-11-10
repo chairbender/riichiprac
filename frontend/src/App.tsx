@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import init, { generate_puzzle } from 'riichiprac';
+import wasmUrl from 'riichiprac/riichiprac_bg.wasm?url';
 import {
   RegularMan1,
   RegularMan2,
@@ -111,7 +112,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     async function setupWasm() {
       try {
-        await init();
+        await init({ module_or_path: wasmUrl });
         setWasmReady(true);
         const jsonStr = generate_puzzle('hello_world');
         const data: PuzzleData = JSON.parse(jsonStr);
