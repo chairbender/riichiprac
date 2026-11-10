@@ -1,181 +1,189 @@
-:root {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  color-scheme: dark light;
-}
-
-body {
-  margin: 0;
-  padding: 0;
-  background-color: #12141a;
-  color: #f1f3f5;
+#root {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
-.container {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem;
+/*
+ * Mobile-first portrait shell: a single vertical column with a fixed header,
+ * four player rows, and the human hand docked to the bottom of the viewport.
+ * No square table, no absolute positioning, no skeuomorphism.
+ */
+.app-shell {
+  --river-tile-size: clamp(22px, 7vw, 34px);
+  --hand-tile-size: clamp(18px, 5.4vw, 32px);
+
   display: flex;
   flex-direction: column;
-  align-items: center;
-}
-
-.header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.header h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.8rem;
-  color: #4dabf7;
-}
-
-.subtitle {
-  margin: 0;
-  font-size: 0.95rem;
-  color: #adb5bd;
-}
-
-.main-content {
   width: 100%;
+  max-width: 680px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background-color: #12141a;
+}
+
+/* Header ------------------------------------------------------------------ */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 10px 12px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  border-bottom: 1px solid #262b36;
+  background-color: #12141a;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e7ecf3;
+}
+
+.new-hand-button {
+  padding: 6px 12px;
+  border: 1px solid #34506e;
+  border-radius: 8px;
+  background-color: #1a2a3c;
+  color: #a5d8ff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.new-hand-button:active {
+  background-color: #213b56;
+}
+
+/* Stacked player rows ----------------------------------------------------- */
+
+.table-stack {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 8px;
+  padding: 10px;
 }
+
+.player-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #262b36;
+  border-radius: 10px;
+  background-color: #171a21;
+}
+
+.player-row--human {
+  border-color: #2d4f73;
+  background-color: #161d27;
+}
+
+.player-wind {
+  flex: 0 0 52px;
+  padding-top: 1px;
+}
+
+.wind-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: #232936;
+  color: #8fb8e0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.player-row--human .wind-badge {
+  background-color: #1d3a56;
+  color: #a5d8ff;
+}
+
+.river {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(6, var(--river-tile-size));
+  gap: 3px;
+  align-content: start;
+  justify-content: start;
+  min-height: var(--river-tile-size);
+}
+
+.river-tile {
+  display: block;
+  width: var(--river-tile-size);
+  height: auto;
+}
+
+/* Pinned human hand ------------------------------------------------------- */
+
+.hand-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  padding: 8px 10px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid #2a3140;
+  background-color: #12141a;
+}
+
+.hand-dock-label {
+  color: #8b94a7;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.hand {
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  gap: clamp(1px, 0.5vw, 3px);
+  width: 100%;
+  padding-bottom: 2px;
+}
+
+.hand-tile {
+  display: block;
+  width: 100%;
+  max-width: var(--hand-tile-size);
+  height: auto;
+}
+
+/* Status ------------------------------------------------------------------ */
 
 .status-msg {
-  font-size: 1.1rem;
-  color: #ced4da;
-  padding: 2rem;
+  padding: 24px 8px;
+  color: #adb5bd;
+  font-size: 0.9rem;
+  text-align: center;
 }
 
 .error-msg {
-  color: #ff6b6b;
-  background-color: #2b1d1d;
-  padding: 1rem;
+  padding: 10px 12px;
+  border: 1px solid #7a2c2c;
   border-radius: 8px;
-  border: 1px solid #fa5252;
-}
-
-.puzzle-card {
-  width: 100%;
-  max-width: 820px;
-  background-color: #1e212b;
-  border: 1px solid #2f3442;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.info-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-}
-
-.badge {
-  background-color: #2b3040;
-  color: #74c0fc;
-  padding: 0.35rem 0.75rem;
-  border-radius: 6px;
-  font-family: monospace;
-  font-size: 0.9rem;
-  border: 1px solid #3b4259;
-}
-
-.tiles-container {
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
-  padding: 1rem 0.75rem;
-  background-color: #161821;
-  border-radius: 8px;
-  border: 1px solid #282c3c;
-  overflow-x: auto;
-  max-width: 100%;
-}
-
-.tile-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  user-select: none;
-}
-
-.tile-svg {
-  width: 44px;
-  height: 59px;
-  display: block;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
-  transition: transform 0.15s ease;
-  border-radius: 4px;
-}
-
-.tile-svg:hover {
-  transform: translateY(-4px);
-}
-
-.tile-label {
-  margin-top: 6px;
-  font-size: 0.75rem;
-  font-family: monospace;
-  color: #868e96;
-}
-
-.action-row {
-  margin-top: 1.75rem;
-  display: flex;
-  justify-content: center;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #1971c2, #1864ab);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
-  box-shadow: 0 4px 12px rgba(24, 100, 171, 0.3);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #228be6, #1971c2);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(24, 100, 171, 0.4);
-}
-
-.btn-primary:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-@media (max-width: 680px) {
-  .tile-svg {
-    width: 28px;
-    height: 38px;
-  }
-
-  .tile-label {
-    font-size: 0.6rem;
-  }
-
-  .tiles-container {
-    gap: 2px;
-    justify-content: flex-start;
-  }
+  background-color: #241717;
+  color: #ff8a8a;
+  font-size: 0.82rem;
 }
