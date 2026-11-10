@@ -116,3 +116,48 @@ fn real_checkpoint_matches_pytorch_reference() {
     }
     println!("max abs diff vs PyTorch: {worst:e}");
 }
+
+/// End-to-end smoke test: real puzzle -> v4 observation -> checkpoint -> logits.
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn generated_puzzle_observations_run_through_the_checkpoint() {
+    const WEIGHTS: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/frontend/public/models/mortal_298k.safetensors"
+    );
+
+    if !std::path::Path::new(WEIGHTS).exists() {
+        eprintln!("skipping end-to-end test: {WEIGHTS} is missing");
+        return;
+    }
+
+    let device = Device::Cpu;
+    let vb = VarBuilder::from_buffered_safetensors(
+        std::fs::read(WEIGHTS).expect("checkpoint must be readable"),
+        DType::F32,
+        &device,
+    )
+    .expect("checkpoint must parse");
+    let model = MortalV4Model::new(vb).expect("checkpoint must bind");
+
+    let json = crate::generate_puzzle("basic_test".to_string());
+    let state: crate::state::GameState =
+        serde_json::from_str(&json).expect("puzzle JSON must decode");
+    let observation = crate::ai::encode_v4_observation(&state);
+
+    let xs = Tensor::from_vec(observation, (1, INPUT_CHANNELS, TILE_FEATURES), &device)
+        .expect("observation must form a tensor");
+    let out = model.forward(&xs).expect("forward pass must succeed");
+    assert_eq!(out.dims(), &[1, POLICY_OUTPUTS]);
+
+    let values = out.flatten_all().unwrap().to_vec1::<f32>().unwrap();
+    assert!(values.iter().all(|value| value.is_finite()));
+    // A live checkpoint must distinguish at least some actions.
+    let logits = &values[1..];
+    assert!(
+        logits
+            .windows(2)
+            .any(|pair| (pair[0] - pair[1]).abs() > 1e-6),
+        "policy logits are all identical: {logits:?}"
+    );
+}
