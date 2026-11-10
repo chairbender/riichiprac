@@ -9,7 +9,8 @@
  * No square table, no absolute positioning, no skeuomorphism.
  */
 .app-shell {
-  --river-tile-size: clamp(22px, 7vw, 34px);
+  --river-tile-size: clamp(20px, 6.2vw, 30px);
+  --river-tile-height: calc(var(--river-tile-size) * 4 / 3);
   --hand-tile-size: clamp(18px, 5.4vw, 32px);
 
   display: flex;
@@ -76,7 +77,7 @@
 .player-row {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   padding: 8px 10px;
   border: 1px solid #262b36;
   border-radius: 10px;
@@ -88,8 +89,16 @@
   background-color: #161d27;
 }
 
-.player-wind {
-  flex: 0 0 52px;
+.player-row--riichi {
+  border-color: #6b3131;
+}
+
+.player-meta {
+  flex: 0 0 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   padding-top: 1px;
 }
 
@@ -113,20 +122,86 @@
   color: #a5d8ff;
 }
 
-.river {
+.player-score {
+  color: #e7ecf3;
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.riichi-stick {
+  display: block;
+  width: 46px;
+  height: auto;
+}
+
+/* Melds and discard river ------------------------------------------------- */
+
+.player-tiles {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.melds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.meld {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 3px;
+  border: 1px solid #303748;
+  border-radius: 5px;
+  background-color: #12151c;
+}
+
+.meld-label {
+  margin-right: 2px;
+  color: #8b94a7;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.meld-tile {
+  display: block;
+  width: var(--river-tile-size);
+  height: auto;
+}
+
+.river {
   display: grid;
-  grid-template-columns: repeat(6, var(--river-tile-size));
+  grid-template-columns: repeat(6, var(--river-tile-height));
   gap: 3px;
   align-content: start;
   justify-content: start;
-  min-height: var(--river-tile-size);
+}
+
+.river-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--river-tile-height);
+  height: var(--river-tile-height);
 }
 
 .river-tile {
   display: block;
   width: var(--river-tile-size);
   height: auto;
+}
+
+/* The Riichi declaration tile is discarded sideways. */
+.river-slot--riichi .river-tile {
+  transform: rotate(90deg);
 }
 
 /* Pinned human hand ------------------------------------------------------- */
