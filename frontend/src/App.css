@@ -295,6 +295,77 @@
   text-transform: uppercase;
 }
 
+/* Riichi declaration toggle ------------------------------------------------ */
+
+.riichi-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #4a2a2a;
+  border-radius: 10px;
+  background-color: #1d1717;
+  color: #c99a9a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+}
+
+.riichi-toggle--active {
+  border-color: #e03131;
+  background-color: #3a1b1b;
+  color: #fff5f5;
+  box-shadow:
+    0 0 0 2px rgba(224, 49, 49, 0.35),
+    0 4px 14px rgba(224, 49, 49, 0.2);
+}
+
+.riichi-toggle:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+
+.riichi-toggle:focus-visible {
+  outline: 2px solid #ff8787;
+  outline-offset: 2px;
+}
+
+.riichi-toggle-stick {
+  display: block;
+  width: 32px;
+  height: auto;
+  flex: 0 0 auto;
+}
+
+.riichi-toggle-label {
+  line-height: 1;
+}
+
+.riichi-toggle-state {
+  min-width: 30px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.08);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+}
+
+.riichi-toggle--active .riichi-toggle-state {
+  background-color: #e03131;
+  color: #fff;
+}
+
 .hand {
   display: grid;
   align-items: end;
@@ -364,14 +435,14 @@
 .feedback-toast {
   position: fixed;
   top: auto;
-  bottom: calc(88px + env(safe-area-inset-bottom));
+  bottom: calc(148px + env(safe-area-inset-bottom));
   left: 50%;
   z-index: 50;
 
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 
   width: calc(100% - 24px);
   max-width: 440px;
@@ -404,10 +475,70 @@
   line-height: 1.3;
 }
 
-.feedback-answer {
+.feedback-grades {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.feedback-grade {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 4px 7px;
+  border-left: 3px solid #495057;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.04);
+  color: #dee2e6;
+  font-size: 0.78rem;
+}
+
+.feedback-grade--correct {
+  border-left-color: #2f9e44;
+}
+
+.feedback-grade--incorrect {
+  border-left-color: #e03131;
+}
+
+.feedback-grade-label {
+  min-width: 52px;
+  color: #adb5bd;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.feedback-grade-value {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.feedback-grade-mark {
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.feedback-grade--correct .feedback-grade-mark {
+  color: #8ce99a;
+}
+
+.feedback-grade--incorrect .feedback-grade-mark {
+  color: #ff8a8a;
+}
+
+.feedback-grade-correct {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ced4da;
+  font-size: 0.74rem;
+  font-weight: 600;
 }
 
 .feedback-tile {

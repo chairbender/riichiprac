@@ -40,6 +40,24 @@ mod tests {
     }
 
     #[test]
+    fn test_correct_action_serializes_type_and_discard() {
+        for (action_type, expected_type) in [
+            (CorrectActionType::Riichi, "riichi"),
+            (CorrectActionType::Dama, "dama"),
+        ] {
+            let action = CorrectAction {
+                action_type,
+                discard: "4p".to_string(),
+            };
+            let json = serde_json::to_value(&action).expect("action must serialize");
+
+            assert_eq!(json["type"], expected_type);
+            assert_eq!(json["discard"], "4p");
+            assert!(json.get("tile").is_none());
+        }
+    }
+
+    #[test]
     fn test_generate_puzzle_json() {
         let json_str = generate_puzzle("basic_test".to_string());
         let parsed: serde_json::Value =
@@ -73,10 +91,10 @@ mod tests {
         assert_eq!(human["melds"][0]["tiles"].as_array().unwrap().len(), 3);
         assert_eq!(parsed["target_action"], "NaniKiru");
 
-        assert_eq!(parsed["correct_action"]["type"], "discard");
-        let correct_tile = parsed["correct_action"]["tile"]
+        assert_eq!(parsed["correct_action"]["type"], "dama");
+        let correct_tile = parsed["correct_action"]["discard"]
             .as_str()
-            .expect("correct_action.tile must be a string");
+            .expect("correct_action.discard must be a string");
         assert!(
             parsed["tiles"]
                 .as_array()

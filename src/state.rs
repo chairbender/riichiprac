@@ -52,7 +52,10 @@ pub enum TargetAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CorrectActionType {
-    Discard,
+    /// Declare Riichi on the accompanying discard.
+    Riichi,
+    /// Stay in dama (concealed tenpai) and discard without declaring Riichi.
+    Dama,
 }
 
 /// The expected answer for the current scenario.
@@ -62,7 +65,7 @@ pub struct CorrectAction {
     #[serde(rename = "type")]
     pub action_type: CorrectActionType,
     /// Tile the player should discard (e.g. "6p").
-    pub tile: String,
+    pub discard: String,
 }
 
 /// Discard tile in a player's river.

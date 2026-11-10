@@ -16,6 +16,26 @@ fn test_wasm_status() {
 }
 
 #[wasm_bindgen_test]
+fn test_payload_supports_riichi_and_dama_actions() {
+    let ryanmen: serde_json::Value =
+        serde_json::from_str(&generate_puzzle("ryanmen_protorun".to_string()))
+            .expect("ryanmen payload must be valid JSON");
+    assert_eq!(ryanmen["correct_action"]["type"], "dama");
+    assert!(
+        ryanmen["correct_action"]["discard"].is_string(),
+        "dama action must include a discard tile"
+    );
+
+    let mock: serde_json::Value = serde_json::from_str(&generate_puzzle("mock_table".to_string()))
+        .expect("mock payload must be valid JSON");
+    assert_eq!(mock["correct_action"]["type"], "riichi");
+    assert!(
+        mock["correct_action"]["discard"].is_string(),
+        "riichi action must include a discard tile"
+    );
+}
+
+#[wasm_bindgen_test]
 fn test_generate_50_random_hands_parsed_by_agari() {
     let generator = ScenarioGenerator::new();
 
@@ -95,10 +115,10 @@ fn test_generate_puzzle_wasm_api() {
         assert!(val.get("ukeire_total").is_some());
         assert!(val.get("ukeire_tiles").is_some());
 
-        assert_eq!(val["correct_action"]["type"], "discard");
-        let correct_tile = val["correct_action"]["tile"]
+        assert_eq!(val["correct_action"]["type"], "dama");
+        let correct_tile = val["correct_action"]["discard"]
             .as_str()
-            .expect("correct_action.tile must be a string");
+            .expect("correct_action.discard must be a string");
         assert!(
             tiles.iter().any(|tile| tile.as_str() == Some(correct_tile)),
             "correct_action tile must be present in the human hand"
@@ -123,7 +143,7 @@ fn test_ryanmen_rejection_sampling_constraints() {
 
         assert_eq!(val["category"], "ryanmen_protorun");
         assert_eq!(val["target_action"], "NaniKiru");
-        assert_eq!(val["correct_action"]["type"], "discard");
+        assert_eq!(val["correct_action"]["type"], "dama");
         assert_eq!(val["riichi_sticks"], 0);
         assert_eq!(val["dora_indicators"].as_array().unwrap().len(), 1);
         assert_eq!(val["ura_dora_indicators"].as_array().unwrap().len(), 1);
@@ -151,7 +171,7 @@ fn test_ryanmen_rejection_sampling_constraints() {
         assert_eq!(human["hand"].as_array().unwrap().len(), 10);
         assert_eq!(human["melds"][0]["meld_type"], "Pon");
         assert_eq!(human["melds"][0]["tiles"].as_array().unwrap().len(), 3);
-        assert_eq!(human["draw"], val["correct_action"]["tile"]);
+        assert_eq!(human["draw"], val["correct_action"]["discard"]);
 
         let discard_counts: Vec<usize> = players
             .iter()
@@ -214,7 +234,7 @@ fn test_ryanmen_rejection_sampling_constraints() {
             .remove(0);
         assert_ne!(
             indicator_to_dora(indicator).to_string(),
-            val["correct_action"]["tile"].as_str().unwrap(),
+            val["correct_action"]["discard"].as_str().unwrap(),
             "run {run}: duplicate tile is the dora"
         );
 

@@ -631,9 +631,11 @@ impl ScenarioGenerator {
         Ok(GameState {
             category: category.to_string(),
             target_action: TargetAction::NaniKiru,
+            // The open Yakuhai meld makes Riichi illegal, so staying dama is
+            // the only legal declaration for this hand.
             correct_action: CorrectAction {
-                action_type: CorrectActionType::Discard,
-                tile: skeleton.correct_tile.to_string(),
+                action_type: CorrectActionType::Dama,
+                discard: skeleton.correct_tile.to_string(),
             },
             hand_string,
             tiles: tile_strings,
@@ -1021,8 +1023,8 @@ impl ScenarioGenerator {
             category: category.to_string(),
             target_action: TargetAction::Riichi,
             correct_action: CorrectAction {
-                action_type: CorrectActionType::Discard,
-                tile: correct_discard,
+                action_type: CorrectActionType::Riichi,
+                discard: correct_discard,
             },
 
             hand_string,
@@ -1061,7 +1063,7 @@ mod tests {
     fn assert_ryanmen_constraints(state: &GameState) {
         assert_eq!(state.category, "ryanmen_protorun");
         assert_eq!(state.target_action, TargetAction::NaniKiru);
-        assert_eq!(state.correct_action.action_type, CorrectActionType::Discard);
+        assert_eq!(state.correct_action.action_type, CorrectActionType::Dama);
         assert_eq!(state.tiles.len(), 14);
         assert_eq!(state.players.len(), 4);
 
@@ -1089,7 +1091,7 @@ mod tests {
         assert_eq!(human.hand.len(), 10);
         assert_eq!(
             human.draw.as_deref(),
-            Some(state.correct_action.tile.as_str())
+            Some(state.correct_action.discard.as_str())
         );
         assert_eq!(human.melds.len(), 1);
         assert_eq!(human.melds[0].meld_type, MeldType::Pon);
@@ -1160,7 +1162,7 @@ mod tests {
             .remove(0);
         assert_ne!(
             indicator_to_dora(indicator).to_string(),
-            state.correct_action.tile
+            state.correct_action.discard
         );
 
         // Scores stay on the 100,000-point table.
@@ -1202,13 +1204,13 @@ mod tests {
         assert_ryanmen_constraints(&state);
         assert_eq!(state.shanten, 0);
         assert_eq!(state.ukeire_tiles.len(), 2);
-        assert!(state.tiles.contains(&state.correct_action.tile));
+        assert!(state.tiles.contains(&state.correct_action.discard));
 
         // Discarding the duplicate leaves the two-sided ryanmen wait.
         let mut post_discard = state.tiles.clone();
         let duplicate_index = post_discard
             .iter()
-            .position(|tile| tile == &state.correct_action.tile)
+            .position(|tile| tile == &state.correct_action.discard)
             .expect("correct tile must be in the full hand");
         post_discard.remove(duplicate_index);
         let post_tiles =
