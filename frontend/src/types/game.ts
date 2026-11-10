@@ -3,6 +3,8 @@
  * engine (`src/state.rs`). Keep this in sync with the Rust structs.
  */
 
+import type { AiDecision } from './ai';
+
 export type Wind = 'East' | 'South' | 'West' | 'North';
 
 export type MeldType = 'Chi' | 'Pon' | 'Kan' | 'Ankan';
@@ -13,7 +15,8 @@ export type TargetAction =
   | 'Push'
   | 'Fold'
   | 'NaniKiru'
-  | 'Kan';
+  | 'Kan'
+  | 'Best';
 
 /** Reasons a scenario recommends declaring Riichi. */
 export type RiichiTrigger =
@@ -41,18 +44,32 @@ export type ShouminkanTrigger =
   | 'losing_badly';
 
 /** Action kinds the trainer can expect alongside the discard. */
-export type CorrectActionType = 'riichi' | 'dama' | 'kan' | 'discard';
+export type CorrectActionType = 'riichi' | 'dama' | 'kan' | 'discard' | 'best';
 
 /**
  * The expected answer for the current scenario.
  *
  * Riichi/dama puzzles carry the discard in `discard`. Kan puzzles carry the
  * tile in `tile`, where `"kan"` means add the fourth tile to an open Pon and
- * `"discard"` means pass on the Kan and discard normally.
+ * `"discard"` means pass on the Kan and discard normally. AI scenarios use
+ * `best` with the model's Mortal action name.
  */
 export type CorrectAction =
   | { type: 'riichi' | 'dama'; discard: string }
-  | { type: 'kan' | 'discard'; tile: string };
+  | { type: 'kan' | 'discard'; tile: string }
+  | {
+      type: 'best';
+      action: string;
+      label: string;
+      tile?: string | null;
+      tiles?: string[];
+    };
+
+/** What kind of decision the state presents. */
+export type DecisionContext =
+  | { kind: 'self_turn' }
+  | { kind: 'react_to_discard'; from: number; tile: string }
+  | { kind: 'react_to_kan'; from: number; tile: string };
 
 export interface DiscardTile {
   /** Tile code such as "1m", "5p", or "7z". */
@@ -91,6 +108,10 @@ export interface GameState {
   category: string;
   target_action: TargetAction;
   correct_action: CorrectAction;
+  /** What kind of decision this state presents. */
+  decision: DecisionContext;
+  /** Model-derived answer and full ranking for AI scenarios. */
+  ai_decision?: AiDecision | null;
   /** Heuristics that justify Riichi for this scenario. */
   riichi_triggers: RiichiTrigger[];
   /** Conditions that justify staying in dama for this scenario. */

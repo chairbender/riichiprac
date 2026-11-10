@@ -14,7 +14,8 @@
 //! information is never read: opponent hands are ignored, only their rivers,
 //! melds and open kans are encoded.
 
-use crate::state::{DiscardTile, GameState, MeldType, PlayerState};
+use crate::decision::{ActionKind, KanKind};
+use crate::state::{DecisionContext, DiscardTile, GameState, MeldType, PlayerState};
 
 /// Mortal v4 observation channels (`libriichi::consts::obs_shape(4)`).
 pub const OBS_CHANNELS: usize = 1012;
@@ -564,33 +565,62 @@ fn encode_decision_features(
     self_hand: &[u8; TILE_KINDS],
 ) {
     // Legal discard candidates (aka tiles collapse onto their base tile).
-    for (index, &count) in self_hand.iter().enumerate() {
-        if count > 0 {
-            buf.assign(OFF_DISCARD_CANDIDATES, index, 1.0);
+    if matches!(state.decision, DecisionContext::SelfTurn) {
+        for (index, &count) in self_hand.iter().enumerate() {
+            if count > 0 {
+                buf.assign(OFF_DISCARD_CANDIDATES, index, 1.0);
+            }
+        }
+        if player.is_riichi {
+            buf.fill(OFF_DISCARD_CANDIDATES + 4, 1.0);
         }
     }
-    if player.is_riichi {
-        buf.fill(OFF_DISCARD_CANDIDATES + 4, 1.0);
+
+    for action in super::actions::legal_actions(state) {
+        match action.kind {
+            ActionKind::Discard => {}
+            ActionKind::Riichi => buf.fill(OFF_CAN_RIICHI, 1.0),
+            ActionKind::Chi => {
+                let row = match action.action.as_str() {
+                    "Chi_Low" => 0,
+                    "Chi_Mid" => 1,
+                    "Chi_High" => 2,
+                    _ => continue,
+                };
+                buf.fill(OFF_CAN_CHI + row, 1.0);
+            }
+            ActionKind::Pon => buf.fill(OFF_CAN_PON, 1.0),
+            ActionKind::Kan => match action.kan_kind {
+                Some(KanKind::Daiminkan) => buf.fill(OFF_CAN_DAIMINKAN, 1.0),
+                Some(KanKind::Ankan) => buf.fill(OFF_CAN_ANKAN, 1.0),
+                Some(KanKind::Kakan) => buf.fill(OFF_CAN_KAKAN, 1.0),
+                None => {}
+            },
+            ActionKind::Agari => buf.fill(OFF_CAN_AGARI, 1.0),
+            ActionKind::Ryukyoku => buf.fill(OFF_CAN_RYUKYOKU, 1.0),
+            ActionKind::Pass => {}
+        }
     }
 
-    let menzen = player
-        .melds
-        .iter()
-        .all(|meld| meld.meld_type == MeldType::Ankan);
-    if menzen
-        && state.shanten == 0
-        && !player.is_riichi
-        && player.score >= 1000
-        && state.tiles_remaining >= 4
+    // The claimed tile for a reaction decision.
+    if let Some(tile) = claimed_tile(state)
+        && let Some(index) = tile_index(tile)
     {
-        buf.fill(OFF_CAN_RIICHI, 1.0);
+        buf.assign(OFF_CALL_TILE, index, 1.0);
+        // Row 1 is the red-five flag; our discards do not record aka-ness.
+        // Row 2 is the dora flag; it is filled by the caller's dora data when
+        // available. The tile identity is the important part here.
     }
+}
 
-    if state.is_agari {
-        buf.fill(OFF_CAN_AGARI, 1.0);
+/// The tile a reaction decision is responding to, if any.
+fn claimed_tile(state: &GameState) -> Option<&str> {
+    match &state.decision {
+        DecisionContext::ReactToDiscard { tile, .. } | DecisionContext::ReactToKan { tile, .. } => {
+            Some(tile)
+        }
+        DecisionContext::SelfTurn => None,
     }
-    // Chi / pon / kan / ron / ryukyoku are not modelled: our puzzles always
-    // present a discard decision, so those rows stay zero.
 }
 
 // --- Helpers ---------------------------------------------------------------

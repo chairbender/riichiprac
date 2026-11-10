@@ -27,13 +27,14 @@ fn test_list_scenarios_payload() {
         .as_array()
         .expect("scenario manifest must be an array");
 
-    assert_eq!(scenarios.len(), 3);
+    assert_eq!(scenarios.len(), 4);
     assert!(scenarios.iter().all(|scenario| {
         scenario["id"].is_string()
             && scenario["label"].is_string()
             && scenario["description"].is_string()
             && scenario["category"].is_string()
             && scenario["tags"].is_array()
+            && scenario["requires_ai"].is_boolean()
     }));
     assert!(
         scenarios
@@ -45,6 +46,26 @@ fn test_list_scenarios_payload() {
             .iter()
             .any(|scenario| scenario["id"] == "mock_table"),
         "fixtures must not appear in the lesson manifest"
+    );
+    assert!(
+        scenarios
+            .iter()
+            .any(|scenario| scenario["id"] == "ai_best_action" && scenario["requires_ai"] == true),
+        "AI scenario must be listed and marked requires_ai"
+    );
+}
+
+#[wasm_bindgen_test]
+fn test_ai_scenario_requires_the_evaluator() {
+    let json = generate_puzzle("ai_best_action".to_string());
+    let parsed: serde_json::Value =
+        serde_json::from_str(&json).expect("error payload must be valid JSON");
+    assert!(
+        parsed["error"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("Mortal model"),
+        "expected a model-required error, got {json}"
     );
 }
 

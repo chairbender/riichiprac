@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod decision;
 pub(crate) mod fixtures;
 pub mod generator;
 pub mod rng;
@@ -7,10 +8,11 @@ pub mod state;
 use wasm_bindgen::prelude::*;
 
 pub use ai::WasmMortalEvaluator;
+pub use decision::{ActionEvaluation, ActionInfo, ActionKind, AiDecision, KanKind};
 pub use generator::{PuzzleResponse, generate_random_hand};
 pub use state::{
-    CalledMeld, CorrectAction, CorrectActionType, DamaReason, DiscardTile, GameState, MeldType,
-    PlayerState, RiichiTrigger, ShouminkanTrigger, TargetAction, Wind,
+    CalledMeld, CorrectAction, CorrectActionType, DamaReason, DecisionContext, DiscardTile,
+    GameState, MeldType, PlayerState, RiichiTrigger, ShouminkanTrigger, TargetAction, Wind,
 };
 
 /// Verification helper for WASM module initialization.
@@ -70,6 +72,34 @@ mod tests {
             assert_eq!(json["tile"], "5p");
             assert!(json.get("discard").is_none());
         }
+
+        let best = CorrectAction::best(
+            "Chi_Low",
+            Some("4m".to_string()),
+            vec!["5m".to_string(), "6m".to_string()],
+            "Chi 5m 6m on 4m",
+        );
+        let json = serde_json::to_value(&best).expect("best action must serialize");
+        assert_eq!(json["type"], "best");
+        assert_eq!(json["action"], "Chi_Low");
+        assert_eq!(json["tile"], "4m");
+        assert_eq!(json["tiles"][0], "5m");
+        assert_eq!(json["label"], "Chi 5m 6m on 4m");
+    }
+
+    #[test]
+    fn decision_context_serializes_as_a_tagged_shape() {
+        let json = serde_json::to_value(DecisionContext::ReactToDiscard {
+            from: 3,
+            tile: "4m".to_string(),
+        })
+        .expect("decision must serialize");
+        assert_eq!(json["kind"], "react_to_discard");
+        assert_eq!(json["from"], 3);
+        assert_eq!(json["tile"], "4m");
+
+        let json = serde_json::to_value(DecisionContext::SelfTurn).expect("decision");
+        assert_eq!(json["kind"], "self_turn");
     }
 
     #[test]

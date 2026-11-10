@@ -229,7 +229,11 @@ Example (`jsonc`; the `table` value is the complete serialized `GameState`):
   - `ai_evaluation_wrong` (Mortal output itself looks wrong),
   - `other`.
 - `decision.answer` is the submitted action + tile, in the same lowercase
-  action vocabulary as `CorrectActionType`.
+  action vocabulary as `CorrectActionType`. The AI Best Action scenario adds a
+  `best` action type whose answer is a Mortal action name (`Discard_3m`,
+  `Chi_Low`, `Pon`, `Kan`, `Agari`, `Pass`, `Riichi`); when this report format
+  is implemented, the verdict derivation and `human_readable` block must handle
+  that variant and its optional `tile`/`tiles` fields.
 - `decision.verdict` mirrors the app's `AnswerFeedback` at export time. It is
   recomputed on import and compared, not trusted.
 - `ai` is `null`/absent when no evaluation exists.

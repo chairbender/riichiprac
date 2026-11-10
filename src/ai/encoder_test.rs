@@ -1,16 +1,17 @@
 //! Channel-level tests for the Mortal v4 observation encoder.
 
 use super::encoder::{
-    OBS_CHANNELS, OBS_LEN, OFF_AKAS, OFF_ANKAN, OFF_BAKAZE, OFF_CAN_AGARI, OFF_CAN_RIICHI,
-    OFF_DISCARD_CANDIDATES, OFF_DORA_INDICATORS, OFF_DORAS_OWNED, OFF_DORAS_UNSEEN, OFF_FURITEN,
-    OFF_FURO, OFF_HAND, OFF_HONBA, OFF_JIKAZE, OFF_KAWA_OVERVIEW, OFF_KYOKU, OFF_KYOTAKU,
-    OFF_LAST_TEDASHI, OFF_OPPONENTS, OFF_RANK, OFF_RIICHI_ACCEPTED, OFF_RIICHI_DECLARED,
-    OFF_RIICHI_SUTEHAI, OFF_ROUND, OFF_SCORES, OFF_SELF_KAWA_FIRST, OFF_SHANTEN, OFF_TILES_LEFT,
-    OFF_TILES_SEEN, OFF_WAITS, OPP_KAWA_ITEM_CHANNELS, OPP_SUMMARY, TILE_KINDS, dora_tile,
-    encode_v4_observation, tile_index, tile_name,
+    OBS_CHANNELS, OBS_LEN, OFF_AKAS, OFF_ANKAN, OFF_BAKAZE, OFF_CALL_TILE, OFF_CAN_AGARI,
+    OFF_CAN_CHI, OFF_CAN_RIICHI, OFF_DISCARD_CANDIDATES, OFF_DORA_INDICATORS, OFF_DORAS_OWNED,
+    OFF_DORAS_UNSEEN, OFF_FURITEN, OFF_FURO, OFF_HAND, OFF_HONBA, OFF_JIKAZE, OFF_KAWA_OVERVIEW,
+    OFF_KYOKU, OFF_KYOTAKU, OFF_LAST_TEDASHI, OFF_OPPONENTS, OFF_RANK, OFF_RIICHI_ACCEPTED,
+    OFF_RIICHI_DECLARED, OFF_RIICHI_SUTEHAI, OFF_ROUND, OFF_SCORES, OFF_SELF_KAWA_FIRST,
+    OFF_SHANTEN, OFF_TILES_LEFT, OFF_TILES_SEEN, OFF_WAITS, OPP_KAWA_ITEM_CHANNELS, OPP_SUMMARY,
+    TILE_KINDS, dora_tile, encode_v4_observation, tile_index, tile_name,
 };
 use crate::state::{
-    CalledMeld, CorrectAction, DiscardTile, GameState, MeldType, PlayerState, TargetAction, Wind,
+    CalledMeld, CorrectAction, DecisionContext, DiscardTile, GameState, MeldType, PlayerState,
+    TargetAction, Wind,
 };
 
 fn player(
@@ -108,6 +109,8 @@ fn base_state() -> GameState {
         category: "encoder_test".to_string(),
         target_action: TargetAction::NaniKiru,
         correct_action: CorrectAction::dama("3m"),
+        decision: DecisionContext::SelfTurn,
+        ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
@@ -371,6 +374,34 @@ fn agari_and_hidden_opponent_hands_do_not_leak() {
         player.hand = vec!["7z".to_string(); 13];
     }
     assert_eq!(baseline, encode_v4_observation(&changed));
+}
+
+#[test]
+fn reaction_state_encodes_call_features() {
+    let mut state = base_state();
+    state.decision = DecisionContext::ReactToDiscard {
+        from: 3,
+        tile: "3m".to_string(),
+    };
+    state.current_turn = 3;
+    state.players[0].draw = None;
+    state.players[0].hand = [
+        "1m", "2m", "4m", "5m", "9p", "9p", "9p", "1s", "2s", "3s", "7z", "7z", "7z",
+    ]
+    .iter()
+    .map(|tile| tile.to_string())
+    .collect();
+    state.players[3].discards.push(DiscardTile::new("3m"));
+    state.shanten = 1;
+    state.is_agari = false;
+    state.ukeire_tiles = Vec::new();
+
+    let obs = encode_v4_observation(&state);
+    assert!((cell(&obs, OFF_CALL_TILE, col("3m")) - 1.0).abs() < 1e-6);
+    assert!(row_is_set(&obs, OFF_CAN_CHI));
+    assert!(row_is_set(&obs, OFF_CAN_CHI + 1));
+    assert!(row_is_set(&obs, OFF_CAN_CHI + 2));
+    assert!(!row_is_set(&obs, OFF_DISCARD_CANDIDATES));
 }
 
 #[test]

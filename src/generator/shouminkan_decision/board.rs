@@ -13,7 +13,8 @@ use crate::generator::support::table::{
 };
 use crate::rng::{choose, gen_range, shuffle};
 use crate::state::{
-    CalledMeld, CorrectAction, GameState, MeldType, PlayerState, TargetAction, Wind,
+    CalledMeld, CorrectAction, DecisionContext, GameState, MeldType, PlayerState, TargetAction,
+    Wind,
 };
 
 /// The validated hand shapes for one Added Kan puzzle.
@@ -298,6 +299,8 @@ fn assemble_state(
         category: category.to_string(),
         target_action: TargetAction::Kan,
         correct_action: CorrectAction::kan(skeleton.drawn_tile.to_string()),
+        decision: DecisionContext::SelfTurn,
+        ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
         shouminkan_triggers: triggers.to_vec(),

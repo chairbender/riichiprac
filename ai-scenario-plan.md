@@ -1,6 +1,7 @@
 # AI Best Action Scenario Plan
 
-Status: proposed.
+Status: implemented (v1). Chankan and the nine-terminals draw are included;
+multiple-kan selection and model-provided prose reasoning remain deferred.
 
 This document describes a new scenario type where the app generates a random,
 valid table state in which the human faces **any supported decision** (discard,
@@ -581,8 +582,8 @@ accounting. Do not set an opponent in Riichi for a call state in v1.
 | Riichi / dama | self turn, menzen tenpai | Riichi, discards | Task 8 |
 | Tsumo | self turn, winning hand | Agari, discards | Task 8 |
 | Ankan / kakan | self turn, four copies / open Pon + fourth | Kan, discards | Task 8 |
-| Chankan | reaction to added kan | Agari, Pass | Optional Task 10 |
-| Nine terminals | self turn, first draw | Ryukyoku, discards | Optional Task 10 |
+| Chankan | reaction to added kan | Agari, Pass | Task 7 |
+| Nine terminals | self turn, first draw | Ryukyoku, discards | Task 8 |
 
 Task 5 deliberately avoids Riichi/kan/agari so the first vertical slice is a
 pure discard decision. Later families reuse the same finalization path.

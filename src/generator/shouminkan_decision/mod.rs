@@ -151,7 +151,7 @@ mod tests {
             .as_deref()
             .expect("shouminkan human must have a draw");
         assert_eq!(draw, human.melds[0].tiles[0]);
-        assert_eq!(draw, state.correct_action.tile());
+        assert_eq!(Some(draw), state.correct_action.tile());
         assert!(
             !human.hand.iter().any(|tile| tile == draw),
             "the only fourth copy must be the active draw"

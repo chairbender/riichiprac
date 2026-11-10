@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
+import { ActionBar } from './components/ActionBar';
+import { AiDecisionExplanation } from './components/AiDecisionExplanation';
 import { AiEvaluatorPanel } from './components/AiEvaluatorPanel';
 import { HandDock } from './components/HandDock';
 import { FeedbackToast } from './components/FeedbackToast';
@@ -35,6 +37,7 @@ export const App = () => {
   const toggleRiichi = useGameStore((state) => state.toggleRiichi);
   const toggleKan = useGameStore((state) => state.toggleKan);
   const selectTile = useGameStore((state) => state.selectTile);
+  const submitAction = useGameStore((state) => state.submitAction);
   const reset = useGameStore((state) => state.reset);
   const setError = useGameStore((state) => state.setError);
   const aiStatus = useGameStore((state) => state.aiStatus);
@@ -48,6 +51,7 @@ export const App = () => {
   const [selection, setSelection] = useState<ScenarioSelection>('all');
   const [scenarios, setScenarios] =
     useState<ScenarioOption[]>(FALLBACK_SCENARIOS);
+  const [aiLoading, setAiLoading] = useState(false);
   const manifestRef = useRef<ScenarioOption[] | null>(null);
   const loadRequestId = useRef(0);
 
@@ -72,15 +76,44 @@ export const App = () => {
         const options = manifestRef.current ?? FALLBACK_SCENARIOS;
         const category =
           scenarioSelection === 'all'
-            ? pickRandomScenario(options)
+            ? pickRandomScenario(
+                options,
+                useGameStore.getState().aiStatus === 'ready',
+              )
             : scenarioSelection;
-        loadFromJson(generate_puzzle(category));
+        const requiresAi =
+          options.find((option) => option.id === category)?.requires_ai === true;
+
+        if (requiresAi) {
+          setAiLoading(true);
+          try {
+            await initializeAi();
+            if (requestId !== loadRequestId.current) return;
+            const evaluator = useGameStore.getState().evaluator;
+            if (!evaluator) {
+              throw new Error(
+                useGameStore.getState().aiError ??
+                  'Mortal AI is unavailable; cannot generate this scenario.',
+              );
+            }
+            // Let the loading state paint before the blocking inference.
+            await new Promise<void>((resolve) => {
+              setTimeout(resolve, 0);
+            });
+            if (requestId !== loadRequestId.current) return;
+            loadFromJson(evaluator.generate_ai_puzzle(category));
+          } finally {
+            setAiLoading(false);
+          }
+        } else {
+          loadFromJson(generate_puzzle(category));
+        }
       } catch (err) {
         if (requestId !== loadRequestId.current) return;
         setError(err instanceof Error ? err.message : String(err));
       }
     },
-    [loadFromJson, reset, setError],
+    [initializeAi, loadFromJson, reset, setError],
   );
 
   useEffect(() => {
@@ -113,6 +146,14 @@ export const App = () => {
 
   const humanPlayer =
     gameState?.players.find((player) => player.is_human) ?? null;
+
+  const aiDecision = gameState?.ai_decision ?? null;
+  const isAiScenario = aiDecision !== null;
+  const availableActions = aiDecision?.actions ?? [];
+  const canDiscard = availableActions.some((action) => action.type === 'discard');
+  const decision = gameState?.decision;
+  const claimedFrom =
+    decision?.kind === 'react_to_discard' ? decision.from : null;
 
   return (
     <div className="app-shell">
@@ -164,10 +205,20 @@ export const App = () => {
 
       {gameState && <TableInfo state={gameState} />}
 
-      {feedback && gameState && <ScenarioExplanation state={gameState} />}
+      {feedback && gameState && !isAiScenario && (
+        <ScenarioExplanation state={gameState} />
+      )}
+
+      {feedback && gameState && isAiScenario && (
+        <AiDecisionExplanation state={gameState} />
+      )}
 
       <main className="table-stack">
-        {isLoading && <div className="status-msg">Loading table…</div>}
+        {(isLoading || aiLoading) && (
+          <div className="status-msg">
+            {aiLoading ? 'Asking Mortal…' : 'Loading table…'}
+          </div>
+        )}
         {error && (
           <div className="error-msg" role="alert">
             {error}
@@ -175,11 +226,15 @@ export const App = () => {
         )}
 
         {orderedPlayers.map((player) => (
-          <PlayerRow key={player.seat} player={player} />
+          <PlayerRow
+            key={player.seat}
+            player={player}
+            highlightLastDiscard={claimedFrom === player.seat}
+          />
         ))}
       </main>
 
-      {gameState && (
+      {gameState && !isAiScenario && (
         <AiEvaluatorPanel
           status={aiStatus}
           error={aiError}
@@ -195,13 +250,26 @@ export const App = () => {
         />
       )}
 
+      {gameState && isAiScenario && (
+        <ActionBar
+          actions={availableActions}
+          disabled={feedback !== null}
+          riichiArmed={callRiichi}
+          onToggleRiichi={toggleRiichi}
+          onAction={submitAction}
+        />
+      )}
+
       {humanPlayer && (
         <HandDock
           player={humanPlayer}
           feedback={feedback}
           callRiichi={callRiichi}
           callKan={callKan}
-          aiEvaluation={evaluation}
+          aiEvaluation={isAiScenario ? null : evaluation}
+          availableActions={isAiScenario ? availableActions : undefined}
+          canDiscard={canDiscard}
+          revealAi={!isAiScenario || feedback !== null}
           onToggleRiichi={toggleRiichi}
           onToggleKan={toggleKan}
           onSelectTile={selectTile}

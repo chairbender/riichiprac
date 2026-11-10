@@ -2,7 +2,8 @@ use agari::parse::validate_hand;
 
 use crate::generator::{evaluate_hand, format_hand_compact, generate_random_hand};
 use crate::state::{
-    CalledMeld, CorrectAction, DiscardTile, GameState, MeldType, PlayerState, TargetAction, Wind,
+    CalledMeld, CorrectAction, DecisionContext, DiscardTile, GameState, MeldType, PlayerState,
+    TargetAction, Wind,
 };
 
 /// Evaluates a random 14-tile hand and populates the complete mocked
@@ -165,6 +166,8 @@ pub(crate) fn generate(category: &str) -> Result<GameState, String> {
         category: category.to_string(),
         target_action: TargetAction::Riichi,
         correct_action: CorrectAction::riichi(correct_discard),
+        decision: DecisionContext::SelfTurn,
+        ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),

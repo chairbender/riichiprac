@@ -1023,3 +1023,88 @@
   background-color: #69db7c;
   color: #10230f;
 }
+
+/* AI Best Action scenario controls */
+
+.action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #2b3340;
+  border-radius: 12px;
+  background-color: #151b24;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #3b5bdb;
+  border-radius: 999px;
+  background-color: #1c2634;
+  color: #dbe4f0;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action-button:hover:not(:disabled) {
+  border-color: #4dabf7;
+  background-color: #223147;
+}
+
+.action-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.action-button--active {
+  border-color: #69db7c;
+  background-color: rgba(105, 219, 124, 0.16);
+  color: #b2f2bb;
+}
+
+.action-button-state {
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+}
+
+.ai-explanation {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #2b3340;
+  border-radius: 12px;
+  background-color: #151b24;
+}
+
+.ai-explanation-title {
+  margin: 0;
+  color: #e7ecf3;
+  font-size: 0.86rem;
+}
+
+.ai-explanation-detail {
+  margin: 0.15rem 0 0.5rem;
+  color: #8b96a8;
+  font-size: 0.68rem;
+}
+
+.ai-explanation-riichi {
+  margin: 0 0 0.5rem;
+  color: #a5d8ff;
+  font-size: 0.72rem;
+}
+
+.ai-explanation-note {
+  margin: 0.55rem 0 0;
+  color: #6c7686;
+  font-size: 0.64rem;
+  line-height: 1.4;
+}
+
+.river-slot--claim {
+  border-radius: 3px;
+  outline: 2px solid #ffd43b;
+  outline-offset: 1px;
+}

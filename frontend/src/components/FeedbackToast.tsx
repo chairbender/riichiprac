@@ -13,6 +13,7 @@ const ACTION_LABELS: Record<CorrectActionType, string> = {
   dama: 'Dama',
   kan: 'Kan',
   discard: 'No Kan',
+  best: 'AI best action',
 };
 
 /**
@@ -26,6 +27,45 @@ export function FeedbackToast({ feedback, redFives }: FeedbackToastProps) {
       ? 'feedback-grade feedback-grade--correct'
       : 'feedback-grade feedback-grade--incorrect';
   const isRedFive = (tile: string) => redFives.includes(tile);
+
+  if (feedback.isMortalDecision) {
+    return (
+      <div
+        className={`feedback-toast ${
+          feedback.isCorrect
+            ? 'feedback-toast--correct'
+            : 'feedback-toast--incorrect'
+        }`}
+        role="status"
+        aria-live="assertive"
+      >
+        <span className="feedback-message">
+          {feedback.isCorrect ? 'Correct!' : 'Incorrect'}
+        </span>
+        <div className="feedback-grades">
+          <div
+            className={
+              feedback.isCorrect
+                ? 'feedback-grade feedback-grade--correct'
+                : 'feedback-grade feedback-grade--incorrect'
+            }
+          >
+            <span className="feedback-grade-label">You chose</span>
+            <span className="feedback-grade-value">
+              {feedback.selectedLabel}
+            </span>
+          </div>
+          <div className="feedback-grade feedback-grade--correct">
+            <span className="feedback-grade-label">Model answer</span>
+            <span className="feedback-grade-value">
+              {feedback.correctLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const isKanFeedback =
     feedback.selectedType === 'kan' ||
     feedback.correctType === 'kan' ||

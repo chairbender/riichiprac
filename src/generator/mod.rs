@@ -8,6 +8,7 @@
 //! The Phase 2 `mock_table` fixture lives in `crate::fixtures`, outside the
 //! lesson registry.
 
+pub mod ai_best_action;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
 mod shouminkan_decision;
@@ -30,6 +31,7 @@ pub enum ScenarioCategory {
     TileEfficiency,
     RiichiDecision,
     KanDecision,
+    AiDecision,
 }
 
 impl ScenarioCategory {
@@ -38,6 +40,7 @@ impl ScenarioCategory {
             ScenarioCategory::TileEfficiency => "tile_efficiency",
             ScenarioCategory::RiichiDecision => "riichi_decision",
             ScenarioCategory::KanDecision => "kan_decision",
+            ScenarioCategory::AiDecision => "ai_decision",
         }
     }
 }
@@ -50,6 +53,8 @@ pub struct ScenarioMeta {
     pub description: &'static str,
     pub category: ScenarioCategory,
     pub tags: &'static [&'static str],
+    /// True when generation needs the loaded Mortal evaluator.
+    pub requires_ai: bool,
 }
 
 /// The user-facing scenario catalogue. Fixtures are deliberately excluded.
@@ -60,6 +65,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         description: "Block theory: choose the discard that keeps the ryanmen wait.",
         category: ScenarioCategory::TileEfficiency,
         tags: &["block_theory", "discard", "ryanmen"],
+        requires_ai: false,
     },
     ScenarioMeta {
         id: ScenarioId::ChiitoitsuRiichiVsDama,
@@ -67,6 +73,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         description: "Seven pairs: decide whether to declare Riichi or stay dama.",
         category: ScenarioCategory::RiichiDecision,
         tags: &["chiitoitsu", "riichi", "dama"],
+        requires_ai: false,
     },
     ScenarioMeta {
         id: ScenarioId::ShouminkanDecision,
@@ -74,6 +81,15 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         description: "Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan.",
         category: ScenarioCategory::KanDecision,
         tags: &["kan", "shouminkan"],
+        requires_ai: false,
+    },
+    ScenarioMeta {
+        id: ScenarioId::AiBestAction,
+        label: "AI Best Action",
+        description: "Any decision: discard, call, or win — the answer is Mortal v4's top action.",
+        category: ScenarioCategory::AiDecision,
+        tags: &["ai", "mortal", "discard", "call", "any_decision"],
+        requires_ai: true,
     },
 ];
 
@@ -86,6 +102,7 @@ pub fn list_scenarios_json() -> String {
         description: &'static str,
         category: &'static str,
         tags: &'static [&'static str],
+        requires_ai: bool,
     }
 
     let scenarios: Vec<ScenarioMetaJson> = SCENARIO_MANIFEST
@@ -96,6 +113,7 @@ pub fn list_scenarios_json() -> String {
             description: meta.description,
             category: meta.category.as_str(),
             tags: meta.tags,
+            requires_ai: meta.requires_ai,
         })
         .collect();
 
@@ -109,6 +127,7 @@ pub enum ScenarioId {
     RyanmenProtorun,
     ChiitoitsuRiichiVsDama,
     ShouminkanDecision,
+    AiBestAction,
 }
 
 impl ScenarioId {
@@ -117,6 +136,7 @@ impl ScenarioId {
         ScenarioId::RyanmenProtorun,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::ShouminkanDecision,
+        ScenarioId::AiBestAction,
     ];
 
     /// The category string understood by the WASM API.
@@ -125,6 +145,7 @@ impl ScenarioId {
             ScenarioId::RyanmenProtorun => "ryanmen_protorun",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
+            ScenarioId::AiBestAction => "ai_best_action",
         }
     }
 
@@ -134,6 +155,7 @@ impl ScenarioId {
             "ryanmen_protorun" => Some(ScenarioId::RyanmenProtorun),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
+            "ai_best_action" => Some(ScenarioId::AiBestAction),
             _ => None,
         }
     }
@@ -144,6 +166,11 @@ impl ScenarioId {
             ScenarioId::RyanmenProtorun => block_theory::ryanmen_protorun::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
+            ScenarioId::AiBestAction => Err(
+                "ai_best_action requires the loaded Mortal model; use the evaluator's \
+                 generate_ai_puzzle"
+                    .to_string(),
+            ),
         }
     }
 }
@@ -176,6 +203,10 @@ mod tests {
     fn every_scenario_id_generates_its_own_category() {
         for &id in ScenarioId::ALL {
             assert_eq!(ScenarioId::from_id(id.as_str()), Some(id));
+            if id == ScenarioId::AiBestAction {
+                assert!(id.generate(id.as_str()).is_err());
+                continue;
+            }
             let state = id
                 .generate(id.as_str())
                 .unwrap_or_else(|err| panic!("{} failed: {err}", id.as_str()));
@@ -204,7 +235,9 @@ mod tests {
         assert_eq!(scenarios.len(), ScenarioId::ALL.len());
         assert_eq!(scenarios[0]["id"], "ryanmen_protorun");
         assert_eq!(scenarios[0]["category"], "tile_efficiency");
+        assert_eq!(scenarios[0]["requires_ai"], false);
         assert!(scenarios[0]["tags"].is_array());
+        assert_eq!(scenarios.last().expect("AI scenario")["requires_ai"], true);
     }
 
     #[test]

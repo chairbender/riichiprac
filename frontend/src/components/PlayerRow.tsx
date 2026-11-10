@@ -4,13 +4,18 @@ import { Tile } from './Tile';
 
 interface PlayerRowProps {
   player: PlayerState;
+  /** Highlight the newest discard as the tile being called/ronned. */
+  highlightLastDiscard?: boolean;
 }
 
 /**
  * One player's vertically stacked row: wind, score, Riichi marker, open melds,
  * and the discard river. The Riichi declaration tile is rendered sideways.
  */
-export function PlayerRow({ player }: PlayerRowProps) {
+export function PlayerRow({
+  player,
+  highlightLastDiscard = false,
+}: PlayerRowProps) {
   return (
     <section
       className={`player-row${player.is_human ? ' player-row--human' : ''}${
@@ -52,11 +57,15 @@ export function PlayerRow({ player }: PlayerRowProps) {
           {player.discards.map((discard, index) => {
             const isRiichiDiscard =
               discard.is_riichi || player.riichi_discard_index === index;
+            const isClaimed =
+              highlightLastDiscard && index === player.discards.length - 1;
 
             return (
               <div
                 key={`${discard.tile}-${index}`}
-                className={`river-slot${isRiichiDiscard ? ' river-slot--riichi' : ''}`}
+                className={`river-slot${isRiichiDiscard ? ' river-slot--riichi' : ''}${
+                  isClaimed ? ' river-slot--claim' : ''
+                }`}
               >
                 <Tile code={discard.tile} className="tile river-tile" />
               </div>

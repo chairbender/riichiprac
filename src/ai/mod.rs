@@ -1,6 +1,8 @@
 //! Client-side Mortal AI: Candle inference and (later) the observation encoder.
 
+pub mod actions;
 pub mod encoder;
+pub mod finalize;
 pub mod wasm_bridge;
 
 #[cfg(test)]

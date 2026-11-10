@@ -9,6 +9,7 @@ const CORRECT_ACTION_TYPES: CorrectActionType[] = [
   'dama',
   'kan',
   'discard',
+  'best',
 ];
 
 /** Validate the `correct_action` payload before it reaches the store. */
@@ -19,9 +20,25 @@ export function isCorrectAction(value: unknown): value is CorrectAction {
     type?: unknown;
     discard?: unknown;
     tile?: unknown;
+    tiles?: unknown;
+    action?: unknown;
+    label?: unknown;
   };
   if (!CORRECT_ACTION_TYPES.includes(action.type as CorrectActionType)) {
     return false;
+  }
+
+  if (action.type === 'best') {
+    return (
+      typeof action.action === 'string' &&
+      typeof action.label === 'string' &&
+      (action.tile === undefined ||
+        action.tile === null ||
+        typeof action.tile === 'string') &&
+      (action.tiles === undefined ||
+        (Array.isArray(action.tiles) &&
+          action.tiles.every((tile) => typeof tile === 'string')))
+    );
   }
 
   return action.type === 'riichi' || action.type === 'dama'
@@ -34,8 +51,9 @@ export function isKanDecision(action: CorrectAction): boolean {
   return action.type === 'kan' || action.type === 'discard';
 }
 
-/** The tile the player must click for the answer: discard or Kan tile. */
-export function correctActionTile(action: CorrectAction): string {
+/** The tile the player must click for the answer, when one is required. */
+export function correctActionTile(action: CorrectAction): string | null {
+  if (action.type === 'best') return action.tile ?? null;
   return 'discard' in action ? action.discard : action.tile;
 }
 

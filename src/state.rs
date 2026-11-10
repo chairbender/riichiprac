@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::decision::AiDecision;
+
 /// Seat / round wind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Wind {
@@ -47,6 +49,8 @@ pub enum TargetAction {
     Fold,
     NaniKiru,
     Kan,
+    /// The correct answer is the loaded model's top legal action.
+    Best,
 }
 
 /// The kind of action the trainer expects from the player.
@@ -61,12 +65,15 @@ pub enum CorrectActionType {
     Kan,
     /// Pass on the Kan and discard normally.
     Discard,
+    /// The answer is the model's top action for an AI scenario.
+    Best,
 }
 
 /// The expected answer for the current scenario.
 ///
-/// Serializes as either `{"type":"riichi|dama","discard":"..."}` or
-/// `{"type":"kan|discard","tile":"..."}`.
+/// Serializes as `{"type":"riichi|dama","discard":"..."}`,
+/// `{"type":"kan|discard","tile":"..."}`, or the AI scenario's
+/// `{"type":"best","action":"...","label":"..."}` shape.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum CorrectAction {
@@ -78,6 +85,20 @@ pub enum CorrectAction {
     Kan { tile: String },
     /// Pass on the Kan and discard `tile`.
     Discard { tile: String },
+    /// AI scenario: the model's top action, with any concrete tiles needed
+    /// to render or grade it.
+    Best {
+        /// Mortal action name, e.g. `Pon`, `Chi_Low`, `Discard_3m`.
+        action: String,
+        /// Base tile code for discard/pon/kan/agari answers.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tile: Option<String>,
+        /// Additional tiles consumed by a call (chi).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        tiles: Vec<String>,
+        /// Human-readable label, e.g. `Chi 2m 3m on 4m`.
+        label: String,
+    },
 }
 
 impl CorrectAction {
@@ -101,6 +122,21 @@ impl CorrectAction {
         Self::Discard { tile: tile.into() }
     }
 
+    /// Build an AI-scenario answer from a model action.
+    pub fn best(
+        action: impl Into<String>,
+        tile: Option<String>,
+        tiles: Vec<String>,
+        label: impl Into<String>,
+    ) -> Self {
+        Self::Best {
+            action: action.into(),
+            tile,
+            tiles,
+            label: label.into(),
+        }
+    }
+
     /// The action kind, independent of the tile field name.
     pub fn action_type(&self) -> CorrectActionType {
         match self {
@@ -108,14 +144,16 @@ impl CorrectAction {
             Self::Dama { .. } => CorrectActionType::Dama,
             Self::Kan { .. } => CorrectActionType::Kan,
             Self::Discard { .. } => CorrectActionType::Discard,
+            Self::Best { .. } => CorrectActionType::Best,
         }
     }
 
-    /// The tile the player must click: the discard or the Kan tile.
-    pub fn tile(&self) -> &str {
+    /// The tile the player must click, when the action has one.
+    pub fn tile(&self) -> Option<&str> {
         match self {
-            Self::Riichi { discard } | Self::Dama { discard } => discard,
-            Self::Kan { tile } | Self::Discard { tile } => tile,
+            Self::Riichi { discard } | Self::Dama { discard } => Some(discard),
+            Self::Kan { tile } | Self::Discard { tile } => Some(tile),
+            Self::Best { tile, .. } => tile.as_deref(),
         }
     }
 }
@@ -249,13 +287,32 @@ pub struct PlayerState {
     pub riichi_discard_index: Option<usize>,
 }
 
+/// What kind of decision the state is presenting.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum DecisionContext {
+    /// Normal turn: the human has `hand` plus `draw`, and must discard.
+    #[default]
+    SelfTurn,
+    /// The human may call or ron the last discard of `from`.
+    ReactToDiscard { from: usize, tile: String },
+    /// The human may ron another player's added kan.
+    ReactToKan { from: usize, tile: String },
+}
+
 /// Complete Mahjong Game and Table State.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GameState {
     // Scenario / Puzzle metadata
     pub category: String,
     pub target_action: TargetAction,
     pub correct_action: CorrectAction,
+    /// What kind of decision this state presents.
+    #[serde(default)]
+    pub decision: DecisionContext,
+    /// Model-derived answer and full ranking for AI scenarios.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_decision: Option<AiDecision>,
     /// Reasons this scenario recommends Riichi (empty when not applicable).
     pub riichi_triggers: Vec<RiichiTrigger>,
     /// Reasons this scenario recommends staying in dama (empty when not applicable).

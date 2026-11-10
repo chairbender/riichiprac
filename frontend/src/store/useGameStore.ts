@@ -6,9 +6,20 @@ import {
   isCorrectAction,
   isKanDecision,
 } from '../actions';
-import type { AiEvaluation, AiStatus } from '../types/ai';
+import type { AiActionInfo, AiEvaluation, AiStatus } from '../types/ai';
 import type { CorrectActionType, GameState } from '../types/game';
 import { ensureWasmReady } from '../wasm';
+
+export interface PlayerChoice {
+  /** Mortal action name, e.g. `Discard_3m`, `Chi_Low`, `Pon`, `Pass`. */
+  action: string;
+  /** Clicked or claimed tile code, when the action has one. */
+  tile?: string;
+  /** Additional tiles consumed by a call (chi). */
+  tiles?: string[];
+  /** Optional label override; normally taken from the payload. */
+  label?: string;
+}
 
 export interface AnswerFeedback {
   /** True only when both the action type and clicked tile are correct. */
@@ -21,6 +32,13 @@ export interface AnswerFeedback {
   selectedTile: string;
   correctTile: string;
   isTileCorrect: boolean;
+  /** Human-readable labels for AI-scenario feedback. */
+  selectedLabel: string;
+  correctLabel: string;
+  /** Concrete tiles involved in a call, for highlighting. */
+  selectedTiles: string[];
+  correctTiles: string[];
+  isMortalDecision: boolean;
 }
 
 interface GameStore {
@@ -52,6 +70,10 @@ interface GameStore {
   toggleKan: () => void;
   /** Submit the armed call state and clicked hand tile as one answer. */
   selectTile: (tile: string) => void;
+  /** Submit a generic AI-scenario choice. */
+  submitChoice: (choice: PlayerChoice) => void;
+  /** Submit a non-discard action from the generic action bar. */
+  submitAction: (action: AiActionInfo) => void;
   /** Clear the current table and answer before loading the next scenario. */
   reset: () => void;
   setError: (error: string) => void;
@@ -69,6 +91,39 @@ interface WasmErrorPayload {
 }
 
 const WEIGHTS_URL = `${import.meta.env.BASE_URL}models/mortal_298k.safetensors`;
+
+const LEGACY_LABELS: Record<CorrectActionType, string> = {
+  riichi: 'Riichi',
+  dama: 'Dama',
+  kan: 'Kan',
+  discard: 'No Kan',
+  best: 'AI best action',
+};
+
+/** Collapse a red-five discard action onto its base tile for grading. */
+function normalizeMortalAction(action: string): string {
+  return action.startsWith('Discard_') && action.endsWith('r')
+    ? action.slice(0, -1)
+    : action;
+}
+
+/** Find the payload info for a selected AI action, including red-five aliases. */
+function findAiAction(
+  state: GameState,
+  action: string,
+  tile?: string,
+): AiActionInfo | undefined {
+  const actions = state.ai_decision?.actions ?? [];
+  return (
+    actions.find((candidate) => candidate.action === action) ??
+    actions.find(
+      (candidate) =>
+        normalizeMortalAction(candidate.action) ===
+          normalizeMortalAction(action) &&
+        (tile === undefined || candidate.tile === tile),
+    )
+  );
+}
 
 /**
  * Deduplicates concurrent model loads. `loadEvaluator` runs from an effect, so
@@ -140,6 +195,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   toggleRiichi: () =>
     set((state) => {
       if (!state.gameState || state.feedback) return state;
+      if (state.gameState.correct_action.type === 'best') {
+        const hasRiichi = state.gameState.ai_decision?.actions.some(
+          (action) => action.action === 'Riichi',
+        );
+        if (!hasRiichi) return state;
+      }
       return { callRiichi: !state.callRiichi, callKan: false };
     }),
 
@@ -153,24 +214,39 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return { callKan: !state.callKan, callRiichi: false };
     }),
 
-  selectTile: (tile) =>
-    set((state) => {
-      if (!state.gameState || state.feedback) return state;
+  selectTile: (tile) => {
+    const state = get();
+    if (!state.gameState || state.feedback) return;
 
-      const { correct_action: correctAction, players } = state.gameState;
+    if (state.gameState.correct_action.type === 'best') {
+      const action = state.callRiichi ? 'Riichi' : `Discard_${tile}`;
+      const info = findAiAction(state.gameState, action, tile);
+      get().submitChoice({
+        action: info?.action ?? action,
+        tile,
+        tiles: info?.tiles,
+        label: info?.label,
+      });
+      return;
+    }
+
+    set((current) => {
+      if (!current.gameState || current.feedback) return current;
+
+      const { correct_action: correctAction, players } = current.gameState;
       const human = players.find((player) => player.is_human);
       const kanCandidate = human ? findKanCandidateTile(human) : null;
 
       let selectedType: CorrectActionType = 'dama';
-      if (state.callKan && kanCandidate) {
+      if (current.callKan && kanCandidate) {
         selectedType = 'kan';
-      } else if (state.callRiichi) {
+      } else if (current.callRiichi) {
         selectedType = 'riichi';
       } else if (isKanDecision(correctAction)) {
         selectedType = 'discard';
       }
 
-      const correctTile = correctActionTile(correctAction);
+      const correctTile = correctActionTile(correctAction) ?? '';
       const isActionCorrect = selectedType === correctAction.type;
       const isTileCorrect = tile === correctTile;
 
@@ -183,9 +259,74 @@ export const useGameStore = create<GameStore>((set, get) => ({
           selectedTile: tile,
           correctTile,
           isTileCorrect,
+          selectedLabel: LEGACY_LABELS[selectedType],
+          correctLabel: LEGACY_LABELS[correctAction.type],
+          selectedTiles: [tile],
+          correctTiles: correctTile ? [correctTile] : [],
+          isMortalDecision: false,
+        },
+      };
+    });
+  },
+
+  submitChoice: (choice) =>
+    set((state) => {
+      if (!state.gameState || state.feedback) return state;
+      const correctAction = state.gameState.correct_action;
+      if (correctAction.type !== 'best') return state;
+
+      const isActionCorrect =
+        normalizeMortalAction(choice.action) ===
+        normalizeMortalAction(correctAction.action);
+
+      const needsTile =
+        correctAction.action === 'Riichi' ||
+        correctAction.action.startsWith('Discard_');
+      const isTileCorrect =
+        !needsTile || (choice.tile ?? '') === (correctAction.tile ?? '');
+
+      const info = findAiAction(state.gameState, choice.action, choice.tile);
+      const selectedBase =
+        choice.label ?? info?.label ?? choice.action.replace(/_/g, ' ');
+      const selectedLabel =
+        correctAction.action === 'Riichi' && choice.tile
+          ? `${selectedBase} — discard ${choice.tile}`
+          : selectedBase;
+      const correctLabel =
+        correctAction.action === 'Riichi' && correctAction.tile
+          ? `${correctAction.label} — discard ${correctAction.tile}`
+          : correctAction.label;
+
+      return {
+        feedback: {
+          isCorrect: isActionCorrect && isTileCorrect,
+          selectedType: 'best',
+          correctType: 'best',
+          isActionCorrect,
+          selectedTile: choice.tile ?? '',
+          correctTile: correctAction.tile ?? '',
+          isTileCorrect,
+          selectedLabel,
+          correctLabel,
+          selectedTiles: choice.tiles ?? info?.tiles ?? [],
+          correctTiles: correctAction.tiles ?? [],
+          isMortalDecision: true,
         },
       };
     }),
+
+  submitAction: (action) => {
+    if (action.action === 'Riichi') {
+      get().toggleRiichi();
+      return;
+    }
+    get().submitChoice({
+      action: action.action,
+      tile: action.tile ?? undefined,
+      tiles: action.tiles,
+      label: action.label,
+    });
+  },
 
   reset: () => set(emptyState),
 
@@ -233,7 +374,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           requestAnimationFrame(() => resolve());
         });
 
-        const evaluator = new WasmMortalEvaluator(bytes);
+        const modelName = WEIGHTS_URL.split('/').pop() ?? 'Mortal v4';
+        const evaluator = new WasmMortalEvaluator(bytes, modelName);
         set({ evaluator, aiStatus: 'ready', aiError: null });
       } catch (err) {
         aiInitPromise = null; // allow a retry from the UI

@@ -1,6 +1,6 @@
 import { findKanCandidateTile } from '../actions';
 import type { AnswerFeedback } from '../store/useGameStore';
-import type { AiEvaluation } from '../types/ai';
+import type { AiActionInfo, AiEvaluation } from '../types/ai';
 import {
   discardProbabilitiesByTile,
   formatProbability,
@@ -17,6 +17,12 @@ interface HandDockProps {
   callKan: boolean;
   /** Latest Mortal evaluation for the table, if the player ran one. */
   aiEvaluation: AiEvaluation | null;
+  /** Non-discard actions for an AI scenario; undefined for legacy lessons. */
+  availableActions?: AiActionInfo[];
+  /** False when a reaction state has no discard option. */
+  canDiscard?: boolean;
+  /** Whether AI probability badges may be shown. */
+  revealAi?: boolean;
   onToggleRiichi: () => void;
   onToggleKan: () => void;
   onSelectTile: (tile: string) => void;
@@ -34,21 +40,30 @@ export function HandDock({
   callRiichi,
   callKan,
   aiEvaluation,
+  availableActions,
+  canDiscard = true,
+  revealAi = true,
   onToggleRiichi,
   onToggleKan,
   onSelectTile,
 }: HandDockProps) {
   const tiles = player.draw ? [...player.hand, player.draw] : player.hand;
   const isAnswered = feedback !== null;
-  const kanTile = findKanCandidateTile(player);
+  const isAiScenario = availableActions !== undefined;
+  const kanTile = isAiScenario ? null : findKanCandidateTile(player);
+  const showAi = revealAi;
 
   let handHint = 'Dama selected - tap a tile to discard';
   if (isAnswered) {
     handHint = 'Answer submitted';
+  } else if (isAiScenario && !canDiscard) {
+    handHint = 'Choose a call or Pass';
   } else if (callKan) {
     handHint = `Kan armed - tap ${kanTile} to declare Shouminkan`;
   } else if (callRiichi) {
     handHint = 'Riichi selected - tap a tile to discard';
+  } else if (isAiScenario) {
+    handHint = 'Tap a tile to discard';
   } else if (kanTile) {
     handHint = 'Tap a tile to discard, or arm Call Kan';
   }
@@ -65,10 +80,12 @@ export function HandDock({
     return true;
   });
 
-  // AI badges only make sense before the answer is submitted.
-  const aiProbabilities = isAnswered
-    ? new Map<string, number>()
-    : discardProbabilitiesByTile(aiEvaluation);
+  // AI badges only make sense before the answer is submitted, and AI
+  // scenarios suppress them until the player has answered.
+  const aiProbabilities =
+    isAnswered || !showAi
+      ? new Map<string, number>()
+      : discardProbabilitiesByTile(aiEvaluation);
   let topAiTile: string | null = null;
   let topAiProbability = 0;
   for (const [tile, probability] of aiProbabilities) {
@@ -80,40 +97,42 @@ export function HandDock({
 
   return (
     <section className="hand-dock" aria-label="Your hand">
-      <div className="call-toggles">
-        <button
-          type="button"
-          className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
-          onClick={onToggleRiichi}
-          disabled={isAnswered}
-          aria-pressed={callRiichi}
-          aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
-        >
-          <RiichiStick className="riichi-toggle-stick" />
-          <span className="riichi-toggle-label">Call Riichi</span>
-          <span className="riichi-toggle-state">
-            {callRiichi ? 'ON' : 'OFF'}
-          </span>
-        </button>
-
-        {kanTile && (
+      {!isAiScenario && (
+        <div className="call-toggles">
           <button
             type="button"
-            className={`kan-toggle${callKan ? ' kan-toggle--active' : ''}`}
-            onClick={onToggleKan}
+            className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
+            onClick={onToggleRiichi}
             disabled={isAnswered}
-            aria-pressed={callKan}
-            aria-label={`Call Kan toggle for ${kanTile}, currently ${
-              callKan ? 'on' : 'off'
-            }`}
+            aria-pressed={callRiichi}
+            aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
           >
-            <KanIcon className="kan-toggle-icon" />
-            <span className="kan-toggle-label">Call Kan</span>
-            <span className="kan-toggle-tile">{kanTile}</span>
-            <span className="kan-toggle-state">{callKan ? 'ON' : 'OFF'}</span>
+            <RiichiStick className="riichi-toggle-stick" />
+            <span className="riichi-toggle-label">Call Riichi</span>
+            <span className="riichi-toggle-state">
+              {callRiichi ? 'ON' : 'OFF'}
+            </span>
           </button>
-        )}
-      </div>
+
+          {kanTile && (
+            <button
+              type="button"
+              className={`kan-toggle${callKan ? ' kan-toggle--active' : ''}`}
+              onClick={onToggleKan}
+              disabled={isAnswered}
+              aria-pressed={callKan}
+              aria-label={`Call Kan toggle for ${kanTile}, currently ${
+                callKan ? 'on' : 'off'
+              }`}
+            >
+              <KanIcon className="kan-toggle-icon" />
+              <span className="kan-toggle-label">Call Kan</span>
+              <span className="kan-toggle-tile">{kanTile}</span>
+              <span className="kan-toggle-state">{callKan ? 'ON' : 'OFF'}</span>
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="hand-dock-label" aria-live="polite">
         {handHint}
@@ -124,8 +143,12 @@ export function HandDock({
         style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
       >
         {tiles.map((tile, index) => {
-          const isSelected = feedback?.selectedTile === tile;
-          const isCorrectTile = feedback?.correctTile === tile;
+          const isSelected =
+            feedback?.selectedTile === tile ||
+            feedback?.selectedTiles?.includes(tile) === true;
+          const isCorrectTile =
+            feedback?.correctTile === tile ||
+            feedback?.correctTiles?.includes(tile) === true;
 
           let stateClass = '';
           if (feedback) {
@@ -153,7 +176,7 @@ export function HandDock({
               type="button"
               className={`hand-tile-button${stateClass}${aiClass}`}
               onClick={() => onSelectTile(tile)}
-              disabled={isAnswered}
+              disabled={isAnswered || (isAiScenario && !canDiscard)}
               aria-label={`${
                 callKan ? `Declare Kan on ${tile}` : `Discard ${tile}`
               }${redFiveFlags[index] ? ', red five' : ''}${

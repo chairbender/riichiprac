@@ -1,9 +1,6 @@
-import type {
-  AiActionEvaluation,
-  AiEvaluation,
-  AiStatus,
-} from '../types/ai';
-import { formatProbability, tileCodeFromIndex } from '../types/ai';
+import type { AiEvaluation, AiStatus } from '../types/ai';
+import { actionLabel } from '../types/ai';
+import { ActionRanking } from './ActionRanking';
 
 interface AiEvaluatorPanelProps {
   status: AiStatus;
@@ -17,17 +14,6 @@ interface AiEvaluatorPanelProps {
 
 /** How many ranked actions the drawer lists before collapsing the tail. */
 const MAX_ROWS = 6;
-
-function actionLabel(action: AiActionEvaluation): string {
-  if (action.type === 'discard') {
-    const tile = tileCodeFromIndex(action.tile_index);
-    const red = action.action.endsWith('r') ? ' (red)' : '';
-    return tile ? `Discard ${tile}${red}` : action.action;
-  }
-  if (action.type === 'agari') return 'Win (agari)';
-  if (action.type === 'ryukyoku') return 'Draw (ryukyoku)';
-  return action.action.replace('_', ' ');
-}
 
 /**
  * Mortal evaluation drawer: lazily loaded weights, an "Evaluate with AI"
@@ -65,8 +51,7 @@ export function AiEvaluatorPanel({
     );
   }
 
-  const topActions = evaluation?.evaluations.slice(0, MAX_ROWS) ?? [];
-  const recommendation = topActions[0] ?? null;
+  const recommendation = evaluation?.evaluations[0] ?? null;
 
   return (
     <section className="ai-panel" aria-label="AI evaluation">
@@ -105,36 +90,12 @@ export function AiEvaluatorPanel({
           <p className="ai-recommendation">
             Recommended: <strong>{actionLabel(recommendation)}</strong>
           </p>
-          <ol className="ai-action-list">
-            {topActions.map((action) => (
-              <li
-                key={action.action}
-                className={`ai-action${
-                  action.action === evaluation.recommended_action
-                    ? ' ai-action--top'
-                    : ''
-                }`}
-              >
-                <span className="ai-action-label">{actionLabel(action)}</span>
-                <span className="ai-action-bar" aria-hidden="true">
-                  <span
-                    style={{
-                      width: `${Math.max(action.probability * 100, 1)}%`,
-                    }}
-                  />
-                </span>
-                <span className="ai-action-probability">
-                  {formatProbability(action.probability)}
-                </span>
-              </li>
-            ))}
-          </ol>
-          {evaluation.evaluations.length > topActions.length && (
-            <p className="ai-more">
-              +{evaluation.evaluations.length - topActions.length} more legal
-              actions
-            </p>
-          )}
+          <ActionRanking
+            evaluations={evaluation.evaluations}
+            recommendedAction={evaluation.recommended_action}
+            limit={MAX_ROWS}
+            showOverflow
+          />
         </div>
       )}
     </section>

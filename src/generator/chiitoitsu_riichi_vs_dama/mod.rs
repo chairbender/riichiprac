@@ -113,7 +113,7 @@ mod tests {
                 .draw
                 .clone()
                 .expect("chiitoitsu human must have a draw");
-            assert_eq!(draw, state.correct_action.tile());
+            assert_eq!(Some(draw.as_str()), state.correct_action.tile());
 
             let mut expected = human.hand.clone();
             expected.push(draw);
@@ -258,8 +258,8 @@ mod tests {
                         "run {run}: dama hand is {score_level:?}, not Mangan or better"
                     );
                 }
-                CorrectActionType::Kan | CorrectActionType::Discard => {
-                    panic!("run {run}: chiitoitsu scenario returned a Kan action")
+                CorrectActionType::Kan | CorrectActionType::Discard | CorrectActionType::Best => {
+                    panic!("run {run}: chiitoitsu scenario returned a non-lesson action")
                 }
             }
         }
