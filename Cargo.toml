@@ -11,3 +11,7 @@ wasm-bindgen = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 agari = { git = "https://github.com/agari-industries/agari" }
+js-sys = "0.3.107"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.80"

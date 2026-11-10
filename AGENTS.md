@@ -1,7 +1,8 @@
 # Project Context: Riichi Mahjong Trainer
 
-- Always stage changes without asking.
-- Always push after committing.
+- stage changes without asking.
+- commit and push after finishing a task
+- push after committing.
 
 ## 1. Project Identity & Objective
 You are building a fully client-side, browser-based web application that trains players on specific Riichi Mahjong scenarios and heuristics (heavily inspired by *Riichi Book 1*). 
