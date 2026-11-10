@@ -153,6 +153,18 @@ fn test_ryanmen_rejection_sampling_constraints() {
         assert_eq!(human["melds"][0]["tiles"].as_array().unwrap().len(), 3);
         assert_eq!(human["draw"], val["correct_action"]["tile"]);
 
+        let discard_counts: Vec<usize> = players
+            .iter()
+            .map(|player| player["discards"].as_array().unwrap().len())
+            .collect();
+        assert!(
+            discard_counts
+                .iter()
+                .all(|&count| count == discard_counts[0]),
+            "run {run}: discard counts must line up: {discard_counts:?}"
+        );
+        assert!((1..=6).contains(&discard_counts[0]));
+
         // The two wait tiles.
         let wait_tiles: Vec<&str> = val["ukeire_tiles"]
             .as_array()

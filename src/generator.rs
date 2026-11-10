@@ -509,13 +509,17 @@ impl ScenarioGenerator {
             (3, "Kamicha", Wind::North),
         ];
 
+        // The human is the current player (about to discard), so every player
+        // has completed the same number of turns and made one discard per turn.
+        // At least one turn has passed because the human has an open Pon.
+        let discard_count = gen_range(1, 7);
+
         let mut opponent_players = Vec::with_capacity(3);
         let mut opponent_rivers: Vec<Vec<Tile>> = Vec::with_capacity(3);
         for (index, (seat, name, wind)) in opponent_meta.iter().enumerate() {
             let hand = draw_tiles(&mut deck, 13)
                 .ok_or_else(|| "Deck exhausted drawing an opponent hand".to_string())?;
-            let river_len = gen_range(0, 7);
-            let river = draw_tiles(&mut deck, river_len)
+            let river = draw_tiles(&mut deck, discard_count)
                 .ok_or_else(|| "Deck exhausted drawing an opponent river".to_string())?;
             opponent_rivers.push(river.clone());
             opponent_players.push(PlayerState {
@@ -534,8 +538,7 @@ impl ScenarioGenerator {
         }
 
         // Furiten: the human's river cannot contain either ryanmen wait tile.
-        let human_river_len = gen_range(0, 7);
-        let human_river = draw_tiles_excluding(&mut deck, human_river_len, &skeleton.wait_tiles)
+        let human_river = draw_tiles_excluding(&mut deck, discard_count, &skeleton.wait_tiles)
             .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
         // Wait chance: at most two winning-tile copies may be visible.
@@ -1101,6 +1104,21 @@ mod tests {
             human.melds[0].tiles[0].as_str(),
             "5z" | "6z" | "7z"
         ));
+
+        // Every player has taken the same number of turns and discarded once
+        // per turn. The human is currently about to discard.
+        let discard_counts: Vec<usize> = state
+            .players
+            .iter()
+            .map(|player| player.discards.len())
+            .collect();
+        assert!(
+            discard_counts
+                .iter()
+                .all(|&count| count == discard_counts[0]),
+            "discard counts must line up: {discard_counts:?}"
+        );
+        assert!((1..=6).contains(&discard_counts[0]));
 
         // The only wait is the live two-sided ryanmen.
         assert_eq!(state.ukeire_tiles.len(), 2);
