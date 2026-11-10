@@ -166,10 +166,24 @@ pub enum ShouminkanTrigger {
     GoodWaitAndValue,
     /// The wall is nearly empty and rivers are in the third row.
     LateGame,
-    /// South 4 with the human close behind the player above them.
+    /// South 4 with the human 2nd or 3rd and behind the player above them by a
+    /// gap that only the Kan's extra minipoints can close. Riichi Book 1, ch. 9
+    /// frames this as "you need more dora or minipoints to improve the
+    /// placement (especially in South-4)", and quantifies it in its example:
+    /// "as the hand will have at least 60 minipoints, you can get 2000 points
+    /// with one han".
     PlacementDesperation,
     /// The human is far behind in fourth place.
     LosingBadly,
+    /// The hand is 2-away or worse, so the Kan is not about the wait: you need
+    /// its extra draw, minipoints and dora to improve the placement.
+    ///
+    /// Riichi Book 1, ch. 9, "From an open set to an open quad (kakan)", lists
+    /// "you need more dora or minipoints to improve the placement" and "you are
+    /// losing badly" as sufficient reasons on their own, without the 1-away
+    /// requirement of the first two reasons. The book's own example is a 2-away
+    /// hand that should kan in South 4 to reach 2,000 points.
+    NeedsDora,
 }
 
 /// Reasons a scenario recommends declaring Riichi.

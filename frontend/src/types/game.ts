@@ -41,7 +41,8 @@ export type ShouminkanTrigger =
   | 'good_wait_and_value'
   | 'late_game'
   | 'placement_desperation'
-  | 'losing_badly';
+  | 'losing_badly'
+  | 'needs_dora';
 
 /** Action kinds the trainer can expect alongside the discard. */
 export type CorrectActionType = 'riichi' | 'dama' | 'kan' | 'discard' | 'best';

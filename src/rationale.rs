@@ -250,6 +250,7 @@ impl ShouminkanTrigger {
             Self::LateGame => "late_game",
             Self::PlacementDesperation => "placement_desperation",
             Self::LosingBadly => "losing_badly",
+            Self::NeedsDora => "needs_dora",
         }
     }
 
@@ -280,6 +281,14 @@ impl ShouminkanTrigger {
                 rule: "Extend when you are losing badly.",
                 quote: "you are losing badly.",
                 citation: ch9(370, "losing badly"),
+            },
+            // The book lists placement pressure as a reason on its own, without
+            // the 1-away requirement of the first two conditions.
+            Self::NeedsDora => RuleText {
+                rule: "A hand that is not close to ready can still justify the Kan when                        its extra draw, dora, and minipoints are needed to improve the                        placement.",
+                quote: "you need more dora or minipoints to improve the placement \
+                        (especially in South-4)",
+                citation: ch9(369, "improve the placement"),
             },
         }
     }
@@ -460,6 +469,10 @@ fn applies_shouminkan(trigger: ShouminkanTrigger, state: &GameState) -> String {
         ShouminkanTrigger::LosingBadly => {
             "Fourth place, more than 12,000 points behind third.".to_string()
         }
+        ShouminkanTrigger::NeedsDora => format!(
+            "{} shanten; the Kan is for the extra draw, minipoints, and dora, not the wait.",
+            state.shanten
+        ),
     }
 }
 
@@ -508,8 +521,37 @@ fn scenario_source(category: &str) -> Option<Citation> {
     }
 }
 
-/// Tile-efficiency lessons have no trigger enum; their rules are category-level.
+/// Lessons whose rule is not carried by a trigger enum.
 fn category_rationale(state: &GameState) -> Option<BookRationale> {
+    if state.category == "shouminkan_decline" {
+        let tile = state.correct_action.tile().unwrap_or_default().to_string();
+
+        return Some(BookRationale {
+            summary: "Keep the Pon and discard: the book's kakan conditions are not met."
+                .to_string(),
+            rules: vec![BookRule {
+                id: "decline_kakan".to_string(),
+                rule: "Extending an open Pon needs the hand to be 1-away or better with a \
+                       good wait and two han, or another stated reason. A 2-away hand with \
+                       its value already secured keeps the Pon."
+                    .to_string(),
+                quote: "since it is 2-away from ready, calling kan on zhong is not justifiable"
+                    .to_string(),
+                citation: ch9(391, "2-away from ready"),
+                applies: format!(
+                    "The hand is {} shanten with its value already secured, so discarding {} \
+                     is the safe play.",
+                    state.shanten, tile
+                ),
+            }],
+            absent: Vec::new(),
+            source: ch9(360, "From an open set to an open quad"),
+            caveats: vec![
+                "Extending an open Pon also risks chankan (Robbing the Kong).".to_string(),
+            ],
+        });
+    }
+
     if state.category != "ryanmen_protorun" {
         return None;
     }
@@ -682,6 +724,7 @@ mod tests {
             "ryanmen_protorun",
             "chiitoitsu_riichi_vs_dama",
             "shouminkan_decision",
+            "shouminkan_decline",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             assert!(
@@ -692,6 +735,19 @@ mod tests {
             assert!(!rationale.summary.is_empty());
             assert!(!rationale.rules.is_empty());
         }
+    }
+
+    #[test]
+    fn decline_lesson_gets_a_category_rationale() {
+        let state = generate_puzzle("shouminkan_decline").expect("decline must generate");
+
+        let rationale = rationale_for(&state).expect("decline needs a rationale");
+
+        assert_eq!(rationale.rules.len(), 1);
+        assert_eq!(rationale.rules[0].id, "decline_kakan");
+        assert_eq!(rationale.source.chapter, 9);
+        assert!(rationale.rules[0].applies.contains("discarding"));
+        assert!(!rationale.caveats.is_empty());
     }
 
     #[test]
@@ -743,18 +799,21 @@ mod tests {
             ShouminkanTrigger::LateGame,
             ShouminkanTrigger::PlacementDesperation,
             ShouminkanTrigger::LosingBadly,
+            ShouminkanTrigger::NeedsDora,
         ] {
             citations.push(trigger.rationale().citation);
         }
 
-        let ryanmen = generate_puzzle("ryanmen_protorun").expect("ryanmen must generate");
-        citations.extend(
-            rationale_for(&ryanmen)
-                .expect("rationale")
-                .rules
-                .into_iter()
-                .map(|rule| rule.citation),
-        );
+        for category in ["ryanmen_protorun", "shouminkan_decline"] {
+            let state = generate_puzzle(category).expect("scenario must generate");
+            citations.extend(
+                rationale_for(&state)
+                    .expect("rationale")
+                    .rules
+                    .into_iter()
+                    .map(|rule| rule.citation),
+            );
+        }
 
         for citation in citations {
             let path = root.join(&citation.source_file);

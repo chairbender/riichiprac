@@ -208,6 +208,61 @@ need dora or are desperate (bullets 3 and 4), and its second worked example is a
 generate. Adding those marginal and negative cases would test the boundary the
 book actually cares about; today's puzzles test only the easy side of it.
 
+### Coverage added: the 2-away lessons, in both directions
+
+Both gaps are now closed:
+
+| Lesson | Hand | Table | Answer |
+| --- | --- | --- | --- |
+| `needs_dora` on `shouminkan_decision` | 2-away, only the dragon Pon (1 han) | South-4 within 2,000, or 4th by 12,000 | Kan |
+| `shouminkan_decline` | 2-away, dragon Pon plus a second dragon triplet (2 han) | no placement or score pressure | discard the drawn 4th tile |
+
+`needs_dora` is a new `ShouminkanTrigger` for the far-from-ready half of the
+book's list; it only pairs with `placement_desperation` or `losing_badly`, and
+it excludes the two conditions that require 1-away or better. The decline
+scenario reuses the same 2-away skeleton and keeps `shouminkan_triggers` empty,
+because the schema only carries reasons *for* the Kan.
+
+"Improve the placement" is now quantified instead of assumed. The gap to the
+player above is derived from the hand rather than sampled blindly:
+`skeleton::value::placement_window` values both lines at their guaranteed
+minimum (`ron_value(min_han, min_fu)`, 1 han at 30 fu versus 40 fu once the Kan
+adds its minipoints), and the board samples the gap from the band between them,
+in whole hundreds. So keeping the Pon leaves the human short and the Kan's
+minipoints are what closes the gap, which is the book's own arithmetic ("at
+least 60 minipoints, so 2000 points with one han").
+
+The Kan's new dora, the rinshan draw and the tsumo score swing are ignored, so
+this is a conservative floor. `value.rs` records the upgrade path: `crate::ai::sp`
+now exists, so both lines could be scored with real expected values instead of
+the guaranteed-minipoints bound.
+
+
+The decline hand guarantees two han where the book's example has three. The
+decisive factor in the book's sentence is the 2-away distance, not the han
+count, so two is enough for the same lesson; it is noted in the skeleton docs.
+
+Mortal disagrees with both, in opposite directions:
+
+| Lesson | Agreement | Mortal's view |
+| --- | --- | --- |
+| `needs_dora` (2-away, desperate) | 2 of 15 disagreements describe it; prefers a discard | Kan p 0.01-0.42 |
+| `shouminkan_decline` (2-away, value, calm) | 1 of 84 | Kan p median 0.59, max 0.93 |
+
+Mortal wants to kan the comfortable value hand and to decline the desperate
+one, the opposite of the book on both. That is a coherent difference in method
+rather than a bug: Mortal optimises EV, and for it the fourth dragon is a dead
+tile, so kanning is nearly free value plus an extra draw, while the new dora is
+a shared risk that hurts most when somebody else is the one who needs it. The
+book's 2-away rules are proximity heuristics, and proximity is exactly where an
+EV model and the book part ways.
+
+`AGENTS.md` makes the book the authority for a scenario's answer, so both
+lessons keep their book-faithful answers. Operationally, `shouminkan_decline` is
+therefore excluded from the fuzz default sample (it would bury unknown
+disagreements under a known one) while staying selectable with `--scenario`,
+and the numbers above are the expected baseline for either lesson.
+
 ## 4. Bug (fixed): `legal_action_mask` marked an impossible plain discard for a red five
 
 In a report with `red_fives: ["5s"]` and a hand holding exactly one 5s, which is
@@ -307,8 +362,11 @@ off-by-one tile class described in §2.
       1:1 onto the book's four kakan criteria and every state satisfies them
       (see section 3). No generator change needed; the earlier `late_game`
       complaint was wrong.
-- [ ] Extend `shouminkan_decision` coverage to the book's boundary: the
-      not-close-to-ready desperation cases (book bullets 3 and 4) and the
-      book's negative example (three han, good wait, 2-away, do not kan).
+- [x] Extend `shouminkan_decision` coverage to the book's boundary. Done: the
+      `needs_dora` trigger covers the not-close-to-ready desperation cases, and
+      `shouminkan_decline` covers the book's negative example.
+- [ ] Score both Kan lines with `crate::ai::sp` and derive the placement gap
+      from real expected values instead of the guaranteed-minipoints floor
+      (noted in `skeleton/value.rs`).
 - [ ] Consider encoding the riichi discard tile so riichi answers can be
       compared on the tile as well as the action.

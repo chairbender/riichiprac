@@ -1192,6 +1192,12 @@ non-goal forbids narrating the disagreement.
   would leak the book side.
 - A Mortal drill without a model still grades against the stored `best` action
   (MortalOnly, `unknown` confidence, no probabilities) instead of `Ungraded`.
+- The kakan lessons added on `main` merged in cleanly: the new `needs_dora`
+  trigger carries the ch9 placement clause, and `shouminkan_decline` gets a
+  category rationale quoting the book's "since it is 2-away from ready, calling
+  kan ... is not justifiable" example. The exhaustive match in `rationale.rs`
+  refused to compile until `needs_dora` was handled, which is the intended
+  guard.
 - `REPORT_VERSION` is 2. `tests/fixtures/scenario_report_v2.json` is committed
   next to the v1 fixture; the v1 fixture still imports without warnings because
   the importer compares only the book fields.

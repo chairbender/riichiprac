@@ -107,6 +107,15 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::ShouminkanDecline,
+        label: "Decline the Kan",
+        description: "Open Pon, fourth tile drawn, hand still 2-away with value: keep the Pon and discard.",
+        category: ScenarioCategory::KanDecision,
+        tags: &["kan", "shouminkan", "decline"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::AiBestAction,
         label: "AI Best Action",
         description: "Any decision: discard, call, or win — the answer is Mortal v4's top action.",
@@ -153,6 +162,7 @@ pub enum ScenarioId {
     RyanmenProtorun,
     ChiitoitsuRiichiVsDama,
     ShouminkanDecision,
+    ShouminkanDecline,
     AiBestAction,
 }
 
@@ -162,6 +172,7 @@ impl ScenarioId {
         ScenarioId::RyanmenProtorun,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::ShouminkanDecision,
+        ScenarioId::ShouminkanDecline,
         ScenarioId::AiBestAction,
     ];
 
@@ -171,6 +182,7 @@ impl ScenarioId {
             ScenarioId::RyanmenProtorun => "ryanmen_protorun",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
+            ScenarioId::ShouminkanDecline => "shouminkan_decline",
             ScenarioId::AiBestAction => "ai_best_action",
         }
     }
@@ -181,6 +193,7 @@ impl ScenarioId {
             "ryanmen_protorun" => Some(ScenarioId::RyanmenProtorun),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
+            "shouminkan_decline" => Some(ScenarioId::ShouminkanDecline),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
             _ => None,
         }
@@ -192,6 +205,7 @@ impl ScenarioId {
             ScenarioId::RyanmenProtorun => block_theory::ryanmen_protorun::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
+            ScenarioId::ShouminkanDecline => shouminkan_decision::generate_decline(category),
             ScenarioId::AiBestAction => Err(
                 "ai_best_action requires the loaded Mortal model; use the evaluator's \
                  generate_ai_puzzle"

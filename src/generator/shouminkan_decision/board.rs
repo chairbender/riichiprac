@@ -2,7 +2,7 @@ use agari::context::indicator_to_dora;
 use agari::parse::{to_counts, validate_hand};
 use agari::tile::Tile;
 
-use super::skeleton::ShouminkanSkeleton;
+use super::skeleton::{self, ShouminkanSkeleton};
 use super::triggers::ShouminkanTriggerSet;
 use crate::generator::support::analysis::{HandMetrics, evaluate_counts, visible_tile_counts};
 use crate::generator::support::deck::{ALL_TILES, Deck};
@@ -16,6 +16,15 @@ use crate::state::{
     CalledMeld, CorrectAction, DecisionContext, GameState, MeldType, PlayerState, TargetAction,
     Wind,
 };
+
+/// What the board asks the player to do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ShouminkanAnswer {
+    /// Upgrade the Pon to an Added Kan.
+    Kan,
+    /// Keep the Pon and discard the drawn fourth tile.
+    Decline,
+}
 
 /// The validated hand shapes for one Added Kan puzzle.
 struct PreparedHand {
@@ -42,10 +51,18 @@ pub(super) fn build(
     category: &str,
     skeleton: &ShouminkanSkeleton,
     triggers: ShouminkanTriggerSet,
+    answer: ShouminkanAnswer,
 ) -> Result<GameState, String> {
     let prepared = prepare_hand(skeleton)?;
     let (mut deck, dora_indicator, ura_indicator) = build_deck(skeleton)?;
-    let (round_wind, hand_number, scores) = choose_round_and_scores(triggers)?;
+    let (round_wind, hand_number, scores) = choose_round_and_scores(triggers, skeleton)?;
+    // The decline lesson teaches that a value-rich 2-away hand should keep the
+    // Pon. A placement or score emergency would justify the Kan on its own
+    // (book bullets 3 and 4), so those tables have to be rejected rather than
+    // winning a random draw.
+    if answer == ShouminkanAnswer::Decline && table_is_desperate(round_wind, hand_number, &scores) {
+        return Err("Decline scenario cannot be a placement or score emergency".to_string());
+    }
     let human_wind = choose(&Wind::ALL).ok_or_else(|| "No seat wind available".to_string())?;
     let discard_count = choose_discard_count(triggers);
 
@@ -60,12 +77,13 @@ pub(super) fn build(
     validate_visible_waits(skeleton, &deal.rivers, dora_indicator, ura_indicator)?;
 
     let tiles_remaining = deck.remaining().saturating_sub(12).min(u8::MAX as usize) as u8;
-    validate_board_constraints(skeleton, triggers, &prepared, tiles_remaining)?;
+    validate_board_constraints(skeleton, triggers, answer, &prepared, tiles_remaining)?;
 
     Ok(assemble_state(
         category,
         skeleton,
         triggers,
+        answer,
         prepared,
         TableContext {
             round_wind,
@@ -135,7 +153,10 @@ fn build_deck(skeleton: &ShouminkanSkeleton) -> Result<(Deck, Tile, Tile), Strin
 }
 
 /// Chooses the round and seat-ordered scores that match the active lesson.
-fn choose_round_and_scores(triggers: ShouminkanTriggerSet) -> Result<(Wind, u8, [i32; 4]), String> {
+fn choose_round_and_scores(
+    triggers: ShouminkanTriggerSet,
+    skeleton: &ShouminkanSkeleton,
+) -> Result<(Wind, u8, [i32; 4]), String> {
     let (round_wind, hand_number) = if triggers.placement_desperation {
         (Wind::South, 4)
     } else {
@@ -143,8 +164,12 @@ fn choose_round_and_scores(triggers: ShouminkanTriggerSet) -> Result<(Wind, u8, 
     };
 
     let scores = if triggers.placement_desperation {
+        let gap = placement_gap(skeleton)?;
         let human_rank = gen_range(1, 3);
-        scores_for_seats(placement_desperation_ranked_scores(human_rank), human_rank)
+        scores_for_seats(
+            placement_desperation_ranked_scores(human_rank, gap),
+            human_rank,
+        )
     } else if triggers.losing_badly {
         scores_for_seats(losing_badly_ranked_scores(), 3)
     } else {
@@ -162,10 +187,22 @@ fn choose_round_and_scores(triggers: ShouminkanTriggerSet) -> Result<(Wind, u8, 
             .min()
             .ok_or_else(|| "Placement scenario has nobody above the human".to_string())?;
         let rank = 1 + scores.iter().filter(|&&score| score > human_score).count();
-        if !(rank == 2 || rank == 3) || above - human_score >= 2_000 {
+        if !(rank == 2 || rank == 3) {
             return Err(format!(
-                "Human must be 2nd/3rd within 2,000 points, got rank {rank} and gap {}",
-                above - human_score
+                "Human must be 2nd or 3rd in a placement scenario, got rank {rank}"
+            ));
+        }
+        // The gap has to fall inside the hand's value window: keeping the Pon
+        // leaves the human short of the player above, and only the Kan's extra
+        // minipoints close it.
+        let window = skeleton::value::placement_window(skeleton.min_han).ok_or_else(|| {
+            "This hand gains no value from the Kan, so it cannot decide a placement".to_string()
+        })?;
+        let gap = above - human_score;
+        if gap <= window.dama as i32 || gap > window.kan as i32 {
+            return Err(format!(
+                "Placement gap {gap} is outside the Kan window ({} , {}]",
+                window.dama, window.kan
             ));
         }
     }
@@ -181,6 +218,52 @@ fn choose_round_and_scores(triggers: ShouminkanTriggerSet) -> Result<(Wind, u8, 
     }
 
     Ok((round_wind, hand_number, scores))
+}
+
+/// The gap to the player above that only the Kan's minipoints can close.
+///
+/// Sampled from the hand's own value window, in whole hundreds of points, so
+/// every placement puzzle asks the same question: the Pon's hand is not worth
+/// enough to catch the player above, and the Kan's added minipoints are.
+fn placement_gap(skeleton: &ShouminkanSkeleton) -> Result<i32, String> {
+    let window = skeleton::value::placement_window(skeleton.min_han).ok_or_else(|| {
+        "This hand gains no value from the Kan, so it cannot decide a placement".to_string()
+    })?;
+
+    let first_hundred = window.dama / 100 + 1;
+    let last_hundred = window.kan / 100;
+    if first_hundred > last_hundred {
+        return Err("Kan window has no whole-hundred gap".to_string());
+    }
+
+    let steps: Vec<i32> = (first_hundred..=last_hundred)
+        .map(|h| h as i32 * 100)
+        .collect();
+    choose(&steps).ok_or_else(|| "No placement gap available".to_string())
+}
+
+/// True when the table position alone justifies an Added Kan: South-4 within
+/// the hand's Kan value window, or fourth place more than 12,000 behind third.
+/// These are Riichi Book 1, ch. 9's third and fourth kakan conditions.
+fn table_is_desperate(round_wind: Wind, hand_number: u8, scores: &[i32; 4]) -> bool {
+    let human_score = scores[0];
+    let above = scores
+        .iter()
+        .copied()
+        .filter(|&score| score > human_score)
+        .min();
+    let rank = 1 + scores.iter().filter(|&&score| score > human_score).count();
+
+    let placement = round_wind == Wind::South
+        && hand_number == 4
+        && matches!(rank, 2 | 3)
+        && above.is_some_and(|score| score - human_score < 2_000);
+
+    let mut sorted = *scores;
+    sorted.sort_by(|a, b| b.cmp(a));
+    let losing_badly = rank == 4 && sorted[2] - human_score > 12_000;
+
+    placement || losing_badly
 }
 
 /// Chooses how many discards each player has made for the active lesson.
@@ -216,14 +299,37 @@ fn validate_visible_waits(
 fn validate_board_constraints(
     skeleton: &ShouminkanSkeleton,
     triggers: ShouminkanTriggerSet,
+    answer: ShouminkanAnswer,
     prepared: &PreparedHand,
     tiles_remaining: u8,
 ) -> Result<(), String> {
-    if prepared.metrics.shanten != 0 {
-        return Err("Added Kan discard must leave a tenpai hand".to_string());
+    if prepared.metrics.shanten != skeleton.expected_shanten {
+        return Err(format!(
+            "Added Kan discard must leave a {}-shanten hand, got {}",
+            skeleton.expected_shanten, prepared.metrics.shanten
+        ));
     }
     if triggers.good_wait_and_value && !matches!(skeleton.wait_tiles.len(), 2 | 3) {
         return Err("Good-wait scenario must have a ryanmen or three-sided wait".to_string());
+    }
+    // Book bullets 3 and 4 stand on their own: the hand is not close to ready
+    // and the Kan is about the dora and minipoints.
+    if triggers.needs_dora && prepared.metrics.shanten < 2 {
+        return Err(format!(
+            "Needs-dora scenario must be 2-away or worse, got shanten {}",
+            prepared.metrics.shanten
+        ));
+    }
+    if answer == ShouminkanAnswer::Decline {
+        if prepared.metrics.shanten < 2 {
+            return Err(format!(
+                "Decline scenario must be 2-away or worse, got shanten {}",
+                prepared.metrics.shanten
+            ));
+        }
+        if triggers.any() {
+            return Err("Decline scenario has no reason to call the Kan".to_string());
+        }
     }
     if tiles_remaining == 0 {
         return Err("No drawable tiles remain".to_string());
@@ -242,6 +348,7 @@ fn assemble_state(
     category: &str,
     skeleton: &ShouminkanSkeleton,
     triggers: ShouminkanTriggerSet,
+    answer: ShouminkanAnswer,
     prepared: PreparedHand,
     context: TableContext,
 ) -> GameState {
@@ -295,15 +402,28 @@ fn assemble_state(
     players.push(human_player);
     players.extend(deal.players);
 
+    // Both questions are "Call Shouminkan, or discard?", so the prompt stays
+    // the same; only the expected answer changes.
+    let (correct_action, shouminkan_triggers) = match answer {
+        ShouminkanAnswer::Kan => (
+            CorrectAction::kan(skeleton.drawn_tile.to_string()),
+            triggers.to_vec(),
+        ),
+        ShouminkanAnswer::Decline => (
+            CorrectAction::discard(skeleton.drawn_tile.to_string()),
+            Vec::new(),
+        ),
+    };
+
     GameState {
         category: category.to_string(),
         target_action: TargetAction::Kan,
-        correct_action: CorrectAction::kan(skeleton.drawn_tile.to_string()),
+        correct_action,
         decision: DecisionContext::SelfTurn,
         ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
-        shouminkan_triggers: triggers.to_vec(),
+        shouminkan_triggers,
         book_rationale: None,
         hand_string,
         tiles: tile_strings,

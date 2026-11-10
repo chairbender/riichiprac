@@ -126,7 +126,11 @@ fn test_list_scenarios_payload() {
         .as_array()
         .expect("scenario manifest must be an array");
 
-    assert_eq!(scenarios.len(), 4);
+    // Manifest-derived so adding a lesson cannot leave this test stale.
+    assert_eq!(
+        scenarios.len(),
+        riichiprac::generator::SCENARIO_MANIFEST.len()
+    );
     assert!(scenarios.iter().all(|scenario| {
         scenario["id"].is_string()
             && scenario["label"].is_string()

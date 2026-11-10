@@ -70,13 +70,16 @@ pub fn scores_for_seats(ranked: [i32; 4], human_rank: usize) -> [i32; 4] {
     [ranked[human_rank], opponents[0], opponents[1], opponents[2]]
 }
 
-/// Rank-ordered scores where the human is 2nd or 3rd, close behind.
-pub fn placement_desperation_ranked_scores(human_rank: usize) -> [i32; 4] {
+/// Rank-ordered scores where the human is 2nd or 3rd, `gap` points behind.
+///
+/// The caller supplies the gap, because it has to come from the hand: it must
+/// sit between what the hand wins for with the Pon and what it wins for once
+/// the fourth tile extends it, so that only the Kan decides the placement.
+pub fn placement_desperation_ranked_scores(human_rank: usize, gap: i32) -> [i32; 4] {
     assert!(human_rank == 1 || human_rank == 2);
+    assert!(gap > 0, "placement gap must be positive");
 
     loop {
-        let gap = gen_range(300, 2_000) as i32;
-
         if human_rank == 1 {
             let human = gen_range(26_000, 33_001) as i32;
             let above = human + gap;
