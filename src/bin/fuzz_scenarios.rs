@@ -60,6 +60,8 @@ usage: fuzz_scenarios [options]
                            and is rejected)
   --iterations <n>         maximum generation attempts (default: 200)
   --limit <n>              maximum discrepancy files per run (default: 20)
+  --min-margin <p>         skip disagreements where Mortal's lead over the app
+                           answer is smaller than p (default: 0, keep all)
   --out <dir>              report directory (default: <repo>/fuzz-reports)
   --weights <path>         Mortal checkpoint
                            (default: <repo>/frontend/public/models/mortal_298k.safetensors)
@@ -73,6 +75,7 @@ struct Args {
     scenarios: Vec<ScenarioId>,
     iterations: u64,
     limit: usize,
+    min_margin: f32,
     out: PathBuf,
     weights: PathBuf,
     include_incomparable: bool,
@@ -155,6 +158,7 @@ fn parse_args<I: Iterator<Item = String>>(args: I) -> Result<Args, String> {
     let mut scenarios = Vec::new();
     let mut iterations = DEFAULT_ITERATIONS;
     let mut limit = DEFAULT_LIMIT;
+    let mut min_margin = 0.0f32;
     let mut out = repo.join("fuzz-reports");
     let mut weights = repo.join("frontend/public/models/mortal_298k.safetensors");
     let mut include_incomparable = false;
@@ -195,6 +199,20 @@ fn parse_args<I: Iterator<Item = String>>(args: I) -> Result<Args, String> {
                     .parse()
                     .map_err(|err| format!("invalid --limit '{value}': {err}"))?;
             }
+            "--min-margin" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--min-margin requires a number".to_string())?;
+                let parsed: f32 = value
+                    .parse()
+                    .map_err(|err| format!("invalid --min-margin '{value}': {err}"))?;
+                if !parsed.is_finite() || !(0.0..=1.0).contains(&parsed) {
+                    return Err(format!(
+                        "--min-margin must be between 0 and 1, got {value}"
+                    ));
+                }
+                min_margin = parsed;
+            }
             "--out" => {
                 out = PathBuf::from(
                     args.next()
@@ -221,6 +239,7 @@ fn parse_args<I: Iterator<Item = String>>(args: I) -> Result<Args, String> {
         scenarios,
         iterations,
         limit,
+        min_margin,
         out,
         weights,
         include_incomparable,
@@ -250,6 +269,7 @@ fn run(args: &Args, model: &MortalV4Model) -> Result<FuzzSummary, String> {
     let mut summary = FuzzSummary {
         requested_iterations: args.iterations,
         limit: args.limit,
+        min_margin: args.min_margin,
         out_dir: args.out.display().to_string(),
         ..FuzzSummary::default()
     };
@@ -307,12 +327,7 @@ fn run(args: &Args, model: &MortalV4Model) -> Result<FuzzSummary, String> {
                 );
                 continue;
             }
-            FuzzOutcome::Discrepancy => {
-                *summary
-                    .discrepancies
-                    .entry(scenario_id.to_string())
-                    .or_insert(0) += 1;
-            }
+            FuzzOutcome::Discrepancy => {}
             FuzzOutcome::Incomparable => {
                 summary.incomparable_found += 1;
                 if !args.include_incomparable {
@@ -324,6 +339,28 @@ fn run(args: &Args, model: &MortalV4Model) -> Result<FuzzSummary, String> {
                     continue;
                 }
             }
+        }
+
+        if !comparison.exceeds_margin(args.min_margin) {
+            summary.below_margin += 1;
+            eprintln!(
+                "[{iteration}/{}] {scenario_id}: {} within --min-margin {:.2} (app {} p={:.2} vs AI {} p={:.2}); skipped",
+                args.iterations,
+                comparison.kind.unwrap_or(DiscrepancyKind::Action).as_str(),
+                args.min_margin,
+                comparison.app_action,
+                comparison.app_probability,
+                comparison.ai_action,
+                comparison.ai_probability
+            );
+            continue;
+        }
+
+        if comparison.outcome == FuzzOutcome::Discrepancy {
+            *summary
+                .discrepancies
+                .entry(scenario_id.to_string())
+                .or_insert(0) += 1;
         }
 
         let Some(answer) = reported_action_for_ai(
@@ -467,6 +504,7 @@ fn print_summary(summary: &FuzzSummary) {
         "  unsupported AI:      {} skipped",
         summary.unsupported_ai_skipped
     );
+    println!("  below --min-margin:  {}", summary.below_margin);
     println!("  files written:       {}", summary.files_written);
     println!(
         "  limit:               {}{}",
@@ -562,8 +600,21 @@ mod tests {
     }
 
     #[test]
-    fn flags_parse() {
-        let args = parse(&[
+    fn min_margin_defaults_to_zero_and_accepts_probabilities() {
+        assert_eq!(parse(&[]).unwrap().min_margin, 0.0);
+
+        let args = parse(&["--min-margin", "0.05"]).unwrap();
+        assert!((args.min_margin - 0.05).abs() < f32::EPSILON);
+        assert_eq!(parse(&["--min-margin", "1"]).unwrap().min_margin, 1.0);
+
+        assert!(parse(&["--min-margin", "many"]).is_err());
+        assert!(parse(&["--min-margin", "-0.1"]).is_err());
+        assert!(parse(&["--min-margin", "1.5"]).is_err());
+        assert!(parse(&["--min-margin"]).is_err());
+    }
+
+    #[test]
+    fn flags_parse() {        let args = parse(&[
             "--iterations",
             "7",
             "--limit",

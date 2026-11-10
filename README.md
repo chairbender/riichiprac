@@ -94,6 +94,8 @@ Useful flags:
 - `--scenario <id>` limits sampling to one scenario and is repeatable.
 - `--include-incomparable` also exports cases whose expected action has no legal
   Mortal equivalent, such as an expected Kan (Kan is never in this action space).
+- `--min-margin 0.05` skips statistical ties, keeping only disagreements where
+  Mortal leads the app's answer by at least that probability.
 - `--json` prints only the final summary JSON on stdout; progress stays on
   stderr, so it can be piped into `jq`.
 

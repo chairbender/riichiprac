@@ -71,6 +71,21 @@ impl Comparison {
         matches!(self.outcome, FuzzOutcome::Discrepancy)
             || (include_incomparable && self.outcome == FuzzOutcome::Incomparable)
     }
+
+    /// How far ahead of the app's answer Mortal's top pick is.
+    ///
+    /// Both sides are probability sums over red-five variants, so the lead is
+    /// comparable. Negative when the app's answer actually outranks Mortal's
+    /// top pick, which can happen for incomparable cases.
+    pub fn ai_lead(&self) -> f32 {
+        self.ai_probability - self.app_probability
+    }
+
+    /// True when Mortal's lead is at least `min_margin`, i.e. the disagreement
+    /// is bigger than a statistical tie.
+    pub fn exceeds_margin(&self, min_margin: f32) -> bool {
+        self.ai_lead() >= min_margin
+    }
 }
 
 /// Normalize a Mortal action name for comparison.
@@ -262,7 +277,7 @@ fn xorshift64(mut value: u64) -> u64 {
 }
 
 /// Serializable final summary, shared by the human and `--json` output paths.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct FuzzSummary {
     /// Generation attempts actually made.
     pub iterations: u64,
@@ -282,12 +297,16 @@ pub struct FuzzSummary {
     pub incomparable_skipped: u64,
     /// Discrepancies whose Mortal action cannot be expressed as a report answer.
     pub unsupported_ai_skipped: u64,
+    /// Discrepancies and exported incomparables dropped by `--min-margin`.
+    pub below_margin: u64,
     /// Report files written.
     pub files_written: u64,
     /// Whether `--limit` stopped the run early.
     pub limit_reached: bool,
     /// Configured file limit.
     pub limit: usize,
+    /// Minimum probability lead required to export a disagreement.
+    pub min_margin: f32,
     /// Directory the reports were written to.
     pub out_dir: String,
 }
@@ -544,6 +563,40 @@ mod tests {
         );
         assert_eq!(hex_id_from_seed(42), first);
         assert_eq!(hex_id_from_seed(0).len(), 32);
+    }
+
+    #[test]
+    fn margin_filters_only_lead_below_the_threshold() {
+        let expected = CorrectAction::dama("8m");
+        let evaluation = evaluation(
+            "Discard_7m",
+            &[("Discard_7m", "discard", 0.371), ("Discard_8m", "discard", 0.3695)],
+        );
+        let mask = mask_for(&["7m", "8m"], false);
+        let comparison = compare_expected_action(&expected, &evaluation, &mask);
+
+        assert_eq!(comparison.outcome, FuzzOutcome::Discrepancy);
+        assert!((comparison.ai_lead() - 0.0015).abs() < 1e-6);
+        assert!(comparison.exceeds_margin(0.0), "zero margin keeps everything");
+        assert!(comparison.exceeds_margin(0.001), "0.0015 clears 0.001");
+        assert!(
+            !comparison.exceeds_margin(0.05),
+            "a 0.0015 lead is inside a 0.05 margin"
+        );
+    }
+
+    #[test]
+    fn margin_keeps_a_clear_disagreement() {
+        let expected = CorrectAction::dama("6m");
+        let evaluation = evaluation(
+            "Discard_3s",
+            &[("Discard_3s", "discard", 0.85), ("Discard_6m", "discard", 0.0024)],
+        );
+        let mask = mask_for(&["3s", "6m"], false);
+        let comparison = compare_expected_action(&expected, &evaluation, &mask);
+
+        assert!(comparison.exceeds_margin(0.05));
+        assert!(comparison.exceeds_margin(0.5));
     }
 
     #[test]

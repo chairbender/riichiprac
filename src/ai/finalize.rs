@@ -154,8 +154,20 @@ mod tests {
         };
         assert!(evaluation_matches_legal_actions(&state, &evaluation));
 
+        // Drop every entry for one action that occurs exactly once. Popping the
+        // last entry instead is flaky: several kan candidates share the name
+        // "Kan", so removing one of them leaves the name covered.
+        let victim = legal
+            .iter()
+            .map(|info| info.action.clone())
+            .find(|name| legal.iter().filter(|info| &info.action == name).count() == 1)
+            .expect("at least one legal action name occurs once");
+
         let mut missing = evaluation.clone();
-        missing.evaluations.pop();
+        missing
+            .evaluations
+            .retain(|scored| scored.info.action != victim);
         assert!(!evaluation_matches_legal_actions(&state, &missing));
     }
 }
+

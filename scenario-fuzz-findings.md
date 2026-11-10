@@ -83,8 +83,9 @@ Margins, app probability vs AI probability:
 
 `Discard_7m 37.10%` vs `Discard_8m 36.95%` is a statistical tie that the exact
 argmax comparison promotes to a report file. `compare_expected_action` applies
-no margin (deliberate, per `scenario-fuzz-plan.md` step 5), so this class of
-noise is expected. Only the 0.00 vs 0.85 case is a clear real miss.
+no margin by default (per `scenario-fuzz-plan.md` step 5), so this class of
+noise is expected; `--min-margin 0.05` filters it and counts the skipped cases
+as `below --min-margin`. Only the 0.00 vs 0.85 case is a clear real miss.
 
 ## 3. The one Kan case is a legitimate judgment call
 
@@ -105,7 +106,7 @@ shouminkan (kan robbery, a dora for every opponent, fewer discards left to
 defend with) yet it is listed as a trigger *for* it. The generator's heuristic
 here probably needs tightening.
 
-## 4. Bug: `legal_action_mask` marks an impossible plain discard for a red five
+## 4. Bug (fixed): `legal_action_mask` marked an impossible plain discard for a red five
 
 In a report with `red_fives: ["5s"]` and a hand holding exactly one 5s, which is
 the red one, Mortal's ranking was:
@@ -124,9 +125,11 @@ tile. The existing test `legal_mask_covers_hand_discards_red_five_and_riichi`
 (`src/ai/wasm_bridge.rs:318`) asserts that the red variant is legal but never
 checks that the plain one became impossible, which is why this slipped through.
 
-Impact is not limited to fuzzing: it splits roughly 19% of the probability mass
-onto an illegal action for the live AI hint, and it lets the runner report the
-impossible action as Mortal's recommendation.
+Impact was not limited to fuzzing: it split roughly 19% of the probability mass
+onto an illegal action for the live AI hint, and it let the runner report the
+impossible action as Mortal's recommendation. Fixed in `self_turn_actions`,
+which now emits one discard action per distinct tile and drops the plain variant
+when the only held copy is the red five.
 
 ## 5. Gap: Riichi comparisons ignore the riichi discard
 
@@ -138,11 +141,17 @@ action-only.
 
 ## Suggested next steps
 
-- [ ] Fix the red-five double legality in `self_turn_actions`, and extend
+- [x] Fix the red-five double legality in `self_turn_actions`, and extend
       `legal_mask_covers_hand_discards_red_five_and_riichi` to assert the plain
-      discard is masked when the only held copy is red.
-- [ ] Add a `--min-margin <p>` flag to the runner so near-ties stop producing
-      report files.
+      discard is masked when the only held copy is red. Done: `self_turn_actions`
+      now emits one discard per distinct tile and suppresses the plain action
+      when the only held copy is red, matching
+      `agent_helper.rs:65-68`. Re-scoring the `445588m2256677p5s` report drops
+      the impossible `Discard_5s` and lifts `Discard_5sr` from 18.62% to 80.71%.
+- [x] Add a `--min-margin <p>` flag to the runner so near-ties stop producing
+      report files. Done: `--min-margin` filters on `ai_probability -
+      app_probability`, and the summary reports the filtered count as
+      `below --min-margin`.
 - [ ] Decide whether riichi-vs-dama cases should be excluded or flagged until
       the required-tile and sp-table planes are populated; as-is they always
       fill the 20-file budget. The implementation work is planned in

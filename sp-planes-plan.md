@@ -270,12 +270,13 @@ libriichi explicitly; then verify against the golden oracle below.
   a feature flag with a cheaper approximation as the default.
 - **Fidelity trap.** Half-populated planes may be worse than none. Land phases
   A+B+C behind one change, or gate the new rows off until C is done.
-- **Unrelated small bug worth fixing in the same PR.** `self_turn_actions`
-  (`src/ai/actions.rs:162-171`) marks both `Discard_5s` and `Discard_5sr` legal
-  when the only 5s in hand is the red one. libriichi explicitly does not
-  (`agent_helper.rs:65-68`: `ret[tuz!(5m)] = self.tehai[tuz!(5m)] > 1`), so this
-  is a genuine deviation from the reference. It splits about 19% of the
-  probability mass onto an impossible action.
+- **Red-five legality: already fixed, do not redo.** `self_turn_actions`
+  (`src/ai/actions.rs`) used to mark both `Discard_5s` and `Discard_5sr` legal
+  when the only 5s in hand was the red one, which libriichi never does
+  (`agent_helper.rs:65-68`: `ret[tuz!(5m)] = self.tehai[tuz!(5m)] > 1`). It now
+  emits one discard per distinct tile and suppresses the plain variant when the
+  only held copy is red. If you re-derive the required-tile or SP-table planes,
+  keep using the fixed action list as the candidate set.
 
 ## Reference material
 
