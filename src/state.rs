@@ -166,7 +166,12 @@ pub enum ShouminkanTrigger {
     GoodWaitAndValue,
     /// The wall is nearly empty and rivers are in the third row.
     LateGame,
-    /// South 4 with the human close behind the player above them.
+    /// South 4 with the human 2nd or 3rd and behind the player above them by a
+    /// gap that only the Kan's extra minipoints can close. Riichi Book 1, ch. 9
+    /// frames this as "you need more dora or minipoints to improve the
+    /// placement (especially in South-4)", and quantifies it in its example:
+    /// "as the hand will have at least 60 minipoints, you can get 2000 points
+    /// with one han".
     PlacementDesperation,
     /// The human is far behind in fourth place.
     LosingBadly,

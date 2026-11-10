@@ -90,6 +90,31 @@ mod tests {
             .unwrap_or(0)
     }
 
+    /// Han the finished hand is guaranteed, read back off the state.
+    fn state_min_han(state: &GameState) -> u8 {
+        if state.shanten == 0 {
+            state
+                .ukeire_tiles
+                .iter()
+                .map(|tile| shouminkan_min_wait_han(state, parse_tile(tile)))
+                .min()
+                .unwrap_or(0)
+        } else {
+            // The dragon Pon is one han; a second dragon triplet adds another.
+            let pon_tile = &state.players[0].melds[0].tiles[0];
+            let second_dragon = ["5z", "6z", "7z"].iter().any(|dragon| {
+                *dragon != pon_tile.as_str()
+                    && state.players[0]
+                        .hand
+                        .iter()
+                        .filter(|tile| *tile == dragon)
+                        .count()
+                        == 3
+            });
+            1 + u8::from(second_dragon)
+        }
+    }
+
     fn placement_desperation_holds(state: &GameState) -> bool {
         if state.round_wind != Wind::South || state.hand_number != 4 {
             return false;
@@ -104,7 +129,17 @@ mod tests {
         else {
             return false;
         };
-        matches!(human_rank(state), 2 | 3) && above - human_score < 2_000
+        if !matches!(human_rank(state), 2 | 3) {
+            return false;
+        }
+
+        // The gap has to sit inside the hand's value window: keeping the Pon
+        // leaves the human short, the Kan's minipoints close it.
+        let Some(window) = skeleton::value::placement_window(state_min_han(state)) else {
+            return false;
+        };
+        let gap = (above - human_score) as u32;
+        gap > window.dama && gap <= window.kan
     }
 
     fn losing_badly_holds(state: &GameState) -> bool {

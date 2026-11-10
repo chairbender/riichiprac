@@ -2,7 +2,7 @@ use agari::context::indicator_to_dora;
 use agari::parse::{to_counts, validate_hand};
 use agari::tile::Tile;
 
-use super::skeleton::ShouminkanSkeleton;
+use super::skeleton::{self, ShouminkanSkeleton};
 use super::triggers::ShouminkanTriggerSet;
 use crate::generator::support::analysis::{HandMetrics, evaluate_counts, visible_tile_counts};
 use crate::generator::support::deck::{ALL_TILES, Deck};
@@ -55,7 +55,7 @@ pub(super) fn build(
 ) -> Result<GameState, String> {
     let prepared = prepare_hand(skeleton)?;
     let (mut deck, dora_indicator, ura_indicator) = build_deck(skeleton)?;
-    let (round_wind, hand_number, scores) = choose_round_and_scores(triggers)?;
+    let (round_wind, hand_number, scores) = choose_round_and_scores(triggers, skeleton)?;
     // The decline lesson teaches that a value-rich 2-away hand should keep the
     // Pon. A placement or score emergency would justify the Kan on its own
     // (book bullets 3 and 4), so those tables have to be rejected rather than
@@ -153,7 +153,10 @@ fn build_deck(skeleton: &ShouminkanSkeleton) -> Result<(Deck, Tile, Tile), Strin
 }
 
 /// Chooses the round and seat-ordered scores that match the active lesson.
-fn choose_round_and_scores(triggers: ShouminkanTriggerSet) -> Result<(Wind, u8, [i32; 4]), String> {
+fn choose_round_and_scores(
+    triggers: ShouminkanTriggerSet,
+    skeleton: &ShouminkanSkeleton,
+) -> Result<(Wind, u8, [i32; 4]), String> {
     let (round_wind, hand_number) = if triggers.placement_desperation {
         (Wind::South, 4)
     } else {
@@ -161,8 +164,12 @@ fn choose_round_and_scores(triggers: ShouminkanTriggerSet) -> Result<(Wind, u8, 
     };
 
     let scores = if triggers.placement_desperation {
+        let gap = placement_gap(skeleton)?;
         let human_rank = gen_range(1, 3);
-        scores_for_seats(placement_desperation_ranked_scores(human_rank), human_rank)
+        scores_for_seats(
+            placement_desperation_ranked_scores(human_rank, gap),
+            human_rank,
+        )
     } else if triggers.losing_badly {
         scores_for_seats(losing_badly_ranked_scores(), 3)
     } else {
@@ -180,10 +187,22 @@ fn choose_round_and_scores(triggers: ShouminkanTriggerSet) -> Result<(Wind, u8, 
             .min()
             .ok_or_else(|| "Placement scenario has nobody above the human".to_string())?;
         let rank = 1 + scores.iter().filter(|&&score| score > human_score).count();
-        if !(rank == 2 || rank == 3) || above - human_score >= 2_000 {
+        if !(rank == 2 || rank == 3) {
             return Err(format!(
-                "Human must be 2nd/3rd within 2,000 points, got rank {rank} and gap {}",
-                above - human_score
+                "Human must be 2nd or 3rd in a placement scenario, got rank {rank}"
+            ));
+        }
+        // The gap has to fall inside the hand's value window: keeping the Pon
+        // leaves the human short of the player above, and only the Kan's extra
+        // minipoints close it.
+        let window = skeleton::value::placement_window(skeleton.min_han).ok_or_else(|| {
+            "This hand gains no value from the Kan, so it cannot decide a placement".to_string()
+        })?;
+        let gap = above - human_score;
+        if gap <= window.dama as i32 || gap > window.kan as i32 {
+            return Err(format!(
+                "Placement gap {gap} is outside the Kan window ({} , {}]",
+                window.dama, window.kan
             ));
         }
     }
@@ -201,9 +220,29 @@ fn choose_round_and_scores(triggers: ShouminkanTriggerSet) -> Result<(Wind, u8, 
     Ok((round_wind, hand_number, scores))
 }
 
+/// The gap to the player above that only the Kan's minipoints can close.
+///
+/// Sampled from the hand's own value window, in whole hundreds of points, so
+/// every placement puzzle asks the same question: the Pon's hand is not worth
+/// enough to catch the player above, and the Kan's added minipoints are.
+fn placement_gap(skeleton: &ShouminkanSkeleton) -> Result<i32, String> {
+    let window = skeleton::value::placement_window(skeleton.min_han).ok_or_else(|| {
+        "This hand gains no value from the Kan, so it cannot decide a placement".to_string()
+    })?;
+
+    let first_hundred = window.dama / 100 + 1;
+    let last_hundred = window.kan / 100;
+    if first_hundred > last_hundred {
+        return Err("Kan window has no whole-hundred gap".to_string());
+    }
+
+    let steps: Vec<i32> = (first_hundred..=last_hundred).map(|h| h as i32 * 100).collect();
+    choose(&steps).ok_or_else(|| "No placement gap available".to_string())
+}
+
 /// True when the table position alone justifies an Added Kan: South-4 within
-/// 2,000 points of the player above, or fourth place more than 12,000 behind
-/// third. These are Riichi Book 1, ch. 9's third and fourth kakan conditions.
+/// the hand's Kan value window, or fourth place more than 12,000 behind third.
+/// These are Riichi Book 1, ch. 9's third and fourth kakan conditions.
 fn table_is_desperate(round_wind: Wind, hand_number: u8, scores: &[i32; 4]) -> bool {
     let human_score = scores[0];
     let above = scores

@@ -32,6 +32,8 @@ pub(super) struct ShouminkanSkeleton {
     /// Shanten the hand must have after discarding the drawn tile: 0 for the
     /// ready lessons, 2 for the book's far-from-ready lessons.
     pub expected_shanten: i8,
+    /// Guaranteed han before any Kan dora, used to value the placement lesson.
+    pub min_han: u8,
 }
 
 impl ShouminkanSkeleton {
@@ -157,10 +159,11 @@ pub(super) fn build(triggers: ShouminkanTriggerSet) -> Result<ShouminkanSkeleton
             continue;
         }
 
-        let min_han = if triggers.good_wait_and_value { 2 } else { 1 };
-        if !waits_have_value(&concealed_tiles, pon_tile, &wait_tiles, min_han) {
+        let required_han = if triggers.good_wait_and_value { 2 } else { 1 };
+        if !waits_have_value(&concealed_tiles, pon_tile, &wait_tiles, required_han) {
             continue;
         }
+        let min_han = value::min_wait_han(&concealed_tiles, pon_tile, &wait_tiles);
 
         concealed_tiles.sort();
         let mut wait_tiles = wait_tiles;
@@ -172,6 +175,7 @@ pub(super) fn build(triggers: ShouminkanTriggerSet) -> Result<ShouminkanSkeleton
             concealed_tiles,
             wait_tiles,
             expected_shanten: 0,
+            min_han,
         });
     }
 
@@ -285,6 +289,9 @@ pub(super) fn build_two_away(with_value_triplet: bool) -> Result<ShouminkanSkele
             concealed_tiles,
             wait_tiles: Vec::new(),
             expected_shanten: 2,
+            // The dragon Pon is one han on its own; the value triplet adds a
+            // second, and no other yaku is guaranteed once the hand completes.
+            min_han: if with_value_triplet { 2 } else { 1 },
         });
     }
 

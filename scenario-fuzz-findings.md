@@ -223,6 +223,21 @@ it excludes the two conditions that require 1-away or better. The decline
 scenario reuses the same 2-away skeleton and keeps `shouminkan_triggers` empty,
 because the schema only carries reasons *for* the Kan.
 
+"Improve the placement" is now quantified instead of assumed. The gap to the
+player above is derived from the hand rather than sampled blindly:
+`skeleton::value::placement_window` values both lines at their guaranteed
+minimum (`ron_value(min_han, min_fu)`, 1 han at 30 fu versus 40 fu once the Kan
+adds its minipoints), and the board samples the gap from the band between them,
+in whole hundreds. So keeping the Pon leaves the human short and the Kan's
+minipoints are what closes the gap, which is the book's own arithmetic ("at
+least 60 minipoints, so 2000 points with one han").
+
+The Kan's new dora, the rinshan draw and the tsumo score swing are ignored, so
+this is a conservative floor. `value.rs` records the upgrade path: `crate::ai::sp`
+now exists, so both lines could be scored with real expected values instead of
+the guaranteed-minipoints bound.
+
+
 The decline hand guarantees two han where the book's example has three. The
 decisive factor in the book's sentence is the 2-away distance, not the han
 count, so two is enough for the same lesson; it is noted in the skeleton docs.
@@ -350,5 +365,8 @@ off-by-one tile class described in §2.
 - [x] Extend `shouminkan_decision` coverage to the book's boundary. Done: the
       `needs_dora` trigger covers the not-close-to-ready desperation cases, and
       `shouminkan_decline` covers the book's negative example.
+- [ ] Score both Kan lines with `crate::ai::sp` and derive the placement gap
+      from real expected values instead of the guaranteed-minipoints floor
+      (noted in `skeleton/value.rs`).
 - [ ] Consider encoding the riichi discard tile so riichi answers can be
       compared on the tile as well as the action.
