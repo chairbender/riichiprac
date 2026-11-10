@@ -1,28 +1,33 @@
 import { findKanCandidateTile } from '../actions';
-import type { AnswerFeedback } from '../store/useGameStore';
+import type { SubmittedAnswer } from '../store/useGameStore';
 import type { AiActionInfo, AiEvaluation } from '../types/ai';
 import {
   discardProbabilitiesByTile,
   formatProbability,
 } from '../types/ai';
 import type { PlayerState } from '../types/game';
+import type { DualGrade } from '../types/verdict';
+import { mortalRecommendedTile } from '../types/verdict';
 import { KanIcon } from './KanIcon';
 import { RiichiStick } from './RiichiStick';
 import { Tile } from './Tile';
 
 interface HandDockProps {
   player: PlayerState;
-  feedback: AnswerFeedback | null;
+  /** Dual verdict for the current answer, or null before answering. */
+  grade: DualGrade | null;
+  /** The answer the player submitted, if any. */
+  answer: SubmittedAnswer | null;
   callRiichi: boolean;
   callKan: boolean;
-  /** Latest Mortal evaluation for the table, if the player ran one. */
+  /** Latest Mortal evaluation for the table, if one exists. */
   aiEvaluation: AiEvaluation | null;
   /** Non-discard actions for an AI scenario; undefined for legacy lessons. */
   availableActions?: AiActionInfo[];
   /** False when a reaction state has no discard option. */
   canDiscard?: boolean;
-  /** Whether AI probability badges may be shown. */
-  revealAi?: boolean;
+  /** Whether Mortal's probability badges may be shown. */
+  revealMortal?: boolean;
   onToggleRiichi: () => void;
   onToggleKan: () => void;
   onSelectTile: (tile: string, index?: number) => void;
@@ -36,22 +41,29 @@ interface HandDockProps {
  */
 export function HandDock({
   player,
-  feedback,
+  grade,
+  answer,
   callRiichi,
   callKan,
   aiEvaluation,
   availableActions,
   canDiscard = true,
-  revealAi = true,
+  revealMortal = false,
   onToggleRiichi,
   onToggleKan,
   onSelectTile,
 }: HandDockProps) {
   const tiles = player.draw ? [...player.hand, player.draw] : player.hand;
-  const isAnswered = feedback !== null;
+  const isAnswered = grade !== null;
   const isAiScenario = availableActions !== undefined;
   const kanTile = isAiScenario ? null : findKanCandidateTile(player);
-  const showAi = revealAi;
+
+  const bookTile = grade?.book?.expected_tile ?? null;
+  // The drill has no book column, so its selected-tile mark comes from Mortal.
+  const selectedTileCorrect = grade?.book
+    ? grade.book.is_tile_correct
+    : (grade?.mortal?.matches_tile ?? false);
+  const mortalTile = mortalRecommendedTile(grade?.mortal ?? null);
 
   let handHint = 'Dama selected - tap a tile to discard';
   if (isAnswered) {
@@ -80,10 +92,10 @@ export function HandDock({
     return true;
   });
 
-  // AI badges only make sense before the answer is submitted, and AI
-  // scenarios suppress them until the player has answered.
+  // Mortal's per-tile probabilities are a spoiler until the answer exists (or
+  // the player deliberately peeked), so they are gated on `revealMortal`.
   const aiProbabilities =
-    isAnswered || !showAi
+    isAnswered || !revealMortal
       ? new Map<string, number>()
       : discardProbabilitiesByTile(aiEvaluation);
   let topAiTile: string | null = null;
@@ -143,30 +155,29 @@ export function HandDock({
         style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
       >
         {tiles.map((tile, index) => {
-          const isSelected =
-            feedback?.selectedTile === tile ||
-            feedback?.selectedTiles?.includes(tile) === true;
-          const isCorrectTile =
-            feedback?.correctTile === tile ||
-            feedback?.correctTiles?.includes(tile) === true;
+          const isSelected = answer?.tile === tile;
 
           let stateClass = '';
-          if (feedback) {
-            if (isSelected && feedback.isTileCorrect) {
+          if (grade) {
+            if (isSelected && selectedTileCorrect) {
               stateClass = ' hand-tile-button--correct';
             } else if (isSelected) {
               stateClass = ' hand-tile-button--incorrect';
-            } else if (isCorrectTile) {
+            } else if (bookTile === tile) {
               stateClass = ' hand-tile-button--answer';
             }
           }
 
-          const aiProbability = aiProbabilities.get(tile);
           let aiClass = '';
-          if (aiProbability !== undefined && aiProbability >= 0.01) {
-            aiClass = ' hand-tile-button--ai';
-            if (tile === topAiTile) {
-              aiClass += ' hand-tile-button--ai-top';
+          if (grade && mortalTile === tile) {
+            aiClass = ' hand-tile-button--mortal';
+          } else {
+            const aiProbability = aiProbabilities.get(tile);
+            if (aiProbability !== undefined && aiProbability >= 0.01) {
+              aiClass = ' hand-tile-button--ai';
+              if (tile === topAiTile) {
+                aiClass += ' hand-tile-button--ai-top';
+              }
             }
           }
 
@@ -183,11 +194,12 @@ export function HandDock({
                 callRiichi ? ', with Riichi' : ''
               }`}
             >
-              {aiProbability !== undefined && aiProbability >= 0.01 && (
-                <span className="ai-tile-badge" aria-hidden="true">
-                  {formatProbability(aiProbability)}
-                </span>
-              )}
+              {aiProbabilities.get(tile) !== undefined &&
+                (aiProbabilities.get(tile) ?? 0) >= 0.01 && (
+                  <span className="ai-tile-badge" aria-hidden="true">
+                    {formatProbability(aiProbabilities.get(tile) ?? 0)}
+                  </span>
+                )}
               <Tile
                 code={tile}
                 className="tile hand-tile"

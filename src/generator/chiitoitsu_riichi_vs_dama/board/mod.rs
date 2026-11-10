@@ -182,6 +182,7 @@ fn assemble_state(
         riichi_triggers: skeleton.triggers.to_vec(),
         dama_reasons,
         shouminkan_triggers: Vec::new(),
+        book_rationale: None,
         hand_string,
         tiles: tile_strings,
         shanten: tenpai_metrics.shanten,

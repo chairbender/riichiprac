@@ -71,6 +71,49 @@ export type DecisionContext =
   | { kind: 'react_to_discard'; from: number; tile: string }
   | { kind: 'react_to_kan'; from: number; tile: string };
 
+/** A Riichi Book 1 reference for one rule. */
+export interface BookCitation {
+  book: string;
+  chapter: number;
+  chapter_title: string;
+  section: string;
+  source_file: string;
+  source_line: number;
+  /** Verbatim substring used by the Rust source-drift test. */
+  source_needle: string;
+}
+
+/** Short provenance label for a citation chip. */
+export function citationLabel(citation: BookCitation): string {
+  return `ch${citation.chapter} · ${citation.section}`;
+}
+
+/** One rule the book states for this answer. */
+export interface BookRule {
+  /** Trigger id, e.g. `dealer` or `good_wait_and_value`. */
+  id: string;
+  rule: string;
+  quote: string;
+  citation: BookCitation;
+  /** Why this hand satisfies the rule. */
+  applies: string;
+}
+
+/** A Riichi justification that does not hold for this hand. */
+export interface AbsentBookRule {
+  id: string;
+  note: string;
+}
+
+/** The book's side of the verdict, rendered from the trigger lists. */
+export interface BookRationale {
+  summary: string;
+  rules: BookRule[];
+  absent?: AbsentBookRule[];
+  source: BookCitation;
+  caveats?: string[];
+}
+
 export interface DiscardTile {
   /** Tile code such as "1m", "5p", or "7z". */
   tile: string;
@@ -120,6 +163,11 @@ export interface GameState {
   dama_reasons: DamaReason[];
   /** Heuristics that justify declaring an Added Kan for this scenario. */
   shouminkan_triggers: ShouminkanTrigger[];
+  /**
+   * Book-side rationale: the rule, quote, and citation for each trigger, plus
+   * the justifications that do not apply. Derived and recomputed by Rust.
+   */
+  book_rationale?: BookRationale | null;
 
   hand_string: string;
   tiles: string[];

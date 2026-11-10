@@ -178,9 +178,7 @@ fn self_turn_actions(state: &GameState, out: &mut Vec<ActionInfo>) {
         {
             out.push(info);
         }
-        if is_red
-            && let Some(info) = discard_info(tile, true)
-        {
+        if is_red && let Some(info) = discard_info(tile, true) {
             out.push(info);
         }
     }
@@ -626,6 +624,7 @@ mod tests {
             riichi_triggers: Vec::new(),
             dama_reasons: Vec::new(),
             shouminkan_triggers: Vec::new(),
+            book_rationale: None,
             hand_string: String::new(),
             tiles: Vec::new(),
             shanten: 1,
@@ -683,14 +682,8 @@ mod tests {
         ]);
         state.players[0].red_fives = vec!["5p".to_string()];
         let actions = legal_actions(&state);
-        let plain = actions
-            .iter()
-            .filter(|a| a.action == "Discard_5p")
-            .count();
-        let red = actions
-            .iter()
-            .filter(|a| a.action == "Discard_5pr")
-            .count();
+        let plain = actions.iter().filter(|a| a.action == "Discard_5p").count();
+        let red = actions.iter().filter(|a| a.action == "Discard_5pr").count();
         assert_eq!(plain, 1, "one plain 5p is held");
         assert_eq!(red, 1, "one red 5p is held");
     }

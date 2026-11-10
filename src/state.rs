@@ -331,6 +331,12 @@ pub struct GameState {
     pub dama_reasons: Vec<DamaReason>,
     /// Reasons this scenario recommends declaring an Added Kan.
     pub shouminkan_triggers: Vec<ShouminkanTrigger>,
+    /// Book-side rationale for `correct_action`: the rule, quote, and citation
+    /// for each trigger, plus the justifications that do not apply. Derived and
+    /// recomputed at generation and on report import, so it is never trusted
+    /// from an imported file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub book_rationale: Option<crate::rationale::BookRationale>,
 
     // Hand evaluation (Human player)
     pub hand_string: String,

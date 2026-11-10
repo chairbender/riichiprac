@@ -3,15 +3,18 @@ pub mod decision;
 pub(crate) mod fixtures;
 pub mod fuzz;
 pub mod generator;
+pub mod rationale;
 pub mod report;
 pub mod rng;
 pub mod state;
+pub mod verdict;
 
 use wasm_bindgen::prelude::*;
 
 pub use ai::WasmMortalEvaluator;
 pub use decision::{ActionEvaluation, ActionInfo, ActionKind, AiDecision, KanKind};
 pub use generator::{PuzzleResponse, generate_random_hand};
+pub use rationale::{AbsentRule, BookRationale, BookRule, Citation};
 pub use report::{
     AiComparison, AppInfo, DecisionPrompt, ParsedReport, ReportDecision, ReportReason,
     ReportVerdict, ReportedAction, ReportedAi, ScenarioReport, ScenarioSnapshot,
@@ -19,6 +22,10 @@ pub use report::{
 pub use state::{
     CalledMeld, CorrectAction, CorrectActionType, DamaReason, DecisionContext, DiscardTile,
     GameState, MeldType, PlayerState, RiichiTrigger, ShouminkanTrigger, TargetAction, Wind,
+};
+pub use verdict::{
+    AnswerOutcome, BookGrade, DualGrade, GradingMode, MortalConfidence, MortalGrade,
+    PerspectiveResult, SubmittedAnswer,
 };
 
 /// Verification helper for WASM module initialization.
@@ -53,6 +60,15 @@ pub fn generate_puzzle(category: String) -> String {
 #[wasm_bindgen]
 pub fn build_scenario_report(request_json: &str) -> String {
     report::build_report_json(request_json).unwrap_or_else(|err| report::error_json(&err))
+}
+
+/// Grades a submitted answer against both the book heuristic and Mortal.
+///
+/// Request: `{"table": GameState, "answer": SubmittedAnswer, "evaluation": Evaluation|null}`.
+/// Returns a `DualGrade` JSON object, or `{"error": "..."}`.
+#[wasm_bindgen]
+pub fn grade_answer_json(request_json: &str) -> String {
+    verdict::grade_answer_json(request_json).unwrap_or_else(|err| report::error_json(&err))
 }
 
 /// Parses and validates an imported scenario report.

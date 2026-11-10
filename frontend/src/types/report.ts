@@ -5,9 +5,14 @@
 
 import type { AiEvaluation } from './ai';
 import type { CorrectActionType, GameState } from './game';
+import type { AnswerOutcome, GradingMode, MortalGrade } from './verdict';
 
 export const REPORT_SCHEMA = 'riichiprac.scenario-report';
-export const REPORT_VERSION = 1;
+/**
+ * Version 2 adds the dual verdict. Version 1 report files still import: the new
+ * fields default, and only the book fields are compared.
+ */
+export const REPORT_VERSION = 2;
 export const MAX_NOTE_CHARS = 4000;
 export const MAX_REPORT_BYTES = 2 * 1024 * 1024;
 
@@ -41,14 +46,22 @@ export interface ReportedAi {
   evaluated_at: string;
   evaluation: AiEvaluation;
   comparison?: AiComparison;
+  /** True when the reporter revealed Mortal's line before answering. */
+  peeked_before_answer?: boolean;
 }
 
 export interface ReportVerdict {
+  /** Version-1 meaning: the book's answer matched. */
   is_correct: boolean;
   is_action_correct: boolean;
   is_tile_correct: boolean;
   expected_action: CorrectActionType;
   expected_tile: string;
+  /** Dual outcome; see `types/verdict.ts`. */
+  outcome: AnswerOutcome;
+  mode: GradingMode;
+  /** Mortal's side of the verdict, when an evaluation was available. */
+  mortal?: MortalGrade | null;
 }
 
 export interface ScenarioSnapshot {

@@ -18,19 +18,41 @@ The Mortal AI evaluator is optional. Its weights are not committed; generate the
 with `scripts/convert_weights.py` (see `scripts/README.md`). Without the weights,
 the app runs normally and the AI panel reports that the model is unavailable.
 
+## Book vs. Mortal: how an answer is graded
+
+Every puzzle is graded twice: against the Riichi Book 1 rule the scenario
+encodes, and against the embedded Mortal v4 policy. The two recommendations are
+shown side by side after you answer, each with its provenance. The book column
+always says which rule the hand teaches and cites the chapter and section; the
+Mortal column shows the model's top action, its probability, and the full
+ranking.
+
+Only one case is called **wrong**: when both the book and Mortal reject your
+answer. Picking the book's line when Mortal disagrees is a **book answer**;
+picking Mortal's line when the book disagrees is **Mortal's line**. Neither is a
+mistake, and the outcome line says so.
+
+Mortal is evaluated automatically for every hand. Its recommendation is hidden
+until you answer so the drill is still a decision; **Peek** reveals Mortal's line
+early (and is recorded in exported reports). The book side is always explained —
+"Not this hand" lists the justifications that do not apply, without inventing a
+citation for them.
+
+If the weights are missing, the app still trains: the hand is graded against the
+book only, the Mortal column says so, and no answer is labelled wrong.
+
 ## AI Best Action scenario
 
 `AI Best Action` generates a random, deck-consistent table and presents whatever
 decision the loaded Mortal v4 model can answer: discard, Riichi, tsumo/ron, chi,
 pon, kan, or pass. The correct answer is the model's highest-probability legal
-action at generation time; it is not a hand-written lesson. After answering, the
-trainer shows `Best answer per <model>` and the full ranked report of every legal
-action.
+action at generation time; it is not a hand-written lesson. It is a declared
+**Mortal drill**: the book column says there is no book rule, and the drill is
+graded by the model alone.
 
 The scenario requires the model weights. The picker marks it as model-backed,
-and the "All scenarios" random pool skips it until the weights have finished
-loading. The recommendation is an AI opinion, not ground truth; the explanation
-says so explicitly.
+and the "All scenarios" random pool always skips it so that the default rotation
+only contains lessons with both perspectives. Select it by name to drill it.
 
 The AI scenario is generated entirely in Rust/WASM: the state is built from the
 shared deck, validated, encoded, evaluated once (plus a second pass when the

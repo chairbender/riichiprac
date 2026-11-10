@@ -355,6 +355,7 @@ fn assemble(
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
+        book_rationale: None,
         hand_string,
         tiles: tile_strings,
         shanten: metrics.shanten,

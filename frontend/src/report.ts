@@ -18,6 +18,7 @@ import {
   REPORT_SCHEMA,
 } from './types/report';
 import type { CorrectAction, GameState } from './types/game';
+import { outcomeHeadline } from './types/verdict';
 
 export interface ReportInput {
   table: GameState;
@@ -26,6 +27,8 @@ export interface ReportInput {
   note: string;
   evaluation: AiEvaluation | null;
   modelId: string;
+  /** True when the reporter revealed Mortal's line before answering. */
+  peekedBeforeAnswer: boolean;
 }
 
 export type ImportedState =
@@ -76,6 +79,7 @@ export function createScenarioReport(input: ReportInput): {
       model: input.modelId,
       evaluated_at: new Date().toISOString(),
       evaluation: input.evaluation,
+      peeked_before_answer: input.peekedBeforeAnswer,
     };
   }
 
@@ -263,13 +267,9 @@ export function describeReportedAction(answer: ReportedAction): string {
   }
 }
 
+/** Label for the report verdict, in the shared dual-verdict vocabulary. */
 export function verdictLabel(verdict: ReportVerdict): string {
-  if (verdict.is_correct) return 'Correct';
-  if (!verdict.is_action_correct && !verdict.is_tile_correct) {
-    return 'Wrong action and discard';
-  }
-  if (!verdict.is_action_correct) return 'Wrong action';
-  return 'Wrong discard';
+  return outcomeHeadline(verdict.outcome, verdict.mode);
 }
 
 export function reportReasonLabel(reason: ReportReason): string {

@@ -1,27 +1,17 @@
 //! Verdict derivation and answer auditing for imported reports.
 
 use crate::state::CorrectAction;
+use crate::verdict;
 
 use super::model::{ReportVerdict, ReportedAction};
 
-/// Compare a submitted answer with the app's expected action.
+/// Compare a submitted answer with the book's expected action.
+///
+/// This is the book-only half of the dual verdict; report construction uses
+/// [`crate::verdict::grade_answer`] so Mortal is included when available.
 pub fn evaluate(expected: &CorrectAction, answer: &ReportedAction) -> ReportVerdict {
-    let expected_action = expected.action_type();
-    let expected_tile = expected.tile();
-
-    let is_action_correct = answer.action == expected_action;
-    let is_tile_correct = match expected_tile {
-        Some(tile) => answer.tile == tile,
-        None => answer.tile.is_empty(),
-    };
-
-    ReportVerdict {
-        is_correct: is_action_correct && is_tile_correct,
-        is_action_correct,
-        is_tile_correct,
-        expected_action,
-        expected_tile: expected_tile.unwrap_or_default().to_string(),
-    }
+    let book = verdict::grade_book(expected, answer);
+    ReportVerdict::from_dual(&verdict::grade_from_parts(Some(book), None), expected)
 }
 
 /// Check that a report's answer is present in the human hand or draw.

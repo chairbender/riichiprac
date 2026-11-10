@@ -1,64 +1,70 @@
-import type { DamaReason, GameState, RiichiTrigger } from '../types/game';
-
-const RIICHI_LABELS: Record<RiichiTrigger, string> = {
-  dealer: 'Dealer — the hand is worth more.',
-  tanyao: 'Tanyao — every pair and the wait are simples.',
-  red_five_wait:
-    'Red-five wait — holding the red five means the wait is the regular five.',
-  suji_trap:
-    "Suji trap — the river contains the wait's suji, making the wait look safer.",
-  wait_outside_456: 'Wait outside 4-5-6 — a harder-to-read wait.',
-  score_below_mangan: 'Score below Mangan — Riichi adds enough value.',
-};
-
-const DAMA_LABELS: Record<DamaReason, string> = {
-  not_dealer: 'Not the dealer, so Riichi adds less value.',
-  no_tanyao: 'A terminal or honor pair rules out Tanyao.',
-  middle_wait: 'The wait is a middle tile (4, 5, or 6).',
-  no_red_five_wait: 'The wait is not a red five.',
-  no_suji_trap: 'The river contains no suji of the wait.',
-  mangan: 'The hand is already Mangan or better without Riichi.',
-};
+import type { BookRationale } from '../types/game';
 
 interface ScenarioExplanationProps {
-  state: GameState;
+  rationale: BookRationale;
 }
 
-/** Shows why the scenario's Riichi or Dama answer is correct. */
-export function ScenarioExplanation({ state }: ScenarioExplanationProps) {
-  const actionType = state.correct_action.type;
-
-  // Kan lessons explain themselves through the answer toast.
-  if (actionType !== 'riichi' && actionType !== 'dama') return null;
-
-  const isRiichi = actionType === 'riichi';
-  const title = isRiichi ? 'Why Riichi?' : 'Why Dama?';
-
-  if (isRiichi) {
-    if (state.riichi_triggers.length === 0) return null;
-  } else if (state.dama_reasons.length === 0) {
-    return null;
-  }
+/**
+ * The book column's body: which rule the scenario encodes, why this hand
+ * satisfies it, and where the rule comes from.
+ *
+ * All of this text comes from Rust (`src/rationale.rs`); this component only
+ * lays it out. Rules the book does not argue for (an absent justification) are
+ * listed without quotes or citations so the column never fabricates one.
+ */
+export function ScenarioExplanation({ rationale }: ScenarioExplanationProps) {
+  const absent = rationale.absent ?? [];
+  const caveats = rationale.caveats ?? [];
 
   return (
-    <section
-      className={`scenario-explanation ${
-        isRiichi
-          ? 'scenario-explanation--riichi'
-          : 'scenario-explanation--dama'
-      }`}
-      aria-label={title}
-    >
-      <h2 className="scenario-explanation-title">{title}</h2>
-      <ul className="scenario-explanation-list">
-        {isRiichi
-          ? state.riichi_triggers.map((reason) => (
-              <li key={reason}>{RIICHI_LABELS[reason]}</li>
-            ))
-          : state.dama_reasons.map((reason) => (
-              <li key={reason}>{DAMA_LABELS[reason]}</li>
-            ))}
+    <div className="book-rationale">
+      <p className="book-rationale-summary">{rationale.summary}</p>
+
+      <ul className="book-rule-list">
+        {rationale.rules.map((rule) => (
+          <li key={rule.id} className="book-rule">
+            <p className="book-rule-text">{rule.rule}</p>
+            <p className="book-rule-applies">{rule.applies}</p>
+            <p className="book-rule-quote">“{rule.quote}”</p>
+            <a
+              className="book-rule-citation"
+              href={`#${rule.citation.source_file}`}
+              title={`${rule.citation.source_file}, line ${rule.citation.source_line}`}
+              aria-label={`Source: ${rule.citation.book}, chapter ${rule.citation.chapter}, ${rule.citation.chapter_title}`}
+              onClick={(event) => event.preventDefault()}
+            >
+              ch{rule.citation.chapter} · {rule.citation.section}
+            </a>
+          </li>
+        ))}
       </ul>
-    </section>
+
+      {absent.length > 0 && (
+        <div className="book-absent">
+          <span className="book-absent-title">Not this hand</span>
+          <ul>
+            {absent.map((entry) => (
+              <li key={entry.id}>{entry.note}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {caveats.length > 0 && (
+        <details className="book-caveats">
+          <summary>Book caveats</summary>
+          <ul>
+            {caveats.map((caveat) => (
+              <li key={caveat}>{caveat}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      <p className="book-source">
+        {rationale.source.book} · ch{rationale.source.chapter}{' '}
+        {rationale.source.chapter_title}
+      </p>
+    </div>
   );
 }

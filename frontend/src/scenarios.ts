@@ -3,6 +3,8 @@ export type ScenarioId = string;
 
 export type ScenarioSelection = 'all' | ScenarioId;
 
+export type ScenarioGrading = 'book_and_mortal' | 'mortal_only';
+
 export interface ScenarioOption {
   id: ScenarioId;
   label: string;
@@ -11,6 +13,8 @@ export interface ScenarioOption {
   tags: string[];
   /** True when generation needs the loaded Mortal evaluator. */
   requires_ai: boolean;
+  /** Which perspectives grade this lesson. */
+  grading: ScenarioGrading;
 }
 
 /**
@@ -25,6 +29,7 @@ export const FALLBACK_SCENARIOS: ScenarioOption[] = [
     category: 'tile_efficiency',
     tags: ['block_theory', 'discard', 'ryanmen'],
     requires_ai: false,
+    grading: 'book_and_mortal',
   },
 ];
 
@@ -46,12 +51,16 @@ export function parseScenarioManifest(json: string): ScenarioOption[] {
           Array.isArray(candidate.tags) &&
           candidate.tags.every((tag) => typeof tag === 'string') &&
           (candidate.requires_ai === undefined ||
-            typeof candidate.requires_ai === 'boolean')
+            typeof candidate.requires_ai === 'boolean') &&
+          (candidate.grading === undefined ||
+            candidate.grading === 'book_and_mortal' ||
+            candidate.grading === 'mortal_only')
         );
       })
       .map((scenario) => ({
         ...scenario,
         requires_ai: scenario.requires_ai ?? false,
+        grading: scenario.grading ?? 'book_and_mortal',
       }));
   } catch {
     return [];
@@ -67,16 +76,21 @@ export function scenarioLabel(
 }
 
 /**
- * Pick one real scenario at random for the "All scenarios" option. AI
- * scenarios are excluded until the model is ready so a first launch does not
- * block on the weights.
+ * Pick one real scenario at random for the "All scenarios" option.
+ *
+ * AI scenarios are excluded until the model is ready so a first launch does not
+ * block on the weights. Mortal-only drills are always excluded: "All scenarios"
+ * means "a lesson with both perspectives", which the dual verdict panel
+ * promises. The drill stays reachable by name in the picker.
  */
 export function pickRandomScenario(
   scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
   includeRequiresAi = true,
 ): ScenarioId {
   const pool = (scenarios.length > 0 ? scenarios : FALLBACK_SCENARIOS).filter(
-    (scenario) => includeRequiresAi || !scenario.requires_ai,
+    (scenario) =>
+      (includeRequiresAi || !scenario.requires_ai) &&
+      scenario.grading !== 'mortal_only',
   );
   const finalPool = pool.length > 0 ? pool : FALLBACK_SCENARIOS;
   return finalPool[Math.floor(Math.random() * finalPool.length)].id;

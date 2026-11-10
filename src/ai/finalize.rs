@@ -170,4 +170,3 @@ mod tests {
         assert!(!evaluation_matches_legal_actions(&state, &missing));
     }
 }
-

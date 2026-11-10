@@ -1,6 +1,6 @@
 # Heuristic vs. Mortal: Equal-Weight Verdicts, Always-On Mortal
 
-Status: proposed.
+Status: implemented.
 
 This document describes how the trainer stops treating the book heuristic as the
 only ground truth. Every puzzle will carry two graded perspectives — the
@@ -364,7 +364,8 @@ statement, a citation, and a quote. Variants that encode the *absence* of a
 justification return `None` and get a plain "not this hand" note instead:
 
 ```rust
-// src/state.rs, immediately under the enum it describes
+// src/rationale.rs, beside the exhaustive `rationale()` impls for the enums
+// in `src/state.rs`
 pub struct RuleText {
     /// One-sentence statement of the rule, in the trainer's words.
     pub rule: &'static str,
@@ -1071,9 +1072,11 @@ references, note the new module in the README architecture section.
 - **Missing/corrupt weights mid-session.** `aiStatus === 'error'`, existing
   evaluation cleared on the next load, mode degrades; Retry re-runs
   `initializeAi`.
-- **`ai_best_action` without a model.** `Ungraded`, no check/cross, explicit
-  "can't be graded" copy. Do not treat `correct_action` as a book rule to fall
-  back on.
+- **`ai_best_action` without a model.** The drill still grades `MortalOnly`
+  against the `best` action captured at generation, with
+  `MortalConfidence::Unknown` and no probabilities. `Ungraded` remains only for
+  a state with neither perspective. Do not treat `correct_action` as a book rule
+  to fall back on.
 - **Red-five ties.** Two taps of `5m` (one red) are indistinguishable by code, so
   both agree with either variant. This matches the current `selectTile`
   behaviour; keep the clicked `tile_index` in `submittedAnswer` for reports only.
@@ -1134,8 +1137,12 @@ references, note the new module in the README architecture section.
 - Whether Peek should be global (a session setting) or per-puzzle. This plan
   chooses per-puzzle and resets on load; making it global is a one-line change if
   users ask.
-- Whether `human_readable` should print the Mortal quote as well as the book
-  quote. Leaning no: the book side is the one that needs defending.
+
+Resolved during implementation: **there is no Mortal quote.** The policy net
+emits no text (`AiDecision.reasoning` is always absent), so `human_readable`
+prints a book quote and only Mortal's action and probabilities. Writing prose
+for Mortal would be the trainer's words, not a quotation, and the plan's
+non-goal forbids narrating the disagreement.
 
 ## Acceptance Criteria
 
@@ -1163,3 +1170,43 @@ references, note the new module in the README architecture section.
 - All verification gates pass, and `cargo test --lib` covers the outcome matrix,
   red-five normalization, Riichi tile semantics, book-only neutrality, and
   citation presence.
+
+
+## Implementation Notes
+
+- Where the pieces landed: `src/verdict.rs` (dual grading, red-five and
+  tile/action comparison, `grade_answer_json`), `src/rationale.rs`
+  (`RuleText`/`Citation` plus the exhaustive `rationale()` impls for the three
+  trigger enums, and `rationale_for`), `GameState::book_rationale`,
+  `ScenarioGrading` in the scenario manifest, `REPORT_VERSION = 2`.
+- The rationale types live in `src/rationale.rs` rather than directly under the
+  enums in `src/state.rs`. The compile-time guard is unchanged: each enum's
+  `rationale()` match is exhaustive, so a new variant fails to build.
+- Reports recompute the rationale on both build and import, so a stale embedded
+  block cannot survive a round trip.
+- Three of the six `DamaReason` variants are treated as *absent* justifications
+  (`no_tanyao`, `no_red_five_wait`, `no_suji_trap`): no quote, no citation. The
+  other three carry book citations.
+- Pre-answer Peek reveals **Mortal only**. The book rationale is itself the
+  answer's explanation ("Declare Riichi…"), so showing it before the answer
+  would leak the book side.
+- A Mortal drill without a model still grades against the stored `best` action
+  (MortalOnly, `unknown` confidence, no probabilities) instead of `Ungraded`.
+- `REPORT_VERSION` is 2. `tests/fixtures/scenario_report_v2.json` is committed
+  next to the v1 fixture; the v1 fixture still imports without warnings because
+  the importer compares only the book fields.
+- The v1 report booleans keep their book meaning for book lessons, so
+  `ReportBanner`, `verify_report`, and the fuzz runner are unchanged. For a
+  Mortal drill they grade the drill's `best` answer (Mortal's), and
+  `expected_tile` still carries the discard/kan tile.
+- `AiComparison.ai_agrees_with_*` now normalizes red fives before comparing, so
+  a `Discard_5mr` recommendation agrees with an app answer of `Discard_5m`.
+  The field keeps its argmax-equality meaning; only the red-five corner case got
+  more correct.
+- Gates run: `cargo fmt --check`, `cargo test --lib` (154 tests),
+  `cargo clippy --lib --tests -- -D warnings`, `cargo check --target
+  wasm32-unknown-unknown`, `wasm-pack build --target web`, `npm run build`,
+  `npm run lint`.
+- Phase 0 measurement is still outstanding: no weights file was present in the
+  worktree, so the survey and latency numbers are not recorded. Nothing in the
+  design depends on them, but the Web Worker decision does.

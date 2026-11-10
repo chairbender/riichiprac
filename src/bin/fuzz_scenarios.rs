@@ -207,9 +207,7 @@ fn parse_args<I: Iterator<Item = String>>(args: I) -> Result<Args, String> {
                     .parse()
                     .map_err(|err| format!("invalid --min-margin '{value}': {err}"))?;
                 if !parsed.is_finite() || !(0.0..=1.0).contains(&parsed) {
-                    return Err(format!(
-                        "--min-margin must be between 0 and 1, got {value}"
-                    ));
+                    return Err(format!("--min-margin must be between 0 and 1, got {value}"));
                 }
                 min_margin = parsed;
             }
@@ -444,6 +442,7 @@ fn write_report(
             evaluated_at: identity.created_at.clone(),
             evaluation: evaluation.clone(),
             comparison: None,
+            peeked_before_answer: false,
         }),
     })?;
 
@@ -614,7 +613,8 @@ mod tests {
     }
 
     #[test]
-    fn flags_parse() {        let args = parse(&[
+    fn flags_parse() {
+        let args = parse(&[
             "--iterations",
             "7",
             "--limit",

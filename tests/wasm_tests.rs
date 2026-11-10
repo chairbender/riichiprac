@@ -11,7 +11,8 @@ use agari::tile::{Honor, Tile};
 use agari::yaku::detect_yaku_with_context;
 use riichiprac::generator::{format_hand_compact, generate_random_hand};
 use riichiprac::{
-    build_scenario_report, check_wasm_status, generate_puzzle, parse_scenario_report,
+    build_scenario_report, check_wasm_status, generate_puzzle, grade_answer_json,
+    parse_scenario_report,
 };
 
 #[wasm_bindgen_test]
@@ -45,11 +46,20 @@ fn test_scenario_report_builds_and_parses_through_wasm() {
         serde_json::from_str(&report_json).expect("build must return valid JSON");
 
     assert_eq!(report["schema"], "riichiprac.scenario-report");
-    assert_eq!(report["version"], 1);
+    assert_eq!(report["version"], 2);
     assert_eq!(report["table"]["category"], "mock_table");
     assert_eq!(report["decision"]["verdict"]["is_correct"], false);
     assert_eq!(report["decision"]["verdict"]["is_action_correct"], false);
     assert_eq!(report["decision"]["verdict"]["is_tile_correct"], true);
+    assert_eq!(report["decision"]["verdict"]["mode"], "book_only");
+    assert_eq!(
+        report["decision"]["verdict"]["outcome"],
+        "only_available_disagrees"
+    );
+    assert_ne!(
+        report["decision"]["verdict"]["outcome"], "neither_agrees",
+        "a book-only miss must not be graded as wrong"
+    );
     let summary = report["human_readable"]
         .as_array()
         .expect("summary lines")
@@ -124,6 +134,7 @@ fn test_list_scenarios_payload() {
             && scenario["category"].is_string()
             && scenario["tags"].is_array()
             && scenario["requires_ai"].is_boolean()
+            && scenario["grading"].is_string()
     }));
     assert!(
         scenarios
@@ -139,8 +150,17 @@ fn test_list_scenarios_payload() {
     assert!(
         scenarios
             .iter()
-            .any(|scenario| scenario["id"] == "ai_best_action" && scenario["requires_ai"] == true),
-        "AI scenario must be listed and marked requires_ai"
+            .any(|scenario| scenario["id"] == "ai_best_action"
+                && scenario["requires_ai"] == true
+                && scenario["grading"] == "mortal_only"),
+        "AI scenario must be listed, marked requires_ai, and graded by Mortal alone"
+    );
+    assert!(
+        scenarios
+            .iter()
+            .any(|scenario| scenario["id"] == "ryanmen_protorun"
+                && scenario["grading"] == "book_and_mortal"),
+        "book lessons are graded by both perspectives"
     );
 }
 
@@ -839,4 +859,36 @@ fn test_ryanmen_rejection_sampling_constraints() {
             assert_eq!(total_score, 100_000);
         }
     }
+}
+
+#[wasm_bindgen_test]
+fn test_grade_answer_through_wasm() {
+    let table: serde_json::Value = serde_json::from_str(&generate_puzzle("mock_table".to_string()))
+        .expect("mock table must be valid JSON");
+    let answer = if table["correct_action"]["type"] == "riichi" {
+        serde_json::json!({
+            "action": "riichi",
+            "tile": table["correct_action"]["discard"],
+        })
+    } else {
+        serde_json::json!({
+            "action": "dama",
+            "tile": table["correct_action"]["discard"],
+        })
+    };
+    let request = serde_json::json!({
+        "table": table,
+        "answer": answer,
+        "evaluation": serde_json::Value::Null,
+    });
+
+    let grade_json = grade_answer_json(&request.to_string());
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_json).expect("grade must return valid JSON");
+
+    assert!(grade.get("error").is_none(), "grade error: {grade_json}");
+    assert_eq!(grade["mode"], "book_only");
+    assert_eq!(grade["outcome"], "only_available_agrees");
+    assert_eq!(grade["book"]["is_action_correct"], true);
+    assert!(grade["mortal"].is_null());
 }

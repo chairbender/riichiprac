@@ -44,17 +44,7 @@ pub fn render_text(report: &ScenarioReport, verdict: &ReportVerdict) -> String {
         "Reporter answered: {}",
         describe_reported_action(&report.decision.answer)
     );
-    let _ = writeln!(
-        out,
-        "Verdict: {}",
-        if verdict.is_correct {
-            "CORRECT"
-        } else if !verdict.is_action_correct {
-            "INCORRECT (action mismatch)"
-        } else {
-            "INCORRECT (tile mismatch)"
-        }
-    );
+    render_verdict(&mut out, report, verdict);
     let _ = writeln!(out, "Reporter reason: {}", report.decision.reason.as_str());
     if let Some(note) = &report.decision.note {
         let _ = writeln!(out, "Reporter note: {note}");
@@ -209,6 +199,57 @@ fn render_ai(out: &mut String, ai: &super::model::ReportedAi) {
             yes_no(comparison.ai_agrees_with_reporter)
         );
     }
+}
+
+/// Render the dual verdict: what the book says, what Mortal says, and the one
+/// word that settles whether the answer is wrong.
+fn render_verdict(out: &mut String, report: &ScenarioReport, verdict: &ReportVerdict) {
+    let book_agrees = verdict.is_action_correct && verdict.is_tile_correct;
+    let _ = writeln!(
+        out,
+        "Book: {} - {}",
+        if book_agrees { "AGREES" } else { "DISAGREES" },
+        describe_correct_action(&report.table.correct_action)
+    );
+    if let Some(rationale) = &report.table.book_rationale {
+        let _ = writeln!(out, "  Rule: {}", rationale.summary);
+        let _ = writeln!(
+            out,
+            "  Source: {} {}",
+            rationale.source.book,
+            rationale.source.label()
+        );
+    }
+
+    match &verdict.mortal {
+        Some(mortal) => {
+            let _ = writeln!(
+                out,
+                "Mortal: {} - recommends {} ({:.0}%); answer scored {:.0}%",
+                if mortal.agrees { "AGREES" } else { "DISAGREES" },
+                mortal.recommended_action,
+                mortal.top_probability * 100.0,
+                mortal.answer_probability * 100.0
+            );
+        }
+        None => {
+            let _ = writeln!(
+                out,
+                "Mortal: UNAVAILABLE - no evaluation attached or model not loaded"
+            );
+        }
+    }
+
+    let _ = writeln!(
+        out,
+        "Outcome: {} ({})",
+        verdict.outcome.as_str(),
+        if verdict.outcome.is_wrong() {
+            "wrong"
+        } else {
+            "not wrong"
+        }
+    );
 }
 
 fn describe_correct_action(action: &CorrectAction) -> String {
@@ -368,7 +409,9 @@ mod tests {
         assert!(text.contains("Decision: Declare Riichi, or stay dama?"));
         assert!(text.contains("App expected: Riichi, discarding"));
         assert!(text.contains("Reporter answered: Dama, discarding"));
-        assert!(text.contains("INCORRECT (action mismatch)"));
+        assert!(text.contains("Book: DISAGREES"));
+        assert!(text.contains("Mortal: UNAVAILABLE"));
+        assert!(text.contains("Outcome: only_available_disagrees (not wrong)"));
         assert!(text.contains("Reporter note: The app should have stayed dama here."));
     }
 

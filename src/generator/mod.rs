@@ -55,6 +55,26 @@ pub struct ScenarioMeta {
     pub tags: &'static [&'static str],
     /// True when generation needs the loaded Mortal evaluator.
     pub requires_ai: bool,
+    /// Which perspectives grade this lesson.
+    pub grading: ScenarioGrading,
+}
+
+/// How an answer is graded for a lesson.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScenarioGrading {
+    /// A book rule plus Mortal when the model is loaded.
+    BookAndMortal,
+    /// The state's answer is the model's own action; there is no book rule.
+    MortalOnly,
+}
+
+impl ScenarioGrading {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::BookAndMortal => "book_and_mortal",
+            Self::MortalOnly => "mortal_only",
+        }
+    }
 }
 
 /// The user-facing scenario catalogue. Fixtures are deliberately excluded.
@@ -66,6 +86,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         category: ScenarioCategory::TileEfficiency,
         tags: &["block_theory", "discard", "ryanmen"],
         requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
         id: ScenarioId::ChiitoitsuRiichiVsDama,
@@ -74,6 +95,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         category: ScenarioCategory::RiichiDecision,
         tags: &["chiitoitsu", "riichi", "dama"],
         requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
         id: ScenarioId::ShouminkanDecision,
@@ -82,6 +104,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         category: ScenarioCategory::KanDecision,
         tags: &["kan", "shouminkan"],
         requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
         id: ScenarioId::AiBestAction,
@@ -90,6 +113,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         category: ScenarioCategory::AiDecision,
         tags: &["ai", "mortal", "discard", "call", "any_decision"],
         requires_ai: true,
+        grading: ScenarioGrading::MortalOnly,
     },
 ];
 
@@ -103,6 +127,7 @@ pub fn list_scenarios_json() -> String {
         category: &'static str,
         tags: &'static [&'static str],
         requires_ai: bool,
+        grading: &'static str,
     }
 
     let scenarios: Vec<ScenarioMetaJson> = SCENARIO_MANIFEST
@@ -114,6 +139,7 @@ pub fn list_scenarios_json() -> String {
             category: meta.category.as_str(),
             tags: meta.tags,
             requires_ai: meta.requires_ai,
+            grading: meta.grading.as_str(),
         })
         .collect();
 
@@ -179,14 +205,26 @@ impl ScenarioId {
 /// the first real Block Theory scenario. The `mock_table` fixture is handled
 /// separately so it stays out of the lesson manifest.
 pub fn generate_puzzle(category: &str) -> Result<GameState, String> {
-    if category == "mock_table" {
-        return crate::fixtures::mock_table::generate(category);
-    }
+    let state = if category == "mock_table" {
+        crate::fixtures::mock_table::generate(category)?
+    } else {
+        match ScenarioId::from_id(category) {
+            Some(id) => id.generate(category)?,
+            None => block_theory::ryanmen_protorun::generate(category)?,
+        }
+    };
 
-    match ScenarioId::from_id(category) {
-        Some(id) => id.generate(category),
-        None => block_theory::ryanmen_protorun::generate(category),
-    }
+    Ok(finalize_state(state))
+}
+
+/// Attach derived fields that must never be trusted from a generator literal.
+///
+/// The book rationale is a pure function of the state plus the static rule
+/// table, so it is stamped once at the generation boundary and recomputed on
+/// report import.
+pub fn finalize_state(mut state: GameState) -> GameState {
+    state.book_rationale = crate::rationale::rationale_for(&state);
+    state
 }
 
 /// Standalone function for generating a 14-tile hand via 5-block theory.

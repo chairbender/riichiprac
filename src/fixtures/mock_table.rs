@@ -171,6 +171,7 @@ pub(crate) fn generate(category: &str) -> Result<GameState, String> {
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
+        book_rationale: None,
 
         hand_string,
         tiles: tile_strings,

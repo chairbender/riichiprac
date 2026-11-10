@@ -1430,3 +1430,378 @@
   font-size: 0.72rem;
   font-weight: 600;
 }
+
+/* Dual verdict: book vs. Mortal ------------------------------------------ */
+
+.verdict-panel {
+  margin: 8px 10px 0;
+  padding: 8px 10px 10px;
+  border: 1px solid #303748;
+  border-radius: 10px;
+  background-color: #171a21;
+}
+
+.verdict-panel--correct {
+  border-color: #2f6f44;
+}
+
+.verdict-panel--contested {
+  border-color: #7a5c2c;
+}
+
+.verdict-panel--incorrect {
+  border-color: #7a2c2c;
+}
+
+.verdict-preanswer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  color: #adb5bd;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.verdict-preanswer--loading {
+  color: #8b94a7;
+}
+
+.verdict-preanswer--error {
+  color: #ffc9c9;
+}
+
+.verdict-preanswer-text {
+  flex: 1 1 200px;
+}
+
+.verdict-peek {
+  padding: 3px 10px;
+  border: 1px solid #4dabf7;
+  border-radius: 999px;
+  background-color: transparent;
+  color: #a5d8ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.verdict-peek:hover {
+  background-color: rgba(77, 171, 247, 0.12);
+}
+
+.verdict-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 339px) {
+  .verdict-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.verdict-column {
+  min-width: 0;
+  padding: 6px 8px;
+  border-left: 3px solid #495057;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.verdict-column--book {
+  border-left-color: #e03131;
+}
+
+.verdict-column--mortal {
+  border-left-color: #4dabf7;
+}
+
+.verdict-column-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 4px;
+}
+
+.verdict-column-label {
+  color: #e7ecf3;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.verdict-column-source {
+  overflow: hidden;
+  color: #8b94a7;
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.verdict-recommendation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 4px;
+  color: #f1f3f5;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.verdict-tile {
+  width: 22px;
+  height: auto;
+}
+
+.verdict-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-bottom: 4px;
+}
+
+.verdict-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.verdict-mark--ok {
+  color: #8ce99a;
+}
+
+.verdict-mark--no {
+  color: #ffa8a8;
+}
+
+.verdict-mark-label {
+  color: #adb5bd;
+  font-weight: 600;
+}
+
+.verdict-probability,
+.verdict-answer-probability {
+  color: #a5d8ff;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.verdict-answer-probability {
+  margin: 0 0 4px;
+  color: #8b94a7;
+}
+
+.verdict-absent-column {
+  margin: 0 0 4px;
+  color: #8b94a7;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.verdict-unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.verdict-error {
+  margin: 0;
+  color: #ffc9c9;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.verdict-ranking summary {
+  color: #a5d8ff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.verdict-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid #262b36;
+}
+
+.verdict-band-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.verdict-band--correct .verdict-band-chip {
+  background-color: rgba(47, 158, 68, 0.2);
+  color: #8ce99a;
+}
+
+.verdict-band--contested .verdict-band-chip {
+  background-color: rgba(230, 168, 0, 0.2);
+  color: #ffd43b;
+}
+
+.verdict-band--incorrect .verdict-band-chip {
+  background-color: rgba(224, 49, 49, 0.2);
+  color: #ffa8a8;
+}
+
+.verdict-band--neutral .verdict-band-chip {
+  background-color: rgba(139, 148, 167, 0.2);
+  color: #ced4da;
+}
+
+.verdict-band-text {
+  flex: 1 1 180px;
+  color: #ced4da;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+/* Book rationale ---------------------------------------------------------- */
+
+.book-rationale {
+  margin-top: 6px;
+}
+
+.book-rationale-summary {
+  margin: 0 0 5px;
+  color: #ced4da;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.book-rule-list {
+  margin: 0;
+  padding-left: 14px;
+  list-style: disc;
+}
+
+.book-rule {
+  margin-bottom: 5px;
+}
+
+.book-rule-text {
+  margin: 0;
+  color: #dee2e6;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.book-rule-applies {
+  margin: 1px 0 0;
+  color: #8b94a7;
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+
+.book-rule-quote {
+  margin: 2px 0 0;
+  padding-left: 6px;
+  border-left: 2px solid #495057;
+  color: #adb5bd;
+  font-size: 0.66rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.book-rule-citation {
+  display: inline-block;
+  margin-top: 2px;
+  color: #a5d8ff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.book-absent {
+  margin-top: 6px;
+}
+
+.book-absent-title {
+  display: block;
+  color: #8b94a7;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.book-absent ul,
+.book-caveats ul {
+  margin: 2px 0 0;
+  padding-left: 14px;
+  color: #8b94a7;
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+
+.book-caveats {
+  margin-top: 6px;
+  color: #8b94a7;
+  font-size: 0.66rem;
+}
+
+.book-caveats summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.book-source {
+  margin: 6px 0 0;
+  color: #6c757d;
+  font-size: 0.6rem;
+}
+
+/* Neutral / contested toast tones ---------------------------------------- */
+
+.feedback-toast--contested {
+  border-color: #7a5c2c;
+  background-color: #1f1a12;
+  color: #ffd43b;
+}
+
+.feedback-toast--contested .feedback-detail {
+  color: #ffe8a3;
+}
+
+.feedback-toast--neutral {
+  border-color: #495057;
+  background-color: #1b2029;
+  color: #ced4da;
+}
+
+.feedback-grade--neutral {
+  border-left-color: #868e96;
+}
+
+.hand-tile-button--mortal {
+  outline: 2px dashed #4dabf7;
+  outline-offset: -3px;
+}
+
+.verdict-peek-card {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-left: 3px solid #4dabf7;
+  border-radius: 6px;
+  background-color: rgba(77, 171, 247, 0.06);
+}

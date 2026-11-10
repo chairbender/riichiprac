@@ -17,18 +17,24 @@ use serde_json::json;
 
 use crate::ai::wasm_bridge::Evaluation;
 use crate::generator::SCENARIO_MANIFEST;
-use crate::state::{CorrectAction, CorrectActionType};
+use crate::state::CorrectAction;
+use crate::verdict as dual;
 
 pub use model::{
     AiComparison, AppInfo, BuildReportRequest, DecisionPrompt, ParsedReport, ReportDecision,
     ReportReason, ReportVerdict, ReportedAction, ReportedAi, ScenarioReport, ScenarioSnapshot,
 };
+pub use verdict::evaluate as evaluate_book_answer;
 
 /// Stable identifier for the report file format.
 pub const REPORT_SCHEMA: &str = "riichiprac.scenario-report";
 
-/// Current report schema version. Bump only for incompatible changes.
-pub const REPORT_VERSION: u32 = 1;
+/// Current report schema version.
+///
+/// Version 2 adds the dual verdict (`outcome`, `mode`, `mortal`). Version 1
+/// files still import: the new fields default and only the book fields are
+/// compared, so an old report is not reported as tampered.
+pub const REPORT_VERSION: u32 = 2;
 
 /// Largest note (in characters) the exporter accepts.
 pub const MAX_NOTE_CHARS: usize = 4000;
@@ -39,22 +45,30 @@ pub const MAX_REPORT_BYTES: usize = 2 * 1024 * 1024;
 /// Build a report from a request sent by the frontend.
 pub fn build_report(request: BuildReportRequest) -> Result<ScenarioReport, String> {
     let note = normalize_note(request.note)?;
-    let verdict = verdict::evaluate(&request.table.correct_action, &request.answer);
-    let scenario = scenario_snapshot(&request.table.category);
-    let prompt = DecisionPrompt::from_target(request.table.target_action)
+    let mut table = request.table;
+    // Derived, so never trust a stale value from the request.
+    table.book_rationale = crate::rationale::rationale_for(&table);
+    let grade = dual::grade_answer(
+        &table,
+        &request.answer,
+        request.ai.as_ref().map(|ai| &ai.evaluation),
+    );
+    let report_verdict = ReportVerdict::from_dual(&grade, &table.correct_action);
+    let scenario = scenario_snapshot(&table.category);
+    let prompt = DecisionPrompt::from_target(table.target_action)
         .as_str()
         .to_string();
 
     let ai = request
         .ai
-        .map(|ai| add_comparison(ai, &request.table.correct_action, &request.answer));
+        .map(|ai| add_comparison(ai, &table.correct_action, &request.answer));
 
     let decision = ReportDecision {
         prompt,
         reason: request.reason,
         note,
         answer: request.answer,
-        verdict: verdict.clone(),
+        verdict: report_verdict.clone(),
     };
 
     let app = AppInfo {
@@ -69,10 +83,10 @@ pub fn build_report(request: BuildReportRequest) -> Result<ScenarioReport, Strin
         app,
         scenario,
         decision,
-        request.table,
+        table,
         ai,
     );
-    report.human_readable = summary::render_lines(&report, &verdict);
+    report.human_readable = summary::render_lines(&report, &report_verdict);
     Ok(report)
 }
 
@@ -101,10 +115,16 @@ pub fn parse_report(json: &str) -> Result<ParsedReport, String> {
         ));
     }
 
-    let verdict = verdict::evaluate(&report.table.correct_action, &report.decision.answer);
+    report.table.book_rationale = crate::rationale::rationale_for(&report.table);
+    let grade = dual::grade_answer(
+        &report.table,
+        &report.decision.answer,
+        report.ai.as_ref().map(|ai| &ai.evaluation),
+    );
+    let report_verdict = ReportVerdict::from_dual(&grade, &report.table.correct_action);
     let mut warnings = Vec::new();
 
-    if report.decision.verdict != verdict {
+    if !report.decision.verdict.book_matches(&report_verdict) {
         warnings.push(
             "The saved verdict disagrees with the recomputed verdict; showing the recomputed one."
                 .to_string(),
@@ -134,11 +154,12 @@ pub fn parse_report(json: &str) -> Result<ParsedReport, String> {
         warnings.extend(validate_ai(&ai.evaluation));
     }
 
-    report.human_readable = summary::render_lines(&report, &verdict);
+    report.decision.verdict = report_verdict.clone();
+    report.human_readable = summary::render_lines(&report, &report_verdict);
 
     Ok(ParsedReport {
         report,
-        verdict,
+        verdict: report_verdict,
         warnings,
     })
 }
@@ -246,8 +267,10 @@ fn make_comparison(
     let reporter_probability = probability_for_action(evaluation, &reporter_action);
 
     AiComparison {
-        ai_agrees_with_app: evaluation.recommended_action == app_action,
-        ai_agrees_with_reporter: evaluation.recommended_action == reporter_action,
+        ai_agrees_with_app: dual::normalize_mortal_action(&evaluation.recommended_action)
+            == dual::normalize_mortal_action(&app_action),
+        ai_agrees_with_reporter: dual::normalize_mortal_action(&evaluation.recommended_action)
+            == dual::normalize_mortal_action(&reporter_action),
         app_action,
         app_probability,
         reporter_action,
@@ -255,55 +278,8 @@ fn make_comparison(
     }
 }
 
-/// Mortal action name for the app's expected answer.
-pub fn mortal_action_for_correct(action: &CorrectAction) -> String {
-    match action {
-        CorrectAction::Riichi { .. } => "Riichi".to_string(),
-        CorrectAction::Dama { discard } => format!("Discard_{discard}"),
-        CorrectAction::Kan { .. } => "Kan".to_string(),
-        CorrectAction::Discard { tile } => format!("Discard_{tile}"),
-        CorrectAction::Best { action, .. } => action.clone(),
-    }
-}
-
-/// Mortal action name for the reporter's answer.
-fn mortal_action_for_reported(answer: &ReportedAction) -> String {
-    match answer.action {
-        CorrectActionType::Riichi => "Riichi".to_string(),
-        CorrectActionType::Dama => format!("Discard_{}", answer.tile),
-        CorrectActionType::Kan => "Kan".to_string(),
-        CorrectActionType::Discard => format!("Discard_{}", answer.tile),
-        CorrectActionType::Best => answer
-            .action_name
-            .clone()
-            .unwrap_or_else(|| format!("Discard_{}", answer.tile)),
-    }
-}
-
-/// Sum the action probability, including the red-five variant for 5m/5p/5s.
-pub fn probability_for_action(evaluation: &Evaluation, action: &str) -> f32 {
-    let red_variant = action
-        .strip_prefix("Discard_")
-        .filter(|tile| is_five_tile(tile))
-        .map(|_| format!("{action}r"));
-
-    evaluation
-        .evaluations
-        .iter()
-        .filter(|scored| {
-            scored.action == action
-                || red_variant
-                    .as_deref()
-                    .is_some_and(|red| scored.action == red)
-        })
-        .map(|scored| scored.probability)
-        .sum()
-}
-
-fn is_five_tile(tile: &str) -> bool {
-    let bytes = tile.as_bytes();
-    bytes.len() == 2 && bytes[0] == b'5' && matches!(bytes[1], b'm' | b'p' | b's')
-}
+pub use dual::mortal_action_for_answer as mortal_action_for_reported;
+pub use dual::{mortal_action_for_correct, probability_for_action};
 
 fn validate_ai(evaluation: &Evaluation) -> Vec<String> {
     let mut warnings = Vec::new();
@@ -352,7 +328,7 @@ mod tests {
     use super::*;
     use crate::ai::wasm_bridge::ActionEvaluation;
     use crate::fixtures::mock_table;
-    use crate::state::{GameState, MeldType, Wind};
+    use crate::state::{CorrectAction, CorrectActionType, GameState, MeldType, Wind};
 
     fn evaluation(actions: &[(&str, &str, f32)]) -> Evaluation {
         Evaluation {
@@ -563,6 +539,7 @@ mod tests {
                 ("Discard_5mr", "discard", 0.2),
             ]),
             comparison: None,
+            peeked_before_answer: false,
         });
 
         // Force the expected answer to be a 5m discard so the aggregation is
@@ -588,6 +565,7 @@ mod tests {
             evaluated_at: "2026-11-10T08:42:05.000Z".to_string(),
             evaluation: evaluation(&[("Discard_6m", "discard", 0.9), ("Riichi", "riichi", 0.1)]),
             comparison: None,
+            peeked_before_answer: false,
         });
 
         let parsed = parse_report(&serde_json::to_string(&report).unwrap()).unwrap();
@@ -611,6 +589,7 @@ mod tests {
             evaluated_at: "2026-11-10T08:42:05.000Z".to_string(),
             evaluation: evaluation(&[("Discard_1m", "discard", 0.8), ("Riichi", "riichi", 0.5)]),
             comparison: None,
+            peeked_before_answer: false,
         });
 
         let parsed = parse_report(&serde_json::to_string(&report).unwrap()).unwrap();
@@ -622,6 +601,68 @@ mod tests {
                 .any(|warning| warning.contains("sum to")),
             "warnings: {:?}",
             parsed.warnings
+        );
+    }
+
+    #[test]
+    fn drill_report_keeps_the_expected_tile_and_mode() {
+        let mut table = mock_table::generate("mock_table").expect("fixture must build");
+        table.correct_action = CorrectAction::best(
+            "Riichi",
+            Some("3p".to_string()),
+            Vec::new(),
+            "Riichi".to_string(),
+        );
+
+        let mut req = request(
+            table,
+            ReportedAction::new(CorrectActionType::Best, "3p").with_action_name("Riichi"),
+        );
+        req.ai = None;
+        let report = build_report(req).expect("drill report must build");
+
+        assert_eq!(
+            report.decision.verdict.expected_action,
+            CorrectActionType::Best
+        );
+        assert_eq!(report.decision.verdict.expected_tile, "3p");
+        assert_eq!(
+            report.decision.verdict.mode,
+            crate::verdict::GradingMode::MortalOnly
+        );
+        assert_eq!(
+            report.decision.verdict.outcome,
+            crate::verdict::AnswerOutcome::OnlyAvailableAgrees
+        );
+        assert!(
+            report.decision.verdict.is_correct,
+            "a drill's is_correct is Mortal's answer"
+        );
+    }
+
+    #[test]
+    fn committed_v2_fixture_carries_the_dual_verdict() {
+        let json = include_str!("../../tests/fixtures/scenario_report_v2.json");
+        let parsed = parse_report(json).expect("v2 fixture must parse");
+
+        assert_eq!(parsed.report.version, REPORT_VERSION);
+        assert_eq!(parsed.verdict.mode, crate::verdict::GradingMode::BookOnly);
+        assert_eq!(
+            parsed.verdict.outcome,
+            crate::verdict::AnswerOutcome::OnlyAvailableDisagrees
+        );
+        assert!(
+            parsed.warnings.is_empty(),
+            "warnings: {:?}",
+            parsed.warnings
+        );
+        assert!(parsed.report.table.book_rationale.is_some());
+        assert!(
+            parsed
+                .report
+                .human_readable
+                .join("\n")
+                .contains("Book: DISAGREES")
         );
     }
 

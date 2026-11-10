@@ -1,6 +1,8 @@
+import type { AiActionInfo } from './types/ai';
 import type {
   CorrectAction,
   CorrectActionType,
+  GameState,
   PlayerState,
 } from './types/game';
 
@@ -74,4 +76,32 @@ export function findKanCandidateTile(player: PlayerState): string | null {
   }
 
   return null;
+}
+
+/** Collapse a red-five discard action onto its base tile for matching. */
+export function normalizeMortalAction(action: string): string {
+  return action.startsWith('Discard_') && action.endsWith('r')
+    ? action.slice(0, -1)
+    : action;
+}
+
+/**
+ * Find the payload info for a submitted Mortal action, including red-five
+ * aliases. Used for labels and for the tiles a call consumed.
+ */
+export function findAiActionInfo(
+  state: GameState,
+  action: string,
+  tile?: string,
+): AiActionInfo | undefined {
+  const actions = state.ai_decision?.actions ?? [];
+  return (
+    actions.find((candidate) => candidate.action === action) ??
+    actions.find(
+      (candidate) =>
+        normalizeMortalAction(candidate.action) ===
+          normalizeMortalAction(action) &&
+        (tile === undefined || candidate.tile === tile),
+    )
+  );
 }

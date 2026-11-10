@@ -304,6 +304,7 @@ fn assemble_state(
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
         shouminkan_triggers: triggers.to_vec(),
+        book_rationale: None,
         hand_string,
         tiles: tile_strings,
         shanten: metrics.shanten,

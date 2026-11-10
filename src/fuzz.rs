@@ -570,14 +570,20 @@ mod tests {
         let expected = CorrectAction::dama("8m");
         let evaluation = evaluation(
             "Discard_7m",
-            &[("Discard_7m", "discard", 0.371), ("Discard_8m", "discard", 0.3695)],
+            &[
+                ("Discard_7m", "discard", 0.371),
+                ("Discard_8m", "discard", 0.3695),
+            ],
         );
         let mask = mask_for(&["7m", "8m"], false);
         let comparison = compare_expected_action(&expected, &evaluation, &mask);
 
         assert_eq!(comparison.outcome, FuzzOutcome::Discrepancy);
         assert!((comparison.ai_lead() - 0.0015).abs() < 1e-6);
-        assert!(comparison.exceeds_margin(0.0), "zero margin keeps everything");
+        assert!(
+            comparison.exceeds_margin(0.0),
+            "zero margin keeps everything"
+        );
         assert!(comparison.exceeds_margin(0.001), "0.0015 clears 0.001");
         assert!(
             !comparison.exceeds_margin(0.05),
@@ -590,7 +596,10 @@ mod tests {
         let expected = CorrectAction::dama("6m");
         let evaluation = evaluation(
             "Discard_3s",
-            &[("Discard_3s", "discard", 0.85), ("Discard_6m", "discard", 0.0024)],
+            &[
+                ("Discard_3s", "discard", 0.85),
+                ("Discard_6m", "discard", 0.0024),
+            ],
         );
         let mask = mask_for(&["3s", "6m"], false);
         let comparison = compare_expected_action(&expected, &evaluation, &mask);

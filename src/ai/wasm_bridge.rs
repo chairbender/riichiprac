@@ -89,6 +89,7 @@ impl WasmMortalEvaluator {
         let state =
             crate::generator::ai_best_action::generate(&self.model, &self.model_name, category)
                 .map_err(|err| js_error(&format!("failed to generate AI scenario: {err}")))?;
+        let state = crate::generator::finalize_state(state);
 
         serde_json::to_string(&state)
             .map_err(|err| js_error(&format!("failed to serialize AI scenario: {err}")))
@@ -290,6 +291,7 @@ mod tests {
             riichi_triggers: Vec::new(),
             dama_reasons: Vec::new(),
             shouminkan_triggers: Vec::new(),
+            book_rationale: None,
             hand_string: String::new(),
             tiles: Vec::new(),
             shanten: 0,
