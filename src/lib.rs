@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 pub use generator::{PuzzleResponse, ScenarioGenerator, generate_random_hand};
 pub use state::{
     CalledMeld, CorrectAction, CorrectActionType, DiscardTile, GameState, MeldType, PlayerState,
-    TargetAction, Wind,
+    RiichiTrigger, TargetAction, Wind,
 };
 
 /// Verification helper for WASM module initialization.

@@ -68,6 +68,25 @@ pub struct CorrectAction {
     pub discard: String,
 }
 
+/// Reasons a scenario recommends declaring Riichi.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RiichiTrigger {
+    /// The human player is the dealer (East seat).
+    Dealer,
+    /// Every pair and the wait tile is a simple tile (2-8).
+    Tanyao,
+    /// A red five is held, so the wait itself is the regular five.
+    RedFiveWait,
+    /// The human river contains a suji tile for the wait.
+    SujiTrap,
+    /// The wait tile is outside the 4-5-6 middle range, or is an honor.
+    #[serde(rename = "wait_outside_456")]
+    WaitOutside456,
+    /// The hand has at most one dora, so it is below Mangan without Riichi.
+    ScoreBelowMangan,
+}
+
 /// Discard tile in a player's river.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DiscardTile {
@@ -134,6 +153,8 @@ pub struct PlayerState {
     pub hand: Vec<String>,
     /// The active drawn tile (14th tile), if currently this player's turn.
     pub draw: Option<String>,
+    /// Red five tiles held in `hand` or `draw` (e.g. "5m").
+    pub red_fives: Vec<String>,
     /// Discard river, in the order the tiles were discarded.
     pub discards: Vec<DiscardTile>,
     /// Open called melds.
@@ -151,6 +172,8 @@ pub struct GameState {
     pub category: String,
     pub target_action: TargetAction,
     pub correct_action: CorrectAction,
+    /// Reasons this scenario recommends Riichi (empty when not applicable).
+    pub riichi_triggers: Vec<RiichiTrigger>,
 
     // Hand evaluation (Human player)
     pub hand_string: String,

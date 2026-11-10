@@ -9,6 +9,15 @@ export type MeldType = 'Chi' | 'Pon' | 'Kan' | 'Ankan';
 
 export type TargetAction = 'Riichi' | 'Dama' | 'Push' | 'Fold' | 'NaniKiru';
 
+/** Reasons a scenario recommends declaring Riichi. */
+export type RiichiTrigger =
+  | 'dealer'
+  | 'tanyao'
+  | 'red_five_wait'
+  | 'suji_trap'
+  | 'wait_outside_456'
+  | 'score_below_mangan';
+
 /** Action kinds the trainer can expect alongside the discard. */
 export type CorrectActionType = 'riichi' | 'dama';
 
@@ -44,6 +53,8 @@ export interface PlayerState {
   /** Concealed tiles; the active draw is separate. */
   hand: string[];
   draw: string | null;
+  /** Tile codes in the hand/draw that are red fives. */
+  red_fives: string[];
   discards: DiscardTile[];
   melds: CalledMeld[];
   is_riichi: boolean;
@@ -54,6 +65,8 @@ export interface GameState {
   category: string;
   target_action: TargetAction;
   correct_action: CorrectAction;
+  /** Heuristics that justify Riichi for this scenario. */
+  riichi_triggers: RiichiTrigger[];
 
   hand_string: string;
   tiles: string[];

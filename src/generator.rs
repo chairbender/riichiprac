@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 
 use agari::context::{GameContext, WinType, indicator_to_dora};
-use agari::hand::{Meld, decompose_hand, decompose_hand_with_melds};
+use agari::hand::{HandStructure, Meld, decompose_hand, decompose_hand_with_melds};
 use agari::parse::{to_counts, validate_hand};
+use agari::scoring::{ScoreLevel, calculate_score};
 use agari::shanten::{calculate_shanten, calculate_ukeire};
 use agari::tile::{Honor, Suit, Tile};
 use agari::yaku::{Yaku, detect_yaku_with_context};
 
-use crate::rng::{choose, gen_bool, gen_range};
+use crate::rng::{choose, gen_bool, gen_range, shuffle};
 use crate::state::{
     CalledMeld, CorrectAction, CorrectActionType, DiscardTile, GameState, MeldType, PlayerState,
-    TargetAction, Wind,
+    RiichiTrigger, TargetAction, Wind,
 };
 
 pub type PuzzleResponse = GameState;
@@ -160,6 +161,90 @@ struct RyanmenSkeleton {
     correct_tile: Tile,
 }
 
+/// The set of heuristics that make Riichi correct for one chiitoitsu puzzle.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct RiichiTriggerSet {
+    dealer: bool,
+    tanyao: bool,
+    red_five_wait: bool,
+    suji_trap: bool,
+    wait_outside_456: bool,
+    score_below_mangan: bool,
+}
+
+impl RiichiTriggerSet {
+    fn any(self) -> bool {
+        self.dealer
+            || self.tanyao
+            || self.red_five_wait
+            || self.suji_trap
+            || self.wait_outside_456
+            || self.score_below_mangan
+    }
+
+    fn to_vec(self) -> Vec<RiichiTrigger> {
+        let mut triggers = Vec::new();
+        if self.dealer {
+            triggers.push(RiichiTrigger::Dealer);
+        }
+        if self.tanyao {
+            triggers.push(RiichiTrigger::Tanyao);
+        }
+        if self.red_five_wait {
+            triggers.push(RiichiTrigger::RedFiveWait);
+        }
+        if self.suji_trap {
+            triggers.push(RiichiTrigger::SujiTrap);
+        }
+        if self.wait_outside_456 {
+            triggers.push(RiichiTrigger::WaitOutside456);
+        }
+        if self.score_below_mangan {
+            triggers.push(RiichiTrigger::ScoreBelowMangan);
+        }
+        triggers
+    }
+}
+
+/// A six-pair chiitoitsu hand before the extra singleton is discarded.
+struct ChiitoitsuSkeleton {
+    /// Six distinct pair tiles.
+    pairs: Vec<Tile>,
+    /// The singleton that stays in hand and becomes the winning wait.
+    wait_tile: Tile,
+    /// The unwanted singleton that should be discarded.
+    discard_tile: Tile,
+    /// Whether the wait singleton is a red five.
+    red_five_wait: bool,
+    /// Heuristics that justify Riichi for this hand.
+    triggers: RiichiTriggerSet,
+}
+
+impl ChiitoitsuSkeleton {
+    /// Full 14-tile hand before the discard (six pairs + two singletons).
+    fn full_tiles(&self) -> Vec<Tile> {
+        let mut tiles = Vec::with_capacity(14);
+        for &pair in &self.pairs {
+            tiles.push(pair);
+            tiles.push(pair);
+        }
+        tiles.push(self.wait_tile);
+        tiles.push(self.discard_tile);
+        tiles
+    }
+
+    /// The 13-tile tenpai hand after discarding the unwanted singleton.
+    fn tenpai_tiles(&self) -> Vec<Tile> {
+        let mut tiles = Vec::with_capacity(13);
+        for &pair in &self.pairs {
+            tiles.push(pair);
+            tiles.push(pair);
+        }
+        tiles.push(self.wait_tile);
+        tiles
+    }
+}
+
 /// Removes one copy of `tile` from the deck, failing if none remain.
 fn remove_tile(deck: &mut HashMap<Tile, u8>, tile: &Tile) -> Result<(), String> {
     match deck.get_mut(tile) {
@@ -234,6 +319,163 @@ fn random_round() -> (Wind, u8) {
     } else {
         (Wind::South, index as u8 - 3)
     }
+}
+
+/// Converts a seat/round wind into the honor used by agari's game context.
+fn wind_to_honor(wind: Wind) -> Honor {
+    match wind {
+        Wind::East => Honor::East,
+        Wind::South => Honor::South,
+        Wind::West => Honor::West,
+        Wind::North => Honor::North,
+    }
+}
+
+/// True when the tile is not a 4, 5, or 6, including every honor tile.
+fn is_outside_456(tile: Tile) -> bool {
+    match tile.value() {
+        Some(value) => !(4..=6).contains(&value),
+        None => true,
+    }
+}
+
+/// Suji tiles for a wait: the same-suit tiles three ranks away.
+///
+/// Waiting on 2 makes 5 safe, waiting on 5 makes 2 and 8 safe, and so on.
+fn suji_tiles(tile: Tile) -> Vec<Tile> {
+    let (Some(suit), Some(value)) = (tile.suit(), tile.value()) else {
+        return Vec::new();
+    };
+
+    let mut suji = Vec::with_capacity(2);
+    if value > 3 {
+        suji.push(Tile::suited(suit, value - 3));
+    }
+    if value + 3 <= 9 {
+        suji.push(Tile::suited(suit, value + 3));
+    }
+    suji
+}
+
+/// Draws a random non-empty subset of compatible Riichi triggers.
+fn random_riichi_triggers() -> RiichiTriggerSet {
+    loop {
+        let mask = gen_range(0, 64) as u8;
+        if mask == 0 {
+            continue;
+        }
+
+        let triggers = RiichiTriggerSet {
+            dealer: mask & 1 != 0,
+            tanyao: mask & 2 != 0,
+            red_five_wait: mask & 4 != 0,
+            suji_trap: mask & 8 != 0,
+            wait_outside_456: mask & 16 != 0,
+            score_below_mangan: mask & 32 != 0,
+        };
+
+        if !triggers.any() {
+            continue;
+        }
+
+        // A red-five wait is always the 5, so it cannot also be outside 4-5-6.
+        if triggers.red_five_wait && triggers.wait_outside_456 {
+            continue;
+        }
+
+        return triggers;
+    }
+}
+
+/// Counts regular dora in a final winning hand for one indicator.
+fn regular_dora_in_hand(winning_tiles: &[Tile], indicator: Tile) -> u8 {
+    let dora = indicator_to_dora(indicator);
+    winning_tiles
+        .iter()
+        .filter(|tile| **tile == dora)
+        .count()
+        .min(u8::MAX as usize) as u8
+}
+
+/// True when a 13-tile hand is exactly six pairs plus the intended singleton.
+fn has_six_pairs_and_singleton(tiles: &[Tile], wait_tile: Tile) -> bool {
+    let counts = to_counts(tiles);
+    if counts.len() != 7 {
+        return false;
+    }
+
+    let mut pairs = 0;
+    let mut singletons = 0;
+    for &count in counts.values() {
+        match count {
+            2 => pairs += 1,
+            1 => singletons += 1,
+            _ => return false,
+        }
+    }
+
+    pairs == 6 && singletons == 1 && counts.get(&wait_tile) == Some(&1)
+}
+
+/// Builds the human river, optionally forcing a same-suit suji of the wait
+/// while never allowing the wait tile itself to appear (furiten).
+fn build_chiitoitsu_human_river(
+    deck: &mut HashMap<Tile, u8>,
+    count: usize,
+    wait_tile: Tile,
+    suji_trap: bool,
+) -> Result<Vec<Tile>, String> {
+    let mut river = Vec::with_capacity(count);
+
+    if suji_trap {
+        let suji = suji_tiles(wait_tile);
+        let tile = choose(&suji).ok_or_else(|| "No suji available for the wait".to_string())?;
+        remove_tile(deck, &tile)?;
+        river.push(tile);
+    }
+
+    let remaining = count.saturating_sub(river.len());
+    let mut extra = draw_tiles_excluding(deck, remaining, &[wait_tile])
+        .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
+    river.append(&mut extra);
+    shuffle(&mut river);
+
+    Ok(river)
+}
+
+/// Scores a completed chiitoitsu hand without Riichi and reports whether it
+/// stays below Mangan.
+fn chiitoitsu_scores_below_mangan(
+    winning_tiles: &[Tile],
+    wait_tile: Tile,
+    round_wind: Wind,
+    seat_wind: Wind,
+    dora_indicator: Tile,
+    aka_count: u8,
+) -> bool {
+    let counts = to_counts(winning_tiles);
+    let Some(chiitoitsu) = decompose_hand(&counts)
+        .into_iter()
+        .find(|structure| matches!(structure, HandStructure::Chiitoitsu { .. }))
+    else {
+        return false;
+    };
+
+    let context = GameContext::new(
+        WinType::Ron,
+        wind_to_honor(round_wind),
+        wind_to_honor(seat_wind),
+    )
+    .with_winning_tile(wait_tile)
+    .with_dora(vec![dora_indicator])
+    .with_aka(aka_count);
+
+    let yaku = detect_yaku_with_context(&chiitoitsu, &counts, &context);
+    if !yaku.yaku_list.contains(&Yaku::Chiitoitsu) {
+        return false;
+    }
+
+    calculate_score(&chiitoitsu, &yaku, &context).score_level == ScoreLevel::Normal
 }
 
 /// Formats a list of tiles into standard compact Mahjong notation (e.g. "123m456p789s11122z").
@@ -530,6 +772,7 @@ impl ScenarioGenerator {
                 score: opponent_scores[index],
                 hand: hand.iter().map(|tile| tile.to_string()).collect(),
                 draw: None,
+                red_fives: Vec::new(),
                 discards: discards_from_tiles(&river),
                 melds: Vec::new(),
                 is_riichi: false,
@@ -614,6 +857,7 @@ impl ScenarioGenerator {
             score: human_score,
             hand: human_hand.iter().map(|tile| tile.to_string()).collect(),
             draw: Some(skeleton.correct_tile.to_string()),
+            red_fives: Vec::new(),
             discards: discards_from_tiles(&human_river),
             melds: vec![CalledMeld {
                 meld_type: MeldType::Pon,
@@ -637,6 +881,7 @@ impl ScenarioGenerator {
                 action_type: CorrectActionType::Dama,
                 discard: skeleton.correct_tile.to_string(),
             },
+            riichi_triggers: Vec::new(),
             hand_string,
             tiles: tile_strings,
             shanten: shanten_res.shanten,
@@ -849,12 +1094,332 @@ impl ScenarioGenerator {
         Err("Failed to construct a valid ryanmen protorun hand".to_string())
     }
 
+    /// Generates a seven-pairs tenpai where Riichi is correct because at least
+    /// one Riichi heuristic applies, while the wait itself is never the dora.
+    pub fn generate_chiitoitsu_riichi_vs_dama(&self, category: &str) -> Result<GameState, String> {
+        const MAX_ATTEMPTS: usize = 20_000;
+        let mut last_error = String::new();
+
+        for _ in 0..MAX_ATTEMPTS {
+            let triggers = random_riichi_triggers();
+            let skeleton = match self.build_chiitoitsu_skeleton(triggers) {
+                Ok(skeleton) => skeleton,
+                Err(err) => {
+                    last_error = err;
+                    continue;
+                }
+            };
+
+            match self.build_chiitoitsu_board(category, &skeleton) {
+                Ok(state) => return Ok(state),
+                Err(err) => last_error = err,
+            }
+        }
+
+        Err(format!(
+            "Failed to satisfy chiitoitsu scenario constraints after {MAX_ATTEMPTS} attempts: {last_error}"
+        ))
+    }
+
+    /// Builds six distinct pairs plus a wait singleton and an unwanted
+    /// singleton that will be discarded.
+    fn build_chiitoitsu_skeleton(
+        &self,
+        triggers: RiichiTriggerSet,
+    ) -> Result<ChiitoitsuSkeleton, String> {
+        let wait_candidates: Vec<Tile> = ALL_TILES
+            .iter()
+            .copied()
+            .filter(|&tile| {
+                if triggers.red_five_wait && tile.value() != Some(5) {
+                    return false;
+                }
+                if triggers.tanyao && !tile.is_simple() {
+                    return false;
+                }
+                if triggers.wait_outside_456 && !is_outside_456(tile) {
+                    return false;
+                }
+                if triggers.suji_trap && tile.suit().is_none() {
+                    return false;
+                }
+                true
+            })
+            .collect();
+
+        let wait_tile =
+            choose(&wait_candidates).ok_or_else(|| "No compatible wait tile".to_string())?;
+
+        let mut deck = fresh_deck();
+        remove_tile(&mut deck, &wait_tile)?;
+
+        let mut pairs = Vec::with_capacity(6);
+        for _ in 0..6 {
+            let candidates: Vec<Tile> = ALL_TILES
+                .iter()
+                .copied()
+                .filter(|&tile| {
+                    tile != wait_tile
+                        && !pairs.contains(&tile)
+                        && deck.get(&tile).copied().unwrap_or(0) >= 2
+                        && (!triggers.tanyao || tile.is_simple())
+                })
+                .collect();
+
+            let pair = choose(&candidates).ok_or_else(|| "No pair candidates left".to_string())?;
+            remove_tile(&mut deck, &pair)?;
+            remove_tile(&mut deck, &pair)?;
+            pairs.push(pair);
+        }
+
+        let discard_candidates: Vec<Tile> = ALL_TILES
+            .iter()
+            .copied()
+            .filter(|&tile| {
+                tile != wait_tile
+                    && !pairs.contains(&tile)
+                    && deck.get(&tile).copied().unwrap_or(0) >= 1
+            })
+            .collect();
+        let discard_tile =
+            choose(&discard_candidates).ok_or_else(|| "No discard candidates left".to_string())?;
+
+        Ok(ChiitoitsuSkeleton {
+            pairs,
+            wait_tile,
+            discard_tile,
+            red_five_wait: triggers.red_five_wait,
+            triggers,
+        })
+    }
+
+    /// Builds and validates a complete board for a chiitoitsu skeleton.
+    fn build_chiitoitsu_board(
+        &self,
+        category: &str,
+        skeleton: &ChiitoitsuSkeleton,
+    ) -> Result<GameState, String> {
+        let full_tiles = skeleton.full_tiles();
+        validate_hand(&full_tiles)?;
+
+        let tenpai_tiles = skeleton.tenpai_tiles();
+        if !has_six_pairs_and_singleton(&tenpai_tiles, skeleton.wait_tile) {
+            return Err("Chiitoitsu skeleton is not six pairs plus one singleton".to_string());
+        }
+
+        let post_counts = to_counts(&tenpai_tiles);
+        let shanten = calculate_shanten(&post_counts);
+        if shanten.shanten != 0 {
+            return Err("Chiitoitsu discard must leave a tenpai hand".to_string());
+        }
+
+        let ukeire = calculate_ukeire(&post_counts);
+        if ukeire.tiles.len() != 1 || ukeire.tiles[0].tile != skeleton.wait_tile {
+            return Err("Chiitoitsu hand must have exactly the intended wait".to_string());
+        }
+
+        let mut winning_tiles = tenpai_tiles.clone();
+        winning_tiles.push(skeleton.wait_tile);
+        let winning_counts = to_counts(&winning_tiles);
+        let decompositions = decompose_hand(&winning_counts);
+
+        let (round_wind, hand_number) = random_round();
+        let human_wind = if skeleton.triggers.dealer {
+            Wind::East
+        } else {
+            choose(&[Wind::South, Wind::West, Wind::North])
+                .ok_or_else(|| "No non-dealer winds available".to_string())?
+        };
+
+        let aka_count = u8::from(skeleton.red_five_wait);
+
+        // The wait must never be dora. When the score trigger is active the
+        // final hand also has to stay at zero or one dora in total.
+        let dora_candidates: Vec<Tile> = ALL_TILES
+            .iter()
+            .copied()
+            .filter(|&indicator| {
+                if indicator_to_dora(indicator) == skeleton.wait_tile {
+                    return false;
+                }
+                if skeleton.triggers.score_below_mangan {
+                    regular_dora_in_hand(&winning_tiles, indicator) + aka_count <= 1
+                } else {
+                    true
+                }
+            })
+            .collect();
+        let dora_indicator =
+            choose(&dora_candidates).ok_or_else(|| "No legal dora indicator".to_string())?;
+
+        if !chiitoitsu_scores_below_mangan(
+            &winning_tiles,
+            skeleton.wait_tile,
+            round_wind,
+            human_wind,
+            dora_indicator,
+            aka_count,
+        ) {
+            return Err("Completed chiitoitsu hand is not below Mangan without Riichi".to_string());
+        }
+
+        let mut deck = fresh_deck();
+        for tile in &full_tiles {
+            remove_tile(&mut deck, tile)?;
+        }
+        remove_tile(&mut deck, &dora_indicator)?;
+
+        let ura_candidates: Vec<Tile> = ALL_TILES
+            .iter()
+            .copied()
+            .filter(|&indicator| {
+                indicator_to_dora(indicator) != skeleton.wait_tile
+                    && deck.get(&indicator).copied().unwrap_or(0) > 0
+            })
+            .collect();
+        let ura_indicator =
+            choose(&ura_candidates).ok_or_else(|| "No legal ura indicator".to_string())?;
+        remove_tile(&mut deck, &ura_indicator)?;
+
+        let mut opponent_scores = Vec::with_capacity(3);
+        let mut opponent_total = 0;
+        for _ in 0..3 {
+            let score = 20_000 + 1_000 * gen_range(0, 11) as i32;
+            opponent_scores.push(score);
+            opponent_total += score;
+        }
+        let human_score = 100_000 - opponent_total;
+
+        // The human is about to discard, so every player has completed the
+        // same number of turns and made one discard per turn.
+        let discard_count = gen_range(2, 7);
+
+        let opponent_meta = [(1usize, "Shimocha"), (2, "Toimen"), (3, "Kamicha")];
+
+        let mut opponent_players = Vec::with_capacity(3);
+        let mut opponent_rivers: Vec<Vec<Tile>> = Vec::with_capacity(3);
+        for (index, (seat, name)) in opponent_meta.iter().enumerate() {
+            let hand = draw_tiles(&mut deck, 13)
+                .ok_or_else(|| "Deck exhausted drawing an opponent hand".to_string())?;
+            let river = draw_tiles(&mut deck, discard_count)
+                .ok_or_else(|| "Deck exhausted drawing an opponent river".to_string())?;
+            opponent_rivers.push(river.clone());
+            opponent_players.push(PlayerState {
+                seat: *seat,
+                name: name.to_string(),
+                is_human: false,
+                wind: human_wind.next(*seat),
+                score: opponent_scores[index],
+                hand: hand.iter().map(|tile| tile.to_string()).collect(),
+                draw: None,
+                red_fives: Vec::new(),
+                discards: discards_from_tiles(&river),
+                melds: Vec::new(),
+                is_riichi: false,
+                riichi_discard_index: None,
+            });
+        }
+
+        // The human river cannot contain the wait tile (furiten). If the suji
+        // trigger is active, it must contain a same-suit suji of the wait.
+        let human_river = build_chiitoitsu_human_river(
+            &mut deck,
+            discard_count,
+            skeleton.wait_tile,
+            skeleton.triggers.suji_trap,
+        )?;
+
+        // Wait chance: at most two winning-tile copies may be visible.
+        let mut visible_wait_tiles = 0;
+        for river in &opponent_rivers {
+            for tile in river {
+                if *tile == skeleton.wait_tile {
+                    visible_wait_tiles += 1;
+                }
+            }
+        }
+        if dora_indicator == skeleton.wait_tile {
+            visible_wait_tiles += 1;
+        }
+        if visible_wait_tiles > 2 {
+            return Err(format!(
+                "{visible_wait_tiles} chiitoitsu wait tiles are already visible"
+            ));
+        }
+
+        let remaining_tiles: usize = deck.values().map(|&count| count as usize).sum();
+        let tiles_remaining = remaining_tiles.saturating_sub(12).min(u8::MAX as usize) as u8;
+        if tiles_remaining == 0 {
+            return Err("No drawable tiles remain".to_string());
+        }
+
+        let mut display_tiles = full_tiles.clone();
+        display_tiles.sort();
+        let mut sorted_hand = tenpai_tiles.clone();
+        sorted_hand.sort();
+
+        let hand_string = format_hand_compact(&display_tiles);
+        let tile_strings: Vec<String> = display_tiles.iter().map(|tile| tile.to_string()).collect();
+        let ukeire_tiles: Vec<String> = ukeire.tiles.iter().map(|u| u.tile.to_string()).collect();
+        let human_red_fives = if skeleton.red_five_wait {
+            vec![skeleton.wait_tile.to_string()]
+        } else {
+            Vec::new()
+        };
+
+        let human_player = PlayerState {
+            seat: 0,
+            name: "You".to_string(),
+            is_human: true,
+            wind: human_wind,
+            score: human_score,
+            hand: sorted_hand.iter().map(|tile| tile.to_string()).collect(),
+            draw: Some(skeleton.discard_tile.to_string()),
+            red_fives: human_red_fives,
+            discards: discards_from_tiles(&human_river),
+            melds: Vec::new(),
+            is_riichi: false,
+            riichi_discard_index: None,
+        };
+
+        let mut players = Vec::with_capacity(4);
+        players.push(human_player);
+        players.extend(opponent_players);
+
+        Ok(GameState {
+            category: category.to_string(),
+            target_action: TargetAction::Riichi,
+            correct_action: CorrectAction {
+                action_type: CorrectActionType::Riichi,
+                discard: skeleton.discard_tile.to_string(),
+            },
+            riichi_triggers: skeleton.triggers.to_vec(),
+            hand_string,
+            tiles: tile_strings,
+            shanten: shanten.shanten,
+            is_agari: false,
+            decompositions_count: decompositions.len(),
+            ukeire_tiles,
+            ukeire_total: ukeire.total_count,
+            round_wind,
+            hand_number,
+            honba: gen_range(0, 4) as u8,
+            riichi_sticks: 0,
+            dora_indicators: vec![dora_indicator.to_string()],
+            ura_dora_indicators: vec![ura_indicator.to_string()],
+            tiles_remaining,
+            current_turn: 0,
+            players,
+        })
+    }
+
     /// Dispatches to the requested scenario. Unknown categories fall back to
     /// the first real Block Theory scenario; "mock_table" keeps the Phase 2
     /// fixture available for UI scaffolding and tests.
     pub fn generate_puzzle(&self, category: &str) -> Result<GameState, String> {
         match category {
             "mock_table" => self.generate_mock_puzzle(category),
+            "chiitoitsu_riichi_vs_dama" => self.generate_chiitoitsu_riichi_vs_dama(category),
             _ => self.generate_ryanmen_protorun(category),
         }
     }
@@ -895,6 +1460,7 @@ impl ScenarioGenerator {
             score: 25000,
             hand: human_standing_hand,
             draw: human_draw,
+            red_fives: Vec::new(),
             discards: vec![
                 DiscardTile::new("1z"),
                 DiscardTile::new("9m"),
@@ -928,6 +1494,7 @@ impl ScenarioGenerator {
                 "9s".into(),
             ],
             draw: None,
+            red_fives: Vec::new(),
             discards: vec![
                 DiscardTile::new("9m"),
                 DiscardTile::new("1s"),
@@ -968,6 +1535,7 @@ impl ScenarioGenerator {
                 "7z".into(),
             ],
             draw: None,
+            red_fives: Vec::new(),
             discards: vec![
                 DiscardTile::new("1z"),
                 DiscardTile::new("9p"),
@@ -1002,6 +1570,7 @@ impl ScenarioGenerator {
                 "1z".into(),
             ],
             draw: None,
+            red_fives: Vec::new(),
             discards: vec![
                 DiscardTile::new("7z"),
                 DiscardTile::new("1s"),
@@ -1026,6 +1595,7 @@ impl ScenarioGenerator {
                 action_type: CorrectActionType::Riichi,
                 discard: correct_discard,
             },
+            riichi_triggers: Vec::new(),
 
             hand_string,
             tiles: tile_strings,
@@ -1177,6 +1747,214 @@ mod tests {
         let mut actual = state.tiles.clone();
         actual.sort();
         assert_eq!(actual, expected);
+    }
+
+    fn parse_tile(code: &str) -> Tile {
+        parse_hand(code).expect("tile code must parse").remove(0)
+    }
+
+    fn chiitoitsu_state_tiles(state: &GameState) -> (Vec<Tile>, Tile, Tile) {
+        let human = &state.players[0];
+        let hand_tiles: Vec<Tile> = human.hand.iter().map(|tile| parse_tile(tile)).collect();
+        let wait = parse_tile(&state.ukeire_tiles[0]);
+        let discard = parse_tile(
+            human
+                .draw
+                .as_deref()
+                .expect("chiitoitsu human must have a draw"),
+        );
+        let mut winning = hand_tiles;
+        winning.push(wait);
+        (winning, wait, discard)
+    }
+
+    fn chiitoitsu_trigger_holds(state: &GameState, trigger: RiichiTrigger) -> bool {
+        let human = &state.players[0];
+        let (winning, wait, _) = chiitoitsu_state_tiles(state);
+        let counts = to_counts(&winning);
+
+        match trigger {
+            RiichiTrigger::Dealer => human.wind == Wind::East,
+            RiichiTrigger::Tanyao => {
+                counts
+                    .iter()
+                    .filter(|(_, count)| **count == 2)
+                    .all(|(&tile, _)| tile.is_simple())
+                    && wait.is_simple()
+            }
+            RiichiTrigger::RedFiveWait => {
+                wait.value() == Some(5)
+                    && human.red_fives.iter().any(|tile| tile == &wait.to_string())
+            }
+            RiichiTrigger::SujiTrap => {
+                let suji: Vec<String> = suji_tiles(wait)
+                    .iter()
+                    .map(|tile| tile.to_string())
+                    .collect();
+                human
+                    .discards
+                    .iter()
+                    .any(|discard| suji.contains(&discard.tile))
+            }
+            RiichiTrigger::WaitOutside456 => is_outside_456(wait),
+            RiichiTrigger::ScoreBelowMangan => {
+                let indicator = parse_tile(&state.dora_indicators[0]);
+                let aka = human.red_fives.len() as u8;
+                regular_dora_in_hand(&winning, indicator) + aka <= 1
+            }
+        }
+    }
+
+    #[test]
+    fn test_chiitoitsu_riichi_vs_dama_constraints() {
+        let generator = ScenarioGenerator::new();
+
+        for run in 0..200 {
+            let state = generator
+                .generate_puzzle("chiitoitsu_riichi_vs_dama")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+
+            assert_eq!(state.category, "chiitoitsu_riichi_vs_dama");
+            assert_eq!(state.target_action, TargetAction::Riichi);
+            assert_eq!(state.correct_action.action_type, CorrectActionType::Riichi);
+            assert!(
+                !state.riichi_triggers.is_empty(),
+                "run {run}: at least one Riichi trigger must apply"
+            );
+
+            let human = &state.players[0];
+            assert!(human.is_human);
+            assert!(human.melds.is_empty());
+            assert!(!human.is_riichi);
+            assert_eq!(human.hand.len(), 13);
+            let draw = human
+                .draw
+                .clone()
+                .expect("chiitoitsu human must have a draw");
+            assert_eq!(draw, state.correct_action.discard);
+
+            let mut expected = human.hand.clone();
+            expected.push(draw);
+            expected.sort();
+            let mut actual = state.tiles.clone();
+            actual.sort();
+            assert_eq!(actual, expected, "run {run}: displayed tiles must match");
+
+            let (winning, wait, discard) = chiitoitsu_state_tiles(&state);
+            assert_eq!(winning.len(), 14);
+            assert_ne!(wait, discard);
+
+            let hand_counts = to_counts(
+                &human
+                    .hand
+                    .iter()
+                    .map(|tile| parse_tile(tile))
+                    .collect::<Vec<_>>(),
+            );
+            let pair_count = hand_counts.values().filter(|&&count| count == 2).count();
+            let singleton_count = hand_counts.values().filter(|&&count| count == 1).count();
+            assert_eq!(hand_counts.len(), 7);
+            assert_eq!(pair_count, 6);
+            assert_eq!(singleton_count, 1);
+            assert_eq!(hand_counts.get(&wait), Some(&1));
+            assert!(!hand_counts.contains_key(&discard));
+
+            assert_eq!(state.ukeire_tiles.len(), 1);
+            assert_eq!(calculate_shanten(&hand_counts).shanten, 0);
+            let ukeire = calculate_ukeire(&hand_counts);
+            assert_eq!(ukeire.tiles.len(), 1);
+            assert_eq!(ukeire.tiles[0].tile, wait);
+
+            let indicator = parse_tile(&state.dora_indicators[0]);
+            assert_ne!(
+                indicator_to_dora(indicator),
+                wait,
+                "run {run}: the wait must never be the dora"
+            );
+            let ura_indicator = parse_tile(&state.ura_dora_indicators[0]);
+            assert_ne!(indicator_to_dora(ura_indicator), wait);
+
+            for discard_tile in &human.discards {
+                assert_ne!(
+                    discard_tile.tile,
+                    wait.to_string(),
+                    "run {run}: the human river is furiten"
+                );
+            }
+
+            for trigger in &state.riichi_triggers {
+                assert!(
+                    chiitoitsu_trigger_holds(&state, *trigger),
+                    "run {run}: trigger {trigger:?} does not hold"
+                );
+            }
+
+            let aka = human.red_fives.len() as u8;
+            assert!(aka <= 1);
+            assert!(chiitoitsu_scores_below_mangan(
+                &winning,
+                wait,
+                state.round_wind,
+                human.wind,
+                indicator,
+                aka
+            ));
+        }
+    }
+
+    #[test]
+    fn test_chiitoitsu_each_trigger_can_be_applied() {
+        let generator = ScenarioGenerator::new();
+        let trigger_sets = [
+            RiichiTriggerSet {
+                dealer: true,
+                ..Default::default()
+            },
+            RiichiTriggerSet {
+                tanyao: true,
+                ..Default::default()
+            },
+            RiichiTriggerSet {
+                red_five_wait: true,
+                ..Default::default()
+            },
+            RiichiTriggerSet {
+                suji_trap: true,
+                ..Default::default()
+            },
+            RiichiTriggerSet {
+                wait_outside_456: true,
+                ..Default::default()
+            },
+            RiichiTriggerSet {
+                score_below_mangan: true,
+                ..Default::default()
+            },
+        ];
+
+        for triggers in trigger_sets {
+            let mut generated = None;
+            for _ in 0..50 {
+                let Ok(skeleton) = generator.build_chiitoitsu_skeleton(triggers) else {
+                    continue;
+                };
+                if let Ok(state) =
+                    generator.build_chiitoitsu_board("chiitoitsu_riichi_vs_dama", &skeleton)
+                {
+                    generated = Some(state);
+                    break;
+                }
+            }
+
+            let state = generated
+                .unwrap_or_else(|| panic!("could not generate a board for triggers {triggers:?}"));
+
+            let expected = triggers.to_vec();
+            assert_eq!(state.riichi_triggers, expected);
+            for trigger in expected {
+                assert!(chiitoitsu_trigger_holds(&state, trigger));
+            }
+        }
     }
 
     #[test]

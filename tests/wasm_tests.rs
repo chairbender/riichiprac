@@ -6,6 +6,7 @@ use agari::context::indicator_to_dora;
 use agari::hand::decompose_hand;
 use agari::parse::{parse_hand, to_counts, validate_hand};
 use agari::shanten::{calculate_shanten, calculate_ukeire};
+use agari::tile::Tile;
 use riichiprac::generator::{ScenarioGenerator, format_hand_compact};
 use riichiprac::{check_wasm_status, generate_puzzle};
 
@@ -13,6 +14,177 @@ use riichiprac::{check_wasm_status, generate_puzzle};
 fn test_wasm_status() {
     let status = check_wasm_status();
     assert_eq!(status, "WASM module initialized successfully");
+}
+
+fn parse_single_tile(code: &str) -> Tile {
+    parse_hand(code).expect("tile code must parse").remove(0)
+}
+
+fn is_outside_456(tile: Tile) -> bool {
+    match tile.value() {
+        Some(value) => !(4..=6).contains(&value),
+        None => true,
+    }
+}
+
+fn suji_tiles(tile: Tile) -> Vec<Tile> {
+    let (Some(suit), Some(value)) = (tile.suit(), tile.value()) else {
+        return Vec::new();
+    };
+
+    let mut suji = Vec::new();
+    if value > 3 {
+        suji.push(Tile::suited(suit, value - 3));
+    }
+    if value + 3 <= 9 {
+        suji.push(Tile::suited(suit, value + 3));
+    }
+    suji
+}
+
+#[wasm_bindgen_test]
+fn test_chiitoitsu_riichi_vs_dama_payload() {
+    const TRIGGERS: [&str; 6] = [
+        "dealer",
+        "tanyao",
+        "red_five_wait",
+        "suji_trap",
+        "wait_outside_456",
+        "score_below_mangan",
+    ];
+
+    for run in 0..100 {
+        let json_output = generate_puzzle("chiitoitsu_riichi_vs_dama".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+        assert_eq!(val["category"], "chiitoitsu_riichi_vs_dama");
+        assert_eq!(val["target_action"], "Riichi");
+        assert_eq!(val["correct_action"]["type"], "riichi");
+
+        let discard_code = val["correct_action"]["discard"]
+            .as_str()
+            .expect("riichi action must have a discard");
+        let human = &val["players"][0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert_eq!(human["draw"], discard_code);
+        assert_eq!(human["melds"].as_array().unwrap().len(), 0);
+        let red_fives = human["red_fives"]
+            .as_array()
+            .expect("human red_fives array");
+        assert!(red_fives.len() <= 1);
+
+        let triggers = val["riichi_triggers"]
+            .as_array()
+            .expect("riichi_triggers array");
+        assert!(!triggers.is_empty(), "run {run}: no triggers applied");
+        for trigger in triggers {
+            let trigger = trigger.as_str().expect("trigger string");
+            assert!(
+                TRIGGERS.contains(&trigger),
+                "run {run}: unknown trigger {trigger}"
+            );
+        }
+
+        let mut expected: Vec<&str> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        expected.push(discard_code);
+        expected.sort();
+        let mut actual: Vec<&str> = val["tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        actual.sort();
+        assert_eq!(actual, expected, "run {run}: tiles must match hand + draw");
+
+        let hand_tiles: Vec<Tile> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        let counts = to_counts(&hand_tiles);
+        assert_eq!(counts.len(), 7);
+        assert_eq!(counts.values().filter(|&&count| count == 2).count(), 6);
+        assert_eq!(counts.values().filter(|&&count| count == 1).count(), 1);
+
+        let wait_code = val["ukeire_tiles"][0]
+            .as_str()
+            .expect("chiitoitsu wait tile");
+        let wait = parse_single_tile(wait_code);
+        assert_eq!(counts.get(&wait), Some(&1));
+        assert_eq!(calculate_shanten(&counts).shanten, 0);
+        let ukeire = calculate_ukeire(&counts);
+        assert_eq!(ukeire.tiles.len(), 1);
+        assert_eq!(ukeire.tiles[0].tile.to_string(), wait_code);
+        assert_ne!(parse_single_tile(discard_code), wait);
+
+        let indicator =
+            parse_single_tile(val["dora_indicators"][0].as_str().expect("dora indicator"));
+        assert_ne!(
+            indicator_to_dora(indicator),
+            wait,
+            "run {run}: wait is the dora"
+        );
+
+        for discard in human["discards"].as_array().unwrap() {
+            assert_ne!(discard["tile"].as_str(), Some(wait_code));
+        }
+
+        for trigger in triggers {
+            match trigger.as_str().unwrap() {
+                "dealer" => assert_eq!(human["wind"], "East", "run {run}"),
+                "tanyao" => {
+                    for (&tile, &count) in &counts {
+                        if count == 2 || tile == wait {
+                            assert!(tile.is_simple(), "run {run}: non-simple tile {tile}");
+                        }
+                    }
+                }
+                "red_five_wait" => {
+                    assert_eq!(wait.value(), Some(5), "run {run}");
+                    assert!(
+                        red_fives
+                            .iter()
+                            .any(|tile| tile.as_str() == Some(wait_code)),
+                        "run {run}: red five marker missing"
+                    );
+                }
+                "suji_trap" => {
+                    let suji: Vec<String> = suji_tiles(wait)
+                        .iter()
+                        .map(|tile| tile.to_string())
+                        .collect();
+                    assert!(
+                        human["discards"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .any(|discard| suji
+                                .iter()
+                                .any(|suji| { Some(suji.as_str()) == discard["tile"].as_str() })),
+                        "run {run}: river is missing the suji"
+                    );
+                }
+                "wait_outside_456" => assert!(is_outside_456(wait), "run {run}"),
+                "score_below_mangan" => {
+                    let dora = indicator_to_dora(indicator);
+                    let regular = hand_tiles.iter().filter(|tile| **tile == dora).count();
+                    assert!(
+                        regular + red_fives.len() <= 1,
+                        "run {run}: trigger claims at most one dora"
+                    );
+                }
+                other => panic!("run {run}: unexpected trigger {other}"),
+            }
+        }
+    }
 }
 
 #[wasm_bindgen_test]
