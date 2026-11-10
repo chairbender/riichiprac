@@ -73,3 +73,13 @@ cargo test ai::                                # Candle must match within 1e-3
 `frontend/public/models/mortal_298k.safetensors` (catching any name or shape
 drift) and compares the forward pass; it skips when the weights are missing.
 The current maximum absolute difference is ~3e-6.
+
+## Licensing
+
+The checkpoint at `VoidShine/mortal-298k` is **AGPL-3.0**, as is the upstream
+[`Equim-chan/Mortal`](https://github.com/Equim-chan/Mortal) code that trained it.
+The converted Safetensors file is therefore an AGPL-3.0 work, separate from this
+repository's MIT code. `convert_weights.py` is its corresponding source: if you
+publish the converted file, keep it tagged `license: agpl-3.0` and link back
+here. Details and the reasoning behind hosting it externally are in
+[`hosting-plan.md`](../hosting-plan.md#5-licensing-weights-are-agpl-30-the-app-stays-mit).

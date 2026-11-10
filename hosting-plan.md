@@ -1,8 +1,9 @@
 # Free Hosting Plan — GitHub Pages + external weights CDN
 
 Status: code complete (2026-11-10). Remaining work is the human-only
-"Manual one-time setup" section at the bottom. This is the living status
-document for making the app deployable at $0.
+"Manual one-time setup" section at the bottom. Licensing split (MIT app, AGPL
+weights) is recorded in section 5. This is the living status document for
+making the app deployable at $0.
 
 Goal: the single-page trainer is served from **GitHub Pages**
 (`https://chairbender.github.io/riichiprac/`) and the ~43 MB Mortal weights file
@@ -133,7 +134,81 @@ Acceptance criteria:
   (`/riichiprac/assets/riichiprac_bg-*.wasm` under `GITHUB_ACTIONS=true`,
   `/assets/...` otherwise), confirming `?url` imports follow `base`.
 
-## 5. Verification (acceptance)
+## 5. Licensing: weights are AGPL-3.0, the app stays MIT
+
+- [x] License facts verified against GitHub/HF APIs and recorded below.
+- [x] `README.md`: "Model weights license" section (MIT code, AGPL weights).
+- [x] `scripts/README.md`: licensing note, since `convert_weights.py` is the
+      corresponding source for the AGPL file.
+- [x] Manual setup steps carry the `license: agpl-3.0` tag and provenance.
+- [x] Research log of the rejected alternatives (direct `.pth`, CI conversion).
+
+Files touched: `README.md`, `hosting-plan.md`, `scripts/README.md`.
+
+Verified 2026-11-10, recorded here so the decision does not have to be
+re-researched:
+
+| Artifact | License | Evidence |
+| --- | --- | --- |
+| This repo (`LICENSE`) | **MIT** | `LICENSE` at the repo root |
+| `Equim-chan/Mortal` (trained the weights) | **AGPL-3.0** | `api.github.com/repos/Equim-chan/Mortal` → `license.spdx_id` |
+| `VoidShine/mortal-298k` (only published 298k checkpoint) | **AGPL-3.0** | repo `LICENSE` is the AGPL-3.0 text; model card has `license: agpl-3.0` |
+| Crate dependencies | no GPL/AGPL | `cargo metadata`: MIT, Apache-2.0, MPL-2.0, BSD, ISC, Unicode only |
+
+**There is no permissively licensed form of these weights.** Weights that bind
+against `src/ai/model.rs` must be Mortal checkpoints (1012×34 input, 192
+channels / 40 blocks, 46-action head), and every Mortal checkpoint descends from
+AGPL-3.0 training code. HF and GitHub were searched for `mortal-298k`,
+`mahjong`, and `riichi`: the only 298k artifact is the AGPL `.pth` above, and no
+safetensors conversion exists. `critter/akochan` has no license file at all, so
+it is not a cleaner substitute.
+
+**Why the repo can stay MIT.** The app does not link the weights; it fetches
+them as data at runtime (`services/weightLoader.ts`) and they are never part of
+the build. The AGPL attaches to the weights and to works based on them, not to a
+separate MIT program that reads a file as input — the familiar "MIT engine,
+AGPL assets" arrangement.
+
+**Obligations when publishing the converted file** (HF repo, release asset, or
+`dist/models/`):
+
+1. Tag it AGPL-3.0 (`license: agpl-3.0` in the model card / release notes) and
+   include the license text.
+2. Offer the corresponding source: `scripts/convert_weights.py` plus a pointer
+   to `VoidShine/mortal-298k` (upstream `Equim-chan/Mortal`). No app source needs
+   to be handed over.
+3. Keep the "Model weights license" note in `README.md` accurate.
+
+AGPL §13 (network use) targets users interacting with the *program* remotely;
+serving static weight bytes is not that, but the source offer above covers it
+cheaply either way.
+
+Uncertainty worth stating: whether model weights are copyrightable at all is
+unsettled and jurisdiction-dependent, and whether AGPL's "based on the Program"
+reaches weights produced by AGPL training code is untested. Both point the same
+way — keep the notice, do not relicense the app.
+
+### Research log: alternatives considered and rejected
+
+- **Fetch the upstream `.pth` directly** (`VoidShine/mortal-298k/mortal_298k.pth`,
+  130,774,416 bytes). Rejected: wrong container (`wasm_bridge.rs:85` uses
+  `VarBuilder::from_buffered_safetensors`, and `.pth` is a zip of pickled
+  tensors), wrong key layout (training checkpoint with `mortal` /
+  `current_dqn` / `aux_net` + optimizer state, which the converter renames and
+  strips), and 3× the bytes. Converting pickle→safetensors in the browser, or
+  adding a `.pth` reader to the WASM path, is not worth it.
+- **Convert in CI and bundle into `dist/models/`** (no accounts needed).
+  Rejected: +1–2 min CI (torch install ≈1 GB, 130 MB checkpoint download), every
+  new visitor pulls 43 MB from Pages' 100 GB/month soft bandwidth (~2,300 first
+  loads/month), and it makes the site artifact itself the distributor of the
+  AGPL bytes for no benefit over the two-minute upload.
+- **Point `VITE_WEIGHTS_URL` at the `.pth`**: does not work, same format and
+  layout reasons.
+
+If the AI panel is ever removed or made user-supplied-weights-only, the repo
+becomes purely MIT with no weight licensing question at all.
+
+## 6. Verification (acceptance)
 
 All green on 2026-11-10 (local: rustc 1.93, wasm-pack 0.13.1, Node 18.19.1).
 
@@ -178,6 +253,12 @@ hf upload chairbender/mortal-weights \
   frontend/public/models/mortal_298k.safetensors mortal_298k.safetensors
 ```
 
+Then set the model card metadata to `license: agpl-3.0` (Edit model card → add
+the YAML front-matter) and note the provenance: upstream
+[`VoidShine/mortal-298k`](https://huggingface.co/VoidShine/mortal-298k) /
+[`Equim-chan/Mortal`](https://github.com/Equim-chan/Mortal), converted with
+`scripts/convert_weights.py`. See "5. Licensing" for why.
+
 Resulting URL (already the `PRIMARY_WEIGHTS_URL` constant):
 
 ```
@@ -191,7 +272,7 @@ gh auth login
 gh release create weights-v1 \
   frontend/public/models/mortal_298k.safetensors \
   --title "Mortal weights v1" \
-  --notes "Mortal 298k Safetensors weights for the riichiprac WASM evaluator."
+  --notes "Mortal 298k Safetensors weights for the riichiprac WASM evaluator. AGPL-3.0, derived from VoidShine/mortal-298k; conversion source: scripts/convert_weights.py."
 ```
 
 Resulting URL (already the `FALLBACK_WEIGHTS_URL` constant):
@@ -254,4 +335,5 @@ The hashed wasm filename comes from the workflow's build log (or from
 | `PRIMARY_WEIGHTS_URL` | `frontend/src/services/weightLoader.ts` | `chairbender/mortal-weights` HF repo (assumed; create it or change the URL) |
 | `FALLBACK_WEIGHTS_URL` | `frontend/src/services/weightLoader.ts` | `weights-v1` GitHub release tag (create it or change the URL) |
 | `CACHE_VERSION` | `frontend/src/services/weightLoader.ts` | bump when the weights file changes, to invalidate browser caches |
+| HF model card license | HF model repo | set `license: agpl-3.0` + provenance (see "5. Licensing") |
 | Pages URL | repo Settings → Pages | `https://chairbender.github.io/riichiprac/` |

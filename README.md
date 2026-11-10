@@ -45,6 +45,21 @@ file from GitHub Pages. Full runbook, including the one-time Pages setup and how
 to invalidate the browser cache after replacing the weights:
 [`hosting-plan.md`](hosting-plan.md).
 
+## Model weights license
+
+The app code in this repository is **MIT** (see `LICENSE`). The Mortal weights
+are a separate work under **AGPL-3.0**: they come from
+[`VoidShine/mortal-298k`](https://huggingface.co/VoidShine/mortal-298k), a
+checkpoint of [`Equim-chan/Mortal`](https://github.com/Equim-chan/Mortal)
+(AGPL-3.0), converted by `scripts/convert_weights.py`.
+
+The weights are fetched at runtime and are never part of the build, so the app
+and the weights are separate works: MIT here, AGPL-3.0 for the model file. If you
+republish the converted file, keep it tagged `license: agpl-3.0` and point at the
+conversion script as its source. Full reasoning, including the alternatives that
+were rejected and why, is in
+[`hosting-plan.md`](hosting-plan.md#5-licensing-weights-are-agpl-30-the-app-stays-mit).
+
 ## Deploying
 
 Pushing to `main` runs `.github/workflows/deploy.yml`, which builds the WASM
