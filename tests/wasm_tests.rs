@@ -2,11 +2,13 @@ use wasm_bindgen_test::*;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
-use agari::context::indicator_to_dora;
-use agari::hand::decompose_hand;
+use agari::context::{GameContext, WinType, indicator_to_dora};
+use agari::hand::{HandStructure, decompose_hand};
 use agari::parse::{parse_hand, to_counts, validate_hand};
+use agari::scoring::{ScoreLevel, calculate_score};
 use agari::shanten::{calculate_shanten, calculate_ukeire};
-use agari::tile::Tile;
+use agari::tile::{Honor, Tile};
+use agari::yaku::detect_yaku_with_context;
 use riichiprac::generator::{ScenarioGenerator, format_hand_compact};
 use riichiprac::{check_wasm_status, generate_puzzle};
 
@@ -42,6 +44,43 @@ fn suji_tiles(tile: Tile) -> Vec<Tile> {
     suji
 }
 
+fn honor_from_wind(wind: &str) -> Honor {
+    match wind {
+        "East" => Honor::East,
+        "South" => Honor::South,
+        "West" => Honor::West,
+        "North" => Honor::North,
+        other => panic!("unexpected wind {other}"),
+    }
+}
+
+fn chiitoitsu_score_level(
+    winning_tiles: &[Tile],
+    wait: Tile,
+    round_wind: &str,
+    seat_wind: &str,
+    dora_indicators: &[Tile],
+    aka_count: u8,
+) -> ScoreLevel {
+    let counts = to_counts(winning_tiles);
+    let structure = decompose_hand(&counts)
+        .into_iter()
+        .find(|structure| matches!(structure, HandStructure::Chiitoitsu { .. }))
+        .expect("winning hand must be chiitoitsu");
+
+    let context = GameContext::new(
+        WinType::Ron,
+        honor_from_wind(round_wind),
+        honor_from_wind(seat_wind),
+    )
+    .with_winning_tile(wait)
+    .with_dora(dora_indicators.to_vec())
+    .with_aka(aka_count);
+
+    let yaku = detect_yaku_with_context(&structure, &counts, &context);
+    calculate_score(&structure, &yaku, &context).score_level
+}
+
 #[wasm_bindgen_test]
 fn test_chiitoitsu_riichi_vs_dama_payload() {
     const TRIGGERS: [&str; 6] = [
@@ -53,12 +92,21 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
         "score_below_mangan",
     ];
 
+    let mut riichi_count = 0;
+
     for run in 0..100 {
         let json_output = generate_puzzle("chiitoitsu_riichi_vs_dama".to_string());
         let val: serde_json::Value = serde_json::from_str(&json_output)
             .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
 
         assert_eq!(val["category"], "chiitoitsu_riichi_vs_dama");
+
+        // Dama payloads are covered by the dedicated 100-hand test below.
+        if val["correct_action"]["type"].as_str() == Some("dama") {
+            continue;
+        }
+        riichi_count += 1;
+
         assert_eq!(val["target_action"], "Riichi");
         assert_eq!(val["correct_action"]["type"], "riichi");
 
@@ -185,6 +233,146 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
             }
         }
     }
+
+    assert!(riichi_count > 0, "no Riichi states were generated");
+}
+
+#[wasm_bindgen_test]
+fn test_chiitoitsu_dama_100_hands() {
+    let started = js_sys::Date::now();
+    let mut dama_count = 0;
+    let mut attempts = 0;
+
+    while dama_count < 100 && attempts < 400 {
+        attempts += 1;
+        let json_output = generate_puzzle("chiitoitsu_riichi_vs_dama".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("attempt {attempts}: invalid JSON: {err}: {json_output}"));
+
+        if val["correct_action"]["type"].as_str() != Some("dama") {
+            continue;
+        }
+        dama_count += 1;
+
+        assert_eq!(val["target_action"], "Dama");
+        assert_eq!(val["correct_action"]["type"], "dama");
+        assert!(val["riichi_triggers"].as_array().unwrap().is_empty());
+
+        let discard_code = val["correct_action"]["discard"]
+            .as_str()
+            .expect("dama action must have a discard");
+        let human = &val["players"][0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert_eq!(human["draw"], discard_code);
+        assert_ne!(human["wind"], "East");
+        let red_fives = human["red_fives"]
+            .as_array()
+            .expect("human red_fives array");
+        assert!(red_fives.is_empty());
+
+        let mut expected: Vec<&str> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        expected.push(discard_code);
+        expected.sort();
+        let mut actual: Vec<&str> = val["tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        actual.sort();
+        assert_eq!(
+            actual, expected,
+            "hand {dama_count}: tiles must match hand + draw"
+        );
+
+        let hand_tiles: Vec<Tile> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        let counts = to_counts(&hand_tiles);
+        assert_eq!(counts.len(), 7);
+        assert_eq!(counts.values().filter(|&&count| count == 2).count(), 6);
+        assert_eq!(counts.values().filter(|&&count| count == 1).count(), 1);
+
+        let wait_code = val["ukeire_tiles"][0]
+            .as_str()
+            .expect("chiitoitsu wait tile");
+        let wait = parse_single_tile(wait_code);
+        assert!(matches!(wait.value(), Some(4..=6)));
+        assert_eq!(counts.get(&wait), Some(&1));
+        assert_ne!(parse_single_tile(discard_code), wait);
+        assert_eq!(calculate_shanten(&counts).shanten, 0);
+        let ukeire = calculate_ukeire(&counts);
+        assert_eq!(ukeire.tiles.len(), 1);
+        assert_eq!(ukeire.tiles[0].tile, wait);
+
+        assert!(
+            counts
+                .iter()
+                .any(|(&tile, &count)| count == 2 && !tile.is_simple()),
+            "hand {dama_count}: missing a terminal/honor pair"
+        );
+
+        let suji = suji_tiles(wait);
+        for discard in human["discards"].as_array().unwrap() {
+            let code = discard["tile"].as_str().unwrap();
+            assert_ne!(code, wait_code);
+            assert!(
+                !suji.iter().any(|suji| suji.to_string() == code),
+                "hand {dama_count}: river contains wait suji {code}"
+            );
+        }
+
+        let dora_indicators = val["dora_indicators"]
+            .as_array()
+            .expect("dora indicators array");
+        assert_eq!(dora_indicators.len(), 2);
+
+        let parsed_indicators: Vec<Tile> = dora_indicators
+            .iter()
+            .map(|indicator| parse_single_tile(indicator.as_str().unwrap()))
+            .collect();
+        for &indicator in &parsed_indicators {
+            assert_ne!(indicator_to_dora(indicator), wait);
+        }
+
+        let total_dora: usize = parsed_indicators
+            .iter()
+            .map(|&indicator| {
+                let dora = indicator_to_dora(indicator);
+                hand_tiles.iter().filter(|tile| **tile == dora).count()
+            })
+            .sum();
+        assert_eq!(total_dora, 4, "hand {dama_count}: expected four dora");
+
+        let mut winning = hand_tiles;
+        winning.push(wait);
+        let score_level = chiitoitsu_score_level(
+            &winning,
+            wait,
+            val["round_wind"].as_str().expect("round wind"),
+            human["wind"].as_str().expect("human wind"),
+            &parsed_indicators,
+            0,
+        );
+        assert!(
+            score_level >= ScoreLevel::Mangan,
+            "hand {dama_count}: dama score is {score_level:?}"
+        );
+    }
+
+    assert_eq!(dama_count, 100, "did not generate 100 dama hands");
+    assert!(attempts <= 400);
+
+    let elapsed = js_sys::Date::now() - started;
+    assert!(elapsed < 10_000.0, "100 dama hands took {elapsed}ms");
 }
 
 #[wasm_bindgen_test]
