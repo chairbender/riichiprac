@@ -54,7 +54,18 @@ mod tests {
         );
         assert!(parsed.get("shanten").is_some());
         assert_eq!(parsed["players"].as_array().unwrap().len(), 4);
-        assert_eq!(parsed["round_wind"], "East");
+
+        let round_wind = parsed["round_wind"]
+            .as_str()
+            .expect("round_wind must be a string");
+        let hand_number = parsed["hand_number"]
+            .as_u64()
+            .expect("hand_number must be an integer");
+        match round_wind {
+            "East" => assert!((1..=4).contains(&hand_number)),
+            "South" => assert!((1..=2).contains(&hand_number)),
+            other => panic!("round must be South 2 or earlier, got {other} {hand_number}"),
+        }
 
         let human = &parsed["players"][0];
         assert_eq!(human["hand"].as_array().unwrap().len(), 10);
