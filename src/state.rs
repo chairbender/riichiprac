@@ -218,6 +218,9 @@ pub struct DiscardTile {
     pub is_riichi: bool,
     /// Whether this tile was discarded immediately after being drawn (tsumogiri).
     pub is_tsumogiri: bool,
+    /// Whether this was the red five of its suit.
+    #[serde(default)]
+    pub is_red: bool,
 }
 
 impl DiscardTile {
@@ -226,6 +229,7 @@ impl DiscardTile {
             tile: tile.into(),
             is_riichi: false,
             is_tsumogiri: false,
+            is_red: false,
         }
     }
 
@@ -234,6 +238,7 @@ impl DiscardTile {
             tile: tile.into(),
             is_riichi: true,
             is_tsumogiri: false,
+            is_red: false,
         }
     }
 
@@ -242,7 +247,14 @@ impl DiscardTile {
             tile: tile.into(),
             is_riichi: false,
             is_tsumogiri: true,
+            is_red: false,
         }
+    }
+
+    /// Mark this discard as the red five of its suit.
+    pub fn with_red(mut self, is_red: bool) -> Self {
+        self.is_red = is_red;
+        self
     }
 }
 

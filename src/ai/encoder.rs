@@ -265,7 +265,7 @@ fn encode_self_river(
         encode_self_kawa_item(
             buf,
             OFF_SELF_KAWA_FIRST + turn * SELF_KAWA_ITEM_CHANNELS,
-            discard.tile.as_str(),
+            discard,
             dora_factor,
         );
     }
@@ -276,7 +276,7 @@ fn encode_self_river(
         encode_self_kawa_item(
             buf,
             OFF_SELF_KAWA_LAST + ago * SELF_KAWA_ITEM_CHANNELS,
-            discard.tile.as_str(),
+            discard,
             dora_factor,
         );
     }
@@ -295,15 +295,17 @@ fn encode_self_river(
 fn encode_self_kawa_item(
     buf: &mut ObsBuffer,
     base: usize,
-    tile: &str,
+    discard: &DiscardTile,
     dora_factor: &[u8; TILE_KINDS],
 ) {
-    let Some(index) = tile_index(tile) else {
+    let Some(index) = tile_index(&discard.tile) else {
         return;
     };
     // Row 0 holds kan tiles called off this position (not tracked here).
     buf.assign(base + 1, index, 1.0);
-    // Row 2 is the red-five flag; our discards do not record aka-ness.
+    if discard.is_red {
+        buf.fill(base + 2, 1.0);
+    }
     if dora_factor[index] > 0 {
         buf.fill(base + 3, 1.0);
     }
@@ -369,7 +371,9 @@ fn encode_opponent_kawa_item(
     // Rows 0-2 hold chi/pon consumed tiles and called kans; those live in the
     // meld overview instead.
     buf.assign(base + 3, index, 1.0);
-    // Row 4 is the red-five flag; opponent akas are not tracked.
+    if discard.is_red {
+        buf.fill(base + 4, 1.0);
+    }
     if dora_factor[index] > 0 {
         buf.fill(base + 5, 1.0);
     }
@@ -425,11 +429,7 @@ fn encode_wall_and_dora(
 
     // Per-seat river tile sets.
     for (seat, player) in state.players.iter().take(4).enumerate() {
-        let tiles = player
-            .discards
-            .iter()
-            .filter_map(|discard| tile_index(&discard.tile));
-        encode_tile_set(buf, OFF_KAWA_OVERVIEW + seat * 7, tiles);
+        encode_discard_set(buf, OFF_KAWA_OVERVIEW + seat * 7, &player.discards);
     }
 
     // Melds: 4 slots x 5 rows per seat (chi/pon/open kan).
@@ -478,6 +478,30 @@ fn encode_tiles_seen(buf: &mut ObsBuffer, state: &GameState) {
     }
 }
 
+/// Red fives the human has seen: held in hand, or discarded by anyone.
+///
+/// libriichi tracks every witnessed aka in `akas_seen`. Our state only knows
+/// the human's held red fives plus the explicit `DiscardTile::is_red` flag, so
+/// this is the information we can feed the solver's `akas_in_wall`.
+pub(crate) fn visible_akas(state: &GameState) -> [bool; 3] {
+    let mut seen = [false; 3];
+    for tile in &state.players[0].red_fives {
+        if let Some(suit) = red_five_suit(tile) {
+            seen[suit] = true;
+        }
+    }
+    for player in state.players.iter().take(4) {
+        for discard in &player.discards {
+            if discard.is_red
+                && let Some(suit) = red_five_suit(&discard.tile)
+            {
+                seen[suit] = true;
+            }
+        }
+    }
+    seen
+}
+
 /// Every tile the human can see: own hand/draw, all rivers, melds and dora
 /// indicators. This is libriichi's `tiles_seen`.
 pub(crate) fn seen_counts(state: &GameState) -> [u8; TILE_KINDS] {
@@ -524,7 +548,7 @@ fn encode_last_discards(
 ) {
     for (seat, player) in opponents.iter().enumerate() {
         if let Some(discard) = player.discards.iter().rev().find(|d| !d.is_tsumogiri) {
-            encode_tile_with_flags(buf, OFF_LAST_TEDASHI + seat * 3, &discard.tile, dora_factor);
+            encode_tile_with_flags(buf, OFF_LAST_TEDASHI + seat * 3, discard, dora_factor);
         }
 
         if player.is_riichi {
@@ -532,12 +556,7 @@ fn encode_last_discards(
                 .riichi_discard_index
                 .and_then(|index| player.discards.get(index))
             {
-                encode_tile_with_flags(
-                    buf,
-                    OFF_RIICHI_SUTEHAI + seat * 3,
-                    &discard.tile,
-                    dora_factor,
-                );
+                encode_tile_with_flags(buf, OFF_RIICHI_SUTEHAI + seat * 3, discard, dora_factor);
             }
             buf.fill(OFF_RIICHI_DECLARED + seat, 1.0);
             buf.fill(OFF_RIICHI_ACCEPTED + seat, 1.0);
@@ -680,9 +699,29 @@ fn encode_decision_features(
         && let Some(index) = tile_index(tile)
     {
         buf.assign(OFF_CALL_TILE, index, 1.0);
-        // Row 1 is the red-five flag; our discards do not record aka-ness.
-        // Row 2 is the dora flag; it is filled by the caller's dora data when
-        // available. The tile identity is the important part here.
+        if claimed_tile_is_red(state) {
+            buf.fill(OFF_CALL_TILE + 1, 1.0);
+        }
+        if dora_factors(state)[index] > 0 {
+            buf.fill(OFF_CALL_TILE + 2, 1.0);
+        }
+    }
+}
+
+fn claimed_tile_is_red(state: &GameState) -> bool {
+    match &state.decision {
+        DecisionContext::ReactToDiscard { from, tile } => state
+            .players
+            .get(*from)
+            .and_then(|player| {
+                player
+                    .discards
+                    .iter()
+                    .rev()
+                    .find(|discard| &discard.tile == tile)
+            })
+            .is_some_and(|discard| discard.is_red),
+        DecisionContext::ReactToKan { .. } | DecisionContext::SelfTurn => false,
     }
 }
 
@@ -978,8 +1017,7 @@ fn solver_inputs(
             _ => {}
         }
     }
-    let mut akas_seen = [false; 3];
-    akas_seen.copy_from_slice(&akas_in_hand);
+    let akas_seen = visible_akas(state);
 
     let tiles_seen = seen_counts(state);
     let init_state = InitState {
@@ -1265,17 +1303,39 @@ fn encode_tile_set(buf: &mut ObsBuffer, base: usize, tiles: impl Iterator<Item =
     }
 }
 
+/// River version of [`encode_tile_set`], including the three red-five rows.
+fn encode_discard_set(buf: &mut ObsBuffer, base: usize, discards: &[DiscardTile]) {
+    let mut counts = [0u8; TILE_KINDS];
+    for discard in discards {
+        let Some(index) = tile_index(&discard.tile) else {
+            continue;
+        };
+        let row = counts[index] as usize;
+        if row < 4 {
+            buf.assign(base + row, index, 1.0);
+        }
+        counts[index] = counts[index].saturating_add(1);
+        if discard.is_red
+            && let Some(suit) = red_five_suit(&discard.tile)
+        {
+            buf.fill(base + 4 + suit, 1.0);
+        }
+    }
+}
+
 fn encode_tile_with_flags(
     buf: &mut ObsBuffer,
     base: usize,
-    tile: &str,
+    discard: &DiscardTile,
     dora_factor: &[u8; TILE_KINDS],
 ) {
-    let Some(index) = tile_index(tile) else {
+    let Some(index) = tile_index(&discard.tile) else {
         return;
     };
     buf.assign(base, index, 1.0);
-    // Row 1 = red five; our state does not mark which discards were red.
+    if discard.is_red {
+        buf.fill(base + 1, 1.0);
+    }
     if dora_factor[index] > 0 {
         buf.fill(base + 2, 1.0);
     }

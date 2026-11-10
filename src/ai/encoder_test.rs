@@ -333,6 +333,43 @@ fn waits_furiten_shanten_and_discard_candidates() {
 }
 
 #[test]
+fn red_five_discards_set_aka_rows_and_akas_seen() {
+    let mut state = base_state();
+    state.players[0].discards = vec![DiscardTile::new("5m").with_red(true)];
+    state.players[1].discards = vec![DiscardTile::new("5s").with_red(true)];
+    state.players[2].discards.clear();
+    state.players[3].discards.clear();
+
+    let obs = encode_v4_observation(&state);
+
+    // Self river item row 2 is the aka flag.
+    assert!(row_is_set(&obs, OFF_SELF_KAWA_FIRST + 2));
+
+    // First opponent item row 4 is the aka flag.
+    let opponent_base = OFF_OPPONENTS;
+    assert!(row_is_set(&obs, opponent_base + 4));
+
+    // Opponent last-tedashi block row 1 is the aka flag.
+    assert!(row_is_set(&obs, OFF_LAST_TEDASHI + 1));
+
+    // River overview red-five rows: self 5m and shimocha 5s.
+    assert!(row_is_set(&obs, OFF_KAWA_OVERVIEW + 4));
+    assert!(row_is_set(&obs, OFF_KAWA_OVERVIEW + 7 + 6));
+
+    // Human red 5m plus opponent red 5s are both witnessed.
+    assert_eq!(
+        super::encoder::visible_akas(&state),
+        [true, true, true],
+        "base_state already holds a red 5p"
+    );
+
+    // Older serialized discards without the field still deserialize.
+    let legacy: DiscardTile =
+        serde_json::from_str(r#"{"tile":"5s","is_riichi":false,"is_tsumogiri":false}"#).unwrap();
+    assert!(!legacy.is_red);
+}
+
+#[test]
 fn wall_dora_owned_and_tiles_seen_are_encoded() {
     let obs = encode_v4_observation(&base_state());
 

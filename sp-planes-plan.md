@@ -310,9 +310,10 @@ Documented deviations / limits:
 
 - `calc_tegawari` is not implemented because production encoding always passes
   `false` (`agent_helper.rs:567-583`).
-- `GameState` only tracks the human's red fives, so `akas_seen` cannot see an
-  opponent's discarded/melded aka. Those unknown aka copies are assumed to
-  remain in the wall. libriichi tracks every witnessed aka.
+- Red-five discards now carry `DiscardTile::is_red` (serde-defaulted to false)
+  and feed the solver's `akas_seen`. Aces hidden in opponents' hands, and aces
+  inside called melds (where `CalledMeld` has no aka flag), are still unknown
+  and assumed to remain in the wall. libriichi tracks every witnessed aka.
 - `GameState` has no kuikae (`forbidden_tiles`) or river-padding offset. The
   unconditional-tenpai row omits kuikae restrictions, and the oracle fixture
   represents libriichi's start-of-game `None` river padding as empty discard
