@@ -48,6 +48,23 @@ pub enum TargetAction {
     NaniKiru,
 }
 
+/// The kind of action the trainer expects from the player.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CorrectActionType {
+    Discard,
+}
+
+/// The expected answer for the current scenario.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CorrectAction {
+    /// Action kind; serialized as `"type"` because `type` is reserved in Rust.
+    #[serde(rename = "type")]
+    pub action_type: CorrectActionType,
+    /// Tile the player should discard (e.g. "6p").
+    pub tile: String,
+}
+
 /// Discard tile in a player's river.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DiscardTile {
@@ -129,6 +146,7 @@ pub struct GameState {
     // Scenario / Puzzle metadata
     pub category: String,
     pub target_action: TargetAction,
+    pub correct_action: CorrectAction,
 
     // Hand evaluation (Human player)
     pub hand_string: String,

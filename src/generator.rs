@@ -6,7 +6,10 @@ use agari::shanten::{calculate_shanten, calculate_ukeire};
 use agari::tile::{Honor, Suit, Tile};
 
 use crate::rng::{choose, gen_bool};
-use crate::state::{CalledMeld, DiscardTile, GameState, MeldType, PlayerState, TargetAction, Wind};
+use crate::state::{
+    CalledMeld, CorrectAction, CorrectActionType, DiscardTile, GameState, MeldType, PlayerState,
+    TargetAction, Wind,
+};
 
 pub type PuzzleResponse = GameState;
 
@@ -360,6 +363,10 @@ impl ScenarioGenerator {
         // Separate human hand into 13 standing hand tiles + 1 active draw
         let human_standing_hand: Vec<String> = tile_strings[0..13].to_vec();
         let human_draw: Option<String> = tile_strings.get(13).cloned();
+        let correct_discard = human_draw
+            .clone()
+            .or_else(|| human_standing_hand.first().cloned())
+            .unwrap_or_default();
 
         // Player 0: Human User (Dealer / East)
         let player0 = PlayerState {
@@ -497,6 +504,10 @@ impl ScenarioGenerator {
         Ok(GameState {
             category: category.to_string(),
             target_action: TargetAction::Riichi,
+            correct_action: CorrectAction {
+                action_type: CorrectActionType::Discard,
+                tile: correct_discard,
+            },
 
             hand_string,
             tiles: tile_strings,
@@ -555,6 +566,10 @@ mod tests {
         assert_eq!(state.category, "phase2_test");
         assert_eq!(state.tiles.len(), 14);
         assert_eq!(state.players.len(), 4);
+
+        // Verify the expected answer points at a tile in the human hand
+        assert_eq!(state.correct_action.action_type, CorrectActionType::Discard);
+        assert!(state.tiles.contains(&state.correct_action.tile));
 
         // Verify global state
         assert_eq!(state.round_wind, Wind::East);

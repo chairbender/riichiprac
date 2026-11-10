@@ -93,6 +93,15 @@ fn test_generate_puzzle_wasm_api() {
         assert!(val.get("decompositions_count").is_some());
         assert!(val.get("ukeire_total").is_some());
         assert!(val.get("ukeire_tiles").is_some());
+
+        assert_eq!(val["correct_action"]["type"], "discard");
+        let correct_tile = val["correct_action"]["tile"]
+            .as_str()
+            .expect("correct_action.tile must be a string");
+        assert!(
+            tiles.iter().any(|tile| tile.as_str() == Some(correct_tile)),
+            "correct_action tile must be present in the human hand"
+        );
     }
 }
 

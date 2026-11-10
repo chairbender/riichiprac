@@ -311,6 +311,128 @@
   height: auto;
 }
 
+.hand-tile-button {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background-color: transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.hand-tile-button:active:not(:disabled) {
+  transform: translateY(-3px);
+}
+
+.hand-tile-button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.hand-tile-button:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+.hand-tile-button--correct {
+  background-color: rgba(47, 158, 68, 0.16);
+  box-shadow: 0 0 0 2px #2f9e44;
+}
+
+.hand-tile-button--incorrect {
+  background-color: rgba(224, 49, 49, 0.16);
+  box-shadow: 0 0 0 2px #e03131;
+}
+
+.hand-tile-button--answer {
+  background-color: rgba(47, 158, 68, 0.12);
+  box-shadow: 0 0 0 2px #2f9e44;
+}
+
+/* Answer feedback toast --------------------------------------------------- */
+
+.feedback-toast {
+  position: fixed;
+  top: calc(56px + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 50;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+
+  width: calc(100% - 24px);
+  max-width: 440px;
+  padding: 10px 14px;
+  border: 1px solid #3a4252;
+  border-radius: 10px;
+  background-color: #1b2029;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+
+  transform: translateX(-50%);
+  animation: toast-in 0.16s ease-out;
+}
+
+.feedback-toast--correct {
+  border-color: #2f6f44;
+  background-color: #122018;
+  color: #8ce99a;
+}
+
+.feedback-toast--incorrect {
+  border-color: #7a2c2c;
+  background-color: #241717;
+  color: #ff8a8a;
+}
+
+.feedback-message {
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.feedback-answer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feedback-tile {
+  display: block;
+  width: 26px;
+  height: auto;
+}
+
+.feedback-code {
+  color: #f1f3f5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 /* Status ------------------------------------------------------------------ */
 
 .status-msg {

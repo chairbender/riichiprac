@@ -9,6 +9,16 @@ export type MeldType = 'Chi' | 'Pon' | 'Kan' | 'Ankan';
 
 export type TargetAction = 'Riichi' | 'Dama' | 'Push' | 'Fold' | 'NaniKiru';
 
+/** Action kinds the trainer can expect. */
+export type CorrectActionType = 'discard';
+
+/** The expected answer for the current scenario. */
+export interface CorrectAction {
+  type: CorrectActionType;
+  /** Tile code the player should discard. */
+  tile: string;
+}
+
 export interface DiscardTile {
   /** Tile code such as "1m", "5p", or "7z". */
   tile: string;
@@ -43,6 +53,7 @@ export interface PlayerState {
 export interface GameState {
   category: string;
   target_action: TargetAction;
+  correct_action: CorrectAction;
 
   hand_string: string;
   tiles: string[];

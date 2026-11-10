@@ -5,7 +5,10 @@ pub mod state;
 use wasm_bindgen::prelude::*;
 
 pub use generator::{PuzzleResponse, ScenarioGenerator, generate_random_hand};
-pub use state::{CalledMeld, DiscardTile, GameState, MeldType, PlayerState, TargetAction, Wind};
+pub use state::{
+    CalledMeld, CorrectAction, CorrectActionType, DiscardTile, GameState, MeldType, PlayerState,
+    TargetAction, Wind,
+};
 
 /// Verification helper for WASM module initialization.
 #[wasm_bindgen]
@@ -52,5 +55,18 @@ mod tests {
         assert!(parsed.get("shanten").is_some());
         assert_eq!(parsed["players"].as_array().unwrap().len(), 4);
         assert_eq!(parsed["round_wind"], "East");
+
+        assert_eq!(parsed["correct_action"]["type"], "discard");
+        let correct_tile = parsed["correct_action"]["tile"]
+            .as_str()
+            .expect("correct_action.tile must be a string");
+        assert!(
+            parsed["tiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|tile| tile.as_str() == Some(correct_tile)),
+            "correct_action tile must be present in the human hand"
+        );
     }
 }
