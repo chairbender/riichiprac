@@ -100,4 +100,5 @@ Useful flags:
 Exit codes are `0` for a completed run (including zero disagreements), `2` for
 bad arguments or missing weights, and `3` for a fatal model or generation
 failure. See `scenario-fuzz-plan.md` for the full comparison rules, and
-`cargo run --bin fuzz_scenarios -- --help` for the flag reference.
+`cargo run --bin fuzz_scenarios -- --help` for the flag reference. Analysis of
+a completed run goes in `scenario-fuzz-findings.md`.
