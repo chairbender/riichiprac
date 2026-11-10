@@ -309,7 +309,7 @@ mod tests {
 
             for wait in &skeleton.wait_tiles {
                 assert!(
-                    skeleton::waits_have_value(
+                    skeleton::value::waits_have_value(
                         &skeleton.concealed_tiles,
                         skeleton.drawn_tile,
                         &[*wait],
@@ -328,7 +328,7 @@ mod tests {
         for _ in 0..50 {
             let skeleton = skeleton::build(triggers::ShouminkanTriggerSet::default())
                 .expect("non-good shouminkan skeleton must build");
-            let han = skeleton::min_wait_han(
+            let han = skeleton::value::min_wait_han(
                 &skeleton.concealed_tiles,
                 skeleton.drawn_tile,
                 &skeleton.wait_tiles,
