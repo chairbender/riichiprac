@@ -26,7 +26,12 @@ interface ScenarioExplanationProps {
 
 /** Shows why the scenario's Riichi or Dama answer is correct. */
 export function ScenarioExplanation({ state }: ScenarioExplanationProps) {
-  const isRiichi = state.correct_action.type === 'riichi';
+  const actionType = state.correct_action.type;
+
+  // Kan lessons explain themselves through the answer toast.
+  if (actionType !== 'riichi' && actionType !== 'dama') return null;
+
+  const isRiichi = actionType === 'riichi';
   const title = isRiichi ? 'Why Riichi?' : 'Why Dama?';
 
   if (isRiichi) {

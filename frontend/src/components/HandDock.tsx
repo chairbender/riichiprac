@@ -1,5 +1,7 @@
+import { findKanCandidateTile } from '../actions';
 import type { AnswerFeedback } from '../store/useGameStore';
 import type { PlayerState } from '../types/game';
+import { KanIcon } from './KanIcon';
 import { RiichiStick } from './RiichiStick';
 import { Tile } from './Tile';
 
@@ -7,25 +9,41 @@ interface HandDockProps {
   player: PlayerState;
   feedback: AnswerFeedback | null;
   callRiichi: boolean;
+  callKan: boolean;
   onToggleRiichi: () => void;
+  onToggleKan: () => void;
   onSelectTile: (tile: string) => void;
 }
 
 /**
  * The human player's active hand, pinned to the bottom of the viewport.
- * The "Call Riichi" toggle arms a Riichi declaration; clicking a tile then
- * submits the toggle state (Riichi or Dama) together with the discard.
+ * The "Call Riichi" and "Call Kan" toggles arm a declaration; clicking a tile
+ * then submits the armed action together with the clicked tile. The Kan button
+ * only appears when the hand holds the fourth tile of an open Pon.
  */
 export function HandDock({
   player,
   feedback,
   callRiichi,
+  callKan,
   onToggleRiichi,
+  onToggleKan,
   onSelectTile,
 }: HandDockProps) {
   const tiles = player.draw ? [...player.hand, player.draw] : player.hand;
   const isAnswered = feedback !== null;
-  const selectedType = callRiichi ? 'Riichi' : 'Dama';
+  const kanTile = findKanCandidateTile(player);
+
+  let handHint = 'Dama selected - tap a tile to discard';
+  if (isAnswered) {
+    handHint = 'Answer submitted';
+  } else if (callKan) {
+    handHint = `Kan armed - tap ${kanTile} to declare Shouminkan`;
+  } else if (callRiichi) {
+    handHint = 'Riichi selected - tap a tile to discard';
+  } else if (kanTile) {
+    handHint = 'Tap a tile to discard, or arm Call Kan';
+  }
 
   // Mark specific copies as red fives; a tile code can appear more than once.
   const redFiveCounts = new Map<string, number>();
@@ -41,23 +59,43 @@ export function HandDock({
 
   return (
     <section className="hand-dock" aria-label="Your hand">
-      <button
-        type="button"
-        className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
-        onClick={onToggleRiichi}
-        disabled={isAnswered}
-        aria-pressed={callRiichi}
-        aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
-      >
-        <RiichiStick className="riichi-toggle-stick" />
-        <span className="riichi-toggle-label">Call Riichi</span>
-        <span className="riichi-toggle-state">{callRiichi ? 'ON' : 'OFF'}</span>
-      </button>
+      <div className="call-toggles">
+        <button
+          type="button"
+          className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
+          onClick={onToggleRiichi}
+          disabled={isAnswered}
+          aria-pressed={callRiichi}
+          aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
+        >
+          <RiichiStick className="riichi-toggle-stick" />
+          <span className="riichi-toggle-label">Call Riichi</span>
+          <span className="riichi-toggle-state">
+            {callRiichi ? 'ON' : 'OFF'}
+          </span>
+        </button>
+
+        {kanTile && (
+          <button
+            type="button"
+            className={`kan-toggle${callKan ? ' kan-toggle--active' : ''}`}
+            onClick={onToggleKan}
+            disabled={isAnswered}
+            aria-pressed={callKan}
+            aria-label={`Call Kan toggle for ${kanTile}, currently ${
+              callKan ? 'on' : 'off'
+            }`}
+          >
+            <KanIcon className="kan-toggle-icon" />
+            <span className="kan-toggle-label">Call Kan</span>
+            <span className="kan-toggle-tile">{kanTile}</span>
+            <span className="kan-toggle-state">{callKan ? 'ON' : 'OFF'}</span>
+          </button>
+        )}
+      </div>
 
       <div className="hand-dock-label" aria-live="polite">
-        {isAnswered
-          ? 'Answer submitted'
-          : `${selectedType} selected - tap a tile to discard`}
+        {handHint}
       </div>
 
       <div
@@ -86,8 +124,10 @@ export function HandDock({
               className={`hand-tile-button${stateClass}`}
               onClick={() => onSelectTile(tile)}
               disabled={isAnswered}
-              aria-label={`Discard ${redFiveFlags[index] ? 'red five ' : ''}${tile}${
-                callRiichi ? ' and call Riichi' : ''
+              aria-label={`${
+                callKan ? `Declare Kan on ${tile}` : `Discard ${tile}`
+              }${redFiveFlags[index] ? ', red five' : ''}${
+                callRiichi ? ', with Riichi' : ''
               }`}
             >
               <Tile

@@ -404,6 +404,18 @@
   text-transform: uppercase;
 }
 
+/* Call toggles ------------------------------------------------------------ */
+
+.call-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.call-toggles > .riichi-toggle {
+  flex: 1 1 210px;
+}
+
 /* Riichi declaration toggle ------------------------------------------------ */
 
 .riichi-toggle {
@@ -473,6 +485,93 @@
 .riichi-toggle--active .riichi-toggle-state {
   background-color: #e03131;
   color: #fff;
+}
+
+/* Added Kan call (amber, deliberately distinct from the red Riichi toggle). */
+
+.kan-toggle {
+  display: flex;
+  flex: 1 1 210px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  padding: 8px 12px;
+  border: 1px solid #4a3a1f;
+  border-radius: 10px;
+  background-color: #1d1a14;
+  color: #d9b36c;
+
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+}
+
+.kan-toggle--active {
+  border-color: #f59f00;
+  background-color: #3b2c0d;
+  color: #fff9db;
+  box-shadow:
+    0 0 0 2px rgba(245, 159, 0, 0.35),
+    0 4px 14px rgba(245, 159, 0, 0.22);
+}
+
+.kan-toggle:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+
+.kan-toggle:focus-visible {
+  outline: 2px solid #ffd43b;
+  outline-offset: 2px;
+}
+
+.kan-toggle-icon {
+  display: block;
+  width: 36px;
+  height: auto;
+  flex: 0 0 auto;
+}
+
+.kan-toggle-label {
+  line-height: 1;
+}
+
+.kan-toggle-tile {
+  padding: 2px 5px;
+  border-radius: 6px;
+  background-color: rgba(245, 159, 0, 0.16);
+  color: #ffd43b;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+}
+
+.kan-toggle--active .kan-toggle-tile {
+  background-color: #f59f00;
+  color: #1d1a14;
+}
+
+.kan-toggle-state {
+  min-width: 30px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.08);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+}
+
+.kan-toggle--active .kan-toggle-state {
+  background-color: #f59f00;
+  color: #1d1a14;
 }
 
 .hand {
@@ -582,6 +681,21 @@
   font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.3;
+}
+
+.feedback-detail {
+  color: #ced4da;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.feedback-toast--correct .feedback-detail {
+  color: #b2f2bb;
+}
+
+.feedback-toast--incorrect .feedback-detail {
+  color: #ffc9c9;
 }
 
 .feedback-grades {

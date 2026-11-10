@@ -34,9 +34,11 @@ export const App = () => {
   const isLoading = useGameStore((state) => state.isLoading);
   const error = useGameStore((state) => state.error);
   const callRiichi = useGameStore((state) => state.callRiichi);
+  const callKan = useGameStore((state) => state.callKan);
   const feedback = useGameStore((state) => state.feedback);
   const loadFromJson = useGameStore((state) => state.loadFromJson);
   const toggleRiichi = useGameStore((state) => state.toggleRiichi);
+  const toggleKan = useGameStore((state) => state.toggleKan);
   const selectTile = useGameStore((state) => state.selectTile);
   const reset = useGameStore((state) => state.reset);
   const setError = useGameStore((state) => state.setError);
@@ -162,7 +164,9 @@ export const App = () => {
           player={humanPlayer}
           feedback={feedback}
           callRiichi={callRiichi}
+          callKan={callKan}
           onToggleRiichi={toggleRiichi}
+          onToggleKan={toggleKan}
           onSelectTile={selectTile}
         />
       )}

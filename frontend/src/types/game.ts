@@ -28,14 +28,18 @@ export type DamaReason =
   | 'mangan';
 
 /** Action kinds the trainer can expect alongside the discard. */
-export type CorrectActionType = 'riichi' | 'dama';
+export type CorrectActionType = 'riichi' | 'dama' | 'kan' | 'discard';
 
-/** The expected answer for the current scenario. */
-export interface CorrectAction {
-  type: CorrectActionType;
-  /** Tile code the player should discard. */
-  discard: string;
-}
+/**
+ * The expected answer for the current scenario.
+ *
+ * Riichi/dama puzzles carry the discard in `discard`. Kan puzzles carry the
+ * tile in `tile`, where `"kan"` means add the fourth tile to an open Pon and
+ * `"discard"` means pass on the Kan and discard normally.
+ */
+export type CorrectAction =
+  | { type: 'riichi' | 'dama'; discard: string }
+  | { type: 'kan' | 'discard'; tile: string };
 
 export interface DiscardTile {
   /** Tile code such as "1m", "5p", or "7z". */

@@ -11,11 +11,13 @@ interface FeedbackToastProps {
 const ACTION_LABELS: Record<CorrectActionType, string> = {
   riichi: 'Riichi',
   dama: 'Dama',
+  kan: 'Kan',
+  discard: 'No Kan',
 };
 
 /**
  * Overlay shown after the player submits. Both parts of the answer are graded
- * independently so the player can see whether the action type, the discard
+ * independently so the player can see whether the action type, the clicked
  * tile, or both were wrong.
  */
 export function FeedbackToast({ feedback, redFives }: FeedbackToastProps) {
@@ -24,6 +26,21 @@ export function FeedbackToast({ feedback, redFives }: FeedbackToastProps) {
       ? 'feedback-grade feedback-grade--correct'
       : 'feedback-grade feedback-grade--incorrect';
   const isRedFive = (tile: string) => redFives.includes(tile);
+  const isKanFeedback =
+    feedback.selectedType === 'kan' ||
+    feedback.correctType === 'kan' ||
+    feedback.correctType === 'discard';
+
+  let detail: string | null = null;
+  if (feedback.correctType === 'kan') {
+    detail = feedback.isCorrect
+      ? `You declared Added Kan on ${feedback.correctTile}.`
+      : `You should declare Kan on ${feedback.correctTile}.`;
+  } else if (feedback.correctType === 'discard') {
+    detail = feedback.isCorrect
+      ? `You passed on the Kan and discarded ${feedback.correctTile}.`
+      : `You should pass on the Kan and discard ${feedback.correctTile}.`;
+  }
 
   return (
     <div
@@ -38,6 +55,7 @@ export function FeedbackToast({ feedback, redFives }: FeedbackToastProps) {
       <span className="feedback-message">
         {feedback.isCorrect ? 'Correct!' : 'Incorrect'}
       </span>
+      {detail && <span className="feedback-detail">{detail}</span>}
 
       <div className="feedback-grades">
         <div className={gradeClass(feedback.isActionCorrect)}>
@@ -60,7 +78,9 @@ export function FeedbackToast({ feedback, redFives }: FeedbackToastProps) {
         </div>
 
         <div className={gradeClass(feedback.isTileCorrect)}>
-          <span className="feedback-grade-label">Discard</span>
+          <span className="feedback-grade-label">
+            {isKanFeedback ? 'Tile' : 'Discard'}
+          </span>
           <span className="feedback-grade-value feedback-grade-tile">
             <Tile
               code={feedback.selectedTile}
