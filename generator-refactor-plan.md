@@ -121,8 +121,8 @@ wasm-pack test --headless --chrome
 For the frontend manifest change, also run:
 
 ```bash
-wasm-pack build
-cd frontend && npm run build
+wasm-pack build --target web
+cd frontend && npm run build && npm run lint
 ```
 
 ## Notes
