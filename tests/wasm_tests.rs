@@ -576,7 +576,7 @@ fn test_ryanmen_rejection_sampling_constraints() {
         for discard in human["discards"].as_array().unwrap() {
             let tile = discard["tile"].as_str().unwrap();
             assert!(
-                !wait_tiles.iter().any(|wait| *wait == tile),
+                !wait_tiles.contains(&tile),
                 "run {run}: human river contains wait tile {tile}"
             );
         }
@@ -647,5 +647,58 @@ fn test_ryanmen_rejection_sampling_constraints() {
             .collect();
         actual.sort();
         assert_eq!(actual, expected);
+    }
+
+    #[wasm_bindgen_test]
+    fn test_shouminkan_decision_payload() {
+        for run in 0..50 {
+            let json_output = generate_puzzle("shouminkan_decision".to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+            assert_eq!(val["category"], "shouminkan_decision");
+            assert_eq!(val["target_action"], "Kan");
+            assert_eq!(val["correct_action"]["type"], "kan");
+            assert!(
+                val["correct_action"]["discard"].is_null(),
+                "run {run}: Kan action must not include a discard field"
+            );
+
+            let kan_tile = val["correct_action"]["tile"]
+                .as_str()
+                .expect("Kan action must include the fourth tile");
+            let triggers = val["shouminkan_triggers"]
+                .as_array()
+                .expect("shouminkan_triggers must be an array");
+            assert!(
+                !triggers.is_empty(),
+                "run {run}: at least one trigger is required"
+            );
+
+            let human = &val["players"][0];
+            assert_eq!(human["hand"].as_array().unwrap().len(), 10);
+            assert_eq!(human["draw"], kan_tile);
+            assert_eq!(human["melds"].as_array().unwrap().len(), 1);
+            assert_eq!(human["melds"][0]["meld_type"], "Pon");
+            let meld_tiles = human["melds"][0]["tiles"].as_array().unwrap();
+            assert_eq!(meld_tiles.len(), 3);
+            assert!(meld_tiles.iter().all(|tile| tile == kan_tile));
+            assert!(
+                !human["hand"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|tile| tile == kan_tile)
+            );
+            assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
+
+            let total_score: i64 = val["players"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|player| player["score"].as_i64().expect("score int"))
+                .sum();
+            assert_eq!(total_score, 100_000);
+        }
     }
 }

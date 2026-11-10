@@ -1,5 +1,8 @@
 /** Scenario categories understood by the WASM `generate_puzzle` dispatcher. */
-export type ScenarioId = 'ryanmen_protorun' | 'chiitoitsu_riichi_vs_dama';
+export type ScenarioId =
+  | 'ryanmen_protorun'
+  | 'chiitoitsu_riichi_vs_dama'
+  | 'shouminkan_decision';
 
 export type ScenarioSelection = 'all' | ScenarioId;
 
@@ -19,6 +22,12 @@ export const SCENARIOS: ScenarioOption[] = [
     id: 'chiitoitsu_riichi_vs_dama',
     label: 'Chiitoitsu Riichi vs Dama',
     description: 'Seven pairs: decide whether to declare Riichi or stay dama.',
+  },
+  {
+    id: 'shouminkan_decision',
+    label: 'Added Kan Decision',
+    description:
+      'Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan.',
   },
 ];
 

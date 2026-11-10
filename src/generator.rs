@@ -10,8 +10,8 @@ use agari::yaku::{Yaku, detect_yaku_with_context};
 
 use crate::rng::{choose, gen_bool, gen_range, shuffle};
 use crate::state::{
-    CalledMeld, CorrectAction, CorrectActionType, DamaReason, DiscardTile, GameState, MeldType,
-    PlayerState, RiichiTrigger, TargetAction, Wind,
+    CalledMeld, CorrectAction, DamaReason, DiscardTile, GameState, MeldType, PlayerState,
+    RiichiTrigger, ShouminkanTrigger, TargetAction, Wind,
 };
 
 pub type PuzzleResponse = GameState;
@@ -256,6 +256,71 @@ impl ChiitoitsuSkeleton {
     }
 }
 
+/// The set of heuristics that make an Added Kan correct for one puzzle.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct ShouminkanTriggerSet {
+    good_wait_and_value: bool,
+    late_game: bool,
+    placement_desperation: bool,
+    losing_badly: bool,
+}
+
+impl ShouminkanTriggerSet {
+    fn any(self) -> bool {
+        self.good_wait_and_value
+            || self.late_game
+            || self.placement_desperation
+            || self.losing_badly
+    }
+
+    fn to_vec(self) -> Vec<ShouminkanTrigger> {
+        let mut triggers = Vec::new();
+        if self.good_wait_and_value {
+            triggers.push(ShouminkanTrigger::GoodWaitAndValue);
+        }
+        if self.late_game {
+            triggers.push(ShouminkanTrigger::LateGame);
+        }
+        if self.placement_desperation {
+            triggers.push(ShouminkanTrigger::PlacementDesperation);
+        }
+        if self.losing_badly {
+            triggers.push(ShouminkanTrigger::LosingBadly);
+        }
+        triggers
+    }
+}
+
+/// Whether the supplied wait completes with two or three winning tiles.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ShouminkanWaitShape {
+    Ryanmen,
+    ThreeSided,
+}
+
+/// The constructed parts of an Added Kan hand.
+struct ShouminkanSkeleton {
+    /// The three tiles already called as an open Pon.
+    open_pon_tiles: Vec<Tile>,
+    /// The fourth copy of the Pon tile, currently drawn.
+    drawn_tile: Tile,
+    /// The ten concealed tiles left after discarding the drawn tile.
+    concealed_tiles: Vec<Tile>,
+    /// Winning tiles for the tenpai hand (2 for ryanmen, 3 for three-sided).
+    wait_tiles: Vec<Tile>,
+}
+
+impl ShouminkanSkeleton {
+    /// The fourteen visible tiles: concealed hand + draw + open Pon.
+    fn full_tiles(&self) -> Vec<Tile> {
+        let mut tiles = Vec::with_capacity(14);
+        tiles.extend(self.concealed_tiles.iter().copied());
+        tiles.push(self.drawn_tile);
+        tiles.extend(self.open_pon_tiles.iter().copied());
+        tiles
+    }
+}
+
 /// Removes one copy of `tile` from the deck, failing if none remain.
 fn remove_tile(deck: &mut HashMap<Tile, u8>, tile: &Tile) -> Result<(), String> {
     match deck.get_mut(tile) {
@@ -332,6 +397,103 @@ fn random_round() -> (Wind, u8) {
     }
 }
 
+/// Four plausible scores that sum to 100,000.
+fn random_table_scores() -> [i32; 4] {
+    loop {
+        let mut scores = [0i32; 4];
+        let mut total = 0;
+        for score in scores.iter_mut().take(3) {
+            *score = 15_000 + 1_000 * gen_range(0, 16) as i32;
+            total += *score;
+        }
+        let last = 100_000 - total;
+        if (10_000..=40_000).contains(&last) {
+            scores[3] = last;
+            return scores;
+        }
+    }
+}
+
+/// Turns rank-ordered scores into seat-ordered scores with the human first.
+fn scores_for_seats(ranked: [i32; 4], human_rank: usize) -> [i32; 4] {
+    let mut opponents: Vec<i32> = ranked
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| *index != human_rank)
+        .map(|(_, score)| *score)
+        .collect();
+    shuffle(&mut opponents);
+
+    [ranked[human_rank], opponents[0], opponents[1], opponents[2]]
+}
+
+/// Rank-ordered scores where the human is 2nd or 3rd, close behind.
+fn placement_desperation_ranked_scores(human_rank: usize) -> [i32; 4] {
+    assert!(human_rank == 1 || human_rank == 2);
+
+    loop {
+        let gap = gen_range(300, 2_000) as i32;
+
+        if human_rank == 1 {
+            let human = gen_range(26_000, 33_001) as i32;
+            let above = human + gap;
+            let remaining = 100_000 - above - human;
+            if remaining <= 2_000 {
+                continue;
+            }
+
+            // Both lower scores must fit below the human.
+            let lower = ((remaining / 2) + 1).max(10_000);
+            let upper = human - 1;
+            if lower >= upper {
+                continue;
+            }
+
+            let third = gen_range(lower as usize, upper as usize) as i32;
+            let fourth = remaining - third;
+            if fourth > 0 && fourth < third {
+                return [above, human, third, fourth];
+            }
+        } else {
+            let human = gen_range(22_000, 29_001) as i32;
+            let second = human + gap;
+            let remaining = 100_000 - second - human;
+
+            // The fourth-place score must leave the leader above second.
+            let upper = (human - 1).min(remaining - second - 1);
+            if upper <= 8_000 {
+                continue;
+            }
+
+            let fourth = gen_range(8_000, upper as usize) as i32;
+            let first = remaining - fourth;
+            if first > second && fourth < human {
+                return [first, second, human, fourth];
+            }
+        }
+    }
+}
+
+/// Rank-ordered scores where the human is 4th and more than 12,000 behind 3rd.
+fn losing_badly_ranked_scores() -> [i32; 4] {
+    loop {
+        let human = gen_range(8_000, 16_001) as i32;
+        let gap = gen_range(13_000, 20_001) as i32;
+        let third = human + gap;
+        let remaining = 100_000 - human - third;
+
+        if remaining < 2 * third + 2_000 {
+            continue;
+        }
+
+        let second = gen_range((third + 1_000) as usize, (remaining - 1_000) as usize) as i32;
+        let first = remaining - second;
+        if first > second && second > third {
+            return [first, second, third, human];
+        }
+    }
+}
+
 /// Converts a seat/round wind into the honor used by agari's game context.
 fn wind_to_honor(wind: Wind) -> Honor {
     match wind {
@@ -391,6 +553,27 @@ fn random_riichi_triggers() -> RiichiTriggerSet {
 
         // A red-five wait is always the 5, so it cannot also be outside 4-5-6.
         if triggers.red_five_wait && triggers.wait_outside_456 {
+            continue;
+        }
+
+        return triggers;
+    }
+}
+
+/// Draws a random non-empty subset of compatible Added Kan triggers.
+fn random_shouminkan_triggers() -> ShouminkanTriggerSet {
+    loop {
+        let mask = gen_range(1, 16) as u8;
+        let triggers = ShouminkanTriggerSet {
+            good_wait_and_value: mask & 1 != 0,
+            late_game: mask & 2 != 0,
+            placement_desperation: mask & 4 != 0,
+            losing_badly: mask & 8 != 0,
+        };
+
+        // South 4 placement desperation and being 12,000 behind in fourth
+        // place describe opposite table positions.
+        if !triggers.any() || (triggers.placement_desperation && triggers.losing_badly) {
             continue;
         }
 
@@ -936,12 +1119,10 @@ impl ScenarioGenerator {
             target_action: TargetAction::NaniKiru,
             // The open Yakuhai meld makes Riichi illegal, so staying dama is
             // the only legal declaration for this hand.
-            correct_action: CorrectAction {
-                action_type: CorrectActionType::Dama,
-                discard: skeleton.correct_tile.to_string(),
-            },
+            correct_action: CorrectAction::dama(skeleton.correct_tile.to_string()),
             riichi_triggers: Vec::new(),
             dama_reasons: Vec::new(),
+            shouminkan_triggers: Vec::new(),
             hand_string,
             tiles: tile_strings,
             shanten: shanten_res.shanten,
@@ -988,7 +1169,8 @@ impl ScenarioGenerator {
             let mut concealed_with_win = human_hand.to_vec();
             concealed_with_win.push(wait_tile);
             let concealed_counts = to_counts(&concealed_with_win);
-            let structures = decompose_hand_with_melds(&concealed_counts, &[open_meld.clone()]);
+            let structures =
+                decompose_hand_with_melds(&concealed_counts, std::slice::from_ref(&open_meld));
             if structures.is_empty() {
                 return true;
             }
@@ -1628,9 +1810,15 @@ impl ScenarioGenerator {
         players.push(human_player);
         players.extend(opponent_players);
 
-        let (target_action, action_type) = match skeleton.decision {
-            ChiitoitsuDecision::Riichi => (TargetAction::Riichi, CorrectActionType::Riichi),
-            ChiitoitsuDecision::Dama => (TargetAction::Dama, CorrectActionType::Dama),
+        let (target_action, correct_action) = match skeleton.decision {
+            ChiitoitsuDecision::Riichi => (
+                TargetAction::Riichi,
+                CorrectAction::riichi(skeleton.discard_tile.to_string()),
+            ),
+            ChiitoitsuDecision::Dama => (
+                TargetAction::Dama,
+                CorrectAction::dama(skeleton.discard_tile.to_string()),
+            ),
         };
         let dama_reasons = match skeleton.decision {
             ChiitoitsuDecision::Riichi => Vec::new(),
@@ -1647,12 +1835,10 @@ impl ScenarioGenerator {
         Ok(GameState {
             category: category.to_string(),
             target_action,
-            correct_action: CorrectAction {
-                action_type,
-                discard: skeleton.discard_tile.to_string(),
-            },
+            correct_action,
             riichi_triggers: skeleton.triggers.to_vec(),
             dama_reasons,
+            shouminkan_triggers: Vec::new(),
             hand_string,
             tiles: tile_strings,
             shanten: shanten.shanten,
@@ -1675,6 +1861,551 @@ impl ScenarioGenerator {
         })
     }
 
+    /// Generates a hand where the player has drawn the fourth tile of an open
+    /// Pon and must decide whether to upgrade it to an Added Kan.
+    pub fn generate_shouminkan_decision(&self, category: &str) -> Result<GameState, String> {
+        const MAX_ATTEMPTS: usize = 20_000;
+        let mut last_error = String::new();
+
+        for _ in 0..MAX_ATTEMPTS {
+            let triggers = random_shouminkan_triggers();
+            let skeleton = match self.build_shouminkan_skeleton(triggers) {
+                Ok(skeleton) => skeleton,
+                Err(err) => {
+                    last_error = err;
+                    continue;
+                }
+            };
+
+            match self.build_shouminkan_board(category, &skeleton, triggers) {
+                Ok(state) => return Ok(state),
+                Err(err) => last_error = err,
+            }
+        }
+
+        Err(format!(
+            "Failed to satisfy shouminkan scenario constraints after {MAX_ATTEMPTS} attempts: {last_error}"
+        ))
+    }
+
+    /// Builds a tenpai hand with an open dragon Pon, the fourth copy drawn,
+    /// a second dragon triplet for guaranteed value, and a ryanmen or
+    /// three-sided wait.
+    fn build_shouminkan_skeleton(
+        &self,
+        triggers: ShouminkanTriggerSet,
+    ) -> Result<ShouminkanSkeleton, String> {
+        for _ in 0..512 {
+            let mut deck = fresh_deck();
+
+            let dragons = [
+                Tile::Honor(Honor::White),
+                Tile::Honor(Honor::Green),
+                Tile::Honor(Honor::Red),
+            ];
+            let pon_tile =
+                choose(&dragons).ok_or_else(|| "No dragon available for the Pon".to_string())?;
+            for _ in 0..3 {
+                remove_tile(&mut deck, &pon_tile)?;
+            }
+            // Keep the fourth copy aside as the active draw.
+            remove_tile(&mut deck, &pon_tile)?;
+            let open_pon_tiles = vec![pon_tile; 3];
+
+            let mut concealed_tiles = Vec::with_capacity(10);
+
+            // The Good Wait & Value lesson forces a second dragon triplet so
+            // the hand is worth at least two han before any Kan dora.
+            let value_tile = if triggers.good_wait_and_value {
+                let value_candidates: Vec<Tile> = dragons
+                    .iter()
+                    .copied()
+                    .filter(|&tile| tile != pon_tile)
+                    .collect();
+                let value_tile = choose(&value_candidates)
+                    .ok_or_else(|| "No second dragon for guaranteed value".to_string())?;
+                for _ in 0..3 {
+                    remove_tile(&mut deck, &value_tile)?;
+                }
+                concealed_tiles.extend([value_tile; 3]);
+                Some(value_tile)
+            } else {
+                None
+            };
+
+            let wait_shape = if gen_bool(0.5) {
+                ShouminkanWaitShape::ThreeSided
+            } else {
+                ShouminkanWaitShape::Ryanmen
+            };
+            let (shape_tiles, wait_tiles, shape_suit) =
+                self.build_shouminkan_wait_shape(&mut deck, wait_shape)?;
+            concealed_tiles.extend(shape_tiles);
+
+            // An honor pair cannot interact with the suited wait shape.
+            let pair_tile = self.draw_shouminkan_pair(&mut deck, pon_tile, value_tile)?;
+            concealed_tiles.push(pair_tile);
+            concealed_tiles.push(pair_tile);
+
+            // Complete the remaining blocks in suits untouched by the wait.
+            // A ryanmen shape needs two extra sets without the value triplet;
+            // a three-sided shape needs one.
+            let extra_sets = match (wait_shape, value_tile.is_some()) {
+                (ShouminkanWaitShape::Ryanmen, false) => 2,
+                (ShouminkanWaitShape::Ryanmen, true) => 1,
+                (ShouminkanWaitShape::ThreeSided, false) => 1,
+                (ShouminkanWaitShape::ThreeSided, true) => 0,
+            };
+            let mut used_suits = Vec::new();
+            for _ in 0..extra_sets {
+                let candidates: Vec<Suit> = [Suit::Man, Suit::Pin, Suit::Sou]
+                    .into_iter()
+                    .filter(|&suit| suit != shape_suit && !used_suits.contains(&suit))
+                    .collect();
+                let set_suit =
+                    choose(&candidates).ok_or_else(|| "No secondary suit available".to_string())?;
+                used_suits.push(set_suit);
+                concealed_tiles.extend(self.draw_shouminkan_set(&mut deck, set_suit)?);
+            }
+
+            if concealed_tiles.len() != 10 {
+                continue;
+            }
+
+            // Every winning tile must still be live in the wall.
+            if wait_tiles
+                .iter()
+                .any(|tile| deck.get(tile).copied().unwrap_or(0) == 0)
+            {
+                continue;
+            }
+
+            let mut full_tiles = concealed_tiles.clone();
+            full_tiles.push(pon_tile);
+            full_tiles.extend(open_pon_tiles.iter().copied());
+            if full_tiles.len() != 14 || validate_hand(&full_tiles).is_err() {
+                continue;
+            }
+
+            let mut post_discard_tiles = concealed_tiles.clone();
+            post_discard_tiles.extend(open_pon_tiles.iter().copied());
+            let post_counts = to_counts(&post_discard_tiles);
+            if calculate_shanten(&post_counts).shanten != 0 {
+                continue;
+            }
+
+            let ukeire = calculate_ukeire(&post_counts);
+            let ukeire_tiles: Vec<Tile> = ukeire.tiles.iter().map(|u| u.tile).collect();
+            if ukeire_tiles.len() != wait_tiles.len()
+                || !wait_tiles.iter().all(|tile| ukeire_tiles.contains(tile))
+            {
+                continue;
+            }
+
+            let min_han = if triggers.good_wait_and_value { 2 } else { 1 };
+            if !self.shouminkan_waits_have_value(&concealed_tiles, pon_tile, &wait_tiles, min_han) {
+                continue;
+            }
+
+            concealed_tiles.sort();
+            let mut wait_tiles = wait_tiles;
+            wait_tiles.sort();
+
+            return Ok(ShouminkanSkeleton {
+                open_pon_tiles,
+                drawn_tile: pon_tile,
+                concealed_tiles,
+                wait_tiles,
+            });
+        }
+
+        Err("Failed to construct a valid Added Kan skeleton".to_string())
+    }
+
+    /// Chooses the suited tiles that form a two-sided or three-sided wait.
+    fn build_shouminkan_wait_shape(
+        &self,
+        deck: &mut HashMap<Tile, u8>,
+        wait_shape: ShouminkanWaitShape,
+    ) -> Result<(Vec<Tile>, Vec<Tile>, Suit), String> {
+        let suits = [Suit::Man, Suit::Pin, Suit::Sou];
+        let suit = choose(&suits).ok_or_else(|| "No suit available".to_string())?;
+
+        let (shape_tiles, wait_tiles) = match wait_shape {
+            ShouminkanWaitShape::Ryanmen => {
+                // 23 waits on 1/4, 78 waits on 6/9.
+                let base = gen_range(2, 8) as u8;
+                (
+                    vec![Tile::suited(suit, base), Tile::suited(suit, base + 1)],
+                    vec![Tile::suited(suit, base - 1), Tile::suited(suit, base + 2)],
+                )
+            }
+            ShouminkanWaitShape::ThreeSided => {
+                // 23456 waits on 1/4/7, 34567 on 2/5/8, 45678 on 3/6/9.
+                let start = gen_range(2, 5) as u8;
+                let shape_tiles = (start..start + 5)
+                    .map(|value| Tile::suited(suit, value))
+                    .collect();
+                let wait_tiles = vec![
+                    Tile::suited(suit, start - 1),
+                    Tile::suited(suit, start + 2),
+                    Tile::suited(suit, start + 5),
+                ];
+                (shape_tiles, wait_tiles)
+            }
+        };
+
+        for tile in &shape_tiles {
+            remove_tile(deck, tile)?;
+        }
+
+        Ok((shape_tiles, wait_tiles, suit))
+    }
+
+    /// Draws an honor pair that does not collide with the dragon triplets.
+    fn draw_shouminkan_pair(
+        &self,
+        deck: &mut HashMap<Tile, u8>,
+        pon_tile: Tile,
+        value_tile: Option<Tile>,
+    ) -> Result<Tile, String> {
+        let candidates: Vec<Tile> = ALL_TILES
+            .iter()
+            .copied()
+            .filter(|&tile| {
+                tile.is_honor()
+                    && tile != pon_tile
+                    && Some(tile) != value_tile
+                    && deck.get(&tile).copied().unwrap_or(0) >= 2
+            })
+            .collect();
+        let pair = choose(&candidates).ok_or_else(|| "No honor pair available".to_string())?;
+        remove_tile(deck, &pair)?;
+        remove_tile(deck, &pair)?;
+        Ok(pair)
+    }
+
+    /// Draws a complete sequence or triplet from one suit.
+    fn draw_shouminkan_set(
+        &self,
+        deck: &mut HashMap<Tile, u8>,
+        suit: Suit,
+    ) -> Result<Vec<Tile>, String> {
+        let mut candidates: Vec<Vec<Tile>> = Vec::new();
+
+        for start in 1..=7u8 {
+            let tiles = vec![
+                Tile::suited(suit, start),
+                Tile::suited(suit, start + 1),
+                Tile::suited(suit, start + 2),
+            ];
+            if tiles
+                .iter()
+                .all(|tile| deck.get(tile).copied().unwrap_or(0) > 0)
+            {
+                candidates.push(tiles);
+            }
+        }
+
+        for value in 1..=9u8 {
+            let tile = Tile::suited(suit, value);
+            if deck.get(&tile).copied().unwrap_or(0) >= 3 {
+                candidates.push(vec![tile; 3]);
+            }
+        }
+
+        let set = choose(&candidates)
+            .ok_or_else(|| "No complete set available in the selected suit".to_string())?;
+        for tile in &set {
+            remove_tile(deck, tile)?;
+        }
+        Ok(set)
+    }
+
+    /// The lowest yaku han across every winning tile, before any Kan dora.
+    fn shouminkan_min_wait_han(
+        &self,
+        concealed_tiles: &[Tile],
+        open_pon_tile: Tile,
+        wait_tiles: &[Tile],
+    ) -> u8 {
+        let open_meld = Meld::koutsu_open(open_pon_tile);
+        let mut min_han = u8::MAX;
+
+        for &wait_tile in wait_tiles {
+            let mut concealed_with_win = concealed_tiles.to_vec();
+            concealed_with_win.push(wait_tile);
+            let concealed_counts = to_counts(&concealed_with_win);
+            let structures =
+                decompose_hand_with_melds(&concealed_counts, std::slice::from_ref(&open_meld));
+            if structures.is_empty() {
+                return 0;
+            }
+
+            let mut full_with_win = concealed_with_win;
+            full_with_win.extend([open_pon_tile; 3]);
+            let full_counts = to_counts(&full_with_win);
+            let context = GameContext::new(WinType::Ron, Honor::East, Honor::East)
+                .with_winning_tile(wait_tile)
+                .open();
+
+            let han = structures
+                .iter()
+                .map(|structure| {
+                    detect_yaku_with_context(structure, &full_counts, &context).total_han
+                })
+                .min()
+                .unwrap_or(0);
+            min_han = min_han.min(han);
+        }
+
+        if wait_tiles.is_empty() { 0 } else { min_han }
+    }
+
+    /// Verifies every winning tile scores at least `min_han` before Kan dora.
+    fn shouminkan_waits_have_value(
+        &self,
+        concealed_tiles: &[Tile],
+        open_pon_tile: Tile,
+        wait_tiles: &[Tile],
+        min_han: u8,
+    ) -> bool {
+        self.shouminkan_min_wait_han(concealed_tiles, open_pon_tile, wait_tiles) >= min_han
+    }
+
+    /// Builds and validates a complete Added Kan board.
+    fn build_shouminkan_board(
+        &self,
+        category: &str,
+        skeleton: &ShouminkanSkeleton,
+        triggers: ShouminkanTriggerSet,
+    ) -> Result<GameState, String> {
+        let full_tiles = skeleton.full_tiles();
+        validate_hand(&full_tiles)?;
+
+        let mut deck = fresh_deck();
+        for tile in &full_tiles {
+            remove_tile(&mut deck, tile)?;
+        }
+
+        // Never make the Pon tile itself dora; the lesson's value must come
+        // from hand structure rather than an obvious Kan dora.
+        let dora_candidates: Vec<Tile> = ALL_TILES
+            .iter()
+            .copied()
+            .filter(|&indicator| {
+                indicator_to_dora(indicator) != skeleton.drawn_tile
+                    && deck.get(&indicator).copied().unwrap_or(0) > 0
+            })
+            .collect();
+        let dora_indicator =
+            choose(&dora_candidates).ok_or_else(|| "No legal dora indicator".to_string())?;
+        remove_tile(&mut deck, &dora_indicator)?;
+
+        let ura_candidates: Vec<Tile> = ALL_TILES
+            .iter()
+            .copied()
+            .filter(|&indicator| {
+                indicator_to_dora(indicator) != skeleton.drawn_tile
+                    && deck.get(&indicator).copied().unwrap_or(0) > 0
+            })
+            .collect();
+        let ura_indicator =
+            choose(&ura_candidates).ok_or_else(|| "No legal ura indicator".to_string())?;
+        remove_tile(&mut deck, &ura_indicator)?;
+
+        let (round_wind, hand_number) = if triggers.placement_desperation {
+            (Wind::South, 4)
+        } else {
+            random_round()
+        };
+        let human_wind = choose(&Wind::ALL).ok_or_else(|| "No seat wind available".to_string())?;
+
+        let scores = if triggers.placement_desperation {
+            let human_rank = gen_range(1, 3);
+            scores_for_seats(placement_desperation_ranked_scores(human_rank), human_rank)
+        } else if triggers.losing_badly {
+            scores_for_seats(losing_badly_ranked_scores(), 3)
+        } else {
+            let mut scores = random_table_scores();
+            shuffle(&mut scores);
+            scores
+        };
+
+        if triggers.placement_desperation {
+            let human_score = scores[0];
+            let above = scores
+                .iter()
+                .copied()
+                .filter(|&score| score > human_score)
+                .min()
+                .ok_or_else(|| "Placement scenario has nobody above the human".to_string())?;
+            let rank = 1 + scores.iter().filter(|&&score| score > human_score).count();
+            if !(rank == 2 || rank == 3) || above - human_score >= 2_000 {
+                return Err(format!(
+                    "Human must be 2nd/3rd within 2,000 points, got rank {rank} and gap {}",
+                    above - human_score
+                ));
+            }
+        }
+
+        if triggers.losing_badly {
+            let human_score = scores[0];
+            let rank = 1 + scores.iter().filter(|&&score| score > human_score).count();
+            let mut sorted_scores = scores;
+            sorted_scores.sort_by(|a, b| b.cmp(a));
+            if rank != 4 || sorted_scores[2] - human_score <= 12_000 {
+                return Err("Losing scenario must be 4th by more than 12,000".to_string());
+            }
+        }
+
+        let discard_count = if triggers.late_game {
+            gen_range(13, 17)
+        } else if triggers.placement_desperation || triggers.losing_badly {
+            gen_range(8, 13)
+        } else {
+            gen_range(2, 7)
+        };
+
+        let opponent_meta = [(1usize, "Shimocha"), (2, "Toimen"), (3, "Kamicha")];
+
+        let mut opponent_players = Vec::with_capacity(3);
+        let mut opponent_rivers: Vec<Vec<Tile>> = Vec::with_capacity(3);
+        for (index, (seat, name)) in opponent_meta.iter().enumerate() {
+            let hand = draw_tiles(&mut deck, 13)
+                .ok_or_else(|| "Deck exhausted drawing an opponent hand".to_string())?;
+            let river = draw_tiles(&mut deck, discard_count)
+                .ok_or_else(|| "Deck exhausted drawing an opponent river".to_string())?;
+            opponent_rivers.push(river.clone());
+            opponent_players.push(PlayerState {
+                seat: *seat,
+                name: name.to_string(),
+                is_human: false,
+                wind: human_wind.next(*seat),
+                score: scores[index + 1],
+                hand: hand.iter().map(|tile| tile.to_string()).collect(),
+                draw: None,
+                red_fives: Vec::new(),
+                discards: discards_from_tiles(&river),
+                melds: Vec::new(),
+                is_riichi: false,
+                riichi_discard_index: None,
+            });
+        }
+
+        // The human is not furiten: neither wait may appear in their river.
+        let human_river = draw_tiles_excluding(&mut deck, discard_count, &skeleton.wait_tiles)
+            .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
+
+        // Reject a wait whose every copy is already visible in a river or the
+        // dora indicators.
+        let mut visible_wait_counts: HashMap<Tile, u8> = HashMap::new();
+        for river in &opponent_rivers {
+            for &tile in river {
+                *visible_wait_counts.entry(tile).or_insert(0) += 1;
+            }
+        }
+        for indicator in [dora_indicator, ura_indicator] {
+            *visible_wait_counts.entry(indicator).or_insert(0) += 1;
+        }
+        for wait_tile in &skeleton.wait_tiles {
+            if visible_wait_counts.get(wait_tile).copied().unwrap_or(0) >= 4 {
+                return Err(format!("Wait tile {wait_tile} is completely visible"));
+            }
+        }
+
+        let mut concealed_hand = skeleton.concealed_tiles.clone();
+        concealed_hand.sort();
+
+        let mut post_discard_tiles = concealed_hand.clone();
+        post_discard_tiles.extend(skeleton.open_pon_tiles.iter().copied());
+        let post_counts = to_counts(&post_discard_tiles);
+        let shanten_res = calculate_shanten(&post_counts);
+        let decompositions = decompose_hand(&post_counts);
+        let ukeire_res = calculate_ukeire(&post_counts);
+
+        if shanten_res.shanten != 0 {
+            return Err("Added Kan discard must leave a tenpai hand".to_string());
+        }
+        if triggers.good_wait_and_value && !matches!(skeleton.wait_tiles.len(), 2 | 3) {
+            return Err("Good-wait scenario must have a ryanmen or three-sided wait".to_string());
+        }
+
+        let remaining_tiles: usize = deck.values().map(|&count| count as usize).sum();
+        let tiles_remaining = remaining_tiles.saturating_sub(12).min(u8::MAX as usize) as u8;
+        if tiles_remaining == 0 {
+            return Err("No drawable tiles remain".to_string());
+        }
+        if triggers.late_game && tiles_remaining >= 20 {
+            return Err(format!(
+                "Late-game scenario must leave fewer than 20 wall tiles, got {tiles_remaining}"
+            ));
+        }
+
+        let mut display_tiles = full_tiles.clone();
+        display_tiles.sort();
+        let hand_string = format_hand_compact(&display_tiles);
+        let tile_strings: Vec<String> = display_tiles.iter().map(|tile| tile.to_string()).collect();
+        let ukeire_tiles: Vec<String> = ukeire_res
+            .tiles
+            .iter()
+            .map(|u| u.tile.to_string())
+            .collect();
+        let meld_tiles: Vec<String> = skeleton
+            .open_pon_tiles
+            .iter()
+            .map(|tile| tile.to_string())
+            .collect();
+
+        let human_player = PlayerState {
+            seat: 0,
+            name: "You".to_string(),
+            is_human: true,
+            wind: human_wind,
+            score: scores[0],
+            hand: concealed_hand.iter().map(|tile| tile.to_string()).collect(),
+            draw: Some(skeleton.drawn_tile.to_string()),
+            red_fives: Vec::new(),
+            discards: discards_from_tiles(&human_river),
+            melds: vec![CalledMeld {
+                meld_type: MeldType::Pon,
+                tiles: meld_tiles,
+                called_from: Some(1),
+            }],
+            is_riichi: false,
+            riichi_discard_index: None,
+        };
+
+        let mut players = Vec::with_capacity(4);
+        players.push(human_player);
+        players.extend(opponent_players);
+
+        Ok(GameState {
+            category: category.to_string(),
+            target_action: TargetAction::Kan,
+            correct_action: CorrectAction::kan(skeleton.drawn_tile.to_string()),
+            riichi_triggers: Vec::new(),
+            dama_reasons: Vec::new(),
+            shouminkan_triggers: triggers.to_vec(),
+            hand_string,
+            tiles: tile_strings,
+            shanten: shanten_res.shanten,
+            is_agari: false,
+            decompositions_count: decompositions.len(),
+            ukeire_tiles,
+            ukeire_total: ukeire_res.total_count,
+            round_wind,
+            hand_number,
+            honba: gen_range(0, 4) as u8,
+            riichi_sticks: 0,
+            dora_indicators: vec![dora_indicator.to_string()],
+            ura_dora_indicators: vec![ura_indicator.to_string()],
+            tiles_remaining,
+            current_turn: 0,
+            players,
+        })
+    }
+
     /// Dispatches to the requested scenario. Unknown categories fall back to
     /// the first real Block Theory scenario; "mock_table" keeps the Phase 2
     /// fixture available for UI scaffolding and tests.
@@ -1682,6 +2413,7 @@ impl ScenarioGenerator {
         match category {
             "mock_table" => self.generate_mock_puzzle(category),
             "chiitoitsu_riichi_vs_dama" => self.generate_chiitoitsu_riichi_vs_dama(category),
+            "shouminkan_decision" => self.generate_shouminkan_decision(category),
             _ => self.generate_ryanmen_protorun(category),
         }
     }
@@ -1853,12 +2585,10 @@ impl ScenarioGenerator {
         Ok(GameState {
             category: category.to_string(),
             target_action: TargetAction::Riichi,
-            correct_action: CorrectAction {
-                action_type: CorrectActionType::Riichi,
-                discard: correct_discard,
-            },
+            correct_action: CorrectAction::riichi(correct_discard),
             riichi_triggers: Vec::new(),
             dama_reasons: Vec::new(),
+            shouminkan_triggers: Vec::new(),
 
             hand_string,
             tiles: tile_strings,
@@ -1890,13 +2620,14 @@ pub fn generate_random_hand() -> Vec<Tile> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::CorrectActionType;
     use agari::context::indicator_to_dora;
     use agari::parse::parse_hand;
 
     fn assert_ryanmen_constraints(state: &GameState) {
         assert_eq!(state.category, "ryanmen_protorun");
         assert_eq!(state.target_action, TargetAction::NaniKiru);
-        assert_eq!(state.correct_action.action_type, CorrectActionType::Dama);
+        assert_eq!(state.correct_action.action_type(), CorrectActionType::Dama);
         assert_eq!(state.tiles.len(), 14);
         assert_eq!(state.players.len(), 4);
 
@@ -1922,10 +2653,7 @@ mod tests {
         assert!(human.is_human);
         assert!(!human.is_riichi);
         assert_eq!(human.hand.len(), 10);
-        assert_eq!(
-            human.draw.as_deref(),
-            Some(state.correct_action.discard.as_str())
-        );
+        assert_eq!(human.draw.as_deref(), Some(state.correct_action.tile()));
         assert_eq!(human.melds.len(), 1);
         assert_eq!(human.melds[0].meld_type, MeldType::Pon);
         assert_eq!(human.melds[0].tiles.len(), 3);
@@ -1995,7 +2723,7 @@ mod tests {
             .remove(0);
         assert_ne!(
             indicator_to_dora(indicator).to_string(),
-            state.correct_action.discard
+            state.correct_action.tile()
         );
 
         // Scores stay on the 100,000-point table.
@@ -2090,7 +2818,7 @@ mod tests {
                 .draw
                 .clone()
                 .expect("chiitoitsu human must have a draw");
-            assert_eq!(draw, state.correct_action.discard);
+            assert_eq!(draw, state.correct_action.tile());
 
             let mut expected = human.hand.clone();
             expected.push(draw);
@@ -2142,7 +2870,7 @@ mod tests {
                 );
             }
 
-            match state.correct_action.action_type {
+            match state.correct_action.action_type() {
                 CorrectActionType::Riichi => {
                     riichi_count += 1;
                     assert_eq!(state.target_action, TargetAction::Riichi);
@@ -2235,6 +2963,9 @@ mod tests {
                         "run {run}: dama hand is {score_level:?}, not Mangan or better"
                     );
                 }
+                CorrectActionType::Kan | CorrectActionType::Discard => {
+                    panic!("run {run}: chiitoitsu scenario returned a Kan action")
+                }
             }
         }
 
@@ -2255,15 +2986,23 @@ mod tests {
         let started = std::time::Instant::now();
 
         for run in 0..100 {
-            let skeleton = generator
-                .build_dama_chiitoitsu_skeleton()
-                .unwrap_or_else(|err| panic!("run {run}: dama skeleton failed: {err}"));
-            let state = generator
-                .build_chiitoitsu_board("chiitoitsu_riichi_vs_dama", &skeleton)
-                .unwrap_or_else(|err| panic!("run {run}: dama board failed: {err}"));
+            let mut generated = None;
+            for _ in 0..50 {
+                let Ok(skeleton) = generator.build_dama_chiitoitsu_skeleton() else {
+                    continue;
+                };
+                if let Ok(state) =
+                    generator.build_chiitoitsu_board("chiitoitsu_riichi_vs_dama", &skeleton)
+                {
+                    generated = Some(state);
+                    break;
+                }
+            }
+            let state =
+                generated.unwrap_or_else(|| panic!("run {run}: dama board failed after retries"));
 
             assert_eq!(state.target_action, TargetAction::Dama);
-            assert_eq!(state.correct_action.action_type, CorrectActionType::Dama);
+            assert_eq!(state.correct_action.action_type(), CorrectActionType::Dama);
             assert!(state.riichi_triggers.is_empty());
             assert_eq!(
                 state.dama_reasons,
@@ -2415,13 +3154,18 @@ mod tests {
         assert_ryanmen_constraints(&state);
         assert_eq!(state.shanten, 0);
         assert_eq!(state.ukeire_tiles.len(), 2);
-        assert!(state.tiles.contains(&state.correct_action.discard));
+        assert!(
+            state
+                .tiles
+                .iter()
+                .any(|tile| tile == state.correct_action.tile())
+        );
 
         // Discarding the duplicate leaves the two-sided ryanmen wait.
         let mut post_discard = state.tiles.clone();
         let duplicate_index = post_discard
             .iter()
-            .position(|tile| tile == &state.correct_action.discard)
+            .position(|tile| tile == state.correct_action.tile())
             .expect("correct tile must be in the full hand");
         post_discard.remove(duplicate_index);
         let post_tiles =
@@ -2631,5 +3375,343 @@ mod tests {
             bases.len() > 1,
             "generator must cover multiple base numbers"
         );
+    }
+
+    fn human_rank(state: &GameState) -> usize {
+        let human_score = state.players[0].score;
+        1 + state
+            .players
+            .iter()
+            .filter(|player| player.score > human_score)
+            .count()
+    }
+
+    fn shouminkan_min_wait_han(state: &GameState, wait: Tile) -> u8 {
+        let human = &state.players[0];
+        let open_tile = parse_tile(&human.melds[0].tiles[0]);
+        let open_meld = Meld::koutsu_open(open_tile);
+
+        let mut concealed_with_win: Vec<Tile> =
+            human.hand.iter().map(|tile| parse_tile(tile)).collect();
+        concealed_with_win.push(wait);
+        let concealed_counts = to_counts(&concealed_with_win);
+        let structures = decompose_hand_with_melds(&concealed_counts, &[open_meld]);
+
+        let mut full_with_win = concealed_with_win;
+        full_with_win.extend([open_tile; 3]);
+        let full_counts = to_counts(&full_with_win);
+        let context = GameContext::new(
+            WinType::Ron,
+            wind_to_honor(state.round_wind),
+            wind_to_honor(human.wind),
+        )
+        .with_winning_tile(wait)
+        .open();
+
+        structures
+            .iter()
+            .map(|structure| detect_yaku_with_context(structure, &full_counts, &context).total_han)
+            .min()
+            .unwrap_or(0)
+    }
+
+    fn shouminkan_trigger_holds(state: &GameState, trigger: ShouminkanTrigger) -> bool {
+        let human = &state.players[0];
+
+        match trigger {
+            ShouminkanTrigger::GoodWaitAndValue => {
+                if state.shanten != 0 || !matches!(state.ukeire_tiles.len(), 2 | 3) {
+                    return false;
+                }
+                state
+                    .ukeire_tiles
+                    .iter()
+                    .all(|tile| shouminkan_min_wait_han(state, parse_tile(tile)) >= 2)
+            }
+            ShouminkanTrigger::LateGame => {
+                state.tiles_remaining < 20
+                    && state
+                        .players
+                        .iter()
+                        .all(|player| player.discards.len() >= 13)
+            }
+            ShouminkanTrigger::PlacementDesperation => {
+                if state.round_wind != Wind::South || state.hand_number != 4 {
+                    return false;
+                }
+                let human_score = human.score;
+                let Some(above) = state
+                    .players
+                    .iter()
+                    .filter(|player| player.score > human_score)
+                    .map(|player| player.score)
+                    .min()
+                else {
+                    return false;
+                };
+                matches!(human_rank(state), 2 | 3) && above - human_score < 2_000
+            }
+            ShouminkanTrigger::LosingBadly => {
+                let human_score = human.score;
+                let mut scores: Vec<i32> =
+                    state.players.iter().map(|player| player.score).collect();
+                scores.sort_by(|a, b| b.cmp(a));
+                human_rank(state) == 4 && scores[2] - human_score > 12_000
+            }
+        }
+    }
+
+    fn assert_shouminkan_constraints(state: &GameState) {
+        assert_eq!(state.category, "shouminkan_decision");
+        assert_eq!(state.target_action, TargetAction::Kan);
+        assert_eq!(state.correct_action.action_type(), CorrectActionType::Kan);
+        assert_eq!(state.tiles.len(), 14);
+        assert_eq!(state.players.len(), 4);
+        assert_eq!(state.shanten, 0);
+        assert!(matches!(state.ukeire_tiles.len(), 2 | 3));
+        assert!(!state.shouminkan_triggers.is_empty());
+        assert!(state.riichi_triggers.is_empty());
+        assert!(state.dama_reasons.is_empty());
+        assert_eq!(state.dora_indicators.len(), 1);
+        assert_eq!(state.ura_dora_indicators.len(), 1);
+        assert!(state.tiles_remaining > 0);
+
+        let human = &state.players[0];
+        assert!(human.is_human);
+        assert!(!human.is_riichi);
+        assert_eq!(human.hand.len(), 10);
+        assert_eq!(human.melds.len(), 1);
+        assert_eq!(human.melds[0].meld_type, MeldType::Pon);
+        assert_eq!(human.melds[0].tiles.len(), 3);
+        assert!(
+            human.melds[0]
+                .tiles
+                .iter()
+                .all(|tile| tile == &human.melds[0].tiles[0])
+        );
+        assert!(matches!(
+            human.melds[0].tiles[0].as_str(),
+            "5z" | "6z" | "7z"
+        ));
+
+        let draw = human
+            .draw
+            .as_deref()
+            .expect("shouminkan human must have a draw");
+        assert_eq!(draw, human.melds[0].tiles[0]);
+        assert_eq!(draw, state.correct_action.tile());
+        assert!(
+            !human.hand.iter().any(|tile| tile == draw),
+            "the only fourth copy must be the active draw"
+        );
+
+        let mut expected = human.hand.clone();
+        expected.push(draw.to_string());
+        expected.extend(human.melds[0].tiles.iter().cloned());
+        expected.sort();
+        let mut actual = state.tiles.clone();
+        actual.sort();
+        assert_eq!(actual, expected, "displayed tiles must match the hand");
+
+        // The open Pon is the only meld at the table.
+        for opponent in &state.players[1..] {
+            assert!(opponent.melds.is_empty());
+            assert!(!opponent.is_riichi);
+        }
+
+        // The human is not furiten on any winning tile.
+        for wait in &state.ukeire_tiles {
+            assert!(
+                !human.discards.iter().any(|discard| &discard.tile == wait),
+                "human river contains furiten tile {wait}"
+            );
+        }
+
+        // The Pon tile is never the visible dora, so the Kan decision does not
+        // lean on an accidental dora.
+        let indicator = parse_tile(&state.dora_indicators[0]);
+        assert_ne!(indicator_to_dora(indicator).to_string(), draw);
+        let ura_indicator = parse_tile(&state.ura_dora_indicators[0]);
+        assert_ne!(indicator_to_dora(ura_indicator).to_string(), draw);
+
+        let total_score: i32 = state.players.iter().map(|player| player.score).sum();
+        assert_eq!(total_score, 100_000);
+
+        for trigger in &state.shouminkan_triggers {
+            assert!(
+                shouminkan_trigger_holds(state, *trigger),
+                "trigger {trigger:?} does not hold"
+            );
+        }
+    }
+
+    #[test]
+    fn test_shouminkan_decision_constraints() {
+        let generator = ScenarioGenerator::new();
+        let started = std::time::Instant::now();
+        let mut counts = [0usize; 4];
+
+        for run in 0..200 {
+            let state = generator
+                .generate_puzzle("shouminkan_decision")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+            assert_shouminkan_constraints(&state);
+
+            for trigger in &state.shouminkan_triggers {
+                let index = match trigger {
+                    ShouminkanTrigger::GoodWaitAndValue => 0,
+                    ShouminkanTrigger::LateGame => 1,
+                    ShouminkanTrigger::PlacementDesperation => 2,
+                    ShouminkanTrigger::LosingBadly => 3,
+                };
+                counts[index] += 1;
+            }
+        }
+
+        assert!(
+            counts.iter().all(|&count| count > 0),
+            "trigger coverage: {counts:?}"
+        );
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < std::time::Duration::from_secs(10),
+            "200 shouminkan generations took {elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn test_shouminkan_each_trigger_can_be_applied() {
+        let generator = ScenarioGenerator::new();
+        let trigger_sets = [
+            ShouminkanTriggerSet {
+                good_wait_and_value: true,
+                ..Default::default()
+            },
+            ShouminkanTriggerSet {
+                late_game: true,
+                ..Default::default()
+            },
+            ShouminkanTriggerSet {
+                placement_desperation: true,
+                ..Default::default()
+            },
+            ShouminkanTriggerSet {
+                losing_badly: true,
+                ..Default::default()
+            },
+            ShouminkanTriggerSet {
+                good_wait_and_value: true,
+                late_game: true,
+                ..Default::default()
+            },
+        ];
+
+        for triggers in trigger_sets {
+            let mut generated = None;
+            for _ in 0..50 {
+                let Ok(skeleton) = generator.build_shouminkan_skeleton(triggers) else {
+                    continue;
+                };
+                if let Ok(state) =
+                    generator.build_shouminkan_board("shouminkan_decision", &skeleton, triggers)
+                {
+                    generated = Some(state);
+                    break;
+                }
+            }
+
+            let state = generated
+                .unwrap_or_else(|| panic!("could not generate a board for triggers {triggers:?}"));
+            assert_eq!(state.shouminkan_triggers, triggers.to_vec());
+            for trigger in triggers.to_vec() {
+                assert!(shouminkan_trigger_holds(&state, trigger));
+            }
+        }
+    }
+
+    #[test]
+    fn test_shouminkan_skeleton_generalizes() {
+        let generator = ScenarioGenerator::new();
+
+        for _ in 0..100 {
+            let skeleton = generator
+                .build_shouminkan_skeleton(ShouminkanTriggerSet {
+                    good_wait_and_value: true,
+                    ..Default::default()
+                })
+                .expect("shouminkan skeleton must build");
+
+            assert_eq!(skeleton.full_tiles().len(), 14);
+            assert_eq!(skeleton.concealed_tiles.len(), 10);
+            assert_eq!(skeleton.open_pon_tiles.len(), 3);
+            assert_eq!(skeleton.open_pon_tiles[0], skeleton.drawn_tile);
+            assert_eq!(skeleton.open_pon_tiles[1], skeleton.drawn_tile);
+            assert_eq!(skeleton.open_pon_tiles[2], skeleton.drawn_tile);
+            assert!(validate_hand(&skeleton.full_tiles()).is_ok());
+
+            let mut post_discard = skeleton.concealed_tiles.clone();
+            post_discard.extend(skeleton.open_pon_tiles.iter().copied());
+            let counts = to_counts(&post_discard);
+            assert_eq!(calculate_shanten(&counts).shanten, 0);
+            let ukeire = calculate_ukeire(&counts);
+            let wait_tiles: Vec<Tile> = ukeire.tiles.iter().map(|u| u.tile).collect();
+            assert_eq!(wait_tiles.len(), skeleton.wait_tiles.len());
+            assert!(
+                skeleton
+                    .wait_tiles
+                    .iter()
+                    .all(|wait| wait_tiles.contains(wait))
+            );
+
+            for wait in &skeleton.wait_tiles {
+                assert!(
+                    generator.shouminkan_waits_have_value(
+                        &skeleton.concealed_tiles,
+                        skeleton.drawn_tile,
+                        &[*wait],
+                        2,
+                    ),
+                    "wait {wait} must score at least two han"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_shouminkan_non_good_hands_can_be_light() {
+        let generator = ScenarioGenerator::new();
+        let mut light_hands = 0;
+
+        for _ in 0..50 {
+            let skeleton = generator
+                .build_shouminkan_skeleton(ShouminkanTriggerSet::default())
+                .expect("non-good shouminkan skeleton must build");
+            let han = generator.shouminkan_min_wait_han(
+                &skeleton.concealed_tiles,
+                skeleton.drawn_tile,
+                &skeleton.wait_tiles,
+            );
+            assert!(han >= 1, "the open dragon Pon must always provide a yaku");
+            if han < 2 {
+                light_hands += 1;
+            }
+        }
+
+        assert!(
+            light_hands > 0,
+            "non-good hands must not always guarantee two han"
+        );
+    }
+
+    #[test]
+    fn test_shouminkan_trigger_sets_are_non_empty_and_compatible() {
+        for _ in 0..1_000 {
+            let triggers = random_shouminkan_triggers();
+            assert!(triggers.any());
+            assert!(
+                !(triggers.placement_desperation && triggers.losing_badly),
+                "placement and losing triggers must not coexist"
+            );
+        }
     }
 }

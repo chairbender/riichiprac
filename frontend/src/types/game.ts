@@ -7,7 +7,13 @@ export type Wind = 'East' | 'South' | 'West' | 'North';
 
 export type MeldType = 'Chi' | 'Pon' | 'Kan' | 'Ankan';
 
-export type TargetAction = 'Riichi' | 'Dama' | 'Push' | 'Fold' | 'NaniKiru';
+export type TargetAction =
+  | 'Riichi'
+  | 'Dama'
+  | 'Push'
+  | 'Fold'
+  | 'NaniKiru'
+  | 'Kan';
 
 /** Reasons a scenario recommends declaring Riichi. */
 export type RiichiTrigger =
@@ -26,6 +32,13 @@ export type DamaReason =
   | 'no_red_five_wait'
   | 'no_suji_trap'
   | 'mangan';
+
+/** Reasons a scenario recommends upgrading an open Pon to an Added Kan. */
+export type ShouminkanTrigger =
+  | 'good_wait_and_value'
+  | 'late_game'
+  | 'placement_desperation'
+  | 'losing_badly';
 
 /** Action kinds the trainer can expect alongside the discard. */
 export type CorrectActionType = 'riichi' | 'dama' | 'kan' | 'discard';
@@ -82,6 +95,8 @@ export interface GameState {
   riichi_triggers: RiichiTrigger[];
   /** Conditions that justify staying in dama for this scenario. */
   dama_reasons: DamaReason[];
+  /** Heuristics that justify declaring an Added Kan for this scenario. */
+  shouminkan_triggers: ShouminkanTrigger[];
 
   hand_string: string;
   tiles: string[];

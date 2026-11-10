@@ -74,7 +74,7 @@ mod tests {
     fn test_random_range() {
         for _ in 0..100 {
             let val = gen_range(5, 10);
-            assert!(val >= 5 && val < 10);
+            assert!((5..10).contains(&val));
         }
     }
 

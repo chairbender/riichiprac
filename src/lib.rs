@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 pub use generator::{PuzzleResponse, ScenarioGenerator, generate_random_hand};
 pub use state::{
     CalledMeld, CorrectAction, CorrectActionType, DamaReason, DiscardTile, GameState, MeldType,
-    PlayerState, RiichiTrigger, TargetAction, Wind,
+    PlayerState, RiichiTrigger, ShouminkanTrigger, TargetAction, Wind,
 };
 
 /// Verification helper for WASM module initialization.
@@ -40,20 +40,27 @@ mod tests {
     }
 
     #[test]
-    fn test_correct_action_serializes_type_and_discard() {
-        for (action_type, expected_type) in [
-            (CorrectActionType::Riichi, "riichi"),
-            (CorrectActionType::Dama, "dama"),
+    fn test_correct_action_serializes_its_tagged_shape() {
+        for (action, expected_type) in [
+            (CorrectAction::riichi("4p"), "riichi"),
+            (CorrectAction::dama("4p"), "dama"),
         ] {
-            let action = CorrectAction {
-                action_type,
-                discard: "4p".to_string(),
-            };
             let json = serde_json::to_value(&action).expect("action must serialize");
 
             assert_eq!(json["type"], expected_type);
             assert_eq!(json["discard"], "4p");
             assert!(json.get("tile").is_none());
+        }
+
+        for (action, expected_type) in [
+            (CorrectAction::kan("5p"), "kan"),
+            (CorrectAction::discard("5p"), "discard"),
+        ] {
+            let json = serde_json::to_value(&action).expect("action must serialize");
+
+            assert_eq!(json["type"], expected_type);
+            assert_eq!(json["tile"], "5p");
+            assert!(json.get("discard").is_none());
         }
     }
 

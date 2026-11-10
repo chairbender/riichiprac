@@ -46,6 +46,7 @@ pub enum TargetAction {
     Push,
     Fold,
     NaniKiru,
+    Kan,
 }
 
 /// The kind of action the trainer expects from the player.
@@ -56,16 +57,81 @@ pub enum CorrectActionType {
     Riichi,
     /// Stay in dama (concealed tenpai) and discard without declaring Riichi.
     Dama,
+    /// Add the drawn fourth tile to an open Pon.
+    Kan,
+    /// Pass on the Kan and discard normally.
+    Discard,
 }
 
 /// The expected answer for the current scenario.
+///
+/// Serializes as either `{"type":"riichi|dama","discard":"..."}` or
+/// `{"type":"kan|discard","tile":"..."}`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct CorrectAction {
-    /// Action kind; serialized as `"type"` because `type` is reserved in Rust.
-    #[serde(rename = "type")]
-    pub action_type: CorrectActionType,
-    /// Tile the player should discard (e.g. "6p").
-    pub discard: String,
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum CorrectAction {
+    /// Declare Riichi and discard `discard`.
+    Riichi { discard: String },
+    /// Stay in dama and discard `discard`.
+    Dama { discard: String },
+    /// Declare an Added Kan on `tile`.
+    Kan { tile: String },
+    /// Pass on the Kan and discard `tile`.
+    Discard { tile: String },
+}
+
+impl CorrectAction {
+    pub fn riichi(discard: impl Into<String>) -> Self {
+        Self::Riichi {
+            discard: discard.into(),
+        }
+    }
+
+    pub fn dama(discard: impl Into<String>) -> Self {
+        Self::Dama {
+            discard: discard.into(),
+        }
+    }
+
+    pub fn kan(tile: impl Into<String>) -> Self {
+        Self::Kan { tile: tile.into() }
+    }
+
+    pub fn discard(tile: impl Into<String>) -> Self {
+        Self::Discard { tile: tile.into() }
+    }
+
+    /// The action kind, independent of the tile field name.
+    pub fn action_type(&self) -> CorrectActionType {
+        match self {
+            Self::Riichi { .. } => CorrectActionType::Riichi,
+            Self::Dama { .. } => CorrectActionType::Dama,
+            Self::Kan { .. } => CorrectActionType::Kan,
+            Self::Discard { .. } => CorrectActionType::Discard,
+        }
+    }
+
+    /// The tile the player must click: the discard or the Kan tile.
+    pub fn tile(&self) -> &str {
+        match self {
+            Self::Riichi { discard } | Self::Dama { discard } => discard,
+            Self::Kan { tile } | Self::Discard { tile } => tile,
+        }
+    }
+}
+
+/// Reasons a scenario recommends upgrading an open Pon to an Added Kan.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ShouminkanTrigger {
+    /// The hand is tenpai or 1-shanten with a good wait and at least 2 han.
+    GoodWaitAndValue,
+    /// The wall is nearly empty and rivers are in the third row.
+    LateGame,
+    /// South 4 with the human close behind the player above them.
+    PlacementDesperation,
+    /// The human is far behind in fourth place.
+    LosingBadly,
 }
 
 /// Reasons a scenario recommends declaring Riichi.
@@ -194,6 +260,8 @@ pub struct GameState {
     pub riichi_triggers: Vec<RiichiTrigger>,
     /// Reasons this scenario recommends staying in dama (empty when not applicable).
     pub dama_reasons: Vec<DamaReason>,
+    /// Reasons this scenario recommends declaring an Added Kan.
+    pub shouminkan_triggers: Vec<ShouminkanTrigger>,
 
     // Hand evaluation (Human player)
     pub hand_string: String,
