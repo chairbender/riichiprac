@@ -170,6 +170,15 @@ pub enum ShouminkanTrigger {
     PlacementDesperation,
     /// The human is far behind in fourth place.
     LosingBadly,
+    /// The hand is 2-away or worse, so the Kan is not about the wait: you need
+    /// its extra draw, minipoints and dora to improve the placement.
+    ///
+    /// Riichi Book 1, ch. 9, "From an open set to an open quad (kakan)", lists
+    /// "you need more dora or minipoints to improve the placement" and "you are
+    /// losing badly" as sufficient reasons on their own, without the 1-away
+    /// requirement of the first two reasons. The book's own example is a 2-away
+    /// hand that should kan in South 4 to reach 2,000 points.
+    NeedsDora,
 }
 
 /// Reasons a scenario recommends declaring Riichi.

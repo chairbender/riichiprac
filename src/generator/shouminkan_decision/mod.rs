@@ -7,11 +7,34 @@ use crate::state::GameState;
 
 /// Generates a hand where the player has drawn the fourth tile of an open
 /// Pon and must decide whether to upgrade it to an Added Kan.
+///
+/// Conditions come from Riichi Book 1, ch. 9, "From an open set to an open quad
+/// (kakan)". The `needs_dora` trigger covers the far-from-ready half of that
+/// list, where the book's example is a 2-away hand that should still kan.
 pub fn generate(category: &str) -> Result<GameState, String> {
     generate_with_retries("shouminkan", 20_000, || {
         let triggers = triggers::random();
-        let skeleton = skeleton::build(triggers)?;
-        board::build(category, &skeleton, triggers)
+        let skeleton = skeleton::build_for(triggers)?;
+        board::build(category, &skeleton, triggers, board::ShouminkanAnswer::Kan)
+    })
+}
+
+/// Generates the book's negative Added Kan example.
+///
+/// Riichi Book 1, ch. 9: "This hand has three han and a good wait. However,
+/// since it is 2-away from ready, calling kan on chun is not justifiable." So
+/// the hand is 2-away with value already secured and no placement or
+/// score pressure, and the correct answer is to keep the Pon and discard the
+/// drawn fourth tile.
+pub fn generate_decline(category: &str) -> Result<GameState, String> {
+    generate_with_retries("shouminkan_decline", 20_000, || {
+        let skeleton = skeleton::build_two_away(true)?;
+        board::build(
+            category,
+            &skeleton,
+            triggers::ShouminkanTriggerSet::default(),
+            board::ShouminkanAnswer::Decline,
+        )
     })
 }
 
@@ -67,6 +90,30 @@ mod tests {
             .unwrap_or(0)
     }
 
+    fn placement_desperation_holds(state: &GameState) -> bool {
+        if state.round_wind != Wind::South || state.hand_number != 4 {
+            return false;
+        }
+        let human_score = state.players[0].score;
+        let Some(above) = state
+            .players
+            .iter()
+            .filter(|player| player.score > human_score)
+            .map(|player| player.score)
+            .min()
+        else {
+            return false;
+        };
+        matches!(human_rank(state), 2 | 3) && above - human_score < 2_000
+    }
+
+    fn losing_badly_holds(state: &GameState) -> bool {
+        let human_score = state.players[0].score;
+        let mut scores: Vec<i32> = state.players.iter().map(|player| player.score).collect();
+        scores.sort_by(|a, b| b.cmp(a));
+        human_rank(state) == 4 && scores[2] - human_score > 12_000
+    }
+
     fn shouminkan_trigger_holds(state: &GameState, trigger: ShouminkanTrigger) -> bool {
         let human = &state.players[0];
 
@@ -87,28 +134,15 @@ mod tests {
                         .iter()
                         .all(|player| player.discards.len() >= 13)
             }
-            ShouminkanTrigger::PlacementDesperation => {
-                if state.round_wind != Wind::South || state.hand_number != 4 {
-                    return false;
-                }
-                let human_score = human.score;
-                let Some(above) = state
-                    .players
-                    .iter()
-                    .filter(|player| player.score > human_score)
-                    .map(|player| player.score)
-                    .min()
-                else {
-                    return false;
-                };
-                matches!(human_rank(state), 2 | 3) && above - human_score < 2_000
-            }
-            ShouminkanTrigger::LosingBadly => {
-                let human_score = human.score;
-                let mut scores: Vec<i32> =
-                    state.players.iter().map(|player| player.score).collect();
-                scores.sort_by(|a, b| b.cmp(a));
-                human_rank(state) == 4 && scores[2] - human_score > 12_000
+            ShouminkanTrigger::PlacementDesperation => placement_desperation_holds(state),
+            ShouminkanTrigger::LosingBadly => losing_badly_holds(state),
+            // Book bullets 3 and 4: the Kan is for the dora and minipoints, so
+            // the hand is deliberately not close to ready, and the table has to
+            // be a placement or score emergency.
+            ShouminkanTrigger::NeedsDora => {
+                let _ = human;
+                state.shanten >= 2
+                    && (placement_desperation_holds(state) || losing_badly_holds(state))
             }
         }
     }
@@ -119,8 +153,18 @@ mod tests {
         assert_eq!(state.correct_action.action_type(), CorrectActionType::Kan);
         assert_eq!(state.tiles.len(), 14);
         assert_eq!(state.players.len(), 4);
-        assert_eq!(state.shanten, 0);
-        assert!(matches!(state.ukeire_tiles.len(), 2 | 3));
+        match state.shanten {
+            // The ready lessons: tenpai with a ryanmen or three-sided wait.
+            0 => assert!(matches!(state.ukeire_tiles.len(), 2 | 3)),
+            // The far-from-ready lesson: 2-away, and only ever for `needs_dora`.
+            2 => assert!(
+                state
+                    .shouminkan_triggers
+                    .contains(&ShouminkanTrigger::NeedsDora),
+                "a 2-away Added Kan hand must carry the needs_dora trigger"
+            ),
+            other => panic!("unexpected Added Kan shanten {other}"),
+        }
         assert!(!state.shouminkan_triggers.is_empty());
         assert!(state.riichi_triggers.is_empty());
         assert!(state.dama_reasons.is_empty());
@@ -171,12 +215,16 @@ mod tests {
             assert!(!opponent.is_riichi);
         }
 
-        // The human is not furiten on any winning tile.
-        for wait in &state.ukeire_tiles {
-            assert!(
-                !human.discards.iter().any(|discard| &discard.tile == wait),
-                "human river contains furiten tile {wait}"
-            );
+        // The human is not furiten on any winning tile. Only a ready hand has
+        // winning tiles; for the 2-away lesson `ukeire_tiles` are improvement
+        // draws, which furiten does not care about.
+        if state.shanten == 0 {
+            for wait in &state.ukeire_tiles {
+                assert!(
+                    !human.discards.iter().any(|discard| &discard.tile == wait),
+                    "human river contains furiten tile {wait}"
+                );
+            }
         }
 
         // The Pon tile is never the visible dora, so the Kan decision does not
@@ -200,7 +248,7 @@ mod tests {
     #[test]
     fn test_shouminkan_decision_constraints() {
         let started = std::time::Instant::now();
-        let mut counts = [0usize; 4];
+        let mut counts = [0usize; 5];
 
         for run in 0..200 {
             let state = generate("shouminkan_decision")
@@ -213,6 +261,7 @@ mod tests {
                     ShouminkanTrigger::LateGame => 1,
                     ShouminkanTrigger::PlacementDesperation => 2,
                     ShouminkanTrigger::LosingBadly => 3,
+                    ShouminkanTrigger::NeedsDora => 4,
                 };
                 counts[index] += 1;
             }
@@ -253,15 +302,30 @@ mod tests {
                 late_game: true,
                 ..Default::default()
             },
+            triggers::ShouminkanTriggerSet {
+                needs_dora: true,
+                placement_desperation: true,
+                ..Default::default()
+            },
+            triggers::ShouminkanTriggerSet {
+                needs_dora: true,
+                losing_badly: true,
+                ..Default::default()
+            },
         ];
 
         for triggers in trigger_sets {
             let mut generated = None;
             for _ in 0..50 {
-                let Ok(skeleton) = skeleton::build(triggers) else {
+                let Ok(skeleton) = skeleton::build_for(triggers) else {
                     continue;
                 };
-                if let Ok(state) = board::build("shouminkan_decision", &skeleton, triggers) {
+                if let Ok(state) = board::build(
+                    "shouminkan_decision",
+                    &skeleton,
+                    triggers,
+                    board::ShouminkanAnswer::Kan,
+                ) {
                     generated = Some(state);
                     break;
                 }
@@ -274,6 +338,63 @@ mod tests {
                 assert!(shouminkan_trigger_holds(&state, trigger));
             }
         }
+    }
+
+    /// Riichi Book 1, ch. 9: a 2-away hand with value already secured and no
+    /// score pressure should keep the Pon and discard the drawn fourth tile.
+    fn assert_decline_constraints(state: &GameState) {
+        assert_eq!(state.category, "shouminkan_decline");
+        // Still the same question; only the expected answer differs.
+        assert_eq!(state.target_action, TargetAction::Kan);
+        assert_eq!(
+            state.correct_action.action_type(),
+            CorrectActionType::Discard
+        );
+        assert_eq!(state.tiles.len(), 14);
+        assert_eq!(state.shanten, 2, "the decline lesson is 2-away by design");
+
+        let human = &state.players[0];
+        assert_eq!(
+            state.correct_action.tile(),
+            human.draw.as_deref(),
+            "the answer is to discard the drawn fourth tile"
+        );
+        assert!(
+            state.shouminkan_triggers.is_empty(),
+            "there is no reason to call the Kan in the decline lesson"
+        );
+        assert!(!placement_desperation_holds(state));
+        assert!(!losing_badly_holds(state));
+
+        // Value is already secured: the Pon plus a second dragon triplet means
+        // at least two han whatever the hand completes into. The book's example
+        // carries three; two is the floor this generator guarantees.
+        let pon_tile = &human.melds[0].tiles[0];
+        let dragon_triplet = ["5z", "6z", "7z"].iter().any(|dragon| {
+            *dragon != pon_tile.as_str()
+                && human.hand.iter().filter(|tile| *tile == dragon).count() == 3
+        });
+        assert!(
+            dragon_triplet,
+            "the decline hand must hold a second dragon triplet for value"
+        );
+    }
+
+    #[test]
+    fn test_shouminkan_decline_constraints() {
+        let started = std::time::Instant::now();
+
+        for run in 0..100 {
+            let state = generate_decline("shouminkan_decline")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+            assert_decline_constraints(&state);
+        }
+
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < std::time::Duration::from_secs(10),
+            "100 decline generations took {elapsed:?}"
+        );
     }
 
     #[test]
