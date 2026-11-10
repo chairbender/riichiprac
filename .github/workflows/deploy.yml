@@ -1,0 +1,87 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege for Pages: read the repo, write the Pages deployment, and let
+# the deploy step mint an OIDC token.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One Pages deployment at a time; never cancel a deploy that is already running.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain (wasm target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      # NOTE: wasm-pack runs wasm-opt on release builds. This module is large
+      # (candle + safetensors), so if this job starts running out of memory or
+      # timing out, add `--no-opt` to the wasm-pack command below and record the
+      # reason in hosting-plan.md ("MIME / wasm-opt conclusions"). Do not disable
+      # it silently: the optimized module is what ships to browsers.
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+
+      # The frontend imports the freshly built ./pkg via `file:../pkg`, so this
+      # must run from the repo root before `npm ci` in frontend/.
+      - name: Build WASM package
+        run: wasm-pack build --target web --release
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          # CI uses Node 20 (local dev is on 18); Vite 5 and the Pages actions
+          # are supported on both, but 20 is the current LTS for Actions.
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # `GITHUB_ACTIONS` is set by the runner, so vite.config.ts picks the
+      # `/riichiprac/` base path automatically. The 43 MB weights file is NOT
+      # needed here: it is gitignored and fetched from an external CDN at
+      # runtime (see hosting-plan.md).
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

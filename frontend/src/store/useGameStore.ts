@@ -6,8 +6,8 @@ import {
   isCorrectAction,
   isKanDecision,
 } from '../actions';
-import { WEIGHTS_URL } from '../aiModel';
 import { parseImportedState } from '../report';
+import { loadWeights } from '../services/weightLoader';
 import type { AiEvaluation, AiStatus } from '../types/ai';
 import type { CorrectActionType, GameState } from '../types/game';
 import type { ReportVerdict, ScenarioReport } from '../types/report';
@@ -331,23 +331,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       try {
         await ensureWasmReady();
 
-        const response = await fetch(WEIGHTS_URL);
-        if (!response.ok) {
-          throw new Error(
-            `could not load ${WEIGHTS_URL} (HTTP ${response.status}). ` +
-              'Run scripts/convert_weights.py to generate the model file.',
-          );
-        }
-
-        const contentType = response.headers.get('content-type') ?? '';
-        if (contentType.includes('text/html')) {
-          throw new Error(
-            `could not find ${WEIGHTS_URL}. ` +
-              'Run scripts/convert_weights.py to generate the model file.',
-          );
-        }
-
-        const bytes = new Uint8Array(await response.arrayBuffer());
+        // Resolves from IndexedDB when cached, otherwise downloads from the
+        // external CDN. See services/weightLoader.ts and hosting-plan.md.
+        const bytes = await loadWeights();
 
         // Let the loading badge paint before the blocking 43 MB parse/bind.
         await new Promise<void>((resolve) => {
