@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod generator;
 pub mod rng;
 pub mod state;

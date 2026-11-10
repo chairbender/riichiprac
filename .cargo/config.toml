@@ -1,0 +1,5 @@
+# getrandom 0.3 (pulled in by candle -> rand 0.9) needs an explicit backend on
+# wasm32-unknown-unknown. `wasm_js` routes entropy through Math.random via
+# wasm-bindgen, which is the only source available in the browser sandbox.
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']

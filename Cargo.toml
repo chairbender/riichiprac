@@ -12,6 +12,16 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 agari = { git = "https://github.com/agari-industries/agari" }
 js-sys = "0.3.107"
+# Candle: pure-Rust inference. `default-features = false` keeps the CUDA/Metal/MKL
+# backends (and their native C toolchains) out of the browser build.
+candle-core = { version = "0.8", default-features = false }
+candle-nn = { version = "0.8", default-features = false }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# candle pulls in rand 0.9 -> getrandom 0.3. On wasm32-unknown-unknown getrandom
+# only compiles with the `wasm_js` backend (paired with the rustflags in
+# .cargo/config.toml).
+getrandom = { version = "0.3", features = ["wasm_js"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.80"
