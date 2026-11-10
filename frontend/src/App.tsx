@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import init, { generate_puzzle } from 'riichiprac';
-import wasmUrl from 'riichiprac/riichiprac_bg.wasm?url';
+import { generate_puzzle } from 'riichiprac';
+import { AiEvaluatorPanel } from './components/AiEvaluatorPanel';
 import { HandDock } from './components/HandDock';
 import { FeedbackToast } from './components/FeedbackToast';
 import { PlayerRow } from './components/PlayerRow';
@@ -14,6 +14,7 @@ import {
 } from './scenarios';
 import type { ScenarioSelection } from './scenarios';
 import { useGameStore } from './store/useGameStore';
+import { ensureWasmReady } from './wasm';
 import './App.css';
 
 /**
@@ -21,13 +22,6 @@ import './App.css';
  * Toimen (across), Kamicha (left), Shimocha (right), then the human.
  */
 const PLAYER_ROW_ORDER = [2, 3, 1, 0];
-
-let wasmInitPromise: ReturnType<typeof init> | null = null;
-
-function ensureWasmReady(): ReturnType<typeof init> {
-  wasmInitPromise ??= init({ module_or_path: wasmUrl });
-  return wasmInitPromise;
-}
 
 export const App = () => {
   const gameState = useGameStore((state) => state.gameState);
@@ -42,6 +36,13 @@ export const App = () => {
   const selectTile = useGameStore((state) => state.selectTile);
   const reset = useGameStore((state) => state.reset);
   const setError = useGameStore((state) => state.setError);
+  const aiStatus = useGameStore((state) => state.aiStatus);
+  const aiError = useGameStore((state) => state.aiError);
+  const evaluation = useGameStore((state) => state.evaluation);
+  const isEvaluating = useGameStore((state) => state.isEvaluating);
+  const initializeAi = useGameStore((state) => state.initializeAi);
+  const evaluateWithAi = useGameStore((state) => state.evaluateWithAi);
+  const clearEvaluation = useGameStore((state) => state.clearEvaluation);
 
   const [selection, setSelection] = useState<ScenarioSelection>('all');
   const loadRequestId = useRef(0);
@@ -71,6 +72,11 @@ export const App = () => {
   useEffect(() => {
     void loadPuzzle('all');
   }, [loadPuzzle]);
+
+  // Start loading the Mortal weights in the background on first paint.
+  useEffect(() => {
+    void initializeAi();
+  }, [initializeAi]);
 
   const handleScenarioChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const next = event.target.value as ScenarioSelection;
@@ -159,12 +165,29 @@ export const App = () => {
         ))}
       </main>
 
+      {gameState && (
+        <AiEvaluatorPanel
+          status={aiStatus}
+          error={aiError}
+          isEvaluating={isEvaluating}
+          evaluation={evaluation}
+          onEvaluate={() => {
+            void evaluateWithAi();
+          }}
+          onClear={clearEvaluation}
+          onRetry={() => {
+            void initializeAi();
+          }}
+        />
+      )}
+
       {humanPlayer && (
         <HandDock
           player={humanPlayer}
           feedback={feedback}
           callRiichi={callRiichi}
           callKan={callKan}
+          aiEvaluation={evaluation}
           onToggleRiichi={toggleRiichi}
           onToggleKan={toggleKan}
           onSelectTile={selectTile}

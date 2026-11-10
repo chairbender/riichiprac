@@ -1,5 +1,10 @@
 import { findKanCandidateTile } from '../actions';
 import type { AnswerFeedback } from '../store/useGameStore';
+import type { AiEvaluation } from '../types/ai';
+import {
+  discardProbabilitiesByTile,
+  formatProbability,
+} from '../types/ai';
 import type { PlayerState } from '../types/game';
 import { KanIcon } from './KanIcon';
 import { RiichiStick } from './RiichiStick';
@@ -10,6 +15,8 @@ interface HandDockProps {
   feedback: AnswerFeedback | null;
   callRiichi: boolean;
   callKan: boolean;
+  /** Latest Mortal evaluation for the table, if the player ran one. */
+  aiEvaluation: AiEvaluation | null;
   onToggleRiichi: () => void;
   onToggleKan: () => void;
   onSelectTile: (tile: string) => void;
@@ -26,6 +33,7 @@ export function HandDock({
   feedback,
   callRiichi,
   callKan,
+  aiEvaluation,
   onToggleRiichi,
   onToggleKan,
   onSelectTile,
@@ -56,6 +64,19 @@ export function HandDock({
     redFiveCounts.set(tile, remaining - 1);
     return true;
   });
+
+  // AI badges only make sense before the answer is submitted.
+  const aiProbabilities = isAnswered
+    ? new Map<string, number>()
+    : discardProbabilitiesByTile(aiEvaluation);
+  let topAiTile: string | null = null;
+  let topAiProbability = 0;
+  for (const [tile, probability] of aiProbabilities) {
+    if (probability > topAiProbability) {
+      topAiProbability = probability;
+      topAiTile = tile;
+    }
+  }
 
   return (
     <section className="hand-dock" aria-label="Your hand">
@@ -117,11 +138,20 @@ export function HandDock({
             }
           }
 
+          const aiProbability = aiProbabilities.get(tile);
+          let aiClass = '';
+          if (aiProbability !== undefined && aiProbability >= 0.01) {
+            aiClass = ' hand-tile-button--ai';
+            if (tile === topAiTile) {
+              aiClass += ' hand-tile-button--ai-top';
+            }
+          }
+
           return (
             <button
               key={`${tile}-${index}`}
               type="button"
-              className={`hand-tile-button${stateClass}`}
+              className={`hand-tile-button${stateClass}${aiClass}`}
               onClick={() => onSelectTile(tile)}
               disabled={isAnswered}
               aria-label={`${
@@ -130,6 +160,11 @@ export function HandDock({
                 callRiichi ? ', with Riichi' : ''
               }`}
             >
+              {aiProbability !== undefined && aiProbability >= 0.01 && (
+                <span className="ai-tile-badge" aria-hidden="true">
+                  {formatProbability(aiProbability)}
+                </span>
+              )}
               <Tile
                 code={tile}
                 className="tile hand-tile"
