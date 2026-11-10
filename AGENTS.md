@@ -8,6 +8,23 @@
 You are building a fully client-side, browser-based web application that trains players on specific Riichi Mahjong scenarios and heuristics (heavily inspired by *Riichi Book 1*). 
 The app generates randomized hands and board states that perfectly fit predefined teaching constraints, asking the user to make the correct decision (e.g., Riichi vs. Dama, Push vs. Fold, Nani Kiru).
 
+## 1b. Reference Material: Riichi Book 1 Source
+The full text of *Riichi Book 1* is checked out locally at:
+
+```
+/home/kylehipke/workspaces/RiichiBooks
+```
+
+* Each chapter is a separate LaTeX source: `RiichiBook1-ch1-tenhou1.tex` (tile efficiency),
+  `ch4-five` (5-block theory), `ch7-riichi` (riichi vs. dama), `ch8-defense` (push/fold,
+  betaori, suji), `ch9-call` (call decisions), `ch10-grand` (grand strategy), etc.
+  `RiichiBook1.pdf` is the compiled book; `figs/` holds its diagrams.
+* Use it as the authority for **what the book actually says** when defining a scenario's
+  constraints and `correct_action`. Do not paraphrase from memory or invent a heuristic:
+  read the relevant chapter, quote the rule, and encode that.
+* When a scenario's teaching constraint is ambiguous, the book wins over any assumption in
+  this file. Cite the chapter and the specific rule in the scenario's doc comment/report.
+
 ## 2. Core Architecture: Constraint Satisfaction Problem (CSP)
 **CRITICAL RULE:** Do NOT attempt to build an "AI" or "Oracle" that generates a random hand and then calculates the best move. 
 The app is a **Constraint Satisfaction Generator**:
