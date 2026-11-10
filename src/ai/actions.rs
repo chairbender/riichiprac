@@ -159,13 +159,26 @@ fn self_turn_actions(state: &GameState, out: &mut Vec<ActionInfo>) {
     let player = &state.players[0];
     let held = concealed_tiles(player);
 
+    // One action per tile kind, exactly like libriichi's 34-tile loop.
+    let mut unique: Vec<&String> = Vec::new();
     for tile in &held {
-        if let Some(info) = discard_info(tile, false) {
+        if !unique.contains(&tile) {
+            unique.push(tile);
+        }
+    }
+
+    for tile in unique {
+        let copies = held.iter().filter(|held| *held == tile).count();
+        let is_red = player.red_fives.iter().any(|red| red == tile);
+        // libriichi's `discard_candidates_aka`:
+        //   ret[5m] = tehai[5m] > 1 when an aka 5m is held.
+        // A single red five therefore has only the red discard action.
+        if (!is_red || copies > 1)
+            && let Some(info) = discard_info(tile, false)
+        {
             out.push(info);
         }
-        if player.red_fives.iter().any(|red| red == tile)
-            && let Some(info) = discard_info(tile, true)
-        {
+        if is_red && let Some(info) = discard_info(tile, true) {
             out.push(info);
         }
     }
@@ -713,6 +726,45 @@ mod tests {
         assert_eq!(action_index("Kan"), Some(42));
         assert_eq!(action_index("Agari"), Some(43));
         assert_eq!(action_index("Pass"), Some(45));
+    }
+
+    #[test]
+    fn red_five_discard_variants_match_libriichi() {
+        // Only the red 5p is held: the plain discard is illegal.
+        let mut state = base_state(&[
+            "1m", "2m", "3m", "4p", "5p", "6p", "7s", "8s", "9s", "2z", "2z", "3z", "4z",
+        ]);
+        state.players[0].red_fives = vec!["5p".to_string()];
+        let names: Vec<String> = legal_actions(&state)
+            .into_iter()
+            .map(|action| action.action)
+            .collect();
+        assert!(!names.iter().any(|name| name == "Discard_5p"));
+        assert!(names.iter().any(|name| name == "Discard_5pr"));
+
+        // Two copies, one of them red: both variants are legal, once each.
+        let mut state = base_state(&[
+            "1m", "2m", "3m", "4p", "5p", "5p", "6p", "7s", "8s", "9s", "2z", "3z", "4z",
+        ]);
+        state.players[0].red_fives = vec!["5p".to_string()];
+        let names: Vec<String> = legal_actions(&state)
+            .into_iter()
+            .map(|action| action.action)
+            .collect();
+        assert_eq!(
+            names
+                .iter()
+                .filter(|name| name.as_str() == "Discard_5p")
+                .count(),
+            1
+        );
+        assert_eq!(
+            names
+                .iter()
+                .filter(|name| name.as_str() == "Discard_5pr")
+                .count(),
+            1
+        );
     }
 
     #[test]

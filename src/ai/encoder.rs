@@ -5,17 +5,29 @@
 //!
 //! The channel offsets below were measured from libriichi rather than guessed:
 //! `encode_obs` fills rows in a fixed order and asserts the cursor lands on
-//! 1012. A few pieces of Mortal's input require its single-player EV solver
-//! (the required-tile plane and the 3x17 tenpai/win/EV table); those rows are
-//! left at zero — see [`OFF_REQUIRED_TILES`] and [`OFF_SP_TABLE`].
+//! 1012. Rows 889..=1011 come from the single-player EV solver in
+//! [`super::sp`]: the EV summary, the two required-tile planes, the
+//! best-discard row and the 3x17 tenpai/win/EV table. When the solver refuses,
+//! the documented minimum tsumo agari value is written into [`OFF_EV`] and the
+//! solver rows stay zero.
 //!
 //! Observation is always from the human seat's perspective (`players[0]`),
 //! relative seat order 0=self, 1=shimocha, 2=toimen, 3=kamicha. Hidden
 //! information is never read: opponent hands are ignored, only their rivers,
 //! melds and open kans are encoded.
 
+use agari::context::{GameContext, WinType};
+use agari::hand::{KanType, Meld, decompose_hand, decompose_hand_with_melds};
+use agari::parse::{parse_hand, to_counts};
+use agari::scoring::{calculate_basic_points, calculate_fu, calculate_payment};
+use agari::shanten::{array_to_tilecounts, index_to_tile, tile_to_index};
+use agari::tile::Honor;
+use agari::yaku::detect_yaku_with_context;
+
 use crate::decision::{ActionKind, KanKind};
 use crate::state::{DecisionContext, DiscardTile, GameState, MeldType, PlayerState};
+
+use super::sp::{self, Candidate, CandidateColumn, InitState, SPCalculator};
 
 /// Mortal v4 observation channels (`libriichi::consts::obs_shape(4)`).
 pub const OBS_CHANNELS: usize = 1012;
@@ -166,6 +178,7 @@ pub fn encode_v4_observation(state: &GameState) -> Vec<f32> {
     encode_last_discards(&mut buf, &opponents, &dora_factor);
     encode_waits_and_shanten(&mut buf, state, self_player);
     encode_decision_features(&mut buf, state, self_player, &self_hand);
+    encode_sp_planes(&mut buf, state, self_player, &self_hand);
 
     buf.into_vec()
 }
@@ -226,8 +239,9 @@ fn encode_round_context(buf: &mut ObsBuffer, state: &GameState) {
     buf.fill(OFF_KYOKU + kyoku, 1.0);
     buf.fill(OFF_HONBA, state.honba.min(10) as f32 / 10.0);
     buf.fill(OFF_KYOTAKU, state.riichi_sticks.min(10) as f32 / 10.0);
-    buf.assign(OFF_BAKAZE, bakaze, 1.0);
-    buf.assign(OFF_JIKAZE, jikaze, 1.0);
+    // libriichi writes the wind's tile id (E=27 .. N=30), not a 0..=3 index.
+    buf.assign(OFF_BAKAZE, 27 + bakaze, 1.0);
+    buf.assign(OFF_JIKAZE, 27 + jikaze, 1.0);
     let progress = (bakaze.min(1) * 4 + kyoku) as f32 / 7.0;
     buf.fill(OFF_ROUND, progress);
 }
@@ -458,6 +472,15 @@ fn encode_wall_and_dora(
 }
 
 fn encode_tiles_seen(buf: &mut ObsBuffer, state: &GameState) {
+    let seen = seen_counts(state);
+    for (index, &count) in seen.iter().enumerate() {
+        buf.assign(OFF_TILES_SEEN, index, count.min(4) as f32 / 4.0);
+    }
+}
+
+/// Every tile the human can see: own hand/draw, all rivers, melds and dora
+/// indicators. This is libriichi's `tiles_seen`.
+pub(crate) fn seen_counts(state: &GameState) -> [u8; TILE_KINDS] {
     let mut seen = [0u8; TILE_KINDS];
 
     for tile in state.players[0]
@@ -491,9 +514,7 @@ fn encode_tiles_seen(buf: &mut ObsBuffer, state: &GameState) {
         }
     }
 
-    for (index, &count) in seen.iter().enumerate() {
-        buf.assign(OFF_TILES_SEEN, index, count.min(4) as f32 / 4.0);
-    }
+    seen
 }
 
 fn encode_last_discards(
@@ -571,6 +592,58 @@ fn encode_decision_features(
                 buf.assign(OFF_DISCARD_CANDIDATES, index, 1.0);
             }
         }
+
+        let melds = player.melds.len() as u8;
+        let len_div3 = 4u8.saturating_sub(melds);
+        // libriichi's `self.shanten` is the 13-tile value from before the draw;
+        // `GameState::shanten` carries that same value.
+        let base_shanten = state.shanten.max(0);
+        let mut next_shanten = [false; TILE_KINDS];
+        let mut keep_shanten = [false; TILE_KINDS];
+        let mut hand = *self_hand;
+        for (index, &count) in self_hand.iter().enumerate() {
+            if count == 0 {
+                continue;
+            }
+            hand[index] -= 1;
+            let after = sp::calc_all(&hand, len_div3);
+            hand[index] += 1;
+            let diff = after - base_shanten;
+            match diff.cmp(&0) {
+                std::cmp::Ordering::Less => next_shanten[index] = true,
+                std::cmp::Ordering::Equal => keep_shanten[index] = true,
+                std::cmp::Ordering::Greater => {}
+            }
+        }
+
+        for (index, &keep) in keep_shanten.iter().enumerate() {
+            if keep {
+                buf.assign(OFF_DISCARD_CANDIDATES + 1, index, 1.0);
+            }
+        }
+        for (index, &next) in next_shanten.iter().enumerate() {
+            if next {
+                buf.assign(OFF_DISCARD_CANDIDATES + 2, index, 1.0);
+            }
+        }
+
+        if base_shanten <= 1 {
+            let unconditional = unconditional_tenpai_discards(
+                state,
+                player,
+                self_hand,
+                len_div3,
+                base_shanten,
+                &next_shanten,
+                &keep_shanten,
+            );
+            for (index, &is_tenpai) in unconditional.iter().enumerate() {
+                if is_tenpai {
+                    buf.assign(OFF_DISCARD_CANDIDATES + 3, index, 1.0);
+                }
+            }
+        }
+
         if player.is_riichi {
             buf.fill(OFF_DISCARD_CANDIDATES + 4, 1.0);
         }
@@ -610,6 +683,529 @@ fn encode_decision_features(
         // Row 1 is the red-five flag; our discards do not record aka-ness.
         // Row 2 is the dora flag; it is filled by the caller's dora data when
         // available. The tile identity is the important part here.
+    }
+}
+
+/// Discards that leave an unconditional (yaku-bearing, non-furiten) tenpai.
+///
+/// Mirrors `discard_candidates_with_unconditional_tenpai` in libriichi, except
+/// that our state does not track kuikae (`forbidden_tiles`), so those extra
+/// restrictions are omitted.
+fn unconditional_tenpai_discards(
+    state: &GameState,
+    player: &PlayerState,
+    self_hand: &[u8; TILE_KINDS],
+    len_div3: u8,
+    shanten: i8,
+    next_shanten: &[bool; TILE_KINDS],
+    keep_shanten: &[bool; TILE_KINDS],
+) -> [bool; TILE_KINDS] {
+    let mut ret = [false; TILE_KINDS];
+    if state.tiles_remaining == 0 {
+        return ret;
+    }
+    if shanten > 1 || (shanten == 1 && !next_shanten.iter().any(|&b| b)) {
+        return ret;
+    }
+
+    let draw = player.draw.as_deref().and_then(tile_index);
+    if let Some(draw) = draw {
+        let draw_is_wait = state
+            .ukeire_tiles
+            .iter()
+            .filter_map(|tile| tile_index(tile))
+            .any(|wait| wait == draw);
+        if draw_is_wait {
+            // Already agari: any discard is furiten.
+            return ret;
+        }
+        if player.is_riichi {
+            if !self_is_furiten(state, player) {
+                ret[draw] = true;
+            }
+            return ret;
+        }
+    } else if sp::calc_all(self_hand, len_div3) == -1 {
+        return ret;
+    }
+
+    let tenpai_discards = if shanten == 1 {
+        next_shanten
+    } else {
+        keep_shanten
+    };
+    let discarded: [bool; TILE_KINDS] = {
+        let mut out = [false; TILE_KINDS];
+        for discard in &player.discards {
+            if let Some(index) = tile_index(&discard.tile) {
+                out[index] = true;
+            }
+        }
+        out
+    };
+    let seen = seen_counts(state);
+
+    for discard in 0..TILE_KINDS {
+        if !tenpai_discards[discard] {
+            continue;
+        }
+        let mut hand_3n1 = *self_hand;
+        hand_3n1[discard] -= 1;
+
+        for tsumo in 0..TILE_KINDS {
+            if tsumo == discard || hand_3n1[tsumo] == 4 {
+                continue;
+            }
+            let mut hand_3n2 = hand_3n1;
+            hand_3n2[tsumo] += 1;
+            if sp::calc_all(&hand_3n2, len_div3) > -1 {
+                continue;
+            }
+            if discarded[tsumo] {
+                ret[discard] = false;
+                break;
+            }
+            if seen[tsumo] == 4 || ret[discard] {
+                continue;
+            }
+            if has_yaku_ron(state, player, &hand_3n2, tsumo) {
+                ret[discard] = true;
+            }
+        }
+    }
+    ret
+}
+
+fn self_is_furiten(state: &GameState, player: &PlayerState) -> bool {
+    state
+        .ukeire_tiles
+        .iter()
+        .filter_map(|tile| tile_index(tile))
+        .any(|wait| {
+            player
+                .discards
+                .iter()
+                .any(|discard| tile_index(&discard.tile) == Some(wait))
+        })
+}
+
+fn has_yaku_ron(
+    state: &GameState,
+    player: &PlayerState,
+    hand: &[u8; TILE_KINDS],
+    winning_tile: usize,
+) -> bool {
+    let hand_counts = array_to_tilecounts(hand);
+    let melds = agari_melds(player);
+    let structures = if melds.is_empty() {
+        decompose_hand(&hand_counts)
+    } else {
+        decompose_hand_with_melds(&hand_counts, &melds)
+    };
+    let full_counts = full_counts_with_melds(&hand_counts, &melds);
+    let context = GameContext::new(
+        WinType::Ron,
+        wind_to_honor(state.round_wind),
+        wind_to_honor(player.wind),
+    )
+    .with_winning_tile(index_to_tile(winning_tile));
+    let context = if melds.iter().any(|meld| meld.is_open()) {
+        context.open()
+    } else {
+        context
+    };
+    structures.iter().any(|structure| {
+        !detect_yaku_with_context(structure, &full_counts, &context)
+            .yaku_list
+            .is_empty()
+    })
+}
+
+/// Fill rows 889..=1011 from the single-player EV solver.
+fn encode_sp_planes(
+    buf: &mut ObsBuffer,
+    state: &GameState,
+    player: &PlayerState,
+    self_hand: &[u8; TILE_KINDS],
+) {
+    let can_discard = matches!(state.decision, DecisionContext::SelfTurn);
+    let Some((init_state, calculator, tsumos_left, cur_shanten)) =
+        solver_inputs(state, player, self_hand, can_discard)
+    else {
+        return;
+    };
+
+    match sp::solve_cached(
+        init_state,
+        calculator,
+        can_discard,
+        tsumos_left,
+        cur_shanten,
+    ) {
+        Ok(candidates) => {
+            let max_ev = candidates
+                .first()
+                .and_then(|candidate| candidate.exp_values.first().copied())
+                .unwrap_or(0.0);
+            encode_ev(buf, max_ev);
+            encode_required_tiles(buf, &candidates, can_discard);
+            let ev_scale = if max_ev < 1.0 { 0.0 } else { 1.0 / max_ev };
+            encode_sp_table(buf, &candidates, can_discard, ev_scale);
+        }
+        Err(_) => {
+            // libriichi's documented fallback: minimum tsumo agari value into
+            // OFF_EV, solver rows left at zero.
+            encode_ev(buf, min_tsumo_agari_value(state));
+        }
+    }
+}
+
+fn encode_ev(buf: &mut ObsBuffer, value: f32) {
+    buf.fill(OFF_EV, value.clamp(0.0, 100_000.0) / 100_000.0);
+    buf.fill(OFF_EV + 1, value.clamp(0.0, 30_000.0) / 30_000.0);
+}
+
+fn encode_required_tiles(buf: &mut ObsBuffer, candidates: &[Candidate], can_discard: bool) {
+    if can_discard {
+        for candidate in candidates {
+            let discard_tid = sp::deaka(candidate.tile);
+            for required in &candidate.required_tiles {
+                let row = if candidate.shanten_down {
+                    OFF_REQUIRED_TILES + TILE_KINDS + discard_tid
+                } else {
+                    OFF_REQUIRED_TILES + discard_tid
+                };
+                buf.assign(row, required.tile, 1.0);
+            }
+        }
+        if let Some(best) = candidates
+            .iter()
+            .max_by(|left, right| left.cmp(right, CandidateColumn::NotShantenDown))
+        {
+            buf.assign(OFF_REQUIRED_BEST, sp::deaka(best.tile), 1.0);
+        }
+    } else if let Some(first) = candidates.first() {
+        // Reaction decisions put the required tiles in row 960 (libriichi
+        // skips the per-discard block and the best row entirely).
+        for required in &first.required_tiles {
+            buf.assign(OFF_REQUIRED_TILES + 2 * TILE_KINDS + 1, required.tile, 1.0);
+        }
+    }
+}
+
+fn encode_sp_table(
+    buf: &mut ObsBuffer,
+    candidates: &[Candidate],
+    can_discard: bool,
+    ev_scale: f32,
+) {
+    let Some(first) = candidates
+        .first()
+        .filter(|candidate| candidate.tenpai_probs.first().is_some_and(|&p| p > 0.0))
+    else {
+        return;
+    };
+
+    if can_discard {
+        for candidate in candidates {
+            let tile = sp::deaka(candidate.tile);
+            let turns = candidate
+                .tenpai_probs
+                .iter()
+                .take_while(|&&p| p > 0.0)
+                .count();
+            for turn in 0..turns {
+                buf.assign(OFF_SP_TABLE + turn, tile, candidate.tenpai_probs[turn]);
+                buf.assign(
+                    OFF_SP_TABLE + 17 + turn,
+                    tile,
+                    candidate.win_probs.get(turn).copied().unwrap_or(0.0),
+                );
+                buf.assign(
+                    OFF_SP_TABLE + 34 + turn,
+                    tile,
+                    (candidate.exp_values.get(turn).copied().unwrap_or(0.0) * ev_scale).min(1.0),
+                );
+            }
+        }
+    } else {
+        let turns = first.tenpai_probs.iter().take_while(|&&p| p > 0.0).count();
+        for turn in 0..turns {
+            buf.fill(OFF_SP_TABLE + turn, first.tenpai_probs[turn]);
+            buf.fill(
+                OFF_SP_TABLE + 17 + turn,
+                first.win_probs.get(turn).copied().unwrap_or(0.0),
+            );
+            buf.fill(
+                OFF_SP_TABLE + 34 + turn,
+                (first.exp_values.get(turn).copied().unwrap_or(0.0) * ev_scale).min(1.0),
+            );
+        }
+    }
+}
+
+fn solver_inputs(
+    state: &GameState,
+    player: &PlayerState,
+    self_hand: &[u8; TILE_KINDS],
+    can_discard: bool,
+) -> Option<(InitState, SPCalculator, u8, i8)> {
+    let tehai_len_div3 = 4u8.saturating_sub(player.melds.len() as u8);
+    let mut chis = Vec::new();
+    let mut pons = Vec::new();
+    let mut minkans = Vec::new();
+    let mut ankans = Vec::new();
+    for meld in &player.melds {
+        let index = meld
+            .tiles
+            .iter()
+            .filter_map(|tile| tile_index(tile))
+            .min()?;
+        match meld.meld_type {
+            MeldType::Chi => chis.push(index as u8),
+            MeldType::Pon => pons.push(index as u8),
+            MeldType::Kan => minkans.push(index as u8),
+            MeldType::Ankan => ankans.push(index as u8),
+        }
+    }
+
+    let mut akas_in_hand = [false; 3];
+    for red in &player.red_fives {
+        match red.as_str() {
+            "5m" => akas_in_hand[0] = true,
+            "5p" => akas_in_hand[1] = true,
+            "5s" => akas_in_hand[2] = true,
+            _ => {}
+        }
+    }
+    let mut akas_seen = [false; 3];
+    akas_seen.copy_from_slice(&akas_in_hand);
+
+    let tiles_seen = seen_counts(state);
+    let init_state = InitState {
+        tehai: *self_hand,
+        akas_in_hand,
+        tiles_seen,
+        akas_seen,
+    };
+
+    let dora_factor = dora_factors(state);
+    let is_menzen = player
+        .melds
+        .iter()
+        .all(|meld| meld.meld_type == MeldType::Ankan);
+    let prefer_riichi = player.score >= 1000;
+    let calc_double_riichi = can_discard
+        && player.discards.is_empty()
+        && state.players.iter().all(|seat| seat.melds.is_empty());
+
+    let calculator = SPCalculator {
+        tehai_len_div3,
+        chis,
+        pons,
+        minkans,
+        ankans,
+        bakaze: state.round_wind.index() as u8,
+        jikaze: player.wind.index() as u8,
+        is_menzen,
+        num_doras_in_fuuro: dora_in_player_melds(player, &dora_factor),
+        dora_indicators: state
+            .dora_indicators
+            .iter()
+            .filter_map(|tile| tile_index(tile).map(|index| index as u8))
+            .collect(),
+        calc_double_riichi,
+        calc_haitei: false,
+        prefer_riichi,
+        sort_result: true,
+        maximize_win_prob: false,
+        calc_shanten_down: false,
+    };
+
+    let (tsumos_left, calc_haitei) = if can_discard {
+        let tiles_left = state.tiles_remaining;
+        (tiles_left / 4, tiles_left.is_multiple_of(4))
+    } else {
+        let target = match &state.decision {
+            DecisionContext::ReactToDiscard { from, .. }
+            | DecisionContext::ReactToKan { from, .. } => *from,
+            DecisionContext::SelfTurn => 0,
+        };
+        let tiles_left_at_next_tsumo = state.tiles_remaining.saturating_sub((4 - target) as u8);
+        (
+            tiles_left_at_next_tsumo / 4,
+            tiles_left_at_next_tsumo.is_multiple_of(4),
+        )
+    };
+    let calculator = SPCalculator {
+        calc_haitei,
+        ..calculator
+    };
+
+    let cur_shanten = if can_discard {
+        real_time_shanten(state, player, self_hand, tehai_len_div3)
+    } else {
+        sp::calc_all(self_hand, tehai_len_div3)
+    };
+
+    Some((init_state, calculator, tsumos_left, cur_shanten))
+}
+
+/// Port of libriichi's `PlayerState::real_time_shanten` for a 3n+2 hand.
+fn real_time_shanten(
+    state: &GameState,
+    player: &PlayerState,
+    self_hand: &[u8; TILE_KINDS],
+    len_div3: u8,
+) -> i8 {
+    if state.is_agari {
+        return -1;
+    }
+    let shanten = state.shanten.max(0);
+    if shanten > 0 {
+        let mut hand = *self_hand;
+        for (index, &count) in self_hand.iter().enumerate() {
+            if count == 0 {
+                continue;
+            }
+            hand[index] -= 1;
+            let after = sp::calc_all(&hand, len_div3);
+            hand[index] += 1;
+            if after < shanten {
+                return shanten - 1;
+            }
+        }
+        return shanten;
+    }
+
+    if let Some(draw) = player.draw.as_deref().and_then(tile_index) {
+        let draw_is_wait = state
+            .ukeire_tiles
+            .iter()
+            .filter_map(|tile| tile_index(tile))
+            .any(|wait| wait == draw);
+        if draw_is_wait {
+            return -1;
+        }
+        return 0;
+    }
+
+    sp::calc_all(self_hand, len_div3)
+}
+
+/// Fallback value when the solver refuses: the tsumo value of the hand, or zero
+/// when the hand cannot win. libriichi uses `agari_points(..).unwrap_or_default`.
+fn min_tsumo_agari_value(state: &GameState) -> f32 {
+    if !state.is_agari {
+        return 0.0;
+    }
+    let player = &state.players[0];
+    let mut tiles = Vec::new();
+    for tile in player.hand.iter().chain(player.draw.iter()) {
+        if let Ok(mut parsed) = parse_hand(tile) {
+            tiles.append(&mut parsed);
+        }
+    }
+    if tiles.is_empty() {
+        return 0.0;
+    }
+    let hand_counts = to_counts(&tiles);
+    let melds = agari_melds(player);
+    let structures = if melds.is_empty() {
+        decompose_hand(&hand_counts)
+    } else {
+        decompose_hand_with_melds(&hand_counts, &melds)
+    };
+    let winning = player
+        .draw
+        .as_deref()
+        .and_then(tile_index)
+        .or_else(|| {
+            player
+                .discards
+                .last()
+                .and_then(|discard| tile_index(&discard.tile))
+        })
+        .unwrap_or(0);
+    let context = GameContext::new(
+        WinType::Tsumo,
+        wind_to_honor(state.round_wind),
+        wind_to_honor(player.wind),
+    )
+    .with_winning_tile(index_to_tile(winning));
+    let context = if player.is_riichi {
+        context.riichi()
+    } else {
+        context
+    };
+    let full_counts = full_counts_with_melds(&hand_counts, &melds);
+
+    let mut best = 0.0f32;
+    for structure in &structures {
+        let yaku = detect_yaku_with_context(structure, &full_counts, &context);
+        if yaku.yaku_list.is_empty() && !yaku.is_yakuman {
+            continue;
+        }
+        let fu = calculate_fu(structure, &context).total;
+        let basic = calculate_basic_points(yaku.total_han_with_dora(), fu, yaku.is_yakuman);
+        let total = calculate_payment(
+            basic,
+            player.wind == crate::state::Wind::East,
+            WinType::Tsumo,
+        )
+        .total as f32;
+        best = best.max(total);
+    }
+    best
+}
+
+fn agari_melds(player: &PlayerState) -> Vec<Meld> {
+    let mut melds = Vec::new();
+    for meld in &player.melds {
+        let Some(index) = meld.tiles.iter().filter_map(|tile| tile_index(tile)).min() else {
+            continue;
+        };
+        let tile = index_to_tile(index);
+        match meld.meld_type {
+            MeldType::Chi => melds.push(Meld::shuntsu_open(tile)),
+            MeldType::Pon => melds.push(Meld::koutsu_open(tile)),
+            MeldType::Kan => melds.push(Meld::kan(tile, KanType::Open)),
+            MeldType::Ankan => melds.push(Meld::kan(tile, KanType::Closed)),
+        }
+    }
+    melds
+}
+
+fn full_counts_with_melds(
+    hand: &agari::parse::TileCounts,
+    melds: &[Meld],
+) -> agari::parse::TileCounts {
+    let mut counts = hand.clone();
+    for meld in melds {
+        match meld {
+            Meld::Shuntsu(start, _) => {
+                let base = tile_to_index(*start);
+                for index in base..base + 3 {
+                    *counts.entry(index_to_tile(index)).or_insert(0) += 1;
+                }
+            }
+            Meld::Koutsu(tile, _) => {
+                *counts.entry(*tile).or_insert(0) += 3;
+            }
+            Meld::Kan(tile, _) => {
+                *counts.entry(*tile).or_insert(0) += 4;
+            }
+        }
+    }
+    counts
+}
+
+fn wind_to_honor(wind: crate::state::Wind) -> Honor {
+    match wind {
+        crate::state::Wind::East => Honor::East,
+        crate::state::Wind::South => Honor::South,
+        crate::state::Wind::West => Honor::West,
+        crate::state::Wind::North => Honor::North,
     }
 }
 

@@ -324,6 +324,10 @@ mod tests {
             "drawn tile is discarded too"
         );
         assert!(mask[FIRST_RED_DISCARD + 1], "red 5p is held");
+        assert!(
+            !mask[tile_index("5p").unwrap()],
+            "the only 5p in hand is the red one, so the plain discard is illegal"
+        );
         assert!(!mask[FIRST_RED_DISCARD], "no red 5m");
         assert!(mask[RIICHI_ACTION]);
         assert!(!mask[AGARI_ACTION]);

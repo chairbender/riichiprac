@@ -4,10 +4,11 @@ use super::encoder::{
     OBS_CHANNELS, OBS_LEN, OFF_AKAS, OFF_ANKAN, OFF_BAKAZE, OFF_CALL_TILE, OFF_CAN_AGARI,
     OFF_CAN_CHI, OFF_CAN_RIICHI, OFF_DISCARD_CANDIDATES, OFF_DORA_INDICATORS, OFF_DORAS_OWNED,
     OFF_DORAS_UNSEEN, OFF_FURITEN, OFF_FURO, OFF_HAND, OFF_HONBA, OFF_JIKAZE, OFF_KAWA_OVERVIEW,
-    OFF_KYOKU, OFF_KYOTAKU, OFF_LAST_TEDASHI, OFF_OPPONENTS, OFF_RANK, OFF_RIICHI_ACCEPTED,
-    OFF_RIICHI_DECLARED, OFF_RIICHI_SUTEHAI, OFF_ROUND, OFF_SCORES, OFF_SELF_KAWA_FIRST,
-    OFF_SHANTEN, OFF_TILES_LEFT, OFF_TILES_SEEN, OFF_WAITS, OPP_KAWA_ITEM_CHANNELS, OPP_SUMMARY,
-    TILE_KINDS, dora_tile, encode_v4_observation, tile_index, tile_name,
+    OFF_KYOKU, OFF_KYOTAKU, OFF_LAST_TEDASHI, OFF_OPPONENTS, OFF_RANK, OFF_REQUIRED_BEST,
+    OFF_REQUIRED_TILES, OFF_RIICHI_ACCEPTED, OFF_RIICHI_DECLARED, OFF_RIICHI_SUTEHAI, OFF_ROUND,
+    OFF_SCORES, OFF_SELF_KAWA_FIRST, OFF_SHANTEN, OFF_TILES_LEFT, OFF_TILES_SEEN, OFF_WAITS,
+    OPP_KAWA_ITEM_CHANNELS, OPP_SUMMARY, TILE_KINDS, dora_tile, encode_v4_observation, tile_index,
+    tile_name,
 };
 use crate::state::{
     CalledMeld, CorrectAction, DecisionContext, DiscardTile, GameState, MeldType, PlayerState,
@@ -222,8 +223,8 @@ fn scores_rank_and_round_context_are_encoded() {
     assert!((cell(&obs, OFF_HONBA, 0) - 0.2).abs() < 1e-6);
     assert!((cell(&obs, OFF_KYOTAKU, 0) - 0.1).abs() < 1e-6);
     assert!(row_is_set(&obs, OFF_KYOKU));
-    assert_eq!(cell(&obs, OFF_BAKAZE, 0), 1.0);
-    assert_eq!(cell(&obs, OFF_JIKAZE, 0), 1.0);
+    assert_eq!(cell(&obs, OFF_BAKAZE, col("1z")), 1.0);
+    assert_eq!(cell(&obs, OFF_JIKAZE, col("1z")), 1.0);
     assert_eq!(cell(&obs, OFF_ROUND, 0), 0.0);
 
     // South 3: kyoku row 2, round wind channel at the South column, progress 6/7.
@@ -232,7 +233,7 @@ fn scores_rank_and_round_context_are_encoded() {
     state.hand_number = 3;
     let obs = encode_v4_observation(&state);
     assert!(row_is_set(&obs, OFF_KYOKU + 2));
-    assert_eq!(cell(&obs, OFF_BAKAZE, 1), 1.0);
+    assert_eq!(cell(&obs, OFF_BAKAZE, col("2z")), 1.0);
     assert!((cell(&obs, OFF_ROUND, 0) - 6.0 / 7.0).abs() < 1e-6);
 }
 
@@ -416,4 +417,101 @@ fn generated_puzzles_encode_to_valid_observations() {
                 .all(|value| value.is_finite() && (0.0..=1.0).contains(value))
         );
     }
+}
+
+fn clean_state(hand: &[&str], draw: &str) -> GameState {
+    let mut state = base_state();
+    state.players[0].hand = hand.iter().map(|tile| tile.to_string()).collect();
+    state.players[0].draw = Some(draw.to_string());
+    state.players[0].red_fives.clear();
+    state.players[0].discards.clear();
+    state.players[0].melds.clear();
+    for seat in 1..4 {
+        state.players[seat].discards.clear();
+        state.players[seat].melds.clear();
+        state.players[seat].red_fives.clear();
+    }
+    state.dora_indicators.clear();
+    state.ura_dora_indicators.clear();
+    state
+}
+
+fn hand_counts(hand: &[&str], draw: &str) -> [u8; TILE_KINDS] {
+    let mut counts = [0u8; TILE_KINDS];
+    for tile in hand.iter().copied().chain(std::iter::once(draw)) {
+        counts[tile_index(tile).unwrap()] += 1;
+    }
+    counts
+}
+
+#[test]
+fn required_tiles_land_in_the_right_discard_rows() {
+    // 123m 456p 789s 11z 23m, drawn 9p: tenpai on 1m/4m after discarding 9p.
+    let hand = [
+        "1m", "2m", "3m", "4p", "5p", "6p", "7s", "8s", "9s", "1z", "1z", "2m", "3m",
+    ];
+    let mut state = clean_state(&hand, "9p");
+    state.shanten = 0;
+    state.is_agari = false;
+    state.ukeire_tiles = vec!["1m".to_string(), "4m".to_string()];
+    state.ukeire_total = 6;
+
+    let obs = encode_v4_observation(&state);
+
+    // Only 9p keeps tenpai.
+    assert_eq!(cell(&obs, OFF_DISCARD_CANDIDATES + 1, col("9p")), 1.0);
+    for tile in ["1m", "2m", "3m", "4p", "7s", "1z"] {
+        assert_eq!(cell(&obs, OFF_DISCARD_CANDIDATES + 1, col(tile)), 0.0);
+    }
+
+    // First required-tile block, indexed by the discard: 1m and 4m.
+    let row = OFF_REQUIRED_TILES + col("9p");
+    assert_eq!(cell(&obs, row, col("1m")), 1.0);
+    assert_eq!(cell(&obs, row, col("4m")), 1.0);
+    let required_count: usize = (0..TILE_KINDS)
+        .filter(|&column| cell(&obs, row, column) != 0.0)
+        .count();
+    assert_eq!(required_count, 2, "only 1m and 4m improve the hand");
+    assert_eq!(cell(&obs, OFF_REQUIRED_BEST, col("9p")), 1.0);
+
+    // A tenpai hand never uses the shanten-down block.
+    for row in OFF_REQUIRED_TILES + TILE_KINDS..OFF_REQUIRED_TILES + 2 * TILE_KINDS {
+        assert!(
+            (0..TILE_KINDS).all(|column| cell(&obs, row, column) == 0.0),
+            "row {row} must stay empty"
+        );
+    }
+}
+
+#[test]
+fn shanten_down_discards_use_the_second_required_tile_block() {
+    let hand = [
+        "1m", "4m", "7m", "1p", "4p", "7p", "1s", "4s", "7s", "1z", "4z", "5z", "6z",
+    ];
+    let mut state = clean_state(&hand, "9m");
+    let counts = hand_counts(&hand, "9m");
+    state.shanten = super::sp::calc_all(&counts, 4);
+    assert!(state.shanten >= 4);
+    state.is_agari = false;
+    state.ukeire_tiles.clear();
+    state.ukeire_total = 0;
+
+    let obs = encode_v4_observation(&state);
+    let mut shanten_down_rows = Vec::new();
+    for discard in 0..TILE_KINDS {
+        let row = OFF_REQUIRED_TILES + TILE_KINDS + discard;
+        if (0..TILE_KINDS).any(|column| cell(&obs, row, column) != 0.0) {
+            shanten_down_rows.push(discard);
+        }
+    }
+    assert!(
+        !shanten_down_rows.is_empty(),
+        "a high-shanten hand must populate the 925-958 block"
+    );
+    // 1m is one of the known shanten-down discards for this hand.
+    let row = OFF_REQUIRED_TILES + TILE_KINDS + col("1m");
+    assert!(
+        (0..TILE_KINDS).any(|column| cell(&obs, row, column) != 0.0),
+        "discarding 1m loses shanten and must land in the second block"
+    );
 }
