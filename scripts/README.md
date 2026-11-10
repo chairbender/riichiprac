@@ -1,0 +1,57 @@
+# Model weight pipeline
+
+`convert_weights.py` turns the pre-trained [Mortal](https://github.com/Equim-chan/Mortal)
+checkpoint on the Hugging Face Hub into a Safetensors file that Candle can
+memory-map inside WASM.
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+.venv/bin/pip install "safetensors>=0.4" huggingface_hub
+
+.venv/bin/python scripts/convert_weights.py
+```
+
+That downloads `VoidShine/mortal-298k/mortal_298k.pth` into
+`scripts/.weights-cache/` and writes:
+
+- `frontend/public/models/mortal_298k.safetensors` — 653 tensors, 43.6 MB
+  float32, served by Vite at `/models/mortal_298k.safetensors`.
+- `scripts/weight_keys.txt` — every key, shape and dtype, plus the inferred
+  architecture. Use this file as the source of truth when wiring
+  `VarBuilder` paths in `src/ai/model.rs`.
+
+Neither file is committed: the weights are a generated artifact (and the
+original `.pth` is larger than GitHub's 100 MB file limit). Re-run the script
+after a clean checkout, or point `--output` at a directory you serve yourself.
+
+Useful flags:
+
+| Flag | Effect |
+| --- | --- |
+| `--dtype float16` | Halves the payload (21.8 MB) if the Candle/WASM build supports f16. |
+| `--output <path>` | Write the Safetensors file elsewhere. |
+| `--cache-dir <path>` | Reuse a downloaded `.pth` from a different directory. |
+| `--force` | Re-convert even if the output already exists. |
+
+## What is actually in the checkpoint
+
+`mortal_298k.pth` is a *training* checkpoint, not a bare state dict:
+
+| Entry | Contents | Converted? |
+| --- | --- | --- |
+| `mortal` | ResNet encoder (`encoder.*`, 650 tensors) | yes, prefixed `mortal.` |
+| `current_dqn` | Policy/value head (`net.weight` 47x1024, `net.bias`) | yes, prefixed `current_dqn.` |
+| `aux_net` | Next-rank auxiliary head (4x1024, unused at inference) | yes, prefixed `aux_net.` |
+| `optimizer`, `scheduler`, `scaler`, `steps`, `timestamp`, `best_perf`, `config` | Training state | stripped |
+
+Measured architecture (from `weight_keys.txt`, not from the prompt's guesses):
+
+- input: **1012 channels** x 34 tile features (Mortal obs v4), not 68
+- stem: `Conv1d(1012 -> 192, kernel 3, padding 1, bias=False)`
+- 40 pre-activation residual blocks, 192 channels, each with
+  `Conv1d` -> `BatchNorm1d(eps=1e-3)` -> `Mish` -> `Conv1d` -> `BatchNorm1d`,
+  plus channel attention (`Linear(192,12)` -> `Mish` -> `Linear(12,192)`, sigmoid gated)
+- head: `Conv1d(192 -> 32)` -> `Mish` -> flatten (1088) -> `Linear(1088 -> 1024)` -> `Mish`
+- policy: `Linear(1024 -> 47)` = value + **46 actions** (34 discards, 3 chi, pon,
+  kan, riichi, agari, ryukyoku, pass)
