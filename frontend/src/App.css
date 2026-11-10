@@ -95,7 +95,7 @@ body {
   justify-content: center;
   align-items: center;
   gap: 4px;
-  padding: 1rem 0.5rem;
+  padding: 1rem 0.75rem;
   background-color: #161821;
   border-radius: 8px;
   border: 1px solid #282c3c;
@@ -112,10 +112,11 @@ body {
 
 .tile-svg {
   width: 44px;
-  height: 60px;
+  height: 59px;
   display: block;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
   transition: transform 0.15s ease;
+  border-radius: 4px;
 }
 
 .tile-svg:hover {
@@ -123,8 +124,8 @@ body {
 }
 
 .tile-label {
-  margin-top: 4px;
-  font-size: 0.7rem;
+  margin-top: 6px;
+  font-size: 0.75rem;
   font-family: monospace;
   color: #868e96;
 }
