@@ -15,7 +15,7 @@ Why this works at $0:
 | Piece | Host | Cost | Limits that matter here |
 | --- | --- | --- | --- |
 | App (`frontend/dist`) | GitHub Pages | free for public repos | 1 GB site, 100 GB/month soft bandwidth |
-| Mortal weights (43 MB) | Hugging Face model repo (public) or GitHub Release asset | free | HF has no hard per-file limit for public models; GH release assets max 2 GB per file |
+| Mortal weights (43 MB) | Hugging Face model repo (public) or GitHub Release asset | free | multi-GB files are fine on HF (via LFS/xet); GH release assets max 2 GiB per file |
 | Repeat downloads | Browser IndexedDB cache | free | one download per browser per weights version |
 
 GitHub Pages does not support custom response headers, so nothing can set
@@ -31,12 +31,15 @@ GitHub Pages does not support custom response headers, so nothing can set
       IndexedDB cache with versioned key, `clearWeightCache()`,
       `getWeightsSource()`.
 - [x] `frontend/src/store/useGameStore.ts`: `initializeAi` calls `loadWeights()`
-      instead of a bare `fetch(WEIGHTS_URL)`; keeps the `requestAnimationFrame`
-      yield, the `aiInitPromise` retry reset, and the HTML-fallback guard (now
-      inside the loader). Error text names the URLs tried and points here.
-- [x] `frontend/src/aiModel.ts`: keeps `AI_MODEL_ID` (used by `App.tsx`
-      reports); `WEIGHTS_URL` re-exports the loader's same-origin URL so there
-      is exactly one definition.
+      instead of fetching a single hard-coded URL; keeps the
+      `requestAnimationFrame` yield, the `aiInitPromise` retry reset, and the
+      HTML-fallback guard (now inside the loader). Error text names the URLs
+      tried and points here.
+- [x] `frontend/src/aiModel.ts`: keeps only `AI_MODEL_ID` (used by `App.tsx`
+      reports). The old `WEIGHTS_URL` export was removed rather than kept or
+      re-exported: `services/weightLoader.ts` owns every URL and imports
+      `AI_MODEL_ID` for the filename, so there is exactly one definition of each
+      and no circular import.
 - [x] `frontend/src/vite-env.d.ts`: `ImportMetaEnv.VITE_WEIGHTS_URL` typing.
 - [x] Runbook in this file + a "Hosting the model weights" section in
       `README.md`.
@@ -66,8 +69,8 @@ Acceptance criteria:
 - [x] Permissions `contents: read`, `pages: write`, `id-token: write`;
       concurrency group `pages`, `cancel-in-progress: false`.
 - [x] No weights file, no `pkg/`, no `dist/` in the workflow or the commit.
-- [x] wasm-opt note (see "CI build-time risk" below) rather than silently
-      disabling it.
+- [x] wasm-opt note (see "MIME / wasm-opt conclusions" in task 4) rather than
+      silently disabling it.
 
 Files touched: `.github/workflows/deploy.yml`.
 
@@ -141,8 +144,9 @@ All green on 2026-11-10 (local: rustc 1.93, wasm-pack 0.13.1, Node 18.19.1).
 - [x] `GITHUB_ACTIONS=true npm run build` → `/riichiprac/assets/...` in
       `index.html` and `/riichiprac/assets/riichiprac_bg-*.wasm` in the bundle;
       `dist/.nojekyll` present; `find dist -name '*.safetensors'` → 0.
-- [x] No source file imports the gitignored weights file; the only mention is the
-      runtime URL constant in `services/weightLoader.ts`.
+- [x] No source file imports the gitignored weights file; the filename is
+      defined once in `frontend/src/aiModel.ts` (`AI_MODEL_ID`) and the loader
+      builds every URL from it.
 - [x] `cargo fmt --check` clean, `cargo test --lib` 87 passed,
       `cargo clippy --lib --tests -- -D warnings` clean,
       `cargo check --target wasm32-unknown-unknown` clean.

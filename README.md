@@ -27,8 +27,9 @@ bytes in IndexedDB so a returning visitor downloads nothing:
 1. `VITE_WEIGHTS_URL` (build-time override, optional)
 2. Hugging Face: `https://huggingface.co/chairbender/mortal-weights/resolve/main/mortal_298k.safetensors`
 3. GitHub Release: `https://github.com/chairbender/riichiprac/releases/download/weights-v1/mortal_298k.safetensors`
-4. Same origin: `/models/mortal_298k.safetensors` (local dev with the gitignored
-   file in `frontend/public/models/`)
+4. Same origin: `${BASE_URL}models/mortal_298k.safetensors` (`/models/...` in dev,
+   `/riichiprac/models/...` on Pages, using the gitignored file in
+   `frontend/public/models/`)
 
 Publish the file once (Hugging Face shown; a GitHub Release asset works too):
 
