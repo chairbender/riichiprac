@@ -29,6 +29,9 @@ rustc-ice-*.txt
 /target
 /pkg
 
+# Offline scenario fuzz output: review artifacts, not source.
+/fuzz-reports
+
 # Mortal model weights: generated artifacts, too large to commit.
 # Regenerate with scripts/convert_weights.py (see scripts/README.md).
 scripts/.weights-cache/

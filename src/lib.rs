@@ -1,5 +1,6 @@
 pub mod ai;
 pub(crate) mod fixtures;
+pub mod fuzz;
 pub mod generator;
 pub mod report;
 pub mod rng;

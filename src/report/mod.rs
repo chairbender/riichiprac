@@ -256,7 +256,7 @@ fn make_comparison(
 }
 
 /// Mortal action name for the app's expected answer.
-fn mortal_action_for_correct(action: &CorrectAction) -> String {
+pub fn mortal_action_for_correct(action: &CorrectAction) -> String {
     match action {
         CorrectAction::Riichi { .. } => "Riichi".to_string(),
         CorrectAction::Dama { discard } => format!("Discard_{discard}"),
@@ -276,7 +276,7 @@ fn mortal_action_for_reported(answer: &ReportedAction) -> String {
 }
 
 /// Sum the action probability, including the red-five variant for 5m/5p/5s.
-fn probability_for_action(evaluation: &Evaluation, action: &str) -> f32 {
+pub fn probability_for_action(evaluation: &Evaluation, action: &str) -> f32 {
     let red_variant = action
         .strip_prefix("Discard_")
         .filter(|tile| is_five_tile(tile))
