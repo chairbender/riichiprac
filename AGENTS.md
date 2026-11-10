@@ -1,0 +1,42 @@
+# Project Context: Riichi Mahjong Trainer
+
+- Always stage changes without asking.
+- Always push after committing.
+
+## 1. Project Identity & Objective
+You are building a fully client-side, browser-based web application that trains players on specific Riichi Mahjong scenarios and heuristics (heavily inspired by *Riichi Book 1*). 
+The app generates randomized hands and board states that perfectly fit predefined teaching constraints, asking the user to make the correct decision (e.g., Riichi vs. Dama, Push vs. Fold, Nani Kiru).
+
+## 2. Core Architecture: Constraint Satisfaction Problem (CSP)
+**CRITICAL RULE:** Do NOT attempt to build an "AI" or "Oracle" that generates a random hand and then calculates the best move. 
+The app is a **Constraint Satisfaction Generator**:
+1. The "correct answer" and constraints are defined *first* programmatically.
+2. **Constructive Skeletons:** The Rust engine forces required tiles into the hand to meet the constraints.
+3. **5-Block Theory Fill:** The remaining tiles are randomly filled.
+4. **Fast Rejection Sampling:** The hand is fed into the `agari` crate. If it violates constraints (e.g., accidental extra yaku, furiten, unintended waits), the state is instantly rejected and re-rolled. Thousands of rejections can happen in milliseconds.
+5. The final, validated state is passed to the frontend as a static JSON object containing the `correct_action`.
+
+## 3. Technology Stack & Division of Labor
+* **Backend (Rust -> WASM):** 
+  * Handles ALL game logic, state generation, validation, and rejection sampling. 
+  * Uses the `agari` crate for low-level Mahjong logic (shanten, yaku, ukeire).
+  * Compiled via `wasm-pack`. 
+  * **Entropy:** Must use `js-sys` (`Math.random`) for RNG. Standard OS-level entropy will fail in the WASM browser sandbox.
+* **Frontend (Vite + React + Zustand + TypeScript):**
+  * **Extremely thin logic layer.** Do NOT put game rules or evaluation logic in React.
+  * Takes JSON from WASM and renders it. Captures user clicks and compares them to the `correct_action` in the JSON payload.
+  * Uses `riichi-mahjong-tiles` (SVG) for tile rendering.
+
+## 4. UI / UX Design Constraints (React)
+* **Mobile-First, Stacked Layout:** The UI must be optimized for portrait mode on mobile devices.
+* **NO SKEUOMORPHISM:** Do NOT attempt to build a physically accurate, square Mahjong table. 
+* **Layout Structure:**
+  * 4 strictly vertical flex/grid rows (one for each player).
+  * Each opponent row displays their Wind, Points, Melds, and Discard River.
+  * The Human Player's row is pinned to the bottom of the screen and includes their 14-tile active hand for easy tapping.
+* **Visual Rules:** Riichi discards must be rotated 90 degrees horizontally in the river. Riichi sticks must be visibly rendered for players who have called Riichi.
+
+## 5. Agent Workflow Rules
+* Always write WASM-compatible Rust tests (`#[wasm_bindgen_test]`) to verify generator logic before attempting to render the state in React.
+* Keep pull requests and file modifications strictly bounded to the current task. Do not jump ahead to frontend styling if asked to write backend generators.
+* Rely on the `agari` crate's documentation for all mathematical hand evaluations.
