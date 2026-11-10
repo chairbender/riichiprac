@@ -1,4 +1,5 @@
 pub mod ai;
+pub(crate) mod fixtures;
 pub mod generator;
 pub mod rng;
 pub mod state;
@@ -6,7 +7,7 @@ pub mod state;
 use wasm_bindgen::prelude::*;
 
 pub use ai::WasmMortalEvaluator;
-pub use generator::{PuzzleResponse, ScenarioGenerator, generate_random_hand};
+pub use generator::{PuzzleResponse, generate_random_hand};
 pub use state::{
     CalledMeld, CorrectAction, CorrectActionType, DamaReason, DiscardTile, GameState, MeldType,
     PlayerState, RiichiTrigger, ShouminkanTrigger, TargetAction, Wind,
@@ -18,13 +19,18 @@ pub fn check_wasm_status() -> String {
     "WASM module initialized successfully".to_string()
 }
 
+/// Returns the user-facing scenario catalogue as a JSON array.
+#[wasm_bindgen]
+pub fn list_scenarios() -> String {
+    generator::list_scenarios_json()
+}
+
 /// Generates a randomized 14-tile Mahjong hand using 5-block theory,
 /// evaluates it via the `agari` crate, and returns the serialized JSON string
 /// of the full GameState (global state, 4 player states, rivers, melds, riichi).
 #[wasm_bindgen]
 pub fn generate_puzzle(category: String) -> String {
-    let generator = ScenarioGenerator::new();
-    match generator.generate_puzzle(&category) {
+    match generator::generate_puzzle(&category) {
         Ok(state) => serde_json::to_string(&state).unwrap_or_else(|err| {
             format!("{{\"error\": \"Failed to serialize puzzle: {}\"}}", err)
         }),

@@ -1,13 +1,15 @@
-use agari::context::{GameContext, WinType};
-use agari::hand::{Meld, decompose_hand_with_melds};
+mod shapes;
+pub(crate) mod value;
+
 use agari::parse::{to_counts, validate_hand};
 use agari::shanten::{calculate_shanten, calculate_ukeire};
 use agari::tile::{Honor, Suit, Tile};
-use agari::yaku::detect_yaku_with_context;
 
 use super::triggers::ShouminkanTriggerSet;
-use crate::generator::support::deck::{ALL_TILES, Deck};
-use crate::rng::{choose, gen_bool, gen_range};
+use crate::generator::support::deck::Deck;
+use crate::rng::{choose, gen_bool};
+use shapes::{build_wait_shape, draw_pair, draw_set};
+use value::waits_have_value;
 
 /// Whether the supplied wait completes with two or three winning tiles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -160,134 +162,4 @@ pub(super) fn build(triggers: ShouminkanTriggerSet) -> Result<ShouminkanSkeleton
     }
 
     Err("Failed to construct a valid Added Kan skeleton".to_string())
-}
-
-/// Chooses the suited tiles that form a two-sided or three-sided wait.
-fn build_wait_shape(
-    deck: &mut Deck,
-    wait_shape: ShouminkanWaitShape,
-) -> Result<(Vec<Tile>, Vec<Tile>, Suit), String> {
-    let suits = [Suit::Man, Suit::Pin, Suit::Sou];
-    let suit = choose(&suits).ok_or_else(|| "No suit available".to_string())?;
-
-    let (shape_tiles, wait_tiles) = match wait_shape {
-        ShouminkanWaitShape::Ryanmen => {
-            // 23 waits on 1/4, 78 waits on 6/9.
-            let base = gen_range(2, 8) as u8;
-            (
-                vec![Tile::suited(suit, base), Tile::suited(suit, base + 1)],
-                vec![Tile::suited(suit, base - 1), Tile::suited(suit, base + 2)],
-            )
-        }
-        ShouminkanWaitShape::ThreeSided => {
-            // 23456 waits on 1/4/7, 34567 on 2/5/8, 45678 on 3/6/9.
-            let start = gen_range(2, 5) as u8;
-            let shape_tiles = (start..start + 5)
-                .map(|value| Tile::suited(suit, value))
-                .collect();
-            let wait_tiles = vec![
-                Tile::suited(suit, start - 1),
-                Tile::suited(suit, start + 2),
-                Tile::suited(suit, start + 5),
-            ];
-            (shape_tiles, wait_tiles)
-        }
-    };
-
-    for tile in &shape_tiles {
-        deck.take(*tile)?;
-    }
-
-    Ok((shape_tiles, wait_tiles, suit))
-}
-
-/// Draws an honor pair that does not collide with the dragon triplets.
-fn draw_pair(deck: &mut Deck, pon_tile: Tile, value_tile: Option<Tile>) -> Result<Tile, String> {
-    let candidates: Vec<Tile> = ALL_TILES
-        .iter()
-        .copied()
-        .filter(|&tile| {
-            tile.is_honor() && tile != pon_tile && Some(tile) != value_tile && deck.count(tile) >= 2
-        })
-        .collect();
-    let pair = choose(&candidates).ok_or_else(|| "No honor pair available".to_string())?;
-    deck.take_n(pair, 2)?;
-    Ok(pair)
-}
-
-/// Draws a complete sequence or triplet from one suit.
-fn draw_set(deck: &mut Deck, suit: Suit) -> Result<Vec<Tile>, String> {
-    let mut candidates: Vec<Vec<Tile>> = Vec::new();
-
-    for start in 1..=7u8 {
-        let tiles = vec![
-            Tile::suited(suit, start),
-            Tile::suited(suit, start + 1),
-            Tile::suited(suit, start + 2),
-        ];
-        if tiles.iter().all(|tile| deck.has(*tile)) {
-            candidates.push(tiles);
-        }
-    }
-
-    for value in 1..=9u8 {
-        let tile = Tile::suited(suit, value);
-        if deck.count(tile) >= 3 {
-            candidates.push(vec![tile; 3]);
-        }
-    }
-
-    let set = choose(&candidates)
-        .ok_or_else(|| "No complete set available in the selected suit".to_string())?;
-    for tile in &set {
-        deck.take(*tile)?;
-    }
-    Ok(set)
-}
-
-/// The lowest yaku han across every winning tile, before any Kan dora.
-pub(super) fn min_wait_han(
-    concealed_tiles: &[Tile],
-    open_pon_tile: Tile,
-    wait_tiles: &[Tile],
-) -> u8 {
-    let open_meld = Meld::koutsu_open(open_pon_tile);
-    let mut min_han = u8::MAX;
-
-    for &wait_tile in wait_tiles {
-        let mut concealed_with_win = concealed_tiles.to_vec();
-        concealed_with_win.push(wait_tile);
-        let concealed_counts = to_counts(&concealed_with_win);
-        let structures =
-            decompose_hand_with_melds(&concealed_counts, std::slice::from_ref(&open_meld));
-        if structures.is_empty() {
-            return 0;
-        }
-
-        let mut full_with_win = concealed_with_win;
-        full_with_win.extend([open_pon_tile; 3]);
-        let full_counts = to_counts(&full_with_win);
-        let context = GameContext::new(WinType::Ron, Honor::East, Honor::East)
-            .with_winning_tile(wait_tile)
-            .open();
-
-        let han = structures
-            .iter()
-            .map(|structure| detect_yaku_with_context(structure, &full_counts, &context).total_han)
-            .min()
-            .unwrap_or(0);
-        min_han = min_han.min(han);
-    }
-
-    if wait_tiles.is_empty() { 0 } else { min_han }
-}
-
-/// Verifies every winning tile scores at least `min_han` before Kan dora.
-pub(super) fn waits_have_value(
-    concealed_tiles: &[Tile],
-    open_pon_tile: Tile,
-    wait_tiles: &[Tile],
-    min_han: u8,
-) -> bool {
-    min_wait_han(concealed_tiles, open_pon_tile, wait_tiles) >= min_han
 }

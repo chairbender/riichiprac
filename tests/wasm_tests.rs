@@ -9,13 +9,43 @@ use agari::scoring::{ScoreLevel, calculate_score};
 use agari::shanten::{calculate_shanten, calculate_ukeire};
 use agari::tile::{Honor, Tile};
 use agari::yaku::detect_yaku_with_context;
-use riichiprac::generator::{ScenarioGenerator, format_hand_compact};
+use riichiprac::generator::{format_hand_compact, generate_random_hand};
 use riichiprac::{check_wasm_status, generate_puzzle};
 
 #[wasm_bindgen_test]
 fn test_wasm_status() {
     let status = check_wasm_status();
     assert_eq!(status, "WASM module initialized successfully");
+}
+
+#[wasm_bindgen_test]
+fn test_list_scenarios_payload() {
+    let json = riichiprac::list_scenarios();
+    let parsed: serde_json::Value =
+        serde_json::from_str(&json).expect("scenario manifest must be valid JSON");
+    let scenarios = parsed
+        .as_array()
+        .expect("scenario manifest must be an array");
+
+    assert_eq!(scenarios.len(), 3);
+    assert!(scenarios.iter().all(|scenario| {
+        scenario["id"].is_string()
+            && scenario["label"].is_string()
+            && scenario["description"].is_string()
+            && scenario["category"].is_string()
+            && scenario["tags"].is_array()
+    }));
+    assert!(
+        scenarios
+            .iter()
+            .any(|scenario| scenario["id"] == "ryanmen_protorun")
+    );
+    assert!(
+        !scenarios
+            .iter()
+            .any(|scenario| scenario["id"] == "mock_table"),
+        "fixtures must not appear in the lesson manifest"
+    );
 }
 
 fn parse_single_tile(code: &str) -> Tile {
@@ -415,11 +445,9 @@ fn test_payload_supports_riichi_and_dama_actions() {
 
 #[wasm_bindgen_test]
 fn test_generate_50_random_hands_parsed_by_agari() {
-    let generator = ScenarioGenerator::new();
-
     for i in 0..50 {
         // 1. Generate 14-tile hand via 5-block theory
-        let hand = generator.generate_random_hand();
+        let hand = generate_random_hand();
         assert_eq!(
             hand.len(),
             14,
