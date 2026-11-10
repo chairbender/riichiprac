@@ -1,6 +1,7 @@
 pub mod ai;
 pub(crate) mod fixtures;
 pub mod generator;
+pub mod report;
 pub mod rng;
 pub mod state;
 
@@ -8,6 +9,10 @@ use wasm_bindgen::prelude::*;
 
 pub use ai::WasmMortalEvaluator;
 pub use generator::{PuzzleResponse, generate_random_hand};
+pub use report::{
+    AiComparison, AppInfo, DecisionPrompt, ParsedReport, ReportDecision, ReportReason,
+    ReportVerdict, ReportedAction, ReportedAi, ScenarioReport, ScenarioSnapshot,
+};
 pub use state::{
     CalledMeld, CorrectAction, CorrectActionType, DamaReason, DiscardTile, GameState, MeldType,
     PlayerState, RiichiTrigger, ShouminkanTrigger, TargetAction, Wind,
@@ -36,6 +41,24 @@ pub fn generate_puzzle(category: String) -> String {
         }),
         Err(err) => format!("{{\"error\": \"{}\"}}", err),
     }
+}
+
+/// Builds a versioned scenario report from a JSON request containing the
+/// exact game state, the reporter's answer, and optional AI evaluation.
+///
+/// Returns pretty-printed report JSON, or `{"error": "..."}`.
+#[wasm_bindgen]
+pub fn build_scenario_report(request_json: &str) -> String {
+    report::build_report_json(request_json).unwrap_or_else(|err| report::error_json(&err))
+}
+
+/// Parses and validates an imported scenario report.
+///
+/// Returns `{"report": ..., "verdict": ..., "warnings": [...]}` with derived
+/// fields recomputed, or `{"error": "..."}`.
+#[wasm_bindgen]
+pub fn parse_scenario_report(report_json: &str) -> String {
+    report::parse_report_json(report_json).unwrap_or_else(|err| report::error_json(&err))
 }
 
 #[cfg(test)]

@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
+import { AI_MODEL_ID } from './aiModel';
 import { AiEvaluatorPanel } from './components/AiEvaluatorPanel';
 import { HandDock } from './components/HandDock';
 import { FeedbackToast } from './components/FeedbackToast';
 import { PlayerRow } from './components/PlayerRow';
+import { ReportBanner } from './components/ReportBanner';
+import { ReportControls } from './components/ReportControls';
 import { ScenarioExplanation } from './components/ScenarioExplanation';
 import { TableInfo } from './components/TableInfo';
+import {
+  createScenarioReport,
+  downloadJson,
+  readReportFile,
+  reportFilename,
+} from './report';
 import {
   FALLBACK_SCENARIOS,
   parseScenarioManifest,
@@ -15,6 +24,7 @@ import {
 } from './scenarios';
 import type { ScenarioOption, ScenarioSelection } from './scenarios';
 import { useGameStore } from './store/useGameStore';
+import type { ReportReason, ReportedAction } from './types/report';
 import { ensureWasmReady } from './wasm';
 import './App.css';
 
@@ -44,6 +54,17 @@ export const App = () => {
   const initializeAi = useGameStore((state) => state.initializeAi);
   const evaluateWithAi = useGameStore((state) => state.evaluateWithAi);
   const clearEvaluation = useGameStore((state) => state.clearEvaluation);
+  const reportMode = useGameStore((state) => state.reportMode);
+  const reportError = useGameStore((state) => state.reportError);
+  const reportNotice = useGameStore((state) => state.reportNotice);
+  const isReportRetry = useGameStore((state) => state.isReportRetry);
+  const importReport = useGameStore((state) => state.importReport);
+  const retryImportedPuzzle = useGameStore(
+    (state) => state.retryImportedPuzzle,
+  );
+  const exitReportMode = useGameStore((state) => state.exitReportMode);
+  const setReportError = useGameStore((state) => state.setReportError);
+  const clearReportNotice = useGameStore((state) => state.clearReportNotice);
 
   const [selection, setSelection] = useState<ScenarioSelection>('all');
   const [scenarios, setScenarios] =
@@ -102,6 +123,56 @@ export const App = () => {
     void loadPuzzle(selection);
   };
 
+  // Show the imported report's scenario in the picker when it is in the
+  // current manifest. Unknown scenarios keep the picker unchanged.
+  useEffect(() => {
+    const id = reportMode?.report.scenario.id;
+    if (id && scenarios.some((scenario) => scenario.id === id)) {
+      setSelection(id);
+    }
+  }, [reportMode, scenarios]);
+
+  const handleExportReport = async (reason: ReportReason, note: string) => {
+    if (!gameState || !feedback) {
+      throw new Error('Answer the puzzle before exporting a report.');
+    }
+
+    await ensureWasmReady();
+
+    const answer: ReportedAction = {
+      action: feedback.selectedType,
+      tile: feedback.selectedTile,
+    };
+    if (feedback.selectedTileIndex !== undefined) {
+      answer.tile_index = feedback.selectedTileIndex;
+    }
+
+    const { report, json } = createScenarioReport({
+      table: gameState,
+      answer,
+      reason,
+      note,
+      evaluation,
+      modelId: AI_MODEL_ID,
+    });
+
+    downloadJson(reportFilename(report), json);
+    setReportError(null);
+  };
+
+  const handleImportFile = async (file: File) => {
+    setReportError(null);
+    try {
+      const text = await readReportFile(file);
+      // Cancel any generation that is still waiting on WASM initialization so
+      // a late puzzle cannot overwrite the imported table.
+      loadRequestId.current += 1;
+      await importReport(text);
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const orderedPlayers = gameState
     ? PLAYER_ROW_ORDER.flatMap((seat) => {
         const player = gameState.players.find(
@@ -155,7 +226,31 @@ export const App = () => {
         </div>
       </header>
 
-      {feedback && humanPlayer && (
+      <ReportControls
+        canReport={Boolean(gameState && feedback)}
+        reportError={reportError}
+        reportNotice={reportNotice}
+        onExport={handleExportReport}
+        onImportFile={handleImportFile}
+        onDismissNotice={clearReportNotice}
+      />
+
+      {reportMode && (
+        <ReportBanner
+          mode={reportMode}
+          evaluation={evaluation}
+          isEvaluating={isEvaluating}
+          aiStatus={aiStatus}
+          aiError={aiError}
+          onVerify={() => {
+            void evaluateWithAi();
+          }}
+          onRetry={retryImportedPuzzle}
+          onExit={exitReportMode}
+        />
+      )}
+
+      {feedback && humanPlayer && (!reportMode || isReportRetry) && (
         <FeedbackToast
           feedback={feedback}
           redFives={humanPlayer.red_fives}

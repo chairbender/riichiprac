@@ -19,7 +19,7 @@ interface HandDockProps {
   aiEvaluation: AiEvaluation | null;
   onToggleRiichi: () => void;
   onToggleKan: () => void;
-  onSelectTile: (tile: string) => void;
+  onSelectTile: (tile: string, index?: number) => void;
 }
 
 /**
@@ -152,7 +152,7 @@ export function HandDock({
               key={`${tile}-${index}`}
               type="button"
               className={`hand-tile-button${stateClass}${aiClass}`}
-              onClick={() => onSelectTile(tile)}
+              onClick={() => onSelectTile(tile, index)}
               disabled={isAnswered}
               aria-label={`${
                 callKan ? `Declare Kan on ${tile}` : `Discard ${tile}`

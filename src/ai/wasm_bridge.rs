@@ -23,7 +23,7 @@
 
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use super::encoder::{OBS_CHANNELS, TILE_KINDS, encode_v4_observation, tile_index, tile_name};
@@ -41,7 +41,7 @@ const RIICHI_ACTION: usize = 37;
 const AGARI_ACTION: usize = 43;
 
 /// One scored action in an evaluation result.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ActionEvaluation {
     /// Stable machine-readable name, e.g. `Discard_3m` or `Riichi`.
     pub action: String,
@@ -55,7 +55,7 @@ pub struct ActionEvaluation {
 }
 
 /// Full evaluation payload returned to JavaScript.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Evaluation {
     /// Output 0 of the network (Mortal's expected-value head).
     pub expected_value: f32,

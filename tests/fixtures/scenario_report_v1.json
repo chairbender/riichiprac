@@ -1,0 +1,348 @@
+{
+  "schema": "riichiprac.scenario-report",
+  "version": 1,
+  "report_id": "8b0e5c0e-4f1b-4f7e-9b3e-2a7c1d9e6f10",
+  "created_at": "2026-11-10T08:42:11.031Z",
+  "app": {
+    "app_version": "0.1.0",
+    "commit": "d63f935",
+    "build_time": "2026-11-10T08:00:00.000Z"
+  },
+  "scenario": {
+    "id": "ryanmen_protorun",
+    "label": "Ryanmen Protorun",
+    "description": "Block theory: choose the discard that keeps the ryanmen wait.",
+    "category": "tile_efficiency",
+    "tags": [
+      "block_theory",
+      "discard",
+      "ryanmen"
+    ]
+  },
+  "decision": {
+    "prompt": "Which tile do you discard?",
+    "reason": "expected_action_wrong",
+    "note": "Sample report used by the verification CLI and import tests.",
+    "answer": {
+      "action": "riichi",
+      "tile": "3p"
+    },
+    "verdict": {
+      "is_correct": false,
+      "is_action_correct": false,
+      "is_tile_correct": true,
+      "expected_action": "dama",
+      "expected_tile": "3p"
+    }
+  },
+  "table": {
+    "category": "ryanmen_protorun",
+    "target_action": "NaniKiru",
+    "correct_action": {
+      "type": "dama",
+      "discard": "3p"
+    },
+    "riichi_triggers": [],
+    "dama_reasons": [],
+    "shouminkan_triggers": [],
+    "hand_string": "22345m233p999s777z",
+    "tiles": [
+      "2m",
+      "2m",
+      "3m",
+      "4m",
+      "5m",
+      "2p",
+      "3p",
+      "3p",
+      "9s",
+      "9s",
+      "9s",
+      "7z",
+      "7z",
+      "7z"
+    ],
+    "shanten": 0,
+    "is_agari": false,
+    "decompositions_count": 0,
+    "ukeire_tiles": [
+      "1p",
+      "4p"
+    ],
+    "ukeire_total": 8,
+    "round_wind": "East",
+    "hand_number": 4,
+    "honba": 0,
+    "riichi_sticks": 0,
+    "dora_indicators": [
+      "1p"
+    ],
+    "ura_dora_indicators": [
+      "8s"
+    ],
+    "tiles_remaining": 49,
+    "current_turn": 0,
+    "players": [
+      {
+        "seat": 0,
+        "name": "You",
+        "is_human": true,
+        "wind": "East",
+        "score": 23000,
+        "hand": [
+          "2m",
+          "2m",
+          "3m",
+          "4m",
+          "5m",
+          "2p",
+          "3p",
+          "9s",
+          "9s",
+          "9s"
+        ],
+        "draw": "3p",
+        "red_fives": [],
+        "discards": [
+          {
+            "tile": "3s",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "5p",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "8m",
+            "is_riichi": false,
+            "is_tsumogiri": true
+          },
+          {
+            "tile": "2z",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "7p",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          }
+        ],
+        "melds": [
+          {
+            "meld_type": "Pon",
+            "tiles": [
+              "7z",
+              "7z",
+              "7z"
+            ],
+            "called_from": 1
+          }
+        ],
+        "is_riichi": false,
+        "riichi_discard_index": null
+      },
+      {
+        "seat": 1,
+        "name": "Shimocha",
+        "is_human": false,
+        "wind": "South",
+        "score": 23000,
+        "hand": [
+          "2s",
+          "9s",
+          "2m",
+          "4m",
+          "4m",
+          "7m",
+          "9p",
+          "9m",
+          "8s",
+          "5m",
+          "1m",
+          "9p",
+          "4z"
+        ],
+        "draw": null,
+        "red_fives": [],
+        "discards": [
+          {
+            "tile": "6m",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "7s",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "7z",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "3p",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "6m",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          }
+        ],
+        "melds": [],
+        "is_riichi": false,
+        "riichi_discard_index": null
+      },
+      {
+        "seat": 2,
+        "name": "Toimen",
+        "is_human": false,
+        "wind": "West",
+        "score": 28000,
+        "hand": [
+          "2m",
+          "1z",
+          "6z",
+          "5m",
+          "2p",
+          "5m",
+          "8s",
+          "3s",
+          "1s",
+          "8m",
+          "7s",
+          "2s",
+          "3z"
+        ],
+        "draw": null,
+        "red_fives": [],
+        "discards": [
+          {
+            "tile": "5s",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "7m",
+            "is_riichi": false,
+            "is_tsumogiri": true
+          },
+          {
+            "tile": "6p",
+            "is_riichi": false,
+            "is_tsumogiri": true
+          },
+          {
+            "tile": "7s",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "1m",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          }
+        ],
+        "melds": [],
+        "is_riichi": false,
+        "riichi_discard_index": null
+      },
+      {
+        "seat": 3,
+        "name": "Kamicha",
+        "is_human": false,
+        "wind": "North",
+        "score": 26000,
+        "hand": [
+          "3s",
+          "6z",
+          "4z",
+          "5z",
+          "8s",
+          "4m",
+          "2p",
+          "1z",
+          "5z",
+          "8p",
+          "1s",
+          "5s",
+          "3m"
+        ],
+        "draw": null,
+        "red_fives": [],
+        "discards": [
+          {
+            "tile": "9p",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "3z",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "2z",
+            "is_riichi": false,
+            "is_tsumogiri": true
+          },
+          {
+            "tile": "2s",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          },
+          {
+            "tile": "5z",
+            "is_riichi": false,
+            "is_tsumogiri": false
+          }
+        ],
+        "melds": [],
+        "is_riichi": false,
+        "riichi_discard_index": null
+      }
+    ]
+  },
+  "human_readable": [
+    "Riichi Trainer scenario report",
+    "Scenario: Ryanmen Protorun (ryanmen_protorun)",
+    "Exported: 2026-11-10T08:42:11.031Z · app 0.1.0 · commit d63f935 · built 2026-11-10T08:00:00.000Z",
+    "",
+    "Table: East 4 · honba 0 · riichi sticks 0 · tiles left 49",
+    "Dora indicators: 1p",
+    "Ura indicators: 8s",
+    "",
+    "You (East, 23000) [human, to act]",
+    "  Concealed: 2m 2m 3m 4m 5m 2p 3p 9s 9s 9s",
+    "  Draw: 3p",
+    "  Melds: Pon [7z 7z 7z] from seat 1",
+    "  River: 3s 5p 8m* 2z 7p",
+    "Shimocha (South, 23000)",
+    "  Concealed: 2s 9s 2m 4m 4m 7m 9p 9m 8s 5m 1m 9p 4z",
+    "  Draw: (none)",
+    "  Melds: (none)",
+    "  River: 6m 7s 7z 3p 6m",
+    "Toimen (West, 28000)",
+    "  Concealed: 2m 1z 6z 5m 2p 5m 8s 3s 1s 8m 7s 2s 3z",
+    "  Draw: (none)",
+    "  Melds: (none)",
+    "  River: 5s 7m* 6p* 7s 1m",
+    "Kamicha (North, 26000)",
+    "  Concealed: 3s 6z 4z 5z 8s 4m 2p 1z 5z 8p 1s 5s 3m",
+    "  Draw: (none)",
+    "  Melds: (none)",
+    "  River: 9p 3z 2z* 2s 5z",
+    "",
+    "Decision: Which tile do you discard?",
+    "App expected: Dama, discarding 3p",
+    "Reporter answered: Riichi, discarding 3p",
+    "Verdict: INCORRECT (action mismatch)",
+    "Reporter reason: expected_action_wrong",
+    "Reporter note: Sample report used by the verification CLI and import tests."
+  ]
+}
