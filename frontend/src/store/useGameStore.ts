@@ -218,6 +218,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
           );
         }
 
+        const contentType = response.headers.get('content-type') ?? '';
+        if (contentType.includes('text/html')) {
+          throw new Error(
+            `could not find ${WEIGHTS_URL}. ` +
+              'Run scripts/convert_weights.py to generate the model file.',
+          );
+        }
+
         const bytes = new Uint8Array(await response.arrayBuffer());
 
         // Let the loading badge paint before the blocking 43 MB parse/bind.
