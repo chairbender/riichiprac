@@ -959,12 +959,11 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
             .first()
             .map(|code| format_tile_for_display(code, false))
             .unwrap_or_default();
-        let waits = state
-            .ukeire_tiles
-            .iter()
+        let waits = wait_tiles(state);
+        let drawn = human(state)
+            .and_then(|player| player.draw.as_deref())
             .map(|code| format_tile_for_display(code, false))
-            .collect::<Vec<_>>()
-            .join(" / ");
+            .unwrap_or_else(|| discard.clone());
 
         let rules = vec![
             BookRule {
@@ -992,7 +991,10 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
                 citation: ch3(230, "side wait > closed wait > edge wait"),
                 applies: format!(
                     "The hand holds two side waits and one closed wait ({discard} / {equivalent}), \
-                     so the closed wait is the block the ranking discards."
+                     so the closed wait is the block the ranking discards. Whichever of the two \
+                     tiles is dropped, the other becomes a lone float outside every wait, so both \
+                     discards leave the same 1-away shape and the same {} live tiles ({waits}).",
+                    state.ukeire_total
                 ),
             },
             BookRule {
@@ -1011,17 +1013,23 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         ];
 
         return Some(BookRationale {
-            summary: "Break the closed-wait protorun: a side wait accepts twice as many tiles, \
-                      so losing the closed wait keeps both 8-tile waits alive."
-                .to_string(),
+            summary: format!(
+                "Break the closed-wait protorun: a side wait accepts twice as many tiles, so \
+                 losing the closed wait keeps both 8-tile waits alive. {discard} and {equivalent} \
+                 are the same discard: either one leaves the same {} live tiles, so the grader \
+                 accepts both.",
+                state.ukeire_total
+            ),
             rules,
             absent: Vec::new(),
             source: ch3(205, "can accept twice as many tiles"),
-            caveats: vec![
-                "Both tiles of the closed wait are the same discard; the trainer names the tile \
-                 you drew and grades the other closed-wait tile as equal."
-                    .to_string(),
-            ],
+            caveats: vec![format!(
+                "The closed-wait protorun is {discard} / {equivalent}. Discarding either tile \
+                 leaves the other as a lone float, so the shape and the {}-tile acceptance are \
+                 identical. The state names {drawn} because that is the tile you drew (the draw \
+                 that completed the closed wait); the other tile is graded as equal.",
+                state.ukeire_total
+            )],
         });
     }
 
@@ -2017,6 +2025,91 @@ mod tests {
                 "closed_wait_ceiling"
             ]
         );
+    }
+
+    #[test]
+    fn protorun_priority_explains_why_either_closed_wait_tile_is_the_same_discard() {
+        use agari::parse::{parse_hand, to_counts};
+        use agari::shanten::calculate_ukeire;
+
+        for _ in 0..10 {
+            let state =
+                generate_puzzle("protorun_priority").expect("protorun priority must generate");
+            let rationale = rationale_for(&state).expect("protorun priority needs a rationale");
+
+            let discard = state
+                .correct_action
+                .tile()
+                .expect("answer tile")
+                .to_string();
+            let equivalent = state
+                .equivalent_tiles
+                .first()
+                .expect("the closed wait's other tile")
+                .clone();
+            let discard_name = format_tile_for_display(&discard, false);
+            let equivalent_name = format_tile_for_display(&equivalent, false);
+
+            // The visible summary and ranking text must name the pair the
+            // player is choosing between, not just the named answer tile.
+            assert!(
+                rationale.summary.contains(&discard_name)
+                    && rationale.summary.contains(&equivalent_name),
+                "the summary must name both closed-wait tiles: {}",
+                rationale.summary
+            );
+            let ranking = rationale
+                .rules
+                .iter()
+                .find(|rule| rule.id == "protorun_ranking")
+                .expect("the ranking rule must exist");
+            assert!(
+                ranking.applies.contains(&discard_name)
+                    && ranking.applies.contains(&equivalent_name),
+                "the ranking rule must name both closed-wait tiles: {}",
+                ranking.applies
+            );
+            assert!(
+                ranking.applies.contains("same")
+                    && ranking.applies.contains(&state.ukeire_total.to_string()),
+                "the ranking rule must state that both discards keep the same acceptance: {}",
+                ranking.applies
+            );
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains(&discard_name)
+                        && caveat.contains(&equivalent_name)),
+                "the caveat must name both closed-wait tiles: {:?}",
+                rationale.caveats
+            );
+
+            // Recompute both acceptances: the explanation's claim is that
+            // discarding either tile leaves the same 1-away shape.
+            let acceptance = |tile: &str| {
+                let mut remaining = state.tiles.clone();
+                let index = remaining
+                    .iter()
+                    .position(|held| held == tile)
+                    .expect("discard tile must be in the full hand");
+                remaining.remove(index);
+                let tiles = parse_hand(&remaining.join("")).expect("13-tile hand must parse");
+                calculate_ukeire(&to_counts(&tiles)).total_count
+            };
+            let answer_acceptance = acceptance(&discard);
+            let twin_acceptance = acceptance(&equivalent);
+            assert_eq!(answer_acceptance, state.ukeire_total);
+            assert_eq!(
+                twin_acceptance, answer_acceptance,
+                "discarding {equivalent} must keep the same acceptance as {discard}"
+            );
+            assert!(
+                rationale.summary.contains(&answer_acceptance.to_string()),
+                "the summary must state the shared acceptance: {}",
+                rationale.summary
+            );
+        }
     }
 
     #[test]
