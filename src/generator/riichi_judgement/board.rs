@@ -15,7 +15,8 @@ use crate::generator::support::analysis::{evaluate_hand, visible_tile_counts};
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    OpponentDeal, deal_opponents, discards_from_tiles, random_round, random_scores_with_human_first,
+    OpponentDeal, deal_opponents, discards_from_tiles, random_round,
+    random_scores_with_human_first, self_turn_river_counts,
 };
 use crate::rng::{choose, gen_range};
 use crate::state::{
@@ -70,12 +71,14 @@ pub(super) fn build(
     deck.take(ura_indicator)?;
 
     let scores = random_scores_with_human_first();
-    let discard_count = gen_range(2, 7);
-    let deal = deal_opponents(&mut deck, human_wind, &scores, discard_count)
+    // The human is about to discard, so every river comes from one legal
+    // timeline that ends on Kamicha's discard.
+    let counts = self_turn_river_counts(human_wind, &[], gen_range(2, 7));
+    let deal = deal_opponents(&mut deck, human_wind, &scores, &counts)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
     // The human is not furiten: no winning tile may already be in their river.
     let human_river = deck
-        .draw_excluding(discard_count, &skeleton.wait_tiles)
+        .draw_excluding(counts[0], &skeleton.wait_tiles)
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
     // Only table-visible tiles count. The ura indicator is not visible to the
@@ -271,6 +274,7 @@ fn assemble_state(
         riichi_sticks: 0,
         dora_indicators: vec![dora_indicator.to_string()],
         ura_dora_indicators: vec![ura_indicator.to_string()],
+        can_riichi: false,
         tiles_remaining,
         current_turn: 0,
         players,

@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { WasmMortalEvaluator, grade_answer_json } from 'riichiprac';
 import {
+  canDeclareRiichi,
   findAiActionInfo,
   findKanCandidateTile,
   isCorrectAction,
   isKanDecision,
 } from '../actions';
-import { WEIGHTS_URL } from '../aiModel';
+import { loadWeights, WEIGHTS_FILENAME } from '../services/weightLoader';
 import { parseImportedState } from '../report';
 import type { AiDecision, AiEvaluation, AiStatus } from '../types/ai';
 import type { CorrectActionType, GameState } from '../types/game';
@@ -132,6 +133,7 @@ function evaluationFromDecision(decision: AiDecision): AiEvaluation {
     model: decision.model,
     expected_value: decision.expected_value,
     recommended_action: decision.recommended_action,
+    riichi_discard: decision.riichi_discard ?? null,
     evaluations: decision.evaluations,
   };
 }
@@ -326,12 +328,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     toggleRiichi: () =>
       set((state) => {
         if (!state.gameState || state.dualGrade) return state;
-        if (state.gameState.correct_action.type === 'best') {
-          const hasRiichi = state.gameState.ai_decision?.actions.some(
-            (action) => action.action === 'Riichi',
-          );
-          if (!hasRiichi) return state;
-        }
+        // Rust decides legality: an open hand, an already-declared Riichi, or a
+        // non-tenpai hand must never arm one.
+        if (!canDeclareRiichi(state.gameState)) return state;
         return { callRiichi: !state.callRiichi, callKan: false };
       }),
 
@@ -365,7 +364,10 @@ export const useGameStore = create<GameStore>((set, get) => {
       const human = game.players.find((player) => player.is_human);
       const kanCandidate = human ? findKanCandidateTile(human) : null;
 
-      let selectedType: CorrectActionType = 'dama';
+      // A defense lesson's answer is a fold: no declaration is armed, so the
+      // click alone submits the "safest discard" action.
+      let selectedType: CorrectActionType =
+        game.correct_action.type === 'fold' ? 'fold' : 'dama';
       if (state.callKan && kanCandidate) {
         selectedType = 'kan';
       } else if (state.callRiichi) {
@@ -542,31 +544,16 @@ export const useGameStore = create<GameStore>((set, get) => {
         try {
           await ensureWasmReady();
 
-          const response = await fetch(WEIGHTS_URL);
-          if (!response.ok) {
-            throw new Error(
-              `could not load ${WEIGHTS_URL} (HTTP ${response.status}). ` +
-                'Run scripts/convert_weights.py to generate the model file.',
-            );
-          }
-
-          const contentType = response.headers.get('content-type') ?? '';
-          if (contentType.includes('text/html')) {
-            throw new Error(
-              `could not find ${WEIGHTS_URL}. ` +
-                'Run scripts/convert_weights.py to generate the model file.',
-            );
-          }
-
-          const bytes = new Uint8Array(await response.arrayBuffer());
+          // Resolves from IndexedDB when cached, otherwise downloads from the
+          // external CDN. See services/weightLoader.ts and hosting-plan.md.
+          const bytes = await loadWeights();
 
           // Let the loading badge paint before the blocking 43 MB parse/bind.
           await new Promise<void>((resolve) => {
             requestAnimationFrame(() => resolve());
           });
 
-          const modelName = WEIGHTS_URL.split('/').pop() ?? 'Mortal v4';
-          const evaluator = new WasmMortalEvaluator(bytes, modelName);
+          const evaluator = new WasmMortalEvaluator(bytes, WEIGHTS_FILENAME);
           set({ evaluator, aiStatus: 'ready', aiError: null });
 
           const state = get().gameState;

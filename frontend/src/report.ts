@@ -2,7 +2,7 @@ import {
   build_scenario_report,
   parse_scenario_report,
 } from 'riichiprac';
-import { isCorrectAction } from './actions';
+import { isCorrectAction, normalizeMortalAction } from './actions';
 import type { AiEvaluation } from './types/ai';
 import type {
   BuildReportRequest,
@@ -177,6 +177,8 @@ export function mortalActionForCorrect(action: CorrectAction): string {
       return 'Riichi';
     case 'dama':
       return `Discard_${action.discard}`;
+    case 'fold':
+      return `Discard_${action.discard}`;
     case 'kan':
       return 'Kan';
     case 'discard':
@@ -192,6 +194,8 @@ export function mortalActionForReported(answer: ReportedAction): string {
     case 'riichi':
       return 'Riichi';
     case 'dama':
+      return `Discard_${answer.tile}`;
+    case 'fold':
       return `Discard_${answer.tile}`;
     case 'kan':
       return 'Kan';
@@ -237,12 +241,50 @@ export function mortalActionDisplayName(action: string): string {
   return action.replace('_', ' ');
 }
 
+/**
+ * Human label for a whole Mortal evaluation, including the discard a Riichi
+ * recommendation declares on when the evaluator's second pass resolved it.
+ */
+export function mortalRecommendationDisplay(
+  evaluation: AiEvaluation | null,
+): string {
+  if (!evaluation) return 'another action';
+  if (evaluation.recommended_action === 'Riichi' && evaluation.riichi_discard) {
+    return `Riichi · discard ${evaluation.riichi_discard}`;
+  }
+  return mortalActionDisplayName(evaluation.recommended_action);
+}
+
+/**
+ * Whether Mortal's top action matches a Mortal-style action name plus the tile
+ * its declaration would use. A Riichi recommendation is tile-less in the action
+ * space, so its second-pass discard decides the tile half when known.
+ */
+export function mortalMatchesAction(
+  evaluation: AiEvaluation,
+  action: string,
+  tile: string,
+): boolean {
+  if (
+    normalizeMortalAction(evaluation.recommended_action) !==
+    normalizeMortalAction(action)
+  ) {
+    return false;
+  }
+  if (evaluation.recommended_action === 'Riichi') {
+    return !evaluation.riichi_discard || evaluation.riichi_discard === tile;
+  }
+  return true;
+}
+
 export function describeCorrectAction(action: CorrectAction): string {
   switch (action.type) {
     case 'riichi':
       return `Riichi, discarding ${action.discard}`;
     case 'dama':
       return `Dama, discarding ${action.discard}`;
+    case 'fold':
+      return `Fold, discarding the safest tile ${action.discard}`;
     case 'kan':
       return `Added Kan on ${action.tile}`;
     case 'discard':
@@ -258,6 +300,8 @@ export function describeReportedAction(answer: ReportedAction): string {
       return `Riichi, discarding ${answer.tile}`;
     case 'dama':
       return `Dama, discarding ${answer.tile}`;
+    case 'fold':
+      return `Fold, discarding the safest tile ${answer.tile}`;
     case 'kan':
       return `Added Kan on ${answer.tile}`;
     case 'discard':

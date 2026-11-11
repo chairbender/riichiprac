@@ -31,7 +31,7 @@ impl DecisionPrompt {
 
         match target {
             TargetAction::Riichi | TargetAction::Dama => Self::RiichiOrDama,
-            TargetAction::NaniKiru => Self::WhichDiscard,
+            TargetAction::NaniKiru | TargetAction::Defend => Self::WhichDiscard,
             TargetAction::Kan => Self::KanOrDiscard,
             TargetAction::Push | TargetAction::Fold => Self::PushOrFold,
             TargetAction::Best => Self::AiBestAction,

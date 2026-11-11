@@ -198,8 +198,11 @@ mod tests {
             assert!(!opponent.is_human);
             assert!(!opponent.is_riichi);
             assert!(opponent.melds.is_empty());
-            assert_eq!(opponent.discards.len(), human.discards.len());
         }
+
+        // Every generated table must be a position a real game could reach.
+        crate::generator::support::state_validation::validate_reachable_state(state)
+            .expect("riichi-judgement table must be reachable");
 
         let puzzle = Puzzle::from_state(state);
         assert_eq!(puzzle.tenpai.len(), 13);

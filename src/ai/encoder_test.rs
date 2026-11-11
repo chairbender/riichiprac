@@ -116,6 +116,7 @@ fn base_state() -> GameState {
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
         book_rationale: None,
+        can_riichi: false,
 
         hand_string: "113z".to_string(),
         tiles: Vec::new(),

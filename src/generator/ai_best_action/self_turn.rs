@@ -12,7 +12,10 @@ use crate::state::{
 };
 
 use super::reaction::build_complete_hand;
-use super::table::{Table, deal_table, deal_table_with_human, deal_table_with_human_no_rivers};
+use super::table::{
+    Table, deal_table, deal_table_with_human, deal_table_with_human_calls,
+    deal_table_with_human_no_rivers,
+};
 use super::validate::validate_self_turn_candidate;
 
 /// Build a self-turn candidate with a randomly chosen special decision.
@@ -230,7 +233,7 @@ fn build_kakan_candidate(category: &str) -> Result<GameState, String> {
                 .chain(std::iter::once(draw))
                 .collect::<Vec<_>>(),
         );
-        let table = match deal_table_with_human(display) {
+        let table = match deal_table_with_human_calls(display, &[(0, 1)]) {
             Ok(table) => table,
             Err(_) => continue,
         };
@@ -356,6 +359,7 @@ fn assemble(
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
         book_rationale: None,
+        can_riichi: false,
         hand_string,
         tiles: tile_strings,
         shanten: metrics.shanten,
@@ -488,13 +492,19 @@ mod tests {
         legal_actions(state).into_iter().map(|a| a.kind).collect()
     }
 
+    fn check_candidate(state: &GameState, run: usize) {
+        super::super::validate::validate_self_turn_candidate(state)
+            .unwrap_or_else(|err| panic!("run {run}: {err}"));
+        crate::generator::support::state_validation::validate_reachable_state(state)
+            .unwrap_or_else(|err| panic!("run {run} unreachable: {err}"));
+    }
+
     #[test]
     fn riichi_candidates_offer_riichi() {
         for run in 0..60 {
             let state = build_riichi_candidate("ai_best_action")
                 .unwrap_or_else(|err| panic!("run {run}: {err}"));
-            super::super::validate::validate_self_turn_candidate(&state)
-                .unwrap_or_else(|err| panic!("run {run}: {err}"));
+            check_candidate(&state, run);
             assert_eq!(state.shanten, 0);
             assert!(!state.is_agari);
             assert!(actions(&state).contains(&ActionKind::Riichi));
@@ -506,8 +516,7 @@ mod tests {
         for run in 0..40 {
             let state = build_tsumo_candidate("ai_best_action")
                 .unwrap_or_else(|err| panic!("run {run}: {err}"));
-            super::super::validate::validate_self_turn_candidate(&state)
-                .unwrap_or_else(|err| panic!("run {run}: {err}"));
+            check_candidate(&state, run);
             assert!(state.is_agari);
             assert!(actions(&state).contains(&ActionKind::Agari));
         }
@@ -518,8 +527,7 @@ mod tests {
         for run in 0..40 {
             let state = build_ryukyoku_candidate("ai_best_action")
                 .unwrap_or_else(|err| panic!("run {run}: {err}"));
-            super::super::validate::validate_self_turn_candidate(&state)
-                .unwrap_or_else(|err| panic!("run {run}: {err}"));
+            check_candidate(&state, run);
             assert!(
                 state
                     .players
@@ -535,8 +543,7 @@ mod tests {
         for run in 0..40 {
             let state = build_kakan_candidate("ai_best_action")
                 .unwrap_or_else(|err| panic!("run {run}: {err}"));
-            super::super::validate::validate_self_turn_candidate(&state)
-                .unwrap_or_else(|err| panic!("run {run}: {err}"));
+            check_candidate(&state, run);
             assert_eq!(state.players[0].melds.len(), 1);
             assert_eq!(state.players[0].hand.len(), 10);
             assert!(actions(&state).contains(&ActionKind::Kan));
@@ -548,8 +555,7 @@ mod tests {
         for run in 0..40 {
             let state = build_ankan_candidate("ai_best_action")
                 .unwrap_or_else(|err| panic!("run {run}: {err}"));
-            super::super::validate::validate_self_turn_candidate(&state)
-                .unwrap_or_else(|err| panic!("run {run}: {err}"));
+            check_candidate(&state, run);
             assert!(actions(&state).contains(&ActionKind::Kan));
         }
     }

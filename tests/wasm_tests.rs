@@ -166,6 +166,24 @@ fn test_list_scenarios_payload() {
                 && scenario["grading"] == "book_and_mortal"),
         "book lessons are graded by both perspectives"
     );
+    assert!(
+        scenarios.iter().any(|scenario| {
+            (scenario["id"] == "defense_safety_chart"
+                || scenario["id"] == "defense_stuck_heuristic")
+                && scenario["category"] == "defense_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the defense lessons are book-graded and need no model"
+    );
+    assert!(
+        scenarios
+            .iter()
+            .filter(|scenario| scenario["category"] == "defense_decision")
+            .count()
+            >= 2,
+        "both defense lessons must be listed"
+    );
 }
 
 #[wasm_bindgen_test]
@@ -273,6 +291,10 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
 
         assert_eq!(val["target_action"], "Riichi");
         assert_eq!(val["correct_action"]["type"], "riichi");
+        assert_eq!(
+            val["can_riichi"], true,
+            "run {run}: a book Riichi answer must be an offerable declaration"
+        );
 
         let discard_code = val["correct_action"]["discard"]
             .as_str()
@@ -883,13 +905,24 @@ fn test_ryanmen_rejection_sampling_constraints() {
             .iter()
             .map(|player| player["discards"].as_array().unwrap().len())
             .collect();
+        // An out-of-rotation call lets the walk skip a seat, so the rivers can
+        // differ by one per call; the native `validate_reachable_state` test
+        // checks the exact timeline.
+        let calls: usize = players
+            .iter()
+            .map(|player| player["melds"].as_array().unwrap().len())
+            .sum();
+        let spread = discard_counts.iter().max().unwrap() - discard_counts.iter().min().unwrap();
         assert!(
-            discard_counts
-                .iter()
-                .all(|&count| count == discard_counts[0]),
-            "run {run}: discard counts must line up: {discard_counts:?}"
+            spread <= 1 + calls,
+            "run {run}: discard counts must be reachable given {calls} call(s): {discard_counts:?}"
         );
-        assert!((1..=6).contains(&discard_counts[0]));
+        // The planner takes `gen_range(1, 7)` as the per-seat floor, and the
+        // human's out-of-rotation Pon can leave them one discard ahead.
+        assert!(
+            (1..=7).contains(&discard_counts[0]),
+            "run {run}: human discard count {discard_counts:?}"
+        );
 
         // The two wait tiles.
         let wait_tiles: Vec<&str> = val["ukeire_tiles"]
@@ -1032,6 +1065,254 @@ fn test_ryanmen_rejection_sampling_constraints() {
 }
 
 #[wasm_bindgen_test]
+fn test_nakabukure_ready_rejection_sampling_constraints() {
+    for run in 0..25 {
+        let json_output = generate_puzzle("nakabukure_ready".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+        assert_eq!(val["category"], "nakabukure_ready");
+        assert_eq!(val["target_action"], "NaniKiru");
+        assert_eq!(val["correct_action"]["type"], "dama");
+        assert_eq!(val["riichi_sticks"], 0);
+        assert_eq!(val["dora_indicators"].as_array().unwrap().len(), 1);
+        assert_eq!(val["ura_dora_indicators"].as_array().unwrap().len(), 1);
+        assert_eq!(val["shanten"], 0);
+        assert_eq!(val["is_agari"], false);
+
+        let players = val["players"].as_array().expect("players array");
+        assert_eq!(players.len(), 4);
+        for opponent in &players[1..] {
+            assert_eq!(opponent["is_riichi"], false);
+            assert_eq!(opponent["melds"].as_array().unwrap().len(), 0);
+            assert!(opponent["riichi_discard_index"].is_null());
+        }
+
+        // Human hand, open Yakuhai Pon, and the drawn honour.
+        let human = &players[0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 10);
+        assert_eq!(human["melds"].as_array().unwrap().len(), 1);
+        assert_eq!(human["melds"][0]["meld_type"], "Pon");
+        let meld_tiles = human["melds"][0]["tiles"].as_array().unwrap();
+        assert_eq!(meld_tiles.len(), 3);
+        assert!(meld_tiles.iter().all(|tile| tile == &meld_tiles[0]));
+
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("dama action must include a discard tile");
+        let draw = human["draw"].as_str().expect("human draw");
+        assert_ne!(answer, draw, "run {run}: the draw is not the answer");
+        assert!(
+            draw.ends_with('z'),
+            "run {run}: the alternative discard is the floating honour"
+        );
+
+        // The visible full hand is exactly hand + draw + open meld.
+        let mut expected: Vec<&str> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        expected.push(draw);
+        expected.extend(meld_tiles.iter().map(|tile| tile.as_str().unwrap()));
+        expected.sort();
+        let mut actual: Vec<&str> = val["tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        actual.sort();
+        assert_eq!(actual, expected);
+
+        // The bulge tile is held exactly twice.
+        assert_eq!(
+            actual.iter().filter(|tile| **tile == answer).count(),
+            2,
+            "run {run}: the answer is the middle tile of the bulge"
+        );
+
+        // The book's discard leaves the lone honour as the only wait, with
+        // three live copies.
+        let wait_tiles: Vec<&str> = val["ukeire_tiles"]
+            .as_array()
+            .expect("ukeire_tiles array")
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        assert_eq!(wait_tiles, vec![draw]);
+        assert_eq!(val["ukeire_total"], 3);
+
+        // The tempting discard leaves the bulge tile, of which only two remain.
+        let mut post_float = actual.clone();
+        let float_index = post_float
+            .iter()
+            .position(|tile| *tile == draw)
+            .expect("draw must be in the full hand");
+        post_float.remove(float_index);
+        let parsed =
+            parse_hand(&post_float.join("")).expect("post-discard hand must parse in agari");
+        let counts = to_counts(&parsed);
+        assert_eq!(calculate_shanten(&counts).shanten, 0);
+        let ukeire = calculate_ukeire(&counts);
+        assert_eq!(ukeire.tiles.len(), 1);
+        assert_eq!(ukeire.tiles[0].tile.to_string(), answer);
+        assert_eq!(ukeire.total_count, 2);
+        assert!(val["ukeire_total"].as_u64().unwrap() > 2);
+
+        // Furiten and availability: neither wait is visible anywhere.
+        for player in players {
+            for discard in player["discards"].as_array().unwrap() {
+                let tile = discard["tile"].as_str().unwrap();
+                assert_ne!(tile, answer, "run {run}: answer is visibly discarded");
+                assert_ne!(tile, draw, "run {run}: the honour is visibly discarded");
+            }
+        }
+        for indicator in val["dora_indicators"].as_array().unwrap() {
+            let tile = indicator.as_str().unwrap();
+            assert_ne!(tile, answer);
+            assert_ne!(tile, draw);
+        }
+
+        let total_score: i64 = players
+            .iter()
+            .map(|player| player["score"].as_i64().expect("score int"))
+            .sum();
+        assert_eq!(total_score, 100_000);
+    }
+}
+
+#[wasm_bindgen_test]
+fn test_defense_scenarios_payload() {
+    for category in ["defense_safety_chart", "defense_stuck_heuristic"] {
+        for run in 0..10 {
+            let json_output = generate_puzzle(category.to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("{category} run {run}: invalid JSON: {err}"));
+
+            assert_eq!(val["category"], category);
+            assert_eq!(val["target_action"], "Defend");
+            assert_eq!(val["correct_action"]["type"], "fold");
+            let answer = val["correct_action"]["discard"]
+                .as_str()
+                .expect("a fold answer names the discard");
+
+            let players = val["players"].as_array().expect("players array");
+            assert_eq!(players.len(), 4);
+
+            let human = &players[0];
+            assert_eq!(human["is_human"], true);
+            assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+            assert_eq!(human["draw"], answer);
+            assert!(human["melds"].as_array().unwrap().is_empty());
+            assert_eq!(human["is_riichi"], false);
+
+            // Pure defense: exactly one opponent has declared Riichi, and the
+            // declaration tile is the last discard in their river.
+            let threats: Vec<&serde_json::Value> = players
+                .iter()
+                .filter(|player| player["is_riichi"] == true)
+                .collect();
+            assert_eq!(threats.len(), 1, "{category} run {run}");
+            let threat = threats[0];
+            let discards = threat["discards"].as_array().unwrap();
+            assert_eq!(
+                threat["riichi_discard_index"].as_u64(),
+                Some(discards.len() as u64 - 1)
+            );
+            assert_eq!(discards.last().unwrap()["is_riichi"], true);
+
+            // The hand is not ready: these lessons are about folding.
+            assert!(val["shanten"].as_i64().unwrap() >= 1);
+
+            let mut expected: Vec<&str> = human["hand"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            expected.push(answer);
+            expected.sort();
+            let mut actual: Vec<&str> = val["tiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            actual.sort();
+            assert_eq!(actual, expected);
+
+            let total_score: i64 = players
+                .iter()
+                .map(|player| player["score"].as_i64().expect("score int"))
+                .sum();
+            assert_eq!(total_score, 100_000);
+
+            // The ch. 8 rationale is stamped at the generation boundary.
+            assert!(val["book_rationale"]["rules"].is_array());
+            assert!(
+                !val["book_rationale"]["rules"]
+                    .as_array()
+                    .unwrap()
+                    .is_empty()
+            );
+            assert_eq!(val["book_rationale"]["source"]["chapter"], 8);
+        }
+    }
+}
+
+#[wasm_bindgen_test]
+fn test_defense_answer_grades_against_the_book() {
+    let table: serde_json::Value =
+        serde_json::from_str(&generate_puzzle("defense_safety_chart".to_string()))
+            .expect("defense payload must be valid JSON");
+    let answer = table["correct_action"]["discard"]
+        .as_str()
+        .expect("a fold answer")
+        .to_string();
+
+    let request = serde_json::json!({
+        "table": table.clone(),
+        "answer": { "action": "fold", "tile": answer },
+        "evaluation": serde_json::Value::Null,
+    });
+    let grade_json = grade_answer_json(&request.to_string());
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_json).expect("grade must return valid JSON");
+
+    assert!(grade.get("error").is_none(), "grade error: {grade_json}");
+    assert_eq!(grade["mode"], "book_only");
+    assert_eq!(grade["outcome"], "only_available_agrees");
+    assert_eq!(grade["book"]["is_action_correct"], true);
+    assert_eq!(grade["book"]["is_tile_correct"], true);
+
+    // A fold answer survives the report round trip, including the action enum.
+    let report_request = serde_json::json!({
+        "table": table,
+        "answer": { "action": "fold", "tile": answer },
+        "reason": "expected_tile_wrong",
+        "created_at": "2026-11-10T08:42:11.031Z",
+        "report_id": "defense-report",
+        "commit": "test-commit",
+        "build_time": "2026-11-10T08:00:00.000Z"
+    });
+    let report_json = build_scenario_report(&report_request.to_string());
+    let report: serde_json::Value =
+        serde_json::from_str(&report_json).expect("report must be valid JSON");
+    assert_eq!(report["table"]["correct_action"]["type"], "fold");
+    assert_eq!(report["table"]["target_action"], "Defend");
+    assert_eq!(report["decision"]["verdict"]["expected_action"], "fold");
+    assert_eq!(report["decision"]["prompt"], "Which tile do you discard?");
+
+    let parsed_json = parse_scenario_report(&report_json);
+    let parsed: serde_json::Value =
+        serde_json::from_str(&parsed_json).expect("parse must return valid JSON");
+    assert!(parsed.get("error").is_none(), "parse error: {parsed_json}");
+    assert_eq!(parsed["report"]["table"], report["table"]);
+}
+
+#[wasm_bindgen_test]
 fn test_grade_answer_through_wasm() {
     let table: serde_json::Value = serde_json::from_str(&generate_puzzle("mock_table".to_string()))
         .expect("mock table must be valid JSON");
@@ -1061,4 +1342,63 @@ fn test_grade_answer_through_wasm() {
     assert_eq!(grade["outcome"], "only_available_agrees");
     assert_eq!(grade["book"]["is_action_correct"], true);
     assert!(grade["mortal"].is_null());
+}
+
+#[wasm_bindgen_test]
+fn test_generated_states_gate_illegal_riichi() {
+    // The block-theory lesson always holds an open Yakuhai Pon: Riichi must be
+    // reported as illegal rather than offered and graded as a wrong answer.
+    for run in 0..20 {
+        let val: serde_json::Value =
+            serde_json::from_str(&generate_puzzle("ryanmen_protorun".to_string()))
+                .expect("ryanmen payload");
+        assert_eq!(val["can_riichi"], false, "run {run}");
+        assert!(
+            !val["players"][0]["melds"].as_array().unwrap().is_empty(),
+            "run {run}: the lesson must stay an open hand"
+        );
+    }
+
+    // A closed tenpai lesson can offer the declaration.
+    let chiitoitsu: serde_json::Value =
+        serde_json::from_str(&generate_puzzle("chiitoitsu_riichi_vs_dama".to_string()))
+            .expect("chiitoitsu payload");
+    assert!(chiitoitsu["can_riichi"].is_boolean());
+}
+
+#[wasm_bindgen_test]
+fn test_grade_shows_mortals_riichi_declaration() {
+    let table: serde_json::Value = serde_json::from_str(&generate_puzzle("mock_table".to_string()))
+        .expect("mock table must be valid JSON");
+    let discard = table["correct_action"]["discard"]
+        .as_str()
+        .expect("mock table is a Riichi puzzle")
+        .to_string();
+
+    let request = serde_json::json!({
+        "table": table,
+        "answer": { "action": "riichi", "tile": discard },
+        "evaluation": {
+            "model": "mortal_298k.safetensors",
+            "expected_value": 0.2,
+            "recommended_action": "Riichi",
+            "riichi_discard": discard,
+            "evaluations": [
+                { "action": "Riichi", "label": "Riichi", "type": "riichi", "probability": 0.7 },
+                { "action": "Discard_3p", "label": "Discard 3p", "type": "discard",
+                  "tile": "3p", "probability": 0.3 }
+            ]
+        },
+    });
+
+    let grade_json = grade_answer_json(&request.to_string());
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_json).expect("grade must return valid JSON");
+
+    assert!(grade.get("error").is_none(), "grade error: {grade_json}");
+    assert_eq!(grade["mode"], "book_and_mortal");
+    assert_eq!(grade["outcome"], "both_agree");
+    assert_eq!(grade["mortal"]["recommended_riichi"], true);
+    assert_eq!(grade["mortal"]["recommended_discard"], discard);
+    assert_eq!(grade["mortal"]["agrees"], true);
 }

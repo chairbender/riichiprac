@@ -288,13 +288,23 @@ impossible action as Mortal's recommendation. Fixed in `self_turn_actions`,
 which now emits one discard action per distinct tile and drops the plain variant
 when the only held copy is the red five.
 
-## 5. Gap: Riichi comparisons ignore the riichi discard
+## 5. Gap (fixed): Riichi comparisons ignore the riichi discard
 
-`compare_expected_action` maps every riichi answer to the single action
-`Riichi`, with no tile. A riichi that discards the wrong tile can therefore
-never be detected, and the exported report echoes the app's tile instead of
-Mortal's. For riichi-vs-dama scenarios the comparison is effectively
+`compare_expected_action` mapped every riichi answer to the single action
+`Riichi`, with no tile. A riichi that discards the wrong tile could therefore
+never be detected, and the exported report echoed the app's tile instead of
+Mortal's. For riichi-vs-dama scenarios the comparison was effectively
 action-only.
+
+Fixed by resolving Mortal's riichi discard in the evaluator itself:
+`evaluate_state_named` runs the second pass (human marked as in Riichi, `Riichi`
+masked off) whenever the top action is Riichi and records the result as
+`Evaluation::riichi_discard`. `compare_expected_action` now treats a Riichi-vs-
+Riichi pair with different discards as a `Tile` discrepancy, and
+`reported_action_for_ai` writes Mortal's discard into the report instead of the
+app's. The same field drives the app's dual grade (`MortalGrade::
+recommended_riichi` / `recommended_discard`) and the UI, so the drill and the
+offline runner cannot disagree about what Mortal would declare on.
 
 ## 6. Update after the EV / required-tile / SP-table planes (2026-11-10)
 

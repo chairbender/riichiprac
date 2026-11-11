@@ -51,6 +51,7 @@ const DEFAULT_LIMIT: usize = 20;
 /// shouminkan_decline` to look at it directly.
 const DEFAULT_SCENARIOS: &[ScenarioId] = &[
     ScenarioId::RyanmenProtorun,
+    ScenarioId::NakabukureReady,
     ScenarioId::ChiitoitsuRiichiVsDama,
     ScenarioId::RiichiJudgement,
     ScenarioId::ShouminkanDecision,
@@ -67,10 +68,10 @@ const USAGE: &str = "\
 usage: fuzz_scenarios [options]
 
   --scenario <id>          scenario to sample; repeatable
-                           (default: ryanmen_protorun, chiitoitsu_riichi_vs_dama,
-                           riichi_judgement, shouminkan_decision;
-                           shouminkan_decline and ai_best_action are not sampled by
-                           default, and ai_best_action needs the model anyway)
+                           (default: ryanmen_protorun, nakabukure_ready,
+                           chiitoitsu_riichi_vs_dama, riichi_judgement,
+                           shouminkan_decision; shouminkan_decline must be named
+                           explicitly; ai_best_action needs the model and is rejected)
   --iterations <n>         maximum generation attempts (default: 200)
   --limit <n>              maximum discrepancy files per run (default: 20)
   --min-margin <p>         skip disagreements where Mortal's lead over the app
@@ -377,6 +378,7 @@ fn run(args: &Args, model: &MortalV4Model) -> Result<FuzzSummary, String> {
         let Some(answer) = reported_action_for_ai(
             &comparison.ai_action,
             state.correct_action.tile().unwrap_or_default(),
+            evaluation.riichi_discard.as_deref(),
         ) else {
             summary.unsupported_ai_skipped += 1;
             eprintln!(
@@ -547,6 +549,7 @@ mod tests {
             args.scenarios,
             vec![
                 ScenarioId::RyanmenProtorun,
+                ScenarioId::NakabukureReady,
                 ScenarioId::ChiitoitsuRiichiVsDama,
                 ScenarioId::RiichiJudgement,
                 ScenarioId::ShouminkanDecision,

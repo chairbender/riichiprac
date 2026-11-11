@@ -261,7 +261,10 @@ mod tests {
                         "run {run}: dama hand is {score_level:?}, not Mangan or better"
                     );
                 }
-                CorrectActionType::Kan | CorrectActionType::Discard | CorrectActionType::Best => {
+                CorrectActionType::Fold
+                | CorrectActionType::Kan
+                | CorrectActionType::Discard
+                | CorrectActionType::Best => {
                     panic!("run {run}: chiitoitsu scenario returned a non-lesson action")
                 }
             }

@@ -5,7 +5,7 @@ import {
   discardProbabilitiesByTile,
   formatProbability,
 } from '../types/ai';
-import type { PlayerState } from '../types/game';
+import type { PlayerState, TargetAction } from '../types/game';
 import type { DualGrade } from '../types/verdict';
 import { mortalRecommendedTile } from '../types/verdict';
 import { AnswerSummary } from './AnswerSummary';
@@ -27,8 +27,12 @@ interface HandDockProps {
   availableActions?: AiActionInfo[];
   /** False when a reaction state has no discard option. */
   canDiscard?: boolean;
+  /** Whether Riichi is a legal declaration for this hand (Rust-derived). */
+  canRiichi?: boolean;
   /** Whether Mortal's probability badges may be shown. */
   revealMortal?: boolean;
+  /** What the state asks for; a `Defend` lesson is a pure-defense fold. */
+  targetAction?: TargetAction;
   /** Scroll to the full book-vs-Mortal comparison. */
   onShowVerdict: () => void;
   onToggleRiichi: () => void;
@@ -51,7 +55,9 @@ export function HandDock({
   aiEvaluation,
   availableActions,
   canDiscard = true,
+  canRiichi = false,
   revealMortal = false,
+  targetAction,
   onShowVerdict,
   onToggleRiichi,
   onToggleKan,
@@ -80,6 +86,10 @@ export function HandDock({
     handHint = 'Riichi selected - tap a tile to discard';
   } else if (isAiScenario) {
     handHint = 'Tap a tile to discard';
+  } else if (targetAction === 'NaniKiru') {
+    handHint = 'Tap the tile to discard';
+  } else if (targetAction === 'Defend') {
+    handHint = 'Fold - tap the safest tile';
   } else if (kanTile) {
     handHint = 'Tap a tile to discard, or arm Call Kan';
   }
@@ -124,22 +134,25 @@ export function HandDock({
       {isAnswered && grade ? (
         <AnswerSummary grade={grade} onDetails={onShowVerdict} />
       ) : (
-        !isAiScenario && (
+        !isAiScenario &&
+        (canRiichi || kanTile) && (
           <div className="call-toggles">
-            <button
-              type="button"
-              className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
-              onClick={onToggleRiichi}
-              disabled={isAnswered}
-              aria-pressed={callRiichi}
-              aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
-            >
-              <RiichiStick className="riichi-toggle-stick" />
-              <span className="riichi-toggle-label">Call Riichi</span>
-              <span className="riichi-toggle-state">
-                {callRiichi ? 'ON' : 'OFF'}
-              </span>
-            </button>
+            {canRiichi && (
+              <button
+                type="button"
+                className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
+                onClick={onToggleRiichi}
+                disabled={isAnswered}
+                aria-pressed={callRiichi}
+                aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
+              >
+                <RiichiStick className="riichi-toggle-stick" />
+                <span className="riichi-toggle-label">Call Riichi</span>
+                <span className="riichi-toggle-state">
+                  {callRiichi ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            )}
 
             {kanTile && (
               <button
