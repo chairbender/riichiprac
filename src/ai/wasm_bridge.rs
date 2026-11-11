@@ -33,6 +33,7 @@ use super::encoder::{OBS_CHANNELS, TILE_KINDS, encode_v4_observation};
 use super::model::{ACTION_SPACE, MortalV4Model};
 pub use crate::decision::ActionEvaluation;
 use crate::decision::{ActionInfo, ActionKind};
+use crate::generator::MortalAgreementOptions;
 use crate::state::GameState;
 
 pub use super::actions::{describe_action, legal_action_mask};
@@ -116,6 +117,43 @@ impl WasmMortalEvaluator {
             .map_err(|err| js_error(&format!("failed to serialize evaluation: {err}")))?;
 
         js_sys::JSON::parse(&json)
+    }
+
+    /// Generate a lesson puzzle and require Mortal to agree with its book answer.
+    ///
+    /// This is the opt-in agreement filter on the generation path: candidates
+    /// are generated and evaluated until the model's top-ranked action equals
+    /// one of the lesson's accepted answers, within
+    /// [`MortalAgreementOptions::max_candidates`] attempts. `options_json` is
+    /// `{"max_candidates": 40}`, `{}` / `""` for the default bound, or
+    /// `{"enabled": false}` to get the plain `generate_puzzle` result with no
+    /// report.
+    ///
+    /// Returns `{"state": GameState, "agreement": MortalAgreementReport}` as a
+    /// JSON string. Use [`Self::generate_ai_puzzle`] for `ai_best_action`, whose
+    /// answer is Mortal's own argmax and is therefore not sampled.
+    pub fn generate_puzzle_with_agreement(
+        &self,
+        category: &str,
+        options_json: &str,
+    ) -> Result<String, JsValue> {
+        let options: MortalAgreementOptions = if options_json.trim().is_empty() {
+            MortalAgreementOptions::default()
+        } else {
+            serde_json::from_str(options_json)
+                .map_err(|err| js_error(&format!("invalid Mortal-agreement options JSON: {err}")))?
+        };
+
+        let puzzle = crate::generator::generate_puzzle_with_agreement(
+            category,
+            &self.model,
+            &self.model_name,
+            options,
+        )
+        .map_err(|err| js_error(&format!("failed to generate an agreeing scenario: {err}")))?;
+
+        serde_json::to_string(&puzzle)
+            .map_err(|err| js_error(&format!("failed to serialize the agreeing scenario: {err}")))
     }
 }
 
