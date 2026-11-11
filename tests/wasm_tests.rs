@@ -263,6 +263,108 @@ fn chiitoitsu_score_level(
     calculate_score(&structure, &yaku, &context).score_level
 }
 
+/// Asserts the shape both chiitoitsu payloads share: the 13-tile pre-draw
+/// hand is five pairs plus three lone tiles, and the drawn tile is the second
+/// copy of one of them. Returns the hand, the drawn tile, and the 14-tile hand.
+fn chiitoitsu_pre_draw_shape(
+    val: &serde_json::Value,
+    run_label: &str,
+) -> (Vec<Tile>, Tile, Vec<Tile>) {
+    let human = &val["players"][0];
+    let hand_tiles: Vec<Tile> = human["hand"]
+        .as_array()
+        .expect("hand array")
+        .iter()
+        .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+        .collect();
+    let draw = parse_single_tile(human["draw"].as_str().expect("draw tile"));
+
+    let counts = to_counts(&hand_tiles);
+    assert_eq!(counts.len(), 8, "{run_label}: distinct pre-draw tiles");
+    assert_eq!(
+        counts.values().filter(|&&count| count == 2).count(),
+        5,
+        "{run_label}: pre-draw pairs"
+    );
+    assert_eq!(
+        counts.values().filter(|&&count| count == 1).count(),
+        3,
+        "{run_label}: pre-draw lone tiles"
+    );
+    assert_eq!(
+        counts.get(&draw),
+        Some(&1),
+        "{run_label}: the draw pairs an existing lone tile"
+    );
+    assert_eq!(
+        calculate_shanten(&counts).shanten,
+        1,
+        "{run_label}: pre-draw is 1-shanten"
+    );
+
+    let mut full = hand_tiles.clone();
+    full.push(draw);
+    let full_counts = to_counts(&full);
+    assert_eq!(
+        full_counts.get(&draw),
+        Some(&2),
+        "{run_label}: the draw completes a pair"
+    );
+    assert_eq!(
+        full_counts.values().filter(|&&count| count == 2).count(),
+        6,
+        "{run_label}: post-draw pairs"
+    );
+    assert_eq!(
+        full_counts.values().filter(|&&count| count == 1).count(),
+        2,
+        "{run_label}: post-draw lone tiles"
+    );
+
+    (hand_tiles, draw, full)
+}
+
+/// The two lone tiles the payload accepts, canonical answer first.
+fn chiitoitsu_accepted_codes(val: &serde_json::Value) -> [String; 2] {
+    let canonical = val["correct_action"]["discard"]
+        .as_str()
+        .expect("chiitoitsu answer discard")
+        .to_string();
+    let equivalent = val["equivalent_tiles"]
+        .as_array()
+        .expect("equivalent_tiles array")
+        .first()
+        .and_then(|tile| tile.as_str())
+        .expect("chiitoitsu twin discard")
+        .to_string();
+    [canonical, equivalent]
+}
+
+/// The 13-tile tenpai hand left after discarding the accepted tile that is
+/// not `wait_code`.
+fn chiitoitsu_tenpai(full: &[Tile], accepted: &[String; 2], wait_code: &str) -> (Vec<Tile>, Tile) {
+    let other = accepted
+        .iter()
+        .find(|code| code.as_str() != wait_code)
+        .expect("a distinct twin discard");
+    let other_tile = parse_single_tile(other);
+    let mut tenpai = full.to_vec();
+    let index = tenpai
+        .iter()
+        .position(|tile| *tile == other_tile)
+        .expect("the twin discard is in the hand");
+    tenpai.remove(index);
+    (tenpai, parse_single_tile(wait_code))
+}
+
+/// The 14-tile winning hand completed on `wait_code`.
+fn chiitoitsu_winning(full: &[Tile], accepted: &[String; 2], wait_code: &str) -> Vec<Tile> {
+    let (tenpai, wait) = chiitoitsu_tenpai(full, accepted, wait_code);
+    let mut winning = tenpai;
+    winning.push(wait);
+    winning
+}
+
 #[wasm_bindgen_test]
 fn test_chiitoitsu_riichi_vs_dama_payload() {
     const TRIGGERS: [&str; 6] = [
@@ -296,17 +398,68 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
             "run {run}: a book Riichi answer must be an offerable declaration"
         );
 
-        let discard_code = val["correct_action"]["discard"]
-            .as_str()
-            .expect("riichi action must have a discard");
         let human = &val["players"][0];
         assert_eq!(human["hand"].as_array().unwrap().len(), 13);
-        assert_eq!(human["draw"], discard_code);
         assert_eq!(human["melds"].as_array().unwrap().len(), 0);
         let red_fives = human["red_fives"]
             .as_array()
             .expect("human red_fives array");
-        assert!(red_fives.len() <= 1);
+        assert!(red_fives.len() <= 2);
+
+        let accepted = chiitoitsu_accepted_codes(&val);
+        assert_ne!(accepted[0], accepted[1], "run {run}: twin discards");
+        let discard_code = &accepted[0];
+        // The drawn tile is the pair-completing tile, never the discard.
+        assert_ne!(
+            human["draw"].as_str(),
+            Some(discard_code.as_str()),
+            "run {run}: the draw must be the pair-completing tile"
+        );
+
+        let (_hand_tiles, _draw, full) = chiitoitsu_pre_draw_shape(&val, &format!("run {run}"));
+
+        let mut expected: Vec<&str> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        expected.push(human["draw"].as_str().unwrap());
+        expected.sort();
+        let mut actual: Vec<&str> = val["tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        actual.sort();
+        assert_eq!(actual, expected, "run {run}: tiles must match hand + draw");
+
+        // The state's canonical wait follows the canonical discard.
+        let wait_code = val["ukeire_tiles"][0]
+            .as_str()
+            .expect("chiitoitsu wait tile")
+            .to_string();
+        assert!(
+            accepted.contains(&wait_code),
+            "run {run}: ukeire must name an accepted wait"
+        );
+
+        let mut full_hand: Vec<Tile> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        full_hand.push(parse_single_tile(human["draw"].as_str().unwrap()));
+
+        let indicators: Vec<Tile> = val["dora_indicators"]
+            .as_array()
+            .expect("dora indicators array")
+            .iter()
+            .map(|indicator| parse_single_tile(indicator.as_str().unwrap()))
+            .collect();
+        assert_eq!(indicators.len(), 1, "run {run}");
 
         let triggers = val["riichi_triggers"]
             .as_array()
@@ -321,102 +474,79 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
             );
         }
 
-        let mut expected: Vec<&str> = human["hand"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|tile| tile.as_str().unwrap())
-            .collect();
-        expected.push(discard_code);
-        expected.sort();
-        let mut actual: Vec<&str> = val["tiles"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|tile| tile.as_str().unwrap())
-            .collect();
-        actual.sort();
-        assert_eq!(actual, expected, "run {run}: tiles must match hand + draw");
+        for wait_code in &accepted {
+            let (tenpai, wait) = chiitoitsu_tenpai(&full, &accepted, wait_code);
+            let counts = to_counts(&tenpai);
+            assert_eq!(calculate_shanten(&counts).shanten, 0, "run {run}");
+            let ukeire = calculate_ukeire(&counts);
+            assert_eq!(ukeire.tiles.len(), 1, "run {run}");
+            assert_eq!(ukeire.tiles[0].tile, wait, "run {run}");
 
-        let hand_tiles: Vec<Tile> = human["hand"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
-            .collect();
-        let counts = to_counts(&hand_tiles);
-        assert_eq!(counts.len(), 7);
-        assert_eq!(counts.values().filter(|&&count| count == 2).count(), 6);
-        assert_eq!(counts.values().filter(|&&count| count == 1).count(), 1);
+            // Neither wait is the dora and neither is in the human river.
+            for &indicator in &indicators {
+                assert_ne!(indicator_to_dora(indicator), wait, "run {run}");
+            }
+            for discard in human["discards"].as_array().unwrap() {
+                assert_ne!(discard["tile"].as_str(), Some(wait_code.as_str()));
+            }
 
-        let wait_code = val["ukeire_tiles"][0]
-            .as_str()
-            .expect("chiitoitsu wait tile");
-        let wait = parse_single_tile(wait_code);
-        assert_eq!(counts.get(&wait), Some(&1));
-        assert_eq!(calculate_shanten(&counts).shanten, 0);
-        let ukeire = calculate_ukeire(&counts);
-        assert_eq!(ukeire.tiles.len(), 1);
-        assert_eq!(ukeire.tiles[0].tile.to_string(), wait_code);
-        assert_ne!(parse_single_tile(discard_code), wait);
+            let winning = chiitoitsu_winning(&full, &accepted, wait_code);
+            let winning_counts = to_counts(&winning);
 
-        let indicator =
-            parse_single_tile(val["dora_indicators"][0].as_str().expect("dora indicator"));
-        assert_ne!(
-            indicator_to_dora(indicator),
-            wait,
-            "run {run}: wait is the dora"
-        );
-
-        for discard in human["discards"].as_array().unwrap() {
-            assert_ne!(discard["tile"].as_str(), Some(wait_code));
-        }
-
-        for trigger in triggers {
-            match trigger.as_str().unwrap() {
-                "dealer" => assert_eq!(human["wind"], "East", "run {run}"),
-                "tanyao" => {
-                    for (&tile, &count) in &counts {
-                        if count == 2 || tile == wait {
-                            assert!(tile.is_simple(), "run {run}: non-simple tile {tile}");
+            for trigger in triggers {
+                match trigger.as_str().unwrap() {
+                    "dealer" => assert_eq!(human["wind"], "East", "run {run}"),
+                    "tanyao" => {
+                        for (&tile, &count) in &winning_counts {
+                            if count == 2 || tile == wait {
+                                assert!(tile.is_simple(), "run {run}: non-simple tile {tile}");
+                            }
                         }
                     }
-                }
-                "red_five_wait" => {
-                    assert_eq!(wait.value(), Some(5), "run {run}");
-                    assert!(
-                        red_fives
-                            .iter()
-                            .any(|tile| tile.as_str() == Some(wait_code)),
-                        "run {run}: red five marker missing"
-                    );
-                }
-                "suji_trap" => {
-                    let suji: Vec<String> = suji_tiles(wait)
-                        .iter()
-                        .map(|tile| tile.to_string())
-                        .collect();
-                    assert!(
-                        human["discards"]
-                            .as_array()
-                            .unwrap()
-                            .iter()
-                            .any(|discard| suji
+                    "red_five_wait" => {
+                        assert_eq!(wait.value(), Some(5), "run {run}");
+                        assert!(
+                            red_fives
                                 .iter()
-                                .any(|suji| { Some(suji.as_str()) == discard["tile"].as_str() })),
-                        "run {run}: river is missing the suji"
-                    );
+                                .any(|tile| tile.as_str() == Some(wait_code.as_str())),
+                            "run {run}: red five marker missing"
+                        );
+                    }
+                    "suji_trap" => {
+                        let suji: Vec<String> = suji_tiles(wait)
+                            .iter()
+                            .map(|tile| tile.to_string())
+                            .collect();
+                        assert!(
+                            human["discards"]
+                                .as_array()
+                                .unwrap()
+                                .iter()
+                                .any(|discard| suji.iter().any(|suji| {
+                                    Some(suji.as_str()) == discard["tile"].as_str()
+                                })),
+                            "run {run}: river is missing the suji"
+                        );
+                    }
+                    "wait_outside_456" => assert!(is_outside_456(wait), "run {run}"),
+                    "score_below_mangan" => {
+                        let dora = indicator_to_dora(indicators[0]);
+                        let regular = winning.iter().filter(|tile| **tile == dora).count();
+                        let aka = red_fives
+                            .iter()
+                            .filter(|code| {
+                                winning
+                                    .iter()
+                                    .any(|tile| tile.to_string() == code.as_str().unwrap())
+                            })
+                            .count();
+                        assert!(
+                            regular + aka <= 1,
+                            "run {run}: trigger claims at most one dora"
+                        );
+                    }
+                    other => panic!("run {run}: unexpected trigger {other}"),
                 }
-                "wait_outside_456" => assert!(is_outside_456(wait), "run {run}"),
-                "score_below_mangan" => {
-                    let dora = indicator_to_dora(indicator);
-                    let regular = hand_tiles.iter().filter(|tile| **tile == dora).count();
-                    assert!(
-                        regular + red_fives.len() <= 1,
-                        "run {run}: trigger claims at most one dora"
-                    );
-                }
-                other => panic!("run {run}: unexpected trigger {other}"),
             }
         }
     }
@@ -462,17 +592,24 @@ fn test_chiitoitsu_dama_100_hands() {
             ]
         );
 
-        let discard_code = val["correct_action"]["discard"]
-            .as_str()
-            .expect("dama action must have a discard");
         let human = &val["players"][0];
         assert_eq!(human["hand"].as_array().unwrap().len(), 13);
-        assert_eq!(human["draw"], discard_code);
         assert_ne!(human["wind"], "East");
         let red_fives = human["red_fives"]
             .as_array()
             .expect("human red_fives array");
         assert!(red_fives.is_empty());
+
+        let accepted = chiitoitsu_accepted_codes(&val);
+        assert_ne!(accepted[0], accepted[1], "hand {dama_count}: twin discards");
+        assert_ne!(
+            human["draw"].as_str(),
+            Some(accepted[0].as_str()),
+            "hand {dama_count}: the draw must be the pair-completing tile"
+        );
+
+        let (_hand_tiles, _draw, full) =
+            chiitoitsu_pre_draw_shape(&val, &format!("hand {dama_count}"));
 
         let mut expected: Vec<&str> = human["hand"]
             .as_array()
@@ -480,7 +617,7 @@ fn test_chiitoitsu_dama_100_hands() {
             .iter()
             .map(|tile| tile.as_str().unwrap())
             .collect();
-        expected.push(discard_code);
+        expected.push(human["draw"].as_str().unwrap());
         expected.sort();
         let mut actual: Vec<&str> = val["tiles"]
             .as_array()
@@ -494,82 +631,65 @@ fn test_chiitoitsu_dama_100_hands() {
             "hand {dama_count}: tiles must match hand + draw"
         );
 
-        let hand_tiles: Vec<Tile> = human["hand"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
-            .collect();
-        let counts = to_counts(&hand_tiles);
-        assert_eq!(counts.len(), 7);
-        assert_eq!(counts.values().filter(|&&count| count == 2).count(), 6);
-        assert_eq!(counts.values().filter(|&&count| count == 1).count(), 1);
-
-        let wait_code = val["ukeire_tiles"][0]
-            .as_str()
-            .expect("chiitoitsu wait tile");
-        let wait = parse_single_tile(wait_code);
-        assert!(matches!(wait.value(), Some(4..=6)));
-        assert_eq!(counts.get(&wait), Some(&1));
-        assert_ne!(parse_single_tile(discard_code), wait);
-        assert_eq!(calculate_shanten(&counts).shanten, 0);
-        let ukeire = calculate_ukeire(&counts);
-        assert_eq!(ukeire.tiles.len(), 1);
-        assert_eq!(ukeire.tiles[0].tile, wait);
-
+        let full_counts = to_counts(&full);
         assert!(
-            counts
+            full_counts
                 .iter()
                 .any(|(&tile, &count)| count == 2 && !tile.is_simple()),
             "hand {dama_count}: missing a terminal/honor pair"
         );
 
-        let suji = suji_tiles(wait);
-        for discard in human["discards"].as_array().unwrap() {
-            let code = discard["tile"].as_str().unwrap();
-            assert_ne!(code, wait_code);
-            assert!(
-                !suji.iter().any(|suji| suji.to_string() == code),
-                "hand {dama_count}: river contains wait suji {code}"
-            );
-        }
-
         let dora_indicators = val["dora_indicators"]
             .as_array()
             .expect("dora indicators array");
         assert_eq!(dora_indicators.len(), 2);
-
         let parsed_indicators: Vec<Tile> = dora_indicators
             .iter()
             .map(|indicator| parse_single_tile(indicator.as_str().unwrap()))
             .collect();
-        for &indicator in &parsed_indicators {
-            assert_ne!(indicator_to_dora(indicator), wait);
+
+        for wait_code in &accepted {
+            let (tenpai, wait) = chiitoitsu_tenpai(&full, &accepted, wait_code);
+            assert!(matches!(wait.value(), Some(4..=6)));
+            let counts = to_counts(&tenpai);
+            assert_eq!(calculate_shanten(&counts).shanten, 0);
+            let ukeire = calculate_ukeire(&counts);
+            assert_eq!(ukeire.tiles.len(), 1);
+            assert_eq!(ukeire.tiles[0].tile, wait);
+
+            let suji = suji_tiles(wait);
+            for discard in human["discards"].as_array().unwrap() {
+                let code = discard["tile"].as_str().unwrap();
+                assert_ne!(code, wait_code.as_str());
+                assert!(
+                    !suji.iter().any(|suji| suji.to_string() == code),
+                    "hand {dama_count}: river contains wait suji {code}"
+                );
+            }
+
+            let winning = chiitoitsu_winning(&full, &accepted, wait_code);
+            let total_dora: usize = parsed_indicators
+                .iter()
+                .map(|&indicator| {
+                    let dora = indicator_to_dora(indicator);
+                    winning.iter().filter(|tile| **tile == dora).count()
+                })
+                .sum();
+            assert_eq!(total_dora, 4, "hand {dama_count}: expected four dora");
+
+            let score_level = chiitoitsu_score_level(
+                &winning,
+                wait,
+                val["round_wind"].as_str().expect("round wind"),
+                human["wind"].as_str().expect("human wind"),
+                &parsed_indicators,
+                0,
+            );
+            assert!(
+                score_level >= ScoreLevel::Mangan,
+                "hand {dama_count}: dama score is {score_level:?}"
+            );
         }
-
-        let total_dora: usize = parsed_indicators
-            .iter()
-            .map(|&indicator| {
-                let dora = indicator_to_dora(indicator);
-                hand_tiles.iter().filter(|tile| **tile == dora).count()
-            })
-            .sum();
-        assert_eq!(total_dora, 4, "hand {dama_count}: expected four dora");
-
-        let mut winning = hand_tiles;
-        winning.push(wait);
-        let score_level = chiitoitsu_score_level(
-            &winning,
-            wait,
-            val["round_wind"].as_str().expect("round wind"),
-            human["wind"].as_str().expect("human wind"),
-            &parsed_indicators,
-            0,
-        );
-        assert!(
-            score_level >= ScoreLevel::Mangan,
-            "hand {dama_count}: dama score is {score_level:?}"
-        );
     }
 
     assert_eq!(dama_count, 100, "did not generate 100 dama hands");

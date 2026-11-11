@@ -605,6 +605,16 @@ fn caveats_for(state: &GameState) -> Vec<String> {
             "The book's cut-point is 5200/7700 without Riichi; this hand is above it.".to_string(),
         );
     }
+
+    if state.category == "chiitoitsu_riichi_vs_dama" {
+        caveats.push(
+            "The draw completed the sixth pair, so two lone tiles remain. Either can be \
+             discarded: both leave a seven-pairs tenpai on the other, and this hand is \
+             generated so the Riichi/dama judgement is the same for either wait. Both tiles \
+             are graded as correct, which keeps the lesson on the declaration."
+                .to_string(),
+        );
+    }
     if !state.shouminkan_triggers.is_empty() {
         caveats.push(
             "Extending an open Pon is riskier than a concealed quad: an opponent may rob the \
@@ -1519,6 +1529,26 @@ mod tests {
         assert_eq!(rationale.source.chapter, 9);
         assert!(rationale.rules[0].applies.contains("discarding"));
         assert!(!rationale.caveats.is_empty());
+    }
+
+    #[test]
+    fn chiitoitsu_rationale_states_the_twin_discard_rule() {
+        let state = generate_puzzle("chiitoitsu_riichi_vs_dama").expect("chiitoitsu must generate");
+
+        assert_eq!(
+            state.equivalent_tiles.len(),
+            1,
+            "the draw leaves two lone tiles, so the twin discard must be accepted"
+        );
+
+        let rationale = rationale_for(&state).expect("chiitoitsu needs a rationale");
+        assert!(
+            rationale
+                .caveats
+                .iter()
+                .any(|caveat| caveat.contains("Either can be discarded")),
+            "the rationale must state why both lone tiles are graded correct"
+        );
     }
 
     #[test]
