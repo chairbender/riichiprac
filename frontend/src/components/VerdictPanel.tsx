@@ -64,7 +64,12 @@ export function VerdictPanel({
     });
 
     return (
-      <section className="verdict-panel" aria-label="Book and Mortal comparison">
+      <section
+        className="verdict-panel"
+        id="verdict-panel"
+        tabIndex={-1}
+        aria-label="Book and Mortal comparison"
+      >
         <div className={`verdict-preanswer verdict-preanswer--${preAnswer.tone}`}>
           <span className="verdict-preanswer-text">{preAnswer.text}</span>
           {preAnswer.canPeek && (
@@ -96,6 +101,8 @@ export function VerdictPanel({
   return (
     <section
       className={`verdict-panel verdict-panel--${tone}`}
+      id="verdict-panel"
+      tabIndex={-1}
       aria-label="Book and Mortal comparison"
     >
       <div className="verdict-columns">

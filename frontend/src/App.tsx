@@ -4,7 +4,6 @@ import { generate_puzzle, list_scenarios } from 'riichiprac';
 import { AI_MODEL_ID } from './aiModel';
 import { ActionBar } from './components/ActionBar';
 import { HandDock } from './components/HandDock';
-import { FeedbackToast } from './components/FeedbackToast';
 import { PlayerRow } from './components/PlayerRow';
 import { ReportBanner } from './components/ReportBanner';
 import { ReportControls } from './components/ReportControls';
@@ -60,7 +59,6 @@ export const App = () => {
   const reportMode = useGameStore((state) => state.reportMode);
   const reportError = useGameStore((state) => state.reportError);
   const reportNotice = useGameStore((state) => state.reportNotice);
-  const isReportRetry = useGameStore((state) => state.isReportRetry);
   const importReport = useGameStore((state) => state.importReport);
   const retryImportedPuzzle = useGameStore(
     (state) => state.retryImportedPuzzle,
@@ -155,6 +153,13 @@ export const App = () => {
   const handleNextScenario = () => {
     void loadPuzzle(selection);
   };
+
+  const showVerdict = useCallback(() => {
+    const panel = document.getElementById('verdict-panel');
+    if (!panel) return;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    panel.focus({ preventScroll: true });
+  }, []);
 
   // Show the imported report's scenario in the picker when it is in the
   // current manifest. Unknown scenarios keep the picker unchanged.
@@ -298,15 +303,6 @@ export const App = () => {
         />
       )}
 
-      {gameState && dualGrade && submittedAnswer && humanPlayer && (!reportMode || isReportRetry) && (
-        <FeedbackToast
-          grade={dualGrade}
-          answer={submittedAnswer}
-          redFives={humanPlayer.red_fives}
-          evaluation={evaluation}
-        />
-      )}
-
       {gameState && <TableInfo state={gameState} />}
 
       {gameState && (
@@ -347,10 +343,10 @@ export const App = () => {
         ))}
       </main>
 
-      {gameState && availableActions.length > 0 && (
+      {gameState && !dualGrade && availableActions.length > 0 && (
         <ActionBar
           actions={availableActions}
-          disabled={dualGrade !== null}
+          disabled={false}
           riichiArmed={callRiichi}
           evaluation={evaluation}
           revealMortal={dualGrade !== null || peekedBeforeAnswer}
@@ -370,6 +366,7 @@ export const App = () => {
           availableActions={isDrill ? availableActions : undefined}
           canDiscard={canDiscard}
           revealMortal={dualGrade !== null || peekedBeforeAnswer}
+          onShowVerdict={showVerdict}
           onToggleRiichi={toggleRiichi}
           onToggleKan={toggleKan}
           onSelectTile={selectTile}

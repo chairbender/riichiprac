@@ -8,6 +8,7 @@ import {
 import type { PlayerState } from '../types/game';
 import type { DualGrade } from '../types/verdict';
 import { mortalRecommendedTile } from '../types/verdict';
+import { AnswerSummary } from './AnswerSummary';
 import { KanIcon } from './KanIcon';
 import { RiichiStick } from './RiichiStick';
 import { Tile } from './Tile';
@@ -28,6 +29,8 @@ interface HandDockProps {
   canDiscard?: boolean;
   /** Whether Mortal's probability badges may be shown. */
   revealMortal?: boolean;
+  /** Scroll to the full book-vs-Mortal comparison. */
+  onShowVerdict: () => void;
   onToggleRiichi: () => void;
   onToggleKan: () => void;
   onSelectTile: (tile: string, index?: number) => void;
@@ -49,6 +52,7 @@ export function HandDock({
   availableActions,
   canDiscard = true,
   revealMortal = false,
+  onShowVerdict,
   onToggleRiichi,
   onToggleKan,
   onSelectTile,
@@ -117,49 +121,53 @@ export function HandDock({
 
   return (
     <section className="hand-dock" aria-label="Your hand">
-      {!isAiScenario && (
-        <div className="call-toggles">
-          <button
-            type="button"
-            className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
-            onClick={onToggleRiichi}
-            disabled={isAnswered}
-            aria-pressed={callRiichi}
-            aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
-          >
-            <RiichiStick className="riichi-toggle-stick" />
-            <span className="riichi-toggle-label">Call Riichi</span>
-            <span className="riichi-toggle-state">
-              {callRiichi ? 'ON' : 'OFF'}
-            </span>
-          </button>
-
-          {kanTile && (
+      {isAnswered && grade ? (
+        <AnswerSummary grade={grade} onDetails={onShowVerdict} />
+      ) : (
+        !isAiScenario && (
+          <div className="call-toggles">
             <button
               type="button"
-              className={`kan-toggle${callKan ? ' kan-toggle--active' : ''}`}
-              onClick={onToggleKan}
+              className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
+              onClick={onToggleRiichi}
               disabled={isAnswered}
-              aria-pressed={callKan}
-              aria-label={`Call Kan toggle for ${kanTile}, currently ${
-                callKan ? 'on' : 'off'
-              }`}
+              aria-pressed={callRiichi}
+              aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
             >
-              <KanIcon className="kan-toggle-icon" />
-              <span className="kan-toggle-label">Call Kan</span>
-              <span className="kan-toggle-tile">{kanTile}</span>
-              {kanProbability !== undefined && (
-                <span
-                  className="kan-toggle-probability"
-                  aria-label={`Mortal rates Kan ${formatProbability(kanProbability)}`}
-                >
-                  {formatProbability(kanProbability)}
-                </span>
-              )}
-              <span className="kan-toggle-state">{callKan ? 'ON' : 'OFF'}</span>
+              <RiichiStick className="riichi-toggle-stick" />
+              <span className="riichi-toggle-label">Call Riichi</span>
+              <span className="riichi-toggle-state">
+                {callRiichi ? 'ON' : 'OFF'}
+              </span>
             </button>
-          )}
-        </div>
+
+            {kanTile && (
+              <button
+                type="button"
+                className={`kan-toggle${callKan ? ' kan-toggle--active' : ''}`}
+                onClick={onToggleKan}
+                disabled={isAnswered}
+                aria-pressed={callKan}
+                aria-label={`Call Kan toggle for ${kanTile}, currently ${
+                  callKan ? 'on' : 'off'
+                }`}
+              >
+                <KanIcon className="kan-toggle-icon" />
+                <span className="kan-toggle-label">Call Kan</span>
+                <span className="kan-toggle-tile">{kanTile}</span>
+                {kanProbability !== undefined && (
+                  <span
+                    className="kan-toggle-probability"
+                    aria-label={`Mortal rates Kan ${formatProbability(kanProbability)}`}
+                  >
+                    {formatProbability(kanProbability)}
+                  </span>
+                )}
+                <span className="kan-toggle-state">{callKan ? 'ON' : 'OFF'}</span>
+              </button>
+            )}
+          </div>
+        )
       )}
 
       <div className="hand-dock-label" aria-live="polite">

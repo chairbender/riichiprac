@@ -651,161 +651,171 @@
   box-shadow: 0 0 0 2px #2f9e44;
 }
 
-/* Answer feedback toast --------------------------------------------------- */
+/* Answer summary ----------------------------------------------------------- */
 
-.feedback-toast {
-  position: fixed;
-  top: auto;
-  bottom: calc(148px + env(safe-area-inset-bottom));
-  left: 50%;
-  z-index: 50;
-
+/*
+ * Inline acknowledgement at the top of the hand dock. It replaces the call
+ * toggles once the hand is answered, so it stays visible while the dock is
+ * pinned to the bottom of the viewport without covering the table.
+ */
+.answer-summary {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
 
-  width: calc(100% - 24px);
-  max-width: 440px;
-  padding: 10px 14px;
+  margin: 0 0 2px;
+  padding: 8px 10px;
   border: 1px solid #3a4252;
   border-radius: 10px;
   background-color: #1b2029;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  pointer-events: none;
+  color: #ced4da;
 
-  transform: translateX(-50%);
-  animation: toast-in 0.16s ease-out;
+  animation: answer-summary-in 0.14s ease-out;
 }
 
-.feedback-toast--correct {
+.answer-summary--correct {
   border-color: #2f6f44;
   background-color: #122018;
+}
+
+.answer-summary--contested {
+  border-color: #7a5c2c;
+  background-color: #1f1a12;
+}
+
+.answer-summary--incorrect {
+  border-color: #7a2c2c;
+  background-color: #241717;
+}
+
+.answer-summary--neutral {
+  border-color: #495057;
+  background-color: #1b2029;
+}
+
+.answer-summary-mark {
+  flex: 0 0 auto;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.answer-summary--correct .answer-summary-mark {
   color: #8ce99a;
 }
 
-.feedback-toast--incorrect {
-  border-color: #7a2c2c;
-  background-color: #241717;
+.answer-summary--contested .answer-summary-mark {
+  color: #ffd43b;
+}
+
+.answer-summary--incorrect .answer-summary-mark {
   color: #ff8a8a;
 }
 
-.feedback-message {
+.answer-summary--neutral .answer-summary-mark {
+  color: #adb5bd;
+}
+
+.answer-summary-text {
+  flex: 1 1 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.answer-summary-headline {
   font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.3;
 }
 
-.feedback-detail {
-  color: #ced4da;
-  font-size: 0.76rem;
-  font-weight: 600;
-  line-height: 1.35;
-}
-
-.feedback-toast--correct .feedback-detail {
-  color: #b2f2bb;
-}
-
-.feedback-toast--incorrect .feedback-detail {
-  color: #ffc9c9;
-}
-
-.feedback-grades {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.feedback-grade {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
-  padding: 4px 7px;
-  border-left: 3px solid #495057;
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.04);
-  color: #dee2e6;
-  font-size: 0.78rem;
-}
-
-.feedback-grade--correct {
-  border-left-color: #2f9e44;
-}
-
-.feedback-grade--incorrect {
-  border-left-color: #e03131;
-}
-
-.feedback-grade-label {
-  min-width: 52px;
-  color: #adb5bd;
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.feedback-grade-value {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 700;
-}
-
-.feedback-grade-mark {
-  font-size: 0.9rem;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.feedback-grade--correct .feedback-grade-mark {
+.answer-summary--correct .answer-summary-headline {
   color: #8ce99a;
 }
 
-.feedback-grade--incorrect .feedback-grade-mark {
+.answer-summary--contested .answer-summary-headline {
+  color: #ffd43b;
+}
+
+.answer-summary--incorrect .answer-summary-headline {
   color: #ff8a8a;
 }
 
-.feedback-grade-correct {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.answer-summary-detail {
   color: #ced4da;
-  font-size: 0.74rem;
-  font-weight: 600;
-}
-
-/* The call the scenario asks about, kept separate from the top discard. */
-.feedback-call {
-  color: #a5d8ff;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 600;
   line-height: 1.35;
 }
 
-.feedback-tile {
-  display: block;
-  width: 26px;
-  height: auto;
+.answer-summary--correct .answer-summary-detail {
+  color: #b2f2bb;
 }
 
-.feedback-code {
-  color: #f1f3f5;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.8rem;
+.answer-summary--contested .answer-summary-detail {
+  color: #ffe8a3;
+}
+
+.answer-summary--incorrect .answer-summary-detail {
+  color: #ffc9c9;
+}
+
+.answer-summary-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.answer-summary-chip {
+  padding: 2px 8px;
+  border: 1px solid #495057;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.04);
+  color: #dee2e6;
+  font-size: 0.66rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
-@keyframes toast-in {
+.answer-summary-chip--ok {
+  border-color: #2f9e44;
+  color: #8ce99a;
+}
+
+.answer-summary--incorrect .answer-summary-chip--no {
+  border-color: #7a2c2c;
+  color: #ffc9c9;
+}
+
+.answer-summary-details {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid #4dabf7;
+  border-radius: 999px;
+  background-color: transparent;
+  color: #a5d8ff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.answer-summary-details:hover {
+  background-color: rgba(77, 171, 247, 0.12);
+}
+
+.answer-summary-details:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+@keyframes answer-summary-in {
   from {
     opacity: 0;
-    transform: translate(-50%, 6px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
   }
 }
 
@@ -1479,6 +1489,11 @@
   border: 1px solid #303748;
   border-radius: 10px;
   background-color: #171a21;
+  scroll-margin-top: 76px;
+}
+
+.verdict-panel:focus {
+  outline: none;
 }
 
 .verdict-panel--correct {
@@ -1884,27 +1899,7 @@
   font-size: 0.6rem;
 }
 
-/* Neutral / contested toast tones ---------------------------------------- */
-
-.feedback-toast--contested {
-  border-color: #7a5c2c;
-  background-color: #1f1a12;
-  color: #ffd43b;
-}
-
-.feedback-toast--contested .feedback-detail {
-  color: #ffe8a3;
-}
-
-.feedback-toast--neutral {
-  border-color: #495057;
-  background-color: #1b2029;
-  color: #ced4da;
-}
-
-.feedback-grade--neutral {
-  border-left-color: #868e96;
-}
+/* Neutral / contested tones moved into the answer-summary block above. */
 
 .hand-tile-button--mortal {
   outline: 2px dashed #4dabf7;
