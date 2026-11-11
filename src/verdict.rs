@@ -913,6 +913,30 @@ mod tests {
     }
 
     #[test]
+    fn old_mortal_grades_default_the_riichi_fields() {
+        // A report written before `recommended_riichi` / `recommended_discard`
+        // existed must still import; both fields default.
+        let grade: MortalGrade = serde_json::from_value(serde_json::json!({
+            "model": "mortal_298k.safetensors",
+            "recommended_action": "Discard_3p",
+            "recommended_base": "Discard_3p",
+            "recommended_label": "Discard 3p",
+            "answer_action": "Discard_3p",
+            "matches_action": true,
+            "matches_tile": true,
+            "agrees": true,
+            "answer_probability": 0.6,
+            "top_probability": 0.6,
+            "confidence": "high",
+            "close_second": false
+        }))
+        .expect("old grade payload parses");
+
+        assert!(!grade.recommended_riichi);
+        assert_eq!(grade.recommended_discard, None);
+    }
+
+    #[test]
     fn display_names_cover_the_action_vocabulary() {
         assert_eq!(display_action_name("Discard_3p"), "Discard 3p");
         assert_eq!(display_action_name("Discard_5mr"), "Discard 5m (red)");
