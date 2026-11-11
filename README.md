@@ -81,10 +81,11 @@ action list, and the evaluation. React only renders and grades.
 
 ## Defense scenarios
 
-Two lessons train pure defense against an opponent's Riichi. Neither asks about
-hand value: the generated hand is never ready, so the question is only which
-tile is safest to let go. Both are graded by the book's rule; Mortal's
-answer appears beside it after you answer.
+Three lessons train defense. The first two answer an opponent's Riichi and the
+third reads an open hand's post-`chii` discard. None asks about hand value: the
+generated hand is never ready, so the question is only which tile is safest to
+let go. All are graded by the book's rule; Mortal's answer appears beside it
+after you answer.
 
 **Defense: Safest Discard** builds a board where Riichi Book 1, ch. 8's safety
 ranking (`tbl:safety`) has a real answer — a genbutsu, a suji tile, a no-chance
@@ -101,11 +102,21 @@ early discards, and prefer a terminal so the discard cannot deal into tanyao.
 The generated hand holds the answer twice, so the copy you keep is your
 follow-up discard.
 
+**Open Hand: Post-Chi Discard** is ch. 8.4, "Discard upon chii". An opponent
+with three open melds calls `chii` and discards: when the discard is in the same
+suit as the `chii`, the neighbourhood of that discard is relatively safe, and
+the learner discards the hand's only tile in it. The different-suit variant is
+the trap: the neighbourhood is dangerous, the tempting tile is one of the
+opponent's actual winning tiles, and the answer is the 100% genbutsu just
+outside it. The generated threat is genuinely tenpai on the block it kept, so
+the read is true on the hidden hand as well as the visible table.
+
 The safety chart itself is `src/safety.rs`: the fifteen rows of `tbl:safety`
-plus the suji and blockade arithmetic they are derived from. The generator only
-places tiles; every rank is recomputed from what the defender can see (the
-threat's river, all four rivers, open melds, the dora indicator, and the
-defender's own hand).
+plus the suji and blockade arithmetic they are derived from, and the
+`in_open_hand_neighbourhood` helper the ch. 8.4 lesson shares with its
+rationale. The generator only places tiles; every rank is recomputed from what
+the defender can see (the threat's river, all four rivers, open melds, the dora
+indicator, and the defender's own hand).
 
 ## Wind discard order
 
