@@ -409,9 +409,11 @@ pub struct GameState {
     ///
     /// Derived from the same legal-action source the model mask uses
     /// (`ai::actions::riichi_is_legal`), so an open hand, an already-declared
-    /// Riichi, a non-tenpai hand, a short wall, or a score under 1000 cannot
-    /// offer a declaration the rules forbid. Stamped at the generation
-    /// boundary and recomputed on report import.
+    /// Riichi, a short wall, or a score under 1000 cannot offer a declaration
+    /// the rules forbid. A tenpai hand can declare, and so can a 1-shanten hand
+    /// with a discard that reaches tenpai — libriichi's rule, because the
+    /// declaration is made on that discard. Stamped at the generation boundary
+    /// and recomputed on report import.
     #[serde(default)]
     pub can_riichi: bool,
 

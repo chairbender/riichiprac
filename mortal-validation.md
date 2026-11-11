@@ -148,21 +148,21 @@ with target player 1, network 4.0, temperature 1.00.
 re-serialised log has the same kyoku meta, scores, dora, haipai, draws and
 discards we wrote. Nothing was dropped or reordered by the parser.
 
-**Four decisions, three agreements, one mask bug.** Our evaluation of each
-position (the site gives its top action per entry; ours comes from
-`evaluate_state` on a state built from the same position):
+**Four decisions, four agreements, after one mask fix.** Our evaluation of each
+position (the site gives its top action and its full legal set per entry; ours
+comes from `evaluate_state` on a state built from the same position):
 
-| # | position | site's 4.0 | ours | |
+| # | position | site's 4.0 | ours, before | ours, after |
 | --- | --- | --- | --- | --- |
-| 1 | first discard (2-shanten) | `Discard_6s` | `Discard_6s` | ✅ |
-| 2 | chi opportunity on 8m | `Pass` | `Pass` | ✅ |
-| 3 | second discard (1-shanten) | `Riichi` | `Discard_4p` | ❌ |
-| 4 | final decision (tenpai) | `Riichi` | `Riichi` | ✅ |
+| 1 | first discard (2-shanten) | `Discard_6s` | `Discard_6s` ✅ | `Discard_6s` ✅ |
+| 2 | chi opportunity on 8m | `Pass` | `Pass` ✅ | `Pass` ✅ |
+| 3 | second discard (1-shanten) | `Riichi` | `Discard_4p` ❌ | `Riichi` ✅ |
+| 4 | final decision (tenpai) | `Riichi` | `Riichi` ✅ | `Riichi` ✅ |
 
-Entry 3 is not a model disagreement, it is a **missing action**: our evaluation
-for that position does not contain `Riichi` at all (`only in report` would say
-so). `ai::actions::can_riichi` requires `state.shanten == 0`, while libriichi
-(`update.rs`, `tsumo`) allows
+Entry 3 was not a model disagreement, it was a **missing action**: our
+evaluation for that position had no `Riichi` at all (the comparator reported it
+as `only in report`). `ai::actions::can_riichi` required `state.shanten == 0`,
+while libriichi (`update.rs`, `tsumo`) allows
 
 ```rust
 self.is_menzen && self.tiles_left >= 4 && self.scores[0] >= 1000
@@ -171,10 +171,21 @@ self.is_menzen && self.tiles_left >= 4 && self.scores[0] >= 1000
 
 where `has_next_shanten_discard` is "some tile in hand can be discarded to
 reduce shanten" — i.e. **Riichi is legal from 1-shanten whenever a discard
-reaches tenpai**. On those turns we mask it off, so the `can_riichi` plane
-(row 879) is wrong and the model can never choose Riichi. That affects every
-1-shanten lesson and every AI drill hand in that shape. Fixing it changes the
-action space, so it belongs in its own task rather than in this validation.
+reaches tenpai**, because the declaration is made on that discard.
+
+Fixed in `ai::actions::can_riichi` + a new `can_discard_into_tenpai` helper that
+reuses the encoder's own shanten function (`ai::sp::calc_all`), so the mask and
+the `can_riichi` plane (row 879) cannot disagree. `wasm_bridge`'s test now
+covers 1-shanten with and without a tenpai discard, asserting both the mask and
+the plane.
+
+After the fix the four positions have **identical legal sets** to the review's
+(`only in report` / `missing from report` empty everywhere) and the same top
+action on all four; entry 3's top two even line up (`Riichi`, `Discard_6m`).
+A 12-per-scenario sweep shows no book lesson's `can_riichi` flipping — the
+open-pon lessons fail the closed-hand test and the defense/wind hands are far
+from tenpai — so the visible effect is confined to closed 1-shanten hands,
+i.e. AI drills and any future lesson in that shape.
 
 Probabilities, for the record: our distribution is far sharper (final decision:
 `Riichi` 0.608 / `Discard_5z` 0.388) than the site's (`0.245` / `0.203`). That
