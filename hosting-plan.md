@@ -28,9 +28,10 @@ Deployment state (2026-11-10, after the operator's setup):
 - CORS measurement showed release assets send no `access-control-allow-origin`,
   so the workflow now downloads the asset server-side and Pages serves it
   same-origin (task 4, "CORS finding").
-- `https://chairbender.github.io/riichiprac/` still returned `404` at the time of
-  writing because no deploy had run yet; the first deploy happens when this
-  branch lands on `main`.
+- `https://chairbender.github.io/riichiprac/` is **live**: the first deploy
+  succeeded on `main` at `d707c69` and the site serves the app, the hashed wasm
+  (`application/wasm`), and the weights same-origin (see "Live deployment
+  verification" in section 6).
 
 Goal: the single-page trainer is served from **GitHub Pages**
 (`https://chairbender.github.io/riichiprac/`) and the ~43 MB Mortal weights file
@@ -311,6 +312,31 @@ All green on 2026-11-10 (local: rustc 1.93, wasm-pack 0.13.1, Node 18.19.1).
       hunks in `src/generator/defense/board.rs`, `src/generator/defense/theme.rs`,
       `src/rationale.rs`, `src/safety.rs`). This branch touches no Rust files, so
       it is left for main to fix rather than reformatted here.
+
+### Live deployment verification (2026-11-10, `main` at `d707c69`)
+
+Run [42949266787](https://github.com/chairbender/riichiprac/actions/runs/42949266787)
+succeeded (~3 min: wasm build, weights fetch, `npm ci`, Vite build, Pages deploy).
+
+- [x] `https://chairbender.github.io/riichiprac/` → `200`, `text/html`, 497 B;
+      references `/riichiprac/assets/index-MszqzNwT.js` and
+      `/riichiprac/assets/index-BWtM3s-P.css` (subpath correct in production).
+- [x] `/riichiprac/assets/riichiprac_bg-bfl_86_P.wasm` → `200`,
+      `content-type: application/wasm`, 1,910,092 B.
+- [x] `/riichiprac/models/mortal_298k.safetensors` → `200`,
+      `application/octet-stream`, **43,555,532 B**, first bytes
+      `80 17 01 00 00 00 00 00 {"__meta...` (valid Safetensors header). Served
+      same-origin, so no CORS involvement.
+- [x] Deployed bundle contains `` `/riichiprac/models/${filename}` `` and
+      `riichiprac-weights` (the IndexedDB name), so the loader's same-origin
+      source and cache are the shipped paths.
+- [x] `curl -I /riichiprac/.nojekyll` → `404`. Expected: `deploy-pages` does not
+      run Jekyll and Pages does not serve the dotfile; its only job is to be
+      present in the artifact.
+
+Not verified here (needs a real browser): that the AI panel reaches `ready`, that
+the weights land in IndexedDB, and that a reload issues no weights request. See
+"C. Confirm CORS + weights in a real browser".
 
 ---
 
