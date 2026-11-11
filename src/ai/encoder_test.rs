@@ -110,6 +110,7 @@ fn base_state() -> GameState {
         category: "encoder_test".to_string(),
         target_action: TargetAction::NaniKiru,
         correct_action: CorrectAction::dama("3m"),
+        equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
         ai_decision: None,
         riichi_triggers: Vec::new(),

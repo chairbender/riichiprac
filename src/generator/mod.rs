@@ -1,7 +1,8 @@
 //! Scenario generators, organized one module per lesson.
 //!
-//! - `block_theory`: 5-block random hands, the ryanmen protorun lesson, and
-//!   the nakabukure (bulging float) ready-hand lesson.
+//! - `block_theory`: 5-block random hands, the ryanmen protorun lesson, the
+//!   protorun priority (side wait before closed wait) lesson, and the
+//!   nakabukure (bulging float) ready-hand lesson.
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
 //! - `riichi_judgement`: ch. 7's general three-condition Riichi/dama rule.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
@@ -105,6 +106,15 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::ProtorunPriority,
+        label: "Protorun Priority",
+        description: "Block theory: break the closed wait and keep both side waits.",
+        category: ScenarioCategory::TileEfficiency,
+        tags: &["block_theory", "discard", "protorun", "ryanmen", "kanchan"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::ChiitoitsuRiichiVsDama,
         label: "Chiitoitsu Riichi vs Dama",
         description: "Seven pairs: decide whether to declare Riichi or stay dama.",
@@ -204,6 +214,7 @@ pub fn list_scenarios_json() -> String {
 pub enum ScenarioId {
     RyanmenProtorun,
     NakabukureReady,
+    ProtorunPriority,
     ChiitoitsuRiichiVsDama,
     RiichiJudgement,
     ShouminkanDecision,
@@ -218,6 +229,7 @@ impl ScenarioId {
     pub const ALL: &'static [ScenarioId] = &[
         ScenarioId::RyanmenProtorun,
         ScenarioId::NakabukureReady,
+        ScenarioId::ProtorunPriority,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::RiichiJudgement,
         ScenarioId::ShouminkanDecision,
@@ -232,6 +244,7 @@ impl ScenarioId {
         match self {
             ScenarioId::RyanmenProtorun => "ryanmen_protorun",
             ScenarioId::NakabukureReady => "nakabukure_ready",
+            ScenarioId::ProtorunPriority => "protorun_priority",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
@@ -247,6 +260,7 @@ impl ScenarioId {
         match id {
             "ryanmen_protorun" => Some(ScenarioId::RyanmenProtorun),
             "nakabukure_ready" => Some(ScenarioId::NakabukureReady),
+            "protorun_priority" => Some(ScenarioId::ProtorunPriority),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
@@ -263,6 +277,7 @@ impl ScenarioId {
         match self {
             ScenarioId::RyanmenProtorun => block_theory::ryanmen_protorun::generate(category),
             ScenarioId::NakabukureReady => block_theory::nakabukure_ready::generate(category),
+            ScenarioId::ProtorunPriority => block_theory::protorun_priority::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),

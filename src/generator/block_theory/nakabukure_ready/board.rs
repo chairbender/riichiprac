@@ -229,6 +229,7 @@ fn assemble_state(
         // The open Yakuhai meld makes Riichi illegal, so staying dama is the
         // only legal declaration for this hand.
         correct_action: CorrectAction::dama(skeleton.bulge_tile.to_string()),
+        equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
         ai_decision: None,
         riichi_triggers: Vec::new(),

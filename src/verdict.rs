@@ -254,7 +254,11 @@ pub fn grade_answer(
     let book = if is_drill {
         None
     } else {
-        Some(grade_book(&state.correct_action, answer))
+        Some(grade_book_with_equivalents(
+            &state.correct_action,
+            &state.equivalent_tiles,
+            answer,
+        ))
     };
 
     let mortal = if is_drill {
@@ -281,12 +285,28 @@ pub fn grade_from_parts(book: Option<BookGrade>, mortal: Option<MortalGrade>) ->
 
 /// Grade against the book's `correct_action` (action family plus tile).
 pub fn grade_book(expected: &CorrectAction, answer: &SubmittedAnswer) -> BookGrade {
+    grade_book_with_equivalents(expected, &[], answer)
+}
+
+/// Grade against the book's `correct_action`, accepting any tile the state
+/// declares equivalent.
+///
+/// Some lessons ask for a shape rather than one named tile (for example the
+/// protorun lesson, where either tile of a closed wait is the same discard).
+/// Those states name the tile the player drew in `correct_action` and list the
+/// interchangeable tiles in [`GameState::equivalent_tiles`], so the twin choice
+/// is graded as agreeing rather than as a miss.
+pub fn grade_book_with_equivalents(
+    expected: &CorrectAction,
+    equivalents: &[String],
+    answer: &SubmittedAnswer,
+) -> BookGrade {
     let expected_action = expected.action_type();
     let expected_tile = expected.tile();
 
     let is_action_correct = answer.action == expected_action;
     let is_tile_correct = match expected_tile {
-        Some(tile) => answer.tile == tile,
+        Some(tile) => answer.tile == tile || equivalents.iter().any(|other| other == &answer.tile),
         None => answer.tile.is_empty(),
     };
 
@@ -858,6 +878,27 @@ mod tests {
         assert!(!mortal.agrees);
         assert!(mortal.close_second);
         assert_eq!(mortal.confidence, MortalConfidence::Medium);
+    }
+
+    #[test]
+    fn equivalent_tiles_are_graded_as_the_same_answer() {
+        let mut state = dama_state();
+        state.equivalent_tiles = vec!["5s".to_string()];
+
+        let twin = grade_answer(&state, &answer(CorrectActionType::Dama, "5s"), None);
+        let book = twin.book.expect("book grade");
+        assert!(
+            book.is_tile_correct,
+            "the equivalent tile must grade correct"
+        );
+        assert!(book.agrees());
+        assert_eq!(book.expected_tile, "3p", "the canonical tile is unchanged");
+
+        let miss = grade_answer(&state, &answer(CorrectActionType::Dama, "7p"), None);
+        assert!(
+            !miss.book.expect("book grade").is_tile_correct,
+            "a tile that is neither expected nor equivalent still misses"
+        );
     }
 
     #[test]

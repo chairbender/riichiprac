@@ -426,6 +426,7 @@ fn assemble_state(
         category: category.to_string(),
         target_action: TargetAction::Kan,
         correct_action,
+        equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
         ai_decision: None,
         riichi_triggers: Vec::new(),

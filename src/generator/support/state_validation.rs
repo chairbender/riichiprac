@@ -474,6 +474,7 @@ mod tests {
             category: "test".to_string(),
             target_action: crate::state::TargetAction::NaniKiru,
             correct_action: crate::state::CorrectAction::dama("2p"),
+            equivalent_tiles: Vec::new(),
             decision: DecisionContext::SelfTurn,
             ai_decision: None,
             riichi_triggers: Vec::new(),

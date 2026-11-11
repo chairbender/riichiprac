@@ -279,6 +279,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         category: category.to_string(),
         target_action: TargetAction::Defend,
         correct_action: CorrectAction::fold(plan.answer.to_string()),
+        equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
         ai_decision: None,
         riichi_triggers: Vec::new(),

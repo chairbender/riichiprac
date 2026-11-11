@@ -623,6 +623,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
         "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
+        "protorun_priority" => Some(ch3(205, "can accept twice as many tiles")),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
@@ -723,6 +724,70 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
             caveats: vec![
                 "The book's ready-hand example is closed; this trainer opens a Yakuhai Pon so \
                  Riichi cannot mask the discard lesson."
+                    .to_string(),
+            ],
+        });
+    }
+
+    if state.category == "protorun_priority" {
+        let discard = state.correct_action.tile().unwrap_or_default().to_string();
+        let equivalent = state.equivalent_tiles.first().cloned().unwrap_or_default();
+        let waits = state.ukeire_tiles.join(" / ");
+
+        let rules = vec![
+            BookRule {
+                id: "side_wait_acceptance".to_string(),
+                rule: "A side-wait (ryanmen) protorun accepts 2 kinds--8 tiles, while a \
+                       closed-wait (kanchan) protorun accepts only 1 kind--4 tiles. A hand with \
+                       one block too many therefore gives up the closed wait."
+                    .to_string(),
+                quote: "a side-wait (ryanmen) protorun can accept twice as many tiles as a \
+                        closed-wait (kanchan) protorun or an edge-wait (penchan) protorun can."
+                    .to_string(),
+                citation: ch3(205, "can accept twice as many tiles"),
+                applies: format!(
+                    "Discarding {discard} keeps both side waits live ({waits}): {} tiles, \
+                     against the 12 a side-wait discard would leave with the closed wait.",
+                    state.ukeire_total
+                ),
+            },
+            BookRule {
+                id: "protorun_ranking".to_string(),
+                rule: "The book ranks the two-tile protoruns side wait > closed wait > edge wait, \
+                       so the closed wait is the cheapest block to break."
+                    .to_string(),
+                quote: "side wait > closed wait > edge wait".to_string(),
+                citation: ch3(230, "side wait > closed wait > edge wait"),
+                applies: format!(
+                    "The hand holds two side waits and one closed wait ({discard} / {equivalent}), \
+                     so the closed wait is the block the ranking discards."
+                ),
+            },
+            BookRule {
+                id: "closed_wait_ceiling".to_string(),
+                rule: "Even the most versatile closed waits (35, 46, 57) accept half of what any \
+                       side wait accepts, so which closed wait it is never closes the gap."
+                    .to_string(),
+                quote: "35, 46, 57 > 13, 24, 68, 79".to_string(),
+                citation: ch3(263, "35, 46, 57 > 13, 24, 68, 79"),
+                applies: concat!(
+                    "The closed wait's single completion is worth 4 tiles; ",
+                    "each side wait's two completions are worth 8."
+                )
+                .to_string(),
+            },
+        ];
+
+        return Some(BookRationale {
+            summary: "Break the closed-wait protorun: a side wait accepts twice as many tiles, \
+                      so losing the closed wait keeps both 8-tile waits alive."
+                .to_string(),
+            rules,
+            absent: Vec::new(),
+            source: ch3(205, "can accept twice as many tiles"),
+            caveats: vec![
+                "Both tiles of the closed wait are the same discard; the trainer names the tile \
+                 you drew and grades the other closed-wait tile as equal."
                     .to_string(),
             ],
         });
@@ -1338,10 +1403,54 @@ mod tests {
     }
 
     #[test]
+    fn protorun_priority_hand_names_the_closed_wait() {
+        let state = generate_puzzle("protorun_priority").expect("protorun priority must generate");
+
+        let rationale = rationale_for(&state).expect("protorun priority needs a rationale");
+
+        assert_eq!(rationale.rules.len(), 3);
+        assert!(rationale.absent.is_empty());
+        assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+        assert_eq!(rationale.source.chapter, 3);
+        assert_eq!(rationale.source.section, "Protoruns (taatsu)");
+        assert!(!rationale.caveats.is_empty());
+
+        let discard = state.correct_action.tile().expect("answer tile");
+        let equivalent = state
+            .equivalent_tiles
+            .first()
+            .expect("the closed wait's other tile");
+        assert!(
+            rationale.rules[0].applies.contains(discard),
+            "the answer rule must name the discard"
+        );
+        assert!(
+            rationale.rules[1].applies.contains(discard)
+                && rationale.rules[1].applies.contains(equivalent),
+            "the ranking rule must name both closed-wait tiles"
+        );
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                "side_wait_acceptance",
+                "protorun_ranking",
+                "closed_wait_ceiling"
+            ]
+        );
+    }
+
+    #[test]
     fn generated_book_scenarios_carry_a_rationale() {
         for category in [
             "ryanmen_protorun",
             "nakabukure_ready",
+            "protorun_priority",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -1473,6 +1582,7 @@ mod tests {
         for category in [
             "ryanmen_protorun",
             "nakabukure_ready",
+            "protorun_priority",
             "riichi_judgement",
             "shouminkan_decline",
             "defense_safety_chart",
