@@ -878,6 +878,38 @@ fn standard_han_without_riichi(
         .unwrap_or(0)
 }
 
+/// Best ron value of one standard winning hand without Riichi, in points.
+fn standard_ron_points(
+    winning_tiles: &[Tile],
+    wait: Tile,
+    round_wind: &str,
+    seat_wind: &str,
+    dora_indicators: &[Tile],
+    aka_count: u8,
+) -> Option<u32> {
+    let counts = to_counts(winning_tiles);
+    let context = GameContext::new(
+        WinType::Ron,
+        honor_from_wind(round_wind),
+        honor_from_wind(seat_wind),
+    )
+    .with_winning_tile(wait)
+    .with_dora(dora_indicators.to_vec())
+    .with_aka(aka_count);
+
+    decompose_hand(&counts)
+        .iter()
+        .filter(|structure| matches!(structure, HandStructure::Standard { .. }))
+        .filter_map(|structure| {
+            let yaku = detect_yaku_with_context(structure, &counts, &context);
+            if yaku.yaku_list.is_empty() {
+                return None;
+            }
+            Some(calculate_score(structure, &yaku, &context).payment.total)
+        })
+        .max()
+}
+
 /// Riichi Book 1, ch. 7: "Choose riichi over dama if at least one of the
 /// following three conditions is met" — a han, a good wait, or the deal.
 #[wasm_bindgen_test]
@@ -1308,6 +1340,135 @@ fn test_dama_genbutsu_wait_payload_stays_dama() {
             );
         }
     }
+}
+
+/// Riichi Book 1, ch. 7, "High scoring hand": an already-expensive hand stays
+/// dama, and a haneman-or-better minimum forbids the declaration outright
+/// (ch7:569, ch7:598, ch7:646).
+#[wasm_bindgen_test]
+fn test_dama_expensive_hand_payload_stays_dama() {
+    let mut mangan_count = 0;
+    let mut haneman_count = 0;
+
+    for run in 0..60 {
+        let json_output = generate_puzzle("dama_expensive_hand".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+        assert_eq!(val["category"], "dama_expensive_hand");
+        assert_eq!(val["target_action"], "Dama", "run {run}");
+        assert_eq!(val["correct_action"]["type"], "dama", "run {run}");
+        assert!(val["riichi_triggers"].as_array().unwrap().is_empty());
+
+        let reasons: Vec<&str> = val["dama_reasons"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|reason| reason.as_str().unwrap())
+            .collect();
+        assert!(
+            reasons == vec!["mangan"] || reasons == vec!["haneman_plus"],
+            "run {run}: unexpected reasons {reasons:?}"
+        );
+
+        let human = &val["players"][0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        assert_ne!(
+            human["wind"], "East",
+            "run {run}: the 7700/haneman numbers are non-dealer ron values"
+        );
+        // The book's "far behind" Riichi exception must not apply.
+        let human_score = human["score"].as_i64().expect("human score");
+        for opponent in val["players"].as_array().unwrap().iter().skip(1) {
+            assert!(
+                opponent["score"].as_i64().unwrap() <= human_score,
+                "run {run}: the human must not be far behind"
+            );
+        }
+        // ... nor the early-turn one.
+        assert!(
+            human["discards"].as_array().unwrap().len() >= 6,
+            "run {run}: the table must be past the 6th turn"
+        );
+        assert_eq!(
+            val["can_riichi"], true,
+            "run {run}: Riichi must be offerable for a Riichi-vs-dama question"
+        );
+
+        let tenpai = kept_hand_after_a_tedashi(&val, run);
+        let counts = to_counts(&tenpai);
+        assert_eq!(calculate_shanten(&counts).shanten, 0, "run {run}");
+
+        let waits: Vec<Tile> = val["ukeire_tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        assert_eq!(waits.len(), 2, "run {run}: the wait is a side wait");
+
+        let dora: Vec<Tile> = val["dora_indicators"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|indicator| parse_single_tile(indicator.as_str().unwrap()))
+            .collect();
+        assert_eq!(dora.len(), 1, "run {run}");
+        let red_fives: Vec<Tile> = human["red_fives"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        let aka = red_fives.len() as u8;
+        assert!(aka <= 1, "run {run}: at most one red five in the hand");
+
+        let round_wind = val["round_wind"].as_str().expect("round wind");
+        let seat_wind = human["wind"].as_str().expect("human wind");
+
+        // The task's verification: enumerate every winning tile and take the
+        // worst value without Riichi.
+        let worst = waits
+            .iter()
+            .map(|&wait| {
+                let mut winning = tenpai.clone();
+                winning.push(wait);
+                standard_ron_points(&winning, wait, round_wind, seat_wind, &dora, aka)
+                    .unwrap_or_else(|| panic!("run {run}: a winning tile has no yaku"))
+            })
+            .min()
+            .expect("the wait is not empty");
+        assert!(
+            worst >= 7_700,
+            "run {run}: the worst winning tile is only {worst}"
+        );
+
+        if reasons == vec!["haneman_plus"] {
+            haneman_count += 1;
+            assert_eq!(aka, 1, "run {run}: the haneman branch carries a red five");
+            assert!(worst >= 12_000, "run {run}: haneman minimum was {worst}");
+        } else {
+            mangan_count += 1;
+            assert_eq!(aka, 0, "run {run}: the 7700 branch has no red five");
+            assert!(
+                worst < 12_000,
+                "run {run}: the 7700 branch reached haneman at {worst}"
+            );
+        }
+
+        // The hand is never furiten.
+        for discard in human["discards"].as_array().unwrap() {
+            let code = discard["tile"].as_str().unwrap();
+            assert!(
+                !waits.iter().any(|wait| wait.to_string() == code),
+                "run {run}: human river contains furiten tile {code}"
+            );
+        }
+    }
+
+    assert!(mangan_count > 0, "no 7700-11999 hands were generated");
+    assert!(haneman_count > 0, "no haneman+ hands were generated");
 }
 
 #[wasm_bindgen_test]

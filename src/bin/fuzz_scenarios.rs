@@ -59,6 +59,7 @@ const DEFAULT_SCENARIOS: &[ScenarioId] = &[
     ScenarioId::RiichiJudgement,
     ScenarioId::DamaBadWait,
     ScenarioId::DamaGenbutsuWait,
+    ScenarioId::DamaExpensiveHand,
     ScenarioId::ShouminkanDecision,
 ];
 

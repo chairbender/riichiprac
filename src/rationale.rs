@@ -295,6 +295,7 @@ impl DamaReason {
             Self::NoRedFiveWait => "no_red_five_wait",
             Self::NoSujiTrap => "no_suji_trap",
             Self::Mangan => "mangan",
+            Self::HanemanPlus => "haneman_plus",
         }
     }
 
@@ -351,6 +352,16 @@ impl DamaReason {
                 quote: "it is OK to go dama",
                 citation: ch7("High scoring hand", 569, "it is OK to go {\\jap dama}"),
             }),
+            Self::HanemanPlus => Some(RuleText {
+                rule: "When even the worst winning tile scores a haneman or better \
+                       without Riichi, the book does not declare Riichi at all.",
+                quote: "Don't riichi if the minimum hand value is {\\jap haneman} or better.",
+                citation: ch7(
+                    "High scoring hand",
+                    646,
+                    "Don't riichi if the minimum hand value is",
+                ),
+            }),
             Self::NoTanyao | Self::NoRedFiveWait | Self::NoSujiTrap => None,
         }
     }
@@ -371,7 +382,8 @@ impl DamaReason {
             | Self::FewLiveWinningTiles
             | Self::GenbutsuWait
             | Self::MiddleWait
-            | Self::Mangan => None,
+            | Self::Mangan
+            | Self::HanemanPlus => None,
         }
     }
 }
@@ -657,6 +669,9 @@ fn applies_dama(reason: DamaReason, state: &GameState) -> String {
         DamaReason::NoRedFiveWait => "No red five is held.".to_string(),
         DamaReason::NoSujiTrap => "Your river holds no suji of the wait.".to_string(),
         DamaReason::Mangan => "The hand is already mangan without Riichi.".to_string(),
+        DamaReason::HanemanPlus => {
+            "Even the worst winning tile gives haneman or better without Riichi.".to_string()
+        }
     }
 }
 
@@ -721,6 +736,17 @@ fn summary_for(state: &GameState) -> String {
                 genbutsu, so the players folding to that threat discard exactly that tile."
             .to_string();
     }
+    if state.category == "dama_expensive_hand" {
+        return if state.dama_reasons.contains(&DamaReason::HanemanPlus) {
+            "Stay in dama: even the worst winning tile gives haneman or better without \
+             Riichi, so the book does not declare."
+                .to_string()
+        } else {
+            "Stay in dama: the hand is already worth at least 7700 without Riichi, so \
+             the declaration would only warn the table."
+                .to_string()
+        };
+    }
     if !state.riichi_triggers.is_empty() {
         return "Declare Riichi: the book's chiitoitsu criteria pick this hand.".to_string();
     }
@@ -771,6 +797,20 @@ fn caveats_for(state: &GameState) -> Vec<String> {
             "The book only respects a loud player whose call is actually being feared: \
              against a bad call that nobody folds to, it says to declare Riichi even when \
              your winning tiles are that player's genbutsu (ch7:566)."
+                .to_string(),
+        );
+    } else if state.category == "dama_expensive_hand" {
+        caveats.push(
+            "The value is recomputed at the worst winning tile of the wait, counted by \
+             ron and without Riichi: the book asks for at least 7700 (5200 without red \
+             fives). Dora and a red five supply the value here, on top of tanyao, pinfu \
+             and iipeikou."
+                .to_string(),
+        );
+        caveats.push(
+            "The book still allows Riichi with an expensive hand when you are far behind, \
+             or early enough with a good enough wait. This table puts you in front and \
+             past the 6th turn, so those exceptions do not apply."
                 .to_string(),
         );
     } else if !state.dama_reasons.is_empty() {
@@ -824,6 +864,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
             539,
             "one of your winning tiles is among their",
         )),
+        "dama_expensive_hand" => Some(ch7("High scoring hand", 569, "it is OK to go {\\jap dama}")),
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "wind_discard_order" => Some(ch9_seating(455, "discard the right player's wind first")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
@@ -2217,6 +2258,7 @@ mod tests {
             DamaReason::FewLiveWinningTiles,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
+            DamaReason::HanemanPlus,
         ];
         let absent = [
             DamaReason::NoTanyao,
@@ -2925,6 +2967,7 @@ mod tests {
             DamaReason::GenbutsuWait,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
+            DamaReason::HanemanPlus,
         ] {
             citations.push(reason.rationale().expect("positive reason").citation);
         }

@@ -43,7 +43,8 @@ export type DamaReason =
   | 'middle_wait'
   | 'no_red_five_wait'
   | 'no_suji_trap'
-  | 'mangan';
+  | 'mangan'
+  | 'haneman_plus';
 
 /** Reasons a scenario recommends upgrading an open Pon to an Added Kan. */
 export type ShouminkanTrigger =
