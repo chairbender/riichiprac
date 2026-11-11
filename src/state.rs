@@ -323,6 +323,10 @@ pub enum DamaReason {
     NoSujiTrap,
     /// The hand is already Mangan or better without Riichi.
     Mangan,
+    /// The worst winning tile still gives a haneman or better without Riichi.
+    /// Riichi Book 1, ch. 7, "High scoring hand": "Don't riichi if the minimum
+    /// hand value is haneman or better."
+    HanemanPlus,
 }
 
 /// Discard tile in a player's river.

@@ -12,6 +12,8 @@
 //!   winning tiles, dama with one or two simple ones.
 //! - `dama_genbutsu_wait`: ch. 7's genbutsu wait: dama when one winning tile is
 //!   the genbutsu of the player everyone is folding to.
+//! - `dama_expensive_hand`: ch. 7's high scoring hand: dama when the worst
+//!   winning tile is already worth 7700, and never riichi at haneman or better.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
 //! - `open_hand_defense`: ch. 8.4's open-hand read: an opponent's chii followed
 //!   by a discard in the same suit makes that discard's neighbourhood safe; a
@@ -31,6 +33,7 @@ pub mod ai_best_action;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
 mod dama_bad_wait;
+mod dama_expensive_hand;
 mod dama_genbutsu_wait;
 mod defense;
 mod meld_or_not;
@@ -216,6 +219,23 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::DamaExpensiveHand,
+        label: "Dama: Expensive Hand",
+        description: "Ch. 7 high scoring hand: the worst winning tile already scores 7700, \
+                      so dama is fine and haneman+ means no riichi.",
+        category: ScenarioCategory::RiichiDecision,
+        tags: &[
+            "riichi",
+            "dama",
+            "mangan",
+            "haneman",
+            "score",
+            "expensive_hand",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::ShouminkanDecision,
         label: "Added Kan Decision",
         description: "Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan or discard.",
@@ -325,6 +345,7 @@ pub enum ScenarioId {
     RiichiJudgement,
     DamaBadWait,
     DamaGenbutsuWait,
+    DamaExpensiveHand,
     ShouminkanDecision,
     MeldOrNot,
     WindDiscardOrder,
@@ -347,6 +368,7 @@ impl ScenarioId {
         ScenarioId::RiichiJudgement,
         ScenarioId::DamaBadWait,
         ScenarioId::DamaGenbutsuWait,
+        ScenarioId::DamaExpensiveHand,
         ScenarioId::ShouminkanDecision,
         ScenarioId::WindDiscardOrder,
         ScenarioId::MeldOrNot,
@@ -369,6 +391,7 @@ impl ScenarioId {
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::DamaBadWait => "dama_bad_wait",
             ScenarioId::DamaGenbutsuWait => "dama_genbutsu_wait",
+            ScenarioId::DamaExpensiveHand => "dama_expensive_hand",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
             ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::MeldOrNot => "meld_or_not",
@@ -392,6 +415,7 @@ impl ScenarioId {
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
             "dama_genbutsu_wait" => Some(ScenarioId::DamaGenbutsuWait),
+            "dama_expensive_hand" => Some(ScenarioId::DamaExpensiveHand),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
@@ -416,6 +440,7 @@ impl ScenarioId {
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::DamaBadWait => dama_bad_wait::generate(category),
             ScenarioId::DamaGenbutsuWait => dama_genbutsu_wait::generate(category),
+            ScenarioId::DamaExpensiveHand => dama_expensive_hand::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
             ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
             ScenarioId::MeldOrNot => meld_or_not::generate(category),
