@@ -105,6 +105,21 @@ places tiles; every rank is recomputed from what the defender can see (the
 threat's river, all four rivers, open melds, the dora indicator, and the
 defender's own hand).
 
+## Wind discard order
+
+`Wind Discard Order` teaches Riichi Book 1, ch. 9's seating tip
+("Seating-related tip 2"): "When discarding valueless wind tiles, discard the
+right player's wind first, then the facing player's wind next." The first-turn
+hand holds two or three valueless winds, and only the right player's
+(shimocha's) wind is accepted.
+
+The answer is pure seat arithmetic: the shimocha is seat 1, so the correct
+discard is the human's seat wind advanced one seat. The generator never deals
+the round wind or the human's own wind, keeps every filler tile in a suit, and
+uses a suit dora indicator, so each held wind really is valueless. When the
+human is the dealer the table is the opening draw; on any other seat the board
+stops right after Kamicha's first discard, which is when the human first draws.
+
 ## Hosting the model weights
 
 The ~43 MB `mortal_298k.safetensors` file is not committed. It is published as a

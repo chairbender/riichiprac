@@ -8,6 +8,8 @@
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
 //! - `shouminkan_decision`: Added Kan decision lesson (Kan or decline, one
 //!   neutral prompt).
+//! - `wind_discard_order`: the ch. 9 seating tip: which valueless wind to throw
+//!   first (the right player's).
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
 //!
 //! The Phase 2 `mock_table` fixture lives in `crate::fixtures`, outside the
@@ -20,6 +22,7 @@ mod defense;
 mod riichi_judgement;
 mod shouminkan_decision;
 mod support;
+mod wind_discard_order;
 
 use agari::tile::Tile;
 use serde::Serialize;
@@ -40,6 +43,7 @@ pub enum ScenarioCategory {
     KanDecision,
     AiDecision,
     DefenseDecision,
+    MeldingDecision,
 }
 
 impl ScenarioCategory {
@@ -50,6 +54,7 @@ impl ScenarioCategory {
             ScenarioCategory::KanDecision => "kan_decision",
             ScenarioCategory::AiDecision => "ai_decision",
             ScenarioCategory::DefenseDecision => "defense_decision",
+            ScenarioCategory::MeldingDecision => "melding_decision",
         }
     }
 }
@@ -143,6 +148,15 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::WindDiscardOrder,
+        label: "Wind Discard Order",
+        description: "First turn with two or three valueless winds: throw the right player's wind first.",
+        category: ScenarioCategory::MeldingDecision,
+        tags: &["melding", "seating", "wind", "discard", "first_turn"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::AiBestAction,
         label: "AI Best Action",
         description: "Any decision: discard, call, or win — the answer is Mortal v4's top action.",
@@ -210,6 +224,7 @@ pub enum ScenarioId {
     ChiitoitsuRiichiVsDama,
     RiichiJudgement,
     ShouminkanDecision,
+    WindDiscardOrder,
     AiBestAction,
     DefenseSafetyChart,
     DefenseStuckHeuristic,
@@ -224,6 +239,7 @@ impl ScenarioId {
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::RiichiJudgement,
         ScenarioId::ShouminkanDecision,
+        ScenarioId::WindDiscardOrder,
         ScenarioId::AiBestAction,
         ScenarioId::DefenseSafetyChart,
         ScenarioId::DefenseStuckHeuristic,
@@ -238,6 +254,7 @@ impl ScenarioId {
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
+            ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::AiBestAction => "ai_best_action",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
@@ -253,6 +270,7 @@ impl ScenarioId {
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
+            "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
@@ -269,6 +287,7 @@ impl ScenarioId {
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
+            ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
             ScenarioId::AiBestAction => Err(
                 "ai_best_action requires the loaded Mortal model; use the evaluator's \
                  generate_ai_puzzle"

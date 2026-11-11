@@ -99,6 +99,17 @@ fn ch9(line: u32, needle: &str) -> Citation {
     )
 }
 
+fn ch9_seating(line: u32, needle: &str) -> Citation {
+    citation(
+        9,
+        "Melding judgement",
+        "Be mindful of the seating",
+        "RiichiBook1-ch9-call.tex",
+        line,
+        needle,
+    )
+}
+
 fn ch8(section: &str, line: u32, needle: &str) -> Citation {
     citation(
         8,
@@ -641,6 +652,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
         "chiitoitsu_riichi_vs_dama" => Some(ch7(CHIITOITSU_BOX, 345, "Riichi judgement")),
         "riichi_judgement" => Some(ch7(GENERAL_RULE, 55, "at least one")),
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
+        "wind_discard_order" => Some(ch9_seating(455, "discard the right player's wind first")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
         "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
         "protorun_priority" => Some(ch3(205, "can accept twice as many tiles")),
@@ -656,6 +668,10 @@ fn scenario_source(category: &str) -> Option<Citation> {
 fn category_rationale(state: &GameState) -> Option<BookRationale> {
     if let Some(defense) = defense_rationale(state) {
         return Some(defense);
+    }
+
+    if state.category == "wind_discard_order" {
+        return wind_discard_rationale(state);
     }
 
     // `shouminkan_decline` is retired as a scenario id, but old saved reports
@@ -866,6 +882,90 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         source: ch4(44, "completely redundant"),
         caveats: Vec::new(),
     })
+}
+
+/// The ch. 9 seating tip: throw the right player's valueless wind first.
+fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
+    let answer = state.correct_action.tile()?.to_string();
+    let human = human(state)?;
+    let shimocha_wind = human.wind.next(1);
+
+    let other_winds: Vec<String> = state
+        .tiles
+        .iter()
+        .filter(|code| is_wind_code(code) && code.as_str() != answer)
+        .cloned()
+        .collect();
+    let others = if other_winds.is_empty() {
+        "none".to_string()
+    } else {
+        other_winds.join(" / ")
+    };
+
+    let rules = vec![
+        BookRule {
+            id: "call_benefits_right_player".to_string(),
+            rule: "A call by the right player skips the facing player's turn and gives the \
+                   right player an extra draw, so the right player's call is the one most \
+                   worth denying."
+                .to_string(),
+            quote: "your act of calling pon/kan benefits the right player while penalizing the \
+                    left and the facing players"
+                .to_string(),
+            citation: ch9_seating(440, "benefits the right player while penalizing"),
+            applies: format!(
+                "The right player's seat wind is {shimocha_wind:?}: a Pon on it would skip the \
+                 facing player and hand the right player the extra draw."
+            ),
+        },
+        BookRule {
+            id: "shimocha_wind_first".to_string(),
+            rule: "Of the valueless winds, throw the right player's wind first and the facing \
+                   player's wind second."
+                .to_string(),
+            quote: "When discarding valueless wind tiles, discard the right player's wind first, \
+                    then the facing player's wind next."
+                .to_string(),
+            citation: ch9_seating(455, "discard the right player's wind first"),
+            applies: format!(
+                "{answer} is the right player's wind, so it goes before the other valueless \
+                 winds ({others})."
+            ),
+        },
+        BookRule {
+            id: "discard_it_early".to_string(),
+            rule: "A wind worth denying to the right player is thrown as early as possible, \
+                   before they can pair it."
+                .to_string(),
+            quote: "you should do so sooner rather than later".to_string(),
+            citation: ch9_seating(452, "sooner rather than later"),
+            applies: "This is the first discard, so the wind leaves before anyone has shown a \
+                      pair."
+                .to_string(),
+        },
+    ];
+
+    Some(BookRationale {
+        summary: format!(
+            "Discard the right player's wind ({answer}) first: a Pon on their wind is the call \
+             the book most wants to deny."
+        ),
+        rules,
+        absent: Vec::new(),
+        source: ch9_seating(455, "discard the right player's wind first"),
+        caveats: vec![
+            "The hand holds only valueless winds: the round wind and the seat wind are never \
+             dealt, and the dora indicator is a suit tile."
+                .to_string(),
+            "In a two-wind hand the facing player's wind is not always held; the right player's \
+             wind is still the first discard."
+                .to_string(),
+        ],
+    })
+}
+
+fn is_wind_code(code: &str) -> bool {
+    matches!(code, "1z" | "2z" | "3z" | "4z")
 }
 
 /// The two pure-defense lessons: the ch. 8 safety chart and its fallback list.
@@ -1513,6 +1613,7 @@ mod tests {
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
+            "wind_discard_order",
             "defense_safety_chart",
             "defense_stuck_heuristic",
         ] {
@@ -1703,6 +1804,7 @@ mod tests {
             "protorun_priority",
             "riichi_judgement",
             "shouminkan_decision",
+            "wind_discard_order",
             "defense_safety_chart",
             "defense_stuck_heuristic",
         ] {
@@ -1729,6 +1831,44 @@ mod tests {
                 citation.section
             );
         }
+    }
+
+    #[test]
+    fn wind_discard_order_rationale_cites_the_seating_tip() {
+        let state = generate_puzzle("wind_discard_order").expect("lesson must generate");
+        let rationale = rationale_for(&state).expect("the seating tip needs a rationale");
+
+        assert_eq!(rationale.source.chapter, 9);
+        assert_eq!(rationale.source.section, "Be mindful of the seating");
+        assert_eq!(
+            rationale.source.source_needle,
+            "discard the right player's wind first"
+        );
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                "call_benefits_right_player",
+                "shimocha_wind_first",
+                "discard_it_early"
+            ]
+        );
+        assert!(
+            rationale
+                .rules
+                .iter()
+                .all(|rule| rule.applies.contains("right player")
+                    || rule.applies.contains("shimocha")
+                    || rule.applies.contains("first discard")),
+            "{:?}",
+            rationale.rules
+        );
+        assert!(!rationale.summary.is_empty());
     }
 
     #[test]

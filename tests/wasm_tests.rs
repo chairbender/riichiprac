@@ -1591,6 +1591,96 @@ fn test_defense_scenarios_payload() {
 }
 
 #[wasm_bindgen_test]
+fn test_wind_discard_order_payload() {
+    for run in 0..25 {
+        let json_output = generate_puzzle("wind_discard_order".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}"));
+
+        assert_eq!(val["category"], "wind_discard_order");
+        assert_eq!(val["target_action"], "NaniKiru");
+        assert_eq!(val["correct_action"]["type"], "dama");
+        assert_eq!(val["hand_number"], 1);
+        assert_eq!(val["current_turn"], 0);
+
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("the answer names the discard")
+            .to_string();
+        let players = val["players"].as_array().expect("players array");
+        assert_eq!(players.len(), 4);
+
+        // The answer is the right player's (seat 1's) seat wind.
+        let shimocha_wind = players[1]["wind"]
+            .as_str()
+            .expect("shimocha must have a wind");
+        let expected = match shimocha_wind {
+            "East" => "1z",
+            "South" => "2z",
+            "West" => "3z",
+            "North" => "4z",
+            other => panic!("run {run}: unknown wind {other}"),
+        };
+        assert_eq!(answer, expected, "run {run}");
+
+        let human = &players[0];
+        assert_eq!(human["is_human"], true);
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert_eq!(human["draw"], answer);
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        assert!(human["discards"].as_array().unwrap().is_empty());
+        assert!(val["equivalent_tiles"].as_array().is_none_or(Vec::is_empty));
+
+        for player in players {
+            assert!(player["melds"].as_array().unwrap().is_empty());
+            assert_eq!(player["is_riichi"], false);
+            assert!(player["discards"].as_array().unwrap().len() <= 1);
+        }
+
+        // Two or three valueless winds and no dragons; never the seat wind or
+        // the round wind.
+        let seat_wind = human["wind"].as_str().unwrap();
+        let round_wind = val["round_wind"].as_str().unwrap();
+        let winds: Vec<&str> = val["tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .filter(|code| matches!(*code, "1z" | "2z" | "3z" | "4z"))
+            .collect();
+        assert!(
+            (2..=3).contains(&winds.len()),
+            "run {run}: {} winds in hand",
+            winds.len()
+        );
+        let name_for = |code: &str| match code {
+            "1z" => "East",
+            "2z" => "South",
+            "3z" => "West",
+            _ => "North",
+        };
+        for code in &winds {
+            assert_ne!(name_for(code), seat_wind, "run {run}: seat wind held");
+            assert_ne!(name_for(code), round_wind, "run {run}: round wind held");
+        }
+        assert_eq!(val["book_rationale"]["source"]["chapter"], 9);
+        assert!(
+            !val["book_rationale"]["rules"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+
+        let total_score: i64 = players
+            .iter()
+            .map(|player| player["score"].as_i64().expect("score int"))
+            .sum();
+        assert_eq!(total_score, 100_000);
+    }
+}
+
+#[wasm_bindgen_test]
 fn test_defense_answer_grades_against_the_book() {
     let table: serde_json::Value =
         serde_json::from_str(&generate_puzzle("defense_safety_chart".to_string()))
