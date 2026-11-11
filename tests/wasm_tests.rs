@@ -6,7 +6,7 @@ use agari::context::{GameContext, WinType, indicator_to_dora};
 use agari::hand::{HandStructure, decompose_hand};
 use agari::parse::{parse_hand, to_counts, validate_hand};
 use agari::scoring::{ScoreLevel, calculate_score};
-use agari::shanten::{calculate_shanten, calculate_ukeire};
+use agari::shanten::{calculate_shanten, calculate_ukeire, calculate_ukeire_with_visible};
 use agari::tile::{Honor, Tile};
 use agari::yaku::detect_yaku_with_context;
 use riichiprac::generator::{format_hand_compact, generate_random_hand};
@@ -577,6 +577,172 @@ fn test_chiitoitsu_dama_100_hands() {
 
     let elapsed = js_sys::Date::now() - started;
     assert!(elapsed < 10_000.0, "100 dama hands took {elapsed}ms");
+}
+
+/// Han without riichi for one standard winning hand, at its best yaku reading.
+fn standard_han_without_riichi(
+    winning_tiles: &[Tile],
+    wait: Tile,
+    round_wind: &str,
+    seat_wind: &str,
+    dora_indicators: &[Tile],
+) -> u8 {
+    let counts = to_counts(winning_tiles);
+    let context = GameContext::new(
+        WinType::Ron,
+        honor_from_wind(round_wind),
+        honor_from_wind(seat_wind),
+    )
+    .with_winning_tile(wait)
+    .with_dora(dora_indicators.to_vec());
+
+    decompose_hand(&counts)
+        .iter()
+        .filter(|structure| matches!(structure, HandStructure::Standard { .. }))
+        .map(|structure| {
+            detect_yaku_with_context(structure, &counts, &context).total_han_with_dora()
+        })
+        .max()
+        .unwrap_or(0)
+}
+
+/// Riichi Book 1, ch. 7: "Choose riichi over dama if at least one of the
+/// following three conditions is met" — a han, a good wait, or the deal.
+#[wasm_bindgen_test]
+fn test_riichi_judgement_payload_follows_the_three_conditions() {
+    let mut riichi_count = 0;
+    let mut dama_count = 0;
+
+    for run in 0..80 {
+        let json_output = generate_puzzle("riichi_judgement".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+        assert_eq!(val["category"], "riichi_judgement");
+
+        let human = &val["players"][0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        let discard_code = val["correct_action"]["discard"]
+            .as_str()
+            .expect("riichi/dama action must have a discard");
+        assert_eq!(human["draw"], discard_code);
+
+        let tenpai: Vec<Tile> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        let counts = to_counts(&tenpai);
+        assert_eq!(calculate_shanten(&counts).shanten, 0, "run {run}");
+        let waits: Vec<Tile> = val["ukeire_tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        assert!(matches!(waits.len(), 1 | 2), "run {run}: waits {waits:?}");
+        assert_eq!(calculate_ukeire(&counts).tiles.len(), waits.len());
+
+        let dora: Vec<Tile> = val["dora_indicators"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|indicator| parse_single_tile(indicator.as_str().unwrap()))
+            .collect();
+        let round_wind = val["round_wind"].as_str().expect("round wind");
+        let seat_wind = human["wind"].as_str().expect("human wind");
+
+        // Condition 1: at least one han (yaku or dora) without riichi, and it
+        // must hold on the worst winning tile.
+        let extra_han = waits
+            .iter()
+            .map(|&wait| {
+                let mut winning = tenpai.clone();
+                winning.push(wait);
+                standard_han_without_riichi(&winning, wait, round_wind, seat_wind, &dora)
+            })
+            .min()
+            .unwrap_or(0)
+            >= 1;
+
+        // Condition 2: at least two kinds and more than four live tiles.
+        let mut visible: std::collections::HashMap<Tile, u8> = std::collections::HashMap::new();
+        for opponent in val["players"].as_array().unwrap().iter().skip(1) {
+            for discard in opponent["discards"].as_array().unwrap() {
+                *visible
+                    .entry(parse_single_tile(discard["tile"].as_str().unwrap()))
+                    .or_insert(0) += 1;
+            }
+        }
+        for &indicator in &dora {
+            *visible.entry(indicator).or_insert(0) += 1;
+        }
+        let ukeire = calculate_ukeire_with_visible(&counts, &visible);
+        let good_wait = ukeire.tiles.len() >= 2 && ukeire.total_count > 4;
+        assert!(
+            ukeire.total_count >= 3,
+            "run {run}: the book's 1-2 tile dama case is a different lesson"
+        );
+
+        // Condition 3: the dealer.
+        let dealer = seat_wind == "East";
+        let expected_riichi = extra_han || good_wait || dealer;
+
+        // The hand is never furiten.
+        for discard in human["discards"].as_array().unwrap() {
+            let code = discard["tile"].as_str().unwrap();
+            assert!(
+                !waits.iter().any(|wait| wait.to_string() == code),
+                "run {run}: human river contains furiten tile {code}"
+            );
+        }
+
+        let mut expected_triggers = Vec::new();
+        if extra_han {
+            expected_triggers.push("has_extra_han");
+        }
+        if good_wait {
+            expected_triggers.push("good_wait");
+        }
+        if dealer {
+            expected_triggers.push("dealer");
+        }
+
+        if expected_riichi {
+            riichi_count += 1;
+            assert_eq!(val["target_action"], "Riichi");
+            assert_eq!(val["correct_action"]["type"], "riichi");
+            let triggers: Vec<&str> = val["riichi_triggers"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|trigger| trigger.as_str().unwrap())
+                .collect();
+            assert_eq!(triggers, expected_triggers, "run {run}");
+            assert!(val["dama_reasons"].as_array().unwrap().is_empty());
+        } else {
+            dama_count += 1;
+            assert_eq!(val["target_action"], "Dama");
+            assert_eq!(val["correct_action"]["type"], "dama");
+            assert!(val["riichi_triggers"].as_array().unwrap().is_empty());
+            let reasons: Vec<&str> = val["dama_reasons"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|reason| reason.as_str().unwrap())
+                .collect();
+            assert_eq!(
+                reasons,
+                vec!["not_dealer", "bad_wait", "no_extra_han"],
+                "run {run}"
+            );
+        }
+    }
+
+    assert!(riichi_count > 0, "no Riichi states were generated");
+    assert!(dama_count > 0, "no dama states were generated");
 }
 
 #[wasm_bindgen_test]

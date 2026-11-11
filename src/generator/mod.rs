@@ -3,6 +3,7 @@
 //! - `block_theory`: 5-block random hands, the ryanmen protorun lesson, and
 //!   the nakabukure (bulging float) ready-hand lesson.
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
+//! - `riichi_judgement`: ch. 7's general three-condition Riichi/dama rule.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
 //! - `shouminkan_decision`: Added Kan decision lesson.
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
@@ -14,6 +15,7 @@ pub mod ai_best_action;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
 mod defense;
+mod riichi_judgement;
 mod shouminkan_decision;
 mod support;
 
@@ -112,6 +114,15 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::RiichiJudgement,
+        label: "Riichi Judgement",
+        description: "The ch. 7 rule: Riichi if you have a han, a good wait, or the deal.",
+        category: ScenarioCategory::RiichiDecision,
+        tags: &["riichi", "dama", "wait", "dealer", "han"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::ShouminkanDecision,
         label: "Added Kan Decision",
         description: "Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan.",
@@ -194,6 +205,7 @@ pub enum ScenarioId {
     RyanmenProtorun,
     NakabukureReady,
     ChiitoitsuRiichiVsDama,
+    RiichiJudgement,
     ShouminkanDecision,
     ShouminkanDecline,
     AiBestAction,
@@ -207,6 +219,7 @@ impl ScenarioId {
         ScenarioId::RyanmenProtorun,
         ScenarioId::NakabukureReady,
         ScenarioId::ChiitoitsuRiichiVsDama,
+        ScenarioId::RiichiJudgement,
         ScenarioId::ShouminkanDecision,
         ScenarioId::ShouminkanDecline,
         ScenarioId::AiBestAction,
@@ -220,6 +233,7 @@ impl ScenarioId {
             ScenarioId::RyanmenProtorun => "ryanmen_protorun",
             ScenarioId::NakabukureReady => "nakabukure_ready",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
+            ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
             ScenarioId::ShouminkanDecline => "shouminkan_decline",
             ScenarioId::AiBestAction => "ai_best_action",
@@ -234,6 +248,7 @@ impl ScenarioId {
             "ryanmen_protorun" => Some(ScenarioId::RyanmenProtorun),
             "nakabukure_ready" => Some(ScenarioId::NakabukureReady),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
+            "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
             "shouminkan_decline" => Some(ScenarioId::ShouminkanDecline),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
@@ -249,6 +264,7 @@ impl ScenarioId {
             ScenarioId::RyanmenProtorun => block_theory::ryanmen_protorun::generate(category),
             ScenarioId::NakabukureReady => block_theory::nakabukure_ready::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
+            ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
             ScenarioId::ShouminkanDecline => shouminkan_decision::generate_decline(category),
             ScenarioId::AiBestAction => Err(

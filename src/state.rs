@@ -208,6 +208,13 @@ pub enum ShouminkanTrigger {
 pub enum RiichiTrigger {
     /// The human player is the dealer (East seat).
     Dealer,
+    /// The finished hand scores at least one han (a yaku or dora) without
+    /// Riichi. Riichi Book 1, ch. 7: "Your hand has at least one {han} other
+    /// than riichi."
+    HasExtraHan,
+    /// The wait is good: at least two kinds and more than four live winning
+    /// tiles. Riichi Book 1, ch. 7: "Your hand has a good wait."
+    GoodWait,
     /// Every pair and the wait tile is a simple tile (2-8).
     Tanyao,
     /// A red five is held, so the wait itself is the regular five.
@@ -227,6 +234,14 @@ pub enum RiichiTrigger {
 pub enum DamaReason {
     /// The player is not the dealer, reducing Riichi's value.
     NotDealer,
+    /// The wait is bad: fewer than two kinds or at most four live winning
+    /// tiles. Riichi Book 1, ch. 7 defines a good wait as "at least two kinds
+    /// and more than four tiles left to win on".
+    BadWait,
+    /// The hand has no yaku or dora other than Riichi, so Riichi is the only
+    /// value the hand can add. Riichi Book 1, ch. 7 calls this a
+    /// "riichi-only" hand.
+    NoExtraHan,
     /// A terminal/honor pair prevents Tanyao.
     NoTanyao,
     /// The wait is a middle tile (4, 5, or 6).
