@@ -130,12 +130,17 @@ fn ch3(line: u32, needle: &str) -> Citation {
 }
 
 const CHIITOITSU_BOX: &str = "Chiitoitsu not waiting for dora";
+/// Riichi Book 1, ch. 7, "To riichi or not to riichi?": the general
+/// three-condition rule the `riichi_judgement` lesson grades.
+const GENERAL_RULE: &str = "To riichi or not to riichi?";
 
 impl RiichiTrigger {
     /// Stable id matching the serialized enum name.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Dealer => "dealer",
+            Self::HasExtraHan => "has_extra_han",
+            Self::GoodWait => "good_wait",
             Self::Tanyao => "tanyao",
             Self::RedFiveWait => "red_five_wait",
             Self::SujiTrap => "suji_trap",
@@ -148,10 +153,23 @@ impl RiichiTrigger {
     pub fn rationale(self) -> RuleText {
         match self {
             Self::Dealer => RuleText {
-                rule: "Being the dealer adds enough value to justify Riichi on a \
-                       chiitoitsu hand that is not waiting on the dora.",
-                quote: "You are the dealer;",
-                citation: ch7(CHIITOITSU_BOX, 349, "You are the dealer"),
+                rule: "Being the dealer adds enough value to justify Riichi, even on a \
+                       yaku-less hand with a bad wait.",
+                quote: "You are the dealer.",
+                citation: ch7(GENERAL_RULE, 59, "You are the dealer"),
+            },
+            Self::HasExtraHan => RuleText {
+                rule: "One han or more (a yaku or dora) without Riichi justifies \
+                       Riichi, even with a bad wait.",
+                quote: "Your hand has at least one {\\jap han} other than riichi.",
+                citation: ch7(GENERAL_RULE, 57, "other than riichi"),
+            },
+            Self::GoodWait => RuleText {
+                rule: "A good wait justifies Riichi: the book counts a wait as good \
+                       when it has at least two kinds and more than four live tiles \
+                       left to win on.",
+                quote: "Your hand has a good wait.",
+                citation: ch7(GENERAL_RULE, 58, "Your hand has a good wait"),
             },
             Self::Tanyao => RuleText {
                 rule: "Tanyao justifies Riichi even when the wait itself is awkward.",
@@ -193,6 +211,8 @@ impl DamaReason {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::NotDealer => "not_dealer",
+            Self::BadWait => "bad_wait",
+            Self::NoExtraHan => "no_extra_han",
             Self::NoTanyao => "no_tanyao",
             Self::MiddleWait => "middle_wait",
             Self::NoRedFiveWait => "no_red_five_wait",
@@ -206,10 +226,24 @@ impl DamaReason {
     pub fn rationale(self) -> Option<RuleText> {
         match self {
             Self::NotDealer => Some(RuleText {
-                rule: "A non-dealer waiting on 4, 5, or 6 is one of the two cases \
-                       where the book keeps the hand in dama.",
-                quote: "when you are a non-dealer",
-                citation: ch7(CHIITOITSU_BOX, 359, "when you are a non-dealer"),
+                rule: "The dealer condition does not hold: the book only gives the \
+                       deal's extra value to the East seat.",
+                quote: "You are the dealer.",
+                citation: ch7(GENERAL_RULE, 59, "You are the dealer"),
+            }),
+            Self::BadWait => Some(RuleText {
+                rule: "A bad wait is the wait half of the book's dama case: a wait \
+                       needs at least two kinds and more than four live tiles to \
+                       count as good.",
+                quote: "a wait is said to be good if there are at least two kinds \
+                        and more than four tiles left to win on",
+                citation: ch7("Bad wait", 491, "at least two kinds"),
+            }),
+            Self::NoExtraHan => Some(RuleText {
+                rule: "A hand with no yaku or dora other than Riichi is \
+                       \"riichi-only\": the declaration is the only value it can add.",
+                quote: "bad-wait riichi-only hand by a non-dealer",
+                citation: ch7(GENERAL_RULE, 71, "riichi-only hand"),
             }),
             Self::MiddleWait => Some(RuleText {
                 rule: "A 4/5/6 single wait is the worst kind of wait, so it is the \
@@ -237,7 +271,11 @@ impl DamaReason {
             Self::NoSujiTrap => {
                 Some("No suji of the wait in the river, so the trap justification does not apply.")
             }
-            Self::NotDealer | Self::MiddleWait | Self::Mangan => None,
+            Self::NotDealer
+            | Self::BadWait
+            | Self::NoExtraHan
+            | Self::MiddleWait
+            | Self::Mangan => None,
         }
     }
 }
@@ -420,10 +458,25 @@ fn wait_tile(state: &GameState) -> String {
     state.ukeire_tiles.first().cloned().unwrap_or_default()
 }
 
+/// Every winning tile, for the multi-tile waits of standard hands.
+fn wait_tiles(state: &GameState) -> String {
+    if state.ukeire_tiles.is_empty() {
+        return "no live winning tiles".to_string();
+    }
+    state.ukeire_tiles.join(" / ")
+}
+
 fn applies_riichi(trigger: RiichiTrigger, state: &GameState) -> String {
     let wait = wait_tile(state);
     match trigger {
         RiichiTrigger::Dealer => "You are the dealer (East).".to_string(),
+        RiichiTrigger::HasExtraHan => {
+            "The finished hand scores at least one han without Riichi.".to_string()
+        }
+        RiichiTrigger::GoodWait => format!(
+            "The wait on {} is good: at least two live kinds and more than four live tiles.",
+            wait_tiles(state)
+        ),
         RiichiTrigger::Tanyao => "Every pair and the wait are simples.".to_string(),
         RiichiTrigger::RedFiveWait => {
             format!("The wait is {wait} and its red five is in hand.")
@@ -444,6 +497,13 @@ fn applies_dama(reason: DamaReason, state: &GameState) -> String {
             Some(wind) => format!("Seat wind is {wind:?}, not East."),
             None => "You are not the dealer.".to_string(),
         },
+        DamaReason::BadWait => format!(
+            "The wait on {} is bad: fewer than two live kinds or at most four live tiles.",
+            wait_tiles(state)
+        ),
+        DamaReason::NoExtraHan => {
+            "The hand has no yaku or dora without Riichi, so it is riichi-only.".to_string()
+        }
         DamaReason::NoTanyao => "A terminal or honor pair rules out tanyao.".to_string(),
         DamaReason::MiddleWait => format!("The wait is {wait}, a middle tile."),
         DamaReason::NoRedFiveWait => "No red five is held.".to_string(),
@@ -482,6 +542,15 @@ fn summary_for(state: &GameState) -> String {
                 hand."
             .to_string();
     }
+    if state.category == "riichi_judgement" {
+        return if state.riichi_triggers.is_empty() {
+            "Stay in dama: the hand is riichi-only with a bad wait, and you are not the \
+             dealer."
+                .to_string()
+        } else {
+            "Declare Riichi: at least one of the book's three conditions holds.".to_string()
+        };
+    }
     if !state.riichi_triggers.is_empty() {
         return "Declare Riichi: the book's chiitoitsu criteria pick this hand.".to_string();
     }
@@ -491,7 +560,21 @@ fn summary_for(state: &GameState) -> String {
 fn caveats_for(state: &GameState) -> Vec<String> {
     let mut caveats = Vec::new();
 
-    if !state.dama_reasons.is_empty() {
+    if state.category == "riichi_judgement" {
+        if !state.dama_reasons.is_empty() {
+            caveats.push(
+                "A riichi-only hand in dama can only win by tsumo; the book's rule still \
+                 keeps this bad-wait non-dealer hand concealed."
+                    .to_string(),
+            );
+        }
+        caveats.push(
+            "This lesson encodes only ch. 7's general three-condition rule. The later \
+             dama cases (a 1-2 tile bad wait, being in the lead, a genbutsu wait, and a \
+             hand already worth 7700+) are not modelled, so the generator avoids them."
+                .to_string(),
+        );
+    } else if !state.dama_reasons.is_empty() {
         caveats.push(
             "The book's second dama case is specifically honitsu/chinitsu chiitoitsu; this \
              trainer uses a mangan-or-better test instead."
@@ -515,6 +598,7 @@ fn caveats_for(state: &GameState) -> Vec<String> {
 fn scenario_source(category: &str) -> Option<Citation> {
     match category {
         "chiitoitsu_riichi_vs_dama" => Some(ch7(CHIITOITSU_BOX, 345, "Riichi judgement")),
+        "riichi_judgement" => Some(ch7(GENERAL_RULE, 55, "at least one")),
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
         _ => None,
@@ -621,6 +705,8 @@ mod tests {
     fn every_riichi_trigger_has_a_rule_quote_and_citation() {
         for trigger in [
             RiichiTrigger::Dealer,
+            RiichiTrigger::HasExtraHan,
+            RiichiTrigger::GoodWait,
             RiichiTrigger::Tanyao,
             RiichiTrigger::RedFiveWait,
             RiichiTrigger::SujiTrap,
@@ -642,6 +728,8 @@ mod tests {
     fn dama_reasons_split_into_positive_and_absent() {
         let positive = [
             DamaReason::NotDealer,
+            DamaReason::BadWait,
+            DamaReason::NoExtraHan,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
         ];
@@ -723,6 +811,7 @@ mod tests {
         for category in [
             "ryanmen_protorun",
             "chiitoitsu_riichi_vs_dama",
+            "riichi_judgement",
             "shouminkan_decision",
             "shouminkan_decline",
         ] {
@@ -735,6 +824,45 @@ mod tests {
             assert!(!rationale.summary.is_empty());
             assert!(!rationale.rules.is_empty());
         }
+    }
+
+    #[test]
+    fn riichi_judgement_rationale_follows_the_three_condition_rule() {
+        let mut saw_riichi = false;
+        let mut saw_dama = false;
+
+        for _ in 0..40 {
+            let state = generate_puzzle("riichi_judgement").expect("scenario must generate");
+            let rationale = state.book_rationale.clone().expect("rationale");
+
+            assert_eq!(rationale.source.chapter, 7);
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("not modelled")),
+                "the lesson must say which ch7 dama cases it leaves out"
+            );
+
+            if state.riichi_triggers.is_empty() {
+                saw_dama = true;
+                assert!(rationale.summary.contains("Stay in dama"));
+                assert_eq!(rationale.rules.len(), 3);
+                assert!(
+                    rationale
+                        .caveats
+                        .iter()
+                        .any(|caveat| caveat.contains("tsumo")),
+                    "a riichi-only dama hand can only win by tsumo"
+                );
+            } else {
+                saw_riichi = true;
+                assert!(rationale.summary.contains("Declare Riichi"));
+                assert!(!rationale.rules.is_empty());
+            }
+        }
+
+        assert!(saw_riichi && saw_dama);
     }
 
     #[test]
@@ -779,6 +907,8 @@ mod tests {
         let mut citations: Vec<Citation> = Vec::new();
         for trigger in [
             RiichiTrigger::Dealer,
+            RiichiTrigger::HasExtraHan,
+            RiichiTrigger::GoodWait,
             RiichiTrigger::Tanyao,
             RiichiTrigger::RedFiveWait,
             RiichiTrigger::SujiTrap,
@@ -789,6 +919,8 @@ mod tests {
         }
         for reason in [
             DamaReason::NotDealer,
+            DamaReason::BadWait,
+            DamaReason::NoExtraHan,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
         ] {
@@ -804,7 +936,7 @@ mod tests {
             citations.push(trigger.rationale().citation);
         }
 
-        for category in ["ryanmen_protorun", "shouminkan_decline"] {
+        for category in ["ryanmen_protorun", "riichi_judgement", "shouminkan_decline"] {
             let state = generate_puzzle(category).expect("scenario must generate");
             citations.extend(
                 rationale_for(&state)

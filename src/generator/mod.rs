@@ -2,6 +2,7 @@
 //!
 //! - `block_theory`: 5-block random hands and the ryanmen protorun lesson.
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
+//! - `riichi_judgement`: ch. 7's general three-condition Riichi/dama rule.
 //! - `shouminkan_decision`: Added Kan decision lesson.
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
 //!
@@ -11,6 +12,7 @@
 pub mod ai_best_action;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
+mod riichi_judgement;
 mod shouminkan_decision;
 mod support;
 
@@ -98,6 +100,15 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::RiichiJudgement,
+        label: "Riichi Judgement",
+        description: "The ch. 7 rule: Riichi if you have a han, a good wait, or the deal.",
+        category: ScenarioCategory::RiichiDecision,
+        tags: &["riichi", "dama", "wait", "dealer", "han"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::ShouminkanDecision,
         label: "Added Kan Decision",
         description: "Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan.",
@@ -161,6 +172,7 @@ pub fn list_scenarios_json() -> String {
 pub enum ScenarioId {
     RyanmenProtorun,
     ChiitoitsuRiichiVsDama,
+    RiichiJudgement,
     ShouminkanDecision,
     ShouminkanDecline,
     AiBestAction,
@@ -171,6 +183,7 @@ impl ScenarioId {
     pub const ALL: &'static [ScenarioId] = &[
         ScenarioId::RyanmenProtorun,
         ScenarioId::ChiitoitsuRiichiVsDama,
+        ScenarioId::RiichiJudgement,
         ScenarioId::ShouminkanDecision,
         ScenarioId::ShouminkanDecline,
         ScenarioId::AiBestAction,
@@ -181,6 +194,7 @@ impl ScenarioId {
         match self {
             ScenarioId::RyanmenProtorun => "ryanmen_protorun",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
+            ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
             ScenarioId::ShouminkanDecline => "shouminkan_decline",
             ScenarioId::AiBestAction => "ai_best_action",
@@ -192,6 +206,7 @@ impl ScenarioId {
         match id {
             "ryanmen_protorun" => Some(ScenarioId::RyanmenProtorun),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
+            "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
             "shouminkan_decline" => Some(ScenarioId::ShouminkanDecline),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
@@ -204,6 +219,7 @@ impl ScenarioId {
         match self {
             ScenarioId::RyanmenProtorun => block_theory::ryanmen_protorun::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
+            ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
             ScenarioId::ShouminkanDecline => shouminkan_decision::generate_decline(category),
             ScenarioId::AiBestAction => Err(

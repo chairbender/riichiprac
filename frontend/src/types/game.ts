@@ -21,6 +21,8 @@ export type TargetAction =
 /** Reasons a scenario recommends declaring Riichi. */
 export type RiichiTrigger =
   | 'dealer'
+  | 'has_extra_han'
+  | 'good_wait'
   | 'tanyao'
   | 'red_five_wait'
   | 'suji_trap'
@@ -30,6 +32,8 @@ export type RiichiTrigger =
 /** Reasons a scenario recommends staying in dama. */
 export type DamaReason =
   | 'not_dealer'
+  | 'bad_wait'
+  | 'no_extra_han'
   | 'no_tanyao'
   | 'middle_wait'
   | 'no_red_five_wait'

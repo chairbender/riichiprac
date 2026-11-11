@@ -52,6 +52,7 @@ const DEFAULT_LIMIT: usize = 20;
 const DEFAULT_SCENARIOS: &[ScenarioId] = &[
     ScenarioId::RyanmenProtorun,
     ScenarioId::ChiitoitsuRiichiVsDama,
+    ScenarioId::RiichiJudgement,
     ScenarioId::ShouminkanDecision,
 ];
 
@@ -67,8 +68,9 @@ usage: fuzz_scenarios [options]
 
   --scenario <id>          scenario to sample; repeatable
                            (default: ryanmen_protorun, chiitoitsu_riichi_vs_dama,
-                           shouminkan_decision, shouminkan_decline;
-                           ai_best_action needs the model and is rejected)
+                           riichi_judgement, shouminkan_decision;
+                           shouminkan_decline and ai_best_action are not sampled by
+                           default, and ai_best_action needs the model anyway)
   --iterations <n>         maximum generation attempts (default: 200)
   --limit <n>              maximum discrepancy files per run (default: 20)
   --min-margin <p>         skip disagreements where Mortal's lead over the app
@@ -546,6 +548,7 @@ mod tests {
             vec![
                 ScenarioId::RyanmenProtorun,
                 ScenarioId::ChiitoitsuRiichiVsDama,
+                ScenarioId::RiichiJudgement,
                 ScenarioId::ShouminkanDecision,
             ]
         );
