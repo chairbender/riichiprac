@@ -161,17 +161,21 @@ Exit codes:
    the case is **incomparable**.
 4. If Mortal's normalized `recommended_action` equals the mapped app action,
    the case is an **agreement**.
-5. Otherwise it is a **discrepancy**. Record both probabilities:
+5. If the state lists `equivalent_tiles`, a `Discard_<equivalent>` top pick is
+   also an **agreement**: those tiles grade as the same answer. The defense
+   lessons use this for a 100% tie, where another player's post-riichi discard
+   is genbutsu exactly like the answer's own river tile (Riichi Book 1, ch. 8).
+6. Otherwise it is a **discrepancy**. Record both probabilities:
    - app probability: `report::probability_for_action(evaluation, app_name)`,
    - AI probability: `report::probability_for_action(evaluation, ai_name)`.
    With the default `--min-margin 0` any different top pick counts, even if the
    two probabilities are close.
-6. Discrepancy reason:
+7. Discrepancy reason:
    - `expected_tile_wrong` when the app expects a discard (Riichi-style `Dama`
      or `Discard`) and Mortal's top action is also a discard, but the tile
      differs.
    - `expected_action_wrong` otherwise (Riichi vs discard, Kan vs discard, etc.).
-7. The exported report's `decision.answer` is Mortal's recommendation converted
+8. The exported report's `decision.answer` is Mortal's recommendation converted
    to `ReportedAction`: `Riichi` -> riichi with the app's expected tile,
    `Discard_<tile>` -> discard with that tile (red names reduced to the plain
    code), `Kan` -> kan with the app's expected tile.

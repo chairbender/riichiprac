@@ -31,6 +31,20 @@ impl Wind {
     }
 }
 
+/// Seat index of the round's dealer (the East seat) when seat 0 holds
+/// `human_wind`.
+pub fn dealer_seat(human_wind: Wind) -> usize {
+    (Wind::ALL.len() - human_wind.index()) % Wind::ALL.len()
+}
+
+/// True when `meld` was called out of rotation: the caller claimed a tile from
+/// a seat other than the one that plays immediately before them. Such a call
+/// gives the caller an extra discard compared with the natural rotation, which
+/// is why rivers are not simply equal.
+pub fn is_out_of_rotation_call(seat: usize, meld: &CalledMeld) -> bool {
+    meld.called_from.is_some_and(|from| from != (seat + 3) % 4)
+}
+
 /// The kind of open (or closed kan) call a player has made.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MeldType {
@@ -422,4 +436,14 @@ pub struct GameState {
     // 4 Player states
     pub current_turn: usize,
     pub players: Vec<PlayerState>,
+}
+
+impl GameState {
+    /// Seat index of the round's dealer (the East seat), derived from seat 0's
+    /// wind.
+    pub fn dealer_seat(&self) -> usize {
+        self.players
+            .first()
+            .map_or(0, |player| dealer_seat(player.wind))
+    }
 }

@@ -859,7 +859,7 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
     let mut caveats = Vec::new();
     let summary = if is_chart {
         rules.extend(mechanism_rules(&read, &answer_text));
-        rules.push(chart_row_rule(&read, &answer_text));
+        rules.push(chart_row_rule(&read, &answer_text, &state.equivalent_tiles));
         rules.push(push_fold_rule(state, &read, &answer_text));
         caveats.push(
             "The chart's AAA row is dangerous only against Thirteen Orphans; the trainer keeps \
@@ -932,6 +932,14 @@ fn mechanism_rules(read: &crate::safety::TileRead, answer_text: &str) -> Vec<Boo
             "Genbutsu tiles of player X are 100% safe against X",
             ch8(CH8_GENBUTSU, 100, "100\\% safe against"),
         )],
+        SafetyMechanism::PostRiichiGenbutsu => vec![rule(
+            "genbutsu",
+            "Anyone's discard after the riichi declaration is also genbutsu for that player: the \
+             declaration fixes the wait, so it cannot ron the tile.",
+            "if X has called riichi, then all the tiles discarded by anyone after riichi (and \
+             passed up by X) are also called X's genbutsu tiles",
+            ch8(CH8_GENBUTSU, 97, "also called X's"),
+        )],
         SafetyMechanism::Suji => vec![rule(
             "suji",
             "A side wait is the most common Riichi wait, so a suji tile is safer than a \
@@ -983,7 +991,27 @@ fn mechanism_rules(read: &crate::safety::TileRead, answer_text: &str) -> Vec<Boo
 }
 
 /// Why the chart row beats the rest of the hand.
-fn chart_row_rule(read: &crate::safety::TileRead, answer_text: &str) -> BookRule {
+fn chart_row_rule(
+    read: &crate::safety::TileRead,
+    answer_text: &str,
+    equivalents: &[String],
+) -> BookRule {
+    let applies = if equivalents.is_empty() {
+        format!(
+            "{answer_text} is Rank {} ({}); every other tile in the hand ranks lower.",
+            read.rank.code(),
+            read.rank.label()
+        )
+    } else {
+        format!(
+            "{answer_text} is Rank {} ({}); the other genbutsu tiles ({}) tie it, so either \
+             discard is correct.",
+            read.rank.code(),
+            read.rank.label(),
+            equivalents.join(", ")
+        )
+    };
+
     BookRule {
         id: "safety_ranking".to_string(),
         rule: "The chart orders tiles by how many waits can catch them, and this row sits above \
@@ -993,11 +1021,7 @@ fn chart_row_rule(read: &crate::safety::TileRead, answer_text: &str) -> BookRule
                 different suji waits"
             .to_string(),
         citation: ch8(CH8_RANKING, 325, "4,5,6 tiles are the most dangerous"),
-        applies: format!(
-            "{answer_text} is Rank {} ({}); every other tile in the hand ranks lower.",
-            read.rank.code(),
-            read.rank.label()
-        ),
+        applies,
     }
 }
 
@@ -1204,9 +1228,17 @@ fn absent_tiles(
     ranked
         .into_iter()
         .map(|(rank, tile)| {
+            let equivalent = state
+                .equivalent_tiles
+                .iter()
+                .any(|entry| entry == &tile.to_string());
             let comparison = match rank.order().cmp(&answer_rank.order()) {
                 std::cmp::Ordering::Less => {
                     "the chart ranks it above the answer, but the fallback list decides"
+                }
+                std::cmp::Ordering::Equal if equivalent => {
+                    "the same 100% row as the answer: both are genbutsu, so either discard is \
+                     correct"
                 }
                 std::cmp::Ordering::Equal => "the same row as the answer, but not the pick",
                 std::cmp::Ordering::Greater => "more dangerous than the answer",

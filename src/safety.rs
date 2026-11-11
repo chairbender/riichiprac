@@ -4,7 +4,8 @@
 //! (`RiichiBook1-ch8-defense.tex`, `tbl:safety`): fifteen rows, from 100%
 //! genbutsu down to a non-suji 4/5/6. [`SafetyFacts::read`] places one tile on
 //! that chart using only what the defender can see — the threat's river
-//! (genbutsu), every visible copy (all four rivers, open melds, the dora
+//! (genbutsu), every tile anyone discarded after the threat declared Riichi
+//! (also genbutsu), every visible copy (all four rivers, open melds, the dora
 //! indicator, the defender's own hand) — plus the suji and blockade arithmetic
 //! from the same chapter.
 //!
@@ -28,7 +29,7 @@ use agari::context::indicator_to_dora;
 use agari::tile::{Honor, Suit, Tile};
 use serde::{Deserialize, Serialize};
 
-use crate::state::{GameState, Wind};
+use crate::state::{GameState, Wind, is_out_of_rotation_call};
 
 /// Discards the threat may have made before the book's one-chance read drops
 /// from "earlier turns" (BB-) to "later turns" (C).
@@ -149,6 +150,9 @@ impl SafetyRank {
 pub enum SafetyMechanism {
     /// The tile is in the threat's river.
     Genbutsu,
+    /// Anyone discarded the tile after the threat declared Riichi, so the
+    /// threat's fixed wait cannot ron it.
+    PostRiichiGenbutsu,
     /// An honor ranked by its visible copies.
     Honor,
     /// A side wait denied because the middle tile is genbutsu.
@@ -175,9 +179,17 @@ pub struct TileRead {
 pub struct SafetyFacts {
     pub round_wind: Wind,
     pub threat_wind: Wind,
-    /// The threat's discards, in river order.
+    /// The threat's own discards, in river order.
     pub genbutsu: Vec<Tile>,
-    /// The first [`EARLY_TURN_LIMIT`] of those discards.
+    /// Tiles anyone discarded after the threat declared Riichi. They are 100%
+    /// safe too: the declaration fixes the threat's wait, so it cannot ron
+    /// them.
+    ///
+    /// Ch. 8, "Genbutsu and other absolutely safe tiles": "if X has called
+    /// riichi, then all the tiles discarded by anyone after riichi (and passed
+    /// up by X) are also called X's genbutsu tiles."
+    pub post_riichi_genbutsu: Vec<Tile>,
+    /// The first [`EARLY_TURN_LIMIT`] of the threat's own discards.
     pub early_discards: Vec<Tile>,
     /// Every visible copy: all rivers, open melds, dora indicators, and the
     /// defender's own hand and draw. Hidden hands are not visible.
@@ -186,6 +198,9 @@ pub struct SafetyFacts {
 
 impl SafetyFacts {
     /// Build the facts from a threat river and an already-counted visibility map.
+    ///
+    /// Use [`Self::with_post_riichi_genbutsu`] to add the tiles anyone
+    /// discarded after the Riichi declaration.
     pub fn new(
         round_wind: Wind,
         threat_wind: Wind,
@@ -199,9 +214,22 @@ impl SafetyFacts {
             round_wind,
             threat_wind,
             genbutsu,
+            post_riichi_genbutsu: Vec::new(),
             early_discards,
             visible,
         }
+    }
+
+    /// Add every tile anyone discarded after the threat declared Riichi.
+    ///
+    /// These are genbutsu too (ch. 8), so they are exactly as safe as the
+    /// threat's own river. They are kept apart from [`Self::genbutsu`] because
+    /// the chapter's early/late reads are about the threat's own river only.
+    pub fn with_post_riichi_genbutsu(mut self, tiles: impl IntoIterator<Item = Tile>) -> Self {
+        self.post_riichi_genbutsu = tiles.into_iter().collect();
+        self.post_riichi_genbutsu.sort();
+        self.post_riichi_genbutsu.dedup();
+        self
     }
 
     /// Build the facts from a finished table state.
@@ -220,12 +248,18 @@ impl SafetyFacts {
         }
 
         let mut visible: HashMap<Tile, u8> = HashMap::new();
+        let mut rivers: Vec<Vec<Tile>> = Vec::with_capacity(state.players.len());
         for player in &state.players {
+            let mut river = Vec::with_capacity(player.discards.len());
             for discard in &player.discards {
                 if let Ok(tile) = Tile::try_from(discard.tile.as_str()) {
                     increment(&mut visible, tile);
+                    river.push(tile);
                 }
             }
+            rivers.push(river);
+        }
+        for player in &state.players {
             for meld in &player.melds {
                 for code in &meld.tiles {
                     if let Ok(tile) = Tile::try_from(code.as_str()) {
@@ -252,7 +286,28 @@ impl SafetyFacts {
             }
         }
 
-        Some(Self::new(state.round_wind, threat.wind, genbutsu, visible))
+        let facts = Self::new(state.round_wind, threat.wind, genbutsu, visible);
+
+        // Calls move the walk out of the natural rotation, so the discard the
+        // declaration landed on is no longer fixed by the river positions.
+        // The defense lessons never deal a meld, so only skip the read when a
+        // call actually breaks the rotation.
+        let Some(declaration_index) = threat.riichi_discard_index.filter(|_| threat.is_riichi)
+        else {
+            return Some(facts);
+        };
+        if state.players.iter().any(|player| {
+            player
+                .melds
+                .iter()
+                .any(|meld| is_out_of_rotation_call(player.seat, meld))
+        }) {
+            return Some(facts);
+        }
+
+        let post_riichi =
+            post_riichi_discards(&rivers, state.dealer_seat(), threat_seat, declaration_index);
+        Some(facts.with_post_riichi_genbutsu(post_riichi))
     }
 
     /// How many copies of `tile` the defender can see.
@@ -265,6 +320,12 @@ impl SafetyFacts {
         self.genbutsu.len() <= EARLY_TURN_LIMIT
     }
 
+    /// True for a tile the riichi player's fixed wait cannot ron: a tile in its
+    /// own river, or anything anyone discarded after the declaration.
+    pub fn is_genbutsu(&self, tile: Tile) -> bool {
+        self.genbutsu.contains(&tile) || self.post_riichi_genbutsu.contains(&tile)
+    }
+
     /// Place one tile on the safety chart.
     pub fn read(&self, tile: Tile) -> TileRead {
         if self.genbutsu.contains(&tile) {
@@ -272,6 +333,13 @@ impl SafetyFacts {
                 rank: SafetyRank::Genbutsu,
                 mechanism: SafetyMechanism::Genbutsu,
                 reason: format!("in the riichi player's river ({tile})"),
+            };
+        }
+        if self.post_riichi_genbutsu.contains(&tile) {
+            return TileRead {
+                rank: SafetyRank::Genbutsu,
+                mechanism: SafetyMechanism::PostRiichiGenbutsu,
+                reason: format!("discarded by someone after the riichi call ({tile})"),
             };
         }
 
@@ -432,7 +500,7 @@ impl SafetyFacts {
     }
 
     fn is_suited_genbutsu(&self, suit: Suit, value: u8) -> bool {
-        self.genbutsu.contains(&Tile::suited(suit, value))
+        self.is_genbutsu(Tile::suited(suit, value))
     }
 
     /// A protorun tile is fully blockaded when all four copies are visible.
@@ -562,6 +630,54 @@ impl StuckRules {
     }
 }
 
+/// Every discard made after `threat_seat` declared Riichi at
+/// `declaration_index` in its river.
+///
+/// Riichi Book 1, ch. 8, "Genbutsu and other absolutely safe tiles": "if X has
+/// called riichi, then all the tiles discarded by anyone after riichi (and
+/// passed up by X) are also called X's genbutsu tiles." They are 100% safe
+/// because the declaration fixes X's wait.
+///
+/// The rivers interleave, and a player's river does not record turn numbers.
+/// A plain rotation (the dealer, then one seat per discard) fixes each seat's
+/// position relative to the declaration, so `rivers[seat].skip(before)` is
+/// exactly the set of that seat's post-declaration discards. Callers must have
+/// ruled out out-of-rotation calls, which break the arithmetic.
+pub(crate) fn post_riichi_discards(
+    rivers: &[Vec<Tile>],
+    dealer: usize,
+    threat_seat: usize,
+    declaration_index: usize,
+) -> Vec<Tile> {
+    let declaration_step = seat_offset(threat_seat, dealer) as usize + 4 * declaration_index;
+
+    let mut tiles = Vec::new();
+    for (seat, river) in rivers.iter().enumerate() {
+        if seat == threat_seat {
+            continue;
+        }
+        let seat_step = seat_offset(seat, dealer) as usize;
+        let before = if seat_step <= declaration_step {
+            (declaration_step - seat_step) / 4 + 1
+        } else {
+            0
+        };
+
+        for &tile in river.iter().skip(before) {
+            if !tiles.contains(&tile) {
+                tiles.push(tile);
+            }
+        }
+    }
+
+    tiles
+}
+
+/// How many seats after the dealer `seat` plays in the opening rotation.
+fn seat_offset(seat: usize, dealer: usize) -> u8 {
+    ((seat + 4 - dealer) % 4) as u8
+}
+
 /// Upgrade a dora indicator into the dora, then test the tile and its neighbours.
 pub fn is_near_dora(tile: Tile, dora_indicators: &[Tile]) -> bool {
     dora_indicators.iter().any(|&indicator| {
@@ -636,6 +752,186 @@ mod tests {
 
     fn no_visibility(genbutsu: &[&str], wind: Wind) -> SafetyFacts {
         with_visibility(genbutsu, &[], wind, Wind::East)
+    }
+
+    fn player(
+        seat: usize,
+        wind: Wind,
+        hand: &[&str],
+        draw: Option<&str>,
+        river: &[&str],
+    ) -> PlayerState {
+        PlayerState {
+            seat,
+            name: format!("seat {seat}"),
+            is_human: seat == 0,
+            wind,
+            score: 25_000,
+            hand: hand.iter().map(|code| code.to_string()).collect(),
+            draw: draw.map(ToString::to_string),
+            red_fives: Vec::new(),
+            discards: river
+                .iter()
+                .map(|code| crate::state::DiscardTile::new(*code))
+                .collect(),
+            melds: Vec::new(),
+            is_riichi: false,
+            riichi_discard_index: None,
+        }
+    }
+
+    fn empty_state(players: Vec<PlayerState>) -> GameState {
+        GameState {
+            category: "safety_test".to_string(),
+            target_action: crate::state::TargetAction::Defend,
+            correct_action: crate::state::CorrectAction::fold("1m"),
+            equivalent_tiles: Vec::new(),
+            decision: crate::state::DecisionContext::SelfTurn,
+            ai_decision: None,
+            riichi_triggers: Vec::new(),
+            dama_reasons: Vec::new(),
+            shouminkan_triggers: Vec::new(),
+            book_rationale: None,
+            can_riichi: false,
+            hand_string: String::new(),
+            tiles: Vec::new(),
+            shanten: 2,
+            is_agari: false,
+            decompositions_count: 0,
+            ukeire_tiles: Vec::new(),
+            ukeire_total: 0,
+            round_wind: Wind::East,
+            hand_number: 1,
+            honba: 0,
+            riichi_sticks: 1,
+            dora_indicators: Vec::new(),
+            ura_dora_indicators: Vec::new(),
+            tiles_remaining: 40,
+            current_turn: 0,
+            players,
+        }
+    }
+
+    /// A self-turn table where seat 2 declared Riichi on its last discard and
+    /// Kamicha (seat 3) discarded afterwards.
+    ///
+    /// East (seat 0) is the dealer, so the turn order is 0, 1, 2, 3. Seat 2's
+    /// sixth discard is the declaration, which means seat 3's sixth discard
+    /// comes after it; seat 0's and seat 1's sixth discards came before it.
+    fn post_riichi_state() -> GameState {
+        let mut players = vec![
+            player(
+                0,
+                Wind::East,
+                &[
+                    "1m", "2m", "3m", "5m", "6m", "7m", "8m", "9m", "2s", "3s", "5s", "6s", "8s",
+                ],
+                Some("9s"),
+                &["2p", "3p", "4p", "5p", "6p", "7p"],
+            ),
+            player(
+                1,
+                Wind::South,
+                &[
+                    "1p", "3p", "5p", "7p", "9p", "2z", "3z", "4z", "6z", "7z", "4s", "7s", "9s",
+                ],
+                None,
+                &["1s", "3s", "4s", "5s", "7s", "8s"],
+            ),
+            player(
+                2,
+                Wind::West,
+                &[
+                    "1m", "3m", "5m", "7m", "9m", "1p", "3p", "5p", "7p", "9p", "2s", "4s", "6s",
+                ],
+                None,
+                &["9s", "8s", "7s", "6s", "5s", "1z"],
+            ),
+            player(
+                3,
+                Wind::North,
+                &[
+                    "2m", "4m", "6m", "8m", "2p", "4p", "6p", "8p", "2s", "4s", "6s", "8s", "2z",
+                ],
+                None,
+                &["6z", "5z", "4z", "3z", "2z", "4m"],
+            ),
+        ];
+        players[2].is_riichi = true;
+        players[2].riichi_discard_index = Some(5);
+        players[2].discards[5] = crate::state::DiscardTile::riichi("1z");
+
+        empty_state(players)
+    }
+
+    #[test]
+    fn post_riichi_discards_follow_the_turn_order() {
+        let state = post_riichi_state();
+        let rivers: Vec<Vec<Tile>> = state
+            .players
+            .iter()
+            .map(|player| {
+                player
+                    .discards
+                    .iter()
+                    .map(|discard| tile(&discard.tile))
+                    .collect()
+            })
+            .collect();
+
+        let after = post_riichi_discards(&rivers, state.dealer_seat(), 2, 5);
+
+        // Only Kamicha plays after the declaration in this timeline, and only
+        // her sixth discard does.
+        assert_eq!(after, vec![tile("4m")]);
+    }
+
+    #[test]
+    fn post_riichi_discards_are_genbutsu_like_the_threats_own_river() {
+        let state = post_riichi_state();
+        let facts = SafetyFacts::from_state(&state, 2).expect("facts must build");
+
+        // The riichi player's own river is still the source of the original
+        // genbutsu, and is not polluted by the post-declaration discards.
+        assert_eq!(facts.genbutsu.len(), 6);
+        assert_eq!(facts.post_riichi_genbutsu, vec![tile("4m")]);
+
+        let own = facts.read(tile("1z"));
+        let other = facts.read(tile("4m"));
+
+        assert_eq!(own.rank, SafetyRank::Genbutsu);
+        assert_eq!(own.mechanism, SafetyMechanism::Genbutsu);
+        assert_eq!(other.rank, SafetyRank::Genbutsu);
+        assert_eq!(other.mechanism, SafetyMechanism::PostRiichiGenbutsu);
+        assert!(
+            other.reason.contains("after the riichi call"),
+            "{}",
+            other.reason
+        );
+
+        // A discard made before the declaration is not genbutsu.
+        let before = facts.read(tile("2z"));
+        assert_ne!(before.rank, SafetyRank::Genbutsu);
+        assert_eq!(before.mechanism, SafetyMechanism::Honor);
+
+        // The post-riichi genbutsu feeds the suji arithmetic too: 4m denies the
+        // 1-4 wait, so the 1m the defender holds is a suji terminal.
+        assert_eq!(facts.read(tile("1m")).rank, SafetyRank::APlus);
+    }
+
+    #[test]
+    fn out_of_rotation_calls_skip_the_post_riichi_read() {
+        let mut state = post_riichi_state();
+        state.players[1].melds.push(crate::state::CalledMeld {
+            meld_type: crate::state::MeldType::Pon,
+            tiles: vec!["5z".to_string(); 3],
+            called_from: Some(3),
+        });
+
+        let facts = SafetyFacts::from_state(&state, 2).expect("facts must build");
+
+        assert!(facts.post_riichi_genbutsu.is_empty());
+        assert_ne!(facts.read(tile("4m")).rank, SafetyRank::Genbutsu);
     }
 
     #[test]

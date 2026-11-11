@@ -124,6 +124,42 @@ pub fn compare_expected_action(
     evaluation: &Evaluation,
     legal: &[bool],
 ) -> Comparison {
+    compare_action_set(expected, &[], evaluation, legal)
+}
+
+/// Compare the app's answer with one Mortal evaluation, accepting any tile the
+/// state declares equivalent.
+///
+/// [`crate::state::GameState::equivalent_tiles`] names discards that grade as
+/// the same answer: a shape lesson's twin tile, or a genbutsu tie where another
+/// player's post-riichi discard is as safe as the answer (Riichi Book 1, ch. 8
+/// counts both kinds as genbutsu). Mortal picking one of them is agreement, not
+/// a discrepancy.
+pub fn compare_action_set(
+    expected: &CorrectAction,
+    equivalents: &[String],
+    evaluation: &Evaluation,
+    legal: &[bool],
+) -> Comparison {
+    let mut comparison = compare_expected_action_inner(expected, evaluation, legal);
+
+    if comparison.outcome == FuzzOutcome::Discrepancy
+        && comparison.kind == Some(DiscrepancyKind::Tile)
+        && let Some(tile) = normalize_action_name(&comparison.ai_action).strip_prefix("Discard_")
+        && equivalents.iter().any(|equivalent| equivalent == tile)
+    {
+        comparison.outcome = FuzzOutcome::Agrees;
+        comparison.kind = None;
+    }
+
+    comparison
+}
+
+fn compare_expected_action_inner(
+    expected: &CorrectAction,
+    evaluation: &Evaluation,
+    legal: &[bool],
+) -> Comparison {
     let app_action = mortal_action_for_correct(expected);
     let ai_action = evaluation.recommended_action.clone();
     let app_probability = probability_for_action(evaluation, &app_action);
@@ -555,6 +591,35 @@ mod tests {
         let unresolved = evaluation("Riichi", &[("Riichi", "riichi", 0.8)]);
         let comparison = compare_expected_action(&expected, &unresolved, &mask_for(&["3p"], true));
         assert_eq!(comparison.outcome, FuzzOutcome::Agrees);
+    }
+
+    #[test]
+    fn equivalent_tiles_count_as_agreement() {
+        let expected = CorrectAction::fold("3p");
+        let evaluation = evaluation(
+            "Discard_5m",
+            &[
+                ("Discard_5m", "discard", 0.6),
+                ("Discard_3p", "discard", 0.4),
+            ],
+        );
+        let legal = mask_for(&["3p", "5m"], false);
+
+        // Without the equivalent, Mortal's tile is a discrepancy.
+        let strict = compare_expected_action(&expected, &evaluation, &legal);
+        assert_eq!(strict.outcome, FuzzOutcome::Discrepancy);
+        assert_eq!(strict.kind, Some(DiscrepancyKind::Tile));
+
+        // The state's equivalent list turns it into the same answer: another
+        // player's post-riichi discard of 5m is genbutsu too (ch. 8).
+        let tied = compare_action_set(&expected, &["5m".to_string()], &evaluation, &legal);
+        assert_eq!(tied.outcome, FuzzOutcome::Agrees);
+        assert_eq!(tied.kind, None);
+        assert_eq!(tied.ai_action, "Discard_5m");
+
+        // An unlisted tile still disagrees.
+        let other = compare_action_set(&expected, &["7s".to_string()], &evaluation, &legal);
+        assert_eq!(other.outcome, FuzzOutcome::Discrepancy);
     }
 
     #[test]

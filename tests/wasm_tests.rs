@@ -1357,6 +1357,20 @@ fn test_defense_scenarios_payload() {
             actual.sort();
             assert_eq!(actual, expected);
 
+            // Another player's post-riichi discard of a held tile ties the
+            // answer on the 100% row, so the state lists it as an equivalent
+            // answer: both are genbutsu (Riichi Book 1, ch. 8).
+            for equivalent in val["equivalent_tiles"].as_array().into_iter().flatten() {
+                let equivalent = equivalent
+                    .as_str()
+                    .expect("an equivalent answer must name a tile");
+                assert_ne!(equivalent, answer);
+                assert!(
+                    expected.contains(&equivalent),
+                    "{category} run {run}: {equivalent} is not in the hand"
+                );
+            }
+
             let total_score: i64 = players
                 .iter()
                 .map(|player| player["score"].as_i64().expect("score int"))

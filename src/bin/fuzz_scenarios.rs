@@ -24,7 +24,7 @@ use candle_nn::VarBuilder;
 use riichiprac::ai::model::MortalV4Model;
 use riichiprac::ai::wasm_bridge::{Evaluation, evaluate_state, legal_action_mask};
 use riichiprac::fuzz::{
-    Comparison, DiscrepancyKind, FuzzOutcome, FuzzSummary, compare_expected_action, file_stamp_utc,
+    Comparison, DiscrepancyKind, FuzzOutcome, FuzzSummary, compare_action_set, file_stamp_utc,
     format_rfc3339, hex_id_from_seed, provenance_note, reported_action_for_ai,
 };
 use riichiprac::generator::{SCENARIO_MANIFEST, ScenarioId, generate_puzzle};
@@ -326,7 +326,12 @@ fn run(args: &Args, model: &MortalV4Model) -> Result<FuzzSummary, String> {
         summary.evaluations += 1;
 
         let legal = legal_action_mask(&state);
-        let comparison = compare_expected_action(&state.correct_action, &evaluation, &legal);
+        let comparison = compare_action_set(
+            &state.correct_action,
+            &state.equivalent_tiles,
+            &evaluation,
+            &legal,
+        );
 
         match comparison.outcome {
             FuzzOutcome::Agrees => {

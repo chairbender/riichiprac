@@ -2,21 +2,9 @@ use agari::tile::Tile;
 
 use crate::generator::support::deck::Deck;
 use crate::rng::{gen_bool, gen_range, shuffle};
-use crate::state::{CalledMeld, DiscardTile, PlayerState, Wind};
+use crate::state::{DiscardTile, PlayerState, Wind};
 
-/// Seat index of the round's dealer (the East seat) when seat 0 holds
-/// `human_wind`.
-pub fn dealer_seat(human_wind: Wind) -> usize {
-    (Wind::ALL.len() - human_wind.index()) % Wind::ALL.len()
-}
-
-/// True when `meld` was called out of rotation: the caller claimed a tile from
-/// a seat other than the one that plays immediately before them. Such a call
-/// gives the caller an extra discard compared with the natural rotation, which
-/// is why rivers are not simply equal.
-pub fn is_out_of_rotation_call(seat: usize, meld: &CalledMeld) -> bool {
-    meld.called_from.is_some_and(|from| from != (seat + 3) % 4)
-}
+pub use crate::state::{dealer_seat, is_out_of_rotation_call};
 
 /// Plans the number of discards each seat has made in a legal, reachable
 /// timeline.

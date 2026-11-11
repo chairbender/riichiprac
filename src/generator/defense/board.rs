@@ -16,10 +16,11 @@ use crate::generator::support::analysis::evaluate_counts;
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    discards_from_tiles, random_round, random_scores_with_human_first, self_turn_river_counts,
+    dealer_seat, discards_from_tiles, random_round, random_scores_with_human_first,
+    self_turn_river_counts,
 };
 use crate::rng::{choose, gen_range, shuffle};
-use crate::safety::{SafetyFacts, SafetyRank, is_near_dora};
+use crate::safety::{SafetyFacts, SafetyRank, is_near_dora, post_riichi_discards};
 use crate::state::{CorrectAction, DecisionContext, GameState, PlayerState, TargetAction, Wind};
 
 /// Which defense question the board is asking.
@@ -105,6 +106,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
     }
 
     let mut players = Vec::with_capacity(4);
+    let mut rivers: [Vec<Tile>; 4] = std::array::from_fn(|_| Vec::new());
     let opponent_meta = [(1usize, "Shimocha"), (2, "Toimen"), (3, "Kamicha")];
     for (seat, name) in opponent_meta {
         let hand = deck
@@ -124,6 +126,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
             }
             river
         };
+        rivers[seat] = river.clone();
 
         let mut discards = discards_from_tiles(&river);
         let is_threat = seat == threat_seat;
@@ -170,8 +173,26 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
     for &tile in &human_river {
         increment(&mut visible, tile);
     }
+    rivers[0] = human_river.clone();
 
-    let table_facts = facts_now(round_wind, threat_wind, &threat_river, &visible);
+    // Riichi Book 1, ch. 8: anything anyone discarded after the declaration is
+    // genbutsu too. The generator has to know, or it can fill the learner's
+    // hand with a tile that is just as safe as the answer (or safer) and then
+    // reject a board the book would call correct.
+    let post_riichi = post_riichi_discards(
+        &rivers,
+        dealer_seat(human_wind),
+        threat_seat,
+        threat_river.len() - 1,
+    );
+
+    let table_facts = facts_now(
+        round_wind,
+        threat_wind,
+        &threat_river,
+        &post_riichi,
+        &visible,
+    );
     let answer_rank = table_facts.rank(plan.answer);
     if !accepts_answer(lesson, plan.theme, answer_rank) {
         return Err(format!(
@@ -200,13 +221,19 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         // The cheap pass drops tiles that are already at least as safe as the
         // answer (adding a copy can only move a tile *up* the chart), then the
         // live check below confirms the pick against the enlarged visible set.
-        let current = facts_now(round_wind, threat_wind, &threat_river, &visible);
+        let current = facts_now(
+            round_wind,
+            threat_wind,
+            &threat_river,
+            &post_riichi,
+            &visible,
+        );
         let floor = filler_floor(lesson, plan.answer, &current);
         let mut pool: Vec<Tile> = ALL_TILES
             .iter()
             .copied()
             .filter(|&tile| tile != plan.answer && deck.count(tile) > 0)
-            .filter(|&tile| current.rank(tile).order() > floor)
+            .filter(|&tile| rank_is_legal(current.rank(tile), floor))
             .filter(|&tile| current.visible_of(tile) < 4)
             .filter(|&tile| {
                 lesson != Lesson::StuckHeuristic || !current.outside_early_discards(tile)
@@ -218,7 +245,8 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         for tile in pool {
             let mut trial = visible.clone();
             increment(&mut trial, tile);
-            let trial_facts = facts_now(round_wind, threat_wind, &threat_river, &trial);
+            let trial_facts =
+                facts_now(round_wind, threat_wind, &threat_river, &post_riichi, &trial);
             if filler_is_legal(lesson, plan.answer, &trial_facts, &concealed, tile) {
                 deck.take(tile)?;
                 visible = trial;
@@ -275,7 +303,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         return Err("No drawable tiles remain".to_string());
     }
 
-    let state = GameState {
+    let mut state = GameState {
         category: category.to_string(),
         target_action: TargetAction::Defend,
         correct_action: CorrectAction::fold(plan.answer.to_string()),
@@ -304,10 +332,45 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         current_turn: 0,
         players,
     };
+    state.equivalent_tiles = genbutsu_ties(&state, threat_seat)?;
 
     validate(&state, threat_seat, lesson, plan.theme)?;
 
     Ok(state)
+}
+
+/// Every hand tile that ties the answer on the chart's 100% row.
+///
+/// The threat's river and every discard anyone made after the threat declared
+/// Riichi are all genbutsu (ch. 8 lists both kinds), so a held copy of any of
+/// them is exactly as safe as the answer. The generator keeps the board and
+/// names the tie as an equivalent answer instead of re-rolling against the
+/// model's pick.
+fn genbutsu_ties(state: &GameState, threat_seat: usize) -> Result<Vec<String>, String> {
+    let facts = SafetyFacts::from_state(state, threat_seat)
+        .ok_or_else(|| "No safety facts for the threat seat".to_string())?;
+    let answer = Tile::try_from(
+        state
+            .correct_action
+            .tile()
+            .ok_or_else(|| "The fold answer must name a tile".to_string())?,
+    )
+    .map_err(|err| err.to_string())?;
+    if facts.rank(answer) != SafetyRank::Genbutsu {
+        return Ok(Vec::new());
+    }
+
+    let mut ties: Vec<String> = state
+        .tiles
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .filter(|tile| *tile != answer && facts.rank(*tile) == SafetyRank::Genbutsu)
+        .map(|tile| tile.to_string())
+        .collect();
+    ties.sort();
+    ties.dedup();
+
+    Ok(ties)
 }
 
 /// True when the answer's chart row is the one the theme is teaching.
@@ -342,15 +405,27 @@ fn accepts_answer(lesson: Lesson, theme: SafetyTheme, rank: SafetyRank) -> bool 
 
 /// The chart row a filler must be worse than.
 ///
-/// Chart lessons keep every filler strictly below the answer, so the answer is
-/// the unique best tile. The fallback lesson only requires that nothing in the
-/// hand is identified as safe; the pair and early-discard rules then pick the
-/// answer, and the generator re-checks that they pick it alone.
+/// Chart lessons keep every filler below the answer, so the answer is the best
+/// tile. The fallback lesson only requires that nothing in the hand is
+/// identified as safe; the pair and early-discard rules then pick the answer,
+/// and the generator re-checks that they pick it alone.
 fn filler_floor(lesson: Lesson, answer: Tile, facts: &SafetyFacts) -> u8 {
     match lesson {
         Lesson::StuckHeuristic => SafetyRank::B.order(),
         Lesson::SafetyChart => facts.rank(answer).order(),
     }
+}
+
+/// True when a tile on `rank` is allowed next to the answer at `floor`.
+///
+/// Strictly worse is always allowed. A tie is allowed only on the 100% row: if
+/// the answer is genbutsu, another genbutsu tile the learner holds (a copy of
+/// the threat's river, or of anyone's post-riichi discard) is equally safe
+/// (ch. 8), and the generator keeps that board instead of re-rolling. Every
+/// other row still needs a strict gap, or the "safest discard" would not be the
+/// answer.
+fn rank_is_legal(rank: SafetyRank, floor: u8) -> bool {
+    rank.order() > floor || (rank.order() == floor && rank == SafetyRank::Genbutsu)
 }
 
 fn filler_is_legal(
@@ -361,7 +436,7 @@ fn filler_is_legal(
     tile: Tile,
 ) -> bool {
     let floor = filler_floor(lesson, answer, facts);
-    let legal_order = |candidate: Tile| facts.rank(candidate).order() > floor;
+    let legal_order = |candidate: Tile| rank_is_legal(facts.rank(candidate), floor);
 
     // Never let the hand complete a blockade of its own, and keep the fill
     // varied: four visible copies would silently promote the neighbours.
@@ -456,13 +531,30 @@ fn validate(
             continue;
         }
         seen.push(*tile);
-        if facts.rank(*tile).order() <= floor {
+        let rank = facts.rank(*tile);
+        if !rank_is_legal(rank, floor) {
             return Err(format!(
                 "{} is Rank {}, inside the lesson's safe range",
                 tile,
-                facts.rank(*tile).code()
+                rank.code()
             ));
         }
+    }
+
+    // A genbutsu tie is graded as the same answer, so it has to be recorded.
+    let mut expected_ties: Vec<String> = hand_tiles
+        .iter()
+        .filter(|tile| **tile != answer)
+        .filter(|tile| facts.rank(**tile) == SafetyRank::Genbutsu)
+        .map(|tile| tile.to_string())
+        .collect();
+    expected_ties.sort();
+    expected_ties.dedup();
+    if expected_ties != state.equivalent_tiles {
+        return Err(format!(
+            "The genbutsu ties are {:?}, but the state lists {:?}",
+            expected_ties, state.equivalent_tiles
+        ));
     }
 
     if lesson == Lesson::StuckHeuristic {
@@ -523,6 +615,7 @@ fn facts_now(
     round_wind: Wind,
     threat_wind: Wind,
     threat_river: &[Tile],
+    post_riichi: &[Tile],
     visible: &HashMap<Tile, u8>,
 ) -> SafetyFacts {
     SafetyFacts::new(
@@ -531,6 +624,7 @@ fn facts_now(
         threat_river.to_vec(),
         visible.clone(),
     )
+    .with_post_riichi_genbutsu(post_riichi.iter().copied())
 }
 
 fn take(deck: &mut Deck, visible: &mut HashMap<Tile, u8>, tile: Tile) -> Result<(), String> {
@@ -570,7 +664,7 @@ mod tests {
     }
 
     #[test]
-    fn chart_lesson_offers_a_unique_safest_discard() {
+    fn chart_lesson_names_the_safest_discard() {
         for run in 0..40 {
             let state = generate_safety_chart("defense_safety_chart")
                 .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
@@ -594,15 +688,34 @@ mod tests {
             let answer_rank = facts.rank(answer);
             assert!(answer_rank.order() <= SafetyRank::Cc.order());
 
-            for tile in state.tiles.iter().map(|code| Tile::try_from(code.as_str())) {
-                let tile = tile.expect("tile code");
+            for code in &state.tiles {
+                let tile = Tile::try_from(code.as_str()).expect("tile code");
                 if tile == answer {
                     continue;
                 }
+                let rank = facts.rank(tile);
+                // Another player's post-riichi discard of the same tile ties
+                // the answer on the 100% row (ch. 8 calls both genbutsu), so
+                // the board keeps that tie as an equivalent answer. Every
+                // other tile must be strictly worse.
+                let tie = rank == SafetyRank::Genbutsu && answer_rank == SafetyRank::Genbutsu;
                 assert!(
-                    facts.rank(tile).order() > answer_rank.order(),
+                    tie || rank.order() > answer_rank.order(),
                     "run {run}: {tile} is not strictly worse than the answer"
                 );
+                if tie {
+                    assert!(
+                        state.equivalent_tiles.contains(&tile.to_string()),
+                        "run {run}: the genbutsu tie {tile} must grade as correct"
+                    );
+                }
+            }
+
+            for equivalent in &state.equivalent_tiles {
+                let tile = Tile::try_from(equivalent.as_str()).expect("equivalent tile");
+                assert_ne!(tile, answer);
+                assert_eq!(facts.rank(tile), SafetyRank::Genbutsu);
+                assert!(state.tiles.contains(equivalent));
             }
 
             assert!(state.shanten >= MIN_SHANTEN);
@@ -672,6 +785,20 @@ mod tests {
             assert!(rules.pair_or_set);
             assert!(rules.outside_early);
         }
+    }
+
+    #[test]
+    fn genbutsu_ties_are_legal_but_no_other_tie_is() {
+        // A second 100% tile ties the genbutsu answer and is accepted.
+        assert!(rank_is_legal(
+            SafetyRank::Genbutsu,
+            SafetyRank::Genbutsu.order()
+        ));
+        // Anything strictly below the answer is fine.
+        assert!(rank_is_legal(SafetyRank::Bbb, SafetyRank::Genbutsu.order()));
+        // A tie on any other row is not: the answer would not be unique.
+        assert!(!rank_is_legal(SafetyRank::Bbb, SafetyRank::Bbb.order()));
+        assert!(!rank_is_legal(SafetyRank::A, SafetyRank::B.order()));
     }
 
     #[test]
