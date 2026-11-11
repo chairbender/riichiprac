@@ -1,6 +1,7 @@
 //! Scenario generators, organized one module per lesson.
 //!
-//! - `block_theory`: 5-block random hands and the ryanmen protorun lesson.
+//! - `block_theory`: 5-block random hands, the ryanmen protorun lesson, and
+//!   the nakabukure (bulging float) ready-hand lesson.
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
 //! - `shouminkan_decision`: Added Kan decision lesson.
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
@@ -89,6 +90,15 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::NakabukureReady,
+        label: "Nakabukure Ready",
+        description: "Block theory: in a ready hand, drop the bulging float for the bigger wait.",
+        category: ScenarioCategory::TileEfficiency,
+        tags: &["block_theory", "discard", "nakabukure", "shape"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::ChiitoitsuRiichiVsDama,
         label: "Chiitoitsu Riichi vs Dama",
         description: "Seven pairs: decide whether to declare Riichi or stay dama.",
@@ -160,6 +170,7 @@ pub fn list_scenarios_json() -> String {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScenarioId {
     RyanmenProtorun,
+    NakabukureReady,
     ChiitoitsuRiichiVsDama,
     ShouminkanDecision,
     ShouminkanDecline,
@@ -170,6 +181,7 @@ impl ScenarioId {
     /// Every real scenario, excluding the UI fixture.
     pub const ALL: &'static [ScenarioId] = &[
         ScenarioId::RyanmenProtorun,
+        ScenarioId::NakabukureReady,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::ShouminkanDecision,
         ScenarioId::ShouminkanDecline,
@@ -180,6 +192,7 @@ impl ScenarioId {
     pub fn as_str(self) -> &'static str {
         match self {
             ScenarioId::RyanmenProtorun => "ryanmen_protorun",
+            ScenarioId::NakabukureReady => "nakabukure_ready",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
             ScenarioId::ShouminkanDecline => "shouminkan_decline",
@@ -191,6 +204,7 @@ impl ScenarioId {
     pub fn from_id(id: &str) -> Option<Self> {
         match id {
             "ryanmen_protorun" => Some(ScenarioId::RyanmenProtorun),
+            "nakabukure_ready" => Some(ScenarioId::NakabukureReady),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
             "shouminkan_decline" => Some(ScenarioId::ShouminkanDecline),
@@ -203,6 +217,7 @@ impl ScenarioId {
     pub fn generate(self, category: &str) -> Result<GameState, String> {
         match self {
             ScenarioId::RyanmenProtorun => block_theory::ryanmen_protorun::generate(category),
+            ScenarioId::NakabukureReady => block_theory::nakabukure_ready::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
             ScenarioId::ShouminkanDecline => shouminkan_decision::generate_decline(category),
