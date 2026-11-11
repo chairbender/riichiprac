@@ -444,7 +444,7 @@ impl TimelineSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::generator::support::table::{dealer_seat, river_counts, self_turn_river_counts};
+    use crate::generator::support::table::{dealer_seat, river_counts, self_turn_river_plan};
     use crate::state::{CalledMeld, DiscardTile, PlayerState, Wind};
 
     fn player(seat: usize, wind: Wind, discards: usize) -> PlayerState {
@@ -508,7 +508,7 @@ mod tests {
     fn planned_self_turn_rivers_are_reachable_for_every_wind() {
         for wind in Wind::ALL {
             for min in [0, 1, 4, 9, 13] {
-                let counts = self_turn_river_counts(wind, &[], min);
+                let counts = self_turn_river_plan(wind, &[], min).counts;
                 let state = self_turn_state(wind, counts);
                 validate_reachable_state(&state).unwrap_or_else(|err| {
                     panic!("wind {wind:?} min {min} counts {counts:?}: {err}")
@@ -520,7 +520,7 @@ mod tests {
     #[test]
     fn planned_call_rivers_are_reachable() {
         for wind in Wind::ALL {
-            let counts = self_turn_river_counts(wind, &[(0, 1)], 3);
+            let counts = self_turn_river_plan(wind, &[(0, 1)], 3).counts;
             let mut state = self_turn_state(wind, counts);
             state.players[0].hand = vec!["1m".to_string(); 10];
             state.players[0].melds = vec![CalledMeld {
@@ -563,7 +563,7 @@ mod tests {
 
     #[test]
     fn a_meld_that_breaks_the_tile_count_is_rejected() {
-        let counts = self_turn_river_counts(Wind::East, &[(0, 1)], 3);
+        let counts = self_turn_river_plan(Wind::East, &[(0, 1)], 3).counts;
         let mut state = self_turn_state(Wind::East, counts);
         state.players[0].melds = vec![CalledMeld {
             meld_type: MeldType::Pon,
@@ -577,7 +577,7 @@ mod tests {
 
     #[test]
     fn a_chi_from_the_wrong_seat_is_rejected() {
-        let counts = self_turn_river_counts(Wind::East, &[], 3);
+        let counts = self_turn_river_plan(Wind::East, &[], 3).counts;
         let mut state = self_turn_state(Wind::East, counts);
         state.players[1].hand = vec!["1m".to_string(); 10];
         state.players[1].melds = vec![CalledMeld {

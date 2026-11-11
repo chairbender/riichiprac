@@ -43,6 +43,16 @@ pub struct SubmittedAnswer {
     /// Mortal action name for an AI-scenario answer (`Chi_Low`, `Pon`, ...).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action_name: Option<String>,
+    /// True when the submitted discard was the tile just drawn (tsumogiri).
+    ///
+    /// Recorded for reports and analysis only: grading still compares the
+    /// action family and the tile, never how the tile left the hand.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub is_tsumogiri: bool,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 impl SubmittedAnswer {
@@ -52,6 +62,7 @@ impl SubmittedAnswer {
             tile: tile.into(),
             tile_index: None,
             action_name: None,
+            is_tsumogiri: false,
         }
     }
 
@@ -641,6 +652,25 @@ mod tests {
 
     fn answer(action: CorrectActionType, tile: &str) -> SubmittedAnswer {
         SubmittedAnswer::new(action, tile)
+    }
+
+    #[test]
+    fn submitted_answer_tsumogiri_defaults_false_and_is_optional_on_the_wire() {
+        // Old reports and callers that predate the field still deserialize.
+        let old: SubmittedAnswer =
+            serde_json::from_str(r#"{"action":"dama","tile":"5m"}"#).expect("old answer parses");
+        assert!(!old.is_tsumogiri);
+
+        // False is omitted, keeping the report payload unchanged for the
+        // common case.
+        let value = serde_json::to_value(SubmittedAnswer::new(CorrectActionType::Dama, "5m"))
+            .expect("answer serializes");
+        assert!(value.get("is_tsumogiri").is_none());
+
+        let marked: SubmittedAnswer =
+            serde_json::from_str(r#"{"action":"dama","tile":"5m","is_tsumogiri":true}"#)
+                .expect("marked answer parses");
+        assert!(marked.is_tsumogiri);
     }
 
     #[test]

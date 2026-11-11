@@ -6,8 +6,21 @@ use crate::state::{DiscardTile, PlayerState, Wind};
 
 pub use crate::state::{dealer_seat, is_out_of_rotation_call};
 
-/// Plans the number of discards each seat has made in a legal, reachable
-/// timeline.
+/// One legal, reachable timeline of discards.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RiverPlan {
+    /// Number of discards each seat has made.
+    pub counts: [usize; 4],
+    /// For each seat, the indices of discards made immediately after a call.
+    ///
+    /// The caller discards from the concealed hand there, so those entries are
+    /// always tedashi. Planned calls are treated as chi/pon/daiminkan; the
+    /// timeline does not model closed/added kans, whose replacement draw does
+    /// allow a tsumogiri follow-up.
+    pub hand_discards: [Vec<usize>; 4],
+}
+
+/// Plans one legal, reachable discard timeline.
 ///
 /// The walk starts with the dealer and advances one seat per discard. A call
 /// `(caller, called_from)` is inserted directly after the discard it claims, so
@@ -18,12 +31,12 @@ pub use crate::state::{dealer_seat, is_out_of_rotation_call};
 /// This is the generation-side counterpart of
 /// [`crate::generator::support::state_validation::validate_reachable_state`]:
 /// rivers produced here always pass that check.
-pub fn river_counts(
+pub fn plan_rivers(
     dealer: usize,
     last_discarder: usize,
     calls: &[(usize, usize)],
     min_discards: usize,
-) -> [usize; 4] {
+) -> RiverPlan {
     assert!(dealer < 4, "dealer seat out of range");
     assert!(last_discarder < 4, "last discarder seat out of range");
     for &(caller, from) in calls {
@@ -31,7 +44,7 @@ pub fn river_counts(
     }
 
     let mut pending = calls.to_vec();
-    let mut counts = [0usize; 4];
+    let mut plan = RiverPlan::default();
     let mut seat = dealer;
 
     // Every call lands within one rotation, the stop seat within one more, and
@@ -39,11 +52,14 @@ pub fn river_counts(
     // hard safety bound.
     let limit = 4 * min_discards + 4 * calls.len() + 8;
     for _ in 0..limit {
-        counts[seat] += 1;
+        plan.counts[seat] += 1;
         let last = seat;
 
         if let Some(index) = pending.iter().position(|(_, from)| *from == seat) {
             let (caller, _) = pending.remove(index);
+            // The caller's next discard is the entry at the current count, and
+            // it comes from the hand rather than a draw.
+            plan.hand_discards[caller].push(plan.counts[caller]);
             seat = caller;
         } else {
             seat = (seat + 1) % 4;
@@ -51,26 +67,36 @@ pub fn river_counts(
 
         if pending.is_empty()
             && last == last_discarder
-            && counts.iter().all(|&count| count >= min_discards)
+            && plan.counts.iter().all(|&count| count >= min_discards)
         {
-            return counts;
+            return plan;
         }
     }
 
     panic!("river plan did not terminate for dealer {dealer} and calls {calls:?}");
 }
 
-/// Per-seat river lengths for a state where the human (seat 0) has just drawn
-/// and is about to discard.
-///
-/// The human draws after Kamicha (seat 3) discards, so the timeline has to end
-/// on seat 3's discard.
-pub fn self_turn_river_counts(
-    human_wind: Wind,
+/// Per-seat river lengths, for callers that do not need the call positions.
+pub fn river_counts(
+    dealer: usize,
+    last_discarder: usize,
     calls: &[(usize, usize)],
     min_discards: usize,
 ) -> [usize; 4] {
-    river_counts(dealer_seat(human_wind), 3, calls, min_discards)
+    plan_rivers(dealer, last_discarder, calls, min_discards).counts
+}
+
+/// River plan for a state where the human (seat 0) has just drawn and is about
+/// to discard.
+///
+/// The human draws after Kamicha (seat 3) discards, so the timeline has to end
+/// on seat 3's discard.
+pub fn self_turn_river_plan(
+    human_wind: Wind,
+    calls: &[(usize, usize)],
+    min_discards: usize,
+) -> RiverPlan {
+    plan_rivers(dealer_seat(human_wind), 3, calls, min_discards)
 }
 
 /// Converts tiles into river entries, randomizing tsumogiri flags.
@@ -85,6 +111,19 @@ pub fn discards_from_tiles(tiles: &[Tile]) -> Vec<DiscardTile> {
             }
         })
         .collect()
+}
+
+/// Clears the tsumogiri flag on discards the timeline says came from the hand.
+///
+/// A player who has just called (chi, pon or daiminkan) discards from their
+/// concealed hand, so the entry immediately after the call can never be
+/// tsumogiri. Call with [`RiverPlan::hand_discards`] for the matching seat.
+pub fn force_tedashi(discards: &mut [DiscardTile], hand_discards: &[usize]) {
+    for &index in hand_discards {
+        if let Some(discard) = discards.get_mut(index) {
+            discard.is_tsumogiri = false;
+        }
+    }
 }
 
 /// Picks a round that is South 2 or earlier.
@@ -219,14 +258,15 @@ pub struct OpponentDeal {
 
 /// Deals concealed hands and rivers to the three opponents.
 ///
-/// Scores are seat-ordered with the human at index 0. `river_counts` holds the
-/// number of discards each seat has made; plan it with [`river_counts`] so the
-/// resulting table is a reachable position.
+/// Scores are seat-ordered with the human at index 0. `plan` holds the number
+/// of discards each seat has made (plan it with [`plan_rivers`] so the
+/// resulting table is a reachable position) plus the discards that follow a
+/// call, which are forced to tedashi.
 pub fn deal_opponents(
     deck: &mut Deck,
     human_wind: Wind,
     scores: &[i32; 4],
-    river_counts: &[usize; 4],
+    plan: &RiverPlan,
 ) -> Option<OpponentDeal> {
     let opponent_meta = [(1usize, "Shimocha"), (2, "Toimen"), (3, "Kamicha")];
 
@@ -234,8 +274,10 @@ pub fn deal_opponents(
     let mut rivers = Vec::with_capacity(3);
     for (index, (seat, name)) in opponent_meta.iter().enumerate() {
         let hand = deck.draw_n(13)?;
-        let river = deck.draw_n(river_counts[*seat])?;
+        let river = deck.draw_n(plan.counts[*seat])?;
         rivers.push(river.clone());
+        let mut discards = discards_from_tiles(&river);
+        force_tedashi(&mut discards, &plan.hand_discards[*seat]);
         players.push(PlayerState {
             seat: *seat,
             name: name.to_string(),
@@ -245,7 +287,7 @@ pub fn deal_opponents(
             hand: hand.iter().map(|tile| tile.to_string()).collect(),
             draw: None,
             red_fives: Vec::new(),
-            discards: discards_from_tiles(&river),
+            discards,
             melds: Vec::new(),
             is_riichi: false,
             riichi_discard_index: None,
@@ -257,6 +299,8 @@ pub fn deal_opponents(
 
 #[cfg(test)]
 mod tests {
+    use agari::tile::Suit;
+
     use super::*;
 
     #[test]
@@ -296,5 +340,40 @@ mod tests {
             assert_eq!(scores[0], 20_000);
             assert_eq!(scores.iter().sum::<i32>(), 100_000);
         }
+    }
+
+    #[test]
+    fn river_plan_marks_the_discard_after_a_call_as_a_hand_discard() {
+        // East dealer: seat 1 claims seat 0's opening discard, so seat 1's
+        // first river entry (index 0) comes from the hand.
+        let plan = plan_rivers(dealer_seat(Wind::East), 3, &[(1, 0)], 3);
+        assert!(plan.hand_discards[0].is_empty());
+        assert_eq!(plan.hand_discards[1], vec![0]);
+        assert!(plan.hand_discards[2].is_empty());
+        assert!(plan.hand_discards[3].is_empty());
+    }
+
+    #[test]
+    fn river_plan_marks_a_mid_river_call_the_same_way() {
+        // Seat 0 claims seat 1's first discard: seat 0 had already discarded
+        // once, so its next entry (index 1) is the hand discard.
+        let plan = plan_rivers(dealer_seat(Wind::East), 3, &[(0, 1)], 3);
+        assert_eq!(plan.hand_discards[0], vec![1]);
+        assert!(plan.hand_discards[1].is_empty());
+    }
+
+    #[test]
+    fn force_tedashi_clears_the_listed_discards() {
+        let tiles = [
+            Tile::suited(Suit::Man, 1),
+            Tile::suited(Suit::Pin, 2),
+            Tile::suited(Suit::Sou, 3),
+        ];
+        let mut discards = discards_from_tiles(&tiles);
+        force_tedashi(&mut discards, &[0, 2]);
+        assert!(!discards[0].is_tsumogiri);
+        assert!(!discards[2].is_tsumogiri);
+        // Out-of-range indices are ignored rather than panicking.
+        force_tedashi(&mut discards, &[9]);
     }
 }

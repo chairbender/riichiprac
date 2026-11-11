@@ -182,6 +182,36 @@
   height: auto;
 }
 
+/* Legend for the tsumogiri dot in the rivers; only shown when one is used. */
+.table-legend {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid #262b36;
+  border-radius: 8px;
+  background-color: #171a21;
+}
+
+.table-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #b9c2d0;
+  font-size: 0.7rem;
+}
+
+.tsumogiri-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #4dd4ac;
+  box-shadow: 0 0 0 1px #0d1016;
+}
+
 /* Scenario explanation ---------------------------------------------------- */
 
 .scenario-explanation {
@@ -351,6 +381,7 @@
 }
 
 .river-slot {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -367,6 +398,28 @@
 /* The Riichi declaration tile is discarded sideways. */
 .river-slot--riichi .river-tile {
   transform: rotate(90deg);
+}
+
+/*
+ * Tsumogiri: a tile thrown straight off the draw. The tile reads slightly
+ * darker than a hand discard, and a dot in the slot's corner makes the
+ * distinction unambiguous without moving the tile or adding skeuomorphic
+ * furniture.
+ */
+.river-slot--tsumogiri .river-tile {
+  filter: brightness(0.72) saturate(0.85);
+}
+
+.river-slot--tsumogiri::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #4dd4ac;
+  box-shadow: 0 0 0 1px #0d1016;
 }
 
 /* Pinned human hand ------------------------------------------------------- */

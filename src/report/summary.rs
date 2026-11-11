@@ -315,7 +315,7 @@ fn describe_correct_action(action: &CorrectAction) -> String {
 }
 
 fn describe_reported_action(answer: &ReportedAction) -> String {
-    match answer.action {
+    let mut text = match answer.action {
         CorrectActionType::Riichi => format!(
             "Riichi, discarding {}",
             format_tile_for_display(&answer.tile, false)
@@ -340,7 +340,11 @@ fn describe_reported_action(answer: &ReportedAction) -> String {
             .action_name
             .clone()
             .unwrap_or_else(|| format!("Discard {}", format_tile_for_display(&answer.tile, false))),
+    };
+    if answer.is_tsumogiri {
+        text.push_str(" (tsumogiri)");
     }
+    text
 }
 
 fn format_melds(player: &PlayerState) -> String {
@@ -510,6 +514,37 @@ mod tests {
         assert!(text.contains("Shimocha"));
         assert!(text.contains("Toimen"));
         assert!(text.contains("Kamicha"));
+    }
+
+    #[test]
+    fn summary_marks_a_tsumogiri_answer() {
+        let table = mock_table::generate("mock_table").expect("fixture must build");
+        let discard = table
+            .correct_action
+            .tile()
+            .expect("fixture answer tile")
+            .to_string();
+        let mut answer = ReportedAction::new(CorrectActionType::Dama, discard);
+        answer.is_tsumogiri = true;
+        let request = BuildReportRequest {
+            table,
+            answer,
+            reason: ReportReason::ExpectedTileWrong,
+            note: None,
+            created_at: "2026-11-10T08:42:11.031Z".to_string(),
+            report_id: "8b0e5c0e-4f1b-4f7e-9b3e-2a7c1d9e6f11".to_string(),
+            commit: None,
+            build_time: None,
+            ai: None,
+        };
+
+        let report = build_report(request).expect("report must build");
+        let text = report.human_readable.join("\n");
+        assert!(
+            text.contains("Reporter answered: Dama, discarding") && text.contains("(tsumogiri)"),
+            "the tsumogiri marker is shown: {text}"
+        );
+        assert!(report.decision.answer.is_tsumogiri);
     }
 
     #[test]

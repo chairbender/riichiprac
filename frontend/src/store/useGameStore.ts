@@ -22,6 +22,8 @@ export interface SubmittedAnswer {
   tile_index?: number;
   /** Mortal action name, e.g. `Discard_3m`, `Chi_Low`, `Pon`, `Pass`. */
   action_name?: string;
+  /** True when the discarded tile was the draw (tsumogiri). */
+  is_tsumogiri?: boolean;
 }
 
 /** A generic choice from the action bar. */
@@ -30,6 +32,8 @@ export interface PlayerChoice {
   action: string;
   /** Clicked or claimed tile code, when the action has one. */
   tile?: string;
+  /** Index of the clicked copy in the hand dock (`[...hand, draw]`). */
+  tileIndex?: number;
   /** Additional tiles consumed by a call (chi). */
   tiles?: string[];
   /** Optional label override; normally taken from the payload. */
@@ -174,6 +178,43 @@ const emptyState = {
   | 'reportNotice'
   | 'isReportRetry'
 >;
+
+/**
+ * True when this answer throws the tile just drawn, which makes the discard
+ * tsumogiri. Calls and a riichi toggle alone never qualify; only an action that
+ * discards the draw does.
+ */
+function submitsTheDraw(game: GameState, answer: SubmittedAnswer): boolean {
+  const human = game.players.find((player) => player.is_human);
+  if (!human?.draw) return false;
+
+  // The dock renders `[...hand, draw]`, so the draw's index is the hand length.
+  // Prefer the clicked copy when the caller provides it; a hand copy with the
+  // same code is tedashi, not tsumogiri.
+  const clickedTheDraw =
+    answer.tile_index !== undefined
+      ? answer.tile_index === human.hand.length
+      : answer.tile === human.draw;
+  if (!clickedTheDraw) return false;
+
+  switch (answer.action) {
+    case 'riichi':
+    case 'dama':
+    case 'fold':
+    case 'discard':
+      return true;
+    case 'best': {
+      // A declaration discards a tile too; the drawn tile can be that discard.
+      const action = answer.action_name;
+      return (
+        action !== undefined &&
+        (action.startsWith('Discard') || action === 'Riichi')
+      );
+    }
+    default:
+      return false;
+  }
+}
 
 export const useGameStore = create<GameStore>((set, get) => {
   /** One-slot queue so a puzzle swap during a forward pass is not dropped. */
@@ -355,6 +396,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         get().submitChoice({
           action: info?.action ?? action,
           tile,
+          tileIndex,
           tiles: info?.tiles,
           label: info?.label,
         });
@@ -380,6 +422,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (tileIndex !== undefined) {
         answer.tile_index = tileIndex;
       }
+      if (submitsTheDraw(game, answer)) {
+        answer.is_tsumogiri = true;
+      }
       get().submitAnswer(answer);
     },
 
@@ -393,6 +438,12 @@ export const useGameStore = create<GameStore>((set, get) => {
       };
       if (choice.action) {
         answer.action_name = choice.action;
+      }
+      if (choice.tileIndex !== undefined) {
+        answer.tile_index = choice.tileIndex;
+      }
+      if (submitsTheDraw(game, answer)) {
+        answer.is_tsumogiri = true;
       }
       get().submitAnswer(answer);
     },
@@ -489,6 +540,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         }
         if (answer.action_name !== undefined) {
           submitted.action_name = answer.action_name;
+        }
+        if (answer.is_tsumogiri !== undefined) {
+          submitted.is_tsumogiri = answer.is_tsumogiri;
         }
 
         const embedded = report.ai?.evaluation ?? null;

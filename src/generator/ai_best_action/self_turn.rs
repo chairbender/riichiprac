@@ -5,7 +5,7 @@ use agari::tile::{Suit, Tile};
 use crate::generator::support::analysis::{HandMetrics, evaluate_hand};
 use crate::generator::support::deck::ALL_TILES;
 use crate::generator::support::format::format_hand_compact;
-use crate::generator::support::table::discards_from_tiles;
+use crate::generator::support::table::{discards_from_tiles, force_tedashi};
 use crate::rng::{choose, gen_bool, gen_range, shuffle};
 use crate::state::{
     CalledMeld, CorrectAction, DecisionContext, GameState, MeldType, PlayerState, TargetAction,
@@ -335,7 +335,11 @@ fn assemble(
         hand: hand.iter().map(|tile| tile.to_string()).collect(),
         draw: Some(draw.to_string()),
         red_fives,
-        discards: discards_from_tiles(&table.human_river),
+        discards: {
+            let mut discards = discards_from_tiles(&table.human_river);
+            force_tedashi(&mut discards, &table.human_hand_discards);
+            discards
+        },
         melds,
         is_riichi: false,
         riichi_discard_index: None,

@@ -16,8 +16,8 @@ use crate::generator::support::analysis::evaluate_counts;
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    dealer_seat, discards_from_tiles, random_round, random_scores_with_human_first,
-    self_turn_river_counts,
+    dealer_seat, discards_from_tiles, force_tedashi, random_round, random_scores_with_human_first,
+    self_turn_river_plan,
 };
 use crate::rng::{choose, gen_range, shuffle};
 use crate::safety::{SafetyFacts, SafetyRank, is_near_dora, post_riichi_discards};
@@ -72,8 +72,8 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
     // The threat's river: the theme's pattern in the early turns, then filler.
     // Every river comes from one legal timeline ending on Kamicha's discard,
     // so the seat counts line up no matter which seat the human holds.
-    let counts = self_turn_river_counts(human_wind, &[], gen_range(8, 15));
-    let discard_count = counts[threat_seat];
+    let river_plan = self_turn_river_plan(human_wind, &[], gen_range(8, 15));
+    let discard_count = river_plan.counts[threat_seat];
     let mut threat_river = Vec::with_capacity(discard_count);
     for &tile in &plan.threat_discards {
         if threat_river.len() >= discard_count {
@@ -117,7 +117,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
             threat_river.clone()
         } else {
             let mut river = extra_by_seat.remove(&seat).unwrap_or_default();
-            while river.len() < counts[seat] {
+            while river.len() < river_plan.counts[seat] {
                 let tile = deck
                     .draw()
                     .ok_or_else(|| "Deck exhausted drawing an opponent river".to_string())?;
@@ -129,6 +129,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         rivers[seat] = river.clone();
 
         let mut discards = discards_from_tiles(&river);
+        force_tedashi(&mut discards, &river_plan.hand_discards[seat]);
         let is_threat = seat == threat_seat;
         if is_threat && let Some(last) = discards.last_mut() {
             // The declaration tile is discarded from the hand, never tsumogiri.
@@ -168,7 +169,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         .ok_or_else(|| "Deck exhausted drawing the ura indicator".to_string())?;
 
     let human_river = deck
-        .draw_n(counts[0])
+        .draw_n(river_plan.counts[0])
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
     for &tile in &human_river {
         increment(&mut visible, tile);
@@ -289,7 +290,11 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         hand: concealed.iter().map(ToString::to_string).collect(),
         draw: Some(plan.answer.to_string()),
         red_fives: Vec::new(),
-        discards: discards_from_tiles(&human_river),
+        discards: {
+            let mut discards = discards_from_tiles(&human_river);
+            force_tedashi(&mut discards, &river_plan.hand_discards[0]);
+            discards
+        },
         melds: Vec::new(),
         is_riichi: false,
         riichi_discard_index: None,

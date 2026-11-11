@@ -14,7 +14,7 @@ use crate::generator::support::analysis::{evaluate_counts, wind_to_honor};
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    deal_opponents, random_scores_with_human_first, river_counts,
+    RiverPlan, deal_opponents, random_scores_with_human_first, river_counts,
 };
 use crate::rng::choose;
 use crate::state::{
@@ -99,7 +99,13 @@ pub(super) fn build(category: &str) -> Result<GameState, String> {
     let ura_indicator = draw_suited(&mut deck, &[])?;
 
     let scores = random_scores_with_human_first();
-    let deal = deal_opponents(&mut deck, plan.human_wind, &scores, &plan.river_counts)
+    // Wind order already plans the rivers without calls, so no discard in the
+    // plan is forced tedashi.
+    let river_plan = RiverPlan {
+        counts: plan.river_counts,
+        ..RiverPlan::default()
+    };
+    let deal = deal_opponents(&mut deck, plan.human_wind, &scores, &river_plan)
         .ok_or_else(|| "Deck exhausted dealing the opponents".to_string())?;
 
     let tiles_remaining = deck.remaining().saturating_sub(12).min(u8::MAX as usize) as u8;
