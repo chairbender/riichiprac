@@ -31,6 +31,7 @@ mod chiitoitsu_riichi_vs_dama;
 mod dama_bad_wait;
 mod dama_genbutsu_wait;
 mod defense;
+pub mod mortal_agreement;
 mod open_hand_defense;
 mod riichi_judgement;
 mod shouminkan_decision;
@@ -40,11 +41,16 @@ mod wind_discard_order;
 use agari::tile::Tile;
 use serde::Serialize;
 
+use crate::ai::model::MortalV4Model;
 use crate::state::GameState;
 
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
+
+pub use mortal_agreement::{
+    AgreementRejection, AgreementRejections, MortalAgreementOptions, MortalAgreementReport,
+};
 
 pub type PuzzleResponse = GameState;
 
@@ -411,12 +417,20 @@ impl ScenarioId {
 /// the first real Block Theory scenario. The `mock_table` fixture is handled
 /// separately so it stays out of the lesson manifest.
 pub fn generate_puzzle(category: &str) -> Result<GameState, String> {
+    generate_reachable_candidate(category).map(finalize_state)
+}
+
+/// Generate one lesson candidate that passes the reachability guard.
+///
+/// This is the generation half of [`generate_puzzle`], exposed inside the crate
+/// so the Mortal-agreement sampler can draw one candidate at a time and decide
+/// whether to keep it. The returned state is **not** finalized: callers must
+/// apply [`finalize_state`] before handing it to a player or a report.
+pub(crate) fn generate_reachable_candidate(category: &str) -> Result<GameState, String> {
     if category == "mock_table" {
         // The fixture is a fixed UI mock, not a played-out table, so it is not
         // held to the reachability rules.
-        return Ok(finalize_state(crate::fixtures::mock_table::generate(
-            category,
-        )?));
+        return crate::fixtures::mock_table::generate(category);
     }
 
     let mut last_error = String::new();
@@ -430,7 +444,7 @@ pub fn generate_puzzle(category: &str) -> Result<GameState, String> {
         // but the finished table still has to be a position a real game could
         // have produced.
         match support::state_validation::validate_reachable_state(&state) {
-            Ok(()) => return Ok(finalize_state(state)),
+            Ok(()) => return Ok(state),
             Err(err) => last_error = err,
         }
     }
@@ -439,6 +453,37 @@ pub fn generate_puzzle(category: &str) -> Result<GameState, String> {
         "generated {category} states were never reachable after \
          {MAX_REACHABILITY_ATTEMPTS} attempts: {last_error}"
     ))
+}
+
+/// Generate a lesson puzzle that the loaded Mortal model also plays.
+///
+/// This is [`generate_puzzle`] with the opt-in agreement filter applied: each
+/// candidate is evaluated and discarded unless Mortal's top-ranked action is
+/// one of the lesson's accepted answers (`correct_action` plus
+/// `equivalent_tiles`, compared on the full action including the discard tile).
+/// See [`mortal_agreement`] for the rule and the cost model.
+///
+/// `ai_best_action` is not accepted here: its answer *is* Mortal's argmax and it
+/// is generated through the evaluator (`generate_ai_puzzle`), so the filter
+/// would be vacuous. The `mock_table` fixture is returned unchanged with no
+/// report, because it is a UI mock rather than a sampled position.
+pub fn generate_puzzle_with_agreement(
+    category: &str,
+    model: &MortalV4Model,
+    model_name: &str,
+    options: MortalAgreementOptions,
+) -> Result<GeneratedPuzzle, String> {
+    mortal_agreement::generate_with_model(category, model, model_name, options)
+}
+
+/// A generated puzzle and, when sampling ran, what it cost.
+#[derive(Debug, Clone, Serialize)]
+pub struct GeneratedPuzzle {
+    /// The finalized table, ready to render and grade.
+    pub state: GameState,
+    /// Present only when Mortal-agreement sampling ran.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agreement: Option<MortalAgreementReport>,
 }
 
 /// How many full generations to try before the reachability guard gives up.

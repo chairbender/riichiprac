@@ -44,6 +44,10 @@ until you answer so the drill is still a decision; **Peek** reveals Mortal's lin
 early. The book side is always explained — "Not this hand" lists the
 justifications that do not apply, without inventing a citation for them.
 
+The checkpoint lives in a dedicated Web Worker, so the forward passes (the
+automatic evaluation, Peek, the AI drill, and agreement sampling) run off the UI
+thread and the page stays interactive while Mortal thinks.
+
 Riichi is graded as a whole decision, not a single action name. When Mortal's top
 action is Riichi, the evaluator runs a second pass (the position marked as
 already in Riichi, `Riichi` masked off) to find the discard it would declare on;
@@ -242,6 +246,62 @@ scripts/validate_mortal_review.py --report <report-url> --evaluation /tmp/ours.j
 currently cannot be written as a real log (their claimed tile never appears in
 a river), which the tool reports instead of hiding; see `mortal-validation.md`
 for the workflow, the format notes and the findings.
+
+## Mortal-agreement generation (opt-in)
+
+The lessons are written from Riichi Book 1, and Mortal does not always play the
+book's move. `fuzz_scenarios` measures that gap; the generator can also filter it
+at the source. `generator::generate_puzzle_with_agreement` draws a candidate,
+evaluates it with the loaded checkpoint, and discards the candidate unless
+Mortal's **top-ranked action** is one of the lesson's accepted answers —
+`correct_action` plus `equivalent_tiles` — compared on the full action, so a
+Riichi is only accepted when Mortal would also declare on that discard.
+
+```rust
+use riichiprac::generator::{
+    MortalAgreementOptions, generate_puzzle_with_agreement,
+};
+
+let puzzle = generate_puzzle_with_agreement(
+    "chiitoitsu_riichi_vs_dama",
+    &model,
+    "mortal_298k.safetensors",
+    MortalAgreementOptions::new(40),
+)?;
+assert!(puzzle.agreement.expect("report").accepted);
+```
+
+From the WASM evaluator the same filter is
+`evaluator.generate_puzzle_with_agreement(category, '{"enabled": true, "max_candidates": 40}')`,
+which returns `{"state": GameState, "agreement": MortalAgreementReport}`. The
+report records the bound, `attempts`, `evaluations`, and rejects split into
+`action`, `tile`, `incomparable`, and `evaluation_failed`. Passing
+`{"enabled": false}` (or `MortalAgreementOptions::disabled()`) returns the plain
+`generate_puzzle` candidate with no report, so a host can keep one settings blob
+and toggle the filter.
+
+In the app it is the **Mortal must agree** checkbox beside the scenario picker.
+It is per-session and stays disabled until the model is ready; turning it on
+re-deals the hand on screen through the filter, and a short note under the table
+says how many candidates were rejected and why (for example "accepted on 5
+candidates (4 rejected: 3 tile mismatches, 1 incomparable answer)"). The default
+page load stays book-only and instant, and a browser without the weights can
+never enable it. The sampling runs in the inference worker, so the table stays
+interactive while it searches.
+
+A candidate costs one forward pass (about 41 ms per pass with `mortal_298k` on a
+desktop CPU, and roughly twice that when Mortal chooses Riichi, because its
+declaration action carries no tile and the evaluator resolves the discard in a
+second pass). The default bound is 40 candidates. Agreement varies by lesson — a
+survey measured about 100% for `protorun_priority` and `defense_safety_chart` but
+about 9% for `ryankan_break`, whose book answer is an off-by-one tile choice on
+nearly every hand — so raise `max_candidates` for the low-agreement families.
+When the bound runs out the call returns an error naming the rejection counts
+instead of a hand the model would not play.
+
+`ai_best_action` is not sampled here (its answer is Mortal's own argmax; use
+`generate_ai_puzzle`), and the `mock_table` UI fixture is returned unchanged with
+no report.
 
 ## Fuzzing for generator / Mortal disagreements
 

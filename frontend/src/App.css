@@ -96,6 +96,32 @@
   outline-offset: 1px;
 }
 
+.agreement-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #8b94a7;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.agreement-toggle input {
+  margin: 0;
+  accent-color: #4f8bc9;
+  cursor: pointer;
+}
+
+.agreement-toggle:has(input:disabled) {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.agreement-toggle:has(input:disabled) input {
+  cursor: default;
+}
+
 .new-hand-button {
   padding: 6px 12px;
   border: 1px solid #34506e;
@@ -147,6 +173,18 @@
   background-color: #171f29;
   color: #c6d4e4;
   font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.agreement-note {
+  margin: 8px 10px 0;
+  padding: 8px 10px;
+  border: 1px solid #2f4a3c;
+  border-left: 3px solid #4c9a6a;
+  border-radius: 8px;
+  background-color: #16211b;
+  color: #b6d8c4;
+  font-size: 0.75rem;
   line-height: 1.45;
 }
 
