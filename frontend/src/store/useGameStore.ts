@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { WasmMortalEvaluator, grade_answer_json } from 'riichiprac';
 import {
+  canDeclareRiichi,
   findAiActionInfo,
   findKanCandidateTile,
   isCorrectAction,
@@ -132,6 +133,7 @@ function evaluationFromDecision(decision: AiDecision): AiEvaluation {
     model: decision.model,
     expected_value: decision.expected_value,
     recommended_action: decision.recommended_action,
+    riichi_discard: decision.riichi_discard ?? null,
     evaluations: decision.evaluations,
   };
 }
@@ -326,12 +328,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     toggleRiichi: () =>
       set((state) => {
         if (!state.gameState || state.dualGrade) return state;
-        if (state.gameState.correct_action.type === 'best') {
-          const hasRiichi = state.gameState.ai_decision?.actions.some(
-            (action) => action.action === 'Riichi',
-          );
-          if (!hasRiichi) return state;
-        }
+        // Rust decides legality: an open hand, an already-declared Riichi, or a
+        // non-tenpai hand must never arm one.
+        if (!canDeclareRiichi(state.gameState)) return state;
         return { callRiichi: !state.callRiichi, callKan: false };
       }),
 

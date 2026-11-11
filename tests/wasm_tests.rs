@@ -291,6 +291,10 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
 
         assert_eq!(val["target_action"], "Riichi");
         assert_eq!(val["correct_action"]["type"], "riichi");
+        assert_eq!(
+            val["can_riichi"], true,
+            "run {run}: a book Riichi answer must be an offerable declaration"
+        );
 
         let discard_code = val["correct_action"]["discard"]
             .as_str()
@@ -735,13 +739,24 @@ fn test_ryanmen_rejection_sampling_constraints() {
             .iter()
             .map(|player| player["discards"].as_array().unwrap().len())
             .collect();
+        // An out-of-rotation call lets the walk skip a seat, so the rivers can
+        // differ by one per call; the native `validate_reachable_state` test
+        // checks the exact timeline.
+        let calls: usize = players
+            .iter()
+            .map(|player| player["melds"].as_array().unwrap().len())
+            .sum();
+        let spread = discard_counts.iter().max().unwrap() - discard_counts.iter().min().unwrap();
         assert!(
-            discard_counts
-                .iter()
-                .all(|&count| count == discard_counts[0]),
-            "run {run}: discard counts must line up: {discard_counts:?}"
+            spread <= 1 + calls,
+            "run {run}: discard counts must be reachable given {calls} call(s): {discard_counts:?}"
         );
-        assert!((1..=6).contains(&discard_counts[0]));
+        // The planner takes `gen_range(1, 7)` as the per-seat floor, and the
+        // human's out-of-rotation Pon can leave them one discard ahead.
+        assert!(
+            (1..=7).contains(&discard_counts[0]),
+            "run {run}: human discard count {discard_counts:?}"
+        );
 
         // The two wait tiles.
         let wait_tiles: Vec<&str> = val["ukeire_tiles"]
@@ -1042,4 +1057,63 @@ fn test_grade_answer_through_wasm() {
     assert_eq!(grade["outcome"], "only_available_agrees");
     assert_eq!(grade["book"]["is_action_correct"], true);
     assert!(grade["mortal"].is_null());
+}
+
+#[wasm_bindgen_test]
+fn test_generated_states_gate_illegal_riichi() {
+    // The block-theory lesson always holds an open Yakuhai Pon: Riichi must be
+    // reported as illegal rather than offered and graded as a wrong answer.
+    for run in 0..20 {
+        let val: serde_json::Value =
+            serde_json::from_str(&generate_puzzle("ryanmen_protorun".to_string()))
+                .expect("ryanmen payload");
+        assert_eq!(val["can_riichi"], false, "run {run}");
+        assert!(
+            !val["players"][0]["melds"].as_array().unwrap().is_empty(),
+            "run {run}: the lesson must stay an open hand"
+        );
+    }
+
+    // A closed tenpai lesson can offer the declaration.
+    let chiitoitsu: serde_json::Value =
+        serde_json::from_str(&generate_puzzle("chiitoitsu_riichi_vs_dama".to_string()))
+            .expect("chiitoitsu payload");
+    assert!(chiitoitsu["can_riichi"].is_boolean());
+}
+
+#[wasm_bindgen_test]
+fn test_grade_shows_mortals_riichi_declaration() {
+    let table: serde_json::Value = serde_json::from_str(&generate_puzzle("mock_table".to_string()))
+        .expect("mock table must be valid JSON");
+    let discard = table["correct_action"]["discard"]
+        .as_str()
+        .expect("mock table is a Riichi puzzle")
+        .to_string();
+
+    let request = serde_json::json!({
+        "table": table,
+        "answer": { "action": "riichi", "tile": discard },
+        "evaluation": {
+            "model": "mortal_298k.safetensors",
+            "expected_value": 0.2,
+            "recommended_action": "Riichi",
+            "riichi_discard": discard,
+            "evaluations": [
+                { "action": "Riichi", "label": "Riichi", "type": "riichi", "probability": 0.7 },
+                { "action": "Discard_3p", "label": "Discard 3p", "type": "discard",
+                  "tile": "3p", "probability": 0.3 }
+            ]
+        },
+    });
+
+    let grade_json = grade_answer_json(&request.to_string());
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_json).expect("grade must return valid JSON");
+
+    assert!(grade.get("error").is_none(), "grade error: {grade_json}");
+    assert_eq!(grade["mode"], "book_and_mortal");
+    assert_eq!(grade["outcome"], "both_agree");
+    assert_eq!(grade["mortal"]["recommended_riichi"], true);
+    assert_eq!(grade["mortal"]["recommended_discard"], discard);
+    assert_eq!(grade["mortal"]["agrees"], true);
 }

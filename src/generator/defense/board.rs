@@ -19,10 +19,8 @@ use crate::generator::support::table::{
     discards_from_tiles, random_round, random_scores_with_human_first, self_turn_river_counts,
 };
 use crate::rng::{choose, gen_range, shuffle};
-use crate::safety::{is_near_dora, SafetyFacts, SafetyRank};
-use crate::state::{
-    CorrectAction, DecisionContext, GameState, PlayerState, TargetAction, Wind,
-};
+use crate::safety::{SafetyFacts, SafetyRank, is_near_dora};
+use crate::state::{CorrectAction, DecisionContext, GameState, PlayerState, TargetAction, Wind};
 
 /// Which defense question the board is asking.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,7 +59,11 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
     // Reserve the answer before anything else, so no other placement can
     // consume its last copy. The fallback lesson needs the pair, so it holds
     // two: one concealed and one as the draw.
-    let answer_copies = if lesson == Lesson::StuckHeuristic { 2 } else { 1 };
+    let answer_copies = if lesson == Lesson::StuckHeuristic {
+        2
+    } else {
+        1
+    };
     for _ in 0..answer_copies {
         take(&mut deck, &mut visible, plan.answer)?;
     }
@@ -152,9 +154,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
     let dora_candidates: Vec<Tile> = ALL_TILES
         .iter()
         .copied()
-        .filter(|&indicator| {
-            deck.count(indicator) > 0 && !is_near_dora(plan.answer, &[indicator])
-        })
+        .filter(|&indicator| deck.count(indicator) > 0 && !is_near_dora(plan.answer, &[indicator]))
         .collect();
     let dora_indicator =
         choose(&dora_candidates).ok_or_else(|| "No legal dora indicator".to_string())?;
@@ -190,7 +190,11 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
     // Fill the concealed hand with tiles below the lesson's chart floor. The
     // check runs after every pick because added copies can silently promote a
     // filler through a blockade.
-    let concealed_target = if lesson == Lesson::StuckHeuristic { 12 } else { 13 };
+    let concealed_target = if lesson == Lesson::StuckHeuristic {
+        12
+    } else {
+        13
+    };
     let mut concealed: Vec<Tile> = Vec::with_capacity(13);
     for _ in 0..concealed_target {
         // The cheap pass drops tiles that are already at least as safe as the
@@ -281,6 +285,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
         book_rationale: None,
+        can_riichi: false,
         hand_string,
         tiles: tile_strings,
         shanten: metrics.shanten,
@@ -362,7 +367,12 @@ fn filler_is_legal(
     if facts.visible_of(tile) >= 4 {
         return false;
     }
-    if placed.iter().filter(|placed_tile| **placed_tile == tile).count() >= 2 {
+    if placed
+        .iter()
+        .filter(|placed_tile| **placed_tile == tile)
+        .count()
+        >= 2
+    {
         return false;
     }
 
@@ -613,10 +623,7 @@ mod tests {
             let facts = SafetyFacts::from_state(&state, threat.seat).expect("facts");
             let answer = answer_tile(&state);
 
-            assert!(matches!(
-                facts.rank(answer),
-                SafetyRank::Cc | SafetyRank::C
-            ));
+            assert!(matches!(facts.rank(answer), SafetyRank::Cc | SafetyRank::C));
             assert!(
                 facts.outside_early_discards(answer),
                 "run {run}: the answer must sit outside the early discards"
@@ -657,7 +664,10 @@ mod tests {
             let (choice, rules) = facts
                 .stuck_choice(&unique, &counts, &indicators)
                 .unwrap_or_else(|| panic!("run {run}: the fallback list must pick a tile"));
-            assert_eq!(choice, answer, "run {run}: the fallback list picked {choice}");
+            assert_eq!(
+                choice, answer,
+                "run {run}: the fallback list picked {choice}"
+            );
             assert!(rules.pair_or_set);
             assert!(rules.outside_early);
         }
@@ -702,4 +712,3 @@ mod tests {
         ));
     }
 }
-

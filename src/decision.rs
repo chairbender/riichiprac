@@ -125,6 +125,10 @@ pub struct AiDecision {
     pub expected_value: f32,
     /// Raw argmax, including a red-five suffix when applicable.
     pub recommended_action: String,
+    /// The discard the model declares Riichi on, when it chose Riichi and the
+    /// evaluator could resolve the second pass.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub riichi_discard: Option<String>,
     /// Every legal action, highest probability first.
     pub evaluations: Vec<ActionEvaluation>,
     /// Every legal action with render/grade details, no probabilities.

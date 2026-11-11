@@ -48,6 +48,7 @@ pub fn build_report(request: BuildReportRequest) -> Result<ScenarioReport, Strin
     let mut table = request.table;
     // Derived, so never trust a stale value from the request.
     table.book_rationale = crate::rationale::rationale_for(&table);
+    table.can_riichi = crate::ai::actions::riichi_is_legal(&table);
     let grade = dual::grade_answer(
         &table,
         &request.answer,
@@ -116,6 +117,9 @@ pub fn parse_report(json: &str) -> Result<ParsedReport, String> {
     }
 
     report.table.book_rationale = crate::rationale::rationale_for(&report.table);
+    // Recomputed like every other derived field: an old or tampered report must
+    // not be able to hand the UI an illegal Riichi affordance.
+    report.table.can_riichi = crate::ai::actions::riichi_is_legal(&report.table);
     let grade = dual::grade_answer(
         &report.table,
         &report.decision.answer,
@@ -267,10 +271,16 @@ fn make_comparison(
     let reporter_probability = probability_for_action(evaluation, &reporter_action);
 
     AiComparison {
-        ai_agrees_with_app: dual::normalize_mortal_action(&evaluation.recommended_action)
-            == dual::normalize_mortal_action(&app_action),
-        ai_agrees_with_reporter: dual::normalize_mortal_action(&evaluation.recommended_action)
-            == dual::normalize_mortal_action(&reporter_action),
+        ai_agrees_with_app: dual::mortal_recommendation_matches(
+            evaluation,
+            &app_action,
+            expected.tile().unwrap_or_default(),
+        ),
+        ai_agrees_with_reporter: dual::mortal_recommendation_matches(
+            evaluation,
+            &reporter_action,
+            &answer.tile,
+        ),
         app_action,
         app_probability,
         reporter_action,
@@ -338,6 +348,7 @@ mod tests {
                 .first()
                 .map(|(name, _, _)| (*name).to_string())
                 .unwrap_or_default(),
+            riichi_discard: None,
             evaluations: actions
                 .iter()
                 .map(|(name, kind, probability)| {

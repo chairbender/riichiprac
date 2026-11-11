@@ -359,6 +359,7 @@ fn assemble(
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
         book_rationale: None,
+        can_riichi: false,
         hand_string,
         tiles: tile_strings,
         shanten: metrics.shanten,

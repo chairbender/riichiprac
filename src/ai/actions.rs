@@ -67,6 +67,17 @@ pub fn legal_action_mask(state: &GameState) -> Vec<bool> {
     mask
 }
 
+/// Whether declaring Riichi is one of the human's legal actions.
+///
+/// This is the gate the UI reads (`GameState::can_riichi`) so an open hand,
+/// an already-declared Riichi, a non-tenpai hand, or an empty wallet cannot
+/// offer a declaration that the rules forbid.
+pub fn riichi_is_legal(state: &GameState) -> bool {
+    legal_actions(state)
+        .iter()
+        .any(|info| info.kind == ActionKind::Riichi)
+}
+
 /// State-free description of one Mortal action index.
 ///
 /// Kept for diagnostics and the offline fuzz runner; the live evaluator uses
@@ -625,6 +636,7 @@ mod tests {
             dama_reasons: Vec::new(),
             shouminkan_triggers: Vec::new(),
             book_rationale: None,
+            can_riichi: false,
             hand_string: String::new(),
             tiles: Vec::new(),
             shanten: 1,
@@ -659,6 +671,29 @@ mod tests {
         assert!(actions.iter().any(|a| a.action == "Discard_1m"));
         assert!(actions.iter().any(|a| a.action == "Riichi"));
         assert!(!actions.iter().any(|a| a.action == "Pass"));
+    }
+
+    #[test]
+    fn riichi_gate_matches_the_legal_action_set() {
+        let mut state = base_state(&[
+            "1m", "2m", "3m", "4p", "5p", "6p", "7s", "8s", "9s", "2z", "2z", "3z", "4z",
+        ]);
+        state.shanten = 0;
+        assert!(riichi_is_legal(&state));
+
+        // An open Pon makes the hand open, so Riichi must be impossible even
+        // though the hand is tenpai.
+        state.players[0].melds = vec![CalledMeld {
+            meld_type: MeldType::Pon,
+            tiles: vec!["2z".to_string(); 3],
+            called_from: Some(1),
+        }];
+        assert!(!riichi_is_legal(&state));
+
+        // A Riichi player cannot declare again.
+        state.players[0].melds.clear();
+        state.players[0].is_riichi = true;
+        assert!(!riichi_is_legal(&state));
     }
 
     #[test]

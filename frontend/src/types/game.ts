@@ -177,6 +177,13 @@ export interface GameState {
    * the justifications that do not apply. Derived and recomputed by Rust.
    */
   book_rationale?: BookRationale | null;
+  /**
+   * Whether the human may declare Riichi right now. Derived by Rust from the
+   * same legal-action source the Mortal mask uses, so an open hand, an
+   * already-declared Riichi, or a non-tenpai hand cannot offer the toggle.
+   * Absent only on old payloads that predate the field.
+   */
+  can_riichi?: boolean;
 
   hand_string: string;
   tiles: string[];

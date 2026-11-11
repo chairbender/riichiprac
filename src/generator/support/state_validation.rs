@@ -480,6 +480,7 @@ mod tests {
             dama_reasons: Vec::new(),
             shouminkan_triggers: Vec::new(),
             book_rationale: None,
+            can_riichi: false,
             hand_string: String::new(),
             tiles: vec!["1m".to_string(); 13]
                 .into_iter()

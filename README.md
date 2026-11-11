@@ -42,6 +42,20 @@ early (and is recorded in exported reports). The book side is always explained �
 "Not this hand" lists the justifications that do not apply, without inventing a
 citation for them.
 
+Riichi is graded as a whole decision, not a single action name. When Mortal's top
+action is Riichi, the evaluator runs a second pass (the position marked as
+already in Riichi, `Riichi` masked off) to find the discard it would declare on;
+the answer summary and the Mortal column show both ("Riichi · discard 3p"). The
+submitted riichi/dama choice is compared against Mortal's, and when Mortal's
+discard is known the tile is part of the comparison too, so a right declaration
+on the wrong tile is not a full agreement.
+
+The Riichi toggle is gated by a rule computed in Rust (`GameState::can_riichi`,
+the same legal-action source the Mortal mask uses). An open hand, an
+already-declared Riichi, a non-tenpai hand, a short wall, or a score under 1000
+never offers the declaration — the open-hand block-theory lesson is the common
+case.
+
 If the weights are missing, the app still trains: the hand is graded against the
 book only, the Mortal column says so, and no answer is labelled wrong.
 

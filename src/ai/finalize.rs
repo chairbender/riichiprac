@@ -81,6 +81,7 @@ pub fn build_ai_decision(
         reasoning,
         expected_value: evaluation.expected_value,
         recommended_action: evaluation.recommended_action.clone(),
+        riichi_discard: evaluation.riichi_discard.clone(),
         evaluations: evaluation.evaluations.clone(),
         actions,
     }
@@ -143,6 +144,7 @@ mod tests {
             model: "test".to_string(),
             expected_value: 0.0,
             recommended_action: legal[0].action.clone(),
+            riichi_discard: None,
             evaluations: legal
                 .iter()
                 .cloned()

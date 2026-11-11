@@ -1,6 +1,7 @@
 import type { DualGrade } from '../types/verdict';
 import { formatProbability } from '../types/ai';
 import {
+  mortalRecommendationLabel,
   outcomeHeadline,
   outcomeTone,
 } from '../types/verdict';
@@ -118,11 +119,11 @@ function mortalMarkText(grade: DualGrade): string {
 function mortalMarkLabel(grade: DualGrade): string {
   if (!grade.mortal) return 'Mortal';
   if (grade.mortal.agrees) return 'Mortal: agrees';
-  return `Mortal: recommends ${grade.mortal.recommended_label}`;
+  return `Mortal: recommends ${mortalRecommendationLabel(grade.mortal)}`;
 }
 
 function detailLine(grade: DualGrade): string {
-  const mortalPick = grade.mortal?.recommended_label ?? 'another action';
+  const mortalPick = mortalRecommendationLabel(grade.mortal ?? null);
 
   switch (grade.outcome) {
     case 'both_agree':

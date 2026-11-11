@@ -2,7 +2,7 @@ import {
   build_scenario_report,
   parse_scenario_report,
 } from 'riichiprac';
-import { isCorrectAction } from './actions';
+import { isCorrectAction, normalizeMortalAction } from './actions';
 import type { AiEvaluation } from './types/ai';
 import type {
   BuildReportRequest,
@@ -239,6 +239,42 @@ export function mortalActionDisplayName(action: string): string {
   if (action === 'Agari') return 'Win (agari)';
   if (action === 'Ryukyoku') return 'Draw (ryukyoku)';
   return action.replace('_', ' ');
+}
+
+/**
+ * Human label for a whole Mortal evaluation, including the discard a Riichi
+ * recommendation declares on when the evaluator's second pass resolved it.
+ */
+export function mortalRecommendationDisplay(
+  evaluation: AiEvaluation | null,
+): string {
+  if (!evaluation) return 'another action';
+  if (evaluation.recommended_action === 'Riichi' && evaluation.riichi_discard) {
+    return `Riichi · discard ${evaluation.riichi_discard}`;
+  }
+  return mortalActionDisplayName(evaluation.recommended_action);
+}
+
+/**
+ * Whether Mortal's top action matches a Mortal-style action name plus the tile
+ * its declaration would use. A Riichi recommendation is tile-less in the action
+ * space, so its second-pass discard decides the tile half when known.
+ */
+export function mortalMatchesAction(
+  evaluation: AiEvaluation,
+  action: string,
+  tile: string,
+): boolean {
+  if (
+    normalizeMortalAction(evaluation.recommended_action) !==
+    normalizeMortalAction(action)
+  ) {
+    return false;
+  }
+  if (evaluation.recommended_action === 'Riichi') {
+    return !evaluation.riichi_discard || evaluation.riichi_discard === tile;
+  }
+  return true;
 }
 
 export function describeCorrectAction(action: CorrectAction): string {

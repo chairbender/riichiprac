@@ -174,7 +174,18 @@ fn render_ai(out: &mut String, ai: &super::model::ReportedAi) {
         ai.model, ai.evaluated_at
     );
     let _ = writeln!(out, "  Expected value: {:.4}", ai.evaluation.expected_value);
-    let _ = writeln!(out, "  Recommended: {}", ai.evaluation.recommended_action);
+    let riichi = ai
+        .evaluation
+        .riichi_discard
+        .as_deref()
+        .filter(|_| ai.evaluation.recommended_action == "Riichi")
+        .map(|discard| format!(" (declaring on {discard})"))
+        .unwrap_or_default();
+    let _ = writeln!(
+        out,
+        "  Recommended: {}{riichi}",
+        ai.evaluation.recommended_action
+    );
     for action in ai.evaluation.evaluations.iter().take(5) {
         let _ = writeln!(
             out,
@@ -223,9 +234,13 @@ fn render_verdict(out: &mut String, report: &ScenarioReport, verdict: &ReportVer
 
     match &verdict.mortal {
         Some(mortal) => {
+            let declaration = match (&mortal.recommended_discard, mortal.recommended_riichi) {
+                (Some(discard), true) => format!(", declaring on {discard}"),
+                _ => String::new(),
+            };
             let _ = writeln!(
                 out,
-                "Mortal: {} - recommends {} ({:.0}%); answer scored {:.0}%",
+                "Mortal: {} - recommends {}{declaration} ({:.0}%); answer scored {:.0}%",
                 if mortal.agrees { "AGREES" } else { "DISAGREES" },
                 mortal.recommended_action,
                 mortal.top_probability * 100.0,
@@ -429,6 +444,53 @@ mod tests {
         assert!(text.contains("Shimocha"));
         assert!(text.contains("Toimen"));
         assert!(text.contains("Kamicha"));
+    }
+
+    #[test]
+    fn summary_shows_mortals_riichi_declaration_and_discard() {
+        use crate::ai::wasm_bridge::ActionEvaluation;
+
+        let table = crate::fixtures::mock_table::generate("mock_table").expect("fixture");
+        let discard = table
+            .correct_action
+            .tile()
+            .expect("fixture answer tile")
+            .to_string();
+        let evaluation = crate::ai::wasm_bridge::Evaluation {
+            model: "mortal_298k.safetensors".to_string(),
+            expected_value: 0.2,
+            recommended_action: "Riichi".to_string(),
+            riichi_discard: Some("7s".to_string()),
+            evaluations: vec![
+                ActionEvaluation::from_parts("Riichi", "riichi", None, 0.7),
+                ActionEvaluation::from_parts("Discard_7s", "discard", None, 0.2),
+            ],
+        };
+        let request = BuildReportRequest {
+            table,
+            answer: ReportedAction::new(CorrectActionType::Dama, discard),
+            reason: ReportReason::ExpectedActionWrong,
+            note: None,
+            created_at: "2026-11-10T08:42:11.031Z".to_string(),
+            report_id: "8b0e5c0e-4f1b-4f7e-9b3e-2a7c1d9e6f10".to_string(),
+            commit: None,
+            build_time: None,
+            ai: Some(crate::report::ReportedAi {
+                model: "mortal_298k.safetensors".to_string(),
+                evaluated_at: "2026-11-10T08:41:00.000Z".to_string(),
+                evaluation,
+                comparison: None,
+                peeked_before_answer: false,
+            }),
+        };
+
+        let report = build_report(request).expect("report must build");
+        let text = report.human_readable.join("\n");
+        assert!(
+            text.contains("recommends Riichi, declaring on 7s"),
+            "summary must show Mortal's whole declaration:\n{text}"
+        );
+        assert!(text.contains("Recommended: Riichi (declaring on 7s)"));
     }
 
     #[test]
