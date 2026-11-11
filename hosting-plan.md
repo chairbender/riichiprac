@@ -107,6 +107,11 @@ Acceptance criteria:
       `frontend/public/models/` before the build (release assets are not
       CORS-enabled; see the CORS finding in task 4), with a warning instead of a
       hard failure so a missing release still deploys a book-only app.
+- [x] Node 20 / npm 10 needs the lockfile to record the `file:../pkg` dependency
+      as a link. The first deploy failed at `npm ci` with
+      `Missing: riichiprac@0.1.0 from lock file` (npm 9 tolerates the stale
+      entry); `frontend/package-lock.json` was regenerated with npm 10 and
+      verified with both npm 9 and npm 10.
 - [x] wasm-opt note (see "MIME / wasm-opt conclusions" in task 4) rather than
       silently disabling it.
 
