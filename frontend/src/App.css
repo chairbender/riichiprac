@@ -57,16 +57,6 @@
   color: #e7ecf3;
 }
 
-.scenario-current {
-  overflow: hidden;
-  color: #8b94a7;
-  font-size: 0.64rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .app-controls {
   display: flex;
   flex-wrap: wrap;
