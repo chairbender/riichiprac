@@ -185,6 +185,8 @@ impl RiichiTrigger {
             Self::Dealer => "dealer",
             Self::HasExtraHan => "has_extra_han",
             Self::GoodWait => "good_wait",
+            Self::ThreeLiveWinningTiles => "three_live_winning_tiles",
+            Self::HonorTerminalWait => "honor_terminal_wait",
             Self::Tanyao => "tanyao",
             Self::RedFiveWait => "red_five_wait",
             Self::SujiTrap => "suji_trap",
@@ -214,6 +216,19 @@ impl RiichiTrigger {
                        left to win on.",
                 quote: "Your hand has a good wait.",
                 citation: ch7(GENERAL_RULE, 58, "Your hand has a good wait"),
+            },
+            Self::ThreeLiveWinningTiles => RuleText {
+                rule: "Even a bad wait justifies Riichi when three or more winning \
+                       tiles are left in the board.",
+                quote: "Call riichi if there are three or more winning tiles left in the board.",
+                citation: ch7("Bad wait", 521, "three or more winning tiles"),
+            },
+            Self::HonorTerminalWait => RuleText {
+                rule: "A bad wait on an honor or terminal tile can still be called with \
+                       only one or two live tiles.",
+                quote: "When waiting for an honor/terminal tile, you can call riichi even \
+                        when only one tile is left in the board.",
+                citation: ch7("Bad wait", 522, "honor/terminal tile"),
             },
             Self::Tanyao => RuleText {
                 rule: "Tanyao justifies Riichi even when the wait itself is awkward.",
@@ -257,6 +272,7 @@ impl DamaReason {
             Self::NotDealer => "not_dealer",
             Self::BadWait => "bad_wait",
             Self::NoExtraHan => "no_extra_han",
+            Self::FewLiveWinningTiles => "few_live_winning_tiles",
             Self::NoTanyao => "no_tanyao",
             Self::MiddleWait => "middle_wait",
             Self::NoRedFiveWait => "no_red_five_wait",
@@ -289,6 +305,12 @@ impl DamaReason {
                 quote: "bad-wait riichi-only hand by a non-dealer",
                 citation: ch7(GENERAL_RULE, 71, "riichi-only hand"),
             }),
+            Self::FewLiveWinningTiles => Some(RuleText {
+                rule: "A bad wait with only one or two live simple winning tiles is the \
+                       section's dama case.",
+                quote: "Go dama if there are only one or two simple tiles left to win on.",
+                citation: ch7("Bad wait", 522, "one or two simple tiles"),
+            }),
             Self::MiddleWait => Some(RuleText {
                 rule: "A 4/5/6 single wait is the worst kind of wait, so it is the \
                        wait half of the book's dama case.",
@@ -318,6 +340,7 @@ impl DamaReason {
             Self::NotDealer
             | Self::BadWait
             | Self::NoExtraHan
+            | Self::FewLiveWinningTiles
             | Self::MiddleWait
             | Self::Mangan => None,
         }
@@ -530,6 +553,15 @@ fn applies_riichi(trigger: RiichiTrigger, state: &GameState) -> String {
             "The wait on {} is good: at least two live kinds and more than four live tiles.",
             wait_tiles(state)
         ),
+        RiichiTrigger::ThreeLiveWinningTiles => format!(
+            "The wait on {} is bad, but three or more winning tiles are left in the board.",
+            wait_tiles(state)
+        ),
+        RiichiTrigger::HonorTerminalWait => format!(
+            "The wait on {} is a bad wait on an honor or terminal tile, so one or two \
+             live tiles are enough.",
+            wait_tiles(state)
+        ),
         RiichiTrigger::Tanyao => "Every pair and the wait are simples.".to_string(),
         RiichiTrigger::RedFiveWait => {
             format!("The wait is {wait} and its red five is in hand.")
@@ -557,6 +589,10 @@ fn applies_dama(reason: DamaReason, state: &GameState) -> String {
         DamaReason::NoExtraHan => {
             "The hand has no yaku or dora without Riichi, so it is riichi-only.".to_string()
         }
+        DamaReason::FewLiveWinningTiles => format!(
+            "The wait on {} has only one or two live simple winning tiles.",
+            wait_tiles(state)
+        ),
         DamaReason::NoTanyao => "A terminal or honor pair rules out tanyao.".to_string(),
         DamaReason::MiddleWait => format!("The wait is {wait}, a middle tile."),
         DamaReason::NoRedFiveWait => "No red five is held.".to_string(),
@@ -604,6 +640,23 @@ fn summary_for(state: &GameState) -> String {
             "Declare Riichi: at least one of the book's three conditions holds.".to_string()
         };
     }
+    if state.category == "dama_bad_wait" {
+        return if state
+            .riichi_triggers
+            .contains(&RiichiTrigger::ThreeLiveWinningTiles)
+        {
+            "Declare Riichi: the bad wait still has three or more live winning tiles.".to_string()
+        } else if state
+            .riichi_triggers
+            .contains(&RiichiTrigger::HonorTerminalWait)
+        {
+            "Declare Riichi: the bad wait is on an honor or terminal tile, which the \
+             book calls riichi even with one live tile left."
+                .to_string()
+        } else {
+            "Stay in dama: the bad wait has only one or two live simple winning tiles.".to_string()
+        };
+    }
     if !state.riichi_triggers.is_empty() {
         return "Declare Riichi: the book's chiitoitsu criteria pick this hand.".to_string();
     }
@@ -627,6 +680,21 @@ fn caveats_for(state: &GameState) -> Vec<String> {
              hand already worth 7700+) are not modelled, so the generator avoids them."
                 .to_string(),
         );
+    } else if state.category == "dama_bad_wait" {
+        caveats.push(
+            "The other ch. 7 conditions are held fixed: the hand is riichi-only, you are \
+             not the dealer, and the wait is a bad shape with at most four live tiles. \
+             Only the bad-wait box's live winning-tile count decides, counted from the \
+             tiles you can see."
+                .to_string(),
+        );
+        if !state.dama_reasons.is_empty() {
+            caveats.push(
+                "A riichi-only hand in dama can only win by tsumo; the box still keeps \
+                 this one or two tile wait concealed."
+                    .to_string(),
+            );
+        }
     } else if !state.dama_reasons.is_empty() {
         caveats.push(
             "The book's second dama case is specifically honitsu/chinitsu chiitoitsu; this \
@@ -672,6 +740,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
     match category {
         "chiitoitsu_riichi_vs_dama" => Some(ch7(CHIITOITSU_BOX, 345, "Riichi judgement")),
         "riichi_judgement" => Some(ch7(GENERAL_RULE, 55, "at least one")),
+        "dama_bad_wait" => Some(ch7("Bad wait", 521, "three or more winning tiles")),
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "wind_discard_order" => Some(ch9_seating(455, "discard the right player's wind first")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
@@ -1549,6 +1618,8 @@ mod tests {
             RiichiTrigger::Dealer,
             RiichiTrigger::HasExtraHan,
             RiichiTrigger::GoodWait,
+            RiichiTrigger::ThreeLiveWinningTiles,
+            RiichiTrigger::HonorTerminalWait,
             RiichiTrigger::Tanyao,
             RiichiTrigger::RedFiveWait,
             RiichiTrigger::SujiTrap,
@@ -1572,6 +1643,7 @@ mod tests {
             DamaReason::NotDealer,
             DamaReason::BadWait,
             DamaReason::NoExtraHan,
+            DamaReason::FewLiveWinningTiles,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
         ];
@@ -1893,6 +1965,80 @@ mod tests {
     }
 
     #[test]
+    fn dama_bad_wait_rationale_cites_the_bad_wait_box() {
+        let mut saw_many = false;
+        let mut saw_honor = false;
+        let mut saw_dama = false;
+
+        for _ in 0..120 {
+            let state = generate_puzzle("dama_bad_wait").expect("scenario must generate");
+            let rationale = state.book_rationale.clone().expect("rationale");
+
+            assert_eq!(rationale.source.chapter, 7);
+            assert_eq!(rationale.source.section, "Bad wait");
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("live winning-tile count")),
+                "the lesson must say the count decides"
+            );
+
+            if state
+                .riichi_triggers
+                .contains(&RiichiTrigger::ThreeLiveWinningTiles)
+            {
+                saw_many = true;
+                assert!(
+                    rationale
+                        .summary
+                        .contains("three or more live winning tiles")
+                );
+                assert_eq!(rationale.rules.len(), 1);
+                assert_eq!(rationale.rules[0].id, "three_live_winning_tiles");
+            } else if state
+                .riichi_triggers
+                .contains(&RiichiTrigger::HonorTerminalWait)
+            {
+                saw_honor = true;
+                assert!(rationale.summary.contains("honor or terminal"));
+                assert_eq!(rationale.rules.len(), 1);
+                assert_eq!(rationale.rules[0].id, "honor_terminal_wait");
+            } else {
+                saw_dama = true;
+                assert!(rationale.summary.contains("one or two live simple"));
+                let ids: Vec<&str> = rationale
+                    .rules
+                    .iter()
+                    .map(|rule| rule.id.as_str())
+                    .collect();
+                assert_eq!(
+                    ids,
+                    vec![
+                        "not_dealer",
+                        "bad_wait",
+                        "no_extra_han",
+                        "few_live_winning_tiles"
+                    ]
+                );
+                assert!(
+                    rationale
+                        .caveats
+                        .iter()
+                        .any(|caveat| caveat.contains("tsumo")),
+                    "a riichi-only dama hand can only win by tsumo"
+                );
+            }
+
+            if saw_many && saw_honor && saw_dama {
+                break;
+            }
+        }
+
+        assert!(saw_many && saw_honor && saw_dama);
+    }
+
+    #[test]
     fn decline_lesson_gets_a_category_rationale() {
         let mut decline = None;
         for _ in 0..80 {
@@ -1996,6 +2142,8 @@ mod tests {
             RiichiTrigger::Dealer,
             RiichiTrigger::HasExtraHan,
             RiichiTrigger::GoodWait,
+            RiichiTrigger::ThreeLiveWinningTiles,
+            RiichiTrigger::HonorTerminalWait,
             RiichiTrigger::Tanyao,
             RiichiTrigger::RedFiveWait,
             RiichiTrigger::SujiTrap,
@@ -2008,6 +2156,7 @@ mod tests {
             DamaReason::NotDealer,
             DamaReason::BadWait,
             DamaReason::NoExtraHan,
+            DamaReason::FewLiveWinningTiles,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
         ] {
@@ -2029,6 +2178,7 @@ mod tests {
             "protorun_priority",
             "ryankan_break",
             "riichi_judgement",
+            "dama_bad_wait",
             "shouminkan_decision",
             "wind_discard_order",
             "defense_safety_chart",

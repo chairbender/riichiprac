@@ -23,7 +23,9 @@
 //! out of the sample.
 
 mod board;
-mod judgement;
+// The wait-quality and han helpers are shared with the `dama_bad_wait`
+// lesson, which reasons about the same live winning tiles (ch7:465-524).
+pub(crate) mod judgement;
 mod shapes;
 mod skeleton;
 

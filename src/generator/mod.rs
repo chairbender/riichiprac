@@ -6,6 +6,8 @@
 //!   closed shape) break lesson.
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
 //! - `riichi_judgement`: ch. 7's general three-condition Riichi/dama rule.
+//! - `dama_bad_wait`: ch. 7's bad-wait box: riichi with three or more live
+//!   winning tiles, dama with one or two simple ones.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
 //! - `shouminkan_decision`: Added Kan decision lesson (Kan or decline, one
 //!   neutral prompt).
@@ -19,6 +21,7 @@
 pub mod ai_best_action;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
+mod dama_bad_wait;
 mod defense;
 mod riichi_judgement;
 mod shouminkan_decision;
@@ -149,6 +152,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::DamaBadWait,
+        label: "Dama: Bad Wait",
+        description: "Ch. 7 bad wait: Riichi with three or more live winning tiles, dama with \
+                      one or two simple ones, but Riichi on an honor or terminal.",
+        category: ScenarioCategory::RiichiDecision,
+        tags: &["riichi", "dama", "bad_wait", "live_tiles", "honor_terminal"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::ShouminkanDecision,
         label: "Added Kan Decision",
         description: "Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan or discard.",
@@ -234,6 +247,7 @@ pub enum ScenarioId {
     RyankanBreak,
     ChiitoitsuRiichiVsDama,
     RiichiJudgement,
+    DamaBadWait,
     ShouminkanDecision,
     WindDiscardOrder,
     AiBestAction,
@@ -250,6 +264,7 @@ impl ScenarioId {
         ScenarioId::RyankanBreak,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::RiichiJudgement,
+        ScenarioId::DamaBadWait,
         ScenarioId::ShouminkanDecision,
         ScenarioId::WindDiscardOrder,
         ScenarioId::AiBestAction,
@@ -266,6 +281,7 @@ impl ScenarioId {
             ScenarioId::RyankanBreak => "ryankan_break",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::RiichiJudgement => "riichi_judgement",
+            ScenarioId::DamaBadWait => "dama_bad_wait",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
             ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::AiBestAction => "ai_best_action",
@@ -283,6 +299,7 @@ impl ScenarioId {
             "ryankan_break" => Some(ScenarioId::RyankanBreak),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
+            "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
@@ -301,6 +318,7 @@ impl ScenarioId {
             ScenarioId::RyankanBreak => block_theory::ryankan_break::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
+            ScenarioId::DamaBadWait => dama_bad_wait::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
             ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
             ScenarioId::AiBestAction => Err(

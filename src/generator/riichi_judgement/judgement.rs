@@ -43,7 +43,7 @@ pub(super) const MIN_LIVE_TILES: u8 = 3;
 
 /// The three ch7.1 conditions, as they hold for one hand.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(super) struct Conditions {
+pub(crate) struct Conditions {
     /// Condition 1: at least one han other than riichi at every winning tile.
     pub extra_han: bool,
     /// Condition 2: the live wait has at least two kinds and more than four
@@ -101,15 +101,15 @@ impl Conditions {
 
 /// Live wait quality, counted the way ch7:491 counts it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct WaitQuality {
+pub(crate) struct WaitQuality {
     /// Distinct winning tile types that still have at least one live copy.
-    pub live_kinds: usize,
+    pub(crate) live_kinds: usize,
     /// Live copies of every winning tile, across all kinds.
-    pub live_tiles: u8,
+    pub(crate) live_tiles: u8,
 }
 
 impl WaitQuality {
-    pub(super) fn is_good(self) -> bool {
+    pub(crate) fn is_good(self) -> bool {
         self.live_kinds >= GOOD_WAIT_MIN_KINDS && self.live_tiles >= GOOD_WAIT_MIN_TILES
     }
 }
@@ -119,7 +119,7 @@ impl WaitQuality {
 /// `visible` is everything the player can see on the table — the opponents'
 /// rivers, melds and dora indicators — and must not repeat the hand's own
 /// tiles, which `agari` already subtracts.
-pub(super) fn wait_quality(tenpai_tiles: &[Tile], visible: &HashMap<Tile, u8>) -> WaitQuality {
+pub(crate) fn wait_quality(tenpai_tiles: &[Tile], visible: &HashMap<Tile, u8>) -> WaitQuality {
     let counts = to_counts(tenpai_tiles);
     let ukeire = calculate_ukeire_with_visible(&counts, visible);
 
@@ -204,7 +204,7 @@ pub(super) fn worst_score_level(
 /// other side, and the book's rule is about the hand, not the lucky draw.
 /// The round and seat winds are fixed by the board, and no dora may touch the
 /// hand, so the result is stable before and after the table is dealt.
-pub(super) fn min_han_without_riichi(
+pub(crate) fn min_han_without_riichi(
     tenpai_tiles: &[Tile],
     wait_tiles: &[Tile],
     round_wind: Wind,
@@ -223,7 +223,7 @@ pub(super) fn min_han_without_riichi(
 }
 
 /// The three conditions as they hold for this hand.
-pub(super) fn evaluate(
+pub(crate) fn evaluate(
     tenpai_tiles: &[Tile],
     wait_tiles: &[Tile],
     round_wind: Wind,
