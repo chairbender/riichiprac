@@ -258,10 +258,11 @@ book's 2-away rules are proximity heuristics, and proximity is exactly where an
 EV model and the book part ways.
 
 `AGENTS.md` makes the book the authority for a scenario's answer, so both
-lessons keep their book-faithful answers. Operationally, `shouminkan_decline` is
-therefore excluded from the fuzz default sample (it would bury unknown
-disagreements under a known one) while staying selectable with `--scenario`,
-and the numbers above are the expected baseline for either lesson.
+answers keep their book-faithful rules. Operationally, the decline half of the
+merged `shouminkan_decision` lesson is skipped from the fuzz default sample (it
+would bury unknown disagreements under a known one) while naming
+`--scenario shouminkan_decision` explicitly fuzzes both halves. The numbers
+above are the expected baseline for either half.
 
 ## 4. Bug (fixed): `legal_action_mask` marked an impossible plain discard for a red five
 
@@ -374,7 +375,7 @@ off-by-one tile class described in §2.
       complaint was wrong.
 - [x] Extend `shouminkan_decision` coverage to the book's boundary. Done: the
       `needs_dora` trigger covers the not-close-to-ready desperation cases, and
-      `shouminkan_decline` covers the book's negative example.
+      the merged lesson's decline half covers the book's negative example.
 - [ ] Score both Kan lines with `crate::ai::sp` and derive the placement gap
       from real expected values instead of the guaranteed-minipoints floor
       (noted in `skeleton/value.rs`).

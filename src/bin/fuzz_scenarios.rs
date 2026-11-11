@@ -32,7 +32,7 @@ use riichiprac::report::{
     BuildReportRequest, ReportReason, ReportedAction, ReportedAi, build_report,
 };
 use riichiprac::rng;
-use riichiprac::state::GameState;
+use riichiprac::state::{CorrectActionType, GameState};
 
 const DEFAULT_ITERATIONS: u64 = 200;
 const DEFAULT_LIMIT: usize = 20;
@@ -43,12 +43,11 @@ const DEFAULT_LIMIT: usize = 20;
 /// the loaded Mortal model, so `generate_puzzle` always rejects it and every
 /// attempt would be wasted.
 ///
-/// `shouminkan_decline` is left out on purpose: it teaches Riichi Book 1's
-/// negative kakan example (2-away with value already secured, so keep the Pon),
-/// and Mortal disagrees with that rule in almost every hand. That divergence is
-/// known and documented in `scenario-fuzz-findings.md`; sampling it by default
-/// would bury the unknown disagreements under it. Pass `--scenario
-/// shouminkan_decline` to look at it directly.
+/// The Added Kan lesson mixes both answers: Mortal agrees with the Kan half but
+/// disagrees with the book's decline half in almost every hand. The default
+/// sample skips those known-divergence hands (see [`known_divergence`]) so they
+/// do not bury unknown disagreements; name `shouminkan_decision` explicitly to
+/// fuzz both halves.
 const DEFAULT_SCENARIOS: &[ScenarioId] = &[
     ScenarioId::RyanmenProtorun,
     ScenarioId::NakabukureReady,
@@ -65,6 +64,17 @@ fn requires_model(scenario: ScenarioId) -> bool {
         .any(|meta| meta.id == scenario && meta.requires_ai)
 }
 
+/// True for the documented Mortal divergence in the merged Added Kan lesson.
+///
+/// Riichi Book 1, ch. 9 keeps the Pon and discards the drawn fourth tile in the
+/// 2-away-with-value case, while Mortal favors the Kan in nearly every such
+/// hand. That difference is expected and written up in
+/// `scenario-fuzz-findings.md`; the default sample leaves it out.
+fn known_divergence(state: &GameState) -> bool {
+    state.category == ScenarioId::ShouminkanDecision.as_str()
+        && state.correct_action.action_type() == CorrectActionType::Discard
+}
+
 const USAGE: &str = "\
 usage: fuzz_scenarios [options]
 
@@ -72,7 +82,6 @@ usage: fuzz_scenarios [options]
                            (default: ryanmen_protorun, nakabukure_ready,
                            protorun_priority, chiitoitsu_riichi_vs_dama,
                            riichi_judgement, shouminkan_decision;
-                           shouminkan_decline must be named explicitly;
                            ai_best_action needs the model and is rejected)
   --iterations <n>         maximum generation attempts (default: 200)
   --limit <n>              maximum discrepancy files per run (default: 20)
@@ -89,6 +98,9 @@ usage: fuzz_scenarios [options]
 
 struct Args {
     scenarios: Vec<ScenarioId>,
+    /// True when `--scenario` named at least one scenario, so known divergences
+    /// are sampled instead of skipped.
+    explicit_scenarios: bool,
     iterations: u64,
     limit: usize,
     min_margin: f32,
@@ -172,6 +184,7 @@ fn main() -> ExitCode {
 fn parse_args<I: Iterator<Item = String>>(args: I) -> Result<Args, String> {
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let mut scenarios = Vec::new();
+    let mut explicit_scenarios = false;
     let mut iterations = DEFAULT_ITERATIONS;
     let mut limit = DEFAULT_LIMIT;
     let mut min_margin = 0.0f32;
@@ -198,6 +211,7 @@ fn parse_args<I: Iterator<Item = String>>(args: I) -> Result<Args, String> {
                 if !scenarios.contains(&scenario) {
                     scenarios.push(scenario);
                 }
+                explicit_scenarios = true;
             }
             "--iterations" => {
                 let value = args
@@ -251,6 +265,7 @@ fn parse_args<I: Iterator<Item = String>>(args: I) -> Result<Args, String> {
 
     Ok(Args {
         scenarios,
+        explicit_scenarios,
         iterations,
         limit,
         min_margin,
@@ -320,6 +335,15 @@ fn run(args: &Args, model: &MortalV4Model) -> Result<FuzzSummary, String> {
                 continue;
             }
         };
+
+        if !args.explicit_scenarios && known_divergence(&state) {
+            eprintln!(
+                "[{iteration}/{}] {scenario_id}: skip known decline-half divergence \
+                 (pass --scenario {scenario_id} to include it)",
+                args.iterations
+            );
+            continue;
+        }
 
         let evaluation = evaluate_state(model, &state)
             .map_err(|err| format!("evaluation failed for {scenario_id}: {err}"))?;
@@ -584,14 +608,41 @@ mod tests {
     }
 
     #[test]
-    fn excluded_scenarios_can_still_be_requested_explicitly() {
-        // `shouminkan_decline` is left out of the default sample because Mortal
-        // disagrees with the book's rule there, not because it cannot generate.
-        assert!(!DEFAULT_SCENARIOS.contains(&ScenarioId::ShouminkanDecline));
-        assert!(!requires_model(ScenarioId::ShouminkanDecline));
+    fn explicit_scenario_selection_includes_known_divergences() {
+        assert!(!parse(&[]).unwrap().explicit_scenarios);
 
-        let args = parse(&["--scenario", "shouminkan_decline"]).unwrap();
-        assert_eq!(args.scenarios, vec![ScenarioId::ShouminkanDecline]);
+        let args = parse(&["--scenario", "shouminkan_decision"]).unwrap();
+        assert!(args.explicit_scenarios);
+        assert_eq!(args.scenarios, vec![ScenarioId::ShouminkanDecision]);
+    }
+
+    #[test]
+    fn known_decline_divergence_is_classified_by_answer() {
+        let mut saw_kan = false;
+        let mut saw_decline = false;
+
+        for _ in 0..80 {
+            let state = generate_puzzle("shouminkan_decision").expect("lesson must generate");
+            match state.correct_action.action_type() {
+                CorrectActionType::Kan => {
+                    saw_kan = true;
+                    assert!(!known_divergence(&state), "the Kan half is comparable");
+                }
+                CorrectActionType::Discard => {
+                    saw_decline = true;
+                    assert!(
+                        known_divergence(&state),
+                        "the discard half is the known divergence"
+                    );
+                }
+                other => panic!("unexpected Added Kan answer {other:?}"),
+            }
+        }
+
+        assert!(
+            saw_kan && saw_decline,
+            "the merged lesson must produce both halves"
+        );
     }
 
     #[test]

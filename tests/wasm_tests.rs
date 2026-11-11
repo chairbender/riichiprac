@@ -1126,44 +1126,69 @@ fn test_ryanmen_rejection_sampling_constraints() {
 
     #[wasm_bindgen_test]
     fn test_shouminkan_decision_payload() {
-        for run in 0..50 {
+        let mut kan_count = 0usize;
+        let mut discard_count = 0usize;
+
+        for run in 0..100 {
             let json_output = generate_puzzle("shouminkan_decision".to_string());
             let val: serde_json::Value = serde_json::from_str(&json_output)
                 .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
 
             assert_eq!(val["category"], "shouminkan_decision");
+            // One lesson, one neutral prompt: the payload never hints at the
+            // expected answer, even though the answer splits ~50/50.
             assert_eq!(val["target_action"], "Kan");
-            assert_eq!(val["correct_action"]["type"], "kan");
-            assert!(
-                val["correct_action"]["discard"].is_null(),
-                "run {run}: Kan action must not include a discard field"
-            );
 
-            let kan_tile = val["correct_action"]["tile"]
+            let answer = val["correct_action"]["type"]
                 .as_str()
-                .expect("Kan action must include the fourth tile");
+                .expect("answer must carry a type");
+            assert!(
+                answer == "kan" || answer == "discard",
+                "run {run}: unexpected answer {answer}"
+            );
+            let answer_tile = val["correct_action"]["tile"]
+                .as_str()
+                .expect("both answers must name the fourth tile");
+            if answer == "kan" {
+                kan_count += 1;
+                assert!(
+                    val["correct_action"]["discard"].is_null(),
+                    "run {run}: Kan action must not include a discard field"
+                );
+            } else {
+                discard_count += 1;
+            }
+
             let triggers = val["shouminkan_triggers"]
                 .as_array()
                 .expect("shouminkan_triggers must be an array");
-            assert!(
-                !triggers.is_empty(),
-                "run {run}: at least one trigger is required"
-            );
+            if answer == "kan" {
+                assert!(
+                    !triggers.is_empty(),
+                    "run {run}: at least one trigger is required for the Kan answer"
+                );
+            } else {
+                assert!(
+                    triggers.is_empty(),
+                    "run {run}: the discard answer has no Kan justification"
+                );
+            }
 
             let human = &val["players"][0];
             assert_eq!(human["hand"].as_array().unwrap().len(), 10);
-            assert_eq!(human["draw"], kan_tile);
+            assert_eq!(human["draw"], answer_tile);
             assert_eq!(human["melds"].as_array().unwrap().len(), 1);
             assert_eq!(human["melds"][0]["meld_type"], "Pon");
             let meld_tiles = human["melds"][0]["tiles"].as_array().unwrap();
             assert_eq!(meld_tiles.len(), 3);
-            assert!(meld_tiles.iter().all(|tile| tile == kan_tile));
+            assert_eq!(meld_tiles[0], answer_tile);
+            assert!(meld_tiles.iter().all(|tile| tile == answer_tile));
             assert!(
                 !human["hand"]
                     .as_array()
                     .unwrap()
                     .iter()
-                    .any(|tile| tile == kan_tile)
+                    .any(|tile| tile == answer_tile)
             );
             assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
 
@@ -1175,6 +1200,11 @@ fn test_ryanmen_rejection_sampling_constraints() {
                 .sum();
             assert_eq!(total_score, 100_000);
         }
+
+        assert!(
+            kan_count >= 25 && discard_count >= 25,
+            "the payload sweep must cover both answers, got {kan_count} Kan / {discard_count} discard"
+        );
     }
 }
 

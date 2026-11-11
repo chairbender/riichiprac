@@ -6,7 +6,8 @@
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
 //! - `riichi_judgement`: ch. 7's general three-condition Riichi/dama rule.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
-//! - `shouminkan_decision`: Added Kan decision lesson.
+//! - `shouminkan_decision`: Added Kan decision lesson (Kan or decline, one
+//!   neutral prompt).
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
 //!
 //! The Phase 2 `mock_table` fixture lives in `crate::fixtures`, outside the
@@ -135,16 +136,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
     ScenarioMeta {
         id: ScenarioId::ShouminkanDecision,
         label: "Added Kan Decision",
-        description: "Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan.",
-        category: ScenarioCategory::KanDecision,
-        tags: &["kan", "shouminkan"],
-        requires_ai: false,
-        grading: ScenarioGrading::BookAndMortal,
-    },
-    ScenarioMeta {
-        id: ScenarioId::ShouminkanDecline,
-        label: "Decline the Kan",
-        description: "Open Pon, fourth tile drawn, hand still 2-away with value: keep the Pon and discard.",
+        description: "Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan or discard.",
         category: ScenarioCategory::KanDecision,
         tags: &["kan", "shouminkan", "decline"],
         requires_ai: false,
@@ -218,7 +210,6 @@ pub enum ScenarioId {
     ChiitoitsuRiichiVsDama,
     RiichiJudgement,
     ShouminkanDecision,
-    ShouminkanDecline,
     AiBestAction,
     DefenseSafetyChart,
     DefenseStuckHeuristic,
@@ -233,7 +224,6 @@ impl ScenarioId {
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::RiichiJudgement,
         ScenarioId::ShouminkanDecision,
-        ScenarioId::ShouminkanDecline,
         ScenarioId::AiBestAction,
         ScenarioId::DefenseSafetyChart,
         ScenarioId::DefenseStuckHeuristic,
@@ -248,7 +238,6 @@ impl ScenarioId {
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
-            ScenarioId::ShouminkanDecline => "shouminkan_decline",
             ScenarioId::AiBestAction => "ai_best_action",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
@@ -264,7 +253,6 @@ impl ScenarioId {
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
-            "shouminkan_decline" => Some(ScenarioId::ShouminkanDecline),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
@@ -281,7 +269,6 @@ impl ScenarioId {
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
-            ScenarioId::ShouminkanDecline => shouminkan_decision::generate_decline(category),
             ScenarioId::AiBestAction => Err(
                 "ai_best_action requires the loaded Mortal model; use the evaluator's \
                  generate_ai_puzzle"
@@ -456,7 +443,6 @@ mod tests {
             "ryanmen_protorun",
             "chiitoitsu_riichi_vs_dama",
             "shouminkan_decision",
-            "shouminkan_decline",
             "defense_safety_chart",
             "defense_stuck_heuristic",
         ] {
