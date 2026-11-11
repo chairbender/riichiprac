@@ -333,6 +333,15 @@ pub struct GameState {
     pub category: String,
     pub target_action: TargetAction,
     pub correct_action: CorrectAction,
+    /// Tiles that are graded as the same answer as [`Self::correct_action`].
+    ///
+    /// A few lessons ask for a *shape* decision rather than one named tile: in
+    /// the protorun lesson, either tile of a closed-wait protorun is the same
+    /// discard (both leave the hand 1-away with the identical acceptance), so
+    /// `correct_action` names the tile the player drew and lists its twin here.
+    /// Empty for every answer that has one exact tile.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub equivalent_tiles: Vec<String>,
     /// What kind of decision this state presents.
     #[serde(default)]
     pub decision: DecisionContext,

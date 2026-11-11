@@ -154,6 +154,14 @@ export interface GameState {
   category: string;
   target_action: TargetAction;
   correct_action: CorrectAction;
+  /**
+   * Tiles graded as the same answer as `correct_action`.
+   *
+   * A shape lesson can have two interchangeable tiles (either tile of a
+   * closed-wait protorun is the same discard); the engine names the drawn one
+   * and lists its twin here. Empty or absent for one-tile answers.
+   */
+  equivalent_tiles?: string[];
   /** What kind of decision this state presents. */
   decision: DecisionContext;
   /** Model-derived answer and full ranking for AI scenarios. */

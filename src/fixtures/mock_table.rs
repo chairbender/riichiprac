@@ -166,6 +166,7 @@ pub(crate) fn generate(category: &str) -> Result<GameState, String> {
         category: category.to_string(),
         target_action: TargetAction::Riichi,
         correct_action: CorrectAction::riichi(correct_discard),
+        equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
         ai_decision: None,
         riichi_triggers: Vec::new(),

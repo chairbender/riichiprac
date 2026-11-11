@@ -51,6 +51,7 @@ const DEFAULT_LIMIT: usize = 20;
 /// shouminkan_decline` to look at it directly.
 const DEFAULT_SCENARIOS: &[ScenarioId] = &[
     ScenarioId::RyanmenProtorun,
+    ScenarioId::ProtorunPriority,
     ScenarioId::ChiitoitsuRiichiVsDama,
     ScenarioId::ShouminkanDecision,
 ];
@@ -66,8 +67,9 @@ const USAGE: &str = "\
 usage: fuzz_scenarios [options]
 
   --scenario <id>          scenario to sample; repeatable
-                           (default: ryanmen_protorun, chiitoitsu_riichi_vs_dama,
-                           shouminkan_decision, shouminkan_decline;
+                           (default: ryanmen_protorun, protorun_priority,
+                           chiitoitsu_riichi_vs_dama, shouminkan_decision;
+                           shouminkan_decline must be named explicitly;
                            ai_best_action needs the model and is rejected)
   --iterations <n>         maximum generation attempts (default: 200)
   --limit <n>              maximum discrepancy files per run (default: 20)
@@ -545,6 +547,7 @@ mod tests {
             args.scenarios,
             vec![
                 ScenarioId::RyanmenProtorun,
+                ScenarioId::ProtorunPriority,
                 ScenarioId::ChiitoitsuRiichiVsDama,
                 ScenarioId::ShouminkanDecision,
             ]

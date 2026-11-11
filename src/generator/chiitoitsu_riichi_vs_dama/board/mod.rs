@@ -177,6 +177,7 @@ fn assemble_state(
         category: category.to_string(),
         target_action,
         correct_action,
+        equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
         ai_decision: None,
         riichi_triggers: skeleton.triggers.to_vec(),

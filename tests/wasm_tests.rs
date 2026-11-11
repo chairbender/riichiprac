@@ -811,6 +811,120 @@ fn test_ryanmen_rejection_sampling_constraints() {
         assert_eq!(actual, expected);
     }
 
+    /// The protorun-priority payload: a 1-away hand with one block too many
+    /// where only the closed wait may be broken.
+    ///
+    /// Riichi Book 1 ch3:205/ch3:230 — a side wait accepts twice as many tiles
+    /// as a closed wait, so breaking the closed wait keeps both 8-tile waits.
+    #[wasm_bindgen_test]
+    fn test_protorun_priority_rejection_sampling_constraints() {
+        for run in 0..25 {
+            let json_output = generate_puzzle("protorun_priority".to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+            assert_eq!(val["category"], "protorun_priority");
+            assert_eq!(val["target_action"], "NaniKiru");
+            assert_eq!(val["correct_action"]["type"], "dama");
+            assert_eq!(val["riichi_sticks"], 0);
+            assert_eq!(val["dora_indicators"].as_array().unwrap().len(), 1);
+            assert_eq!(val["ura_dora_indicators"].as_array().unwrap().len(), 1);
+            assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
+            assert_eq!(val["shanten"], 1);
+            assert_eq!(val["is_agari"], false);
+            assert_eq!(val["ukeire_tiles"].as_array().unwrap().len(), 4);
+            assert_eq!(val["ukeire_total"], 16);
+
+            let players = val["players"].as_array().expect("players array");
+            assert_eq!(players.len(), 4);
+            for opponent in &players[1..] {
+                assert_eq!(opponent["is_riichi"], false);
+                assert_eq!(opponent["melds"].as_array().unwrap().len(), 0);
+                assert!(opponent["riichi_discard_index"].is_null());
+            }
+
+            // The human hand, the open Yakuhai Pon, and the drawn closed-wait tile.
+            let human = &players[0];
+            assert_eq!(human["hand"].as_array().unwrap().len(), 10);
+            assert_eq!(human["melds"].as_array().unwrap().len(), 1);
+            assert_eq!(human["melds"][0]["meld_type"], "Pon");
+            let meld_tiles = human["melds"][0]["tiles"].as_array().unwrap();
+            assert_eq!(meld_tiles.len(), 3);
+            assert!(meld_tiles.iter().all(|tile| tile == &meld_tiles[0]));
+
+            let answer = val["correct_action"]["discard"]
+                .as_str()
+                .expect("dama action must include a discard tile");
+            assert_eq!(human["draw"], answer);
+
+            // The other tile of the closed wait is graded as the same decision.
+            let equivalents = val["equivalent_tiles"]
+                .as_array()
+                .expect("protorun priority must declare its twin tile");
+            assert_eq!(equivalents.len(), 1);
+            let equivalent = equivalents[0].as_str().expect("equivalent tile");
+            assert_ne!(equivalent, answer);
+            assert!(
+                human["hand"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|tile| tile.as_str() == Some(equivalent)),
+                "run {run}: the closed wait's other tile must be in hand"
+            );
+
+            // Full hand = concealed hand + draw + open meld.
+            let mut expected: Vec<&str> = human["hand"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            expected.push(answer);
+            expected.extend(meld_tiles.iter().map(|tile| tile.as_str().unwrap()));
+            expected.sort();
+            let mut actual: Vec<&str> = val["tiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            actual.sort();
+            assert_eq!(actual, expected);
+
+            // The dora is never one of the closed wait's tiles: the lesson is
+            // about shape, not value.
+            let indicator = parse_hand(val["dora_indicators"][0].as_str().unwrap())
+                .expect("dora indicator parses")
+                .remove(0);
+            let dora = indicator_to_dora(indicator).to_string();
+            assert_ne!(dora, answer);
+            assert_ne!(dora, equivalent);
+
+            // Answering with the twin tile grades as the book's answer.
+            let request = serde_json::json!({
+                "table": val,
+                "answer": { "action": "dama", "tile": equivalent },
+                "evaluation": serde_json::Value::Null,
+            });
+            let grade: serde_json::Value =
+                serde_json::from_str(&riichiprac::grade_answer_json(&request.to_string()))
+                    .expect("grade must be valid JSON");
+            assert_eq!(
+                grade["book"]["is_tile_correct"], true,
+                "run {run}: the twin closed-wait tile must grade correct"
+            );
+            assert_eq!(grade["outcome"], "only_available_agrees");
+
+            // Scores total 100,000.
+            let total_score: i64 = players
+                .iter()
+                .map(|player| player["score"].as_i64().expect("score int"))
+                .sum();
+            assert_eq!(total_score, 100_000);
+        }
+    }
+
     #[wasm_bindgen_test]
     fn test_shouminkan_decision_payload() {
         for run in 0..50 {

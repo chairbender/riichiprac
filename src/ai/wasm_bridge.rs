@@ -286,6 +286,7 @@ mod tests {
             category: "bridge_test".to_string(),
             target_action: TargetAction::NaniKiru,
             correct_action: CorrectAction::dama("6m"),
+            equivalent_tiles: Vec::new(),
             decision: DecisionContext::SelfTurn,
             ai_decision: None,
             riichi_triggers: Vec::new(),
