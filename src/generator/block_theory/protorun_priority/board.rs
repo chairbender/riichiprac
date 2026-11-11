@@ -9,7 +9,8 @@ use crate::generator::support::analysis::{HandMetrics, evaluate_counts, wind_to_
 use crate::generator::support::deck::Deck;
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    OpponentDeal, deal_opponents, discards_from_tiles, random_round, random_scores_with_human_first,
+    OpponentDeal, deal_opponents, discards_from_tiles, random_round,
+    random_scores_with_human_first, self_turn_river_counts,
 };
 use crate::rng::gen_range;
 use crate::state::{
@@ -49,16 +50,18 @@ pub(super) fn build_board(
     let honba = gen_range(0, 4) as u8;
     let scores = random_scores_with_human_first();
 
-    // The human is about to discard and has an open Pon, so every player has
-    // taken the same number of turns and at least one turn has passed.
+    // The human is about to discard and has an open Pon, so the rivers come
+    // from one legal timeline: the human's Pon off Shimocha gives them one
+    // extra discard over a pure rotation.
     let discard_count = gen_range(1, 7);
-    let deal = deal_opponents(&mut deck, Wind::East, &scores, discard_count)
+    let river_counts = self_turn_river_counts(Wind::East, &[(0, 1)], discard_count);
+    let deal = deal_opponents(&mut deck, Wind::East, &scores, &river_counts)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
 
     // Keep the river clear of every wait tile. The hand is 1-away, so this is
     // hygiene rather than furiten, but it removes a distracting coincidence.
     let human_river = deck
-        .draw_excluding(discard_count, &all_waits(skeleton))
+        .draw_excluding(river_counts[0], &all_waits(skeleton))
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
     validate_visible_waits(skeleton, &deal.rivers, dora_indicator)?;
@@ -247,6 +250,8 @@ fn assemble_state(
     GameState {
         category: category.to_string(),
         target_action: TargetAction::NaniKiru,
+        // Stamped by `finalize_state` from the legal action set.
+        can_riichi: false,
         // The open Yakuhai meld makes Riichi illegal, so discarding without a
         // declaration is the only legal answer.
         correct_action: CorrectAction::dama(skeleton.answer_tile.to_string()),
@@ -406,19 +411,16 @@ mod tests {
             "5z" | "6z" | "7z"
         ));
 
-        // Every player has taken the same number of turns.
+        // The rivers come from one legal turn order: the human's earlier Pon
+        // gives them one extra discard over a pure rotation.
+        crate::generator::support::state_validation::validate_reachable_state(state)
+            .expect("protorun priority table must be reachable");
         let discard_counts: Vec<usize> = state
             .players
             .iter()
             .map(|player| player.discards.len())
             .collect();
-        assert!(
-            discard_counts
-                .iter()
-                .all(|&count| count == discard_counts[0]),
-            "discard counts must line up: {discard_counts:?}"
-        );
-        assert!((1..=6).contains(&discard_counts[0]));
+        assert!((1..=8).contains(&discard_counts[0]));
 
         // The answer keeps both side waits: 2 kinds per side wait.
         assert_eq!(state.shanten, 1);

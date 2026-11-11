@@ -10,6 +10,7 @@ use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
     OpponentDeal, deal_opponents, discards_from_tiles, losing_badly_ranked_scores,
     placement_desperation_ranked_scores, random_round, random_table_scores, scores_for_seats,
+    self_turn_river_counts,
 };
 use crate::rng::{choose, gen_range, shuffle};
 use crate::state::{
@@ -66,12 +67,15 @@ pub(super) fn build(
     let human_wind = choose(&Wind::ALL).ok_or_else(|| "No seat wind available".to_string())?;
     let discard_count = choose_discard_count(triggers);
 
-    let deal = deal_opponents(&mut deck, human_wind, &scores, discard_count)
+    // The human's open Pon was called from Shimocha, so the call happens right
+    // after seat 1 discards and every river follows from that one timeline.
+    let counts = self_turn_river_counts(human_wind, &[(0, 1)], discard_count);
+    let deal = deal_opponents(&mut deck, human_wind, &scores, &counts)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
 
     // The human is not furiten: neither wait may appear in their river.
     let human_river = deck
-        .draw_excluding(discard_count, &skeleton.wait_tiles)
+        .draw_excluding(counts[0], &skeleton.wait_tiles)
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
     validate_visible_waits(skeleton, &deal.rivers, dora_indicator, ura_indicator)?;
@@ -266,10 +270,13 @@ fn table_is_desperate(round_wind: Wind, hand_number: u8, scores: &[i32; 4]) -> b
     placement || losing_badly
 }
 
-/// Chooses how many discards each player has made for the active lesson.
+/// Chooses the minimum number of discards each player has made for the active
+/// lesson. The planned rivers can sit one or two above this floor, so the
+/// late-game floor stays low enough for four rivers plus four hands to fit in
+/// the live wall.
 fn choose_discard_count(triggers: ShouminkanTriggerSet) -> usize {
     if triggers.late_game {
-        gen_range(13, 17)
+        gen_range(13, 16)
     } else if triggers.placement_desperation || triggers.losing_badly {
         gen_range(8, 13)
     } else {
@@ -426,6 +433,7 @@ fn assemble_state(
         dama_reasons: Vec::new(),
         shouminkan_triggers,
         book_rationale: None,
+        can_riichi: false,
         hand_string,
         tiles: tile_strings,
         shanten: metrics.shanten,

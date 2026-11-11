@@ -145,8 +145,17 @@ fn print_report(parsed: &ParsedReport) {
 
 fn print_evaluation(parsed: &ParsedReport, evaluation: &riichiprac::ai::wasm_bridge::Evaluation) {
     println!();
+    let riichi = if evaluation.recommended_action == "Riichi" {
+        evaluation
+            .riichi_discard
+            .as_deref()
+            .map(|discard| format!(" (declaring on {discard})"))
+            .unwrap_or_default()
+    } else {
+        String::new()
+    };
     println!(
-        "Mortal double check: EV {:.4}, recommended {}",
+        "Mortal double check: EV {:.4}, recommended {}{riichi}",
         evaluation.expected_value, evaluation.recommended_action
     );
     for action in evaluation.evaluations.iter().take(5) {

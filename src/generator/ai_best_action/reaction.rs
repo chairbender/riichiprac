@@ -5,7 +5,9 @@ use agari::tile::{Honor, Suit, Tile};
 use crate::generator::support::analysis::evaluate_hand;
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::generator::support::format::format_hand_compact;
-use crate::generator::support::table::{discards_from_tiles, random_round, random_table_scores};
+use crate::generator::support::table::{
+    dealer_seat, discards_from_tiles, random_round, random_table_scores, river_counts,
+};
 use crate::rng::{choose, gen_range};
 use crate::state::{CorrectAction, DecisionContext, GameState, PlayerState, TargetAction, Wind};
 
@@ -298,9 +300,6 @@ fn assemble_with_waits(
     let mut excluded: Vec<Tile> = hand.clone();
     excluded.push(claimed);
     excluded.extend(waits.iter().copied());
-    let human_river = deck
-        .draw_excluding(gen_range(3, 10), &excluded)
-        .ok_or_else(|| "deck ran out while dealing the human river".to_string())?;
 
     // A chankan shows the source's completed kan (four copies of the tile).
     // `build_ron_shape` already reserved one copy as the winning tile.
@@ -311,7 +310,19 @@ fn assemble_with_waits(
     let (round_wind, hand_number) = random_round();
     let scores = random_table_scores();
     let human_wind = Wind::ALL[gen_range(0, 4)];
-    let river_count = gen_range(3, 10).max(2);
+    let min_river = gen_range(3, 10).max(2);
+    // One legal timeline fixes every river length. A regular reaction ends on
+    // the source's discard; a chankan happens after the source draws, which
+    // follows their Kamicha's discard.
+    let counts = if chankan {
+        river_counts(dealer_seat(human_wind), (from + 3) % 4, &[], min_river)
+    } else {
+        river_counts(dealer_seat(human_wind), from, &[], min_river)
+    };
+
+    let human_river = deck
+        .draw_excluding(counts[0], &excluded)
+        .ok_or_else(|| "deck ran out while dealing the human river".to_string())?;
 
     let mut players = Vec::with_capacity(4);
     players.push(PlayerState {
@@ -330,17 +341,20 @@ fn assemble_with_waits(
     });
 
     for (seat, score) in (1..=3).zip(scores.iter().skip(1)) {
+        // A kan meld costs three concealed tiles: the fourth tile is the
+        // replacement draw, not a 14th hand tile.
+        let concealed_count = if seat == from && chankan { 10 } else { 13 };
         let concealed = deck
-            .draw_n(13)
+            .draw_n(concealed_count)
             .ok_or_else(|| "deck ran out while dealing an opponent".to_string())?;
         let river = if seat == from && !chankan {
             let mut river = deck
-                .draw_n(river_count - 1)
+                .draw_n(counts[seat] - 1)
                 .ok_or_else(|| "deck ran out while dealing the claim river".to_string())?;
             river.push(claimed);
             river
         } else {
-            deck.draw_n(river_count)
+            deck.draw_n(counts[seat])
                 .ok_or_else(|| "deck ran out while dealing an opponent river".to_string())?
         };
         let melds = if seat == from && chankan {
@@ -403,6 +417,7 @@ fn assemble_with_waits(
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
         book_rationale: None,
+        can_riichi: false,
         hand_string,
         tiles: tile_strings,
         shanten: metrics.shanten,

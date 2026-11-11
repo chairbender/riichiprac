@@ -90,6 +90,9 @@ mod tests {
                 let aka = human.red_fives.len() as u8;
                 regular_dora_in_hand(&winning, indicator) + aka <= 1
             }
+            // The general ch7.1 triggers belong to the `riichi_judgement`
+            // lesson; this seven-pairs generator never emits them.
+            RiichiTrigger::HasExtraHan | RiichiTrigger::GoodWait => false,
         }
     }
 
@@ -258,7 +261,10 @@ mod tests {
                         "run {run}: dama hand is {score_level:?}, not Mangan or better"
                     );
                 }
-                CorrectActionType::Kan | CorrectActionType::Discard | CorrectActionType::Best => {
+                CorrectActionType::Fold
+                | CorrectActionType::Kan
+                | CorrectActionType::Discard
+                | CorrectActionType::Best => {
                     panic!("run {run}: chiitoitsu scenario returned a non-lesson action")
                 }
             }

@@ -6,13 +6,11 @@ mod self_turn;
 mod table;
 mod validate;
 
-use crate::ai::actions::RIICHI_ACTION;
 use crate::ai::finalize::{
     build_ai_decision, correct_action_from_recommendation, evaluation_matches_legal_actions,
 };
 use crate::ai::model::MortalV4Model;
-use crate::ai::wasm_bridge::{Evaluation, evaluate_state_named, evaluate_state_with_options};
-use crate::decision::ActionKind;
+use crate::ai::wasm_bridge::{Evaluation, evaluate_state_named};
 use crate::rng::gen_range;
 use crate::state::{DecisionContext, GameState, TargetAction};
 
@@ -65,26 +63,10 @@ pub fn generate(
             }
         };
 
-        let riichi_discard = if evaluation.recommended_action == "Riichi" {
-            let mut post = state.clone();
-            post.players[0].is_riichi = true;
-            match evaluate_state_with_options(model, &post, model_name, &[RIICHI_ACTION]) {
-                Ok(second) => second
-                    .evaluations
-                    .iter()
-                    .find(|scored| scored.info.kind == ActionKind::Discard)
-                    .and_then(|scored| scored.info.tile.clone()),
-                Err(err) => {
-                    last_error = format!("Riichi second pass failed: {err}");
-                    if inference_attempts >= MAX_INFERENCE_ATTEMPTS {
-                        break;
-                    }
-                    continue;
-                }
-            }
-        } else {
-            None
-        };
+        // The evaluator already ran the Riichi second pass when the model chose
+        // to declare, so the discard (and therefore whether this is a complete
+        // riichi answer) is carried on the evaluation itself.
+        let riichi_discard = evaluation.riichi_discard.clone();
 
         match apply_evaluation(&mut state, &evaluation, riichi_discard.as_deref()) {
             Ok(()) => return Ok(state),
@@ -117,7 +99,10 @@ fn validate_state(state: &GameState) -> Result<(), String> {
         DecisionContext::ReactToKan { .. } => {
             Err("chankan reactions are not implemented".to_string())
         }
-    }
+    }?;
+    // Final guard: the rivers, melds, and draw must describe one reachable
+    // turn order, whatever the lesson-specific checks above allowed.
+    crate::generator::support::state_validation::validate_reachable_state(state)
 }
 
 /// Apply a model evaluation to a validated candidate.
@@ -168,6 +153,8 @@ mod tests {
         for run in 0..200 {
             let state = valid_candidate();
             validate_candidate(&state).unwrap_or_else(|err| panic!("run {run} invalid: {err}"));
+            crate::generator::support::state_validation::validate_reachable_state(&state)
+                .unwrap_or_else(|err| panic!("run {run} unreachable: {err}"));
             assert_eq!(state.category, "ai_best_action");
             assert_eq!(state.target_action, TargetAction::Best);
             assert_eq!(state.decision, DecisionContext::SelfTurn);
@@ -187,6 +174,8 @@ mod tests {
                 .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
             validate_reaction_candidate(&state)
                 .unwrap_or_else(|err| panic!("run {run} invalid: {err}"));
+            crate::generator::support::state_validation::validate_reachable_state(&state)
+                .unwrap_or_else(|err| panic!("run {run} unreachable: {err}"));
             let (from, tile, chankan) = match &state.decision {
                 DecisionContext::ReactToDiscard { from, tile } => (from, tile, false),
                 DecisionContext::ReactToKan { from, tile } => (from, tile, true),
@@ -244,6 +233,7 @@ mod tests {
             model: "test_model.safetensors".to_string(),
             expected_value: 0.1,
             recommended_action: action.to_string(),
+            riichi_discard: None,
             evaluations: actions
                 .iter()
                 .map(|info| ActionEvaluation {
@@ -311,6 +301,7 @@ mod tests {
             model: "test_model.safetensors".to_string(),
             expected_value: 0.25,
             recommended_action: recommended.action.clone(),
+            riichi_discard: None,
             evaluations: actions
                 .iter()
                 .map(|info| ActionEvaluation {

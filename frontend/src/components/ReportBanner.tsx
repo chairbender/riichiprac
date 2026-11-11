@@ -1,14 +1,16 @@
 import type { ReportMode } from '../store/useGameStore';
 import { callDecisionFor } from '../callDecision';
+import { correctActionTile } from '../actions';
 import type { AiEvaluation, AiStatus } from '../types/ai';
 import { formatProbability } from '../types/ai';
 import { CallReport } from './CallReport';
 import {
   describeCorrectAction,
   describeReportedAction,
-  mortalActionDisplayName,
   mortalActionForCorrect,
   mortalActionForReported,
+  mortalMatchesAction,
+  mortalRecommendationDisplay,
   probabilityForAction,
   reportReasonLabel,
   verdictLabel,
@@ -48,10 +50,12 @@ export function ReportBanner({
   const snapshot = report.ai?.evaluation ?? null;
   const call = callDecisionFor(evaluation);
 
-  const agreesWithApp =
-    evaluation?.recommended_action === appAction;
-  const agreesWithReporter =
-    evaluation?.recommended_action === reporterAction;
+  const agreesWithApp = evaluation
+    ? mortalMatchesAction(evaluation, appAction, correctActionTile(expected) ?? '')
+    : false;
+  const agreesWithReporter = evaluation
+    ? mortalMatchesAction(evaluation, reporterAction, answer.tile)
+    : false;
 
   let agreementText = '';
   if (evaluation) {
@@ -132,7 +136,7 @@ export function ReportBanner({
         {evaluation ? (
           <>
             <p className="report-ai-line">
-              Mortal now: <strong>{mortalActionDisplayName(evaluation.recommended_action)}</strong>{' '}
+              Mortal now: <strong>{mortalRecommendationDisplay(evaluation)}</strong>{' '}
               <span className="report-ai-detail">
                 (app {formatProbability(probabilityForAction(evaluation, appAction))}
                 {' · '}
@@ -144,7 +148,7 @@ export function ReportBanner({
           </>
         ) : snapshot ? (
           <p className="report-ai-line">
-            AI at export: <strong>{mortalActionDisplayName(snapshot.recommended_action)}</strong>
+            AI at export: <strong>{mortalRecommendationDisplay(snapshot)}</strong>
             {isEvaluating && ' · checking again…'}
           </p>
         ) : (

@@ -1,6 +1,7 @@
 import type { DualGrade } from '../types/verdict';
 import { formatProbability } from '../types/ai';
 import {
+  mortalRecommendationLabel,
   outcomeHeadline,
   outcomeTone,
 } from '../types/verdict';
@@ -118,11 +119,11 @@ function mortalMarkText(grade: DualGrade): string {
 function mortalMarkLabel(grade: DualGrade): string {
   if (!grade.mortal) return 'Mortal';
   if (grade.mortal.agrees) return 'Mortal: agrees';
-  return `Mortal: recommends ${grade.mortal.recommended_label}`;
+  return `Mortal: recommends ${mortalRecommendationLabel(grade.mortal)}`;
 }
 
 function detailLine(grade: DualGrade): string {
-  const mortalPick = grade.mortal?.recommended_label ?? 'another action';
+  const mortalPick = mortalRecommendationLabel(grade.mortal ?? null);
 
   switch (grade.outcome) {
     case 'both_agree':
@@ -160,6 +161,8 @@ function bookPick(grade: DualGrade): string {
       return `Riichi, discarding ${tile}`;
     case 'dama':
       return `Dama, discarding ${tile}`;
+    case 'fold':
+      return `Fold, discarding ${tile}`;
     default:
       return actionTypeLabel(grade.book.expected_action);
   }
@@ -171,6 +174,8 @@ function actionTypeLabel(action: string): string {
       return 'Riichi';
     case 'dama':
       return 'Dama';
+    case 'fold':
+      return 'Fold';
     case 'kan':
       return 'Kan';
     case 'discard':

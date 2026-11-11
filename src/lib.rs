@@ -6,6 +6,7 @@ pub mod generator;
 pub mod rationale;
 pub mod report;
 pub mod rng;
+pub mod safety;
 pub mod state;
 pub mod verdict;
 
@@ -19,6 +20,7 @@ pub use report::{
     AiComparison, AppInfo, DecisionPrompt, ParsedReport, ReportDecision, ReportReason,
     ReportVerdict, ReportedAction, ReportedAi, ScenarioReport, ScenarioSnapshot,
 };
+pub use safety::{SafetyFacts, SafetyRank, StuckRules, TileRead};
 pub use state::{
     CalledMeld, CorrectAction, CorrectActionType, DamaReason, DecisionContext, DiscardTile,
     GameState, MeldType, PlayerState, RiichiTrigger, ShouminkanTrigger, TargetAction, Wind,

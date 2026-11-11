@@ -17,6 +17,9 @@
 
 use serde::{Deserialize, Serialize};
 
+use agari::tile::Tile;
+
+use crate::safety::SafetyRank;
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, RiichiTrigger, ShouminkanTrigger,
 };
@@ -96,13 +99,13 @@ fn ch9(line: u32, needle: &str) -> Citation {
     )
 }
 
-fn ch8(needle: &str) -> Citation {
+fn ch8(section: &str, line: u32, needle: &str) -> Citation {
     citation(
         8,
         "Defense judgement",
-        "Understanding suji",
+        section,
         "RiichiBook1-ch8-defense.tex",
-        163,
+        line,
         needle,
     )
 }
@@ -129,13 +132,36 @@ fn ch3(line: u32, needle: &str) -> Citation {
     )
 }
 
+fn ch3_bulging(line: u32, needle: &str) -> Citation {
+    citation(
+        3,
+        "Riichi mahjong basics",
+        "Bulging float (nakabukure) shape",
+        "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
 const CHIITOITSU_BOX: &str = "Chiitoitsu not waiting for dora";
+/// Riichi Book 1, ch. 7, "To riichi or not to riichi?": the general
+/// three-condition rule the `riichi_judgement` lesson grades.
+const GENERAL_RULE: &str = "To riichi or not to riichi?";
+
+const CH8_GENBUTSU: &str = "Genbutsu and other absolutely safe tiles";
+const CH8_SUJI: &str = "Understanding suji";
+const CH8_KABE: &str = "Understanding tile blockade";
+const CH8_RANKING: &str = "Safety ranking";
+const CH8_VS_RIICHI: &str = "Defense against riichi";
+const CH8_STUCK: &str = "What to discard when you get stuck";
 
 impl RiichiTrigger {
     /// Stable id matching the serialized enum name.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Dealer => "dealer",
+            Self::HasExtraHan => "has_extra_han",
+            Self::GoodWait => "good_wait",
             Self::Tanyao => "tanyao",
             Self::RedFiveWait => "red_five_wait",
             Self::SujiTrap => "suji_trap",
@@ -148,10 +174,23 @@ impl RiichiTrigger {
     pub fn rationale(self) -> RuleText {
         match self {
             Self::Dealer => RuleText {
-                rule: "Being the dealer adds enough value to justify Riichi on a \
-                       chiitoitsu hand that is not waiting on the dora.",
-                quote: "You are the dealer;",
-                citation: ch7(CHIITOITSU_BOX, 349, "You are the dealer"),
+                rule: "Being the dealer adds enough value to justify Riichi, even on a \
+                       yaku-less hand with a bad wait.",
+                quote: "You are the dealer.",
+                citation: ch7(GENERAL_RULE, 59, "You are the dealer"),
+            },
+            Self::HasExtraHan => RuleText {
+                rule: "One han or more (a yaku or dora) without Riichi justifies \
+                       Riichi, even with a bad wait.",
+                quote: "Your hand has at least one {\\jap han} other than riichi.",
+                citation: ch7(GENERAL_RULE, 57, "other than riichi"),
+            },
+            Self::GoodWait => RuleText {
+                rule: "A good wait justifies Riichi: the book counts a wait as good \
+                       when it has at least two kinds and more than four live tiles \
+                       left to win on.",
+                quote: "Your hand has a good wait.",
+                citation: ch7(GENERAL_RULE, 58, "Your hand has a good wait"),
             },
             Self::Tanyao => RuleText {
                 rule: "Tanyao justifies Riichi even when the wait itself is awkward.",
@@ -171,7 +210,7 @@ impl RiichiTrigger {
                        opponents, which justifies Riichi.",
                 quote: "When you wait for a tile that is a suji tile of some tiles \
                         you have discarded yourself, we say you have a suji-trap wait.",
-                citation: ch8("we say you have a"),
+                citation: ch8("Understanding suji", 165, "we say you have a"),
             },
             Self::WaitOutside456 => RuleText {
                 rule: "A single wait other than 4, 5, or 6 justifies Riichi: \
@@ -193,6 +232,8 @@ impl DamaReason {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::NotDealer => "not_dealer",
+            Self::BadWait => "bad_wait",
+            Self::NoExtraHan => "no_extra_han",
             Self::NoTanyao => "no_tanyao",
             Self::MiddleWait => "middle_wait",
             Self::NoRedFiveWait => "no_red_five_wait",
@@ -206,10 +247,24 @@ impl DamaReason {
     pub fn rationale(self) -> Option<RuleText> {
         match self {
             Self::NotDealer => Some(RuleText {
-                rule: "A non-dealer waiting on 4, 5, or 6 is one of the two cases \
-                       where the book keeps the hand in dama.",
-                quote: "when you are a non-dealer",
-                citation: ch7(CHIITOITSU_BOX, 359, "when you are a non-dealer"),
+                rule: "The dealer condition does not hold: the book only gives the \
+                       deal's extra value to the East seat.",
+                quote: "You are the dealer.",
+                citation: ch7(GENERAL_RULE, 59, "You are the dealer"),
+            }),
+            Self::BadWait => Some(RuleText {
+                rule: "A bad wait is the wait half of the book's dama case: a wait \
+                       needs at least two kinds and more than four live tiles to \
+                       count as good.",
+                quote: "a wait is said to be good if there are at least two kinds \
+                        and more than four tiles left to win on",
+                citation: ch7("Bad wait", 491, "at least two kinds"),
+            }),
+            Self::NoExtraHan => Some(RuleText {
+                rule: "A hand with no yaku or dora other than Riichi is \
+                       \"riichi-only\": the declaration is the only value it can add.",
+                quote: "bad-wait riichi-only hand by a non-dealer",
+                citation: ch7(GENERAL_RULE, 71, "riichi-only hand"),
             }),
             Self::MiddleWait => Some(RuleText {
                 rule: "A 4/5/6 single wait is the worst kind of wait, so it is the \
@@ -237,7 +292,11 @@ impl DamaReason {
             Self::NoSujiTrap => {
                 Some("No suji of the wait in the river, so the trap justification does not apply.")
             }
-            Self::NotDealer | Self::MiddleWait | Self::Mangan => None,
+            Self::NotDealer
+            | Self::BadWait
+            | Self::NoExtraHan
+            | Self::MiddleWait
+            | Self::Mangan => None,
         }
     }
 }
@@ -420,10 +479,25 @@ fn wait_tile(state: &GameState) -> String {
     state.ukeire_tiles.first().cloned().unwrap_or_default()
 }
 
+/// Every winning tile, for the multi-tile waits of standard hands.
+fn wait_tiles(state: &GameState) -> String {
+    if state.ukeire_tiles.is_empty() {
+        return "no live winning tiles".to_string();
+    }
+    state.ukeire_tiles.join(" / ")
+}
+
 fn applies_riichi(trigger: RiichiTrigger, state: &GameState) -> String {
     let wait = wait_tile(state);
     match trigger {
         RiichiTrigger::Dealer => "You are the dealer (East).".to_string(),
+        RiichiTrigger::HasExtraHan => {
+            "The finished hand scores at least one han without Riichi.".to_string()
+        }
+        RiichiTrigger::GoodWait => format!(
+            "The wait on {} is good: at least two live kinds and more than four live tiles.",
+            wait_tiles(state)
+        ),
         RiichiTrigger::Tanyao => "Every pair and the wait are simples.".to_string(),
         RiichiTrigger::RedFiveWait => {
             format!("The wait is {wait} and its red five is in hand.")
@@ -444,6 +518,13 @@ fn applies_dama(reason: DamaReason, state: &GameState) -> String {
             Some(wind) => format!("Seat wind is {wind:?}, not East."),
             None => "You are not the dealer.".to_string(),
         },
+        DamaReason::BadWait => format!(
+            "The wait on {} is bad: fewer than two live kinds or at most four live tiles.",
+            wait_tiles(state)
+        ),
+        DamaReason::NoExtraHan => {
+            "The hand has no yaku or dora without Riichi, so it is riichi-only.".to_string()
+        }
         DamaReason::NoTanyao => "A terminal or honor pair rules out tanyao.".to_string(),
         DamaReason::MiddleWait => format!("The wait is {wait}, a middle tile."),
         DamaReason::NoRedFiveWait => "No red five is held.".to_string(),
@@ -482,6 +563,15 @@ fn summary_for(state: &GameState) -> String {
                 hand."
             .to_string();
     }
+    if state.category == "riichi_judgement" {
+        return if state.riichi_triggers.is_empty() {
+            "Stay in dama: the hand is riichi-only with a bad wait, and you are not the \
+             dealer."
+                .to_string()
+        } else {
+            "Declare Riichi: at least one of the book's three conditions holds.".to_string()
+        };
+    }
     if !state.riichi_triggers.is_empty() {
         return "Declare Riichi: the book's chiitoitsu criteria pick this hand.".to_string();
     }
@@ -491,7 +581,21 @@ fn summary_for(state: &GameState) -> String {
 fn caveats_for(state: &GameState) -> Vec<String> {
     let mut caveats = Vec::new();
 
-    if !state.dama_reasons.is_empty() {
+    if state.category == "riichi_judgement" {
+        if !state.dama_reasons.is_empty() {
+            caveats.push(
+                "A riichi-only hand in dama can only win by tsumo; the book's rule still \
+                 keeps this bad-wait non-dealer hand concealed."
+                    .to_string(),
+            );
+        }
+        caveats.push(
+            "This lesson encodes only ch. 7's general three-condition rule. The later \
+             dama cases (a 1-2 tile bad wait, being in the lead, a genbutsu wait, and a \
+             hand already worth 7700+) are not modelled, so the generator avoids them."
+                .to_string(),
+        );
+    } else if !state.dama_reasons.is_empty() {
         caveats.push(
             "The book's second dama case is specifically honitsu/chinitsu chiitoitsu; this \
              trainer uses a mangan-or-better test instead."
@@ -515,15 +619,25 @@ fn caveats_for(state: &GameState) -> Vec<String> {
 fn scenario_source(category: &str) -> Option<Citation> {
     match category {
         "chiitoitsu_riichi_vs_dama" => Some(ch7(CHIITOITSU_BOX, 345, "Riichi judgement")),
+        "riichi_judgement" => Some(ch7(GENERAL_RULE, 55, "at least one")),
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
+        "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
         "protorun_priority" => Some(ch3(205, "can accept twice as many tiles")),
+        "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
+        "defense_stuck_heuristic" => {
+            Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
+        }
         _ => None,
     }
 }
 
 /// Lessons whose rule is not carried by a trigger enum.
 fn category_rationale(state: &GameState) -> Option<BookRationale> {
+    if let Some(defense) = defense_rationale(state) {
+        return Some(defense);
+    }
+
     if state.category == "shouminkan_decline" {
         let tile = state.correct_action.tile().unwrap_or_default().to_string();
 
@@ -549,6 +663,68 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
             source: ch9(360, "From an open set to an open quad"),
             caveats: vec![
                 "Extending an open Pon also risks chankan (Robbing the Kong).".to_string(),
+            ],
+        });
+    }
+
+    if state.category == "nakabukure_ready" {
+        let discard = state.correct_action.tile().unwrap_or_default().to_string();
+        let wait = state.ukeire_tiles.first().cloned().unwrap_or_default();
+        let drawn = human(state)
+            .and_then(|player| player.draw.clone())
+            .unwrap_or_default();
+
+        let rules = vec![
+            BookRule {
+                id: "bulge_pair_wait".to_string(),
+                rule: "A bulging float left in a ready hand waits on its own middle tile, \
+                       which the hand already holds twice, so only two winning tiles remain."
+                    .to_string(),
+                quote: "It is waiting for wan4, but we are already using two of it in the hand, \
+                        leaving only two winning tiles."
+                    .to_string(),
+                citation: ch3_bulging(702, "leaving only two winning tiles"),
+                applies: format!(
+                    "Keeping the bulge and discarding {drawn} would wait on {discard}, which \
+                     this hand holds twice: only two winning tiles."
+                ),
+            },
+            BookRule {
+                id: "discard_the_bulge".to_string(),
+                rule: "In a ready hand the bulge tile itself is the discard: dropping it leaves \
+                       the lone honour as a tanki wait with strictly more winning tiles."
+                    .to_string(),
+                quote: "We should rather discard wan4 to wait for bei.".to_string(),
+                citation: ch3_bulging(702, "We should rather discard"),
+                applies: format!(
+                    "Discarding {discard} waits on {wait} instead: {} live copies against the \
+                     two the bulge would leave.",
+                    state.ukeire_total
+                ),
+            },
+            BookRule {
+                id: "keep_until_one_away".to_string(),
+                rule: "The bulging float's value is in building a side-wait protorun, so the \
+                       book keeps it only until the hand is 1-away."
+                    .to_string(),
+                quote: "Try to keep a bulging float shape until a hand becomes 1-away.".to_string(),
+                citation: ch3_bulging(708, "until a hand becomes 1-away"),
+                applies: "This hand is already ready, so the shape's protection has expired."
+                    .to_string(),
+            },
+        ];
+
+        return Some(BookRationale {
+            summary: "Drop the bulging float: in a ready hand it waits on its own middle tile \
+                      for only two tiles, while the lone honour has three live copies."
+                .to_string(),
+            rules,
+            absent: Vec::new(),
+            source: ch3_bulging(681, "accept four kinds of tiles"),
+            caveats: vec![
+                "The book's ready-hand example is closed; this trainer opens a Yakuhai Pon so \
+                 Riichi cannot mask the discard lesson."
+                    .to_string(),
             ],
         });
     }
@@ -665,12 +841,412 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     })
 }
 
+/// The two pure-defense lessons: the ch. 8 safety chart and its fallback list.
+fn defense_rationale(state: &GameState) -> Option<BookRationale> {
+    let is_chart = state.category == "defense_safety_chart";
+    let is_stuck = state.category == "defense_stuck_heuristic";
+    if !is_chart && !is_stuck {
+        return None;
+    }
+
+    let threat = state.players.iter().find(|player| player.is_riichi)?;
+    let facts = crate::safety::SafetyFacts::from_state(state, threat.seat)?;
+    let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
+    let answer_text = answer.to_string();
+    let read = facts.read(answer);
+
+    let mut rules = Vec::new();
+    let mut caveats = Vec::new();
+    let summary = if is_chart {
+        rules.extend(mechanism_rules(&read, &answer_text));
+        rules.push(chart_row_rule(&read, &answer_text));
+        rules.push(push_fold_rule(state, &read, &answer_text));
+        caveats.push(
+            "The chart's AAA row is dangerous only against Thirteen Orphans; the trainer keeps \
+             the table's conservative rank instead of promoting a fourth copy to 100%."
+                .to_string(),
+        );
+        caveats.push(
+            "The book gives no turn number for the one-chance split between BB- (earlier turns) \
+             and C (later turns); the trainer cuts at six discards."
+                .to_string(),
+        );
+        if read.rank.order() > push_threshold(state.shanten).order() {
+            format!(
+                "Fold: {answer_text} is Rank {} ({}); nothing reaches Rank {}.",
+                read.rank.code(),
+                read.rank.label(),
+                push_threshold(state.shanten).code()
+            )
+        } else {
+            format!(
+                "Safest discard: {answer_text} is Rank {} ({}).",
+                read.rank.code(),
+                read.rank.label()
+            )
+        }
+    } else {
+        rules.extend(stuck_rule_set(&facts, state, answer, &answer_text));
+        caveats.push(
+            "Every tile here is Rank C or worse, so the chart identifies nothing safe; the \
+             chapter's fallback list is what decides."
+                .to_string(),
+        );
+        format!(
+            "Nothing reaches Rank B: break up the {answer_text} pair and discard {answer_text}."
+        )
+    };
+
+    let source = if is_chart {
+        ch8(CH8_RANKING, 292, "Safety ranking")
+    } else {
+        ch8(CH8_STUCK, 344, "What to discard when you get stuck")
+    };
+
+    Some(BookRationale {
+        summary,
+        rules,
+        absent: absent_tiles(&facts, state, answer),
+        source,
+        caveats,
+    })
+}
+
+/// The mechanism that places the answer on the chart.
+fn mechanism_rules(read: &crate::safety::TileRead, answer_text: &str) -> Vec<BookRule> {
+    use crate::safety::SafetyMechanism;
+
+    let applies = format!("{answer_text}: {}.", read.reason);
+    let rule = |id: &str, rule: &str, quote: &str, citation: Citation| BookRule {
+        id: id.to_string(),
+        rule: rule.to_string(),
+        quote: quote.to_string(),
+        citation,
+        applies: applies.clone(),
+    };
+
+    match read.mechanism {
+        SafetyMechanism::Genbutsu => vec![rule(
+            "genbutsu",
+            "A tile in the riichi player's river cannot be ronned by them: it is 100% safe.",
+            "Genbutsu tiles of player X are 100% safe against X",
+            ch8(CH8_GENBUTSU, 100, "100\\% safe against"),
+        )],
+        SafetyMechanism::Suji => vec![rule(
+            "suji",
+            "A side wait is the most common Riichi wait, so a suji tile is safer than a \
+             non-suji tile.",
+            "Suji tiles are safer than non-suji tiles",
+            ch8(CH8_SUJI, 139, "safer than non-"),
+        )],
+        SafetyMechanism::NoChance => vec![rule(
+            "no_chance",
+            "When all four copies of a tile are visible, every side wait that needs its \
+             protorun is impossible, so the neighbours are no-chance tiles.",
+            "we say we have a ``no chance'' situation",
+            ch8(CH8_KABE, 206, "no chance'' situation"),
+        )],
+        SafetyMechanism::OneChance => vec![rule(
+            "one_chance",
+            "An incomplete blockade leaves the opponent only the last invisible copy, which is \
+             safer than a plain non-suji tile.",
+            "One-chance tiles are generally safer than non-suji tiles",
+            ch8(
+                CH8_KABE,
+                248,
+                "One-chance tiles are generally safer than non-",
+            ),
+        )],
+        SafetyMechanism::Honor => vec![rule(
+            "honor_count",
+            "The chart ranks honors by how many copies are visible: the fourth is AAA, the \
+             third AA, the second A, and the first B.",
+            "Fourth tiles mean that three of that tile have already been discarded.",
+            ch8(
+                CH8_RANKING,
+                322,
+                "Fourth tiles mean that three of that tile have already been discarded",
+            ),
+        )],
+        SafetyMechanism::NonSuji => vec![rule(
+            "non_suji_terminal",
+            "A non-suji terminal is the safest non-suji tile: it cannot be caught by an edge or \
+             a closed wait.",
+            "terminals cannot be caught by either an edge wait or closed wait",
+            ch8(
+                CH8_RANKING,
+                325,
+                "terminals cannot be caught by either an edge wait or closed wait",
+            ),
+        )],
+    }
+}
+
+/// Why the chart row beats the rest of the hand.
+fn chart_row_rule(read: &crate::safety::TileRead, answer_text: &str) -> BookRule {
+    BookRule {
+        id: "safety_ranking".to_string(),
+        rule: "The chart orders tiles by how many waits can catch them, and this row sits above \
+               every other tile in the hand."
+            .to_string(),
+        quote: "Non-suji 4,5,6 tiles are the most dangerous because they can be caught by two \
+                different suji waits"
+            .to_string(),
+        citation: ch8(CH8_RANKING, 325, "4,5,6 tiles are the most dangerous"),
+        applies: format!(
+            "{answer_text} is Rank {} ({}); every other tile in the hand ranks lower.",
+            read.rank.code(),
+            read.rank.label()
+        ),
+    }
+}
+
+/// The book's push threshold for a hand this far from ready.
+///
+/// Ch. 8, "Defense against riichi": a 1-away hand may push with Rank C or
+/// safer, and a 2-away-or-worse hand only with Rank B or safer.
+fn push_threshold(shanten: i8) -> SafetyRank {
+    if shanten <= 1 {
+        SafetyRank::C
+    } else {
+        SafetyRank::B
+    }
+}
+
+/// The book's push threshold for a hand that is 1-away or worse.
+fn push_fold_rule(
+    state: &GameState,
+    read: &crate::safety::TileRead,
+    answer_text: &str,
+) -> BookRule {
+    let threshold = push_threshold(state.shanten);
+
+    if read.rank.order() > threshold.order() {
+        return BookRule {
+            id: "betaori".to_string(),
+            rule: format!(
+                "A {}-away hand may only push with Rank {} or safer; with nothing that safe you \
+                 fold completely.",
+                state.shanten,
+                threshold.code()
+            ),
+            quote: "If you cannot satisfy the above criteria, you must completely fold (betaori)."
+                .to_string(),
+            citation: ch8(
+                CH8_VS_RIICHI,
+                340,
+                "If you cannot satisfy the above criteria",
+            ),
+            applies: format!(
+                "The hand is {}-away and the safest tile is Rank {}.",
+                state.shanten,
+                read.rank.code()
+            ),
+        };
+    }
+
+    let (quote, citation) = if state.shanten <= 1 {
+        (
+            "you can discard Rank C or safer tiles".to_string(),
+            ch8(CH8_VS_RIICHI, 336, "1-away from ready"),
+        )
+    } else {
+        (
+            "you can discard Rank B or safer tiles".to_string(),
+            ch8(CH8_VS_RIICHI, 338, "2-away from ready or worse"),
+        )
+    };
+
+    BookRule {
+        id: "push_threshold".to_string(),
+        rule: format!(
+            "A {}-away hand may push with Rank {} or safer.",
+            state.shanten,
+            threshold.code()
+        ),
+        quote,
+        citation,
+        applies: format!(
+            "The hand is {}-away and {answer_text} is Rank {}, inside the book's push threshold.",
+            state.shanten,
+            read.rank.code()
+        ),
+    }
+}
+
+/// The chapter's fallback list, as it applies to the answer.
+fn stuck_rule_set(
+    facts: &crate::safety::SafetyFacts,
+    state: &GameState,
+    answer: Tile,
+    answer_text: &str,
+) -> Vec<BookRule> {
+    let hand = hand_counts(state);
+    let indicators: Vec<Tile> = state
+        .dora_indicators
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    let flags = facts.stuck_rules(answer, &hand, &indicators);
+
+    let mut rules = Vec::new();
+
+    if flags.pair_or_set {
+        rules.push(BookRule {
+            id: "pair_or_set".to_string(),
+            rule: "Discard from a pair or a concealed set first: once one copy is passed, the \
+                   other is safe for the next turn or two."
+                .to_string(),
+            quote: "Discard pairs and concealed sets.".to_string(),
+            citation: ch8(CH8_STUCK, 348, "Discard pairs and concealed sets."),
+            applies: format!(
+                "You hold two copies of {answer_text}; the copy you keep is your follow-up \
+                 discard."
+            ),
+        });
+    }
+
+    if flags.outside_early {
+        rules.push(BookRule {
+            id: "outside_early_discards".to_string(),
+            rule: "Tiles that are outside the opponent's early discards are relatively safe."
+                .to_string(),
+            quote: "Tiles that are outside those discarded in ``early'' turns are relatively safe."
+                .to_string(),
+            citation: ch8(CH8_STUCK, 355, "outside those discarded"),
+            applies: format!(
+                "{} went early, so {answer_text} is outside the opponent's early discards.",
+                early_protectors(facts, answer)
+            ),
+        });
+    }
+
+    if flags.avoids_dora {
+        rules.push(BookRule {
+            id: "avoid_dora".to_string(),
+            rule: "Do not discard the dora, its indicator, or a tile next to it.".to_string(),
+            quote: "try not to discard the dora indicator tile (when dora is a number tile) and \
+                    any tiles close to dora, as well as the dora tile itself."
+                .to_string(),
+            citation: ch8(CH8_STUCK, 352, "try not to discard the"),
+            applies: format!("{answer_text} is neither the dora nor next to it."),
+        });
+    }
+
+    if flags.avoids_tanyao {
+        rules.push(BookRule {
+            id: "avoid_tanyao".to_string(),
+            rule: "A terminal cannot deal into a tanyao hand.".to_string(),
+            quote: "If you discard terminals, you can avoid dealing into a tanyao (All Simples) \
+                    hand."
+                .to_string(),
+            citation: ch8(CH8_STUCK, 351, "avoid dealing into a"),
+            applies: format!("{answer_text} is a terminal."),
+        });
+    }
+
+    rules
+}
+
+/// The early discards that cover every protorun waiting for `answer`.
+fn early_protectors(facts: &crate::safety::SafetyFacts, answer: Tile) -> String {
+    let (Some(suit), Some(value)) = (answer.suit(), answer.value()) else {
+        return "an early discard".to_string();
+    };
+
+    let mut protectors: Vec<Tile> = facts
+        .early_discards
+        .iter()
+        .copied()
+        .filter(|tile| tile.suit() == Some(suit))
+        .filter(|tile| {
+            tile.value()
+                .is_some_and(|protector| protector != value && protector.abs_diff(value) <= 2)
+        })
+        .collect();
+    protectors.sort();
+    protectors.dedup();
+
+    if protectors.is_empty() {
+        return "an early discard".to_string();
+    }
+
+    protectors
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(" and ")
+}
+
+/// Every other tile the learner could click, with the rank it sits on.
+fn absent_tiles(
+    facts: &crate::safety::SafetyFacts,
+    state: &GameState,
+    answer: Tile,
+) -> Vec<AbsentRule> {
+    let mut tiles: Vec<Tile> = state
+        .tiles
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    tiles.sort();
+    tiles.dedup();
+    tiles.retain(|tile| *tile != answer);
+
+    let answer_rank = facts.rank(answer);
+    let mut ranked: Vec<(crate::safety::SafetyRank, Tile)> = tiles
+        .into_iter()
+        .map(|tile| (facts.rank(tile), tile))
+        .collect();
+    ranked.sort_by_key(|(rank, tile)| (rank.order(), *tile));
+    ranked.truncate(6);
+
+    ranked
+        .into_iter()
+        .map(|(rank, tile)| {
+            let comparison = match rank.order().cmp(&answer_rank.order()) {
+                std::cmp::Ordering::Less => {
+                    "the chart ranks it above the answer, but the fallback list decides"
+                }
+                std::cmp::Ordering::Equal => "the same row as the answer, but not the pick",
+                std::cmp::Ordering::Greater => "more dangerous than the answer",
+            };
+
+            AbsentRule {
+                id: tile.to_string(),
+                note: format!(
+                    "{tile} · Rank {} ({}) — {comparison}.",
+                    rank.code(),
+                    rank.label()
+                ),
+            }
+        })
+        .collect()
+}
+
+fn hand_counts(state: &GameState) -> std::collections::HashMap<Tile, u8> {
+    let mut counts = std::collections::HashMap::new();
+    let Some(human) = human(state) else {
+        return counts;
+    };
+
+    let codes = human.hand.iter().chain(human.draw.iter());
+    for code in codes {
+        if let Ok(tile) = Tile::try_from(code.as_str()) {
+            *counts.entry(tile).or_insert(0) += 1;
+        }
+    }
+
+    counts
+}
+
 /// Grade a `CorrectActionType` mismatch as text, used by the UI's "should be"
 /// line without re-deriving rules in React.
 pub fn action_type_label(action: CorrectActionType) -> &'static str {
     match action {
         CorrectActionType::Riichi => "Riichi",
         CorrectActionType::Dama => "Dama",
+        CorrectActionType::Fold => "Fold",
         CorrectActionType::Kan => "Kan",
         CorrectActionType::Discard => "No Kan",
         CorrectActionType::Best => "Mortal action",
@@ -686,6 +1262,8 @@ mod tests {
     fn every_riichi_trigger_has_a_rule_quote_and_citation() {
         for trigger in [
             RiichiTrigger::Dealer,
+            RiichiTrigger::HasExtraHan,
+            RiichiTrigger::GoodWait,
             RiichiTrigger::Tanyao,
             RiichiTrigger::RedFiveWait,
             RiichiTrigger::SujiTrap,
@@ -707,6 +1285,8 @@ mod tests {
     fn dama_reasons_split_into_positive_and_absent() {
         let positive = [
             DamaReason::NotDealer,
+            DamaReason::BadWait,
+            DamaReason::NoExtraHan,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
         ];
@@ -784,6 +1364,45 @@ mod tests {
     }
 
     #[test]
+    fn nakabukure_hand_gets_a_category_rationale() {
+        let state = generate_puzzle("nakabukure_ready").expect("nakabukure must generate");
+
+        let rationale = rationale_for(&state).expect("nakabukure needs a rationale");
+
+        assert_eq!(rationale.rules.len(), 3);
+        assert!(rationale.absent.is_empty());
+        assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+        assert_eq!(rationale.source.chapter, 3);
+        assert_eq!(rationale.source.section, "Bulging float (nakabukure) shape");
+        assert!(!rationale.caveats.is_empty());
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                "bulge_pair_wait",
+                "discard_the_bulge",
+                "keep_until_one_away"
+            ]
+        );
+
+        let discard = state.correct_action.tile().expect("answer tile");
+        let wait = state.ukeire_tiles.first().expect("wait tile");
+        assert!(
+            rationale.rules[1].applies.contains(discard),
+            "the answer rule must name the discard"
+        );
+        assert!(
+            rationale.rules[1].applies.contains(wait),
+            "the answer rule must name the wait"
+        );
+    }
+
+    #[test]
     fn protorun_priority_hand_names_the_closed_wait() {
         let state = generate_puzzle("protorun_priority").expect("protorun priority must generate");
 
@@ -830,10 +1449,14 @@ mod tests {
     fn generated_book_scenarios_carry_a_rationale() {
         for category in [
             "ryanmen_protorun",
+            "nakabukure_ready",
             "protorun_priority",
             "chiitoitsu_riichi_vs_dama",
+            "riichi_judgement",
             "shouminkan_decision",
             "shouminkan_decline",
+            "defense_safety_chart",
+            "defense_stuck_heuristic",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             assert!(
@@ -844,6 +1467,45 @@ mod tests {
             assert!(!rationale.summary.is_empty());
             assert!(!rationale.rules.is_empty());
         }
+    }
+
+    #[test]
+    fn riichi_judgement_rationale_follows_the_three_condition_rule() {
+        let mut saw_riichi = false;
+        let mut saw_dama = false;
+
+        for _ in 0..40 {
+            let state = generate_puzzle("riichi_judgement").expect("scenario must generate");
+            let rationale = state.book_rationale.clone().expect("rationale");
+
+            assert_eq!(rationale.source.chapter, 7);
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("not modelled")),
+                "the lesson must say which ch7 dama cases it leaves out"
+            );
+
+            if state.riichi_triggers.is_empty() {
+                saw_dama = true;
+                assert!(rationale.summary.contains("Stay in dama"));
+                assert_eq!(rationale.rules.len(), 3);
+                assert!(
+                    rationale
+                        .caveats
+                        .iter()
+                        .any(|caveat| caveat.contains("tsumo")),
+                    "a riichi-only dama hand can only win by tsumo"
+                );
+            } else {
+                saw_riichi = true;
+                assert!(rationale.summary.contains("Declare Riichi"));
+                assert!(!rationale.rules.is_empty());
+            }
+        }
+
+        assert!(saw_riichi && saw_dama);
     }
 
     #[test]
@@ -888,6 +1550,8 @@ mod tests {
         let mut citations: Vec<Citation> = Vec::new();
         for trigger in [
             RiichiTrigger::Dealer,
+            RiichiTrigger::HasExtraHan,
+            RiichiTrigger::GoodWait,
             RiichiTrigger::Tanyao,
             RiichiTrigger::RedFiveWait,
             RiichiTrigger::SujiTrap,
@@ -898,6 +1562,8 @@ mod tests {
         }
         for reason in [
             DamaReason::NotDealer,
+            DamaReason::BadWait,
+            DamaReason::NoExtraHan,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
         ] {
@@ -915,8 +1581,12 @@ mod tests {
 
         for category in [
             "ryanmen_protorun",
+            "nakabukure_ready",
             "protorun_priority",
+            "riichi_judgement",
             "shouminkan_decline",
+            "defense_safety_chart",
+            "defense_stuck_heuristic",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             citations.extend(
@@ -944,9 +1614,62 @@ mod tests {
     }
 
     #[test]
+    fn defense_chart_lesson_cites_the_chart_and_ranks_the_alternatives() {
+        let state = generate_puzzle("defense_safety_chart").expect("chart must generate");
+        let rationale = rationale_for(&state).expect("defense needs a rationale");
+
+        assert_eq!(rationale.source.chapter, 8);
+        assert!(
+            rationale
+                .rules
+                .iter()
+                .any(|rule| rule.id == "safety_ranking")
+        );
+        assert!(
+            rationale
+                .rules
+                .iter()
+                .all(|rule| !rule.applies.is_empty() && !rule.citation.source_needle.is_empty())
+        );
+        assert!(!rationale.absent.is_empty(), "alternatives must be ranked");
+        assert!(rationale.summary.contains("Rank"));
+    }
+
+    #[test]
+    fn defense_fallback_lesson_lists_the_fallback_rules() {
+        let state = generate_puzzle("defense_stuck_heuristic").expect("stuck must generate");
+        let rationale = rationale_for(&state).expect("defense needs a rationale");
+
+        assert_eq!(rationale.source.chapter, 8);
+        assert!(rationale.rules.iter().any(|rule| rule.id == "pair_or_set"));
+        assert!(
+            rationale
+                .rules
+                .iter()
+                .any(|rule| rule.id == "outside_early_discards")
+        );
+        assert!(rationale.summary.starts_with("Nothing reaches Rank B"));
+        assert!(
+            rationale
+                .caveats
+                .iter()
+                .any(|caveat| caveat.contains("Rank C"))
+        );
+    }
+
+    #[test]
+    fn push_threshold_matches_the_book_bullets() {
+        assert_eq!(push_threshold(0), SafetyRank::C);
+        assert_eq!(push_threshold(1), SafetyRank::C);
+        assert_eq!(push_threshold(2), SafetyRank::B);
+        assert_eq!(push_threshold(4), SafetyRank::B);
+    }
+
+    #[test]
     fn action_type_labels_are_stable() {
         assert_eq!(action_type_label(CorrectActionType::Riichi), "Riichi");
         assert_eq!(action_type_label(CorrectActionType::Dama), "Dama");
+        assert_eq!(action_type_label(CorrectActionType::Fold), "Fold");
         assert_eq!(action_type_label(CorrectActionType::Kan), "Kan");
         assert_eq!(action_type_label(CorrectActionType::Discard), "No Kan");
     }

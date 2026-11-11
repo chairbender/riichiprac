@@ -28,11 +28,11 @@ use candle_nn::VarBuilder;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use super::actions::{action_index, legal_actions};
+use super::actions::{RIICHI_ACTION, action_index, legal_actions};
 use super::encoder::{OBS_CHANNELS, TILE_KINDS, encode_v4_observation};
 use super::model::{ACTION_SPACE, MortalV4Model};
 pub use crate::decision::ActionEvaluation;
-use crate::decision::ActionInfo;
+use crate::decision::{ActionInfo, ActionKind};
 use crate::state::GameState;
 
 pub use super::actions::{describe_action, legal_action_mask};
@@ -50,6 +50,15 @@ pub struct Evaluation {
     pub expected_value: f32,
     /// Action with the highest probability.
     pub recommended_action: String,
+    /// When the top action is Riichi, the discard the model would declare on.
+    ///
+    /// Mortal's action space has a single `Riichi` action with no tile, so the
+    /// discard comes from the documented second pass: re-evaluate with the
+    /// player marked as already in Riichi and the `Riichi` action masked off.
+    /// `None` for every non-Riichi recommendation and for callers that only
+    /// need the first pass ([`evaluate_state_with_options`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub riichi_discard: Option<String>,
     /// Legal actions, highest probability first.
     pub evaluations: Vec<ActionEvaluation>,
 }
@@ -116,12 +125,58 @@ pub fn evaluate_state(model: &MortalV4Model, state: &GameState) -> candle_core::
 }
 
 /// Run one evaluation and attach the model identity to the result.
+///
+/// When the model's top action is Riichi, this also runs the second pass and
+/// records the discard Mortal would declare on, so callers can grade and show
+/// the whole riichi-vs-dama decision rather than a tile-less action name.
 pub fn evaluate_state_named(
     model: &MortalV4Model,
     state: &GameState,
     model_name: &str,
 ) -> candle_core::Result<Evaluation> {
-    evaluate_state_with_options(model, state, model_name, &[])
+    let mut evaluation = evaluate_state_with_options(model, state, model_name, &[])?;
+    attach_riichi_discard(model, state, model_name, &mut evaluation)?;
+    Ok(evaluation)
+}
+
+/// Fill [`Evaluation::riichi_discard`] for a Riichi recommendation.
+///
+/// The discard is chosen exactly the way the AI drill chooses it: clone the
+/// position with the human already in Riichi, mask `Riichi` off, and take the
+/// highest-probability discard from the second pass.
+fn attach_riichi_discard(
+    model: &MortalV4Model,
+    state: &GameState,
+    model_name: &str,
+    evaluation: &mut Evaluation,
+) -> candle_core::Result<()> {
+    if evaluation.recommended_action != "Riichi" || evaluation.riichi_discard.is_some() {
+        return Ok(());
+    }
+
+    let mut post = state.clone();
+    if post.players.is_empty() {
+        return Ok(());
+    }
+    post.players[0].is_riichi = true;
+
+    // A second-pass failure must not sink the first pass: the declaration is
+    // still Mortal's answer, it just cannot say which tile it would discard.
+    // The AI drill generator treats a missing discard as a rejected candidate.
+    let Ok(second) = evaluate_state_with_options(model, &post, model_name, &[RIICHI_ACTION]) else {
+        return Ok(());
+    };
+    evaluation.riichi_discard = riichi_discard_from_evaluation(&second);
+    Ok(())
+}
+
+/// The discard at the top of a second-pass evaluation, if it offered one.
+fn riichi_discard_from_evaluation(evaluation: &Evaluation) -> Option<String> {
+    evaluation
+        .evaluations
+        .iter()
+        .find(|scored| scored.info.kind == ActionKind::Discard)
+        .and_then(|scored| scored.info.tile.clone())
 }
 
 /// Run one evaluation with extra action indices forbidden.
@@ -234,6 +289,7 @@ fn build_evaluation(
         model: model_name.to_string(),
         expected_value,
         recommended_action,
+        riichi_discard: None,
         evaluations,
     })
 }
@@ -293,6 +349,7 @@ mod tests {
             dama_reasons: Vec::new(),
             shouminkan_triggers: Vec::new(),
             book_rationale: None,
+            can_riichi: false,
             hand_string: String::new(),
             tiles: Vec::new(),
             shanten: 0,
@@ -399,6 +456,52 @@ mod tests {
         );
         assert!(evaluation.recommended_action.starts_with("Discard_"));
         assert!(evaluation.expected_value.abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn second_pass_result_reads_the_top_discard() {
+        let state = base_state();
+        let outputs = vec![0.0f32; 1 + ACTION_SPACE];
+        let mut second =
+            build_evaluation(&state, &outputs, "test", &[]).expect("uniform second pass");
+
+        // The first legal action is a discard, so a uniform second pass resolves
+        // to a concrete tile for the declaration.
+        let discard = riichi_discard_from_evaluation(&second).expect("a discard");
+        assert!(matches!(
+            discard.chars().last(),
+            Some('m' | 'p' | 's' | 'z')
+        ));
+        assert_eq!(second.riichi_discard, None, "the helper does not mutate");
+
+        // A second pass with no discard at all leaves the declaration tile-less.
+        second
+            .evaluations
+            .retain(|scored| scored.info.kind != ActionKind::Discard);
+        assert_eq!(riichi_discard_from_evaluation(&second), None);
+    }
+
+    #[test]
+    fn evaluations_from_old_payloads_default_the_riichi_discard() {
+        let json = serde_json::json!({
+            "model": "mortal_298k.safetensors",
+            "expected_value": 0.1,
+            "recommended_action": "Riichi",
+            "evaluations": []
+        });
+        let evaluation: Evaluation = serde_json::from_value(json).expect("old payload parses");
+        assert_eq!(evaluation.riichi_discard, None);
+    }
+
+    #[test]
+    fn first_pass_evaluations_never_invent_a_riichi_discard() {
+        let state = base_state();
+        let mut outputs = vec![0.0f32; 1 + ACTION_SPACE];
+        outputs[1 + RIICHI_ACTION] = 10.0;
+        let evaluation = build_evaluation(&state, &outputs, "test", &[]).expect("riichi top");
+
+        assert_eq!(evaluation.recommended_action, "Riichi");
+        assert_eq!(evaluation.riichi_discard, None);
     }
 
     #[test]
