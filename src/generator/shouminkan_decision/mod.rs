@@ -302,7 +302,7 @@ mod tests {
         let mut kan_count = 0usize;
         let mut decline_count = 0usize;
 
-        for run in 0..200 {
+        for run in 0..400 {
             let state = generate("shouminkan_decision")
                 .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
             assert_eq!(state.category, "shouminkan_decision");
@@ -336,10 +336,10 @@ mod tests {
         }
 
         // The answer is chosen by a coin flip before rejection sampling, so a
-        // 200-hand sweep must land near 50/50 rather than telegraphing one half.
+        // 400-hand sweep must land near 50/50 rather than telegraphing one half.
         println!("answer coverage: {kan_count} Kan / {decline_count} discard");
         assert!(
-            kan_count >= 65 && decline_count >= 65,
+            kan_count >= 130 && decline_count >= 130,
             "answer coverage must be roughly even, got {kan_count} Kan / {decline_count} discard"
         );
         assert!(
@@ -349,7 +349,7 @@ mod tests {
         let elapsed = started.elapsed();
         assert!(
             elapsed < std::time::Duration::from_secs(10),
-            "200 shouminkan generations took {elapsed:?}"
+            "400 shouminkan generations took {elapsed:?}"
         );
     }
 
