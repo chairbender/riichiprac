@@ -52,6 +52,7 @@ const DEFAULT_SCENARIOS: &[ScenarioId] = &[
     ScenarioId::RyanmenProtorun,
     ScenarioId::NakabukureReady,
     ScenarioId::ProtorunPriority,
+    ScenarioId::RyankanBreak,
     ScenarioId::ChiitoitsuRiichiVsDama,
     ScenarioId::RiichiJudgement,
     ScenarioId::ShouminkanDecision,
@@ -80,8 +81,9 @@ usage: fuzz_scenarios [options]
 
   --scenario <id>          scenario to sample; repeatable
                            (default: ryanmen_protorun, nakabukure_ready,
-                           protorun_priority, chiitoitsu_riichi_vs_dama,
-                           riichi_judgement, shouminkan_decision;
+                           protorun_priority, ryankan_break,
+                           chiitoitsu_riichi_vs_dama, riichi_judgement,
+                           shouminkan_decision;
                            ai_best_action needs the model and is rejected)
   --iterations <n>         maximum generation attempts (default: 200)
   --limit <n>              maximum discrepancy files per run (default: 20)
@@ -582,6 +584,7 @@ mod tests {
                 ScenarioId::RyanmenProtorun,
                 ScenarioId::NakabukureReady,
                 ScenarioId::ProtorunPriority,
+                ScenarioId::RyankanBreak,
                 ScenarioId::ChiitoitsuRiichiVsDama,
                 ScenarioId::RiichiJudgement,
                 ScenarioId::ShouminkanDecision,

@@ -1294,6 +1294,97 @@ fn test_ryanmen_rejection_sampling_constraints() {
         }
     }
 
+    /// The ryankan-break payload: a 1-away hand where the draw sits next to the
+    /// head, so the book keeps the new side wait and breaks the double closed
+    /// shape (ch3:523).
+    #[wasm_bindgen_test]
+    fn test_ryankan_break_payload() {
+        for run in 0..25 {
+            let json_output = generate_puzzle("ryankan_break".to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+            assert_eq!(val["category"], "ryankan_break");
+            assert_eq!(val["target_action"], "NaniKiru");
+            assert_eq!(val["correct_action"]["type"], "dama");
+            assert_eq!(val["riichi_sticks"], 0);
+            assert_eq!(val["dora_indicators"].as_array().unwrap().len(), 1);
+            assert_eq!(val["ura_dora_indicators"].as_array().unwrap().len(), 1);
+            assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
+            assert_eq!(val["shanten"], 1);
+            assert_eq!(val["is_agari"], false);
+            assert!(!val["ukeire_tiles"].as_array().unwrap().is_empty());
+            assert!(val["ukeire_total"].as_u64().unwrap() > 0);
+
+            // The other ryankan terminal only leaves closed waits, so it is not
+            // graded as equivalent.
+            assert_eq!(val["equivalent_tiles"].as_array().unwrap().len(), 0);
+
+            let players = val["players"].as_array().expect("players array");
+            assert_eq!(players.len(), 4);
+            for opponent in &players[1..] {
+                assert_eq!(opponent["is_riichi"], false);
+                assert_eq!(opponent["melds"].as_array().unwrap().len(), 0);
+                assert!(opponent["riichi_discard_index"].is_null());
+            }
+
+            // The human hand, the open Yakuhai Pon, and the draw.
+            let human = &players[0];
+            assert_eq!(human["hand"].as_array().unwrap().len(), 10);
+            assert_eq!(human["melds"].as_array().unwrap().len(), 1);
+            assert_eq!(human["melds"][0]["meld_type"], "Pon");
+            let meld_tiles = human["melds"][0]["tiles"].as_array().unwrap();
+            assert_eq!(meld_tiles.len(), 3);
+            assert!(meld_tiles.iter().all(|tile| tile == &meld_tiles[0]));
+
+            let answer = val["correct_action"]["discard"]
+                .as_str()
+                .expect("dama action must include a discard tile");
+            let draw = human["draw"].as_str().expect("human draw");
+            assert_ne!(draw, answer, "the answer is a hand tile, not the draw");
+            assert!(
+                human["hand"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|tile| tile.as_str() == Some(answer)),
+                "run {run}: the answer must be in the concealed hand"
+            );
+
+            // Full hand = concealed hand + draw + open meld.
+            let mut expected: Vec<&str> = human["hand"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            expected.push(draw);
+            expected.extend(meld_tiles.iter().map(|tile| tile.as_str().unwrap()));
+            expected.sort();
+            let mut actual: Vec<&str> = val["tiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            actual.sort();
+            assert_eq!(actual, expected);
+
+            // The answer is never the dora: this is a shape lesson.
+            let indicator = parse_hand(val["dora_indicators"][0].as_str().unwrap())
+                .expect("dora indicator parses")
+                .remove(0);
+            assert_ne!(indicator_to_dora(indicator).to_string(), answer);
+
+            // Scores total 100,000.
+            let total_score: i64 = players
+                .iter()
+                .map(|player| player["score"].as_i64().expect("score int"))
+                .sum();
+            assert_eq!(total_score, 100_000);
+        }
+    }
+
     #[wasm_bindgen_test]
     fn test_shouminkan_decision_payload() {
         let mut kan_count = 0usize;

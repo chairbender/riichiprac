@@ -155,6 +155,17 @@ fn ch3_bulging(line: u32, needle: &str) -> Citation {
     )
 }
 
+fn ch3_ryankan(line: u32, needle: &str) -> Citation {
+    citation(
+        3,
+        "Riichi mahjong basics",
+        "Double closed (ryankan) shape",
+        "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
 const CHIITOITSU_BOX: &str = "Chiitoitsu not waiting for dora";
 /// Riichi Book 1, ch. 7, "To riichi or not to riichi?": the general
 /// three-condition rule the `riichi_judgement` lesson grades.
@@ -666,6 +677,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
         "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
         "protorun_priority" => Some(ch3(205, "can accept twice as many tiles")),
+        "ryankan_break" => Some(ch3_ryankan(523, "break the double closed shape")),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
@@ -857,6 +869,80 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
             caveats: vec![
                 "Both tiles of the closed wait are the same discard; the trainer names the tile \
                  you drew and grades the other closed-wait tile as equal."
+                    .to_string(),
+            ],
+        });
+    }
+
+    if state.category == "ryankan_break" {
+        let discard = state.correct_action.tile().unwrap_or_default().to_string();
+        let waits = state.ukeire_tiles.join(" / ");
+        let drawn = human(state)
+            .and_then(|player| player.draw.clone())
+            .unwrap_or_default();
+
+        let rules = vec![
+            BookRule {
+                id: "ryankan_definition".to_string(),
+                rule: "A double closed (ryankan) shape is two closed-wait protoruns \
+                       sharing a tile (135, 246, ... 579). It accepts two kinds--eight \
+                       tiles, twice an isolated closed wait."
+                    .to_string(),
+                quote: "When two closed-wait protoruns are combined, we have a double \
+                        closed (ryankan) shape."
+                    .to_string(),
+                citation: ch3_ryankan(477, "two closed-wait protoruns are combined"),
+                applies: format!(
+                    "The hand holds a ryankan; discarding {discard} breaks it into one \
+                     closed wait."
+                ),
+            },
+            BookRule {
+                id: "ryankan_gets_worse".to_string(),
+                rule: "The ryankan takes three tiles even though it is not a complete \
+                       group, so as the hand nears ready it becomes a single closed-wait \
+                       protorun. It is only strong when the hand is 2-away or worse."
+                    .to_string(),
+                quote: "it will ultimately become a single closed-wait protorun when this \
+                        block remains incomplete when the hand is ready."
+                    .to_string(),
+                citation: ch3_ryankan(506, "single closed-wait protorun"),
+                applies: "This hand is already 1-away, so the shape's three-tile cost is \
+                          no longer worth paying."
+                    .to_string(),
+            },
+            BookRule {
+                id: "keep_the_new_side_wait".to_string(),
+                rule: "When a draw next to the head creates a side-wait protorun, keep \
+                       that protorun and break the ryankan instead."
+                    .to_string(),
+                quote: "when we draw a tile next to the head, creating a side-wait \
+                        protorun, we should keep it and break the double closed shape \
+                        instead."
+                    .to_string(),
+                citation: ch3_ryankan(523, "break the double closed shape"),
+                applies: format!(
+                    "The draw {drawn} sits next to the head. Discarding {discard} keeps the \
+                     new side wait and the hand's acceptance ({waits})."
+                ),
+            },
+        ];
+
+        return Some(BookRationale {
+            summary: "Break the double closed shape: the drawn tile gives the head a side \
+                      wait, and leaving the ryankan intact would make every completion a \
+                      closed wait."
+                .to_string(),
+            rules,
+            absent: Vec::new(),
+            source: ch3_ryankan(523, "break the double closed shape"),
+            caveats: vec![
+                "The book's example is closed; this trainer opens a Yakuhai Pon so Riichi \
+                 cannot mask the discard lesson."
+                    .to_string(),
+                "Only the low ryankan terminal keeps the side wait. The high ryankan \
+                 terminal leaves closed waits only, so it is not graded as an equivalent \
+                 discard."
                     .to_string(),
             ],
         });
@@ -1651,11 +1737,53 @@ mod tests {
     }
 
     #[test]
+    fn ryankan_break_hand_cites_the_wait_quality_instruction() {
+        let state = generate_puzzle("ryankan_break").expect("ryankan break must generate");
+
+        let rationale = rationale_for(&state).expect("ryankan break needs a rationale");
+
+        assert_eq!(rationale.rules.len(), 3);
+        assert!(rationale.absent.is_empty());
+        assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+        assert_eq!(rationale.source.chapter, 3);
+        assert_eq!(rationale.source.section, "Double closed (ryankan) shape");
+        assert!(!rationale.caveats.is_empty());
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                "ryankan_definition",
+                "ryankan_gets_worse",
+                "keep_the_new_side_wait"
+            ]
+        );
+
+        let discard = state.correct_action.tile().expect("answer tile");
+        assert!(
+            rationale.rules[2].applies.contains(discard),
+            "the answer rule must name the discard"
+        );
+        assert!(
+            rationale
+                .caveats
+                .iter()
+                .any(|caveat| caveat.contains("high ryankan terminal")),
+            "the caveat must say why the other terminal is not equivalent"
+        );
+    }
+
+    #[test]
     fn generated_book_scenarios_carry_a_rationale() {
         for category in [
             "ryanmen_protorun",
             "nakabukure_ready",
             "protorun_priority",
+            "ryankan_break",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -1899,6 +2027,7 @@ mod tests {
             "ryanmen_protorun",
             "nakabukure_ready",
             "protorun_priority",
+            "ryankan_break",
             "riichi_judgement",
             "shouminkan_decision",
             "wind_discard_order",
