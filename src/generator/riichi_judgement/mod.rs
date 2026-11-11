@@ -71,7 +71,20 @@ mod tests {
     impl Puzzle {
         fn from_state(state: &GameState) -> Self {
             let human = &state.players[0];
-            let tenpai: Vec<Tile> = human.hand.iter().map(|tile| parse_tile(tile)).collect();
+            // The state's `hand` is the 13 tiles held before the draw; the
+            // lesson is what happens after the answer comes out of that hand.
+            let discard = parse_tile(
+                state
+                    .correct_action
+                    .tile()
+                    .expect("riichi-judgement answer must name a discard"),
+            );
+            let mut tenpai: Vec<Tile> = state.tiles.iter().map(|tile| parse_tile(tile)).collect();
+            let index = tenpai
+                .iter()
+                .position(|tile| *tile == discard)
+                .expect("the answer must be in the displayed hand");
+            tenpai.remove(index);
             let draw = parse_tile(
                 human
                     .draw
@@ -168,6 +181,14 @@ mod tests {
         triggers
     }
 
+    /// Every distinct tile in a list, sorted, for discard sweeps.
+    fn distinct_tiles(tiles: &[Tile]) -> Vec<Tile> {
+        let mut codes = tiles.to_vec();
+        codes.sort();
+        codes.dedup();
+        codes
+    }
+
     fn assert_state_is_consistent(state: &GameState) {
         assert_eq!(state.category, "riichi_judgement");
         assert_eq!(state.players.len(), 4);
@@ -187,7 +208,27 @@ mod tests {
             .draw
             .as_deref()
             .expect("riichi-judgement human must have a draw");
-        assert_eq!(Some(draw), state.correct_action.tile());
+        let answer = state
+            .correct_action
+            .tile()
+            .expect("riichi-judgement answer must name a discard");
+
+        // The reported bug: an answer that throws the draw (tsumogiri) means
+        // the hand was already tenpai on an earlier turn and the player passed
+        // up Riichi then. The answer must be a tile from the hand.
+        assert_ne!(answer, draw, "the answer must never be tsumogiri");
+        assert!(
+            human.hand.iter().any(|tile| tile == answer),
+            "the answer {answer} must be a hand tile (tedashi)"
+        );
+
+        // The draw is what reaches tenpai: the pre-draw hand is 1-shanten.
+        let pre_draw: Vec<Tile> = human.hand.iter().map(|tile| parse_tile(tile)).collect();
+        assert_eq!(
+            calculate_shanten(&to_counts(&pre_draw)).shanten,
+            1,
+            "the pre-draw hand must be 1-shanten"
+        );
 
         let mut expected = human.hand.clone();
         expected.push(draw.to_string());
@@ -214,6 +255,35 @@ mod tests {
             0,
             "the kept hand must be tenpai"
         );
+        // The draw is part of the kept tenpai hand, and the discarded tile is
+        // not: this is the flip that makes the answer tedashi.
+        assert!(
+            puzzle.tenpai.contains(&puzzle.draw),
+            "the draw must stay in the tenpai hand"
+        );
+        assert!(
+            !puzzle.tenpai.iter().any(|tile| tile.to_string() == answer),
+            "the answer must come out of the hand"
+        );
+
+        // No other discard reaches tenpai, so the lesson asks Riichi vs dama
+        // rather than "which tile do I throw".
+        let mut full = puzzle.tenpai.clone();
+        full.push(parse_tile(answer));
+        for tile in distinct_tiles(&full) {
+            let mut rest = full.clone();
+            let index = rest
+                .iter()
+                .position(|candidate| *candidate == tile)
+                .expect("tile came from the display");
+            rest.remove(index);
+            let tenpai = calculate_shanten(&to_counts(&rest)).shanten == 0;
+            assert_eq!(
+                tenpai,
+                tile.to_string() == answer,
+                "{tile} must not reach tenpai as well"
+            );
+        }
 
         let metrics = evaluate_hand(&puzzle.tenpai);
         assert_eq!(
@@ -240,10 +310,10 @@ mod tests {
         }
 
         // No dora touches the hand, so condition 1 never comes from the luck
-        // of the indicator. (The draw is excluded from the winning hand, but a
+        // of the indicator. (The answer is not part of the winning hand, but a
         // dora on it would still mislead, so nothing in the display is dora.)
         let mut displayed = puzzle.tenpai.clone();
-        displayed.push(puzzle.draw);
+        displayed.push(parse_tile(answer));
         for &indicator in &puzzle.dora {
             assert!(
                 !displayed.contains(&agari::context::indicator_to_dora(indicator)),
@@ -363,6 +433,85 @@ mod tests {
             elapsed < std::time::Duration::from_secs(10),
             "300 riichi-judgement generations took {elapsed:?}"
         );
+    }
+
+    /// The reported bug: the hand was already tenpai before the draw and threw
+    /// the draw (tsumogiri), which implies the player passed up Riichi on an
+    /// earlier turn. The draw must be what reaches tenpai, and the answer must
+    /// come out of the hand (tedashi).
+    #[test]
+    fn test_riichi_judgement_draw_reaches_tenpai_and_discard_is_tedashi() {
+        for run in 0..120 {
+            let state = generate("riichi_judgement")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+            let human = &state.players[0];
+            let draw = parse_tile(
+                human
+                    .draw
+                    .as_deref()
+                    .expect("riichi-judgement human must have a draw"),
+            );
+            let answer = parse_tile(
+                state
+                    .correct_action
+                    .tile()
+                    .expect("riichi-judgement answer must name a discard"),
+            );
+
+            assert_ne!(answer, draw, "run {run}: the answer must be tedashi");
+            assert!(
+                human.hand.iter().any(|tile| tile == &answer.to_string()),
+                "run {run}: the answer {answer} must be a hand tile"
+            );
+
+            // The 13 tiles held before the draw are 1-shanten, so Riichi was
+            // not available a turn earlier.
+            let pre_draw: Vec<Tile> = human.hand.iter().map(|tile| parse_tile(tile)).collect();
+            assert_eq!(
+                calculate_shanten(&to_counts(&pre_draw)).shanten,
+                1,
+                "run {run}: the pre-draw hand must not already be tenpai"
+            );
+
+            let mut full = pre_draw.clone();
+            full.push(draw);
+            assert_eq!(
+                calculate_shanten(&to_counts(&full)).shanten,
+                0,
+                "run {run}: the drawn tile must reach tenpai"
+            );
+
+            // The draw stays; the answer goes, and exactly one tile does that.
+            let index = full
+                .iter()
+                .position(|tile| *tile == answer)
+                .expect("the answer is in the 14-tile hand");
+            let mut kept = full.clone();
+            kept.remove(index);
+            assert_eq!(
+                calculate_shanten(&to_counts(&kept)).shanten,
+                0,
+                "run {run}: the kept hand must be tenpai"
+            );
+            assert!(
+                kept.contains(&draw),
+                "run {run}: the draw must stay in the hand, not be thrown"
+            );
+
+            for tile in distinct_tiles(&full) {
+                let mut rest = full.clone();
+                let index = rest
+                    .iter()
+                    .position(|candidate| *candidate == tile)
+                    .expect("tile came from the hand");
+                rest.remove(index);
+                assert_eq!(
+                    calculate_shanten(&to_counts(&rest)).shanten == 0,
+                    tile == answer,
+                    "run {run}: {tile} must not be another tenpai discard"
+                );
+            }
+        }
     }
 
     #[test]

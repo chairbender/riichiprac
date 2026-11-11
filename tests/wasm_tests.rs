@@ -830,14 +830,50 @@ fn test_riichi_judgement_payload_follows_the_three_conditions() {
         let discard_code = val["correct_action"]["discard"]
             .as_str()
             .expect("riichi/dama action must have a discard");
-        assert_eq!(human["draw"], discard_code);
+        let draw_code = human["draw"].as_str().expect("the human has a draw");
+        // The answer is a tile from the hand: throwing the draw (tsumogiri)
+        // would mean the hand was already tenpai a turn earlier.
+        assert_ne!(
+            draw_code, discard_code,
+            "run {run}: the answer must be tedashi"
+        );
 
-        let tenpai: Vec<Tile> = human["hand"]
+        let pre_draw: Vec<Tile> = human["hand"]
             .as_array()
             .unwrap()
             .iter()
             .map(|tile| parse_single_tile(tile.as_str().unwrap()))
             .collect();
+        assert!(
+            pre_draw.iter().any(|tile| tile.to_string() == discard_code),
+            "run {run}: the answer must be a hand tile"
+        );
+        // The draw reaches tenpai: the hand before it is 1-shanten.
+        assert_eq!(
+            calculate_shanten(&to_counts(&pre_draw)).shanten,
+            1,
+            "run {run}: the pre-draw hand must be 1-shanten"
+        );
+        let draw = parse_single_tile(draw_code);
+        let mut full = pre_draw.clone();
+        full.push(draw);
+        assert_eq!(
+            calculate_shanten(&to_counts(&full)).shanten,
+            0,
+            "run {run}: the draw must reach tenpai"
+        );
+
+        let discard = parse_single_tile(discard_code);
+        let answer_index = full
+            .iter()
+            .position(|tile| *tile == discard)
+            .expect("the answer is in the hand");
+        let mut tenpai = full.clone();
+        tenpai.remove(answer_index);
+        assert!(
+            tenpai.contains(&draw),
+            "run {run}: the draw must stay in the tenpai hand"
+        );
         let counts = to_counts(&tenpai);
         assert_eq!(calculate_shanten(&counts).shanten, 0, "run {run}");
         let waits: Vec<Tile> = val["ukeire_tiles"]
