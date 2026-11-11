@@ -195,6 +195,28 @@ cargo run --release --bin verify_report -- report.json \
 The CLI prints the same readable summary and, when weights are supplied, the
 Mortal ranking. Add `--json` for a machine-readable verification payload.
 
+## Checking our Mortal wiring against mjai.ekyu.moe
+
+`export_tenhou6` writes a `tenhou.net/6` game log of a generated state — the
+"custom log" input of <https://mjai.ekyu.moe> — so an outside Mortal can
+evaluate the same table. `scripts/validate_mortal_review.py` then diffs the
+reviewer's report against our own `evaluate_state` output. This is a wiring
+check for the encoder and the WASM bridge, not a UI feature:
+
+```bash
+cargo run --release --bin export_tenhou6 -- \
+  --scenario riichi_judgement --out /tmp/fixture.tenhou6.json \
+  --evaluate --evaluation-out /tmp/ours.json
+# upload /tmp/fixture.tenhou6.json at mjai.ekyu.moe with the printed player id,
+# engine Mortal, temperature 1.00, then:
+scripts/validate_mortal_review.py --report <report-url> --evaluation /tmp/ours.json
+```
+
+`--all` covers every scenario the exporter can represent. Open-meld lessons
+currently cannot be written as a real log (their claimed tile never appears in
+a river), which the tool reports instead of hiding; see `mortal-validation.md`
+for the workflow, the format notes and the findings.
+
 ## Fuzzing for generator / Mortal disagreements
 
 `fuzz_scenarios` samples real scenarios, asks the local Mortal checkpoint what

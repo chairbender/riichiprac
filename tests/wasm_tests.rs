@@ -11,14 +11,48 @@ use agari::tile::{Honor, Tile};
 use agari::yaku::detect_yaku_with_context;
 use riichiprac::generator::{format_hand_compact, generate_random_hand};
 use riichiprac::{
-    build_scenario_report, check_wasm_status, generate_puzzle, grade_answer_json,
-    parse_scenario_report,
+    build_scenario_report, check_wasm_status, export_tenhou6_json, generate_puzzle,
+    grade_answer_json, parse_scenario_report,
 };
 
 #[wasm_bindgen_test]
 fn test_wasm_status() {
     let status = check_wasm_status();
     assert_eq!(status, "WASM module initialized successfully");
+}
+
+#[wasm_bindgen_test]
+fn test_export_tenhou6_writes_a_reviewer_log() {
+    let state = generate_puzzle("riichi_judgement".to_string());
+    let log = export_tenhou6_json(&state);
+    let parsed: serde_json::Value = serde_json::from_str(&log).expect("the export must be JSON");
+
+    assert_eq!(parsed["rule"]["disp"], "般南喰赤");
+    assert_eq!(parsed["name"].as_array().expect("names").len(), 4);
+
+    let kyoku = parsed["log"][0].as_array().expect("one kyoku");
+    assert_eq!(kyoku[0].as_array().expect("meta").len(), 3, "kyoku meta");
+    assert_eq!(kyoku[1].as_array().expect("scores").len(), 4, "scores");
+    for seat in 0..4 {
+        let base = 4 + seat * 3;
+        assert_eq!(
+            kyoku[base].as_array().expect("haipai").len(),
+            13,
+            "seat {seat} haipai"
+        );
+        assert!(kyoku[base + 1].is_array(), "seat {seat} takes");
+        assert!(kyoku[base + 2].is_array(), "seat {seat} discards");
+    }
+
+    let error: serde_json::Value =
+        serde_json::from_str(&export_tenhou6_json("{}")).expect("error payload is JSON");
+    assert!(
+        error["error"]
+            .as_str()
+            .expect("error string")
+            .contains("invalid game state"),
+        "{error}"
+    );
 }
 
 #[wasm_bindgen_test]

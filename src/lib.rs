@@ -1,6 +1,7 @@
 pub mod ai;
 pub mod decision;
 pub mod display;
+pub mod export;
 pub(crate) mod fixtures;
 pub mod fuzz;
 pub mod generator;
@@ -72,6 +73,22 @@ pub fn build_scenario_report(request_json: &str) -> String {
 #[wasm_bindgen]
 pub fn grade_answer_json(request_json: &str) -> String {
     verdict::grade_answer_json(request_json).unwrap_or_else(|err| report::error_json(&err))
+}
+
+/// Exports a serialized [`GameState`] as a `tenhou.net/6` game log.
+///
+/// Returns the JSON document to paste into the "Custom log" box of
+/// <https://mjai.ekyu.moe>. See `crate::export::tenhou6` for what the log does
+/// and does not represent.
+#[wasm_bindgen]
+pub fn export_tenhou6_json(game_state_json: &str) -> String {
+    match serde_json::from_str::<GameState>(game_state_json) {
+        Ok(state) => match export::export_tenhou6_json(&state) {
+            Ok(json) => json,
+            Err(err) => report::error_json(&err),
+        },
+        Err(err) => report::error_json(&format!("invalid game state JSON: {err}")),
+    }
 }
 
 /// Parses and validates an imported scenario report.
