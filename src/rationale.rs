@@ -638,7 +638,14 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         return Some(defense);
     }
 
-    if state.category == "shouminkan_decline" {
+    // `shouminkan_decline` is retired as a scenario id, but old saved reports
+    // still carry it as their category. Accept it here so re-importing one keeps
+    // the book side of its verdict instead of losing its rationale.
+    if matches!(
+        state.category.as_str(),
+        "shouminkan_decision" | "shouminkan_decline"
+    ) && state.correct_action.action_type() == CorrectActionType::Discard
+    {
         let tile = state.correct_action.tile().unwrap_or_default().to_string();
 
         return Some(BookRationale {
@@ -1486,7 +1493,6 @@ mod tests {
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
-            "shouminkan_decline",
             "defense_safety_chart",
             "defense_stuck_heuristic",
         ] {
@@ -1542,7 +1548,15 @@ mod tests {
 
     #[test]
     fn decline_lesson_gets_a_category_rationale() {
-        let state = generate_puzzle("shouminkan_decline").expect("decline must generate");
+        let mut decline = None;
+        for _ in 0..80 {
+            let state = generate_puzzle("shouminkan_decision").expect("lesson must generate");
+            if state.correct_action.action_type() == CorrectActionType::Discard {
+                decline = Some(state);
+                break;
+            }
+        }
+        let state = decline.expect("the merged lesson must sometimes ask for the discard");
 
         let rationale = rationale_for(&state).expect("decline needs a rationale");
 
@@ -1551,6 +1565,12 @@ mod tests {
         assert_eq!(rationale.source.chapter, 9);
         assert!(rationale.rules[0].applies.contains("discarding"));
         assert!(!rationale.caveats.is_empty());
+
+        // Old saved reports still carry the retired category id.
+        let mut legacy = state;
+        legacy.category = "shouminkan_decline".to_string();
+        let legacy_rationale = rationale_for(&legacy).expect("old reports keep their rationale");
+        assert_eq!(legacy_rationale.rules[0].id, "decline_kakan");
     }
 
     #[test]
@@ -1616,7 +1636,7 @@ mod tests {
             "nakabukure_ready",
             "protorun_priority",
             "riichi_judgement",
-            "shouminkan_decline",
+            "shouminkan_decision",
             "defense_safety_chart",
             "defense_stuck_heuristic",
         ] {

@@ -3,15 +3,30 @@ mod skeleton;
 mod triggers;
 
 use crate::generator::support::retry::generate_with_retries;
+use crate::rng::gen_bool;
 use crate::state::GameState;
 
-/// Generates a hand where the player has drawn the fourth tile of an open
-/// Pon and must decide whether to upgrade it to an Added Kan.
+/// Generates a hand where the player has drawn the fourth tile of an open Pon
+/// and must decide whether to upgrade it to an Added Kan.
 ///
-/// Conditions come from Riichi Book 1, ch. 9, "From an open set to an open quad
-/// (kakan)". The `needs_dora` trigger covers the far-from-ready half of that
-/// list, where the book's example is a 2-away hand that should still kan.
+/// This is one lesson with one neutral question ("Call Shouminkan, or
+/// discard?"), so the coin flip happens before rejection sampling: half the
+/// returned puzzles are the Kan case and half are the book's decline case,
+/// with no visible hint about which answer is expected. The conditions come
+/// from Riichi Book 1, ch. 9, "From an open set to an open quad (kakan)".
 pub fn generate(category: &str) -> Result<GameState, String> {
+    if gen_bool(0.5) {
+        generate_kan(category)
+    } else {
+        generate_decline(category)
+    }
+}
+
+/// Generates the positive half of the lesson: an Added Kan the book justifies.
+///
+/// The `needs_dora` trigger covers the far-from-ready side of that list, where
+/// the book's example is a 2-away hand that should still kan.
+fn generate_kan(category: &str) -> Result<GameState, String> {
     generate_with_retries("shouminkan", 20_000, || {
         let triggers = triggers::random();
         let skeleton = skeleton::build_for(triggers)?;
@@ -26,8 +41,8 @@ pub fn generate(category: &str) -> Result<GameState, String> {
 /// the hand is 2-away with value already secured and no placement or
 /// score pressure, and the correct answer is to keep the Pon and discard the
 /// drawn fourth tile.
-pub fn generate_decline(category: &str) -> Result<GameState, String> {
-    generate_with_retries("shouminkan_decline", 20_000, || {
+fn generate_decline(category: &str) -> Result<GameState, String> {
+    generate_with_retries("shouminkan (decline)", 20_000, || {
         let skeleton = skeleton::build_two_away(true)?;
         board::build(
             category,
@@ -182,7 +197,7 @@ mod tests {
         }
     }
 
-    fn assert_shouminkan_constraints(state: &GameState) {
+    fn assert_kan_constraints(state: &GameState) {
         assert_eq!(state.category, "shouminkan_decision");
         assert_eq!(state.target_action, TargetAction::Kan);
         assert_eq!(state.correct_action.action_type(), CorrectActionType::Kan);
@@ -283,28 +298,53 @@ mod tests {
     #[test]
     fn test_shouminkan_decision_constraints() {
         let started = std::time::Instant::now();
-        let mut counts = [0usize; 5];
+        let mut trigger_counts = [0usize; 5];
+        let mut kan_count = 0usize;
+        let mut decline_count = 0usize;
 
         for run in 0..200 {
             let state = generate("shouminkan_decision")
                 .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
-            assert_shouminkan_constraints(&state);
+            assert_eq!(state.category, "shouminkan_decision");
+            assert_eq!(
+                state.target_action,
+                TargetAction::Kan,
+                "run {run}: both answers must share the same neutral prompt"
+            );
 
-            for trigger in &state.shouminkan_triggers {
-                let index = match trigger {
-                    ShouminkanTrigger::GoodWaitAndValue => 0,
-                    ShouminkanTrigger::LateGame => 1,
-                    ShouminkanTrigger::PlacementDesperation => 2,
-                    ShouminkanTrigger::LosingBadly => 3,
-                    ShouminkanTrigger::NeedsDora => 4,
-                };
-                counts[index] += 1;
+            match state.correct_action.action_type() {
+                CorrectActionType::Kan => {
+                    kan_count += 1;
+                    assert_kan_constraints(&state);
+                    for trigger in &state.shouminkan_triggers {
+                        let index = match trigger {
+                            ShouminkanTrigger::GoodWaitAndValue => 0,
+                            ShouminkanTrigger::LateGame => 1,
+                            ShouminkanTrigger::PlacementDesperation => 2,
+                            ShouminkanTrigger::LosingBadly => 3,
+                            ShouminkanTrigger::NeedsDora => 4,
+                        };
+                        trigger_counts[index] += 1;
+                    }
+                }
+                CorrectActionType::Discard => {
+                    decline_count += 1;
+                    assert_decline_constraints(&state);
+                }
+                other => panic!("run {run}: unexpected Added Kan answer {other:?}"),
             }
         }
 
+        // The answer is chosen by a coin flip before rejection sampling, so a
+        // 200-hand sweep must land near 50/50 rather than telegraphing one half.
+        println!("answer coverage: {kan_count} Kan / {decline_count} discard");
         assert!(
-            counts.iter().all(|&count| count > 0),
-            "trigger coverage: {counts:?}"
+            kan_count >= 65 && decline_count >= 65,
+            "answer coverage must be roughly even, got {kan_count} Kan / {decline_count} discard"
+        );
+        assert!(
+            trigger_counts.iter().all(|&count| count > 0),
+            "trigger coverage: {trigger_counts:?}"
         );
         let elapsed = started.elapsed();
         assert!(
@@ -378,7 +418,7 @@ mod tests {
     /// Riichi Book 1, ch. 9: a 2-away hand with value already secured and no
     /// score pressure should keep the Pon and discard the drawn fourth tile.
     fn assert_decline_constraints(state: &GameState) {
-        assert_eq!(state.category, "shouminkan_decline");
+        assert_eq!(state.category, "shouminkan_decision");
         // Still the same question; only the expected answer differs.
         assert_eq!(state.target_action, TargetAction::Kan);
         assert_eq!(
@@ -420,7 +460,7 @@ mod tests {
         let started = std::time::Instant::now();
 
         for run in 0..100 {
-            let state = generate_decline("shouminkan_decline")
+            let state = generate_decline("shouminkan_decision")
                 .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
             assert_decline_constraints(&state);
         }
