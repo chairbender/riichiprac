@@ -20,30 +20,47 @@ Branch sync (2026-11-10): merged `origin/main` at `319fd6f` into
 
 Post-merge verification is in section 6.
 
+Deployment state (2026-11-10, after the operator's setup):
+
+- Repo made public so Pages is available; Pages source set to **GitHub Actions**.
+- `weights-v1` GitHub Release published with the 43 MB asset (verified: `302` →
+  `release-assets.githubusercontent.com`, `200`, `content-length: 43555532`).
+- CORS measurement showed release assets send no `access-control-allow-origin`,
+  so the workflow now downloads the asset server-side and Pages serves it
+  same-origin (task 4, "CORS finding").
+- `https://chairbender.github.io/riichiprac/` still returned `404` at the time of
+  writing because no deploy had run yet; the first deploy happens when this
+  branch lands on `main`.
+
 Goal: the single-page trainer is served from **GitHub Pages**
 (`https://chairbender.github.io/riichiprac/`) and the ~43 MB Mortal weights file
-is fetched at runtime from a free external CDN (Hugging Face first, GitHub
-Release asset as the alternative) and cached in the browser's IndexedDB. The
-weights are never bundled into `dist/` and never committed.
+is kept out of git and out of the local build. It lives as a GitHub Release
+asset; because release assets are **not** CORS-enabled, CI downloads it
+server-side and Pages serves it same-origin. Bytes are cached in the browser's
+IndexedDB. A Hugging Face repo is the optional browser-fetchable mirror.
 
 Why this works at $0:
 
 | Piece | Host | Cost | Limits that matter here |
 | --- | --- | --- | --- |
-| App (`frontend/dist`) | GitHub Pages | free for public repos | 1 GB site, 100 GB/month soft bandwidth |
-| Mortal weights (43 MB) | Hugging Face model repo (public) or GitHub Release asset | free | multi-GB files are fine on HF (via LFS/xet); GH release assets max 2 GiB per file |
+| App + weights (`frontend/dist`) | GitHub Pages | free for public repos | 1 GB site, 100 GB/month soft bandwidth (~2,300 first-time weight downloads/month; repeat visits hit IndexedDB) |
+| Weights artifact (43 MB) | GitHub Release asset `weights-v1` | free | 2 GiB per asset; no CORS, so it is fetched by CI, not the browser |
+| Optional mirror | Hugging Face model repo (public) | free | sends `access-control-allow-origin: *`, so it is browser-fetchable |
 | Repeat downloads | Browser IndexedDB cache | free | one download per browser per weights version |
 
 GitHub Pages does not support custom response headers, so nothing can set
-`Cross-Origin-*` or `Cache-Control` there; see the MIME section in task 4.
+`Cross-Origin-*` or `Cache-Control` there; see the MIME section in task 4 and
+the CORS finding in task 4.
 
 ---
 
 ## 1. External weights hosting — code + runbook
 
 - [x] `frontend/src/services/weightLoader.ts` (new): ordered source list
-      (`VITE_WEIGHTS_URL` override → Hugging Face → GitHub Release →
-      same-origin `BASE_URL/models/...` dev fallback), payload validation,
+      (`VITE_WEIGHTS_URL` override → same-origin `BASE_URL/models/...` →
+      Hugging Face mirror), payload validation, IndexedDB cache with versioned
+      key, `clearWeightCache()`, `getWeightsSource()`. `RELEASE_WEIGHTS_URL` is
+      exported as the canonical artifact URL for CI, not as a browser source.
       IndexedDB cache with versioned key, `clearWeightCache()`,
       `getWeightsSource()`.
 - [x] `frontend/src/store/useGameStore.ts`: `initializeAi` calls `loadWeights()`
@@ -66,10 +83,11 @@ Files touched: `frontend/src/services/weightLoader.ts`,
 
 Acceptance criteria:
 
-- A fresh browser loads weights from Hugging Face and the AI panel reaches
-  `ready`; a second load reads IndexedDB and issues no network request.
-- If the primary URL 404s, the fallback URL is tried; if both fail the AI panel
-  shows an error naming the URLs and pointing at this file.
+- A fresh browser loads the weights from the same-origin copy Pages serves and
+  the AI panel reaches `ready`; a second load reads IndexedDB and issues no
+  network request.
+- If the same-origin copy is missing, the Hugging Face mirror is tried; if every
+  source fails the AI panel shows an error naming the URLs and pointing here.
 - A 404 that returns an HTML page is rejected by the payload validator rather
   than being handed to `WasmMortalEvaluator`.
 - Private-mode / no-IndexedDB browsers still load weights (network only).
@@ -85,6 +103,10 @@ Acceptance criteria:
 - [x] Permissions `contents: read`, `pages: write`, `id-token: write`;
       concurrency group `pages`, `cancel-in-progress: false`.
 - [x] No weights file, no `pkg/`, no `dist/` in the workflow or the commit.
+- [x] Downloads the `weights-v1` release asset server-side into
+      `frontend/public/models/` before the build (release assets are not
+      CORS-enabled; see the CORS finding in task 4), with a warning instead of a
+      hard failure so a missing release still deploys a book-only app.
 - [x] wasm-opt note (see "MIME / wasm-opt conclusions" in task 4) rather than
       silently disabling it.
 
@@ -148,6 +170,29 @@ Acceptance criteria:
 - The built `dist/assets/index-*.js` contains the base-correct URL
   (`/riichiprac/assets/riichiprac_bg-*.wasm` under `GITHUB_ACTIONS=true`,
   `/assets/...` otherwise), confirming `?url` imports follow `base`.
+
+### CORS finding: GitHub release assets cannot be fetched by the browser
+
+Measured 2026-11-10 against the live `weights-v1` asset with
+`Origin: https://chairbender.github.io` and `Sec-Fetch-Mode: cors`:
+
+| URL | `access-control-allow-origin` |
+| --- | --- |
+| `github.com/chairbender/riichiprac/releases/download/weights-v1/...` (302) | **none** |
+| `release-assets.githubusercontent.com/...` (200, 43,555,532 B) | **none** |
+| `huggingface.co/VoidShine/mortal-298k/resolve/main/mortal_298k.pth` (200) | `*` |
+
+Consequence: a browser `fetch()` of the release asset from the Pages origin is
+blocked by CORS, so the app must not put it in the runtime source list. Instead
+`.github/workflows/deploy.yml` downloads the asset server-side (no CORS in CI)
+into `frontend/public/models/` before `npm run build`, and Pages serves it
+same-origin — no CORS involved at all. `RELEASE_WEIGHTS_URL` stays exported as
+the canonical artifact URL for CI and documentation only.
+
+Trade-off accepted: the 43 MB file is now part of the Pages artifact, so a
+first-time visitor costs 43 MB against Pages' 100 GB/month soft bandwidth
+(~2,300 first loads). Repeat visits read IndexedDB. Publishing the optional HF
+mirror moves that traffic off Pages without any app change.
 
 ## 5. Licensing: weights are AGPL-3.0, the app stays MIT
 
@@ -267,15 +312,40 @@ All green on 2026-11-10 (local: rustc 1.93, wasm-pack 0.13.1, Node 18.19.1).
 ## Manual one-time setup (human)
 
 Nothing below can be done by an agent: it needs GitHub and Hugging Face
-credentials, and the repo/branch push rights.
+credentials. Status as of 2026-11-10: the weights release exists (`weights-v1`)
+and Pages is enabled; the Hugging Face mirror and the browser verification are
+still outstanding.
 
-### A. Publish the weights (pick ONE; Hugging Face is the default)
+### A. Publish the weights (GitHub Release: done; Hugging Face optional)
 
 The file to upload is `frontend/public/models/mortal_298k.safetensors`
 (43,555,532 bytes), generated by `scripts/convert_weights.py`. It is gitignored,
 so it only exists on a machine that ran the conversion.
 
-**Option 1 — Hugging Face (primary URL in the code):**
+**Option 1 — GitHub Release asset (chosen; already published as `weights-v1`):**
+
+```bash
+gh auth login
+gh release create weights-v1 \
+  frontend/public/models/mortal_298k.safetensors \
+  --title "Mortal weights v1" \
+  --notes "Mortal 298k Safetensors weights for the riichiprac WASM evaluator. AGPL-3.0, derived from VoidShine/mortal-298k; conversion source: scripts/convert_weights.py."
+```
+
+Resulting URL (`RELEASE_WEIGHTS_URL`, also hard-coded in
+`.github/workflows/deploy.yml`):
+
+```
+https://github.com/chairbender/riichiprac/releases/download/weights-v1/mortal_298k.safetensors
+```
+
+Verified live on 2026-11-10: `302` → `release-assets.githubusercontent.com`,
+`200`, `content-length: 43555532`.
+
+To replace the weights later: upload `weights-v2`, update the URL in
+`weightLoader.ts` and in the workflow's `curl`, and bump `CACHE_VERSION`.
+
+**Option 2 — Hugging Face (optional browser-fetchable mirror):**
 
 ```bash
 pip install -U huggingface_hub
@@ -292,35 +362,27 @@ the YAML front-matter) and note the provenance: upstream
 [`Equim-chan/Mortal`](https://github.com/Equim-chan/Mortal), converted with
 `scripts/convert_weights.py`. See "5. Licensing" for why.
 
-Resulting URL (already the `PRIMARY_WEIGHTS_URL` constant):
+Resulting URL (`HF_WEIGHTS_URL`):
 
 ```
 https://huggingface.co/chairbender/mortal-weights/resolve/main/mortal_298k.safetensors
 ```
 
-**Option 2 — GitHub Release asset (fallback URL in the code):**
+**CORS (measured 2026-11-10, `Origin: https://chairbender.github.io`):**
 
-```bash
-gh auth login
-gh release create weights-v1 \
-  frontend/public/models/mortal_298k.safetensors \
-  --title "Mortal weights v1" \
-  --notes "Mortal 298k Safetensors weights for the riichiprac WASM evaluator. AGPL-3.0, derived from VoidShine/mortal-298k; conversion source: scripts/convert_weights.py."
-```
+| URL | `access-control-allow-origin` |
+| --- | --- |
+| `github.com/.../releases/download/weights-v1/...` (302) | **none** |
+| `release-assets.githubusercontent.com/...` (200) | **none** |
+| `huggingface.co/.../resolve/main/...` (200) | `*` |
 
-Resulting URL (already the `FALLBACK_WEIGHTS_URL` constant):
-
-```
-https://github.com/chairbender/riichiprac/releases/download/weights-v1/mortal_298k.safetensors
-```
-
-**CORS:** both hosts send `Access-Control-Allow-Origin: *` for public
-artifacts — HF `resolve/` redirects to a CDN that allows `*`, and GitHub release
-assets (`release-assets.githubusercontent.com`) also send `*`. So a
-`fetch()` from `https://chairbender.github.io` works without a proxy.
+So GitHub release assets **cannot** be fetched by the browser, and the app does
+not try: `.github/workflows/deploy.yml` downloads the asset server-side into
+`frontend/public/models/` before `npm run build`, and Pages serves it
+same-origin. HF stays as the only browser-fetchable external mirror.
 
 If the HF repo/owner differs from `chairbender/mortal-weights`, edit
-`PRIMARY_WEIGHTS_URL` in `frontend/src/services/weightLoader.ts`, or set the
+`HF_WEIGHTS_URL` in `frontend/src/services/weightLoader.ts`, or set the
 build-time override `VITE_WEIGHTS_URL` in the workflow env instead of editing
 code.
 
@@ -328,6 +390,8 @@ code.
 
 Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 Without this the `deploy-pages` job fails with "Get Pages site failed".
+
+Status: enabled 2026-11-10 (the repo was also made public so Pages is available).
 
 ### C. Confirm CORS + weights in a real browser
 
@@ -365,8 +429,8 @@ The hashed wasm filename comes from the workflow's build log (or from
 
 | Constant | File | Placeholder |
 | --- | --- | --- |
-| `PRIMARY_WEIGHTS_URL` | `frontend/src/services/weightLoader.ts` | `chairbender/mortal-weights` HF repo (assumed; create it or change the URL) |
-| `FALLBACK_WEIGHTS_URL` | `frontend/src/services/weightLoader.ts` | `weights-v1` GitHub release tag (create it or change the URL) |
+| `RELEASE_WEIGHTS_URL` | `frontend/src/services/weightLoader.ts` + `curl` in `.github/workflows/deploy.yml` | release tag `weights-v1` (published 2026-11-10); change both together |
+| `HF_WEIGHTS_URL` | `frontend/src/services/weightLoader.ts` | `chairbender/mortal-weights` HF mirror (not published; optional) |
 | `CACHE_VERSION` | `frontend/src/services/weightLoader.ts` | bump when the weights file changes, to invalidate browser caches |
 | HF model card license | HF model repo | set `license: agpl-3.0` + provenance (see "5. Licensing") |
 | Pages URL | repo Settings → Pages | `https://chairbender.github.io/riichiprac/` |

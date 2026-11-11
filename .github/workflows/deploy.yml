@@ -46,6 +46,22 @@ jobs:
       - name: Build WASM package
         run: wasm-pack build --target web --release
 
+      # GitHub release assets are NOT CORS-enabled (no access-control-allow-origin
+      # on github.com or release-assets.githubusercontent.com), so the browser
+      # cannot fetch the weights from the Pages origin. Download them here,
+      # server-side, and let Pages serve the file same-origin instead. The file is
+      # gitignored and never committed; it only lands in the Pages artifact.
+      # A missing release must not block the deploy: the app degrades to
+      # book-only grading when the weights are unavailable.
+      - name: Fetch Mortal weights for same-origin hosting
+        run: |
+          mkdir -p frontend/public/models
+          curl -fL --retry 3 --retry-delay 2 \
+            -o frontend/public/models/mortal_298k.safetensors \
+            https://github.com/chairbender/riichiprac/releases/download/weights-v1/mortal_298k.safetensors \
+            || echo "::warning::Mortal weights unavailable; the deployed AI panel will report them as missing."
+          ls -l frontend/public/models/
+
       - name: Set up Node
         uses: actions/setup-node@v7
         with:

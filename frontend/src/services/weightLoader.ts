@@ -1,12 +1,12 @@
 /**
  * Loads the Mortal Safetensors weights at runtime.
  *
- * The file is ~43 MB, so it is deliberately not bundled: `dist/` stays small
- * enough for GitHub Pages, and the weights come from a free external CDN
- * (Hugging Face first, GitHub Release asset as the fallback). The bytes are
- * cached in IndexedDB so a returning visitor downloads nothing.
+ * The file is ~43 MB, so it is not committed. In production CI copies the
+ * GitHub Release asset into the build (served same-origin by Pages, no CORS);
+ * a Hugging Face mirror is the fallback for deployments that do not do that.
+ * The bytes are cached in IndexedDB so a returning visitor downloads nothing.
  *
- * See `hosting-plan.md` for the one-time upload steps and for the URLs.
+ * See `hosting-plan.md` for the one-time setup steps and for the URLs.
  *
  * No dependencies: no Cache API, no service worker, no npm packages. Every
  * cache failure is swallowed so that it can never break weight loading.
@@ -25,29 +25,32 @@ export const CACHE_VERSION = 'v1';
 const CACHE_KEY = `${WEIGHTS_FILENAME}@${CACHE_VERSION}`;
 
 /**
- * Primary source: a public Hugging Face model repo. `resolve/main` redirects to
- * HF's CDN and sends `Access-Control-Allow-Origin: *`.
+ * Canonical location of the weights: a GitHub Release asset. This is the file
+ * CI downloads and serves same-origin (see `.github/workflows/deploy.yml`).
  *
- * Placeholder: the `chairbender/mortal-weights` repo must be created and the
- * file uploaded once (see "Manual one-time setup" in `hosting-plan.md`), or
- * point `VITE_WEIGHTS_URL` / this constant somewhere else.
+ * It is deliberately NOT in the browser source list: GitHub release assets send
+ * no `access-control-allow-origin` header (verified on both `github.com` and
+ * `release-assets.githubusercontent.com`), so a cross-origin `fetch()` from the
+ * Pages origin is blocked by CORS. The browser gets the bytes from the
+ * same-origin copy below instead.
  */
-export const PRIMARY_WEIGHTS_URL =
-  'https://huggingface.co/chairbender/mortal-weights/resolve/main/mortal_298k.safetensors';
-
-/**
- * Fallback: a GitHub Release asset. Also CORS-friendly (`*`).
- *
- * Placeholder: create the `weights-v1` release with
- * `gh release create weights-v1 <file> ...` (see `hosting-plan.md`).
- */
-export const FALLBACK_WEIGHTS_URL =
+export const RELEASE_WEIGHTS_URL =
   'https://github.com/chairbender/riichiprac/releases/download/weights-v1/mortal_298k.safetensors';
 
 /**
- * Same-origin copy served by Vite from `frontend/public/models/`. Kept as the
- * last resort so local development works with the gitignored file, and so a
- * self-hosted deployment can drop the file next to the app.
+ * Optional external mirror: a public Hugging Face model repo. HF's `resolve/`
+ * endpoint does send `access-control-allow-origin: *`, so this works in the
+ * browser. Not published yet — the `chairbender/mortal-weights` repo must be
+ * created and the file uploaded once (see "Manual one-time setup" in
+ * `hosting-plan.md`), or point `VITE_WEIGHTS_URL` somewhere else.
+ */
+export const HF_WEIGHTS_URL =
+  'https://huggingface.co/chairbender/mortal-weights/resolve/main/mortal_298k.safetensors';
+
+/**
+ * Same-origin copy served from `frontend/public/models/`: the primary source in
+ * production (CI places the release asset there before building) and in local
+ * development (the gitignored file). No CORS involved.
  */
 export const LOCAL_WEIGHTS_URL = `${import.meta.env.BASE_URL}models/${WEIGHTS_FILENAME}`;
 
@@ -79,9 +82,10 @@ export function getWeightsUrlList(): string[] {
 function candidateUrls(): string[] {
   const urls = [
     OVERRIDE_WEIGHTS_URL,
-    PRIMARY_WEIGHTS_URL,
-    FALLBACK_WEIGHTS_URL,
+    // Same origin first: no CORS, and in production CI has already placed the
+    // release asset there.
     LOCAL_WEIGHTS_URL,
+    HF_WEIGHTS_URL,
   ].filter((url): url is string => typeof url === 'string' && url.length > 0);
 
   // Deduplicate while keeping order, so an override equal to the primary does

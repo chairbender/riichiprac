@@ -93,30 +93,31 @@ defender's own hand).
 
 ## Hosting the model weights
 
-Production builds never bundle the ~43 MB `mortal_298k.safetensors` file. At
-runtime the app fetches it from the first source that answers, then caches the
-bytes in IndexedDB so a returning visitor downloads nothing:
+The ~43 MB `mortal_298k.safetensors` file is not committed. It is published as a
+GitHub Release asset (`weights-v1`). GitHub release assets send no CORS headers,
+so the deploy workflow downloads it server-side and Pages serves it same-origin —
+the browser never fetches GitHub directly. At runtime the app tries the first
+source that answers, then caches the bytes in IndexedDB so a returning visitor
+downloads nothing:
 
 1. `VITE_WEIGHTS_URL` (build-time override, optional)
-2. Hugging Face: `https://huggingface.co/chairbender/mortal-weights/resolve/main/mortal_298k.safetensors`
-3. GitHub Release: `https://github.com/chairbender/riichiprac/releases/download/weights-v1/mortal_298k.safetensors`
-4. Same origin: `${BASE_URL}models/mortal_298k.safetensors` (`/models/...` in dev,
-   `/riichiprac/models/...` on Pages, using the gitignored file in
-   `frontend/public/models/`)
+2. Same origin: `${BASE_URL}models/mortal_298k.safetensors` — placed there by CI
+   (`/models/...` in dev when you have the gitignored file, `/riichiprac/models/...`
+   on Pages)
+3. Hugging Face: `https://huggingface.co/chairbender/mortal-weights/resolve/main/mortal_298k.safetensors`
+   (optional mirror; the only browser-fetchable external source)
 
-Publish the file once (Hugging Face shown; a GitHub Release asset works too):
+To replace the weights, upload a new release asset and bump `CACHE_VERSION`:
 
 ```bash
-pip install -U huggingface_hub
-hf auth login
-hf upload chairbender/mortal-weights \
-  frontend/public/models/mortal_298k.safetensors mortal_298k.safetensors
+gh release create weights-v2 frontend/public/models/mortal_298k.safetensors \
+  --title "Mortal weights v2" \
+  --notes "AGPL-3.0, derived from VoidShine/mortal-298k; source: scripts/convert_weights.py"
 ```
 
-Both hosts send `Access-Control-Allow-Origin: *`, so the browser can fetch the
-file from GitHub Pages. Full runbook, including the one-time Pages setup and how
-to invalidate the browser cache after replacing the weights:
-[`hosting-plan.md`](hosting-plan.md).
+then update the URL in `frontend/src/services/weightLoader.ts` and the `curl` in
+`.github/workflows/deploy.yml`. Full runbook, including the CORS measurements and
+the one-time Pages setup: [`hosting-plan.md`](hosting-plan.md).
 
 ## Model weights license
 
