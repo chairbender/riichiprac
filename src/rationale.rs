@@ -920,15 +920,16 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
 
 /// The ch. 9 seating tip: throw the right player's valueless wind first.
 fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
-    let answer = state.correct_action.tile()?.to_string();
+    let answer_code = state.correct_action.tile()?;
+    let answer = format_tile_for_display(answer_code, false);
     let human = human(state)?;
     let shimocha_wind = human.wind.next(1);
 
     let other_winds: Vec<String> = state
         .tiles
         .iter()
-        .filter(|code| is_wind_code(code) && code.as_str() != answer)
-        .cloned()
+        .filter(|code| is_wind_code(code) && code.as_str() != answer_code)
+        .map(|code| format_tile_for_display(code, false))
         .collect();
     let others = if other_winds.is_empty() {
         "none".to_string()
@@ -1682,6 +1683,7 @@ mod tests {
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
+            "wind_discard_order",
             "defense_safety_chart",
             "defense_stuck_heuristic",
         ] {
