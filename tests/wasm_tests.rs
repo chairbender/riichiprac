@@ -783,6 +783,7 @@ fn test_chiitoitsu_dama_100_hands() {
     let elapsed = js_sys::Date::now() - started;
     assert!(elapsed < 10_000.0, "100 dama hands took {elapsed}ms");
 }
+
 /// The 13-tile tenpai hand the player keeps, read back off a Riichi/dama
 /// payload.
 ///
