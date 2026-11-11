@@ -166,6 +166,17 @@ fn ch3_ryankan(line: u32, needle: &str) -> Citation {
     )
 }
 
+fn ch3_pairs(line: u32, needle: &str) -> Citation {
+    citation(
+        3,
+        "Riichi mahjong basics",
+        "Pairs and sets",
+        "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
 const CHIITOITSU_BOX: &str = "Chiitoitsu not waiting for dora";
 /// Riichi Book 1, ch. 7, "To riichi or not to riichi?": the general
 /// three-condition rule the `riichi_judgement` lesson grades.
@@ -747,6 +758,10 @@ fn scenario_source(category: &str) -> Option<Citation> {
         "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
         "protorun_priority" => Some(ch3(205, "can accept twice as many tiles")),
         "ryankan_break" => Some(ch3_ryankan(523, "break the double closed shape")),
+        "pair_count" => Some(ch3_pairs(
+            336,
+            "we should avoid having three pairs in a hand",
+        )),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
@@ -1017,6 +1032,84 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         });
     }
 
+    if state.category == "pair_count" {
+        let discard =
+            format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
+        let pairs = pair_codes(state)
+            .iter()
+            .map(|code| format_tile_for_display(code, false))
+            .collect::<Vec<_>>()
+            .join(" / ");
+        let drawn = human(state)
+            .and_then(|player| player.draw.as_deref())
+            .map(|code| format_tile_for_display(code, false))
+            .unwrap_or_default();
+        let rival = pair_twin(state);
+        let rival_text = rival
+            .map(|tile| format_tile_for_display(&tile.to_string(), false))
+            .unwrap_or_else(|| "the side wait".to_string());
+        let rival_acceptance = rival
+            .and_then(|tile| acceptance_without(state, tile))
+            .unwrap_or_default();
+
+        let rules = vec![
+            BookRule {
+                id: "avoid_three_pairs".to_string(),
+                rule: "A closed hand should avoid holding three pairs: the third pair is \
+                       the weakest shape a closed hand can carry."
+                    .to_string(),
+                quote: "we should avoid having three pairs in a hand".to_string(),
+                citation: ch3_pairs(336, "we should avoid having three pairs in a hand"),
+                applies: format!("The draw {drawn} made a third pair, so the hand holds {pairs}."),
+            },
+            BookRule {
+                id: "pair_count_ranking".to_string(),
+                rule: "Two pairs are the strongest count a closed hand can hold, so the \
+                       third pair is the one to give up."
+                    .to_string(),
+                quote: "2 pairs > 1 pair, 4 pairs > 3 pairs".to_string(),
+                citation: ch3_pairs(343, "2 pairs > 1 pair, 4 pairs > 3 pairs"),
+                applies: format!(
+                    "Discarding {discard} leaves two pairs, which the book ranks above the \
+                     three this hand can hold."
+                ),
+            },
+            BookRule {
+                id: "pair_or_protorun".to_string(),
+                rule: "Keeping the new pair gains two tiles, but it costs the side wait it \
+                       was drawn from, which accepts eight. The trade loses six tiles, so \
+                       the pair goes and the protorun stays."
+                    .to_string(),
+                quote: "The net tile acceptance gain will be negative".to_string(),
+                citation: ch3_pairs(331, "The net tile acceptance gain will be negative"),
+                applies: format!(
+                    "Discarding {discard} keeps {answer_total} improving tiles; keeping three \
+                     pairs by discarding {rival_text} leaves {rival_acceptance}.",
+                    answer_total = state.ukeire_total
+                ),
+            },
+        ];
+
+        return Some(BookRationale {
+            summary: format!(
+                "Break the pair: keeping three pairs trades the side wait's eight tiles for \
+                 the new pair's two, so discard {discard}."
+            ),
+            rules,
+            absent: Vec::new(),
+            source: ch3_pairs(336, "we should avoid having three pairs in a hand"),
+            caveats: vec![
+                "The book's open-hand caveat reverses the ranking: when you intend to pon, \
+                 three pairs beat two (ch3:351). This lesson is the closed variant."
+                    .to_string(),
+                "Each pair costs the same two tiles, so the trainer also grades the other two \
+                 pair tiles as correct. Only keeping three pairs, by discarding the side wait \
+                 instead, is wrong."
+                    .to_string(),
+            ],
+        });
+    }
+
     if state.category != "ryanmen_protorun" {
         return None;
     }
@@ -1071,6 +1164,57 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         source: ch4(44, "completely redundant"),
         caveats: Vec::new(),
     })
+}
+
+/// Tile codes held exactly twice in the human hand, including the draw.
+fn pair_codes(state: &GameState) -> Vec<String> {
+    let Some(human) = human(state) else {
+        return Vec::new();
+    };
+
+    let mut counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for code in human.hand.iter().chain(human.draw.iter()) {
+        *counts.entry(code.clone()).or_insert(0) += 1;
+    }
+    counts
+        .into_iter()
+        .filter(|(_, count)| *count == 2)
+        .map(|(code, _)| code)
+        .collect()
+}
+
+/// The tile one rank above the answer in its suit, when the hand still holds
+/// it. It is the side wait the three-pair keep would have to give up.
+fn pair_twin(state: &GameState) -> Option<Tile> {
+    let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
+    let Tile::Suited { suit, value } = answer else {
+        return None;
+    };
+    if value >= 9 {
+        return None;
+    }
+    let twin = Tile::Suited {
+        suit,
+        value: value + 1,
+    };
+    let twin_code = twin.to_string();
+    state
+        .tiles
+        .iter()
+        .any(|code| code == &twin_code)
+        .then_some(twin)
+}
+
+/// Acceptance after discarding one copy of `tile` from the visible hand.
+fn acceptance_without(state: &GameState, tile: Tile) -> Option<u8> {
+    let mut tiles: Vec<Tile> = state
+        .tiles
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    let index = tiles.iter().position(|held| *held == tile)?;
+    tiles.remove(index);
+    Some(crate::generator::evaluate_hand(&tiles).ukeire_total)
 }
 
 /// The ch. 9 seating tip: throw the right player's valueless wind first.
@@ -1850,12 +1994,59 @@ mod tests {
     }
 
     #[test]
+    fn pair_count_hand_cites_the_three_pair_arithmetic() {
+        let state = generate_puzzle("pair_count").expect("pair count must generate");
+
+        let rationale = rationale_for(&state).expect("pair count needs a rationale");
+
+        assert_eq!(rationale.rules.len(), 3);
+        assert!(rationale.absent.is_empty());
+        assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+        assert_eq!(rationale.source.chapter, 3);
+        assert_eq!(rationale.source.section, "Pairs and sets");
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                "avoid_three_pairs",
+                "pair_count_ranking",
+                "pair_or_protorun"
+            ]
+        );
+
+        let discard = state.correct_action.tile().expect("answer tile");
+        assert!(
+            rationale.rules[2].applies.contains(discard),
+            "the arithmetic rule must name the discard"
+        );
+        assert!(
+            rationale.rules[2]
+                .applies
+                .contains(&state.ukeire_total.to_string()),
+            "the arithmetic rule must quote the live acceptance"
+        );
+        assert!(
+            rationale
+                .caveats
+                .iter()
+                .any(|caveat| caveat.contains("three pairs beat two")),
+            "the caveat must name the open-hand inversion"
+        );
+    }
+
+    #[test]
     fn generated_book_scenarios_carry_a_rationale() {
         for category in [
             "ryanmen_protorun",
             "nakabukure_ready",
             "protorun_priority",
             "ryankan_break",
+            "pair_count",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -2177,6 +2368,7 @@ mod tests {
             "nakabukure_ready",
             "protorun_priority",
             "ryankan_break",
+            "pair_count",
             "riichi_judgement",
             "dama_bad_wait",
             "shouminkan_decision",

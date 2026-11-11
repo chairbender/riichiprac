@@ -21,7 +21,7 @@ use crate::generator::support::analysis::{evaluate_hand, visible_tile_counts};
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    OpponentDeal, discards_from_tiles, random_scores_with_human_first, self_turn_river_counts,
+    OpponentDeal, discards_from_tiles, random_scores_with_human_first, self_turn_river_plan,
 };
 use crate::rng::{choose, gen_range, shuffle};
 use crate::state::{CorrectAction, DecisionContext, GameState, PlayerState, TargetAction, Wind};
@@ -81,7 +81,7 @@ pub(super) fn build(
 
     let scores = random_scores_with_human_first();
     // The human draws after Kamicha (seat 3) discards.
-    let counts = self_turn_river_counts(human_wind, &[], gen_range(2, 7));
+    let counts = self_turn_river_plan(human_wind, &[], gen_range(2, 7)).counts;
     let deal = deal_opponents_with_visible(
         &mut deck,
         human_wind,
