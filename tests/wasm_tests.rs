@@ -899,6 +899,125 @@ fn test_ryanmen_rejection_sampling_constraints() {
 }
 
 #[wasm_bindgen_test]
+fn test_nakabukure_ready_rejection_sampling_constraints() {
+    for run in 0..25 {
+        let json_output = generate_puzzle("nakabukure_ready".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+        assert_eq!(val["category"], "nakabukure_ready");
+        assert_eq!(val["target_action"], "NaniKiru");
+        assert_eq!(val["correct_action"]["type"], "dama");
+        assert_eq!(val["riichi_sticks"], 0);
+        assert_eq!(val["dora_indicators"].as_array().unwrap().len(), 1);
+        assert_eq!(val["ura_dora_indicators"].as_array().unwrap().len(), 1);
+        assert_eq!(val["shanten"], 0);
+        assert_eq!(val["is_agari"], false);
+
+        let players = val["players"].as_array().expect("players array");
+        assert_eq!(players.len(), 4);
+        for opponent in &players[1..] {
+            assert_eq!(opponent["is_riichi"], false);
+            assert_eq!(opponent["melds"].as_array().unwrap().len(), 0);
+            assert!(opponent["riichi_discard_index"].is_null());
+        }
+
+        // Human hand, open Yakuhai Pon, and the drawn honour.
+        let human = &players[0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 10);
+        assert_eq!(human["melds"].as_array().unwrap().len(), 1);
+        assert_eq!(human["melds"][0]["meld_type"], "Pon");
+        let meld_tiles = human["melds"][0]["tiles"].as_array().unwrap();
+        assert_eq!(meld_tiles.len(), 3);
+        assert!(meld_tiles.iter().all(|tile| tile == &meld_tiles[0]));
+
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("dama action must include a discard tile");
+        let draw = human["draw"].as_str().expect("human draw");
+        assert_ne!(answer, draw, "run {run}: the draw is not the answer");
+        assert!(
+            draw.ends_with('z'),
+            "run {run}: the alternative discard is the floating honour"
+        );
+
+        // The visible full hand is exactly hand + draw + open meld.
+        let mut expected: Vec<&str> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        expected.push(draw);
+        expected.extend(meld_tiles.iter().map(|tile| tile.as_str().unwrap()));
+        expected.sort();
+        let mut actual: Vec<&str> = val["tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        actual.sort();
+        assert_eq!(actual, expected);
+
+        // The bulge tile is held exactly twice.
+        assert_eq!(
+            actual.iter().filter(|tile| **tile == answer).count(),
+            2,
+            "run {run}: the answer is the middle tile of the bulge"
+        );
+
+        // The book's discard leaves the lone honour as the only wait, with
+        // three live copies.
+        let wait_tiles: Vec<&str> = val["ukeire_tiles"]
+            .as_array()
+            .expect("ukeire_tiles array")
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        assert_eq!(wait_tiles, vec![draw]);
+        assert_eq!(val["ukeire_total"], 3);
+
+        // The tempting discard leaves the bulge tile, of which only two remain.
+        let mut post_float = actual.clone();
+        let float_index = post_float
+            .iter()
+            .position(|tile| *tile == draw)
+            .expect("draw must be in the full hand");
+        post_float.remove(float_index);
+        let parsed =
+            parse_hand(&post_float.join("")).expect("post-discard hand must parse in agari");
+        let counts = to_counts(&parsed);
+        assert_eq!(calculate_shanten(&counts).shanten, 0);
+        let ukeire = calculate_ukeire(&counts);
+        assert_eq!(ukeire.tiles.len(), 1);
+        assert_eq!(ukeire.tiles[0].tile.to_string(), answer);
+        assert_eq!(ukeire.total_count, 2);
+        assert!(val["ukeire_total"].as_u64().unwrap() > 2);
+
+        // Furiten and availability: neither wait is visible anywhere.
+        for player in players {
+            for discard in player["discards"].as_array().unwrap() {
+                let tile = discard["tile"].as_str().unwrap();
+                assert_ne!(tile, answer, "run {run}: answer is visibly discarded");
+                assert_ne!(tile, draw, "run {run}: the honour is visibly discarded");
+            }
+        }
+        for indicator in val["dora_indicators"].as_array().unwrap() {
+            let tile = indicator.as_str().unwrap();
+            assert_ne!(tile, answer);
+            assert_ne!(tile, draw);
+        }
+
+        let total_score: i64 = players
+            .iter()
+            .map(|player| player["score"].as_i64().expect("score int"))
+            .sum();
+        assert_eq!(total_score, 100_000);
+    }
+}
+
+#[wasm_bindgen_test]
 fn test_defense_scenarios_payload() {
     for category in ["defense_safety_chart", "defense_stuck_heuristic"] {
         for run in 0..10 {

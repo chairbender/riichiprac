@@ -132,6 +132,17 @@ fn ch3(line: u32, needle: &str) -> Citation {
     )
 }
 
+fn ch3_bulging(line: u32, needle: &str) -> Citation {
+    citation(
+        3,
+        "Riichi mahjong basics",
+        "Bulging float (nakabukure) shape",
+        "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
 const CHIITOITSU_BOX: &str = "Chiitoitsu not waiting for dora";
 
 const CH8_GENBUTSU: &str = "Genbutsu and other absolutely safe tiles";
@@ -527,6 +538,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
         "chiitoitsu_riichi_vs_dama" => Some(ch7(CHIITOITSU_BOX, 345, "Riichi judgement")),
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
+        "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
@@ -566,6 +578,68 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
             source: ch9(360, "From an open set to an open quad"),
             caveats: vec![
                 "Extending an open Pon also risks chankan (Robbing the Kong).".to_string(),
+            ],
+        });
+    }
+
+    if state.category == "nakabukure_ready" {
+        let discard = state.correct_action.tile().unwrap_or_default().to_string();
+        let wait = state.ukeire_tiles.first().cloned().unwrap_or_default();
+        let drawn = human(state)
+            .and_then(|player| player.draw.clone())
+            .unwrap_or_default();
+
+        let rules = vec![
+            BookRule {
+                id: "bulge_pair_wait".to_string(),
+                rule: "A bulging float left in a ready hand waits on its own middle tile, \
+                       which the hand already holds twice, so only two winning tiles remain."
+                    .to_string(),
+                quote: "It is waiting for wan4, but we are already using two of it in the hand, \
+                        leaving only two winning tiles."
+                    .to_string(),
+                citation: ch3_bulging(702, "leaving only two winning tiles"),
+                applies: format!(
+                    "Keeping the bulge and discarding {drawn} would wait on {discard}, which \
+                     this hand holds twice: only two winning tiles."
+                ),
+            },
+            BookRule {
+                id: "discard_the_bulge".to_string(),
+                rule: "In a ready hand the bulge tile itself is the discard: dropping it leaves \
+                       the lone honour as a tanki wait with strictly more winning tiles."
+                    .to_string(),
+                quote: "We should rather discard wan4 to wait for bei.".to_string(),
+                citation: ch3_bulging(702, "We should rather discard"),
+                applies: format!(
+                    "Discarding {discard} waits on {wait} instead: {} live copies against the \
+                     two the bulge would leave.",
+                    state.ukeire_total
+                ),
+            },
+            BookRule {
+                id: "keep_until_one_away".to_string(),
+                rule: "The bulging float's value is in building a side-wait protorun, so the \
+                       book keeps it only until the hand is 1-away."
+                    .to_string(),
+                quote: "Try to keep a bulging float shape until a hand becomes 1-away.".to_string(),
+                citation: ch3_bulging(708, "until a hand becomes 1-away"),
+                applies: "This hand is already ready, so the shape's protection has expired."
+                    .to_string(),
+            },
+        ];
+
+        return Some(BookRationale {
+            summary: "Drop the bulging float: in a ready hand it waits on its own middle tile \
+                      for only two tiles, while the lone honour has three live copies."
+                .to_string(),
+            rules,
+            absent: Vec::new(),
+            source: ch3_bulging(681, "accept four kinds of tiles"),
+            caveats: vec![
+                "The book's ready-hand example is closed; this trainer opens a Yakuhai Pon so \
+                 Riichi cannot mask the discard lesson."
+                    .to_string(),
             ],
         });
     }
@@ -1137,9 +1211,49 @@ mod tests {
     }
 
     #[test]
+    fn nakabukure_hand_gets_a_category_rationale() {
+        let state = generate_puzzle("nakabukure_ready").expect("nakabukure must generate");
+
+        let rationale = rationale_for(&state).expect("nakabukure needs a rationale");
+
+        assert_eq!(rationale.rules.len(), 3);
+        assert!(rationale.absent.is_empty());
+        assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+        assert_eq!(rationale.source.chapter, 3);
+        assert_eq!(rationale.source.section, "Bulging float (nakabukure) shape");
+        assert!(!rationale.caveats.is_empty());
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                "bulge_pair_wait",
+                "discard_the_bulge",
+                "keep_until_one_away"
+            ]
+        );
+
+        let discard = state.correct_action.tile().expect("answer tile");
+        let wait = state.ukeire_tiles.first().expect("wait tile");
+        assert!(
+            rationale.rules[1].applies.contains(discard),
+            "the answer rule must name the discard"
+        );
+        assert!(
+            rationale.rules[1].applies.contains(wait),
+            "the answer rule must name the wait"
+        );
+    }
+
+    #[test]
     fn generated_book_scenarios_carry_a_rationale() {
         for category in [
             "ryanmen_protorun",
+            "nakabukure_ready",
             "chiitoitsu_riichi_vs_dama",
             "shouminkan_decision",
             "shouminkan_decline",
@@ -1226,6 +1340,7 @@ mod tests {
 
         for category in [
             "ryanmen_protorun",
+            "nakabukure_ready",
             "shouminkan_decline",
             "defense_safety_chart",
             "defense_stuck_heuristic",
