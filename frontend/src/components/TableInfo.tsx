@@ -14,6 +14,12 @@ export function TableInfo({ state }: TableInfoProps) {
   const doraLabel =
     state.dora_indicators.length === 1 ? 'Dora indicator' : 'Dora indicators';
 
+  // Only explain the river dot when a tsumogiri discard is actually on the
+  // table, so the legend does not add noise to boards without one.
+  const hasTsumogiri = state.players.some((player) =>
+    player.discards.some((discard) => discard.is_tsumogiri),
+  );
+
   return (
     <section className="table-info" aria-label="Table information">
       <div className="table-stat">
@@ -55,6 +61,16 @@ export function TableInfo({ state }: TableInfoProps) {
           ))}
         </div>
       </div>
+
+      {hasTsumogiri && (
+        <div className="table-legend" aria-label="River markers">
+          <span className="table-stat-label">River markers</span>
+          <span className="table-legend-item">
+            <span className="tsumogiri-dot" aria-hidden="true" />
+            Tsumogiri (straight from the draw)
+          </span>
+        </div>
+      )}
     </section>
   );
 }

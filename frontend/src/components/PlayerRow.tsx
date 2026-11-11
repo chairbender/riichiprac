@@ -10,7 +10,8 @@ interface PlayerRowProps {
 
 /**
  * One player's vertically stacked row: wind, score, Riichi marker, open melds,
- * and the discard river. The Riichi declaration tile is rendered sideways.
+ * and the discard river. The Riichi declaration tile is rendered sideways, and
+ * tsumogiri discards (thrown straight off the draw) carry a dot marker.
  */
 export function PlayerRow({
   player,
@@ -59,13 +60,19 @@ export function PlayerRow({
               discard.is_riichi || player.riichi_discard_index === index;
             const isClaimed =
               highlightLastDiscard && index === player.discards.length - 1;
+            const isTsumogiri = discard.is_tsumogiri;
 
             return (
               <div
                 key={`${discard.tile}-${index}`}
                 className={`river-slot${isRiichiDiscard ? ' river-slot--riichi' : ''}${
                   isClaimed ? ' river-slot--claim' : ''
-                }`}
+                }${isTsumogiri ? ' river-slot--tsumogiri' : ''}`}
+                title={
+                  isTsumogiri
+                    ? `${discard.tile} — tsumogiri (discarded straight from the draw)`
+                    : undefined
+                }
               >
                 <Tile code={discard.tile} className="tile river-tile" />
               </div>

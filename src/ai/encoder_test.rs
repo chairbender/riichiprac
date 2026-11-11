@@ -294,6 +294,31 @@ fn opponent_riichi_and_tedashi_channels_are_encoded() {
 }
 
 #[test]
+fn opponent_tsumogiri_leaves_the_tedashi_channels_clear() {
+    let obs = encode_v4_observation(&base_state());
+    let shimocha_base = OFF_OPPONENTS;
+
+    // Shimocha's second discard (9m) was tsumogiri: the tile channel is set,
+    // the tedashi channel is not.
+    let item_base = shimocha_base + OPP_KAWA_ITEM_CHANNELS;
+    assert_eq!(cell(&obs, item_base + 3, col("9m")), 1.0);
+    assert_eq!(cell(&obs, item_base + 6, col("9m")), 0.0);
+
+    // The first discard (1s) was tedashi, so it does set the flag.
+    assert_eq!(cell(&obs, shimocha_base + 6, col("1s")), 1.0);
+
+    // The recency-weighted summary separates them the same way.
+    assert!(cell(&obs, shimocha_base + OPP_SUMMARY, col("9m")) > 0.0);
+    assert_eq!(cell(&obs, shimocha_base + OPP_SUMMARY + 1, col("9m")), 0.0);
+    assert!(cell(&obs, shimocha_base + OPP_SUMMARY + 1, col("1s")) > 0.0);
+
+    // last_tedashis only holds hand discards, so the later tsumogiri 9m does
+    // not replace 1s.
+    assert_eq!(cell(&obs, OFF_LAST_TEDASHI, col("1s")), 1.0);
+    assert_eq!(cell(&obs, OFF_LAST_TEDASHI, col("9m")), 0.0);
+}
+
+#[test]
 fn melds_and_closed_kans_use_separate_blocks() {
     let obs = encode_v4_observation(&base_state());
 
