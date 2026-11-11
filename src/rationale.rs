@@ -1681,6 +1681,14 @@ fn open_hand_defense_rationale(state: &GameState) -> Option<BookRationale> {
          threat is tenpai on the protorun it kept, so the neighbourhood is either genuinely \
          where the wait is or genuinely not."
             .to_string(),
+        "A last pon would give no neighbourhood read at all: the book says the wait can be \
+         anything (ch. 8.4, 'pon => wait can be anything'), so the generated threat always \
+         calls chii for its last meld."
+            .to_string(),
+        "The chapter also asks the defender to estimate the open hand's value before folding. \
+         This lesson only grades the tile read; the human hand is 2-away and the threat's value \
+         is left out of the question."
+            .to_string(),
     ];
 
     let summary = if same_suit {
