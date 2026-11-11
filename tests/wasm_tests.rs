@@ -1580,6 +1580,126 @@ fn test_ryanmen_rejection_sampling_constraints() {
         }
     }
 
+    /// The pair-count payload: a closed 2-away hand whose draw pairs a tile of
+    /// a side wait, so the book breaks the pair and keeps the protorun
+    /// (ch3:336, ch3:331).
+    #[wasm_bindgen_test]
+    fn test_pair_count_payload() {
+        for run in 0..25 {
+            let json_output = generate_puzzle("pair_count".to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+            assert_eq!(val["category"], "pair_count");
+            assert_eq!(val["target_action"], "NaniKiru");
+            assert_eq!(val["correct_action"]["type"], "dama");
+            assert_eq!(val["riichi_sticks"], 0);
+            assert_eq!(val["dora_indicators"].as_array().unwrap().len(), 1);
+            assert_eq!(val["ura_dora_indicators"].as_array().unwrap().len(), 1);
+            assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
+            assert_eq!(val["shanten"], 2);
+            assert_eq!(val["is_agari"], false);
+            assert_eq!(val["can_riichi"], false);
+            assert!(!val["ukeire_tiles"].as_array().unwrap().is_empty());
+            assert!(val["ukeire_total"].as_u64().unwrap() > 0);
+
+            let players = val["players"].as_array().expect("players array");
+            assert_eq!(players.len(), 4);
+            for opponent in &players[1..] {
+                assert_eq!(opponent["is_riichi"], false);
+                assert_eq!(opponent["melds"].as_array().unwrap().len(), 0);
+                assert!(opponent["riichi_discard_index"].is_null());
+            }
+
+            // The lesson is the closed variant: thirteen concealed tiles, the
+            // draw, and no meld.
+            let human = &players[0];
+            assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+            assert_eq!(human["melds"].as_array().unwrap().len(), 0);
+            let draw = human["draw"].as_str().expect("human draw");
+
+            let answer = val["correct_action"]["discard"]
+                .as_str()
+                .expect("dama action must include a discard tile");
+            assert_eq!(draw, answer, "the book discards the tile just drawn");
+            assert!(
+                human["hand"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|tile| tile.as_str() == Some(answer)),
+                "run {run}: the pair partner must stay in the hand"
+            );
+
+            // Exactly three pairs, and the answer is one of them.
+            let tiles: Vec<&str> = val["tiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            let mut counts: std::collections::HashMap<&str, usize> =
+                std::collections::HashMap::new();
+            for tile in &tiles {
+                *counts.entry(*tile).or_insert(0) += 1;
+            }
+            let pairs: Vec<&&str> = counts
+                .iter()
+                .filter(|(_, count)| **count == 2)
+                .map(|(tile, _)| tile)
+                .collect();
+            assert_eq!(pairs.len(), 3, "the hand must hold three pairs");
+            assert!(pairs.iter().any(|pair| **pair == answer));
+
+            // The other pair tiles are graded as the same answer.
+            let equivalents = val["equivalent_tiles"]
+                .as_array()
+                .expect("equivalent tiles array");
+            assert_eq!(equivalents.len(), 2);
+            for equivalent in equivalents {
+                let code = equivalent.as_str().expect("tile code");
+                assert_ne!(code, answer);
+                assert!(
+                    pairs.iter().any(|pair| **pair == code),
+                    "{code} must be a pair tile"
+                );
+            }
+
+            // Full hand = concealed hand + draw.
+            let mut expected: Vec<&str> = human["hand"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            expected.push(draw);
+            expected.sort();
+            let mut actual = tiles.clone();
+            actual.sort();
+            assert_eq!(actual, expected);
+
+            // No graded discard is the dora: this is a shape lesson.
+            let indicator = parse_hand(val["dora_indicators"][0].as_str().unwrap())
+                .expect("dora indicator parses")
+                .remove(0);
+            let dora = indicator_to_dora(indicator).to_string();
+            assert_ne!(dora, answer);
+            assert!(
+                !equivalents
+                    .iter()
+                    .any(|tile| tile.as_str() == Some(dora.as_str())),
+                "no graded discard may be the dora"
+            );
+
+            // Scores total 100,000.
+            let total_score: i64 = players
+                .iter()
+                .map(|player| player["score"].as_i64().expect("score int"))
+                .sum();
+            assert_eq!(total_score, 100_000);
+        }
+    }
+
     #[wasm_bindgen_test]
     fn test_shouminkan_decision_payload() {
         let mut kan_count = 0usize;

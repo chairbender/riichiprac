@@ -53,6 +53,7 @@ const DEFAULT_SCENARIOS: &[ScenarioId] = &[
     ScenarioId::NakabukureReady,
     ScenarioId::ProtorunPriority,
     ScenarioId::RyankanBreak,
+    ScenarioId::PairCount,
     ScenarioId::ChiitoitsuRiichiVsDama,
     ScenarioId::RiichiJudgement,
     ScenarioId::DamaBadWait,
@@ -82,7 +83,7 @@ usage: fuzz_scenarios [options]
 
   --scenario <id>          scenario to sample; repeatable
                            (default: ryanmen_protorun, nakabukure_ready,
-                           protorun_priority, ryankan_break,
+                           protorun_priority, ryankan_break, pair_count,
                            chiitoitsu_riichi_vs_dama, riichi_judgement,
                            dama_bad_wait, shouminkan_decision;
                            ai_best_action needs the model and is rejected)
@@ -586,6 +587,7 @@ mod tests {
                 ScenarioId::NakabukureReady,
                 ScenarioId::ProtorunPriority,
                 ScenarioId::RyankanBreak,
+                ScenarioId::PairCount,
                 ScenarioId::ChiitoitsuRiichiVsDama,
                 ScenarioId::RiichiJudgement,
                 ScenarioId::DamaBadWait,
