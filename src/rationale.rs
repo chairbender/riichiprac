@@ -19,12 +19,13 @@ use serde::{Deserialize, Serialize};
 
 use agari::parse::to_counts;
 use agari::shanten::calculate_ukeire_with_melds;
-use agari::tile::Tile;
+use agari::tile::{Suit, Tile};
 
 use crate::display::format_tile_for_display;
-use crate::safety::{SafetyFacts, SafetyRank};
+use crate::safety::{SafetyFacts, SafetyRank, in_open_hand_neighbourhood};
 use crate::state::{
-    CorrectAction, CorrectActionType, DamaReason, GameState, RiichiTrigger, ShouminkanTrigger,
+    CorrectAction, CorrectActionType, DamaReason, GameState, MeldType, RiichiTrigger,
+    ShouminkanTrigger,
 };
 
 /// A book reference. Line numbers are hints for reviewers, not stable anchors;
@@ -190,6 +191,8 @@ const CH8_KABE: &str = "Understanding tile blockade";
 const CH8_RANKING: &str = "Safety ranking";
 const CH8_VS_RIICHI: &str = "Defense against riichi";
 const CH8_STUCK: &str = "What to discard when you get stuck";
+const CH8_READY_SHORTCUT: &str = "Guessing if an opponent has a ready hand";
+const CH8_CHII_DISCARD: &str = "Discard upon chii";
 
 impl RiichiTrigger {
     /// Stable id matching the serialized enum name.
@@ -839,6 +842,11 @@ fn scenario_source(category: &str) -> Option<Citation> {
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
         }
+        "open_hand_defense" => Some(ch8(
+            CH8_CHII_DISCARD,
+            567,
+            "discard a tile in the same suit",
+        )),
         _ => None,
     }
 }
@@ -847,6 +855,9 @@ fn scenario_source(category: &str) -> Option<Citation> {
 fn category_rationale(state: &GameState) -> Option<BookRationale> {
     if let Some(defense) = defense_rationale(state) {
         return Some(defense);
+    }
+    if let Some(open_hand) = open_hand_defense_rationale(state) {
+        return Some(open_hand);
     }
 
     if state.category == "wind_discard_order" {
@@ -1622,6 +1633,163 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
         source,
         caveats,
     })
+}
+
+/// The ch. 8.4 open-hand lesson: read the discard an opponent made after a chii.
+fn open_hand_defense_rationale(state: &GameState) -> Option<BookRationale> {
+    if state.category != "open_hand_defense" {
+        return None;
+    }
+
+    let threat = state.players.iter().find(|player| {
+        !player.is_human
+            && player
+                .melds
+                .iter()
+                .any(|meld| meld.meld_type == MeldType::Chi)
+    })?;
+    let last_chi = threat
+        .melds
+        .iter()
+        .rev()
+        .find(|meld| meld.meld_type == MeldType::Chi)?;
+    let chi_tile = Tile::try_from(last_chi.tiles.first()?.as_str()).ok()?;
+    let chi_suit = chi_tile.suit()?;
+    let post_chi = Tile::try_from(threat.discards.last()?.tile.as_str()).ok()?;
+    let post_suit = post_chi.suit()?;
+    let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
+    let answer_text = format_tile_for_display(&answer.to_string(), false);
+    let post_text = format_tile_for_display(&post_chi.to_string(), false);
+    let same_suit = chi_suit == post_suit;
+
+    let mut rules = vec![BookRule {
+        id: "open_hand_ready".to_string(),
+        rule: "Three or more open sets or runs is the chapter's shortcut for assuming an \
+               opponent is ready."
+            .to_string(),
+        quote: "They have three or more open sets / runs.".to_string(),
+        citation: ch8(CH8_READY_SHORTCUT, 412, "three or more open sets"),
+        applies: "The threat has three open melds, so the defender treats it as ready.".to_string(),
+    }];
+
+    let mut caveats = vec![
+        "The trainer reads the neighbourhood as the same suit within two ranks of the last \
+         discard, not counting the discard itself. The book's example around 4p names \
+         2,3,5,6,7; the generated boards use the symmetric ±2 part."
+            .to_string(),
+        "The book's read assumes the opponent had a good 1-away hand before the chii. Here the \
+         threat is tenpai on the protorun it kept, so the neighbourhood is either genuinely \
+         where the wait is or genuinely not."
+            .to_string(),
+    ];
+
+    let summary = if same_suit {
+        rules.push(BookRule {
+            id: "chii_same_suit".to_string(),
+            rule: "A chii followed by a discard in the same suit makes the neighbourhood of \
+                   that discard relatively safe."
+                .to_string(),
+            quote: "the neighborhood of the last discard is safe".to_string(),
+            citation: ch8(
+                CH8_CHII_DISCARD,
+                568,
+                "the neighborhood of the last discard is",
+            ),
+            applies: format!(
+                "The last call is a chii in the {} suit and {post_text} is in that same suit; \
+                 {answer_text} sits inside the neighbourhood.",
+                suit_word(chi_suit)
+            ),
+        });
+        caveats.push(
+            "The threat's kept protorun is in another suit, so its winning tiles are outside \
+             the post-chii discard's neighbourhood. The answer is the hand's only \
+             neighbourhood tile."
+                .to_string(),
+        );
+
+        format!(
+            "Discard {answer_text}: the chii and the last discard share the {} suit, so the \
+             neighbourhood of {post_text} is relatively safe.",
+            suit_word(chi_suit)
+        )
+    } else {
+        rules.push(BookRule {
+            id: "chii_different_suit".to_string(),
+            rule: "A chii followed by a discard in a different suit makes the neighbourhood \
+                   of that discard dangerous."
+                .to_string(),
+            quote: "the neighborhood of the last discard is dangerous".to_string(),
+            citation: ch8(
+                CH8_CHII_DISCARD,
+                570,
+                "the neighborhood of the last discard is",
+            ),
+            applies: format!(
+                "The last call is a chii in the {} suit but {post_text} is in the {} suit, so \
+                 the threat's wait sits in the {post_text} neighbourhood.",
+                suit_word(chi_suit),
+                suit_word(post_suit)
+            ),
+        });
+        rules.push(BookRule {
+            id: "genbutsu".to_string(),
+            rule: "A tile in the opponent's river is 100% safe against that opponent.".to_string(),
+            quote: "Genbutsu tiles of player X are 100% safe against X".to_string(),
+            citation: ch8(CH8_GENBUTSU, 100, "100\\% safe against"),
+            applies: format!(
+                "{answer_text} is already in the threat's river and sits outside the dangerous \
+                 neighbourhood; the held copy is the hand's only 100% tile."
+            ),
+        });
+        caveats.push(
+            "The trap tile inside the neighbourhood is one of the threat's actual winning \
+             tiles. Picking it because it is near the last discard is exactly the mistake this \
+             board teaches."
+                .to_string(),
+        );
+
+        format!(
+            "Discard {answer_text}: the chii and {post_text} are in different suits, so the \
+             neighbourhood of {post_text} is dangerous; {answer_text} is 100% safe."
+        )
+    };
+
+    // The structural read must agree with the board it is explaining.
+    let answer_in_neighbourhood = in_open_hand_neighbourhood(answer, post_chi);
+    if same_suit != answer_in_neighbourhood {
+        return None;
+    }
+
+    let source = if same_suit {
+        ch8(
+            CH8_CHII_DISCARD,
+            568,
+            "the neighborhood of the last discard is",
+        )
+    } else {
+        ch8(
+            CH8_CHII_DISCARD,
+            570,
+            "the neighborhood of the last discard is",
+        )
+    };
+
+    Some(BookRationale {
+        summary,
+        rules,
+        absent: Vec::new(),
+        source,
+        caveats,
+    })
+}
+
+fn suit_word(suit: Suit) -> &'static str {
+    match suit {
+        Suit::Man => "manzu",
+        Suit::Pin => "pinzu",
+        Suit::Sou => "souzu",
+    }
 }
 
 /// The mechanism that places the answer on the chart.
@@ -2447,6 +2615,7 @@ mod tests {
             "wind_discard_order",
             "defense_safety_chart",
             "defense_stuck_heuristic",
+            "open_hand_defense",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             assert!(
@@ -2473,6 +2642,7 @@ mod tests {
             "wind_discard_order",
             "defense_safety_chart",
             "defense_stuck_heuristic",
+            "open_hand_defense",
         ] {
             for _ in 0..10 {
                 let state = generate_puzzle(category).expect("scenario must generate");
@@ -2774,6 +2944,7 @@ mod tests {
             "wind_discard_order",
             "defense_safety_chart",
             "defense_stuck_heuristic",
+            "open_hand_defense",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             citations.extend(
@@ -2907,6 +3078,83 @@ mod tests {
                 .iter()
                 .any(|caveat| caveat.contains("Rank C"))
         );
+    }
+
+    #[test]
+    fn open_hand_defense_cites_the_chii_discard_rule_for_both_cases() {
+        let mut saw_same_suit = false;
+        let mut saw_different_suit = false;
+
+        for _ in 0..120 {
+            let state = generate_puzzle("open_hand_defense").expect("open hand must generate");
+            let rationale = rationale_for(&state).expect("open hand needs a rationale");
+
+            assert_eq!(rationale.source.chapter, 8);
+            assert!(
+                rationale
+                    .rules
+                    .iter()
+                    .any(|rule| rule.id == "open_hand_ready")
+            );
+
+            let threat = state
+                .players
+                .iter()
+                .find(|player| {
+                    !player.is_human
+                        && player
+                            .melds
+                            .iter()
+                            .any(|meld| meld.meld_type == MeldType::Chi)
+                })
+                .expect("open hand threat");
+            let last_chi = threat
+                .melds
+                .iter()
+                .rev()
+                .find(|meld| meld.meld_type == MeldType::Chi)
+                .expect("last chii");
+            let chi_suit = Tile::try_from(last_chi.tiles[0].as_str())
+                .expect("chi tile")
+                .suit()
+                .expect("suited");
+            let post_chi = Tile::try_from(threat.discards.last().expect("discard").tile.as_str())
+                .expect("post-chi tile");
+
+            if chi_suit == post_chi.suit().expect("suited") {
+                saw_same_suit = true;
+                assert!(
+                    rationale
+                        .rules
+                        .iter()
+                        .any(|rule| rule.id == "chii_same_suit"),
+                    "same-suit board must cite the safe read"
+                );
+                assert!(rationale.summary.contains("relatively safe"));
+                assert!(
+                    rationale
+                        .caveats
+                        .iter()
+                        .any(|caveat| caveat.contains("only neighbourhood tile"))
+                );
+            } else {
+                saw_different_suit = true;
+                assert!(
+                    rationale
+                        .rules
+                        .iter()
+                        .any(|rule| rule.id == "chii_different_suit"),
+                    "trap board must cite the dangerous read"
+                );
+                assert!(
+                    rationale.rules.iter().any(|rule| rule.id == "genbutsu"),
+                    "trap board must explain the 100% answer"
+                );
+                assert!(rationale.summary.contains("100% safe"));
+            }
+        }
+
+        assert!(saw_same_suit && saw_different_suit);
     }
 
     #[test]

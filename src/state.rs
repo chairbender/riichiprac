@@ -65,7 +65,8 @@ pub enum TargetAction {
     Kan,
     /// The correct answer is the loaded model's top legal action.
     Best,
-    /// Pure defense: choose the safest tile against an opponent's riichi.
+    /// Pure defense: choose the safest tile against an opponent's riichi or
+    /// open hand.
     Defend,
 }
 
@@ -77,7 +78,7 @@ pub enum CorrectActionType {
     Riichi,
     /// Stay in dama (concealed tenpai) and discard without declaring Riichi.
     Dama,
-    /// Fold: discard the safest tile against an opponent's riichi.
+    /// Fold: discard the safest tile against an opponent's riichi or open hand.
     Fold,
     /// Add the drawn fourth tile to an open Pon.
     Kan,
@@ -99,7 +100,7 @@ pub enum CorrectAction {
     Riichi { discard: String },
     /// Stay in dama and discard `discard`.
     Dama { discard: String },
-    /// Fold against a riichi and discard the safest `discard`.
+    /// Fold against a riichi or open hand and discard the safest `discard`.
     Fold { discard: String },
     /// Declare an Added Kan on `tile`.
     Kan { tile: String },
@@ -138,7 +139,7 @@ impl CorrectAction {
         Self::Kan { tile: tile.into() }
     }
 
-    /// Fold against a riichi's threat and discard the safest tile.
+    /// Fold against a threat and discard the safest tile.
     pub fn fold(discard: impl Into<String>) -> Self {
         Self::Fold {
             discard: discard.into(),
