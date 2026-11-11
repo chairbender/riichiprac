@@ -1,21 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
-import { AI_MODEL_ID } from './aiModel';
 import { canDeclareRiichi } from './actions';
 import { ActionBar } from './components/ActionBar';
+import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
 import { PlayerRow } from './components/PlayerRow';
-import { ReportBanner } from './components/ReportBanner';
-import { ReportControls } from './components/ReportControls';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
-import {
-  createScenarioReport,
-  downloadJson,
-  readReportFile,
-  reportFilename,
-} from './report';
+import { downloadJson, readStateFile, serializeState } from './stateFile';
 import {
   FALLBACK_SCENARIOS,
   parseScenarioManifest,
@@ -24,7 +17,6 @@ import {
 import type { ScenarioOption, ScenarioSelection } from './scenarios';
 import { stackOrder } from './seatOrder';
 import { useGameStore } from './store/useGameStore';
-import type { ReportReason, ReportedAction } from './types/report';
 import { ensureWasmReady } from './wasm';
 import './App.css';
 
@@ -51,16 +43,12 @@ export const App = () => {
   const isEvaluating = useGameStore((state) => state.isEvaluating);
   const initializeAi = useGameStore((state) => state.initializeAi);
   const evaluateWithAi = useGameStore((state) => state.evaluateWithAi);
-  const reportMode = useGameStore((state) => state.reportMode);
-  const reportError = useGameStore((state) => state.reportError);
-  const reportNotice = useGameStore((state) => state.reportNotice);
-  const importReport = useGameStore((state) => state.importReport);
-  const retryImportedPuzzle = useGameStore(
-    (state) => state.retryImportedPuzzle,
-  );
-  const exitReportMode = useGameStore((state) => state.exitReportMode);
-  const setReportError = useGameStore((state) => state.setReportError);
-  const clearReportNotice = useGameStore((state) => state.clearReportNotice);
+  const fileError = useGameStore((state) => state.fileError);
+  const fileNotice = useGameStore((state) => state.fileNotice);
+  const importState = useGameStore((state) => state.importState);
+  const setFileError = useGameStore((state) => state.setFileError);
+  const setFileNotice = useGameStore((state) => state.setFileNotice);
+  const clearFileNotice = useGameStore((state) => state.clearFileNotice);
 
   const [selection, setSelection] = useState<ScenarioSelection>('all');
   const [scenarios, setScenarios] =
@@ -156,60 +144,25 @@ export const App = () => {
     panel.focus({ preventScroll: true });
   }, []);
 
-  // Show the imported report's scenario in the picker when it is in the
-  // current manifest. Unknown scenarios keep the picker unchanged.
-  useEffect(() => {
-    const id = reportMode?.report.scenario.id;
-    if (id && scenarios.some((scenario) => scenario.id === id)) {
-      setSelection(id);
-    }
-  }, [reportMode, scenarios]);
+  const handleExport = () => {
+    if (!gameState) return;
 
-  const handleExportReport = async (reason: ReportReason, note: string) => {
-    if (!gameState || !submittedAnswer) {
-      throw new Error('Answer the puzzle before exporting a report.');
-    }
-
-    await ensureWasmReady();
-
-    const answer: ReportedAction = {
-      action: submittedAnswer.action,
-      tile: submittedAnswer.tile,
-    };
-    if (submittedAnswer.tile_index !== undefined) {
-      answer.tile_index = submittedAnswer.tile_index;
-    }
-    if (submittedAnswer.action_name !== undefined) {
-      answer.action_name = submittedAnswer.action_name;
-    }
-    if (submittedAnswer.is_tsumogiri) {
-      answer.is_tsumogiri = true;
-    }
-
-    const { report, json } = createScenarioReport({
-      table: gameState,
-      answer,
-      reason,
-      note,
-      evaluation,
-      modelId: AI_MODEL_ID,
-      peekedBeforeAnswer,
-    });
-
-    downloadJson(reportFilename(report), json);
-    setReportError(null);
+    const { filename, json } = serializeState(gameState);
+    downloadJson(filename, json);
+    setFileError(null);
+    setFileNotice(`Exported ${filename}`);
   };
 
   const handleImportFile = async (file: File) => {
-    setReportError(null);
+    setFileError(null);
     try {
-      const text = await readReportFile(file);
+      const text = await readStateFile(file);
       // Cancel any generation that is still waiting on WASM initialization so
       // a late puzzle cannot overwrite the imported table.
       loadRequestId.current += 1;
-      await importReport(text);
+      await importState(text);
     } catch (err) {
-      setReportError(err instanceof Error ? err.message : String(err));
+      setFileError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -270,29 +223,14 @@ export const App = () => {
         </div>
       </header>
 
-      <ReportControls
-        canReport={Boolean(gameState && dualGrade)}
-        reportError={reportError}
-        reportNotice={reportNotice}
-        onExport={handleExportReport}
+      <ExportImportControls
+        canExport={Boolean(gameState)}
+        fileError={fileError}
+        fileNotice={fileNotice}
+        onExport={handleExport}
         onImportFile={handleImportFile}
-        onDismissNotice={clearReportNotice}
+        onDismissNotice={clearFileNotice}
       />
-
-      {reportMode && (
-        <ReportBanner
-          mode={reportMode}
-          evaluation={evaluation}
-          isEvaluating={isEvaluating}
-          aiStatus={aiStatus}
-          aiError={aiError}
-          onVerify={() => {
-            void evaluateWithAi();
-          }}
-          onRetry={retryImportedPuzzle}
-          onExit={exitReportMode}
-        />
-      )}
 
       {gameState && <TableInfo state={gameState} />}
 

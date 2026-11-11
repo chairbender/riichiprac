@@ -38,9 +38,8 @@ mistake, and the outcome line says so.
 
 Mortal is evaluated automatically for every hand. Its recommendation is hidden
 until you answer so the drill is still a decision; **Peek** reveals Mortal's line
-early (and is recorded in exported reports). The book side is always explained —
-"Not this hand" lists the justifications that do not apply, without inventing a
-citation for them.
+early. The book side is always explained — "Not this hand" lists the
+justifications that do not apply, without inventing a citation for them.
 
 Riichi is graded as a whole decision, not a single action name. When Mortal's top
 action is Riichi, the evaluator runs a second pass (the position marked as
@@ -171,20 +170,24 @@ package, builds `frontend/` with the `/riichiprac/` base path, and publishes
 <https://chairbender.github.io/riichiprac/>. Pages must be enabled once with
 **Settings → Pages → Source: GitHub Actions**.
 
-## Reporting a bad answer
+## Exporting and importing a position
 
-After answering a puzzle, use **Report bad answer** to pick a reason, add an
-optional note, and download a
-`riichiprac.scenario-report` JSON file. The file contains the exact table, the
-reporter's answer, the app's expected answer, the scenario metadata, and an AI
-snapshot when one was available. It also includes a `human_readable` summary.
+**Export** downloads the current table as a plain
+`riichiprac-state-<scenario>-<timestamp>.json` file. The payload is the complete
+`GameState`: all four players, hands, melds, rivers, dora, round, scores, and the
+expected answer. It carries no submitted answer, note, or report metadata, so it
+can be shared or reloaded without framing it as a bug report.
 
-Use **Import report** to load that file back into the trainer. The imported
-table is restored with the reported answer highlighted, and the app re-runs the
-Mortal evaluation when the weights are ready. The report banner shows the app's
-answer, the reporter's answer, and Mortal's recommendation side by side.
+**Import** loads such a file and restores the exact table. For compatibility,
+importing a `riichiprac.scenario-report` file from the old report workflow (or
+from `verify_report` / `fuzz_scenarios`) also works: the app loads the report's
+table as a plain position. The report review banner and reason dialog no longer
+exist in the app.
 
-Reports can also be verified from a native build:
+The scenario-report format remains as an internal/advanced path for the native
+CLI and the generator fuzzer.
+
+### Verifying scenario reports from the CLI
 
 ```bash
 cargo run --release --bin verify_report -- report.json
@@ -192,8 +195,8 @@ cargo run --release --bin verify_report -- report.json \
   --weights frontend/public/models/mortal_298k.safetensors
 ```
 
-The CLI prints the same readable summary and, when weights are supplied, the
-Mortal ranking. Add `--json` for a machine-readable verification payload.
+The CLI prints the readable summary and, when weights are supplied, the Mortal
+ranking. Add `--json` for a machine-readable verification payload.
 
 ## Fuzzing for generator / Mortal disagreements
 
@@ -215,7 +218,7 @@ cargo run --release --bin fuzz_scenarios -- \
 
 Reports are written to `fuzz-reports/` by default (git-ignored) using the normal
 `riichiprac-report-<scenario>-<timestamp>-<short-id>.json` name. Each file can be
-opened with **Import report** or checked with `verify_report`:
+opened with **Import** or checked with `verify_report`:
 
 ```bash
 cargo run --release --bin verify_report -- \

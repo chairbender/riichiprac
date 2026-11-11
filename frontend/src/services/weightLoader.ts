@@ -13,7 +13,7 @@
  */
 import { AI_MODEL_ID } from '../aiModel';
 
-/** File name of the weights, shared with report metadata (`aiModel.ts`). */
+/** File name of the weights, shared with the report CLI (`aiModel.ts`). */
 export const WEIGHTS_FILENAME = AI_MODEL_ID;
 
 /**

@@ -8,10 +8,9 @@ import {
   isKanDecision,
 } from '../actions';
 import { loadWeights, WEIGHTS_FILENAME } from '../services/weightLoader';
-import { parseImportedState } from '../report';
+import { parseStateFile } from '../stateFile';
 import type { AiDecision, AiEvaluation, AiStatus } from '../types/ai';
 import type { CorrectActionType, GameState } from '../types/game';
-import type { ReportVerdict, ScenarioReport } from '../types/report';
 import type { DualGrade } from '../types/verdict';
 import { ensureWasmReady } from '../wasm';
 
@@ -40,13 +39,6 @@ export interface PlayerChoice {
   label?: string;
 }
 
-/** An imported report being reviewed in the UI. */
-export interface ReportMode {
-  report: ScenarioReport;
-  verdict: ReportVerdict;
-  warnings: string[];
-}
-
 interface GradeRequest {
   table: GameState;
   answer: SubmittedAnswer;
@@ -70,14 +62,10 @@ interface GameStore {
   /** True when the player revealed Mortal's line before answering. */
   peekedBeforeAnswer: boolean;
 
-  /** Imported report currently under review, or null in normal practice. */
-  reportMode: ReportMode | null;
-  /** Import/export error shown beside the report controls. */
-  reportError: string | null;
-  /** Non-error notice, e.g. after importing a bare game state. */
-  reportNotice: string | null;
-  /** True after "Try this puzzle", so normal answer feedback is shown again. */
-  isReportRetry: boolean;
+  /** Import/export error shown beside the position controls. */
+  fileError: string | null;
+  /** Non-error notice, e.g. after exporting or importing a position. */
+  fileNotice: string | null;
 
   /** Model weight loading state for the Mortal evaluator. */
   aiStatus: AiStatus;
@@ -110,20 +98,18 @@ interface GameStore {
   reset: () => void;
   setError: (error: string) => void;
 
-  /** Import a report (or a bare game state) from file text. */
-  importReport: (text: string) => Promise<void>;
-  /** Clear the imported answer so the reviewer can try the puzzle again. */
-  retryImportedPuzzle: () => void;
-  /** Leave report mode without changing the table. */
-  exitReportMode: () => void;
+  /** Import a saved position (or an older report's table) from file text. */
+  importState: (text: string) => Promise<void>;
   /** Show or clear an import/export error. */
-  setReportError: (error: string | null) => void;
-  /** Dismiss the bare-state notice. */
-  clearReportNotice: () => void;
+  setFileError: (error: string | null) => void;
+  /** Show or clear an import/export notice. */
+  setFileNotice: (notice: string | null) => void;
+  /** Dismiss the current import/export notice. */
+  clearFileNotice: () => void;
 
   /** Fetch the Safetensors weights and build the WASM evaluator once. */
   initializeAi: () => Promise<void>;
-  /** Evaluate the current table now (used by the report banner's verify). */
+  /** Evaluate the current table now (used by the AI panel's retry). */
   evaluateWithAi: () => Promise<void>;
 }
 
@@ -158,10 +144,8 @@ const emptyState = {
   dualGrade: null,
   peekedBeforeAnswer: false,
   evaluation: null,
-  reportMode: null,
-  reportError: null,
-  reportNotice: null,
-  isReportRetry: false,
+  fileError: null,
+  fileNotice: null,
 } satisfies Pick<
   GameStore,
   | 'gameState'
@@ -173,10 +157,8 @@ const emptyState = {
   | 'dualGrade'
   | 'peekedBeforeAnswer'
   | 'evaluation'
-  | 'reportMode'
-  | 'reportError'
-  | 'reportNotice'
-  | 'isReportRetry'
+  | 'fileError'
+  | 'fileNotice'
 >;
 
 /**
@@ -339,10 +321,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           dualGrade: null,
           peekedBeforeAnswer: false,
           evaluation,
-          reportMode: null,
-          reportError: null,
-          reportNotice: null,
-          isReportRetry: false,
+          fileError: null,
+          fileNotice: null,
         });
 
         if (!evaluation) {
@@ -358,10 +338,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           dualGrade: null,
           peekedBeforeAnswer: false,
           evaluation: null,
-          reportMode: null,
-          reportError: null,
-          reportNotice: null,
-          isReportRetry: false,
+          fileError: null,
+          fileNotice: null,
         });
       }
     },
@@ -501,91 +479,39 @@ export const useGameStore = create<GameStore>((set, get) => {
         peekedBeforeAnswer: false,
         evaluation: null,
         isEvaluating: false,
-        reportMode: null,
-        reportError: null,
-        reportNotice: null,
-        isReportRetry: false,
+        fileError: null,
+        fileNotice: null,
       });
     },
 
-    importReport: async (text) => {
+    importState: async (text) => {
       try {
         await ensureWasmReady();
-        const imported = parseImportedState(text);
+        const imported = parseStateFile(text);
 
-        if (imported.kind === 'bare') {
-          get().loadFromJson(imported.json);
-          if (!get().error) {
-            set({
-              reportNotice:
-                'Loaded a bare game state. No reported answer was attached.',
-            });
-          }
-          return;
-        }
-
-        const { report, verdict, warnings } = imported.parsed;
-        const human = report.table.players.find((player) => player.is_human);
-        if (!human) {
-          throw new Error('The report does not contain a human player.');
-        }
-
-        const answer = report.decision.answer;
-        const submitted: SubmittedAnswer = {
-          action: answer.action,
-          tile: answer.tile,
-        };
-        if (answer.tile_index !== undefined) {
-          submitted.tile_index = answer.tile_index;
-        }
-        if (answer.action_name !== undefined) {
-          submitted.action_name = answer.action_name;
-        }
-        if (answer.is_tsumogiri !== undefined) {
-          submitted.is_tsumogiri = answer.is_tsumogiri;
-        }
-
-        const embedded = report.ai?.evaluation ?? null;
-        const grade = gradeNow(report.table, submitted, embedded);
-        if (!grade) {
-          throw new Error('Could not grade the imported answer.');
-        }
+        get().loadFromJson(imported.json);
+        if (get().error) return;
 
         set({
-          gameState: report.table,
-          isLoading: false,
-          error: null,
-          callRiichi: false,
-          callKan: false,
-          submittedAnswer: submitted,
-          dualGrade: grade,
-          peekedBeforeAnswer: report.ai?.peeked_before_answer ?? false,
-          evaluation: embedded,
-          reportMode: { report, verdict, warnings },
-          reportError: null,
-          reportNotice: null,
-          isReportRetry: false,
+          fileError: null,
+          fileNotice: imported.fromReport
+            ? 'Loaded the position from a scenario-report file.'
+            : 'Position loaded.',
         });
-
-        // Always run a fresh evaluation: the reviewer wants Mortal's current
-        // opinion, not only the snapshot that was exported.
-        requestEvaluationFor(report.table);
       } catch (err) {
         set({
-          reportError: err instanceof Error ? err.message : String(err),
+          fileError: err instanceof Error ? err.message : String(err),
+          fileNotice: null,
         });
       }
     },
 
-    retryImportedPuzzle: () =>
-      set({ submittedAnswer: null, dualGrade: null, isReportRetry: true }),
+    setFileError: (fileError) =>
+      set(fileError ? { fileError, fileNotice: null } : { fileError }),
 
-    exitReportMode: () =>
-      set({ reportMode: null, isReportRetry: false }),
+    setFileNotice: (fileNotice) => set({ fileNotice }),
 
-    setReportError: (reportError) => set({ reportError }),
-
-    clearReportNotice: () => set({ reportNotice: null }),
+    clearFileNotice: () => set({ fileNotice: null }),
 
     initializeAi: () => {
       if (aiInitPromise) return aiInitPromise;
