@@ -20,7 +20,6 @@ import {
   FALLBACK_SCENARIOS,
   parseScenarioManifest,
   pickRandomScenario,
-  scenarioLabel,
 } from './scenarios';
 import type { ScenarioOption, ScenarioSelection } from './scenarios';
 import { stackOrder } from './seatOrder';
@@ -235,13 +234,8 @@ export const App = () => {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-title-group">
-          <h1 className="app-title">Riichi Trainer</h1>
-          {gameState && (
-            <span className="scenario-current">
-              {scenarioLabel(gameState.category, scenarios)}
-              {isDrill && ' · Mortal drill'}
-            </span>
-          )}
+          {/* No scenario name here: it would hint at the answer during random draws. */}
+          <h1 className="app-title">riichiprac</h1>
         </div>
 
         <div className="app-controls">
