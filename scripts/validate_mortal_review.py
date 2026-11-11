@@ -14,7 +14,17 @@ form is behind a Cloudflare Turnstile), so the workflow is:
      ``pi(a|s)`` is directly comparable with our softmax)
 3. ``scripts/validate_mortal_review.py --report <report-url> --evaluation ours.json``
 
-The report page is public, so only the upload itself needs a browser.
+The report page is public, so only the upload itself needs a browser. Pass the
+report URL, a saved copy of the page, or `-` to paste the HTML in:
+
+    scripts/validate_mortal_review.py --report https://mjai.ekyu.moe/... \
+        --evaluation ours.json
+    scripts/validate_mortal_review.py --report page.html --evaluation ours.json
+    pbpaste | scripts/validate_mortal_review.py --report - --evaluation ours.json
+
+Both report layouts are understood: the default (KillerDucky) one keeps the
+exact values in `title` attributes, and the classic one renders five-decimal
+spans, so the classic path compares at ~1e-5 precision.
 
 The comparison focuses on the last decision in the review, which is the
 snapshot our log was built to reach:
@@ -57,21 +67,41 @@ TILE_NAMES = {
 }
 
 # Action labels the reviewer prints -> the family we compare on.
-ACTION_ALIASES = {
-    "ron": "Agari",
-    "tsumo": "Agari",
-    "win": "Agari",
-    "pass": "Pass",
-    "none": "Pass",
-}
+# Action words both report layouts print, mapped to our action families. The
+# classic layout prints a chi's tiles *before* the word, so the word is looked
+# up anywhere in the fragment, and "chii"/"skip" are the classic spellings.
+ACTION_WORDS = [
+    ("discard", "discard"),
+    ("riichi", "riichi"),
+    ("pon", "pon"),
+    ("chii", "chi"),
+    ("chi", "chi"),
+    ("kan", "kan"),
+    ("ron", "agari"),
+    ("tsumo", "agari"),
+    ("pass", "pass"),
+    ("skip", "pass"),
+    ("ryuukyoku", "ryukyoku"),
+]
 
 ENTRY_SPLIT = '<details class="collapse entry"'
 TAG_RE = re.compile(r"<[^>]+>")
 TILE_RE = re.compile(r"#pai-([a-z0-9]+)")
 NUMBER = r"-?[0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?"
-ROW_RE = re.compile(
+# The KillerDucky layout (the site default) puts the exact values in `title`
+# attributes; the classic layout renders `-0.` + `06974` as two spans and no
+# title, so it needs its own pattern.
+TITLE_ROW_RE = re.compile(
     r"<tr><td>(?P<action>.*?)<td><span title=(?P<q>" + NUMBER + r")>"
     r".*?<td><span title=(?P<prob>" + NUMBER + r")>"
+)
+CLASSIC_ROW_RE = re.compile(
+    r"<tr>\s*<td>\s*(?P<action>.*?)\s*</td>\s*"
+    r'<td>\s*<span class="?int"?>(?P<qint>[^<]*)</span>'
+    r'<span class="?frac"?>(?P<qfrac>[^<]*)</span>\s*</td>\s*'
+    r'<td>\s*<span class="?int"?>(?P<pint>[^<]*)</span>'
+    r'<span class="?frac"?>(?P<pfrac>[^<]*)</span>',
+    re.DOTALL,
 )
 SUMMARY_RE = re.compile(r"<summary>(?P<label>[^<]*)")
 TEMPERATURE_RE = re.compile(r"temperature[^0-9]*([0-9.]+)", re.IGNORECASE | re.DOTALL)
@@ -96,6 +126,9 @@ class Entry:
 
 
 def fetch_report(location: str) -> str:
+    if location == "-":
+        # Let the operator paste the saved page straight into the terminal.
+        return sys.stdin.read()
     if location.startswith(("http://", "https://")):
         request = urllib.request.Request(
             location,
@@ -113,28 +146,57 @@ def tile_code(svg_id: str) -> str:
     return svg_id
 
 
-def read_action(fragment: str) -> str:
-    """Turn `<span class=role>Mortal: </span>Discard <svg…pai-3s>` into a name."""
-    text = html.unescape(TAG_RE.sub(" ", fragment))
-    text = " ".join(text.split())
-    for prefix in ("class=role>", "Player:", "Mortal:"):
-        text = text.replace(prefix, " ")
-    text = " ".join(text.split())
-    if not text:
-        return ""
-    words = text.split()
-    head = words[0].lower() if words else ""
+def classify(fragment: str) -> tuple[str, list[str]]:
+    """Which action family a rendered action shows, and its tile ids."""
+    text = " ".join(html.unescape(TAG_RE.sub(" ", fragment)).lower().split())
     tiles = [tile_code(match) for match in TILE_RE.findall(fragment)]
+    for word, family in ACTION_WORDS:
+        if re.search(rf"\b{word}\b", text):
+            return family, tiles
+    return "?", tiles
 
-    if head == "discard":
+
+def action_name(fragment: str) -> str:
+    """Turn a rendered action (`Discard <svg…#pai-3s>`, `Chii`, `Skip`) into a name."""
+    family, tiles = classify(fragment)
+    if family == "discard":
         return f"Discard_{tiles[0]}" if tiles else "Discard_?"
-    if head == "riichi":
-        return "Riichi"
-    if head in ("pon", "chi", "kan"):
-        return head.capitalize()
-    if head in ACTION_ALIASES:
-        return ACTION_ALIASES[head]
-    return text
+    return {
+        "riichi": "Riichi",
+        "pon": "Pon",
+        "chi": "Chi",
+        "kan": "Kan",
+        "agari": "Agari",
+        "pass": "Pass",
+        "ryukyoku": "Ryukyoku",
+    }.get(family, "?")
+
+
+def parse_rows(body: str) -> list[Scored]:
+    rows = [
+        Scored(
+            action=action_name(match.group("action")),
+            q=float(match.group("q")),
+            prob=float(match.group("prob")),
+        )
+        for match in TITLE_ROW_RE.finditer(body)
+    ]
+    if rows:
+        return rows
+    for match in CLASSIC_ROW_RE.finditer(body):
+        q = (match.group("qint") + match.group("qfrac")).replace(" ", "")
+        prob = (match.group("pint") + match.group("pfrac")).replace(" ", "")
+        try:
+            rows.append(
+                Scored(
+                    action=action_name(match.group("action")),
+                    q=float(q),
+                    prob=float(prob),
+                )
+            )
+        except ValueError:
+            continue
+    return rows
 
 
 def parse_entries(page: str) -> list[Entry]:
@@ -143,6 +205,9 @@ def parse_entries(page: str) -> list[Entry]:
     for chunk in chunks:
         end = chunk.find("</details></details>")
         body = chunk if end < 0 else chunk[:end]
+        # The classic layout quotes its class attributes; the default one does
+        # not. Normalise both before looking for the role labels.
+        body = body.replace('class="role"', "class=role")
         summary = SUMMARY_RE.search(body)
         label = summary.group("label").strip() if summary else "?"
         player = ""
@@ -150,31 +215,15 @@ def parse_entries(page: str) -> list[Entry]:
         player_at = body.find("class=role>Player:")
         mortal_at = body.find("class=role>Mortal:")
         if player_at >= 0:
-            player = read_action(body[player_at : mortal_at if mortal_at > player_at else None])
+            player = action_name(
+                body[player_at : mortal_at if mortal_at > player_at else None]
+            )
         if mortal_at >= 0:
-            mortal = read_action(body[mortal_at : body.find("<details>", mortal_at)])
-        details = [
-            Scored(action=normalise_action(match.group("action")), q=float(match.group("q")),
-                   prob=float(match.group("prob")))
-            for match in ROW_RE.finditer(body)
-        ]
-        entries.append(Entry(label=label, player=player, mortal=mortal, details=details))
+            mortal = action_name(body[mortal_at : body.find("<details>", mortal_at)])
+        entries.append(
+            Entry(label=label, player=player, mortal=mortal, details=parse_rows(body))
+        )
     return entries
-
-
-def normalise_action(label: str) -> str:
-    tiles = [tile_code(match) for match in TILE_RE.findall(label)]
-    text = " ".join(html.unescape(TAG_RE.sub(" ", label)).split())
-    head = text.split()[0].lower() if text else ""
-    if head == "discard":
-        return f"Discard_{tiles[0]}"
-    if head == "chi":
-        return "Chi"
-    if head in ("pon", "kan", "riichi"):
-        return head.capitalize()
-    if head in ACTION_ALIASES:
-        return ACTION_ALIASES[head]
-    return text or "?"
 
 
 def same_family(left: str, right: str) -> bool:
@@ -182,6 +231,18 @@ def same_family(left: str, right: str) -> bool:
     if left == right:
         return True
     return left.startswith("Chi") and right.startswith("Chi")
+
+
+def resolve_temperature(page: str, override: float | None) -> tuple[float, str]:
+    """The temperature the review ran at, and where that answer came from."""
+    if override is not None:
+        return override, "--temperature"
+    found = find_temperature(page)
+    if found is not None:
+        return found, "the report"
+    # mjai-reviewer's own default; guessing 1.0 here would silently compare
+    # two different distributions.
+    return 0.1, "the reviewer default (the page does not say)"
 
 
 def find_temperature(page: str) -> float | None:
@@ -343,6 +404,52 @@ def render_synthetic_report(ours: dict, tau: float) -> str:
     )
 
 
+def render_synthetic_classic_report(ours: dict, tau: float) -> str:
+    """The same decision in the classic layout: quoted classes, no titles."""
+    source = float(ours.get("temperature", 1.0))
+    probs = retemperature(
+        [float(item["probability"]) for item in ours["evaluations"]], source, tau
+    )
+
+    def render(action: str) -> str:
+        svg = svg_name(action)
+        if svg:
+            return (
+                'Discard <svg class="tile"><use class="face" '
+                f'href="#pai-{svg}"></use></svg>'
+            )
+        return action
+
+    def decimal(value: float) -> str:
+        whole, _, fraction = f"{value:.5f}".partition(".")
+        return (
+            f'<span class="int">{whole}.</span>'
+            f'<span class="frac">{fraction}</span>'
+        )
+
+    rows = "".join(
+        f"<tr><td>{render(item['action'])}</td>"
+        f"<td>{decimal(index * -0.01)}</td><td>{decimal(prob * 100)}</td></tr>"
+        for index, (item, prob) in enumerate(zip(ours["evaluations"], probs))
+    )
+    return (
+        "<html><body>"
+        f"<dt>softmax temperature (&tau;)<dd>{tau:.2f}"
+        '<details class="collapse entry" data-mark-red>'
+        "<summary>Turn 3 (60) <span class=\"turn-info\">tenpai</span></summary>"
+        '<ul class="tehai-state"><li><svg class="tile"><use class="face" '
+        'href="#pai-1m"></use></svg></ul>'
+        '<span><span class="role">Player: </span>'
+        '<span class="role">Discard <svg class="tile"><use class="face" '
+        'href="#pai-1m"></use></svg></span></span><br>'
+        f'<span class="role">Mortal: </span>{render(ours["recommended_action"])}'
+        '<details><table border="1" class="data"><thead><tr><th>Action</th>'
+        "<th>Q</th><th>prob</th></tr></thead><tbody>"
+        f"{rows}</tbody></table></details></details>"
+        "</body></html>"
+    )
+
+
 def selftest() -> int:
     ours = {
         "scenario": "selftest",
@@ -364,6 +471,28 @@ def selftest() -> int:
         assert entries[0].details[0].action == "Discard_3s", entries[0].details
         assert entries[0].details[2].action == "Discard_5mr", entries[0].details
         assert entries[0].mortal == "Discard_3s", entries[0].mortal
+
+        # The classic layout prints the same decision with quoted classes and
+        # five-digit decimals instead of exact titles.
+        entries = parse_entries(render_synthetic_classic_report(ours, tau))
+        assert len(entries) == 1, entries
+        assert entries[0].player == "Discard_1m", entries[0].player
+        assert entries[0].mortal == "Discard_3s", entries[0].mortal
+        assert [row.action for row in entries[0].details] == [
+            "Discard_3s",
+            "Discard_1z",
+            "Discard_5mr",
+        ], entries[0].details
+        classic = compare(ours, entries[0], tau)
+        assert classic["top_action_matches"], classic
+        assert classic["max_probability_delta"] < 1e-4, classic
+
+    # The classic layout prints a chi's tiles before the word, and spells it
+    # with two i's; both must land on our single "Chi" family.
+    assert action_name('2m 3m <svg><use href="#pai-4m"></use></svg> Chii') == "Chi"
+    assert action_name("Skip") == "Pass"
+    assert action_name("Ron") == "Agari"
+    assert same_family("Chi_Low", "Chi")
     print("selftest ok")
     return 0
 
@@ -373,11 +502,12 @@ def main() -> int:
         description="Compare an mjai.ekyu.moe Mortal report with our evaluation."
     )
     parser.add_argument("--report",
-                        help="report URL (https://mjai.ekyu.moe/...) or a saved HTML file")
+                        help="report URL, a saved HTML file, or '-' to read a pasted page from stdin")
     parser.add_argument("--evaluation",
                         help="the JSON written by `export_tenhou6 --evaluate`")
     parser.add_argument("--temperature", type=float, default=None,
-                        help="temperature the review was run at (default: read it from the page)")
+                        help="temperature the review ran at (default: read it from the page, "
+                             "falling back to the reviewer's own 0.1)")
     parser.add_argument("--entry", type=int, default=-1,
                         help="which decision to compare, counted from the end (default: last)")
     parser.add_argument("--json", action="store_true", help="print the result as JSON")
@@ -408,9 +538,7 @@ def main() -> int:
         print("the report has no decision tables to compare", file=sys.stderr)
         return 2
 
-    tau = args.temperature
-    if tau is None:
-        tau = find_temperature(page) or 1.0
+    tau, tau_source = resolve_temperature(page, args.temperature)
     if tau <= 0:
         print(f"invalid temperature {tau}", file=sys.stderr)
         return 2
@@ -421,11 +549,14 @@ def main() -> int:
     result["entries"] = len(entries)
     result["scenario"] = ours.get("scenario")
 
+    result["temperature_source"] = tau_source
+
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
         print(f"entry                  {entry.label} (#{len(entries) + args.entry} of {len(entries)})")
         print_report(result)
+        print(f"temperature source     {tau_source}")
 
     if not result["top_action_matches"]:
         print(

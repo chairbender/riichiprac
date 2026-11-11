@@ -17,10 +17,21 @@ Both are deliberately outside the UI: nothing the player sees changed.
 
 ## Why there is a manual step
 
-The reviewer's form is behind a Cloudflare Turnstile, so a programmatic POST is
-rejected with `403 invalid captcha response` (verified). The evaluator cannot
-be driven headlessly, and there is no public API for submitting a log.
-The workflow is therefore one browser upload plus one command:
+The reviewer's form is behind a Cloudflare Turnstile. A direct POST to
+`/review` carrying the form fields (input method `tenhou6`, the log,
+`player-id`, engine, model tag) is rejected with `403 invalid captcha
+response` — verified. There is no JSON API behind the form either: from a
+non-browser client every route except `/robots.txt` answers 403, including
+`/`, `/review`, `/api` and `/report/`, so the only interface is the HTML form
+and its Turnstile token. That token is minted per browser session, and solving
+the challenge programmatically would mean defeating the control the site
+operator put there to gate exactly this kind of submission, so this tool does
+not attempt it.
+
+The fallback the operator asked for is what shipped: a generated
+`tenhou.net/6` fixture for manual upload, and an automated comparison of the
+pasted result. Upload by hand, paste the report URL (or save the page and pass
+it, or pipe it through `--report -`), and the script does the rest:
 
 ```bash
 # 1. Export a log of a generated scenario, together with our evaluation.
@@ -36,6 +47,7 @@ cargo run --release --bin export_tenhou6 -- \
 
 # 3. Paste the report URL back into the comparison.
 scripts/validate_mortal_review.py --report <report-url> --evaluation /tmp/ours.json
+#    (a saved page or a piped paste works too: --report page.html, --report -)
 ```
 
 `--all` exports every scenario the exporter can represent, and `--out-dir`
@@ -91,6 +103,12 @@ script prints:
 | `top action match` | the behavioural check: are we steering with the same policy? |
 | `max |dP|` | over actions both sides list, after rescaling both to the page's temperature; a few 1e-3 means the same weights on the same observation |
 | `only in report` / `missing from report` | legal-mask differences — the most likely wiring bug |
+
+Both report layouts are parsed: the default (KillerDucky) page keeps exact
+values in `title` attributes, and the classic page renders five-decimal spans.
+If the page does not state its temperature the script assumes the reviewer's
+own default of 0.1 rather than 1.0, so the comparison cannot silently mix two
+distributions; pass `--temperature` to override.
 
 `pip`/`tau` (Mortal's softmax temperature) only rescales the probabilities, so
 the script re-derives ours at whatever temperature the page reports
