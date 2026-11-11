@@ -184,12 +184,14 @@ mod tests {
                 regular_dora_in_hand(&winning, indicator) + aka <= 1
             }
             // The general ch7.1 triggers belong to the `riichi_judgement`
-            // lesson and the bad-wait box to `dama_bad_wait`; this seven-pairs
-            // generator never emits them.
+            // lesson, the bad-wait box to `dama_bad_wait`, and the immediate
+            // suji trap to `suji_trap_riichi`; this seven-pairs generator never
+            // emits them.
             RiichiTrigger::HasExtraHan
             | RiichiTrigger::GoodWait
             | RiichiTrigger::ThreeLiveWinningTiles
-            | RiichiTrigger::HonorTerminalWait => false,
+            | RiichiTrigger::HonorTerminalWait
+            | RiichiTrigger::ImmediateSujiTrap => false,
         }
     }
 

@@ -122,6 +122,33 @@ rationale. The generator only places tiles; every rank is recomputed from what
 the defender can see (the threat's river, all four rivers, open melds, the dora
 indicator, and the defender's own hand).
 
+## Immediate suji-trap Riichi
+
+`Riichi: Immediate Suji Trap` is the offense side of ch. 8's suji defense.
+The chapter defines the trap and its immediate form:
+
+> When you wait for a tile that is a suji tile of some tiles you have discarded
+> yourself, we say you have a suji-trap wait. In particular, when your wait is a
+> suji tile of the riichi declaration tile, we say it is an immediate suji-trap
+> wait. — ch8:165
+
+> If you call riichi by discarding the 6, the hand waits for 3, which is a suji
+> tile of 6 (immediate suji-trap riichi). — ch8:170
+
+The generated hand has **two** discards that leave the *same* single wait and
+the same number of live winning tiles, so acceptance cannot separate them: one
+discard is three ranks from the wait, making it look like a safe suji, and the
+other is six ranks away. The answer is Riichi on the trap discard.
+
+Two things make the trap the only reason to declare. The hand is riichi-only,
+the human is not the dealer, and two copies of the winning tile are already
+visible, so ch. 7's general three-condition rule (ch7:55-59) and its bad-wait
+box (ch7:521-522) both keep it dama. And the human river holds neither the wait
+nor any suji of it, so the plain discard leaves no trap — there is exactly one
+right answer. The book rationale cites the immediate-trap definition, and the
+caveat notes the section's own limit: suji defense only works against side
+waits, so the trap pays off when opponents read the wait as a ryanmen.
+
 ## Wind discard order
 
 `Wind Discard Order` teaches Riichi Book 1, ch. 9's seating tip

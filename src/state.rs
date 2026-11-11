@@ -245,6 +245,11 @@ pub enum RiichiTrigger {
     RedFiveWait,
     /// The human river contains a suji tile for the wait.
     SujiTrap,
+    /// The wait is a suji tile of the discard that declares Riichi, so the
+    /// winning tile looks safe to the opponents. Riichi Book 1, ch. 8,
+    /// "Suji trap": "when your wait is a suji tile of the riichi declaration
+    /// tile, we say it is an immediate suji-trap wait."
+    ImmediateSujiTrap,
     /// The wait tile is outside the 4-5-6 middle range, or is an honor.
     #[serde(rename = "wait_outside_456")]
     WaitOutside456,
