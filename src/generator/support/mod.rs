@@ -1,4 +1,5 @@
 pub mod analysis;
+pub mod completion;
 pub mod deck;
 pub mod format;
 pub mod retry;
