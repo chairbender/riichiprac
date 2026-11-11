@@ -227,6 +227,15 @@ fn test_list_scenarios_payload() {
         }),
         "the open-hand chii lesson must be listed as a book lesson"
     );
+    assert!(
+        scenarios.iter().any(|scenario| {
+            scenario["id"] == "meld_or_not"
+                && scenario["category"] == "melding_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the cheap-and-slow call lesson must be listed as a book lesson"
+    );
 }
 
 #[wasm_bindgen_test]
