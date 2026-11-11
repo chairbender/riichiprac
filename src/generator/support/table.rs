@@ -2,7 +2,88 @@ use agari::tile::Tile;
 
 use crate::generator::support::deck::Deck;
 use crate::rng::{gen_bool, gen_range, shuffle};
-use crate::state::{DiscardTile, PlayerState, Wind};
+use crate::state::{CalledMeld, DiscardTile, PlayerState, Wind};
+
+/// Seat index of the round's dealer (the East seat) when seat 0 holds
+/// `human_wind`.
+pub fn dealer_seat(human_wind: Wind) -> usize {
+    (Wind::ALL.len() - human_wind.index()) % Wind::ALL.len()
+}
+
+/// True when `meld` was called out of rotation: the caller claimed a tile from
+/// a seat other than the one that plays immediately before them. Such a call
+/// gives the caller an extra discard compared with the natural rotation, which
+/// is why rivers are not simply equal.
+pub fn is_out_of_rotation_call(seat: usize, meld: &CalledMeld) -> bool {
+    meld.called_from.is_some_and(|from| from != (seat + 3) % 4)
+}
+
+/// Plans the number of discards each seat has made in a legal, reachable
+/// timeline.
+///
+/// The walk starts with the dealer and advances one seat per discard. A call
+/// `(caller, called_from)` is inserted directly after the discard it claims, so
+/// the caller discards next instead of the natural next seat. The walk stops
+/// the first time `last_discarder` has just discarded and every seat has at
+/// least `min_discards` tiles in its river.
+///
+/// This is the generation-side counterpart of
+/// [`crate::generator::support::state_validation::validate_reachable_state`]:
+/// rivers produced here always pass that check.
+pub fn river_counts(
+    dealer: usize,
+    last_discarder: usize,
+    calls: &[(usize, usize)],
+    min_discards: usize,
+) -> [usize; 4] {
+    assert!(dealer < 4, "dealer seat out of range");
+    assert!(last_discarder < 4, "last discarder seat out of range");
+    for &(caller, from) in calls {
+        assert!(caller < 4 && from < 4 && caller != from, "invalid call");
+    }
+
+    let mut pending = calls.to_vec();
+    let mut counts = [0usize; 4];
+    let mut seat = dealer;
+
+    // Every call lands within one rotation, the stop seat within one more, and
+    // the discard floor needs at most `4 * min_discards` landings, so this is a
+    // hard safety bound.
+    let limit = 4 * min_discards + 4 * calls.len() + 8;
+    for _ in 0..limit {
+        counts[seat] += 1;
+        let last = seat;
+
+        if let Some(index) = pending.iter().position(|(_, from)| *from == seat) {
+            let (caller, _) = pending.remove(index);
+            seat = caller;
+        } else {
+            seat = (seat + 1) % 4;
+        }
+
+        if pending.is_empty()
+            && last == last_discarder
+            && counts.iter().all(|&count| count >= min_discards)
+        {
+            return counts;
+        }
+    }
+
+    panic!("river plan did not terminate for dealer {dealer} and calls {calls:?}");
+}
+
+/// Per-seat river lengths for a state where the human (seat 0) has just drawn
+/// and is about to discard.
+///
+/// The human draws after Kamicha (seat 3) discards, so the timeline has to end
+/// on seat 3's discard.
+pub fn self_turn_river_counts(
+    human_wind: Wind,
+    calls: &[(usize, usize)],
+    min_discards: usize,
+) -> [usize; 4] {
+    river_counts(dealer_seat(human_wind), 3, calls, min_discards)
+}
 
 /// Converts tiles into river entries, randomizing tsumogiri flags.
 pub fn discards_from_tiles(tiles: &[Tile]) -> Vec<DiscardTile> {
@@ -150,12 +231,14 @@ pub struct OpponentDeal {
 
 /// Deals concealed hands and rivers to the three opponents.
 ///
-/// Scores are seat-ordered with the human at index 0.
+/// Scores are seat-ordered with the human at index 0. `river_counts` holds the
+/// number of discards each seat has made; plan it with [`river_counts`] so the
+/// resulting table is a reachable position.
 pub fn deal_opponents(
     deck: &mut Deck,
     human_wind: Wind,
     scores: &[i32; 4],
-    discard_count: usize,
+    river_counts: &[usize; 4],
 ) -> Option<OpponentDeal> {
     let opponent_meta = [(1usize, "Shimocha"), (2, "Toimen"), (3, "Kamicha")];
 
@@ -163,7 +246,7 @@ pub fn deal_opponents(
     let mut rivers = Vec::with_capacity(3);
     for (index, (seat, name)) in opponent_meta.iter().enumerate() {
         let hand = deck.draw_n(13)?;
-        let river = deck.draw_n(discard_count)?;
+        let river = deck.draw_n(river_counts[*seat])?;
         rivers.push(river.clone());
         players.push(PlayerState {
             seat: *seat,

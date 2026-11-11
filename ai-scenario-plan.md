@@ -614,6 +614,24 @@ pure discard decision. Later families reuse the same finalization path.
 - For ron: the hand + claimed tile is a winning hand with at least one yaku, and
   the human is not furiten.
 - For Riichi: menzen, tenpai, score >= 1000, wall >= 4.
+- The finished table is a reachable position
+  (`generator::support::state_validation::validate_reachable_state`, applied to
+  every generated lesson, not just the AI one):
+  - every player holds `13 - 3 * melds` concealed tiles, because a kan's fourth
+    tile is the replacement draw;
+  - every meld is a real shape (chi run, triplet, quad) called from a seat that
+    could have discarded it (a chi only from the previous seat);
+  - the rivers are the discards of one turn order: the walk starts at the dealer
+    and advances one seat per discard, and only a call from a seat other than the
+    previous one can move it, which is why equal rivers are *not* the normal
+    case for a non-dealer human;
+  - the decision context fixes the last discard: a self turn ends on Kamicha's
+    discard (the human just drew), a reaction on the source's discard, and a
+    chankan on the source's Kamicha's discard.
+
+Generators must plan rivers with `support::table::river_counts` /
+`self_turn_river_counts` instead of choosing a count per seat; that simulator
+produces exactly the timelines the reachability check accepts.
 
 Structural rejection uses `generate_with_retries("ai_best_action", 2_000, ...)`
 or a tighter loop; this is cheap. Inference is **not** inside that loop.

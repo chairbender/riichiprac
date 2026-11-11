@@ -9,7 +9,8 @@ use crate::generator::support::analysis::{HandMetrics, evaluate_counts, wind_to_
 use crate::generator::support::deck::Deck;
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    OpponentDeal, deal_opponents, discards_from_tiles, random_round, random_scores_with_human_first,
+    OpponentDeal, deal_opponents, discards_from_tiles, random_round,
+    random_scores_with_human_first, self_turn_river_counts,
 };
 use crate::rng::gen_range;
 use crate::state::{
@@ -48,16 +49,17 @@ pub(super) fn build_board(
     let honba = gen_range(0, 4) as u8;
     let scores = random_scores_with_human_first();
 
-    // The human is the current player (about to discard), so every player has
-    // completed the same number of turns. At least one turn has passed because
-    // the human has an open Pon.
+    // The human is the current player (about to discard), so the rivers come
+    // from one legal timeline: the human's earlier Pon off Shimocha gives them
+    // one extra discard over a pure rotation.
     let discard_count = gen_range(1, 7);
-    let deal = deal_opponents(&mut deck, Wind::East, &scores, discard_count)
+    let river_counts = self_turn_river_counts(Wind::East, &[(0, 1)], discard_count);
+    let deal = deal_opponents(&mut deck, Wind::East, &scores, &river_counts)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
 
     // Furiten: the human's river cannot hold either candidate wait tile.
     let human_river = deck
-        .draw_excluding(discard_count, &[skeleton.bulge_tile, skeleton.float_tile])
+        .draw_excluding(river_counts[0], &[skeleton.bulge_tile, skeleton.float_tile])
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
     // The book's comparison is three live tiles against two, so every copy of
@@ -233,6 +235,9 @@ fn assemble_state(
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
         book_rationale: None,
+        // The open Yakuhai Pon makes Riichi illegal; `finalize_state`
+        // recomputes this at the generation boundary.
+        can_riichi: false,
         hand_string,
         tiles: tile_strings,
         shanten: metrics.shanten,
@@ -405,19 +410,16 @@ mod tests {
             "the drawn honour is part of the full hand"
         );
 
-        // Every player has taken the same number of turns.
+        // The rivers come from one legal turn order: the human's earlier Pon
+        // gives them one extra discard over a pure rotation.
+        crate::generator::support::state_validation::validate_reachable_state(state)
+            .expect("nakabukure table must be reachable");
         let discard_counts: Vec<usize> = state
             .players
             .iter()
             .map(|player| player.discards.len())
             .collect();
-        assert!(
-            discard_counts
-                .iter()
-                .all(|&count| count == discard_counts[0]),
-            "discard counts must line up: {discard_counts:?}"
-        );
-        assert!((1..=6).contains(&discard_counts[0]));
+        assert!((1..=8).contains(&discard_counts[0]));
 
         // The book's discard leaves the lone honour as the only wait, with all
         // three remaining copies live; the tempting discard leaves the bulge

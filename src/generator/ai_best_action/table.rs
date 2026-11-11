@@ -4,7 +4,7 @@ use agari::tile::Tile;
 
 use crate::generator::support::deck::Deck;
 use crate::generator::support::table::{
-    OpponentDeal, deal_opponents, random_round, random_table_scores,
+    OpponentDeal, deal_opponents, random_round, random_table_scores, self_turn_river_counts,
 };
 use crate::rng::gen_range;
 use crate::state::Wind;
@@ -31,11 +31,20 @@ pub fn deal_table() -> Result<Table, String> {
     let human_tiles = deck
         .draw_n(14)
         .ok_or_else(|| "deck ran out while dealing the human hand".to_string())?;
-    deal_rest(deck, human_tiles)
+    deal_rest(deck, human_tiles, &[])
 }
 
 /// Deal the rest of the table around a pre-built 14-tile human hand.
 pub fn deal_table_with_human(human_tiles: Vec<Tile>) -> Result<Table, String> {
+    deal_table_with_human_calls(human_tiles, &[])
+}
+
+/// Deal the rest of the table around a pre-built 14-tile human hand that has
+/// already called `calls` (each `(caller, called_from)`).
+pub fn deal_table_with_human_calls(
+    human_tiles: Vec<Tile>,
+    calls: &[(usize, usize)],
+) -> Result<Table, String> {
     let mut deck = Deck::fresh();
     let mut counts: HashMap<Tile, u8> = HashMap::new();
     for &tile in &human_tiles {
@@ -44,7 +53,7 @@ pub fn deal_table_with_human(human_tiles: Vec<Tile>) -> Result<Table, String> {
     for (tile, count) in &counts {
         deck.take_n(*tile, *count)?;
     }
-    deal_rest(deck, human_tiles)
+    deal_rest(deck, human_tiles, calls)
 }
 
 /// Deal the rest of the table with empty rivers (first-turn states).
@@ -60,8 +69,10 @@ pub fn deal_table_with_human_no_rivers(human_tiles: Vec<Tile>) -> Result<Table, 
 
     let (round_wind, hand_number) = random_round();
     let scores = random_table_scores();
-    let human_wind = Wind::ALL[gen_range(0, 4)];
-    let deal = deal_opponents(&mut deck, human_wind, &scores, 0)
+    // The opening draw belongs to the dealer; the human holds it, so the human
+    // has to be East.
+    let human_wind = Wind::East;
+    let deal = deal_opponents(&mut deck, human_wind, &scores, &[0; 4])
         .ok_or_else(|| "deck ran out while dealing opponents".to_string())?;
 
     let mut dead_wall = deck
@@ -86,17 +97,24 @@ pub fn deal_table_with_human_no_rivers(human_tiles: Vec<Tile>) -> Result<Table, 
     })
 }
 
-fn deal_rest(mut deck: Deck, human_tiles: Vec<Tile>) -> Result<Table, String> {
+fn deal_rest(
+    mut deck: Deck,
+    human_tiles: Vec<Tile>,
+    calls: &[(usize, usize)],
+) -> Result<Table, String> {
     let (round_wind, hand_number) = random_round();
     let scores = random_table_scores();
     let human_wind = Wind::ALL[gen_range(0, 4)];
 
-    let opponent_river_count = gen_range(3, 10);
-    let deal = deal_opponents(&mut deck, human_wind, &scores, opponent_river_count)
+    // The human is about to discard, so plan the rivers as one legal timeline
+    // that ends on Kamicha's discard. Picking each river separately is what let
+    // the human end up with more discards than the other seats.
+    let counts = self_turn_river_counts(human_wind, calls, gen_range(3, 10));
+    let deal = deal_opponents(&mut deck, human_wind, &scores, &counts)
         .ok_or_else(|| "deck ran out while dealing opponents".to_string())?;
 
     let human_river = deck
-        .draw_n(gen_range(3, 10))
+        .draw_n(counts[0])
         .ok_or_else(|| "deck ran out while dealing the human river".to_string())?;
 
     let mut dead_wall = deck

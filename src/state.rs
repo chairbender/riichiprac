@@ -51,6 +51,8 @@ pub enum TargetAction {
     Kan,
     /// The correct answer is the loaded model's top legal action.
     Best,
+    /// Pure defense: choose the safest tile against an opponent's riichi.
+    Defend,
 }
 
 /// The kind of action the trainer expects from the player.
@@ -61,6 +63,8 @@ pub enum CorrectActionType {
     Riichi,
     /// Stay in dama (concealed tenpai) and discard without declaring Riichi.
     Dama,
+    /// Fold: discard the safest tile against an opponent's riichi.
+    Fold,
     /// Add the drawn fourth tile to an open Pon.
     Kan,
     /// Pass on the Kan and discard normally.
@@ -71,7 +75,7 @@ pub enum CorrectActionType {
 
 /// The expected answer for the current scenario.
 ///
-/// Serializes as `{"type":"riichi|dama","discard":"..."}`,
+/// Serializes as `{"type":"riichi|dama|fold","discard":"..."}`,
 /// `{"type":"kan|discard","tile":"..."}`, or the AI scenario's
 /// `{"type":"best","action":"...","label":"..."}` shape.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -81,6 +85,8 @@ pub enum CorrectAction {
     Riichi { discard: String },
     /// Stay in dama and discard `discard`.
     Dama { discard: String },
+    /// Fold against a riichi and discard the safest `discard`.
+    Fold { discard: String },
     /// Declare an Added Kan on `tile`.
     Kan { tile: String },
     /// Pass on the Kan and discard `tile`.
@@ -118,6 +124,13 @@ impl CorrectAction {
         Self::Kan { tile: tile.into() }
     }
 
+    /// Fold against a riichi's threat and discard the safest tile.
+    pub fn fold(discard: impl Into<String>) -> Self {
+        Self::Fold {
+            discard: discard.into(),
+        }
+    }
+
     pub fn discard(tile: impl Into<String>) -> Self {
         Self::Discard { tile: tile.into() }
     }
@@ -142,6 +155,7 @@ impl CorrectAction {
         match self {
             Self::Riichi { .. } => CorrectActionType::Riichi,
             Self::Dama { .. } => CorrectActionType::Dama,
+            Self::Fold { .. } => CorrectActionType::Fold,
             Self::Kan { .. } => CorrectActionType::Kan,
             Self::Discard { .. } => CorrectActionType::Discard,
             Self::Best { .. } => CorrectActionType::Best,
@@ -151,7 +165,9 @@ impl CorrectAction {
     /// The tile the player must click, when the action has one.
     pub fn tile(&self) -> Option<&str> {
         match self {
-            Self::Riichi { discard } | Self::Dama { discard } => Some(discard),
+            Self::Riichi { discard } | Self::Dama { discard } | Self::Fold { discard } => {
+                Some(discard)
+            }
             Self::Kan { tile } | Self::Discard { tile } => Some(tile),
             Self::Best { tile, .. } => tile.as_deref(),
         }
@@ -351,6 +367,15 @@ pub struct GameState {
     /// from an imported file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub book_rationale: Option<crate::rationale::BookRationale>,
+    /// Whether declaring Riichi is a legal action for the human right now.
+    ///
+    /// Derived from the same legal-action source the model mask uses
+    /// (`ai::actions::riichi_is_legal`), so an open hand, an already-declared
+    /// Riichi, a non-tenpai hand, a short wall, or a score under 1000 cannot
+    /// offer a declaration the rules forbid. Stamped at the generation
+    /// boundary and recomputed on report import.
+    #[serde(default)]
+    pub can_riichi: bool,
 
     // Hand evaluation (Human player)
     pub hand_string: String,

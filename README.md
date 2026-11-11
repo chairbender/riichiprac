@@ -42,6 +42,20 @@ early (and is recorded in exported reports). The book side is always explained �
 "Not this hand" lists the justifications that do not apply, without inventing a
 citation for them.
 
+Riichi is graded as a whole decision, not a single action name. When Mortal's top
+action is Riichi, the evaluator runs a second pass (the position marked as
+already in Riichi, `Riichi` masked off) to find the discard it would declare on;
+the answer summary and the Mortal column show both ("Riichi · discard 3p"). The
+submitted riichi/dama choice is compared against Mortal's, and when Mortal's
+discard is known the tile is part of the comparison too, so a right declaration
+on the wrong tile is not a full agreement.
+
+The Riichi toggle is gated by a rule computed in Rust (`GameState::can_riichi`,
+the same legal-action source the Mortal mask uses). An open hand, an
+already-declared Riichi, a non-tenpai hand, a short wall, or a score under 1000
+never offers the declaration — the open-hand block-theory lesson is the common
+case.
+
 If the weights are missing, the app still trains: the hand is graded against the
 book only, the Mortal column says so, and no answer is labelled wrong.
 
@@ -62,6 +76,85 @@ The AI scenario is generated entirely in Rust/WASM: the state is built from the
 shared deck, validated, encoded, evaluated once (plus a second pass when the
 model chooses Riichi), and returned to React with `correct_action`, the legal
 action list, and the evaluation. React only renders and grades.
+
+## Defense scenarios
+
+Two lessons train pure defense against an opponent's Riichi. Neither asks about
+hand value: the generated hand is never ready, so the question is only which
+tile is safest to let go. Both are graded by the book's rule; Mortal's
+answer appears beside it after you answer.
+
+**Defense: Safest Discard** builds a board where Riichi Book 1, ch. 8's safety
+ranking (`tbl:safety`) has a real answer — a genbutsu, a suji tile, a no-chance
+tile behind a blockade, or an honor ranked by its visible copies — and fills the
+rest of the hand with tiles the chart ranks strictly lower, so the safest
+discard is unique. The book panel names the chart row the answer sits on and
+lists the other tiles with their ranks ("Not this hand").
+
+**Defense: Nothing Is Safe** is the chapter's fallback, "What to discard when
+you get stuck". Nothing in the hand is Rank B or safer, so the chart identifies
+nothing; the learner applies the book's fallback list — break up a pair or
+concealed set, avoid the dora and its neighbours, stay outside the opponent's
+early discards, and prefer a terminal so the discard cannot deal into tanyao.
+The generated hand holds the answer twice, so the copy you keep is your
+follow-up discard.
+
+The safety chart itself is `src/safety.rs`: the fifteen rows of `tbl:safety`
+plus the suji and blockade arithmetic they are derived from. The generator only
+places tiles; every rank is recomputed from what the defender can see (the
+threat's river, all four rivers, open melds, the dora indicator, and the
+defender's own hand).
+
+## Hosting the model weights
+
+The ~43 MB `mortal_298k.safetensors` file is not committed. It is published as a
+GitHub Release asset (`weights-v1`). GitHub release assets send no CORS headers,
+so the deploy workflow downloads it server-side and Pages serves it same-origin —
+the browser never fetches GitHub directly. At runtime the app tries the first
+source that answers, then caches the bytes in IndexedDB so a returning visitor
+downloads nothing:
+
+1. `VITE_WEIGHTS_URL` (build-time override, optional)
+2. Same origin: `${BASE_URL}models/mortal_298k.safetensors` — placed there by CI
+   (`/models/...` in dev when you have the gitignored file, `/riichiprac/models/...`
+   on Pages)
+3. Hugging Face: `https://huggingface.co/chairbender/mortal-weights/resolve/main/mortal_298k.safetensors`
+   (optional mirror; the only browser-fetchable external source)
+
+To replace the weights, upload a new release asset and bump `CACHE_VERSION`:
+
+```bash
+gh release create weights-v2 frontend/public/models/mortal_298k.safetensors \
+  --title "Mortal weights v2" \
+  --notes "AGPL-3.0, derived from VoidShine/mortal-298k; source: scripts/convert_weights.py"
+```
+
+then update the URL in `frontend/src/services/weightLoader.ts` and the `curl` in
+`.github/workflows/deploy.yml`. Full runbook, including the CORS measurements and
+the one-time Pages setup: [`hosting-plan.md`](hosting-plan.md).
+
+## Model weights license
+
+The app code in this repository is **MIT** (see `LICENSE`). The Mortal weights
+are a separate work under **AGPL-3.0**: they come from
+[`VoidShine/mortal-298k`](https://huggingface.co/VoidShine/mortal-298k), a
+checkpoint of [`Equim-chan/Mortal`](https://github.com/Equim-chan/Mortal)
+(AGPL-3.0), converted by `scripts/convert_weights.py`.
+
+The weights are fetched at runtime and are never part of the build, so the app
+and the weights are separate works: MIT here, AGPL-3.0 for the model file. If you
+republish the converted file, keep it tagged `license: agpl-3.0` and point at the
+conversion script as its source. Full reasoning, including the alternatives that
+were rejected and why, is in
+[`hosting-plan.md`](hosting-plan.md#5-licensing-weights-are-agpl-30-the-app-stays-mit).
+
+## Deploying
+
+Pushing to `main` runs `.github/workflows/deploy.yml`, which builds the WASM
+package, builds `frontend/` with the `/riichiprac/` base path, and publishes
+`frontend/dist` to GitHub Pages at
+<https://chairbender.github.io/riichiprac/>. Pages must be enabled once with
+**Settings → Pages → Source: GitHub Actions**.
 
 ## Reporting a bad answer
 

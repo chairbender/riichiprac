@@ -48,6 +48,14 @@ export interface AiEvaluation {
   expected_value: number;
   /** Highest-probability action name. */
   recommended_action: string;
+  /**
+   * When the top action is Riichi, the discard Mortal declares on.
+   *
+   * Mortal's action space has one tile-less `Riichi` action, so this comes from
+   * the evaluator's second pass. Absent for every other recommendation and for
+   * payloads captured before the second pass existed.
+   */
+  riichi_discard?: string | null;
   /** Legal actions, highest probability first. */
   evaluations: AiActionEvaluation[];
 }
@@ -59,6 +67,8 @@ export interface AiDecision {
   reasoning?: string | null;
   expected_value: number;
   recommended_action: string;
+  /** The discard Mortal declares Riichi on, when it chose Riichi. */
+  riichi_discard?: string | null;
   evaluations: AiActionEvaluation[];
   /** Every legal action with render/grade details, no probabilities. */
   actions: AiActionInfo[];

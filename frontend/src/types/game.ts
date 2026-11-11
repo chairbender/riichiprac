@@ -16,7 +16,8 @@ export type TargetAction =
   | 'Fold'
   | 'NaniKiru'
   | 'Kan'
-  | 'Best';
+  | 'Best'
+  | 'Defend';
 
 /** Reasons a scenario recommends declaring Riichi. */
 export type RiichiTrigger =
@@ -45,18 +46,25 @@ export type ShouminkanTrigger =
   | 'needs_dora';
 
 /** Action kinds the trainer can expect alongside the discard. */
-export type CorrectActionType = 'riichi' | 'dama' | 'kan' | 'discard' | 'best';
+export type CorrectActionType =
+  | 'riichi'
+  | 'dama'
+  | 'fold'
+  | 'kan'
+  | 'discard'
+  | 'best';
 
 /**
  * The expected answer for the current scenario.
  *
- * Riichi/dama puzzles carry the discard in `discard`. Kan puzzles carry the
- * tile in `tile`, where `"kan"` means add the fourth tile to an open Pon and
- * `"discard"` means pass on the Kan and discard normally. AI scenarios use
- * `best` with the model's Mortal action name.
+ * Riichi/dama/fold puzzles carry the discard in `discard`; `fold` is the
+ * pure-defense "safest discard" answer, where no declaration is expected. Kan
+ * puzzles carry the tile in `tile`, where `"kan"` means add the fourth tile to
+ * an open Pon and `"discard"` means pass on the Kan and discard normally. AI
+ * scenarios use `best` with the model's Mortal action name.
  */
 export type CorrectAction =
-  | { type: 'riichi' | 'dama'; discard: string }
+  | { type: 'riichi' | 'dama' | 'fold'; discard: string }
   | { type: 'kan' | 'discard'; tile: string }
   | {
       type: 'best';
@@ -169,6 +177,13 @@ export interface GameState {
    * the justifications that do not apply. Derived and recomputed by Rust.
    */
   book_rationale?: BookRationale | null;
+  /**
+   * Whether the human may declare Riichi right now. Derived by Rust from the
+   * same legal-action source the Mortal mask uses, so an open hand, an
+   * already-declared Riichi, or a non-tenpai hand cannot offer the toggle.
+   * Absent only on old payloads that predate the field.
+   */
+  can_riichi?: boolean;
 
   hand_string: string;
   tiles: string[];

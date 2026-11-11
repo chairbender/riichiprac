@@ -3,6 +3,7 @@
 //! - `block_theory`: 5-block random hands, the ryanmen protorun lesson, and
 //!   the nakabukure (bulging float) ready-hand lesson.
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
+//! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
 //! - `shouminkan_decision`: Added Kan decision lesson.
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
 //!
@@ -12,6 +13,7 @@
 pub mod ai_best_action;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
+mod defense;
 mod shouminkan_decision;
 mod support;
 
@@ -33,6 +35,7 @@ pub enum ScenarioCategory {
     RiichiDecision,
     KanDecision,
     AiDecision,
+    DefenseDecision,
 }
 
 impl ScenarioCategory {
@@ -42,6 +45,7 @@ impl ScenarioCategory {
             ScenarioCategory::RiichiDecision => "riichi_decision",
             ScenarioCategory::KanDecision => "kan_decision",
             ScenarioCategory::AiDecision => "ai_decision",
+            ScenarioCategory::DefenseDecision => "defense_decision",
         }
     }
 }
@@ -134,6 +138,24 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         requires_ai: true,
         grading: ScenarioGrading::MortalOnly,
     },
+    ScenarioMeta {
+        id: ScenarioId::DefenseSafetyChart,
+        label: "Defense: Safest Discard",
+        description: "An opponent has declared Riichi: discard the tile the book's safety chart ranks safest.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &["defense", "betaori", "safety_chart", "suji", "genbutsu"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
+        id: ScenarioId::DefenseStuckHeuristic,
+        label: "Defense: Nothing Is Safe",
+        description: "No tile is identified as safe: apply the book's fallback and break up the pair.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &["defense", "betaori", "heuristic", "pairs", "discard"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
 ];
 
 /// Serializes the scenario catalogue for the frontend picker.
@@ -175,6 +197,8 @@ pub enum ScenarioId {
     ShouminkanDecision,
     ShouminkanDecline,
     AiBestAction,
+    DefenseSafetyChart,
+    DefenseStuckHeuristic,
 }
 
 impl ScenarioId {
@@ -186,6 +210,8 @@ impl ScenarioId {
         ScenarioId::ShouminkanDecision,
         ScenarioId::ShouminkanDecline,
         ScenarioId::AiBestAction,
+        ScenarioId::DefenseSafetyChart,
+        ScenarioId::DefenseStuckHeuristic,
     ];
 
     /// The category string understood by the WASM API.
@@ -197,6 +223,8 @@ impl ScenarioId {
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
             ScenarioId::ShouminkanDecline => "shouminkan_decline",
             ScenarioId::AiBestAction => "ai_best_action",
+            ScenarioId::DefenseSafetyChart => "defense_safety_chart",
+            ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
         }
     }
 
@@ -209,6 +237,8 @@ impl ScenarioId {
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
             "shouminkan_decline" => Some(ScenarioId::ShouminkanDecline),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
+            "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
+            "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             _ => None,
         }
     }
@@ -226,6 +256,8 @@ impl ScenarioId {
                  generate_ai_puzzle"
                     .to_string(),
             ),
+            ScenarioId::DefenseSafetyChart => defense::generate_safety_chart(category),
+            ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
         }
     }
 }
@@ -234,17 +266,38 @@ impl ScenarioId {
 /// the first real Block Theory scenario. The `mock_table` fixture is handled
 /// separately so it stays out of the lesson manifest.
 pub fn generate_puzzle(category: &str) -> Result<GameState, String> {
-    let state = if category == "mock_table" {
-        crate::fixtures::mock_table::generate(category)?
-    } else {
-        match ScenarioId::from_id(category) {
+    if category == "mock_table" {
+        // The fixture is a fixed UI mock, not a played-out table, so it is not
+        // held to the reachability rules.
+        return Ok(finalize_state(crate::fixtures::mock_table::generate(
+            category,
+        )?));
+    }
+
+    let mut last_error = String::new();
+    for _ in 0..MAX_REACHABILITY_ATTEMPTS {
+        let state = match ScenarioId::from_id(category) {
             Some(id) => id.generate(category)?,
             None => block_theory::ryanmen_protorun::generate(category)?,
-        }
-    };
+        };
 
-    Ok(finalize_state(state))
+        // Final guard: a lesson may have shaped its rivers and melds freely,
+        // but the finished table still has to be a position a real game could
+        // have produced.
+        match support::state_validation::validate_reachable_state(&state) {
+            Ok(()) => return Ok(finalize_state(state)),
+            Err(err) => last_error = err,
+        }
+    }
+
+    Err(format!(
+        "generated {category} states were never reachable after \
+         {MAX_REACHABILITY_ATTEMPTS} attempts: {last_error}"
+    ))
 }
+
+/// How many full generations to try before the reachability guard gives up.
+const MAX_REACHABILITY_ATTEMPTS: usize = 8;
 
 /// Attach derived fields that must never be trusted from a generator literal.
 ///
@@ -253,6 +306,7 @@ pub fn generate_puzzle(category: &str) -> Result<GameState, String> {
 /// report import.
 pub fn finalize_state(mut state: GameState) -> GameState {
     state.book_rationale = crate::rationale::rationale_for(&state);
+    state.can_riichi = crate::ai::actions::riichi_is_legal(&state);
     state
 }
 
@@ -304,7 +358,18 @@ mod tests {
         assert_eq!(scenarios[0]["category"], "tile_efficiency");
         assert_eq!(scenarios[0]["requires_ai"], false);
         assert!(scenarios[0]["tags"].is_array());
-        assert_eq!(scenarios.last().expect("AI scenario")["requires_ai"], true);
+        assert!(
+            scenarios
+                .iter()
+                .any(|scenario| scenario["id"] == "ai_best_action"
+                    && scenario["requires_ai"] == true)
+        );
+        assert!(
+            scenarios
+                .iter()
+                .any(|scenario| scenario["id"] == "defense_safety_chart"
+                    && scenario["category"] == "defense_decision")
+        );
     }
 
     #[test]
@@ -326,5 +391,106 @@ mod tests {
         let state = generate_puzzle("mock_table").expect("mock table fixture must generate");
 
         assert_eq!(state.category, "mock_table");
+    }
+
+    #[test]
+    fn every_generated_lesson_is_a_reachable_table() {
+        use crate::generator::support::state_validation::validate_reachable_state;
+
+        for &id in ScenarioId::ALL {
+            if id == ScenarioId::AiBestAction {
+                continue;
+            }
+            for run in 0..30 {
+                let state = generate_puzzle(id.as_str())
+                    .unwrap_or_else(|err| panic!("{} run {run} failed: {err}", id.as_str()));
+                validate_reachable_state(&state).unwrap_or_else(|err| {
+                    panic!(
+                        "{} run {run} produced an unreachable table: {err}",
+                        id.as_str()
+                    )
+                });
+            }
+        }
+    }
+
+    #[test]
+    fn generated_rivers_never_invent_extra_discards() {
+        use crate::generator::support::state_validation::validate_reachable_state;
+
+        // The reported defect: one seat's river was two entries longer than the
+        // others with no call to explain it. Every lesson must now keep the
+        // rivers within one call's worth of the rotation.
+        for category in [
+            "ryanmen_protorun",
+            "chiitoitsu_riichi_vs_dama",
+            "shouminkan_decision",
+            "shouminkan_decline",
+            "defense_safety_chart",
+            "defense_stuck_heuristic",
+        ] {
+            for run in 0..20 {
+                let state = generate_puzzle(category)
+                    .unwrap_or_else(|err| panic!("{category} run {run} failed: {err}"));
+                validate_reachable_state(&state)
+                    .unwrap_or_else(|err| panic!("{category} run {run}: {err}"));
+
+                let counts: Vec<usize> = state
+                    .players
+                    .iter()
+                    .map(|player| player.discards.len())
+                    .collect();
+                let calls: usize = state.players.iter().map(|player| player.melds.len()).sum();
+                let spread = counts.iter().max().unwrap() - counts.iter().min().unwrap();
+                assert!(
+                    spread <= 1 + calls,
+                    "{category} run {run}: rivers {counts:?} with {calls} calls"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn generated_states_carry_the_riichi_gate() {
+        for id in [
+            ScenarioId::RyanmenProtorun,
+            ScenarioId::ChiitoitsuRiichiVsDama,
+            ScenarioId::ShouminkanDecision,
+            ScenarioId::DefenseSafetyChart,
+        ] {
+            for run in 0..10 {
+                let state = generate_puzzle(id.as_str())
+                    .unwrap_or_else(|err| panic!("{} run {run}: {err}", id.as_str()));
+                let expected = crate::ai::actions::riichi_is_legal(&state);
+                assert_eq!(
+                    state.can_riichi,
+                    expected,
+                    "{} run {run}: can_riichi must match the legal action set",
+                    id.as_str()
+                );
+            }
+        }
+
+        // The block-theory lesson always holds an open Yakuhai Pon, so Riichi
+        // is never legal there even when the hand is tenpai.
+        let ryanmen = generate_puzzle(ScenarioId::RyanmenProtorun.as_str()).expect("ryanmen");
+        assert!(!ryanmen.players[0].melds.is_empty());
+        assert!(!ryanmen.can_riichi, "an open hand cannot declare Riichi");
+    }
+
+    #[test]
+    fn chiitoitsu_riichi_lessons_offer_the_declaration() {
+        for _ in 0..20 {
+            let state = generate_puzzle(ScenarioId::ChiitoitsuRiichiVsDama.as_str())
+                .expect("chiitoitsu lesson");
+            if state.correct_action.action_type() == CorrectActionType::Riichi {
+                assert!(
+                    state.can_riichi,
+                    "the book's Riichi answer must be an offerable declaration"
+                );
+                return;
+            }
+        }
+        panic!("no Riichi chiitoitsu lesson was generated");
     }
 }

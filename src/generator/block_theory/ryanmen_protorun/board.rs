@@ -9,7 +9,8 @@ use crate::generator::support::analysis::{HandMetrics, evaluate_counts, wind_to_
 use crate::generator::support::deck::Deck;
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    OpponentDeal, deal_opponents, discards_from_tiles, random_round, random_scores_with_human_first,
+    OpponentDeal, deal_opponents, discards_from_tiles, random_round,
+    random_scores_with_human_first, self_turn_river_counts,
 };
 use crate::rng::gen_range;
 use crate::state::{
@@ -46,16 +47,17 @@ pub(super) fn build_board(category: &str, skeleton: &RyanmenSkeleton) -> Result<
     let honba = gen_range(0, 4) as u8;
     let scores = random_scores_with_human_first();
 
-    // The human is the current player (about to discard), so every player
-    // has completed the same number of turns and made one discard per turn.
-    // At least one turn has passed because the human has an open Pon.
+    // The human has an open Pon, so the human called out of rotation once.
+    // Plan one legal timeline: the call happens right after Shimocha's
+    // discard, and the rivers follow from it.
     let discard_count = gen_range(1, 7);
-    let deal = deal_opponents(&mut deck, Wind::East, &scores, discard_count)
+    let counts = self_turn_river_counts(Wind::East, &[(0, 1)], discard_count);
+    let deal = deal_opponents(&mut deck, Wind::East, &scores, &counts)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
 
     // Furiten: the human's river cannot contain either ryanmen wait tile.
     let human_river = deck
-        .draw_excluding(discard_count, &skeleton.wait_tiles)
+        .draw_excluding(counts[0], &skeleton.wait_tiles)
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
     validate_visible_waits(skeleton, &deal.rivers, dora_indicator)?;
@@ -235,6 +237,7 @@ fn assemble_state(
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
         book_rationale: None,
+        can_riichi: false,
         hand_string,
         tiles: tile_strings,
         shanten: metrics.shanten,
@@ -354,20 +357,16 @@ mod tests {
             "5z" | "6z" | "7z"
         ));
 
-        // Every player has taken the same number of turns and discarded once
-        // per turn. The human is currently about to discard.
+        // The rivers come from one legal turn order: the human's earlier Pon
+        // gives them one extra discard over a pure rotation.
+        crate::generator::support::state_validation::validate_reachable_state(state)
+            .expect("cast table must be reachable");
         let discard_counts: Vec<usize> = state
             .players
             .iter()
             .map(|player| player.discards.len())
             .collect();
-        assert!(
-            discard_counts
-                .iter()
-                .all(|&count| count == discard_counts[0]),
-            "discard counts must line up: {discard_counts:?}"
-        );
-        assert!((1..=6).contains(&discard_counts[0]));
+        assert!((1..=8).contains(&discard_counts[0]));
 
         // The only wait is the live two-sided ryanmen.
         assert_eq!(state.ukeire_tiles.len(), 2);
