@@ -1110,6 +1110,163 @@ fn test_dama_bad_wait_payload_follows_the_live_tile_box() {
     );
 }
 
+/// Riichi Book 1, ch. 7, "Genbutsu wait": keep the pinfu side-wait hand dama
+/// when one winning tile is the threatening player's genbutsu (ch7:539, 558).
+#[wasm_bindgen_test]
+fn test_dama_genbutsu_wait_payload_stays_dama() {
+    for run in 0..60 {
+        let json_output = generate_puzzle("dama_genbutsu_wait".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+        assert_eq!(val["category"], "dama_genbutsu_wait");
+        assert_eq!(val["target_action"], "Dama", "run {run}");
+        assert_eq!(val["correct_action"]["type"], "dama", "run {run}");
+        assert!(val["riichi_triggers"].as_array().unwrap().is_empty());
+
+        let reasons: Vec<&str> = val["dama_reasons"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|reason| reason.as_str().unwrap())
+            .collect();
+        assert_eq!(reasons, vec!["genbutsu_wait"], "run {run}");
+
+        let human = &val["players"][0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        assert_ne!(
+            human["wind"], "East",
+            "run {run}: the human is never the dealer"
+        );
+        let discard_code = val["correct_action"]["discard"]
+            .as_str()
+            .expect("a dama action names the discard");
+        assert_eq!(human["draw"], discard_code, "run {run}");
+        assert_eq!(
+            val["can_riichi"], true,
+            "run {run}: Riichi must be offerable for a Riichi-vs-dama question"
+        );
+
+        let tenpai: Vec<Tile> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        let counts = to_counts(&tenpai);
+        assert_eq!(calculate_shanten(&counts).shanten, 0, "run {run}");
+
+        let waits: Vec<Tile> = val["ukeire_tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        assert_eq!(
+            waits.len(),
+            2,
+            "run {run}: the book's example is a side wait"
+        );
+
+        // The book's example is a pinfu hand, so the general ch7.1 rule would
+        // have declared Riichi. Only the genbutsu wait keeps it concealed.
+        let dora: Vec<Tile> = val["dora_indicators"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|indicator| parse_single_tile(indicator.as_str().unwrap()))
+            .collect();
+        let round_wind = val["round_wind"].as_str().expect("round wind");
+        let seat_wind = human["wind"].as_str().expect("human wind");
+        for &waiting_tile in &waits {
+            let mut winning = tenpai.clone();
+            winning.push(waiting_tile);
+            assert!(
+                standard_han_without_riichi(&winning, waiting_tile, round_wind, seat_wind, &dora)
+                    >= 1,
+                "run {run}: the book's example has a han without riichi"
+            );
+        }
+
+        // Exactly one opponent is in Riichi: the player everyone is watching.
+        let players = val["players"].as_array().unwrap();
+        let threats: Vec<&serde_json::Value> = players
+            .iter()
+            .skip(1)
+            .filter(|player| player["is_riichi"] == true)
+            .collect();
+        assert_eq!(threats.len(), 1, "run {run}: one threatening player");
+        let threat = threats[0];
+
+        let threat_discards = threat["discards"].as_array().unwrap();
+        let declaration = threat["riichi_discard_index"]
+            .as_u64()
+            .expect("the threat has a declaration discard") as usize;
+        assert_eq!(
+            declaration + 1,
+            threat_discards.len(),
+            "run {run}: the declaration is the threat's last discard"
+        );
+        assert_eq!(threat_discards[declaration]["is_riichi"], true);
+
+        // The task's verification: at least one winning tile appears in the
+        // threatening player's river, so it is their genbutsu.
+        let threat_river: Vec<String> = threat_discards
+            .iter()
+            .map(|discard| discard["tile"].as_str().unwrap().to_string())
+            .collect();
+        let genbutsu: Vec<Tile> = waits
+            .iter()
+            .copied()
+            .filter(|wait| threat_river.contains(&wait.to_string()))
+            .collect();
+        assert_eq!(
+            genbutsu.len(),
+            1,
+            "run {run}: exactly one side of the wait is the threat's genbutsu"
+        );
+
+        // It was discarded before the declaration, so it is the threat's own
+        // river rather than the declaration tile itself.
+        let planted = genbutsu[0].to_string();
+        let position = threat_river
+            .iter()
+            .position(|code| *code == planted)
+            .unwrap_or_else(|| panic!("run {run}: {planted} missing from the threat river"));
+        assert!(
+            position < declaration,
+            "run {run}: {planted} must be discarded before the declaration"
+        );
+
+        // The other side of the wait is still live: it is in nobody's river.
+        let live = waits
+            .iter()
+            .copied()
+            .find(|wait| !genbutsu.contains(wait))
+            .expect("one live winning tile");
+        let live_code = live.to_string();
+        for opponent in players.iter().skip(1) {
+            for discard in opponent["discards"].as_array().unwrap() {
+                assert_ne!(
+                    discard["tile"].as_str().unwrap(),
+                    live_code,
+                    "run {run}: the live wait is visible in a river"
+                );
+            }
+        }
+
+        // The hand is never furiten.
+        for discard in human["discards"].as_array().unwrap() {
+            let code = discard["tile"].as_str().unwrap();
+            assert!(
+                !waits.iter().any(|wait| wait.to_string() == code),
+                "run {run}: human river contains furiten tile {code}"
+            );
+        }
+    }
+}
+
 #[wasm_bindgen_test]
 fn test_payload_supports_riichi_and_dama_actions() {
     let ryanmen: serde_json::Value =
