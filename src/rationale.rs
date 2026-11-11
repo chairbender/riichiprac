@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use agari::tile::Tile;
 
 use crate::display::format_tile_for_display;
-use crate::safety::SafetyRank;
+use crate::safety::{SafetyFacts, SafetyRank};
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, RiichiTrigger, ShouminkanTrigger,
 };
@@ -284,6 +284,7 @@ impl DamaReason {
             Self::BadWait => "bad_wait",
             Self::NoExtraHan => "no_extra_han",
             Self::FewLiveWinningTiles => "few_live_winning_tiles",
+            Self::GenbutsuWait => "genbutsu_wait",
             Self::NoTanyao => "no_tanyao",
             Self::MiddleWait => "middle_wait",
             Self::NoRedFiveWait => "no_red_five_wait",
@@ -322,6 +323,17 @@ impl DamaReason {
                 quote: "Go dama if there are only one or two simple tiles left to win on.",
                 citation: ch7("Bad wait", 522, "one or two simple tiles"),
             }),
+            Self::GenbutsuWait => Some(RuleText {
+                rule: "When one of your winning tiles is the genbutsu of the player everyone \
+                       is watching, keep the hand dama: the players folding to that threat \
+                       discard exactly the tiles it cannot ron.",
+                quote: "one of your winning tiles is among their genbutsu tiles",
+                citation: ch7(
+                    "Genbutsu wait",
+                    539,
+                    "one of your winning tiles is among their",
+                ),
+            }),
             Self::MiddleWait => Some(RuleText {
                 rule: "A 4/5/6 single wait is the worst kind of wait, so it is the \
                        wait half of the book's dama case.",
@@ -352,6 +364,7 @@ impl DamaReason {
             | Self::BadWait
             | Self::NoExtraHan
             | Self::FewLiveWinningTiles
+            | Self::GenbutsuWait
             | Self::MiddleWait
             | Self::Mangan => None,
         }
@@ -604,6 +617,36 @@ fn applies_dama(reason: DamaReason, state: &GameState) -> String {
             "The wait on {} has only one or two live simple winning tiles.",
             wait_tiles(state)
         ),
+        DamaReason::GenbutsuWait => {
+            let waits: Vec<Tile> = state
+                .ukeire_tiles
+                .iter()
+                .filter_map(|code| Tile::try_from(code.as_str()).ok())
+                .collect();
+            let threat_read = state
+                .players
+                .iter()
+                .find(|player| player.is_riichi)
+                .and_then(|threat| {
+                    SafetyFacts::from_state(state, threat.seat).map(|facts| {
+                        let genbutsu: Vec<String> = waits
+                            .iter()
+                            .filter(|tile| facts.is_genbutsu(**tile))
+                            .map(|tile| format_tile_for_display(&tile.to_string(), false))
+                            .collect();
+                        (threat, genbutsu)
+                    })
+                });
+            match threat_read {
+                Some((threat, genbutsu)) if !genbutsu.is_empty() => format!(
+                    "{} is genbutsu for {} (in Riichi), so the players folding to that \
+                     threat throw your winning tile.",
+                    genbutsu.join(" / "),
+                    threat.name
+                ),
+                _ => "One of the winning tiles is the threatening player's genbutsu.".to_string(),
+            }
+        }
         DamaReason::NoTanyao => "A terminal or honor pair rules out tanyao.".to_string(),
         DamaReason::MiddleWait => format!("The wait is {wait}, a middle tile."),
         DamaReason::NoRedFiveWait => "No red five is held.".to_string(),
@@ -668,6 +711,11 @@ fn summary_for(state: &GameState) -> String {
             "Stay in dama: the bad wait has only one or two live simple winning tiles.".to_string()
         };
     }
+    if state.category == "dama_genbutsu_wait" {
+        return "Stay in dama: one of your winning tiles is the threatening player's \
+                genbutsu, so the players folding to that threat discard exactly that tile."
+            .to_string();
+    }
     if !state.riichi_triggers.is_empty() {
         return "Declare Riichi: the book's chiitoitsu criteria pick this hand.".to_string();
     }
@@ -706,6 +754,20 @@ fn caveats_for(state: &GameState) -> Vec<String> {
                     .to_string(),
             );
         }
+    } else if state.category == "dama_genbutsu_wait" {
+        caveats.push(
+            "The threat is shown as a Riichi declaration, the chapter's first example of \
+             a player everyone is watching. The general three-condition rule would still \
+             pick Riichi here (this hand has a han and a good wait); the genbutsu-wait \
+             section is the exception that keeps it concealed."
+                .to_string(),
+        );
+        caveats.push(
+            "The book only respects a loud player whose call is actually being feared: \
+             against a bad call that nobody folds to, it says to declare Riichi even when \
+             your winning tiles are that player's genbutsu (ch7:566)."
+                .to_string(),
+        );
     } else if !state.dama_reasons.is_empty() {
         caveats.push(
             "The book's second dama case is specifically honitsu/chinitsu chiitoitsu; this \
@@ -752,6 +814,11 @@ fn scenario_source(category: &str) -> Option<Citation> {
         "chiitoitsu_riichi_vs_dama" => Some(ch7(CHIITOITSU_BOX, 345, "Riichi judgement")),
         "riichi_judgement" => Some(ch7(GENERAL_RULE, 55, "at least one")),
         "dama_bad_wait" => Some(ch7("Bad wait", 521, "three or more winning tiles")),
+        "dama_genbutsu_wait" => Some(ch7(
+            "Genbutsu wait",
+            539,
+            "one of your winning tiles is among their",
+        )),
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "wind_discard_order" => Some(ch9_seating(455, "discard the right player's wind first")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
@@ -2348,6 +2415,7 @@ mod tests {
             DamaReason::BadWait,
             DamaReason::NoExtraHan,
             DamaReason::FewLiveWinningTiles,
+            DamaReason::GenbutsuWait,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
         ] {
@@ -2371,6 +2439,7 @@ mod tests {
             "pair_count",
             "riichi_judgement",
             "dama_bad_wait",
+            "dama_genbutsu_wait",
             "shouminkan_decision",
             "wind_discard_order",
             "defense_safety_chart",
@@ -2437,6 +2506,33 @@ mod tests {
             rationale.rules
         );
         assert!(!rationale.summary.is_empty());
+    }
+
+    #[test]
+    fn dama_genbutsu_wait_rationale_cites_the_genbutsu_section() {
+        let state = generate_puzzle("dama_genbutsu_wait").expect("lesson must generate");
+        let rationale = rationale_for(&state).expect("the genbutsu wait needs a rationale");
+
+        assert_eq!(rationale.source.chapter, 7);
+        assert_eq!(rationale.source.section, "Genbutsu wait");
+        assert_eq!(
+            rationale.source.source_needle,
+            "one of your winning tiles is among their"
+        );
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert_eq!(ids, vec!["genbutsu_wait"]);
+        assert!(
+            rationale.rules[0].applies.contains("genbutsu"),
+            "{}",
+            rationale.rules[0].applies
+        );
+        assert!(rationale.summary.contains("dama"), "{}", rationale.summary);
+        assert!(!rationale.absent.is_empty() || !rationale.caveats.is_empty());
     }
 
     #[test]

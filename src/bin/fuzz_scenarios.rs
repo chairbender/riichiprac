@@ -57,6 +57,7 @@ const DEFAULT_SCENARIOS: &[ScenarioId] = &[
     ScenarioId::ChiitoitsuRiichiVsDama,
     ScenarioId::RiichiJudgement,
     ScenarioId::DamaBadWait,
+    ScenarioId::DamaGenbutsuWait,
     ScenarioId::ShouminkanDecision,
 ];
 
@@ -85,7 +86,8 @@ usage: fuzz_scenarios [options]
                            (default: ryanmen_protorun, nakabukure_ready,
                            protorun_priority, ryankan_break, pair_count,
                            chiitoitsu_riichi_vs_dama, riichi_judgement,
-                           dama_bad_wait, shouminkan_decision;
+                           dama_bad_wait, dama_genbutsu_wait,
+                           shouminkan_decision;
                            ai_best_action needs the model and is rejected)
   --iterations <n>         maximum generation attempts (default: 200)
   --limit <n>              maximum discrepancy files per run (default: 20)

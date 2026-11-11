@@ -269,6 +269,11 @@ pub enum DamaReason {
     /// 1, ch. 7, "Bad wait": "Go dama if there are only one or two simple tiles
     /// left to win on."
     FewLiveWinningTiles,
+    /// One of the winning tiles is the genbutsu of the player everyone is
+    /// paying attention to. Riichi Book 1, ch. 7, "Genbutsu wait": the other
+    /// players fold to that threat by discarding exactly its genbutsu, so the
+    /// hand keeps its value without warning the table with Riichi.
+    GenbutsuWait,
     /// A terminal/honor pair prevents Tanyao.
     NoTanyao,
     /// The wait is a middle tile (4, 5, or 6).

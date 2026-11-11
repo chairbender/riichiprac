@@ -38,6 +38,7 @@ export type DamaReason =
   | 'bad_wait'
   | 'no_extra_han'
   | 'few_live_winning_tiles'
+  | 'genbutsu_wait'
   | 'no_tanyao'
   | 'middle_wait'
   | 'no_red_five_wait'
