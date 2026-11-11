@@ -1,6 +1,9 @@
 # Scenario Report Plan: Export / Import a Disputed Decision
 
-Status: implemented.
+Status: the format, Rust core, and CLI are implemented. The in-app UI is now a
+plain position export/import; the report-scoped buttons, reason dialog, and
+review banner were removed (see [UI](#ui)). This document remains the design
+record for the report format used by the CLI and the generator fuzzer.
 
 This document describes a self-contained bug-report format and the UI needed to
 export a disputed puzzle, re-import it into the trainer, and re-run the Mortal
@@ -281,6 +284,13 @@ convenience for manual/agent-crafted states, with a warning that no decision was
 attached. This is cheap and useful for debugging.
 
 ## UI
+
+> **Superseded:** the report-scoped controls described here were replaced by a
+> generic **Export** / **Import** pair (`ExportImportControls.tsx`). Export
+> downloads the complete `GameState` as a plain position file; import restores
+> it. The reason dialog, review banner, and report-mode store state no longer
+> exist. Report files are still accepted on import (their `table` is loaded) and
+> remain the format used by `verify_report` and `fuzz_scenarios`.
 
 Mobile-first, no new layout paradigm.
 
