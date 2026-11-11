@@ -9,6 +9,7 @@ import type {
 const CORRECT_ACTION_TYPES: CorrectActionType[] = [
   'riichi',
   'dama',
+  'fold',
   'kan',
   'discard',
   'best',
@@ -43,7 +44,9 @@ export function isCorrectAction(value: unknown): value is CorrectAction {
     );
   }
 
-  return action.type === 'riichi' || action.type === 'dama'
+  return action.type === 'riichi' ||
+    action.type === 'dama' ||
+    action.type === 'fold'
     ? typeof action.discard === 'string'
     : typeof action.tile === 'string';
 }

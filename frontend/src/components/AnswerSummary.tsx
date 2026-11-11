@@ -160,6 +160,8 @@ function bookPick(grade: DualGrade): string {
       return `Riichi, discarding ${tile}`;
     case 'dama':
       return `Dama, discarding ${tile}`;
+    case 'fold':
+      return `Fold, discarding ${tile}`;
     default:
       return actionTypeLabel(grade.book.expected_action);
   }
@@ -171,6 +173,8 @@ function actionTypeLabel(action: string): string {
       return 'Riichi';
     case 'dama':
       return 'Dama';
+    case 'fold':
+      return 'Fold';
     case 'kan':
       return 'Kan';
     case 'discard':

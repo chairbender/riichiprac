@@ -329,6 +329,8 @@ function describeBookAction(state: GameState): string {
       return state.target_action === 'NaniKiru'
         ? `Discard ${state.correct_action.discard}`
         : `Dama · discard ${state.correct_action.discard}`;
+    case 'fold':
+      return `Fold · discard ${state.correct_action.discard}`;
     case 'kan':
       return `Added Kan on ${state.correct_action.tile}`;
     case 'discard':

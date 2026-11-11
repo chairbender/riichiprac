@@ -256,6 +256,7 @@ fn describe_correct_action(action: &CorrectAction) -> String {
     match action {
         CorrectAction::Riichi { discard } => format!("Riichi, discarding {discard}"),
         CorrectAction::Dama { discard } => format!("Dama, discarding {discard}"),
+        CorrectAction::Fold { discard } => format!("Fold, discarding the safest tile {discard}"),
         CorrectAction::Kan { tile } => format!("Added Kan on {tile}"),
         CorrectAction::Discard { tile } => format!("Pass on the Kan and discard {tile}"),
         CorrectAction::Best { action, tile, .. } => match tile {
@@ -269,6 +270,9 @@ fn describe_reported_action(answer: &ReportedAction) -> String {
     match answer.action {
         CorrectActionType::Riichi => format!("Riichi, discarding {}", answer.tile),
         CorrectActionType::Dama => format!("Dama, discarding {}", answer.tile),
+        CorrectActionType::Fold => {
+            format!("Fold, discarding the safest tile {}", answer.tile)
+        }
         CorrectActionType::Kan => format!("Added Kan on {}", answer.tile),
         CorrectActionType::Discard => {
             format!("Pass on the Kan and discard {}", answer.tile)

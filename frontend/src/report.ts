@@ -177,6 +177,8 @@ export function mortalActionForCorrect(action: CorrectAction): string {
       return 'Riichi';
     case 'dama':
       return `Discard_${action.discard}`;
+    case 'fold':
+      return `Discard_${action.discard}`;
     case 'kan':
       return 'Kan';
     case 'discard':
@@ -192,6 +194,8 @@ export function mortalActionForReported(answer: ReportedAction): string {
     case 'riichi':
       return 'Riichi';
     case 'dama':
+      return `Discard_${answer.tile}`;
+    case 'fold':
       return `Discard_${answer.tile}`;
     case 'kan':
       return 'Kan';
@@ -243,6 +247,8 @@ export function describeCorrectAction(action: CorrectAction): string {
       return `Riichi, discarding ${action.discard}`;
     case 'dama':
       return `Dama, discarding ${action.discard}`;
+    case 'fold':
+      return `Fold, discarding the safest tile ${action.discard}`;
     case 'kan':
       return `Added Kan on ${action.tile}`;
     case 'discard':
@@ -258,6 +264,8 @@ export function describeReportedAction(answer: ReportedAction): string {
       return `Riichi, discarding ${answer.tile}`;
     case 'dama':
       return `Dama, discarding ${answer.tile}`;
+    case 'fold':
+      return `Fold, discarding the safest tile ${answer.tile}`;
     case 'kan':
       return `Added Kan on ${answer.tile}`;
     case 'discard':

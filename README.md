@@ -63,6 +63,34 @@ shared deck, validated, encoded, evaluated once (plus a second pass when the
 model chooses Riichi), and returned to React with `correct_action`, the legal
 action list, and the evaluation. React only renders and grades.
 
+## Defense scenarios
+
+Two lessons train pure defense against an opponent's Riichi. Neither asks about
+hand value: the generated hand is never ready, so the question is only which
+tile is safest to let go. Both are graded by the book's rule; Mortal's
+answer appears beside it after you answer.
+
+**Defense: Safest Discard** builds a board where Riichi Book 1, ch. 8's safety
+ranking (`tbl:safety`) has a real answer — a genbutsu, a suji tile, a no-chance
+tile behind a blockade, or an honor ranked by its visible copies — and fills the
+rest of the hand with tiles the chart ranks strictly lower, so the safest
+discard is unique. The book panel names the chart row the answer sits on and
+lists the other tiles with their ranks ("Not this hand").
+
+**Defense: Nothing Is Safe** is the chapter's fallback, "What to discard when
+you get stuck". Nothing in the hand is Rank B or safer, so the chart identifies
+nothing; the learner applies the book's fallback list — break up a pair or
+concealed set, avoid the dora and its neighbours, stay outside the opponent's
+early discards, and prefer a terminal so the discard cannot deal into tanyao.
+The generated hand holds the answer twice, so the copy you keep is your
+follow-up discard.
+
+The safety chart itself is `src/safety.rs`: the fifteen rows of `tbl:safety`
+plus the suji and blockade arithmetic they are derived from. The generator only
+places tiles; every rank is recomputed from what the defender can see (the
+threat's river, all four rivers, open melds, the dora indicator, and the
+defender's own hand).
+
 ## Reporting a bad answer
 
 After answering a puzzle, use **Report bad answer** to pick a reason, add an

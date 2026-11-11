@@ -366,6 +366,7 @@ export const App = () => {
           availableActions={isDrill ? availableActions : undefined}
           canDiscard={canDiscard}
           revealMortal={dualGrade !== null || peekedBeforeAnswer}
+          targetAction={gameState?.target_action}
           onShowVerdict={showVerdict}
           onToggleRiichi={toggleRiichi}
           onToggleKan={toggleKan}

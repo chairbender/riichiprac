@@ -423,7 +423,9 @@ pub fn normalize_mortal_action(action: &str) -> String {
 pub fn mortal_action_for_correct(action: &CorrectAction) -> String {
     match action {
         CorrectAction::Riichi { .. } => "Riichi".to_string(),
-        CorrectAction::Dama { discard } => format!("Discard_{discard}"),
+        CorrectAction::Dama { discard } | CorrectAction::Fold { discard } => {
+            format!("Discard_{discard}")
+        }
         CorrectAction::Kan { .. } => "Kan".to_string(),
         CorrectAction::Discard { tile } => format!("Discard_{tile}"),
         CorrectAction::Best { action, .. } => action.clone(),
@@ -435,6 +437,7 @@ pub fn mortal_action_for_answer(answer: &SubmittedAnswer) -> String {
     match answer.action {
         CorrectActionType::Riichi => "Riichi".to_string(),
         CorrectActionType::Dama => format!("Discard_{}", answer.tile),
+        CorrectActionType::Fold => format!("Discard_{}", answer.tile),
         CorrectActionType::Kan => "Kan".to_string(),
         CorrectActionType::Discard => format!("Discard_{}", answer.tile),
         CorrectActionType::Best => answer

@@ -2,6 +2,7 @@
 //!
 //! - `block_theory`: 5-block random hands and the ryanmen protorun lesson.
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
+//! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
 //! - `shouminkan_decision`: Added Kan decision lesson.
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
 //!
@@ -11,6 +12,7 @@
 pub mod ai_best_action;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
+mod defense;
 mod shouminkan_decision;
 mod support;
 
@@ -32,6 +34,7 @@ pub enum ScenarioCategory {
     RiichiDecision,
     KanDecision,
     AiDecision,
+    DefenseDecision,
 }
 
 impl ScenarioCategory {
@@ -41,6 +44,7 @@ impl ScenarioCategory {
             ScenarioCategory::RiichiDecision => "riichi_decision",
             ScenarioCategory::KanDecision => "kan_decision",
             ScenarioCategory::AiDecision => "ai_decision",
+            ScenarioCategory::DefenseDecision => "defense_decision",
         }
     }
 }
@@ -124,6 +128,24 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         requires_ai: true,
         grading: ScenarioGrading::MortalOnly,
     },
+    ScenarioMeta {
+        id: ScenarioId::DefenseSafetyChart,
+        label: "Defense: Safest Discard",
+        description: "An opponent has declared Riichi: discard the tile the book's safety chart ranks safest.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &["defense", "betaori", "safety_chart", "suji", "genbutsu"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
+        id: ScenarioId::DefenseStuckHeuristic,
+        label: "Defense: Nothing Is Safe",
+        description: "No tile is identified as safe: apply the book's fallback and break up the pair.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &["defense", "betaori", "heuristic", "pairs", "discard"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
 ];
 
 /// Serializes the scenario catalogue for the frontend picker.
@@ -164,6 +186,8 @@ pub enum ScenarioId {
     ShouminkanDecision,
     ShouminkanDecline,
     AiBestAction,
+    DefenseSafetyChart,
+    DefenseStuckHeuristic,
 }
 
 impl ScenarioId {
@@ -174,6 +198,8 @@ impl ScenarioId {
         ScenarioId::ShouminkanDecision,
         ScenarioId::ShouminkanDecline,
         ScenarioId::AiBestAction,
+        ScenarioId::DefenseSafetyChart,
+        ScenarioId::DefenseStuckHeuristic,
     ];
 
     /// The category string understood by the WASM API.
@@ -184,6 +210,8 @@ impl ScenarioId {
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
             ScenarioId::ShouminkanDecline => "shouminkan_decline",
             ScenarioId::AiBestAction => "ai_best_action",
+            ScenarioId::DefenseSafetyChart => "defense_safety_chart",
+            ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
         }
     }
 
@@ -195,6 +223,8 @@ impl ScenarioId {
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
             "shouminkan_decline" => Some(ScenarioId::ShouminkanDecline),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
+            "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
+            "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             _ => None,
         }
     }
@@ -211,6 +241,8 @@ impl ScenarioId {
                  generate_ai_puzzle"
                     .to_string(),
             ),
+            ScenarioId::DefenseSafetyChart => defense::generate_safety_chart(category),
+            ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
         }
     }
 }
@@ -289,7 +321,18 @@ mod tests {
         assert_eq!(scenarios[0]["category"], "tile_efficiency");
         assert_eq!(scenarios[0]["requires_ai"], false);
         assert!(scenarios[0]["tags"].is_array());
-        assert_eq!(scenarios.last().expect("AI scenario")["requires_ai"], true);
+        assert!(
+            scenarios
+                .iter()
+                .any(|scenario| scenario["id"] == "ai_best_action"
+                    && scenario["requires_ai"] == true)
+        );
+        assert!(
+            scenarios
+                .iter()
+                .any(|scenario| scenario["id"] == "defense_safety_chart"
+                    && scenario["category"] == "defense_decision")
+        );
     }
 
     #[test]

@@ -365,7 +365,10 @@ export const useGameStore = create<GameStore>((set, get) => {
       const human = game.players.find((player) => player.is_human);
       const kanCandidate = human ? findKanCandidateTile(human) : null;
 
-      let selectedType: CorrectActionType = 'dama';
+      // A defense lesson's answer is a fold: no declaration is armed, so the
+      // click alone submits the "safest discard" action.
+      let selectedType: CorrectActionType =
+        game.correct_action.type === 'fold' ? 'fold' : 'dama';
       if (state.callKan && kanCandidate) {
         selectedType = 'kan';
       } else if (state.callRiichi) {

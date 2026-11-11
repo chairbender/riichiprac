@@ -155,7 +155,7 @@ pub fn compare_expected_action(
 pub fn discrepancy_kind(expected: &CorrectAction, ai_action: &str) -> DiscrepancyKind {
     let expected_is_discard = matches!(
         expected.action_type(),
-        CorrectActionType::Dama | CorrectActionType::Discard
+        CorrectActionType::Dama | CorrectActionType::Fold | CorrectActionType::Discard
     );
     let ai_is_discard = normalize_action_name(ai_action).starts_with("Discard_");
 

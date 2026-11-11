@@ -5,7 +5,7 @@ import {
   discardProbabilitiesByTile,
   formatProbability,
 } from '../types/ai';
-import type { PlayerState } from '../types/game';
+import type { PlayerState, TargetAction } from '../types/game';
 import type { DualGrade } from '../types/verdict';
 import { mortalRecommendedTile } from '../types/verdict';
 import { AnswerSummary } from './AnswerSummary';
@@ -29,6 +29,8 @@ interface HandDockProps {
   canDiscard?: boolean;
   /** Whether Mortal's probability badges may be shown. */
   revealMortal?: boolean;
+  /** What the state asks for; a `Defend` lesson is a pure-defense fold. */
+  targetAction?: TargetAction;
   /** Scroll to the full book-vs-Mortal comparison. */
   onShowVerdict: () => void;
   onToggleRiichi: () => void;
@@ -52,6 +54,7 @@ export function HandDock({
   availableActions,
   canDiscard = true,
   revealMortal = false,
+  targetAction,
   onShowVerdict,
   onToggleRiichi,
   onToggleKan,
@@ -80,6 +83,8 @@ export function HandDock({
     handHint = 'Riichi selected - tap a tile to discard';
   } else if (isAiScenario) {
     handHint = 'Tap a tile to discard';
+  } else if (targetAction === 'Defend') {
+    handHint = 'Fold - tap the safest tile';
   } else if (kanTile) {
     handHint = 'Tap a tile to discard, or arm Call Kan';
   }
