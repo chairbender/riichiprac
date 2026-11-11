@@ -119,12 +119,67 @@ Mortal's per-action `Q` is not comparable with our `expected_value`: the report
 shows `Q(s,a)` (and `Φ`, the pt EV), while output 0 of the network is `V(s)`.
 Only the action distribution and its ordering are compared.
 
-**Pick the network the checkpoint was trained as.** `mortal_298k` is the
-`VoidShine/mortal-298k` checkpoint, i.e. the "4.0" family; reviewing with
-"4.1b" would compare two different networks and show large `|dP|` even though
-the wiring is fine. A matching top action with a large `|dP|` says "right
-decision, different observation or different weights"; a small `|dP|` says
-"same network, same observation".
+**Our checkpoint is not the reviewer's network.** `mortal_298k` is
+`VoidShine/mortal-298k`: a checkpoint trained with the Mortal framework (298k
+steps, 2025–2026 Tenhou hanchan logs) whose card reports "AI similarity
+83%–92% on mjai.ekyu.moe". It is the right *architecture* (v4, 1012 channels,
+46 actions) and the right *rules*, but not the same weights as any network tag
+the site offers. Consequences:
+
+* the **top action** is the meaningful check — two runs of this recipe agree on
+  most decisions, so agreement is evidence that the observation is wired
+  correctly;
+* `max |dP|` is **not** a pass/fail signal against the site's networks. It only
+  becomes one with `--same-weights`, i.e. when you deliberately upload against
+  a network you know is identical (for example by hosting our checkpoint in a
+  local reviewer).
+
+A wrong *mask* is the failure mode worth hunting, because it makes agreement
+impossible rather than merely unlikely: the harness prints `only in report`
+and `missing from report` for exactly that.
+
+## First manual run (report `7f1324f5dd05e502`)
+
+Fixture: `riichi_judgement`, East 2 honba 1, human = dealer, no calls. Uploaded
+with target player 1, network 4.0, temperature 1.00.
+
+**The table arrived intact.** The review's own state for the last decision has
+`shanten 0`, `tiles_left 61`, and a 14-tile hand equal to ours; the page's
+re-serialised log has the same kyoku meta, scores, dora, haipai, draws and
+discards we wrote. Nothing was dropped or reordered by the parser.
+
+**Four decisions, three agreements, one mask bug.** Our evaluation of each
+position (the site gives its top action per entry; ours comes from
+`evaluate_state` on a state built from the same position):
+
+| # | position | site's 4.0 | ours | |
+| --- | --- | --- | --- | --- |
+| 1 | first discard (2-shanten) | `Discard_6s` | `Discard_6s` | ✅ |
+| 2 | chi opportunity on 8m | `Pass` | `Pass` | ✅ |
+| 3 | second discard (1-shanten) | `Riichi` | `Discard_4p` | ❌ |
+| 4 | final decision (tenpai) | `Riichi` | `Riichi` | ✅ |
+
+Entry 3 is not a model disagreement, it is a **missing action**: our evaluation
+for that position does not contain `Riichi` at all (`only in report` would say
+so). `ai::actions::can_riichi` requires `state.shanten == 0`, while libriichi
+(`update.rs`, `tsumo`) allows
+
+```rust
+self.is_menzen && self.tiles_left >= 4 && self.scores[0] >= 1000
+    && (self.shanten == 0 || self.shanten == 1 && self.has_next_shanten_discard)
+```
+
+where `has_next_shanten_discard` is "some tile in hand can be discarded to
+reduce shanten" — i.e. **Riichi is legal from 1-shanten whenever a discard
+reaches tenpai**. On those turns we mask it off, so the `can_riichi` plane
+(row 879) is wrong and the model can never choose Riichi. That affects every
+1-shanten lesson and every AI drill hand in that shape. Fixing it changes the
+action space, so it belongs in its own task rather than in this validation.
+
+Probabilities, for the record: our distribution is far sharper (final decision:
+`Riichi` 0.608 / `Discard_5z` 0.388) than the site's (`0.245` / `0.203`). That
+is expected from the two different checkpoints; the top two actions are the
+same and in the same order.
 
 ## Findings
 
@@ -250,5 +305,5 @@ places the pon tile in some river, as above.
 | --- | --- |
 | `src/export/tenhou6.rs` | the exporter (format, turn-order search, reverse walk) |
 | `src/export/tenhou6_test.rs` | native tests, including an independent replay of the emitted JSON |
-| `src/bin/export_tenhou6.rs` | CLI: generate/load a state, write the log, run our evaluation |
+| `src/bin/export_tenhou6.rs` | CLI: generate/load a state, write the log, run our evaluation (`--evaluate-only` skips the log) |
 | `scripts/validate_mortal_review.py` | report scraper and comparison |

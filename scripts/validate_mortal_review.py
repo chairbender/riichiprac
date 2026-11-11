@@ -22,9 +22,18 @@ report URL, a saved copy of the page, or `-` to paste the HTML in:
     scripts/validate_mortal_review.py --report page.html --evaluation ours.json
     pbpaste | scripts/validate_mortal_review.py --report - --evaluation ours.json
 
-Both report layouts are understood: the default (KillerDucky) one keeps the
-exact values in `title` attributes, and the classic one renders five-decimal
-spans, so the classic path compares at ~1e-5 precision.
+Three report sources are understood:
+
+* the report JSON the KillerDucky UI loads
+  (`https://mjai.ekyu.moe/report/<id>.json`, or the `?data=` URL from the
+  address bar) — exact floats, preferred;
+* a saved copy of either HTML layout: the default one keeps the exact values in
+  `title` attributes, the classic one renders five-decimal spans (~1e-5).
+
+The site puts a Cloudflare challenge in front of direct requests from some
+networks. If `--report <url>` comes back as a challenge, open the page in a
+browser, save the JSON (or run `curl` there) and pass the file, or pipe it
+with `--report -`.
 
 The comparison focuses on the last decision in the review, which is the
 snapshot our log was built to reach:
@@ -49,6 +58,7 @@ import json
 import math
 import re
 import sys
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -67,6 +77,18 @@ TILE_NAMES = {
 }
 
 # Action labels the reviewer prints -> the family we compare on.
+# The report JSON (and its mjai events) uses one-letter honor codes; our action
+# names use 1z..7z.
+HONOR_CODES = {
+    "E": "1z",
+    "S": "2z",
+    "W": "3z",
+    "N": "4z",
+    "P": "5z",
+    "F": "6z",
+    "C": "7z",
+}
+
 # Action words both report layouts print, mapped to our action families. The
 # classic layout prints a chi's tiles *before* the word, so the word is looked
 # up anywhere in the fragment, and "chii"/"skip" are the classic spellings.
@@ -122,7 +144,28 @@ class Entry:
     details: list[Scored] = field(default_factory=list)
 
 
+@dataclass
+class Report:
+    """Everything the comparison needs, from either report representation."""
+
+    entries: list[Entry]
+    temperature: float | None = None
+    model_tag: str | None = None
+    player_id: int | None = None
+    source: str = "html"
+
+
 # --- Parsing ---------------------------------------------------------------
+
+
+def normalise_report_url(url: str) -> str:
+    """Resolve the KillerDucky wrapper (`?data=/report/<id>.json`) to its data."""
+    parts = urllib.parse.urlsplit(url)
+    query = urllib.parse.parse_qs(parts.query)
+    data = query.get("data")
+    if data and data[0]:
+        return urllib.parse.urljoin(url, data[0])
+    return url
 
 
 def fetch_report(location: str) -> str:
@@ -130,13 +173,87 @@ def fetch_report(location: str) -> str:
         # Let the operator paste the saved page straight into the terminal.
         return sys.stdin.read()
     if location.startswith(("http://", "https://")):
+        url = normalise_report_url(location)
         request = urllib.request.Request(
-            location,
-            headers={"User-Agent": "riichiprac-mortal-validator/0.1"},
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) "
+                "riichiprac-mortal-validator/0.1",
+                "Accept": "application/json, text/html;q=0.9",
+            },
         )
         with urllib.request.urlopen(request, timeout=60) as response:
             return response.read().decode("utf-8", "replace")
     return Path(location).read_text(encoding="utf-8")
+
+
+class ReportUnavailable(Exception):
+    """The page could not be read (Cloudflare challenge, wrong URL, ...)."""
+
+
+def event_tile(code: str) -> str:
+    return HONOR_CODES.get(code, code)
+
+
+def event_action(event: dict) -> str:
+    """Map one mjai event from the report JSON onto our action naming."""
+    kind = event.get("type")
+    if kind == "dahai":
+        return f"Discard_{event_tile(event.get('pai', '?'))}"
+    return {
+        "reach": "Riichi",
+        "chi": "Chi",
+        "pon": "Pon",
+        "daiminkan": "Kan",
+        "ankan": "Kan",
+        "kakan": "Kan",
+        "hora": "Agari",
+        "ryukyoku": "Ryukyoku",
+        "none": "Pass",
+    }.get(kind, kind or "Pass")
+
+
+def parse_json_report(document: dict) -> Report:
+    review = document.get("review") or {}
+    entries: list[Entry] = []
+    for kyoku in review.get("kyokus") or []:
+        for raw in kyoku.get("entries") or []:
+            details = [
+                Scored(
+                    action=event_action(detail["action"]),
+                    q=float(detail["q_value"]),
+                    prob=float(detail["prob"]),
+                )
+                for detail in raw.get("details") or []
+            ]
+            entries.append(
+                Entry(
+                    label=f"Turn {raw.get('junme', '?')} (x{raw.get('tiles_left', '?')})",
+                    player=event_action(raw.get("actual") or {}),
+                    mortal=event_action(raw.get("expected") or {}),
+                    details=details,
+                )
+            )
+    return Report(
+        entries=entries,
+        temperature=review.get("temperature"),
+        model_tag=review.get("model_tag"),
+        player_id=document.get("player_id"),
+        source="json",
+    )
+
+
+def load_report(text: str) -> Report:
+    stripped = text.lstrip()
+    if stripped.startswith("{"):
+        return parse_json_report(json.loads(stripped))
+    if "Just a moment" in text[:3000] or "challenges.cloudflare.com" in text[:5000]:
+        raise ReportUnavailable(
+            "the report came back as a Cloudflare challenge, not data. Open the "
+            "report in the browser, save the page (or fetch the .json the UI "
+            "loads) and pass the saved file instead: --report page.json"
+        )
+    return Report(entries=parse_entries(text), source="html")
 
 
 def tile_code(svg_id: str) -> str:
@@ -177,7 +294,7 @@ def parse_rows(body: str) -> list[Scored]:
         Scored(
             action=action_name(match.group("action")),
             q=float(match.group("q")),
-            prob=float(match.group("prob")),
+            prob=float(match.group("prob")) / 100.0,
         )
         for match in TITLE_ROW_RE.finditer(body)
     ]
@@ -191,7 +308,7 @@ def parse_rows(body: str) -> list[Scored]:
                 Scored(
                     action=action_name(match.group("action")),
                     q=float(q),
-                    prob=float(prob),
+                    prob=float(prob) / 100.0,
                 )
             )
         except ValueError:
@@ -233,11 +350,13 @@ def same_family(left: str, right: str) -> bool:
     return left.startswith("Chi") and right.startswith("Chi")
 
 
-def resolve_temperature(page: str, override: float | None) -> tuple[float, str]:
+def resolve_temperature(
+    report: Report, page: str, override: float | None
+) -> tuple[float, str]:
     """The temperature the review ran at, and where that answer came from."""
     if override is not None:
         return override, "--temperature"
-    found = find_temperature(page)
+    found = report.temperature if report.temperature else find_temperature(page)
     if found is not None:
         return found, "the report"
     # mjai-reviewer's own default; guessing 1.0 here would silently compare
@@ -284,7 +403,7 @@ def compare(ours: dict, entry: Entry, tau: float) -> dict:
         float(ours.get("temperature", 1.0)),
         tau,
     )
-    their_probs = {detail.action: detail.prob / 100.0 for detail in entry.details}
+    their_probs = {detail.action: detail.prob for detail in entry.details}
     theirs = [detail.action for detail in entry.details]
 
     our_top = ours["recommended_action"]
@@ -313,7 +432,7 @@ def compare(ours: dict, entry: Entry, tau: float) -> dict:
         "only_in_report": listed_by_them_only,
         "missing_from_report": listed_by_us_only,
         "their_actions": [
-            {"action": detail.action, "q": detail.q, "prob": detail.prob / 100.0}
+            {"action": detail.action, "q": detail.q, "prob": detail.prob}
             for detail in entry.details
         ],
         "our_actions": [
@@ -487,6 +606,47 @@ def selftest() -> int:
         assert classic["top_action_matches"], classic
         assert classic["max_probability_delta"] < 1e-4, classic
 
+    # The report JSON the KillerDucky UI loads is the most precise source.
+    report_json = {
+        "engine": "Mortal",
+        "player_id": 1,
+        "review": {
+            "temperature": 1.0,
+            "model_tag": "4.0",
+            "kyokus": [
+                {
+                    "entries": [
+                        {
+                            "junme": 3,
+                            "tiles_left": 61,
+                            "expected": {"type": "reach", "actor": 1},
+                            "actual": {"type": "dahai", "actor": 1, "pai": "P", "tsumogiri": True},
+                            "details": [
+                                {"action": {"type": "reach", "actor": 1}, "q_value": 0.52, "prob": 0.6},
+                                {"action": {"type": "dahai", "actor": 1, "pai": "P", "tsumogiri": True}, "q_value": 0.33, "prob": 0.35},
+                                {"action": {"type": "none"}, "q_value": -1.0, "prob": 0.05},
+                            ],
+                        }
+                    ]
+                }
+            ],
+        },
+    }
+    parsed = load_report(json.dumps(report_json))
+    assert parsed.source == "json", parsed
+    assert parsed.temperature == 1.0 and parsed.model_tag == "4.0", parsed
+    assert parsed.player_id == 1, parsed
+    entry = parsed.entries[0]
+    assert (entry.player, entry.mortal) == ("Discard_5z", "Riichi"), entry
+    assert [row.action for row in entry.details] == [
+        "Riichi",
+        "Discard_5z",
+        "Pass",
+    ], entry.details
+    assert normalise_report_url(
+        "https://mjai.ekyu.moe/killerducky/?data=/report/abc.json"
+    ) == "https://mjai.ekyu.moe/report/abc.json"
+
     # The classic layout prints a chi's tiles before the word, and spells it
     # with two i's; both must land on our single "Chi" family.
     assert action_name('2m 3m <svg><use href="#pai-4m"></use></svg> Chii') == "Chi"
@@ -511,6 +671,11 @@ def main() -> int:
     parser.add_argument("--entry", type=int, default=-1,
                         help="which decision to compare, counted from the end (default: last)")
     parser.add_argument("--json", action="store_true", help="print the result as JSON")
+    parser.add_argument("--same-weights", action="store_true",
+                        help="assert the review ran the same checkpoint; then require the "
+                             "per-action probabilities to agree too")
+    parser.add_argument("--expect-player", type=int, default=1,
+                        help="the player id the fixture was exported for (default: 1)")
     parser.add_argument("--save-html", type=Path, help="also save the fetched page here")
     parser.add_argument("--selftest", action="store_true",
                         help="check the parser against a synthetic report and exit")
@@ -525,7 +690,13 @@ def main() -> int:
     if args.save_html:
         args.save_html.write_text(page, encoding="utf-8")
 
-    entries = parse_entries(page)
+    try:
+        report = load_report(page)
+    except ReportUnavailable as err:
+        print(err, file=sys.stderr)
+        return 2
+
+    entries = report.entries
     if not entries:
         print(
             "no review entries found: is this a Mortal report page, and did the "
@@ -538,7 +709,7 @@ def main() -> int:
         print("the report has no decision tables to compare", file=sys.stderr)
         return 2
 
-    tau, tau_source = resolve_temperature(page, args.temperature)
+    tau, tau_source = resolve_temperature(report, page, args.temperature)
     if tau <= 0:
         print(f"invalid temperature {tau}", file=sys.stderr)
         return 2
@@ -548,6 +719,10 @@ def main() -> int:
     result["entry"] = entry.label
     result["entries"] = len(entries)
     result["scenario"] = ours.get("scenario")
+    result["report_source"] = report.source
+    result["report_model_tag"] = report.model_tag
+    result["report_player_id"] = report.player_id
+    result["same_weights"] = args.same_weights
 
     result["temperature_source"] = tau_source
 
@@ -558,11 +733,35 @@ def main() -> int:
         print_report(result)
         print(f"temperature source     {tau_source}")
 
+    if report.model_tag:
+        print(f"reviewed network       {report.model_tag}")
+    if report.player_id is not None:
+        note = "" if report.player_id == args.expect_player else f" (expected {args.expect_player})"
+        print(f"reviewed player        {report.player_id}{note}")
+    if args.same_weights:
+        close = result["max_probability_delta"] is not None and result["max_probability_delta"] < 0.02
+        print(
+            "weights                same network asserted: "
+            + ("probabilities agree" if close else "PROBABILITIES DIFFER")
+        )
+    else:
+        print(
+            "weights                different training run assumed: only the top action is graded"
+        )
+
     if not result["top_action_matches"]:
         print(
-            "\nThe top actions differ. Either the weights are not the network the "
-            "review ran, or our observation does not match Mortal's for this state. "
-            "Compare the printed tables action by action.",
+            "\nThe top actions differ. Our checkpoint is an independent training run "
+            "(VoidShine/mortal-298k, not the reviewer's network), so occasional "
+            "disagreements are expected; but check the mask columns before blaming "
+            "the weights. Compare the tables action by action.",
+            file=sys.stderr,
+        )
+        return 1
+    if args.same_weights and (result["max_probability_delta"] or 0.0) >= 0.02:
+        print(
+            "\nTop action agrees but the probabilities do not: the observation differs "
+            "from Mortal's even though the decision does not.",
             file=sys.stderr,
         )
         return 1

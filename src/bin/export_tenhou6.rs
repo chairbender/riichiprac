@@ -54,6 +54,7 @@ struct Args {
     evaluate: bool,
     weights: PathBuf,
     evaluation_out: Option<PathBuf>,
+    evaluate_only: bool,
     quiet: bool,
 }
 
@@ -83,6 +84,7 @@ usage: export_tenhou6 [options]
   --out <path>           write the log here (default: stdout, '-' for stdout)
   --out-dir <dir>        write <scenario>.tenhou6.json per generated puzzle
   --evaluate             also run the local Mortal checkpoint on the state
+  --evaluate-only        skip the log and only evaluate (for states that cannot export)
   --weights <path>       Mortal checkpoint (default: frontend/public/models/...)
   --evaluation-out <p>   write our Evaluation JSON here (`-` for stdout)
   --quiet                do not print the upload hint
@@ -98,6 +100,7 @@ fn parse_args<I: Iterator<Item = String>>(mut args: I) -> Result<Args, String> {
         evaluate: false,
         weights: default_weights(),
         evaluation_out: None,
+        evaluate_only: false,
         quiet: false,
     };
     while let Some(arg) = args.next() {
@@ -119,6 +122,10 @@ fn parse_args<I: Iterator<Item = String>>(mut args: I) -> Result<Args, String> {
             "--weights" => parsed.weights = PathBuf::from(value("--weights")?),
             "--evaluation-out" => {
                 parsed.evaluation_out = Some(PathBuf::from(value("--evaluation-out")?))
+            }
+            "--evaluate-only" => {
+                parsed.evaluate_only = true;
+                parsed.evaluate = true;
             }
             "--quiet" => parsed.quiet = true,
             "--help" | "-h" => {
@@ -156,9 +163,11 @@ fn run(args: &Args) -> Result<(), (u8, String)> {
     };
 
     for (label, state) in &states {
-        let export = export_tenhou6(state).map_err(|err| (2, format!("{label}: {err}")))?;
-        report(label, &export, args);
-        write_log(label, &export, args)?;
+        if !args.evaluate_only {
+            let export = export_tenhou6(state).map_err(|err| (2, format!("{label}: {err}")))?;
+            report(label, &export, args);
+            write_log(label, &export, args)?;
+        }
         if let Some(model) = &model {
             let evaluation = evaluate_state(model, state)
                 .map_err(|err| (3, format!("{label}: evaluation failed: {err}")))?;
