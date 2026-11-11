@@ -149,32 +149,41 @@ fn print_evaluation(parsed: &ParsedReport, evaluation: &riichiprac::ai::wasm_bri
         evaluation
             .riichi_discard
             .as_deref()
-            .map(|discard| format!(" (declaring on {discard})"))
+            .map(|discard| {
+                format!(
+                    " (declaring on {})",
+                    riichiprac::display::format_tile_for_display(discard, false)
+                )
+            })
             .unwrap_or_default()
     } else {
         String::new()
     };
     println!(
         "Mortal double check: EV {:.4}, recommended {}{riichi}",
-        evaluation.expected_value, evaluation.recommended_action
+        evaluation.expected_value,
+        riichiprac::verdict::display_action_name(&evaluation.recommended_action)
     );
     for action in evaluation.evaluations.iter().take(5) {
         println!(
             "  {:<14} {:>6.2}%",
-            action.action,
+            riichiprac::verdict::display_action_name(&action.action),
             action.probability * 100.0
         );
     }
     println!(
         "App expected {} · reporter answered {:?} {}",
-        parsed
-            .report
-            .table
-            .correct_action
-            .tile()
-            .unwrap_or_default(),
+        riichiprac::display::format_tile_for_display(
+            parsed
+                .report
+                .table
+                .correct_action
+                .tile()
+                .unwrap_or_default(),
+            false
+        ),
         parsed.report.decision.answer.action,
-        parsed.report.decision.answer.tile
+        riichiprac::display::format_tile_for_display(&parsed.report.decision.answer.tile, false)
     );
 }
 

@@ -3,7 +3,9 @@
 use std::collections::HashMap;
 use std::fmt::Write;
 
+use crate::display::format_tile_for_display;
 use crate::state::{CorrectAction, CorrectActionType, GameState, PlayerState};
+use crate::verdict::display_action_name;
 
 use super::model::{ReportVerdict, ReportedAction, ScenarioReport};
 
@@ -79,12 +81,18 @@ fn render_table(out: &mut String, table: &GameState) {
         table.riichi_sticks,
         table.tiles_remaining
     );
-    let _ = writeln!(out, "Dora indicators: {}", or_none(&table.dora_indicators));
-    let _ = writeln!(
-        out,
-        "Ura indicators: {}",
-        or_none(&table.ura_dora_indicators)
-    );
+    let dora: Vec<String> = table
+        .dora_indicators
+        .iter()
+        .map(|code| format_tile_for_display(code, false))
+        .collect();
+    let ura: Vec<String> = table
+        .ura_dora_indicators
+        .iter()
+        .map(|code| format_tile_for_display(code, false))
+        .collect();
+    let _ = writeln!(out, "Dora indicators: {}", or_none(&dora));
+    let _ = writeln!(out, "Ura indicators: {}", or_none(&ura));
     let _ = writeln!(out);
 
     for player in &table.players {
@@ -179,18 +187,23 @@ fn render_ai(out: &mut String, ai: &super::model::ReportedAi) {
         .riichi_discard
         .as_deref()
         .filter(|_| ai.evaluation.recommended_action == "Riichi")
-        .map(|discard| format!(" (declaring on {discard})"))
+        .map(|discard| {
+            format!(
+                " (declaring on {})",
+                format_tile_for_display(discard, false)
+            )
+        })
         .unwrap_or_default();
     let _ = writeln!(
         out,
         "  Recommended: {}{riichi}",
-        ai.evaluation.recommended_action
+        display_action_name(&ai.evaluation.recommended_action)
     );
     for action in ai.evaluation.evaluations.iter().take(5) {
         let _ = writeln!(
             out,
             "    {:<14} {:>6.2}%",
-            action.action,
+            display_action_name(&action.action),
             action.probability * 100.0
         );
     }
@@ -198,9 +211,9 @@ fn render_ai(out: &mut String, ai: &super::model::ReportedAi) {
         let _ = writeln!(
             out,
             "  App action {} = {:.2}%, reporter action {} = {:.2}%",
-            comparison.app_action,
+            display_action_name(&comparison.app_action),
             comparison.app_probability * 100.0,
-            comparison.reporter_action,
+            display_action_name(&comparison.reporter_action),
             comparison.reporter_probability * 100.0
         );
         let _ = writeln!(
@@ -235,14 +248,16 @@ fn render_verdict(out: &mut String, report: &ScenarioReport, verdict: &ReportVer
     match &verdict.mortal {
         Some(mortal) => {
             let declaration = match (&mortal.recommended_discard, mortal.recommended_riichi) {
-                (Some(discard), true) => format!(", declaring on {discard}"),
+                (Some(discard), true) => {
+                    format!(", declaring on {}", format_tile_for_display(discard, false))
+                }
                 _ => String::new(),
             };
             let _ = writeln!(
                 out,
                 "Mortal: {} - recommends {}{declaration} ({:.0}%); answer scored {:.0}%",
                 if mortal.agrees { "AGREES" } else { "DISAGREES" },
-                mortal.recommended_action,
+                display_action_name(&mortal.recommended_action),
                 mortal.top_probability * 100.0,
                 mortal.answer_probability * 100.0
             );
@@ -269,33 +284,62 @@ fn render_verdict(out: &mut String, report: &ScenarioReport, verdict: &ReportVer
 
 fn describe_correct_action(action: &CorrectAction) -> String {
     match action {
-        CorrectAction::Riichi { discard } => format!("Riichi, discarding {discard}"),
-        CorrectAction::Dama { discard } => format!("Dama, discarding {discard}"),
-        CorrectAction::Fold { discard } => format!("Fold, discarding the safest tile {discard}"),
-        CorrectAction::Kan { tile } => format!("Added Kan on {tile}"),
-        CorrectAction::Discard { tile } => format!("Pass on the Kan and discard {tile}"),
+        CorrectAction::Riichi { discard } => format!(
+            "Riichi, discarding {}",
+            format_tile_for_display(discard, false)
+        ),
+        CorrectAction::Dama { discard } => format!(
+            "Dama, discarding {}",
+            format_tile_for_display(discard, false)
+        ),
+        CorrectAction::Fold { discard } => format!(
+            "Fold, discarding the safest tile {}",
+            format_tile_for_display(discard, false)
+        ),
+        CorrectAction::Kan { tile } => {
+            format!("Added Kan on {}", format_tile_for_display(tile, false))
+        }
+        CorrectAction::Discard { tile } => format!(
+            "Pass on the Kan and discard {}",
+            format_tile_for_display(tile, false)
+        ),
         CorrectAction::Best { action, tile, .. } => match tile {
-            Some(tile) => format!("{action} ({tile})"),
-            None => action.clone(),
+            Some(tile) => format!(
+                "{} ({})",
+                display_action_name(action),
+                format_tile_for_display(tile, false)
+            ),
+            None => display_action_name(action),
         },
     }
 }
 
 fn describe_reported_action(answer: &ReportedAction) -> String {
     let mut text = match answer.action {
-        CorrectActionType::Riichi => format!("Riichi, discarding {}", answer.tile),
-        CorrectActionType::Dama => format!("Dama, discarding {}", answer.tile),
-        CorrectActionType::Fold => {
-            format!("Fold, discarding the safest tile {}", answer.tile)
-        }
-        CorrectActionType::Kan => format!("Added Kan on {}", answer.tile),
-        CorrectActionType::Discard => {
-            format!("Pass on the Kan and discard {}", answer.tile)
-        }
+        CorrectActionType::Riichi => format!(
+            "Riichi, discarding {}",
+            format_tile_for_display(&answer.tile, false)
+        ),
+        CorrectActionType::Dama => format!(
+            "Dama, discarding {}",
+            format_tile_for_display(&answer.tile, false)
+        ),
+        CorrectActionType::Fold => format!(
+            "Fold, discarding the safest tile {}",
+            format_tile_for_display(&answer.tile, false)
+        ),
+        CorrectActionType::Kan => format!(
+            "Added Kan on {}",
+            format_tile_for_display(&answer.tile, false)
+        ),
+        CorrectActionType::Discard => format!(
+            "Pass on the Kan and discard {}",
+            format_tile_for_display(&answer.tile, false)
+        ),
         CorrectActionType::Best => answer
             .action_name
             .clone()
-            .unwrap_or_else(|| format!("Discard {}", answer.tile)),
+            .unwrap_or_else(|| format!("Discard {}", format_tile_for_display(&answer.tile, false))),
     };
     if answer.is_tsumogiri {
         text.push_str(" (tsumogiri)");
@@ -319,7 +363,11 @@ fn format_melds(player: &PlayerState) -> String {
             format!(
                 "{:?} [{}]{}",
                 meld.meld_type,
-                meld.tiles.join(" "),
+                meld.tiles
+                    .iter()
+                    .map(|tile| format_tile_for_display(tile, false))
+                    .collect::<Vec<_>>()
+                    .join(" "),
                 called_from
             )
         })
@@ -336,7 +384,7 @@ fn format_river(player: &PlayerState) -> String {
         .discards
         .iter()
         .map(|discard| {
-            let mut tile = discard.tile.clone();
+            let mut tile = format_tile_for_display(&discard.tile, discard.is_red);
             if discard.is_tsumogiri {
                 tile.push('*');
             }
@@ -367,9 +415,9 @@ fn annotate_red_fives(tiles: &[String], remaining: &mut HashMap<String, usize>) 
             match count {
                 Some(count) if *count > 0 => {
                     *count -= 1;
-                    format!("{tile}(red)")
+                    format_tile_for_display(tile, true)
                 }
-                _ => tile.clone(),
+                _ => format_tile_for_display(tile, false),
             }
         })
         .collect()
@@ -436,6 +484,24 @@ mod tests {
         assert!(text.contains("Mortal: UNAVAILABLE"));
         assert!(text.contains("Outcome: only_available_disagrees (not wrong)"));
         assert!(text.contains("Reporter note: The app should have stayed dama here."));
+    }
+
+    #[test]
+    fn summary_never_shows_raw_honor_codes() {
+        let report = fixture_report();
+        let text = report.human_readable.join("\n");
+
+        assert!(
+            text.contains("Pon [R R R]"),
+            "the mock table's red-dragon Pon must use the friendly name:\n{text}"
+        );
+        assert!(
+            !text
+                .as_bytes()
+                .windows(2)
+                .any(|pair| (b'1'..=b'7').contains(&pair[0]) && pair[1] == b'z'),
+            "the summary must not print 1z..7z honor codes:\n{text}"
+        );
     }
 
     #[test]

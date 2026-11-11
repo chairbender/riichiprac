@@ -15,6 +15,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::ai::wasm_bridge::Evaluation;
+use crate::display::format_mortal_tile_for_display;
 use crate::state::{CorrectAction, CorrectActionType, GameState};
 
 /// Draw weighting used for the display-only "Mortal was nearly split" note.
@@ -570,10 +571,7 @@ fn is_five_tile(tile: &str) -> bool {
 /// Human-readable label for a raw Mortal action name.
 pub fn display_action_name(action: &str) -> String {
     if let Some(tile) = action.strip_prefix("Discard_") {
-        return match tile.strip_suffix('r') {
-            Some(base) => format!("Discard {base} (red)"),
-            None => format!("Discard {tile}"),
-        };
+        return format!("Discard {}", format_mortal_tile_for_display(tile));
     }
     match action {
         "Agari" => "Win (agari)".to_string(),
@@ -1010,7 +1008,8 @@ mod tests {
     #[test]
     fn display_names_cover_the_action_vocabulary() {
         assert_eq!(display_action_name("Discard_3p"), "Discard 3p");
-        assert_eq!(display_action_name("Discard_5mr"), "Discard 5m (red)");
+        assert_eq!(display_action_name("Discard_5mr"), "Discard R5m");
+        assert_eq!(display_action_name("Discard_1z"), "Discard E");
         assert_eq!(display_action_name("Chi_Low"), "Chi Low");
         assert_eq!(display_action_name("Agari"), "Win (agari)");
     }

@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use agari::tile::Tile;
 
+use crate::display::format_tile_for_display;
 use crate::safety::SafetyRank;
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, RiichiTrigger, ShouminkanTrigger,
@@ -148,6 +149,17 @@ fn ch3_bulging(line: u32, needle: &str) -> Citation {
         3,
         "Riichi mahjong basics",
         "Bulging float (nakabukure) shape",
+        "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
+fn ch3_ryankan(line: u32, needle: &str) -> Citation {
+    citation(
+        3,
+        "Riichi mahjong basics",
+        "Double closed (ryankan) shape",
         "RiichiBook1-ch3-basics.tex",
         line,
         needle,
@@ -487,7 +499,11 @@ fn human(state: &GameState) -> Option<&crate::state::PlayerState> {
 }
 
 fn wait_tile(state: &GameState) -> String {
-    state.ukeire_tiles.first().cloned().unwrap_or_default()
+    state
+        .ukeire_tiles
+        .first()
+        .map(|code| format_tile_for_display(code, false))
+        .unwrap_or_default()
 }
 
 /// Every winning tile, for the multi-tile waits of standard hands.
@@ -495,7 +511,12 @@ fn wait_tiles(state: &GameState) -> String {
     if state.ukeire_tiles.is_empty() {
         return "no live winning tiles".to_string();
     }
-    state.ukeire_tiles.join(" / ")
+    state
+        .ukeire_tiles
+        .iter()
+        .map(|code| format_tile_for_display(code, false))
+        .collect::<Vec<_>>()
+        .join(" / ")
 }
 
 fn applies_riichi(trigger: RiichiTrigger, state: &GameState) -> String {
@@ -656,6 +677,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
         "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
         "protorun_priority" => Some(ch3(205, "can accept twice as many tiles")),
+        "ryankan_break" => Some(ch3_ryankan(523, "break the double closed shape")),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
@@ -682,7 +704,7 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         "shouminkan_decision" | "shouminkan_decline"
     ) && state.correct_action.action_type() == CorrectActionType::Discard
     {
-        let tile = state.correct_action.tile().unwrap_or_default().to_string();
+        let tile = format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
 
         return Some(BookRationale {
             summary: "Keep the Pon and discard: the book's kakan conditions are not met."
@@ -711,10 +733,16 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     }
 
     if state.category == "nakabukure_ready" {
-        let discard = state.correct_action.tile().unwrap_or_default().to_string();
-        let wait = state.ukeire_tiles.first().cloned().unwrap_or_default();
+        let discard =
+            format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
+        let wait = state
+            .ukeire_tiles
+            .first()
+            .map(|code| format_tile_for_display(code, false))
+            .unwrap_or_default();
         let drawn = human(state)
-            .and_then(|player| player.draw.clone())
+            .and_then(|player| player.draw.as_deref())
+            .map(|code| format_tile_for_display(code, false))
             .unwrap_or_default();
 
         let rules = vec![
@@ -773,9 +801,19 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     }
 
     if state.category == "protorun_priority" {
-        let discard = state.correct_action.tile().unwrap_or_default().to_string();
-        let equivalent = state.equivalent_tiles.first().cloned().unwrap_or_default();
-        let waits = state.ukeire_tiles.join(" / ");
+        let discard =
+            format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
+        let equivalent = state
+            .equivalent_tiles
+            .first()
+            .map(|code| format_tile_for_display(code, false))
+            .unwrap_or_default();
+        let waits = state
+            .ukeire_tiles
+            .iter()
+            .map(|code| format_tile_for_display(code, false))
+            .collect::<Vec<_>>()
+            .join(" / ");
 
         let rules = vec![
             BookRule {
@@ -836,16 +874,98 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         });
     }
 
+    if state.category == "ryankan_break" {
+        let discard = state.correct_action.tile().unwrap_or_default().to_string();
+        let waits = state.ukeire_tiles.join(" / ");
+        let drawn = human(state)
+            .and_then(|player| player.draw.clone())
+            .unwrap_or_default();
+
+        let rules = vec![
+            BookRule {
+                id: "ryankan_definition".to_string(),
+                rule: "A double closed (ryankan) shape is two closed-wait protoruns \
+                       sharing a tile (135, 246, ... 579). It accepts two kinds--eight \
+                       tiles, twice an isolated closed wait."
+                    .to_string(),
+                quote: "When two closed-wait protoruns are combined, we have a double \
+                        closed (ryankan) shape."
+                    .to_string(),
+                citation: ch3_ryankan(477, "two closed-wait protoruns are combined"),
+                applies: format!(
+                    "The hand holds a ryankan; discarding {discard} breaks it into one \
+                     closed wait."
+                ),
+            },
+            BookRule {
+                id: "ryankan_gets_worse".to_string(),
+                rule: "The ryankan takes three tiles even though it is not a complete \
+                       group, so as the hand nears ready it becomes a single closed-wait \
+                       protorun. It is only strong when the hand is 2-away or worse."
+                    .to_string(),
+                quote: "it will ultimately become a single closed-wait protorun when this \
+                        block remains incomplete when the hand is ready."
+                    .to_string(),
+                citation: ch3_ryankan(506, "single closed-wait protorun"),
+                applies: "This hand is already 1-away, so the shape's three-tile cost is \
+                          no longer worth paying."
+                    .to_string(),
+            },
+            BookRule {
+                id: "keep_the_new_side_wait".to_string(),
+                rule: "When a draw next to the head creates a side-wait protorun, keep \
+                       that protorun and break the ryankan instead."
+                    .to_string(),
+                quote: "when we draw a tile next to the head, creating a side-wait \
+                        protorun, we should keep it and break the double closed shape \
+                        instead."
+                    .to_string(),
+                citation: ch3_ryankan(523, "break the double closed shape"),
+                applies: format!(
+                    "The draw {drawn} sits next to the head. Discarding {discard} keeps the \
+                     new side wait and the hand's acceptance ({waits})."
+                ),
+            },
+        ];
+
+        return Some(BookRationale {
+            summary: "Break the double closed shape: the drawn tile gives the head a side \
+                      wait, and leaving the ryankan intact would make every completion a \
+                      closed wait."
+                .to_string(),
+            rules,
+            absent: Vec::new(),
+            source: ch3_ryankan(523, "break the double closed shape"),
+            caveats: vec![
+                "The book's example is closed; this trainer opens a Yakuhai Pon so Riichi \
+                 cannot mask the discard lesson."
+                    .to_string(),
+                "Only the low ryankan terminal keeps the side wait. The high ryankan \
+                 terminal leaves closed waits only, so it is not graded as an equivalent \
+                 discard."
+                    .to_string(),
+            ],
+        });
+    }
+
     if state.category != "ryanmen_protorun" {
         return None;
     }
 
-    let discard = state.correct_action.tile().unwrap_or_default().to_string();
+    let discard = format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
     let waits = &state.ukeire_tiles;
     let wait_text = if waits.len() == 2 {
-        format!("{} / {}", waits[0], waits[1])
+        format!(
+            "{} / {}",
+            format_tile_for_display(&waits[0], false),
+            format_tile_for_display(&waits[1], false)
+        )
     } else {
-        waits.join(" / ")
+        waits
+            .iter()
+            .map(|code| format_tile_for_display(code, false))
+            .collect::<Vec<_>>()
+            .join(" / ")
     };
 
     let rules = vec![
@@ -886,15 +1006,16 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
 
 /// The ch. 9 seating tip: throw the right player's valueless wind first.
 fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
-    let answer = state.correct_action.tile()?.to_string();
+    let answer_code = state.correct_action.tile()?;
+    let answer = format_tile_for_display(answer_code, false);
     let human = human(state)?;
     let shimocha_wind = human.wind.next(1);
 
     let other_winds: Vec<String> = state
         .tiles
         .iter()
-        .filter(|code| is_wind_code(code) && code.as_str() != answer)
-        .cloned()
+        .filter(|code| is_wind_code(code) && code.as_str() != answer_code)
+        .map(|code| format_tile_for_display(code, false))
         .collect();
     let others = if other_winds.is_empty() {
         "none".to_string()
@@ -979,7 +1100,7 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
     let threat = state.players.iter().find(|player| player.is_riichi)?;
     let facts = crate::safety::SafetyFacts::from_state(state, threat.seat)?;
     let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
-    let answer_text = answer.to_string();
+    let answer_text = format_tile_for_display(&answer.to_string(), false);
     let read = facts.read(answer);
 
     let mut rules = Vec::new();
@@ -1135,7 +1256,11 @@ fn chart_row_rule(
              discard is correct.",
             read.rank.code(),
             read.rank.label(),
-            equivalents.join(", ")
+            equivalents
+                .iter()
+                .map(|code| format_tile_for_display(code, false))
+                .collect::<Vec<_>>()
+                .join(", ")
         )
     };
 
@@ -1324,7 +1449,7 @@ fn early_protectors(facts: &crate::safety::SafetyFacts, answer: Tile) -> String 
 
     protectors
         .iter()
-        .map(ToString::to_string)
+        .map(|tile| format_tile_for_display(&tile.to_string(), false))
         .collect::<Vec<_>>()
         .join(" and ")
 }
@@ -1374,7 +1499,8 @@ fn absent_tiles(
             AbsentRule {
                 id: tile.to_string(),
                 note: format!(
-                    "{tile} · Rank {} ({}) — {comparison}.",
+                    "{} · Rank {} ({}) — {comparison}.",
+                    format_tile_for_display(&tile.to_string(), false),
                     rank.code(),
                     rank.label()
                 ),
@@ -1552,11 +1678,15 @@ mod tests {
         let discard = state.correct_action.tile().expect("answer tile");
         let wait = state.ukeire_tiles.first().expect("wait tile");
         assert!(
-            rationale.rules[1].applies.contains(discard),
+            rationale.rules[1]
+                .applies
+                .contains(&format_tile_for_display(discard, false)),
             "the answer rule must name the discard"
         );
         assert!(
-            rationale.rules[1].applies.contains(wait),
+            rationale.rules[1]
+                .applies
+                .contains(&format_tile_for_display(wait, false)),
             "the answer rule must name the wait"
         );
     }
@@ -1579,13 +1709,15 @@ mod tests {
             .equivalent_tiles
             .first()
             .expect("the closed wait's other tile");
+        let discard_name = format_tile_for_display(discard, false);
+        let equivalent_name = format_tile_for_display(equivalent, false);
         assert!(
-            rationale.rules[0].applies.contains(discard),
+            rationale.rules[0].applies.contains(&discard_name),
             "the answer rule must name the discard"
         );
         assert!(
-            rationale.rules[1].applies.contains(discard)
-                && rationale.rules[1].applies.contains(equivalent),
+            rationale.rules[1].applies.contains(&discard_name)
+                && rationale.rules[1].applies.contains(&equivalent_name),
             "the ranking rule must name both closed-wait tiles"
         );
 
@@ -1605,11 +1737,53 @@ mod tests {
     }
 
     #[test]
+    fn ryankan_break_hand_cites_the_wait_quality_instruction() {
+        let state = generate_puzzle("ryankan_break").expect("ryankan break must generate");
+
+        let rationale = rationale_for(&state).expect("ryankan break needs a rationale");
+
+        assert_eq!(rationale.rules.len(), 3);
+        assert!(rationale.absent.is_empty());
+        assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+        assert_eq!(rationale.source.chapter, 3);
+        assert_eq!(rationale.source.section, "Double closed (ryankan) shape");
+        assert!(!rationale.caveats.is_empty());
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                "ryankan_definition",
+                "ryankan_gets_worse",
+                "keep_the_new_side_wait"
+            ]
+        );
+
+        let discard = state.correct_action.tile().expect("answer tile");
+        assert!(
+            rationale.rules[2].applies.contains(discard),
+            "the answer rule must name the discard"
+        );
+        assert!(
+            rationale
+                .caveats
+                .iter()
+                .any(|caveat| caveat.contains("high ryankan terminal")),
+            "the caveat must say why the other terminal is not equivalent"
+        );
+    }
+
+    #[test]
     fn generated_book_scenarios_carry_a_rationale() {
         for category in [
             "ryanmen_protorun",
             "nakabukure_ready",
             "protorun_priority",
+            "ryankan_break",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -1626,6 +1800,57 @@ mod tests {
             assert!(!rationale.summary.is_empty());
             assert!(!rationale.rules.is_empty());
         }
+    }
+
+    #[test]
+    fn generated_rationales_never_show_raw_tile_codes() {
+        for category in [
+            "ryanmen_protorun",
+            "nakabukure_ready",
+            "protorun_priority",
+            "chiitoitsu_riichi_vs_dama",
+            "riichi_judgement",
+            "shouminkan_decision",
+            "wind_discard_order",
+            "defense_safety_chart",
+            "defense_stuck_heuristic",
+        ] {
+            for _ in 0..10 {
+                let state = generate_puzzle(category).expect("scenario must generate");
+                let rationale = state
+                    .book_rationale
+                    .expect("scenario must carry a rationale");
+
+                let mut texts = vec![rationale.summary];
+                for rule in &rationale.rules {
+                    texts.push(rule.rule.clone());
+                    texts.push(rule.applies.clone());
+                }
+                for absent in &rationale.absent {
+                    texts.push(absent.note.clone());
+                }
+                texts.extend(rationale.caveats);
+
+                for text in texts {
+                    assert!(
+                        !has_raw_honor_code(&text),
+                        "{category} rationale must not show an honor code: {text}"
+                    );
+                    assert!(
+                        !text.contains("(red)"),
+                        "{category} rationale must use the R5 name, not a red suffix: {text}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// True for the internal `1z`..`7z` codes that must never reach display text.
+    fn has_raw_honor_code(text: &str) -> bool {
+        let bytes = text.as_bytes();
+        bytes
+            .windows(2)
+            .any(|pair| (b'1'..=b'7').contains(&pair[0]) && pair[1] == b'z')
     }
 
     #[test]
@@ -1802,6 +2027,7 @@ mod tests {
             "ryanmen_protorun",
             "nakabukure_ready",
             "protorun_priority",
+            "ryankan_break",
             "riichi_judgement",
             "shouminkan_decision",
             "wind_discard_order",

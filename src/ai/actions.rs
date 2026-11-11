@@ -12,6 +12,7 @@ use agari::tile::Tile;
 use agari::yaku::detect_yaku_with_context;
 
 use crate::decision::{ActionInfo, ActionKind, KanKind};
+use crate::display::format_tile_for_display;
 use crate::state::{CalledMeld, DecisionContext, GameState, MeldType, PlayerState};
 
 use super::encoder::{tile_index, tile_name};
@@ -150,11 +151,7 @@ pub fn discard_info(tile: &str, red: bool) -> Option<ActionInfo> {
     } else {
         format!("Discard_{tile}")
     };
-    let label = if red {
-        format!("Discard {tile} (red)")
-    } else {
-        format!("Discard {tile}")
-    };
+    let label = format!("Discard {}", format_tile_for_display(tile, red));
     Some(ActionInfo {
         action,
         label,
@@ -255,7 +252,7 @@ fn reaction_actions(state: &GameState, from: usize, tile: &str, out: &mut Vec<Ac
         if matching >= 2 {
             out.push(ActionInfo {
                 action: "Pon".to_string(),
-                label: format!("Pon {tile}"),
+                label: format!("Pon {}", format_tile_for_display(tile, false)),
                 kind: ActionKind::Pon,
                 tile_index: tile_index(tile),
                 tile: Some(tile.to_string()),
@@ -271,7 +268,7 @@ fn reaction_actions(state: &GameState, from: usize, tile: &str, out: &mut Vec<Ac
     if can_ron(state, player, tile) {
         out.push(ActionInfo {
             action: "Agari".to_string(),
-            label: format!("Ron {tile}"),
+            label: format!("Ron {}", format_tile_for_display(tile, false)),
             kind: ActionKind::Agari,
             tile_index: tile_index(tile),
             tile: Some(tile.to_string()),
@@ -288,7 +285,7 @@ fn chankan_actions(state: &GameState, _from: usize, tile: &str, out: &mut Vec<Ac
     if can_ron(state, player, tile) {
         out.push(ActionInfo {
             action: "Agari".to_string(),
-            label: format!("Chankan {tile}"),
+            label: format!("Chankan {}", format_tile_for_display(tile, false)),
             kind: ActionKind::Agari,
             tile_index: tile_index(tile),
             tile: Some(tile.to_string()),
@@ -319,7 +316,7 @@ fn kan_info(tile: &str, kind: KanKind) -> ActionInfo {
     };
     ActionInfo {
         action: "Kan".to_string(),
-        label: format!("{prefix} {tile}"),
+        label: format!("{prefix} {}", format_tile_for_display(tile, false)),
         kind: ActionKind::Kan,
         tile_index: tile_index(tile),
         tile: Some(tile.to_string()),
@@ -451,7 +448,12 @@ fn chi_options(
         }
         let mut sorted = codes.clone();
         sorted.sort();
-        let label = format!("Chi {} {} on {tile}", sorted[0], sorted[1]);
+        let label = format!(
+            "Chi {} {} on {}",
+            format_tile_for_display(&sorted[0], false),
+            format_tile_for_display(&sorted[1], false),
+            format_tile_for_display(tile, false)
+        );
         options.push((action.to_string(), sorted, label));
     };
 
@@ -722,6 +724,40 @@ mod tests {
         let red = actions.iter().filter(|a| a.action == "Discard_5pr").count();
         assert_eq!(plain, 1, "one plain 5p is held");
         assert_eq!(red, 1, "one red 5p is held");
+
+        let plain_label = actions
+            .iter()
+            .find(|a| a.action == "Discard_5p")
+            .map(|a| a.label.as_str());
+        let red_label = actions
+            .iter()
+            .find(|a| a.action == "Discard_5pr")
+            .map(|a| a.label.as_str());
+        assert_eq!(plain_label, Some("Discard 5p"));
+        assert_eq!(red_label, Some("Discard R5p"));
+    }
+
+    #[test]
+    fn action_labels_use_friendly_honor_names() {
+        let state = base_state(&[
+            "1m", "2m", "3m", "4p", "5p", "6p", "7s", "8s", "9s", "1z", "2z", "3z", "4z",
+        ]);
+        let actions = legal_actions(&state);
+
+        for (action, label) in [
+            ("Discard_1z", "Discard E"),
+            ("Discard_2z", "Discard S"),
+            ("Discard_3z", "Discard W"),
+            ("Discard_4z", "Discard N"),
+        ] {
+            assert_eq!(
+                actions
+                    .iter()
+                    .find(|info| info.action == action)
+                    .map(|info| info.label.as_str()),
+                Some(label)
+            );
+        }
     }
 
     #[test]
