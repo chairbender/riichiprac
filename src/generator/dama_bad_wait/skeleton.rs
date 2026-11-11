@@ -16,6 +16,12 @@
 //!
 //! The live count is decided here as a target; the board plants the visible
 //! copies that make it true and then re-counts from the table.
+//!
+//! The 13 tiles held before the draw are 1-shanten: one half of the wait block
+//! is the drawn tile and stays in the hand, the other was already held, and an
+//! isolated floater is discarded from the hand (tedashi). Discarding the draw
+//! instead (tsumogiri) would mean the player was already tenpai on an earlier
+//! turn, which is not the decision this lesson asks about.
 
 use agari::hand::{HandStructure, decompose_hand};
 use agari::parse::{to_counts, validate_hand};
@@ -27,6 +33,7 @@ use super::shapes::{self, WaitClass, WaitShape};
 use crate::generator::riichi_judgement::judgement;
 use crate::generator::support::analysis::wind_to_honor;
 use crate::generator::support::deck::{ALL_TILES, Deck};
+use crate::generator::support::draw;
 use crate::rng::{choose, gen_range};
 use crate::state::Wind;
 
@@ -90,7 +97,11 @@ impl Target {
 pub(super) struct Skeleton {
     /// The 13-tile tenpai hand the player keeps after the discard.
     pub tenpai_tiles: Vec<Tile>,
-    /// The isolated drawn tile the player must discard.
+    /// The tile just drawn: one half of the wait block, which stays in the
+    /// hand. The other half was already there, so the draw reaches tenpai.
+    pub drawn_tile: Tile,
+    /// The isolated floater the player discards from the hand (tedashi). It was
+    /// in the 13-tile hand before the draw and cannot extend the tenpai.
     pub discard_tile: Tile,
     /// The winning tiles of `tenpai_tiles`.
     pub wait_tiles: Vec<Tile>,
@@ -105,11 +116,17 @@ pub(super) struct Skeleton {
 }
 
 impl Skeleton {
-    /// The fourteen visible tiles: tenpai hand plus the active draw.
+    /// The fourteen visible tiles: pre-draw hand plus the active draw.
     pub(super) fn full_tiles(&self) -> Vec<Tile> {
         let mut tiles = self.tenpai_tiles.clone();
         tiles.push(self.discard_tile);
         tiles
+    }
+
+    /// The 13-tile hand as it stood before the draw: what `PlayerState::hand`
+    /// displays, with the draw shown separately.
+    pub(super) fn pre_draw_tiles(&self) -> Vec<Tile> {
+        draw::pre_draw_tiles(&self.tenpai_tiles, self.drawn_tile, self.discard_tile)
     }
 }
 
@@ -229,7 +246,7 @@ pub(super) fn build(target: Target) -> Result<Skeleton, String> {
             continue;
         };
 
-        let discard_tile = match shapes::draw_isolated(&mut deck, &tenpai_tiles) {
+        let discard_tile = match shapes::draw_floater(&mut deck, &tenpai_tiles) {
             Ok(tile) => tile,
             Err(err) => {
                 last_reason = err;
@@ -246,11 +263,20 @@ pub(super) fn build(target: Target) -> Result<Skeleton, String> {
             last_reason = "the fourteen tiles are not tenpai".to_string();
             continue;
         }
-        // The drawn tile must be the only discard that leaves tenpai.
+        // The answer is the only discard that leaves tenpai.
         if unique_tenpai_discard(&full_tiles) != Some(discard_tile) {
             last_reason = "another discard also leaves tenpai".to_string();
             continue;
         }
+
+        // One half of the wait block was already in the hand, the other is the
+        // tile just drawn. The draw must be what reaches tenpai: the hand before
+        // it may not already be tenpai, or the table would imply an earlier dama.
+        let Some(drawn_tile) = draw::choose_drawn_tile(&block.tiles, &tenpai_tiles, discard_tile)
+        else {
+            last_reason = "no wait-block tile reaches tenpai from 1-shanten".to_string();
+            continue;
+        };
 
         let tenpai_counts = to_counts(&tenpai_tiles);
         if calculate_shanten(&tenpai_counts).shanten != 0 {
@@ -300,6 +326,7 @@ pub(super) fn build(target: Target) -> Result<Skeleton, String> {
         tenpai_tiles.sort();
         return Ok(Skeleton {
             tenpai_tiles,
+            drawn_tile,
             discard_tile,
             wait_tiles: block.waits,
             planted,
@@ -438,6 +465,15 @@ mod tests {
                 unique_tenpai_discard(&skeleton.full_tiles()),
                 Some(skeleton.discard_tile)
             );
+
+            // The draw reaches tenpai and is a kept tile; the answer comes
+            // out of the hand, never off the draw.
+            let pre_draw = skeleton.pre_draw_tiles();
+            assert_eq!(pre_draw.len(), 13);
+            assert_eq!(calculate_shanten(&to_counts(&pre_draw)).shanten, 1);
+            assert!(skeleton.tenpai_tiles.contains(&skeleton.drawn_tile));
+            assert!(pre_draw.contains(&skeleton.discard_tile));
+            assert_ne!(skeleton.drawn_tile, skeleton.discard_tile);
 
             let quality =
                 judgement::wait_quality(&skeleton.tenpai_tiles, &std::collections::HashMap::new());

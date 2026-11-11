@@ -48,6 +48,23 @@ pub(super) fn build(
     if tenpai_metrics.shanten != 0 {
         return Err("Riichi-judgement hand must be tenpai after the discard".to_string());
     }
+    // The draw is what reaches tenpai: the hand before it must not already be
+    // tenpai, or the table would imply the player passed up Riichi earlier.
+    let pre_draw_tiles = skeleton.pre_draw_tiles();
+    let pre_draw_metrics = evaluate_hand(&pre_draw_tiles);
+    if pre_draw_metrics.shanten != 1 {
+        return Err(format!(
+            "Riichi-judgement hand must be 1-shanten before the draw, not {}",
+            pre_draw_metrics.shanten
+        ));
+    }
+    // The answer is discarded from the hand, never off the draw: a tsumogiri
+    // answer would say the player was already tenpai on an earlier turn.
+    if skeleton.discard_tile == skeleton.drawn_tile
+        || !pre_draw_tiles.contains(&skeleton.discard_tile)
+    {
+        return Err("Riichi-judgement answer must be a tedashi from the hand".to_string());
+    }
 
     let (round_wind, hand_number) = random_round();
     let human_wind = if target.dealer {
@@ -214,8 +231,8 @@ fn assemble_state(
 
     let mut display_tiles = skeleton.full_tiles();
     display_tiles.sort();
-    let mut sorted_tenpai = skeleton.tenpai_tiles.clone();
-    sorted_tenpai.sort();
+    let mut sorted_hand = skeleton.pre_draw_tiles();
+    sorted_hand.sort();
 
     let hand_string = format_hand_compact(&display_tiles);
     let tile_strings: Vec<String> = display_tiles.iter().map(|tile| tile.to_string()).collect();
@@ -226,8 +243,8 @@ fn assemble_state(
         is_human: true,
         wind: human_wind,
         score: scores[0],
-        hand: sorted_tenpai.iter().map(|tile| tile.to_string()).collect(),
-        draw: Some(skeleton.discard_tile.to_string()),
+        hand: sorted_hand.iter().map(|tile| tile.to_string()).collect(),
+        draw: Some(skeleton.drawn_tile.to_string()),
         red_fives: Vec::new(),
         discards: discards_from_tiles(&human_river),
         melds: Vec::new(),
