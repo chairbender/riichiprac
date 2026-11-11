@@ -5,6 +5,8 @@
  * the single label the UI renders. Only `neither_agrees` may be called wrong.
  */
 
+import { formatTileForDisplay } from '../display';
+
 export type AnswerOutcome =
   | 'both_agree'
   | 'book_agrees_mortal_does_not'
@@ -164,7 +166,9 @@ export function mortalRecommendedRiichi(grade: MortalGrade | null): boolean {
 export function mortalRecommendationLabel(grade: MortalGrade | null): string {
   if (!grade) return 'another action';
   if (grade.recommended_riichi && grade.recommended_discard) {
-    return `Riichi · discard ${grade.recommended_discard}`;
+    return `Riichi · discard ${formatTileForDisplay(
+      grade.recommended_discard,
+    )}`;
   }
   return grade.recommended_label || grade.recommended_action;
 }

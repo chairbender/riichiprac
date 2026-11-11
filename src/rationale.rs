@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use agari::tile::Tile;
 
+use crate::display::format_tile_for_display;
 use crate::safety::SafetyRank;
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, RiichiTrigger, ShouminkanTrigger,
@@ -476,7 +477,11 @@ fn human(state: &GameState) -> Option<&crate::state::PlayerState> {
 }
 
 fn wait_tile(state: &GameState) -> String {
-    state.ukeire_tiles.first().cloned().unwrap_or_default()
+    state
+        .ukeire_tiles
+        .first()
+        .map(|code| format_tile_for_display(code, false))
+        .unwrap_or_default()
 }
 
 /// Every winning tile, for the multi-tile waits of standard hands.
@@ -484,7 +489,12 @@ fn wait_tiles(state: &GameState) -> String {
     if state.ukeire_tiles.is_empty() {
         return "no live winning tiles".to_string();
     }
-    state.ukeire_tiles.join(" / ")
+    state
+        .ukeire_tiles
+        .iter()
+        .map(|code| format_tile_for_display(code, false))
+        .collect::<Vec<_>>()
+        .join(" / ")
 }
 
 fn applies_riichi(trigger: RiichiTrigger, state: &GameState) -> String {
@@ -666,7 +676,7 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         "shouminkan_decision" | "shouminkan_decline"
     ) && state.correct_action.action_type() == CorrectActionType::Discard
     {
-        let tile = state.correct_action.tile().unwrap_or_default().to_string();
+        let tile = format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
 
         return Some(BookRationale {
             summary: "Keep the Pon and discard: the book's kakan conditions are not met."
@@ -695,10 +705,16 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     }
 
     if state.category == "nakabukure_ready" {
-        let discard = state.correct_action.tile().unwrap_or_default().to_string();
-        let wait = state.ukeire_tiles.first().cloned().unwrap_or_default();
+        let discard =
+            format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
+        let wait = state
+            .ukeire_tiles
+            .first()
+            .map(|code| format_tile_for_display(code, false))
+            .unwrap_or_default();
         let drawn = human(state)
-            .and_then(|player| player.draw.clone())
+            .and_then(|player| player.draw.as_deref())
+            .map(|code| format_tile_for_display(code, false))
             .unwrap_or_default();
 
         let rules = vec![
@@ -757,9 +773,19 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     }
 
     if state.category == "protorun_priority" {
-        let discard = state.correct_action.tile().unwrap_or_default().to_string();
-        let equivalent = state.equivalent_tiles.first().cloned().unwrap_or_default();
-        let waits = state.ukeire_tiles.join(" / ");
+        let discard =
+            format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
+        let equivalent = state
+            .equivalent_tiles
+            .first()
+            .map(|code| format_tile_for_display(code, false))
+            .unwrap_or_default();
+        let waits = state
+            .ukeire_tiles
+            .iter()
+            .map(|code| format_tile_for_display(code, false))
+            .collect::<Vec<_>>()
+            .join(" / ");
 
         let rules = vec![
             BookRule {
@@ -824,12 +850,20 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         return None;
     }
 
-    let discard = state.correct_action.tile().unwrap_or_default().to_string();
+    let discard = format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
     let waits = &state.ukeire_tiles;
     let wait_text = if waits.len() == 2 {
-        format!("{} / {}", waits[0], waits[1])
+        format!(
+            "{} / {}",
+            format_tile_for_display(&waits[0], false),
+            format_tile_for_display(&waits[1], false)
+        )
     } else {
-        waits.join(" / ")
+        waits
+            .iter()
+            .map(|code| format_tile_for_display(code, false))
+            .collect::<Vec<_>>()
+            .join(" / ")
     };
 
     let rules = vec![
@@ -879,7 +913,7 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
     let threat = state.players.iter().find(|player| player.is_riichi)?;
     let facts = crate::safety::SafetyFacts::from_state(state, threat.seat)?;
     let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
-    let answer_text = answer.to_string();
+    let answer_text = format_tile_for_display(&answer.to_string(), false);
     let read = facts.read(answer);
 
     let mut rules = Vec::new();
@@ -1035,7 +1069,11 @@ fn chart_row_rule(
              discard is correct.",
             read.rank.code(),
             read.rank.label(),
-            equivalents.join(", ")
+            equivalents
+                .iter()
+                .map(|code| format_tile_for_display(code, false))
+                .collect::<Vec<_>>()
+                .join(", ")
         )
     };
 
@@ -1224,7 +1262,7 @@ fn early_protectors(facts: &crate::safety::SafetyFacts, answer: Tile) -> String 
 
     protectors
         .iter()
-        .map(ToString::to_string)
+        .map(|tile| format_tile_for_display(&tile.to_string(), false))
         .collect::<Vec<_>>()
         .join(" and ")
 }
@@ -1274,7 +1312,8 @@ fn absent_tiles(
             AbsentRule {
                 id: tile.to_string(),
                 note: format!(
-                    "{tile} · Rank {} ({}) — {comparison}.",
+                    "{} · Rank {} ({}) — {comparison}.",
+                    format_tile_for_display(&tile.to_string(), false),
                     rank.code(),
                     rank.label()
                 ),
@@ -1452,11 +1491,15 @@ mod tests {
         let discard = state.correct_action.tile().expect("answer tile");
         let wait = state.ukeire_tiles.first().expect("wait tile");
         assert!(
-            rationale.rules[1].applies.contains(discard),
+            rationale.rules[1]
+                .applies
+                .contains(&format_tile_for_display(discard, false)),
             "the answer rule must name the discard"
         );
         assert!(
-            rationale.rules[1].applies.contains(wait),
+            rationale.rules[1]
+                .applies
+                .contains(&format_tile_for_display(wait, false)),
             "the answer rule must name the wait"
         );
     }
@@ -1479,13 +1522,15 @@ mod tests {
             .equivalent_tiles
             .first()
             .expect("the closed wait's other tile");
+        let discard_name = format_tile_for_display(discard, false);
+        let equivalent_name = format_tile_for_display(equivalent, false);
         assert!(
-            rationale.rules[0].applies.contains(discard),
+            rationale.rules[0].applies.contains(&discard_name),
             "the answer rule must name the discard"
         );
         assert!(
-            rationale.rules[1].applies.contains(discard)
-                && rationale.rules[1].applies.contains(equivalent),
+            rationale.rules[1].applies.contains(&discard_name)
+                && rationale.rules[1].applies.contains(&equivalent_name),
             "the ranking rule must name both closed-wait tiles"
         );
 
@@ -1525,6 +1570,56 @@ mod tests {
             assert!(!rationale.summary.is_empty());
             assert!(!rationale.rules.is_empty());
         }
+    }
+
+    #[test]
+    fn generated_rationales_never_show_raw_tile_codes() {
+        for category in [
+            "ryanmen_protorun",
+            "nakabukure_ready",
+            "protorun_priority",
+            "chiitoitsu_riichi_vs_dama",
+            "riichi_judgement",
+            "shouminkan_decision",
+            "defense_safety_chart",
+            "defense_stuck_heuristic",
+        ] {
+            for _ in 0..10 {
+                let state = generate_puzzle(category).expect("scenario must generate");
+                let rationale = state
+                    .book_rationale
+                    .expect("scenario must carry a rationale");
+
+                let mut texts = vec![rationale.summary];
+                for rule in &rationale.rules {
+                    texts.push(rule.rule.clone());
+                    texts.push(rule.applies.clone());
+                }
+                for absent in &rationale.absent {
+                    texts.push(absent.note.clone());
+                }
+                texts.extend(rationale.caveats);
+
+                for text in texts {
+                    assert!(
+                        !has_raw_honor_code(&text),
+                        "{category} rationale must not show an honor code: {text}"
+                    );
+                    assert!(
+                        !text.contains("(red)"),
+                        "{category} rationale must use the R5 name, not a red suffix: {text}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// True for the internal `1z`..`7z` codes that must never reach display text.
+    fn has_raw_honor_code(text: &str) -> bool {
+        let bytes = text.as_bytes();
+        bytes
+            .windows(2)
+            .any(|pair| (b'1'..=b'7').contains(&pair[0]) && pair[1] == b'z')
     }
 
     #[test]

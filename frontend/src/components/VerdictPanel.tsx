@@ -1,4 +1,5 @@
 import { callDecisionFor } from '../callDecision';
+import { formatTileForDisplay } from '../display';
 import type { AiEvaluation, AiStatus } from '../types/ai';
 import { actionLabel, formatProbability } from '../types/ai';
 import type { GameState } from '../types/game';
@@ -328,19 +329,27 @@ function PeekedMortal({
 function describeBookAction(state: GameState): string {
   switch (state.correct_action.type) {
     case 'riichi':
-      return `Riichi · discard ${state.correct_action.discard}`;
+      return `Riichi · discard ${formatTileForDisplay(
+        state.correct_action.discard,
+      )}`;
     case 'dama':
       // The ryanmen lesson asks which tile to discard; calling it "Dama" would
       // mislabel a tile-efficiency drill as a Riichi-vs-dama decision.
       return state.target_action === 'NaniKiru'
-        ? `Discard ${state.correct_action.discard}`
-        : `Dama · discard ${state.correct_action.discard}`;
+        ? `Discard ${formatTileForDisplay(state.correct_action.discard)}`
+        : `Dama · discard ${formatTileForDisplay(
+            state.correct_action.discard,
+          )}`;
     case 'fold':
-      return `Fold · discard ${state.correct_action.discard}`;
+      return `Fold · discard ${formatTileForDisplay(
+        state.correct_action.discard,
+      )}`;
     case 'kan':
-      return `Added Kan on ${state.correct_action.tile}`;
+      return `Added Kan on ${formatTileForDisplay(state.correct_action.tile)}`;
     case 'discard':
-      return `Pass on the Kan · discard ${state.correct_action.tile}`;
+      return `Pass on the Kan · discard ${formatTileForDisplay(
+        state.correct_action.tile,
+      )}`;
     case 'best':
       return state.correct_action.label;
   }

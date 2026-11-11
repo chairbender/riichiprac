@@ -3,6 +3,10 @@ import {
   parse_scenario_report,
 } from 'riichiprac';
 import { isCorrectAction, normalizeMortalAction } from './actions';
+import {
+  formatMortalTileForDisplay,
+  formatTileForDisplay,
+} from './display';
 import type { AiEvaluation } from './types/ai';
 import type {
   BuildReportRequest,
@@ -232,9 +236,7 @@ export function probabilityForAction(
 export function mortalActionDisplayName(action: string): string {
   if (action.startsWith('Discard_')) {
     const tile = action.slice('Discard_'.length);
-    return tile.endsWith('r')
-      ? `Discard ${tile.slice(0, -1)} (red)`
-      : `Discard ${tile}`;
+    return `Discard ${formatMortalTileForDisplay(tile)}`;
   }
   if (action === 'Agari') return 'Win (agari)';
   if (action === 'Ryukyoku') return 'Draw (ryukyoku)';
@@ -250,7 +252,9 @@ export function mortalRecommendationDisplay(
 ): string {
   if (!evaluation) return 'another action';
   if (evaluation.recommended_action === 'Riichi' && evaluation.riichi_discard) {
-    return `Riichi · discard ${evaluation.riichi_discard}`;
+    return `Riichi · discard ${formatTileForDisplay(
+      evaluation.riichi_discard,
+    )}`;
   }
   return mortalActionDisplayName(evaluation.recommended_action);
 }
@@ -280,34 +284,37 @@ export function mortalMatchesAction(
 export function describeCorrectAction(action: CorrectAction): string {
   switch (action.type) {
     case 'riichi':
-      return `Riichi, discarding ${action.discard}`;
+      return `Riichi, discarding ${formatTileForDisplay(action.discard)}`;
     case 'dama':
-      return `Dama, discarding ${action.discard}`;
+      return `Dama, discarding ${formatTileForDisplay(action.discard)}`;
     case 'fold':
-      return `Fold, discarding the safest tile ${action.discard}`;
+      return `Fold, discarding the safest tile ${formatTileForDisplay(
+        action.discard,
+      )}`;
     case 'kan':
-      return `Added Kan on ${action.tile}`;
+      return `Added Kan on ${formatTileForDisplay(action.tile)}`;
     case 'discard':
-      return `Pass on the Kan and discard ${action.tile}`;
+      return `Pass on the Kan and discard ${formatTileForDisplay(action.tile)}`;
     case 'best':
       return action.label;
   }
 }
 
 export function describeReportedAction(answer: ReportedAction): string {
+  const tile = formatTileForDisplay(answer.tile);
   switch (answer.action) {
     case 'riichi':
-      return `Riichi, discarding ${answer.tile}`;
+      return `Riichi, discarding ${tile}`;
     case 'dama':
-      return `Dama, discarding ${answer.tile}`;
+      return `Dama, discarding ${tile}`;
     case 'fold':
-      return `Fold, discarding the safest tile ${answer.tile}`;
+      return `Fold, discarding the safest tile ${tile}`;
     case 'kan':
-      return `Added Kan on ${answer.tile}`;
+      return `Added Kan on ${tile}`;
     case 'discard':
-      return `Pass on the Kan and discard ${answer.tile}`;
+      return `Pass on the Kan and discard ${tile}`;
     case 'best':
-      return answer.action_name ?? `Discard ${answer.tile}`;
+      return answer.action_name ?? `Discard ${tile}`;
   }
 }
 
