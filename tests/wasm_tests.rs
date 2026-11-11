@@ -915,6 +915,167 @@ fn test_riichi_judgement_payload_follows_the_three_conditions() {
     assert!(dama_count > 0, "no dama states were generated");
 }
 
+/// Riichi Book 1, ch. 7, "Bad wait": call riichi with three or more live
+/// winning tiles, dama with one or two live simple ones, and riichi on an
+/// honor/terminal wait even with one tile left.
+#[wasm_bindgen_test]
+fn test_dama_bad_wait_payload_follows_the_live_tile_box() {
+    let mut dama_count = 0;
+    let mut many_live_count = 0;
+    let mut honor_terminal_count = 0;
+
+    for run in 0..80 {
+        let json_output = generate_puzzle("dama_bad_wait".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+        assert_eq!(val["category"], "dama_bad_wait");
+
+        let human = &val["players"][0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        let discard_code = val["correct_action"]["discard"]
+            .as_str()
+            .expect("riichi/dama action must have a discard");
+        assert_eq!(human["draw"], discard_code);
+
+        let tenpai: Vec<Tile> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        let counts = to_counts(&tenpai);
+        assert_eq!(calculate_shanten(&counts).shanten, 0, "run {run}");
+
+        let waits: Vec<Tile> = val["ukeire_tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        assert!(
+            matches!(waits.len(), 1 | 2),
+            "run {run}: a bad wait has one or two kinds"
+        );
+        let wait = waits[0];
+
+        let dora: Vec<Tile> = val["dora_indicators"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|indicator| parse_single_tile(indicator.as_str().unwrap()))
+            .collect();
+
+        // Live winning tiles: the hand plus everything on the table.
+        let mut visible: std::collections::HashMap<Tile, u8> = std::collections::HashMap::new();
+        for opponent in val["players"].as_array().unwrap().iter().skip(1) {
+            for discard in opponent["discards"].as_array().unwrap() {
+                *visible
+                    .entry(parse_single_tile(discard["tile"].as_str().unwrap()))
+                    .or_insert(0) += 1;
+            }
+        }
+        for &indicator in &dora {
+            *visible.entry(indicator).or_insert(0) += 1;
+        }
+        let ukeire = calculate_ukeire_with_visible(&counts, &visible);
+        let live_kinds = ukeire
+            .tiles
+            .iter()
+            .filter(|entry| entry.available > 0)
+            .count();
+        assert!((1..=2).contains(&live_kinds), "run {run}");
+        let live = ukeire.total_count;
+        assert!((1..=4).contains(&live), "run {run}: live {live}");
+
+        // The general ch7.1 rule must find none of its three conditions.
+        let round_wind = val["round_wind"].as_str().expect("round wind");
+        let seat_wind = human["wind"].as_str().expect("human wind");
+        assert_ne!(
+            seat_wind, "East",
+            "run {run}: this lesson is non-dealer only"
+        );
+        for &waiting_tile in &waits {
+            let mut winning = tenpai.clone();
+            winning.push(waiting_tile);
+            assert_eq!(
+                standard_han_without_riichi(&winning, waiting_tile, round_wind, seat_wind, &dora),
+                0,
+                "run {run}: the bad-wait box must be the only decider"
+            );
+        }
+        assert!(!(live_kinds >= 2 && live > 4), "run {run}: the wait is bad");
+
+        let triggers = || -> Vec<&str> {
+            val["riichi_triggers"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|trigger| trigger.as_str().unwrap())
+                .collect()
+        };
+        let reasons = || -> Vec<&str> {
+            val["dama_reasons"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|reason| reason.as_str().unwrap())
+                .collect()
+        };
+
+        if live >= 3 {
+            many_live_count += 1;
+            assert_eq!(val["target_action"], "Riichi", "run {run}");
+            assert_eq!(val["correct_action"]["type"], "riichi", "run {run}");
+            assert_eq!(triggers(), vec!["three_live_winning_tiles"], "run {run}");
+            assert!(reasons().is_empty(), "run {run}");
+        } else if wait.is_terminal_or_honor() {
+            honor_terminal_count += 1;
+            assert!(
+                waits.iter().all(|wait| wait.is_terminal_or_honor()),
+                "run {run}"
+            );
+            assert_eq!(val["target_action"], "Riichi", "run {run}");
+            assert_eq!(val["correct_action"]["type"], "riichi", "run {run}");
+            assert_eq!(triggers(), vec!["honor_terminal_wait"], "run {run}");
+            assert!(reasons().is_empty(), "run {run}");
+        } else {
+            dama_count += 1;
+            assert!(waits.iter().all(|wait| wait.is_simple()), "run {run}");
+            assert_eq!(val["target_action"], "Dama", "run {run}");
+            assert_eq!(val["correct_action"]["type"], "dama", "run {run}");
+            assert!(triggers().is_empty(), "run {run}");
+            assert_eq!(
+                reasons(),
+                vec![
+                    "not_dealer",
+                    "bad_wait",
+                    "no_extra_han",
+                    "few_live_winning_tiles"
+                ],
+                "run {run}"
+            );
+        }
+
+        // The hand is never furiten.
+        for discard in human["discards"].as_array().unwrap() {
+            let code = discard["tile"].as_str().unwrap();
+            assert_ne!(code, wait.to_string(), "run {run}: furiten wait {code}");
+        }
+    }
+
+    assert!(dama_count > 0, "no 1-2 tile dama states were generated");
+    assert!(
+        many_live_count > 0,
+        "no 3+ live tile riichi states were generated"
+    );
+    assert!(
+        honor_terminal_count > 0,
+        "no honor/terminal exception states were generated"
+    );
+}
+
 #[wasm_bindgen_test]
 fn test_payload_supports_riichi_and_dama_actions() {
     let ryanmen: serde_json::Value =
@@ -1318,7 +1479,7 @@ fn test_ryanmen_rejection_sampling_constraints() {
 
             // The other ryankan terminal only leaves closed waits, so it is not
             // graded as equivalent.
-            assert_eq!(val["equivalent_tiles"].as_array().unwrap().len(), 0);
+            assert!(val["equivalent_tiles"].as_array().is_none_or(Vec::is_empty));
 
             let players = val["players"].as_array().expect("players array");
             assert_eq!(players.len(), 4);

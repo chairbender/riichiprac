@@ -229,6 +229,15 @@ pub enum RiichiTrigger {
     /// The wait is good: at least two kinds and more than four live winning
     /// tiles. Riichi Book 1, ch. 7: "Your hand has a good wait."
     GoodWait,
+    /// A bad wait still has three or more live winning tiles. Riichi Book 1,
+    /// ch. 7, "Bad wait": "Call riichi if there are three or more winning tiles
+    /// left in the board."
+    ThreeLiveWinningTiles,
+    /// A bad wait on an honor or terminal tile can be called with only one or
+    /// two live tiles. Riichi Book 1, ch. 7, "Bad wait": "When waiting for an
+    /// honor/terminal tile, you can call riichi even when only one tile is left
+    /// in the board."
+    HonorTerminalWait,
     /// Every pair and the wait tile is a simple tile (2-8).
     Tanyao,
     /// A red five is held, so the wait itself is the regular five.
@@ -256,6 +265,10 @@ pub enum DamaReason {
     /// value the hand can add. Riichi Book 1, ch. 7 calls this a
     /// "riichi-only" hand.
     NoExtraHan,
+    /// The bad wait has only one or two live simple winning tiles. Riichi Book
+    /// 1, ch. 7, "Bad wait": "Go dama if there are only one or two simple tiles
+    /// left to win on."
+    FewLiveWinningTiles,
     /// A terminal/honor pair prevents Tanyao.
     NoTanyao,
     /// The wait is a middle tile (4, 5, or 6).
