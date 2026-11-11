@@ -66,6 +66,11 @@ interface GameStore {
   fileError: string | null;
   /** Non-error notice, e.g. after exporting or importing a position. */
   fileNotice: string | null;
+  /**
+   * Description carried by the last imported position file, shown as a card.
+   * Null when the file had none (or after the card is dismissed).
+   */
+  positionDescription: string | null;
 
   /** Model weight loading state for the Mortal evaluator. */
   aiStatus: AiStatus;
@@ -106,6 +111,8 @@ interface GameStore {
   setFileNotice: (notice: string | null) => void;
   /** Dismiss the current import/export notice. */
   clearFileNotice: () => void;
+  /** Hide the imported position's description card. */
+  clearPositionDescription: () => void;
 
   /** Fetch the Safetensors weights and build the WASM evaluator once. */
   initializeAi: () => Promise<void>;
@@ -146,6 +153,7 @@ const emptyState = {
   evaluation: null,
   fileError: null,
   fileNotice: null,
+  positionDescription: null,
 } satisfies Pick<
   GameStore,
   | 'gameState'
@@ -159,6 +167,7 @@ const emptyState = {
   | 'evaluation'
   | 'fileError'
   | 'fileNotice'
+  | 'positionDescription'
 >;
 
 /**
@@ -323,6 +332,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           evaluation,
           fileError: null,
           fileNotice: null,
+          // Cleared per load; `importState` sets the imported file's own text.
+          positionDescription: null,
         });
 
         if (!evaluation) {
@@ -340,6 +351,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           evaluation: null,
           fileError: null,
           fileNotice: null,
+          positionDescription: null,
         });
       }
     },
@@ -481,6 +493,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         isEvaluating: false,
         fileError: null,
         fileNotice: null,
+        positionDescription: null,
       });
     },
 
@@ -497,6 +510,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           fileNotice: imported.fromReport
             ? 'Loaded the position from a scenario-report file.'
             : 'Position loaded.',
+          positionDescription: imported.description,
         });
       } catch (err) {
         set({
@@ -512,6 +526,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     setFileNotice: (fileNotice) => set({ fileNotice }),
 
     clearFileNotice: () => set({ fileNotice: null }),
+
+    clearPositionDescription: () => set({ positionDescription: null }),
 
     initializeAi: () => {
       if (aiInitPromise) return aiInitPromise;
