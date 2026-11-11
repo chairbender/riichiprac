@@ -23,16 +23,11 @@ import {
   scenarioLabel,
 } from './scenarios';
 import type { ScenarioOption, ScenarioSelection } from './scenarios';
+import { stackOrder } from './seatOrder';
 import { useGameStore } from './store/useGameStore';
 import type { ReportReason, ReportedAction } from './types/report';
 import { ensureWasmReady } from './wasm';
 import './App.css';
-
-/**
- * Portrait rows from top to bottom:
- * Toimen (across), Kamicha (left), Shimocha (right), then the human.
- */
-const PLAYER_ROW_ORDER = [2, 3, 1, 0];
 
 export const App = () => {
   const gameState = useGameStore((state) => state.gameState);
@@ -216,14 +211,9 @@ export const App = () => {
     }
   };
 
-  const orderedPlayers = gameState
-    ? PLAYER_ROW_ORDER.flatMap((seat) => {
-        const player = gameState.players.find(
-          (candidate) => candidate.seat === seat,
-        );
-        return player ? [player] : [];
-      })
-    : [];
+  // The human is anchored at the bottom (just above the hand dock); the other
+  // seats stack above it in turn order. See `stackOrder`.
+  const orderedPlayers = gameState ? stackOrder(gameState.players) : [];
 
   const humanPlayer =
     gameState?.players.find((player) => player.is_human) ?? null;
