@@ -82,10 +82,10 @@ Value is "how much new teaching surface" per unit of work.
 | `dama_expensive_hand` | riichi | 7700+ without riichi: riichi or dama? | Riichi/Dama | ch7.3 | 2 | M | Medium |
 | `dama_improving_hand` | riichi | Early turn, many improving tiles: riichi or dama? | Riichi/Dama | ch7.3 | 1 | M | Medium |
 | `suji_trap_riichi` | defense/offense | Which discard creates the immediate suji trap? | Riichi + tile | ch8.2 | 1 | S | High |
-| `fold_to_riichi` | defense | Opponent riichi, my hand is junk: which tile? | **Fold** + tile | ch8.1/8.2/8.3 | 6 | L | **Very high** |
-| `suji_kabe_safety` | defense | Rank the safe tiles by the book's table | **Fold** + tile | ch8.2 | 27 | L | **Very high** |
-| `open_hand_defense` | defense | Read safety from a post-chi discard | **Fold** + tile | ch8.4 | 4 | L | High |
-| `push_or_fold` | defense | 1-away, high value, good wait: push or fold? | Push/Fold | ch8.1 | 2 | L | High |
+| `fold_to_riichi` | defense | Opponent riichi, my hand is junk: which tile? | Discard + tile | ch8.1/8.2/8.3 | 6 | M | **Very high** |
+| `suji_kabe_safety` | defense | Rank the safe tiles by the book's table | Discard + tile | ch8.2 | 27 | M | **Very high** |
+| `open_hand_defense` | defense | Read safety from a post-chi discard | Discard + tile | ch8.4 | 4 | M | High |
+| `push_or_fold` | defense | 1-away, high value, good wait: push or fold? | Discard + tile | ch8.1 | 2 | M | High |
 | `ankan_decision` | melding | Four concealed copies: kan or not? | Kan/Discard | ch9.3 | 2 | M | Medium |
 | `meld_or_not` | melding | Pon/chi offered on a cheap, slow hand | Call/Pass | ch9.1/9.2 | 4 | L | High |
 | `daiminkan_decision` | melding | Open quad off a discard | Kan/Discard | ch9.3 | 1 | L | Low |
@@ -94,12 +94,10 @@ Value is "how much new teaching surface" per unit of work.
 | `honitsu_decision` | yaku | Commit to honitsu or play efficiency? | Dama + tile | ch5.4 | 4 | L | Medium |
 | `chiitoi_vs_toitoi` | yaku | Futile pair: stick to chiitoitsu? | Dama + tile | ch5.5 | 2 | M | Medium |
 | `perfect_one_away` | shape | Which discard makes the hand perfect 1-away? | Dama + tile | ch3.2 | 2 | M | Medium |
-| `nobetan_keep` | shape | Keep 3456 at a small acceptance cost? | Dama + tile | ch3.3 | 5 | M | Medium* |
+| `nobetan_keep` | shape | Keep 3456 at a small acceptance cost? | Dama + tile | ch3.3 | 5 | M | High |
 | `protorun_plus_one` | shape | Which protorun-plus-one to break? | Dama + tile | ch3.3 | 3 | M | Medium |
 | `skipping_block` | shape | Skipping float vs isolated float | Dama + tile | ch3.3 | 2 | S | Low |
 
-`*` `nobetan_keep` is deliberately in tension with a pure "maximise ukeire" oracle —
-see §6.
 
 ---
 
@@ -254,7 +252,7 @@ ukeire, not block partitions). Medium effort; the rule is crisp once built.
 
 ---
 
-#### `nobetan_keep` — "Keep 3456 even at a small cost" (deferred, see §6)
+#### `nobetan_keep` — "Keep 3456 even at a small cost"
 
 **Cards.** 1463193147898, 1463193166572, 1463193567734, 1463193918897, 1463193992139.
 
@@ -262,10 +260,32 @@ ukeire, not block partitions). Medium effort; the rule is crisp once built.
 
 > `Try to keep a stretched single shape if a hand has one. In particular, 3456 and 4567 should be kept until the hand becomes ready or 1-away from ready.` — ch3:669
 > `discarding {\LARGE\wan{3}} or {\LARGE\wan{6}} would lead to the greatest tile acceptance` … `However, doing so is too myopic.` — ch3:662
+> `the middle two ones --- 3456 and 4567 --- are the most versatile` — ch3:649
 
-This is the one cluster where the book **explicitly prefers lower acceptance**. It
-cannot be graded by a max-ukeire oracle, and the book's justification is a
-multi-step argument about future shapes. See §6.
+**Drill.** 2-away hand holding `3456` where the maximum-acceptance discard breaks the
+nobetan and the book's discard keeps it.
+
+**Answer.** The discard that keeps the stretched single.
+
+**Grading mode.** This is the one cluster where the book prefers *lower* tile
+acceptance, so ukeire cannot be the oracle. It is graded on book authority, which we
+have decided is acceptable. The oracle is a **completion enumeration**, not a raw
+count, so the answer is still provable per hand:
+
+1. Enumerate every ukeire tile for the book's discard and for each rival discard.
+2. For each, enumerate the following discard and compute the resulting tenpai waits.
+3. Require that the rival (max-acceptance) line can only reach a closed, edge, or
+   pair wait, while the nobetan line can always reach a ryanmen wait.
+4. Reject the hand if the rival line can also reach a ryanmen wait — then the book's
+   claim does not hold for that hand and the drill would be genuinely ambiguous.
+
+Step 3 is exactly the book's argument ("all the remaining protoruns will be
+closed-wait or edge-wait ones"), and it is the same enumerator `ryankan_break` and
+`perfect_one_away` need, so build it once in `support`.
+
+**Rationale note.** Because the answer contradicts `ukeire_total`, the explanation
+must show *why* (the wait-quality consequence) and not merely assert the rule, or a
+player who did the arithmetic will feel cheated.
 
 ---
 
@@ -425,20 +445,42 @@ the book's table.
    (`DiscardTile::riichi`, `riichi_discard_index`).
 3. Plant exactly one tile that is 100 % safe (in the opponent's river, or kamicha's
    latest discard) and no other 100 %-safe tile.
-4. Reject unless the answer is the *unique* best rank (ties mean the drill has two
+4. **The answer tile must be part of a block** — a completed set, a pair, a run, or
+   a protorun. Discarding it has to break something the hand could use, so the move
+   visibly reads as folding rather than as an ordinary efficiency discard. Reject
+   hands where the safe tile is an isolated floating tile or a lone honor.
+5. Make the temptation real: every rival discard that *keeps* the shape must be
+   strictly more dangerous than the answer.
+6. Reject unless the answer is the *unique* best rank (ties mean the drill has two
    right answers) and the opponent's river is deep enough that the suji reading is
    stable (a 1-discard river makes almost nothing suji).
 
-**Verification.** A small `safety` module implementing ch8's table; assert the
-answer tile's rank is strictly better than every other hand tile's rank. Ties ⇒
-re-roll. This is the key design point: the *table* is the oracle, not a heuristic.
+Step 4 has a pleasant side effect: it rules out the degenerate "the safe tile is a
+dead honor I was never going to keep" hand, and it means a genbutsu answer is
+usually a *pair* of a discarded honor sitting in the hand as the head.
 
-**Answer type.** Needs `CorrectActionType::Fold` (`CorrectAction::Fold { discard }`),
-because "Dama" is the wrong word for a 2-away hand. Blast radius is small and
-mechanical: `state.rs` (variant + `action_type` + `tile`), `verdict.rs`
-(`mortal_action_for_*`, `grade_book` is generic), `rationale.rs::action_type_label`,
-`report/summary.rs` (two `match` arms), `fuzz.rs::discrepancy_kind`, and on the frontend
-`types/game.ts`, `actions.ts`, and `store.selectTile`'s default action type.
+**Verification.** A small `safety` module implementing ch8's table; assert the
+answer tile's rank is strictly better than every other hand tile's rank, and assert
+the answer tile shares a block with at least one other hand tile. Ties ⇒ re-roll.
+This is the key design point: the *table* is the oracle, not a heuristic.
+
+**Answer type.** A plain discard — **no new vocabulary**. The answer is the same
+shape the ryanmen lesson already uses: click a tile, declare nothing. Two existing
+carriers fit, and both already flow through `store.selectTile`:
+
+- `CorrectAction::Dama { discard }` needs zero code changes (the store submits
+  `dama` by default for non-Kan lessons), but the report line reads "Dama,
+  discarding 3p", which is factually wrong for a 2-away hand.
+- `CorrectAction::Discard { tile }` is the honest carrier — "discard, no call". Its
+  wording is currently Kan-specific, in four places:
+  `rationale::action_type_label` ("No Kan"), `report/summary.rs::describe_correct_action`
+  and `describe_reported_action` ("Pass on the Kan and discard X"), and the frontend's
+  `AnswerSummary.bookPick` ("No Kan, discard X"). Neutralise them to "Discard" /
+  "Discard X". The only side effect is that `shouminkan_decline` feedback reads
+  "Discard X" instead of "Pass on the Kan and discard X"; its prompt still says
+  "Call Shouminkan, or discard?".
+
+Recommendation: the second — four strings for a truthful report.
 
 ---
 
@@ -464,14 +506,19 @@ than the freebie.
 
 **Answer.** The unique highest-ranked tile.
 
-**Verification.** Same `safety` module. Generation must additionally require the
+**Verification.** Same `safety` module, plus the same "answer is part of a block"
+generation rule as `fold_to_riichi`. Generation must additionally require the
 answer to be a suji/no-chance tile and the runner-up to be one rank worse, so the
 lesson is specifically about the ranking.
 
 **Implementation note.** Treat this as the second mode of one module (like
 `shouminkan_decision` / `shouminkan_decline`): `fold_to_riichi` is "answer is
-genbutsu", `suji_kabe_safety` is "answer is suji/kabe". They share the board,
-the skeleton and the ranking.
+genbutsu", `suji_kabe_safety` is "answer is suji/kabe". They share the board, the
+skeleton, the block constraint, and the ranking.
+
+A useful consequence of the block constraint here: a suji tile that is part of a
+protorun (e.g. `4m` in `34m`) is exactly what you must break to fold, and its
+danger is obvious from the shape you lose.
 
 ---
 
@@ -497,7 +544,8 @@ the *same* suit. Which tile is safest from my hand?
 **Verification.** Structural: the answer tile is within ±2 ranks of the opponent's
 last discard, in the same suit; every alternative is outside that neighbourhood.
 Generate the *different-suit* variant as the trap so the player cannot just pick
-"'near their last discard' blindly".
+"'near their last discard' blindly". The answer should again be part of a block, so
+the fold is visible rather than an incidental float.
 
 This is the most "board-reading" drill in the deck and needs no scoring oracle.
 
@@ -516,13 +564,21 @@ This is the most "board-reading" drill in the deck and needs no scoring oracle.
 best-possible wait is good), opponent in riichi ⇒ push. Mirror it with a low-value
 closed-wait hand ⇒ fold.
 
-**Answer.** Push (which means: keep the shape, discard the natural tile) or Fold
-(safest tile).
+**Answer.** Push (discard the tile that keeps the shape) or Fold (discard the
+safest tile).
 
-**Cost.** Higher than the others: the current `CorrectActionType` has no `Push`, and
-the UI has no push/fold toggle pair (the Riichi/Kan toggles are the model to copy).
-Defer until `fold_to_riichi` lands and the `Fold` type exists; then `Push` is the
-same change again plus one toggle.
+> `Notice that this is a perfect 1-away hand; no matter how this hand becomes ready, you can \emph{always} choose to have a side wait.` — ch8:77
+
+**Cost.** Low on the answer side: there is no `Push` answer to invent, because the
+clicked tile *is* the decision — the shape-preserving discard is pushing, the safest
+discard is folding. Both are ordinary discards.
+
+The real cost is generation. The hand must meet exactly two of
+{ready, high value (≥7700 minimum), good wait} for the push branch, or two of
+{1-away or worse, low value, bad wait} for the fold branch, and the rival branch has
+to be provably rejected. The awkward part is "good wait" on a non-ready hand: the
+book judges it by the *best possible* wait in the *worst* case (ch8:77), which needs
+the completion enumerator from `perfect_one_away`.
 
 ---
 
@@ -588,10 +644,10 @@ once and it unlocks `daiminkan_decision`, the pon-seating tips, and the sanshoku
 
 | Idea | Why not (yet) |
 | --- | --- |
-| `nobetan_keep` as a graded drill | The book prefers **lower** tile acceptance (ch3:662), so the oracle is not ukeire. Shipping it means grading a heuristic the app cannot prove; a player who discards for max acceptance would be marked wrong with only prose to justify it. Revisit only if you accept "book authority over computed optimum" as a grading mode — the `shouminkan_decline` lesson is already that, but it has a crisp score threshold. |
 | `honitsu` discard ordering (1463247587777) | Serial behaviour across turns ("discard all of one suit first", ch5:543). Cannot be graded from one decision. |
 | "Defend when ahead / attack when behind" (1463255264912, 1463255328253) | Position/turn modifiers, not a tile choice. Better encoded as extra triggers on `push_or_fold` than as its own lesson. |
 | Five-block "three criteria" selection (1463199372706) | Answer depends on board read + safety judgement; no mechanical oracle. Keep as rationale. |
+| Wait taxonomy (1463194454726, 1463194687613, 1463194733126, 1463194761013, 1463194883251) | The five basic waits and the irregular-wait tables are the vocabulary the riichi/dama wait-quality tests need (§5.4); they are not a decision on their own. |
 | `ittsu_vs_side_wait` | The book's own answer depends on melding (ch5:393). Not locally provable. |
 | Kokushi / thirteen orphans | No cards in the deck. Out of scope. |
 | "Which tile to call on" (1463247652943) | Requires a reaction/call UI and a multi-way call choice; superseded by `meld_or_not` as a first step. |
@@ -605,12 +661,15 @@ once and it unlocks `daiminkan_decision`, the pon-seating tips, and the sanshoku
 3. **`riichi_judgement`** — biggest gap in an *already supported* answer type; the
    scoring plumbing exists in the chiitoitsu generator.
 4. **`wind_discard_order`** — tiny, and it validates seat-aware generation.
-5. **`fold_to_riichi`**, then **`suji_kabe_safety`** — the defense family. Do them as
-   one module with two modes, and add the `Fold` answer type + the `safety` ranking
-   module once. This is the highest-value work in the deck, but it is also the only
-   candidate that needs a new answer type, so do it after the cheap wins.
-6. **`open_hand_defense`**, **`suji_trap_riichi`** — reuse the defense board builder.
-7. **`meld_or_not`** — only after deciding to build the book-lesson call UI.
+5. **`nobetan_keep`** — first lesson graded on book authority over ukeire. Building it
+   forces the completion enumerator (best possible final wait) that steps 6–7 need,
+   so it is the right place to pay for it.
+6. **`fold_to_riichi`**, then **`suji_kabe_safety`** — the defense family. Do them as
+   one module with two modes, add the `safety` ranking module and the riichi-opponent
+   board once, and neutralise the `Discard` wording. No new answer type.
+7. **`open_hand_defense`**, **`suji_trap_riichi`**, **`perfect_one_away`** — reuse the
+   defense board builder or the completion enumerator.
+8. **`meld_or_not`** — only after deciding to build the book-lesson call UI.
 
 ## 8. File-level map for whoever builds these
 
@@ -620,21 +679,28 @@ once and it unlocks `daiminkan_decision`, the pon-seating tips, and the sanshoku
   category; add `ch8(§, line, needle)` citation helpers while doing defense.
 - Answer vocabulary: `src/state.rs` (`CorrectAction`, `CorrectActionType`),
   `src/verdict.rs`, `src/report/summary.rs`, `src/fuzz.rs`, and the frontend mirrors.
+  No new variants are needed for anything in this document.
 - Tests: native `#[test]` in the module (100-run constraint sweeps) plus
   `tests/wasm_tests.rs` coverage of the JSON payload.
 - The manifest is the single source for `list_scenarios` and the fuzz harness; a new
   `ScenarioId` that is missing from `SCENARIO_MANIFEST` fails
   `manifest_matches_the_registered_scenario_ids`.
+- **Doc-comment convention:** every skeleton, board rule, or rationale arm that comes
+  from a card carries the card id and its gist, e.g.
+  `// Anki 1463194188982 — "not in a ready hand: the pair wait leaves 2 tiles"`.
+  That keeps the mining traceable from code back to the deck and to this document.
 
-## 9. Open questions
+## 9. Decisions
 
-1. Is a new `Fold` answer type acceptable (small but cross-cutting)? Without it, the
-   defense family would have to pretend a fold is a "dama", which reads wrong in the
-   report summary.
-2. Should a graded drill ever encode a book heuristic that contradicts computed
-   tile efficiency (the `nobetan_keep` case)? That decides whether S4 is buildable.
-3. Do you want deck card ids in the generator doc comments (e.g.
-   `// Anki 1463194188982`) so the mining is traceable back to the deck?
+1. **No `Fold` (or `Push`) answer type.** A defense drill's answer is simply the
+   safest discard. The generator additionally requires the safe tile to be part of a
+   completed set, pair, run, or protorun, so discarding it visibly breaks the hand
+   and reads as a fold rather than an efficiency move (§5.5).
+2. **Book authority may outrank computed tile efficiency.** A drill may grade the
+   book's line even when `ukeire` prefers another discard, provided the hand proves
+   the book's claim (the `nobetan_keep` completion enumeration) and the explanation
+   shows the comparison rather than asserting the rule (§5.1).
+3. **Deck card ids go in generator doc comments** (convention in §8).
 
 ---
 
@@ -642,7 +708,8 @@ once and it unlocks `daiminkan_decision`, the pon-seating tips, and the sanshoku
 
 `covered` means an existing lesson already teaches it; a backticked candidate id
 means it belongs to that scenario; `rationale` means the card is deliberately not
-drillable and only feeds explanation text (reasons in §6).
+drillable and only feeds explanation text (the reasoning is in the section that
+discusses it, §5.x, or in §6).
 
 | Card | Question | Goes to |
 | --- | --- | --- |
