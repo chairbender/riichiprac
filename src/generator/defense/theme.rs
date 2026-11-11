@@ -98,8 +98,8 @@ pub(super) fn plan_safety() -> Result<ThemePlan, String> {
             })
         }
         2 => {
-            let (value, middle) = choose(&[(2u8, 5u8), (8, 5), (3, 6), (7, 6)])
-                .ok_or("no suji simple")?;
+            let (value, middle) =
+                choose(&[(2u8, 5u8), (8, 5), (3, 6), (7, 6)]).ok_or("no suji simple")?;
             let answer = Tile::suited(suit, value);
             Ok(ThemePlan {
                 theme: SafetyTheme::SujiSimple,
@@ -110,8 +110,8 @@ pub(super) fn plan_safety() -> Result<ThemePlan, String> {
             })
         }
         3 => {
-            let (value, ends) = choose(&[(4u8, [1u8, 7u8]), (5, [2, 8]), (6, [3, 9])])
-                .ok_or("no suji middle")?;
+            let (value, ends) =
+                choose(&[(4u8, [1u8, 7u8]), (5, [2, 8]), (6, [3, 9])]).ok_or("no suji middle")?;
             let answer = Tile::suited(suit, value);
             Ok(ThemePlan {
                 theme: SafetyTheme::SujiMiddle,

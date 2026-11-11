@@ -528,7 +528,9 @@ fn scenario_source(category: &str) -> Option<Citation> {
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
-        "defense_stuck_heuristic" => Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck")),
+        "defense_stuck_heuristic" => {
+            Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
+        }
         _ => None,
     }
 }
@@ -667,7 +669,9 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
              chapter's fallback list is what decides."
                 .to_string(),
         );
-        format!("Nothing reaches Rank B: break up the {answer_text} pair and discard {answer_text}.")
+        format!(
+            "Nothing reaches Rank B: break up the {answer_text} pair and discard {answer_text}."
+        )
     };
 
     let source = if is_chart {
@@ -724,7 +728,11 @@ fn mechanism_rules(read: &crate::safety::TileRead, answer_text: &str) -> Vec<Boo
             "An incomplete blockade leaves the opponent only the last invisible copy, which is \
              safer than a plain non-suji tile.",
             "One-chance tiles are generally safer than non-suji tiles",
-            ch8(CH8_KABE, 248, "One-chance tiles are generally safer than non-"),
+            ch8(
+                CH8_KABE,
+                248,
+                "One-chance tiles are generally safer than non-",
+            ),
         )],
         SafetyMechanism::Honor => vec![rule(
             "honor_count",
@@ -761,11 +769,7 @@ fn chart_row_rule(read: &crate::safety::TileRead, answer_text: &str) -> BookRule
         quote: "Non-suji 4,5,6 tiles are the most dangerous because they can be caught by two \
                 different suji waits"
             .to_string(),
-        citation: ch8(
-            CH8_RANKING,
-            325,
-            "4,5,6 tiles are the most dangerous",
-        ),
+        citation: ch8(CH8_RANKING, 325, "4,5,6 tiles are the most dangerous"),
         applies: format!(
             "{answer_text} is Rank {} ({}); every other tile in the hand ranks lower.",
             read.rank.code(),
@@ -897,8 +901,7 @@ fn stuck_rule_set(
     if flags.avoids_dora {
         rules.push(BookRule {
             id: "avoid_dora".to_string(),
-            rule: "Do not discard the dora, its indicator, or a tile next to it."
-                .to_string(),
+            rule: "Do not discard the dora, its indicator, or a tile next to it.".to_string(),
             quote: "try not to discard the dora indicator tile (when dora is a number tile) and \
                     any tiles close to dora, as well as the dora tile itself."
                 .to_string(),
@@ -1264,10 +1267,12 @@ mod tests {
                 .iter()
                 .any(|rule| rule.id == "safety_ranking")
         );
-        assert!(rationale
-            .rules
-            .iter()
-            .all(|rule| !rule.applies.is_empty() && !rule.citation.source_needle.is_empty()));
+        assert!(
+            rationale
+                .rules
+                .iter()
+                .all(|rule| !rule.applies.is_empty() && !rule.citation.source_needle.is_empty())
+        );
         assert!(!rationale.absent.is_empty(), "alternatives must be ranked");
         assert!(rationale.summary.contains("Rank"));
     }
@@ -1286,7 +1291,12 @@ mod tests {
                 .any(|rule| rule.id == "outside_early_discards")
         );
         assert!(rationale.summary.starts_with("Nothing reaches Rank B"));
-        assert!(rationale.caveats.iter().any(|caveat| caveat.contains("Rank C")));
+        assert!(
+            rationale
+                .caveats
+                .iter()
+                .any(|caveat| caveat.contains("Rank C"))
+        );
     }
 
     #[test]

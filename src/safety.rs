@@ -252,12 +252,7 @@ impl SafetyFacts {
             }
         }
 
-        Some(Self::new(
-            state.round_wind,
-            threat.wind,
-            genbutsu,
-            visible,
-        ))
+        Some(Self::new(state.round_wind, threat.wind, genbutsu, visible))
     }
 
     /// How many copies of `tile` the defender can see.
@@ -393,14 +388,9 @@ impl SafetyFacts {
 
         // One chance: every side wait is denied or needs the last copy of a
         // protorun tile (ch. 8, "One chance").
-        let one_chance = intervals
-            .iter()
-            .enumerate()
-            .all(|(index, (_, protorun))| {
-                by_suji[index]
-                    || by_blockade[index]
-                    || self.interval_one_chance(suit, *protorun)
-            });
+        let one_chance = intervals.iter().enumerate().all(|(index, (_, protorun))| {
+            by_suji[index] || by_blockade[index] || self.interval_one_chance(suit, *protorun)
+        });
         if one_chance {
             let blocker = intervals
                 .iter()
@@ -481,9 +471,10 @@ impl SafetyFacts {
         };
 
         suji_intervals(value).iter().all(|(_, protorun)| {
-            protorun
-                .iter()
-                .any(|&protorn_value| self.early_discards.contains(&Tile::suited(suit, protorn_value)))
+            protorun.iter().any(|&protorn_value| {
+                self.early_discards
+                    .contains(&Tile::suited(suit, protorn_value))
+            })
         })
     }
 
@@ -629,7 +620,12 @@ mod tests {
         Tile::try_from(code).expect("tile code must parse")
     }
 
-    fn with_visibility(genbutsu: &[&str], visible: &[&str], wind: Wind, round: Wind) -> SafetyFacts {
+    fn with_visibility(
+        genbutsu: &[&str],
+        visible: &[&str],
+        wind: Wind,
+        round: Wind,
+    ) -> SafetyFacts {
         let iter = genbutsu.iter().map(|code| tile(code)).collect();
         let mut counts = HashMap::new();
         for code in visible {
@@ -677,12 +673,7 @@ mod tests {
         let facts = with_visibility(&["4m"], &["1m", "1m", "1m"], Wind::South, Wind::East);
         assert_eq!(facts.read(tile("1m")).rank, SafetyRank::Aa);
 
-        let facts = with_visibility(
-            &["4m"],
-            &["1m", "1m", "1m", "1m"],
-            Wind::South,
-            Wind::East,
-        );
+        let facts = with_visibility(&["4m"], &["1m", "1m", "1m", "1m"], Wind::South, Wind::East);
         assert_eq!(facts.read(tile("1m")).rank, SafetyRank::Aaa);
     }
 
@@ -744,12 +735,7 @@ mod tests {
         // The book's combined blockade + suji table (`tbl:kabesuji`): a 2m
         // blockade denies the 1-4 wait and 7m's genbutsu denies the 4-7 wait,
         // so no side wait can catch 4m even though it is not plain suji.
-        let facts = with_visibility(
-            &["7m"],
-            &["2m", "2m", "2m", "2m"],
-            Wind::South,
-            Wind::East,
-        );
+        let facts = with_visibility(&["7m"], &["2m", "2m", "2m", "2m"], Wind::South, Wind::East);
 
         assert_eq!(facts.read(tile("4m")).rank, SafetyRank::Bbb);
     }
@@ -839,9 +825,11 @@ mod tests {
         hand.insert(tile("4m"), 1);
         hand.insert(tile("5m"), 1);
 
-        assert!(facts
-            .stuck_choice(&[tile("4m"), tile("5m")], &hand, &[tile("9p")])
-            .is_none());
+        assert!(
+            facts
+                .stuck_choice(&[tile("4m"), tile("5m")], &hand, &[tile("9p")])
+                .is_none()
+        );
     }
 
     #[test]
