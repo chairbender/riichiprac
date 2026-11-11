@@ -165,6 +165,10 @@ function bookPick(grade: DualGrade): string {
       return `Dama, discarding ${tileName}`;
     case 'fold':
       return `Fold, discarding ${tileName}`;
+    case 'pass':
+      return 'Pass on the call';
+    case 'call':
+      return 'Take the call';
     default:
       return actionTypeLabel(grade.book.expected_action);
   }
@@ -182,6 +186,10 @@ function actionTypeLabel(action: string): string {
       return 'Kan';
     case 'discard':
       return 'No Kan';
+    case 'pass':
+      return 'Pass';
+    case 'call':
+      return 'Call';
     default:
       return 'Mortal action';
   }

@@ -18,6 +18,8 @@
 //!   different-suit discard makes it dangerous.
 //! - `shouminkan_decision`: Added Kan decision lesson (Kan or decline, one
 //!   neutral prompt).
+//! - `meld_or_not`: the ch. 9.1 call decision: pass on a Pon when the hand is
+//!   both cheap and slow.
 //! - `wind_discard_order`: the ch. 9 seating tip: which valueless wind to throw
 //!   first (the right player's).
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
@@ -31,6 +33,7 @@ mod chiitoitsu_riichi_vs_dama;
 mod dama_bad_wait;
 mod dama_genbutsu_wait;
 mod defense;
+mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
 mod riichi_judgement;
@@ -231,6 +234,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::MeldOrNot,
+        label: "Meld or Not",
+        description: "A Pon is offered on a cheap and slow hand: pass, unless the book's \
+                      exceptions apply.",
+        category: ScenarioCategory::MeldingDecision,
+        tags: &["melding", "call", "pon", "pass", "cheap_slow"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::AiBestAction,
         label: "AI Best Action",
         description: "Any decision: discard, call, or win — the answer is Mortal v4's top action.",
@@ -313,6 +326,7 @@ pub enum ScenarioId {
     DamaBadWait,
     DamaGenbutsuWait,
     ShouminkanDecision,
+    MeldOrNot,
     WindDiscardOrder,
     AiBestAction,
     DefenseSafetyChart,
@@ -335,6 +349,7 @@ impl ScenarioId {
         ScenarioId::DamaGenbutsuWait,
         ScenarioId::ShouminkanDecision,
         ScenarioId::WindDiscardOrder,
+        ScenarioId::MeldOrNot,
         ScenarioId::AiBestAction,
         ScenarioId::DefenseSafetyChart,
         ScenarioId::DefenseStuckHeuristic,
@@ -356,6 +371,7 @@ impl ScenarioId {
             ScenarioId::DamaGenbutsuWait => "dama_genbutsu_wait",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
             ScenarioId::WindDiscardOrder => "wind_discard_order",
+            ScenarioId::MeldOrNot => "meld_or_not",
             ScenarioId::AiBestAction => "ai_best_action",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
@@ -378,6 +394,7 @@ impl ScenarioId {
             "dama_genbutsu_wait" => Some(ScenarioId::DamaGenbutsuWait),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
+            "meld_or_not" => Some(ScenarioId::MeldOrNot),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
@@ -401,6 +418,7 @@ impl ScenarioId {
             ScenarioId::DamaGenbutsuWait => dama_genbutsu_wait::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
             ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
+            ScenarioId::MeldOrNot => meld_or_not::generate(category),
             ScenarioId::AiBestAction => Err(
                 "ai_best_action requires the loaded Mortal model; use the evaluator's \
                  generate_ai_puzzle"

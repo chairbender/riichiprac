@@ -86,7 +86,8 @@ export function HandDock({
   let handHint = 'Dama selected - tap a tile to discard';
   if (isAnswered) {
     handHint = 'Answer submitted';
-  } else if (isAiScenario && !canDiscard) {
+  } else if (!canDiscard) {
+    // An AI reaction or a book call lesson: the answer is a button, not a tile.
     handHint = 'Choose a call or Pass';
   } else if (callKan) {
     handHint = `Kan armed - tap ${formatTileForDisplay(
@@ -236,7 +237,7 @@ export function HandDock({
               type="button"
               className={`hand-tile-button${stateClass}${aiClass}`}
               onClick={() => onSelectTile(tile, index)}
-              disabled={isAnswered || (isAiScenario && !canDiscard)}
+              disabled={isAnswered || !canDiscard}
               aria-label={`${
                 callKan
                   ? `Declare Kan on ${formatTileForDisplay(

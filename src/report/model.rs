@@ -22,6 +22,7 @@ pub enum DecisionPrompt {
     WhichDiscard,
     KanOrDiscard,
     PushOrFold,
+    CallOrPass,
     AiBestAction,
 }
 
@@ -34,6 +35,7 @@ impl DecisionPrompt {
             TargetAction::NaniKiru | TargetAction::Defend => Self::WhichDiscard,
             TargetAction::Kan => Self::KanOrDiscard,
             TargetAction::Push | TargetAction::Fold => Self::PushOrFold,
+            TargetAction::Call => Self::CallOrPass,
             TargetAction::Best => Self::AiBestAction,
         }
     }
@@ -44,6 +46,7 @@ impl DecisionPrompt {
             Self::WhichDiscard => "Which tile do you discard?",
             Self::KanOrDiscard => "Call Shouminkan, or discard?",
             Self::PushOrFold => "Push or fold?",
+            Self::CallOrPass => "Call, or pass?",
             Self::AiBestAction => "What is the best action?",
         }
     }

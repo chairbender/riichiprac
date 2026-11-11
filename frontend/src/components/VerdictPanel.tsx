@@ -130,10 +130,12 @@ export function VerdictPanel({
                 <Mark label="action" ok={book.is_action_correct} />
                 <Mark
                   label={
-                    state.correct_action.type === 'kan' ||
-                    state.correct_action.type === 'discard'
-                      ? 'tile'
-                      : 'discard'
+                    state.correct_action.type === 'pass'
+                      ? 'call'
+                      : state.correct_action.type === 'kan' ||
+                          state.correct_action.type === 'discard'
+                        ? 'tile'
+                        : 'discard'
                   }
                   ok={book.is_tile_correct}
                 />
@@ -350,6 +352,8 @@ function describeBookAction(state: GameState): string {
       return `Pass on the Kan · discard ${formatTileForDisplay(
         state.correct_action.tile,
       )}`;
+    case 'pass':
+      return `Pass on ${state.call_offer?.label ?? 'the call'}`;
     case 'best':
       return state.correct_action.label;
   }

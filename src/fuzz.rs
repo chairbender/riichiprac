@@ -426,6 +426,54 @@ mod tests {
             mortal_action_for_correct(&CorrectAction::discard("5p")),
             "Discard_5p"
         );
+        assert_eq!(mortal_action_for_correct(&CorrectAction::pass()), "Pass");
+    }
+
+    #[test]
+    fn a_declined_call_compares_against_mortals_pass_action() {
+        let expected = CorrectAction::pass();
+        let mut mask = vec![false; ACTION_SPACE];
+        mask[crate::ai::actions::action_index("Pass").expect("Pass")] = true;
+        mask[crate::ai::actions::action_index("Pon").expect("Pon")] = true;
+
+        let agrees = compare_expected_action(
+            &expected,
+            &evaluation("Pass", &[("Pass", "pass", 0.6), ("Pon", "pon", 0.4)]),
+            &mask,
+        );
+        assert_eq!(agrees.outcome, FuzzOutcome::Agrees);
+        assert_eq!(agrees.app_action, "Pass");
+
+        let calls = compare_expected_action(
+            &expected,
+            &evaluation("Pon", &[("Pon", "pon", 0.7), ("Pass", "pass", 0.3)]),
+            &mask,
+        );
+        assert_eq!(calls.outcome, FuzzOutcome::Discrepancy);
+        assert_eq!(calls.kind, Some(DiscrepancyKind::Action));
+    }
+
+    #[test]
+    fn the_generated_call_lesson_offers_a_legal_pon_and_pass() {
+        use crate::generator::generate_puzzle;
+
+        let state = generate_puzzle("meld_or_not").expect("call lesson must generate");
+        let mask = crate::ai::actions::legal_action_mask(&state);
+        assert!(action_is_legal("Pass", &mask), "Pass must be legal");
+        assert!(
+            action_is_legal("Pon", &mask),
+            "the offered Pon must be legal"
+        );
+        assert!(
+            compare_expected_action(
+                &state.correct_action,
+                &evaluation("Pass", &[("Pass", "pass", 1.0)]),
+                &mask
+            )
+            .outcome
+                == FuzzOutcome::Agrees,
+            "the book answer must be comparable to Mortal's Pass"
+        );
     }
 
     #[test]
