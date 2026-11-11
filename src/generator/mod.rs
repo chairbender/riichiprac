@@ -13,6 +13,9 @@
 //! - `dama_genbutsu_wait`: ch. 7's genbutsu wait: dama when one winning tile is
 //!   the genbutsu of the player everyone is folding to.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
+//! - `open_hand_defense`: ch. 8.4's open-hand read: an opponent's chii followed
+//!   by a discard in the same suit makes that discard's neighbourhood safe; a
+//!   different-suit discard makes it dangerous.
 //! - `shouminkan_decision`: Added Kan decision lesson (Kan or decline, one
 //!   neutral prompt).
 //! - `wind_discard_order`: the ch. 9 seating tip: which valueless wind to throw
@@ -29,6 +32,7 @@ mod dama_bad_wait;
 mod dama_genbutsu_wait;
 mod defense;
 pub mod mortal_agreement;
+mod open_hand_defense;
 mod riichi_judgement;
 mod shouminkan_decision;
 mod support;
@@ -253,6 +257,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
     },
+    ScenarioMeta {
+        id: ScenarioId::OpenHandDefense,
+        label: "Open Hand: Post-Chi Discard",
+        description: "An opponent with three open melds chi'd, then discarded: read whether \
+                      the neighbourhood of that discard is safe or dangerous.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &["defense", "open_hand", "chi", "neighbourhood", "discard"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
 ];
 
 /// Serializes the scenario catalogue for the frontend picker.
@@ -303,6 +317,7 @@ pub enum ScenarioId {
     AiBestAction,
     DefenseSafetyChart,
     DefenseStuckHeuristic,
+    OpenHandDefense,
 }
 
 impl ScenarioId {
@@ -323,6 +338,7 @@ impl ScenarioId {
         ScenarioId::AiBestAction,
         ScenarioId::DefenseSafetyChart,
         ScenarioId::DefenseStuckHeuristic,
+        ScenarioId::OpenHandDefense,
     ];
 
     /// The category string understood by the WASM API.
@@ -343,6 +359,7 @@ impl ScenarioId {
             ScenarioId::AiBestAction => "ai_best_action",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
+            ScenarioId::OpenHandDefense => "open_hand_defense",
         }
     }
 
@@ -364,6 +381,7 @@ impl ScenarioId {
             "ai_best_action" => Some(ScenarioId::AiBestAction),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
+            "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
             _ => None,
         }
     }
@@ -390,6 +408,7 @@ impl ScenarioId {
             ),
             ScenarioId::DefenseSafetyChart => defense::generate_safety_chart(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
+            ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
         }
     }
 }
@@ -598,6 +617,7 @@ mod tests {
             "shouminkan_decision",
             "defense_safety_chart",
             "defense_stuck_heuristic",
+            "open_hand_defense",
         ] {
             for run in 0..20 {
                 let state = generate_puzzle(category)
@@ -627,6 +647,7 @@ mod tests {
             ScenarioId::ChiitoitsuRiichiVsDama,
             ScenarioId::ShouminkanDecision,
             ScenarioId::DefenseSafetyChart,
+            ScenarioId::OpenHandDefense,
         ] {
             for run in 0..10 {
                 let state = generate_puzzle(id.as_str())

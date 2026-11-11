@@ -36,6 +36,32 @@ use crate::state::{GameState, Wind, is_out_of_rotation_call};
 /// from "earlier turns" (BB-) to "later turns" (C).
 pub const EARLY_TURN_LIMIT: usize = 6;
 
+/// True when `tile` sits in the ch. 8.4 neighbourhood of `post_chi`.
+///
+/// Riichi Book 1, ch. 8, "Discard upon chii" reads the tile an open-hand
+/// opponent discarded right after a chii:
+///
+/// - "chii -> discard a tile in the same suit => the neighborhood of the last
+///   discard is safe";
+/// - "chii -> discard a tile in a different suit => the neighborhood of the
+///   last discard is dangerous".
+///
+/// The trainer's neighbourhood is the same suit within two ranks of the
+/// discard, not counting the discard itself (the discard is already genbutsu,
+/// so it is safer for a different reason). Around a 4p discard that is
+/// 2p–3p–5p–6p, matching the book's own example ("pinzu tiles such as
+/// 2 3 5 6 7 are relatively safe") for the part the book names.
+pub fn in_open_hand_neighbourhood(tile: Tile, post_chi: Tile) -> bool {
+    let (Some(suit), Some(value)) = (tile.suit(), tile.value()) else {
+        return false;
+    };
+    let (Some(centre_suit), Some(centre_value)) = (post_chi.suit(), post_chi.value()) else {
+        return false;
+    };
+
+    suit == centre_suit && value.abs_diff(centre_value) <= 2 && value != centre_value
+}
+
 /// One row of Riichi Book 1's safety ranking (`tbl:safety`), safest first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -1200,5 +1226,42 @@ mod tests {
         // `SafetyFacts` is a read-only view; nothing about the table changes.
         let state = crate::fixtures::mock_table::generate("mock_table").unwrap();
         let _: &Vec<PlayerState> = &state.players;
+    }
+
+    #[test]
+    fn open_hand_neighbourhood_is_the_same_suit_within_two_ranks() {
+        let centre = tile("4p");
+
+        for code in ["2p", "3p", "5p", "6p"] {
+            assert!(
+                in_open_hand_neighbourhood(tile(code), centre),
+                "{code} is in the 4p neighbourhood"
+            );
+        }
+        // The discard itself is genbutsu, not merely a neighbourhood tile.
+        assert!(!in_open_hand_neighbourhood(tile("4p"), centre));
+        // Two ranks is the trainer's edge; the book's example also calls 7p
+        // relatively safe, but the structural lesson stops at ±2.
+        for code in ["1p", "7p", "8p", "9p"] {
+            assert!(
+                !in_open_hand_neighbourhood(tile(code), centre),
+                "{code} is outside the 4p neighbourhood"
+            );
+        }
+        // A different suit is never in the neighbourhood, even at the same rank.
+        assert!(!in_open_hand_neighbourhood(tile("4s"), centre));
+        assert!(!in_open_hand_neighbourhood(tile("3m"), centre));
+        // Honors have no rank neighbourhood.
+        assert!(!in_open_hand_neighbourhood(tile("5z"), centre));
+    }
+
+    #[test]
+    fn open_hand_neighbourhood_respects_the_tile_edges() {
+        assert!(in_open_hand_neighbourhood(tile("2m"), tile("1m")));
+        assert!(in_open_hand_neighbourhood(tile("3m"), tile("1m")));
+        assert!(!in_open_hand_neighbourhood(tile("4m"), tile("1m")));
+        assert!(in_open_hand_neighbourhood(tile("8s"), tile("9s")));
+        assert!(in_open_hand_neighbourhood(tile("7s"), tile("9s")));
+        assert!(!in_open_hand_neighbourhood(tile("6s"), tile("9s")));
     }
 }

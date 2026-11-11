@@ -218,6 +218,15 @@ fn test_list_scenarios_payload() {
             >= 2,
         "both defense lessons must be listed"
     );
+    assert!(
+        scenarios.iter().any(|scenario| {
+            scenario["id"] == "open_hand_defense"
+                && scenario["category"] == "defense_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the open-hand chii lesson must be listed as a book lesson"
+    );
 }
 
 #[wasm_bindgen_test]
@@ -2277,6 +2286,149 @@ fn test_defense_scenarios_payload() {
             assert_eq!(val["book_rationale"]["source"]["chapter"], 8);
         }
     }
+}
+
+#[wasm_bindgen_test]
+fn test_open_hand_defense_payload() {
+    let mut saw_same_suit = false;
+    let mut saw_different_suit = false;
+
+    for run in 0..30 {
+        let json_output = generate_puzzle("open_hand_defense".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}"));
+
+        assert_eq!(val["category"], "open_hand_defense");
+        assert_eq!(val["target_action"], "Defend");
+        assert_eq!(val["correct_action"]["type"], "fold");
+        assert_eq!(val["decision"]["kind"], "self_turn");
+        assert_eq!(val["current_turn"], 0);
+        assert_eq!(val["can_riichi"], false);
+        assert_eq!(val["shanten"], 2);
+        assert_eq!(val["riichi_sticks"], 0);
+
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("a fold answer names the discard");
+        let answer_tile = parse_single_tile(answer);
+
+        let players = val["players"].as_array().expect("players array");
+        assert_eq!(players.len(), 4);
+
+        let human = &players[0];
+        assert_eq!(human["is_human"], true);
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(human["draw"].is_string());
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        assert!(
+            human["hand"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|tile| tile.as_str() == Some(answer)),
+            "the answer is a hand discard, so the fold is visible"
+        );
+
+        // The threat is the opponent with three open melds. Its last call is
+        // the chii, and its last discard is the tile thrown after it.
+        let threat = players
+            .iter()
+            .skip(1)
+            .find(|player| {
+                player["melds"]
+                    .as_array()
+                    .is_some_and(|melds| melds.len() == 3)
+            })
+            .unwrap_or_else(|| panic!("{run}: no three-meld threat"));
+        assert_eq!(threat["is_riichi"], false);
+        let melds = threat["melds"].as_array().unwrap();
+        let last_chi = melds
+            .iter()
+            .rev()
+            .find(|meld| meld["meld_type"] == "Chi")
+            .expect("the last call is a chii");
+        let chi_suit = parse_single_tile(last_chi["tiles"][0].as_str().expect("a chii tile"))
+            .suit()
+            .expect("suited");
+        let threat_discards = threat["discards"].as_array().unwrap();
+        let post_chi = parse_single_tile(
+            threat_discards.last().expect("a post-chii discard")["tile"]
+                .as_str()
+                .expect("a discard tile"),
+        );
+
+        let human_tiles: Vec<Tile> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .chain(std::iter::once(&human["draw"]))
+            .map(|tile| parse_single_tile(tile.as_str().expect("tile code")))
+            .collect();
+        let in_neighbourhood: Vec<Tile> = {
+            let mut unique = human_tiles.clone();
+            unique.sort();
+            unique.dedup();
+            unique
+                .into_iter()
+                .filter(|tile| riichiprac::safety::in_open_hand_neighbourhood(*tile, post_chi))
+                .collect()
+        };
+
+        if chi_suit == post_chi.suit().expect("suited") {
+            saw_same_suit = true;
+            // The book's safe case: the answer is the hand's only tile in the
+            // neighbourhood of the last discard.
+            assert_eq!(in_neighbourhood, vec![answer_tile]);
+            assert!(
+                threat_discards
+                    .iter()
+                    .all(|discard| discard["tile"].as_str() != Some(answer)),
+                "the same-suit board holds no genbutsu"
+            );
+        } else {
+            saw_different_suit = true;
+            // The trap: the neighbourhood is dangerous, and the answer is the
+            // 100% genbutsu just outside it.
+            assert!(
+                !riichiprac::safety::in_open_hand_neighbourhood(answer_tile, post_chi),
+                "the trap answer is outside the neighbourhood"
+            );
+            assert!(
+                !in_neighbourhood.is_empty(),
+                "the trap must show a tempting tile in the neighbourhood"
+            );
+            assert!(
+                threat_discards
+                    .iter()
+                    .any(|discard| discard["tile"].as_str() == Some(answer)),
+                "the trap answer must be in the threat's river"
+            );
+        }
+
+        assert_eq!(val["equivalent_tiles"].as_array().map(Vec::len), None);
+
+        let total_score: i64 = players
+            .iter()
+            .map(|player| player["score"].as_i64().expect("score int"))
+            .sum();
+        assert_eq!(total_score, 100_000);
+
+        let rationale = &val["book_rationale"];
+        assert_eq!(rationale["source"]["chapter"], 8);
+        assert!(
+            rationale["rules"]
+                .as_array()
+                .is_some_and(|rules| !rules.is_empty()),
+            "the ch. 8.4 rationale must be stamped"
+        );
+    }
+
+    assert!(saw_same_suit, "the same-suit case must be generated");
+    assert!(
+        saw_different_suit,
+        "the different-suit trap must be generated"
+    );
 }
 
 #[wasm_bindgen_test]
