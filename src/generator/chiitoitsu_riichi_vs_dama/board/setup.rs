@@ -39,8 +39,10 @@ pub(super) fn prepare_hand(skeleton: &ChiitoitsuSkeleton) -> Result<PreparedHand
         return Err("Chiitoitsu draw must complete the sixth pair".to_string());
     }
 
-    // Both lone tiles must leave a real seven-pairs tenpai on the other.
-    for wait in skeleton.waits() {
+    // Both lone tiles must leave a real seven-pairs tenpai on the other, so
+    // both structurally reach a valid wait.
+    let lone_tiles = skeleton.lone_tiles();
+    for wait in lone_tiles {
         let tenpai = skeleton.tenpai_tiles(wait);
         if !has_six_pairs_and_singleton(&tenpai, wait) {
             return Err("Chiitoitsu discard must leave six pairs plus one singleton".to_string());
@@ -54,8 +56,8 @@ pub(super) fn prepare_hand(skeleton: &ChiitoitsuSkeleton) -> Result<PreparedHand
         }
     }
 
-    // Prove the accepted set is exactly the two lone tiles: no other discard
-    // may reach tenpai.
+    // Prove no discard outside the two lone tiles reaches tenpai, so the
+    // accepted set can only ever live inside them.
     for &tile in full_counts.keys() {
         let mut post_discard = full_tiles.clone();
         let index = post_discard
@@ -65,12 +67,39 @@ pub(super) fn prepare_hand(skeleton: &ChiitoitsuSkeleton) -> Result<PreparedHand
         post_discard.remove(index);
 
         let tenpai = evaluate_hand(&post_discard).shanten == 0;
-        let accepted = skeleton.waits().contains(&tile);
-        if tenpai != accepted {
+        let lone = lone_tiles.contains(&tile);
+        if tenpai != lone {
             return Err(format!(
-                "Chiitoitsu discard {tile} is tenpai={tenpai} but accepted={accepted}"
+                "Chiitoitsu discard {tile} is tenpai={tenpai} but a lone tile={lone}"
             ));
         }
+    }
+
+    // The accepted set is either both lone tiles (the twin-discard model) or
+    // only the non-wait lone tile (the single-red-five model).
+    let accepted = skeleton.accepted_discards();
+    if accepted.is_empty() || accepted.iter().any(|tile| !lone_tiles.contains(tile)) {
+        return Err("Chiitoitsu accepted discards must be lone tiles".to_string());
+    }
+    if skeleton.red_five_wait {
+        if accepted != vec![skeleton.discard_tile] {
+            return Err("The red-five lesson must accept exactly one discard".to_string());
+        }
+        if skeleton.discard_tile == skeleton.wait_tile {
+            return Err("The red-five discard must not be the kept wait".to_string());
+        }
+        let fives: Vec<Tile> = full_counts
+            .keys()
+            .copied()
+            .filter(|tile| tile.value() == Some(5))
+            .collect();
+        if fives != vec![skeleton.wait_tile] {
+            return Err(
+                "The red-five lesson must hold exactly one five: the kept wait".to_string(),
+            );
+        }
+    } else if accepted.len() != 2 {
+        return Err("The twin-discard lesson must accept both lone tiles".to_string());
     }
 
     let tenpai_tiles = skeleton.tenpai_tiles(skeleton.wait_tile);
@@ -106,13 +135,15 @@ pub(super) fn choose_dora_indicators(
     match skeleton.decision {
         ChiitoitsuDecision::Riichi => riichi::choose_dora_indicators(
             winning_tiles,
-            skeleton.waits(),
+            &skeleton.accepted_waits(),
             skeleton.triggers,
             aka_count,
         ),
-        ChiitoitsuDecision::Dama => {
-            dama::choose_dora_indicators(&skeleton.dora_pairs, winning_tiles, skeleton.waits())
-        }
+        ChiitoitsuDecision::Dama => dama::choose_dora_indicators(
+            &skeleton.dora_pairs,
+            winning_tiles,
+            &skeleton.accepted_waits(),
+        ),
     }
 }
 
@@ -142,7 +173,7 @@ pub(super) fn validate_score(
 pub(super) fn build_deck(
     full_tiles: &[Tile],
     dora_indicators: &[Tile],
-    waits: [Tile; 2],
+    waits: &[Tile],
 ) -> Result<(Deck, Tile), String> {
     let mut deck = Deck::fresh();
     for tile in full_tiles {
@@ -173,16 +204,14 @@ pub(super) fn build_human_river(
     deck: &mut Deck,
     discard_count: usize,
 ) -> Result<Vec<Tile>, String> {
+    let waits = skeleton.accepted_waits();
     match skeleton.decision {
-        ChiitoitsuDecision::Riichi => riichi::build_human_river(
-            deck,
-            discard_count,
-            skeleton.waits(),
-            skeleton.triggers.suji_trap,
-        ),
+        ChiitoitsuDecision::Riichi => {
+            riichi::build_human_river(deck, discard_count, &waits, skeleton.triggers.suji_trap)
+        }
         ChiitoitsuDecision::Dama => {
-            let river = dama::build_human_river(deck, discard_count, skeleton.waits())?;
-            if skeleton.waits().iter().any(|&wait| {
+            let river = dama::build_human_river(deck, discard_count, &waits)?;
+            if waits.iter().any(|&wait| {
                 let suji = suji_tiles(wait);
                 river.iter().any(|tile| suji.contains(tile))
             }) {
@@ -195,11 +224,11 @@ pub(super) fn build_human_river(
 
 /// Rejects a wait when too many winning tiles are already visible.
 pub(super) fn validate_visible_waits(
-    waits: [Tile; 2],
+    waits: &[Tile],
     opponent_rivers: &[Vec<Tile>],
     dora_indicators: &[Tile],
 ) -> Result<(), String> {
-    for wait in waits {
+    for &wait in waits {
         let mut visible_wait_tiles = 0;
         for river in opponent_rivers {
             for tile in river {

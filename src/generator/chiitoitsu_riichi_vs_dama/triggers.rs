@@ -47,28 +47,31 @@ impl RiichiTriggerSet {
 }
 
 /// Draws a random non-empty subset of compatible Riichi triggers.
+///
+/// The red-five trigger is emitted on its own. It is a single-answer variant:
+/// the kept wait is the hand's only red five and the only accepted discard is
+/// the other lone tile. Pairing it with any other trigger would leave that
+/// other trigger justifying Riichi after the red five is discarded, turning
+/// the discard into a value judgement instead of the book's one answer.
 pub(super) fn random() -> RiichiTriggerSet {
-    loop {
-        let mask = gen_range(0, 64) as u8;
-        if mask == 0 {
-            continue;
-        }
+    if gen_range(0, 6) == 0 {
+        return RiichiTriggerSet {
+            red_five_wait: true,
+            ..Default::default()
+        };
+    }
 
+    loop {
+        let mask = gen_range(0, 32) as u8;
         let triggers = RiichiTriggerSet {
             dealer: mask & 1 != 0,
             tanyao: mask & 2 != 0,
-            red_five_wait: mask & 4 != 0,
-            suji_trap: mask & 8 != 0,
-            wait_outside_456: mask & 16 != 0,
-            score_below_mangan: mask & 32 != 0,
+            red_five_wait: false,
+            suji_trap: mask & 4 != 0,
+            wait_outside_456: mask & 8 != 0,
+            score_below_mangan: mask & 16 != 0,
         };
-
         if !triggers.any() {
-            continue;
-        }
-
-        // A red-five wait is always the 5, so it cannot also be outside 4-5-6.
-        if triggers.red_five_wait && triggers.wait_outside_456 {
             continue;
         }
 
@@ -85,6 +88,16 @@ mod tests {
         for _ in 0..1_000 {
             let triggers = random();
             assert!(triggers.any());
+            if triggers.red_five_wait {
+                assert_eq!(
+                    triggers,
+                    RiichiTriggerSet {
+                        red_five_wait: true,
+                        ..Default::default()
+                    },
+                    "the red-five lesson must stand alone"
+                );
+            }
             assert!(!(triggers.red_five_wait && triggers.wait_outside_456));
         }
     }

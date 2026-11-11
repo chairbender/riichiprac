@@ -122,7 +122,7 @@ pub(super) fn dora_indicator_for(tile: Tile) -> Tile {
 pub(super) fn choose_dora_indicators(
     dora_pairs: &[Tile],
     winning_tiles: &[Tile],
-    waits: [Tile; 2],
+    waits: &[Tile],
 ) -> Result<Vec<Tile>, String> {
     if dora_pairs.len() != 2 {
         return Err("Dama hand must have exactly two dora pairs".to_string());
@@ -156,10 +156,10 @@ pub(super) fn choose_dora_indicators(
 pub(super) fn build_human_river(
     deck: &mut Deck,
     count: usize,
-    waits: [Tile; 2],
+    waits: &[Tile],
 ) -> Result<Vec<Tile>, String> {
     let mut excluded = waits.to_vec();
-    for wait in waits {
+    for &wait in waits {
         excluded.extend(suji_tiles(wait));
     }
 
@@ -171,7 +171,7 @@ pub(super) fn build_human_river(
     Ok(river)
 }
 
-/// Rejects completed dama hands below Mangan, for either possible wait.
+/// Rejects completed dama hands below Mangan, for every accepted wait.
 pub(super) fn validate_score(
     skeleton: &ChiitoitsuSkeleton,
     round_wind: Wind,
@@ -179,7 +179,7 @@ pub(super) fn validate_score(
     dora_indicators: &[Tile],
     aka_count: u8,
 ) -> Result<(), String> {
-    for wait in skeleton.waits() {
+    for wait in skeleton.accepted_waits() {
         let winning_tiles = skeleton.winning_tiles(wait);
         let score_level = scoring::score_level(
             &winning_tiles,
@@ -201,10 +201,10 @@ pub(super) fn validate_score(
     Ok(())
 }
 
-/// Verifies the board-level dama conditions for both possible waits.
+/// Verifies the board-level dama conditions for every accepted wait.
 pub(super) fn validate_board_constraints(
     human_wind: Wind,
-    waits: [Tile; 2],
+    waits: &[Tile],
     red_five_wait: bool,
     pairs: &[Tile],
     aka_count: u8,

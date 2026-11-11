@@ -607,13 +607,23 @@ fn caveats_for(state: &GameState) -> Vec<String> {
     }
 
     if state.category == "chiitoitsu_riichi_vs_dama" {
-        caveats.push(
-            "The draw completed the sixth pair, so two lone tiles remain. Either can be \
-             discarded: both leave a seven-pairs tenpai on the other, and this hand is \
-             generated so the Riichi/dama judgement is the same for either wait. Both tiles \
-             are graded as correct, which keeps the lesson on the declaration."
-                .to_string(),
-        );
+        if state.equivalent_tiles.is_empty() {
+            caveats.push(
+                "The draw completed the sixth pair, leaving the red five as the kept wait. \
+                 The book's red-five reason only holds while the red five is in hand, and \
+                 throwing it away gives up a dora, so the only accepted discard is the other \
+                 lone tile."
+                    .to_string(),
+            );
+        } else {
+            caveats.push(
+                "The draw completed the sixth pair, so two lone tiles remain. Either can be \
+                 discarded: both leave a seven-pairs tenpai on the other, and this hand is \
+                 generated so the Riichi/dama judgement is the same for either wait. Both \
+                 tiles are graded as correct, which keeps the lesson on the declaration."
+                    .to_string(),
+            );
+        }
     }
     if !state.shouminkan_triggers.is_empty() {
         caveats.push(
@@ -1532,22 +1542,48 @@ mod tests {
     }
 
     #[test]
-    fn chiitoitsu_rationale_states_the_twin_discard_rule() {
-        let state = generate_puzzle("chiitoitsu_riichi_vs_dama").expect("chiitoitsu must generate");
+    fn chiitoitsu_rationale_states_the_discard_rule() {
+        let mut saw_twin = false;
+        let mut saw_red_five = false;
 
-        assert_eq!(
-            state.equivalent_tiles.len(),
-            1,
-            "the draw leaves two lone tiles, so the twin discard must be accepted"
-        );
+        for _ in 0..300 {
+            let state =
+                generate_puzzle("chiitoitsu_riichi_vs_dama").expect("chiitoitsu must generate");
+            let rationale = rationale_for(&state).expect("chiitoitsu needs a rationale");
 
-        let rationale = rationale_for(&state).expect("chiitoitsu needs a rationale");
+            if state.equivalent_tiles.is_empty() {
+                saw_red_five = true;
+                assert!(
+                    rationale
+                        .caveats
+                        .iter()
+                        .any(|caveat| caveat.contains("red five")),
+                    "the red-five lesson must say the kept red five is the answer"
+                );
+            } else {
+                saw_twin = true;
+                assert_eq!(
+                    state.equivalent_tiles.len(),
+                    1,
+                    "the twin discard is the only equivalent tile"
+                );
+                assert!(
+                    rationale
+                        .caveats
+                        .iter()
+                        .any(|caveat| caveat.contains("Either can be discarded")),
+                    "the twin lesson must state why both lone tiles are graded correct"
+                );
+            }
+
+            if saw_twin && saw_red_five {
+                break;
+            }
+        }
+
         assert!(
-            rationale
-                .caveats
-                .iter()
-                .any(|caveat| caveat.contains("Either can be discarded")),
-            "the rationale must state why both lone tiles are graded correct"
+            saw_twin && saw_red_five,
+            "both discard models should be generated"
         );
     }
 

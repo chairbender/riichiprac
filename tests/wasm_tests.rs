@@ -324,42 +324,74 @@ fn chiitoitsu_pre_draw_shape(
     (hand_tiles, draw, full)
 }
 
-/// The two lone tiles the payload accepts, canonical answer first.
-fn chiitoitsu_accepted_codes(val: &serde_json::Value) -> [String; 2] {
-    let canonical = val["correct_action"]["discard"]
-        .as_str()
-        .expect("chiitoitsu answer discard")
-        .to_string();
-    let equivalent = val["equivalent_tiles"]
-        .as_array()
-        .expect("equivalent_tiles array")
-        .first()
-        .and_then(|tile| tile.as_str())
-        .expect("chiitoitsu twin discard")
-        .to_string();
-    [canonical, equivalent]
+/// The accepted discard codes: the canonical answer plus any equivalent tile.
+fn chiitoitsu_accepted_codes(val: &serde_json::Value) -> Vec<String> {
+    let mut accepted = vec![
+        val["correct_action"]["discard"]
+            .as_str()
+            .expect("chiitoitsu answer discard")
+            .to_string(),
+    ];
+    // The red-five lesson serializes no `equivalent_tiles` field at all.
+    if let Some(equivalents) = val["equivalent_tiles"].as_array() {
+        accepted.extend(equivalents.iter().map(|tile| {
+            tile.as_str()
+                .expect("chiitoitsu equivalent tile")
+                .to_string()
+        }));
+    }
+    accepted
 }
 
-/// The 13-tile tenpai hand left after discarding the accepted tile that is
-/// not `wait_code`.
-fn chiitoitsu_tenpai(full: &[Tile], accepted: &[String; 2], wait_code: &str) -> (Vec<Tile>, Tile) {
-    let other = accepted
+/// The two count-1 tiles in the 14-tile hand.
+fn chiitoitsu_lone_tiles(full: &[Tile]) -> [Tile; 2] {
+    let counts = to_counts(full);
+    let lone: Vec<Tile> = counts
         .iter()
-        .find(|code| code.as_str() != wait_code)
-        .expect("a distinct twin discard");
-    let other_tile = parse_single_tile(other);
+        .filter(|(_, count)| **count == 1)
+        .map(|(&tile, _)| tile)
+        .collect();
+    assert_eq!(
+        lone.len(),
+        2,
+        "post-draw chiitoitsu hand has two lone tiles"
+    );
+    [lone[0], lone[1]]
+}
+
+/// The waits the accepted discards can leave (the other lone tile).
+fn chiitoitsu_accepted_waits(val: &serde_json::Value, full: &[Tile]) -> Vec<Tile> {
+    let lone = chiitoitsu_lone_tiles(full);
+    chiitoitsu_accepted_codes(val)
+        .into_iter()
+        .map(|code| {
+            let discard = parse_single_tile(&code);
+            lone.into_iter()
+                .find(|&tile| tile != discard)
+                .expect("a distinct twin lone tile")
+        })
+        .collect()
+}
+
+/// The 13-tile tenpai hand that keeps `wait_code` (the other lone tile is out).
+fn chiitoitsu_tenpai(full: &[Tile], wait_code: &str) -> (Vec<Tile>, Tile) {
+    let wait = parse_single_tile(wait_code);
+    let other = chiitoitsu_lone_tiles(full)
+        .into_iter()
+        .find(|&tile| tile != wait)
+        .expect("a distinct twin lone tile");
     let mut tenpai = full.to_vec();
     let index = tenpai
         .iter()
-        .position(|tile| *tile == other_tile)
+        .position(|tile| *tile == other)
         .expect("the twin discard is in the hand");
     tenpai.remove(index);
-    (tenpai, parse_single_tile(wait_code))
+    (tenpai, wait)
 }
 
 /// The 14-tile winning hand completed on `wait_code`.
-fn chiitoitsu_winning(full: &[Tile], accepted: &[String; 2], wait_code: &str) -> Vec<Tile> {
-    let (tenpai, wait) = chiitoitsu_tenpai(full, accepted, wait_code);
+fn chiitoitsu_winning(full: &[Tile], wait_code: &str) -> Vec<Tile> {
+    let (tenpai, wait) = chiitoitsu_tenpai(full, wait_code);
     let mut winning = tenpai;
     winning.push(wait);
     winning
@@ -377,8 +409,9 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
     ];
 
     let mut riichi_count = 0;
+    let mut red_five_count = 0;
 
-    for run in 0..100 {
+    for run in 0..120 {
         let json_output = generate_puzzle("chiitoitsu_riichi_vs_dama".to_string());
         let val: serde_json::Value = serde_json::from_str(&json_output)
             .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
@@ -404,17 +437,20 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
         let red_fives = human["red_fives"]
             .as_array()
             .expect("human red_fives array");
-        assert!(red_fives.len() <= 2);
+        assert!(red_fives.len() <= 1, "run {run}");
 
-        let accepted = chiitoitsu_accepted_codes(&val);
-        assert_ne!(accepted[0], accepted[1], "run {run}: twin discards");
-        let discard_code = &accepted[0];
-        // The drawn tile is the pair-completing tile, never the discard.
-        assert_ne!(
-            human["draw"].as_str(),
-            Some(discard_code.as_str()),
-            "run {run}: the draw must be the pair-completing tile"
-        );
+        let triggers = val["riichi_triggers"]
+            .as_array()
+            .expect("riichi_triggers array");
+        assert!(!triggers.is_empty(), "run {run}: no triggers applied");
+        assert!(val["dama_reasons"].as_array().unwrap().is_empty());
+        for trigger in triggers {
+            let trigger = trigger.as_str().expect("trigger string");
+            assert!(
+                TRIGGERS.contains(&trigger),
+                "run {run}: unknown trigger {trigger}"
+            );
+        }
 
         let (_hand_tiles, _draw, full) = chiitoitsu_pre_draw_shape(&val, &format!("run {run}"));
 
@@ -435,23 +471,42 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
         actual.sort();
         assert_eq!(actual, expected, "run {run}: tiles must match hand + draw");
 
+        let accepted = chiitoitsu_accepted_codes(&val);
+        let waits = chiitoitsu_accepted_waits(&val, &full);
+        let red_five_lesson = triggers.len() == 1 && triggers[0].as_str() == Some("red_five_wait");
+        if red_five_lesson {
+            red_five_count += 1;
+            assert_eq!(accepted.len(), 1, "run {run}: red five is single answer");
+            assert_eq!(waits.len(), 1, "run {run}");
+            assert_eq!(red_fives.len(), 1, "run {run}: one red five");
+            assert_eq!(
+                red_fives[0].as_str(),
+                Some(waits[0].to_string().as_str()),
+                "run {run}: the kept wait is the red five"
+            );
+        } else {
+            assert_eq!(accepted.len(), 2, "run {run}: the twin answer");
+            assert_eq!(waits.len(), 2, "run {run}");
+            assert_ne!(accepted[0], accepted[1], "run {run}");
+            assert_eq!(red_fives.len(), 0, "run {run}");
+        }
+
+        // The drawn tile is the pair-completing tile, never the discard.
+        assert!(
+            !accepted
+                .iter()
+                .any(|code| code == human["draw"].as_str().unwrap()),
+            "run {run}: the draw must not be the answer tile"
+        );
+
         // The state's canonical wait follows the canonical discard.
         let wait_code = val["ukeire_tiles"][0]
             .as_str()
-            .expect("chiitoitsu wait tile")
-            .to_string();
+            .expect("chiitoitsu wait tile");
         assert!(
-            accepted.contains(&wait_code),
+            waits.iter().any(|wait| wait.to_string() == wait_code),
             "run {run}: ukeire must name an accepted wait"
         );
-
-        let mut full_hand: Vec<Tile> = human["hand"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
-            .collect();
-        full_hand.push(parse_single_tile(human["draw"].as_str().unwrap()));
 
         let indicators: Vec<Tile> = val["dora_indicators"]
             .as_array()
@@ -461,28 +516,16 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
             .collect();
         assert_eq!(indicators.len(), 1, "run {run}");
 
-        let triggers = val["riichi_triggers"]
-            .as_array()
-            .expect("riichi_triggers array");
-        assert!(!triggers.is_empty(), "run {run}: no triggers applied");
-        assert!(val["dama_reasons"].as_array().unwrap().is_empty());
-        for trigger in triggers {
-            let trigger = trigger.as_str().expect("trigger string");
-            assert!(
-                TRIGGERS.contains(&trigger),
-                "run {run}: unknown trigger {trigger}"
-            );
-        }
-
-        for wait_code in &accepted {
-            let (tenpai, wait) = chiitoitsu_tenpai(&full, &accepted, wait_code);
+        for wait in &waits {
+            let wait_code = wait.to_string();
+            let (tenpai, wait) = chiitoitsu_tenpai(&full, &wait_code);
             let counts = to_counts(&tenpai);
             assert_eq!(calculate_shanten(&counts).shanten, 0, "run {run}");
             let ukeire = calculate_ukeire(&counts);
             assert_eq!(ukeire.tiles.len(), 1, "run {run}");
             assert_eq!(ukeire.tiles[0].tile, wait, "run {run}");
 
-            // Neither wait is the dora and neither is in the human river.
+            // No accepted wait is the dora, and none is in the human river.
             for &indicator in &indicators {
                 assert_ne!(indicator_to_dora(indicator), wait, "run {run}");
             }
@@ -490,7 +533,7 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
                 assert_ne!(discard["tile"].as_str(), Some(wait_code.as_str()));
             }
 
-            let winning = chiitoitsu_winning(&full, &accepted, wait_code);
+            let winning = chiitoitsu_winning(&full, &wait_code);
             let winning_counts = to_counts(&winning);
 
             for trigger in triggers {
@@ -552,6 +595,10 @@ fn test_chiitoitsu_riichi_vs_dama_payload() {
     }
 
     assert!(riichi_count > 0, "no Riichi states were generated");
+    assert!(
+        red_five_count > 0,
+        "no single-red-five states were generated"
+    );
 }
 
 #[wasm_bindgen_test]
@@ -600,16 +647,19 @@ fn test_chiitoitsu_dama_100_hands() {
             .expect("human red_fives array");
         assert!(red_fives.is_empty());
 
-        let accepted = chiitoitsu_accepted_codes(&val);
-        assert_ne!(accepted[0], accepted[1], "hand {dama_count}: twin discards");
-        assert_ne!(
-            human["draw"].as_str(),
-            Some(accepted[0].as_str()),
-            "hand {dama_count}: the draw must be the pair-completing tile"
-        );
-
         let (_hand_tiles, _draw, full) =
             chiitoitsu_pre_draw_shape(&val, &format!("hand {dama_count}"));
+        let accepted = chiitoitsu_accepted_codes(&val);
+        let waits = chiitoitsu_accepted_waits(&val, &full);
+        assert_eq!(accepted.len(), 2, "hand {dama_count}: the dama twin answer");
+        assert_eq!(waits.len(), 2, "hand {dama_count}");
+        assert_ne!(accepted[0], accepted[1], "hand {dama_count}");
+        assert!(
+            !accepted
+                .iter()
+                .any(|code| code == human["draw"].as_str().unwrap()),
+            "hand {dama_count}: the draw must not be the answer tile"
+        );
 
         let mut expected: Vec<&str> = human["hand"]
             .as_array()
@@ -648,8 +698,9 @@ fn test_chiitoitsu_dama_100_hands() {
             .map(|indicator| parse_single_tile(indicator.as_str().unwrap()))
             .collect();
 
-        for wait_code in &accepted {
-            let (tenpai, wait) = chiitoitsu_tenpai(&full, &accepted, wait_code);
+        for wait in &waits {
+            let wait_code = wait.to_string();
+            let (tenpai, wait) = chiitoitsu_tenpai(&full, &wait_code);
             assert!(matches!(wait.value(), Some(4..=6)));
             let counts = to_counts(&tenpai);
             assert_eq!(calculate_shanten(&counts).shanten, 0);
@@ -667,7 +718,7 @@ fn test_chiitoitsu_dama_100_hands() {
                 );
             }
 
-            let winning = chiitoitsu_winning(&full, &accepted, wait_code);
+            let winning = chiitoitsu_winning(&full, &wait_code);
             let total_dora: usize = parsed_indicators
                 .iter()
                 .map(|&indicator| {
@@ -698,7 +749,6 @@ fn test_chiitoitsu_dama_100_hands() {
     let elapsed = js_sys::Date::now() - started;
     assert!(elapsed < 10_000.0, "100 dama hands took {elapsed}ms");
 }
-
 /// Han without riichi for one standard winning hand, at its best yaku reading.
 fn standard_han_without_riichi(
     winning_tiles: &[Tile],

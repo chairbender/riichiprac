@@ -17,12 +17,18 @@ pub(super) enum ChiitoitsuDecision {
 /// completes the sixth pair and the hand becomes tenpai on this draw only.
 /// Two lone tiles remain. Discarding [`ChiitoitsuSkeleton::discard_tile`]
 /// waits on [`ChiitoitsuSkeleton::wait_tile`]; discarding the wait instead
-/// leaves the mirror wait on the discard tile. Both are real seven-pairs
-/// tenpai hands, so both discards are accepted answers.
+/// leaves the mirror wait on the discard tile.
 ///
-/// The generator constrains the hand so that the Riichi/dama judgement is the
-/// same for either wait. The lesson therefore stays about the declaration, not
-/// about ranking two single waits.
+/// Both discards reach a seven-pairs tenpai, but they are not always both the
+/// book's answer:
+///
+/// - the ordinary model accepts both, because the generator makes the
+///   Riichi/dama judgement identical for either wait;
+/// - the red-five model accepts only [`ChiitoitsuSkeleton::discard_tile`]. The
+///   hand holds exactly one red five, and it is the kept wait: throwing it
+///   away gives up the dora and the ch. 7 rule it anchors ("You have one red
+///   five, waiting for a regular five"), so keeping the red five is the
+///   book's line and the other lone tile is the discard.
 pub(super) struct ChiitoitsuSkeleton {
     /// Five distinct pair tiles.
     pub pairs: Vec<Tile>,
@@ -34,7 +40,7 @@ pub(super) struct ChiitoitsuSkeleton {
     pub discard_tile: Tile,
     /// Whether the correct answer is Riichi or dama.
     pub decision: ChiitoitsuDecision,
-    /// Whether the lone tiles are red fives (Riichi path only).
+    /// True when `wait_tile` is the hand's only red five.
     pub red_five_wait: bool,
     /// Heuristics that justify Riichi (empty on the dama path).
     pub triggers: RiichiTriggerSet,
@@ -43,9 +49,30 @@ pub(super) struct ChiitoitsuSkeleton {
 }
 
 impl ChiitoitsuSkeleton {
-    /// Both lone tiles, which are the two accepted discards.
-    pub(super) fn waits(&self) -> [Tile; 2] {
+    /// The two lone tiles left after the draw completed the sixth pair.
+    pub(super) fn lone_tiles(&self) -> [Tile; 2] {
         [self.wait_tile, self.discard_tile]
+    }
+
+    /// The waits that belong to an accepted answer.
+    ///
+    /// Every accepted discard leaves one of the lone tiles as the wait. The
+    /// red-five model accepts a single discard, so only the red five remains.
+    pub(super) fn accepted_waits(&self) -> Vec<Tile> {
+        if self.red_five_wait {
+            vec![self.wait_tile]
+        } else {
+            vec![self.wait_tile, self.discard_tile]
+        }
+    }
+
+    /// The discards the book grades as correct.
+    pub(super) fn accepted_discards(&self) -> Vec<Tile> {
+        if self.red_five_wait {
+            vec![self.discard_tile]
+        } else {
+            vec![self.discard_tile, self.wait_tile]
+        }
     }
 
     /// Full 14-tile hand after the draw (five pairs, the completed pair, and

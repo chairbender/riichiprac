@@ -10,9 +10,13 @@ use crate::generator::support::tiles::{is_outside_456, suji_tiles};
 use crate::rng::{choose, shuffle};
 use crate::state::Wind;
 
-/// Whether a lone tile can serve as a Riichi wait under every active
-/// heuristic. Both lone tiles of the generated hand must pass this test, so
-/// the declaration is correct whichever of them the player keeps.
+/// Whether a lone tile can serve as the kept Riichi wait under every active
+/// heuristic.
+///
+/// The twin-discard model also runs the other lone tile through this test, so
+/// the declaration is correct whichever tile the player keeps. The red-five
+/// model only runs the kept wait through it: the second lone tile is the
+/// discard, and the red-five rule needs the red five to stay in hand.
 fn wait_matches(tile: Tile, triggers: RiichiTriggerSet) -> bool {
     if triggers.red_five_wait && tile.value() != Some(5) {
         return false;
@@ -31,8 +35,20 @@ fn wait_matches(tile: Tile, triggers: RiichiTriggerSet) -> bool {
 
 /// Builds five distinct pairs plus three lone tiles under the chosen Riichi
 /// heuristics: the tile the draw completes, the canonically kept wait, and the
-/// alternate lone tile that is discarded.
+/// lone tile that is discarded.
 pub(super) fn build_skeleton(triggers: RiichiTriggerSet) -> Result<ChiitoitsuSkeleton, String> {
+    // The red-five lesson is single-answer, so another trigger would keep
+    // justifying Riichi on the mirror discard and break that model.
+    if triggers.red_five_wait
+        && (RiichiTriggerSet {
+            red_five_wait: false,
+            ..triggers
+        })
+        .any()
+    {
+        return Err("The red-five trigger must not be combined with another".to_string());
+    }
+
     let wait_candidates: Vec<Tile> = ALL_TILES
         .iter()
         .copied()
@@ -41,13 +57,25 @@ pub(super) fn build_skeleton(triggers: RiichiTriggerSet) -> Result<ChiitoitsuSke
 
     let wait_tile =
         choose(&wait_candidates).ok_or_else(|| "No compatible wait tile".to_string())?;
-    let other_candidates: Vec<Tile> = wait_candidates
-        .iter()
-        .copied()
-        .filter(|&tile| tile != wait_tile)
-        .collect();
+
+    let discard_candidates: Vec<Tile> = if triggers.red_five_wait {
+        // The hand shows exactly one five, and it is the red five kept as the
+        // wait. Any other lone tile is a legal discard; discarding the red
+        // five would remove the book's justification for Riichi.
+        ALL_TILES
+            .iter()
+            .copied()
+            .filter(|&tile| tile != wait_tile && tile.value() != Some(5))
+            .collect()
+    } else {
+        wait_candidates
+            .iter()
+            .copied()
+            .filter(|&tile| tile != wait_tile)
+            .collect()
+    };
     let discard_tile =
-        choose(&other_candidates).ok_or_else(|| "No second compatible wait tile".to_string())?;
+        choose(&discard_candidates).ok_or_else(|| "No compatible discard tile".to_string())?;
 
     let mut deck = Deck::fresh();
     deck.take(wait_tile)?;
@@ -64,6 +92,7 @@ pub(super) fn build_skeleton(triggers: RiichiTriggerSet) -> Result<ChiitoitsuSke
                     && !pairs.contains(&tile)
                     && deck.count(tile) >= 2
                     && (!triggers.tanyao || tile.is_simple())
+                    && (!triggers.red_five_wait || tile.value() != Some(5))
             })
             .collect();
 
@@ -83,6 +112,7 @@ pub(super) fn build_skeleton(triggers: RiichiTriggerSet) -> Result<ChiitoitsuSke
                 && !pairs.contains(&tile)
                 && deck.count(tile) >= 2
                 && (!triggers.tanyao || tile.is_simple())
+                && (!triggers.red_five_wait || tile.value() != Some(5))
         })
         .collect();
     let drawn_tile =
@@ -101,11 +131,11 @@ pub(super) fn build_skeleton(triggers: RiichiTriggerSet) -> Result<ChiitoitsuSke
     })
 }
 
-/// Chooses the dora indicator for a Riichi hand, keeping both possible waits
+/// Chooses the dora indicator for a Riichi hand, keeping every accepted wait
 /// off the dora and respecting the "below Mangan" trigger when present.
 pub(super) fn choose_dora_indicators(
     winning_tiles: &[Tile],
-    waits: [Tile; 2],
+    waits: &[Tile],
     triggers: RiichiTriggerSet,
     aka_count: u8,
 ) -> Result<Vec<Tile>, String> {
@@ -132,25 +162,26 @@ pub(super) fn choose_dora_indicators(
     ])
 }
 
-/// Builds the human river, optionally forcing a same-suit suji of both waits
-/// while never allowing either wait tile itself to appear (furiten).
+/// Builds the human river, optionally forcing a same-suit suji of every
+/// accepted wait while never allowing one of those wait tiles itself to appear
+/// (furiten).
 pub(super) fn build_human_river(
     deck: &mut Deck,
     count: usize,
-    waits: [Tile; 2],
+    waits: &[Tile],
     suji_trap: bool,
 ) -> Result<Vec<Tile>, String> {
     let mut river = Vec::with_capacity(count);
 
     if suji_trap {
         let mut used: Vec<Tile> = Vec::new();
-        for wait in waits {
+        for &wait in waits {
             let suji: Vec<Tile> = suji_tiles(wait)
                 .into_iter()
                 .filter(|&tile| !waits.contains(&tile) && !used.contains(&tile))
                 .collect();
             let tile = choose(&suji)
-                .ok_or_else(|| "No suji available for both chiitoitsu waits".to_string())?;
+                .ok_or_else(|| "No suji available for the chiitoitsu waits".to_string())?;
             deck.take(tile)?;
             used.push(tile);
             river.push(tile);
@@ -159,7 +190,7 @@ pub(super) fn build_human_river(
 
     let remaining = count.saturating_sub(river.len());
     let mut extra = deck
-        .draw_excluding(remaining, &waits)
+        .draw_excluding(remaining, waits)
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
     river.append(&mut extra);
     shuffle(&mut river);
@@ -168,7 +199,7 @@ pub(super) fn build_human_river(
 }
 
 /// Rejects completed hands that score Mangan or better without Riichi, for
-/// either of the two waits the player could leave.
+/// every wait an accepted discard can leave.
 pub(super) fn validate_score(
     skeleton: &ChiitoitsuSkeleton,
     round_wind: Wind,
@@ -176,7 +207,7 @@ pub(super) fn validate_score(
     dora_indicator: Tile,
     aka_count: u8,
 ) -> Result<(), String> {
-    for wait in skeleton.waits() {
+    for wait in skeleton.accepted_waits() {
         let winning_tiles = skeleton.winning_tiles(wait);
         if !scoring::scores_below_mangan(
             &winning_tiles,

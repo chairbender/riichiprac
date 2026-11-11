@@ -54,8 +54,11 @@ pub(super) fn build(category: &str, skeleton: &ChiitoitsuSkeleton) -> Result<Gam
         aka_count,
     )?;
 
-    let (mut deck, ura_indicator) =
-        build_deck(&prepared.full_tiles, &dora_indicators, skeleton.waits())?;
+    let (mut deck, ura_indicator) = build_deck(
+        &prepared.full_tiles,
+        &dora_indicators,
+        &skeleton.accepted_waits(),
+    )?;
 
     let scores = random_scores_with_human_first();
     // The human is about to discard, so every river comes from one legal
@@ -65,12 +68,12 @@ pub(super) fn build(category: &str, skeleton: &ChiitoitsuSkeleton) -> Result<Gam
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
     let human_river = build_human_river(skeleton, &mut deck, counts[0])?;
 
-    validate_visible_waits(skeleton.waits(), &deal.rivers, &dora_indicators)?;
+    validate_visible_waits(&skeleton.accepted_waits(), &deal.rivers, &dora_indicators)?;
 
     if skeleton.decision == ChiitoitsuDecision::Dama {
         dama::validate_board_constraints(
             human_wind,
-            skeleton.waits(),
+            &skeleton.accepted_waits(),
             skeleton.red_five_wait,
             &skeleton.pairs,
             aka_count,
@@ -133,14 +136,9 @@ fn assemble_state(
 
     let hand_string = format_hand_compact(&display_tiles);
     let tile_strings: Vec<String> = display_tiles.iter().map(|tile| tile.to_string()).collect();
-    // Both lone tiles are red fives on the red-five-wait path; either may be
-    // the kept wait, so both are shown as red.
+    // The red-five lesson keeps exactly one red five, and it is the wait.
     let human_red_fives = if skeleton.red_five_wait {
-        skeleton
-            .waits()
-            .iter()
-            .map(|tile| tile.to_string())
-            .collect()
+        vec![skeleton.wait_tile.to_string()]
     } else {
         Vec::new()
     };
@@ -183,10 +181,17 @@ fn assemble_state(
         category: category.to_string(),
         target_action,
         correct_action,
-        // The draw completed the sixth pair, so the hand holds two lone
-        // tiles. Dropping either one leaves a seven-pairs tenpai on the
-        // other, and the lesson constraints hold for both waits.
-        equivalent_tiles: vec![skeleton.wait_tile.to_string()],
+        // The draw completed the sixth pair, so the hand holds two lone tiles.
+        // In the twin model dropping either one leaves a seven-pairs tenpai
+        // and the lesson constraints hold for both waits. In the red-five
+        // model the kept wait is the hand's only red five: discarding it would
+        // give away the dora and the book's red-five justification, so only
+        // the other lone tile is accepted.
+        equivalent_tiles: if skeleton.red_five_wait {
+            Vec::new()
+        } else {
+            vec![skeleton.wait_tile.to_string()]
+        },
         decision: DecisionContext::SelfTurn,
         ai_decision: None,
         riichi_triggers: skeleton.triggers.to_vec(),

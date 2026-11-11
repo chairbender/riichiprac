@@ -14,13 +14,18 @@ use crate::state::GameState;
 ///
 /// The 13-tile hand before the draw is five pairs plus three lone tiles. The
 /// drawn tile completes the sixth pair, so Riichi only becomes available on
-/// this turn. Either of the two remaining lone tiles can then be discarded;
-/// both leave a seven-pairs wait and are graded as correct, and the lesson's
-/// constraints hold for both waits so the declaration is the real decision.
+/// this turn. Two lone tiles remain:
 ///
-/// The Riichi path applies at least one Riichi heuristic and keeps both waits
-/// off the dora. The dama path inverts those conditions and guarantees a
-/// Mangan-or-better hand through two dora pairs.
+/// - the ordinary model accepts either discard, because the lesson constraints
+///   hold for both waits;
+/// - the red-five model keeps exactly one red five as the wait and accepts only
+///   the other lone tile. Discarding the red five would give away the dora and
+///   the book's red-five justification, so that path has a single
+///   (action, tile) answer.
+///
+/// The Riichi path applies at least one Riichi heuristic and keeps every
+/// accepted wait off the dora. The dama path inverts those conditions and
+/// guarantees a Mangan-or-better hand through two dora pairs.
 pub fn generate(category: &str) -> Result<GameState, String> {
     generate_with_retries("chiitoitsu", 20_000, || {
         let skeleton = if gen_bool(0.5) {
@@ -74,16 +79,43 @@ mod tests {
         tiles
     }
 
-    /// The two accepted discards: the canonical answer and its equivalent.
-    fn accepted_tiles(state: &GameState) -> [Tile; 2] {
-        let canonical = parse_tile(state.correct_action.tile().expect("chiitoitsu answer tile"));
-        let equivalent = parse_tile(
-            state
-                .equivalent_tiles
-                .first()
-                .expect("chiitoitsu must accept its twin discard"),
+    /// The 14-tile hand's two count-1 tiles.
+    fn lone_tiles(full: &[Tile]) -> [Tile; 2] {
+        let counts = to_counts(full);
+        let lone: Vec<Tile> = counts
+            .iter()
+            .filter(|(_, count)| **count == 1)
+            .map(|(&tile, _)| tile)
+            .collect();
+        assert_eq!(
+            lone.len(),
+            2,
+            "a chiitoitsu hand after the draw has two lone tiles"
         );
-        [canonical, equivalent]
+        [lone[0], lone[1]]
+    }
+
+    /// The accepted discards: the canonical answer plus its equivalent twin.
+    fn accepted_tiles(state: &GameState) -> Vec<Tile> {
+        let mut accepted = vec![parse_tile(
+            state.correct_action.tile().expect("chiitoitsu answer tile"),
+        )];
+        accepted.extend(state.equivalent_tiles.iter().map(|tile| parse_tile(tile)));
+        accepted
+    }
+
+    /// The waits an accepted discard can leave (the other lone tile).
+    fn accepted_waits(state: &GameState) -> Vec<Tile> {
+        let full = full_tiles(state);
+        let lone = lone_tiles(&full);
+        accepted_tiles(state)
+            .into_iter()
+            .map(|discard| {
+                lone.into_iter()
+                    .find(|&tile| tile != discard)
+                    .expect("a distinct twin lone tile")
+            })
+            .collect()
     }
 
     fn without_one(tiles: &[Tile], tile: Tile) -> Vec<Tile> {
@@ -99,10 +131,10 @@ mod tests {
     /// The 13-tile tenpai hand that keeps `wait` (the other lone tile is out).
     fn tenpai_for(state: &GameState, wait: Tile) -> Vec<Tile> {
         let full = full_tiles(state);
-        let other = accepted_tiles(state)
+        let other = lone_tiles(&full)
             .into_iter()
             .find(|&tile| tile != wait)
-            .expect("a distinct twin discard");
+            .expect("a distinct twin lone tile");
         without_one(&full, other)
     }
 
@@ -161,6 +193,7 @@ mod tests {
     fn test_chiitoitsu_riichi_vs_dama_constraints() {
         let mut riichi_count = 0;
         let mut dama_count = 0;
+        let mut red_five_count = 0;
 
         for run in 0..200 {
             let state = generate("chiitoitsu_riichi_vs_dama")
@@ -215,19 +248,60 @@ mod tests {
             );
             assert_eq!(full_counts.get(&draw), Some(&2), "run {run}");
 
-            // The accepted set is exactly the two lone tiles. Dropping either
-            // leaves a live seven-pairs tenpai on the other.
-            assert_eq!(state.equivalent_tiles.len(), 1, "run {run}");
+            // The two lone tiles are always real tenpai discards. The accepted
+            // set is either both (twin model) or only the non-wait tile (the
+            // single-red-five model).
+            let lone = lone_tiles(&full);
             let accepted = accepted_tiles(&state);
-            assert_ne!(accepted[0], accepted[1], "run {run}");
-            for &tile in &accepted {
+            let waits = accepted_waits(&state);
+            let red_five_lesson = state.riichi_triggers == vec![RiichiTrigger::RedFiveWait];
+            if red_five_lesson {
+                assert_eq!(state.equivalent_tiles.len(), 0, "run {run}");
+                assert_eq!(
+                    accepted.len(),
+                    1,
+                    "run {run}: red five must be single answer"
+                );
+                assert_eq!(waits.len(), 1, "run {run}");
+                assert_eq!(human.red_fives.len(), 1, "run {run}");
+                assert_eq!(
+                    human.red_fives[0],
+                    waits[0].to_string(),
+                    "run {run}: the kept wait must be the red five"
+                );
+                let fives: Vec<Tile> = full_counts
+                    .keys()
+                    .copied()
+                    .filter(|tile| tile.value() == Some(5))
+                    .collect();
+                assert_eq!(fives, waits, "run {run}: exactly one five, the red wait");
+                assert!(
+                    !accepted.contains(&waits[0]),
+                    "run {run}: discarding the red five is not the answer"
+                );
+            } else {
+                assert_eq!(state.equivalent_tiles.len(), 1, "run {run}");
+                assert_eq!(accepted.len(), 2, "run {run}");
+                assert_eq!(waits.len(), 2, "run {run}");
+            }
+
+            if red_five_lesson {
+                red_five_count += 1;
+            }
+            for &tile in accepted.iter().chain(waits.iter()) {
                 assert!(
                     full_counts.contains_key(&tile),
                     "run {run}: {tile} not held"
                 );
             }
+            for &tile in &accepted {
+                assert!(
+                    lone.contains(&tile),
+                    "run {run}: accepted {tile} is a lone tile"
+                );
+            }
 
-            for wait in accepted {
+            for &wait in &waits {
                 let tenpai = tenpai_for(&state, wait);
                 let counts = to_counts(&tenpai);
                 assert_eq!(counts.len(), 7, "run {run}");
@@ -238,7 +312,7 @@ mod tests {
 
                 assert_eq!(winning_for(&state, wait).len(), 14, "run {run}");
 
-                // Neither wait may be in the human river (furiten).
+                // No accepted wait may be in the human river (furiten).
                 for discard_tile in &human.discards {
                     assert_ne!(
                         discard_tile.tile,
@@ -258,13 +332,14 @@ mod tests {
                 assert_ne!(indicator_to_dora(ura_indicator), wait, "run {run}");
             }
 
-            // No third discard reaches tenpai, so the accepted set is complete.
+            // No discard outside the two lone tiles reaches tenpai, so the
+            // accepted set lives inside them.
             for &tile in full_counts.keys() {
                 let post_discard = without_one(&full, tile);
                 let tenpai = calculate_shanten(&to_counts(&post_discard)).shanten == 0;
                 assert_eq!(
                     tenpai,
-                    accepted.contains(&tile),
+                    lone.contains(&tile),
                     "run {run}: discard {tile} tenpai={tenpai}"
                 );
             }
@@ -288,7 +363,7 @@ mod tests {
                     assert!(state.dama_reasons.is_empty());
                     assert_eq!(state.dora_indicators.len(), 1);
 
-                    for &wait in &accepted {
+                    for &wait in &waits {
                         for trigger in &state.riichi_triggers {
                             assert!(
                                 chiitoitsu_trigger_holds(&state, *trigger, wait),
@@ -299,7 +374,7 @@ mod tests {
 
                     let indicator = parse_tile(&state.dora_indicators[0]);
                     let aka = human.red_fives.len().min(1) as u8;
-                    for wait in accepted {
+                    for &wait in &waits {
                         assert!(scoring::scores_below_mangan(
                             &winning_for(&state, wait),
                             wait,
@@ -342,7 +417,7 @@ mod tests {
                         .iter()
                         .map(|t| parse_tile(t))
                         .collect();
-                    for wait in accepted {
+                    for &wait in &waits {
                         assert!(matches!(wait.value(), Some(4..=6)), "run {run}");
 
                         let suji = suji_tiles(wait);
@@ -386,6 +461,10 @@ mod tests {
 
         assert!(riichi_count > 0, "no Riichi states were generated");
         assert!(dama_count > 0, "no dama states were generated");
+        assert!(
+            red_five_count > 0,
+            "no single-red-five states were generated"
+        );
     }
 
     /// The canonical wait is the one the state's ukeire names after the
@@ -447,8 +526,9 @@ mod tests {
             );
 
             let accepted = accepted_tiles(&state);
-            assert_ne!(accepted[0], accepted[1], "run {run}");
-            assert!(accepted.contains(&skeleton_wait(&state)), "run {run}");
+            let waits = accepted_waits(&state);
+            assert!(!accepted.is_empty(), "run {run}");
+            assert!(waits.contains(&skeleton_wait(&state)), "run {run}");
         }
 
         let elapsed = started.elapsed();
@@ -492,12 +572,13 @@ mod tests {
             );
 
             let human = &state.players[0];
-            let accepted = accepted_tiles(&state);
+            let waits = accepted_waits(&state);
             let full_counts = to_counts(&full_tiles(&state));
 
             assert_ne!(human.wind, Wind::East);
             assert!(human.red_fives.is_empty());
-            for wait in accepted {
+            assert_eq!(waits.len(), 2, "run {run}: the dama model accepts both");
+            for &wait in &waits {
                 assert!(matches!(wait.value(), Some(4..=6)), "run {run}");
 
                 let suji = suji_tiles(wait);
@@ -522,7 +603,7 @@ mod tests {
                 .map(|t| parse_tile(t))
                 .collect();
             assert_eq!(indicators.len(), 2);
-            for wait in accepted {
+            for &wait in &waits {
                 let winning = winning_for(&state, wait);
                 let total_dora: u8 = indicators
                     .iter()
@@ -597,13 +678,84 @@ mod tests {
             let expected = triggers.to_vec();
             assert_eq!(state.riichi_triggers, expected);
             for trigger in expected {
-                for wait in accepted_tiles(&state) {
+                for wait in accepted_waits(&state) {
                     assert!(
                         chiitoitsu_trigger_holds(&state, trigger, wait),
                         "trigger {trigger:?} does not hold on wait {wait}"
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn test_red_five_lesson_keeps_the_only_red_five() {
+        let triggers = triggers::RiichiTriggerSet {
+            red_five_wait: true,
+            ..Default::default()
+        };
+
+        for run in 0..100 {
+            let mut generated = None;
+            for _ in 0..50 {
+                let Ok(skeleton) = riichi::build_skeleton(triggers) else {
+                    continue;
+                };
+                if let Ok(state) = board::build("chiitoitsu_riichi_vs_dama", &skeleton) {
+                    generated = Some(state);
+                    break;
+                }
+            }
+            let state = generated
+                .unwrap_or_else(|| panic!("run {run}: red-five board failed after retries"));
+
+            assert_eq!(state.riichi_triggers, vec![RiichiTrigger::RedFiveWait]);
+            assert_eq!(state.target_action, TargetAction::Riichi);
+            assert_eq!(state.equivalent_tiles.len(), 0, "run {run}: one answer");
+
+            let human = &state.players[0];
+            assert_eq!(human.red_fives.len(), 1, "run {run}: one red five");
+            let red = parse_tile(&human.red_fives[0]);
+            assert_eq!(red.value(), Some(5), "run {run}");
+
+            let full = full_tiles(&state);
+            let full_counts = to_counts(&full);
+            let fives: Vec<Tile> = full_counts
+                .keys()
+                .copied()
+                .filter(|tile| tile.value() == Some(5))
+                .collect();
+            assert_eq!(
+                fives,
+                vec![red],
+                "run {run}: the hand holds exactly one five"
+            );
+
+            // The canonical wait is the red five; the answer discards the
+            // other lone tile.
+            assert_eq!(skeleton_wait(&state), red, "run {run}");
+            let accepted = accepted_tiles(&state);
+            assert_eq!(accepted.len(), 1, "run {run}");
+            assert_ne!(accepted[0], red, "run {run}: never discard the red five");
+            assert!(lone_tiles(&full).contains(&accepted[0]), "run {run}");
+
+            // Discarding the red five still reaches tenpai, but it is not the
+            // book's answer because it drops the red-five justification.
+            let discarding_red = without_one(&full, red);
+            assert_eq!(
+                calculate_shanten(&to_counts(&discarding_red)).shanten,
+                0,
+                "run {run}"
+            );
+            let mirror_wait = accepted[0];
+            assert!(
+                !chiitoitsu_trigger_holds(&state, RiichiTrigger::RedFiveWait, mirror_wait),
+                "run {run}: the mirror wait must not keep the red-five reason"
+            );
+            assert!(
+                chiitoitsu_trigger_holds(&state, RiichiTrigger::RedFiveWait, red),
+                "run {run}: the kept wait carries the red-five reason"
+            );
         }
     }
 }
