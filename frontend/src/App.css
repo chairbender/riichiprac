@@ -116,6 +116,26 @@
   cursor: default;
 }
 
+.new-hand-button:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+/*
+ * Bottom placement: inside the pinned hand dock, shown only after answering so
+ * the player can continue without scrolling back up to the header.
+ */
+.new-hand-button--dock {
+  width: 100%;
+  padding: 10px 14px;
+  border-color: #3b5bdb;
+  background-color: #1c2b52;
+  font-size: 0.84rem;
+  letter-spacing: 0.02em;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Global table info ------------------------------------------------------- */
 
 .table-info {

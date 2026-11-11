@@ -5,6 +5,7 @@ import { canDeclareRiichi } from './actions';
 import { ActionBar } from './components/ActionBar';
 import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
+import { NextScenarioButton } from './components/NextScenarioButton';
 import { PlayerRow } from './components/PlayerRow';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
@@ -212,14 +213,7 @@ export const App = () => {
             </select>
           </label>
 
-          <button
-            className="new-hand-button"
-            type="button"
-            onClick={handleNextScenario}
-            disabled={isLoading}
-          >
-            Next Scenario
-          </button>
+          <NextScenarioButton onClick={handleNextScenario} disabled={isLoading} />
         </div>
       </header>
 
@@ -297,6 +291,8 @@ export const App = () => {
           canRiichi={canRiichi}
           revealMortal={dualGrade !== null || peekedBeforeAnswer}
           targetAction={gameState?.target_action}
+          nextDisabled={isLoading}
+          onNextScenario={handleNextScenario}
           onShowVerdict={showVerdict}
           onToggleRiichi={toggleRiichi}
           onToggleKan={toggleKan}
