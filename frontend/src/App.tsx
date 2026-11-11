@@ -7,6 +7,7 @@ import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
 import { NextScenarioButton } from './components/NextScenarioButton';
 import { PlayerRow } from './components/PlayerRow';
+import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
 import { downloadJson, readStateFile, serializeState } from './stateFile';
@@ -46,15 +47,20 @@ export const App = () => {
   const evaluateWithAi = useGameStore((state) => state.evaluateWithAi);
   const fileError = useGameStore((state) => state.fileError);
   const fileNotice = useGameStore((state) => state.fileNotice);
+  const positionDescription = useGameStore((state) => state.positionDescription);
   const importState = useGameStore((state) => state.importState);
   const setFileError = useGameStore((state) => state.setFileError);
   const setFileNotice = useGameStore((state) => state.setFileNotice);
   const clearFileNotice = useGameStore((state) => state.clearFileNotice);
+  const clearPositionDescription = useGameStore(
+    (state) => state.clearPositionDescription,
+  );
 
   const [selection, setSelection] = useState<ScenarioSelection>('all');
   const [scenarios, setScenarios] =
     useState<ScenarioOption[]>(FALLBACK_SCENARIOS);
   const [aiLoading, setAiLoading] = useState(false);
+  const [exportDescription, setExportDescription] = useState('');
   const manifestRef = useRef<ScenarioOption[] | null>(null);
   const loadRequestId = useRef(0);
 
@@ -62,6 +68,8 @@ export const App = () => {
     async (scenarioSelection: ScenarioSelection) => {
       const requestId = ++loadRequestId.current;
       reset();
+      // A description belongs to the position it was written for.
+      setExportDescription('');
 
       try {
         await ensureWasmReady();
@@ -148,7 +156,7 @@ export const App = () => {
   const handleExport = () => {
     if (!gameState) return;
 
-    const { filename, json } = serializeState(gameState);
+    const { filename, json } = serializeState(gameState, exportDescription);
     downloadJson(filename, json);
     setFileError(null);
     setFileNotice(`Exported ${filename}`);
@@ -162,6 +170,11 @@ export const App = () => {
       // a late puzzle cannot overwrite the imported table.
       loadRequestId.current += 1;
       await importState(text);
+      const imported = useGameStore.getState();
+      if (!imported.fileError) {
+        // Seed the export field so re-exporting keeps the file's description.
+        setExportDescription(imported.positionDescription ?? '');
+      }
     } catch (err) {
       setFileError(err instanceof Error ? err.message : String(err));
     }
@@ -219,12 +232,21 @@ export const App = () => {
 
       <ExportImportControls
         canExport={Boolean(gameState)}
+        description={exportDescription}
+        onDescriptionChange={setExportDescription}
         fileError={fileError}
         fileNotice={fileNotice}
         onExport={handleExport}
         onImportFile={handleImportFile}
         onDismissNotice={clearFileNotice}
       />
+
+      {positionDescription && (
+        <PositionDescriptionCard
+          description={positionDescription}
+          onDismiss={clearPositionDescription}
+        />
+      )}
 
       {gameState && <TableInfo state={gameState} />}
 

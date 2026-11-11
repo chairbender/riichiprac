@@ -12,6 +12,9 @@ wasm-pack build --target web
 cd frontend
 npm install
 npm run dev
+
+# Frontend unit tests (Vitest).
+npm test
 ```
 
 The Mortal AI evaluator is optional. Its weights are not committed; generate them
@@ -174,15 +177,24 @@ package, builds `frontend/` with the `/riichiprac/` base path, and publishes
 
 **Export** downloads the current table as a plain
 `riichiprac-state-<scenario>-<timestamp>.json` file. The payload is the complete
-`GameState`: all four players, hands, melds, rivers, dora, round, scores, and the
-expected answer. It carries no submitted answer, note, or report metadata, so it
-can be shared or reloaded without framing it as a bug report.
+`GameState` — all four players, hands, melds, rivers, dora, round, scores, and
+the expected answer — inside a small `riichiprac.position` envelope. It carries
+no submitted answer, reason, or report metadata, so it can be shared or reloaded
+without framing it as a bug report. The **Description** field above the buttons
+is optional; when filled, it is trimmed, capped, and written into the file as
+plain-text context. A blank description is omitted, so the file stays a plain
+position.
 
-**Import** loads such a file and restores the exact table. For compatibility,
-importing a `riichiprac.scenario-report` file from the old report workflow (or
-from `verify_report` / `fuzz_scenarios`) also works: the app loads the report's
-table as a plain position. The report review banner and reason dialog no longer
-exist in the app.
+**Import** loads such a file and restores the exact table. A file with a
+description shows that text in a dismissible card just below the import/export
+controls, so anyone opening a shared position can see why it was saved. The card
+is plain text, never HTML.
+
+For compatibility, importing a bare `GameState` file (the shape older exports
+used) still works, as does a `riichiprac.scenario-report` file from the old
+report workflow (or from `verify_report` / `fuzz_scenarios`): the app loads the
+report's table as a plain position and shows the report note as the description.
+The report review banner and reason dialog no longer exist in the app.
 
 The scenario-report format remains as an internal/advanced path for the native
 CLI and the generator fuzzer.

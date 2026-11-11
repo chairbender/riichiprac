@@ -1269,6 +1269,96 @@
   display: none;
 }
 
+.state-description {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.state-description-label {
+  color: #adb5bd;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.state-description-hint {
+  color: #868e96;
+  font-weight: 400;
+}
+
+.state-description-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid #343b4a;
+  border-radius: 8px;
+  background-color: #10141c;
+  color: #dee2e6;
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.state-description-input::placeholder {
+  color: #5c6470;
+}
+
+.state-description-input:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+/* Description card attached to an imported position --------------------- */
+
+.position-description {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 10px 0;
+  padding: 8px 10px;
+  border: 1px solid #3b5bdb;
+  border-left: 3px solid #74c0fc;
+  border-radius: 8px;
+  background-color: #141a2a;
+}
+
+.position-description-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.position-description-title {
+  color: #a5d8ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.position-description-dismiss {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #74c0fc;
+  font: inherit;
+  font-size: 0.7rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.position-description-body {
+  margin: 0;
+  color: #dee2e6;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  /* Keep the author's line breaks, still render as plain text. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .state-inline-error {
   margin: 0;
   color: #ff8a8a;

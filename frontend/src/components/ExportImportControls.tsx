@@ -1,13 +1,19 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import { MAX_DESCRIPTION_CHARS } from '../stateFile';
 
 interface ExportImportControlsProps {
   /** True once a table is loaded and can be downloaded. */
   canExport: boolean;
+  /** Current export description text (optional). */
+  description: string;
+  /** Update the export description. */
+  onDescriptionChange: (description: string) => void;
   /** Export/import error, shown inline. */
   fileError: string | null;
   /** Optional notice, e.g. after a successful export or import. */
   fileNotice: string | null;
+  /** Download the current position, optionally tagged with the description. */
   onExport: () => void;
   onImportFile: (file: File) => Promise<void>;
   onDismissNotice: () => void;
@@ -19,6 +25,8 @@ interface ExportImportControlsProps {
  */
 export function ExportImportControls({
   canExport,
+  description,
+  onDescriptionChange,
   fileError,
   fileNotice,
   onExport,
@@ -79,6 +87,23 @@ export function ExportImportControls({
           }}
         />
       </div>
+
+      {canExport && (
+        <label className="state-description">
+          <span className="state-description-label">
+            Description{' '}
+            <span className="state-description-hint">(optional)</span>
+          </span>
+          <textarea
+            className="state-description-input"
+            value={description}
+            onChange={(event) => onDescriptionChange(event.target.value)}
+            maxLength={MAX_DESCRIPTION_CHARS}
+            rows={2}
+            placeholder="Context for the file, e.g. why this position matters"
+          />
+        </label>
+      )}
 
       {fileError && (
         <p className="state-inline-error" role="alert">
