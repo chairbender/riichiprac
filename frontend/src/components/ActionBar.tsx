@@ -1,9 +1,14 @@
-import type { AiActionInfo } from '../types/ai';
+import type { AiActionInfo, AiEvaluation } from '../types/ai';
+import { formatProbability } from '../types/ai';
 
 interface ActionBarProps {
   actions: AiActionInfo[];
   disabled: boolean;
   riichiArmed: boolean;
+  /** Latest Mortal evaluation for the table, if one exists. */
+  evaluation?: AiEvaluation | null;
+  /** Whether Mortal's probabilities may be shown. */
+  revealMortal?: boolean;
   onToggleRiichi: () => void;
   onAction: (action: AiActionInfo) => void;
 }
@@ -16,6 +21,8 @@ export function ActionBar({
   actions,
   disabled,
   riichiArmed,
+  evaluation,
+  revealMortal = false,
   onToggleRiichi,
   onAction,
 }: ActionBarProps) {
@@ -27,6 +34,11 @@ export function ActionBar({
       {visible.map((action) => {
         const isRiichi = action.action === 'Riichi';
         const active = isRiichi && riichiArmed;
+        const probability = revealMortal
+          ? evaluation?.evaluations.find(
+              (scored) => scored.action === action.action,
+            )?.probability
+          : undefined;
         return (
           <button
             key={action.action}
@@ -41,6 +53,11 @@ export function ActionBar({
             aria-pressed={isRiichi ? riichiArmed : undefined}
           >
             <span className="action-button-label">{action.label}</span>
+            {probability !== undefined && (
+              <span className="action-button-probability">
+                {formatProbability(probability)}
+              </span>
+            )}
             {isRiichi && (
               <span className="action-button-state">
                 {riichiArmed ? 'ON' : 'OFF'}

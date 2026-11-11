@@ -555,6 +555,18 @@
   letter-spacing: 0.04em;
 }
 
+.kan-toggle-probability {
+  padding: 1px 5px;
+  border: 1px solid #3b5bdb;
+  border-radius: 999px;
+  background-color: #1c2430;
+  color: #a5d8ff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .kan-toggle--active .kan-toggle-tile {
   background-color: #f59f00;
   color: #1d1a14;
@@ -765,6 +777,14 @@
   font-weight: 600;
 }
 
+/* The call the scenario asks about, kept separate from the top discard. */
+.feedback-call {
+  color: #a5d8ff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .feedback-tile {
   display: block;
   width: 26px;
@@ -951,6 +971,15 @@
   font-weight: 700;
 }
 
+.ai-action--focus {
+  color: #dbe4f0;
+  font-weight: 700;
+}
+
+.ai-action--focus .ai-action-bar > span {
+  background-color: #ffd43b;
+}
+
 .ai-action-label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1069,6 +1098,17 @@
 .action-button-state {
   font-size: 0.6rem;
   letter-spacing: 0.04em;
+}
+
+.action-button-probability {
+  padding: 0.05rem 0.32rem;
+  border: 1px solid #3b5bdb;
+  border-radius: 999px;
+  background-color: #1c2430;
+  color: #a5d8ff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .ai-explanation {
@@ -1598,6 +1638,79 @@
 .verdict-answer-probability {
   margin: 0 0 4px;
   color: #8b94a7;
+}
+
+/* Mortal's read on the offered call, separate from the top discard. */
+.call-report {
+  margin: 2px 0 5px;
+  padding: 4px 6px;
+  border-left: 3px solid #ffd43b;
+  border-radius: 4px;
+  background-color: rgba(255, 212, 59, 0.06);
+}
+
+.call-report-title {
+  display: block;
+  margin-bottom: 2px;
+  color: #ffd43b;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.call-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.call-report-option {
+  display: grid;
+  grid-template-columns: minmax(58px, 1fr) 70px 38px;
+  align-items: center;
+  gap: 5px;
+  color: #e7ecf3;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.call-report-option--decline {
+  color: #adb5bd;
+  font-weight: 500;
+}
+
+.call-report-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.call-report-bar {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background-color: #232a36;
+}
+
+.call-report-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background-color: #ffd43b;
+}
+
+.call-report-option--decline .call-report-bar > span {
+  background-color: #6c7686;
+}
+
+.call-report-probability {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .verdict-absent-column {

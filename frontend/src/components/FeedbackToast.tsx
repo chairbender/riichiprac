@@ -1,6 +1,8 @@
+import { callDecisionFor } from '../callDecision';
 import type { DualGrade } from '../types/verdict';
 import { outcomeHeadline, outcomeTone } from '../types/verdict';
 import type { SubmittedAnswer } from '../store/useGameStore';
+import type { AiEvaluation } from '../types/ai';
 import { formatProbability } from '../types/ai';
 import { Tile } from './Tile';
 
@@ -9,6 +11,8 @@ interface FeedbackToastProps {
   answer: SubmittedAnswer;
   /** Red-five tile codes held by the human, used to render answer tiles. */
   redFives: string[];
+  /** Mortal's evaluation for this table, used for the call report. */
+  evaluation: AiEvaluation | null;
 }
 
 /**
@@ -18,9 +22,15 @@ interface FeedbackToastProps {
  * and a single-perspective miss is neutral: the missing perspective is stated
  * instead of being replaced with "wrong".
  */
-export function FeedbackToast({ grade, answer, redFives }: FeedbackToastProps) {
+export function FeedbackToast({
+  grade,
+  answer,
+  redFives,
+  evaluation,
+}: FeedbackToastProps) {
   const tone = outcomeTone(grade.outcome);
   const isRedFive = (tile: string) => redFives.includes(tile);
+  const call = callDecisionFor(evaluation);
 
   return (
     <div
@@ -103,6 +113,18 @@ export function FeedbackToast({ grade, answer, redFives }: FeedbackToastProps) {
           </div>
         )}
       </div>
+
+      {call && (
+        <span className="feedback-call">
+          Mortal on the call:{' '}
+          {call.options
+            .map(
+              (option) =>
+                `${option.label} ${formatProbability(option.probability)}`,
+            )
+            .join(' · ')}
+        </span>
+      )}
     </div>
   );
 }

@@ -107,6 +107,14 @@ export function HandDock({
     }
   }
 
+  // The Call Kan toggle is a decision in its own right: surface Mortal's
+  // probability for the kan rather than only the discard badges on the tiles.
+  const kanProbability =
+    !isAiScenario && kanTile && revealMortal
+      ? aiEvaluation?.evaluations.find((action) => action.action === 'Kan')
+          ?.probability
+      : undefined;
+
   return (
     <section className="hand-dock" aria-label="Your hand">
       {!isAiScenario && (
@@ -140,6 +148,14 @@ export function HandDock({
               <KanIcon className="kan-toggle-icon" />
               <span className="kan-toggle-label">Call Kan</span>
               <span className="kan-toggle-tile">{kanTile}</span>
+              {kanProbability !== undefined && (
+                <span
+                  className="kan-toggle-probability"
+                  aria-label={`Mortal rates Kan ${formatProbability(kanProbability)}`}
+                >
+                  {formatProbability(kanProbability)}
+                </span>
+              )}
               <span className="kan-toggle-state">{callKan ? 'ON' : 'OFF'}</span>
             </button>
           )}

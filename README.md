@@ -25,7 +25,11 @@ encodes, and against the embedded Mortal v4 policy. The two recommendations are
 shown side by side after you answer, each with its provenance. The book column
 always says which rule the hand teaches and cites the chapter and section; the
 Mortal column shows the model's top action, its probability, and the full
-ranking.
+ranking. When the state offers a call (chi, pon, or kan), the Mortal column also
+shows a separate call comparison — for example, how likely Mortal is to call the
+Kan versus keeping the Pon — because the top action can otherwise just be the
+safest discard. The same call probabilities appear on the call buttons when
+Mortal's line is revealed.
 
 Only one case is called **wrong**: when both the book and Mortal reject your
 answer. Picking the book's line when Mortal disagrees is a **book answer**;

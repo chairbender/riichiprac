@@ -298,11 +298,12 @@ export const App = () => {
         />
       )}
 
-      {dualGrade && submittedAnswer && humanPlayer && (!reportMode || isReportRetry) && (
+      {gameState && dualGrade && submittedAnswer && humanPlayer && (!reportMode || isReportRetry) && (
         <FeedbackToast
           grade={dualGrade}
           answer={submittedAnswer}
           redFives={humanPlayer.red_fives}
+          evaluation={evaluation}
         />
       )}
 
@@ -351,6 +352,8 @@ export const App = () => {
           actions={availableActions}
           disabled={dualGrade !== null}
           riichiArmed={callRiichi}
+          evaluation={evaluation}
+          revealMortal={dualGrade !== null || peekedBeforeAnswer}
           onToggleRiichi={toggleRiichi}
           onAction={submitAction}
         />

@@ -1,3 +1,4 @@
+import { callDecisionFor } from '../callDecision';
 import type { AiEvaluation, AiStatus } from '../types/ai';
 import { actionLabel, formatProbability } from '../types/ai';
 import type { GameState } from '../types/game';
@@ -10,6 +11,7 @@ import {
   outcomeTone,
 } from '../types/verdict';
 import { ActionRanking } from './ActionRanking';
+import { CallReport } from './CallReport';
 import { RiichiStick } from './RiichiStick';
 import { ScenarioExplanation } from './ScenarioExplanation';
 import { Tile } from './Tile';
@@ -194,6 +196,7 @@ function MortalBody({
 }) {
   const tile = mortalRecommendedTile(mortal);
   const riichi = mortalRecommendedRiichi(mortal);
+  const call = callDecisionFor(evaluation);
 
   return (
     <>
@@ -217,6 +220,8 @@ function MortalBody({
         )}
       </div>
 
+      {call && <CallReport decision={call} />}
+
       {!mortal.agrees && mortal.answer_probability > 0 && (
         <p className="verdict-answer-probability">
           Your answer: {formatProbability(mortal.answer_probability)}
@@ -232,6 +237,7 @@ function MortalBody({
             recommendedAction={evaluation.recommended_action}
             limit={6}
             showOverflow
+            pinnedActions={call?.focusActions}
           />
         </details>
       )}
@@ -274,6 +280,7 @@ function PeekedMortal({
 }) {
   const top = evaluation.evaluations[0];
   const tile = top?.tile ?? null;
+  const call = callDecisionFor(evaluation);
   return (
     <>
       <p className="verdict-recommendation">
@@ -290,6 +297,7 @@ function PeekedMortal({
       <p className="verdict-probability">
         {top ? formatProbability(top.probability) : ''} · peeked before answering
       </p>
+      {call && <CallReport decision={call} />}
       <details className="verdict-ranking">
         <summary>Full ranking</summary>
         <ActionRanking
@@ -297,6 +305,7 @@ function PeekedMortal({
           recommendedAction={evaluation.recommended_action}
           limit={6}
           showOverflow
+          pinnedActions={call?.focusActions}
         />
       </details>
     </>
