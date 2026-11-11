@@ -492,8 +492,8 @@ mod tests {
         let text = report.human_readable.join("\n");
 
         assert!(
-            text.contains("Pon [R R R]"),
-            "the mock table's red-dragon Pon must use the friendly name:\n{text}"
+            text.contains("Pon [Wh Wh Wh]"),
+            "the mock table's Haku Pon must use the friendly name:\n{text}"
         );
         assert!(
             !text

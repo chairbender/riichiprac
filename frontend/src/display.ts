@@ -5,7 +5,8 @@
  * ids, and comparison logic. Only display text maps them:
  *
  * - winds use `E S W N` (`1z`..`4z`);
- * - dragons use `R G Wh` (`5z`..`7z`, with the lowercase `h` on Haku);
+ * - dragons use `Wh G R` for `5z`..`7z` (Haku, Hatsu, Chun), with the
+ *   lowercase `h` on Haku;
  * - a red five prints as `R5s`, `R5p`, or `R5m`;
  * - every other code passes through unchanged.
  */
@@ -15,12 +16,12 @@ const HONOR_NAMES: Record<string, string> = {
   '2z': 'S',
   '3z': 'W',
   '4z': 'N',
-  '5z': 'R',
+  '5z': 'Wh',
   '6z': 'G',
-  '7z': 'Wh',
+  '7z': 'R',
 };
 
-/** Friendly name for one tile code, e.g. `5z` -> `R` or `5s` + red -> `R5s`. */
+/** Friendly name for one tile code, e.g. `7z` -> `R` or `5s` + red -> `R5s`. */
 export function formatTileForDisplay(code: string, redFive = false): string {
   if (redFive && code.length === 2 && code[0] === '5' && 'mps'.includes(code[1])) {
     return `R5${code[1]}`;

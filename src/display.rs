@@ -5,7 +5,8 @@
 //! that turns a code into what the UI prints:
 //!
 //! - honours use the book's shorthand: winds `E S W N` (`1z`..`4z`) and
-//!   dragons `R G Wh` (`5z`..`7z`, with the lowercase `h` on Haku);
+//!   dragons `Wh G R` for `5z`..`7z` (Haku, Hatsu, Chun), with the lowercase
+//!   `h` on Haku;
 //! - a red five prints as `R5s`, `R5p`, or `R5m`;
 //! - every other code passes through unchanged.
 
@@ -26,9 +27,9 @@ pub fn format_tile_for_display(code: &str, red_five: bool) -> String {
         "2z" => "S".to_string(),
         "3z" => "W".to_string(),
         "4z" => "N".to_string(),
-        "5z" => "R".to_string(),
+        "5z" => "Wh".to_string(),
         "6z" => "G".to_string(),
-        "7z" => "Wh".to_string(),
+        "7z" => "R".to_string(),
         other => other.to_string(),
     }
 }
@@ -53,9 +54,9 @@ mod tests {
             ("2z", "S"),
             ("3z", "W"),
             ("4z", "N"),
-            ("5z", "R"),
+            ("5z", "Wh"),
             ("6z", "G"),
-            ("7z", "Wh"),
+            ("7z", "R"),
         ];
 
         for (code, name) in pairs {
@@ -65,8 +66,15 @@ mod tests {
             ["1z", "2z", "3z", "4z", "5z", "6z", "7z"]
                 .map(|code| format_tile_for_display(code, false))
                 .concat(),
-            "ESWNRGWh"
+            "ESWNWhGR"
         );
+    }
+
+    #[test]
+    fn dragons_render_wh_for_haku_and_r_for_chun() {
+        assert_eq!(format_tile_for_display("5z", false), "Wh");
+        assert_eq!(format_tile_for_display("6z", false), "G");
+        assert_eq!(format_tile_for_display("7z", false), "R");
     }
 
     #[test]
