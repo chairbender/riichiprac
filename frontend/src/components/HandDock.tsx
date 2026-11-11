@@ -11,6 +11,7 @@ import type { DualGrade } from '../types/verdict';
 import { mortalRecommendedTile } from '../types/verdict';
 import { AnswerSummary } from './AnswerSummary';
 import { KanIcon } from './KanIcon';
+import { NextScenarioButton } from './NextScenarioButton';
 import { RiichiStick } from './RiichiStick';
 import { Tile } from './Tile';
 
@@ -34,6 +35,10 @@ interface HandDockProps {
   revealMortal?: boolean;
   /** What the state asks for; a `Defend` lesson is a pure-defense fold. */
   targetAction?: TargetAction;
+  /** Disables the post-answer Next Scenario control while a puzzle loads. */
+  nextDisabled?: boolean;
+  /** Loads the next scenario; shown at the bottom once the hand is answered. */
+  onNextScenario: () => void;
   /** Scroll to the full book-vs-Mortal comparison. */
   onShowVerdict: () => void;
   onToggleRiichi: () => void;
@@ -59,6 +64,8 @@ export function HandDock({
   canRiichi = false,
   revealMortal = false,
   targetAction,
+  nextDisabled = false,
+  onNextScenario,
   onShowVerdict,
   onToggleRiichi,
   onToggleKan,
@@ -257,6 +264,14 @@ export function HandDock({
           );
         })}
       </div>
+
+      {isAnswered && (
+        <NextScenarioButton
+          variant="dock"
+          onClick={onNextScenario}
+          disabled={nextDisabled}
+        />
+      )}
     </section>
   );
 }
