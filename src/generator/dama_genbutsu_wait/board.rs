@@ -372,6 +372,7 @@ fn assemble_state(
         correct_action: CorrectAction::dama(skeleton.discard_tile.to_string()),
         equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
+        scenario_note: None,
         ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: judgement::dama_reasons(),

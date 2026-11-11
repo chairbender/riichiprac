@@ -408,6 +408,13 @@ pub struct GameState {
     /// What kind of decision this state presents.
     #[serde(default)]
     pub decision: DecisionContext,
+    /// One-line situation note the lesson needs on screen *before* the answer.
+    ///
+    /// A few lessons depend on a fact that is not visible on the table, such as
+    /// a planned Pon on a pair the hand already holds. The note states that
+    /// fact without naming the answer. Empty for every self-explanatory table.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scenario_note: Option<String>,
     /// Model-derived answer and full ranking for AI scenarios.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_decision: Option<AiDecision>,

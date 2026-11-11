@@ -234,6 +234,10 @@ export const App = () => {
 
       {gameState && <TableInfo state={gameState} />}
 
+      {gameState?.scenario_note && (
+        <p className="scenario-note">{gameState.scenario_note}</p>
+      )}
+
       {gameState && (
         <VerdictPanel
           state={gameState}

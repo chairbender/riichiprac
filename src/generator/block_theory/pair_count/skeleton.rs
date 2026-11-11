@@ -1,9 +1,6 @@
-use std::collections::BTreeMap;
-
-use agari::parse::to_counts;
-use agari::shanten::{calculate_shanten, calculate_ukeire};
 use agari::tile::{Suit, Tile};
 
+use super::super::shapes::{distinct_tiles, pair_tiles, shanten, suited, ukeire, without};
 use crate::generator::support::deck::Deck;
 use crate::rng::{choose, gen_range, shuffle};
 
@@ -238,49 +235,6 @@ pub(super) fn verify_lesson(skeleton: &PairCountSkeleton) -> Result<(u8, u8), St
     }
 
     Ok((answer_acceptance, rival_acceptance))
-}
-
-fn suited(suit: Suit, value: u8) -> Tile {
-    Tile::Suited { suit, value }
-}
-
-fn shanten(tiles: &[Tile]) -> i8 {
-    calculate_shanten(&to_counts(tiles)).shanten
-}
-
-fn ukeire(tiles: &[Tile]) -> u8 {
-    calculate_ukeire(&to_counts(tiles)).total_count
-}
-
-/// Tile values held exactly twice, in tile order.
-fn pair_tiles(tiles: &[Tile]) -> Vec<Tile> {
-    let mut counts: BTreeMap<Tile, usize> = BTreeMap::new();
-    for tile in tiles {
-        *counts.entry(*tile).or_insert(0) += 1;
-    }
-    counts
-        .into_iter()
-        .filter(|(_, count)| *count == 2)
-        .map(|(tile, _)| tile)
-        .collect()
-}
-
-fn distinct_tiles(tiles: &[Tile]) -> Vec<Tile> {
-    let mut distinct = tiles.to_vec();
-    distinct.sort();
-    distinct.dedup();
-    distinct
-}
-
-/// Removes one copy of `discard` from `tiles`.
-fn without(tiles: &[Tile], discard: Tile) -> Result<Vec<Tile>, String> {
-    let mut remaining = tiles.to_vec();
-    let index = remaining
-        .iter()
-        .position(|tile| *tile == discard)
-        .ok_or_else(|| format!("{discard} is not in the hand"))?;
-    remaining.remove(index);
-    Ok(remaining)
 }
 
 #[cfg(test)]

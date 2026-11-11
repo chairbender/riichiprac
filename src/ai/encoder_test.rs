@@ -112,6 +112,7 @@ fn base_state() -> GameState {
         correct_action: CorrectAction::dama("3m"),
         equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
+        scenario_note: None,
         ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),

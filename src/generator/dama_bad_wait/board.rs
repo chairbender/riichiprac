@@ -312,6 +312,7 @@ fn assemble_state(
         correct_action,
         equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
+        scenario_note: None,
         ai_decision: None,
         riichi_triggers,
         dama_reasons,

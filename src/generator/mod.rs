@@ -3,8 +3,9 @@
 //! - `block_theory`: 5-block random hands, the ryanmen protorun lesson, the
 //!   protorun priority (side wait before closed wait) lesson, the
 //!   nakabukure (bulging float) ready-hand lesson, the ryankan (double
-//!   closed shape) break lesson, and the pair count (avoid three pairs in a
-//!   closed hand) lesson.
+//!   closed shape) break lesson, the pair count (avoid three pairs in a
+//!   closed hand) lesson, and its open-hand companion (keep three pairs when
+//!   a Pon is planned).
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
 //! - `riichi_judgement`: ch. 7's general three-condition Riichi/dama rule.
 //! - `dama_bad_wait`: ch. 7's bad-wait box: riichi with three or more live
@@ -147,6 +148,23 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::PairCountOpen,
+        label: "Pair Count: Pon Planned",
+        description: "Block theory: with a dragon pair to Pon, keep three pairs and break \
+                      the closed wait.",
+        category: ScenarioCategory::TileEfficiency,
+        tags: &[
+            "block_theory",
+            "discard",
+            "pairs",
+            "shape",
+            "pon",
+            "open_hand",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::ChiitoitsuRiichiVsDama,
         label: "Chiitoitsu Riichi vs Dama",
         description: "Seven pairs: decide whether to declare Riichi or stay dama.",
@@ -269,6 +287,7 @@ pub enum ScenarioId {
     ProtorunPriority,
     RyankanBreak,
     PairCount,
+    PairCountOpen,
     ChiitoitsuRiichiVsDama,
     RiichiJudgement,
     DamaBadWait,
@@ -288,6 +307,7 @@ impl ScenarioId {
         ScenarioId::ProtorunPriority,
         ScenarioId::RyankanBreak,
         ScenarioId::PairCount,
+        ScenarioId::PairCountOpen,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::RiichiJudgement,
         ScenarioId::DamaBadWait,
@@ -307,6 +327,7 @@ impl ScenarioId {
             ScenarioId::ProtorunPriority => "protorun_priority",
             ScenarioId::RyankanBreak => "ryankan_break",
             ScenarioId::PairCount => "pair_count",
+            ScenarioId::PairCountOpen => "pair_count_open",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::DamaBadWait => "dama_bad_wait",
@@ -327,6 +348,7 @@ impl ScenarioId {
             "protorun_priority" => Some(ScenarioId::ProtorunPriority),
             "ryankan_break" => Some(ScenarioId::RyankanBreak),
             "pair_count" => Some(ScenarioId::PairCount),
+            "pair_count_open" => Some(ScenarioId::PairCountOpen),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
@@ -348,6 +370,7 @@ impl ScenarioId {
             ScenarioId::ProtorunPriority => block_theory::protorun_priority::generate(category),
             ScenarioId::RyankanBreak => block_theory::ryankan_break::generate(category),
             ScenarioId::PairCount => block_theory::pair_count::generate(category),
+            ScenarioId::PairCountOpen => block_theory::pair_count_open::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::DamaBadWait => dama_bad_wait::generate(category),

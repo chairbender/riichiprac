@@ -267,6 +267,7 @@ fn assemble_state(
         // drawn one, and grades the other as equal.
         equivalent_tiles: vec![skeleton.equivalent_tile.to_string()],
         decision: DecisionContext::SelfTurn,
+        scenario_note: None,
         ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
