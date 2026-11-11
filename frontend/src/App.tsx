@@ -118,19 +118,19 @@ export const App = () => {
           try {
             await initializeAi();
             if (requestId !== loadRequestId.current) return;
-            const evaluator = useGameStore.getState().evaluator;
-            if (!evaluator) {
+            const mortal = useGameStore.getState().mortal;
+            if (!mortal) {
               throw new Error(
                 useGameStore.getState().aiError ??
                   'Mortal AI is unavailable; cannot generate this scenario.',
               );
             }
-            // Let the loading state paint before the blocking inference.
+            // Let the loading state paint before the worker starts.
             await new Promise<void>((resolve) => {
               setTimeout(resolve, 0);
             });
             if (requestId !== loadRequestId.current) return;
-            loadFromJson(evaluator.generate_ai_puzzle(category));
+            loadFromJson(await mortal.generateAiPuzzle(category));
           } finally {
             setAiLoading(false);
           }
@@ -139,21 +139,21 @@ export const App = () => {
           try {
             await initializeAi();
             if (requestId !== loadRequestId.current) return;
-            const evaluator = useGameStore.getState().evaluator;
-            if (!evaluator) {
+            const mortal = useGameStore.getState().mortal;
+            if (!mortal) {
               throw new Error(
                 useGameStore.getState().aiError ??
                   'Mortal is unavailable, so a Mortal-agreeing hand cannot be ' +
                     'generated. Turn off "Mortal must agree" to keep practising.',
               );
             }
-            // Let the loading state paint before the blocking sampling.
+            // Let the loading state paint before the worker starts sampling.
             await new Promise<void>((resolve) => {
               setTimeout(resolve, 0);
             });
             if (requestId !== loadRequestId.current) return;
             loadFromAgreementJson(
-              evaluator.generate_puzzle_with_agreement(
+              await mortal.generatePuzzleWithAgreement(
                 category,
                 JSON.stringify(AGREEMENT_OPTIONS),
               ),

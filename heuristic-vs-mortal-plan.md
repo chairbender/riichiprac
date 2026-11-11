@@ -314,16 +314,15 @@ Rules:
    answer is graded `BookOnly` immediately and **re-graded** when the evaluation
    lands (the store keeps `submittedAnswer`, so this is a pure re-derive, not a
    second submission).
-6. **Web Worker: not now.** The 43 MB safetensors parse and the forward pass are
-   main-thread work, and always-on inference makes that cost unavoidable rather
-   than opt-in. But moving it to a worker is a bounded project with real
-   coupling: the worker would have to own the model (wasm-bindgen classes cannot
-   share memory across threads), so `generate_ai_puzzle` moves with it, and the
-   `Evaluation` boundary becomes `postMessage` + structured clone with request
-   ids. Do it only if phase 0 shows the pass stalls the UI. **Latency is
-   unmeasured; instrument in phase 0** — `WasmMortalEvaluator::new` duration,
-   `evaluate()` duration, and long-task/frame-gap counts, on desktop and on one
-   mid-tier phone.
+6. **Web Worker: implemented later.** The 43 MB safetensors parse and the
+   forward pass were originally main-thread work. They now run in a dedicated
+   inference worker (`frontend/src/workers/mortal.worker.ts`, client in
+   `services/mortalClient.ts`): the worker owns its own WASM instance and the
+   model, and the store talks to it over `postMessage` with request ids
+   (`evaluate`, `generateAi`, `generateAgreement`). The weights are transferred
+   to the worker once instead of being parsed on the UI thread. That keeps the
+   page interactive during the up-to-40-candidate agreement sampling; the
+   request id guards below still decide whether a result is still current.
 7. **Status copy instead of a button**, in the collapsed block:
    - `idle`/`loading`: "Mortal: loading the model once (~43 MB)…" with the
      existing spinner class.

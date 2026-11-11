@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { WasmMortalEvaluator, grade_answer_json } from 'riichiprac';
+import { grade_answer_json } from 'riichiprac';
 import {
   canDeclareRiichi,
   findAiActionInfo,
@@ -8,6 +8,8 @@ import {
   isKanDecision,
 } from '../actions';
 import { parseAgreementPayload } from '../agreement';
+import { initMortalClient } from '../services/mortalClient';
+import type { MortalClient } from '../services/mortalClient';
 import { loadWeights, WEIGHTS_FILENAME } from '../services/weightLoader';
 import { parseStateFile } from '../stateFile';
 import type { AiDecision, AiEvaluation, AiStatus } from '../types/ai';
@@ -77,8 +79,11 @@ interface GameStore {
   /** Model weight loading state for the Mortal evaluator. */
   aiStatus: AiStatus;
   aiError: string | null;
-  /** Loaded Candle model; created once and reused for every evaluation. */
-  evaluator: WasmMortalEvaluator | null;
+  /**
+   * Inference worker holding the Candle model; created once and reused for
+   * every evaluation. Null until the weights are loaded.
+   */
+  mortal: MortalClient | null;
   /** Latest AI result for the current table, or null before evaluating. */
   evaluation: AiEvaluation | null;
   isEvaluating: boolean;
@@ -126,7 +131,7 @@ interface GameStore {
   /** Hide the imported position's description card. */
   clearPositionDescription: () => void;
 
-  /** Fetch the Safetensors weights and build the WASM evaluator once. */
+  /** Fetch the Safetensors weights and start the inference worker once. */
   initializeAi: () => Promise<void>;
   /** Evaluate the current table now (used by the AI panel's retry). */
   evaluateWithAi: () => Promise<void>;
@@ -251,7 +256,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   };
 
   const requestEvaluationFor = (state: GameState) => {
-    if (!get().evaluator) return;
+    if (!get().mortal) return;
     if (get().gameState !== state) return;
     if (get().isEvaluating) {
       pendingState = state;
@@ -261,21 +266,18 @@ export const useGameStore = create<GameStore>((set, get) => {
   };
 
   const runEvaluation = async (state: GameState) => {
-    const evaluator = get().evaluator;
-    if (!evaluator) return;
+    const mortal = get().mortal;
+    if (!mortal) return;
 
     const requestId = ++evaluationRequestId;
     set({ isEvaluating: true, aiError: null });
     try {
-      // Yield once so the "Mortal is thinking" state can paint before the
-      // synchronous forward pass blocks the main thread.
+      // Let the "Mortal is thinking" state paint while the worker starts.
       await new Promise<void>((resolve) => {
         setTimeout(resolve, 0);
       });
 
-      const evaluation = evaluator.evaluate(
-        JSON.stringify(state),
-      ) as AiEvaluation;
+      const evaluation = await mortal.evaluate(JSON.stringify(state));
       if (requestId !== evaluationRequestId) return;
 
       if (get().gameState !== state) {
@@ -311,7 +313,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     ...emptyState,
     aiStatus: 'idle',
     aiError: null,
-    evaluator: null,
+    mortal: null,
     isEvaluating: false,
 
     loadFromJson: (json) => {
@@ -589,13 +591,10 @@ export const useGameStore = create<GameStore>((set, get) => {
           // external CDN. See services/weightLoader.ts and hosting-plan.md.
           const bytes = await loadWeights();
 
-          // Let the loading badge paint before the blocking 43 MB parse/bind.
-          await new Promise<void>((resolve) => {
-            requestAnimationFrame(() => resolve());
-          });
-
-          const evaluator = new WasmMortalEvaluator(bytes, WEIGHTS_FILENAME);
-          set({ evaluator, aiStatus: 'ready', aiError: null });
+          // The worker instantiates its own WASM copy and parses the 43 MB
+          // checkpoint off the UI thread, so this await does not block input.
+          const mortal = await initMortalClient(bytes, WEIGHTS_FILENAME);
+          set({ mortal, aiStatus: 'ready', aiError: null });
 
           const state = get().gameState;
           if (state && !get().evaluation) {
@@ -604,7 +603,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         } catch (err) {
           aiInitPromise = null; // allow a retry from the UI
           set({
-            evaluator: null,
+            mortal: null,
             aiStatus: 'error',
             aiError: err instanceof Error ? err.message : String(err),
           });
@@ -616,7 +615,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     evaluateWithAi: async () => {
       const state = get().gameState;
-      if (!state || get().isEvaluating || !get().evaluator) return;
+      if (!state || get().isEvaluating || !get().mortal) return;
       await runEvaluation(state);
     },
   };

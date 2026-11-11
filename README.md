@@ -44,6 +44,10 @@ until you answer so the drill is still a decision; **Peek** reveals Mortal's lin
 early. The book side is always explained — "Not this hand" lists the
 justifications that do not apply, without inventing a citation for them.
 
+The checkpoint lives in a dedicated Web Worker, so the forward passes (the
+automatic evaluation, Peek, the AI drill, and agreement sampling) run off the UI
+thread and the page stays interactive while Mortal thinks.
+
 Riichi is graded as a whole decision, not a single action name. When Mortal's top
 action is Riichi, the evaluator runs a second pass (the position marked as
 already in Riichi, `Riichi` masked off) to find the discard it would declare on;
@@ -271,7 +275,8 @@ re-deals the hand on screen through the filter, and a short note under the table
 says how many candidates were rejected and why (for example "accepted on 5
 candidates (4 rejected: 3 tile mismatches, 1 incomparable answer)"). The default
 page load stays book-only and instant, and a browser without the weights can
-never enable it.
+never enable it. The sampling runs in the inference worker, so the table stays
+interactive while it searches.
 
 A candidate costs one forward pass (about 41 ms per pass with `mortal_298k` on a
 desktop CPU, and roughly twice that when Mortal chooses Riichi, because its
