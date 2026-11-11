@@ -1848,6 +1848,11 @@ fn test_ryanmen_rejection_sampling_constraints() {
                 grade["book"]["is_tile_correct"], true,
                 "run {run}: the twin closed-wait tile must grade correct"
             );
+            assert_eq!(
+                grade["book"]["expected_tiles"],
+                serde_json::json!([answer, equivalent]),
+                "run {run}: the answer response must list both accepted tiles"
+            );
             assert_eq!(grade["outcome"], "only_available_agrees");
 
             // Scores total 100,000.
