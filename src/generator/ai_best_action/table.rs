@@ -4,7 +4,8 @@ use agari::tile::Tile;
 
 use crate::generator::support::deck::Deck;
 use crate::generator::support::table::{
-    OpponentDeal, deal_opponents, random_round, random_table_scores, self_turn_river_counts,
+    OpponentDeal, RiverPlan, deal_opponents, random_round, random_table_scores,
+    self_turn_river_plan,
 };
 use crate::rng::gen_range;
 use crate::state::Wind;
@@ -21,6 +22,8 @@ pub struct Table {
     pub ura_dora_indicators: Vec<String>,
     pub human_tiles: Vec<Tile>,
     pub human_river: Vec<Tile>,
+    /// Indices of `human_river` that follow a call, so they are tedashi.
+    pub human_hand_discards: Vec<usize>,
     pub deal: OpponentDeal,
     pub tiles_remaining: u8,
 }
@@ -72,7 +75,7 @@ pub fn deal_table_with_human_no_rivers(human_tiles: Vec<Tile>) -> Result<Table, 
     // The opening draw belongs to the dealer; the human holds it, so the human
     // has to be East.
     let human_wind = Wind::East;
-    let deal = deal_opponents(&mut deck, human_wind, &scores, &[0; 4])
+    let deal = deal_opponents(&mut deck, human_wind, &scores, &RiverPlan::default())
         .ok_or_else(|| "deck ran out while dealing opponents".to_string())?;
 
     let mut dead_wall = deck
@@ -92,6 +95,7 @@ pub fn deal_table_with_human_no_rivers(human_tiles: Vec<Tile>) -> Result<Table, 
         ura_dora_indicators: vec![ura.to_string()],
         human_tiles,
         human_river: Vec::new(),
+        human_hand_discards: Vec::new(),
         deal,
         tiles_remaining: deck.remaining() as u8,
     })
@@ -109,12 +113,12 @@ fn deal_rest(
     // The human is about to discard, so plan the rivers as one legal timeline
     // that ends on Kamicha's discard. Picking each river separately is what let
     // the human end up with more discards than the other seats.
-    let counts = self_turn_river_counts(human_wind, calls, gen_range(3, 10));
-    let deal = deal_opponents(&mut deck, human_wind, &scores, &counts)
+    let plan = self_turn_river_plan(human_wind, calls, gen_range(3, 10));
+    let deal = deal_opponents(&mut deck, human_wind, &scores, &plan)
         .ok_or_else(|| "deck ran out while dealing opponents".to_string())?;
 
     let human_river = deck
-        .draw_n(counts[0])
+        .draw_n(plan.counts[0])
         .ok_or_else(|| "deck ran out while dealing the human river".to_string())?;
 
     let mut dead_wall = deck
@@ -134,6 +138,7 @@ fn deal_rest(
         ura_dora_indicators: vec![ura.to_string()],
         human_tiles,
         human_river,
+        human_hand_discards: plan.hand_discards[0].clone(),
         deal,
         tiles_remaining: deck.remaining() as u8,
     })

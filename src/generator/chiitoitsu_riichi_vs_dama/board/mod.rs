@@ -8,7 +8,7 @@ use crate::generator::support::analysis::HandMetrics;
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
     OpponentDeal, deal_opponents, discards_from_tiles, random_round,
-    random_scores_with_human_first, self_turn_river_counts,
+    random_scores_with_human_first, self_turn_river_plan,
 };
 use crate::rng::gen_range;
 use crate::state::{CorrectAction, DecisionContext, GameState, PlayerState, TargetAction, Wind};
@@ -63,10 +63,10 @@ pub(super) fn build(category: &str, skeleton: &ChiitoitsuSkeleton) -> Result<Gam
     let scores = random_scores_with_human_first();
     // The human is about to discard, so every river comes from one legal
     // timeline that ends on Kamicha's discard.
-    let counts = self_turn_river_counts(human_wind, &[], gen_range(2, 7));
-    let deal = deal_opponents(&mut deck, human_wind, &scores, &counts)
+    let plan = self_turn_river_plan(human_wind, &[], gen_range(2, 7));
+    let deal = deal_opponents(&mut deck, human_wind, &scores, &plan)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
-    let human_river = build_human_river(skeleton, &mut deck, counts[0])?;
+    let human_river = build_human_river(skeleton, &mut deck, plan.counts[0])?;
 
     validate_visible_waits(&skeleton.accepted_waits(), &deal.rivers, &dora_indicators)?;
 

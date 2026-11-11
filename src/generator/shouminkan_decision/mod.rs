@@ -277,6 +277,16 @@ mod tests {
             }
         }
 
+        // The human pon'd Shimocha's discard, so the discard immediately after
+        // the call must be tedashi. It is the human's first discard when
+        // Shimocha deals (seat 1 discards before the human), otherwise the
+        // second.
+        let post_call_index = usize::from(state.dealer_seat() != 1);
+        assert!(
+            !human.discards[post_call_index].is_tsumogiri,
+            "the discard after the Pon must be tedashi"
+        );
+
         // The Pon tile is never the visible dora, so the Kan decision does not
         // lean on an accidental dora.
         let indicator = parse_tile(&state.dora_indicators[0]);

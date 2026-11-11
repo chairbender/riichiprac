@@ -401,9 +401,15 @@
 }
 
 /*
- * Tsumogiri: a tile thrown straight off the draw. A dot in the slot's corner
- * marks it without moving the tile or adding skeuomorphic furniture.
+ * Tsumogiri: a tile thrown straight off the draw. The tile reads slightly
+ * darker than a hand discard, and a dot in the slot's corner makes the
+ * distinction unambiguous without moving the tile or adding skeuomorphic
+ * furniture.
  */
+.river-slot--tsumogiri .river-tile {
+  filter: brightness(0.72) saturate(0.85);
+}
+
 .river-slot--tsumogiri::after {
   content: '';
   position: absolute;

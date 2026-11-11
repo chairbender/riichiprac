@@ -1,12 +1,13 @@
 # Tsumogiri: river indicator and whether Mortal uses it
 
-Status: implemented (UI indicator + encoder test); analysis below.
+Status: implemented (indicator, generator timeline fix, report field); analysis
+below.
 
 Tsumogiri is a discard thrown straight off the draw, i.e. the player keeps their
 hand and throws the tile they just took. It is the read that a discard "means
 nothing" about the hand, so the trainer marks it in the river. This note records
-the marker and answers whether the embedded Mortal model actually consumes the
-signal.
+the marker, the generator rule that keeps the flag honest, and whether the
+embedded Mortal model actually consumes the signal.
 
 ## UI indicator
 
@@ -14,10 +15,11 @@ signal.
   and a `title` on any slot whose `DiscardTile.is_tsumogiri` is true. The flag
   already came over the wire from Rust (`src/state.rs`, `DiscardTile`), so only
   rendering was missing.
-- `frontend/src/App.css` draws a small teal dot in the slot's top-right corner.
-  It does not move the tile, so the 6-per-row river grid keeps its size on
-  mobile, and it composes with the existing rotated-Riichi and claim-highlight
-  styles.
+- `frontend/src/App.css` darkens the tile slightly
+  (`filter: brightness(0.72) saturate(0.85)`) and draws a small teal dot in the
+  slot's top-right corner. Neither moves the tile, so the 6-per-row river grid
+  keeps its size on mobile, and both compose with the existing rotated-Riichi
+  and claim-highlight styles.
 - `frontend/src/components/TableInfo.tsx` shows a one-line legend ("Tsumogiri
   (straight from the draw)") only when some river on the table contains a
   tsumogiri discard, so boards without one stay uncluttered.
@@ -26,6 +28,37 @@ A Riichi declaration tile can be tsumogiri in real mahjong (the drawn tile
 leaves the hand tenpai), so the two markers are allowed to appear together. The
 defense generator deliberately uses a tedashi declaration tile
 (`src/generator/defense/board.rs`), but the encoder accepts either shape.
+
+## Generator: the discard after a call is always tedashi
+
+River tiles are still filler drawn from the wall, so the trainer cannot know
+which *other* discards were taken off the draw; those keep the 25% roll in
+`discards_from_tiles`. What it can know is the turn structure:
+
+- `src/generator/support/table.rs` now plans rivers with `plan_rivers` /
+  `self_turn_river_plan`, returning a `RiverPlan { counts, hand_discards }`.
+  `hand_discards` holds the index of each discard made immediately after a call.
+- `force_tedashi(discards, indices)` clears the tsumogiri flag at those indices.
+  `deal_opponents` and every generator that plans a call now apply it, so a
+  player who has just called (chi, pon, daiminkan) always discards from the
+  hand. Planned calls are treated as open calls; a kan's replacement draw is not
+  modelled, so added/closed kans are unaffected.
+- Tests: `plan_rivers` marks the right index for a call before and inside the
+  river, `force_tedashi` clears only the listed entries, and the block-theory /
+  shouminkan generators assert that the discard after their Pon is never
+  tsumogiri.
+
+## Report and submission
+
+- `SubmittedAnswer` (`src/verdict.rs`) gained `is_tsumogiri`. It serializes only
+  when true and defaults to false, so existing reports still parse.
+  `ReportedAction` is the same type, so report JSON carries it automatically.
+- The store (`frontend/src/store/useGameStore.ts`) sets it when the submitted
+  discard is the tile in `players[0].draw`; calls and Kan choices never qualify.
+  Both book and AI-scenario answer paths use the same helper.
+- The plain-text report (`src/report/summary.rs`) and the report banner
+  (`describeReportedAction` in `frontend/src/report.ts`) append "(tsumogiri)".
+  Grading still compares only the action family and the tile.
 
 ## Does Mortal factor it in?
 
@@ -78,15 +111,15 @@ Together with the existing Riichi/tedashi test this covers all three planes.
 
 ## Consequences for the generator
 
-- Board generators (e.g. `src/generator/support/table.rs`) fill rivers with
-  `DiscardTile::tsumogiri` at a 25% rate. Nothing derives the flag from an
-  actual draw, because filler rivers are not simulated turn by turn. That is
-  fine for Mortal's input: the flag is plausible board texture either way, and
-  no scenario's `correct_action` depends on it.
-- A player cannot tsumogiri immediately after calling a meld, since that
-  discard comes from the hand. Generators that know meld order could enforce
-  this later; it is a fidelity nicety, not a grading input, so it was left
-  alone here.
-- Because Mortal ignores the human's own tedashi history, the new indicator is
+- Filler rivers still mark `DiscardTile::tsumogiri` at a 25% rate, because the
+  trainer does not simulate the wall draw by draw. That is fine for Mortal's
+  input (the flag is plausible board texture either way) and no scenario's
+  `correct_action` depends on it. The one structural rule the timeline does
+  know — the discard after a call is tedashi — is now enforced by `RiverPlan`
+  and `force_tedashi`, as described above.
+- The report answers now distinguish a tsumogiri submission, but grading and
+  Mortal's action space are per-tile, so the flag is analysis metadata rather
+  than a correctness criterion.
+- Because Mortal ignores the human's own tedashi history, the indicator is
   informative for the learner (it is how the book reads a river) without
   changing any model verdict.

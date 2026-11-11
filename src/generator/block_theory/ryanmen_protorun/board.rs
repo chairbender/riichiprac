@@ -9,8 +9,8 @@ use crate::generator::support::analysis::{HandMetrics, evaluate_counts, wind_to_
 use crate::generator::support::deck::Deck;
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    OpponentDeal, deal_opponents, discards_from_tiles, random_round,
-    random_scores_with_human_first, self_turn_river_counts,
+    OpponentDeal, deal_opponents, discards_from_tiles, force_tedashi, random_round,
+    random_scores_with_human_first, self_turn_river_plan,
 };
 use crate::rng::gen_range;
 use crate::state::{
@@ -34,6 +34,8 @@ struct TableContext {
     ura_indicator: Tile,
     scores: [i32; 4],
     human_river: Vec<Tile>,
+    /// Human river entries that follow the Pon, so they are tedashi.
+    human_hand_discards: Vec<usize>,
     deal: OpponentDeal,
     tiles_remaining: u8,
 }
@@ -51,13 +53,13 @@ pub(super) fn build_board(category: &str, skeleton: &RyanmenSkeleton) -> Result<
     // Plan one legal timeline: the call happens right after Shimocha's
     // discard, and the rivers follow from it.
     let discard_count = gen_range(1, 7);
-    let counts = self_turn_river_counts(Wind::East, &[(0, 1)], discard_count);
-    let deal = deal_opponents(&mut deck, Wind::East, &scores, &counts)
+    let plan = self_turn_river_plan(Wind::East, &[(0, 1)], discard_count);
+    let deal = deal_opponents(&mut deck, Wind::East, &scores, &plan)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
 
     // Furiten: the human's river cannot contain either ryanmen wait tile.
     let human_river = deck
-        .draw_excluding(counts[0], &skeleton.wait_tiles)
+        .draw_excluding(plan.counts[0], &skeleton.wait_tiles)
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
     validate_visible_waits(skeleton, &deal.rivers, dora_indicator)?;
@@ -84,6 +86,7 @@ pub(super) fn build_board(category: &str, skeleton: &RyanmenSkeleton) -> Result<
             ura_indicator,
             scores,
             human_river,
+            human_hand_discards: plan.hand_discards[0].clone(),
             deal,
             tiles_remaining,
         },
@@ -190,6 +193,7 @@ fn assemble_state(
         ura_indicator,
         scores,
         human_river,
+        human_hand_discards,
         deal,
         tiles_remaining,
     } = context;
@@ -211,7 +215,11 @@ fn assemble_state(
         hand: human_hand.iter().map(|tile| tile.to_string()).collect(),
         draw: Some(skeleton.correct_tile.to_string()),
         red_fives: Vec::new(),
-        discards: discards_from_tiles(&human_river),
+        discards: {
+            let mut discards = discards_from_tiles(&human_river);
+            force_tedashi(&mut discards, &human_hand_discards);
+            discards
+        },
         melds: vec![CalledMeld {
             meld_type: MeldType::Pon,
             tiles: meld_tiles,
@@ -368,6 +376,13 @@ mod tests {
             .map(|player| player.discards.len())
             .collect();
         assert!((1..=8).contains(&discard_counts[0]));
+        // The human pon'd Shimocha's discard, so their following discard (the
+        // second one: the first came before the call) came from the hand and
+        // must never be marked tsumogiri.
+        assert!(
+            !human.discards[1].is_tsumogiri,
+            "the discard after the Pon must be tedashi"
+        );
 
         // The only wait is the live two-sided ryanmen.
         assert_eq!(state.ukeire_tiles.len(), 2);

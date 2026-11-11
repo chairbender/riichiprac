@@ -8,9 +8,9 @@ use crate::generator::support::analysis::{HandMetrics, evaluate_counts, visible_
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    OpponentDeal, deal_opponents, discards_from_tiles, losing_badly_ranked_scores,
+    OpponentDeal, deal_opponents, discards_from_tiles, force_tedashi, losing_badly_ranked_scores,
     placement_desperation_ranked_scores, random_round, random_table_scores, scores_for_seats,
-    self_turn_river_counts,
+    self_turn_river_plan,
 };
 use crate::rng::{choose, gen_range, shuffle};
 use crate::state::{
@@ -43,6 +43,8 @@ struct TableContext {
     ura_indicator: Tile,
     scores: [i32; 4],
     human_river: Vec<Tile>,
+    /// Human river entries that follow the Pon, so they are tedashi.
+    human_hand_discards: Vec<usize>,
     deal: OpponentDeal,
     tiles_remaining: u8,
 }
@@ -69,13 +71,13 @@ pub(super) fn build(
 
     // The human's open Pon was called from Shimocha, so the call happens right
     // after seat 1 discards and every river follows from that one timeline.
-    let counts = self_turn_river_counts(human_wind, &[(0, 1)], discard_count);
-    let deal = deal_opponents(&mut deck, human_wind, &scores, &counts)
+    let plan = self_turn_river_plan(human_wind, &[(0, 1)], discard_count);
+    let deal = deal_opponents(&mut deck, human_wind, &scores, &plan)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
 
     // The human is not furiten: neither wait may appear in their river.
     let human_river = deck
-        .draw_excluding(counts[0], &skeleton.wait_tiles)
+        .draw_excluding(plan.counts[0], &skeleton.wait_tiles)
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
     validate_visible_waits(skeleton, &deal.rivers, dora_indicator, ura_indicator)?;
@@ -97,6 +99,7 @@ pub(super) fn build(
             ura_indicator,
             scores,
             human_river,
+            human_hand_discards: plan.hand_discards[0].clone(),
             deal,
             tiles_remaining,
         },
@@ -372,6 +375,7 @@ fn assemble_state(
         ura_indicator,
         scores,
         human_river,
+        human_hand_discards,
         deal,
         tiles_remaining,
     } = context;
@@ -395,7 +399,11 @@ fn assemble_state(
         hand: concealed_hand.iter().map(|tile| tile.to_string()).collect(),
         draw: Some(skeleton.drawn_tile.to_string()),
         red_fives: Vec::new(),
-        discards: discards_from_tiles(&human_river),
+        discards: {
+            let mut discards = discards_from_tiles(&human_river);
+            force_tedashi(&mut discards, &human_hand_discards);
+            discards
+        },
         melds: vec![CalledMeld {
             meld_type: MeldType::Pon,
             tiles: meld_tiles,

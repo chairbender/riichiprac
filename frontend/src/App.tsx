@@ -182,6 +182,9 @@ export const App = () => {
     if (submittedAnswer.action_name !== undefined) {
       answer.action_name = submittedAnswer.action_name;
     }
+    if (submittedAnswer.is_tsumogiri) {
+      answer.is_tsumogiri = true;
+    }
 
     const { report, json } = createScenarioReport({
       table: gameState,

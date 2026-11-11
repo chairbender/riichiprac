@@ -30,6 +30,11 @@ export interface ReportedAction {
   tile_index?: number;
   /** Mortal action name for an AI-scenario answer (`Chi_Low`, `Pon`, ...). */
   action_name?: string;
+  /**
+   * True when the discard was the tile just drawn (tsumogiri). Recorded for
+   * analysis and report replay; grading ignores it.
+   */
+  is_tsumogiri?: boolean;
 }
 
 export interface AiComparison {

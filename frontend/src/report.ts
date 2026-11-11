@@ -295,20 +295,23 @@ export function describeCorrectAction(action: CorrectAction): string {
 }
 
 export function describeReportedAction(answer: ReportedAction): string {
-  switch (answer.action) {
-    case 'riichi':
-      return `Riichi, discarding ${answer.tile}`;
-    case 'dama':
-      return `Dama, discarding ${answer.tile}`;
-    case 'fold':
-      return `Fold, discarding the safest tile ${answer.tile}`;
-    case 'kan':
-      return `Added Kan on ${answer.tile}`;
-    case 'discard':
-      return `Pass on the Kan and discard ${answer.tile}`;
-    case 'best':
-      return answer.action_name ?? `Discard ${answer.tile}`;
-  }
+  const text = (() => {
+    switch (answer.action) {
+      case 'riichi':
+        return `Riichi, discarding ${answer.tile}`;
+      case 'dama':
+        return `Dama, discarding ${answer.tile}`;
+      case 'fold':
+        return `Fold, discarding the safest tile ${answer.tile}`;
+      case 'kan':
+        return `Added Kan on ${answer.tile}`;
+      case 'discard':
+        return `Pass on the Kan and discard ${answer.tile}`;
+      case 'best':
+        return answer.action_name ?? `Discard ${answer.tile}`;
+    }
+  })();
+  return answer.is_tsumogiri ? `${text} (tsumogiri)` : text;
 }
 
 /** Label for the report verdict, in the shared dual-verdict vocabulary. */

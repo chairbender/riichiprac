@@ -6,7 +6,7 @@ use crate::generator::support::analysis::evaluate_hand;
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    dealer_seat, discards_from_tiles, random_round, random_table_scores, river_counts,
+    dealer_seat, discards_from_tiles, force_tedashi, plan_rivers, random_round, random_table_scores,
 };
 use crate::rng::{choose, gen_range};
 use crate::state::{CorrectAction, DecisionContext, GameState, PlayerState, TargetAction, Wind};
@@ -314,11 +314,12 @@ fn assemble_with_waits(
     // One legal timeline fixes every river length. A regular reaction ends on
     // the source's discard; a chankan happens after the source draws, which
     // follows their Kamicha's discard.
-    let counts = if chankan {
-        river_counts(dealer_seat(human_wind), (from + 3) % 4, &[], min_river)
+    let plan = if chankan {
+        plan_rivers(dealer_seat(human_wind), (from + 3) % 4, &[], min_river)
     } else {
-        river_counts(dealer_seat(human_wind), from, &[], min_river)
+        plan_rivers(dealer_seat(human_wind), from, &[], min_river)
     };
+    let counts = plan.counts;
 
     let human_river = deck
         .draw_excluding(counts[0], &excluded)
@@ -334,7 +335,11 @@ fn assemble_with_waits(
         hand: hand.iter().map(|tile| tile.to_string()).collect(),
         draw: None,
         red_fives: Vec::new(),
-        discards: discards_from_tiles(&human_river),
+        discards: {
+            let mut discards = discards_from_tiles(&human_river);
+            force_tedashi(&mut discards, &plan.hand_discards[0]);
+            discards
+        },
         melds: Vec::new(),
         is_riichi: false,
         riichi_discard_index: None,
@@ -380,7 +385,11 @@ fn assemble_with_waits(
             hand: concealed.iter().map(|tile| tile.to_string()).collect(),
             draw: None,
             red_fives: Vec::new(),
-            discards: discards_from_tiles(&river),
+            discards: {
+                let mut discards = discards_from_tiles(&river);
+                force_tedashi(&mut discards, &plan.hand_discards[seat]);
+                discards
+            },
             melds,
             is_riichi: false,
             riichi_discard_index: None,
