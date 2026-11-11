@@ -268,6 +268,7 @@ fn assemble_state(
         equivalent_tiles: vec![skeleton.equivalent_tile.to_string()],
         decision: DecisionContext::SelfTurn,
         scenario_note: None,
+        call_offer: None,
         ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),

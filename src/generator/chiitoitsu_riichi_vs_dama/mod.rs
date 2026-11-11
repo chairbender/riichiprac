@@ -457,6 +457,8 @@ mod tests {
                 CorrectActionType::Fold
                 | CorrectActionType::Kan
                 | CorrectActionType::Discard
+                | CorrectActionType::Pass
+                | CorrectActionType::Call
                 | CorrectActionType::Best => {
                     panic!("run {run}: chiitoitsu scenario returned a non-lesson action")
                 }

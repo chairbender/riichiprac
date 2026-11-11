@@ -27,7 +27,15 @@ export type MortalConfidence = 'high' | 'medium' | 'low' | 'unknown';
 export type BookGrade = {
   is_action_correct: boolean;
   is_tile_correct: boolean;
-  expected_action: 'riichi' | 'dama' | 'fold' | 'kan' | 'discard' | 'best';
+  expected_action:
+    | 'riichi'
+    | 'dama'
+    | 'fold'
+    | 'kan'
+    | 'discard'
+    | 'pass'
+    | 'call'
+    | 'best';
   expected_tile: string;
 };
 

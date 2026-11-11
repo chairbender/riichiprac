@@ -4,6 +4,7 @@ import {
   canDeclareRiichi,
   findAiActionInfo,
   findKanCandidateTile,
+  isCallDecision,
   isCorrectAction,
   isKanDecision,
 } from '../actions';
@@ -213,6 +214,9 @@ function submitsTheDraw(game: GameState, answer: SubmittedAnswer): boolean {
     case 'fold':
     case 'discard':
       return true;
+    case 'pass':
+    case 'call':
+      return false;
     case 'best': {
       // A declaration discards a tile too; the drawn tile can be that discard.
       const action = answer.action_name;
@@ -427,6 +431,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       const game = state.gameState;
       if (!game || state.dualGrade) return;
 
+      // A call lesson is answered with the Call/Pass buttons, never a tile.
+      if (isCallDecision(game.correct_action)) return;
+
       if (game.correct_action.type === 'best') {
         const action = state.callRiichi ? 'Riichi' : `Discard_${tile}`;
         const info = findAiActionInfo(game, action, tile);
@@ -490,6 +497,24 @@ export const useGameStore = create<GameStore>((set, get) => {
         get().toggleRiichi();
         return;
       }
+
+      // A book call lesson answers `pass` or `call`; the offered call's name
+      // (`Pon`/`Chi`) rides along so the report can name what was declined or
+      // taken. The engine grades both against the state's `correct_action`.
+      const game = get().gameState;
+      if (game && isCallDecision(game.correct_action)) {
+        const isPass = action.action === 'Pass';
+        const answer: SubmittedAnswer = {
+          action: isPass ? 'pass' : 'call',
+          tile: '',
+        };
+        if (!isPass) {
+          answer.action_name = action.action;
+        }
+        get().submitAnswer(answer);
+        return;
+      }
+
       get().submitChoice({
         action: action.action,
         tile: action.tile ?? undefined,

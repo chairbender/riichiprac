@@ -503,6 +503,7 @@ pub fn mortal_action_for_correct(action: &CorrectAction) -> String {
         }
         CorrectAction::Kan { .. } => "Kan".to_string(),
         CorrectAction::Discard { tile } => format!("Discard_{tile}"),
+        CorrectAction::Pass => "Pass".to_string(),
         CorrectAction::Best { action, .. } => action.clone(),
     }
 }
@@ -515,6 +516,15 @@ pub fn mortal_action_for_answer(answer: &SubmittedAnswer) -> String {
         CorrectActionType::Fold => format!("Discard_{}", answer.tile),
         CorrectActionType::Kan => "Kan".to_string(),
         CorrectActionType::Discard => format!("Discard_{}", answer.tile),
+        CorrectActionType::Pass => "Pass".to_string(),
+        // A taken call is identified by its Mortal action name (`Pon`, `Chi`),
+        // which the UI copies from the state's `call_offer`.
+        // An unnamed call must never be mistaken for a pass: "Call" matches no
+        // Mortal action, so the comparison honestly reports a disagreement.
+        CorrectActionType::Call => answer
+            .action_name
+            .clone()
+            .unwrap_or_else(|| "Call".to_string()),
         CorrectActionType::Best => answer
             .action_name
             .clone()
@@ -906,6 +916,61 @@ mod tests {
         assert!(!mortal.agrees);
         assert!(mortal.close_second);
         assert_eq!(mortal.confidence, MortalConfidence::Medium);
+    }
+
+    #[test]
+    fn a_declined_call_grades_a_taken_call_as_a_miss() {
+        let mut state = crate::fixtures::mock_table::generate("mock_table").unwrap();
+        state.correct_action = CorrectAction::pass();
+
+        let pass = grade_answer(
+            &state,
+            &SubmittedAnswer::new(CorrectActionType::Pass, ""),
+            None,
+        );
+        assert_eq!(pass.mode, GradingMode::BookOnly);
+        assert_eq!(pass.outcome, AnswerOutcome::OnlyAvailableAgrees);
+        let book = pass.book.expect("book grade");
+        assert!(book.is_action_correct);
+        assert!(book.is_tile_correct, "a pass has no tile to get wrong");
+        assert_eq!(book.expected_action, CorrectActionType::Pass);
+        assert_eq!(book.expected_tile, "");
+
+        let call = grade_answer(
+            &state,
+            &SubmittedAnswer::new(CorrectActionType::Call, "").with_action_name("Pon"),
+            None,
+        );
+        assert_eq!(call.outcome, AnswerOutcome::OnlyAvailableDisagrees);
+        assert!(!call.book.expect("book grade").is_action_correct);
+    }
+
+    #[test]
+    fn a_declined_call_matches_mortals_pass_action() {
+        let mut state = crate::fixtures::mock_table::generate("mock_table").unwrap();
+        state.correct_action = CorrectAction::pass();
+        let eval = evaluation(&[("Pass", 0.7), ("Pon", 0.2)]);
+
+        let pass = grade_answer(
+            &state,
+            &SubmittedAnswer::new(CorrectActionType::Pass, ""),
+            Some(&eval),
+        );
+        assert_eq!(pass.outcome, AnswerOutcome::BothAgree);
+        let mortal = pass.mortal.expect("mortal grade");
+        assert_eq!(mortal.answer_action, "Pass");
+        assert!(mortal.agrees);
+
+        let call = grade_answer(
+            &state,
+            &SubmittedAnswer::new(CorrectActionType::Call, "").with_action_name("Pon"),
+            Some(&eval),
+        );
+        let mortal = call.mortal.expect("mortal grade");
+        assert_eq!(mortal.answer_action, "Pon");
+        assert!(!mortal.agrees);
+        // The book rejects the call too, so this is the one genuinely wrong line.
+        assert_eq!(call.outcome, AnswerOutcome::NeitherAgrees);
     }
 
     #[test]

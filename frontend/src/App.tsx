@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
-import { canDeclareRiichi } from './actions';
+import { callOfferActions, canDeclareRiichi, isCallDecision } from './actions';
 import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import { ActionBar } from './components/ActionBar';
 import { ExportImportControls } from './components/ExportImportControls';
@@ -249,9 +249,15 @@ export const App = () => {
   const aiDecision = gameState?.ai_decision ?? null;
   const availableActions = aiDecision?.actions ?? [];
   const isDrill = gameState?.correct_action.type === 'best';
-  const canDiscard = isDrill
-    ? availableActions.some((action) => action.type === 'discard')
-    : true;
+  // A book call lesson renders its own Call/Pass buttons from the Rust offer.
+  const isCallLesson = gameState ? isCallDecision(gameState.correct_action) : false;
+  const callActions = gameState ? callOfferActions(gameState) : [];
+  const actionBarActions = isCallLesson ? callActions : availableActions;
+  const canDiscard = isCallLesson
+    ? false
+    : isDrill
+      ? availableActions.some((action) => action.type === 'discard')
+      : true;
   // Rust owns the rule (`GameState::can_riichi`), read through one helper so
   // the dock and the store cannot disagree.
   const canRiichi = gameState ? canDeclareRiichi(gameState) : false;
@@ -378,9 +384,9 @@ export const App = () => {
         ))}
       </main>
 
-      {gameState && !dualGrade && availableActions.length > 0 && (
+      {gameState && !dualGrade && actionBarActions.length > 0 && (
         <ActionBar
-          actions={availableActions}
+          actions={actionBarActions}
           disabled={false}
           riichiArmed={callRiichi}
           evaluation={evaluation}

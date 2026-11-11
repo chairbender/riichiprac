@@ -315,6 +315,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
         scenario_note: None,
+        call_offer: None,
         ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
