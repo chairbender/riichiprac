@@ -325,16 +325,40 @@ fn kan_info(tile: &str, kind: KanKind) -> ActionInfo {
     }
 }
 
+/// True when discarding one tile leaves the hand tenpai.
+///
+/// libriichi offers Riichi from 1-shanten when such a discard exists
+/// (`has_next_shanten_discard` in `PlayerState::tsumo`): the declaration is
+/// made on that discard, so the hand itself never has to be tenpai.
+fn can_discard_into_tenpai(player: &PlayerState) -> bool {
+    let mut counts = [0u8; 34];
+    for code in concealed_tiles(player) {
+        if let Some(index) = tile_index(&code) {
+            counts[index] = counts[index].saturating_add(1);
+        }
+    }
+    let len_div3 = 4u8.saturating_sub(player.melds.len() as u8);
+    (0..34).any(|index| {
+        if counts[index] == 0 {
+            return false;
+        }
+        counts[index] -= 1;
+        let after = super::sp::calc_all(&counts, len_div3);
+        counts[index] += 1;
+        after == 0
+    })
+}
+
 fn can_riichi(state: &GameState, player: &PlayerState) -> bool {
     let menzen = player
         .melds
         .iter()
         .all(|meld| meld.meld_type == MeldType::Ankan);
     menzen
-        && state.shanten == 0
         && !player.is_riichi
         && player.score >= 1000
         && state.tiles_remaining >= 4
+        && (state.shanten == 0 || (state.shanten == 1 && can_discard_into_tenpai(player)))
 }
 
 /// Nine-terminals draw: first turn, closed hand, at least nine distinct

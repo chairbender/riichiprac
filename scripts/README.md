@@ -83,3 +83,24 @@ repository's MIT code. `convert_weights.py` is its corresponding source: if you
 publish the converted file, keep it tagged `license: agpl-3.0` and link back
 here. Details and the reasoning behind hosting it externally are in
 [`hosting-plan.md`](../hosting-plan.md#5-licensing-weights-are-agpl-30-the-app-stays-mit).
+
+## Validating the wiring against mjai.ekyu.moe
+
+Two scripts check that the observation we feed the checkpoint matches what the
+reference engine computes for the same table:
+
+```bash
+# Write a tenhou.net/6 log of a generated scenario plus our own evaluation.
+cargo run --release --bin export_tenhou6 -- \
+    --scenario riichi_judgement --out /tmp/fixture.tenhou6.json \
+    --evaluate --evaluation-out /tmp/ours.json
+
+# Upload the log at https://mjai.ekyu.moe (custom log, the printed player id,
+# temperature 1.00), then diff the report against our evaluation.
+scripts/validate_mortal_review.py --report <report-url> --evaluation /tmp/ours.json
+scripts/validate_mortal_review.py --selftest   # parser check, no network
+```
+
+`mortal-validation.md` at the repository root explains the log format, why the
+upload itself has to be manual, what the comparison can and cannot prove, and
+the table-shape problems the export exposed.

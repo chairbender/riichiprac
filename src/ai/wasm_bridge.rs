@@ -401,11 +401,39 @@ mod tests {
     }
 
     #[test]
-    fn riichi_requires_tenpai_and_a_closed_hand() {
-        let mut state = base_state();
-        state.shanten = 1;
-        assert!(!legal_action_mask(&state)[RIICHI_ACTION]);
+    fn riichi_needs_tenpai_or_a_discard_that_reaches_it() {
+        // A closed tenpai hand can declare.
+        let state = base_state();
+        assert!(legal_action_mask(&state)[RIICHI_ACTION]);
 
+        // A closed 1-shanten hand can declare too, as long as some discard
+        // reaches tenpai: libriichi's `has_next_shanten_discard` rule, because
+        // the declaration is made on that discard.
+        let hand = [
+            "1m", "2m", "3m", "4p", "5p", "6p", "7m", "8m", "9m", "2z", "2z", "3s", "9s",
+        ];
+        let mut state = base_state();
+        state.players[0].hand = hand.iter().map(|tile| tile.to_string()).collect();
+        state.players[0].red_fives.clear();
+        state.players[0].draw = Some("4s".to_string());
+        state.shanten = shanten_of(&hand);
+        assert_eq!(state.shanten, 1, "the fixture hand must be 1-shanten");
+        assert!(
+            legal_action_mask(&state)[RIICHI_ACTION],
+            "discarding 9s reaches tenpai, so Riichi is legal"
+        );
+        assert_can_riichi_plane(&state, true);
+
+        // The same hand with a useless draw: no discard reaches tenpai, so the
+        // gate stays shut and the mask and the observation agree.
+        state.players[0].draw = Some("5z".to_string());
+        assert!(
+            !legal_action_mask(&state)[RIICHI_ACTION],
+            "nothing reaches tenpai, so Riichi is not legal"
+        );
+        assert_can_riichi_plane(&state, false);
+
+        // An open hand can never declare, whatever the shanten.
         let mut state = base_state();
         state.players[0].melds = vec![CalledMeld {
             meld_type: MeldType::Pon,
@@ -414,6 +442,7 @@ mod tests {
         }];
         assert!(!legal_action_mask(&state)[RIICHI_ACTION]);
 
+        // A closed kan keeps the hand closed.
         let mut state = base_state();
         state.players[0].melds = vec![CalledMeld {
             meld_type: MeldType::Ankan,
@@ -421,6 +450,23 @@ mod tests {
             called_from: None,
         }];
         assert!(legal_action_mask(&state)[RIICHI_ACTION]);
+    }
+
+    fn shanten_of(codes: &[&str]) -> i8 {
+        let mut counts = [0u8; 34];
+        for code in codes {
+            counts[tile_index(code).expect("tile")] += 1;
+        }
+        crate::ai::sp::calc_all(&counts, 4)
+    }
+
+    fn assert_can_riichi_plane(state: &GameState, expected: bool) {
+        let observation = crate::ai::encoder::encode_v4_observation(state);
+        let row = crate::ai::encoder::OFF_CAN_RIICHI * crate::ai::encoder::TILE_KINDS;
+        let filled = observation[row..row + crate::ai::encoder::TILE_KINDS]
+            .iter()
+            .all(|value| *value == 1.0);
+        assert_eq!(filled, expected, "the can_riichi plane must agree");
     }
 
     #[test]
