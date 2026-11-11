@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
 import { AI_MODEL_ID } from './aiModel';
+import { canDeclareRiichi } from './actions';
 import { ActionBar } from './components/ActionBar';
 import { HandDock } from './components/HandDock';
 import { PlayerRow } from './components/PlayerRow';
@@ -233,6 +234,9 @@ export const App = () => {
   const canDiscard = isDrill
     ? availableActions.some((action) => action.type === 'discard')
     : true;
+  // Rust owns the rule (`GameState::can_riichi`), read through one helper so
+  // the dock and the store cannot disagree.
+  const canRiichi = gameState ? canDeclareRiichi(gameState) : false;
   const decision = gameState?.decision;
   const claimedFrom =
     decision?.kind === 'react_to_discard' ? decision.from : null;
@@ -365,6 +369,7 @@ export const App = () => {
           aiEvaluation={evaluation}
           availableActions={isDrill ? availableActions : undefined}
           canDiscard={canDiscard}
+          canRiichi={canRiichi}
           revealMortal={dualGrade !== null || peekedBeforeAnswer}
           targetAction={gameState?.target_action}
           onShowVerdict={showVerdict}

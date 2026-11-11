@@ -185,11 +185,28 @@ pub struct MortalGrade {
     pub recommended_base: String,
     /// Human-readable label for the recommendation.
     pub recommended_label: String,
+    /// True when the recommendation is a Riichi declaration.
+    ///
+    /// Mortal's action space has a single `Riichi` action, so this is the
+    /// declaration half of the answer; [`Self::recommended_discard`] is the
+    /// other half when the evaluator could resolve it.
+    #[serde(default)]
+    pub recommended_riichi: bool,
+    /// The discard Mortal would declare Riichi on, when known.
+    ///
+    /// Populated from the evaluator's Riichi second pass (or the drill's
+    /// stored answer). `None` when Mortal is not declaring Riichi, or when no
+    /// second pass was available, in which case the declaration is graded on
+    /// its own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recommended_discard: Option<String>,
     /// The submitted answer expressed in Mortal's action vocabulary.
     pub answer_action: String,
-    /// Whether the answer's action family matches the recommendation.
+    /// Whether the answer's declaration matches the recommendation
+    /// (Riichi with Riichi, or the same non-Riichi action).
     pub matches_action: bool,
-    /// Whether the answer's tile matches, when the recommendation carries one.
+    /// Whether the answer's tile matches, when the recommendation carries one
+    /// (a discard action, or a Riichi declaration with a known discard).
     pub matches_tile: bool,
     /// True only when both parts match; the model's top action.
     pub agrees: bool,
@@ -298,6 +315,7 @@ fn grade_drill(
     };
 
     let recommended_base = normalize_mortal_action(action);
+    let recommended_riichi = recommended_base == "Riichi";
     let answer_action = normalize_mortal_action(
         &answer
             .action_name
@@ -306,8 +324,10 @@ fn grade_drill(
     );
 
     // Riichi and the call actions are graded at action level; discards carry a
-    // tile, which the drill stores next to the action.
-    let needs_tile = action == "Riichi" || action.starts_with("Discard_");
+    // tile, which the drill stores next to the action. A Riichi drill's tile is
+    // the second-pass discard, so the declaration and its discard are graded as
+    // one answer.
+    let needs_tile = recommended_riichi || action.starts_with("Discard_");
     let tile_matches = !needs_tile || answer.tile == tile.as_deref().unwrap_or_default();
     let matches_action = answer_action == recommended_base;
     let agrees = matches_action && tile_matches;
@@ -328,6 +348,8 @@ fn grade_drill(
         recommended_action: action.clone(),
         recommended_base,
         recommended_label: label.clone(),
+        recommended_riichi,
+        recommended_discard: recommended_riichi.then(|| tile.clone()).flatten(),
         answer_action,
         matches_action,
         matches_tile: tile_matches,
@@ -342,18 +364,35 @@ fn grade_drill(
 }
 
 /// Grade against a live Mortal evaluation.
+///
+/// The comparison is the whole declaration, not just the float in the action
+/// vector: Riichi with Riichi, a discard with the same discard, and Riichi-vs-
+/// dama always a miss. When the evaluation resolved Mortal's Riichi discard,
+/// the tile is graded too, so a right declaration on the wrong tile is not a
+/// full agreement.
 fn grade_mortal(evaluation: &Evaluation, answer: &SubmittedAnswer) -> MortalGrade {
     let recommended_action = evaluation.recommended_action.clone();
     let recommended_base = normalize_mortal_action(&recommended_action);
+    let recommended_riichi = recommended_base == "Riichi";
     let answer_action = normalize_mortal_action(&mortal_action_for_answer(answer));
+    let answer_riichi = answer_action == "Riichi";
 
-    // A Riichi recommendation carries no discard, so the discard is not part of
-    // the model's action and cannot make the answer miss.
-    let agrees = if answer.action == CorrectActionType::Riichi {
-        recommended_base == "Riichi"
+    let (matches_action, matches_tile) = if recommended_riichi {
+        let tile_matches = if answer_riichi {
+            // Mortal's `Riichi` action carries no tile; compare the second-pass
+            // discard only when the evaluator could resolve it.
+            evaluation
+                .riichi_discard
+                .as_deref()
+                .is_none_or(|discard| discard == answer.tile)
+        } else {
+            false
+        };
+        (answer_riichi, tile_matches)
     } else {
-        recommended_base == answer_action
+        (recommended_base == answer_action, true)
     };
+    let agrees = matches_action && matches_tile;
 
     let top_probability = probability_for_action(evaluation, &recommended_action);
     let answer_probability = probability_for_action(evaluation, &answer_action);
@@ -370,9 +409,13 @@ fn grade_mortal(evaluation: &Evaluation, answer: &SubmittedAnswer) -> MortalGrad
         recommended_action,
         recommended_base,
         recommended_label,
+        recommended_riichi,
+        recommended_discard: recommended_riichi
+            .then(|| evaluation.riichi_discard.clone())
+            .flatten(),
         answer_action,
-        matches_action: agrees,
-        matches_tile: true,
+        matches_action,
+        matches_tile,
         agrees,
         answer_probability,
         top_probability,
@@ -447,6 +490,26 @@ pub fn mortal_action_for_answer(answer: &SubmittedAnswer) -> String {
     }
 }
 
+/// Whether Mortal's top action matches `action`, including the declared
+/// discard for a Riichi recommendation when the evaluator resolved one.
+///
+/// A Riichi recommendation whose second-pass discard is unknown still matches
+/// any Riichi declaration: the model never picked a tile for it.
+pub fn mortal_recommendation_matches(evaluation: &Evaluation, action: &str, tile: &str) -> bool {
+    let recommended = normalize_mortal_action(&evaluation.recommended_action);
+    let candidate = normalize_mortal_action(action);
+    if recommended != candidate {
+        return false;
+    }
+    if recommended == "Riichi" {
+        return evaluation
+            .riichi_discard
+            .as_deref()
+            .is_none_or(|discard| discard == tile);
+    }
+    true
+}
+
 /// Sum the action probability, including the red-five variant for 5m/5p/5s.
 pub fn probability_for_action(evaluation: &Evaluation, action: &str) -> f32 {
     let base = normalize_mortal_action(action);
@@ -518,6 +581,7 @@ mod tests {
                 .first()
                 .map(|(name, _)| (*name).to_string())
                 .unwrap_or_default(),
+            riichi_discard: None,
             evaluations: actions
                 .iter()
                 .map(|(name, probability)| {
@@ -525,6 +589,13 @@ mod tests {
                 })
                 .collect(),
         }
+    }
+
+    /// A Riichi recommendation, optionally with the second-pass discard.
+    fn riichi_evaluation(discard: Option<&str>) -> Evaluation {
+        let mut evaluation = evaluation(&[("Riichi", 0.7), ("Discard_3p", 0.2)]);
+        evaluation.riichi_discard = discard.map(str::to_string);
+        evaluation
     }
 
     fn dama_state() -> GameState {
@@ -588,6 +659,8 @@ mod tests {
                 recommended_action: "Discard_3p".to_string(),
                 recommended_base: "Discard_3p".to_string(),
                 recommended_label: "Discard 3p".to_string(),
+                recommended_riichi: false,
+                recommended_discard: None,
                 answer_action: "Discard_3p".to_string(),
                 matches_action: agrees,
                 matches_tile: agrees,
@@ -675,10 +748,101 @@ mod tests {
 
         let mortal = grade.mortal.expect("mortal grade");
         assert!(mortal.agrees, "Riichi is a single model action");
+        assert!(mortal.recommended_riichi);
+        assert_eq!(mortal.recommended_discard, None);
         let book = grade.book.expect("book grade");
         assert!(book.is_action_correct);
         assert!(!book.is_tile_correct, "the book still grades the tile");
         assert_eq!(grade.outcome, AnswerOutcome::MortalAgreesBookDoesNot);
+    }
+
+    #[test]
+    fn riichi_recommendation_grades_the_declared_discard_when_known() {
+        let eval = riichi_evaluation(Some("3p"));
+
+        let same_tile = grade_answer(
+            &riichi_state(),
+            &answer(CorrectActionType::Riichi, "3p"),
+            Some(&eval),
+        );
+        let mortal = same_tile.mortal.expect("mortal grade");
+        assert!(mortal.recommended_riichi);
+        assert_eq!(mortal.recommended_discard.as_deref(), Some("3p"));
+        assert!(mortal.matches_action);
+        assert!(mortal.matches_tile);
+        assert!(mortal.agrees);
+        assert_eq!(same_tile.outcome, AnswerOutcome::BothAgree);
+
+        // Same declaration on the wrong tile: the declaration half is right,
+        // the discard half is not, so it is not a full agreement — and the book
+        // rejects the tile too.
+        let other_tile = grade_answer(
+            &riichi_state(),
+            &answer(CorrectActionType::Riichi, "7s"),
+            Some(&eval),
+        );
+        let mortal = other_tile.mortal.expect("mortal grade");
+        assert!(mortal.matches_action);
+        assert!(!mortal.matches_tile);
+        assert!(!mortal.agrees);
+        assert!(!other_tile.book.expect("book grade").is_tile_correct);
+        assert_eq!(other_tile.outcome, AnswerOutcome::NeitherAgrees);
+    }
+
+    #[test]
+    fn dama_answer_misses_a_riichi_recommendation_even_on_the_same_tile() {
+        let eval = riichi_evaluation(Some("3p"));
+        let grade = grade_answer(
+            &riichi_state(),
+            &answer(CorrectActionType::Dama, "3p"),
+            Some(&eval),
+        );
+
+        let mortal = grade.mortal.expect("mortal grade");
+        assert!(mortal.recommended_riichi);
+        assert!(!mortal.matches_action, "dama is not Mortal's declaration");
+        assert!(!mortal.matches_tile);
+        assert!(!mortal.agrees);
+        assert_eq!(grade.outcome, AnswerOutcome::NeitherAgrees);
+    }
+
+    #[test]
+    fn riichi_answer_misses_a_dama_recommendation_on_the_same_tile() {
+        let eval = evaluation(&[("Discard_3p", 0.6), ("Riichi", 0.2)]);
+        let grade = grade_answer(
+            &riichi_state(),
+            &answer(CorrectActionType::Riichi, "3p"),
+            Some(&eval),
+        );
+
+        let mortal = grade.mortal.expect("mortal grade");
+        assert!(!mortal.recommended_riichi);
+        assert_eq!(mortal.recommended_discard, None);
+        assert!(!mortal.matches_action);
+        assert!(!mortal.agrees);
+    }
+
+    #[test]
+    fn drill_exposes_the_riichi_declaration_and_its_discard() {
+        let grade = grade_answer(
+            &drill_state(),
+            &SubmittedAnswer::new(CorrectActionType::Best, "3p").with_action_name("Riichi"),
+            None,
+        );
+
+        let mortal = grade.mortal.expect("drill grade");
+        assert!(mortal.recommended_riichi);
+        assert_eq!(mortal.recommended_discard.as_deref(), Some("3p"));
+        assert!(mortal.agrees);
+
+        let dama = grade_answer(
+            &drill_state(),
+            &SubmittedAnswer::new(CorrectActionType::Best, "3p"),
+            None,
+        );
+        let mortal = dama.mortal.expect("drill grade");
+        assert!(!mortal.matches_action, "damning away from Riichi is a miss");
+        assert!(!mortal.agrees);
     }
 
     #[test]

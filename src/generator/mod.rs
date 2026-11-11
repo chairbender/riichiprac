@@ -270,6 +270,7 @@ pub fn generate_puzzle(category: &str) -> Result<GameState, String> {
 /// report import.
 pub fn finalize_state(mut state: GameState) -> GameState {
     state.book_rationale = crate::rationale::rationale_for(&state);
+    state.can_riichi = crate::ai::actions::riichi_is_legal(&state);
     state
 }
 
@@ -354,5 +355,49 @@ mod tests {
         let state = generate_puzzle("mock_table").expect("mock table fixture must generate");
 
         assert_eq!(state.category, "mock_table");
+    }
+
+    #[test]
+    fn generated_states_carry_the_riichi_gate() {
+        for id in [
+            ScenarioId::RyanmenProtorun,
+            ScenarioId::ChiitoitsuRiichiVsDama,
+            ScenarioId::ShouminkanDecision,
+            ScenarioId::DefenseSafetyChart,
+        ] {
+            for run in 0..10 {
+                let state = generate_puzzle(id.as_str())
+                    .unwrap_or_else(|err| panic!("{} run {run}: {err}", id.as_str()));
+                let expected = crate::ai::actions::riichi_is_legal(&state);
+                assert_eq!(
+                    state.can_riichi,
+                    expected,
+                    "{} run {run}: can_riichi must match the legal action set",
+                    id.as_str()
+                );
+            }
+        }
+
+        // The block-theory lesson always holds an open Yakuhai Pon, so Riichi
+        // is never legal there even when the hand is tenpai.
+        let ryanmen = generate_puzzle(ScenarioId::RyanmenProtorun.as_str()).expect("ryanmen");
+        assert!(!ryanmen.players[0].melds.is_empty());
+        assert!(!ryanmen.can_riichi, "an open hand cannot declare Riichi");
+    }
+
+    #[test]
+    fn chiitoitsu_riichi_lessons_offer_the_declaration() {
+        for _ in 0..20 {
+            let state = generate_puzzle(ScenarioId::ChiitoitsuRiichiVsDama.as_str())
+                .expect("chiitoitsu lesson");
+            if state.correct_action.action_type() == CorrectActionType::Riichi {
+                assert!(
+                    state.can_riichi,
+                    "the book's Riichi answer must be an offerable declaration"
+                );
+                return;
+            }
+        }
+        panic!("no Riichi chiitoitsu lesson was generated");
     }
 }

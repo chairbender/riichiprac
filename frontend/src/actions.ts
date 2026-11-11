@@ -56,6 +56,22 @@ export function isKanDecision(action: CorrectAction): boolean {
   return action.type === 'kan' || action.type === 'discard';
 }
 
+/**
+ * Whether the human may declare Riichi right now.
+ *
+ * Rust owns the rule (`GameState::can_riichi`, derived from the same
+ * legal-action source the Mortal mask uses), so an open hand, an
+ * already-declared Riichi, or a non-tenpai hand is never offered the toggle.
+ * Payloads that predate the field fall back to the AI action list when there
+ * is one, and to the old permissive behaviour for bare imported states.
+ */
+export function canDeclareRiichi(state: GameState): boolean {
+  if (state.can_riichi !== undefined) return state.can_riichi;
+  const actions = state.ai_decision?.actions;
+  if (actions) return actions.some((action) => action.action === 'Riichi');
+  return true;
+}
+
 /** The tile the player must click for the answer, when one is required. */
 export function correctActionTile(action: CorrectAction): string | null {
   if (action.type === 'best') return action.tile ?? null;

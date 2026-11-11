@@ -129,16 +129,24 @@ pub fn compare_expected_action(
     let app_probability = probability_for_action(evaluation, &app_action);
     let ai_probability = probability_for_action(evaluation, normalize_action_name(&ai_action));
 
-    let outcome = if !action_is_legal(&app_action, legal) {
-        FuzzOutcome::Incomparable
+    let (outcome, kind) = if !action_is_legal(&app_action, legal) {
+        (FuzzOutcome::Incomparable, None)
     } else if normalize_action_name(&ai_action) == normalize_action_name(&app_action) {
-        FuzzOutcome::Agrees
+        // Matching action names only settle a riichi-vs-dama comparison when
+        // the declared discards agree too. Mortal's `Riichi` action carries no
+        // tile, so its second-pass discard (when the evaluator resolved one)
+        // decides the rest.
+        if riichi_discard_disagrees(expected, evaluation) {
+            (FuzzOutcome::Discrepancy, Some(DiscrepancyKind::Tile))
+        } else {
+            (FuzzOutcome::Agrees, None)
+        }
     } else {
-        FuzzOutcome::Discrepancy
+        (
+            FuzzOutcome::Discrepancy,
+            Some(discrepancy_kind(expected, &ai_action)),
+        )
     };
-
-    let kind =
-        (outcome == FuzzOutcome::Discrepancy).then(|| discrepancy_kind(expected, &ai_action));
 
     Comparison {
         app_action,
@@ -166,19 +174,44 @@ pub fn discrepancy_kind(expected: &CorrectAction, ai_action: &str) -> Discrepanc
     }
 }
 
+/// Whether both sides declare Riichi but on different discards.
+///
+/// Only a Riichi-vs-Riichi comparison can disagree on the tile after the action
+/// names match, and only when the evaluation resolved Mortal's second-pass
+/// discard. Everything else (including an unresolved discard) compares equal.
+pub fn riichi_discard_disagrees(expected: &CorrectAction, evaluation: &Evaluation) -> bool {
+    if !matches!(expected, CorrectAction::Riichi { .. }) {
+        return false;
+    }
+    let Some(app_tile) = expected.tile() else {
+        return false;
+    };
+    evaluation
+        .riichi_discard
+        .as_deref()
+        .is_some_and(|ai_tile| ai_tile != app_tile)
+}
+
 /// Convert Mortal's recommendation into the report's answer vocabulary.
 ///
-/// `expected_tile` is used for actions that do not name a tile in Mortal's
-/// action space (Riichi and Kan). Returns `None` for actions the report cannot
-/// express, such as `Agari`, `Ryukyoku`, or `Pass`.
-pub fn reported_action_for_ai(ai_action: &str, expected_tile: &str) -> Option<ReportedAction> {
+/// `fallback_tile` is used for actions that do not name a tile in Mortal's
+/// action space (Riichi and Kan). For a Riichi recommendation the evaluation's
+/// own second-pass discard is preferred, so the exported report records what
+/// Mortal would actually declare on instead of echoing the app's tile. Returns
+/// `None` for actions the report cannot express, such as `Agari`, `Ryukyoku`,
+/// or `Pass`.
+pub fn reported_action_for_ai(
+    ai_action: &str,
+    fallback_tile: &str,
+    riichi_discard: Option<&str>,
+) -> Option<ReportedAction> {
     let normalized = normalize_action_name(ai_action);
     match normalized {
         "Riichi" => Some(ReportedAction::new(
             CorrectActionType::Riichi,
-            expected_tile,
+            riichi_discard.unwrap_or(fallback_tile),
         )),
-        "Kan" => Some(ReportedAction::new(CorrectActionType::Kan, expected_tile)),
+        "Kan" => Some(ReportedAction::new(CorrectActionType::Kan, fallback_tile)),
         _ => normalized
             .strip_prefix("Discard_")
             .map(|tile| ReportedAction::new(CorrectActionType::Discard, tile)),
@@ -323,6 +356,7 @@ mod tests {
             model: "test".to_string(),
             expected_value: 0.041,
             recommended_action: recommended.to_string(),
+            riichi_discard: None,
             evaluations: actions
                 .iter()
                 .map(|(action, kind, probability)| {
@@ -477,24 +511,50 @@ mod tests {
 
     #[test]
     fn converts_mortal_recommendations_to_reported_actions() {
-        let riichi = reported_action_for_ai("Riichi", "3p").unwrap();
+        let riichi = reported_action_for_ai("Riichi", "3p", None).unwrap();
         assert_eq!(riichi.action, CorrectActionType::Riichi);
         assert_eq!(riichi.tile, "3p");
 
-        let discard = reported_action_for_ai("Discard_4p", "3p").unwrap();
+        // The second-pass discard wins over the app's tile: the report must
+        // record what Mortal would declare on.
+        let riichi = reported_action_for_ai("Riichi", "3p", Some("7s")).unwrap();
+        assert_eq!(riichi.action, CorrectActionType::Riichi);
+        assert_eq!(riichi.tile, "7s");
+
+        let discard = reported_action_for_ai("Discard_4p", "3p", None).unwrap();
         assert_eq!(discard.action, CorrectActionType::Discard);
         assert_eq!(discard.tile, "4p");
 
-        let red = reported_action_for_ai("Discard_5mr", "3p").unwrap();
+        let red = reported_action_for_ai("Discard_5mr", "3p", None).unwrap();
         assert_eq!(red.action, CorrectActionType::Discard);
         assert_eq!(red.tile, "5m");
 
-        let kan = reported_action_for_ai("Kan", "5p").unwrap();
+        let kan = reported_action_for_ai("Kan", "5p", None).unwrap();
         assert_eq!(kan.action, CorrectActionType::Kan);
         assert_eq!(kan.tile, "5p");
 
-        assert!(reported_action_for_ai("Agari", "5p").is_none());
-        assert!(reported_action_for_ai("Pass", "5p").is_none());
+        assert!(reported_action_for_ai("Agari", "5p", None).is_none());
+        assert!(reported_action_for_ai("Pass", "5p", None).is_none());
+    }
+
+    #[test]
+    fn riichi_agreement_requires_the_same_declared_discard() {
+        let expected = CorrectAction::riichi("3p");
+        let mut same = evaluation("Riichi", &[("Riichi", "riichi", 0.8)]);
+        same.riichi_discard = Some("3p".to_string());
+        let comparison = compare_expected_action(&expected, &same, &mask_for(&["3p"], true));
+        assert_eq!(comparison.outcome, FuzzOutcome::Agrees);
+
+        let mut different = evaluation("Riichi", &[("Riichi", "riichi", 0.8)]);
+        different.riichi_discard = Some("7s".to_string());
+        let comparison = compare_expected_action(&expected, &different, &mask_for(&["3p"], true));
+        assert_eq!(comparison.outcome, FuzzOutcome::Discrepancy);
+        assert_eq!(comparison.kind, Some(DiscrepancyKind::Tile));
+
+        // An unresolved second pass cannot contradict the declaration.
+        let unresolved = evaluation("Riichi", &[("Riichi", "riichi", 0.8)]);
+        let comparison = compare_expected_action(&expected, &unresolved, &mask_for(&["3p"], true));
+        assert_eq!(comparison.outcome, FuzzOutcome::Agrees);
     }
 
     #[test]

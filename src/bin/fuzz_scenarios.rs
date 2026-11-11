@@ -375,6 +375,7 @@ fn run(args: &Args, model: &MortalV4Model) -> Result<FuzzSummary, String> {
         let Some(answer) = reported_action_for_ai(
             &comparison.ai_action,
             state.correct_action.tile().unwrap_or_default(),
+            evaluation.riichi_discard.as_deref(),
         ) else {
             summary.unsupported_ai_skipped += 1;
             eprintln!(

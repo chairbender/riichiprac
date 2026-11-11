@@ -367,6 +367,15 @@ pub struct GameState {
     /// from an imported file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub book_rationale: Option<crate::rationale::BookRationale>,
+    /// Whether declaring Riichi is a legal action for the human right now.
+    ///
+    /// Derived from the same legal-action source the model mask uses
+    /// (`ai::actions::riichi_is_legal`), so an open hand, an already-declared
+    /// Riichi, a non-tenpai hand, a short wall, or a score under 1000 cannot
+    /// offer a declaration the rules forbid. Stamped at the generation
+    /// boundary and recomputed on report import.
+    #[serde(default)]
+    pub can_riichi: bool,
 
     // Hand evaluation (Human player)
     pub hand_string: String,

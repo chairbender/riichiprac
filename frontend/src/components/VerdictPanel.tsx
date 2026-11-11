@@ -5,6 +5,7 @@ import type { GameState } from '../types/game';
 import type { DualGrade, MortalGrade } from '../types/verdict';
 import { citationLabel } from '../types/game';
 import {
+  mortalRecommendationLabel,
   mortalRecommendedRiichi,
   mortalRecommendedTile,
   outcomeChip,
@@ -286,7 +287,12 @@ function PeekedMortal({
   redFives: string[];
 }) {
   const top = evaluation.evaluations[0];
-  const tile = top?.tile ?? null;
+  // A Riichi recommendation is tile-less in Mortal's action space; the
+  // evaluator's second pass supplies the discard it would declare on.
+  const tile =
+    top?.type === 'riichi'
+      ? evaluation.riichi_discard ?? null
+      : top?.tile ?? null;
   const call = callDecisionFor(evaluation);
   return (
     <>
@@ -421,7 +427,7 @@ function preAnswerState({
 
 function outcomeSentence(grade: DualGrade, state: GameState): string {
   const bookPick = describeBookAction(state);
-  const mortalPick = grade.mortal?.recommended_label ?? 'its own action';
+  const mortalPick = mortalRecommendationLabel(grade.mortal);
 
   switch (grade.outcome) {
     case 'both_agree':
