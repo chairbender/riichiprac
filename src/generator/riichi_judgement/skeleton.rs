@@ -22,6 +22,7 @@ use super::judgement::{
 };
 use super::shapes::{self, WaitShape};
 use crate::generator::support::deck::Deck;
+use crate::generator::support::draw;
 use crate::rng::{gen_bool, gen_range};
 use crate::state::Wind;
 
@@ -59,23 +60,8 @@ impl Skeleton {
     /// The 13-tile hand as it stood before the draw: what `PlayerState::hand`
     /// displays, with the draw shown separately.
     pub(super) fn pre_draw_tiles(&self) -> Vec<Tile> {
-        pre_draw_tiles(&self.tenpai_tiles, self.drawn_tile, self.discard_tile)
+        draw::pre_draw_tiles(&self.tenpai_tiles, self.drawn_tile, self.discard_tile)
     }
-}
-
-/// The 13 tiles the player held before drawing `drawn_tile`.
-///
-/// The tenpai hand keeps the draw; the floater came out of the hand instead,
-/// so the pre-draw hand is the tenpai hand minus the draw plus the floater.
-fn pre_draw_tiles(tenpai_tiles: &[Tile], drawn_tile: Tile, discard_tile: Tile) -> Vec<Tile> {
-    let mut tiles = tenpai_tiles.to_vec();
-    let index = tiles
-        .iter()
-        .position(|tile| *tile == drawn_tile)
-        .expect("the drawn tile is part of the tenpai hand");
-    tiles.remove(index);
-    tiles.push(discard_tile);
-    tiles
 }
 
 /// Picks the answer the next hand should teach.
@@ -108,10 +94,6 @@ pub(super) fn build(target: Conditions) -> Result<Skeleton, String> {
         let mut deck = Deck::fresh();
         let (wait_shape_tiles, wait_tiles, _suit) =
             shapes::draw_wait_shape(&mut deck, shape, value)?;
-        // One half of the protorun was already in the hand, the other is the
-        // tile just drawn. Either end can be the draw: the player is 1-shanten
-        // before it and reaches tenpai on it.
-        let drawn_tile = wait_shape_tiles[gen_range(0, 2)];
 
         let mut sets: Vec<Vec<Tile>> = Vec::with_capacity(3);
         if value == Some(ValueSource::Yakuhai) {
@@ -153,12 +135,15 @@ pub(super) fn build(target: Conditions) -> Result<Skeleton, String> {
             continue;
         }
 
-        // The draw must be what reaches tenpai: the hand before it may not
-        // already be tenpai, or the table would imply an earlier dama.
-        let pre_draw = pre_draw_tiles(&tenpai_tiles, drawn_tile, discard_tile);
-        if calculate_shanten(&to_counts(&pre_draw)).shanten != 1 {
+        // One half of the protorun was already in the hand, the other is the
+        // tile just drawn. The draw must be what reaches tenpai: the hand
+        // before it may not already be tenpai, or the table would imply an
+        // earlier dama.
+        let Some(drawn_tile) =
+            draw::choose_drawn_tile(&wait_shape_tiles, &tenpai_tiles, discard_tile)
+        else {
             continue;
-        }
+        };
 
         let tenpai_counts = to_counts(&tenpai_tiles);
         if calculate_shanten(&tenpai_counts).shanten != 0 {

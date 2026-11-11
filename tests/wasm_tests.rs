@@ -783,6 +783,64 @@ fn test_chiitoitsu_dama_100_hands() {
     let elapsed = js_sys::Date::now() - started;
     assert!(elapsed < 10_000.0, "100 dama hands took {elapsed}ms");
 }
+/// The 13-tile tenpai hand the player keeps, read back off a Riichi/dama
+/// payload.
+///
+/// The answer is discarded from the hand (tedashi), never off the draw: a
+/// tsumogiri answer would mean the hand was already tenpai on an earlier turn,
+/// so Riichi was available then and the table implies a decision the lesson
+/// does not ask about. The draw must be the tile that reaches tenpai.
+fn kept_hand_after_a_tedashi(val: &serde_json::Value, run: usize) -> Vec<Tile> {
+    let human = &val["players"][0];
+    assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+    let discard_code = val["correct_action"]["discard"]
+        .as_str()
+        .expect("a riichi/dama action must name the discard");
+    let draw_code = human["draw"].as_str().expect("the human has a draw");
+    assert_ne!(
+        draw_code, discard_code,
+        "run {run}: the answer must be tedashi"
+    );
+
+    let pre_draw: Vec<Tile> = human["hand"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+        .collect();
+    assert!(
+        pre_draw.iter().any(|tile| tile.to_string() == discard_code),
+        "run {run}: the answer must be a hand tile"
+    );
+    assert_eq!(
+        calculate_shanten(&to_counts(&pre_draw)).shanten,
+        1,
+        "run {run}: the pre-draw hand must be 1-shanten"
+    );
+
+    let draw = parse_single_tile(draw_code);
+    let mut full = pre_draw;
+    full.push(draw);
+    assert_eq!(
+        calculate_shanten(&to_counts(&full)).shanten,
+        0,
+        "run {run}: the draw must reach tenpai"
+    );
+
+    let discard = parse_single_tile(discard_code);
+    let answer_index = full
+        .iter()
+        .position(|tile| *tile == discard)
+        .expect("the answer is in the hand");
+    let mut tenpai = full;
+    tenpai.remove(answer_index);
+    assert!(
+        tenpai.contains(&draw),
+        "run {run}: the draw must stay in the tenpai hand"
+    );
+    tenpai
+}
+
 /// Han without riichi for one standard winning hand, at its best yaku reading.
 fn standard_han_without_riichi(
     winning_tiles: &[Tile],
@@ -830,50 +888,8 @@ fn test_riichi_judgement_payload_follows_the_three_conditions() {
         let discard_code = val["correct_action"]["discard"]
             .as_str()
             .expect("riichi/dama action must have a discard");
-        let draw_code = human["draw"].as_str().expect("the human has a draw");
-        // The answer is a tile from the hand: throwing the draw (tsumogiri)
-        // would mean the hand was already tenpai a turn earlier.
-        assert_ne!(
-            draw_code, discard_code,
-            "run {run}: the answer must be tedashi"
-        );
-
-        let pre_draw: Vec<Tile> = human["hand"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
-            .collect();
-        assert!(
-            pre_draw.iter().any(|tile| tile.to_string() == discard_code),
-            "run {run}: the answer must be a hand tile"
-        );
-        // The draw reaches tenpai: the hand before it is 1-shanten.
-        assert_eq!(
-            calculate_shanten(&to_counts(&pre_draw)).shanten,
-            1,
-            "run {run}: the pre-draw hand must be 1-shanten"
-        );
-        let draw = parse_single_tile(draw_code);
-        let mut full = pre_draw.clone();
-        full.push(draw);
-        assert_eq!(
-            calculate_shanten(&to_counts(&full)).shanten,
-            0,
-            "run {run}: the draw must reach tenpai"
-        );
-
-        let discard = parse_single_tile(discard_code);
-        let answer_index = full
-            .iter()
-            .position(|tile| *tile == discard)
-            .expect("the answer is in the hand");
-        let mut tenpai = full.clone();
-        tenpai.remove(answer_index);
-        assert!(
-            tenpai.contains(&draw),
-            "run {run}: the draw must stay in the tenpai hand"
-        );
+        let tenpai = kept_hand_after_a_tedashi(&val, run);
+        assert!(!tenpai.iter().any(|tile| tile.to_string() == discard_code));
         let counts = to_counts(&tenpai);
         assert_eq!(calculate_shanten(&counts).shanten, 0, "run {run}");
         let waits: Vec<Tile> = val["ukeire_tiles"]
@@ -1004,17 +1020,7 @@ fn test_dama_bad_wait_payload_follows_the_live_tile_box() {
         assert_eq!(human["hand"].as_array().unwrap().len(), 13);
         assert!(human["melds"].as_array().unwrap().is_empty());
         assert_eq!(human["is_riichi"], false);
-        let discard_code = val["correct_action"]["discard"]
-            .as_str()
-            .expect("riichi/dama action must have a discard");
-        assert_eq!(human["draw"], discard_code);
-
-        let tenpai: Vec<Tile> = human["hand"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
-            .collect();
+        let tenpai = kept_hand_after_a_tedashi(&val, run);
         let counts = to_counts(&tenpai);
         assert_eq!(calculate_shanten(&counts).shanten, 0, "run {run}");
 
@@ -1175,21 +1181,12 @@ fn test_dama_genbutsu_wait_payload_stays_dama() {
             human["wind"], "East",
             "run {run}: the human is never the dealer"
         );
-        let discard_code = val["correct_action"]["discard"]
-            .as_str()
-            .expect("a dama action names the discard");
-        assert_eq!(human["draw"], discard_code, "run {run}");
+        let tenpai = kept_hand_after_a_tedashi(&val, run);
         assert_eq!(
             val["can_riichi"], true,
             "run {run}: Riichi must be offerable for a Riichi-vs-dama question"
         );
 
-        let tenpai: Vec<Tile> = human["hand"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
-            .collect();
         let counts = to_counts(&tenpai);
         assert_eq!(calculate_shanten(&counts).shanten, 0, "run {run}");
 

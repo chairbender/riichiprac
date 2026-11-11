@@ -11,10 +11,9 @@
 //! 1 kind and the dual pon wait as 2 kinds-4 tiles; all three fail the
 //! chapter's "at least two kinds and more than four tiles" good-wait test.
 //!
-//! The single wait (tanki) is deliberately absent: with four sets plus a lone
-//! tile, the drawn tile would be a second legal tanki wait, so the hand would
-//! have two correct discards and the lesson could not ask one Riichi-or-dama
-//! question.
+//! The single wait (tanki) is deliberately absent: it has no protorun to split
+//! into a held tile and the tile just drawn, so the hand cannot be presented as
+//! reaching tenpai on this draw.
 
 use agari::tile::{Suit, Tile};
 
@@ -200,10 +199,11 @@ pub(super) fn draw_pair(deck: &mut Deck) -> Result<Tile, String> {
 
 /// Draws a tile that cannot pair with or extend the hand.
 ///
-/// This is the tile the player has just drawn and must discard. Keeping it
-/// isolated means the draw cannot complete the tenpai hand or open a second,
-/// unintended wait, so the discard stays unambiguous.
-pub(super) fn draw_isolated(deck: &mut Deck, held: &[Tile]) -> Result<Tile, String> {
+/// This is the floater the player discards from the hand (tedashi): it was
+/// already in the 13-tile hand before the draw. Keeping it isolated means it
+/// cannot complete the tenpai hand or open a second, unintended wait, so the
+/// discard stays unambiguous.
+pub(super) fn draw_floater(deck: &mut Deck, held: &[Tile]) -> Result<Tile, String> {
     let held_positions: Vec<usize> = held
         .iter()
         .filter_map(|tile| ALL_TILES.iter().position(|candidate| candidate == tile))
@@ -300,7 +300,7 @@ mod tests {
         ];
         for _ in 0..50 {
             let mut deck = Deck::fresh();
-            let floater = draw_isolated(&mut deck, &held).expect("floater must draw");
+            let floater = draw_floater(&mut deck, &held).expect("floater must draw");
             assert!(!held.contains(&floater));
             if let (Some(suit), Some(value)) = (floater.suit(), floater.value()) {
                 let near_man = held.iter().any(|&tile| {
