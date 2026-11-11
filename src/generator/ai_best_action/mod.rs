@@ -117,7 +117,10 @@ fn validate_state(state: &GameState) -> Result<(), String> {
         DecisionContext::ReactToKan { .. } => {
             Err("chankan reactions are not implemented".to_string())
         }
-    }
+    }?;
+    // Final guard: the rivers, melds, and draw must describe one reachable
+    // turn order, whatever the lesson-specific checks above allowed.
+    crate::generator::support::state_validation::validate_reachable_state(state)
 }
 
 /// Apply a model evaluation to a validated candidate.
@@ -168,6 +171,8 @@ mod tests {
         for run in 0..200 {
             let state = valid_candidate();
             validate_candidate(&state).unwrap_or_else(|err| panic!("run {run} invalid: {err}"));
+            crate::generator::support::state_validation::validate_reachable_state(&state)
+                .unwrap_or_else(|err| panic!("run {run} unreachable: {err}"));
             assert_eq!(state.category, "ai_best_action");
             assert_eq!(state.target_action, TargetAction::Best);
             assert_eq!(state.decision, DecisionContext::SelfTurn);
@@ -187,6 +192,8 @@ mod tests {
                 .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
             validate_reaction_candidate(&state)
                 .unwrap_or_else(|err| panic!("run {run} invalid: {err}"));
+            crate::generator::support::state_validation::validate_reachable_state(&state)
+                .unwrap_or_else(|err| panic!("run {run} unreachable: {err}"));
             let (from, tile, chankan) = match &state.decision {
                 DecisionContext::ReactToDiscard { from, tile } => (from, tile, false),
                 DecisionContext::ReactToKan { from, tile } => (from, tile, true),

@@ -251,17 +251,38 @@ impl ScenarioId {
 /// the first real Block Theory scenario. The `mock_table` fixture is handled
 /// separately so it stays out of the lesson manifest.
 pub fn generate_puzzle(category: &str) -> Result<GameState, String> {
-    let state = if category == "mock_table" {
-        crate::fixtures::mock_table::generate(category)?
-    } else {
-        match ScenarioId::from_id(category) {
+    if category == "mock_table" {
+        // The fixture is a fixed UI mock, not a played-out table, so it is not
+        // held to the reachability rules.
+        return Ok(finalize_state(crate::fixtures::mock_table::generate(
+            category,
+        )?));
+    }
+
+    let mut last_error = String::new();
+    for _ in 0..MAX_REACHABILITY_ATTEMPTS {
+        let state = match ScenarioId::from_id(category) {
             Some(id) => id.generate(category)?,
             None => block_theory::ryanmen_protorun::generate(category)?,
-        }
-    };
+        };
 
-    Ok(finalize_state(state))
+        // Final guard: a lesson may have shaped its rivers and melds freely,
+        // but the finished table still has to be a position a real game could
+        // have produced.
+        match support::state_validation::validate_reachable_state(&state) {
+            Ok(()) => return Ok(finalize_state(state)),
+            Err(err) => last_error = err,
+        }
+    }
+
+    Err(format!(
+        "generated {category} states were never reachable after \
+         {MAX_REACHABILITY_ATTEMPTS} attempts: {last_error}"
+    ))
 }
+
+/// How many full generations to try before the reachability guard gives up.
+const MAX_REACHABILITY_ATTEMPTS: usize = 8;
 
 /// Attach derived fields that must never be trusted from a generator literal.
 ///
@@ -354,5 +375,62 @@ mod tests {
         let state = generate_puzzle("mock_table").expect("mock table fixture must generate");
 
         assert_eq!(state.category, "mock_table");
+    }
+
+    #[test]
+    fn every_generated_lesson_is_a_reachable_table() {
+        use crate::generator::support::state_validation::validate_reachable_state;
+
+        for &id in ScenarioId::ALL {
+            if id == ScenarioId::AiBestAction {
+                continue;
+            }
+            for run in 0..30 {
+                let state = generate_puzzle(id.as_str())
+                    .unwrap_or_else(|err| panic!("{} run {run} failed: {err}", id.as_str()));
+                validate_reachable_state(&state).unwrap_or_else(|err| {
+                    panic!(
+                        "{} run {run} produced an unreachable table: {err}",
+                        id.as_str()
+                    )
+                });
+            }
+        }
+    }
+
+    #[test]
+    fn generated_rivers_never_invent_extra_discards() {
+        use crate::generator::support::state_validation::validate_reachable_state;
+
+        // The reported defect: one seat's river was two entries longer than the
+        // others with no call to explain it. Every lesson must now keep the
+        // rivers within one call's worth of the rotation.
+        for category in [
+            "ryanmen_protorun",
+            "chiitoitsu_riichi_vs_dama",
+            "shouminkan_decision",
+            "shouminkan_decline",
+            "defense_safety_chart",
+            "defense_stuck_heuristic",
+        ] {
+            for run in 0..20 {
+                let state = generate_puzzle(category)
+                    .unwrap_or_else(|err| panic!("{category} run {run} failed: {err}"));
+                validate_reachable_state(&state)
+                    .unwrap_or_else(|err| panic!("{category} run {run}: {err}"));
+
+                let counts: Vec<usize> = state
+                    .players
+                    .iter()
+                    .map(|player| player.discards.len())
+                    .collect();
+                let calls: usize = state.players.iter().map(|player| player.melds.len()).sum();
+                let spread = counts.iter().max().unwrap() - counts.iter().min().unwrap();
+                assert!(
+                    spread <= 1 + calls,
+                    "{category} run {run}: rivers {counts:?} with {calls} calls"
+                );
+            }
+        }
     }
 }

@@ -16,7 +16,7 @@ use crate::generator::support::analysis::evaluate_counts;
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    discards_from_tiles, random_round, random_scores_with_human_first,
+    discards_from_tiles, random_round, random_scores_with_human_first, self_turn_river_counts,
 };
 use crate::rng::{choose, gen_range, shuffle};
 use crate::safety::{is_near_dora, SafetyFacts, SafetyRank};
@@ -67,7 +67,10 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
     }
 
     // The threat's river: the theme's pattern in the early turns, then filler.
-    let discard_count = gen_range(8, 15);
+    // Every river comes from one legal timeline ending on Kamicha's discard,
+    // so the seat counts line up no matter which seat the human holds.
+    let counts = self_turn_river_counts(human_wind, &[], gen_range(8, 15));
+    let discard_count = counts[threat_seat];
     let mut threat_river = Vec::with_capacity(discard_count);
     for &tile in &plan.threat_discards {
         if threat_river.len() >= discard_count {
@@ -110,7 +113,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
             threat_river.clone()
         } else {
             let mut river = extra_by_seat.remove(&seat).unwrap_or_default();
-            while river.len() < discard_count {
+            while river.len() < counts[seat] {
                 let tile = deck
                     .draw()
                     .ok_or_else(|| "Deck exhausted drawing an opponent river".to_string())?;
@@ -162,7 +165,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         .ok_or_else(|| "Deck exhausted drawing the ura indicator".to_string())?;
 
     let human_river = deck
-        .draw_n(discard_count)
+        .draw_n(counts[0])
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
     for &tile in &human_river {
         increment(&mut visible, tile);
@@ -482,16 +485,9 @@ fn validate(
         }
     }
 
-    let discard_counts: Vec<usize> = state
-        .players
-        .iter()
-        .map(|player| player.discards.len())
-        .collect();
-    if discard_counts.windows(2).any(|pair| pair[0] != pair[1]) {
-        return Err(format!(
-            "Every player must have discarded the same number of times: {discard_counts:?}"
-        ));
-    }
+    // The table must be a reachable position: rivers, melds, and the draw all
+    // line up with one legal turn order.
+    crate::generator::support::state_validation::validate_reachable_state(state)?;
 
     Ok(())
 }
