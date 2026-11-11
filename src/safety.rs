@@ -794,6 +794,7 @@ mod tests {
             correct_action: crate::state::CorrectAction::fold("1m"),
             equivalent_tiles: Vec::new(),
             decision: crate::state::DecisionContext::SelfTurn,
+            scenario_note: None,
             ai_decision: None,
             riichi_triggers: Vec::new(),
             dama_reasons: Vec::new(),

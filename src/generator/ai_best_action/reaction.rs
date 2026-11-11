@@ -421,6 +421,7 @@ fn assemble_with_waits(
                 tile: claimed.to_string(),
             }
         },
+        scenario_note: None,
         ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),

@@ -138,6 +138,18 @@
 
 /* Global table info ------------------------------------------------------- */
 
+.scenario-note {
+  margin: 8px 10px 0;
+  padding: 8px 10px;
+  border: 1px solid #3b4a5f;
+  border-left: 3px solid #4f8bc9;
+  border-radius: 8px;
+  background-color: #171f29;
+  color: #c6d4e4;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .table-info {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -476,6 +476,7 @@ mod tests {
             correct_action: crate::state::CorrectAction::dama("2p"),
             equivalent_tiles: Vec::new(),
             decision: DecisionContext::SelfTurn,
+            scenario_note: None,
             ai_decision: None,
             riichi_triggers: Vec::new(),
             dama_reasons: Vec::new(),

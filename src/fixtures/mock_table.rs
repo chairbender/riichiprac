@@ -168,6 +168,7 @@ pub(crate) fn generate(category: &str) -> Result<GameState, String> {
         correct_action: CorrectAction::riichi(correct_discard),
         equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
+        scenario_note: None,
         ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),

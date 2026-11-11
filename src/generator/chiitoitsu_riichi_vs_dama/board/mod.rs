@@ -193,6 +193,7 @@ fn assemble_state(
             vec![skeleton.wait_tile.to_string()]
         },
         decision: DecisionContext::SelfTurn,
+        scenario_note: None,
         ai_decision: None,
         riichi_triggers: skeleton.triggers.to_vec(),
         dama_reasons,

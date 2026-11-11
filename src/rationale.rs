@@ -17,6 +17,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use agari::parse::to_counts;
+use agari::shanten::calculate_ukeire_with_melds;
 use agari::tile::Tile;
 
 use crate::display::format_tile_for_display;
@@ -829,6 +831,10 @@ fn scenario_source(category: &str) -> Option<Citation> {
             336,
             "we should avoid having three pairs in a hand",
         )),
+        "pair_count_open" => Some(ch3_pairs(
+            351,
+            "having three pairs is actually better than having two pairs",
+        )),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
@@ -1107,6 +1113,132 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         });
     }
 
+    if state.category == "pair_count_open" {
+        let answer_code = state.correct_action.tile()?;
+        let answer = format_tile_for_display(answer_code, false);
+        let answer_tile = Tile::try_from(answer_code).ok()?;
+        let target_code = dragon_pair(state)?;
+        let target = format_tile_for_display(&target_code, false);
+        let target_tile = Tile::try_from(target_code.as_str()).ok()?;
+        let drawn = human(state)
+            .and_then(|player| player.draw.clone())
+            .unwrap_or_default();
+        let drawn_display = format_tile_for_display(&drawn, false);
+        let drawn_tile = Tile::try_from(drawn.as_str()).ok();
+        let pairs = pair_codes(state)
+            .iter()
+            .map(|code| format_tile_for_display(code, false))
+            .collect::<Vec<_>>()
+            .join(" / ");
+        let remaining_pairs = pair_codes(state)
+            .iter()
+            .filter(|code| code.as_str() != target_code)
+            .map(|code| format_tile_for_display(code, false))
+            .collect::<Vec<_>>()
+            .join(" / ");
+
+        // The closed oracle and the Pon-aware comparison, both from the state
+        // so an imported report shows the same numbers.
+        let answer_closed = state.ukeire_total;
+        let rival_closed = drawn_tile
+            .and_then(|tile| acceptance_without(state, tile))
+            .unwrap_or_default();
+        let answer_pon = pon_acceptance(state, answer_tile, target_tile).unwrap_or_default();
+        let rival_pon = drawn_tile
+            .and_then(|tile| pon_acceptance(state, tile, target_tile))
+            .unwrap_or_default();
+        let live = live_target_copies(state, &target_code);
+
+        let rules = vec![
+            BookRule {
+                id: "three_pairs_when_ponning".to_string(),
+                rule: "A closed hand avoids three pairs, but a hand that intends to Pon \
+                       wants them: the call will consume one pair and leave two."
+                    .to_string(),
+                quote: "When we intend to call {\\jap pon}, having three pairs is actually \
+                        better than having two pairs."
+                    .to_string(),
+                citation: ch3_pairs(
+                    351,
+                    "having three pairs is actually better than having two pairs",
+                ),
+                applies: format!(
+                    "You hold a {target} pair to Pon; discarding {answer} keeps all three \
+                     pairs, the hand's {pairs}."
+                ),
+            },
+            BookRule {
+                id: "two_pairs_after_pon".to_string(),
+                rule: "The Pon turns one pair into a set, so the hand becomes a two-pair \
+                       hand, the strongest count a closed hand can carry."
+                    .to_string(),
+                quote: "the hand will become a two-pair hand after we call {\\jap pon} once"
+                    .to_string(),
+                citation: ch3_pairs(351, "two-pair hand after we call"),
+                applies: format!(
+                    "After the Pon the kept pairs are {remaining_pairs}, and the hand still \
+                     accepts {answer_pon} tiles; breaking a pair now leaves {rival_pon}."
+                ),
+            },
+            BookRule {
+                id: "closed_arithmetic".to_string(),
+                rule: "The closed-hand rule still charges the third pair for the protorun it \
+                       replaces. The open-hand caveat flips the choice, so the comparison is \
+                       shown rather than asserted."
+                    .to_string(),
+                quote: "The net tile acceptance gain will be negative".to_string(),
+                citation: ch3_pairs(331, "The net tile acceptance gain will be negative"),
+                applies: format!(
+                    "Closed, the pair break accepts {rival_closed} tiles and the book's \
+                     discard {answer_closed}; the Pon's {live} live {target} copies are the \
+                     value that reverses it."
+                ),
+            },
+            BookRule {
+                id: "keep_the_side_wait".to_string(),
+                rule: "The discard comes from the closed wait, not the side wait: a side-wait \
+                       protorun accepts twice as many tiles."
+                    .to_string(),
+                quote: "a side-wait (ryanmen) protorun can accept twice as many tiles as a \
+                        closed-wait (kanchan) protorun"
+                    .to_string(),
+                citation: ch3(205, "can accept twice as many tiles"),
+                applies: format!(
+                    "Discarding {answer} breaks the closed wait and keeps the side wait; \
+                     discarding the drawn {drawn_display} would break the third pair instead."
+                ),
+            },
+        ];
+
+        return Some(BookRationale {
+            summary: format!(
+                "Keep three pairs: the {target} pair is a planned Pon, so discard {answer} \
+                 and let the call leave two pairs."
+            ),
+            rules,
+            absent: Vec::new(),
+            source: ch3_pairs(
+                351,
+                "having three pairs is actually better than having two pairs",
+            ),
+            caveats: vec![
+                "The hand is still closed at the decision, so this is graded as an ordinary \
+                 discard. The planned Pon is stated in the scenario note rather than shown as \
+                 a call."
+                    .to_string(),
+                format!(
+                    "Discarding the redundant float first is graded as the same answer: it \
+                     discards the same two tiles in the other order. The book names {answer} \
+                     because keeping both floats gives a choice after the Pon."
+                ),
+                "This is the open-hand companion of `pair_count`, which grades the opposite \
+                 discard. The numbers above show the closed oracle preferring that line; the \
+                 book's open-hand caveat is what reverses it."
+                    .to_string(),
+            ],
+        });
+    }
+
     if state.category == "pair_count" {
         let discard =
             format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
@@ -1256,6 +1388,50 @@ fn pair_codes(state: &GameState) -> Vec<String> {
         .filter(|(_, count)| *count == 2)
         .map(|(code, _)| code)
         .collect()
+}
+
+/// The dragon pair of the open-hand pair-count lesson.
+fn dragon_pair(state: &GameState) -> Option<String> {
+    pair_codes(state)
+        .into_iter()
+        .find(|code| matches!(code.as_str(), "5z" | "6z" | "7z"))
+}
+
+/// Copies of the Pon target still unseen: the hand holds two, and anything in
+/// a river or the face-up dora indicator is visible to everyone.
+fn live_target_copies(state: &GameState, target_code: &str) -> u8 {
+    let mut visible = 0u8;
+    for player in &state.players {
+        visible += player
+            .discards
+            .iter()
+            .filter(|discard| discard.tile == target_code)
+            .count() as u8;
+    }
+    if state.dora_indicators.iter().any(|code| code == target_code) {
+        visible += 1;
+    }
+    4u8.saturating_sub(2 + visible)
+}
+
+/// Acceptance after the planned Pon for one discard.
+///
+/// Removes the discard and both copies of the target from the visible hand,
+/// then counts the target pair as one called meld. This is the 14-effective-tile
+/// position the player faces immediately after the Pon.
+fn pon_acceptance(state: &GameState, discard: Tile, target: Tile) -> Option<u8> {
+    let mut tiles: Vec<Tile> = state
+        .tiles
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    let index = tiles.iter().position(|held| *held == discard)?;
+    tiles.remove(index);
+    if tiles.iter().filter(|held| **held == target).count() != 2 {
+        return None;
+    }
+    let concealed: Vec<Tile> = tiles.into_iter().filter(|held| *held != target).collect();
+    Some(calculate_ukeire_with_melds(&to_counts(&concealed), 1).total_count)
 }
 
 /// The tile one rank above the answer in its suit, when the hand still holds
@@ -2200,6 +2376,63 @@ mod tests {
     }
 
     #[test]
+    fn pair_count_open_hand_shows_the_pon_comparison() {
+        let state = generate_puzzle("pair_count_open").expect("pair count open must generate");
+
+        let rationale = rationale_for(&state).expect("pair count open needs a rationale");
+
+        assert_eq!(rationale.rules.len(), 4);
+        assert!(rationale.absent.is_empty());
+        assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+        assert_eq!(rationale.source.chapter, 3);
+        assert_eq!(rationale.source.section, "Pairs and sets");
+        assert!(rationale.summary.contains("Keep three pairs"));
+        assert!(
+            rationale
+                .caveats
+                .iter()
+                .any(|caveat| caveat.contains("opposite")),
+            "the explanation must say the closed variant grades the other way"
+        );
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                "three_pairs_when_ponning",
+                "two_pairs_after_pon",
+                "closed_arithmetic",
+                "keep_the_side_wait"
+            ]
+        );
+
+        let discard = state.correct_action.tile().expect("answer tile");
+        assert!(
+            rationale.rules[0]
+                .applies
+                .contains(&format_tile_for_display(discard, false)),
+            "the open-hand rule must name the discard"
+        );
+        assert!(
+            rationale.rules[2]
+                .applies
+                .contains(&state.ukeire_total.to_string()),
+            "the arithmetic rule must show the closed acceptance"
+        );
+        assert!(
+            state
+                .scenario_note
+                .as_deref()
+                .is_some_and(|note| note.contains("Pon")),
+            "the plan must be visible before the answer"
+        );
+    }
+
+    #[test]
     fn generated_book_scenarios_carry_a_rationale() {
         for category in [
             "ryanmen_protorun",
@@ -2207,6 +2440,7 @@ mod tests {
             "protorun_priority",
             "ryankan_break",
             "pair_count",
+            "pair_count_open",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -2231,6 +2465,8 @@ mod tests {
             "ryanmen_protorun",
             "nakabukure_ready",
             "protorun_priority",
+            "pair_count",
+            "pair_count_open",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -2530,6 +2766,7 @@ mod tests {
             "protorun_priority",
             "ryankan_break",
             "pair_count",
+            "pair_count_open",
             "riichi_judgement",
             "dama_bad_wait",
             "dama_genbutsu_wait",

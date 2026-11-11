@@ -1,7 +1,58 @@
+use std::collections::BTreeMap;
+
+use agari::parse::to_counts;
+use agari::shanten::{calculate_shanten, calculate_ukeire};
 use agari::tile::{Suit, Tile};
 
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::rng::choose;
+
+/// One suited tile, the shape builders' most repeated line.
+pub fn suited(suit: Suit, value: u8) -> Tile {
+    Tile::Suited { suit, value }
+}
+
+/// Shanten of a hand written as a tile list.
+pub fn shanten(tiles: &[Tile]) -> i8 {
+    calculate_shanten(&to_counts(tiles)).shanten
+}
+
+/// Theoretical tile acceptance of a hand written as a tile list.
+pub fn ukeire(tiles: &[Tile]) -> u8 {
+    calculate_ukeire(&to_counts(tiles)).total_count
+}
+
+/// Tile values held exactly twice, in tile order.
+pub fn pair_tiles(tiles: &[Tile]) -> Vec<Tile> {
+    let mut counts: BTreeMap<Tile, usize> = BTreeMap::new();
+    for tile in tiles {
+        *counts.entry(*tile).or_insert(0) += 1;
+    }
+    counts
+        .into_iter()
+        .filter(|(_, count)| *count == 2)
+        .map(|(tile, _)| tile)
+        .collect()
+}
+
+/// The distinct tiles of a hand, in tile order.
+pub fn distinct_tiles(tiles: &[Tile]) -> Vec<Tile> {
+    let mut distinct = tiles.to_vec();
+    distinct.sort();
+    distinct.dedup();
+    distinct
+}
+
+/// Removes one copy of `discard` from `tiles`.
+pub fn without(tiles: &[Tile], discard: Tile) -> Result<Vec<Tile>, String> {
+    let mut remaining = tiles.to_vec();
+    let index = remaining
+        .iter()
+        .position(|tile| *tile == discard)
+        .ok_or_else(|| format!("{discard} is not in the hand"))?;
+    remaining.remove(index);
+    Ok(remaining)
+}
 
 /// Adds a random complete sequence if one is still available in the deck.
 pub fn try_add_sequence(hand: &mut Vec<Tile>, deck: &mut Deck) -> bool {

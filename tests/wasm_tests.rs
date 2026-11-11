@@ -1891,6 +1891,98 @@ fn test_ryanmen_rejection_sampling_constraints() {
         }
     }
 
+    /// The open-hand pair-count payload: three pairs, one of them a dragon the
+    /// player plans to Pon, so the book keeps the pairs and breaks the closed
+    /// wait instead (ch3:351). The plan must be visible in `scenario_note`.
+    #[wasm_bindgen_test]
+    fn test_pair_count_open_payload() {
+        for run in 0..10 {
+            let json_output = generate_puzzle("pair_count_open".to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+            assert_eq!(val["category"], "pair_count_open");
+            assert_eq!(val["target_action"], "NaniKiru");
+            assert_eq!(val["correct_action"]["type"], "dama");
+            assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
+            assert_eq!(val["shanten"], 2);
+            assert_eq!(val["can_riichi"], false);
+            assert!(val["ukeire_total"].as_u64().unwrap() > 0);
+            assert!(
+                val["scenario_note"]
+                    .as_str()
+                    .expect("run {run}: the Pon plan needs a note")
+                    .contains("Pon"),
+                "run {run}: the note must state the planned Pon"
+            );
+
+            let players = val["players"].as_array().expect("players array");
+            let human = &players[0];
+            assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+            assert_eq!(human["melds"].as_array().unwrap().len(), 0);
+            let draw = human["draw"].as_str().expect("human draw");
+            let answer = val["correct_action"]["discard"]
+                .as_str()
+                .expect("dama action must include a discard tile");
+            assert_ne!(draw, answer, "the open-hand answer is not the drawn tile");
+
+            let tiles: Vec<&str> = val["tiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            let mut counts: std::collections::HashMap<&str, usize> =
+                std::collections::HashMap::new();
+            for tile in &tiles {
+                *counts.entry(*tile).or_insert(0) += 1;
+            }
+            let pairs: Vec<&&str> = counts
+                .iter()
+                .filter(|(_, count)| **count == 2)
+                .map(|(tile, _)| tile)
+                .collect();
+            assert_eq!(pairs.len(), 3, "run {run}: the hand must hold three pairs");
+            let target = pairs
+                .iter()
+                .find(|pair| matches!(***pair, "5z" | "6z" | "7z"))
+                .expect("one pair is a dragon");
+            assert_ne!(answer, **target, "the answer cannot be the Pon target");
+            assert!(
+                !pairs.iter().any(|pair| **pair == answer),
+                "run {run}: the answer cannot break a pair"
+            );
+
+            // The answer keeps all three pairs, including both dragons.
+            let mut post = tiles.clone();
+            let index = post
+                .iter()
+                .position(|tile| *tile == answer)
+                .expect("answer must be in the hand");
+            post.remove(index);
+            let mut post_counts: std::collections::HashMap<&str, usize> =
+                std::collections::HashMap::new();
+            for tile in &post {
+                *post_counts.entry(*tile).or_insert(0) += 1;
+            }
+            let post_pairs = post_counts.values().filter(|count| **count == 2).count();
+            assert_eq!(post_pairs, 3, "run {run}: the answer keeps three pairs");
+            assert_eq!(
+                post_counts.get(**target).copied(),
+                Some(2),
+                "run {run}: both Pon-target tiles must stay in the hand"
+            );
+
+            // No graded discard is the dora.
+            let indicator = parse_hand(val["dora_indicators"][0].as_str().unwrap())
+                .expect("dora indicator parses")
+                .remove(0);
+            let dora = indicator_to_dora(indicator).to_string();
+            assert_ne!(dora, answer);
+            assert_ne!(dora.as_str(), **target);
+        }
+    }
+
     #[wasm_bindgen_test]
     fn test_shouminkan_decision_payload() {
         let mut kan_count = 0usize;

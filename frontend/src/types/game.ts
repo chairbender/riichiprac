@@ -180,6 +180,12 @@ export interface GameState {
   equivalent_tiles?: string[];
   /** What kind of decision this state presents. */
   decision: DecisionContext;
+  /**
+   * One-line situation note a lesson needs on screen before the answer, such
+   * as a planned Pon that is not visible on the table. It never names the
+   * answer tile.
+   */
+  scenario_note?: string | null;
   /** Model-derived answer and full ranking for AI scenarios. */
   ai_decision?: AiDecision | null;
   /** Heuristics that justify Riichi for this scenario. */

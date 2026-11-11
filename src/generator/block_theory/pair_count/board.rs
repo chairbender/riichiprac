@@ -275,6 +275,7 @@ fn assemble_state(
         // hand, so the pair choice itself is not graded.
         equivalent_tiles,
         decision: DecisionContext::SelfTurn,
+        scenario_note: None,
         ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
