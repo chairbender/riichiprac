@@ -588,6 +588,7 @@ mod tests {
                 ScenarioId::RyankanBreak,
                 ScenarioId::ChiitoitsuRiichiVsDama,
                 ScenarioId::RiichiJudgement,
+                ScenarioId::DamaBadWait,
                 ScenarioId::ShouminkanDecision,
             ]
         );
