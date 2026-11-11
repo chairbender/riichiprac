@@ -4,6 +4,8 @@
  * (see `src/ai/wasm_bridge.rs` and `src/decision.rs`).
  */
 
+import { formatTileForDisplay } from '../display';
+
 /** Coarse action family produced by the Mortal policy head. */
 export type AiActionType =
   | 'discard'
@@ -98,8 +100,10 @@ export function actionLabel(action: AiActionInfo): string {
   if (action.label) return action.label;
   if (action.type === 'discard') {
     const tile = action.tile ?? tileCodeFromIndex(action.tile_index);
-    const red = action.action.endsWith('r') ? ' (red)' : '';
-    return tile ? `Discard ${tile}${red}` : action.action;
+    const red = action.action.endsWith('r');
+    return tile
+      ? `Discard ${formatTileForDisplay(tile, red)}`
+      : action.action;
   }
   if (action.type === 'agari') return 'Win (agari)';
   if (action.type === 'ryukyoku') return 'Draw (ryukyoku)';

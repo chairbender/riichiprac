@@ -1,3 +1,4 @@
+import { formatMortalTileForDisplay } from './display';
 import type { AiActionEvaluation, AiEvaluation } from './types/ai';
 
 /** Call families, matching `ActionKind` in the Rust payload. */
@@ -78,8 +79,17 @@ export function callDecisionFor(
 function optionFor(action: AiActionEvaluation): CallOption {
   return {
     action: action.action,
-    label: action.label || action.action.replace(/_/g, ' '),
+    label: action.label || fallbackActionLabel(action.action),
     probability: action.probability,
     declines: action.type === 'pass',
   };
+}
+
+function fallbackActionLabel(action: string): string {
+  if (action.startsWith('Discard_')) {
+    return `Discard ${formatMortalTileForDisplay(
+      action.slice('Discard_'.length),
+    )}`;
+  }
+  return action.replace(/_/g, ' ');
 }

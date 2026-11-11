@@ -1,4 +1,5 @@
 import { findKanCandidateTile } from '../actions';
+import { formatTileForDisplay } from '../display';
 import type { SubmittedAnswer } from '../store/useGameStore';
 import type { AiActionInfo, AiEvaluation } from '../types/ai';
 import {
@@ -81,7 +82,9 @@ export function HandDock({
   } else if (isAiScenario && !canDiscard) {
     handHint = 'Choose a call or Pass';
   } else if (callKan) {
-    handHint = `Kan armed - tap ${kanTile} to declare Shouminkan`;
+    handHint = `Kan armed - tap ${formatTileForDisplay(
+      kanTile ?? '',
+    )} to declare Shouminkan`;
   } else if (callRiichi) {
     handHint = 'Riichi selected - tap a tile to discard';
   } else if (isAiScenario) {
@@ -161,13 +164,15 @@ export function HandDock({
                 onClick={onToggleKan}
                 disabled={isAnswered}
                 aria-pressed={callKan}
-                aria-label={`Call Kan toggle for ${kanTile}, currently ${
-                  callKan ? 'on' : 'off'
-                }`}
+                aria-label={`Call Kan toggle for ${formatTileForDisplay(
+                  kanTile,
+                )}, currently ${callKan ? 'on' : 'off'}`}
               >
                 <KanIcon className="kan-toggle-icon" />
                 <span className="kan-toggle-label">Call Kan</span>
-                <span className="kan-toggle-tile">{kanTile}</span>
+                <span className="kan-toggle-tile">
+                  {formatTileForDisplay(kanTile)}
+                </span>
                 {kanProbability !== undefined && (
                   <span
                     className="kan-toggle-probability"
@@ -226,10 +231,16 @@ export function HandDock({
               onClick={() => onSelectTile(tile, index)}
               disabled={isAnswered || (isAiScenario && !canDiscard)}
               aria-label={`${
-                callKan ? `Declare Kan on ${tile}` : `Discard ${tile}`
-              }${redFiveFlags[index] ? ', red five' : ''}${
-                callRiichi ? ', with Riichi' : ''
-              }`}
+                callKan
+                  ? `Declare Kan on ${formatTileForDisplay(
+                      tile,
+                      redFiveFlags[index],
+                    )}`
+                  : `Discard ${formatTileForDisplay(
+                      tile,
+                      redFiveFlags[index],
+                    )}`
+              }${callRiichi ? ', with Riichi' : ''}`}
             >
               {aiProbabilities.get(tile) !== undefined &&
                 (aiProbabilities.get(tile) ?? 0) >= 0.01 && (

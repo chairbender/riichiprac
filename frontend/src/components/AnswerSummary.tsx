@@ -1,4 +1,5 @@
 import type { DualGrade } from '../types/verdict';
+import { formatTileForDisplay } from '../display';
 import { formatProbability } from '../types/ai';
 import {
   mortalRecommendationLabel,
@@ -152,17 +153,18 @@ function detailLine(grade: DualGrade): string {
 function bookPick(grade: DualGrade): string {
   if (!grade.book) return 'something else';
   const tile = grade.book.expected_tile;
+  const tileName = formatTileForDisplay(tile);
   switch (grade.book.expected_action) {
     case 'kan':
-      return `Kan on ${tile}`;
+      return `Kan on ${tileName}`;
     case 'discard':
-      return `No Kan, discard ${tile}`;
+      return `No Kan, discard ${tileName}`;
     case 'riichi':
-      return `Riichi, discarding ${tile}`;
+      return `Riichi, discarding ${tileName}`;
     case 'dama':
-      return `Dama, discarding ${tile}`;
+      return `Dama, discarding ${tileName}`;
     case 'fold':
-      return `Fold, discarding ${tile}`;
+      return `Fold, discarding ${tileName}`;
     default:
       return actionTypeLabel(grade.book.expected_action);
   }

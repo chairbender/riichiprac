@@ -1,4 +1,5 @@
 import type { ComponentType, SVGProps } from 'react';
+import { formatTileForDisplay } from '../display';
 import {
   RegularMan1M,
   RegularMan2M,
@@ -103,7 +104,7 @@ export function Tile({ code, className, isRedFive = false }: TileProps) {
     (isRedFive ? RED_FIVE_MAP[code] : undefined) ??
     TILE_MAP[code] ??
     RegularBlankM;
-  const label = isRedFive ? `red five ${code}` : code;
+  const label = formatTileForDisplay(code, isRedFive);
 
   return (
     <TileSvg

@@ -1,5 +1,6 @@
 pub mod ai;
 pub mod decision;
+pub mod display;
 pub(crate) mod fixtures;
 pub mod fuzz;
 pub mod generator;

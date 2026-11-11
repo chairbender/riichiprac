@@ -16,9 +16,11 @@ mod verdict;
 use serde_json::json;
 
 use crate::ai::wasm_bridge::Evaluation;
+use crate::display::format_tile_for_display;
 use crate::generator::SCENARIO_MANIFEST;
 use crate::state::CorrectAction;
 use crate::verdict as dual;
+use crate::verdict::display_action_name;
 
 pub use model::{
     AiComparison, AppInfo, BuildReportRequest, DecisionPrompt, ParsedReport, ReportDecision,
@@ -138,7 +140,7 @@ pub fn parse_report(json: &str) -> Result<ParsedReport, String> {
     if !verdict::answer_tile_visible(&report.table, &report.decision.answer) {
         warnings.push(format!(
             "The reported answer tile {} is not in the human hand or draw.",
-            report.decision.answer.tile
+            format_tile_for_display(&report.decision.answer.tile, false)
         ));
     }
 
@@ -306,7 +308,8 @@ fn validate_ai(evaluation: &Evaluation) -> Vec<String> {
         if !action.probability.is_finite() || !(0.0..=1.0).contains(&action.probability) {
             warnings.push(format!(
                 "AI action {} has an invalid probability {}.",
-                action.action, action.probability
+                display_action_name(&action.action),
+                action.probability
             ));
         } else {
             total += action.probability;
@@ -326,7 +329,7 @@ fn validate_ai(evaluation: &Evaluation) -> Vec<String> {
     {
         warnings.push(format!(
             "AI recommended action {} is missing from its evaluations.",
-            evaluation.recommended_action
+            display_action_name(&evaluation.recommended_action)
         ));
     }
 

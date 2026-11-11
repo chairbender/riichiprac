@@ -29,6 +29,7 @@ use agari::context::indicator_to_dora;
 use agari::tile::{Honor, Suit, Tile};
 use serde::{Deserialize, Serialize};
 
+use crate::display::format_tile_for_display;
 use crate::state::{GameState, Wind, is_out_of_rotation_call};
 
 /// Discards the threat may have made before the book's one-chance read drops
@@ -332,14 +333,20 @@ impl SafetyFacts {
             return TileRead {
                 rank: SafetyRank::Genbutsu,
                 mechanism: SafetyMechanism::Genbutsu,
-                reason: format!("in the riichi player's river ({tile})"),
+                reason: format!(
+                    "in the riichi player's river ({})",
+                    format_tile_for_display(&tile.to_string(), false)
+                ),
             };
         }
         if self.post_riichi_genbutsu.contains(&tile) {
             return TileRead {
                 rank: SafetyRank::Genbutsu,
                 mechanism: SafetyMechanism::PostRiichiGenbutsu,
-                reason: format!("discarded by someone after the riichi call ({tile})"),
+                reason: format!(
+                    "discarded by someone after the riichi call ({})",
+                    format_tile_for_display(&tile.to_string(), false)
+                ),
             };
         }
 
@@ -442,7 +449,7 @@ impl SafetyFacts {
             let reason = match blocker {
                 Some(blocker) => format!(
                     "no chance: all four {} are visible",
-                    Tile::suited(suit, blocker)
+                    format_tile_for_display(&Tile::suited(suit, blocker).to_string(), false)
                 ),
                 None => "no chance: the riichi player's discards deny every side wait".to_string(),
             };
@@ -476,7 +483,7 @@ impl SafetyFacts {
                 mechanism: SafetyMechanism::OneChance,
                 reason: format!(
                     "one chance: three {} are visible",
-                    Tile::suited(suit, blocker)
+                    format_tile_for_display(&Tile::suited(suit, blocker).to_string(), false)
                 ),
             };
         }
@@ -722,7 +729,7 @@ fn increment(counts: &mut HashMap<Tile, u8>, tile: Tile) {
 fn join_tiles(tiles: &[Tile]) -> String {
     tiles
         .iter()
-        .map(ToString::to_string)
+        .map(|tile| format_tile_for_display(&tile.to_string(), false))
         .collect::<Vec<_>>()
         .join(" and ")
 }
