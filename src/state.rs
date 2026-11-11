@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::decision::AiDecision;
+
 /// Seat / round wind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Wind {
@@ -47,6 +49,10 @@ pub enum TargetAction {
     Fold,
     NaniKiru,
     Kan,
+    /// The correct answer is the loaded model's top legal action.
+    Best,
+    /// Pure defense: choose the safest tile against an opponent's riichi.
+    Defend,
 }
 
 /// The kind of action the trainer expects from the player.
@@ -57,16 +63,21 @@ pub enum CorrectActionType {
     Riichi,
     /// Stay in dama (concealed tenpai) and discard without declaring Riichi.
     Dama,
+    /// Fold: discard the safest tile against an opponent's riichi.
+    Fold,
     /// Add the drawn fourth tile to an open Pon.
     Kan,
     /// Pass on the Kan and discard normally.
     Discard,
+    /// The answer is the model's top action for an AI scenario.
+    Best,
 }
 
 /// The expected answer for the current scenario.
 ///
-/// Serializes as either `{"type":"riichi|dama","discard":"..."}` or
-/// `{"type":"kan|discard","tile":"..."}`.
+/// Serializes as `{"type":"riichi|dama|fold","discard":"..."}`,
+/// `{"type":"kan|discard","tile":"..."}`, or the AI scenario's
+/// `{"type":"best","action":"...","label":"..."}` shape.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum CorrectAction {
@@ -74,10 +85,26 @@ pub enum CorrectAction {
     Riichi { discard: String },
     /// Stay in dama and discard `discard`.
     Dama { discard: String },
+    /// Fold against a riichi and discard the safest `discard`.
+    Fold { discard: String },
     /// Declare an Added Kan on `tile`.
     Kan { tile: String },
     /// Pass on the Kan and discard `tile`.
     Discard { tile: String },
+    /// AI scenario: the model's top action, with any concrete tiles needed
+    /// to render or grade it.
+    Best {
+        /// Mortal action name, e.g. `Pon`, `Chi_Low`, `Discard_3m`.
+        action: String,
+        /// Base tile code for discard/pon/kan/agari answers.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tile: Option<String>,
+        /// Additional tiles consumed by a call (chi).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        tiles: Vec<String>,
+        /// Human-readable label, e.g. `Chi 2m 3m on 4m`.
+        label: String,
+    },
 }
 
 impl CorrectAction {
@@ -97,8 +124,30 @@ impl CorrectAction {
         Self::Kan { tile: tile.into() }
     }
 
+    /// Fold against a riichi's threat and discard the safest tile.
+    pub fn fold(discard: impl Into<String>) -> Self {
+        Self::Fold {
+            discard: discard.into(),
+        }
+    }
+
     pub fn discard(tile: impl Into<String>) -> Self {
         Self::Discard { tile: tile.into() }
+    }
+
+    /// Build an AI-scenario answer from a model action.
+    pub fn best(
+        action: impl Into<String>,
+        tile: Option<String>,
+        tiles: Vec<String>,
+        label: impl Into<String>,
+    ) -> Self {
+        Self::Best {
+            action: action.into(),
+            tile,
+            tiles,
+            label: label.into(),
+        }
     }
 
     /// The action kind, independent of the tile field name.
@@ -106,16 +155,21 @@ impl CorrectAction {
         match self {
             Self::Riichi { .. } => CorrectActionType::Riichi,
             Self::Dama { .. } => CorrectActionType::Dama,
+            Self::Fold { .. } => CorrectActionType::Fold,
             Self::Kan { .. } => CorrectActionType::Kan,
             Self::Discard { .. } => CorrectActionType::Discard,
+            Self::Best { .. } => CorrectActionType::Best,
         }
     }
 
-    /// The tile the player must click: the discard or the Kan tile.
-    pub fn tile(&self) -> &str {
+    /// The tile the player must click, when the action has one.
+    pub fn tile(&self) -> Option<&str> {
         match self {
-            Self::Riichi { discard } | Self::Dama { discard } => discard,
-            Self::Kan { tile } | Self::Discard { tile } => tile,
+            Self::Riichi { discard } | Self::Dama { discard } | Self::Fold { discard } => {
+                Some(discard)
+            }
+            Self::Kan { tile } | Self::Discard { tile } => Some(tile),
+            Self::Best { tile, .. } => tile.as_deref(),
         }
     }
 }
@@ -128,10 +182,24 @@ pub enum ShouminkanTrigger {
     GoodWaitAndValue,
     /// The wall is nearly empty and rivers are in the third row.
     LateGame,
-    /// South 4 with the human close behind the player above them.
+    /// South 4 with the human 2nd or 3rd and behind the player above them by a
+    /// gap that only the Kan's extra minipoints can close. Riichi Book 1, ch. 9
+    /// frames this as "you need more dora or minipoints to improve the
+    /// placement (especially in South-4)", and quantifies it in its example:
+    /// "as the hand will have at least 60 minipoints, you can get 2000 points
+    /// with one han".
     PlacementDesperation,
     /// The human is far behind in fourth place.
     LosingBadly,
+    /// The hand is 2-away or worse, so the Kan is not about the wait: you need
+    /// its extra draw, minipoints and dora to improve the placement.
+    ///
+    /// Riichi Book 1, ch. 9, "From an open set to an open quad (kakan)", lists
+    /// "you need more dora or minipoints to improve the placement" and "you are
+    /// losing badly" as sufficient reasons on their own, without the 1-away
+    /// requirement of the first two reasons. The book's own example is a 2-away
+    /// hand that should kan in South 4 to reach 2,000 points.
+    NeedsDora,
 }
 
 /// Reasons a scenario recommends declaring Riichi.
@@ -180,6 +248,9 @@ pub struct DiscardTile {
     pub is_riichi: bool,
     /// Whether this tile was discarded immediately after being drawn (tsumogiri).
     pub is_tsumogiri: bool,
+    /// Whether this was the red five of its suit.
+    #[serde(default)]
+    pub is_red: bool,
 }
 
 impl DiscardTile {
@@ -188,6 +259,7 @@ impl DiscardTile {
             tile: tile.into(),
             is_riichi: false,
             is_tsumogiri: false,
+            is_red: false,
         }
     }
 
@@ -196,6 +268,7 @@ impl DiscardTile {
             tile: tile.into(),
             is_riichi: true,
             is_tsumogiri: false,
+            is_red: false,
         }
     }
 
@@ -204,7 +277,14 @@ impl DiscardTile {
             tile: tile.into(),
             is_riichi: false,
             is_tsumogiri: true,
+            is_red: false,
         }
+    }
+
+    /// Mark this discard as the red five of its suit.
+    pub fn with_red(mut self, is_red: bool) -> Self {
+        self.is_red = is_red;
+        self
     }
 }
 
@@ -249,19 +329,44 @@ pub struct PlayerState {
     pub riichi_discard_index: Option<usize>,
 }
 
+/// What kind of decision the state is presenting.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum DecisionContext {
+    /// Normal turn: the human has `hand` plus `draw`, and must discard.
+    #[default]
+    SelfTurn,
+    /// The human may call or ron the last discard of `from`.
+    ReactToDiscard { from: usize, tile: String },
+    /// The human may ron another player's added kan.
+    ReactToKan { from: usize, tile: String },
+}
+
 /// Complete Mahjong Game and Table State.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GameState {
     // Scenario / Puzzle metadata
     pub category: String,
     pub target_action: TargetAction,
     pub correct_action: CorrectAction,
+    /// What kind of decision this state presents.
+    #[serde(default)]
+    pub decision: DecisionContext,
+    /// Model-derived answer and full ranking for AI scenarios.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_decision: Option<AiDecision>,
     /// Reasons this scenario recommends Riichi (empty when not applicable).
     pub riichi_triggers: Vec<RiichiTrigger>,
     /// Reasons this scenario recommends staying in dama (empty when not applicable).
     pub dama_reasons: Vec<DamaReason>,
     /// Reasons this scenario recommends declaring an Added Kan.
     pub shouminkan_triggers: Vec<ShouminkanTrigger>,
+    /// Book-side rationale for `correct_action`: the rule, quote, and citation
+    /// for each trigger, plus the justifications that do not apply. Derived and
+    /// recomputed at generation and on report import, so it is never trusted
+    /// from an imported file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub book_rationale: Option<crate::rationale::BookRationale>,
 
     // Hand evaluation (Human player)
     pub hand_string: String,

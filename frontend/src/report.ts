@@ -18,6 +18,7 @@ import {
   REPORT_SCHEMA,
 } from './types/report';
 import type { CorrectAction, GameState } from './types/game';
+import { outcomeHeadline } from './types/verdict';
 
 export interface ReportInput {
   table: GameState;
@@ -26,6 +27,8 @@ export interface ReportInput {
   note: string;
   evaluation: AiEvaluation | null;
   modelId: string;
+  /** True when the reporter revealed Mortal's line before answering. */
+  peekedBeforeAnswer: boolean;
 }
 
 export type ImportedState =
@@ -76,6 +79,7 @@ export function createScenarioReport(input: ReportInput): {
       model: input.modelId,
       evaluated_at: new Date().toISOString(),
       evaluation: input.evaluation,
+      peeked_before_answer: input.peekedBeforeAnswer,
     };
   }
 
@@ -173,10 +177,14 @@ export function mortalActionForCorrect(action: CorrectAction): string {
       return 'Riichi';
     case 'dama':
       return `Discard_${action.discard}`;
+    case 'fold':
+      return `Discard_${action.discard}`;
     case 'kan':
       return 'Kan';
     case 'discard':
       return `Discard_${action.tile}`;
+    case 'best':
+      return action.action;
   }
 }
 
@@ -187,10 +195,14 @@ export function mortalActionForReported(answer: ReportedAction): string {
       return 'Riichi';
     case 'dama':
       return `Discard_${answer.tile}`;
+    case 'fold':
+      return `Discard_${answer.tile}`;
     case 'kan':
       return 'Kan';
     case 'discard':
       return `Discard_${answer.tile}`;
+    case 'best':
+      return answer.action_name ?? `Discard_${answer.tile}`;
   }
 }
 
@@ -235,10 +247,14 @@ export function describeCorrectAction(action: CorrectAction): string {
       return `Riichi, discarding ${action.discard}`;
     case 'dama':
       return `Dama, discarding ${action.discard}`;
+    case 'fold':
+      return `Fold, discarding the safest tile ${action.discard}`;
     case 'kan':
       return `Added Kan on ${action.tile}`;
     case 'discard':
       return `Pass on the Kan and discard ${action.tile}`;
+    case 'best':
+      return action.label;
   }
 }
 
@@ -248,20 +264,20 @@ export function describeReportedAction(answer: ReportedAction): string {
       return `Riichi, discarding ${answer.tile}`;
     case 'dama':
       return `Dama, discarding ${answer.tile}`;
+    case 'fold':
+      return `Fold, discarding the safest tile ${answer.tile}`;
     case 'kan':
       return `Added Kan on ${answer.tile}`;
     case 'discard':
       return `Pass on the Kan and discard ${answer.tile}`;
+    case 'best':
+      return answer.action_name ?? `Discard ${answer.tile}`;
   }
 }
 
+/** Label for the report verdict, in the shared dual-verdict vocabulary. */
 export function verdictLabel(verdict: ReportVerdict): string {
-  if (verdict.is_correct) return 'Correct';
-  if (!verdict.is_action_correct && !verdict.is_tile_correct) {
-    return 'Wrong action and discard';
-  }
-  if (!verdict.is_action_correct) return 'Wrong action';
-  return 'Wrong discard';
+  return outcomeHeadline(verdict.outcome, verdict.mode);
 }
 
 export function reportReasonLabel(reason: ReportReason): string {

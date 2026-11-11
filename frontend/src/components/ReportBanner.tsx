@@ -1,6 +1,8 @@
 import type { ReportMode } from '../store/useGameStore';
+import { callDecisionFor } from '../callDecision';
 import type { AiEvaluation, AiStatus } from '../types/ai';
 import { formatProbability } from '../types/ai';
+import { CallReport } from './CallReport';
 import {
   describeCorrectAction,
   describeReportedAction,
@@ -44,6 +46,7 @@ export function ReportBanner({
   const appAction = mortalActionForCorrect(expected);
   const reporterAction = mortalActionForReported(answer);
   const snapshot = report.ai?.evaluation ?? null;
+  const call = callDecisionFor(evaluation);
 
   const agreesWithApp =
     evaluation?.recommended_action === appAction;
@@ -137,6 +140,7 @@ export function ReportBanner({
               </span>
             </p>
             <p className="report-ai-agreement">{agreementText}</p>
+            {call && <CallReport decision={call} />}
           </>
         ) : snapshot ? (
           <p className="report-ai-line">

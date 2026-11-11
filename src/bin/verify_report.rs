@@ -158,7 +158,12 @@ fn print_evaluation(parsed: &ParsedReport, evaluation: &riichiprac::ai::wasm_bri
     }
     println!(
         "App expected {} · reporter answered {:?} {}",
-        parsed.report.table.correct_action.tile(),
+        parsed
+            .report
+            .table
+            .correct_action
+            .tile()
+            .unwrap_or_default(),
         parsed.report.decision.answer.action,
         parsed.report.decision.answer.tile
     );

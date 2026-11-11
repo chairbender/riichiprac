@@ -1,22 +1,38 @@
 import { findKanCandidateTile } from '../actions';
-import type { AnswerFeedback } from '../store/useGameStore';
-import type { AiEvaluation } from '../types/ai';
+import type { SubmittedAnswer } from '../store/useGameStore';
+import type { AiActionInfo, AiEvaluation } from '../types/ai';
 import {
   discardProbabilitiesByTile,
   formatProbability,
 } from '../types/ai';
-import type { PlayerState } from '../types/game';
+import type { PlayerState, TargetAction } from '../types/game';
+import type { DualGrade } from '../types/verdict';
+import { mortalRecommendedTile } from '../types/verdict';
+import { AnswerSummary } from './AnswerSummary';
 import { KanIcon } from './KanIcon';
 import { RiichiStick } from './RiichiStick';
 import { Tile } from './Tile';
 
 interface HandDockProps {
   player: PlayerState;
-  feedback: AnswerFeedback | null;
+  /** Dual verdict for the current answer, or null before answering. */
+  grade: DualGrade | null;
+  /** The answer the player submitted, if any. */
+  answer: SubmittedAnswer | null;
   callRiichi: boolean;
   callKan: boolean;
-  /** Latest Mortal evaluation for the table, if the player ran one. */
+  /** Latest Mortal evaluation for the table, if one exists. */
   aiEvaluation: AiEvaluation | null;
+  /** Non-discard actions for an AI scenario; undefined for legacy lessons. */
+  availableActions?: AiActionInfo[];
+  /** False when a reaction state has no discard option. */
+  canDiscard?: boolean;
+  /** Whether Mortal's probability badges may be shown. */
+  revealMortal?: boolean;
+  /** What the state asks for; a `Defend` lesson is a pure-defense fold. */
+  targetAction?: TargetAction;
+  /** Scroll to the full book-vs-Mortal comparison. */
+  onShowVerdict: () => void;
   onToggleRiichi: () => void;
   onToggleKan: () => void;
   onSelectTile: (tile: string, index?: number) => void;
@@ -30,25 +46,45 @@ interface HandDockProps {
  */
 export function HandDock({
   player,
-  feedback,
+  grade,
+  answer,
   callRiichi,
   callKan,
   aiEvaluation,
+  availableActions,
+  canDiscard = true,
+  revealMortal = false,
+  targetAction,
+  onShowVerdict,
   onToggleRiichi,
   onToggleKan,
   onSelectTile,
 }: HandDockProps) {
   const tiles = player.draw ? [...player.hand, player.draw] : player.hand;
-  const isAnswered = feedback !== null;
-  const kanTile = findKanCandidateTile(player);
+  const isAnswered = grade !== null;
+  const isAiScenario = availableActions !== undefined;
+  const kanTile = isAiScenario ? null : findKanCandidateTile(player);
+
+  const bookTile = grade?.book?.expected_tile ?? null;
+  // The drill has no book column, so its selected-tile mark comes from Mortal.
+  const selectedTileCorrect = grade?.book
+    ? grade.book.is_tile_correct
+    : (grade?.mortal?.matches_tile ?? false);
+  const mortalTile = mortalRecommendedTile(grade?.mortal ?? null);
 
   let handHint = 'Dama selected - tap a tile to discard';
   if (isAnswered) {
     handHint = 'Answer submitted';
+  } else if (isAiScenario && !canDiscard) {
+    handHint = 'Choose a call or Pass';
   } else if (callKan) {
     handHint = `Kan armed - tap ${kanTile} to declare Shouminkan`;
   } else if (callRiichi) {
     handHint = 'Riichi selected - tap a tile to discard';
+  } else if (isAiScenario) {
+    handHint = 'Tap a tile to discard';
+  } else if (targetAction === 'Defend') {
+    handHint = 'Fold - tap the safest tile';
   } else if (kanTile) {
     handHint = 'Tap a tile to discard, or arm Call Kan';
   }
@@ -65,10 +101,12 @@ export function HandDock({
     return true;
   });
 
-  // AI badges only make sense before the answer is submitted.
-  const aiProbabilities = isAnswered
-    ? new Map<string, number>()
-    : discardProbabilitiesByTile(aiEvaluation);
+  // Mortal's per-tile probabilities are a spoiler until the answer exists (or
+  // the player deliberately peeked), so they are gated on `revealMortal`.
+  const aiProbabilities =
+    isAnswered || !revealMortal
+      ? new Map<string, number>()
+      : discardProbabilitiesByTile(aiEvaluation);
   let topAiTile: string | null = null;
   let topAiProbability = 0;
   for (const [tile, probability] of aiProbabilities) {
@@ -78,42 +116,64 @@ export function HandDock({
     }
   }
 
+  // The Call Kan toggle is a decision in its own right: surface Mortal's
+  // probability for the kan rather than only the discard badges on the tiles.
+  const kanProbability =
+    !isAiScenario && kanTile && revealMortal
+      ? aiEvaluation?.evaluations.find((action) => action.action === 'Kan')
+          ?.probability
+      : undefined;
+
   return (
     <section className="hand-dock" aria-label="Your hand">
-      <div className="call-toggles">
-        <button
-          type="button"
-          className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
-          onClick={onToggleRiichi}
-          disabled={isAnswered}
-          aria-pressed={callRiichi}
-          aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
-        >
-          <RiichiStick className="riichi-toggle-stick" />
-          <span className="riichi-toggle-label">Call Riichi</span>
-          <span className="riichi-toggle-state">
-            {callRiichi ? 'ON' : 'OFF'}
-          </span>
-        </button>
+      {isAnswered && grade ? (
+        <AnswerSummary grade={grade} onDetails={onShowVerdict} />
+      ) : (
+        !isAiScenario && (
+          <div className="call-toggles">
+            <button
+              type="button"
+              className={`riichi-toggle${callRiichi ? ' riichi-toggle--active' : ''}`}
+              onClick={onToggleRiichi}
+              disabled={isAnswered}
+              aria-pressed={callRiichi}
+              aria-label={`Call Riichi toggle, currently ${callRiichi ? 'on' : 'off'}`}
+            >
+              <RiichiStick className="riichi-toggle-stick" />
+              <span className="riichi-toggle-label">Call Riichi</span>
+              <span className="riichi-toggle-state">
+                {callRiichi ? 'ON' : 'OFF'}
+              </span>
+            </button>
 
-        {kanTile && (
-          <button
-            type="button"
-            className={`kan-toggle${callKan ? ' kan-toggle--active' : ''}`}
-            onClick={onToggleKan}
-            disabled={isAnswered}
-            aria-pressed={callKan}
-            aria-label={`Call Kan toggle for ${kanTile}, currently ${
-              callKan ? 'on' : 'off'
-            }`}
-          >
-            <KanIcon className="kan-toggle-icon" />
-            <span className="kan-toggle-label">Call Kan</span>
-            <span className="kan-toggle-tile">{kanTile}</span>
-            <span className="kan-toggle-state">{callKan ? 'ON' : 'OFF'}</span>
-          </button>
-        )}
-      </div>
+            {kanTile && (
+              <button
+                type="button"
+                className={`kan-toggle${callKan ? ' kan-toggle--active' : ''}`}
+                onClick={onToggleKan}
+                disabled={isAnswered}
+                aria-pressed={callKan}
+                aria-label={`Call Kan toggle for ${kanTile}, currently ${
+                  callKan ? 'on' : 'off'
+                }`}
+              >
+                <KanIcon className="kan-toggle-icon" />
+                <span className="kan-toggle-label">Call Kan</span>
+                <span className="kan-toggle-tile">{kanTile}</span>
+                {kanProbability !== undefined && (
+                  <span
+                    className="kan-toggle-probability"
+                    aria-label={`Mortal rates Kan ${formatProbability(kanProbability)}`}
+                  >
+                    {formatProbability(kanProbability)}
+                  </span>
+                )}
+                <span className="kan-toggle-state">{callKan ? 'ON' : 'OFF'}</span>
+              </button>
+            )}
+          </div>
+        )
+      )}
 
       <div className="hand-dock-label" aria-live="polite">
         {handHint}
@@ -124,26 +184,29 @@ export function HandDock({
         style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
       >
         {tiles.map((tile, index) => {
-          const isSelected = feedback?.selectedTile === tile;
-          const isCorrectTile = feedback?.correctTile === tile;
+          const isSelected = answer?.tile === tile;
 
           let stateClass = '';
-          if (feedback) {
-            if (isSelected && feedback.isTileCorrect) {
+          if (grade) {
+            if (isSelected && selectedTileCorrect) {
               stateClass = ' hand-tile-button--correct';
             } else if (isSelected) {
               stateClass = ' hand-tile-button--incorrect';
-            } else if (isCorrectTile) {
+            } else if (bookTile === tile) {
               stateClass = ' hand-tile-button--answer';
             }
           }
 
-          const aiProbability = aiProbabilities.get(tile);
           let aiClass = '';
-          if (aiProbability !== undefined && aiProbability >= 0.01) {
-            aiClass = ' hand-tile-button--ai';
-            if (tile === topAiTile) {
-              aiClass += ' hand-tile-button--ai-top';
+          if (grade && mortalTile === tile) {
+            aiClass = ' hand-tile-button--mortal';
+          } else {
+            const aiProbability = aiProbabilities.get(tile);
+            if (aiProbability !== undefined && aiProbability >= 0.01) {
+              aiClass = ' hand-tile-button--ai';
+              if (tile === topAiTile) {
+                aiClass += ' hand-tile-button--ai-top';
+              }
             }
           }
 
@@ -153,18 +216,19 @@ export function HandDock({
               type="button"
               className={`hand-tile-button${stateClass}${aiClass}`}
               onClick={() => onSelectTile(tile, index)}
-              disabled={isAnswered}
+              disabled={isAnswered || (isAiScenario && !canDiscard)}
               aria-label={`${
                 callKan ? `Declare Kan on ${tile}` : `Discard ${tile}`
               }${redFiveFlags[index] ? ', red five' : ''}${
                 callRiichi ? ', with Riichi' : ''
               }`}
             >
-              {aiProbability !== undefined && aiProbability >= 0.01 && (
-                <span className="ai-tile-badge" aria-hidden="true">
-                  {formatProbability(aiProbability)}
-                </span>
-              )}
+              {aiProbabilities.get(tile) !== undefined &&
+                (aiProbabilities.get(tile) ?? 0) >= 0.01 && (
+                  <span className="ai-tile-badge" aria-hidden="true">
+                    {formatProbability(aiProbabilities.get(tile) ?? 0)}
+                  </span>
+                )}
               <Tile
                 code={tile}
                 className="tile hand-tile"

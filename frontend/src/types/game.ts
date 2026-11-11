@@ -3,6 +3,8 @@
  * engine (`src/state.rs`). Keep this in sync with the Rust structs.
  */
 
+import type { AiDecision } from './ai';
+
 export type Wind = 'East' | 'South' | 'West' | 'North';
 
 export type MeldType = 'Chi' | 'Pon' | 'Kan' | 'Ankan';
@@ -13,7 +15,9 @@ export type TargetAction =
   | 'Push'
   | 'Fold'
   | 'NaniKiru'
-  | 'Kan';
+  | 'Kan'
+  | 'Best'
+  | 'Defend';
 
 /** Reasons a scenario recommends declaring Riichi. */
 export type RiichiTrigger =
@@ -38,21 +42,86 @@ export type ShouminkanTrigger =
   | 'good_wait_and_value'
   | 'late_game'
   | 'placement_desperation'
-  | 'losing_badly';
+  | 'losing_badly'
+  | 'needs_dora';
 
 /** Action kinds the trainer can expect alongside the discard. */
-export type CorrectActionType = 'riichi' | 'dama' | 'kan' | 'discard';
+export type CorrectActionType =
+  | 'riichi'
+  | 'dama'
+  | 'fold'
+  | 'kan'
+  | 'discard'
+  | 'best';
 
 /**
  * The expected answer for the current scenario.
  *
- * Riichi/dama puzzles carry the discard in `discard`. Kan puzzles carry the
- * tile in `tile`, where `"kan"` means add the fourth tile to an open Pon and
- * `"discard"` means pass on the Kan and discard normally.
+ * Riichi/dama/fold puzzles carry the discard in `discard`; `fold` is the
+ * pure-defense "safest discard" answer, where no declaration is expected. Kan
+ * puzzles carry the tile in `tile`, where `"kan"` means add the fourth tile to
+ * an open Pon and `"discard"` means pass on the Kan and discard normally. AI
+ * scenarios use `best` with the model's Mortal action name.
  */
 export type CorrectAction =
-  | { type: 'riichi' | 'dama'; discard: string }
-  | { type: 'kan' | 'discard'; tile: string };
+  | { type: 'riichi' | 'dama' | 'fold'; discard: string }
+  | { type: 'kan' | 'discard'; tile: string }
+  | {
+      type: 'best';
+      action: string;
+      label: string;
+      tile?: string | null;
+      tiles?: string[];
+    };
+
+/** What kind of decision the state presents. */
+export type DecisionContext =
+  | { kind: 'self_turn' }
+  | { kind: 'react_to_discard'; from: number; tile: string }
+  | { kind: 'react_to_kan'; from: number; tile: string };
+
+/** A Riichi Book 1 reference for one rule. */
+export interface BookCitation {
+  book: string;
+  chapter: number;
+  chapter_title: string;
+  section: string;
+  source_file: string;
+  source_line: number;
+  /** Verbatim substring used by the Rust source-drift test. */
+  source_needle: string;
+}
+
+/** Short provenance label for a citation chip. */
+export function citationLabel(citation: BookCitation): string {
+  return `ch${citation.chapter} · ${citation.section}`;
+}
+
+/** One rule the book states for this answer. */
+export interface BookRule {
+  /** Trigger id, e.g. `dealer` or `good_wait_and_value`. */
+  id: string;
+  rule: string;
+  quote: string;
+  citation: BookCitation;
+  /** Why this hand satisfies the rule. */
+  applies: string;
+}
+
+/** A Riichi justification that does not hold for this hand. */
+export interface AbsentBookRule {
+  id: string;
+  note: string;
+}
+
+/** The book's side of the verdict, rendered from the trigger lists. */
+export interface BookRationale {
+  summary: string;
+  rules: BookRule[];
+  absent?: AbsentBookRule[];
+  source: BookCitation;
+  caveats?: string[];
+}
 
 export interface DiscardTile {
   /** Tile code such as "1m", "5p", or "7z". */
@@ -61,6 +130,8 @@ export interface DiscardTile {
   is_riichi: boolean;
   /** True when the tile was discarded straight off the draw. */
   is_tsumogiri: boolean;
+  /** True when this was the red five of its suit (defaults to false). */
+  is_red?: boolean;
 }
 
 export interface CalledMeld {
@@ -91,12 +162,21 @@ export interface GameState {
   category: string;
   target_action: TargetAction;
   correct_action: CorrectAction;
+  /** What kind of decision this state presents. */
+  decision: DecisionContext;
+  /** Model-derived answer and full ranking for AI scenarios. */
+  ai_decision?: AiDecision | null;
   /** Heuristics that justify Riichi for this scenario. */
   riichi_triggers: RiichiTrigger[];
   /** Conditions that justify staying in dama for this scenario. */
   dama_reasons: DamaReason[];
   /** Heuristics that justify declaring an Added Kan for this scenario. */
   shouminkan_triggers: ShouminkanTrigger[];
+  /**
+   * Book-side rationale: the rule, quote, and citation for each trigger, plus
+   * the justifications that do not apply. Derived and recomputed by Rust.
+   */
+  book_rationale?: BookRationale | null;
 
   hand_string: string;
   tiles: string[];

@@ -18,6 +18,79 @@ The Mortal AI evaluator is optional. Its weights are not committed; generate the
 with `scripts/convert_weights.py` (see `scripts/README.md`). Without the weights,
 the app runs normally and the AI panel reports that the model is unavailable.
 
+## Book vs. Mortal: how an answer is graded
+
+Every puzzle is graded twice: against the Riichi Book 1 rule the scenario
+encodes, and against the embedded Mortal v4 policy. The two recommendations are
+shown side by side after you answer, each with its provenance. The book column
+always says which rule the hand teaches and cites the chapter and section; the
+Mortal column shows the model's top action, its probability, and the full
+ranking. When the state offers a call (chi, pon, or kan), the Mortal column also
+shows a separate call comparison — for example, how likely Mortal is to call the
+Kan versus keeping the Pon — because the top action can otherwise just be the
+safest discard. The same call probabilities appear on the call buttons when
+Mortal's line is revealed.
+
+Only one case is called **wrong**: when both the book and Mortal reject your
+answer. Picking the book's line when Mortal disagrees is a **book answer**;
+picking Mortal's line when the book disagrees is **Mortal's line**. Neither is a
+mistake, and the outcome line says so.
+
+Mortal is evaluated automatically for every hand. Its recommendation is hidden
+until you answer so the drill is still a decision; **Peek** reveals Mortal's line
+early (and is recorded in exported reports). The book side is always explained —
+"Not this hand" lists the justifications that do not apply, without inventing a
+citation for them.
+
+If the weights are missing, the app still trains: the hand is graded against the
+book only, the Mortal column says so, and no answer is labelled wrong.
+
+## AI Best Action scenario
+
+`AI Best Action` generates a random, deck-consistent table and presents whatever
+decision the loaded Mortal v4 model can answer: discard, Riichi, tsumo/ron, chi,
+pon, kan, or pass. The correct answer is the model's highest-probability legal
+action at generation time; it is not a hand-written lesson. It is a declared
+**Mortal drill**: the book column says there is no book rule, and the drill is
+graded by the model alone.
+
+The scenario requires the model weights. The picker marks it as model-backed,
+and the "All scenarios" random pool always skips it so that the default rotation
+only contains lessons with both perspectives. Select it by name to drill it.
+
+The AI scenario is generated entirely in Rust/WASM: the state is built from the
+shared deck, validated, encoded, evaluated once (plus a second pass when the
+model chooses Riichi), and returned to React with `correct_action`, the legal
+action list, and the evaluation. React only renders and grades.
+
+## Defense scenarios
+
+Two lessons train pure defense against an opponent's Riichi. Neither asks about
+hand value: the generated hand is never ready, so the question is only which
+tile is safest to let go. Both are graded by the book's rule; Mortal's
+answer appears beside it after you answer.
+
+**Defense: Safest Discard** builds a board where Riichi Book 1, ch. 8's safety
+ranking (`tbl:safety`) has a real answer — a genbutsu, a suji tile, a no-chance
+tile behind a blockade, or an honor ranked by its visible copies — and fills the
+rest of the hand with tiles the chart ranks strictly lower, so the safest
+discard is unique. The book panel names the chart row the answer sits on and
+lists the other tiles with their ranks ("Not this hand").
+
+**Defense: Nothing Is Safe** is the chapter's fallback, "What to discard when
+you get stuck". Nothing in the hand is Rank B or safer, so the chart identifies
+nothing; the learner applies the book's fallback list — break up a pair or
+concealed set, avoid the dora and its neighbours, stay outside the opponent's
+early discards, and prefer a terminal so the discard cannot deal into tanyao.
+The generated hand holds the answer twice, so the copy you keep is your
+follow-up discard.
+
+The safety chart itself is `src/safety.rs`: the fifteen rows of `tbl:safety`
+plus the suji and blockade arithmetic they are derived from. The generator only
+places tiles; every rank is recomputed from what the defender can see (the
+threat's river, all four rivers, open melds, the dora indicator, and the
+defender's own hand).
+
 ## Hosting the model weights
 
 Production builds never bundle the ~43 MB `mortal_298k.safetensors` file. At
@@ -91,3 +164,47 @@ cargo run --release --bin verify_report -- report.json \
 
 The CLI prints the same readable summary and, when weights are supplied, the
 Mortal ranking. Add `--json` for a machine-readable verification payload.
+
+## Fuzzing for generator / Mortal disagreements
+
+`fuzz_scenarios` samples real scenarios, asks the local Mortal checkpoint what
+it would do, and writes a standard scenario report for every case where the
+generator's expected answer and Mortal's top action disagree. It is an offline
+review tool; it does not affect the browser app or the WASM build.
+
+Generate the weights first (see `scripts/README.md`), then run:
+
+```bash
+# Every fuzzable scenario, 200 generation attempts, at most 20 report files.
+cargo run --release --bin fuzz_scenarios
+
+# Smaller run with an explicit output directory.
+cargo run --release --bin fuzz_scenarios -- \
+  --iterations 40 --limit 3 --out /tmp/fuzz-smoke
+```
+
+Reports are written to `fuzz-reports/` by default (git-ignored) using the normal
+`riichiprac-report-<scenario>-<timestamp>-<short-id>.json` name. Each file can be
+opened with **Import report** or checked with `verify_report`:
+
+```bash
+cargo run --release --bin verify_report -- \
+  fuzz-reports/riichiprac-report-chiitoitsu_riichi_vs_dama-20261110-170052-1edf1410.json \
+  --weights frontend/public/models/mortal_298k.safetensors
+```
+
+Useful flags:
+
+- `--scenario <id>` limits sampling to one scenario and is repeatable.
+- `--include-incomparable` also exports cases whose expected action has no legal
+  Mortal equivalent, such as an expected Kan (Kan is never in this action space).
+- `--min-margin 0.05` skips statistical ties, keeping only disagreements where
+  Mortal leads the app's answer by at least that probability.
+- `--json` prints only the final summary JSON on stdout; progress stays on
+  stderr, so it can be piped into `jq`.
+
+Exit codes are `0` for a completed run (including zero disagreements), `2` for
+bad arguments or missing weights, and `3` for a fatal model or generation
+failure. See `scenario-fuzz-plan.md` for the full comparison rules, and
+`cargo run --bin fuzz_scenarios -- --help` for the flag reference. Analysis of
+a completed run goes in `scenario-fuzz-findings.md`.

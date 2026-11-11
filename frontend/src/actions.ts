@@ -1,14 +1,18 @@
+import type { AiActionInfo } from './types/ai';
 import type {
   CorrectAction,
   CorrectActionType,
+  GameState,
   PlayerState,
 } from './types/game';
 
 const CORRECT_ACTION_TYPES: CorrectActionType[] = [
   'riichi',
   'dama',
+  'fold',
   'kan',
   'discard',
+  'best',
 ];
 
 /** Validate the `correct_action` payload before it reaches the store. */
@@ -19,12 +23,30 @@ export function isCorrectAction(value: unknown): value is CorrectAction {
     type?: unknown;
     discard?: unknown;
     tile?: unknown;
+    tiles?: unknown;
+    action?: unknown;
+    label?: unknown;
   };
   if (!CORRECT_ACTION_TYPES.includes(action.type as CorrectActionType)) {
     return false;
   }
 
-  return action.type === 'riichi' || action.type === 'dama'
+  if (action.type === 'best') {
+    return (
+      typeof action.action === 'string' &&
+      typeof action.label === 'string' &&
+      (action.tile === undefined ||
+        action.tile === null ||
+        typeof action.tile === 'string') &&
+      (action.tiles === undefined ||
+        (Array.isArray(action.tiles) &&
+          action.tiles.every((tile) => typeof tile === 'string')))
+    );
+  }
+
+  return action.type === 'riichi' ||
+    action.type === 'dama' ||
+    action.type === 'fold'
     ? typeof action.discard === 'string'
     : typeof action.tile === 'string';
 }
@@ -34,8 +56,9 @@ export function isKanDecision(action: CorrectAction): boolean {
   return action.type === 'kan' || action.type === 'discard';
 }
 
-/** The tile the player must click for the answer: discard or Kan tile. */
-export function correctActionTile(action: CorrectAction): string {
+/** The tile the player must click for the answer, when one is required. */
+export function correctActionTile(action: CorrectAction): string | null {
+  if (action.type === 'best') return action.tile ?? null;
   return 'discard' in action ? action.discard : action.tile;
 }
 
@@ -56,4 +79,32 @@ export function findKanCandidateTile(player: PlayerState): string | null {
   }
 
   return null;
+}
+
+/** Collapse a red-five discard action onto its base tile for matching. */
+export function normalizeMortalAction(action: string): string {
+  return action.startsWith('Discard_') && action.endsWith('r')
+    ? action.slice(0, -1)
+    : action;
+}
+
+/**
+ * Find the payload info for a submitted Mortal action, including red-five
+ * aliases. Used for labels and for the tiles a call consumed.
+ */
+export function findAiActionInfo(
+  state: GameState,
+  action: string,
+  tile?: string,
+): AiActionInfo | undefined {
+  const actions = state.ai_decision?.actions ?? [];
+  return (
+    actions.find((candidate) => candidate.action === action) ??
+    actions.find(
+      (candidate) =>
+        normalizeMortalAction(candidate.action) ===
+          normalizeMortalAction(action) &&
+        (tile === undefined || candidate.tile === tile),
+    )
+  );
 }

@@ -10,7 +10,7 @@ use crate::generator::support::table::{
     OpponentDeal, deal_opponents, discards_from_tiles, random_round, random_scores_with_human_first,
 };
 use crate::rng::gen_range;
-use crate::state::{CorrectAction, GameState, PlayerState, TargetAction, Wind};
+use crate::state::{CorrectAction, DecisionContext, GameState, PlayerState, TargetAction, Wind};
 use setup::{
     build_deck, build_human_river, choose_dora_indicators, choose_human_wind, prepare_hand,
     validate_score, validate_visible_waits,
@@ -177,9 +177,12 @@ fn assemble_state(
         category: category.to_string(),
         target_action,
         correct_action,
+        decision: DecisionContext::SelfTurn,
+        ai_decision: None,
         riichi_triggers: skeleton.triggers.to_vec(),
         dama_reasons,
         shouminkan_triggers: Vec::new(),
+        book_rationale: None,
         hand_string,
         tiles: tile_strings,
         shanten: tenpai_metrics.shanten,

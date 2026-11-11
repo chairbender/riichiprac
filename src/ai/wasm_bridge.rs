@@ -21,42 +21,31 @@
 //! | 44 | ryukyoku |
 //! | 45 | pass |
 
+use std::collections::HashMap;
+
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use super::encoder::{OBS_CHANNELS, TILE_KINDS, encode_v4_observation, tile_index, tile_name};
+use super::actions::{action_index, legal_actions};
+use super::encoder::{OBS_CHANNELS, TILE_KINDS, encode_v4_observation};
 use super::model::{ACTION_SPACE, MortalV4Model};
-use crate::state::{GameState, MeldType};
+pub use crate::decision::ActionEvaluation;
+use crate::decision::ActionInfo;
+use crate::state::GameState;
+
+pub use super::actions::{describe_action, legal_action_mask};
 
 /// Expected value is output 0; the 46 action logits are outputs 1..=46.
 const VALUE_INDEX: usize = 0;
 
-/// Action index of the first red-five discard (5m).
-const FIRST_RED_DISCARD: usize = 34;
-/// Action index of riichi.
-const RIICHI_ACTION: usize = 37;
-/// Action index of a ron/tsumo win.
-const AGARI_ACTION: usize = 43;
-
-/// One scored action in an evaluation result.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ActionEvaluation {
-    /// Stable machine-readable name, e.g. `Discard_3m` or `Riichi`.
-    pub action: String,
-    /// Coarse action family: discard, riichi, chi, pon, kan, agari, ryukyoku, pass.
-    #[serde(rename = "type")]
-    pub kind: String,
-    /// Tile kind (0..34) for tile actions; `None` otherwise.
-    pub tile_index: Option<usize>,
-    /// Softmax probability over the legal actions.
-    pub probability: f32,
-}
-
 /// Full evaluation payload returned to JavaScript.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Evaluation {
+    /// Exact model identity, e.g. `mortal_298k.safetensors`.
+    #[serde(default)]
+    pub model: String,
     /// Output 0 of the network (Mortal's expected-value head).
     pub expected_value: f32,
     /// Action with the highest probability.
@@ -72,13 +61,14 @@ pub struct Evaluation {
 #[wasm_bindgen]
 pub struct WasmMortalEvaluator {
     model: MortalV4Model,
+    model_name: String,
 }
 
 #[wasm_bindgen]
 impl WasmMortalEvaluator {
     /// Build the evaluator from raw `.safetensors` bytes.
     #[wasm_bindgen(constructor)]
-    pub fn new(weights_bytes: &[u8]) -> Result<WasmMortalEvaluator, JsValue> {
+    pub fn new(weights_bytes: &[u8], model_name: &str) -> Result<WasmMortalEvaluator, JsValue> {
         // The buffered backend copies the file into WASM memory, which works on
         // wasm32 where mmap-based loading is unavailable.
         let vb =
@@ -88,7 +78,21 @@ impl WasmMortalEvaluator {
         let model = MortalV4Model::new(vb)
             .map_err(|err| js_error(&format!("failed to bind model weights: {err}")))?;
 
-        Ok(Self { model })
+        Ok(Self {
+            model,
+            model_name: model_name.to_string(),
+        })
+    }
+
+    /// Generate and finalize the AI Best Action scenario.
+    pub fn generate_ai_puzzle(&self, category: &str) -> Result<String, JsValue> {
+        let state =
+            crate::generator::ai_best_action::generate(&self.model, &self.model_name, category)
+                .map_err(|err| js_error(&format!("failed to generate AI scenario: {err}")))?;
+        let state = crate::generator::finalize_state(state);
+
+        serde_json::to_string(&state)
+            .map_err(|err| js_error(&format!("failed to serialize AI scenario: {err}")))
     }
 
     /// Evaluate a serialized [`GameState`].
@@ -96,7 +100,7 @@ impl WasmMortalEvaluator {
         let state: GameState = serde_json::from_str(game_state_json)
             .map_err(|err| js_error(&format!("invalid game state JSON: {err}")))?;
 
-        let evaluation = evaluate_state(&self.model, &state)
+        let evaluation = evaluate_state_named(&self.model, &state, &self.model_name)
             .map_err(|err| js_error(&format!("evaluation failed: {err}")))?;
 
         let json = serde_json::to_string(&evaluation)
@@ -108,15 +112,42 @@ impl WasmMortalEvaluator {
 
 /// Run one evaluation without touching JavaScript (used by native tests too).
 pub fn evaluate_state(model: &MortalV4Model, state: &GameState) -> candle_core::Result<Evaluation> {
+    evaluate_state_named(model, state, "unknown")
+}
+
+/// Run one evaluation and attach the model identity to the result.
+pub fn evaluate_state_named(
+    model: &MortalV4Model,
+    state: &GameState,
+    model_name: &str,
+) -> candle_core::Result<Evaluation> {
+    evaluate_state_with_options(model, state, model_name, &[])
+}
+
+/// Run one evaluation with extra action indices forbidden.
+///
+/// This is used for the Riichi second pass: after the model chooses Riichi, the
+/// discard is chosen by re-evaluating with the declaration action masked off.
+pub fn evaluate_state_with_options(
+    model: &MortalV4Model,
+    state: &GameState,
+    model_name: &str,
+    forbidden: &[usize],
+) -> candle_core::Result<Evaluation> {
     let observation = encode_v4_observation(state);
     let input = Tensor::from_vec(observation, (1, OBS_CHANNELS, TILE_KINDS), &Device::Cpu)?;
     let output = model.forward(&input)?;
     let flat = output.flatten_all()?.to_vec1::<f32>()?;
-    build_evaluation(state, &flat)
+    build_evaluation(state, &flat, model_name, forbidden)
 }
 
 /// Split network outputs, mask illegal actions, and softmax the rest.
-fn build_evaluation(state: &GameState, outputs: &[f32]) -> candle_core::Result<Evaluation> {
+fn build_evaluation(
+    state: &GameState,
+    outputs: &[f32],
+    model_name: &str,
+    forbidden: &[usize],
+) -> candle_core::Result<Evaluation> {
     if outputs.len() != 1 + ACTION_SPACE {
         candle_core::bail!(
             "expected {} network outputs, got {}",
@@ -128,6 +159,11 @@ fn build_evaluation(state: &GameState, outputs: &[f32]) -> candle_core::Result<E
     let expected_value = outputs[VALUE_INDEX];
     let logits = &outputs[1..];
     let mut mask = legal_action_mask(state);
+    for &index in forbidden {
+        if index < mask.len() {
+            mask[index] = false;
+        }
+    }
     if !mask.iter().any(|&legal| legal) {
         candle_core::bail!("game state leaves no legal action");
     }
@@ -168,118 +204,38 @@ fn build_evaluation(state: &GameState, outputs: &[f32]) -> candle_core::Result<E
         *probability /= total;
     }
 
+    let info_by_index: HashMap<usize, ActionInfo> = legal_actions(state)
+        .into_iter()
+        .filter_map(|info| action_index(&info.action).map(|index| (index, info)))
+        .collect();
+
     let mut evaluations: Vec<ActionEvaluation> = probabilities
         .iter()
         .enumerate()
         .filter(|(index, _)| mask[*index])
-        .map(|(index, &probability)| {
-            let (action, kind, tile_index) = describe_action(index);
-            ActionEvaluation {
-                action,
-                kind,
-                tile_index,
-                probability,
-            }
+        .filter_map(|(index, &probability)| {
+            let info = info_by_index.get(&index)?.clone();
+            Some(ActionEvaluation { info, probability })
         })
         .collect();
     evaluations.sort_by(|left, right| {
         right
             .probability
             .total_cmp(&left.probability)
-            .then_with(|| left.action.cmp(&right.action))
+            .then_with(|| left.info.action.cmp(&right.info.action))
     });
 
     let recommended_action = evaluations
         .first()
-        .map(|evaluation| evaluation.action.clone())
+        .map(|evaluation| evaluation.info.action.clone())
         .expect("at least one legal action exists");
 
     Ok(Evaluation {
+        model: model_name.to_string(),
         expected_value,
         recommended_action,
         evaluations,
     })
-}
-
-/// Legal actions for the human seat in the current puzzle.
-///
-/// The trainer always presents a discard decision, so only discards, riichi and
-/// a possible win are legal. Call and pass actions belong to reaction states.
-pub fn legal_action_mask(state: &GameState) -> Vec<bool> {
-    let mut mask = vec![false; ACTION_SPACE];
-    if state.players.is_empty() {
-        return mask;
-    }
-
-    let player = &state.players[0];
-    let mut counts = [0u8; TILE_KINDS];
-    for tile in player.hand.iter().chain(player.draw.iter()) {
-        if let Some(index) = tile_index(tile) {
-            counts[index] = counts[index].saturating_add(1);
-        }
-    }
-    for (index, &count) in counts.iter().enumerate() {
-        if count > 0 {
-            mask[index] = true;
-        }
-    }
-
-    // Red fives are separate actions only when the tile is held and flagged.
-    for (tile, suit) in [("5m", 0usize), ("5p", 1), ("5s", 2)] {
-        let index = tile_index(tile).expect("valid tile literal");
-        if counts[index] > 0 && player.red_fives.iter().any(|held| held == tile) {
-            mask[FIRST_RED_DISCARD + suit] = true;
-        }
-    }
-
-    let menzen = player
-        .melds
-        .iter()
-        .all(|meld| meld.meld_type == MeldType::Ankan);
-    if menzen
-        && state.shanten == 0
-        && !player.is_riichi
-        && player.score >= 1000
-        && state.tiles_remaining >= 4
-    {
-        mask[RIICHI_ACTION] = true;
-    }
-
-    if state.is_agari {
-        mask[AGARI_ACTION] = true;
-    }
-
-    mask
-}
-
-/// Decoded action metadata for one action index.
-pub fn describe_action(index: usize) -> (String, String, Option<usize>) {
-    match index {
-        0..=33 => (
-            format!("Discard_{}", tile_name(index).expect("valid tile index")),
-            "discard".to_string(),
-            Some(index),
-        ),
-        34..=36 => {
-            let tile = 4 + (index - FIRST_RED_DISCARD) * 9;
-            let name = tile_name(tile).expect("valid tile index");
-            (
-                format!("Discard_{name}r"),
-                "discard".to_string(),
-                Some(tile),
-            )
-        }
-        RIICHI_ACTION => ("Riichi".to_string(), "riichi".to_string(), None),
-        38 => ("Chi_Low".to_string(), "chi".to_string(), None),
-        39 => ("Chi_Mid".to_string(), "chi".to_string(), None),
-        40 => ("Chi_High".to_string(), "chi".to_string(), None),
-        41 => ("Pon".to_string(), "pon".to_string(), None),
-        42 => ("Kan".to_string(), "kan".to_string(), None),
-        43 => ("Agari".to_string(), "agari".to_string(), None),
-        44 => ("Ryukyoku".to_string(), "ryukyoku".to_string(), None),
-        45 => ("Pass".to_string(), "pass".to_string(), None),
-        other => (format!("Action_{other}"), "unknown".to_string(), None),
-    }
 }
 
 fn js_error(message: &str) -> JsValue {
@@ -289,9 +245,12 @@ fn js_error(message: &str) -> JsValue {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::actions::{AGARI_ACTION, FIRST_RED_DISCARD, RIICHI_ACTION};
+    use crate::ai::encoder::tile_index;
+    use crate::decision::ActionKind;
     use crate::state::{
-        CalledMeld, CorrectAction, DiscardTile, GameState, MeldType, PlayerState, TargetAction,
-        Wind,
+        CalledMeld, CorrectAction, DecisionContext, DiscardTile, GameState, MeldType, PlayerState,
+        TargetAction, Wind,
     };
 
     fn player(seat: usize, wind: Wind, score: i32, hand: &[&str]) -> PlayerState {
@@ -327,9 +286,12 @@ mod tests {
             category: "bridge_test".to_string(),
             target_action: TargetAction::NaniKiru,
             correct_action: CorrectAction::dama("6m"),
+            decision: DecisionContext::SelfTurn,
+            ai_decision: None,
             riichi_triggers: Vec::new(),
             dama_reasons: Vec::new(),
             shouminkan_triggers: Vec::new(),
+            book_rationale: None,
             hand_string: String::new(),
             tiles: Vec::new(),
             shanten: 0,
@@ -364,6 +326,10 @@ mod tests {
             "drawn tile is discarded too"
         );
         assert!(mask[FIRST_RED_DISCARD + 1], "red 5p is held");
+        assert!(
+            !mask[tile_index("5p").unwrap()],
+            "the only 5p held is the red one, so the plain discard is impossible"
+        );
         assert!(!mask[FIRST_RED_DISCARD], "no red 5m");
         assert!(mask[RIICHI_ACTION]);
         assert!(!mask[AGARI_ACTION]);
@@ -407,33 +373,6 @@ mod tests {
     }
 
     #[test]
-    fn action_metadata_covers_the_whole_space() {
-        assert_eq!(describe_action(0).0, "Discard_1m");
-        assert_eq!(describe_action(8).0, "Discard_9m");
-        assert_eq!(describe_action(9).0, "Discard_1p");
-        assert_eq!(describe_action(26).0, "Discard_9s");
-        assert_eq!(describe_action(27).0, "Discard_1z");
-        assert_eq!(describe_action(33).0, "Discard_7z");
-        assert_eq!(
-            describe_action(34),
-            ("Discard_5mr".into(), "discard".into(), Some(4))
-        );
-        assert_eq!(describe_action(35).0, "Discard_5pr");
-        assert_eq!(describe_action(36).0, "Discard_5sr");
-        assert_eq!(
-            describe_action(37),
-            ("Riichi".into(), "riichi".into(), None)
-        );
-        assert_eq!(describe_action(41), ("Pon".into(), "pon".into(), None));
-        assert_eq!(describe_action(45), ("Pass".into(), "pass".into(), None));
-        for index in 0..ACTION_SPACE {
-            let (action, kind, _) = describe_action(index);
-            assert!(!action.is_empty());
-            assert_ne!(kind, "unknown");
-        }
-    }
-
-    #[test]
     fn masking_and_softmax_produce_normalized_legal_probabilities() {
         let state = base_state();
         let mut outputs = vec![0.0f32; 1 + ACTION_SPACE];
@@ -442,14 +381,14 @@ mod tests {
         outputs[1 + tile_index("9m").unwrap()] = 5.0;
         outputs[1 + 41] = 20.0;
 
-        let evaluation = build_evaluation(&state, &outputs).unwrap();
+        let evaluation = build_evaluation(&state, &outputs, "test", &[]).unwrap();
         let total: f32 = evaluation.evaluations.iter().map(|e| e.probability).sum();
         assert!((total - 1.0).abs() < 1e-5);
         assert!(
             evaluation
                 .evaluations
                 .iter()
-                .all(|e| e.kind != "pon" && e.probability >= 0.0)
+                .all(|e| e.info.kind != ActionKind::Pon && e.probability >= 0.0)
         );
         assert!(
             evaluation
@@ -486,7 +425,7 @@ mod tests {
             evaluation.expected_value, evaluation.recommended_action
         );
         for scored in evaluation.evaluations.iter().take(3) {
-            println!("  {:.3} {}", scored.probability, scored.action);
+            println!("  {:.3} {}", scored.probability, scored.info.action);
         }
 
         assert!(evaluation.expected_value.is_finite());
@@ -494,11 +433,10 @@ mod tests {
         assert!((total - 1.0).abs() < 1e-3, "probabilities sum to {total}");
         assert!(!evaluation.recommended_action.is_empty());
         assert!(
-            legal_action_mask(&state)
+            evaluation
+                .evaluations
                 .iter()
-                .zip(0..)
-                .any(|(&legal, index)| legal
-                    && describe_action(index).0 == evaluation.recommended_action)
+                .any(|scored| scored.info.action == evaluation.recommended_action)
         );
     }
 }

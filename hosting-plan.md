@@ -5,6 +5,21 @@ Status: code complete (2026-11-10). Remaining work is the human-only
 weights) is recorded in section 5. This is the living status document for
 making the app deployable at $0.
 
+Branch sync (2026-11-10): merged `origin/main` at `319fd6f` into
+`am/free-hosting`. Two conflicts, both resolved by hand:
+
+- `README.md` — kept both sets of sections: main's feature docs (Book vs.
+  Mortal, AI Best Action, Defense scenarios) first, then the hosting/license/
+  deploy sections from this branch.
+- `frontend/src/store/useGameStore.ts` — took main's refactor wholesale
+  (`runEvaluation`, `requestEvaluationFor`, dual grading) and re-applied the
+  weight-loader change on top: `initializeAi` calls `loadWeights()` and passes
+  `WEIGHTS_FILENAME` as the evaluator's model name, instead of fetching
+  `WEIGHTS_URL` and deriving the name from the URL. `aiModel.ts` still exports
+  only `AI_MODEL_ID`, so no `WEIGHTS_URL` remains anywhere.
+
+Post-merge verification is in section 6.
+
 Goal: the single-page trainer is served from **GitHub Pages**
 (`https://chairbender.github.io/riichiprac/`) and the ~43 MB Mortal weights file
 is fetched at runtime from a free external CDN (Hugging Face first, GitHub
@@ -228,6 +243,24 @@ All green on 2026-11-10 (local: rustc 1.93, wasm-pack 0.13.1, Node 18.19.1).
 - [x] `deploy.yml` parses as YAML (`on`, `permissions`, `concurrency`,
       `jobs.build`, `jobs.deploy`).
 - [x] `wasm-pack build --target web --release` from the repo root: 1m31s.
+
+### Post-merge re-verification (2026-11-10, after merging `origin/main` `319fd6f`)
+
+- [x] `cd frontend && npm run lint` → clean.
+- [x] `cd frontend && npm run build` → OK (708 kB JS, 25 kB CSS).
+- [x] `GITHUB_ACTIONS=true npm run build` → `src="/riichiprac/assets/index-*.js"`,
+      bundle references `/riichiprac/assets/riichiprac_bg-BeCrl1Wy.wasm`,
+      `dist/.nojekyll` present, `find dist -name '*.safetensors'` → 0.
+- [x] `wasm-pack build --target web --release` → 1m06s (fresh pkg for the new
+      exports main added, e.g. `grade_answer_json`).
+- [x] `cargo test --lib` → 187 passed, 0 failed.
+- [x] `cargo clippy --lib --tests -- -D warnings` → clean.
+- [x] `cargo check --target wasm32-unknown-unknown` → clean.
+- [ ] `cargo fmt --check` → **already failing on `origin/main`**, unrelated to
+      this branch. Verified in a clean worktree of `origin/main` (24 `Diff in`
+      hunks in `src/generator/defense/board.rs`, `src/generator/defense/theme.rs`,
+      `src/rationale.rs`, `src/safety.rs`). This branch touches no Rust files, so
+      it is left for main to fix rather than reformatted here.
 
 ---
 

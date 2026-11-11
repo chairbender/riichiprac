@@ -2,14 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
 import { AI_MODEL_ID } from './aiModel';
-import { AiEvaluatorPanel } from './components/AiEvaluatorPanel';
+import { ActionBar } from './components/ActionBar';
 import { HandDock } from './components/HandDock';
-import { FeedbackToast } from './components/FeedbackToast';
 import { PlayerRow } from './components/PlayerRow';
 import { ReportBanner } from './components/ReportBanner';
 import { ReportControls } from './components/ReportControls';
-import { ScenarioExplanation } from './components/ScenarioExplanation';
 import { TableInfo } from './components/TableInfo';
+import { VerdictPanel } from './components/VerdictPanel';
 import {
   createScenarioReport,
   downloadJson,
@@ -40,11 +39,15 @@ export const App = () => {
   const error = useGameStore((state) => state.error);
   const callRiichi = useGameStore((state) => state.callRiichi);
   const callKan = useGameStore((state) => state.callKan);
-  const feedback = useGameStore((state) => state.feedback);
+  const submittedAnswer = useGameStore((state) => state.submittedAnswer);
+  const dualGrade = useGameStore((state) => state.dualGrade);
+  const peekedBeforeAnswer = useGameStore((state) => state.peekedBeforeAnswer);
+  const peekMortal = useGameStore((state) => state.peekMortal);
   const loadFromJson = useGameStore((state) => state.loadFromJson);
   const toggleRiichi = useGameStore((state) => state.toggleRiichi);
   const toggleKan = useGameStore((state) => state.toggleKan);
   const selectTile = useGameStore((state) => state.selectTile);
+  const submitAction = useGameStore((state) => state.submitAction);
   const reset = useGameStore((state) => state.reset);
   const setError = useGameStore((state) => state.setError);
   const aiStatus = useGameStore((state) => state.aiStatus);
@@ -53,11 +56,9 @@ export const App = () => {
   const isEvaluating = useGameStore((state) => state.isEvaluating);
   const initializeAi = useGameStore((state) => state.initializeAi);
   const evaluateWithAi = useGameStore((state) => state.evaluateWithAi);
-  const clearEvaluation = useGameStore((state) => state.clearEvaluation);
   const reportMode = useGameStore((state) => state.reportMode);
   const reportError = useGameStore((state) => state.reportError);
   const reportNotice = useGameStore((state) => state.reportNotice);
-  const isReportRetry = useGameStore((state) => state.isReportRetry);
   const importReport = useGameStore((state) => state.importReport);
   const retryImportedPuzzle = useGameStore(
     (state) => state.retryImportedPuzzle,
@@ -69,6 +70,7 @@ export const App = () => {
   const [selection, setSelection] = useState<ScenarioSelection>('all');
   const [scenarios, setScenarios] =
     useState<ScenarioOption[]>(FALLBACK_SCENARIOS);
+  const [aiLoading, setAiLoading] = useState(false);
   const manifestRef = useRef<ScenarioOption[] | null>(null);
   const loadRequestId = useRef(0);
 
@@ -93,15 +95,44 @@ export const App = () => {
         const options = manifestRef.current ?? FALLBACK_SCENARIOS;
         const category =
           scenarioSelection === 'all'
-            ? pickRandomScenario(options)
+            ? pickRandomScenario(
+                options,
+                useGameStore.getState().aiStatus === 'ready',
+              )
             : scenarioSelection;
-        loadFromJson(generate_puzzle(category));
+        const requiresAi =
+          options.find((option) => option.id === category)?.requires_ai === true;
+
+        if (requiresAi) {
+          setAiLoading(true);
+          try {
+            await initializeAi();
+            if (requestId !== loadRequestId.current) return;
+            const evaluator = useGameStore.getState().evaluator;
+            if (!evaluator) {
+              throw new Error(
+                useGameStore.getState().aiError ??
+                  'Mortal AI is unavailable; cannot generate this scenario.',
+              );
+            }
+            // Let the loading state paint before the blocking inference.
+            await new Promise<void>((resolve) => {
+              setTimeout(resolve, 0);
+            });
+            if (requestId !== loadRequestId.current) return;
+            loadFromJson(evaluator.generate_ai_puzzle(category));
+          } finally {
+            setAiLoading(false);
+          }
+        } else {
+          loadFromJson(generate_puzzle(category));
+        }
       } catch (err) {
         if (requestId !== loadRequestId.current) return;
         setError(err instanceof Error ? err.message : String(err));
       }
     },
-    [loadFromJson, reset, setError],
+    [initializeAi, loadFromJson, reset, setError],
   );
 
   useEffect(() => {
@@ -123,6 +154,13 @@ export const App = () => {
     void loadPuzzle(selection);
   };
 
+  const showVerdict = useCallback(() => {
+    const panel = document.getElementById('verdict-panel');
+    if (!panel) return;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    panel.focus({ preventScroll: true });
+  }, []);
+
   // Show the imported report's scenario in the picker when it is in the
   // current manifest. Unknown scenarios keep the picker unchanged.
   useEffect(() => {
@@ -133,18 +171,21 @@ export const App = () => {
   }, [reportMode, scenarios]);
 
   const handleExportReport = async (reason: ReportReason, note: string) => {
-    if (!gameState || !feedback) {
+    if (!gameState || !submittedAnswer) {
       throw new Error('Answer the puzzle before exporting a report.');
     }
 
     await ensureWasmReady();
 
     const answer: ReportedAction = {
-      action: feedback.selectedType,
-      tile: feedback.selectedTile,
+      action: submittedAnswer.action,
+      tile: submittedAnswer.tile,
     };
-    if (feedback.selectedTileIndex !== undefined) {
-      answer.tile_index = feedback.selectedTileIndex;
+    if (submittedAnswer.tile_index !== undefined) {
+      answer.tile_index = submittedAnswer.tile_index;
+    }
+    if (submittedAnswer.action_name !== undefined) {
+      answer.action_name = submittedAnswer.action_name;
     }
 
     const { report, json } = createScenarioReport({
@@ -154,6 +195,7 @@ export const App = () => {
       note,
       evaluation,
       modelId: AI_MODEL_ID,
+      peekedBeforeAnswer,
     });
 
     downloadJson(reportFilename(report), json);
@@ -185,6 +227,16 @@ export const App = () => {
   const humanPlayer =
     gameState?.players.find((player) => player.is_human) ?? null;
 
+  const aiDecision = gameState?.ai_decision ?? null;
+  const availableActions = aiDecision?.actions ?? [];
+  const isDrill = gameState?.correct_action.type === 'best';
+  const canDiscard = isDrill
+    ? availableActions.some((action) => action.type === 'discard')
+    : true;
+  const decision = gameState?.decision;
+  const claimedFrom =
+    decision?.kind === 'react_to_discard' ? decision.from : null;
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -193,6 +245,7 @@ export const App = () => {
           {gameState && (
             <span className="scenario-current">
               {scenarioLabel(gameState.category, scenarios)}
+              {isDrill && ' · Mortal drill'}
             </span>
           )}
         </div>
@@ -227,7 +280,7 @@ export const App = () => {
       </header>
 
       <ReportControls
-        canReport={Boolean(gameState && feedback)}
+        canReport={Boolean(gameState && dualGrade)}
         reportError={reportError}
         reportNotice={reportNotice}
         onExport={handleExportReport}
@@ -250,19 +303,31 @@ export const App = () => {
         />
       )}
 
-      {feedback && humanPlayer && (!reportMode || isReportRetry) && (
-        <FeedbackToast
-          feedback={feedback}
-          redFives={humanPlayer.red_fives}
+      {gameState && <TableInfo state={gameState} />}
+
+      {gameState && (
+        <VerdictPanel
+          state={gameState}
+          grade={dualGrade}
+          evaluation={evaluation}
+          aiStatus={aiStatus}
+          aiError={aiError}
+          isEvaluating={isEvaluating}
+          peeked={peekedBeforeAnswer}
+          redFives={humanPlayer?.red_fives ?? []}
+          onPeek={peekMortal}
+          onRetry={() => {
+            void initializeAi().then(() => evaluateWithAi());
+          }}
         />
       )}
 
-      {gameState && <TableInfo state={gameState} />}
-
-      {feedback && gameState && <ScenarioExplanation state={gameState} />}
-
       <main className="table-stack">
-        {isLoading && <div className="status-msg">Loading table…</div>}
+        {(isLoading || aiLoading) && (
+          <div className="status-msg">
+            {aiLoading ? 'Asking Mortal…' : 'Loading table…'}
+          </div>
+        )}
         {error && (
           <div className="error-msg" role="alert">
             {error}
@@ -270,33 +335,39 @@ export const App = () => {
         )}
 
         {orderedPlayers.map((player) => (
-          <PlayerRow key={player.seat} player={player} />
+          <PlayerRow
+            key={player.seat}
+            player={player}
+            highlightLastDiscard={claimedFrom === player.seat}
+          />
         ))}
       </main>
 
-      {gameState && (
-        <AiEvaluatorPanel
-          status={aiStatus}
-          error={aiError}
-          isEvaluating={isEvaluating}
+      {gameState && !dualGrade && availableActions.length > 0 && (
+        <ActionBar
+          actions={availableActions}
+          disabled={false}
+          riichiArmed={callRiichi}
           evaluation={evaluation}
-          onEvaluate={() => {
-            void evaluateWithAi();
-          }}
-          onClear={clearEvaluation}
-          onRetry={() => {
-            void initializeAi();
-          }}
+          revealMortal={dualGrade !== null || peekedBeforeAnswer}
+          onToggleRiichi={toggleRiichi}
+          onAction={submitAction}
         />
       )}
 
       {humanPlayer && (
         <HandDock
           player={humanPlayer}
-          feedback={feedback}
+          grade={dualGrade}
+          answer={submittedAnswer}
           callRiichi={callRiichi}
           callKan={callKan}
           aiEvaluation={evaluation}
+          availableActions={isDrill ? availableActions : undefined}
+          canDiscard={canDiscard}
+          revealMortal={dualGrade !== null || peekedBeforeAnswer}
+          targetAction={gameState?.target_action}
+          onShowVerdict={showVerdict}
           onToggleRiichi={toggleRiichi}
           onToggleKan={toggleKan}
           onSelectTile={selectTile}

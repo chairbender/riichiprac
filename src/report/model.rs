@@ -22,6 +22,7 @@ pub enum DecisionPrompt {
     WhichDiscard,
     KanOrDiscard,
     PushOrFold,
+    AiBestAction,
 }
 
 impl DecisionPrompt {
@@ -30,9 +31,10 @@ impl DecisionPrompt {
 
         match target {
             TargetAction::Riichi | TargetAction::Dama => Self::RiichiOrDama,
-            TargetAction::NaniKiru => Self::WhichDiscard,
+            TargetAction::NaniKiru | TargetAction::Defend => Self::WhichDiscard,
             TargetAction::Kan => Self::KanOrDiscard,
             TargetAction::Push | TargetAction::Fold => Self::PushOrFold,
+            TargetAction::Best => Self::AiBestAction,
         }
     }
 
@@ -42,6 +44,7 @@ impl DecisionPrompt {
             Self::WhichDiscard => "Which tile do you discard?",
             Self::KanOrDiscard => "Call Shouminkan, or discard?",
             Self::PushOrFold => "Push or fold?",
+            Self::AiBestAction => "What is the best action?",
         }
     }
 }
@@ -75,28 +78,10 @@ impl ReportReason {
 }
 
 /// The action the reporter submitted.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ReportedAction {
-    /// Action family the player submitted.
-    pub action: CorrectActionType,
-    /// Tile code clicked for the discard/Kan.
-    pub tile: String,
-    /// Optional index of the clicked copy in the rendered hand. This is only
-    /// needed to disambiguate physical copies (for example two `5m` tiles,
-    /// one of which is red); correctness itself is code-based.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tile_index: Option<usize>,
-}
-
-impl ReportedAction {
-    pub fn new(action: CorrectActionType, tile: impl Into<String>) -> Self {
-        Self {
-            action,
-            tile: tile.into(),
-            tile_index: None,
-        }
-    }
-}
+///
+/// This is the same payload the live grader accepts, so the report format and
+/// the in-app verdict cannot drift apart.
+pub use crate::verdict::SubmittedAnswer as ReportedAction;
 
 /// Comparison between the app answer, the reporter answer, and Mortal.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -127,10 +112,17 @@ pub struct ReportedAi {
     /// Derived convenience block. Recomputed on import.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comparison: Option<AiComparison>,
+    /// True when the reporter revealed Mortal's line before answering.
+    #[serde(default)]
+    pub peeked_before_answer: bool,
 }
 
-/// Recomputed result of comparing the reporter's answer to the app answer.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Recomputed dual verdict for the reporter's answer.
+///
+/// The three booleans keep their version-1 meaning: they grade against the
+/// book's `correct_action`. The added fields say what the *dual* model decided,
+/// so `is_correct` is no longer the whole story — `outcome` is.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReportVerdict {
     pub is_correct: bool,
     pub is_action_correct: bool,
@@ -139,6 +131,72 @@ pub struct ReportVerdict {
     pub expected_action: CorrectActionType,
     /// Tile the app expected.
     pub expected_tile: String,
+    /// Dual outcome; see [`crate::verdict::AnswerOutcome`].
+    #[serde(default = "default_outcome")]
+    pub outcome: crate::verdict::AnswerOutcome,
+    /// Which perspectives were available when the report was built.
+    #[serde(default = "default_mode")]
+    pub mode: crate::verdict::GradingMode,
+    /// Mortal's side of the verdict, when an evaluation was available.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mortal: Option<crate::verdict::MortalGrade>,
+}
+
+fn default_outcome() -> crate::verdict::AnswerOutcome {
+    crate::verdict::AnswerOutcome::Ungraded
+}
+
+fn default_mode() -> crate::verdict::GradingMode {
+    crate::verdict::GradingMode::Ungraded
+}
+
+impl ReportVerdict {
+    /// Build the report verdict from a dual grade and the state's expected
+    /// action (needed to recover the drill's expected tile).
+    pub fn from_dual(
+        grade: &crate::verdict::DualGrade,
+        expected: &crate::state::CorrectAction,
+    ) -> Self {
+        let (is_correct, is_action_correct, is_tile_correct, expected_action, expected_tile) =
+            match (&grade.book, &grade.mortal) {
+                (Some(book), _) => (
+                    book.agrees(),
+                    book.is_action_correct,
+                    book.is_tile_correct,
+                    book.expected_action,
+                    book.expected_tile.clone(),
+                ),
+                (None, Some(mortal)) => (
+                    mortal.agrees,
+                    mortal.matches_action,
+                    mortal.matches_tile,
+                    CorrectActionType::Best,
+                    expected.tile().unwrap_or_default().to_string(),
+                ),
+                (None, None) => (false, false, false, CorrectActionType::Best, String::new()),
+            };
+
+        Self {
+            is_correct,
+            is_action_correct,
+            is_tile_correct,
+            expected_action,
+            expected_tile,
+            outcome: grade.outcome,
+            mode: grade.mode,
+            mortal: grade.mortal.clone(),
+        }
+    }
+
+    /// The version-1 comparand: import warnings must only look at the book
+    /// fields, or every v1 file would look tampered with.
+    pub fn book_matches(&self, other: &Self) -> bool {
+        self.is_correct == other.is_correct
+            && self.is_action_correct == other.is_action_correct
+            && self.is_tile_correct == other.is_tile_correct
+            && self.expected_action == other.expected_action
+            && self.expected_tile == other.expected_tile
+    }
 }
 
 /// Scenario metadata snapshot so a report stays readable after a rename.
@@ -160,7 +218,7 @@ pub struct AppInfo {
 }
 
 /// The disputed decision.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReportDecision {
     /// Human-readable question, e.g. "Declare Riichi, or stay dama?".
     pub prompt: String,

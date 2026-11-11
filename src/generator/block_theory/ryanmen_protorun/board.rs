@@ -13,7 +13,8 @@ use crate::generator::support::table::{
 };
 use crate::rng::gen_range;
 use crate::state::{
-    CalledMeld, CorrectAction, GameState, MeldType, PlayerState, TargetAction, Wind,
+    CalledMeld, CorrectAction, DecisionContext, GameState, MeldType, PlayerState, TargetAction,
+    Wind,
 };
 
 /// The validated hand shapes for one ryanmen puzzle.
@@ -228,9 +229,12 @@ fn assemble_state(
         // The open Yakuhai meld makes Riichi illegal, so staying dama is
         // the only legal declaration for this hand.
         correct_action: CorrectAction::dama(skeleton.correct_tile.to_string()),
+        decision: DecisionContext::SelfTurn,
+        ai_decision: None,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
+        book_rationale: None,
         hand_string,
         tiles: tile_strings,
         shanten: metrics.shanten,
@@ -335,7 +339,7 @@ mod tests {
         assert!(human.is_human);
         assert!(!human.is_riichi);
         assert_eq!(human.hand.len(), 10);
-        assert_eq!(human.draw.as_deref(), Some(state.correct_action.tile()));
+        assert_eq!(human.draw.as_deref(), state.correct_action.tile());
         assert_eq!(human.melds.len(), 1);
         assert_eq!(human.melds[0].meld_type, MeldType::Pon);
         assert_eq!(human.melds[0].tiles.len(), 3);
@@ -405,7 +409,7 @@ mod tests {
             .remove(0);
         assert_ne!(
             indicator_to_dora(indicator).to_string(),
-            state.correct_action.tile()
+            state.correct_action.tile().expect("answer tile")
         );
 
         // Scores stay on the 100,000-point table.
@@ -433,14 +437,14 @@ mod tests {
             state
                 .tiles
                 .iter()
-                .any(|tile| tile == state.correct_action.tile())
+                .any(|tile| Some(tile.as_str()) == state.correct_action.tile())
         );
 
         // Discarding the duplicate leaves the two-sided ryanmen wait.
         let mut post_discard = state.tiles.clone();
         let duplicate_index = post_discard
             .iter()
-            .position(|tile| tile == state.correct_action.tile())
+            .position(|tile| Some(tile.as_str()) == state.correct_action.tile())
             .expect("correct tile must be in the full hand");
         post_discard.remove(duplicate_index);
         let post_tiles =
