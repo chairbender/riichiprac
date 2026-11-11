@@ -265,17 +265,23 @@ report records the bound, `attempts`, `evaluations`, and rejects split into
 `generate_puzzle` candidate with no report, so a host can keep one settings blob
 and toggle the filter.
 
-It is opt-in and not wired into the UI: the default page load stays book-only and
-instant. A candidate costs one forward pass (about 41 ms per pass with
-`mortal_298k` on a desktop CPU, and roughly twice that when Mortal chooses Riichi,
-because its declaration action carries no tile and the evaluator resolves the
-discard in a second pass). The default bound is 40 candidates. Agreement varies
-by lesson — a survey measured about 100% for `protorun_priority` and
-`defense_safety_chart` but about 9% for `ryankan_break`, whose book answer is an
-off-by-one tile choice on nearly every hand — so raise
-`max_candidates` for the low-agreement families. When the bound runs out the
-call returns an error naming the rejection counts instead of a hand the model
-would not play.
+In the app it is the **Mortal must agree** checkbox beside the scenario picker.
+It is per-session and stays disabled until the model is ready; turning it on
+re-deals the hand on screen through the filter, and a short note under the table
+says how many candidates were rejected and why (for example "accepted on 5
+candidates (4 rejected: 3 tile mismatches, 1 incomparable answer)"). The default
+page load stays book-only and instant, and a browser without the weights can
+never enable it.
+
+A candidate costs one forward pass (about 41 ms per pass with `mortal_298k` on a
+desktop CPU, and roughly twice that when Mortal chooses Riichi, because its
+declaration action carries no tile and the evaluator resolves the discard in a
+second pass). The default bound is 40 candidates. Agreement varies by lesson — a
+survey measured about 100% for `protorun_priority` and `defense_safety_chart` but
+about 9% for `ryankan_break`, whose book answer is an off-by-one tile choice on
+nearly every hand — so raise `max_candidates` for the low-agreement families.
+When the bound runs out the call returns an error naming the rejection counts
+instead of a hand the model would not play.
 
 `ai_best_action` is not sampled here (its answer is Mortal's own argmax; use
 `generate_ai_puzzle`), and the `mock_table` UI fixture is returned unchanged with

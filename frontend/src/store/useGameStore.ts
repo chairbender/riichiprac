@@ -7,9 +7,11 @@ import {
   isCorrectAction,
   isKanDecision,
 } from '../actions';
+import { parseAgreementPayload } from '../agreement';
 import { loadWeights, WEIGHTS_FILENAME } from '../services/weightLoader';
 import { parseStateFile } from '../stateFile';
 import type { AiDecision, AiEvaluation, AiStatus } from '../types/ai';
+import type { MortalAgreementReport } from '../types/agreement';
 import type { CorrectActionType, GameState } from '../types/game';
 import type { DualGrade } from '../types/verdict';
 import { ensureWasmReady } from '../wasm';
@@ -80,9 +82,19 @@ interface GameStore {
   /** Latest AI result for the current table, or null before evaluating. */
   evaluation: AiEvaluation | null;
   isEvaluating: boolean;
+  /**
+   * Report from the opt-in Mortal-agreement filter, when it generated this
+   * hand. Null for every ordinary book-only puzzle and for imported positions.
+   */
+  mortalAgreement: MortalAgreementReport | null;
 
   /** Parse and store a raw JSON payload returned by the WASM engine. */
   loadFromJson: (json: string) => void;
+  /**
+   * Parse the `{state, agreement}` payload returned by
+   * `generate_puzzle_with_agreement` and load its table.
+   */
+  loadFromAgreementJson: (json: string) => void;
   /** Arm or disarm the Riichi declaration before choosing a discard. */
   toggleRiichi: () => void;
   /** Arm or disarm the Added Kan before choosing the fourth tile. */
@@ -151,6 +163,7 @@ const emptyState = {
   dualGrade: null,
   peekedBeforeAnswer: false,
   evaluation: null,
+  mortalAgreement: null,
   fileError: null,
   fileNotice: null,
   positionDescription: null,
@@ -165,6 +178,7 @@ const emptyState = {
   | 'dualGrade'
   | 'peekedBeforeAnswer'
   | 'evaluation'
+  | 'mortalAgreement'
   | 'fileError'
   | 'fileNotice'
   | 'positionDescription'
@@ -330,6 +344,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           dualGrade: null,
           peekedBeforeAnswer: false,
           evaluation,
+          mortalAgreement: null,
           fileError: null,
           fileNotice: null,
           // Cleared per load; `importState` sets the imported file's own text.
@@ -349,11 +364,41 @@ export const useGameStore = create<GameStore>((set, get) => {
           dualGrade: null,
           peekedBeforeAnswer: false,
           evaluation: null,
+          mortalAgreement: null,
           fileError: null,
           fileNotice: null,
           positionDescription: null,
         });
       }
+    },
+
+    loadFromAgreementJson: (json) => {
+      let payload;
+      try {
+        payload = parseAgreementPayload(json);
+      } catch (err) {
+        set({
+          isLoading: false,
+          error: err instanceof Error ? err.message : String(err),
+          callRiichi: false,
+          callKan: false,
+          submittedAnswer: null,
+          dualGrade: null,
+          peekedBeforeAnswer: false,
+          evaluation: null,
+          mortalAgreement: null,
+          fileError: null,
+          fileNotice: null,
+          positionDescription: null,
+        });
+        return;
+      }
+
+      // `loadFromJson` owns the table validation and the payload's own error
+      // handling; the report is attached only once the table is accepted.
+      get().loadFromJson(payload.stateJson);
+      if (get().error) return;
+      set({ mortalAgreement: payload.report });
     },
 
     toggleRiichi: () =>

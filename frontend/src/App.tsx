@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
 import { canDeclareRiichi } from './actions';
+import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import { ActionBar } from './components/ActionBar';
 import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
@@ -33,6 +34,10 @@ export const App = () => {
   const peekedBeforeAnswer = useGameStore((state) => state.peekedBeforeAnswer);
   const peekMortal = useGameStore((state) => state.peekMortal);
   const loadFromJson = useGameStore((state) => state.loadFromJson);
+  const loadFromAgreementJson = useGameStore(
+    (state) => state.loadFromAgreementJson,
+  );
+  const mortalAgreement = useGameStore((state) => state.mortalAgreement);
   const toggleRiichi = useGameStore((state) => state.toggleRiichi);
   const toggleKan = useGameStore((state) => state.toggleKan);
   const selectTile = useGameStore((state) => state.selectTile);
@@ -60,12 +65,22 @@ export const App = () => {
   const [scenarios, setScenarios] =
     useState<ScenarioOption[]>(FALLBACK_SCENARIOS);
   const [aiLoading, setAiLoading] = useState(false);
+  const [agreementLoading, setAgreementLoading] = useState(false);
+  /**
+   * Per-session opt-in: only deal hands where Mortal plays the book answer.
+   * Not persisted, so a browser without the weights never starts in a state it
+   * cannot generate.
+   */
+  const [requireAgreement, setRequireAgreement] = useState(false);
   const [exportDescription, setExportDescription] = useState('');
   const manifestRef = useRef<ScenarioOption[] | null>(null);
   const loadRequestId = useRef(0);
 
   const loadPuzzle = useCallback(
-    async (scenarioSelection: ScenarioSelection) => {
+    async (
+      scenarioSelection: ScenarioSelection,
+      requireMortalAgreement: boolean,
+    ) => {
       const requestId = ++loadRequestId.current;
       reset();
       // A description belongs to the position it was written for.
@@ -94,6 +109,9 @@ export const App = () => {
             : scenarioSelection;
         const requiresAi =
           options.find((option) => option.id === category)?.requires_ai === true;
+        // The AI drill's answer is Mortal's own argmax, so the agreement filter
+        // is meaningless there; that scenario is generated below instead.
+        const wantsAgreement = requireMortalAgreement && !requiresAi;
 
         if (requiresAi) {
           setAiLoading(true);
@@ -116,6 +134,33 @@ export const App = () => {
           } finally {
             setAiLoading(false);
           }
+        } else if (wantsAgreement) {
+          setAgreementLoading(true);
+          try {
+            await initializeAi();
+            if (requestId !== loadRequestId.current) return;
+            const evaluator = useGameStore.getState().evaluator;
+            if (!evaluator) {
+              throw new Error(
+                useGameStore.getState().aiError ??
+                  'Mortal is unavailable, so a Mortal-agreeing hand cannot be ' +
+                    'generated. Turn off "Mortal must agree" to keep practising.',
+              );
+            }
+            // Let the loading state paint before the blocking sampling.
+            await new Promise<void>((resolve) => {
+              setTimeout(resolve, 0);
+            });
+            if (requestId !== loadRequestId.current) return;
+            loadFromAgreementJson(
+              evaluator.generate_puzzle_with_agreement(
+                category,
+                JSON.stringify(AGREEMENT_OPTIONS),
+              ),
+            );
+          } finally {
+            setAgreementLoading(false);
+          }
         } else {
           loadFromJson(generate_puzzle(category));
         }
@@ -124,11 +169,18 @@ export const App = () => {
         setError(err instanceof Error ? err.message : String(err));
       }
     },
-    [initializeAi, loadFromJson, reset, setError],
+    [
+      initializeAi,
+      loadFromAgreementJson,
+      loadFromJson,
+      reset,
+      setError,
+    ],
   );
 
+  // The filter is a per-session choice, so the first hand is always book-only.
   useEffect(() => {
-    void loadPuzzle('all');
+    void loadPuzzle('all', false);
   }, [loadPuzzle]);
 
   // Start loading the Mortal weights in the background on first paint.
@@ -139,11 +191,18 @@ export const App = () => {
   const handleScenarioChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const next = event.target.value as ScenarioSelection;
     setSelection(next);
-    void loadPuzzle(next);
+    void loadPuzzle(next, requireAgreement);
   };
 
   const handleNextScenario = () => {
-    void loadPuzzle(selection);
+    void loadPuzzle(selection, requireAgreement);
+  };
+
+  const handleAgreementChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const next = event.target.checked;
+    setRequireAgreement(next);
+    // Apply the setting to the hand on screen, not just the next one.
+    void loadPuzzle(selection, next);
   };
 
   const showVerdict = useCallback(() => {
@@ -200,6 +259,21 @@ export const App = () => {
   const claimedFrom =
     decision?.kind === 'react_to_discard' ? decision.from : null;
 
+  const agreementHint =
+    aiStatus === 'ready'
+      ? 'Deal only hands where the embedded Mortal model plays the book answer. Each hand may need several forward passes.'
+      : aiStatus === 'error'
+        ? 'Mortal is unavailable, so this filter cannot run.'
+        : 'Waiting for the Mortal model to load…';
+
+  const statusMessage = agreementLoading
+    ? 'Finding a hand Mortal agrees with…'
+    : aiLoading
+      ? 'Asking Mortal…'
+      : isLoading
+        ? 'Loading table…'
+        : null;
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -226,6 +300,16 @@ export const App = () => {
             </select>
           </label>
 
+          <label className="agreement-toggle" title={agreementHint}>
+            <input
+              type="checkbox"
+              checked={requireAgreement}
+              disabled={aiStatus !== 'ready'}
+              onChange={handleAgreementChange}
+            />
+            <span>Mortal must agree</span>
+          </label>
+
           <NextScenarioButton onClick={handleNextScenario} disabled={isLoading} />
         </div>
       </header>
@@ -250,6 +334,12 @@ export const App = () => {
 
       {gameState && <TableInfo state={gameState} />}
 
+      {gameState && mortalAgreement && (
+        <p className="agreement-note" role="status">
+          {formatAgreementNotice(mortalAgreement)}
+        </p>
+      )}
+
       {gameState?.scenario_note && (
         <p className="scenario-note">{gameState.scenario_note}</p>
       )}
@@ -272,11 +362,7 @@ export const App = () => {
       )}
 
       <main className="table-stack">
-        {(isLoading || aiLoading) && (
-          <div className="status-msg">
-            {aiLoading ? 'Asking Mortal…' : 'Loading table…'}
-          </div>
-        )}
+        {statusMessage && <div className="status-msg">{statusMessage}</div>}
         {error && (
           <div className="error-msg" role="alert">
             {error}
