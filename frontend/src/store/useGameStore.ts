@@ -9,6 +9,7 @@ import {
   isKanDecision,
 } from '../actions';
 import { parseAgreementPayload } from '../agreement';
+import type { ScenarioSnapshot } from '../scenarioHistory';
 import { initMortalClient } from '../services/mortalClient';
 import type { MortalClient } from '../services/mortalClient';
 import { loadWeights, WEIGHTS_FILENAME } from '../services/weightLoader';
@@ -97,6 +98,11 @@ interface GameStore {
   /** Parse and store a raw JSON payload returned by the WASM engine. */
   loadFromJson: (json: string) => void;
   /**
+   * Put a hand from a browser history entry back on screen, answer state and
+   * all, without regenerating it or re-running Mortal.
+   */
+  restoreSnapshot: (snapshot: ScenarioSnapshot) => void;
+  /**
    * Parse the `{state, agreement}` payload returned by
    * `generate_puzzle_with_agreement` and load its table.
    */
@@ -158,6 +164,28 @@ function evaluationFromDecision(decision: AiDecision): AiEvaluation {
  * React StrictMode can fire it twice; the model must only be parsed once.
  */
 let aiInitPromise: Promise<void> | null = null;
+
+/**
+ * Parse and validate one engine payload.
+ *
+ * Both a fresh deal and a hand restored from browser history arrive as the same
+ * `GameState` JSON, so both go through this one check and an error envelope can
+ * never reach the table renderer.
+ */
+function parseGameState(json: string): GameState {
+  const parsed = JSON.parse(json) as GameState & WasmErrorPayload;
+
+  if (parsed.error) {
+    throw new Error(parsed.error);
+  }
+  if (!Array.isArray(parsed.players) || parsed.players.length !== 4) {
+    throw new Error('WASM returned an invalid table state');
+  }
+  if (!isCorrectAction(parsed.correct_action)) {
+    throw new Error('WASM returned an invalid correct action');
+  }
+  return parsed;
+}
 
 const emptyState = {
   gameState: null,
@@ -322,17 +350,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     loadFromJson: (json) => {
       try {
-        const parsed = JSON.parse(json) as GameState & WasmErrorPayload;
-
-        if (parsed.error) {
-          throw new Error(parsed.error);
-        }
-        if (!Array.isArray(parsed.players) || parsed.players.length !== 4) {
-          throw new Error('WASM returned an invalid table state');
-        }
-        if (!isCorrectAction(parsed.correct_action)) {
-          throw new Error('WASM returned an invalid correct action');
-        }
+        const parsed = parseGameState(json);
 
         // The AI scenario already carries the ranking, so seed the column from
         // it instead of paying for a second identical forward pass.
@@ -375,6 +393,56 @@ export const useGameStore = create<GameStore>((set, get) => {
           fileNotice: null,
           positionDescription: null,
         });
+      }
+    },
+
+    restoreSnapshot: (snapshot) => {
+      pendingState = null;
+      // A history restore supersedes any evaluation still running for the hand
+      // the player just left, so its late result cannot land on the new table.
+      evaluationRequestId += 1;
+
+      let parsed: GameState;
+      try {
+        parsed = parseGameState(snapshot.json);
+      } catch (err) {
+        set({
+          ...emptyState,
+          isLoading: false,
+          isEvaluating: false,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return;
+      }
+
+      // A stored evaluation is reused as-is: it belongs to this exact table and
+      // a fresh forward pass would be slow and could disagree after a model
+      // update, which would make the restored verdict inconsistent.
+      const evaluation =
+        snapshot.evaluation ??
+        (parsed.ai_decision
+          ? evaluationFromDecision(parsed.ai_decision)
+          : null);
+
+      set({
+        gameState: parsed,
+        isLoading: false,
+        error: null,
+        callRiichi: snapshot.callRiichi,
+        callKan: snapshot.callKan,
+        submittedAnswer: snapshot.submittedAnswer,
+        dualGrade: snapshot.dualGrade,
+        peekedBeforeAnswer: snapshot.peekedBeforeAnswer,
+        evaluation,
+        mortalAgreement: snapshot.mortalAgreement,
+        isEvaluating: false,
+        fileError: null,
+        fileNotice: null,
+        positionDescription: snapshot.positionDescription,
+      });
+
+      if (!evaluation) {
+        requestEvaluationFor(parsed);
       }
     },
 
