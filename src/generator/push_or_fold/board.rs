@@ -159,6 +159,11 @@ pub(super) fn build(category: &str, target: Target) -> Result<GameState, String>
         return Err("No drawable tiles remain".to_string());
     }
 
+    // This lesson is the one place `target_action` is answer-derived: the
+    // push branch carries `Push`, the fold branch `Fold`. It exists so reports
+    // and grading can name the decision, and must never drive pre-answer copy —
+    // the hand dock's instruction line is deliberately neutral for exactly this
+    // reason (frontend/src/handHint.ts).
     let (target_action, correct_action) = match target {
         Target::Push => (
             TargetAction::Push,
