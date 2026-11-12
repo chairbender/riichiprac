@@ -105,8 +105,10 @@ export function HandDock({
     handHint = 'Tap a tile to discard';
   } else if (targetAction === 'NaniKiru') {
     handHint = 'Tap the tile to discard';
-  } else if (targetAction === 'Defend') {
+  } else if (targetAction === 'Defend' || targetAction === 'Fold') {
     handHint = 'Fold - tap the safest tile';
+  } else if (targetAction === 'Push') {
+    handHint = 'Push - tap the tile that keeps the hand';
   } else if (kanTile) {
     handHint = 'Tap a tile to discard, or arm Call Kan';
   }

@@ -3782,3 +3782,98 @@ fn test_grade_shows_mortals_riichi_declaration() {
     assert_eq!(grade["mortal"]["recommended_discard"], discard);
     assert_eq!(grade["mortal"]["agrees"], true);
 }
+
+/// The ch. 8.1 push/fold lesson: the payload asks one of two questions about
+/// the same 1-away shape, and both answers are ordinary tile discards.
+#[wasm_bindgen_test]
+fn test_push_or_fold_payload() {
+    let mut saw_push = false;
+    let mut saw_fold = false;
+
+    for run in 0..40 {
+        let json_output = generate_puzzle("push_or_fold".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}"));
+
+        assert_eq!(val["category"], "push_or_fold");
+        assert_eq!(val["shanten"], 1, "the hand must be 1-away");
+        assert_eq!(val["can_riichi"], false);
+        assert_eq!(val["riichi_sticks"], 1);
+
+        let players = val["players"].as_array().expect("players array");
+        assert_eq!(players.len(), 4);
+        let human = &players[0];
+        assert_eq!(human["is_human"], true);
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        let drawn = human["draw"].as_str().expect("the human has drawn");
+
+        // Exactly one opponent has declared Riichi, on the last river tile.
+        let threats: Vec<&serde_json::Value> = players
+            .iter()
+            .filter(|player| player["is_riichi"] == true)
+            .collect();
+        assert_eq!(threats.len(), 1, "run {run}");
+        let discards = threats[0]["discards"].as_array().unwrap();
+        assert_eq!(
+            threats[0]["riichi_discard_index"].as_u64(),
+            Some(discards.len() as u64 - 1)
+        );
+        assert_eq!(discards.last().unwrap()["is_riichi"], true);
+
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("the answer names a discard");
+        assert!(
+            val["tiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|tile| tile.as_str() == Some(answer)),
+            "run {run}: the answer must be in the hand"
+        );
+
+        match val["target_action"].as_str().expect("target action") {
+            "Push" => {
+                saw_push = true;
+                assert_eq!(val["correct_action"]["type"], "dama");
+                assert_eq!(answer, drawn, "pushing keeps the 13-tile core");
+                assert!(
+                    val["book_rationale"]["rules"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|rule| rule["id"] == "mangan_rank_d"),
+                    "run {run}: the mangan Rank D exception must be cited"
+                );
+            }
+            "Fold" => {
+                saw_fold = true;
+                assert_eq!(val["correct_action"]["type"], "fold");
+                assert_ne!(answer, drawn, "folding throws a block tile");
+                assert!(
+                    val["book_rationale"]["rules"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|rule| rule["id"] == "betaori"),
+                    "run {run}: the fold rule must be cited"
+                );
+            }
+            other => panic!("run {run}: unexpected target action {other}"),
+        }
+
+        assert_eq!(val["book_rationale"]["source"]["chapter"], 8);
+        assert_eq!(val["book_rationale"]["source"]["source_line"], 23);
+
+        let total_score: i64 = players
+            .iter()
+            .map(|player| player["score"].as_i64().expect("score int"))
+            .sum();
+        assert_eq!(total_score, 100_000);
+    }
+
+    assert!(saw_push, "the push cell must be generated");
+    assert!(saw_fold, "the fold cell must be generated");
+}
