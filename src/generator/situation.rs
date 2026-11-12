@@ -16,6 +16,7 @@
 //! | `dama_expensive_hand` | the hand value band: 7700 or haneman (ch7:569) |
 //! | `chiitoitsu_riichi_vs_dama` | Riichi with its justification, or dama |
 //! | `push_or_fold` | which ch. 8.1 cell: mangan + perfect wait, or cheap bad wait |
+//! | `honitsu_decision` | which ch. 5.4 cell: commit, already 5200, or honitsu-only |
 //!
 //! The value is drawn once per puzzle request ([`super::sample_situation`])
 //! and then handed to [`Situation::fill`] on every attempt. That is what keeps
@@ -35,6 +36,7 @@ use crate::state::GameState;
 use super::chiitoitsu_riichi_vs_dama::{self, Target as ChiitoitsuTarget};
 use super::dama_bad_wait::{self, Target as BadWaitTarget};
 use super::dama_expensive_hand::{self, Target as ExpensiveHandTarget};
+use super::honitsu_decision::{self, Variant as HonitsuTarget};
 use super::push_or_fold::{self, Target as PushOrFoldTarget};
 use super::riichi_judgement::{self, judgement::Conditions};
 
@@ -55,6 +57,8 @@ pub(crate) enum Situation {
     Chiitoitsu(ChiitoitsuTarget),
     /// Ch. 8.1's push/fold box, isolated on its 1-away cell.
     PushOrFold(PushOrFoldTarget),
+    /// Ch. 5.4's honitsu decision: commit, or play for efficiency.
+    HonitsuDecision(HonitsuTarget),
 }
 
 impl Situation {
@@ -77,6 +81,9 @@ impl Situation {
                 chiitoitsu_riichi_vs_dama::generate_with_target(category, target)
             }
             Self::PushOrFold(target) => push_or_fold::generate_with_target(category, target),
+            Self::HonitsuDecision(target) => {
+                honitsu_decision::generate_with_target(category, target)
+            }
         }
     }
 
@@ -93,6 +100,7 @@ impl Situation {
             Self::DamaExpensiveHand(target) => target.label().to_string(),
             Self::Chiitoitsu(target) => target.label(),
             Self::PushOrFold(target) => target.label().to_string(),
+            Self::HonitsuDecision(target) => target.label().to_string(),
         }
     }
 }

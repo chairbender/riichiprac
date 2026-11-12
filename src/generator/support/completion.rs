@@ -17,16 +17,20 @@
 //! can still reach: ch3:506 ("it will ultimately become a single closed-wait
 //! protorun when this block remains incomplete when the hand is ready") and
 //! ch3:523 ("we should keep it and break the double closed shape instead").
-//! `ryankan_break` uses the 1-away walk; `nobetan_keep` uses the 2-away walk to
-//! compare the waits the kept shape can still reach with the waits the broken
-//! hand can: the book's claim is that breaking a stretched single fills the
-//! hand with "closed-wait or edge-wait" protoruns (ch3:662), so the kept shape
-//! must leave strictly more side-wait completions.
+//! `ryankan_break` and `perfect_one_away` use the 1-away walk; `nobetan_keep`
+//! uses the 2-away walk to compare the waits the kept shape can still reach
+//! with the waits the broken hand can: the book's claim is that breaking a
+//! stretched single fills the hand with "closed-wait or edge-wait" protoruns
+//! (ch3:662), so the kept shape must leave strictly more side-wait completions.
+//!
+//! [`every_draw_reaches_side_wait`] turns the 1-away walk into the book's test
+//! for a perfect 1-away hand: it passes only when *every* tile the hand accepts
+//! leaves at least one discard that reaches tenpai on a side wait.
 
 use agari::hand::{HandStructure, Meld, decompose_hand};
 use agari::parse::to_counts;
 use agari::shanten::{calculate_shanten, calculate_ukeire};
-use agari::tile::Tile;
+use agari::tile::{Suit, Tile};
 
 /// The shape of a winning wait, in the book's vocabulary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -259,6 +263,228 @@ pub fn side_wait_routes(tiles: &[Tile]) -> usize {
     lines.iter().filter(|line| line.has_side_wait()).count()
 }
 
+/// True when every way the hand can become ready can still choose a side wait.
+///
+/// This is Riichi Book 1's test for a 1-away hand's wait. ch3:389 says of the
+/// perfect shape that "no matter how a hand becomes ready, you will
+/// \emph{always} have the option to choose side wait as the final wait", and
+/// ch8:68 repeats it as the rule for judging a 1-away hand: "your judgement
+/// should be based on the \emph{best} possible wait pattern you can choose when
+/// the hand becomes ready in the \emph{worst} possible manner". A hand passes
+/// only when *every* acceptance tile has at least one discard that leaves
+/// tenpai on a side wait (see [`completion_lines`]).
+pub fn every_draw_reaches_side_wait(tiles: &[Tile]) -> bool {
+    let lines = completion_lines(tiles);
+    if lines.is_empty() {
+        return false;
+    }
+
+    let mut draws: Vec<Tile> = lines.iter().map(|line| line.draw).collect();
+    draws.sort();
+    draws.dedup();
+
+    draws.iter().all(|draw| {
+        lines
+            .iter()
+            .filter(|line| line.draw == *draw)
+            .any(|line| line.has_side_wait())
+    })
+}
+
+/// The block partition Riichi Book 1 calls perfect 1-away.
+///
+/// > When a 1-away hand has two side-wait protoruns and two pairs, it is called
+/// > {\bf perfect 1-away}. — ch3:382
+///
+/// A 13-tile hand cannot hold two sets, two side-wait protoruns and two pairs
+/// side by side (that is 14 tiles), so exactly one tile is shared: one side wait
+/// is also the pair. That shared three-tile block is the "protorun plus one"
+/// shape (`233` or `334`), and the partition is:
+///
+/// - two completed sets (runs or triplets),
+/// - one standalone side-wait protorun,
+/// - one standalone pair,
+/// - one protorun plus one, whose protorun is a side wait and whose duplicated
+///   tile is the second pair.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PerfectShape {
+    /// The two completed sets, as the tiles each one uses.
+    pub sets: Vec<[Tile; 3]>,
+    /// The standalone side-wait protorun.
+    pub ryanmen: [Tile; 2],
+    /// The standalone pair.
+    pub pair: [Tile; 2],
+    /// The protorun plus one: a side-wait protorun sharing its end with a pair.
+    pub shared: [Tile; 3],
+}
+
+impl PerfectShape {
+    /// The two side-wait protoruns the book counts, as tile pairs.
+    pub fn protoruns(&self) -> [[Tile; 2]; 2] {
+        [self.ryanmen, shared_ryanmen(self.shared)]
+    }
+}
+
+/// The side-wait protorun inside a protorun-plus-one block.
+fn shared_ryanmen(shared: [Tile; 3]) -> [Tile; 2] {
+    // 233 -> 23, 334 -> 34: drop one copy of the duplicated end.
+    let [first, second, third] = shared;
+    if first == second {
+        [second, third]
+    } else {
+        [first, second]
+    }
+}
+
+/// Finds the book's perfect 1-away partition of a 13-tile hand, if it has one.
+///
+/// Structural only: it says the hand can be read as the book's two side-wait
+/// protoruns plus two pairs plus completed sets. A hand can pass this and still
+/// fail [`every_draw_reaches_side_wait`] when its blocks interfere in one suit,
+/// so lessons check both.
+pub fn perfect_one_away_shape(tiles: &[Tile]) -> Option<PerfectShape> {
+    if tiles.len() != 13 {
+        return None;
+    }
+
+    let mut sorted = tiles.to_vec();
+    sorted.sort();
+
+    for first in set_candidates(&sorted) {
+        let Some(without_first) = without_tiles(&sorted, &first) else {
+            continue;
+        };
+        for second in set_candidates(&without_first) {
+            let Some(rest) = without_tiles(&without_first, &second) else {
+                continue;
+            };
+            if rest.len() != 7 {
+                continue;
+            }
+            let Some((shared, ryanmen, pair)) = split_shared_ryanmen_pair(&rest) else {
+                continue;
+            };
+            return Some(PerfectShape {
+                sets: vec![first, second],
+                ryanmen,
+                pair,
+                shared,
+            });
+        }
+    }
+
+    None
+}
+
+/// True when the hand is the book's perfect 1-away: the structure *and* the
+/// every-completion side wait.
+pub fn is_perfect_one_away(tiles: &[Tile]) -> bool {
+    perfect_one_away_shape(tiles).is_some() && every_draw_reaches_side_wait(tiles)
+}
+
+/// Every completed set (run or triplet) that `tiles` can supply.
+fn set_candidates(tiles: &[Tile]) -> Vec<[Tile; 3]> {
+    let mut sets = Vec::new();
+
+    for suit in [Suit::Man, Suit::Pin, Suit::Sou] {
+        for start in 1..=7u8 {
+            let run = [
+                Tile::suited(suit, start),
+                Tile::suited(suit, start + 1),
+                Tile::suited(suit, start + 2),
+            ];
+            if without_tiles(tiles, &run).is_some() {
+                sets.push(run);
+            }
+        }
+    }
+
+    let mut distinct = tiles.to_vec();
+    distinct.sort();
+    distinct.dedup();
+    for tile in distinct {
+        if tiles.iter().filter(|candidate| **candidate == tile).count() >= 3 {
+            sets.push([tile, tile, tile]);
+        }
+    }
+
+    sets
+}
+
+/// Splits seven tiles into a protorun plus one, a side-wait protorun and a pair.
+fn split_shared_ryanmen_pair(rest: &[Tile]) -> Option<([Tile; 3], [Tile; 2], [Tile; 2])> {
+    for shared in shared_candidates(rest) {
+        let Some(left) = without_tiles(rest, &shared) else {
+            continue;
+        };
+        if left.len() != 4 {
+            continue;
+        }
+        for ryanmen in ryanmen_candidates(&left) {
+            let Some(pair) = without_tiles(&left, &ryanmen) else {
+                continue;
+            };
+            if pair.len() == 2 && pair[0] == pair[1] {
+                return Some((shared, ryanmen, [pair[0], pair[1]]));
+            }
+        }
+    }
+
+    None
+}
+
+/// Every protorun-plus-one block (`233`, `334`, ...) seven tiles can supply.
+///
+/// The pair is an end of the side wait, so the wait stays two-sided only for
+/// ranks 2-7: `122` and `889` would be edge waits, not side waits.
+fn shared_candidates(tiles: &[Tile]) -> Vec<[Tile; 3]> {
+    let mut blocks = Vec::new();
+    for suit in [Suit::Man, Suit::Pin, Suit::Sou] {
+        for value in 2..=7u8 {
+            let low_pair = [
+                Tile::suited(suit, value),
+                Tile::suited(suit, value),
+                Tile::suited(suit, value + 1),
+            ];
+            let high_pair = [
+                Tile::suited(suit, value),
+                Tile::suited(suit, value + 1),
+                Tile::suited(suit, value + 1),
+            ];
+            for block in [low_pair, high_pair] {
+                if without_tiles(tiles, &block).is_some() {
+                    blocks.push(block);
+                }
+            }
+        }
+    }
+    blocks
+}
+
+/// Every two-sided protorun (ranks 2-7) the tiles can supply.
+fn ryanmen_candidates(tiles: &[Tile]) -> Vec<[Tile; 2]> {
+    let mut waits = Vec::new();
+    for suit in [Suit::Man, Suit::Pin, Suit::Sou] {
+        for value in 2..=7u8 {
+            let wait = [Tile::suited(suit, value), Tile::suited(suit, value + 1)];
+            if without_tiles(tiles, &wait).is_some() {
+                waits.push(wait);
+            }
+        }
+    }
+    waits
+}
+
+/// Removes one copy of each tile in `remove`, or `None` if one is missing.
+fn without_tiles(tiles: &[Tile], remove: &[Tile]) -> Option<Vec<Tile>> {
+    let mut remaining = tiles.to_vec();
+    for tile in remove {
+        let index = remaining.iter().position(|candidate| candidate == tile)?;
+        remaining.remove(index);
+    }
+    Some(remaining)
+}
+
 /// Classifies one winning tile against the tenpai hand it completes.
 ///
 /// A tile can be read more than once (the winning tile may be the pair in one
@@ -440,5 +666,39 @@ mod tests {
         assert!(two_step_lines(&hand).is_empty());
         assert_eq!(side_wait_routes(&hand), 0);
         assert!(best_completion(&hand).is_none());
+    }
+
+    #[test]
+    fn the_book_example_is_the_perfect_one_away_shape() {
+        // Riichi Book 1's own example (ch3:382): 233m 123p 66p 67s 555z.
+        let hand = tiles("233m123p66p67s555z");
+        assert_eq!(hand.len(), 13);
+
+        let shape = perfect_one_away_shape(&hand).expect("the book's example must decompose");
+        assert_eq!(shape.sets.len(), 2);
+        assert_eq!(
+            shape.shared,
+            [tiles("2m")[0], tiles("3m")[0], tiles("3m")[0]]
+        );
+        assert!(shape.pair[0] == shape.pair[1]);
+        assert!(every_draw_reaches_side_wait(&hand));
+        assert!(is_perfect_one_away(&hand));
+    }
+
+    #[test]
+    fn a_hand_with_one_pair_is_not_the_book_shape() {
+        // Two side waits and one pair plus a float: good wait, but not the
+        // book's two-pair definition.
+        let hand = tiles("23555m456p3499s2z");
+        assert!(every_draw_reaches_side_wait(&hand));
+        assert!(perfect_one_away_shape(&hand).is_none());
+        assert!(!is_perfect_one_away(&hand));
+    }
+
+    #[test]
+    fn a_kanchan_instead_of_a_side_wait_is_not_perfect() {
+        // Same block count, but the second protorun is a closed wait.
+        let hand = tiles("233m123p66p57s555z");
+        assert!(perfect_one_away_shape(&hand).is_none());
     }
 }
