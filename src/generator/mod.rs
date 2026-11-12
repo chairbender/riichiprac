@@ -255,6 +255,13 @@ const BOOK_CH9_TIPS: BookSection = BookSection {
     section_title: "Miscellaneous tips for melding",
 };
 
+const BOOK_CH5_PINFU: BookSection = BookSection {
+    chapter: 5,
+    chapter_title: "Pursuing yaku",
+    section: 3,
+    section_title: "How to get pinfu",
+};
+
 /// How an answer is graded for a lesson.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScenarioGrading {
@@ -584,6 +591,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["yaku", "pinfu", "head", "discard", "honor"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH5_PINFU),
     },
 ];
 
