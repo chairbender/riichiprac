@@ -6,6 +6,9 @@
 //!   closed shape) break lesson, the pair count (avoid three pairs in a
 //!   closed hand) lesson, and its open-hand companion (keep three pairs when
 //!   a Pon is planned).
+//! - `yaku`: the ch. 5 yaku-pursuit decisions. `sanshoku_pursuit` is the
+//!   floating method: keep the redundant tile for sanshoku only when the hand
+//!   has no other yaku or dora.
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
 //! - `riichi_judgement`: ch. 7's general three-condition Riichi/dama rule.
 //! - `dama_bad_wait`: ch. 7's bad-wait box: riichi with three or more live
@@ -68,6 +71,7 @@ mod situation;
 mod suji_trap_riichi;
 mod support;
 mod wind_discard_order;
+mod yaku;
 
 use agari::tile::Tile;
 use serde::Serialize;
@@ -81,6 +85,7 @@ pub(crate) use support::analysis::floating_quad_acceptance;
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
+pub(crate) use yaku::sanshoku_pursuit::{SanshokuFacts, facts as sanshoku_facts};
 
 pub use mortal_agreement::{
     AgreementRejection, AgreementRejections, MortalAgreementOptions, MortalAgreementReport,
@@ -92,6 +97,7 @@ pub type PuzzleResponse = GameState;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScenarioCategory {
     TileEfficiency,
+    YakuDecision,
     RiichiDecision,
     KanDecision,
     AiDecision,
@@ -103,6 +109,7 @@ impl ScenarioCategory {
     pub fn as_str(self) -> &'static str {
         match self {
             ScenarioCategory::TileEfficiency => "tile_efficiency",
+            ScenarioCategory::YakuDecision => "yaku_decision",
             ScenarioCategory::RiichiDecision => "riichi_decision",
             ScenarioCategory::KanDecision => "kan_decision",
             ScenarioCategory::AiDecision => "ai_decision",
@@ -212,6 +219,18 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
             "shape",
             "pon",
             "open_hand",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
+        id: ScenarioId::SanshokuPursuit,
+        label: "Sanshoku Pursuit",
+        description: "Ch. 5.1 floating method: keep the floating tile for sanshoku only when \
+                      the hand has no other yaku or dora; otherwise take the side-wait pinfu.",
+        category: ScenarioCategory::YakuDecision,
+        tags: &[
+            "yaku", "sanshoku", "pinfu", "floating", "dora", "tanyao", "discard",
         ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
@@ -462,6 +481,7 @@ pub enum ScenarioId {
     RyankanBreak,
     PairCount,
     PairCountOpen,
+    SanshokuPursuit,
     ChiitoitsuRiichiVsDama,
     RiichiJudgement,
     DamaBadWait,
@@ -492,6 +512,7 @@ impl ScenarioId {
         ScenarioId::RyankanBreak,
         ScenarioId::PairCount,
         ScenarioId::PairCountOpen,
+        ScenarioId::SanshokuPursuit,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::RiichiJudgement,
         ScenarioId::DamaBadWait,
@@ -522,6 +543,7 @@ impl ScenarioId {
             ScenarioId::RyankanBreak => "ryankan_break",
             ScenarioId::PairCount => "pair_count",
             ScenarioId::PairCountOpen => "pair_count_open",
+            ScenarioId::SanshokuPursuit => "sanshoku_pursuit",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::DamaBadWait => "dama_bad_wait",
@@ -553,6 +575,7 @@ impl ScenarioId {
             "ryankan_break" => Some(ScenarioId::RyankanBreak),
             "pair_count" => Some(ScenarioId::PairCount),
             "pair_count_open" => Some(ScenarioId::PairCountOpen),
+            "sanshoku_pursuit" => Some(ScenarioId::SanshokuPursuit),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
@@ -585,6 +608,7 @@ impl ScenarioId {
             ScenarioId::RyankanBreak => block_theory::ryankan_break::generate(category),
             ScenarioId::PairCount => block_theory::pair_count::generate(category),
             ScenarioId::PairCountOpen => block_theory::pair_count_open::generate(category),
+            ScenarioId::SanshokuPursuit => yaku::sanshoku_pursuit::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::DamaBadWait => dama_bad_wait::generate(category),

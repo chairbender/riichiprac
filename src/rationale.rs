@@ -22,9 +22,10 @@ use agari::shanten::{
     calculate_shanten, calculate_shanten_with_melds, calculate_ukeire, calculate_ukeire_with_melds,
 };
 use agari::tile::{Suit, Tile};
+use agari::yaku::Yaku;
 
 use crate::display::format_tile_for_display;
-use crate::generator::floating_quad_acceptance;
+use crate::generator::{SanshokuFacts, floating_quad_acceptance, sanshoku_facts};
 use crate::safety::{SafetyFacts, SafetyRank, in_open_hand_neighbourhood};
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, MeldType, RiichiTrigger,
@@ -187,6 +188,17 @@ fn ch4_blocks(line: u32, needle: &str) -> Citation {
         "The five-block method",
         "Exercises: building a block",
         "RiichiBook1-ch4-five.tex",
+        line,
+        needle,
+    )
+}
+
+fn ch5(section: &str, line: u32, needle: &str) -> Citation {
+    citation(
+        5,
+        "Pursuing yaku",
+        section,
+        "RiichiBook1-ch5-yaku.tex",
         line,
         needle,
     )
@@ -1074,6 +1086,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
             567,
             "discard a tile in the same suit",
         )),
+        "sanshoku_pursuit" => Some(ch5("Floating", 74, "Only when there is no other")),
         _ => None,
     }
 }
@@ -1091,6 +1104,10 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     }
     if let Some(push_fold) = push_or_fold_rationale(state) {
         return Some(push_fold);
+    }
+
+    if state.category == "sanshoku_pursuit" {
+        return sanshoku_rationale(state);
     }
 
     if state.category == "wind_discard_order" {
@@ -1882,6 +1899,194 @@ fn acceptance_without(state: &GameState, tile: Tile) -> Option<u8> {
     let index = tiles.iter().position(|held| *held == tile)?;
     tiles.remove(index);
     Some(crate::generator::evaluate_hand(&tiles).ukeire_total)
+}
+
+/// The ch. 5.1 floating sanshoku gate: keep the redundant tile only when the
+/// hand has no other yaku and no dora.
+///
+/// The book's own hand is the second floating example: after drawing 5s the
+/// hand is tenpai with an extra tile, and discarding 6m keeps the closed-wait
+/// sanshoku of 345 while discarding 3m keeps the side-wait pinfu. The gate is
+/// repeated for the double-closed shape (ch5:129), and the switching method
+/// adds the no-step-back rule (ch5:110).
+fn sanshoku_rationale(state: &GameState) -> Option<BookRationale> {
+    let facts = sanshoku_facts(state)?;
+    let answer = format_tile_for_display(&facts.answer.to_string(), false);
+    let floating = format_tile_for_display(&facts.floating_tile.to_string(), false);
+    let chase = format_tile_for_display(&facts.chase_discard.to_string(), false);
+    let efficiency = format_tile_for_display(&facts.efficiency_discard.to_string(), false);
+    let suit = suit_name(facts.sanshoku_suit);
+    let run = format!(
+        "{}{}{}",
+        facts.run_value,
+        facts.run_value + 1,
+        facts.run_value + 2
+    );
+
+    let value_text = sanshoku_value_text(&facts);
+    let chase_waits = format_waits(&facts.chase_waits);
+    let efficiency_waits = format_waits(&facts.efficiency_waits);
+
+    let mut rules = vec![BookRule {
+        id: "floating".to_string(),
+        rule: "The floating method keeps a redundant tile that can complete the same run \
+               in the third suit for sanshoku."
+            .to_string(),
+        quote: "However, if we keep it and discard {\\LARGE\\bei} instead, we can hope to get \
+                {\\jap sanshoku} of 345."
+            .to_string(),
+        citation: ch5("Floating", 62, "we can hope to get"),
+        applies: format!(
+            "The hand holds {floating} beside {chase}; keeping the float can complete the \
+             {run} run in {suit} for sanshoku."
+        ),
+    }];
+
+    if facts.chases {
+        rules.push(BookRule {
+            id: "no_other_value".to_string(),
+            rule: "Chase the closed-wait sanshoku only when the hand has no other yaku and \
+                   no dora; otherwise the side-wait pinfu is the book's line."
+                .to_string(),
+            quote: "Only when there is no other {\\jap yaku} or {\\jap dora} in a {\\jap pinfu} \
+                    hand, it is OK to choose closed-wait {\\jap sanshoku} over side-wait \
+                    {\\jap pinfu}."
+                .to_string(),
+            citation: ch5("Floating", 74, "Only when there is no other"),
+            applies: format!(
+                "The hand has no dora and no yaku beyond the pinfu/sanshoku choice, so \
+                 discarding {answer} keeps the float and chases the closed wait on {chase_waits}. \
+                 The side-wait alternative on {efficiency_waits} is only pinfu."
+            ),
+        });
+    } else {
+        rules.push(BookRule {
+            id: "other_value".to_string(),
+            rule: "With at least one dora or another yaku, give up sanshoku and take the \
+                   side-wait pinfu."
+                .to_string(),
+            quote: "If a hand has at least one {\\jap dora} or {\\jap tanyao} (All Simples), we \
+                    should discard {\\LARGE\\wan{3}} to choose a side wait {\\jap pinfu} hand."
+                .to_string(),
+            citation: ch5("Floating", 74, "If a hand has at least one"),
+            applies: format!(
+                "The hand has {value_text}, so the book discards {efficiency} for the side wait on \
+                 {efficiency_waits} instead of chasing the sanshoku wait on {chase_waits}."
+            ),
+        });
+    }
+
+    rules.push(BookRule {
+        id: "one_away_only".to_string(),
+        rule: "Never pursue sanshoku when switching would revert a 1-away hand to 2-away."
+            .to_string(),
+        quote: "You should not pursue {\\jap sanshoku} if switching requires reverting a 1-away \
+                hand to 2-away."
+            .to_string(),
+        citation: ch5("Switching", 110, "reverting a 1-away hand to 2-away"),
+        applies: format!(
+            "The chase discard {chase} leaves the hand tenpai, so the chase never steps the \
+             hand back to 2-away."
+        ),
+    });
+
+    rules.push(BookRule {
+        id: "same_gate_ryankan".to_string(),
+        rule: "The book repeats the same no-other-yaku-or-dora gate for the double-closed \
+               sanshoku shape."
+            .to_string(),
+        quote: "Only if the hand has no other {\\jap yaku} or {\\jap dora}, it is OK to discard \
+                {\\LARGE\\suo{2}} to aim for {\\jap sanshoku}."
+            .to_string(),
+        citation: ch5("Double closed shape", 129, "Only if the hand has no other"),
+        applies: "This drill uses the floating shape; the companion rule shows the gate is the \
+                  book's general sanshoku rule, not a quirk of one example."
+            .to_string(),
+    });
+
+    let summary = if facts.chases {
+        format!(
+            "Chase sanshoku: with no other yaku or dora, keep the floating {floating} and \
+             discard {answer} for the closed-wait {run} sanshoku on {chase_waits}."
+        )
+    } else {
+        format!(
+            "Take the side-wait pinfu: the hand has {value_text}, so discard {answer} for the \
+             side wait on {efficiency_waits} instead of chasing sanshoku on {chase_waits}."
+        )
+    };
+
+    Some(BookRationale {
+        summary,
+        rules,
+        absent: Vec::new(),
+        source: ch5("Floating", 74, "Only when there is no other"),
+        caveats: vec![
+            "The book warns that keeping the float is risky: an opponent's Riichi forces you to \
+             discard either the floating tile or the other end later."
+                .to_string(),
+            "The resulting hand is tenpai, so Riichi is legal; this drill grades the discard \
+             choice, not the declaration."
+                .to_string(),
+        ],
+    })
+}
+
+fn sanshoku_value_text(facts: &SanshokuFacts) -> String {
+    let mut values = Vec::new();
+    if facts.dora > 0 {
+        values.push(if facts.dora == 1 {
+            "a dora".to_string()
+        } else {
+            format!("{} dora", facts.dora)
+        });
+    }
+    for yaku in &facts.other_yaku {
+        values.push(yaku_name(*yaku).to_string());
+    }
+    if values.is_empty() {
+        "no other yaku or dora".to_string()
+    } else {
+        values.join(" and ")
+    }
+}
+
+fn yaku_name(yaku: Yaku) -> &'static str {
+    match yaku {
+        Yaku::Tanyao => "tanyao",
+        Yaku::Iipeikou => "iipeiko",
+        Yaku::Chanta => "chanta",
+        Yaku::Junchan => "junchan",
+        Yaku::Ittsu => "ittsu",
+        Yaku::Honitsu => "honitsu",
+        Yaku::Chinitsu => "chinitsu",
+        Yaku::Yakuhai(_) => "a yakuhai",
+        Yaku::Toitoi => "toitoi",
+        Yaku::SanshokuDoukou => "sanshoku doukou",
+        Yaku::SanAnkou => "sanankou",
+        Yaku::Honroutou => "honroutou",
+        Yaku::Shousangen => "shousangen",
+        _ => "another yaku",
+    }
+}
+
+fn suit_name(suit: Suit) -> &'static str {
+    match suit {
+        Suit::Man => "manzu (characters)",
+        Suit::Pin => "pinzu (dots)",
+        Suit::Sou => "souzu (bamboo)",
+    }
+}
+
+fn format_waits(waits: &[Tile]) -> String {
+    if waits.is_empty() {
+        return "no live winning tiles".to_string();
+    }
+    waits
+        .iter()
+        .map(|tile| format_tile_for_display(&tile.to_string(), false))
+        .collect::<Vec<_>>()
+        .join(" / ")
 }
 
 /// The ch. 9 seating tip: throw the right player's valueless wind first.
@@ -4119,6 +4324,64 @@ mod tests {
     }
 
     #[test]
+    fn sanshoku_pursuit_cites_the_no_other_yaku_or_dora_gate() {
+        let mut saw_chase = false;
+        let mut saw_efficiency = false;
+
+        for _ in 0..80 {
+            let state = generate_puzzle("sanshoku_pursuit").expect("sanshoku must generate");
+            let rationale = rationale_for(&state).expect("sanshoku needs a rationale");
+            let facts = sanshoku_facts(&state).expect("the state has the floating shape");
+
+            assert_eq!(rationale.source.chapter, 5);
+            assert_eq!(rationale.source.section, "Floating");
+            assert_eq!(rationale.source.source_line, 74);
+            assert_eq!(
+                rationale.source.source_needle,
+                "Only when there is no other"
+            );
+            assert!(rationale.rules.iter().all(|rule| {
+                rule.citation.chapter == 5
+                    && !rule.citation.source_needle.is_empty()
+                    && !rule.applies.is_empty()
+            }));
+
+            let ids: Vec<&str> = rationale
+                .rules
+                .iter()
+                .map(|rule| rule.id.as_str())
+                .collect();
+            assert!(ids.contains(&"floating"), "{ids:?}");
+            assert!(ids.contains(&"one_away_only"), "{ids:?}");
+            assert!(ids.contains(&"same_gate_ryankan"), "{ids:?}");
+
+            if facts.chases {
+                saw_chase = true;
+                assert!(!facts.has_other_value);
+                assert!(ids.contains(&"no_other_value"), "{ids:?}");
+                assert!(!ids.contains(&"other_value"), "{ids:?}");
+                assert!(rationale.summary.contains("Chase"), "{}", rationale.summary);
+            } else {
+                saw_efficiency = true;
+                assert!(facts.has_other_value);
+                assert!(ids.contains(&"other_value"), "{ids:?}");
+                assert!(!ids.contains(&"no_other_value"), "{ids:?}");
+                assert!(
+                    rationale.summary.contains("side-wait"),
+                    "{}",
+                    rationale.summary
+                );
+            }
+        }
+
+        assert!(saw_chase, "the no-value chase branch must be generated");
+        assert!(
+            saw_efficiency,
+            "the dora/tanyao efficiency branch must be generated"
+        );
+    }
+
+    #[test]
     fn pair_count_hand_cites_the_three_pair_arithmetic() {
         let state = generate_puzzle("pair_count").expect("pair count must generate");
 
@@ -4230,6 +4493,7 @@ mod tests {
             "ryankan_break",
             "pair_count",
             "pair_count_open",
+            "sanshoku_pursuit",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -4263,6 +4527,7 @@ mod tests {
             "protorun_priority",
             "pair_count",
             "pair_count_open",
+            "sanshoku_pursuit",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -4704,6 +4969,7 @@ mod tests {
             "ryankan_break",
             "pair_count",
             "pair_count_open",
+            "sanshoku_pursuit",
             "riichi_judgement",
             "dama_bad_wait",
             "dama_genbutsu_wait",
