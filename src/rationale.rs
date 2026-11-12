@@ -1946,6 +1946,14 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
             .unwrap_or_default();
         let drawn_display = format_tile_for_display(&drawn, false);
         let drawn_tile = Tile::try_from(drawn.as_str()).ok();
+        let equivalent_code = state.equivalent_tiles.first().cloned();
+        let equivalent_tile = equivalent_code
+            .as_deref()
+            .and_then(|code| Tile::try_from(code).ok());
+        let equivalent = equivalent_code
+            .as_deref()
+            .map(|code| format_tile_for_display(code, false))
+            .unwrap_or_else(|| "the other float".to_string());
         let pairs = pair_codes(state)
             .iter()
             .map(|code| format_tile_for_display(code, false))
@@ -1968,7 +1976,48 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         let rival_pon = drawn_tile
             .and_then(|tile| pon_acceptance(state, tile, target_tile))
             .unwrap_or_default();
+        let equivalent_closed = equivalent_tile
+            .and_then(|tile| acceptance_without(state, tile))
+            .unwrap_or(answer_closed);
+        let equivalent_pon = equivalent_tile
+            .and_then(|tile| pon_acceptance(state, tile, target_tile))
+            .unwrap_or(answer_pon);
+        let equivalent_ties = equivalent_tile.is_some()
+            && equivalent_closed == answer_closed
+            && equivalent_pon == answer_pon;
         let live = live_target_copies(state, &target_code);
+
+        // The report asked why the drawn pair tile is not an accepted answer.
+        // The two floats tie at both counts; the pair break only wins on the
+        // closed oracle, which is the comparison the Pon reverses. State it
+        // with the hand's own numbers instead of asserting the side-wait rule.
+        let equivalent_line = match equivalent_tile {
+            Some(_) if equivalent_ties => format!(
+                "discarding {equivalent} leaves the same {equivalent_closed} tiles closed \
+                 and {equivalent_pon} after the Pon, so it is graded as the same answer"
+            ),
+            Some(_) => format!(
+                "discarding {equivalent} leaves {equivalent_closed} tiles closed and \
+                 {equivalent_pon} after the Pon"
+            ),
+            None => "this report lists no equivalent float".to_string(),
+        };
+        let summary_tail = if equivalent_ties {
+            format!("discard {answer} or {equivalent} (the same two floats in either order)")
+        } else {
+            format!("discard {answer}")
+        };
+        let closed_wait_line = if equivalent_tile.is_some() {
+            format!(
+                "Discarding {answer} breaks a closed wait and leaves the side-wait protorun \
+                 whole; the equivalent {equivalent} breaks the other closed wait."
+            )
+        } else {
+            format!(
+                "Discarding {answer} breaks a closed wait and leaves the side-wait protorun \
+                 whole."
+            )
+        };
 
         let rules = vec![
             BookRule {
@@ -1998,7 +2047,8 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
                 citation: ch3_pairs(351, "two-pair hand after we call"),
                 applies: format!(
                     "After the Pon the kept pairs are {remaining_pairs}, and the hand still \
-                     accepts {answer_pon} tiles; breaking a pair now leaves {rival_pon}."
+                     accepts {answer_pon} tiles. Breaking a pair with the drawn \
+                     {drawn_display} leaves {rival_pon} and only one pair."
                 ),
             },
             BookRule {
@@ -2010,9 +2060,9 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
                 quote: "The net tile acceptance gain will be negative".to_string(),
                 citation: ch3_pairs(331, "The net tile acceptance gain will be negative"),
                 applies: format!(
-                    "Closed, the pair break accepts {rival_closed} tiles and the book's \
-                     discard {answer_closed}; the Pon's {live} live {target} copies are the \
-                     value that reverses it."
+                    "Closed, the pair break {drawn_display} accepts {rival_closed} tiles \
+                     against the book's discard {answer_closed}; the Pon's {live} live \
+                     {target} copies are the value that reverses it."
                 ),
             },
             BookRule {
@@ -2025,16 +2075,34 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
                     .to_string(),
                 citation: ch3(205, "can accept twice as many tiles"),
                 applies: format!(
-                    "Discarding {answer} breaks the closed wait and keeps the side wait; \
-                     discarding the drawn {drawn_display} would break the third pair instead."
+                    "{closed_wait_line} The drawn {drawn_display} would break a pair instead, \
+                     which is a different ranking."
+                ),
+            },
+            BookRule {
+                id: "rank_the_remaining_blocks".to_string(),
+                rule: "Once the Pon plan fixes the pairs, the remaining choice is between \
+                       floats, and the book calls the two floats left after the call a free \
+                       choice. The two closed-wait floats are therefore the same answer; the \
+                       pair tile is not one of them."
+                    .to_string(),
+                quote: "we will have a choice between discarding".to_string(),
+                citation: ch3_pairs(361, "we will have a choice between discarding"),
+                applies: format!(
+                    "Discarding {answer} leaves {answer_closed} tiles closed and {answer_pon} \
+                     after the Pon; {equivalent_line}. The drawn {drawn_display} is not \
+                     equivalent: breaking a pair looks better closed ({rival_closed} tiles) \
+                     but leaves only {rival_pon} after the Pon, so it rejects the pair count \
+                     the Pon is planned for."
                 ),
             },
         ];
 
         return Some(BookRationale {
             summary: format!(
-                "Keep three pairs: the {target} pair is a planned Pon, so discard {answer} \
-                 and let the call leave two pairs."
+                "Keep three pairs: the {target} pair is a planned Pon, so {summary_tail} and \
+                 let the call leave two pairs. The drawn {drawn_display} breaks a pair, so it \
+                 is not equivalent."
             ),
             rules,
             absent: Vec::new(),
@@ -2048,9 +2116,9 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
                  a call."
                     .to_string(),
                 format!(
-                    "Discarding the redundant float first is graded as the same answer: it \
-                     discards the same two tiles in the other order. The book names {answer} \
-                     because keeping both floats gives a choice after the Pon."
+                    "Discarding {answer} keeps {answer_closed} tiles closed and {answer_pon} \
+                     after the Pon; {equivalent_line}. The book names {answer} as the discard \
+                     before the call because either order drops the same pair of floats."
                 ),
                 "This is the open-hand companion of `pair_count`, which grades the opposite \
                  discard. The numbers above show the closed oracle preferring that line; the \
@@ -5919,7 +5987,7 @@ mod tests {
 
         let rationale = rationale_for(&state).expect("pair count open needs a rationale");
 
-        assert_eq!(rationale.rules.len(), 4);
+        assert_eq!(rationale.rules.len(), 5);
         assert!(rationale.absent.is_empty());
         assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
         assert_eq!(rationale.source.chapter, 3);
@@ -5944,15 +6012,31 @@ mod tests {
                 "three_pairs_when_ponning",
                 "two_pairs_after_pon",
                 "closed_arithmetic",
-                "keep_the_side_wait"
+                "keep_the_side_wait",
+                "rank_the_remaining_blocks"
             ]
         );
 
         let discard = state.correct_action.tile().expect("answer tile");
+        let discard_name = format_tile_for_display(discard, false);
+        let drawn = state.players[0]
+            .draw
+            .as_deref()
+            .expect("the lesson is a self draw");
+        let drawn_name = format_tile_for_display(drawn, false);
+        let equivalent = state
+            .equivalent_tiles
+            .first()
+            .expect("the other float is an accepted answer")
+            .clone();
+        let equivalent_name = format_tile_for_display(&equivalent, false);
         assert!(
-            rationale.rules[0]
-                .applies
-                .contains(&format_tile_for_display(discard, false)),
+            !state.equivalent_tiles.iter().any(|tile| tile == drawn),
+            "the pair break must not be graded as an accepted answer"
+        );
+
+        assert!(
+            rationale.rules[0].applies.contains(&discard_name),
             "the open-hand rule must name the discard"
         );
         assert!(
@@ -5967,6 +6051,92 @@ mod tests {
                 .as_deref()
                 .is_some_and(|note| note.contains("Pon")),
             "the plan must be visible before the answer"
+        );
+
+        // Grading accepts the equivalent float and rejects the pair break; the
+        // rationale has to explain that split, not merely assert the rule.
+        let answer_acceptance = acceptance_without(&state, Tile::try_from(discard).unwrap())
+            .expect("answer discard must be in the hand");
+        let equivalent_acceptance =
+            acceptance_without(&state, Tile::try_from(equivalent.as_str()).unwrap())
+                .expect("equivalent discard must be in the hand");
+        let rival_acceptance = acceptance_without(&state, Tile::try_from(drawn).unwrap())
+            .expect("the drawn pair tile must be in the hand");
+        let target = Tile::try_from(dragon_pair(&state).expect("dragon pair").as_str()).unwrap();
+        let answer_pon =
+            pon_acceptance(&state, Tile::try_from(discard).unwrap(), target).expect("pon line");
+        let equivalent_pon =
+            pon_acceptance(&state, Tile::try_from(equivalent.as_str()).unwrap(), target)
+                .expect("pon line");
+        let rival_pon =
+            pon_acceptance(&state, Tile::try_from(drawn).unwrap(), target).expect("pon line");
+
+        assert_eq!(answer_acceptance, state.ukeire_total);
+        assert_eq!(
+            equivalent_acceptance, answer_acceptance,
+            "the accepted float must leave the same closed acceptance"
+        );
+        assert_eq!(
+            equivalent_pon, answer_pon,
+            "the accepted float must leave the same post-Pon acceptance"
+        );
+        assert!(
+            rival_acceptance > answer_acceptance,
+            "the closed oracle must prefer breaking the pair; that is the gap the Pon covers"
+        );
+        assert!(
+            rival_pon < answer_pon,
+            "after the Pon the pair break must accept less"
+        );
+
+        let pair_count_after = |code: &str| {
+            let mut remaining = state.tiles.clone();
+            let index = remaining
+                .iter()
+                .position(|tile| tile == code)
+                .expect("discard tile must be in the hand");
+            remaining.remove(index);
+            let mut counts = std::collections::BTreeMap::new();
+            for tile in &remaining {
+                *counts.entry(tile.as_str()).or_insert(0usize) += 1;
+            }
+            counts.values().filter(|count| **count == 2).count()
+        };
+        assert_eq!(pair_count_after(discard), 3);
+        assert_eq!(
+            pair_count_after(drawn),
+            2,
+            "breaking the pair must leave only two pairs before the Pon"
+        );
+
+        // The summary and the ranking rule must name all three competing
+        // discards, with the hand's own numbers for each.
+        for text in [&rationale.summary, &rationale.rules[4].applies] {
+            assert!(
+                text.contains(&discard_name)
+                    && text.contains(&equivalent_name)
+                    && text.contains(&drawn_name),
+                "the explanation must name {discard_name}, {equivalent_name} and {drawn_name}: \
+                 {text}"
+            );
+        }
+        let ranking = &rationale.rules[4];
+        for expected in [
+            format!("leaves {answer_acceptance} tiles closed and {answer_pon} after the Pon"),
+            format!("{equivalent_pon} after the Pon"),
+            format!("({rival_acceptance} tiles)"),
+            format!("leaves only {rival_pon} after the Pon"),
+        ] {
+            assert!(
+                ranking.applies.contains(&expected),
+                "the ranking rule must show {expected:?}: {}",
+                ranking.applies
+            );
+        }
+        assert!(
+            ranking.applies.contains("graded as the same answer"),
+            "the ranking rule must say the equivalent float is graded: {}",
+            ranking.applies
         );
     }
 

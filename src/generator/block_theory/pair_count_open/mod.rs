@@ -20,7 +20,10 @@ use crate::state::GameState;
 /// graded as an ordinary discard. `skeleton::verify_lesson` proves the Pon both
 /// leaves the book line 1-away with two pairs and that the closed-hand ukeire
 /// oracle prefers the opposite discard; the book rationale shows that
-/// comparison instead of asserting the rule.
+/// comparison instead of asserting the rule. It also ranks the competing
+/// discards with the hand's own numbers: the answer and the other closed-wait
+/// float tie, while breaking the drawn third pair only wins on the closed
+/// oracle and loses after the Pon.
 pub fn generate(category: &str) -> Result<GameState, String> {
     generate_with_retries("pair_count_open", 10_000, || {
         let skeleton = skeleton::build_skeleton()?;
