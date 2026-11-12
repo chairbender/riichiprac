@@ -24,6 +24,10 @@
 //!    neighbourhood.
 //! 4. `board` assembles the table, reserves every structural tile before the
 //!    random fill, and re-derives the whole read from the finished state.
+//! 5. The fill never leaves a second 100% safe tile in the human hand. A dead
+//!    fourth honor (the threat's pon shows three copies) or an absolute
+//!    no-chance tile is as safe as the whole read, so "just discard that"
+//!    would beat the lesson; `board` rejects such a table.
 //!
 //! Deck cards: 1463255367640 (when to assume ready), 1463255468847 (estimate
 //! value), 1463255593155 (dangerous tiles from melds), 1463255694221 (the
