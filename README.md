@@ -90,6 +90,20 @@ Edits are staged: ticking boxes changes the draft pool shown in the panel footer
 from it. Cancel, Escape, or a click outside discards the draft, so building a
 pool never fires a burst of generations or Mortal forward passes.
 
+## Going back to a previous hand
+
+Every dealt hand is recorded as one browser history entry, so the browser's Back
+and Forward buttons walk through the hands you have seen. Returning to a hand
+restores it exactly — the same table, whether you had answered, and the verdict
+you got. It is not re-dealt, and Mortal is not asked again. Both the header and
+the post-answer **Next Scenario** button push a new entry; the first hand of a
+session replaces the launch entry, so Back from it leaves the app.
+
+The URL never changes: this is session-level navigation, not a shareable link,
+and the entries are gone when the tab closes. To keep or send a hand, use
+**Export** (see "Exporting and importing a position"). The deep-linking options
+and why neither shipped are in `scenario-history-plan.md`.
+
 ## AI Best Action scenario
 
 `AI Best Action` generates a random, deck-consistent table and presents whatever

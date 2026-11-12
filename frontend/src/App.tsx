@@ -20,6 +20,11 @@ import {
   pickRandomScenarioFrom,
 } from './scenarios';
 import type { ScenarioOption, ScenarioSelection } from './scenarios';
+import {
+  SCENARIO_HISTORY_VERSION,
+  ScenarioHistory,
+} from './scenarioHistory';
+import type { ScenarioSnapshot } from './scenarioHistory';
 import { stackOrder } from './seatOrder';
 import { useGameStore } from './store/useGameStore';
 import { ensureWasmReady } from './wasm';
@@ -69,6 +74,7 @@ export const App = () => {
   const clearPositionDescription = useGameStore(
     (state) => state.clearPositionDescription,
   );
+  const restoreSnapshot = useGameStore((state) => state.restoreSnapshot);
 
   const [selection, setSelection] = useState<ScenarioSelection>(ALL_SCENARIOS);
   const [scenarios, setScenarios] =
@@ -88,6 +94,68 @@ export const App = () => {
   const [exportDescription, setExportDescription] = useState('');
   const manifestRef = useRef<ScenarioOption[] | null>(null);
   const loadRequestId = useRef(0);
+  /**
+   * Mirrors `exportDescription` synchronously. A history snapshot is written in
+   * the same tick a deal finishes, before React re-renders, so it cannot read
+   * the state variable and must not fall back to the previous hand's text.
+   */
+  const exportDescriptionRef = useRef(exportDescription);
+  const updateExportDescription = useCallback((text: string) => {
+    exportDescriptionRef.current = text;
+    setExportDescription(text);
+  }, []);
+
+  /** Browser Back/Forward bookkeeping; created once, outside React's state. */
+  const historyRef = useRef<ScenarioHistory | null>(null);
+  if (historyRef.current === null) {
+    historyRef.current = new ScenarioHistory(window.history);
+  }
+  /**
+   * The pool and filter the on-screen hand was actually dealt under. Kept in a
+   * ref because the picker/checkbox may already show the *next* choice by the
+   * time the current hand is recorded.
+   */
+  const loadedWithRef = useRef<{
+    selection: ScenarioSelection;
+    requireAgreement: boolean;
+  }>({ selection: ALL_SCENARIOS, requireAgreement: DEFAULT_REQUIRE_AGREEMENT });
+
+  /**
+   * Everything needed to put the on-screen hand back, answer and all. Null when
+   * no hand is showing (still loading, or the last deal failed).
+   */
+  const buildSnapshot = useCallback((): ScenarioSnapshot | null => {
+    const state = useGameStore.getState();
+    if (!state.gameState) return null;
+
+    const { selection: drawnFrom, requireAgreement: drawnWith } =
+      loadedWithRef.current;
+    return {
+      version: SCENARIO_HISTORY_VERSION,
+      // The engine payload is stored as JSON rather than a seed: a restored hand
+      // is then exactly this table, even after the generator changes.
+      json: JSON.stringify(state.gameState),
+      selection: drawnFrom,
+      requireAgreement: drawnWith,
+      submittedAnswer: state.submittedAnswer,
+      dualGrade: state.dualGrade,
+      callRiichi: state.callRiichi,
+      callKan: state.callKan,
+      peekedBeforeAnswer: state.peekedBeforeAnswer,
+      evaluation: state.evaluation,
+      mortalAgreement: state.mortalAgreement,
+      positionDescription: state.positionDescription,
+      exportDescription: exportDescriptionRef.current,
+    };
+  }, []);
+
+  /** Record the hand now on screen as one browser history entry. */
+  const commitHistory = useCallback(() => {
+    const snapshot = buildSnapshot();
+    if (snapshot) {
+      historyRef.current?.commit(snapshot);
+    }
+  }, [buildSnapshot]);
 
   const loadPuzzle = useCallback(
     async (
@@ -97,7 +165,27 @@ export const App = () => {
       const requestId = ++loadRequestId.current;
       reset();
       // A description belongs to the position it was written for.
-      setExportDescription('');
+      updateExportDescription('');
+
+      // What the hand about to load is drawn under. The agreement filter can
+      // switch itself off below when Mortal is unavailable; the snapshot has to
+      // carry the value that was actually in effect.
+      let effectiveAgreement = requireMortalAgreement;
+
+      /**
+       * Install a freshly generated hand and give it its own history entry. A
+       * superseded load must neither replace the table nor touch the history, so
+       * both are gated on still being the newest request.
+       */
+      const finish = (load: () => void) => {
+        if (requestId !== loadRequestId.current) return;
+        loadedWithRef.current = {
+          selection: scenarioSelection,
+          requireAgreement: effectiveAgreement,
+        };
+        load();
+        commitHistory();
+      };
 
       try {
         await ensureWasmReady();
@@ -141,7 +229,9 @@ export const App = () => {
               setTimeout(resolve, 0);
             });
             if (requestId !== loadRequestId.current) return;
-            loadFromJson(await mortal.generateAiPuzzle(category));
+            const generated = await mortal.generateAiPuzzle(category);
+            if (requestId !== loadRequestId.current) return;
+            finish(() => loadFromJson(generated));
           } finally {
             setAiLoading(false);
           }
@@ -157,7 +247,8 @@ export const App = () => {
               // checkbox, which is disabled while Mortal is unavailable and
               // would otherwise claim a filter that cannot run.
               setRequireAgreement(false);
-              loadFromJson(generate_puzzle(category));
+              effectiveAgreement = false;
+              finish(() => loadFromJson(generate_puzzle(category)));
               return;
             }
             // Let the loading state paint before the worker starts sampling.
@@ -165,17 +256,17 @@ export const App = () => {
               setTimeout(resolve, 0);
             });
             if (requestId !== loadRequestId.current) return;
-            loadFromAgreementJson(
-              await mortal.generatePuzzleWithAgreement(
-                category,
-                JSON.stringify(AGREEMENT_OPTIONS),
-              ),
+            const sampled = await mortal.generatePuzzleWithAgreement(
+              category,
+              JSON.stringify(AGREEMENT_OPTIONS),
             );
+            if (requestId !== loadRequestId.current) return;
+            finish(() => loadFromAgreementJson(sampled));
           } finally {
             setAgreementLoading(false);
           }
         } else {
-          loadFromJson(generate_puzzle(category));
+          finish(() => loadFromJson(generate_puzzle(category)));
         }
       } catch (err) {
         if (requestId !== loadRequestId.current) return;
@@ -183,13 +274,81 @@ export const App = () => {
       }
     },
     [
+      commitHistory,
       initializeAi,
       loadFromAgreementJson,
       loadFromJson,
       reset,
       setError,
+      updateExportDescription,
     ],
   );
+
+  /** Put a history entry's hand and its answer state back on screen. */
+  const restoreHistoryEntry = useCallback(
+    (snapshot: ScenarioSnapshot) => {
+      loadedWithRef.current = {
+        selection: snapshot.selection,
+        requireAgreement: snapshot.requireAgreement,
+      };
+      setSelection(snapshot.selection);
+      setRequireAgreement(snapshot.requireAgreement);
+      updateExportDescription(snapshot.exportDescription);
+      restoreSnapshot(snapshot);
+    },
+    [restoreSnapshot, updateExportDescription],
+  );
+
+  // The popstate listener is registered once; look the current callback up
+  // through a ref so it never has to be torn down and re-added.
+  const restoreHistoryRef = useRef(restoreHistoryEntry);
+  restoreHistoryRef.current = restoreHistoryEntry;
+
+  /**
+   * Back/Forward. The browser has already moved to the entry by the time this
+   * fires, so the only job is to put that entry's hand back on screen.
+   */
+  useEffect(() => {
+    const onPopState = (event: PopStateEvent) => {
+      const snapshot = historyRef.current?.adopt(event.state) ?? null;
+      // An entry this app did not write (a foreign same-document navigation):
+      // leave the table alone, and let the next deal replace the entry.
+      if (!snapshot) return;
+
+      // Drop any deal still running; it belongs to the hand being left behind.
+      loadRequestId.current += 1;
+      setAiLoading(false);
+      setAgreementLoading(false);
+      restoreHistoryRef.current(snapshot);
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  /**
+   * Keep the current entry's snapshot matching the screen. Answering, peeking,
+   * arming Riichi, or editing the export note all land here, so going Back and
+   * Forward again restores the answered hand instead of a fresh copy of it.
+   */
+  useEffect(() => {
+    const snapshot = buildSnapshot();
+    if (snapshot) {
+      historyRef.current?.update(snapshot);
+    }
+  }, [
+    buildSnapshot,
+    gameState,
+    submittedAnswer,
+    dualGrade,
+    peekedBeforeAnswer,
+    callRiichi,
+    callKan,
+    evaluation,
+    mortalAgreement,
+    positionDescription,
+    exportDescription,
+  ]);
 
   // The filter is on by default, so the first hand is dealt through it too.
   // `loadPuzzle` falls back to a book-only deal when Mortal cannot load.
@@ -245,7 +404,10 @@ export const App = () => {
       const imported = useGameStore.getState();
       if (!imported.fileError) {
         // Seed the export field so re-exporting keeps the file's description.
-        setExportDescription(imported.positionDescription ?? '');
+        updateExportDescription(imported.positionDescription ?? '');
+        // An imported position is a hand like any other: it gets its own entry,
+        // so Back returns to the hand it replaced.
+        commitHistory();
       }
     } catch (err) {
       setFileError(err instanceof Error ? err.message : String(err));
@@ -325,7 +487,7 @@ export const App = () => {
       <ExportImportControls
         canExport={Boolean(gameState)}
         description={exportDescription}
-        onDescriptionChange={setExportDescription}
+        onDescriptionChange={updateExportDescription}
         fileError={fileError}
         fileNotice={fileNotice}
         onExport={handleExport}
