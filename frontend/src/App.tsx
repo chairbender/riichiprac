@@ -251,7 +251,7 @@ export const App = () => {
   const availableActions = aiDecision?.actions ?? [];
   const isDrill = gameState?.correct_action.type === 'best';
   // A book call lesson renders its own Call/Pass buttons from the Rust offer.
-  const isCallLesson = gameState ? isCallDecision(gameState.correct_action) : false;
+  const isCallLesson = gameState ? isCallDecision(gameState) : false;
   const callActions = gameState ? callOfferActions(gameState) : [];
   const actionBarActions = isCallLesson ? callActions : availableActions;
   const canDiscard = isCallLesson

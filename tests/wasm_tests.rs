@@ -272,6 +272,15 @@ fn test_list_scenarios_payload() {
         }),
         "the concealed quad lesson must be listed as a kan decision"
     );
+    assert!(
+        scenarios.iter().any(|scenario| {
+            scenario["id"] == "daiminkan_decision"
+                && scenario["category"] == "kan_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the open-quad lesson must be listed as a kan decision"
+    );
 }
 
 #[wasm_bindgen_test]
@@ -3876,4 +3885,199 @@ fn test_push_or_fold_payload() {
 
     assert!(saw_push, "the push cell must be generated");
     assert!(saw_fold, "the fold cell must be generated");
+}
+
+#[wasm_bindgen_test]
+fn test_daiminkan_decision_payload() {
+    let mut kan_count = 0usize;
+    let mut pass_count = 0usize;
+
+    for run in 0..60 {
+        let json_output = generate_puzzle("daiminkan_decision".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+        assert_eq!(val["category"], "daiminkan_decision");
+        // One lesson, one neutral call prompt: the payload never hints at the
+        // answer.
+        assert_eq!(val["target_action"], "Call");
+        assert_eq!(val["decision"]["kind"], "react_to_discard");
+        assert_eq!(val["can_riichi"], false);
+
+        let offer = &val["call_offer"];
+        assert_eq!(offer["action"], "Kan");
+        assert_eq!(offer["tile"], val["decision"]["tile"]);
+        assert!(
+            offer["label"]
+                .as_str()
+                .is_some_and(|label| label.starts_with("Kan ")),
+            "run {run}: unexpected offer label {:?}",
+            offer["label"]
+        );
+
+        let from = val["decision"]["from"]
+            .as_u64()
+            .expect("the reaction names its source") as usize;
+        assert!((1..=3).contains(&from));
+        assert_eq!(val["current_turn"], from);
+
+        let players = val["players"].as_array().expect("players array");
+        assert_eq!(players.len(), 4);
+        let human = &players[0];
+        assert_eq!(human["is_human"], true);
+        assert_eq!(human["hand"].as_array().unwrap().len(), 10);
+        assert!(human["draw"].is_null());
+        assert_eq!(human["is_riichi"], false);
+        let melds = human["melds"].as_array().expect("melds");
+        assert_eq!(melds.len(), 1, "run {run}: the called run");
+        assert_eq!(melds[0]["meld_type"], "Chi");
+        assert_eq!(melds[0]["tiles"].as_array().unwrap().len(), 3);
+        assert_eq!(melds[0]["called_from"], 3, "a chi only claims Kamicha");
+        assert_eq!(val["tiles"].as_array().unwrap().len(), 13);
+        assert_eq!(val["shanten"], 0, "the drill is a ready hand");
+
+        // The offering seat really did just discard the offered tile, from the
+        // hand, and the human holds the other three copies.
+        let source = &players[from];
+        let discards = source["discards"].as_array().unwrap();
+        assert_eq!(
+            discards.last().expect("last discard")["tile"],
+            offer["tile"]
+        );
+        assert_eq!(discards.last().unwrap()["is_tsumogiri"], false);
+        let offered = offer["tile"].as_str().expect("tile");
+        assert_eq!(
+            human["hand"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|tile| tile.as_str() == Some(offered))
+                .count(),
+            3
+        );
+        let open: Vec<&str> = melds[0]["tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        assert!(
+            !open.contains(&offered),
+            "run {run}: the quad tile is not already open"
+        );
+
+        // The quad tile is never dora.
+        let indicator = parse_single_tile(val["dora_indicators"][0].as_str().expect("indicator"));
+        assert_ne!(indicator_to_dora(indicator).to_string(), offered);
+
+        match val["correct_action"]["type"]
+            .as_str()
+            .expect("answer must carry a type")
+        {
+            "kan" => {
+                kan_count += 1;
+                assert_eq!(val["correct_action"]["tile"], offer["tile"]);
+                assert!(
+                    val["book_rationale"]["rules"]
+                        .as_array()
+                        .is_some_and(|rules| rules.len() >= 2),
+                    "run {run}: the Kan needs the situation it satisfies"
+                );
+            }
+            "pass" => {
+                pass_count += 1;
+                assert!(val["correct_action"]["tile"].is_null());
+            }
+            other => panic!("run {run}: unexpected answer {other}"),
+        }
+
+        assert_eq!(
+            val["book_rationale"]["source"]["section"],
+            "Open quad (daiminkan)"
+        );
+
+        let total_score: i64 = players
+            .iter()
+            .map(|player| player["score"].as_i64().expect("score int"))
+            .sum();
+        assert_eq!(total_score, 100_000);
+    }
+
+    assert!(
+        kan_count >= 15 && pass_count >= 15,
+        "the payload sweep must cover both answers, got {kan_count} Kan / {pass_count} pass"
+    );
+}
+
+#[wasm_bindgen_test]
+fn test_daiminkan_decision_grades_kan_and_pass_through_wasm() {
+    let mut kan_table = None;
+    let mut pass_table = None;
+
+    for _ in 0..60 {
+        let json = generate_puzzle("daiminkan_decision".to_string());
+        let table: serde_json::Value =
+            serde_json::from_str(&json).expect("daiminkan payload must be valid JSON");
+        match table["correct_action"]["type"].as_str().unwrap() {
+            "kan" if kan_table.is_none() => kan_table = Some(table),
+            "pass" if pass_table.is_none() => pass_table = Some(table),
+            _ => {}
+        }
+        if kan_table.is_some() && pass_table.is_some() {
+            break;
+        }
+    }
+
+    let kan_table = kan_table.expect("the sweep must produce a Kan hand");
+    let quad = kan_table["call_offer"]["tile"]
+        .as_str()
+        .expect("offered tile")
+        .to_string();
+    let request = serde_json::json!({
+        "table": kan_table.clone(),
+        "answer": { "action": "kan", "tile": quad },
+        "evaluation": serde_json::Value::Null,
+    });
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_answer_json(&request.to_string())).expect("grade JSON");
+    assert_eq!(grade["outcome"], "only_available_agrees");
+    assert_eq!(grade["book"]["is_action_correct"], true);
+    assert_eq!(grade["book"]["is_tile_correct"], true);
+    assert_eq!(grade["book"]["expected_action"], "kan");
+
+    // Passing on the offer is the mistake.
+    let request = serde_json::json!({
+        "table": kan_table,
+        "answer": { "action": "pass", "tile": "" },
+        "evaluation": serde_json::Value::Null,
+    });
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_answer_json(&request.to_string())).expect("grade JSON");
+    assert_eq!(grade["book"]["is_action_correct"], false);
+
+    let pass_table = pass_table.expect("the sweep must produce a pass hand");
+    let request = serde_json::json!({
+        "table": pass_table.clone(),
+        "answer": { "action": "pass", "tile": "" },
+        "evaluation": serde_json::Value::Null,
+    });
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_answer_json(&request.to_string())).expect("grade JSON");
+    assert_eq!(grade["outcome"], "only_available_agrees");
+    assert_eq!(grade["book"]["is_action_correct"], true);
+    assert_eq!(grade["book"]["expected_action"], "pass");
+
+    // Calling the quad is the mistake here.
+    let quad = pass_table["call_offer"]["tile"]
+        .as_str()
+        .expect("offered tile")
+        .to_string();
+    let request = serde_json::json!({
+        "table": pass_table,
+        "answer": { "action": "kan", "tile": quad },
+        "evaluation": serde_json::Value::Null,
+    });
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_answer_json(&request.to_string())).expect("grade JSON");
+    assert_eq!(grade["book"]["is_action_correct"], false);
 }

@@ -1,4 +1,5 @@
 import { callDecisionFor } from '../callDecision';
+import { formatTileForDisplay } from '../display';
 import type { AiEvaluation, AiStatus } from '../types/ai';
 import { actionLabel, formatProbability } from '../types/ai';
 import type { GameState } from '../types/game';
@@ -360,8 +361,14 @@ function describeBookAnswer(state: GameState, book: BookGrade | null): string {
       return `Kan on ${accepted}`;
     case 'discard':
       return `No Kan · discard ${accepted}`;
-    case 'pass':
-      return `Pass on ${state.call_offer?.label ?? 'the call'}`;
+    case 'pass': {
+      const offer = state.call_offer;
+      // The open-quad lesson declines a Kan, not a Pon/Chi: name what is kept.
+      if (offer?.action === 'Kan') {
+        return `Pass · keep the three ${formatTileForDisplay(offer.tile)}`;
+      }
+      return `Pass on ${offer?.label ?? 'the call'}`;
+    }
     case 'best':
       return state.correct_action.label;
   }

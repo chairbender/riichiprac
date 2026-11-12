@@ -18,11 +18,27 @@ const callState = {
   },
 } as unknown as GameState;
 
+const openQuadState = {
+  correct_action: { type: 'kan', tile: '5z' },
+  call_offer: {
+    action: 'Kan',
+    label: 'Kan Wh',
+    tile: '5z',
+    tiles: [],
+  },
+} as unknown as GameState;
+
 describe('call-or-pass lesson wiring', () => {
   it('accepts the pass answer and names no tile', () => {
     expect(isCorrectAction({ type: 'pass' })).toBe(true);
-    expect(isCallDecision({ type: 'pass' })).toBe(true);
+    expect(isCallDecision(callState)).toBe(true);
     expect(correctActionTile({ type: 'pass' })).toBeNull();
+  });
+
+  it('treats an offered Kan as a call decision too', () => {
+    expect(isCallDecision(openQuadState)).toBe(true);
+    expect(correctActionTile(openQuadState.correct_action)).toBe('5z');
+    expect(isCorrectAction(openQuadState.correct_action)).toBe(true);
   });
 
   it('rejects an unknown answer family', () => {
@@ -44,8 +60,22 @@ describe('call-or-pass lesson wiring', () => {
     expect(actions[1]).toMatchObject({ action: 'Pass', type: 'pass' });
   });
 
+  it('renders the offered Kan as a Kan button', () => {
+    const actions = callOfferActions(openQuadState);
+
+    expect(actions).toHaveLength(2);
+    expect(actions[0]).toMatchObject({
+      action: 'Kan',
+      label: 'Kan Wh',
+      type: 'kan',
+      tile: '5z',
+    });
+    expect(actions[1]).toMatchObject({ action: 'Pass', type: 'pass' });
+  });
+
   it('renders nothing when the state offers no call', () => {
     expect(callOfferActions({} as GameState)).toEqual([]);
+    expect(isCallDecision({} as GameState)).toBe(false);
   });
 });
 

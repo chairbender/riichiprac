@@ -119,6 +119,20 @@ fn ch9_ankan(line: u32, needle: &str) -> Citation {
     )
 }
 
+/// Riichi Book 1, ch. 9, "Open quad (daiminkan)" — the three situations that
+/// justify calling the fourth copy off a discard, and the two boxes that refuse
+/// it.
+fn ch9_daiminkan(line: u32, needle: &str) -> Citation {
+    citation(
+        9,
+        "Melding judgement",
+        "Open quad (daiminkan)",
+        "RiichiBook1-ch9-call.tex",
+        line,
+        needle,
+    )
+}
+
 fn ch9_seating(line: u32, needle: &str) -> Citation {
     citation(
         9,
@@ -1026,6 +1040,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "ankan_decision" => Some(ch9_ankan(269, "needs to be close to ready")),
         "meld_or_not" => Some(ch9_meld(72, "Don't meld with a cheap and slow hand")),
+        "daiminkan_decision" => Some(ch9_daiminkan(321, "You can make an open quad")),
         "wind_discard_order" => Some(ch9_seating(455, "discard the right player's wind first")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
         "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
@@ -1084,6 +1099,10 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
 
     if state.category == "meld_or_not" {
         return meld_or_not_rationale(state);
+    }
+
+    if state.category == "daiminkan_decision" {
+        return daiminkan_rationale(state);
     }
 
     if state.category == "ankan_decision" {
@@ -2078,6 +2097,268 @@ fn meld_or_not_rationale(state: &GameState) -> Option<BookRationale> {
                 .to_string(),
         ],
     })
+}
+
+/// Riichi Book 1, ch. 9, "Open quad (daiminkan)".
+///
+/// The answer turns on the book's three situations ("the hand is ready with a
+/// good wait, and the hand value is between 2000 and 5200 points", "you need
+/// more dora or minipoints to improve the placement (especially in South-4)",
+/// "you are losing badly") and on the two boxes that refuse the call: a
+/// 2000-point hand with a bad wait, and a 1000-point hand with a good wait.
+/// Every number is recomputed from the finished state through
+/// [`crate::generator::daiminkan_facts`], so an imported report keeps an honest
+/// rationale.
+fn daiminkan_rationale(state: &GameState) -> Option<BookRationale> {
+    let facts = crate::generator::daiminkan_facts(state)?;
+    let quad = format_tile_for_display(&facts.quad.to_string(), false);
+    let waits: Vec<String> = state
+        .ukeire_tiles
+        .iter()
+        .map(|code| format_tile_for_display(code, false))
+        .collect();
+    let waits_text = waits.join(" / ");
+    let wait_shape = if facts.good_wait {
+        "a good wait"
+    } else {
+        "a bad wait"
+    };
+    let triggers = facts.triggers();
+    let answered_kan = state.correct_action.action_type() == CorrectActionType::Kan;
+
+    let conditions = BookRule {
+        id: "open_quad_conditions".to_string(),
+        rule: "An open quad needs one of three situations: a ready hand with a good wait worth \
+               2000-5200 points, a placement that needs the quad's dora or minipoints, or a \
+               score line that is already lost."
+            .to_string(),
+        quote: "You can make an open quad in any of the following situations:".to_string(),
+        citation: ch9_daiminkan(321, "You can make an open quad"),
+        applies: if triggers.good_wait_and_value {
+            format!(
+                "The ready hand holds {wait_shape} on {waits_text} and wins for {} points, \
+                 inside the book's band.",
+                facts.value
+            )
+        } else if triggers.placement_desperation {
+            format!(
+                "The hand is only worth {} points on {waits_text}, but you are {} at South-4 \
+                 and the quad's minipoints take it to {}.",
+                facts.value,
+                rank_ordinal(facts.rank),
+                facts.quad_value
+            )
+        } else if triggers.losing_badly {
+            format!(
+                "The hand is only worth {} points on {waits_text}, but you are fourth and far \
+                 behind: the quad's extra draw, dora chance and minipoints are what the hand \
+                 is short of.",
+                facts.value
+            )
+        } else {
+            format!(
+                "None of them holds: the hand holds {wait_shape} on {waits_text} and is worth \
+                 {} points, and the score line asks nothing of it.",
+                facts.value
+            )
+        },
+    };
+
+    if answered_kan {
+        let mut rules = vec![conditions];
+
+        if triggers.good_wait_and_value {
+            rules.push(BookRule {
+                id: "good_wait_and_value".to_string(),
+                rule: "A ready hand with a good wait and a value inside 2000-5200 can afford \
+                       the quad: its extra minipoints and dora are almost free value."
+                    .to_string(),
+                quote: "the hand is ready with a good wait, and the hand value is between 2000 \
+                        and 5200 points;"
+                    .to_string(),
+                citation: ch9_daiminkan(323, "the hand is ready with a good wait"),
+                applies: format!(
+                    "The hand waits on {waits_text} ({wait_shape}) and wins for {} points by \
+                     ron, {hand_han} han at {hand_fu} fu. The same wait wins for {} once the \
+                     quad's minipoints are added.",
+                    facts.value,
+                    facts.quad_value,
+                    hand_han = facts.han,
+                    hand_fu = facts.fu
+                ),
+            });
+        }
+
+        if triggers.placement_desperation {
+            rules.push(BookRule {
+                id: "placement_desperation".to_string(),
+                rule: "Call the quad when the extra minipoints or dora decide the placement, \
+                       especially at South-4."
+                    .to_string(),
+                quote: "you need more dora or minipoints to improve the placement (especially in \
+                        South-4);"
+                    .to_string(),
+                citation: ch9_daiminkan(324, "or minipoints to improve the placement"),
+                applies: format!(
+                    "You are {} at South-4, {gap} points behind the player above. The same wait \
+                     wins for {value} while the three {quad} stay concealed and {quad_value} once \
+                     they become the open quad, so only the call closes the gap.",
+                    rank_ordinal(facts.rank),
+                    gap = facts.gap_to_above.unwrap_or_default(),
+                    value = facts.value,
+                    quad_value = facts.quad_value,
+                ),
+            });
+        }
+
+        if triggers.losing_badly {
+            rules.push(BookRule {
+                id: "losing_badly".to_string(),
+                rule: "Call the quad when you are losing badly: its extra draw, dora chance and \
+                       minipoints are worth more than the three tiles it spends."
+                    .to_string(),
+                quote: "you are losing badly.".to_string(),
+                citation: ch9_daiminkan(325, "you are losing badly"),
+                applies: format!(
+                    "You are fourth, {gap} points behind third, and this {value}-point hand is \
+                     not going to close that on its own.",
+                    gap = facts.gap_to_above.unwrap_or_default(),
+                    value = facts.value,
+                ),
+            });
+        }
+
+        // The situations that do not hold are still worth naming: they are the
+        // reason this particular hand needs the one above.
+        let mut absent = Vec::new();
+        if !triggers.good_wait_and_value {
+            absent.push(AbsentRule {
+                id: "good_wait_and_value".to_string(),
+                note: "The hand's own value is not inside the book's band with a good wait: it \
+                       is the table, not the hand, that asks for this quad."
+                    .to_string(),
+            });
+        }
+        if !triggers.placement_desperation {
+            absent.push(AbsentRule {
+                id: "placement_desperation".to_string(),
+                note: "No placement gap needs the quad's minipoints: the call is not being made \
+                       to reach a particular score."
+                    .to_string(),
+            });
+        }
+        if !triggers.losing_badly {
+            absent.push(AbsentRule {
+                id: "losing_badly".to_string(),
+                note: "You are not far behind in fourth, so the \"losing badly\" reason does not \
+                       apply."
+                    .to_string(),
+            });
+        }
+
+        return Some(BookRationale {
+            summary: format!("Call the open quad on {quad}: {}.", kan_reason(&triggers)),
+            rules,
+            absent,
+            source: ch9_daiminkan(321, "You can make an open quad"),
+            caveats: vec![
+                "The quad spends the three concealed copies, so they stop being safe discards, \
+                 and the new dora indicator it turns can help the opponents."
+                    .to_string(),
+                format!(
+                    "The quad's own new dora is not counted above: it adds han on top of the \
+                     {} -> {} minipoint gain, and the book's own example goes from 2000 to 5200 \
+                     with one extra dora.",
+                    facts.value, facts.quad_value
+                ),
+            ],
+        });
+    }
+
+    // The book's two refusals: same hand, wrong wait or wrong value.
+    let refusal = if !facts.good_wait {
+        BookRule {
+            id: "bad_wait".to_string(),
+            rule: "Do not quad a ready hand whose wait is bad: the fourth copy buys minipoints \
+                   and a dora draw, not a better wait, and a bad wait is what loses the hand."
+                .to_string(),
+            quote: "not justifiable when the wait is bad".to_string(),
+            citation: ch9_daiminkan(348, "justifiable when the wait is bad"),
+            applies: format!(
+                "The hand is worth {} points but waits on {waits_text} only: the book's own \
+                 2000-point box refuses the quad on exactly this shape.",
+                facts.value
+            ),
+        }
+    } else {
+        BookRule {
+            id: "too_cheap".to_string(),
+            rule: "Do not quad a cheap ready hand: the extra minipoints move 1000 to 1300, \
+                   which is not what the call costs."
+                .to_string(),
+            quote: "the hand value only increases from 1000 to 2600".to_string(),
+            citation: ch9_daiminkan(358, "only increases from 1000 to 2600"),
+            applies: format!(
+                "The hand has {wait_shape} on {waits_text} but is only worth {} points \
+                 ({hand_han} han at {hand_fu} fu); even with the quad's minipoints it reaches \
+                 {}.",
+                facts.value,
+                facts.quad_value,
+                hand_han = facts.han,
+                hand_fu = facts.fu
+            ),
+        }
+    };
+
+    Some(BookRationale {
+        summary: format!(
+            "Pass on the {quad}: the hand is {} points with {wait_shape}, and no score line \
+             asks for the quad.",
+            facts.value
+        ),
+        rules: vec![conditions, refusal],
+        absent: vec![
+            AbsentRule {
+                id: "placement_desperation".to_string(),
+                note: "The placement escape would justify the quad, but this table is not \
+                       South-4 with a gap the extra minipoints close."
+                    .to_string(),
+            },
+            AbsentRule {
+                id: "losing_badly".to_string(),
+                note: "The \"losing badly\" escape would justify the quad, but you are not far \
+                       behind in fourth here."
+                    .to_string(),
+            },
+        ],
+        source: ch9_daiminkan(321, "You can make an open quad"),
+        caveats: vec![
+            "The book allows the quad later: the same hand can call it once a draw improves the \
+             wait or the value."
+                .to_string(),
+        ],
+    })
+}
+
+/// One clause naming the situation that justified the quad.
+fn kan_reason(triggers: &crate::generator::DaiminkanTriggerSet) -> &'static str {
+    if triggers.good_wait_and_value {
+        "the ready hand has a good wait and is worth 2000-5200"
+    } else if triggers.placement_desperation {
+        "South-4 needs its minipoints for the placement"
+    } else {
+        "you are losing badly"
+    }
+}
+
+/// "2nd" / "3rd" / "4th", for the placement and score lines.
+fn rank_ordinal(rank: usize) -> String {
+    match rank {
+        1 => "1st".to_string(),
+        2 => "2nd".to_string(),
+        3 => "3rd".to_string(),
+        _ => format!("{rank}th"),
+    }
 }
 
 /// The best (lowest) shanten the hand can reach after the offered call, over
@@ -3953,6 +4234,7 @@ mod tests {
             "riichi_judgement",
             "shouminkan_decision",
             "ankan_decision",
+            "daiminkan_decision",
             "wind_discard_order",
             "fold_to_riichi",
             "push_or_fold",
@@ -4288,6 +4570,81 @@ mod tests {
     }
 
     #[test]
+    fn daiminkan_rationale_cites_the_three_situations_and_the_two_boxes() {
+        let mut seen_kan = false;
+        let mut seen_pass = false;
+        let mut seen_band = false;
+        let mut seen_placement = false;
+        let mut seen_losing = false;
+
+        for _ in 0..160 {
+            let state = generate_puzzle("daiminkan_decision").expect("lesson must generate");
+            let rationale = rationale_for(&state).expect("daiminkan needs a rationale");
+            assert_eq!(rationale.source.chapter, 9);
+            assert_eq!(rationale.source.section, "Open quad (daiminkan)");
+            assert_eq!(rationale.rules[0].id, "open_quad_conditions");
+            assert!(rationale.rules[0].quote.contains("open quad"));
+
+            let facts = crate::generator::daiminkan_facts(&state).expect("facts");
+            match state.correct_action.action_type() {
+                CorrectActionType::Kan => {
+                    seen_kan = true;
+                    assert!(
+                        rationale.summary.starts_with("Call the open quad"),
+                        "unexpected summary: {}",
+                        rationale.summary
+                    );
+                    assert!(rationale.rules.len() >= 2);
+                    assert!(
+                        rationale.rules[0]
+                            .applies
+                            .contains(&facts.value.to_string())
+                    );
+                    let ids: Vec<&str> = rationale
+                        .rules
+                        .iter()
+                        .map(|rule| rule.id.as_str())
+                        .collect();
+                    assert!(
+                        ids.iter().any(|id| matches!(
+                            *id,
+                            "good_wait_and_value" | "placement_desperation" | "losing_badly"
+                        )),
+                        "unexpected condition ids: {ids:?}"
+                    );
+                    seen_band |= ids.contains(&"good_wait_and_value");
+                    seen_placement |= ids.contains(&"placement_desperation");
+                    seen_losing |= ids.contains(&"losing_badly");
+                }
+                CorrectActionType::Pass => {
+                    seen_pass = true;
+                    assert!(
+                        rationale.summary.starts_with("Pass on the"),
+                        "unexpected summary: {}",
+                        rationale.summary
+                    );
+                    assert!(matches!(
+                        rationale.rules[1].id.as_str(),
+                        "bad_wait" | "too_cheap"
+                    ));
+                    assert_eq!(
+                        rationale.absent.len(),
+                        2,
+                        "both escapes are listed as absent"
+                    );
+                }
+                other => panic!("unexpected daiminkan answer {other:?}"),
+            }
+        }
+
+        assert!(seen_kan && seen_pass, "both halves must be covered");
+        assert!(
+            seen_band && seen_placement && seen_losing,
+            "all three book situations must be explained"
+        );
+    }
+
+    #[test]
     fn citations_point_at_real_sources() {
         let root = std::env::var("RIIICHI_BOOK_SRC")
             .unwrap_or_else(|_| "/home/kylehipke/workspaces/RiichiBooks".to_string());
@@ -4353,6 +4710,7 @@ mod tests {
             "shouminkan_decision",
             "meld_or_not",
             "ankan_decision",
+            "daiminkan_decision",
             "wind_discard_order",
             "fold_to_riichi",
             "push_or_fold",
