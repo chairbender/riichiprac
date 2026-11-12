@@ -4,9 +4,12 @@
 //!   protorun priority (side wait before closed wait) lesson, the
 //!   nakabukure (bulging float) ready-hand lesson, the ryankan (double
 //!   closed shape) break lesson, the pair count (avoid three pairs in a
-//!   closed hand) lesson, and its open-hand companion (keep three pairs when
-//!   a Pon is planned), and the skipping shape (a float two ranks from a run
-//!   is worth more than an isolated float of the same rank).
+//!   closed hand) lesson, its open-hand companion (keep three pairs when
+//!   a Pon is planned), the nobetan (stretched single) lesson: keep 3456 or
+//!   4567 even at a small acceptance cost, the perfect 1-away lesson (which
+//!   discard keeps two side waits and two pairs), and the skipping shape (a
+//!   float two ranks from a run is worth more than an isolated float of the
+//!   same rank).
 //! - `yaku`: the ch. 5 yaku-pursuit decisions. `sanshoku_pursuit` is the
 //!   floating method: keep the redundant tile for sanshoku only when the hand
 //!   has no other yaku or dora.
@@ -93,11 +96,14 @@ use crate::ai::model::MortalV4Model;
 use crate::state::GameState;
 use situation::Situation;
 
+pub(crate) use block_theory::nobetan_keep::nobetan_starts;
 pub(crate) use daiminkan_decision::{DaiminkanTriggerSet, facts as daiminkan_facts};
 pub(crate) use honitsu_decision::{Variant as HonitsuVariant, facts as honitsu_facts};
 pub(crate) use support::analysis::floating_quad_acceptance;
 pub(crate) use support::analysis::wind_to_honor;
 pub use support::analysis::{HandMetrics, evaluate_hand};
+pub(crate) use support::completion::{best_completion, side_wait_routes};
+pub use support::completion::{is_perfect_one_away, perfect_one_away_shape};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
 pub(crate) use yaku::sanshoku_pursuit::{SanshokuFacts, facts as sanshoku_facts};
@@ -371,6 +377,18 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         book: Some(BOOK_CH3_SHAPES),
     },
     ScenarioMeta {
+        id: ScenarioId::NobetanKeep,
+        label: "Nobetan: Keep 3456",
+        description: "Block theory: keep the stretched single even though breaking it \
+                      accepts more tiles, because the kept shape leaves far more \
+                      side-wait completions.",
+        category: ScenarioCategory::TileEfficiency,
+        tags: &["block_theory", "discard", "nobetan", "shape", "ryanmen"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_SHAPES),
+    },
+    ScenarioMeta {
         id: ScenarioId::PairCount,
         label: "Pair Count",
         description: "Block theory: a third pair is weaker than the side wait it was drawn from.",
@@ -410,6 +428,24 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
             "shape",
             "pon",
             "open_hand",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_BASIC),
+    },
+    ScenarioMeta {
+        id: ScenarioId::PerfectOneAway,
+        label: "Perfect 1-Away",
+        description: "Block theory: keep the perfect 1-away (two side waits, two pairs) \
+                      instead of the draw that accepts slightly more tiles.",
+        category: ScenarioCategory::TileEfficiency,
+        tags: &[
+            "block_theory",
+            "discard",
+            "perfect",
+            "shape",
+            "ryanmen",
+            "ryankan",
         ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
@@ -761,9 +797,11 @@ pub enum ScenarioId {
     NakabukureReady,
     ProtorunPriority,
     RyankanBreak,
+    NobetanKeep,
     PairCount,
     SkippingBlock,
     PairCountOpen,
+    PerfectOneAway,
     ChiitoiVsToitoi,
     SanshokuPursuit,
     ChiitoitsuRiichiVsDama,
@@ -796,9 +834,11 @@ impl ScenarioId {
         ScenarioId::NakabukureReady,
         ScenarioId::ProtorunPriority,
         ScenarioId::RyankanBreak,
+        ScenarioId::NobetanKeep,
         ScenarioId::PairCount,
         ScenarioId::SkippingBlock,
         ScenarioId::PairCountOpen,
+        ScenarioId::PerfectOneAway,
         ScenarioId::ChiitoiVsToitoi,
         ScenarioId::SanshokuPursuit,
         ScenarioId::ChiitoitsuRiichiVsDama,
@@ -831,9 +871,11 @@ impl ScenarioId {
             ScenarioId::NakabukureReady => "nakabukure_ready",
             ScenarioId::ProtorunPriority => "protorun_priority",
             ScenarioId::RyankanBreak => "ryankan_break",
+            ScenarioId::NobetanKeep => "nobetan_keep",
             ScenarioId::PairCount => "pair_count",
             ScenarioId::SkippingBlock => "skipping_block",
             ScenarioId::PairCountOpen => "pair_count_open",
+            ScenarioId::PerfectOneAway => "perfect_one_away",
             ScenarioId::ChiitoiVsToitoi => "chiitoi_vs_toitoi",
             ScenarioId::SanshokuPursuit => "sanshoku_pursuit",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
@@ -867,9 +909,11 @@ impl ScenarioId {
             "nakabukure_ready" => Some(ScenarioId::NakabukureReady),
             "protorun_priority" => Some(ScenarioId::ProtorunPriority),
             "ryankan_break" => Some(ScenarioId::RyankanBreak),
+            "nobetan_keep" => Some(ScenarioId::NobetanKeep),
             "pair_count" => Some(ScenarioId::PairCount),
             "skipping_block" => Some(ScenarioId::SkippingBlock),
             "pair_count_open" => Some(ScenarioId::PairCountOpen),
+            "perfect_one_away" => Some(ScenarioId::PerfectOneAway),
             "chiitoi_vs_toitoi" => Some(ScenarioId::ChiitoiVsToitoi),
             "sanshoku_pursuit" => Some(ScenarioId::SanshokuPursuit),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
@@ -904,9 +948,11 @@ impl ScenarioId {
             ScenarioId::NakabukureReady => block_theory::nakabukure_ready::generate(category),
             ScenarioId::ProtorunPriority => block_theory::protorun_priority::generate(category),
             ScenarioId::RyankanBreak => block_theory::ryankan_break::generate(category),
+            ScenarioId::NobetanKeep => block_theory::nobetan_keep::generate(category),
             ScenarioId::PairCount => block_theory::pair_count::generate(category),
             ScenarioId::SkippingBlock => block_theory::skipping_block::generate(category),
             ScenarioId::PairCountOpen => block_theory::pair_count_open::generate(category),
+            ScenarioId::PerfectOneAway => block_theory::perfect_one_away::generate(category),
             ScenarioId::ChiitoiVsToitoi => chiitoi_vs_toitoi::generate(category),
             ScenarioId::SanshokuPursuit => yaku::sanshoku_pursuit::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
