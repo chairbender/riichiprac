@@ -202,6 +202,7 @@ const CH8_GENBUTSU: &str = "Genbutsu and other absolutely safe tiles";
 const CH8_SUJI: &str = "Understanding suji";
 const CH8_KABE: &str = "Understanding tile blockade";
 const CH8_RANKING: &str = "Safety ranking";
+const CH8_BLOCKADE_RANKING: &str = "Tile blockade: Safety ranking";
 const CH8_VS_RIICHI: &str = "Defense against riichi";
 const CH8_STUCK: &str = "What to discard when you get stuck";
 const CH8_READY_SHORTCUT: &str = "Guessing if an opponent has a ready hand";
@@ -936,6 +937,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
             "having three pairs is actually better than having two pairs",
         )),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
+        "suji_kabe_safety" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
         }
@@ -1841,11 +1843,13 @@ fn hand_holds_a_dora(state: &GameState) -> bool {
         .any(|tile| dora.contains(&tile))
 }
 
-/// The two pure-defense lessons: the ch. 8 safety chart and its fallback list.
+/// The pure-defense lessons: the ch. 8 safety chart, its ranking mode and its
+/// fallback list.
 fn defense_rationale(state: &GameState) -> Option<BookRationale> {
     let is_chart = state.category == "defense_safety_chart";
+    let is_ranking = state.category == "suji_kabe_safety";
     let is_stuck = state.category == "defense_stuck_heuristic";
-    if !is_chart && !is_stuck {
+    if !is_chart && !is_ranking && !is_stuck {
         return None;
     }
 
@@ -1857,7 +1861,30 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
 
     let mut rules = Vec::new();
     let mut caveats = Vec::new();
-    let summary = if is_chart {
+    let summary = if is_ranking {
+        rules.extend(mechanism_rules(&read, &answer_text));
+        rules.push(chart_row_rule(&read, &answer_text, &state.equivalent_tiles));
+        rules.push(runner_up_rule(state, &facts, answer, &answer_text));
+        rules.push(push_fold_rule(state, &read, &answer_text));
+        caveats.push(
+            "The answer is inside a block in the hand (a pair, a set, or a protorun), so this \
+             discard visibly breaks the hand up to fold; boards where the safest tile is a lone \
+             float are rejected."
+                .to_string(),
+        );
+        caveats.push(
+            "Honor rows are excluded from this drill even where their visible-count row is as \
+             safe: the lesson is the suji and blockade arithmetic in the answer column, not honor \
+             counting."
+                .to_string(),
+        );
+        format!(
+            "Safest discard: {answer_text} is Rank {} ({}), with the runner-up exactly one row \
+             worse.",
+            read.rank.code(),
+            read.rank.label()
+        )
+    } else if is_chart {
         rules.extend(mechanism_rules(&read, &answer_text));
         rules.push(chart_row_rule(&read, &answer_text, &state.equivalent_tiles));
         rules.push(push_fold_rule(state, &read, &answer_text));
@@ -1897,7 +1924,7 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
         )
     };
 
-    let source = if is_chart {
+    let source = if is_chart || is_ranking {
         ch8(CH8_RANKING, 292, "Safety ranking")
     } else {
         ch8(CH8_STUCK, 344, "What to discard when you get stuck")
@@ -2190,6 +2217,57 @@ fn chart_row_rule(
                 different suji waits"
             .to_string(),
         citation: ch8(CH8_RANKING, 325, "4,5,6 tiles are the most dangerous"),
+        applies,
+    }
+}
+
+/// Why the next-best tile cannot be confused with the answer.
+///
+/// The ranking lesson is built so the hand's second-best tile is exactly one
+/// row down `tbl:safety`; that gap is what makes the answer learnable instead
+/// of a pile of equally-wrong alternatives.
+fn runner_up_rule(
+    state: &GameState,
+    facts: &crate::safety::SafetyFacts,
+    answer: Tile,
+    answer_text: &str,
+) -> BookRule {
+    let mut distinct: Vec<Tile> = state
+        .tiles
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    distinct.sort();
+    distinct.dedup();
+
+    let runner = distinct
+        .into_iter()
+        .filter(|tile| *tile != answer)
+        .min_by_key(|tile| facts.rank(*tile).order());
+
+    let applies = match runner {
+        Some(runner) => {
+            let read = facts.read(runner);
+            format!(
+                "{} is Rank {} ({}), exactly one row below {answer_text}; every other tile is \
+                 further down the table.",
+                format_tile_for_display(&runner.to_string(), false),
+                read.rank.code(),
+                read.rank.label()
+            )
+        }
+        None => format!("{answer_text} is the only tile left to compare."),
+    };
+
+    BookRule {
+        id: "runner_up_row".to_string(),
+        rule: "The second-best tile is exactly one row down the chart, so the answer's rank is \
+               the only thing separating the two discards."
+            .to_string(),
+        quote: "No chance $>$ Double one chance $>$ One chance (earlier turns) $>$ One chance \
+                (later turns) $\\simeq$ Non-{\\jap suji}"
+            .to_string(),
+        citation: ch8(CH8_BLOCKADE_RANKING, 263, "No chance $>$ Double one chance"),
         applies,
     }
 }
@@ -2903,6 +2981,7 @@ mod tests {
             "shouminkan_decision",
             "wind_discard_order",
             "defense_safety_chart",
+            "suji_kabe_safety",
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
@@ -2931,6 +3010,7 @@ mod tests {
             "shouminkan_decision",
             "wind_discard_order",
             "defense_safety_chart",
+            "suji_kabe_safety",
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
@@ -3237,6 +3317,7 @@ mod tests {
             "meld_or_not",
             "wind_discard_order",
             "defense_safety_chart",
+            "suji_kabe_safety",
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
@@ -3482,6 +3563,39 @@ mod tests {
         }
 
         assert!(saw_same_suit && saw_different_suit);
+    }
+
+    #[test]
+    fn suji_kabe_rationale_names_the_runner_up_row() {
+        for run in 0..25 {
+            let state = generate_puzzle("suji_kabe_safety").expect("suji kabe must generate");
+            let rationale = rationale_for(&state).expect("suji kabe needs a rationale");
+
+            assert_eq!(rationale.source.chapter, 8);
+            assert!(
+                rationale
+                    .summary
+                    .contains("runner-up exactly one row worse")
+            );
+            assert!(
+                rationale
+                    .rules
+                    .iter()
+                    .any(|rule| rule.id == "suji" || rule.id == "no_chance"),
+                "run {run}: the mechanism must be named"
+            );
+            let runner_up = rationale
+                .rules
+                .iter()
+                .find(|rule| rule.id == "runner_up_row")
+                .expect("the ranking gap must be explained");
+            assert!(
+                runner_up.applies.contains("exactly one row below"),
+                "run {run}: {}",
+                runner_up.applies
+            );
+            assert_eq!(runner_up.citation.source_line, 263);
+        }
     }
 
     #[test]
