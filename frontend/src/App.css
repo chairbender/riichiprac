@@ -1518,8 +1518,11 @@
   background-color: rgba(255, 255, 255, 0.03);
 }
 
+/* Book is a reference/source label, not a correctness verdict: teal keeps it
+   clear of the semantic red/green used for incorrect/correct marks and of the
+   Mortal column's blue. */
 .verdict-column--book {
-  border-left-color: #e03131;
+  border-left-color: #4dd4ac;
 }
 
 .verdict-column--mortal {
