@@ -20,7 +20,7 @@ use crate::generator::support::table::{
     self_turn_river_plan,
 };
 use crate::rng::{choose, gen_range, shuffle};
-use crate::safety::{SafetyFacts, SafetyRank, is_near_dora, post_riichi_discards};
+use crate::safety::{SafetyFacts, SafetyMechanism, SafetyRank, is_near_dora, post_riichi_discards};
 use crate::state::{CorrectAction, DecisionContext, GameState, PlayerState, TargetAction, Wind};
 
 /// Which defense question the board is asking.
@@ -28,6 +28,9 @@ use crate::state::{CorrectAction, DecisionContext, GameState, PlayerState, Targe
 pub(super) enum Lesson {
     /// The chart has a genuinely safe tile: find the safest discard.
     SafetyChart,
+    /// The chart's ranking is the lesson: the safest tile is a suji or
+    /// no-chance tile and the runner-up is exactly one row worse.
+    SujiKabe,
     /// Nothing is identified safe: apply the chapter's fallback list.
     StuckHeuristic,
 }
@@ -35,6 +38,11 @@ pub(super) enum Lesson {
 /// Builds a validated safety-chart board.
 pub(super) fn build_safety_chart(category: &str, plan: ThemePlan) -> Result<GameState, String> {
     build(category, plan, Lesson::SafetyChart)
+}
+
+/// Builds the ranking mode of the fold lesson.
+pub(super) fn build_suji_kabe(category: &str, plan: ThemePlan) -> Result<GameState, String> {
+    build(category, plan, Lesson::SujiKabe)
 }
 
 /// Builds a validated fallback-heuristic board.
@@ -59,14 +67,31 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
 
     // Reserve the answer before anything else, so no other placement can
     // consume its last copy. The fallback lesson needs the pair, so it holds
-    // two: one concealed and one as the draw.
-    let answer_copies = if lesson == Lesson::StuckHeuristic {
-        2
-    } else {
-        1
+    // two: one concealed and one as the draw. The ranking lesson's terminal
+    // variants deliberately hold a pair or triplet, because the visible-copy
+    // count is what picks the suji terminal's row.
+    let answer_copies = match lesson {
+        Lesson::StuckHeuristic => 2,
+        Lesson::SujiKabe => 1 + plan.answer_concealed,
+        Lesson::SafetyChart => 1,
     };
     for _ in 0..answer_copies {
         take(&mut deck, &mut visible, plan.answer)?;
+    }
+
+    // The ranking lesson seeds the concealed hand before the fill: the extra
+    // answer copies and the runner-up, both already counted as visible above.
+    let mut concealed: Vec<Tile> = Vec::with_capacity(13);
+    if lesson == Lesson::SujiKabe {
+        for _ in 0..plan.answer_concealed {
+            concealed.push(plan.answer);
+        }
+        if let Some(runner_up) = plan.runner_up {
+            for _ in 0..runner_up.copies {
+                take(&mut deck, &mut visible, runner_up.tile)?;
+                concealed.push(runner_up.tile);
+            }
+        }
     }
 
     // The threat's river: the theme's pattern in the early turns, then filler.
@@ -119,7 +144,8 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
             let mut river = extra_by_seat.remove(&seat).unwrap_or_default();
             while river.len() < river_plan.counts[seat] {
                 let tile = deck
-                    .draw()
+                    .draw_excluding(1, &plan.all_avoid)
+                    .and_then(|mut drawn| drawn.pop())
                     .ok_or_else(|| "Deck exhausted drawing an opponent river".to_string())?;
                 increment(&mut visible, tile);
                 river.push(tile);
@@ -159,6 +185,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         .iter()
         .copied()
         .filter(|&indicator| deck.count(indicator) > 0 && !is_near_dora(plan.answer, &[indicator]))
+        .filter(|indicator| !plan.all_avoid.contains(indicator))
         .collect();
     let dora_indicator =
         choose(&dora_candidates).ok_or_else(|| "No legal dora indicator".to_string())?;
@@ -168,11 +195,14 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         .draw()
         .ok_or_else(|| "Deck exhausted drawing the ura indicator".to_string())?;
 
-    let human_river = deck
-        .draw_n(river_plan.counts[0])
-        .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
-    for &tile in &human_river {
+    let mut human_river = Vec::with_capacity(river_plan.counts[0]);
+    for _ in 0..river_plan.counts[0] {
+        let tile = deck
+            .draw_excluding(1, &plan.all_avoid)
+            .and_then(|mut drawn| drawn.pop())
+            .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
         increment(&mut visible, tile);
+        human_river.push(tile);
     }
     rivers[0] = human_river.clone();
 
@@ -195,7 +225,27 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         &visible,
     );
     let answer_rank = table_facts.rank(plan.answer);
-    if !accepts_answer(lesson, plan.theme, answer_rank) {
+    let answer_order = answer_rank.order();
+    if lesson == Lesson::SujiKabe {
+        let read = table_facts.read(plan.answer);
+        if !accepts_suji_kabe(&read) {
+            return Err(format!(
+                "The ranking answer is Rank {} ({}), not a suji or no-chance tile",
+                read.rank.code(),
+                read.rank.label()
+            ));
+        }
+        if let Some(runner_up) = plan.runner_up {
+            let runner_order = table_facts.rank(runner_up.tile).order();
+            if runner_order != answer_order + 1 {
+                return Err(format!(
+                    "The runner-up is Rank {}, not one row below Rank {}",
+                    table_facts.rank(runner_up.tile).code(),
+                    read.rank.code()
+                ));
+            }
+        }
+    } else if !accepts_answer(lesson, plan.theme, answer_rank) {
         return Err(format!(
             "Theme {} cannot be built: the answer is Rank {}",
             plan.theme.as_str(),
@@ -212,13 +262,18 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
     // Fill the concealed hand with tiles below the lesson's chart floor. The
     // check runs after every pick because added copies can silently promote a
     // filler through a blockade.
-    let concealed_target = if lesson == Lesson::StuckHeuristic {
+    let concealed_target: usize = if lesson == Lesson::StuckHeuristic {
         12
     } else {
         13
     };
-    let mut concealed: Vec<Tile> = Vec::with_capacity(13);
-    for _ in 0..concealed_target {
+    // The ranking lesson may already hold its answer copies and runner-up. A
+    // pair or triplet is itself the block; a single answer needs a partner.
+    let fill_count = concealed_target.saturating_sub(concealed.len());
+    let mut needs_block = lesson == Lesson::SujiKabe
+        && plan.answer_concealed == 0
+        && !concealed.iter().any(|&tile| same_block(tile, plan.answer));
+    for _ in 0..fill_count {
         // The cheap pass drops tiles that are already at least as safe as the
         // answer (adding a copy can only move a tile *up* the chart), then the
         // live check below confirms the pick against the enlarged visible set.
@@ -229,35 +284,57 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
             &post_riichi,
             &visible,
         );
-        let floor = filler_floor(lesson, plan.answer, &current);
+        let floor = match lesson {
+            Lesson::SujiKabe => answer_order + 1,
+            _ => filler_floor(lesson, plan.answer, &current),
+        };
+        let runner_up_tile = plan.runner_up.map(|runner_up| runner_up.tile);
         let mut pool: Vec<Tile> = ALL_TILES
             .iter()
             .copied()
-            .filter(|&tile| tile != plan.answer && deck.count(tile) > 0)
+            .filter(|&tile| tile != plan.answer && Some(tile) != runner_up_tile)
+            .filter(|&tile| deck.count(tile) > 0)
             .filter(|&tile| rank_is_legal(current.rank(tile), floor))
             .filter(|&tile| current.visible_of(tile) < 4)
+            .filter(|&tile| !needs_block || same_block(tile, plan.answer))
             .filter(|&tile| {
                 lesson != Lesson::StuckHeuristic || !current.outside_early_discards(tile)
             })
             .collect();
         shuffle(&mut pool);
 
-        let mut placed = None;
+        let mut placed = false;
         for tile in pool {
             let mut trial = visible.clone();
             increment(&mut trial, tile);
             let trial_facts =
                 facts_now(round_wind, threat_wind, &threat_river, &post_riichi, &trial);
-            if filler_is_legal(lesson, plan.answer, &trial_facts, &concealed, tile) {
+            let legal = match lesson {
+                Lesson::SujiKabe => suji_kabe_filler_is_legal(
+                    plan.answer,
+                    runner_up_tile,
+                    answer_order,
+                    &trial_facts,
+                    &concealed,
+                    tile,
+                ),
+                _ => filler_is_legal(lesson, plan.answer, &trial_facts, &concealed, tile),
+            };
+            if legal {
                 deck.take(tile)?;
                 visible = trial;
                 concealed.push(tile);
-                placed = Some(tile);
+                placed = true;
                 break;
             }
         }
 
-        placed.ok_or_else(|| "No filler tile is ranked below the answer".to_string())?;
+        if !placed {
+            return Err("No filler tile is ranked below the answer".to_string());
+        }
+        if needs_block && shares_block(&concealed, plan.answer) {
+            needs_block = false;
+        }
     }
 
     // The fallback lesson teaches the pair: one copy concealed, one as the draw.
@@ -341,7 +418,11 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
     };
     state.equivalent_tiles = genbutsu_ties(&state, threat_seat)?;
 
-    validate(&state, threat_seat, lesson, plan.theme)?;
+    if lesson == Lesson::SujiKabe {
+        validate_suji_kabe(&state, threat_seat)?;
+    } else {
+        validate(&state, threat_seat, lesson, plan.theme)?;
+    }
 
     Ok(state)
 }
@@ -380,6 +461,88 @@ fn genbutsu_ties(state: &GameState, threat_seat: usize) -> Result<Vec<String>, S
     Ok(ties)
 }
 
+/// True when the answer sits inside a block the learner would be breaking.
+///
+/// The ranking lesson's design rule: the safest discard must be a pair, a set,
+/// a run, or a protorun tile, not an isolated float or a lone honor. A pair is
+/// two copies of the answer; a run or protorun is another suited tile within
+/// two ranks (ch. 3's protorun width).
+fn shares_block(hand: &[Tile], answer: Tile) -> bool {
+    let copies = hand.iter().filter(|&&tile| tile == answer).count();
+    if copies >= 2 {
+        return true;
+    }
+
+    hand.iter()
+        .any(|&tile| tile != answer && same_block(tile, answer))
+}
+
+/// True when two tiles belong to one block: a pair, a run, or a protorun.
+fn same_block(a: Tile, b: Tile) -> bool {
+    if a == b {
+        return true;
+    }
+
+    match (a.suit(), a.value(), b.suit(), b.value()) {
+        (Some(a_suit), Some(a_value), Some(b_suit), Some(b_value)) => {
+            a_suit == b_suit && a_value.abs_diff(b_value) <= 2
+        }
+        _ => false,
+    }
+}
+
+/// True when the ranking lesson's answer is a suji or no-chance tile.
+///
+/// Riichi Book 1, ch. 8, `tbl:safety`: the suji-terminal rows (`A+` down to
+/// `AA`), `BBB` (suji 4-5-6 or no chance), `BB+` and `BB-`. Honors are excluded
+/// even where their visible-count row overlaps: the lesson is about suji and
+/// blockade arithmetic, not honor counting.
+fn accepts_suji_kabe(read: &crate::safety::TileRead) -> bool {
+    matches!(
+        read.mechanism,
+        SafetyMechanism::Suji | SafetyMechanism::NoChance
+    ) && read.rank.order() <= SafetyRank::BbMinus.order()
+}
+
+/// Keep the ranking lesson's answer and runner-up on their exact chart rows
+/// while the rest of the hand fills in strictly below both.
+fn suji_kabe_filler_is_legal(
+    answer: Tile,
+    runner_up: Option<Tile>,
+    answer_order: u8,
+    facts: &SafetyFacts,
+    placed: &[Tile],
+    tile: Tile,
+) -> bool {
+    if facts.visible_of(tile) >= 4 {
+        return false;
+    }
+    if placed
+        .iter()
+        .filter(|placed_tile| **placed_tile == tile)
+        .count()
+        >= 2
+    {
+        return false;
+    }
+    if facts.rank(answer).order() != answer_order {
+        return false;
+    }
+    if let Some(runner_up) = runner_up
+        && facts.rank(runner_up).order() != answer_order + 1
+    {
+        return false;
+    }
+    if facts.rank(tile).order() < answer_order + 2 {
+        return false;
+    }
+
+    placed
+        .iter()
+        .filter(|placed_tile| **placed_tile != answer && Some(**placed_tile) != runner_up)
+        .all(|placed_tile| facts.rank(*placed_tile).order() >= answer_order + 2)
+}
+
 /// True when the answer's chart row is the one the theme is teaching.
 fn accepts_answer(lesson: Lesson, theme: SafetyTheme, rank: SafetyRank) -> bool {
     match lesson {
@@ -407,6 +570,8 @@ fn accepts_answer(lesson: Lesson, theme: SafetyTheme, rank: SafetyRank) -> bool 
             ),
             SafetyTheme::NonSuji => rank == SafetyRank::Cc,
         },
+        // The ranking mode is accepted by mechanism, not by theme row.
+        Lesson::SujiKabe => false,
     }
 }
 
@@ -420,6 +585,9 @@ fn filler_floor(lesson: Lesson, answer: Tile, facts: &SafetyFacts) -> u8 {
     match lesson {
         Lesson::StuckHeuristic => SafetyRank::B.order(),
         Lesson::SafetyChart => facts.rank(answer).order(),
+        // The caller supplies the floor for the ranking mode; this arm only
+        // keeps the match exhaustive.
+        Lesson::SujiKabe => facts.rank(answer).order() + 1,
     }
 }
 
@@ -602,6 +770,106 @@ fn validate(
     Ok(())
 }
 
+/// Re-derives the ranking lesson from the finished state.
+fn validate_suji_kabe(state: &GameState, threat_seat: usize) -> Result<(), String> {
+    let facts = SafetyFacts::from_state(state, threat_seat)
+        .ok_or_else(|| "No safety facts for the threat seat".to_string())?;
+
+    let human = state
+        .players
+        .iter()
+        .find(|player| player.is_human)
+        .ok_or_else(|| "No human player".to_string())?;
+    let threat = state
+        .players
+        .iter()
+        .find(|player| player.seat == threat_seat)
+        .ok_or_else(|| "No threat player".to_string())?;
+
+    if !threat.is_riichi || threat.riichi_discard_index.is_none() {
+        return Err("The threat must be in Riichi".to_string());
+    }
+    if !threat.melds.is_empty() {
+        return Err("The threat must have no open melds".to_string());
+    }
+
+    let mut hand_tiles: Vec<Tile> = human
+        .hand
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    if let Some(draw) = &human.draw {
+        hand_tiles.push(Tile::try_from(draw.as_str()).map_err(|err| err.to_string())?);
+    }
+    if hand_tiles.len() != 14 {
+        return Err(format!(
+            "The defender must hold 14 tiles, got {}",
+            hand_tiles.len()
+        ));
+    }
+    if !human.melds.is_empty() || human.is_riichi {
+        return Err("The defender must be concealed and not in Riichi".to_string());
+    }
+
+    let answer = Tile::try_from(
+        state
+            .correct_action
+            .tile()
+            .ok_or_else(|| "The fold answer must name a tile".to_string())?,
+    )
+    .map_err(|err| err.to_string())?;
+    let read = facts.read(answer);
+    if !accepts_suji_kabe(&read) {
+        return Err(format!(
+            "The answer is Rank {} ({}), not a suji or no-chance tile",
+            read.rank.code(),
+            read.rank.label()
+        ));
+    }
+    if !answer.is_honor() && facts.visible_of(answer) >= 4 {
+        return Err("The answer tile is completely visible".to_string());
+    }
+
+    // The answer must be the unique best row, with the runner-up exactly one
+    // row down the book's table. A tie at the answer's row is rejected so the
+    // drill always has one right discard.
+    let mut distinct = hand_tiles.clone();
+    distinct.sort();
+    distinct.dedup();
+    let best_other = distinct
+        .iter()
+        .filter(|tile| **tile != answer)
+        .map(|tile| facts.rank(*tile).order())
+        .min();
+    match best_other {
+        Some(order) if order == read.rank.order() + 1 => {}
+        Some(order) => {
+            return Err(format!(
+                "The runner-up is row {order}, not one row below the answer's row {}",
+                read.rank.order()
+            ));
+        }
+        None => return Err("The hand has no tile to rank beside the answer".to_string()),
+    }
+
+    if !shares_block(&hand_tiles, answer) {
+        return Err("The answer is not part of a block".to_string());
+    }
+
+    if !state.equivalent_tiles.is_empty() {
+        return Err(format!(
+            "The ranking lesson must not have genbutsu ties, got {:?}",
+            state.equivalent_tiles
+        ));
+    }
+
+    // The table must be a reachable position: rivers, melds, and the draw all
+    // line up with one legal turn order.
+    crate::generator::support::state_validation::validate_reachable_state(state)?;
+
+    Ok(())
+}
+
 /// The learner's visible hand counts, for the fallback ordering.
 fn hand_counts(state: &GameState) -> HashMap<Tile, u8> {
     let mut counts = HashMap::new();
@@ -646,7 +914,7 @@ fn increment(counts: &mut HashMap<Tile, u8>, tile: Tile) {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{generate_safety_chart, generate_stuck};
+    use super::super::{generate_safety_chart, generate_stuck, generate_suji_kabe};
     use super::*;
 
     fn human(state: &GameState) -> &PlayerState {
@@ -845,5 +1113,94 @@ mod tests {
             SafetyTheme::NonSuji,
             SafetyRank::B
         ));
+    }
+
+    #[test]
+    fn suji_kabe_lesson_ranks_the_table() {
+        let mut rows: Vec<u8> = Vec::new();
+
+        for run in 0..60 {
+            let state = generate_suji_kabe("suji_kabe_safety")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+
+            assert_eq!(state.category, "suji_kabe_safety");
+            assert_eq!(state.target_action, TargetAction::Defend);
+            assert!(matches!(state.correct_action, CorrectAction::Fold { .. }));
+
+            let threat = threat(&state);
+            assert!(threat.riichi_discard_index.is_some());
+
+            let human = human(&state);
+            assert_eq!(human.hand.len() + usize::from(human.draw.is_some()), 14);
+            assert_eq!(human.draw.as_deref(), state.correct_action.tile());
+            assert!(human.melds.is_empty());
+            assert!(!human.is_riichi);
+            assert!(state.shanten >= MIN_SHANTEN);
+
+            let facts = SafetyFacts::from_state(&state, threat.seat).expect("facts");
+            let answer = answer_tile(&state);
+            let read = facts.read(answer);
+
+            // The ranking lesson never takes the free genbutsu: the answer is
+            // always a suji or no-chance tile.
+            assert!(
+                matches!(
+                    read.mechanism,
+                    SafetyMechanism::Suji | SafetyMechanism::NoChance
+                ),
+                "run {run}: the answer is {:?}",
+                read.mechanism
+            );
+            assert_ne!(read.rank, SafetyRank::Genbutsu);
+
+            // The answer is the unique best row and the runner-up is exactly
+            // one row down the book's table.
+            let mut rivals: Vec<SafetyRank> = state
+                .tiles
+                .iter()
+                .filter_map(|code| Tile::try_from(code.as_str()).ok())
+                .filter(|tile| *tile != answer)
+                .map(|tile| facts.rank(tile))
+                .collect();
+            rivals.sort_by_key(|rank| rank.order());
+            assert_eq!(
+                rivals[0].order(),
+                read.rank.order() + 1,
+                "run {run}: the runner-up is {} but the answer is {}",
+                rivals[0].code(),
+                read.rank.code()
+            );
+            assert!(
+                rivals
+                    .iter()
+                    .all(|rank| rank.order() == read.rank.order() + 1
+                        || rank.order() > read.rank.order() + 1),
+                "run {run}: a rival ties or beats the answer"
+            );
+
+            // The answer must be part of a block, so the fold breaks shape.
+            let hand_tiles: Vec<Tile> = human
+                .hand
+                .iter()
+                .chain(human.draw.iter())
+                .filter_map(|code| Tile::try_from(code.as_str()).ok())
+                .collect();
+            assert!(
+                shares_block(&hand_tiles, answer),
+                "run {run}: {answer} is an isolated tile"
+            );
+
+            // No genbutsu ties: only the answer sits on its row.
+            assert!(state.equivalent_tiles.is_empty());
+
+            if !rows.contains(&read.rank.order()) {
+                rows.push(read.rank.order());
+            }
+        }
+
+        assert!(
+            rows.len() >= 5,
+            "the ranking lesson only showed rows {rows:?}"
+        );
     }
 }

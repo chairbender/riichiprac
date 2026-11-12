@@ -17,6 +17,9 @@
 //! - `suji_trap_riichi`: ch. 8's immediate suji trap: declare Riichi on the
 //!   discard that makes the wait look like a safe suji.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
+//!   `suji_kabe_safety` is the ranking mode of the fold board: the safest tile
+//!   is a suji or no-chance tile, never the free genbutsu, and the runner-up is
+//!   exactly one row down `tbl:safety`.
 //! - `open_hand_defense`: ch. 8.4's open-hand read: an opponent's chii followed
 //!   by a discard in the same suit makes that discard's neighbourhood safe; a
 //!   different-suit discard makes it dangerous.
@@ -305,6 +308,23 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::SujiKabeSafety,
+        label: "Defense: Suji / No-Chance Ranking",
+        description: "The safest tile is a suji or no-chance tile: rank the hand on the book's \
+                      table, where the runner-up is exactly one row worse.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &[
+            "defense",
+            "betaori",
+            "suji",
+            "kabe",
+            "safety_chart",
+            "ranking",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::DefenseStuckHeuristic,
         label: "Defense: Nothing Is Safe",
         description: "No tile is identified as safe: apply the book's fallback and break up the pair.",
@@ -375,6 +395,7 @@ pub enum ScenarioId {
     WindDiscardOrder,
     AiBestAction,
     DefenseSafetyChart,
+    SujiKabeSafety,
     DefenseStuckHeuristic,
     OpenHandDefense,
 }
@@ -399,6 +420,7 @@ impl ScenarioId {
         ScenarioId::MeldOrNot,
         ScenarioId::AiBestAction,
         ScenarioId::DefenseSafetyChart,
+        ScenarioId::SujiKabeSafety,
         ScenarioId::DefenseStuckHeuristic,
         ScenarioId::OpenHandDefense,
     ];
@@ -423,6 +445,7 @@ impl ScenarioId {
             ScenarioId::MeldOrNot => "meld_or_not",
             ScenarioId::AiBestAction => "ai_best_action",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
+            ScenarioId::SujiKabeSafety => "suji_kabe_safety",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
             ScenarioId::OpenHandDefense => "open_hand_defense",
         }
@@ -448,6 +471,7 @@ impl ScenarioId {
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
+            "suji_kabe_safety" => Some(ScenarioId::SujiKabeSafety),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
             _ => None,
@@ -478,6 +502,7 @@ impl ScenarioId {
                     .to_string(),
             ),
             ScenarioId::DefenseSafetyChart => defense::generate_safety_chart(category),
+            ScenarioId::SujiKabeSafety => defense::generate_suji_kabe(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
             ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
         }

@@ -220,6 +220,15 @@ fn test_list_scenarios_payload() {
     );
     assert!(
         scenarios.iter().any(|scenario| {
+            scenario["id"] == "suji_kabe_safety"
+                && scenario["category"] == "defense_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the suji/no-chance ranking lesson must be listed as a book lesson"
+    );
+    assert!(
+        scenarios.iter().any(|scenario| {
             scenario["id"] == "open_hand_defense"
                 && scenario["category"] == "defense_decision"
                 && scenario["grading"] == "book_and_mortal"
@@ -2781,6 +2790,55 @@ fn test_defense_scenarios_payload() {
             );
             assert_eq!(val["book_rationale"]["source"]["chapter"], 8);
         }
+    }
+}
+
+#[wasm_bindgen_test]
+fn test_suji_kabe_safety_payload() {
+    for run in 0..20 {
+        let json_output = generate_puzzle("suji_kabe_safety".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}"));
+
+        assert_eq!(val["category"], "suji_kabe_safety");
+        assert_eq!(val["target_action"], "Defend");
+        assert_eq!(val["correct_action"]["type"], "fold");
+        assert_eq!(val["decision"]["kind"], "self_turn");
+        assert_eq!(val["can_riichi"], false);
+        assert!(val["shanten"].as_i64().unwrap() >= 1);
+
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("a fold answer names the discard");
+        let hand = val["players"][0]["hand"].as_array().expect("hand");
+        assert_eq!(hand.len(), 13);
+        assert_eq!(val["players"][0]["draw"], answer);
+        assert!(val["players"][0]["melds"].as_array().unwrap().is_empty());
+
+        // The ranking mode never has a genbutsu tie: the answer is the only
+        // tile on its row.
+        assert!(
+            val["equivalent_tiles"]
+                .as_array()
+                .is_none_or(|ties| ties.is_empty()),
+            "run {run}: the ranking lesson must not accept a 100% tie"
+        );
+
+        // The book panel has to name the mechanism and the one-row runner-up.
+        let rule_ids: Vec<&str> = val["book_rationale"]["rules"]
+            .as_array()
+            .expect("rules")
+            .iter()
+            .filter_map(|rule| rule["id"].as_str())
+            .collect();
+        assert!(
+            rule_ids.contains(&"suji") || rule_ids.contains(&"no_chance"),
+            "run {run}: the rationale must name the suji or blockade read: {rule_ids:?}"
+        );
+        assert!(
+            rule_ids.contains(&"runner_up_row"),
+            "run {run}: the rationale must name the one-row runner-up: {rule_ids:?}"
+        );
     }
 }
 

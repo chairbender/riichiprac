@@ -90,8 +90,8 @@ action list, and the evaluation. React only renders and grades.
 
 ## Defense scenarios
 
-Three lessons train defense. The first two answer an opponent's Riichi and the
-third reads an open hand's post-`chii` discard. None asks about hand value: the
+Four lessons train defense. Three answer an opponent's Riichi and the fourth
+reads an open hand's post-`chii` discard. None asks about hand value: the
 generated hand is never ready, so the question is only which tile is safest to
 let go. All are graded by the book's rule; Mortal's answer appears beside it
 after you answer.
@@ -102,6 +102,15 @@ tile behind a blockade, or an honor ranked by its visible copies — and fills t
 rest of the hand with tiles the chart ranks strictly lower, so the safest
 discard is unique. The book panel names the chart row the answer sits on and
 lists the other tiles with their ranks ("Not this hand").
+
+**Defense: Suji / No-Chance Ranking** is the same fold board without the
+freebie: the answer is never genbutsu, only a suji or no-chance tile. The hand
+also holds a tile exactly one row down `tbl:safety`, and every other tile is
+further down the table, so the drill is about the gap between neighbouring
+rows rather than about spotting a 100% tile. The answer must sit inside a pair,
+a set, or a protorun, so the fold visibly breaks the hand up; the variants cover
+the suji-terminal rows (`A+`, `AA-`, `AA`), `BBB` (suji 4-5-6 or no chance),
+`BB+`, and `BB-`.
 
 **Defense: Nothing Is Safe** is the chapter's fallback, "What to discard when
 you get stuck". Nothing in the hand is Rank B or safer, so the chart identifies
