@@ -600,6 +600,7 @@ mod tests {
                 ScenarioId::DamaBadWait,
                 ScenarioId::DamaGenbutsuWait,
                 ScenarioId::DamaExpensiveHand,
+                ScenarioId::DamaImprovingHand,
                 ScenarioId::ShouminkanDecision,
             ]
         );

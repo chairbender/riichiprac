@@ -39,12 +39,12 @@ pub fn render_text(report: &ScenarioReport, verdict: &ReportVerdict) -> String {
     let _ = writeln!(
         out,
         "App expected: {}",
-        describe_correct_action(&report.table.correct_action)
+        describe_correct_action(&report.table)
     );
     let _ = writeln!(
         out,
         "Reporter answered: {}",
-        describe_reported_action(&report.decision.answer)
+        describe_reported_action(&report.decision.answer, report.table.target_action)
     );
     render_verdict(&mut out, report, verdict);
     let _ = writeln!(out, "Reporter reason: {}", report.decision.reason.as_str());
@@ -233,7 +233,7 @@ fn render_verdict(out: &mut String, report: &ScenarioReport, verdict: &ReportVer
         out,
         "Book: {} - {}",
         if book_agrees { "AGREES" } else { "DISAGREES" },
-        describe_correct_action(&report.table.correct_action)
+        describe_correct_action(&report.table)
     );
     if let Some(rationale) = &report.table.book_rationale {
         let _ = writeln!(out, "  Rule: {}", rationale.summary);
@@ -282,10 +282,18 @@ fn render_verdict(out: &mut String, report: &ScenarioReport, verdict: &ReportVer
     );
 }
 
-fn describe_correct_action(action: &CorrectAction) -> String {
-    match action {
+fn describe_correct_action(table: &crate::state::GameState) -> String {
+    // The push/fold lesson carries its push answer as a dama discard, because
+    // the answer is an ordinary tile and the hand is not ready at all. Name the
+    // decision the lesson is actually asking about.
+    let pushing = table.target_action == crate::state::TargetAction::Push;
+    match &table.correct_action {
         CorrectAction::Riichi { discard } => format!(
             "Riichi, discarding {}",
+            format_tile_for_display(discard, false)
+        ),
+        CorrectAction::Dama { discard } if pushing => format!(
+            "Push, discarding the shape-preserving tile {}",
             format_tile_for_display(discard, false)
         ),
         CorrectAction::Dama { discard } => format!(
@@ -315,10 +323,15 @@ fn describe_correct_action(action: &CorrectAction) -> String {
     }
 }
 
-fn describe_reported_action(answer: &ReportedAction) -> String {
+fn describe_reported_action(answer: &ReportedAction, target: crate::state::TargetAction) -> String {
+    let pushing = target == crate::state::TargetAction::Push;
     let mut text = match answer.action {
         CorrectActionType::Riichi => format!(
             "Riichi, discarding {}",
+            format_tile_for_display(&answer.tile, false)
+        ),
+        CorrectActionType::Dama if pushing => format!(
+            "Push, discarding {}",
             format_tile_for_display(&answer.tile, false)
         ),
         CorrectActionType::Dama => format!(
@@ -554,6 +567,58 @@ mod tests {
     }
 
     #[test]
+    fn push_or_fold_report_names_the_decision_for_both_cells() {
+        let mut saw_push = false;
+        let mut saw_fold = false;
+
+        for _ in 0..40 {
+            let table = crate::generator::generate_puzzle("push_or_fold").expect("must generate");
+            let discard = table
+                .correct_action
+                .tile()
+                .expect("the answer names a discard")
+                .to_string();
+            let pushing = table.target_action == TargetAction::Push;
+            let answer_type = if pushing {
+                CorrectActionType::Dama
+            } else {
+                CorrectActionType::Fold
+            };
+            let request = BuildReportRequest {
+                table,
+                answer: ReportedAction::new(answer_type, discard),
+                reason: ReportReason::Other,
+                note: None,
+                created_at: "2026-11-11T08:00:00.000Z".to_string(),
+                report_id: "8b0e5c0e-4f1b-4f7e-9b3e-2a7c1d9e6f12".to_string(),
+                commit: None,
+                build_time: None,
+                ai: None,
+            };
+            let report = build_report(request).expect("report must build");
+            let text = report.human_readable.join("\n");
+
+            assert!(
+                text.contains("Decision: Push or fold?"),
+                "the prompt names the decision:\n{text}"
+            );
+            if pushing {
+                saw_push = true;
+                assert!(
+                    text.contains("App expected: Push, discarding the shape-preserving tile"),
+                    "a push answer is not a dama:\n{text}"
+                );
+                assert!(text.contains("Reporter answered: Push, discarding"));
+            } else {
+                saw_fold = true;
+                assert!(text.contains("App expected: Fold, discarding the safest tile"));
+            }
+        }
+
+        assert!(saw_push && saw_fold, "both cells must be covered");
+    }
+
+    #[test]
     fn summary_shows_mortals_riichi_declaration_and_discard() {
         use crate::ai::wasm_bridge::ActionEvaluation;
 
@@ -613,6 +678,14 @@ mod tests {
         assert_eq!(
             DecisionPrompt::from_target(TargetAction::Riichi).as_str(),
             "Declare Riichi, or stay dama?"
+        );
+        assert_eq!(
+            DecisionPrompt::from_target(TargetAction::Push).as_str(),
+            "Push or fold?"
+        );
+        assert_eq!(
+            DecisionPrompt::from_target(TargetAction::Fold).as_str(),
+            "Push or fold?"
         );
     }
 }

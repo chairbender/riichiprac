@@ -18,10 +18,15 @@
 //!   at least six kinds of draws improve the ready hand's score or wait.
 //! - `suji_trap_riichi`: ch. 8's immediate suji trap: declare Riichi on the
 //!   discard that makes the wait look like a safe suji.
+//! - `fold_to_riichi`: ch. 8.1/8.3's betaori drill: a junk hand facing a
+//!   declared Riichi discards the one 100% safe tile, even though it breaks a
+//!   block.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
 //!   `suji_kabe_safety` is the ranking mode of the fold board: the safest tile
 //!   is a suji or no-chance tile, never the free genbutsu, and the runner-up is
 //!   exactly one row down `tbl:safety`.
+//! - `push_or_fold`: ch. 8.1's push/fold box, isolated on the 1-away cell:
+//!   push a guaranteed mangan with a perfect wait, fold a cheap bad-wait hand.
 //! - `open_hand_defense`: ch. 8.4's open-hand read: an opponent's chii followed
 //!   by a discard in the same suit makes that discard's neighbourhood safe; a
 //!   different-suit discard makes it dangerous.
@@ -32,6 +37,9 @@
 //!   tile.
 //! - `meld_or_not`: the ch. 9.1 call decision: pass on a Pon when the hand is
 //!   both cheap and slow.
+//! - `daiminkan_decision`: the ch. 9.3.2 open quad (daiminkan) call decision:
+//!   take the fourth copy of a concealed dragon triplet only when the book's
+//!   value band, placement pressure, or score line justifies it.
 //! - `wind_discard_order`: the ch. 9 seating tip: which valueless wind to throw
 //!   first (the right player's).
 //! - `pinfu_head`: ch. 5's pinfu head: a hand with no pair yet keeps its
@@ -46,15 +54,18 @@ pub mod ai_best_action;
 mod ankan_decision;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
+mod daiminkan_decision;
 mod dama_bad_wait;
 mod dama_expensive_hand;
 mod dama_genbutsu_wait;
 mod dama_improving_hand;
 mod defense;
+mod fold_to_riichi;
 mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
 mod pinfu_head;
+pub(crate) mod push_or_fold;
 mod riichi_judgement;
 mod shouminkan_decision;
 mod situation;
@@ -69,6 +80,7 @@ use crate::ai::model::MortalV4Model;
 use crate::state::GameState;
 use situation::Situation;
 
+pub(crate) use daiminkan_decision::{DaiminkanTriggerSet, facts as daiminkan_facts};
 pub(crate) use support::analysis::floating_quad_acceptance;
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
@@ -328,6 +340,17 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::DaiminkanDecision,
+        label: "Open Quad Decision",
+        description: "An opponent discards the fourth copy of your dragon triplet: call the \
+                      open quad only when the hand's value, the placement, or the score line \
+                      asks for it.",
+        category: ScenarioCategory::KanDecision,
+        tags: &["kan", "daiminkan", "open_quad", "call", "value_band"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::AiBestAction,
         label: "AI Best Action",
         description: "Any decision: discard, call, or win — the answer is Mortal v4's top action.",
@@ -335,6 +358,33 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["ai", "mortal", "discard", "call", "any_decision"],
         requires_ai: true,
         grading: ScenarioGrading::MortalOnly,
+    },
+    ScenarioMeta {
+        id: ScenarioId::FoldToRiichi,
+        label: "Defense: Fold to Riichi",
+        description: "An opponent has declared Riichi against a junk hand: discard the one \
+                      tile the book calls 100% safe.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &["defense", "betaori", "fold", "genbutsu", "discard"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
+        id: ScenarioId::PushOrFold,
+        label: "Push or Fold",
+        description: "Ch. 8.1 push/fold: a 1-away hand may push only with both a high \
+                      score and a good wait; otherwise fold to the safest tile.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &[
+            "defense",
+            "push_fold",
+            "betaori",
+            "value",
+            "wait",
+            "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
         id: ScenarioId::DefenseSafetyChart,
@@ -442,8 +492,11 @@ pub enum ScenarioId {
     ShouminkanDecision,
     AnkanDecision,
     MeldOrNot,
+    DaiminkanDecision,
     WindDiscardOrder,
     AiBestAction,
+    FoldToRiichi,
+    PushOrFold,
     DefenseSafetyChart,
     SujiKabeSafety,
     DefenseStuckHeuristic,
@@ -471,7 +524,10 @@ impl ScenarioId {
         ScenarioId::AnkanDecision,
         ScenarioId::WindDiscardOrder,
         ScenarioId::MeldOrNot,
+        ScenarioId::DaiminkanDecision,
         ScenarioId::AiBestAction,
+        ScenarioId::FoldToRiichi,
+        ScenarioId::PushOrFold,
         ScenarioId::DefenseSafetyChart,
         ScenarioId::SujiKabeSafety,
         ScenarioId::DefenseStuckHeuristic,
@@ -499,7 +555,10 @@ impl ScenarioId {
             ScenarioId::AnkanDecision => "ankan_decision",
             ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::MeldOrNot => "meld_or_not",
+            ScenarioId::DaiminkanDecision => "daiminkan_decision",
             ScenarioId::AiBestAction => "ai_best_action",
+            ScenarioId::FoldToRiichi => "fold_to_riichi",
+            ScenarioId::PushOrFold => "push_or_fold",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
             ScenarioId::SujiKabeSafety => "suji_kabe_safety",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
@@ -528,7 +587,10 @@ impl ScenarioId {
             "ankan_decision" => Some(ScenarioId::AnkanDecision),
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
+            "daiminkan_decision" => Some(ScenarioId::DaiminkanDecision),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
+            "fold_to_riichi" => Some(ScenarioId::FoldToRiichi),
+            "push_or_fold" => Some(ScenarioId::PushOrFold),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
             "suji_kabe_safety" => Some(ScenarioId::SujiKabeSafety),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
@@ -558,11 +620,14 @@ impl ScenarioId {
             ScenarioId::AnkanDecision => ankan_decision::generate(category),
             ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
             ScenarioId::MeldOrNot => meld_or_not::generate(category),
+            ScenarioId::DaiminkanDecision => daiminkan_decision::generate(category),
             ScenarioId::AiBestAction => Err(
                 "ai_best_action requires the loaded Mortal model; use the evaluator's \
                  generate_ai_puzzle"
                     .to_string(),
             ),
+            ScenarioId::FoldToRiichi => fold_to_riichi::generate(category),
+            ScenarioId::PushOrFold => push_or_fold::generate(category),
             ScenarioId::DefenseSafetyChart => defense::generate_safety_chart(category),
             ScenarioId::SujiKabeSafety => defense::generate_suji_kabe(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
@@ -634,6 +699,7 @@ pub(crate) fn sample_situation(category: &str) -> Option<Situation> {
         ScenarioId::ChiitoitsuRiichiVsDama => Some(Situation::Chiitoitsu(
             chiitoitsu_riichi_vs_dama::Target::sample(),
         )),
+        ScenarioId::PushOrFold => Some(Situation::PushOrFold(push_or_fold::sample_target())),
         _ => None,
     }
 }

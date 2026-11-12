@@ -129,7 +129,7 @@ mod tests {
             }
         }
 
-        fn worst(&self) -> scoring::Value {
+        fn worst(&self) -> crate::generator::support::value::Value {
             scoring::worst_value(
                 &self.tenpai,
                 &self.waits,

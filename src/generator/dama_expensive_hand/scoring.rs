@@ -2,111 +2,25 @@
 //!
 //! The section measures a hand at "a tile that gives you the lowest possible
 //! score" (ch7:598), so every winning tile of the wait is scored on its own and
-//! the smallest result decides. Each tile is scored under its best yaku
-//! reading, which is what a player would actually claim, and without Riichi or
-//! ura dora: the declaration is exactly what the lesson is deciding, and the
-//! ura indicator is hidden when the decision is made.
+//! the smallest result decides. The implementation lives in
+//! [`crate::generator::support::value`], because ch. 8's push/fold lesson scores
+//! a 1-away hand's completions the same way.
 //!
 //! Only ron matters here. A non-dealer's ron values are the ones the book's
 //! 7700 and haneman thresholds name, and the lesson keeps the human off the
 //! dealer seat.
 
-use agari::context::{GameContext, WinType};
-use agari::hand::{HandStructure, decompose_hand};
-use agari::parse::to_counts;
-use agari::scoring::calculate_score;
-use agari::tile::Tile;
-use agari::yaku::detect_yaku_with_context;
-
-use crate::generator::support::analysis::wind_to_honor;
-use crate::state::Wind;
-
-/// The value of one winning tile without Riichi.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct Value {
-    /// Ron points the hand would collect from the discarder.
-    pub points: u32,
-    /// Total han, including dora and the red-five bonus.
-    pub han: u8,
-}
-
-/// The best ron value a winning tile can produce without Riichi.
-///
-/// `None` when no decomposition has a yaku: ron is illegal on a hand with no
-/// yaku, so the tile has no value at all.
-pub(super) fn value_at(
-    winning_tiles: &[Tile],
-    wait: Tile,
-    round_wind: Wind,
-    seat_wind: Wind,
-    dora_indicators: &[Tile],
-    aka_count: u8,
-) -> Option<Value> {
-    let counts = to_counts(winning_tiles);
-    let context = GameContext::new(
-        WinType::Ron,
-        wind_to_honor(round_wind),
-        wind_to_honor(seat_wind),
-    )
-    .with_winning_tile(wait)
-    .with_dora(dora_indicators.to_vec())
-    .with_aka(aka_count);
-
-    decompose_hand(&counts)
-        .iter()
-        .filter(|structure| matches!(structure, HandStructure::Standard { .. }))
-        .filter_map(|structure| {
-            let yaku = detect_yaku_with_context(structure, &counts, &context);
-            if yaku.yaku_list.is_empty() {
-                // Dora alone is not a yaku: the hand cannot ron.
-                return None;
-            }
-            let score = calculate_score(structure, &yaku, &context);
-            Some(Value {
-                points: score.payment.total,
-                han: score.han,
-            })
-        })
-        .max_by_key(|value| value.points)
-}
-
-/// The lowest ron value across every winning tile of the wait.
-///
-/// This is the book's "at least 7700 when winning on a tile that gives you the
-/// lowest possible score" (ch7:598).
-pub(super) fn worst_value(
-    tenpai_tiles: &[Tile],
-    wait_tiles: &[Tile],
-    round_wind: Wind,
-    seat_wind: Wind,
-    dora_indicators: &[Tile],
-    aka_count: u8,
-) -> Option<Value> {
-    let mut worst: Option<Value> = None;
-    for &wait in wait_tiles {
-        let mut winning_tiles = tenpai_tiles.to_vec();
-        winning_tiles.push(wait);
-        let value = value_at(
-            &winning_tiles,
-            wait,
-            round_wind,
-            seat_wind,
-            dora_indicators,
-            aka_count,
-        )?;
-        worst = Some(match worst {
-            Some(current) if current.points <= value.points => current,
-            _ => value,
-        });
-    }
-    worst
-}
+pub(super) use crate::generator::support::value::worst_value;
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    use agari::tile::Tile;
+
     use crate::generator::support::testing::parse_tile;
+    use crate::generator::support::value::value_at;
+    use crate::state::Wind;
 
     fn tiles(hand: &str) -> Vec<Tile> {
         agari::parse::parse_hand(hand).expect("hand must parse")

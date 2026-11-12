@@ -435,7 +435,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (!game || state.dualGrade) return;
 
       // A call lesson is answered with the Call/Pass buttons, never a tile.
-      if (isCallDecision(game.correct_action)) return;
+      if (isCallDecision(game)) return;
 
       if (game.correct_action.type === 'best') {
         const action = state.callRiichi ? 'Riichi' : `Discard_${tile}`;
@@ -503,15 +503,18 @@ export const useGameStore = create<GameStore>((set, get) => {
 
       // A book call lesson answers `pass` or `call`; the offered call's name
       // (`Pon`/`Chi`) rides along so the report can name what was declined or
-      // taken. The engine grades both against the state's `correct_action`.
+      // taken. A Kan is graded on its tile, so the offer's tile travels with the
+      // answer. The engine grades all three against the state's
+      // `correct_action`.
       const game = get().gameState;
-      if (game && isCallDecision(game.correct_action)) {
+      if (game && isCallDecision(game)) {
         const isPass = action.action === 'Pass';
+        const isKan = action.action === 'Kan';
         const answer: SubmittedAnswer = {
-          action: isPass ? 'pass' : 'call',
-          tile: '',
+          action: isPass ? 'pass' : isKan ? 'kan' : 'call',
+          tile: isKan ? (game.call_offer?.tile ?? '') : '',
         };
-        if (!isPass) {
+        if (!isPass && !isKan) {
           answer.action_name = action.action;
         }
         get().submitAnswer(answer);
