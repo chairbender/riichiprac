@@ -25,7 +25,9 @@ use agari::tile::{Suit, Tile};
 
 use crate::display::format_tile_for_display;
 use crate::generator::floating_quad_acceptance;
-use crate::generator::{can_be_pinfu_head, wind_from_honor};
+use crate::generator::{
+    can_be_pinfu_head, is_perfect_one_away, perfect_one_away_shape, wind_from_honor,
+};
 use crate::safety::{SafetyFacts, SafetyRank, in_open_hand_neighbourhood};
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, MeldType, RiichiTrigger,
@@ -209,6 +211,32 @@ fn ch3_bulging(line: u32, needle: &str) -> Citation {
         3,
         "Riichi mahjong basics",
         "Bulging float (nakabukure) shape",
+        "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
+/// Riichi Book 1, ch. 3, "Stretched single (nobetan) shape" — the "too myopic"
+/// argument that raw tile acceptance is not the goal.
+fn ch3_nobetan(line: u32, needle: &str) -> Citation {
+    citation(
+        3,
+        "Riichi mahjong basics",
+        "Stretched single (nobetan) shape",
+        "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
+/// Riichi Book 1, ch. 3, "Perfect n-away" — the definition of perfect 1-away
+/// and the reason it guarantees a side wait.
+fn ch3_perfect(line: u32, needle: &str) -> Citation {
+    citation(
+        3,
+        "Riichi mahjong basics",
+        "Perfect n-away",
         "RiichiBook1-ch3-basics.tex",
         line,
         needle,
@@ -1072,6 +1100,7 @@ pub(crate) fn scenario_source(category: &str) -> Option<Citation> {
             351,
             "having three pairs is actually better than having two pairs",
         )),
+        "perfect_one_away" => Some(ch3_perfect(382, "two side-wait protoruns and two pairs")),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "fold_to_riichi" => Some(ch8(
             CH8_VS_RIICHI,
@@ -1759,6 +1788,155 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         });
     }
 
+    if state.category == "perfect_one_away" {
+        let answer_code = state.correct_action.tile()?;
+        let answer = format_tile_for_display(answer_code, false);
+        let drawn = human(state)
+            .and_then(|player| player.draw.as_deref())
+            .map(|code| format_tile_for_display(code, false))
+            .unwrap_or_else(|| answer.clone());
+
+        // Read the perfect shape off the tiles that survive the discard, so the
+        // explanation describes the hand the player is actually holding.
+        let answer_tiles: Vec<Tile> = {
+            let mut tiles: Vec<Tile> = state
+                .tiles
+                .iter()
+                .filter_map(|code| Tile::try_from(code.as_str()).ok())
+                .collect();
+            let index = tiles
+                .iter()
+                .position(|tile| tile.to_string() == answer_code)?;
+            tiles.remove(index);
+            tiles
+        };
+        let shape = perfect_one_away_shape(&answer_tiles);
+        let waits = shape
+            .as_ref()
+            .map(|shape| {
+                shape
+                    .protoruns()
+                    .iter()
+                    .map(|wait| {
+                        wait.iter()
+                            .map(|tile| format_tile_for_display(&tile.to_string(), false))
+                            .collect::<Vec<_>>()
+                            .join("")
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" / ")
+            })
+            .unwrap_or_else(|| "the two side waits".to_string());
+        let pairs = shape
+            .as_ref()
+            .map(|shape| {
+                let mut pair_tiles = vec![shape.pair[0], shared_pair_tile(shape.shared)];
+                pair_tiles.sort();
+                pair_tiles.dedup();
+                pair_tiles
+                    .iter()
+                    .map(|tile| format_tile_for_display(&tile.to_string(), false))
+                    .collect::<Vec<_>>()
+                    .join(" / ")
+            })
+            .unwrap_or_else(|| "its two pairs".to_string());
+
+        let rival = perfect_one_away_rival(state);
+        let rival_text = rival
+            .map(|(tile, _)| format_tile_for_display(&tile.to_string(), false))
+            .unwrap_or_else(|| "the rival discard".to_string());
+        let rival_acceptance = rival.map(|(_, total)| total).unwrap_or_default();
+        let answer_acceptance = state.ukeire_total;
+
+        let rules = vec![
+            BookRule {
+                id: "perfect_one_away_definition".to_string(),
+                rule: "A 1-away hand with two side-wait protoruns and two pairs is called \
+                       perfect 1-away."
+                    .to_string(),
+                quote: "When a 1-away hand has two side-wait protoruns and two pairs, it is \
+                        called perfect 1-away."
+                    .to_string(),
+                citation: ch3_perfect(382, "two side-wait protoruns and two pairs"),
+                applies: format!(
+                    "Discarding {answer} leaves exactly that: the side waits {waits} and the \
+                     pairs {pairs}."
+                ),
+            },
+            BookRule {
+                id: "always_a_side_wait".to_string(),
+                rule: "The shape is perfect because no matter how the hand becomes ready, it \
+                       can always choose a side wait as the final wait."
+                    .to_string(),
+                quote: "no matter how a hand becomes ready, you will always have the option to \
+                        choose side wait as the final wait"
+                    .to_string(),
+                citation: ch3_perfect(389, "have the option to choose side wait as the final wait"),
+                applies: format!(
+                    "Every tile this hand accepts still leaves a discard that reaches tenpai \
+                     on {waits}."
+                ),
+            },
+            BookRule {
+                id: "ryankan_only_far_from_ready".to_string(),
+                rule: "A double closed shape is useful while a hand is 2-away or worse, and \
+                       it becomes a single closed-wait protorun once the hand is ready, so it \
+                       is not worth keeping at 1-away."
+                    .to_string(),
+                quote: "Double closed shapes are particularly useful when a hand is relatively \
+                        far from ready (2-away or worse)."
+                    .to_string(),
+                citation: ch3_ryankan(
+                    505,
+                    "particularly useful when a hand is relatively far from ready",
+                ),
+                applies: format!(
+                    "Keeping {drawn} by discarding {rival_text} leaves a double closed shape \
+                     in place of the second pair, exactly the block the book says not to rely \
+                     on this close to ready."
+                ),
+            },
+            BookRule {
+                id: "raw_acceptance_is_myopic".to_string(),
+                rule: "Chasing the greatest tile acceptance can be myopic: what matters is \
+                       which waits the hand can still reach."
+                    .to_string(),
+                quote: "However, doing so is too myopic".to_string(),
+                citation: ch3_nobetan(662, "too myopic"),
+                applies: format!(
+                    "Keeping {drawn} by discarding {rival_text} accepts {rival_acceptance} \
+                     tiles, against {answer_acceptance} for {answer}; the book still keeps the \
+                     shape that can always choose a side wait."
+                ),
+            },
+        ];
+
+        return Some(BookRationale {
+            summary: format!(
+                "Discard {answer}: it keeps the perfect 1-away, so every way the hand becomes \
+                 ready can still choose a side wait ({waits}). Keeping {drawn} accepts a few \
+                 more tiles on paper but leaves a double closed shape."
+            ),
+            rules,
+            absent: Vec::new(),
+            source: ch3_perfect(382, "two side-wait protoruns and two pairs"),
+            caveats: vec![
+                "The hand is closed and 1-away, so the answer is an ordinary discard: the \
+                 lesson has no Riichi declaration to make."
+                    .to_string(),
+                "The rival is the book's own temptation (ch3:498): keep the double closed \
+                 shape by breaking the pair of the protorun plus one, so its side wait \
+                 survives."
+                    .to_string(),
+                format!(
+                    "Raw acceptance is not the tie-breaker here: the rival accepts \
+                     {rival_acceptance} tiles and the book's discard {answer_acceptance}, but \
+                     the rival trades one of the two pairs for a double closed shape."
+                ),
+            ],
+        });
+    }
+
     if state.category != "ryanmen_protorun" {
         return None;
     }
@@ -1896,6 +2074,54 @@ fn pair_twin(state: &GameState) -> Option<Tile> {
         .iter()
         .any(|code| code == &twin_code)
         .then_some(twin)
+}
+
+/// The duplicated tile of a protorun plus one (`223` / `334`): its pair.
+fn shared_pair_tile(shared: [Tile; 3]) -> Tile {
+    if shared[0] == shared[1] {
+        shared[0]
+    } else {
+        shared[2]
+    }
+}
+
+/// The perfect-1-away rival: the non-perfect discard that accepts the most
+/// tiles, with that acceptance.
+///
+/// It is re-derived from the shipped tiles rather than trusted from the
+/// generator, so an imported report still explains the right comparison.
+fn perfect_one_away_rival(state: &GameState) -> Option<(Tile, u8)> {
+    let tiles: Vec<Tile> = state
+        .tiles
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
+
+    let mut seen: Vec<Tile> = Vec::new();
+    let mut best: Option<(Tile, u8)> = None;
+    for discard in &tiles {
+        if *discard == answer || seen.contains(discard) {
+            continue;
+        }
+        seen.push(*discard);
+
+        let index = tiles.iter().position(|tile| tile == discard)?;
+        let mut remaining = tiles.clone();
+        remaining.remove(index);
+        if calculate_shanten(&to_counts(&remaining)).shanten != 1 {
+            continue;
+        }
+        if is_perfect_one_away(&remaining) {
+            continue;
+        }
+        let total = calculate_ukeire(&to_counts(&remaining)).total_count;
+        if best.is_none_or(|(_, best_total)| total > best_total) {
+            best = Some((*discard, total));
+        }
+    }
+
+    best
 }
 
 /// Acceptance after discarding one copy of `tile` from the visible hand.
@@ -4394,6 +4620,47 @@ mod tests {
     }
 
     #[test]
+    fn perfect_one_away_hand_cites_the_definition_and_the_guarantee() {
+        let state = generate_puzzle("perfect_one_away").expect("perfect one away must generate");
+        let rationale = rationale_for(&state).expect("the lesson needs a rationale");
+
+        assert_eq!(rationale.source.chapter, 3);
+        assert_eq!(rationale.source.section, "Perfect n-away");
+        assert_eq!(
+            rationale.source.source_needle,
+            "two side-wait protoruns and two pairs"
+        );
+
+        let ids: Vec<&str> = rationale
+            .rules
+            .iter()
+            .map(|rule| rule.id.as_str())
+            .collect();
+        assert_eq!(
+            ids,
+            vec![
+                "perfect_one_away_definition",
+                "always_a_side_wait",
+                "ryankan_only_far_from_ready",
+                "raw_acceptance_is_myopic",
+            ]
+        );
+        assert!(rationale.summary.starts_with("Discard"));
+
+        // The raw-acceptance rule must show both numbers, not assert the rule.
+        let rival_rule = rationale
+            .rules
+            .iter()
+            .find(|rule| rule.id == "raw_acceptance_is_myopic")
+            .expect("the acceptance comparison must be cited");
+        assert!(
+            rival_rule.applies.contains(&state.ukeire_total.to_string()),
+            "the book's acceptance must appear: {}",
+            rival_rule.applies
+        );
+    }
+
+    #[test]
     fn generated_book_scenarios_carry_a_rationale() {
         for category in [
             "ryanmen_protorun",
@@ -4402,6 +4669,7 @@ mod tests {
             "ryankan_break",
             "pair_count",
             "pair_count_open",
+            "perfect_one_away",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -4436,6 +4704,7 @@ mod tests {
             "protorun_priority",
             "pair_count",
             "pair_count_open",
+            "perfect_one_away",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -4878,6 +5147,7 @@ mod tests {
             "ryankan_break",
             "pair_count",
             "pair_count_open",
+            "perfect_one_away",
             "riichi_judgement",
             "dama_bad_wait",
             "dama_genbutsu_wait",

@@ -4,8 +4,9 @@
 //!   protorun priority (side wait before closed wait) lesson, the
 //!   nakabukure (bulging float) ready-hand lesson, the ryankan (double
 //!   closed shape) break lesson, the pair count (avoid three pairs in a
-//!   closed hand) lesson, and its open-hand companion (keep three pairs when
-//!   a Pon is planned).
+//!   closed hand) lesson, its open-hand companion (keep three pairs when
+//!   a Pon is planned), and the perfect 1-away lesson (which discard keeps
+//!   two side waits and two pairs).
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
 //! - `riichi_judgement`: ch. 7's general three-condition Riichi/dama rule.
 //! - `dama_bad_wait`: ch. 7's bad-wait box: riichi with three or more live
@@ -83,6 +84,7 @@ use situation::Situation;
 pub(crate) use daiminkan_decision::{DaiminkanTriggerSet, facts as daiminkan_facts};
 pub(crate) use support::analysis::floating_quad_acceptance;
 pub use support::analysis::{HandMetrics, evaluate_hand};
+pub use support::completion::{is_perfect_one_away, perfect_one_away_shape};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
 
@@ -353,6 +355,24 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
             "shape",
             "pon",
             "open_hand",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_BASIC),
+    },
+    ScenarioMeta {
+        id: ScenarioId::PerfectOneAway,
+        label: "Perfect 1-Away",
+        description: "Block theory: keep the perfect 1-away (two side waits, two pairs) \
+                      instead of the draw that accepts slightly more tiles.",
+        category: ScenarioCategory::TileEfficiency,
+        tags: &[
+            "block_theory",
+            "discard",
+            "perfect",
+            "shape",
+            "ryanmen",
+            "ryankan",
         ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
@@ -656,6 +676,7 @@ pub enum ScenarioId {
     RyankanBreak,
     PairCount,
     PairCountOpen,
+    PerfectOneAway,
     ChiitoitsuRiichiVsDama,
     RiichiJudgement,
     DamaBadWait,
@@ -687,6 +708,7 @@ impl ScenarioId {
         ScenarioId::RyankanBreak,
         ScenarioId::PairCount,
         ScenarioId::PairCountOpen,
+        ScenarioId::PerfectOneAway,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::RiichiJudgement,
         ScenarioId::DamaBadWait,
@@ -718,6 +740,7 @@ impl ScenarioId {
             ScenarioId::RyankanBreak => "ryankan_break",
             ScenarioId::PairCount => "pair_count",
             ScenarioId::PairCountOpen => "pair_count_open",
+            ScenarioId::PerfectOneAway => "perfect_one_away",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::DamaBadWait => "dama_bad_wait",
@@ -750,6 +773,7 @@ impl ScenarioId {
             "ryankan_break" => Some(ScenarioId::RyankanBreak),
             "pair_count" => Some(ScenarioId::PairCount),
             "pair_count_open" => Some(ScenarioId::PairCountOpen),
+            "perfect_one_away" => Some(ScenarioId::PerfectOneAway),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
@@ -783,6 +807,7 @@ impl ScenarioId {
             ScenarioId::RyankanBreak => block_theory::ryankan_break::generate(category),
             ScenarioId::PairCount => block_theory::pair_count::generate(category),
             ScenarioId::PairCountOpen => block_theory::pair_count_open::generate(category),
+            ScenarioId::PerfectOneAway => block_theory::perfect_one_away::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::DamaBadWait => dama_bad_wait::generate(category),
