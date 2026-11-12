@@ -707,6 +707,27 @@
   height: auto;
 }
 
+/* One meld tile's slot. The called tile's slot is as wide as a sideways tile. */
+.meld-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--river-tile-size);
+}
+
+.meld-slot--called {
+  width: var(--river-tile-height);
+}
+
+/*
+ * A call's claimed tile is turned sideways, the same way the Riichi declaration
+ * tile is: its position in the meld (left, middle, right) says which opponent
+ * discarded it.
+ */
+.meld-slot--called .meld-tile {
+  transform: rotate(90deg);
+}
+
 .river {
   display: grid;
   grid-template-columns: repeat(6, var(--river-tile-height));
