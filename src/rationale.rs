@@ -250,6 +250,7 @@ const CH8_VS_RIICHI: &str = "Defense against riichi";
 const CH8_STUCK: &str = "What to discard when you get stuck";
 const CH8_READY_SHORTCUT: &str = "Guessing if an opponent has a ready hand";
 const CH8_CHII_DISCARD: &str = "Discard upon chii";
+const CH8_PUSH_FOLD: &str = "Three conditions to push/fold";
 
 impl RiichiTrigger {
     /// Stable id matching the serialized enum name.
@@ -1054,10 +1055,20 @@ fn scenario_source(category: &str) -> Option<Citation> {
             "having three pairs is actually better than having two pairs",
         )),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
+        "fold_to_riichi" => Some(ch8(
+            CH8_VS_RIICHI,
+            340,
+            "If you cannot satisfy the above criteria",
+        )),
         "suji_kabe_safety" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
         }
+        "push_or_fold" => Some(ch8(
+            CH8_PUSH_FOLD,
+            23,
+            "Push} if {\\bf two} of the following conditions are met",
+        )),
         "open_hand_defense" => Some(ch8(
             CH8_CHII_DISCARD,
             567,
@@ -1072,8 +1083,14 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     if let Some(defense) = defense_rationale(state) {
         return Some(defense);
     }
+    if let Some(fold) = fold_to_riichi_rationale(state) {
+        return Some(fold);
+    }
     if let Some(open_hand) = open_hand_defense_rationale(state) {
         return Some(open_hand);
+    }
+    if let Some(push_fold) = push_or_fold_rationale(state) {
+        return Some(push_fold);
     }
 
     if state.category == "wind_discard_order" {
@@ -2697,6 +2714,416 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
     })
 }
 
+/// The ch. 8.1/8.3 fold lesson: an opponent's Riichi, a junk hand, and the one
+/// tile the chapter calls 100% safe.
+fn fold_to_riichi_rationale(state: &GameState) -> Option<BookRationale> {
+    if state.category != "fold_to_riichi" {
+        return None;
+    }
+
+    let threat = state.players.iter().find(|player| player.is_riichi)?;
+    let facts = SafetyFacts::from_state(state, threat.seat)?;
+    let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
+    let answer_text = format_tile_for_display(&answer.to_string(), false);
+    let read = facts.read(answer);
+    let block = answer_block(&human(state)?.hand, answer).unwrap_or("block");
+
+    let mut rules = mechanism_rules(&read, &answer_text);
+
+    // When the threat is Kamicha and the safe tile is its declaration discard,
+    // the chapter's first absolutely-safe kind applies as well: the tile the
+    // left player has just thrown is safe against the other two opponents too.
+    let left_player_discard = threat.seat == 3
+        && threat
+            .discards
+            .last()
+            .is_some_and(|discard| discard.tile == answer.to_string());
+
+    if left_player_discard {
+        rules.push(BookRule {
+            id: "left_player_discard".to_string(),
+            rule: "The tile the left player has just discarded is 100% safe for this turn: \
+                   the furiten rule stops both other opponents from ronning it."
+                .to_string(),
+            quote: "The tile that was just discarded by your left player.".to_string(),
+            citation: ch8(CH8_GENBUTSU, 102, "just discarded by your left player"),
+            applies: format!(
+                "{answer_text} is Kamicha's declaration discard, so it is temporarily safe \
+                 against the other two opponents as well."
+            ),
+        });
+    }
+
+    rules.push(BookRule {
+        id: "fold_conditions".to_string(),
+        rule: "The chapter folds when two of three hand conditions hold: a 1-away-or-worse \
+               hand, a low scoring hand, or a bad wait."
+            .to_string(),
+        quote: "Fold if two of the following conditions are met: 1-away (or worse) hand; Low \
+                scoring hand; Bad wait."
+            .to_string(),
+        citation: ch8(
+            "A simple principle",
+            31,
+            "Fold} if {\\bf two} of the following conditions are met",
+        ),
+        applies: format!(
+            "The hand is {}-away and holds no dora and no value set, so the 1-away-or-worse \
+             condition and the low-scoring condition both hold.",
+            state.shanten
+        ),
+    });
+    rules.push(BookRule {
+        id: "low_scoring".to_string(),
+        rule: "A hand whose minimum value is below 7700 is a low scoring hand.".to_string(),
+        quote: "We say a hand is a high scoring one if the minimum hand value is 7700; \
+                otherwise it is a low scoring hand"
+            .to_string(),
+        citation: ch8(
+            "Three conditions to push/fold",
+            65,
+            "high scoring one if the minimum hand value is 7700",
+        ),
+        applies: "The hand is lone honors plus suited blocks in two suits, with no dora, so \
+                  nothing here is already worth 7700."
+            .to_string(),
+    });
+    rules.push(BookRule {
+        id: "betaori".to_string(),
+        rule: "Once the push conditions fail, the hand folds completely: the safest tile wins \
+               even though it costs the hand a block."
+            .to_string(),
+        quote: "If you cannot satisfy the above criteria, you must completely fold (betaori)."
+            .to_string(),
+        citation: ch8(
+            CH8_VS_RIICHI,
+            340,
+            "If you cannot satisfy the above criteria",
+        ),
+        applies: format!(
+            "The hand is {}-away, so a push would need Rank B or safer tiles; {answer_text} is \
+             the only tile that qualifies, and it is one tile of the hand's {block}, so folding \
+             gives that block up.",
+            state.shanten
+        ),
+    });
+
+    Some(BookRationale {
+        summary: format!("Fold: {answer_text} is the hand's only 100% safe tile."),
+        rules,
+        absent: absent_tiles(&facts, state, answer),
+        source: ch8(
+            CH8_VS_RIICHI,
+            340,
+            "If you cannot satisfy the above criteria",
+        ),
+        caveats: vec![
+            format!(
+                "The chapter ranks tiles by danger, not by what they cost the hand. {answer_text} \
+                 sits in a {block}, so the fold is the deliberate cost the betaori instruction \
+                 asks for."
+            ),
+            "The book is more forgiving of dangerous discards in the early turns; this board \
+             starts from a deep river, where it says the opposite."
+                .to_string(),
+            "Only the riichi player's own genbutsu is graded as safe here. The other two \
+             opponents have not declared, and the chapter's absolute-safety kinds (a fourth \
+             honor, a no-chance tile) are left out of the hand entirely."
+                .to_string(),
+        ],
+    })
+}
+
+/// The block the safe tile sits in, as the book panel names it.
+fn answer_block(hand: &[String], answer: Tile) -> Option<&'static str> {
+    let tiles: Vec<Tile> = hand
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+
+    if tiles.iter().filter(|tile| **tile == answer).count() >= 2 {
+        return Some("pair");
+    }
+
+    let suit = answer.suit()?;
+    let value = answer.value()?;
+    let held: Vec<u8> = tiles
+        .iter()
+        .filter(|tile| tile.suit() == Some(suit))
+        .filter_map(|tile| tile.value())
+        .collect();
+
+    let completes_a_run = (1..=7u8).any(|low| {
+        value >= low
+            && value <= low + 2
+            && (low..low + 3).all(|rank| rank == value || held.contains(&rank))
+    });
+    if completes_a_run {
+        return Some("completed run");
+    }
+
+    if held
+        .iter()
+        .any(|rank| *rank != value && rank.abs_diff(value) <= 2)
+    {
+        return Some("protorun");
+    }
+
+    None
+}
+
+/// The ch. 8.1 push/fold lesson: the box's 1-away cell.
+///
+/// The hand is always 1-away, so the "ready hand" condition never holds and the
+/// answer is decided by the other two: the minimum value (ch8:65) and the best
+/// wait the hand can still reach in the worst case (ch8:68, ch8:77).
+fn push_or_fold_rationale(state: &GameState) -> Option<BookRationale> {
+    if state.category != "push_or_fold" {
+        return None;
+    }
+
+    human(state)?;
+    let conditions = crate::generator::push_or_fold::conditions(state)?;
+    let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
+    let answer_text = format_tile_for_display(&answer.to_string(), false);
+
+    let value_text = match conditions.value {
+        Some(value) => format!(
+            "the worst winning tile still gives {} points and {} han",
+            value.points, value.han
+        ),
+        None => "at least one completion has no yaku at all".to_string(),
+    };
+    let wait_text = if conditions.good_wait {
+        "every completion can still choose a side wait"
+    } else {
+        "at least one completion can only reach a closed, edge or single wait"
+    };
+
+    let mut rules = Vec::new();
+    let mut caveats = Vec::new();
+    let mut absent = Vec::new();
+
+    rules.push(BookRule {
+        id: "push_fold_box".to_string(),
+        rule: "Push when two of the three conditions hold (a ready hand, a high scoring \
+               hand, a good wait); fold when two of their opposites do (1-away or worse, a \
+               low scoring hand, a bad wait)."
+            .to_string(),
+        quote: "Push if two of the following conditions are met".to_string(),
+        citation: ch8(
+            CH8_PUSH_FOLD,
+            23,
+            "Push} if {\\bf two} of the following conditions are met",
+        ),
+        applies: format!(
+            "The hand is {}-away, {value_text}, and {wait_text}.",
+            state.shanten
+        ),
+    });
+
+    rules.push(BookRule {
+        id: "one_away_needs_both".to_string(),
+        rule: "A 1-away hand is not a ready hand, so the book asks for both of the other \
+               two push conditions."
+            .to_string(),
+        quote: "Pushing with a 1-away hand is acceptable only when both of the other two \
+                conditions are met."
+            .to_string(),
+        citation: ch8(
+            CH8_PUSH_FOLD,
+            62,
+            "Pushing with a 1-away hand is acceptable only when",
+        ),
+        applies: format!(
+            "The hand is 1-away: {} and {}.",
+            if conditions.is_high_scoring() {
+                "high scoring"
+            } else {
+                "cheap"
+            },
+            if conditions.good_wait {
+                "its wait is good"
+            } else {
+                "its wait is bad"
+            }
+        ),
+    });
+
+    rules.push(BookRule {
+        id: "minimum_value".to_string(),
+        rule: "A hand is high scoring when the minimum hand value is 7700, so even the \
+               worst winning tile is already worth 7700 points without Riichi."
+            .to_string(),
+        quote: "We say a hand is a high scoring one if the minimum hand value is 7700".to_string(),
+        citation: ch8(
+            CH8_PUSH_FOLD,
+            65,
+            "We say a hand is a high scoring one if the minimum hand value is 7700",
+        ),
+        applies: value_text.clone(),
+    });
+
+    rules.push(BookRule {
+        id: if conditions.good_wait {
+            "perfect_one_away"
+        } else {
+            "bad_wait_in_worst_case"
+        }
+        .to_string(),
+        rule: "A 1-away hand's wait is judged by the best wait it can still choose when it \
+               becomes ready in the worst possible way."
+            .to_string(),
+        quote: if conditions.good_wait {
+            "no matter how this hand becomes ready, you can always choose to have a side \
+             wait"
+        } else {
+            "the best possible wait pattern in the worst-case scenario is not a good one"
+        }
+        .to_string(),
+        citation: if conditions.good_wait {
+            ch8(
+                CH8_PUSH_FOLD,
+                77,
+                "Notice that this is a perfect 1-away hand; no matter how this hand becomes \
+                 ready, you can \\emph{always} choose to have a side wait",
+            )
+        } else {
+            ch8(
+                CH8_PUSH_FOLD,
+                87,
+                "best} possible wait pattern in the \\emph{worst}-case scenario is not a good \
+                 one",
+            )
+        },
+        applies: wait_text.to_string(),
+    });
+
+    let summary = if conditions.pushes() {
+        let facts = state
+            .players
+            .iter()
+            .find(|player| player.is_riichi)
+            .and_then(|threat| SafetyFacts::from_state(state, threat.seat));
+        let rank = facts
+            .as_ref()
+            .map(|facts| facts.rank(answer))
+            .unwrap_or(SafetyRank::D);
+        rules.push(BookRule {
+            id: "mangan_rank_d".to_string(),
+            rule: "A guaranteed mangan is the one exception that lets a 1-away hand throw \
+                   a Rank D tile while pushing."
+                .to_string(),
+            quote: "Only if your hand has a guaranteed mangan, you can discard Rank D tiles."
+                .to_string(),
+            citation: ch8(
+                CH8_VS_RIICHI,
+                337,
+                "Only if your hand has a guaranteed {\\jap mangan}, you can discard {\\bf Rank D} tiles",
+            ),
+            applies: format!(
+                "The minimum value is {}, and {answer_text} is Rank {} ({}).",
+                conditions
+                    .value
+                    .map(|value| format!("{} points", value.points))
+                    .unwrap_or_else(|| "below 7700".to_string()),
+                rank.code(),
+                rank.label()
+            ),
+        });
+        caveats.push(
+            "The chart's Rank D is the most dangerous row; the book only allows it here \
+             because the hand is already worth a mangan before Riichi."
+                .to_string(),
+        );
+        format!(
+            "Push: discard {answer_text} and keep the perfect 1-away shape. The guaranteed \
+             mangan covers the book's high-score condition and the shape covers the good \
+             wait, so the hand meets both of the conditions the book asks of a 1-away hand."
+        )
+    } else {
+        rules.push(BookRule {
+            id: "betaori".to_string(),
+            rule: "When the push conditions are not met, the book says to fold completely \
+                   and take the safest tile."
+                .to_string(),
+            quote: "If you cannot satisfy the above criteria, you must completely fold \
+                    (betaori)."
+                .to_string(),
+            citation: ch8(
+                CH8_VS_RIICHI,
+                340,
+                "If you cannot satisfy the above criteria",
+            ),
+            applies: format!(
+                "Neither push condition is left, so {answer_text} — the 100% safe tile — is \
+                 the fold."
+            ),
+        });
+        if let Some(threat) = state.players.iter().find(|player| player.is_riichi)
+            && let Some(facts) = SafetyFacts::from_state(state, threat.seat)
+        {
+            let read = facts.read(answer);
+            rules.push(BookRule {
+                id: "genbutsu".to_string(),
+                rule: "A tile in the riichi player's own river is 100% safe to discard."
+                    .to_string(),
+                quote: "Genbutsu tiles of player X are 100\\% safe against X".to_string(),
+                citation: ch8(
+                    CH8_GENBUTSU,
+                    100,
+                    "Genbutsu} tiles of player X are 100\\% safe against X",
+                ),
+                applies: format!("Safe because it is {}.", read.reason),
+            });
+        }
+        caveats.push(
+            "Folding here throws a tile that is part of a block, so the hand drops further \
+             from ready; the book accepts that cost because the hand is both cheap and slow."
+                .to_string(),
+        );
+        format!(
+            "Fold: discard {answer_text}, the safest tile. The hand is cheap and its wait is \
+             bad, so it meets neither condition the book asks of a 1-away hand."
+        )
+    };
+
+    if !conditions.is_high_scoring() {
+        absent.push(AbsentRule {
+            id: "high_scoring_hand".to_string(),
+            note: format!(
+                "High scoring hand does not apply: {value_text}, below the book's 7700 floor."
+            ),
+        });
+    }
+    if !conditions.good_wait {
+        absent.push(AbsentRule {
+            id: "good_wait".to_string(),
+            note: format!("Good wait does not apply: {wait_text}."),
+        });
+    }
+    absent.push(AbsentRule {
+        id: "ready_hand".to_string(),
+        note: format!(
+            "Ready hand does not apply: this hand is {}-away, so the book needs both other \
+             conditions.",
+            state.shanten
+        ),
+    });
+
+    Some(BookRationale {
+        summary,
+        rules,
+        absent,
+        source: ch8(
+            CH8_PUSH_FOLD,
+            23,
+            "Push} if {\\bf two} of the following conditions are met",
+        ),
+        caveats,
+    })
+}
+
 /// The ch. 8.4 open-hand lesson: read the discard an opponent made after a chii.
 fn open_hand_defense_rationale(state: &GameState) -> Option<BookRationale> {
     if state.category != "open_hand_defense" {
@@ -3809,6 +4236,8 @@ mod tests {
             "ankan_decision",
             "daiminkan_decision",
             "wind_discard_order",
+            "fold_to_riichi",
+            "push_or_fold",
             "defense_safety_chart",
             "suji_kabe_safety",
             "defense_stuck_heuristic",
@@ -3839,6 +4268,8 @@ mod tests {
             "shouminkan_decision",
             "ankan_decision",
             "wind_discard_order",
+            "fold_to_riichi",
+            "push_or_fold",
             "defense_safety_chart",
             "suji_kabe_safety",
             "defense_stuck_heuristic",
@@ -4281,6 +4712,8 @@ mod tests {
             "ankan_decision",
             "daiminkan_decision",
             "wind_discard_order",
+            "fold_to_riichi",
+            "push_or_fold",
             "defense_safety_chart",
             "suji_kabe_safety",
             "defense_stuck_heuristic",
@@ -4430,6 +4863,90 @@ mod tests {
         assert!(!rationale.absent.is_empty() || !rationale.caveats.is_empty());
     }
 
+    /// The fold lesson cites the push/fold box, the betaori instruction, and —
+    /// when the safe tile is Kamicha's declaration discard — the chapter's
+    /// third absolute-safety kind.
+    #[test]
+    fn fold_to_riichi_cites_betaori_and_the_left_player_discard() {
+        let mut saw_left_player = false;
+
+        for _ in 0..80 {
+            let state = generate_puzzle("fold_to_riichi").expect("fold must generate");
+            let rationale = rationale_for(&state).expect("the fold needs a rationale");
+
+            assert_eq!(rationale.source.chapter, 8);
+            assert_eq!(rationale.source.section, "Defense against riichi");
+            assert_eq!(rationale.source.source_line, 340);
+            assert!(rationale.summary.contains("100%"), "{}", rationale.summary);
+
+            let ids: Vec<&str> = rationale
+                .rules
+                .iter()
+                .map(|rule| rule.id.as_str())
+                .collect();
+            for id in ["genbutsu", "fold_conditions", "low_scoring", "betaori"] {
+                assert!(ids.contains(&id), "missing {id} in {ids:?}");
+            }
+            assert!(
+                rationale
+                    .rules
+                    .iter()
+                    .all(|rule| rule.citation.chapter == 8
+                        && !rule.citation.source_needle.is_empty()),
+                "{ids:?}"
+            );
+
+            // The answer is the hand's only 100% tile on the chart.
+            let answer = Tile::try_from(
+                state
+                    .correct_action
+                    .tile()
+                    .expect("the fold answer names a tile"),
+            )
+            .expect("tile code");
+            let threat = state
+                .players
+                .iter()
+                .find(|player| player.is_riichi)
+                .expect("one threat");
+            let facts = SafetyFacts::from_state(&state, threat.seat).expect("facts");
+            assert_eq!(facts.rank(answer), SafetyRank::Genbutsu);
+            let human = state
+                .players
+                .iter()
+                .find(|player| player.is_human)
+                .expect("human");
+            for code in human.hand.iter().chain(human.draw.iter()) {
+                let tile = Tile::try_from(code.as_str()).expect("tile code");
+                if tile != answer {
+                    assert!(!facts.is_absolutely_safe(tile), "{tile} is also 100% safe");
+                }
+            }
+
+            // The left-player rule only appears when it is true.
+            let left_player = threat.seat == 3
+                && threat
+                    .discards
+                    .last()
+                    .is_some_and(|discard| discard.tile == answer.to_string());
+            let cited = rationale
+                .rules
+                .iter()
+                .find(|rule| rule.id == "left_player_discard");
+            assert_eq!(left_player, cited.is_some(), "seat {}", threat.seat);
+            if let Some(rule) = cited {
+                saw_left_player = true;
+                assert_eq!(rule.citation.source_line, 102);
+                assert!(rule.applies.contains("Kamicha"));
+            }
+        }
+
+        assert!(
+            saw_left_player,
+            "no board put the safe tile on Kamicha's declaration"
+        );
+    }
+
     #[test]
     fn defense_chart_lesson_cites_the_chart_and_ranks_the_alternatives() {
         let state = generate_puzzle("defense_safety_chart").expect("chart must generate");
@@ -4472,6 +4989,66 @@ mod tests {
                 .iter()
                 .any(|caveat| caveat.contains("Rank C"))
         );
+    }
+
+    #[test]
+    fn push_or_fold_cites_the_box_for_both_cells() {
+        use crate::state::TargetAction;
+
+        let mut saw_push = false;
+        let mut saw_fold = false;
+        for _ in 0..40 {
+            let state = generate_puzzle("push_or_fold").expect("push/fold must generate");
+            let rationale = rationale_for(&state).expect("push/fold needs a rationale");
+
+            assert_eq!(rationale.source.chapter, 8);
+            assert_eq!(rationale.source.source_line, 23);
+            assert_eq!(rationale.rules[0].id, "push_fold_box");
+            assert!(
+                rationale
+                    .rules
+                    .iter()
+                    .any(|rule| rule.id == "minimum_value"),
+                "the 7700 value condition must be cited"
+            );
+            assert!(
+                rationale.rules.iter().any(|rule| rule.id == "good_wait"
+                    || rule.id == "bad_wait_in_worst_case"
+                    || rule.id == "perfect_one_away"),
+                "the wait condition must be cited"
+            );
+            assert!(
+                rationale.absent.iter().any(|rule| rule.id == "ready_hand"),
+                "a 1-away hand must say the ready condition does not hold"
+            );
+
+            match state.target_action {
+                TargetAction::Push => {
+                    saw_push = true;
+                    assert!(rationale.summary.starts_with("Push"));
+                    assert!(
+                        rationale
+                            .rules
+                            .iter()
+                            .any(|rule| rule.id == "mangan_rank_d")
+                    );
+                    assert!(
+                        !rationale
+                            .absent
+                            .iter()
+                            .any(|rule| rule.id == "high_scoring_hand")
+                    );
+                }
+                TargetAction::Fold => {
+                    saw_fold = true;
+                    assert!(rationale.summary.starts_with("Fold"));
+                    assert!(rationale.rules.iter().any(|rule| rule.id == "betaori"));
+                    assert!(rationale.rules.iter().any(|rule| rule.id == "genbutsu"));
+                }
+                other => panic!("unexpected target action {other:?}"),
+            }
+        }
+        assert!(saw_push && saw_fold, "both cells must be covered");
     }
 
     #[test]

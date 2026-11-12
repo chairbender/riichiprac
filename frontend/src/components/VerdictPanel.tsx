@@ -344,10 +344,16 @@ function describeBookAnswer(state: GameState, book: BookGrade | null): string {
       return `Riichi · discard ${accepted}`;
     case 'dama':
       // The ryanmen lesson asks which tile to discard; calling it "Dama" would
-      // mislabel a tile-efficiency drill as a Riichi-vs-dama decision.
-      return state.target_action === 'NaniKiru'
-        ? `Discard ${accepted}`
-        : `Dama · discard ${accepted}`;
+      // mislabel a tile-efficiency drill as a Riichi-vs-dama decision. The
+      // push/fold lesson uses the dama carrier for a hand that is not ready at
+      // all, so it names the decision instead.
+      if (state.target_action === 'NaniKiru') {
+        return `Discard ${accepted}`;
+      }
+      if (state.target_action === 'Push') {
+        return `Push · discard ${accepted}`;
+      }
+      return `Dama · discard ${accepted}`;
     case 'fold':
       return `Fold · discard ${accepted}`;
     case 'kan':

@@ -816,6 +816,7 @@ mod tests {
             "dama_bad_wait",
             "dama_expensive_hand",
             "chiitoitsu_riichi_vs_dama",
+            "push_or_fold",
         ] {
             let puzzle = generate(category, MortalAgreementOptions::new(4), |state| {
                 Ok(agreeing_evaluation(state))
@@ -840,6 +841,10 @@ mod tests {
                     label.starts_with("dama: 7700") || label.starts_with("dama: haneman"),
                     "{label}"
                 ),
+                "push_or_fold" => assert!(
+                    label.starts_with("push: ") || label.starts_with("fold: "),
+                    "{label}"
+                ),
                 _ => assert!(
                     label.starts_with("dama: ") || label.starts_with("riichi: "),
                     "{label}"
@@ -855,6 +860,7 @@ mod tests {
             "ryanmen_protorun",
             "nakabukure_ready",
             "defense_safety_chart",
+            "fold_to_riichi",
             "dama_genbutsu_wait",
             "suji_trap_riichi",
             "wind_discard_order",

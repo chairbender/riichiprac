@@ -90,11 +90,55 @@ action list, and the evaluation. React only renders and grades.
 
 ## Defense scenarios
 
-Four lessons train defense. Three answer an opponent's Riichi and the fourth
-reads an open hand's post-`chii` discard. None asks about hand value: the
-generated hand is never ready, so the question is only which tile is safest to
-let go. All are graded by the book's rule; Mortal's answer appears beside it
-after you answer.
+Six lessons train defense. Four answer an opponent's Riichi with a tile choice,
+one reads an open hand's post-`chii` discard, and **Push or Fold** decides
+whether to defend at all. The tile-choice Riichi lessons start from a hand that
+is never ready, so the question is only which tile is safest to let go; the fold
+lesson additionally requires the hand to be junk, which is what makes folding
+the book's answer. All are graded by the book's rule; Mortal's answer appears
+beside it after you answer.
+
+**Push or Fold** is ch. 8.1's box:
+
+> Push if two of the following conditions are met: ready hand; high scoring
+> hand; good wait. — ch8:23
+
+> Pushing with a 1-away hand is acceptable only when both of the other two
+> conditions are met. — ch8:62
+
+The lesson isolates that 1-away cell, so the "ready" condition never holds and
+the hand must have both of the others. Both branches deal the same shape — two
+sets, two protoruns and two pairs, the second pair just completed by the draw.
+The push cell makes that shape a guaranteed mangan (a concealed dragon triplet
+that is also three dora, so the worst winning tile is 8000) with side waits on
+both protoruns, then asks for the shape-preserving discard. That discard is a
+pair tile on the chart's most dangerous Rank D row, which the book allows only
+through its own exception: "Only if your hand has a guaranteed mangan, you can
+discard Rank D tiles." The fold cell is the mirror: same shape, but the hand has
+no yaku and its closed-wait protoruns mean at least one way it becomes ready can
+only reach a closed, edge or single wait, so the answer is the threat's genbutsu
+— a tile inside a complete set, which visibly breaks the hand. The wait is judged
+the way the book judges a 1-away hand, on "the best possible wait pattern you can
+choose when the hand becomes ready in the worst possible manner" (ch8:68), which
+the generator checks by enumerating every completion. Both answers are ordinary
+discards: pushing is the shape-preserving pair tile, folding is the safe one.
+
+**Defense: Fold to Riichi** is ch. 8.1's push/fold shortcut. The hand is 2-away
+with no dora and no value, and one opponent has declared Riichi from a deep
+river:
+
+> Fold if **two** of the following conditions are met: 1-away (or worse) hand;
+> Low scoring hand; Bad wait. — ch8:31-36
+
+The hand meets the first two, so "Defense against riichi" applies: "If you
+cannot satisfy the above criteria, you must completely fold (betaori)"
+(ch8:340). Exactly one tile in the hand is 100% safe — the threat's genbutsu
+(ch8:100) — and it sits inside a pair, a protorun, or a completed run, so the
+fold visibly gives up a block. Every other tile is strictly more dangerous on
+the safety chart, so there is one answer. The threat is genuinely tenpai on the
+declaration and never on the safe tile, and every hand tile type is kept out of
+every river except the answer, so no second tile can be genbutsu.
+
 
 **Defense: Safest Discard** builds a board where Riichi Book 1, ch. 8's safety
 ranking (`tbl:safety`) has a real answer — a genbutsu, a suji tile, a no-chance
@@ -132,7 +176,10 @@ the read is true on the hidden hand as well as the visible table.
 The safety chart itself is `src/safety.rs`: the fifteen rows of `tbl:safety`
 plus the suji and blockade arithmetic they are derived from, and the
 `in_open_hand_neighbourhood` helper the ch. 8.4 lesson shares with its
-rationale. The generator only places tiles; every rank is recomputed from what
+rationale. `SafetyFacts::is_absolutely_safe` encodes the chapter's three 100%
+kinds (genbutsu, a fourth honor, a no-chance tile), which is how the fold lesson
+insists the answer is the hand's only tile that is safe rather than merely
+rankable. The generator only places tiles; every rank is recomputed from what
 the defender can see (the threat's river, all four rivers, open melds, the dora
 indicator, and the defender's own hand).
 
