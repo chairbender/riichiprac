@@ -361,7 +361,7 @@
   }
 }
 
-.agreement-toggle {
+.app-toggle {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -372,18 +372,18 @@
   cursor: pointer;
 }
 
-.agreement-toggle input {
+.app-toggle input {
   margin: 0;
   accent-color: #4f8bc9;
   cursor: pointer;
 }
 
-.agreement-toggle:has(input:disabled) {
+.app-toggle:has(input:disabled) {
   opacity: 0.55;
   cursor: default;
 }
 
-.agreement-toggle:has(input:disabled) input {
+.app-toggle:has(input:disabled) input {
   cursor: default;
 }
 
@@ -647,7 +647,8 @@
   text-transform: uppercase;
 }
 
-.player-row--human .wind-badge {
+.player-row--human .wind-badge,
+.table-seat-player--human .wind-badge {
   background-color: #1d3a56;
   color: #a5d8ff;
 }
@@ -776,6 +777,295 @@
   border-radius: 50%;
   background-color: #4dd4ac;
   box-shadow: 0 0 0 1px #0d1016;
+}
+
+/* Top-down table (opt-in) -------------------------------------------------- */
+
+/*
+ * A flat plan view of the table: the human sits at the bottom edge, shimocha on
+ * the right, toimen across the top, and kamicha on the left. Everything stays
+ * 2D - no perspective, vanishing point, or camera tilt - so this is a diagram
+ * of where the seats, melds, and discards are, not a 3D table.
+ *
+ * Each seat's river starts at its player and runs towards the centre of the
+ * table, and its tiles are turned by `--seat-rotation` to face their owner, the
+ * way tiles lying on a real table read from above. The middle of the plan is
+ * the "wall" square; the four corners are empty, as on a real table.
+ */
+.table-physical {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.physical-table {
+  /*
+   * Four rivers have to fit across the width, so the top-down view draws its
+   * tiles smaller than the stacked rows do.
+   */
+  --river-tile-size: clamp(13px, 4vw, 26px);
+  --river-tile-height: calc(var(--river-tile-size) * 4 / 3);
+  --physical-gap: clamp(2px, 0.6vw, 4px);
+
+  display: grid;
+  /*
+   * The side columns are equal, so the top and bottom rivers sit on the
+   * table's centre line even when one side player has melds to show and the
+   * other does not.
+   */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--physical-gap);
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 10px;
+  border: 1px solid #26303d;
+  border-radius: 16px;
+  background-color: #14181f;
+}
+
+/* Seat panels ------------------------------------------------------------- */
+
+.table-seat,
+.table-seat-player,
+.table-seat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.table-seat {
+  align-items: center;
+}
+
+.table-seat--top {
+  grid-area: 1 / 2 / 2 / 3;
+  justify-self: center;
+}
+
+.table-seat--bottom {
+  grid-area: 3 / 2 / 4 / 3;
+  justify-self: center;
+}
+
+.table-seat--left {
+  grid-area: 2 / 1 / 3 / 2;
+  align-self: center;
+}
+
+.table-seat--right {
+  grid-area: 2 / 3 / 3 / 4;
+  align-self: center;
+}
+
+/*
+ * The four sides are mirror images of each other: the meta line sits nearest
+ * the player, then the melds, then the river nearest the centre.
+ */
+.table-seat-body {
+  align-items: center;
+}
+
+.table-seat--bottom .table-seat-player {
+  flex-direction: column-reverse;
+}
+
+.table-seat--bottom .table-seat-body {
+  flex-direction: column-reverse;
+}
+
+.table-seat--left .table-seat-body {
+  flex-direction: row;
+}
+
+.table-seat--right .table-seat-body {
+  flex-direction: row-reverse;
+}
+
+.table-seat-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 2px;
+}
+
+/*
+ * The side seats are the tightest part of the plan: their label is stacked so
+ * the seat never demands more width than its river needs.
+ */
+.table-seat--left .table-seat-meta,
+.table-seat--right .table-seat-meta {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.table-seat-meta .wind-badge {
+  padding: 1px 6px;
+  font-size: 0.6rem;
+}
+
+.table-seat-meta .player-score {
+  font-size: 0.66rem;
+}
+
+.table-seat-meta .riichi-stick {
+  width: 26px;
+}
+
+/* Rivers ------------------------------------------------------------------ */
+
+/*
+ * The river is a 6-wide grid in the stacked view. Rotated onto an edge it is
+ * the same sequence of discards, so the flat view lays it out with flexbox and
+ * changes only the direction the rows grow in.
+ */
+.physical-table .river {
+  display: flex;
+  align-content: flex-start;
+  justify-content: flex-start;
+  gap: var(--physical-gap);
+}
+
+.physical-table .table-seat--top .river,
+.physical-table .table-seat--bottom .river {
+  width: calc(6 * var(--river-tile-height) + 5 * var(--physical-gap));
+}
+
+/* The human's (and the top player's) rows run along the edge, away from them. */
+.physical-table .table-seat--top .river {
+  flex-direction: row-reverse;
+  flex-wrap: wrap;
+}
+
+.physical-table .table-seat--bottom .river {
+  flex-direction: row;
+  flex-wrap: wrap-reverse;
+}
+
+.physical-table .table-seat--left .river,
+.physical-table .table-seat--right .river {
+  height: calc(6 * var(--river-tile-height) + 5 * var(--physical-gap));
+}
+
+/* Side rivers run along the edge as columns, filling towards the centre. */
+.physical-table .table-seat--left .river {
+  flex-direction: column;
+  flex-wrap: wrap;
+}
+
+.physical-table .table-seat--right .river {
+  flex-direction: column-reverse;
+  flex-wrap: wrap-reverse;
+}
+
+/* Melds ------------------------------------------------------------------- */
+
+.physical-table .table-seat--top .melds {
+  flex-direction: row-reverse;
+  max-width: calc(6 * var(--river-tile-height) + 5 * var(--physical-gap));
+}
+
+.physical-table .table-seat--bottom .melds {
+  max-width: calc(6 * var(--river-tile-height) + 5 * var(--physical-gap));
+}
+
+/* A side player's melds stack along their edge, each meld read as a column. */
+.physical-table .table-seat--left .melds {
+  flex-direction: column;
+}
+
+.physical-table .table-seat--right .melds {
+  flex-direction: column-reverse;
+}
+
+.physical-table .table-seat--left .meld {
+  flex-direction: column;
+}
+
+.physical-table .table-seat--right .meld {
+  flex-direction: column-reverse;
+}
+
+.physical-table .table-seat--top .meld {
+  flex-direction: row-reverse;
+}
+
+/*
+ * A rotate() does not change a tile's layout box, so the slot has to be sized
+ * to the turned tile: sideways seats swap the tile's width and height.
+ */
+.physical-table .table-seat--left .meld-slot,
+.physical-table .table-seat--right .meld-slot {
+  width: var(--river-tile-height);
+  height: var(--river-tile-size);
+}
+
+.physical-table .table-seat--left .meld-slot--called,
+.physical-table .table-seat--right .meld-slot--called {
+  width: var(--river-tile-size);
+  height: var(--river-tile-height);
+}
+
+/* Tile orientation -------------------------------------------------------- */
+
+.physical-table .river-tile,
+.physical-table .meld-tile {
+  transform: rotate(var(--seat-rotation, 0deg));
+}
+
+/*
+ * A Riichi declaration tile and a call's claimed tile are turned 90 degrees
+ * relative to their owner, so they get the seat's rotation plus another 90.
+ */
+.physical-table .river-slot--riichi .river-tile,
+.physical-table .meld-slot--called .meld-tile {
+  transform: rotate(calc(var(--seat-rotation, 0deg) + 90deg));
+}
+
+/* The wall stands in the middle of the table. */
+.physical-center {
+  grid-area: 2 / 2 / 3 / 3;
+  align-self: center;
+  justify-self: center;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 10px;
+  border: 1px solid #232a36;
+  border-radius: 10px;
+  background-color: #171c24;
+  color: #8b94a7;
+  white-space: nowrap;
+}
+
+.physical-center-round {
+  color: #a5d8ff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.physical-center-wall {
+  color: #e7ecf3;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.physical-center-label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* Pinned human hand ------------------------------------------------------- */
