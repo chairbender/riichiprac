@@ -1672,6 +1672,152 @@ fn test_dama_expensive_hand_payload_stays_dama() {
     assert!(haneman_count > 0, "no haneman+ hands were generated");
 }
 
+/// Riichi Book 1, ch. 7, "Many possibilities of improving the hand": on an
+/// early turn a ready hand with at least six improving kinds stays dama
+/// (ch7:656-660, ch7:723). The payload must show the book's four-run tanki
+/// shape, one dora, an early river, and the two dama reasons.
+#[wasm_bindgen_test]
+fn test_dama_improving_hand_payload_stays_dama() {
+    for run in 0..30 {
+        let json_output = generate_puzzle("dama_improving_hand".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+        assert_eq!(val["category"], "dama_improving_hand");
+        assert_eq!(val["target_action"], "Dama", "run {run}");
+        assert_eq!(val["correct_action"]["type"], "dama", "run {run}");
+        assert!(
+            val["riichi_triggers"].as_array().unwrap().is_empty(),
+            "run {run}: the answer is dama"
+        );
+        let reasons: Vec<&str> = val["dama_reasons"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|reason| reason.as_str().unwrap())
+            .collect();
+        assert_eq!(
+            reasons,
+            vec!["early_turn", "improving_hand"],
+            "run {run}: both halves of the box must be named"
+        );
+        assert_eq!(
+            val["can_riichi"], true,
+            "run {run}: the general rule must make Riichi offerable"
+        );
+
+        let human = &val["players"][0];
+        // In this lesson the kept hand is the 13-tile ready hand and the draw
+        // is the spare single the answer throws (tsumogiri).
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13, "run {run}");
+        assert!(human["melds"].as_array().unwrap().is_empty(), "run {run}");
+        assert_eq!(human["is_riichi"], false, "run {run}");
+        assert_ne!(
+            human["wind"], "East",
+            "run {run}: the human is not the dealer"
+        );
+
+        // ch7:658: the 8th turn or before. At most seven discards are down.
+        assert!(
+            human["discards"].as_array().unwrap().len() <= 7,
+            "run {run}: the table must still be an early turn"
+        );
+
+        let draw = human["draw"].as_str().expect("run: the human has a draw");
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("the dama action names a discard");
+        assert_eq!(draw, answer, "run {run}: the spare single is thrown");
+
+        let kept: Vec<Tile> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        let kept_counts = to_counts(&kept);
+        assert_eq!(
+            calculate_shanten(&kept_counts).shanten,
+            0,
+            "run {run}: the kept hand must be ready"
+        );
+
+        let waits: Vec<Tile> = val["ukeire_tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        assert_eq!(waits.len(), 1, "run {run}: the wait is a tanki");
+        assert!(
+            kept.iter().any(|tile| *tile == waits[0]),
+            "run {run}: the tanki tile is kept"
+        );
+        assert_eq!(
+            calculate_ukeire(&kept_counts).total_count,
+            3,
+            "run {run}: a tanki has three live copies"
+        );
+
+        // Both singles are the same answer: the other one is accepted too.
+        let equivalents: Vec<&str> = val["equivalent_tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        assert_eq!(equivalents.len(), 1, "run {run}");
+        assert_eq!(
+            equivalents[0],
+            waits[0].to_string(),
+            "run {run}: the equivalent discard is the kept tanki"
+        );
+        assert_ne!(equivalents[0], answer, "run {run}");
+
+        // One dora sits in the kept hand, so the hand has a han without Riichi.
+        let dora: Vec<Tile> = val["dora_indicators"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|indicator| parse_single_tile(indicator.as_str().unwrap()))
+            .collect();
+        assert_eq!(dora.len(), 1, "run {run}");
+        let dora_tile = indicator_to_dora(dora[0]);
+        assert_eq!(
+            kept.iter().filter(|tile| **tile == dora_tile).count(),
+            1,
+            "run {run}: exactly one kept tile is dora"
+        );
+
+        // The winning hand is the book's four-run tanki, never chiitoitsu.
+        let mut winning = kept.clone();
+        winning.push(waits[0]);
+        let structures = decompose_hand(&to_counts(&winning));
+        assert!(
+            structures
+                .iter()
+                .any(|structure| matches!(structure, HandStructure::Standard { .. })),
+            "run {run}: the book's four-run shape must be a standard hand"
+        );
+        assert!(
+            !structures
+                .iter()
+                .any(|structure| matches!(structure, HandStructure::Chiitoitsu { .. })),
+            "run {run}"
+        );
+
+        // The improving box is verified natively; here the payload must at
+        // least never leave the player furiten on the kept tanki.
+        for discard in human["discards"].as_array().unwrap() {
+            assert_ne!(
+                discard["tile"].as_str().unwrap(),
+                waits[0].to_string(),
+                "run {run}: the human river holds the wait"
+            );
+        }
+    }
+}
+
 #[wasm_bindgen_test]
 fn test_payload_supports_riichi_and_dama_actions() {
     let ryanmen: serde_json::Value =
