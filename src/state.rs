@@ -55,6 +55,12 @@ pub enum MeldType {
 }
 
 /// Decision the current puzzle is asking the player to make.
+///
+/// Most variants name the lesson, not its answer (`Kan` covers both "call the
+/// Kan" and "decline it"). `Riichi`/`Dama` and `Push`/`Fold` are the exception:
+/// the riichi-judgement and push-or-fold lessons set them *from* the correct
+/// answer. Never render a prompt that names the target action in those cases —
+/// it would tell the player the answer before they judged it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TargetAction {
     Riichi,

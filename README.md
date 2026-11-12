@@ -123,6 +123,13 @@ choose when the hand becomes ready in the worst possible manner" (ch8:68), which
 the generator checks by enumerating every completion. Both answers are ordinary
 discards: pushing is the shape-preserving pair tile, folding is the safe one.
 
+Because this lesson (and the Riichi-vs-dama one) derives `target_action` from the
+correct answer, the hand dock's pre-answer line never names the action: it reads
+"Tap a tile to discard" whatever the answer is, and only the armed toggles the
+player switched on themselves are mentioned. Push or Fold is named after the
+answer, in the book verdict. The rule lives in `frontend/src/handHint.ts`, so no
+future lesson can reintroduce an answer-shaped hint.
+
 **Defense: Fold to Riichi** is ch. 8.1's push/fold shortcut. The hand is 2-away
 with no dora and no value, and one opponent has declared Riichi from a deep
 river:
