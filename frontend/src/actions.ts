@@ -85,7 +85,7 @@ export function callOfferActions(state: GameState): AiActionInfo[] {
   ];
 }
 
-/** Whether the payload belongs to the Kan (Shouminkan) lesson. */
+/** Whether the payload belongs to a Kan (Shouminkan or Ankan) lesson. */
 export function isKanDecision(action: CorrectAction): boolean {
   return action.type === 'kan' || action.type === 'discard';
 }
@@ -114,7 +114,12 @@ export function correctActionTile(action: CorrectAction): string | null {
 }
 
 /**
- * The fourth tile of an open Pon held in the hand or draw, if any.
+ * The tile that can be called as a Kan right now, if any.
+ *
+ * Two shapes offer the call, and the board makes it legal in both:
+ * - an Added Kan, where the fourth copy of an open Pon is in hand or draw;
+ * - a concealed quad, where all four copies are concealed and the turn's
+ *   draw completes the fourth one.
  *
  * The call is only offered when the board makes it legal, so a "do not Kan"
  * puzzle still shows the button and lets the player make the mistake.
@@ -127,6 +132,14 @@ export function findKanCandidateTile(player: PlayerState): string | null {
 
     const ponTile = meld.tiles[0];
     if (held.includes(ponTile)) return ponTile;
+  }
+
+  // A concealed quad needs four copies in hand plus the draw, never a meld.
+  const counts = new Map<string, number>();
+  for (const tile of held) {
+    const count = (counts.get(tile) ?? 0) + 1;
+    counts.set(tile, count);
+    if (count >= 4) return tile;
   }
 
   return null;

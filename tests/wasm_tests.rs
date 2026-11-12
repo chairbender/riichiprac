@@ -254,6 +254,15 @@ fn test_list_scenarios_payload() {
         }),
         "the cheap-and-slow call lesson must be listed as a book lesson"
     );
+    assert!(
+        scenarios.iter().any(|scenario| {
+            scenario["id"] == "ankan_decision"
+                && scenario["category"] == "kan_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the concealed quad lesson must be listed as a kan decision"
+    );
 }
 
 #[wasm_bindgen_test]
@@ -2450,6 +2459,159 @@ fn test_ryanmen_rejection_sampling_constraints() {
             "the payload sweep must cover both answers, got {kan_count} Kan / {discard_count} discard"
         );
     }
+}
+
+#[wasm_bindgen_test]
+fn test_ankan_decision_payload() {
+    let mut kan_count = 0usize;
+    let mut discard_count = 0usize;
+
+    for run in 0..60 {
+        let json_output = generate_puzzle("ankan_decision".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+        assert_eq!(val["category"], "ankan_decision");
+        // One lesson, one neutral prompt: the payload never hints at the answer.
+        assert_eq!(val["target_action"], "Kan");
+
+        let answer = val["correct_action"]["type"]
+            .as_str()
+            .expect("answer must carry a type");
+        assert!(
+            answer == "kan" || answer == "discard",
+            "run {run}: unexpected answer {answer}"
+        );
+        let answer_tile = val["correct_action"]["tile"]
+            .as_str()
+            .expect("both answers name a tile");
+
+        let human = &val["players"][0];
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(
+            human["melds"].as_array().unwrap().is_empty(),
+            "run {run}: the quad is still concealed"
+        );
+        let draw = human["draw"]
+            .as_str()
+            .expect("the quad decision has an active draw");
+        let hand_tiles: Vec<&str> = human["hand"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        assert_eq!(
+            hand_tiles.iter().filter(|tile| **tile == draw).count(),
+            3,
+            "run {run}: the hand must hold the other three copies"
+        );
+        assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
+
+        if answer == "kan" {
+            kan_count += 1;
+            assert_eq!(answer_tile, draw, "the quad is called on its own draw");
+            let shanten = val["shanten"].as_i64().expect("shanten");
+            assert!(
+                shanten == 1 || shanten == 2,
+                "run {run}: the quad lesson is 1-away or 2-away, got {shanten}"
+            );
+        } else {
+            discard_count += 1;
+            assert_ne!(
+                answer_tile, draw,
+                "run {run}: the floating-tile decline keeps the four copies"
+            );
+            assert!(
+                hand_tiles.contains(&answer_tile),
+                "run {run}: the decline answer is a tile in hand"
+            );
+            assert_eq!(val["shanten"], 1);
+        }
+
+        // The book's side of the verdict cites the ankan section.
+        assert_eq!(
+            val["book_rationale"]["source"]["section"],
+            "Concealed quad (ankan)"
+        );
+        // A Kan decision never offers the Riichi toggle.
+        assert_eq!(val["can_riichi"], false);
+
+        let total_score: i64 = val["players"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|player| player["score"].as_i64().expect("score int"))
+            .sum();
+        assert_eq!(total_score, 100_000);
+    }
+
+    assert!(
+        kan_count >= 15 && discard_count >= 15,
+        "the payload sweep must cover both answers, got {kan_count} Kan / {discard_count} discard"
+    );
+}
+
+#[wasm_bindgen_test]
+fn test_ankan_decision_grades_both_answers_through_wasm() {
+    let mut kan_table = None;
+    let mut decline_table = None;
+
+    for _ in 0..40 {
+        let json = generate_puzzle("ankan_decision".to_string());
+        let table: serde_json::Value =
+            serde_json::from_str(&json).expect("ankan payload must be valid JSON");
+        match table["correct_action"]["type"].as_str().unwrap() {
+            "kan" if kan_table.is_none() => kan_table = Some(table),
+            "discard" if decline_table.is_none() => decline_table = Some(table),
+            _ => {}
+        }
+        if kan_table.is_some() && decline_table.is_some() {
+            break;
+        }
+    }
+
+    let kan_table = kan_table.expect("the sweep must produce a Kan hand");
+    let quad = kan_table["correct_action"]["tile"]
+        .as_str()
+        .expect("Kan tile")
+        .to_string();
+    let request = serde_json::json!({
+        "table": kan_table.clone(),
+        "answer": { "action": "kan", "tile": quad },
+        "evaluation": serde_json::Value::Null,
+    });
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_answer_json(&request.to_string())).expect("grade JSON");
+    assert_eq!(grade["book"]["is_action_correct"], true);
+    assert_eq!(grade["book"]["is_tile_correct"], true);
+    assert_eq!(grade["book"]["expected_action"], "kan");
+
+    // Discarding the four copies instead of calling the quad is the mistake.
+    let request = serde_json::json!({
+        "table": kan_table,
+        "answer": { "action": "discard", "tile": quad },
+        "evaluation": serde_json::Value::Null,
+    });
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_answer_json(&request.to_string())).expect("grade JSON");
+    assert_eq!(grade["book"]["is_action_correct"], false);
+
+    let decline_table = decline_table.expect("the sweep must produce a decline hand");
+    let discard = decline_table["correct_action"]["tile"]
+        .as_str()
+        .expect("discard tile")
+        .to_string();
+    let request = serde_json::json!({
+        "table": decline_table,
+        "answer": { "action": "discard", "tile": discard },
+        "evaluation": serde_json::Value::Null,
+    });
+    let grade: serde_json::Value =
+        serde_json::from_str(&grade_answer_json(&request.to_string())).expect("grade JSON");
+    assert_eq!(grade["book"]["is_action_correct"], true);
+    assert_eq!(grade["book"]["is_tile_correct"], true);
+    assert_eq!(grade["book"]["expected_action"], "discard");
 }
 
 /// Every bulging float in a tile list, as its middle tile code.

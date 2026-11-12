@@ -25,6 +25,9 @@
 //!   different-suit discard makes it dangerous.
 //! - `shouminkan_decision`: Added Kan decision lesson (Kan or decline, one
 //!   neutral prompt).
+//! - `ankan_decision`: concealed quad decision lesson (Kan or decline, one
+//!   neutral prompt): four concealed copies, close to ready or a good floating
+//!   tile.
 //! - `meld_or_not`: the ch. 9.1 call decision: pass on a Pon when the hand is
 //!   both cheap and slow.
 //! - `wind_discard_order`: the ch. 9 seating tip: which valueless wind to throw
@@ -35,6 +38,7 @@
 //! lesson registry.
 
 pub mod ai_best_action;
+mod ankan_decision;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
 mod dama_bad_wait;
@@ -58,6 +62,7 @@ use crate::ai::model::MortalV4Model;
 use crate::state::GameState;
 use situation::Situation;
 
+pub(crate) use support::analysis::floating_quad_acceptance;
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
@@ -271,6 +276,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::AnkanDecision,
+        label: "Concealed Quad Decision",
+        description: "Four concealed copies: declare the concealed quad only when the hand is \
+                      close to ready, never when the fourth copy is a good floating tile.",
+        category: ScenarioCategory::KanDecision,
+        tags: &["kan", "ankan", "decline", "floating_tile"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::WindDiscardOrder,
         label: "Wind Discard Order",
         description: "First turn with two or three valueless winds: throw the right player's wind first.",
@@ -391,6 +406,7 @@ pub enum ScenarioId {
     DamaExpensiveHand,
     SujiTrapRiichi,
     ShouminkanDecision,
+    AnkanDecision,
     MeldOrNot,
     WindDiscardOrder,
     AiBestAction,
@@ -416,6 +432,7 @@ impl ScenarioId {
         ScenarioId::DamaExpensiveHand,
         ScenarioId::SujiTrapRiichi,
         ScenarioId::ShouminkanDecision,
+        ScenarioId::AnkanDecision,
         ScenarioId::WindDiscardOrder,
         ScenarioId::MeldOrNot,
         ScenarioId::AiBestAction,
@@ -441,6 +458,7 @@ impl ScenarioId {
             ScenarioId::DamaExpensiveHand => "dama_expensive_hand",
             ScenarioId::SujiTrapRiichi => "suji_trap_riichi",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
+            ScenarioId::AnkanDecision => "ankan_decision",
             ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::MeldOrNot => "meld_or_not",
             ScenarioId::AiBestAction => "ai_best_action",
@@ -467,6 +485,7 @@ impl ScenarioId {
             "dama_expensive_hand" => Some(ScenarioId::DamaExpensiveHand),
             "suji_trap_riichi" => Some(ScenarioId::SujiTrapRiichi),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
+            "ankan_decision" => Some(ScenarioId::AnkanDecision),
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
@@ -494,6 +513,7 @@ impl ScenarioId {
             ScenarioId::DamaExpensiveHand => dama_expensive_hand::generate(category),
             ScenarioId::SujiTrapRiichi => suji_trap_riichi::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
+            ScenarioId::AnkanDecision => ankan_decision::generate(category),
             ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
             ScenarioId::MeldOrNot => meld_or_not::generate(category),
             ScenarioId::AiBestAction => Err(
@@ -646,7 +666,10 @@ const MAX_REACHABILITY_ATTEMPTS: usize = 8;
 /// report import.
 pub fn finalize_state(mut state: GameState) -> GameState {
     state.book_rationale = crate::rationale::rationale_for(&state);
-    state.can_riichi = crate::ai::actions::riichi_is_legal(&state);
+    // A Kan decision asks about the quad before anything else, so the Riichi
+    // toggle must never appear on it even when the closed hand could declare.
+    state.can_riichi = !matches!(state.target_action, crate::state::TargetAction::Kan)
+        && crate::ai::actions::riichi_is_legal(&state);
     state
 }
 

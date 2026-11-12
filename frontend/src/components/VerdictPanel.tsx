@@ -350,9 +350,10 @@ function describeBookAnswer(state: GameState, book: BookGrade | null): string {
     case 'fold':
       return `Fold · discard ${accepted}`;
     case 'kan':
-      return `Added Kan on ${accepted}`;
+      // Covers both Kan lessons: an Added Kan on a Pon and a concealed quad.
+      return `Kan on ${accepted}`;
     case 'discard':
-      return `Pass on the Kan · discard ${accepted}`;
+      return `No Kan · discard ${accepted}`;
     case 'pass':
       return `Pass on ${state.call_offer?.label ?? 'the call'}`;
     case 'best':

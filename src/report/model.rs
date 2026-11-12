@@ -44,7 +44,7 @@ impl DecisionPrompt {
         match self {
             Self::RiichiOrDama => "Declare Riichi, or stay dama?",
             Self::WhichDiscard => "Which tile do you discard?",
-            Self::KanOrDiscard => "Call Shouminkan, or discard?",
+            Self::KanOrDiscard => "Call the Kan, or discard?",
             Self::PushOrFold => "Push or fold?",
             Self::CallOrPass => "Call, or pass?",
             Self::AiBestAction => "What is the best action?",
