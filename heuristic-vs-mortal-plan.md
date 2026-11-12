@@ -592,9 +592,12 @@ puzzle from the app's own promise. Options considered:
 - Add `grading` to `ScenarioMeta` and to the serialized manifest:
   `pub enum ScenarioGrading { BookAndMortal, MortalOnly }`; `ai_best_action` is
   `MortalOnly`, the other three are `BookAndMortal`.
-- `pickRandomScenario` excludes `MortalOnly` scenarios from the "All scenarios"
-  pool (they stay selectable by name). Selecting "All" then always means "a
-  lesson with both perspectives", which is what the new UI promises.
+- `pickRandomScenario` keeps `MortalOnly` scenarios in the "All scenarios" pool
+  once the model is ready (it still holds `requires_ai` back until then). A
+  drill has no book answer, so "All" no longer promises both perspectives; the
+  verdict panel renders the single-perspective case honestly instead.
+  (Reversed 2026-11-11, task 261111-1559: excluding the drill meant the "Mortal
+  must agree" mode never drew it, and the agreement rule is vacuous for it.)
 - The drill uses `GradingMode::MortalOnly` and grades against `correct_action`
   (which *is* Mortal's answer, including the second-pass Riichi discard). Its
   toast is explicitly labelled: "Mortal drill — graded by the model alone."
@@ -1040,10 +1043,9 @@ changes presentation).
 
 **Phase 6 — drill re-scope.**
 
-- `pickRandomScenario` exclusion, drill copy, book-column "no book rule" state,
-  README.
-- Gate: "All scenarios" never yields `ai_best_action`; selecting it by name still
-  works and is labelled.
+- Drill copy, book-column "no book rule" state, README.
+- Gate: "All scenarios" can yield `ai_best_action` once the model is ready, and
+  selecting it by name still works and is labelled.
 
 **Phase 7 — cleanup.** Remove `LEGACY_LABELS` duplication where it now has a
 single source, delete dead props, update `scenario-report-plan.md`'s version
