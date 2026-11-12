@@ -5,12 +5,13 @@ use agari::tile::{Honor, Tile};
 use agari::yaku::{Yaku, detect_yaku_with_context};
 
 use super::skeleton::{self, NakabukureSkeleton, Variant};
+use crate::generator::block_theory::shared::deal_with_pon_claim;
 use crate::generator::support::analysis::{HandMetrics, evaluate_counts, wind_to_honor};
 use crate::generator::support::deck::Deck;
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    OpponentDeal, deal_opponents, discards_from_tiles, force_tedashi, random_round,
-    random_scores_with_human_first, self_turn_river_plan,
+    OpponentDeal, discards_from_tiles, force_tedashi, random_round, random_scores_with_human_first,
+    self_turn_river_plan,
 };
 use crate::rng::gen_range;
 use crate::state::{
@@ -62,8 +63,7 @@ pub(super) fn build_board(
     // an ordinary rotation.
     let discard_count = gen_range(1, 7);
     let plan = self_turn_river_plan(Wind::East, calls, discard_count);
-    let deal = deal_opponents(&mut deck, Wind::East, &scores, &plan)
-        .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
+    let deal = deal_with_pon_claim(&mut deck, &scores, &plan, &skeleton.open_meld_tiles)?;
 
     // Neither candidate discard may sit in the human's own river: for the
     // ready hand that would be furiten, and for the 1-away hands it would look

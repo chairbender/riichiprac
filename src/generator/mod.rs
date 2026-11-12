@@ -1315,6 +1315,63 @@ mod tests {
         }
     }
 
+    /// Every open meld a lesson deals must be backed by a discard in the river it
+    /// names.
+    ///
+    /// `validate_meld_claims` enforces this, but a lesson that silently relied on
+    /// a lucky random fill (the fourth copy landing in the right river) would
+    /// still pass the reachability guard often enough to look fine. These are the
+    /// lessons that plant the claimed tile on purpose, so every board must show
+    /// it.
+    #[test]
+    fn every_melded_lesson_plants_its_claimed_tile() {
+        use crate::state::MeldType;
+
+        for category in [
+            "open_hand_defense",
+            "ryanmen_protorun",
+            "nakabukure_ready",
+            "protorun_priority",
+            "ryankan_break",
+            "protorun_plus_one",
+            "daiminkan_decision",
+        ] {
+            for run in 0..15 {
+                let state = generate_puzzle(category)
+                    .unwrap_or_else(|err| panic!("{category} run {run} failed: {err}"));
+                for player in &state.players {
+                    for meld in &player.melds {
+                        let Some(source) = meld.called_from else {
+                            continue;
+                        };
+                        let claimable: Vec<&str> = match meld.meld_type {
+                            MeldType::Chi => meld.tiles.iter().map(String::as_str).collect(),
+                            MeldType::Pon | MeldType::Kan => {
+                                vec![meld.tiles.first().map(String::as_str).unwrap_or_default()]
+                            }
+                            MeldType::Ankan => continue,
+                        };
+                        assert!(
+                            state.players[source]
+                                .discards
+                                .iter()
+                                .any(|discard| { claimable.contains(&discard.tile.as_str()) }),
+                            "{category} run {run}: the {:?} {:?} claims from seat {source}, whose \
+                             river {:?} holds no claimed tile",
+                            meld.meld_type,
+                            meld.tiles,
+                            state.players[source]
+                                .discards
+                                .iter()
+                                .map(|discard| discard.tile.as_str())
+                                .collect::<Vec<_>>()
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     fn generated_rivers_never_invent_extra_discards() {
         use crate::generator::support::state_validation::validate_reachable_state;

@@ -26,6 +26,11 @@ use crate::state::{
 /// keeps Riichi off the table.
 const HUMAN_SHANTEN: i8 = 2;
 
+/// The threat's open melds: the lesson's ch. 8.4 read needs "three or more open
+/// sets or runs". Every one of them is claimed from the previous seat, so the
+/// calls stay inside the natural rotation.
+const THREAT_CALLS: usize = 3;
+
 /// Builds one complete, validated open-hand chii-discard board.
 pub(super) fn build_board(category: &str, skeleton: &Skeleton) -> Result<GameState, String> {
     let (round_wind, hand_number) = random_round();
@@ -38,12 +43,33 @@ pub(super) fn build_board(category: &str, skeleton: &Skeleton) -> Result<GameSta
     // Reserve every tile the lesson reasons about before any random fill can
     // consume a copy.
     reserve_threat(&mut deck, skeleton)?;
+    // Each call moves a tile out of the source's river and into the threat's
+    // meld. The river keeps the discard that produced it, so the claimed tile is
+    // a second copy: reserve it before the human hand can take the last one.
+    let claimed_tiles = reserve_claims(&mut deck, skeleton)?;
     let (human_concealed, draw) = build_human_hand(&mut deck, skeleton)?;
     let mut human_all = human_concealed.clone();
     human_all.push(draw);
 
-    let plan = self_turn_river_plan(human_wind, &[], gen_range(3, 7));
+    let mut plan = self_turn_river_plan(human_wind, &threat_calls(), gen_range(3, 7));
     let counts = plan.counts;
+    if counts[THREAT_SEAT] < THREAT_CALLS {
+        return Err(format!(
+            "the threat must discard at least {THREAT_CALLS} times to call {THREAT_CALLS} times, \
+             got {}",
+            counts[THREAT_SEAT]
+        ));
+    }
+    // The last call is the chii the human is reading, so the tile thrown right
+    // after it is the last discard on the table. The three calls therefore land
+    // on the threat's last three discards, and those three come from the hand:
+    // `force_tedashi` must clear their tsumogiri flags. The plan's greedy order
+    // would put the calls on the threat's earliest discards instead, so the
+    // board re-anchors them and drops the plan's own call records; `validate`
+    // re-derives the truth from the finished state.
+    plan.calls.clear();
+    plan.hand_discards[THREAT_SEAT] =
+        (counts[THREAT_SEAT] - THREAT_CALLS..counts[THREAT_SEAT]).collect();
 
     // The threat's river ends on the post-chii discard. Its earlier entries
     // stay clear of the human's hand so the same-suit board has no accidental
@@ -68,9 +94,12 @@ pub(super) fn build_board(category: &str, skeleton: &Skeleton) -> Result<GameSta
         let hand = deck
             .draw_n(13)
             .ok_or_else(|| "deck exhausted dealing an opponent".to_string())?;
-        let river = deck
-            .draw_n(counts[seat])
-            .ok_or_else(|| "deck exhausted drawing an opponent river".to_string())?;
+        let river = if seat == call_source_seat() {
+            build_call_source_river(&mut deck, skeleton, &claimed_tiles, counts[seat])?
+        } else {
+            deck.draw_n(counts[seat])
+                .ok_or_else(|| "deck exhausted drawing an opponent river".to_string())?
+        };
         let mut discards = discards_from_tiles(&river);
         force_tedashi(&mut discards, &plan.hand_discards[seat]);
 
@@ -110,7 +139,14 @@ pub(super) fn build_board(category: &str, skeleton: &Skeleton) -> Result<GameSta
         .draw()
         .ok_or_else(|| "deck exhausted drawing the ura indicator".to_string())?;
 
-    let tiles_remaining = deck.remaining().saturating_sub(12).min(u8::MAX as usize) as u8;
+    // Each call replaces a draw, so the wall has `THREAT_CALLS` more tiles left
+    // than the tiles on the table suggest: the claimed copies sit in the
+    // source's river without ever having been drawn.
+    let tiles_remaining = deck
+        .remaining()
+        .saturating_sub(12)
+        .saturating_add(THREAT_CALLS)
+        .min(u8::MAX as usize) as u8;
     if tiles_remaining == 0 {
         return Err("no drawable tiles remain".to_string());
     }
@@ -182,6 +218,77 @@ fn reserve_threat(deck: &mut Deck, skeleton: &Skeleton) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+/// The seat that plays immediately before the threat: it supplies all three
+/// claimed tiles.
+fn call_source_seat() -> usize {
+    (THREAT_SEAT + 3) % 4
+}
+
+/// The threat's three calls, in the order the melds are stored.
+fn threat_calls() -> Vec<(usize, usize)> {
+    vec![(THREAT_SEAT, call_source_seat()); THREAT_CALLS]
+}
+
+/// Reserves the tile each call claims from the source's river.
+///
+/// The caller contributed two of the meld's tiles from its hand; the third was
+/// taken off the source's discard. The state keeps that discard in the river,
+/// because [`crate::generator::support::state_validation`] counts it as one of
+/// the source's discards and the tenhou.net/6 exporter looks for the claim
+/// there, so the claimed tile is a separate physical copy of the kind: the pon
+/// needs its fourth copy, and each chii a second copy of one of its ranks.
+fn reserve_claims(deck: &mut Deck, skeleton: &Skeleton) -> Result<Vec<Tile>, String> {
+    let pon = skeleton.prior_pon;
+    deck.take(pon)?;
+    let prior = claim_one_of_run(deck, &skeleton.prior_chi)?;
+    let last = claim_one_of_run(deck, &skeleton.final_chi)?;
+    Ok(vec![pon, prior, last])
+}
+
+/// Takes one copy of a tile in `run` for the claim that created the meld.
+fn claim_one_of_run(deck: &mut Deck, run: &[Tile]) -> Result<Tile, String> {
+    let mut candidates = run.to_vec();
+    shuffle(&mut candidates);
+    for tile in candidates {
+        if deck.take(tile).is_ok() {
+            return Ok(tile);
+        }
+    }
+    Err("no copy of a claimed run is left in the deck".to_string())
+}
+
+/// The call source's river: `count` discards whose last three are the claims.
+///
+/// The final chii claimed the source's most recent discard, so the threat's
+/// post-chii discard is the last tile on the table. The other two calls claimed
+/// the source's second- and third-most-recent discards. The earlier entries
+/// steer clear of every claimable tile, so the calls can only sit on the last
+/// three and the table reads unambiguously.
+fn build_call_source_river(
+    deck: &mut Deck,
+    skeleton: &Skeleton,
+    claimed: &[Tile],
+    count: usize,
+) -> Result<Vec<Tile>, String> {
+    if count < claimed.len() {
+        return Err(format!(
+            "the call source has {count} discards but the threat made {} calls",
+            claimed.len()
+        ));
+    }
+    let mut excluded = vec![skeleton.prior_pon];
+    excluded.extend(skeleton.prior_chi.iter().copied());
+    excluded.extend(skeleton.final_chi.iter().copied());
+    excluded.sort();
+    excluded.dedup();
+
+    let mut river = deck
+        .draw_excluding(count - claimed.len(), &excluded)
+        .ok_or_else(|| "deck exhausted drawing the call source's river".to_string())?;
+    river.extend_from_slice(claimed);
+    Ok(river)
 }
 
 /// Builds the human's fourteen tiles and picks the drawn tile.
@@ -503,6 +610,7 @@ fn validate(state: &GameState, skeleton: &Skeleton) -> Result<(), String> {
             threat.melds.len()
         ));
     }
+    validate_calls(state, threat)?;
     let Some(last_chi) = threat
         .melds
         .iter()
@@ -689,6 +797,91 @@ fn validate(state: &GameState, skeleton: &Skeleton) -> Result<(), String> {
     Ok(())
 }
 
+/// Every call must be supported by a discard in the source's river.
+///
+/// A player can only call on a tile somebody actually discarded, so the three
+/// melds have to sit on three of the source's discards. Those are its last
+/// three: the final chii claimed the most recent one, and the post-chii discard
+/// the human is reading was thrown straight after it. The three discards that
+/// follow the calls come from the hand, so none of them can be tsumogiri.
+fn validate_calls(state: &GameState, threat: &PlayerState) -> Result<(), String> {
+    let source_seat = call_source_seat();
+    let source = &state.players[source_seat];
+    let claimed_start = source
+        .discards
+        .len()
+        .checked_sub(threat.melds.len())
+        .ok_or_else(|| {
+            format!(
+                "seat {source_seat} made {} discards but the threat called {} times",
+                source.discards.len(),
+                threat.melds.len()
+            )
+        })?;
+
+    let claimed: Vec<Tile> = source.discards[claimed_start..]
+        .iter()
+        .map(|discard| Tile::try_from(discard.tile.as_str()).map_err(|err| err.to_string()))
+        .collect::<Result<_, _>>()?;
+
+    for (meld, tile) in threat.melds.iter().zip(claimed.iter()) {
+        if !meld_can_claim(meld, *tile) {
+            return Err(format!(
+                "seat {source_seat}'s discard {tile} cannot be claimed by the {:?} {:?}",
+                meld.meld_type, meld.tiles
+            ));
+        }
+        if meld.called_from != Some(source_seat) {
+            return Err(format!(
+                "the {:?} at seat {} must be claimed from seat {source_seat}, got {:?}",
+                meld.meld_type, threat.seat, meld.called_from
+            ));
+        }
+    }
+
+    // The last discard on the table is the one thrown after the final chii.
+    let last_chi = threat
+        .melds
+        .iter()
+        .rev()
+        .find(|meld| meld.meld_type == MeldType::Chi)
+        .ok_or_else(|| "the threat's last call must be a chii".to_string())?;
+    let claimed_last = claimed
+        .last()
+        .ok_or_else(|| "the threat has no claimed tile".to_string())?;
+    if !meld_can_claim(last_chi, *claimed_last) {
+        return Err(format!(
+            "the final chii cannot claim the source's last discard {claimed_last}"
+        ));
+    }
+
+    for discard in threat.discards.iter().rev().take(threat.melds.len()) {
+        if discard.is_tsumogiri {
+            return Err(format!(
+                "the threat's discard {} follows a call and cannot be tsumogiri",
+                discard.tile
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+/// True when `meld` could have taken `tile` off another seat's river.
+fn meld_can_claim(meld: &CalledMeld, tile: Tile) -> bool {
+    let tiles: Vec<Tile> = meld
+        .tiles
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    match meld.meld_type {
+        // A chii names any of its three ranks; the other calls name one tile.
+        MeldType::Chi => tiles.contains(&tile),
+        MeldType::Pon | MeldType::Kan => tiles.first() == Some(&tile),
+        MeldType::Ankan => false,
+    }
+}
+
 fn unique(tiles: impl IntoIterator<Item = Tile>) -> Vec<Tile> {
     let mut unique: Vec<Tile> = tiles.into_iter().collect();
     unique.sort();
@@ -780,6 +973,54 @@ mod tests {
                 .expect("last chii")
                 .meld_type,
             MeldType::Chi
+        );
+
+        // Every call needs a discard to claim it. The threat takes all three
+        // from the seat that plays before it, and those are that seat's last
+        // three discards: the final chii claimed the most recent one, so the
+        // post-chii discard is the last tile on the table.
+        let source_seat = (THREAT_SEAT + 3) % 4;
+        let source = &state.players[source_seat];
+        assert!(
+            source.discards.len() >= threat.melds.len(),
+            "seat {source_seat} has {} discards for {} calls",
+            source.discards.len(),
+            threat.melds.len()
+        );
+        let claimed: Vec<Tile> = source.discards[source.discards.len() - threat.melds.len()..]
+            .iter()
+            .map(|discard| Tile::try_from(discard.tile.as_str()).expect("discard tile"))
+            .collect();
+        for (meld, tile) in threat.melds.iter().zip(&claimed) {
+            assert_eq!(
+                meld.called_from,
+                Some(source_seat),
+                "the {:?} must be claimed from seat {source_seat}",
+                meld.meld_type
+            );
+            let claimable: Vec<Tile> = meld
+                .tiles
+                .iter()
+                .map(|code| Tile::try_from(code.as_str()).expect("meld tile"))
+                .collect();
+            let matches = match meld.meld_type {
+                MeldType::Chi => claimable.contains(tile),
+                _ => claimable.first() == Some(tile),
+            };
+            assert!(
+                matches,
+                "the source's discard {tile} cannot be claimed by the {:?} {:?}",
+                meld.meld_type, meld.tiles
+            );
+        }
+        assert!(
+            threat
+                .discards
+                .iter()
+                .rev()
+                .take(threat.melds.len())
+                .all(|discard| !discard.is_tsumogiri),
+            "every discard thrown right after a call is tedashi"
         );
 
         let post_chi = Tile::try_from(threat.discards.last().expect("discard").tile.as_str())
@@ -928,6 +1169,57 @@ mod tests {
             elapsed < std::time::Duration::from_secs(15),
             "100 generations took {elapsed:?}"
         );
+    }
+
+    /// Regression for the reported board: the threat showed three open melds
+    /// while the seat it called from still displayed a whole river that
+    /// contained none of the claimed tiles. A call consumes a discard, so the
+    /// claimed tile has to sit in the source's river, and no earlier discard may
+    /// look claimable either, or the calls would float free of the table.
+    #[test]
+    fn every_call_is_backed_by_a_discard_in_the_sources_river() {
+        for run in 0..120 {
+            let state = generate("open_hand_defense")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+            let threat = threat(&state);
+            let source_seat = (THREAT_SEAT + 3) % 4;
+            let source = &state.players[source_seat];
+
+            let claimed_kinds: Vec<Tile> = threat
+                .melds
+                .iter()
+                .flat_map(|meld| meld.tiles.iter())
+                .map(|code| Tile::try_from(code.as_str()).expect("meld tile"))
+                .collect();
+            let claimed_start = source.discards.len() - threat.melds.len();
+            let early: Vec<Tile> = source.discards[..claimed_start]
+                .iter()
+                .map(|discard| Tile::try_from(discard.tile.as_str()).expect("discard tile"))
+                .collect();
+            assert!(
+                early.iter().all(|tile| !claimed_kinds.contains(tile)),
+                "run {run}: an earlier discard of seat {source_seat} could be claimed instead: \
+                 {early:?}"
+            );
+
+            for (meld, tile) in threat.melds.iter().zip(&source.discards[claimed_start..]) {
+                let tile = Tile::try_from(tile.tile.as_str()).expect("discard tile");
+                let claimable: Vec<Tile> = meld
+                    .tiles
+                    .iter()
+                    .map(|code| Tile::try_from(code.as_str()).expect("meld tile"))
+                    .collect();
+                let matches = match meld.meld_type {
+                    MeldType::Chi => claimable.contains(&tile),
+                    _ => claimable.first() == Some(&tile),
+                };
+                assert!(
+                    matches,
+                    "run {run}: the source's discard {tile} cannot be claimed by the {:?} {:?}",
+                    meld.meld_type, meld.tiles
+                );
+            }
+        }
     }
 
     /// Regression for the reported board: the drawn honor could be the fourth

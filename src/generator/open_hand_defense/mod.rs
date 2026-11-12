@@ -14,17 +14,22 @@
 //!    concealed tiles are a pair plus one protorun, so the threat is really
 //!    tenpai (and the chapter's "three open sets => assume ready" shortcut is
 //!    literal).
-//! 2. In the same-suit case the kept protorun is in another suit: the threat's
+//! 2. Every call is claimed from the seat that plays immediately before the
+//!    threat, so the calls stay inside the natural rotation: the threat's three
+//!    calls land on that seat's last three discards, and the post-chii discard is
+//!    the last tile on the table. `board` plants the claimed tile in the source's
+//!    river, so each call is backed by a discard somebody actually made.
+//! 3. In the same-suit case the kept protorun is in another suit: the threat's
 //!    winning tiles are outside the post-chii discard's neighbourhood. The
 //!    answer is the human's only neighbourhood tile, and it is part of a
 //!    protorun so the fold is visible.
-//! 3. The different-suit variant is the trap: the kept protorun is in the
+//! 4. The different-suit variant is the trap: the kept protorun is in the
 //!    discard's suit, one of its winning tiles is the tempting neighbourhood
 //!    tile, and the answer is the human's 100 % genbutsu just outside the
 //!    neighbourhood.
-//! 4. `board` assembles the table, reserves every structural tile before the
+//! 5. `board` assembles the table, reserves every structural tile before the
 //!    random fill, and re-derives the whole read from the finished state.
-//! 5. The fill never leaves a second 100% safe tile in the human hand. A dead
+//! 6. The fill never leaves a second 100% safe tile in the human hand. A dead
 //!    fourth honor (the threat's pon shows three copies) or an absolute
 //!    no-chance tile is as safe as the whole read, so "just discard that"
 //!    would beat the lesson; `board` rejects such a table.

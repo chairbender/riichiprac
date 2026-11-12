@@ -4037,6 +4037,153 @@ fn test_open_hand_defense_payload() {
     );
 }
 
+/// Every open meld a lesson deals has to be backed by a discard in the river it
+/// names.
+///
+/// This is the general guard behind the reported `open_hand_defense` board: a
+/// call consumes a discard, so `players[called_from].discards` must hold a tile
+/// the meld could have claimed. `validate_reachable_state` rejects tables that
+/// do not, and the lessons below plant the claimed tile on purpose.
+#[wasm_bindgen_test]
+fn test_melded_lessons_back_every_call_with_a_discard() {
+    for category in [
+        "open_hand_defense",
+        "ryanmen_protorun",
+        "nakabukure_ready",
+        "protorun_priority",
+        "ryankan_break",
+        "protorun_plus_one",
+        "daiminkan_decision",
+    ] {
+        for run in 0..10 {
+            let json_output = generate_puzzle(category.to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("{category} run {run}: invalid JSON: {err}"));
+            let players = val["players"].as_array().expect("players array");
+
+            for player in players {
+                for meld in meld_list(player) {
+                    let source = meld["called_from"]
+                        .as_u64()
+                        .expect("an open meld names its source")
+                        as usize;
+                    let claimable: Vec<&str> = match meld["meld_type"].as_str() {
+                        // Any tile of the run can be the claimed one.
+                        Some("Chi") => meld["tiles"]
+                            .as_array()
+                            .expect("meld tiles")
+                            .iter()
+                            .filter_map(|tile| tile.as_str())
+                            .collect(),
+                        _ => meld["tiles"]
+                            .as_array()
+                            .expect("meld tiles")
+                            .first()
+                            .and_then(|tile| tile.as_str())
+                            .into_iter()
+                            .collect(),
+                    };
+                    assert!(
+                        players[source]["discards"]
+                            .as_array()
+                            .expect("source river")
+                            .iter()
+                            .any(|discard| {
+                                claimable.contains(&discard["tile"].as_str().unwrap_or_default())
+                            }),
+                        "{category} run {run}: the {} {:?} claims from seat {source}, whose river \
+                         never shows a claimed tile",
+                        meld["meld_type"],
+                        claimable
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// The melds of a player payload, or an empty list when there are none.
+fn meld_list(player: &serde_json::Value) -> Vec<&serde_json::Value> {
+    player["melds"]
+        .as_array()
+        .map(|melds| melds.iter().collect())
+        .unwrap_or_default()
+}
+
+/// Regression for the reported board: the threat showed three open melds while
+/// the seat it called from still displayed five discards, none of them a tile
+/// the threat could have claimed. Every call has to be backed by a discard in
+/// the source's river, and the calls land on that river's last three entries.
+#[wasm_bindgen_test]
+fn test_open_hand_defense_every_call_is_backed_by_a_discard() {
+    for run in 0..30 {
+        let json_output = generate_puzzle("open_hand_defense".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}"));
+        let players = val["players"].as_array().expect("players array");
+
+        let (threat_seat, threat) = players
+            .iter()
+            .enumerate()
+            .find(|(_, player)| {
+                player["melds"]
+                    .as_array()
+                    .is_some_and(|melds| melds.len() == 3)
+            })
+            .unwrap_or_else(|| panic!("run {run}: no three-meld threat"));
+        let source_seat = (threat_seat + 3) % 4;
+        let source_river = players[source_seat]["discards"]
+            .as_array()
+            .expect("source river");
+        let melds = threat["melds"].as_array().expect("threat melds");
+        assert!(
+            source_river.len() >= melds.len(),
+            "run {run}: seat {source_seat} has {} discards for {} calls",
+            source_river.len(),
+            melds.len()
+        );
+
+        let claimed_start = source_river.len() - melds.len();
+        let claimed_kinds: Vec<&str> = melds
+            .iter()
+            .flat_map(|meld| meld["tiles"].as_array().expect("meld tiles"))
+            .filter_map(|tile| tile.as_str())
+            .collect();
+        for discard in &source_river[..claimed_start] {
+            let tile = discard["tile"].as_str().expect("discard tile");
+            assert!(
+                !claimed_kinds.contains(&tile),
+                "run {run}: an earlier discard {tile} of seat {source_seat} could be claimed \
+                 instead"
+            );
+        }
+        for (meld, discard) in melds.iter().zip(&source_river[claimed_start..]) {
+            assert_eq!(meld["called_from"].as_u64(), Some(source_seat as u64));
+            let tile = discard["tile"].as_str().expect("discard tile");
+            let claimable: Vec<&str> = meld["tiles"]
+                .as_array()
+                .expect("meld tiles")
+                .iter()
+                .filter_map(|tile| tile.as_str())
+                .collect();
+            assert!(
+                claimable.contains(&tile),
+                "run {run}: the source's discard {tile} cannot be claimed by the {} {:?}",
+                meld["meld_type"],
+                claimable
+            );
+        }
+
+        let threat_discards = threat["discards"].as_array().expect("threat river");
+        assert!(
+            threat_discards[threat_discards.len() - melds.len()..]
+                .iter()
+                .all(|discard| discard["is_tsumogiri"] == false),
+            "run {run}: a discard thrown right after a call cannot be tsumogiri"
+        );
+    }
+}
+
 #[wasm_bindgen_test]
 fn test_meld_or_not_payload() {
     for run in 0..25 {

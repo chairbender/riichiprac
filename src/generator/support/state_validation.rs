@@ -10,7 +10,9 @@
 //! - every player holds `13 - 3 * melds` concealed tiles (the draw adds one),
 //!   because a kan's fourth tile is the replacement draw, not an extra turn;
 //! - each meld is a real shape (sequence, triplet, or quad) called by a seat
-//!   that could legally have discarded it;
+//!   that could legally have discarded it, and that seat's river shows the
+//!   discard: a call consumes a discard, so a meld with nothing behind it could
+//!   never have happened;
 //! - the rivers are the discards of *one* turn order: the walk starts at the
 //!   dealer, visits one seat per discard, and can only leave the rotation when
 //!   a player calls on the discard that just happened. Calls claimed from the
@@ -25,10 +27,10 @@
 //! accepts, so generators should plan rivers with it rather than pick a
 //! discard count per seat.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::generator::support::table::{dealer_seat, is_out_of_rotation_call};
-use crate::state::{DecisionContext, GameState, MeldType};
+use crate::state::{CalledMeld, DecisionContext, GameState, MeldType};
 
 /// Upper bound on the reachability search. Reachable tables are found on the
 /// first attempt; this only protects against pathological rejects.
@@ -39,6 +41,7 @@ pub fn validate_reachable_state(state: &GameState) -> Result<(), String> {
     validate_table_shape(state)?;
     validate_player_tiles(state)?;
     validate_melds(state)?;
+    validate_meld_claims(state)?;
     validate_decision_placement(state)?;
     validate_discard_timeline(state)
 }
@@ -194,6 +197,130 @@ fn validate_melds(state: &GameState) -> Result<(), String> {
 
 fn all_same(tiles: &[String]) -> bool {
     tiles.windows(2).all(|pair| pair[0] == pair[1])
+}
+
+/// Every open meld must name a seat whose river shows the discard it claimed.
+///
+/// A call moves a tile from one player's river into the caller's meld, and the
+/// state keeps the discard that produced it: [`super::table::RiverPlan`] sizes
+/// the rivers with the call consumed, and the tenhou.net/6 exporter looks for
+/// the claim in the source's river. A meld whose source never discarded the tile
+/// therefore has no discard behind it at all. The reported
+/// `open_hand_defense` board showed a Pon of 7z claimed from a seat whose five
+/// discards were `2z 7m 2s 5z 3s`: the call was invented, not played.
+///
+/// Two calls on one seat need two discards, so claims are matched to distinct
+/// river entries.
+///
+/// One shape cannot show a witness: when the caller's own meld and concealed
+/// hand already use all four copies of the claimed kind, there is no spare copy
+/// left to be a discarded tile, so the claimed tile must be one of the meld's
+/// own. That is the added kan (a Pon plus the drawn fourth tile) and the open
+/// kan. Those boards are accepted without a witness.
+fn validate_meld_claims(state: &GameState) -> Result<(), String> {
+    for (source, player) in state.players.iter().enumerate() {
+        // Claims this seat has to answer for: (claiming seat, claimable tiles).
+        let mut claims: Vec<(usize, Vec<&str>)> = Vec::new();
+        for caller in &state.players {
+            let held = copies_held_by(caller);
+            for meld in &caller.melds {
+                if meld.called_from != Some(source) {
+                    continue;
+                }
+                let claimable = claimable_tiles(meld);
+                if claimable.is_empty() {
+                    return Err(format!(
+                        "seat {} has an empty {:?} meld",
+                        caller.seat, meld.meld_type
+                    ));
+                }
+                if claimable
+                    .iter()
+                    .all(|tile| held.get(tile).copied().unwrap_or(0) >= 4)
+                {
+                    continue;
+                }
+                claims.push((caller.seat, claimable));
+            }
+        }
+        if claims.is_empty() {
+            continue;
+        }
+
+        let river: Vec<&str> = player
+            .discards
+            .iter()
+            .map(|discard| discard.tile.as_str())
+            .collect();
+        let mut used = vec![false; river.len()];
+        if !assign_claims(&claims, &river, &mut used, 0) {
+            let wanted: Vec<String> = claims
+                .iter()
+                .map(|(seat, tiles)| format!("seat {seat} claims {tiles:?}"))
+                .collect();
+            return Err(format!(
+                "seat {source}'s river {river:?} cannot back every call on it: {}",
+                wanted.join(", ")
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+/// The kinds a meld could have taken off another seat's discard.
+fn claimable_tiles(meld: &CalledMeld) -> Vec<&str> {
+    let mut claimable: Vec<&str> = match meld.meld_type {
+        // Any tile of the run can be the claimed one.
+        MeldType::Chi => meld.tiles.iter().map(String::as_str).collect(),
+        MeldType::Pon | MeldType::Kan => meld
+            .tiles
+            .first()
+            .map(|tile| vec![tile.as_str()])
+            .unwrap_or_default(),
+        MeldType::Ankan => Vec::new(),
+    };
+    claimable.sort_unstable();
+    claimable.dedup();
+    claimable
+}
+
+/// How many copies of each kind the player's own melds, hand and draw hold.
+fn copies_held_by(player: &crate::state::PlayerState) -> HashMap<&str, usize> {
+    let mut held: HashMap<&str, usize> = HashMap::new();
+    let tiles = player
+        .melds
+        .iter()
+        .flat_map(|meld| meld.tiles.iter())
+        .chain(player.hand.iter())
+        .chain(player.draw.iter());
+    for tile in tiles {
+        *held.entry(tile.as_str()).or_default() += 1;
+    }
+    held
+}
+
+/// Matches every claim to a distinct river entry of a kind it could claim.
+fn assign_claims(
+    claims: &[(usize, Vec<&str>)],
+    river: &[&str],
+    used: &mut [bool],
+    index: usize,
+) -> bool {
+    if index == claims.len() {
+        return true;
+    }
+    for slot in 0..river.len() {
+        if used[slot] || !claims[index].1.contains(&river[slot]) {
+            continue;
+        }
+        used[slot] = true;
+        if assign_claims(claims, river, used, index + 1) {
+            return true;
+        }
+        used[slot] = false;
+    }
+    false
 }
 
 fn same_suit_run(tiles: &[String]) -> bool {
@@ -530,9 +657,117 @@ mod tests {
                 tiles: vec!["5z".to_string(); 3],
                 called_from: Some(1),
             }];
+            // The claim needs a discard behind it: seat 1's river shows the 5z.
+            let last = state.players[1].discards.len() - 1;
+            state.players[1].discards[last] = DiscardTile::new("5z");
             validate_reachable_state(&state)
                 .unwrap_or_else(|err| panic!("wind {wind:?} counts {counts:?}: {err}"));
         }
+    }
+
+    #[test]
+    fn a_call_with_no_discard_behind_it_is_rejected() {
+        // The reported `open_hand_defense` shape: a Pon of 5z "claimed" from a
+        // seat that never discarded one.
+        let counts = self_turn_river_plan(Wind::East, &[(0, 1)], 3).counts;
+        let mut state = self_turn_state(Wind::East, counts);
+        state.players[0].hand = vec!["1m".to_string(); 10];
+        state.players[0].melds = vec![CalledMeld {
+            meld_type: MeldType::Pon,
+            tiles: vec!["5z".to_string(); 3],
+            called_from: Some(1),
+        }];
+        let err = validate_reachable_state(&state).expect_err("the call must be rejected");
+        assert!(err.contains("cannot back every call"), "{err}");
+    }
+
+    /// The exact reported board: Kamicha (seat 3, South) holds a Pon of 7z and
+    /// two chiis, all claimed from Toimen (seat 2, East), whose river was
+    /// `2z 7m 2s 5z 3s`. Only the `1s2s3s` chii had a discard to claim.
+    #[test]
+    fn the_reported_open_hand_board_is_rejected() {
+        let mut state = self_turn_state(Wind::West, [4, 4, 5, 5]);
+        state.players[0].discards = discards(&["4s", "6p", "4p", "2p"]);
+        state.players[1].discards = discards(&["9m", "2s", "6s", "5z"]);
+        state.players[2].discards = discards(&["2z", "7m", "2s", "5z", "3s"]);
+        state.players[3].discards = discards(&["9m", "4s", "9p", "3s", "6m"]);
+        state.players[3].hand = ["2m", "2m", "8m", "9m"]
+            .into_iter()
+            .map(str::to_string)
+            .collect();
+        state.players[3].melds = vec![
+            CalledMeld {
+                meld_type: MeldType::Pon,
+                tiles: vec!["7z".to_string(); 3],
+                called_from: Some(2),
+            },
+            CalledMeld {
+                meld_type: MeldType::Chi,
+                tiles: vec!["1s".to_string(), "2s".to_string(), "3s".to_string()],
+                called_from: Some(2),
+            },
+            CalledMeld {
+                meld_type: MeldType::Chi,
+                tiles: vec!["7p".to_string(), "8p".to_string(), "9p".to_string()],
+                called_from: Some(2),
+            },
+        ];
+
+        let err =
+            validate_reachable_state(&state).expect_err("the reported board must be rejected");
+        assert!(err.contains("cannot back every call"), "{err}");
+    }
+
+    /// The river of a seat, all tedashi.
+    fn discards(tiles: &[&str]) -> Vec<DiscardTile> {
+        tiles.iter().map(|tile| DiscardTile::new(*tile)).collect()
+    }
+
+    #[test]
+    fn two_calls_on_one_seat_need_two_discards() {
+        let counts = self_turn_river_plan(Wind::East, &[(0, 1), (0, 1)], 3).counts;
+        let mut state = self_turn_state(Wind::East, counts);
+        state.players[0].hand = vec!["1m".to_string(); 7];
+        state.players[0].melds = vec![
+            CalledMeld {
+                meld_type: MeldType::Pon,
+                tiles: vec!["5z".to_string(); 3],
+                called_from: Some(1),
+            },
+            CalledMeld {
+                meld_type: MeldType::Pon,
+                tiles: vec!["6z".to_string(); 3],
+                called_from: Some(1),
+            },
+        ];
+
+        // One 5z and one 6z in the river backs both calls.
+        let last = state.players[1].discards.len() - 1;
+        state.players[1].discards[last] = DiscardTile::new("5z");
+        state.players[1].discards[last - 1] = DiscardTile::new("6z");
+        validate_reachable_state(&state).expect("both calls have a discard");
+
+        // A single 5z cannot serve both claims.
+        state.players[1].discards[last - 1] = DiscardTile::new("9p");
+        let err = validate_reachable_state(&state).expect_err("the second call is unbacked");
+        assert!(err.contains("cannot back every call"), "{err}");
+    }
+
+    #[test]
+    fn a_call_the_callers_own_tiles_add_up_to_is_accepted() {
+        // An added kan: the Pon holds three copies and the caller holds the
+        // fourth, so no spare copy exists to be a witness discard.
+        let counts = self_turn_river_plan(Wind::East, &[(0, 1)], 3).counts;
+        let mut state = self_turn_state(Wind::East, counts);
+        state.players[0].hand = vec!["1m".to_string(); 10];
+        state.players[0].draw = Some("5z".to_string());
+        state.players[0].melds = vec![CalledMeld {
+            meld_type: MeldType::Pon,
+            tiles: vec!["5z".to_string(); 3],
+            called_from: Some(1),
+        }];
+        validate_reachable_state(&state)
+            .expect("the fourth copy is in the caller's own hand, so there is no witness");
     }
 
     #[test]
