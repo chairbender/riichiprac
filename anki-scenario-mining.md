@@ -361,6 +361,20 @@ Drill: 1-away chiitoitsu where one pair just became a set. Answer: keep the pair
 (chiitoitsu) if any pair is dead (4 visible), otherwise build toitoi. Verification:
 visible-count check on each pair — fully mechanical.
 
+**Implemented.** `src/generator/chiitoi_vs_toitoi/` deals the book's own
+`77m 88m 1p 333p 55s 7s EE S` shape: four pairs, the triplet the draw completed,
+and three lone tiles. `skeleton::Variant::FutilePair` puts both remaining copies
+of one pair in two opponents' rivers (all four visible), so the answer is the
+drawn third copy; `Variant::BuildToitoi` leaves every pair live but gives the
+hand a dragon pair, so the answer is a lone tile. The skeleton proves both
+answers with `agari`: the chiitoitsu discard restores five pairs and waits on
+three lone tiles (nine tiles), while the toitoi discard keeps the set and waits
+on two (six), so raw acceptance prefers the wrong move on purpose. The board
+re-derives the dead pairs from the finished payload (`board::validate`), and
+`rationale::chiitoi_vs_toitoi_rationale` cites ch5:611/612/613/618/621, listing
+the chiitoitsu criteria that do not hold in the "Not this hand" section on the
+toitoi branch.
+
 **`honitsu_decision`** — medium/large. Cards 1463247212821…1463247652943.
 
 > `we should consider two factors --- five-block potential and hand values with and without {\jap honitsu}` — ch5:468

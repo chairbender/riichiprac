@@ -281,6 +281,15 @@ fn test_list_scenarios_payload() {
         }),
         "the open-quad lesson must be listed as a kan decision"
     );
+    assert!(
+        scenarios.iter().any(|scenario| {
+            scenario["id"] == "pinfu_head"
+                && scenario["category"] == "yaku_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the pinfu head lesson must be listed as a yaku decision"
+    );
 }
 
 #[wasm_bindgen_test]
@@ -2449,6 +2458,182 @@ fn test_ryanmen_rejection_sampling_constraints() {
         }
     }
 
+    /// The chiitoitsu-vs-toitoi payload: the answer turns on whether a pair is
+    /// dead (both remaining copies in the rivers), not on raw acceptance
+    /// (ch5:618).
+    #[wasm_bindgen_test]
+    fn test_chiitoi_vs_toitoi_payload() {
+        let mut chiitoitsu = 0;
+        let mut toitoi = 0;
+
+        for run in 0..40 {
+            let json_output = generate_puzzle("chiitoi_vs_toitoi".to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+            assert_eq!(val["category"], "chiitoi_vs_toitoi");
+            assert_eq!(val["target_action"], "NaniKiru");
+            assert_eq!(val["correct_action"]["type"], "dama");
+            assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
+            assert_eq!(val["shanten"], 1);
+            assert_eq!(val["is_agari"], false);
+            assert_eq!(val["can_riichi"], false);
+            assert_eq!(val["riichi_sticks"], 0);
+            assert_eq!(val["dora_indicators"].as_array().unwrap().len(), 1);
+            assert!(val["ukeire_total"].as_u64().unwrap() > 0);
+
+            let players = val["players"].as_array().expect("players array");
+            assert_eq!(players.len(), 4);
+            for opponent in &players[1..] {
+                assert_eq!(opponent["is_riichi"], false);
+                assert_eq!(opponent["melds"].as_array().unwrap().len(), 0);
+                assert!(opponent["riichi_discard_index"].is_null());
+            }
+
+            let human = &players[0];
+            assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+            assert_eq!(human["melds"].as_array().unwrap().len(), 0);
+            let draw = human["draw"].as_str().expect("human draw").to_string();
+            let answer = val["correct_action"]["discard"]
+                .as_str()
+                .expect("dama action must include a discard tile")
+                .to_string();
+            assert!(
+                val["tiles"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|tile| tile.as_str() == Some(answer.as_str()))
+            );
+
+            let tiles: Vec<String> = val["tiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap().to_string())
+                .collect();
+            let mut counts: std::collections::HashMap<String, usize> = Default::default();
+            for tile in &tiles {
+                *counts.entry(tile.clone()).or_insert(0) += 1;
+            }
+            // The draw turns one pair into a set; four pairs and three lone
+            // tiles remain.
+            assert_eq!(
+                counts.get(&draw),
+                Some(&3),
+                "run {run}: the draw makes a set"
+            );
+            let pairs: Vec<&String> = counts
+                .iter()
+                .filter(|(_, count)| **count == 2)
+                .map(|(tile, _)| tile)
+                .collect();
+            assert_eq!(pairs.len(), 4, "run {run}: the hand holds four pairs");
+            let singles: Vec<&String> = counts
+                .iter()
+                .filter(|(_, count)| **count == 1)
+                .map(|(tile, _)| tile)
+                .collect();
+            assert_eq!(singles.len(), 3, "run {run}: three lone tiles remain");
+
+            // Visible copies of each pair: the hand plus rivers, melds, and
+            // the dora indicator.
+            let dead: Vec<&String> = pairs
+                .iter()
+                .copied()
+                .filter(|pair| {
+                    let mut visible = 2;
+                    for player in players {
+                        if let Some(discards) = player["discards"].as_array() {
+                            for discard in discards {
+                                if discard["tile"].as_str() == Some(pair.as_str()) {
+                                    visible += 1;
+                                }
+                            }
+                        }
+                        if let Some(melds) = player["melds"].as_array() {
+                            for meld in melds {
+                                if let Some(meld_tiles) = meld["tiles"].as_array() {
+                                    for tile in meld_tiles {
+                                        if tile.as_str() == Some(pair.as_str()) {
+                                            visible += 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if val["dora_indicators"][0].as_str() == Some(pair.as_str()) {
+                        visible += 1;
+                    }
+                    visible >= 4
+                })
+                .collect();
+
+            if answer == draw {
+                chiitoitsu += 1;
+                assert_eq!(
+                    dead.len(),
+                    1,
+                    "run {run}: the chiitoitsu hand needs one dead pair"
+                );
+                let dead_tile = dead[0];
+                let planted: usize = players[1..]
+                    .iter()
+                    .flat_map(|player| player["discards"].as_array().unwrap().iter())
+                    .filter(|discard| discard["tile"].as_str() == Some(dead_tile.as_str()))
+                    .count();
+                assert_eq!(
+                    planted, 2,
+                    "run {run}: both dead copies sit in opponent rivers"
+                );
+                assert_eq!(
+                    val["equivalent_tiles"]
+                        .as_array()
+                        .map_or(0, |tiles| tiles.len()),
+                    0,
+                    "run {run}: the drawn third copy is the only answer"
+                );
+            } else {
+                toitoi += 1;
+                assert!(
+                    dead.is_empty(),
+                    "run {run}: the toitoi hand has no dead pair"
+                );
+                assert!(singles.iter().any(|tile| tile.as_str() == answer));
+                let equivalents = val["equivalent_tiles"].as_array().unwrap();
+                assert_eq!(equivalents.len(), 2);
+                for equivalent in equivalents {
+                    let code = equivalent.as_str().unwrap();
+                    assert_ne!(code, answer);
+                    assert!(
+                        singles.iter().any(|tile| tile.as_str() == code),
+                        "run {run}: the other lone tiles are graded as the same answer"
+                    );
+                }
+            }
+
+            // The book rationale is attached and cites ch. 5.
+            let rationale = &val["book_rationale"];
+            assert_eq!(rationale["source"]["chapter"], 5);
+            assert_eq!(rationale["source"]["section"], "Toitoi vs. chiitoitsu");
+            assert!(!rationale["rules"].as_array().unwrap().is_empty());
+            assert!(
+                rationale["summary"]
+                    .as_str()
+                    .unwrap()
+                    .contains("chiitoitsu")
+                    || rationale["summary"].as_str().unwrap().contains("toitoi")
+            );
+        }
+
+        assert!(
+            chiitoitsu > 0,
+            "the drill must ask for chiitoitsu sometimes"
+        );
+        assert!(toitoi > 0, "the drill must ask for toitoi sometimes");
+    }
+
     /// The open-hand pair-count payload: three pairs, one of them a dragon the
     /// player plans to Pon, so the book keeps the pairs and breaks the closed
     /// wait instead (ch3:351). The plan must be visible in `scenario_note`.
@@ -3654,7 +3839,6 @@ fn test_honitsu_decision_payload() {
         assert_eq!(val["category"], "honitsu_decision");
         assert_eq!(val["target_action"], "NaniKiru");
         assert_eq!(val["correct_action"]["type"], "dama");
-
         let answer = val["correct_action"]["discard"]
             .as_str()
             .expect("the answer names the discard")
@@ -3720,6 +3904,125 @@ fn test_honitsu_decision_payload() {
         assert_eq!(
             val["book_rationale"]["source"]["section"],
             "How to get honitsu"
+        );
+        assert!(
+            !val["book_rationale"]["rules"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+}
+
+#[wasm_bindgen_test]
+fn test_pinfu_head_payload() {
+    fn wind_code(name: &str) -> &'static str {
+        match name {
+            "East" => "1z",
+            "South" => "2z",
+            "West" => "3z",
+            "North" => "4z",
+            other => panic!("unknown wind {other}"),
+        }
+    }
+
+    for run in 0..25 {
+        let json_output = generate_puzzle("pinfu_head".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}"));
+
+        assert_eq!(val["category"], "pinfu_head");
+        assert_eq!(val["target_action"], "NaniKiru");
+        assert_eq!(val["correct_action"]["type"], "dama");
+        assert_eq!(val["current_turn"], 0);
+        assert!(val["equivalent_tiles"].as_array().is_none_or(Vec::is_empty));
+        assert!(val["shanten"].as_i64().unwrap() >= 2);
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("the answer names the discard")
+            .to_string();
+        let players = val["players"].as_array().expect("players array");
+        assert_eq!(players.len(), 4);
+
+        let human = &players[0];
+        assert_eq!(human["is_human"], true);
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(human["draw"].is_string());
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        assert!(human["discards"].as_array().unwrap().is_empty());
+        for player in players {
+            assert!(player["melds"].as_array().unwrap().is_empty());
+            assert_eq!(player["is_riichi"], false);
+            assert!(player["discards"].as_array().unwrap().len() <= 1);
+        }
+
+        // No committed head: the bulge's doubled middle is the only repeat,
+        // and the hand keeps one valueless wind beside the value honor.
+        let tiles: Vec<&str> = val["tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        assert_eq!(tiles.len(), 14);
+        let mut counts = std::collections::BTreeMap::new();
+        for code in &tiles {
+            *counts.entry(*code).or_insert(0usize) += 1;
+        }
+        let repeated: Vec<&&str> = counts
+            .iter()
+            .filter(|(_, count)| **count > 1)
+            .map(|(code, _)| code)
+            .collect();
+        assert_eq!(
+            repeated.len(),
+            1,
+            "run {run}: one repeated type: {repeated:?}"
+        );
+        assert_eq!(counts[repeated[0]], 2, "run {run}: the bulge's middle");
+
+        let terminals = tiles
+            .iter()
+            .filter(|code| {
+                (code.starts_with('1') || code.starts_with('9'))
+                    && matches!(code.chars().last(), Some('m' | 'p' | 's'))
+            })
+            .count();
+        assert_eq!(terminals, 2, "run {run}: two terminal floats");
+        let honors = tiles.iter().filter(|code| code.ends_with('z')).count();
+        assert_eq!(honors, 2, "run {run}: one value honor and one wind");
+
+        let seat_wind = wind_code(human["wind"].as_str().unwrap());
+        let round_wind = wind_code(val["round_wind"].as_str().unwrap());
+
+        let value_honor = |code: &str| match code {
+            "5z" | "6z" | "7z" => true,
+            other => other == seat_wind || other == round_wind,
+        };
+        let value_honors: Vec<&str> = tiles
+            .iter()
+            .copied()
+            .filter(|code| value_honor(code))
+            .collect();
+        assert_eq!(value_honors.len(), 1, "run {run}: exactly one value honor");
+        assert_eq!(value_honors[0], answer.as_str(), "run {run}");
+
+        // Every other tile can still pair into the pinfu head.
+        for code in &tiles {
+            if *code == answer {
+                continue;
+            }
+            assert!(
+                !value_honor(code),
+                "run {run}: {code} is a second value honor"
+            );
+        }
+
+        assert_eq!(val["book_rationale"]["source"]["chapter"], 5);
+        assert_eq!(
+            val["book_rationale"]["source"]["section"],
+            "Building the head"
         );
         assert!(
             !val["book_rationale"]["rules"]
