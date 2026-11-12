@@ -21,10 +21,11 @@ use agari::parse::to_counts;
 use agari::shanten::{
     calculate_shanten, calculate_shanten_with_melds, calculate_ukeire, calculate_ukeire_with_melds,
 };
-use agari::tile::{Suit, Tile};
+use agari::tile::{Honor, Suit, Tile};
 
 use crate::display::format_tile_for_display;
 use crate::generator::floating_quad_acceptance;
+use crate::generator::wind_to_honor;
 use crate::safety::{SafetyFacts, SafetyRank, in_open_hand_neighbourhood};
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, MeldType, RiichiTrigger,
@@ -231,6 +232,19 @@ fn ch3_pairs(line: u32, needle: &str) -> Citation {
         "Riichi mahjong basics",
         "Pairs and sets",
         "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
+/// Riichi Book 1, ch. 5, "Toitoi vs. chiitoitsu" — the three chiitoitsu
+/// criteria and the futile-pair rule that overrides the toitoi plan.
+fn ch5_toitoi(line: u32, needle: &str) -> Citation {
+    citation(
+        5,
+        "Pursuing yaku",
+        "Toitoi vs. chiitoitsu",
+        "RiichiBook1-ch5-yaku.tex",
         line,
         needle,
     )
@@ -1054,6 +1068,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
             351,
             "having three pairs is actually better than having two pairs",
         )),
+        "chiitoi_vs_toitoi" => Some(ch5_toitoi(618, "must stick with {\\jap chiitoitsu}")),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "fold_to_riichi" => Some(ch8(
             CH8_VS_RIICHI,
@@ -1733,6 +1748,10 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         });
     }
 
+    if state.category == "chiitoi_vs_toitoi" {
+        return chiitoi_vs_toitoi_rationale(state);
+    }
+
     if state.category != "ryanmen_protorun" {
         return None;
     }
@@ -1811,6 +1830,259 @@ fn dragon_pair(state: &GameState) -> Option<String> {
     pair_codes(state)
         .into_iter()
         .find(|code| matches!(code.as_str(), "5z" | "6z" | "7z"))
+}
+
+/// The ch. 5.5 yaku choice: stay with chiitoitsu when a pair is futile,
+/// otherwise keep the new set and go for toitoi.
+///
+/// The answer is not a tile-efficiency count: the chiitoitsu discard usually
+/// keeps more tiles, so the rationale has to show the dead pair (or the live
+/// value pair) that decides it.
+fn chiitoi_vs_toitoi_rationale(state: &GameState) -> Option<BookRationale> {
+    let answer_code = state.correct_action.tile()?;
+    let answer = format_tile_for_display(answer_code, false);
+    let drawn_code = human(state)?.draw.clone()?;
+    let drawn = format_tile_for_display(&drawn_code, false);
+    let pairs = pair_codes(state);
+
+    let dead: Vec<&String> = pairs
+        .iter()
+        .filter(|code| table_copies(state, code) >= 4)
+        .collect();
+    let dead_text = join_codes(dead.iter().copied());
+
+    if !dead.is_empty() {
+        let value_pairs: Vec<&String> = pairs
+            .iter()
+            .filter(|code| is_value_pair(state, code))
+            .collect();
+        let middle_pairs = middle_simple_pairs(&pairs);
+
+        let mut rules = vec![
+            BookRule {
+                id: "futile_pair".to_string(),
+                rule: "A pair whose other two copies are already on the table can never \
+                       become a set, so toitoi is impossible and the hand must stay with \
+                       chiitoitsu."
+                    .to_string(),
+                quote: "If there is one or more futile pair in your hand, you must stick \
+                        with {\\jap chiitoitsu}."
+                    .to_string(),
+                citation: ch5_toitoi(618, "must stick with {\\jap chiitoitsu}"),
+                applies: format!(
+                    "The {dead_text} pair is dead: all four copies are visible, so keeping \
+                     the drawn {drawn} as a set would chase a toitoi that cannot complete."
+                ),
+            },
+            BookRule {
+                id: "keep_five_pairs".to_string(),
+                rule: "The dead pair makes the seven pairs the only live plan, so the draw \
+                       that completed a set is the tile to give back."
+                    .to_string(),
+                quote: "There is a futile pair in your hand.".to_string(),
+                citation: ch5_toitoi(611, "There is a futile pair in your hand"),
+                applies: format!(
+                    "Discarding {answer} restores five pairs and three lone tiles; {} tiles \
+                     improve the chiitoitsu hand.",
+                    state.ukeire_total
+                ),
+            },
+        ];
+
+        if value_pairs.is_empty() {
+            rules.push(BookRule {
+                id: "no_value_pair".to_string(),
+                rule: "A toitoi hand without a pair of value tiles is worth only 2600 or \
+                       even 2000 points, which is another reason to stay with chiitoitsu."
+                    .to_string(),
+                quote: "There is no pair of value tiles in your hand.".to_string(),
+                citation: ch5_toitoi(612, "There is no pair of value tiles in your hand"),
+                applies: "None of the pairs is a dragon or a seat/round wind.".to_string(),
+            });
+        }
+        if middle_pairs >= 3 {
+            rules.push(BookRule {
+                id: "three_middle_pairs".to_string(),
+                rule: "Three or more pairs of simple tiles between 3 and 7 are likely to be \
+                       claimed by the opponents, so they are hard to turn into triplets."
+                    .to_string(),
+                quote: "There are three or more pairs of simple tiles between 3 and 7 in \
+                        your hand."
+                    .to_string(),
+                citation: ch5_toitoi(613, "three or more pairs of simple tiles between 3 and 7"),
+                applies: format!("{middle_pairs} of the pairs are simple tiles between 3 and 7."),
+            });
+        }
+
+        return Some(BookRationale {
+            summary: format!(
+                "Stay with chiitoitsu: the {dead_text} pair is futile, so toitoi can never \
+                 complete. Discard the drawn {answer}."
+            ),
+            rules,
+            absent: Vec::new(),
+            source: ch5_toitoi(618, "must stick with {\\jap chiitoitsu}"),
+            caveats: vec![
+                "A pair is futile when both of its remaining copies are visible. The board \
+                 puts them in two opponents' rivers, the same read the book makes when the \
+                 opponents have already discarded two tiles of the pair (ch5:618)."
+                    .to_string(),
+            ],
+        });
+    }
+
+    // No pair is dead: the book's first criterion points the other way, so the
+    // new triplet stays and the discard is a lone tile.
+    let value_pairs: Vec<&String> = pairs
+        .iter()
+        .filter(|code| is_value_pair(state, code))
+        .collect();
+    let value_text = join_codes(value_pairs.iter().copied());
+    let middle_pairs = middle_simple_pairs(&pairs);
+    let chiitoitsu_total = Tile::try_from(drawn_code.as_str())
+        .ok()
+        .and_then(|tile| acceptance_without(state, tile))
+        .unwrap_or_default();
+
+    let rules = vec![
+        BookRule {
+            id: "no_futile_pair".to_string(),
+            rule: "Without a futile pair the hand can still turn its pairs into sets, so the \
+                   book goes for toitoi instead of the seven pairs."
+                .to_string(),
+            quote: "If not, you can go for {\\jap toitoi}.".to_string(),
+            citation: ch5_toitoi(618, "If not, you can go for {\\jap toitoi}"),
+            applies: format!(
+                "No pair is dead: each pair still has an unseen copy, so the {drawn} triplet \
+                 can stay."
+            ),
+        },
+        BookRule {
+            id: "value_pair".to_string(),
+            rule: "One pair of value tiles lifts the toitoi plan from a bare 2000-2600 to \
+                   5200, which makes the set worth keeping."
+                .to_string(),
+            quote: "With one pair of value tiles, you can aim for 5200 with {\\jap toitoi}"
+                .to_string(),
+            citation: ch5_toitoi(621, "With one pair of value tiles, you can aim for 5200"),
+            applies: format!(
+                "The hand holds a value pair ({value_text}), so toitoi is worth chasing."
+            ),
+        },
+        BookRule {
+            id: "keep_the_set".to_string(),
+            rule: "Keeping the new triplet makes the hand 2-away for toitoi, so the discard \
+                   is a lone tile rather than the drawn third copy."
+                .to_string(),
+            quote: "makes the hand also 2-away from ready for {\\jap toitoi}".to_string(),
+            citation: ch5_toitoi(
+                603,
+                "makes the hand also 2-away from ready for {\\jap toitoi}",
+            ),
+            applies: format!(
+                "Discarding {answer} keeps {drawn} as a set and leaves four pairs, but the \
+                 chiitoitsu line would accept {chiitoitsu_total} tiles against the {} here: \
+                 counting acceptance alone picks the wrong move.",
+                state.ukeire_total
+            ),
+        },
+    ];
+
+    Some(BookRationale {
+        summary: format!(
+            "Keep the set and build toitoi: no pair is futile, so the {drawn} triplet can \
+             grow into the four sets. Discard the lone tile {answer}."
+        ),
+        rules,
+        absent: vec![
+            AbsentRule {
+                id: "futile_pair".to_string(),
+                note: "No pair is futile: at most one copy of any pair tile is visible, so \
+                       every pair can still become a set."
+                    .to_string(),
+            },
+            AbsentRule {
+                id: "three_middle_pairs".to_string(),
+                note: format!(
+                    "Only {middle_pairs} pairs are simple tiles between 3 and 7, so the book's \
+                     third chiitoitsu condition does not apply."
+                ),
+            },
+        ],
+        source: ch5_toitoi(618, "If not, you can go for {\\jap toitoi}"),
+        caveats: vec![
+            "The three lone tiles are interchangeable to both plans, so all three are graded \
+             as the same answer."
+                .to_string(),
+            "The counted chiitoitsu line accepts more tiles, but the book's first criterion is \
+             the dead pair, not raw acceptance (ch5:618)."
+                .to_string(),
+        ],
+    })
+}
+
+/// Copies of `code` the player can see: the hand, every river, every open meld,
+/// and the dora indicators. Opponents' concealed hands stay unseen.
+fn table_copies(state: &GameState, code: &str) -> u8 {
+    let mut total = state
+        .tiles
+        .iter()
+        .filter(|held| held.as_str() == code)
+        .count() as u8;
+    for player in &state.players {
+        total += player
+            .discards
+            .iter()
+            .filter(|discard| discard.tile == code)
+            .count() as u8;
+        for meld in &player.melds {
+            total += meld
+                .tiles
+                .iter()
+                .filter(|tile| tile.as_str() == code)
+                .count() as u8;
+        }
+    }
+    total += state
+        .dora_indicators
+        .iter()
+        .filter(|indicator| indicator.as_str() == code)
+        .count() as u8;
+    total
+}
+
+/// A dragon pair, or a pair of the round or seat wind.
+fn is_value_pair(state: &GameState, code: &str) -> bool {
+    let Some(Tile::Honor(honor)) = Tile::try_from(code).ok() else {
+        return false;
+    };
+    matches!(honor, Honor::White | Honor::Green | Honor::Red)
+        || honor == wind_to_honor(state.round_wind)
+        || human(state).is_some_and(|player| honor == wind_to_honor(player.wind))
+}
+
+/// Pairs of simple tiles between 3 and 7 (ch5:613).
+fn middle_simple_pairs(pairs: &[String]) -> usize {
+    pairs
+        .iter()
+        .filter(|code| {
+            matches!(
+                Tile::try_from(code.as_str()),
+                Ok(Tile::Suited { value: 3..=7, .. })
+            )
+        })
+        .count()
+}
+
+fn join_codes<'a>(codes: impl Iterator<Item = &'a String>) -> String {
+    let names: Vec<String> = codes
+        .map(|code| format_tile_for_display(code, false))
+        .collect();
+    if names.is_empty() {
+        "value".to_string()
+    } else {
+        names.join(" / ")
+    }
 }
 
 /// Copies of the Pon target still unseen: the hand holds two, and anything in
@@ -4222,6 +4494,72 @@ mod tests {
     }
 
     #[test]
+    fn chiitoi_vs_toitoi_rationale_follows_the_dead_pair() {
+        let mut chiitoitsu = false;
+        let mut toitoi = false;
+
+        for _ in 0..80 {
+            let state = generate_puzzle("chiitoi_vs_toitoi").expect("scenario must generate");
+            let rationale = state.book_rationale.clone().expect("rationale");
+
+            assert_eq!(rationale.source.chapter, 5);
+            assert_eq!(rationale.source.section, "Toitoi vs. chiitoitsu");
+            assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+
+            let dead: Vec<String> = pair_codes(&state)
+                .into_iter()
+                .filter(|code| table_copies(&state, code) >= 4)
+                .collect();
+
+            if dead.is_empty() {
+                toitoi = true;
+                assert!(rationale.summary.contains("toitoi"));
+                assert!(
+                    rationale
+                        .rules
+                        .iter()
+                        .any(|rule| rule.id == "no_futile_pair"),
+                    "the toitoi branch must cite \"If not, you can go for toitoi\""
+                );
+                assert!(
+                    rationale.rules.iter().any(|rule| rule.id == "value_pair"),
+                    "the toitoi branch must name the value pair"
+                );
+                assert!(
+                    rationale
+                        .absent
+                        .iter()
+                        .any(|absent| absent.id == "futile_pair"),
+                    "the absent futile pair belongs in the \"not this hand\" list"
+                );
+                assert!(
+                    rationale
+                        .rules
+                        .iter()
+                        .any(|rule| rule.applies.contains("counting acceptance")),
+                    "the explanation must show that the counted line wins"
+                );
+            } else {
+                chiitoitsu = true;
+                assert!(rationale.summary.contains("chiitoitsu"));
+                assert!(
+                    rationale.rules.iter().any(|rule| rule.id == "futile_pair"),
+                    "the chiitoitsu branch must cite the futile-pair rule"
+                );
+                assert!(rationale.absent.is_empty());
+                let dead_name = format_tile_for_display(&dead[0], false);
+                assert!(
+                    rationale.summary.contains(&dead_name),
+                    "the summary must name the dead pair {dead_name}"
+                );
+            }
+        }
+
+        assert!(chiitoitsu, "the drill must explain a chiitoitsu hand");
+        assert!(toitoi, "the drill must explain a toitoi hand");
+    }
+
+    #[test]
     fn generated_book_scenarios_carry_a_rationale() {
         for category in [
             "ryanmen_protorun",
@@ -4230,6 +4568,7 @@ mod tests {
             "ryankan_break",
             "pair_count",
             "pair_count_open",
+            "chiitoi_vs_toitoi",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -4263,6 +4602,7 @@ mod tests {
             "protorun_priority",
             "pair_count",
             "pair_count_open",
+            "chiitoi_vs_toitoi",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
             "shouminkan_decision",
@@ -4704,6 +5044,7 @@ mod tests {
             "ryankan_break",
             "pair_count",
             "pair_count_open",
+            "chiitoi_vs_toitoi",
             "riichi_judgement",
             "dama_bad_wait",
             "dama_genbutsu_wait",
