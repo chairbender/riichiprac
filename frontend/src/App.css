@@ -944,6 +944,15 @@
  */
 .physical-table .river {
   display: flex;
+  /*
+   * The shared river rule aligns with `start`, which is the physical left/top
+   * of the screen. In the plan view each river is packed in its owner's frame,
+   * so a wrapped row has to follow the reversed main axis: `flex-start` puts
+   * the first tile of the new row at the player's left (screen right for the
+   * seat across, screen bottom for the right-hand seat).
+   */
+  justify-content: flex-start;
+  align-content: flex-start;
   gap: var(--physical-gap);
 }
 
@@ -1136,28 +1145,34 @@
   flex-direction: row-reverse;
 }
 
+/*
+ * The figure carries the wind tile and the score. Its `transform` comes from
+ * the seat's rotation, so the same pair reads upright for every player. The
+ * side corners are the tightest part of the compass, so there the pair stacks
+ * and turns sideways as a column.
+ */
 .compass-figure {
   display: flex;
   align-items: center;
   gap: 3px;
 }
 
-/* The side corners are the tightest part of the compass: stack wind over score. */
 .compass-seat--left .compass-figure,
 .compass-seat--right .compass-figure {
   flex-direction: column;
   gap: 0;
 }
 
+/* The wind is a real tile icon, so it is sized like one, not like text. */
 .compass-wind {
-  color: #8fb8e0;
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  display: block;
+  width: 16px;
+  height: auto;
 }
 
+/* Keep the human's wind marked without relying on the old text colour. */
 .compass-player--human .compass-wind {
-  color: #a5d8ff;
+  filter: drop-shadow(0 0 3px rgba(165, 216, 255, 0.85));
 }
 
 .compass-score {
@@ -1175,12 +1190,14 @@
 }
 
 /*
- * A Riichi stick points at the player who declared it, so the corners above
- * and below the compass stand it on end. The square box keeps the turn inside
- * the layout instead of letting the bar overflow its slot.
+ * A Riichi stick lies lengthways along the player's own edge, the way an
+ * automatic table shows it in front of whoever declared. The corners above and
+ * below the compass therefore keep the bar horizontal, while the side corners
+ * stand it on end. The square box keeps the turn inside the layout instead of
+ * letting the bar overflow its slot.
  */
-.compass-player--top .compass-stick,
-.compass-player--bottom .compass-stick {
+.compass-player--left .compass-stick,
+.compass-player--right .compass-stick {
   width: 18px;
   height: 18px;
   transform: rotate(90deg);

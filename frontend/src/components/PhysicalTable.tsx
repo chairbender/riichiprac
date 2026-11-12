@@ -5,6 +5,7 @@ import type { GameState, PlayerState, Wind } from '../types/game';
 import { MeldList } from './MeldList';
 import { RiichiStick } from './RiichiStick';
 import { River } from './River';
+import { Tile } from './Tile';
 
 /** Where each edge of the table sits, as the human reads the screen. */
 const SIDE_LABELS: Record<TableSide, string> = {
@@ -15,15 +16,15 @@ const SIDE_LABELS: Record<TableSide, string> = {
 };
 
 /**
- * One letter per seat wind, the same shorthand the tile codes use for the four
- * honour tiles (`1z`..`4z`). The compass is the only place on the table that
- * carries text, so each seat's name has to fit in one glyph.
+ * The wind tile that shows a seat's wind on the compass: the same four honour
+ * tile codes (`1z`..`4z`) the engine uses, so the compass draws the real tile
+ * rather than a Latin initial.
  */
-const WIND_LETTERS: Record<Wind, string> = {
-  East: 'E',
-  South: 'S',
-  West: 'W',
-  North: 'N',
+const WIND_TILES: Record<Wind, string> = {
+  East: '1z',
+  South: '2z',
+  West: '3z',
+  North: '4z',
 };
 
 interface PhysicalTableProps {
@@ -50,7 +51,7 @@ function CompassSeat({
 }) {
   return (
     /*
-     * The corner is a picture of the player's place, not prose: the wind glyph
+     * The corner is a picture of the player's place, not prose: the wind tile
      * and the score are the accessible name, so they are not read twice.
      */
     <div
@@ -62,8 +63,16 @@ function CompassSeat({
         player.is_human ? ' compass-player--human' : ''
       }`}
     >
-      <span className="compass-figure">
-        <span className="compass-wind">{WIND_LETTERS[player.wind]}</span>
+      {/*
+       * Turn the figure with its seat, exactly like the tiles on that edge:
+       * every player reads their own wind tile and score upright from where
+       * they sit, as they would on an automatic table's centre display.
+       */}
+      <span
+        className="compass-figure"
+        style={{ transform: `rotate(${SIDE_ROTATION[side]}deg)` }}
+      >
+        <Tile code={WIND_TILES[player.wind]} className="compass-wind" />
         <span className="compass-score">
           {player.score.toLocaleString('en-US')}
         </span>
@@ -84,7 +93,9 @@ function CompassSeat({
  * is why a side river's tiles read sideways on screen.
  *
  * Nothing is written on a seat itself: wind, score, and Riichi are all on the
- * compass in the middle, so the edges of the table only hold tiles. A river
+ * compass in the middle, so the edges of the table only hold tiles. Every
+ * compass corner is turned to its own seat, and its Riichi stick lies along the
+ * player's edge, as an automatic table's centre display would show it. A river
  * starts at the corner nearest the centre and runs across its player's view,
  * filling towards that player; melds sit on the player's right and stack away
  * from them. The human's concealed hand is not drawn here either: it is the
