@@ -30,6 +30,7 @@ export type RiichiTrigger =
   | 'tanyao'
   | 'red_five_wait'
   | 'suji_trap'
+  | 'immediate_suji_trap'
   | 'wait_outside_456'
   | 'score_below_mangan';
 

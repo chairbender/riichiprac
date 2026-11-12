@@ -598,6 +598,7 @@ mod tests {
                 ScenarioId::RiichiJudgement,
                 ScenarioId::DamaBadWait,
                 ScenarioId::DamaGenbutsuWait,
+                ScenarioId::DamaExpensiveHand,
                 ScenarioId::ShouminkanDecision,
             ]
         );

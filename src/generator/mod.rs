@@ -14,6 +14,8 @@
 //!   the genbutsu of the player everyone is folding to.
 //! - `dama_expensive_hand`: ch. 7's high scoring hand: dama when the worst
 //!   winning tile is already worth 7700, and never riichi at haneman or better.
+//! - `suji_trap_riichi`: ch. 8's immediate suji trap: declare Riichi on the
+//!   discard that makes the wait look like a safe suji.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
 //! - `open_hand_defense`: ch. 8.4's open-hand read: an opponent's chii followed
 //!   by a discard in the same suit makes that discard's neighbourhood safe; a
@@ -41,6 +43,7 @@ pub mod mortal_agreement;
 mod open_hand_defense;
 mod riichi_judgement;
 mod shouminkan_decision;
+mod suji_trap_riichi;
 mod support;
 mod wind_discard_order;
 
@@ -236,6 +239,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::SujiTrapRiichi,
+        label: "Riichi: Immediate Suji Trap",
+        description: "Ch. 8 suji trap: two discards leave the same wait, but only one \
+                      makes the winning tile a suji of the declaration tile.",
+        category: ScenarioCategory::RiichiDecision,
+        tags: &["riichi", "suji", "trap", "wait", "discard", "defense"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::ShouminkanDecision,
         label: "Added Kan Decision",
         description: "Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan or discard.",
@@ -346,6 +359,7 @@ pub enum ScenarioId {
     DamaBadWait,
     DamaGenbutsuWait,
     DamaExpensiveHand,
+    SujiTrapRiichi,
     ShouminkanDecision,
     MeldOrNot,
     WindDiscardOrder,
@@ -369,6 +383,7 @@ impl ScenarioId {
         ScenarioId::DamaBadWait,
         ScenarioId::DamaGenbutsuWait,
         ScenarioId::DamaExpensiveHand,
+        ScenarioId::SujiTrapRiichi,
         ScenarioId::ShouminkanDecision,
         ScenarioId::WindDiscardOrder,
         ScenarioId::MeldOrNot,
@@ -392,6 +407,7 @@ impl ScenarioId {
             ScenarioId::DamaBadWait => "dama_bad_wait",
             ScenarioId::DamaGenbutsuWait => "dama_genbutsu_wait",
             ScenarioId::DamaExpensiveHand => "dama_expensive_hand",
+            ScenarioId::SujiTrapRiichi => "suji_trap_riichi",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
             ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::MeldOrNot => "meld_or_not",
@@ -416,6 +432,7 @@ impl ScenarioId {
             "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
             "dama_genbutsu_wait" => Some(ScenarioId::DamaGenbutsuWait),
             "dama_expensive_hand" => Some(ScenarioId::DamaExpensiveHand),
+            "suji_trap_riichi" => Some(ScenarioId::SujiTrapRiichi),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
@@ -441,6 +458,7 @@ impl ScenarioId {
             ScenarioId::DamaBadWait => dama_bad_wait::generate(category),
             ScenarioId::DamaGenbutsuWait => dama_genbutsu_wait::generate(category),
             ScenarioId::DamaExpensiveHand => dama_expensive_hand::generate(category),
+            ScenarioId::SujiTrapRiichi => suji_trap_riichi::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
             ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
             ScenarioId::MeldOrNot => meld_or_not::generate(category),

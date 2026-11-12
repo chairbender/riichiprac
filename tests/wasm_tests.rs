@@ -229,6 +229,15 @@ fn test_list_scenarios_payload() {
     );
     assert!(
         scenarios.iter().any(|scenario| {
+            scenario["id"] == "suji_trap_riichi"
+                && scenario["category"] == "riichi_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the immediate suji-trap lesson must be listed as a riichi decision"
+    );
+    assert!(
+        scenarios.iter().any(|scenario| {
             scenario["id"] == "meld_or_not"
                 && scenario["category"] == "melding_decision"
                 && scenario["grading"] == "book_and_mortal"
@@ -1349,6 +1358,189 @@ fn test_dama_genbutsu_wait_payload_stays_dama() {
             );
         }
     }
+}
+
+/// Riichi Book 1, ch. 8, "Suji trap": declaring Riichi on the tile three ranks
+/// from the wait makes the winning tile look like a safe suji (ch8:165-170).
+/// Two discards leave the same wait here, so the trap is the only difference.
+#[wasm_bindgen_test]
+fn test_suji_trap_riichi_payload_declares_on_the_trap_discard() {
+    let mut low_wait_count = 0;
+    let mut high_wait_count = 0;
+
+    for run in 0..60 {
+        let json_output = generate_puzzle("suji_trap_riichi".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+        assert_eq!(val["category"], "suji_trap_riichi");
+        assert_eq!(val["target_action"], "Riichi", "run {run}");
+        assert_eq!(val["correct_action"]["type"], "riichi", "run {run}");
+        assert_eq!(
+            val["riichi_triggers"].as_array().unwrap(),
+            &vec![serde_json::Value::String("immediate_suji_trap".to_string())],
+            "run {run}"
+        );
+        assert!(val["dama_reasons"].as_array().unwrap().is_empty());
+        assert_eq!(
+            val["can_riichi"], true,
+            "run {run}: the answer must be an offerable declaration"
+        );
+
+        let human = &val["players"][0];
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        assert_ne!(
+            human["wind"], "East",
+            "run {run}: the human is never the dealer"
+        );
+
+        let tenpai = kept_hand_after_a_tedashi(&val, run);
+        assert_eq!(
+            calculate_shanten(&to_counts(&tenpai)).shanten,
+            0,
+            "run {run}"
+        );
+
+        // The book's immediate suji trap: the wait is exactly three ranks from
+        // the declaration tile, and it is the hand's only wait.
+        let discard = parse_single_tile(
+            val["correct_action"]["discard"]
+                .as_str()
+                .expect("the riichi answer names a discard"),
+        );
+        let waits: Vec<Tile> = val["ukeire_tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| parse_single_tile(tile.as_str().unwrap()))
+            .collect();
+        assert_eq!(waits.len(), 1, "run {run}: a single wait");
+        assert!(
+            suji_tiles(discard).contains(&waits[0]),
+            "run {run}: the wait must be a suji tile of the declaration tile"
+        );
+
+        // Two of the four copies are visible, so the wait is a bad wait: the
+        // general ch7 rule and the bad-wait box both keep the hand dama, and
+        // the trap is the lesson's only reason to declare.
+        let visible_rivers: Vec<Vec<Tile>> = val["players"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .skip(1)
+            .map(|player| {
+                player["discards"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|discard| parse_single_tile(discard["tile"].as_str().unwrap()))
+                    .collect()
+            })
+            .collect();
+        let dora: Vec<Tile> = val["dora_indicators"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|indicator| parse_single_tile(indicator.as_str().unwrap()))
+            .collect();
+        let visible_copies = visible_rivers
+            .iter()
+            .flatten()
+            .filter(|tile| **tile == waits[0])
+            .count();
+        assert_eq!(
+            visible_copies, 2,
+            "run {run}: two copies of the wait must be visible"
+        );
+        let mut visible: std::collections::HashMap<Tile, u8> = std::collections::HashMap::new();
+        for &tile in visible_rivers.iter().flatten().chain(dora.iter()) {
+            *visible.entry(tile).or_insert(0) += 1;
+        }
+        let live = calculate_ukeire_with_visible(&to_counts(&tenpai), &visible).total_count;
+        assert_eq!(live, 2, "run {run}: two live winning tiles");
+
+        // Riichi-only and no good wait: the trap, not ch7's general rule.
+        let mut winning = tenpai.clone();
+        winning.push(waits[0]);
+        assert_eq!(
+            standard_han_without_riichi(
+                &winning,
+                waits[0],
+                val["round_wind"].as_str().expect("round wind"),
+                human["wind"].as_str().expect("human wind"),
+                &dora,
+            ),
+            0,
+            "run {run}: the hand must be riichi-only"
+        );
+
+        // The plain alternative: the other discard that keeps tenpai waits on
+        // the same tile but has no suji relation to it.
+        let mut full = tenpai.clone();
+        full.push(discard);
+        let mut plain_found = false;
+        let mut distinct = full.clone();
+        distinct.sort();
+        distinct.dedup();
+        for candidate in distinct {
+            let mut rest = full.clone();
+            let index = rest
+                .iter()
+                .position(|tile| *tile == candidate)
+                .expect("tile came from the display");
+            rest.remove(index);
+            if calculate_shanten(&to_counts(&rest)).shanten != 0 {
+                continue;
+            }
+            let candidate_waits = calculate_ukeire(&to_counts(&rest));
+            let codes: Vec<String> = candidate_waits
+                .tiles
+                .iter()
+                .map(|entry| entry.tile.to_string())
+                .collect();
+            assert_eq!(
+                codes,
+                vec![waits[0].to_string()],
+                "run {run}: every tenpai discard waits on the trap tile"
+            );
+            if candidate != discard {
+                assert!(
+                    !suji_tiles(candidate).contains(&waits[0]),
+                    "run {run}: the alternative discard must not be a suji of the wait"
+                );
+                plain_found = true;
+            }
+        }
+        assert!(
+            plain_found,
+            "run {run}: the trap discard must not be the only tenpai discard"
+        );
+
+        // The human river holds neither the wait (furiten) nor any suji of it,
+        // so the trap is created by this declaration and by nothing earlier.
+        for river in human["discards"].as_array().unwrap() {
+            let code = river["tile"].as_str().unwrap();
+            assert_ne!(code, waits[0].to_string(), "run {run}: furiten");
+            assert!(
+                !suji_tiles(waits[0])
+                    .iter()
+                    .any(|suji| suji.to_string() == code),
+                "run {run}: the river already holds a suji of the wait"
+            );
+        }
+
+        match waits[0].value() {
+            Some(7) => low_wait_count += 1,
+            Some(3) => high_wait_count += 1,
+            other => panic!("run {run}: unexpected wait value {other:?}"),
+        }
+    }
+
+    assert!(
+        low_wait_count > 0 && high_wait_count > 0,
+        "both mirrored shapes must appear: {low_wait_count} / {high_wait_count}"
+    );
 }
 
 /// Riichi Book 1, ch. 7, "High scoring hand": an already-expensive hand stays

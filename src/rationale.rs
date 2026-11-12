@@ -219,6 +219,7 @@ impl RiichiTrigger {
             Self::Tanyao => "tanyao",
             Self::RedFiveWait => "red_five_wait",
             Self::SujiTrap => "suji_trap",
+            Self::ImmediateSujiTrap => "immediate_suji_trap",
             Self::WaitOutside456 => "wait_outside_456",
             Self::ScoreBelowMangan => "score_below_mangan",
         }
@@ -278,6 +279,13 @@ impl RiichiTrigger {
                 quote: "When you wait for a tile that is a suji tile of some tiles \
                         you have discarded yourself, we say you have a suji-trap wait.",
                 citation: ch8("Understanding suji", 165, "we say you have a"),
+            },
+            Self::ImmediateSujiTrap => RuleText {
+                rule: "Declare Riichi on the tile three ranks from the wait: the winning \
+                       tile then looks like a safe suji of the declaration tile.",
+                quote: "If you call riichi by discarding the 6, the hand waits for 3, \
+                        which is a suji tile of 6 (immediate suji-trap riichi).",
+                citation: ch8("Suji trap", 170, "immediate {\\jap suji}-trap riichi"),
             },
             Self::WaitOutside456 => RuleText {
                 rule: "A single wait other than 4, 5, or 6 justifies Riichi: \
@@ -621,6 +629,17 @@ fn applies_riichi(trigger: RiichiTrigger, state: &GameState) -> String {
             format!("The wait is {wait} and its red five is in hand.")
         }
         RiichiTrigger::SujiTrap => "A suji of the wait is already in your river.".to_string(),
+        RiichiTrigger::ImmediateSujiTrap => {
+            let discard = state
+                .correct_action
+                .tile()
+                .map(|code| format_tile_for_display(code, false))
+                .unwrap_or_default();
+            format!(
+                "Discarding {discard} makes the wait {wait} a suji tile of the declaration \
+                 tile, so the opponents read it as safe."
+            )
+        }
         RiichiTrigger::WaitOutside456 => format!("The wait is {wait}, outside 4-5-6."),
         RiichiTrigger::ScoreBelowMangan => {
             "At most one dora, so the hand is below mangan without Riichi.".to_string()
@@ -749,6 +768,12 @@ fn summary_for(state: &GameState) -> String {
                 genbutsu, so the players folding to that threat discard exactly that tile."
             .to_string();
     }
+    if state.category == "suji_trap_riichi" {
+        return "Declare Riichi on the trap discard: it leaves the same wait as the plain \
+                discard, but makes the winning tile a suji of the declaration tile, so the \
+                opponents read it as safe."
+            .to_string();
+    }
     if state.category == "dama_expensive_hand" {
         return if state.dama_reasons.contains(&DamaReason::HanemanPlus) {
             "Stay in dama: even the worst winning tile gives haneman or better without \
@@ -837,6 +862,22 @@ fn caveats_for(state: &GameState) -> Vec<String> {
         );
     }
 
+    if state.category == "suji_trap_riichi" {
+        caveats.push(
+            "The two candidate discards leave the same wait and the same number of live \
+             winning tiles; the trap is the only difference, so the lesson is the discard \
+             rather than the declaration."
+                .to_string(),
+        );
+        caveats.push(
+            "Suji defense only works against side waits, so a trap pays off exactly when \
+             the opponents read the wait as a ryanmen: ch. 7's \"Trap waits\" calls this \
+             factor a reason the hand is not automatically a bad-wait dama (ch7:512), not \
+             a guarantee that the tile is thrown."
+                .to_string(),
+        );
+    }
+
     if state.category == "chiitoitsu_riichi_vs_dama" {
         if state.equivalent_tiles.is_empty() {
             caveats.push(
@@ -877,6 +918,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
             539,
             "one of your winning tiles is among their",
         )),
+        "suji_trap_riichi" => Some(ch8("Suji trap", 170, "immediate {\\jap suji}-trap riichi")),
         "dama_expensive_hand" => Some(ch7("High scoring hand", 569, "it is OK to go {\\jap dama}")),
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "meld_or_not" => Some(ch9_meld(72, "Don't meld with a cheap and slow hand")),
@@ -2431,6 +2473,7 @@ mod tests {
             RiichiTrigger::Tanyao,
             RiichiTrigger::RedFiveWait,
             RiichiTrigger::SujiTrap,
+            RiichiTrigger::ImmediateSujiTrap,
             RiichiTrigger::WaitOutside456,
             RiichiTrigger::ScoreBelowMangan,
         ] {
@@ -2862,6 +2905,7 @@ mod tests {
             "defense_safety_chart",
             "defense_stuck_heuristic",
             "open_hand_defense",
+            "suji_trap_riichi",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             assert!(
@@ -2889,6 +2933,7 @@ mod tests {
             "defense_safety_chart",
             "defense_stuck_heuristic",
             "open_hand_defense",
+            "suji_trap_riichi",
         ] {
             for _ in 0..10 {
                 let state = generate_puzzle(category).expect("scenario must generate");
@@ -3150,6 +3195,7 @@ mod tests {
             RiichiTrigger::Tanyao,
             RiichiTrigger::RedFiveWait,
             RiichiTrigger::SujiTrap,
+            RiichiTrigger::ImmediateSujiTrap,
             RiichiTrigger::WaitOutside456,
             RiichiTrigger::ScoreBelowMangan,
         ] {
@@ -3193,6 +3239,7 @@ mod tests {
             "defense_safety_chart",
             "defense_stuck_heuristic",
             "open_hand_defense",
+            "suji_trap_riichi",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             citations.extend(
@@ -3326,6 +3373,38 @@ mod tests {
                 .iter()
                 .any(|caveat| caveat.contains("Rank C"))
         );
+    }
+
+    #[test]
+    fn suji_trap_lesson_cites_the_immediate_trap_and_names_the_discard() {
+        for _ in 0..20 {
+            let state = generate_puzzle("suji_trap_riichi").expect("suji trap must generate");
+            let rationale = rationale_for(&state).expect("suji trap needs a rationale");
+
+            assert_eq!(rationale.source.chapter, 8);
+            assert_eq!(rationale.source.section, "Suji trap");
+            assert_eq!(rationale.source.source_line, 170);
+
+            let rule = rationale
+                .rules
+                .iter()
+                .find(|rule| rule.id == "immediate_suji_trap")
+                .expect("the immediate-trap rule must be cited");
+            assert!(rule.quote.contains("immediate"));
+            assert!(!rule.applies.is_empty());
+            assert!(rationale.summary.contains("trap"), "{}", rationale.summary);
+            assert!(!rationale.caveats.is_empty());
+
+            // The rule names the discard the player should declare on, in
+            // display form rather than as a raw tile code.
+            let discard = state.correct_action.tile().expect("answer tile");
+            assert!(
+                rule.applies
+                    .contains(&format_tile_for_display(discard, false)),
+                "{}",
+                rule.applies
+            );
+        }
     }
 
     #[test]
