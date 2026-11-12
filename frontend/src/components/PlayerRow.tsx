@@ -1,3 +1,5 @@
+import { calledTile } from '../meld';
+import type { CalledFrom } from '../meld';
 import type { PlayerState } from '../types/game';
 import { RiichiStick } from './RiichiStick';
 import { Tile } from './Tile';
@@ -8,10 +10,18 @@ interface PlayerRowProps {
   highlightLastDiscard?: boolean;
 }
 
+/** Human-readable name for the seat a call came from. */
+const CALLED_FROM_LABELS: Record<CalledFrom, string> = {
+  left: 'the left player (kamicha)',
+  across: 'the player across (toimen)',
+  right: 'the right player (shimocha)',
+};
+
 /**
  * One player's vertically stacked row: wind, score, Riichi marker, open melds,
- * and the discard river. The Riichi declaration tile is rendered sideways, and
- * tsumogiri discards (thrown straight off the draw) carry a dot marker.
+ * and the discard river. The Riichi declaration tile and a Pon's called tile
+ * are rendered sideways, and tsumogiri discards (thrown straight off the draw)
+ * carry a dot marker.
  */
 export function PlayerRow({
   player,
@@ -35,22 +45,35 @@ export function PlayerRow({
       <div className="player-tiles">
         {player.melds.length > 0 && (
           <div className="melds" aria-label={`${player.name} melds`}>
-            {player.melds.map((meld, meldIndex) => (
-              <div
-                key={`${meld.meld_type}-${meldIndex}`}
-                className="meld"
-                aria-label={`${meld.meld_type} meld`}
-              >
-                <span className="meld-label">{meld.meld_type}</span>
-                {meld.tiles.map((tile, tileIndex) => (
-                  <Tile
-                    key={`${tile}-${tileIndex}`}
-                    code={tile}
-                    className="tile meld-tile"
-                  />
-                ))}
-              </div>
-            ))}
+            {player.melds.map((meld, meldIndex) => {
+              const called = calledTile(meld, player.seat);
+
+              return (
+                <div
+                  key={`${meld.meld_type}-${meldIndex}`}
+                  className="meld"
+                  aria-label={`${meld.meld_type} meld${
+                    called
+                      ? `, called tile taken from ${CALLED_FROM_LABELS[called.from]}`
+                      : ''
+                  }`}
+                >
+                  <span className="meld-label">{meld.meld_type}</span>
+                  {meld.tiles.map((tile, tileIndex) => {
+                    const isCalled = called?.index === tileIndex;
+
+                    return (
+                      <span
+                        key={`${tile}-${tileIndex}`}
+                        className={`meld-slot${isCalled ? ' meld-slot--called' : ''}`}
+                      >
+                        <Tile code={tile} className="tile meld-tile" />
+                      </span>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         )}
 
