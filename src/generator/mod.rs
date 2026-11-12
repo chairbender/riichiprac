@@ -6,6 +6,9 @@
 //!   closed shape) break lesson, the pair count (avoid three pairs in a
 //!   closed hand) lesson, and its open-hand companion (keep three pairs when
 //!   a Pon is planned).
+//! - `chiitoi_vs_toitoi`: ch. 5.5's yaku choice: a 1-away chiitoitsu hand
+//!   whose draw turned a pair into a set stays with chiitoitsu when a pair is
+//!   futile, and builds toitoi otherwise.
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
 //! - `riichi_judgement`: ch. 7's general three-condition Riichi/dama rule.
 //! - `dama_bad_wait`: ch. 7's bad-wait box: riichi with three or more live
@@ -53,6 +56,7 @@
 pub mod ai_best_action;
 mod ankan_decision;
 mod block_theory;
+mod chiitoi_vs_toitoi;
 mod chiitoitsu_riichi_vs_dama;
 mod daiminkan_decision;
 mod dama_bad_wait;
@@ -82,6 +86,7 @@ use situation::Situation;
 
 pub(crate) use daiminkan_decision::{DaiminkanTriggerSet, facts as daiminkan_facts};
 pub(crate) use support::analysis::floating_quad_acceptance;
+pub(crate) use support::analysis::wind_to_honor;
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
@@ -262,6 +267,13 @@ const BOOK_CH5_PINFU: BookSection = BookSection {
     section_title: "How to get pinfu",
 };
 
+const BOOK_CH5_TOITOI: BookSection = BookSection {
+    chapter: 5,
+    chapter_title: "Pursuing yaku",
+    section: 5,
+    section_title: "How to get toitoi / chiitoitsu",
+};
+
 /// How an answer is graded for a lesson.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScenarioGrading {
@@ -357,6 +369,24 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
         book: Some(BOOK_CH3_BASIC),
+    },
+    ScenarioMeta {
+        id: ScenarioId::ChiitoiVsToitoi,
+        label: "Chiitoitsu vs Toitoi",
+        description: "Yaku pursuit: a pair just became a set. Stay with chiitoitsu when a \
+                      pair is futile; otherwise keep the set and build toitoi.",
+        category: ScenarioCategory::YakuDecision,
+        tags: &[
+            "yaku",
+            "chiitoitsu",
+            "toitoi",
+            "pairs",
+            "futile_pair",
+            "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH5_TOITOI),
     },
     ScenarioMeta {
         id: ScenarioId::ChiitoitsuRiichiVsDama,
@@ -656,6 +686,7 @@ pub enum ScenarioId {
     RyankanBreak,
     PairCount,
     PairCountOpen,
+    ChiitoiVsToitoi,
     ChiitoitsuRiichiVsDama,
     RiichiJudgement,
     DamaBadWait,
@@ -687,6 +718,7 @@ impl ScenarioId {
         ScenarioId::RyankanBreak,
         ScenarioId::PairCount,
         ScenarioId::PairCountOpen,
+        ScenarioId::ChiitoiVsToitoi,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::RiichiJudgement,
         ScenarioId::DamaBadWait,
@@ -718,6 +750,7 @@ impl ScenarioId {
             ScenarioId::RyankanBreak => "ryankan_break",
             ScenarioId::PairCount => "pair_count",
             ScenarioId::PairCountOpen => "pair_count_open",
+            ScenarioId::ChiitoiVsToitoi => "chiitoi_vs_toitoi",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::DamaBadWait => "dama_bad_wait",
@@ -750,6 +783,7 @@ impl ScenarioId {
             "ryankan_break" => Some(ScenarioId::RyankanBreak),
             "pair_count" => Some(ScenarioId::PairCount),
             "pair_count_open" => Some(ScenarioId::PairCountOpen),
+            "chiitoi_vs_toitoi" => Some(ScenarioId::ChiitoiVsToitoi),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
@@ -783,6 +817,7 @@ impl ScenarioId {
             ScenarioId::RyankanBreak => block_theory::ryankan_break::generate(category),
             ScenarioId::PairCount => block_theory::pair_count::generate(category),
             ScenarioId::PairCountOpen => block_theory::pair_count_open::generate(category),
+            ScenarioId::ChiitoiVsToitoi => chiitoi_vs_toitoi::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::DamaBadWait => dama_bad_wait::generate(category),
