@@ -173,7 +173,7 @@ pub(super) fn build_skeleton() -> Result<SanshokuSkeleton, String> {
             Ok(facts) => facts,
             Err(_) => continue 'attempt,
         };
-        if facts.has_other_value != !condition.expects_chase() {
+        if facts.has_other_value == condition.expects_chase() {
             continue 'attempt;
         }
         skeleton.answer = if facts.has_other_value {

@@ -188,7 +188,7 @@ fn commit(round_wind: Wind, seat_wind: Wind) -> Result<Skeleton, String> {
         ));
     }
     let reading = honitsu_reading(&honitsu, suit, round_wind, seat_wind, &[], 0)
-        .ok_or_else(|| "the honitsu group does not complete")?;
+        .ok_or("the honitsu group does not complete")?;
     if !reading.yaku.contains(&Yaku::Honitsu) {
         return Err("the projection is not a honitsu hand".to_string());
     }
@@ -403,7 +403,7 @@ fn honitsu_only(round_wind: Wind, seat_wind: Wind) -> Result<Skeleton, String> {
         ));
     }
     let reading = honitsu_reading(&honitsu, suit, round_wind, seat_wind, &[], 0)
-        .ok_or_else(|| "the honitsu group does not complete")?;
+        .ok_or("the honitsu group does not complete")?;
     if !reading.is_honitsu_only() {
         return Err(format!(
             "the honitsu plan also claims {:?}, so it is not honitsu-only",
@@ -454,14 +454,16 @@ fn honitsu_only(round_wind: Wind, seat_wind: Wind) -> Result<Skeleton, String> {
 /// honitsu-only: a terminal run kills tanyao, a middle run kills chanta, the
 /// completed runs are all distinct (no iipeikou), and no template can complete
 /// into 123 + 456 + 789 (no ittsu).
-const HONITSU_ONLY_TEMPLATES: [([u8; 3], [u8; 3], [u8; 2], [u8; 2]); 3] = [
+type HonitsuTemplate = ([u8; 3], [u8; 3], [u8; 2], [u8; 2]);
+
+const HONITSU_ONLY_TEMPLATES: [HonitsuTemplate; 3] = [
     ([1, 2, 3], [5, 6, 7], [2, 4], [7, 9]),
     ([1, 2, 3], [6, 7, 8], [2, 4], [4, 6]),
     ([2, 3, 4], [6, 7, 8], [1, 3], [5, 7]),
 ];
 
 /// The four template groups as tiles of `suit`.
-fn template_runs(suit: Suit, template: ([u8; 3], [u8; 3], [u8; 2], [u8; 2])) -> [Vec<Tile>; 4] {
+fn template_runs(suit: Suit, template: HonitsuTemplate) -> [Vec<Tile>; 4] {
     let (run_a, run_b, first, second) = template;
     [
         run_a

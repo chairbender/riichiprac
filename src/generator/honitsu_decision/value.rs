@@ -186,8 +186,7 @@ impl Reading {
     /// True when the only yaku claimed is honitsu itself. Riichi Book 1,
     /// ch5:506 calls such a hand a "honitsu-only hand, which is very cheap".
     pub fn is_honitsu_only(&self) -> bool {
-        self.yaku.iter().any(|yaku| *yaku == Yaku::Honitsu)
-            && self.yaku.iter().all(|yaku| *yaku == Yaku::Honitsu)
+        self.yaku.contains(&Yaku::Honitsu) && self.yaku.iter().all(|yaku| *yaku == Yaku::Honitsu)
     }
 }
 

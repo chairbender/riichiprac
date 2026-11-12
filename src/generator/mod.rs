@@ -5,7 +5,8 @@
 //!   nakabukure (bulging float) ready-hand lesson, the ryankan (double
 //!   closed shape) break lesson, the pair count (avoid three pairs in a
 //!   closed hand) lesson, and its open-hand companion (keep three pairs when
-//!   a Pon is planned).
+//!   a Pon is planned), and the skipping shape (a float two ranks from a run
+//!   is worth more than an isolated float of the same rank).
 //! - `yaku`: the ch. 5 yaku-pursuit decisions. `sanshoku_pursuit` is the
 //!   floating method: keep the redundant tile for sanshoku only when the hand
 //!   has no other yaku or dora.
@@ -100,6 +101,9 @@ pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
 pub(crate) use yaku::sanshoku_pursuit::{SanshokuFacts, facts as sanshoku_facts};
+
+/// The ch. 3 skipping-shape counts, shared by the lesson and its rationale.
+pub(crate) use block_theory::skipping_block::{isolated_turns, skipping_turns};
 
 /// The ch. 5 pinfu-head rule, shared by the lesson and its rationale.
 pub(crate) use pinfu_head::{can_be_pinfu_head, wind_from_honor};
@@ -375,6 +379,23 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
         book: Some(BOOK_CH3_BASIC),
+    },
+    ScenarioMeta {
+        id: ScenarioId::SkippingBlock,
+        label: "Skipping Shape",
+        description: "Block theory: a float two ranks from a run is worth more than an \
+                      isolated float of the same rank, so keep the skipping tile.",
+        category: ScenarioCategory::TileEfficiency,
+        tags: &[
+            "block_theory",
+            "discard",
+            "skipping",
+            "shape",
+            "floating_tile",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_SHAPES),
     },
     ScenarioMeta {
         id: ScenarioId::PairCountOpen,
@@ -741,6 +762,7 @@ pub enum ScenarioId {
     ProtorunPriority,
     RyankanBreak,
     PairCount,
+    SkippingBlock,
     PairCountOpen,
     ChiitoiVsToitoi,
     SanshokuPursuit,
@@ -775,6 +797,7 @@ impl ScenarioId {
         ScenarioId::ProtorunPriority,
         ScenarioId::RyankanBreak,
         ScenarioId::PairCount,
+        ScenarioId::SkippingBlock,
         ScenarioId::PairCountOpen,
         ScenarioId::ChiitoiVsToitoi,
         ScenarioId::SanshokuPursuit,
@@ -809,6 +832,7 @@ impl ScenarioId {
             ScenarioId::ProtorunPriority => "protorun_priority",
             ScenarioId::RyankanBreak => "ryankan_break",
             ScenarioId::PairCount => "pair_count",
+            ScenarioId::SkippingBlock => "skipping_block",
             ScenarioId::PairCountOpen => "pair_count_open",
             ScenarioId::ChiitoiVsToitoi => "chiitoi_vs_toitoi",
             ScenarioId::SanshokuPursuit => "sanshoku_pursuit",
@@ -844,6 +868,7 @@ impl ScenarioId {
             "protorun_priority" => Some(ScenarioId::ProtorunPriority),
             "ryankan_break" => Some(ScenarioId::RyankanBreak),
             "pair_count" => Some(ScenarioId::PairCount),
+            "skipping_block" => Some(ScenarioId::SkippingBlock),
             "pair_count_open" => Some(ScenarioId::PairCountOpen),
             "chiitoi_vs_toitoi" => Some(ScenarioId::ChiitoiVsToitoi),
             "sanshoku_pursuit" => Some(ScenarioId::SanshokuPursuit),
@@ -880,6 +905,7 @@ impl ScenarioId {
             ScenarioId::ProtorunPriority => block_theory::protorun_priority::generate(category),
             ScenarioId::RyankanBreak => block_theory::ryankan_break::generate(category),
             ScenarioId::PairCount => block_theory::pair_count::generate(category),
+            ScenarioId::SkippingBlock => block_theory::skipping_block::generate(category),
             ScenarioId::PairCountOpen => block_theory::pair_count_open::generate(category),
             ScenarioId::ChiitoiVsToitoi => chiitoi_vs_toitoi::generate(category),
             ScenarioId::SanshokuPursuit => yaku::sanshoku_pursuit::generate(category),
