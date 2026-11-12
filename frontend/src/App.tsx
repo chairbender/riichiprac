@@ -9,13 +9,15 @@ import { HandDock } from './components/HandDock';
 import { NextScenarioButton } from './components/NextScenarioButton';
 import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
+import { ScenarioPicker } from './components/ScenarioPicker';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
 import { downloadJson, readStateFile, serializeState } from './stateFile';
 import {
+  ALL_SCENARIOS,
   FALLBACK_SCENARIOS,
   parseScenarioManifest,
-  pickRandomScenario,
+  pickRandomScenarioFrom,
 } from './scenarios';
 import type { ScenarioOption, ScenarioSelection } from './scenarios';
 import { stackOrder } from './seatOrder';
@@ -61,7 +63,7 @@ export const App = () => {
     (state) => state.clearPositionDescription,
   );
 
-  const [selection, setSelection] = useState<ScenarioSelection>('all');
+  const [selection, setSelection] = useState<ScenarioSelection>(ALL_SCENARIOS);
   const [scenarios, setScenarios] =
     useState<ScenarioOption[]>(FALLBACK_SCENARIOS);
   const [aiLoading, setAiLoading] = useState(false);
@@ -101,13 +103,11 @@ export const App = () => {
         }
 
         const options = manifestRef.current ?? FALLBACK_SCENARIOS;
-        const category =
-          scenarioSelection === 'all'
-            ? pickRandomScenario(
-                options,
-                useGameStore.getState().aiStatus === 'ready',
-              )
-            : scenarioSelection;
+        const category = pickRandomScenarioFrom(
+          options,
+          scenarioSelection,
+          useGameStore.getState().aiStatus === 'ready',
+        );
         const requiresAi =
           options.find((option) => option.id === category)?.requires_ai === true;
         // The AI drill's answer is Mortal's own argmax, so the agreement filter
@@ -181,7 +181,7 @@ export const App = () => {
 
   // The filter is a per-session choice, so the first hand is always book-only.
   useEffect(() => {
-    void loadPuzzle('all', false);
+    void loadPuzzle(ALL_SCENARIOS, false);
   }, [loadPuzzle]);
 
   // Start loading the Mortal weights in the background on first paint.
@@ -189,8 +189,7 @@ export const App = () => {
     void initializeAi();
   }, [initializeAi]);
 
-  const handleScenarioChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const next = event.target.value as ScenarioSelection;
+  const handleSelectionChange = (next: ScenarioSelection) => {
     setSelection(next);
     void loadPuzzle(next, requireAgreement);
   };
@@ -290,22 +289,11 @@ export const App = () => {
         </div>
 
         <div className="app-controls">
-          <label className="scenario-picker">
-            <span className="scenario-picker-label">Scenario</span>
-            <select
-              className="scenario-select"
-              value={selection}
-              onChange={handleScenarioChange}
-              aria-label="Scenario"
-            >
-              <option value="all">All scenarios (random)</option>
-              {scenarios.map((scenario) => (
-                <option key={scenario.id} value={scenario.id}>
-                  {scenario.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <ScenarioPicker
+            scenarios={scenarios}
+            selection={selection}
+            onChange={handleSelectionChange}
+          />
 
           <label className="agreement-toggle" title={agreementHint}>
             <input

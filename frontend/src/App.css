@@ -28,7 +28,8 @@
 .app-header {
   position: sticky;
   top: 0;
-  z-index: 20;
+  /* Above the hand dock (30), so the scenario panel it opens is not clipped. */
+  z-index: 40;
 
   display: flex;
   flex-wrap: wrap;
@@ -66,6 +67,7 @@
 }
 
 .scenario-picker {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -79,21 +81,284 @@
   text-transform: uppercase;
 }
 
-.scenario-select {
-  max-width: 190px;
+.scenario-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 210px;
   padding: 6px 8px;
   border: 1px solid #34506e;
   border-radius: 8px;
   background-color: #1a2a3c;
   color: #a5d8ff;
+  font-family: inherit;
   font-size: 0.78rem;
   font-weight: 600;
+  text-align: left;
   cursor: pointer;
 }
 
-.scenario-select:focus-visible {
+.scenario-picker-trigger:hover {
+  background-color: #213b56;
+}
+
+.scenario-picker-trigger:focus-visible {
   outline: 2px solid #74c0fc;
   outline-offset: 1px;
+}
+
+.scenario-picker-trigger-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scenario-picker-caret {
+  flex: none;
+  color: #748199;
+  font-size: 0.7rem;
+}
+
+/* Popup panel ------------------------------------------------------------- */
+
+.scenario-picker-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+
+  display: flex;
+  flex-direction: column;
+  width: min(24rem, calc(100vw - 1.5rem));
+  max-height: min(70vh, 34rem);
+
+  border: 1px solid #34506e;
+  border-radius: 12px;
+  background-color: #141b25;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  color: #c6d4e4;
+  font-size: 0.75rem;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.scenario-picker-panel-head {
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid #26303d;
+}
+
+.scenario-picker-heading {
+  color: #e7ecf3;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.scenario-picker-hint {
+  margin: 2px 0 0;
+  color: #8b94a7;
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.scenario-picker-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 12px 0;
+  padding: 6px 8px;
+  border: 1px solid #2c3a4c;
+  border-radius: 8px;
+  background-color: #1a2431;
+  color: #d7e3f0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.scenario-group-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 8px 8px;
+}
+
+.scenario-group {
+  margin-top: 8px;
+}
+
+.scenario-group-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 4px;
+  border-bottom: 1px solid #222c39;
+  background-color: #141b25;
+  color: #a5d8ff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.scenario-group-head input,
+.scenario-picker-all input,
+.scenario-item-label input {
+  margin: 0;
+  accent-color: #4f8bc9;
+  cursor: pointer;
+}
+
+.scenario-group-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scenario-group-count {
+  color: #748199;
+  font-variant-numeric: tabular-nums;
+}
+
+.scenario-group-items {
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scenario-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border-radius: 6px;
+}
+
+.scenario-item:hover {
+  background-color: #1b2531;
+}
+
+.scenario-item-label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.scenario-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scenario-item-badge {
+  flex: none;
+  padding: 0 4px;
+  border-radius: 4px;
+  background-color: #2b3f57;
+  color: #9ec5f0;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.scenario-item-only {
+  flex: none;
+  padding: 2px 6px;
+  border: 1px solid #34506e;
+  border-radius: 6px;
+  background-color: transparent;
+  color: #8b94a7;
+  font-family: inherit;
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.scenario-item-only:hover {
+  border-color: #4f8bc9;
+  color: #a5d8ff;
+}
+
+.scenario-item-only:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+.scenario-picker-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 8px;
+  padding: 8px 12px;
+  border-top: 1px solid #26303d;
+  background-color: #141b25;
+}
+
+.scenario-picker-pool {
+  color: #8b94a7;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.scenario-picker-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.scenario-picker-cancel,
+.scenario-picker-deal {
+  padding: 5px 10px;
+  border: 1px solid #34506e;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.scenario-picker-cancel {
+  background-color: transparent;
+  color: #a5d8ff;
+}
+
+.scenario-picker-deal {
+  border-color: #2f6ea8;
+  background-color: #1d4b78;
+  color: #e7f2ff;
+}
+
+.scenario-picker-deal:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.scenario-picker-cancel:focus-visible,
+.scenario-picker-deal:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+/* The panel is a bottom sheet on phones so it never runs off-screen. */
+@media (max-width: 640px) {
+  .scenario-picker-panel {
+    position: fixed;
+    inset-inline: 8px;
+    top: auto;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: min(75vh, 40rem);
+  }
 }
 
 .agreement-toggle {
