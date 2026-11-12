@@ -1,11 +1,16 @@
-import type { CSSProperties } from 'react';
+import type { ComponentType, CSSProperties, SVGProps } from 'react';
+import {
+  RegularNan,
+  RegularPei,
+  RegularShaa,
+  RegularTon,
+} from 'riichi-mahjong-tiles';
 import { SIDE_ROTATION, TABLE_SIDES, tablePlacements } from '../seatOrder';
 import type { SeatPlacement, TableSide } from '../seatOrder';
 import type { GameState, PlayerState, Wind } from '../types/game';
 import { MeldList } from './MeldList';
 import { RiichiStick } from './RiichiStick';
 import { River } from './River';
-import { Tile } from './Tile';
 
 /** Where each edge of the table sits, as the human reads the screen. */
 const SIDE_LABELS: Record<TableSide, string> = {
@@ -15,16 +20,17 @@ const SIDE_LABELS: Record<TableSide, string> = {
   left: 'left side, kamicha',
 };
 
+type WindGlyph = ComponentType<SVGProps<SVGSVGElement>>;
+
 /**
- * The wind tile that shows a seat's wind on the compass: the same four honour
- * tile codes (`1z`..`4z`) the engine uses, so the compass draws the real tile
- * rather than a Latin initial.
+ * The wind symbol for each seat, drawn without a tile body: the compass only
+ * needs the glyph, and the symbol is recoloured to read on the dark panel.
  */
-const WIND_TILES: Record<Wind, string> = {
-  East: '1z',
-  South: '2z',
-  West: '3z',
-  North: '4z',
+const WIND_GLYPHS: Record<Wind, WindGlyph> = {
+  East: RegularTon,
+  South: RegularNan,
+  West: RegularShaa,
+  North: RegularPei,
 };
 
 interface PhysicalTableProps {
@@ -37,10 +43,10 @@ interface PhysicalTableProps {
 }
 
 /**
- * A player's place in the middle of the table, as the compass shows it: the
- * wind and score facing that player, with their Riichi stick on the side of
- * the compass nearest the centre, the way an automatic table's centre display
- * puts the declaration in front of the player who made it.
+ * A player's place in the middle of the table, as the compass shows it. The
+ * stack runs from the centre outwards — wind symbol, score, then Riichi stick —
+ * and the whole stack turns with its seat, so every player reads it upright
+ * and the stick lies along their own edge, closest to them.
  */
 function CompassSeat({
   player,
@@ -49,10 +55,12 @@ function CompassSeat({
   player: PlayerState;
   side: TableSide;
 }) {
+  const WindGlyph = WIND_GLYPHS[player.wind];
+
   return (
     /*
-     * The corner is a picture of the player's place, not prose: the wind tile
-     * and the score are the accessible name, so they are not read twice.
+     * The corner is a picture of the player's place, not prose: the wind
+     * symbol and the score are the accessible name, so they are not read twice.
      */
     <div
       role="img"
@@ -62,20 +70,20 @@ function CompassSeat({
       className={`compass-player compass-player--${side}${
         player.is_human ? ' compass-player--human' : ''
       }`}
+      /*
+       * Turn the whole stack with its seat, exactly like the tiles on that
+       * edge: the wind sits nearest the middle, the score next, and the Riichi
+       * stick lands on the player's side of the compass, lengthways.
+       */
+      style={{ transform: `rotate(${SIDE_ROTATION[side]}deg)` }}
     >
-      {/*
-       * Turn the figure with its seat, exactly like the tiles on that edge:
-       * every player reads their own wind tile and score upright from where
-       * they sit, as they would on an automatic table's centre display.
-       */}
-      <span
-        className="compass-figure"
-        style={{ transform: `rotate(${SIDE_ROTATION[side]}deg)` }}
-      >
-        <Tile code={WIND_TILES[player.wind]} className="compass-wind" />
-        <span className="compass-score">
-          {player.score.toLocaleString('en-US')}
-        </span>
+      <WindGlyph
+        className="compass-wind"
+        aria-hidden="true"
+        focusable="false"
+      />
+      <span className="compass-score">
+        {player.score.toLocaleString('en-US')}
       </span>
       {player.is_riichi && <RiichiStick className="compass-stick" />}
     </div>
@@ -94,8 +102,8 @@ function CompassSeat({
  *
  * Nothing is written on a seat itself: wind, score, and Riichi are all on the
  * compass in the middle, so the edges of the table only hold tiles. Every
- * compass corner is turned to its own seat, and its Riichi stick lies along the
- * player's edge, as an automatic table's centre display would show it. A river
+ * compass corner is turned to its own seat, reading wind, score, and then
+ * Riichi stick from the middle outwards. A river
  * starts at the corner nearest the centre and runs across its player's view,
  * filling towards that player; melds sit on the player's right and stack away
  * from them. The human's concealed hand is not drawn here either: it is the
@@ -153,9 +161,9 @@ export function PhysicalTable({
       ))}
 
       {/*
-       * The compass stands in the middle of the table: one wind and score
-       * facing each seat, the round and wall count in the middle, and a Riichi
-       * stick beside the declaring player's corner.
+       * The compass stands in the middle of the table: one wind, score, and
+       * Riichi stick facing each seat, with the round and remaining tile count
+       * in the middle.
        */}
       <div className="physical-center" role="group" aria-label="Compass">
         {TABLE_SIDES.map((side) => (
@@ -175,12 +183,15 @@ export function PhysicalTable({
           </div>
         ))}
 
-        <div className="compass-wall">
+        <div
+          className="compass-wall"
+          role="group"
+          aria-label={`Round ${state.round_wind} ${state.hand_number}, ${state.tiles_remaining} tiles remaining`}
+        >
           <span className="compass-round">
             {state.round_wind} {state.hand_number}
           </span>
           <span className="compass-wall-count">{state.tiles_remaining}</span>
-          <span className="compass-wall-label">wall</span>
         </div>
       </div>
     </div>

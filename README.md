@@ -87,10 +87,11 @@ submitted grade stay put. The choice is per session and is not persisted.
 
 The top-down view is 2D only: no camera tilt, vanishing point, or 3D projection.
 It is a diagram of where the seats, melds, and discards are. The table edges
-carry no text at all: a compass in the middle shows each player's wind tile and
-score in the corner facing them, both turned to read upright from that seat, with
-the round and wall count in its centre and a Riichi stick lying along the corner
-in front of whoever declared. Opponents' hands stay hidden
+carry no text at all: a compass in the middle shows each player's wind symbol
+and score in the corner facing them, both turned to read upright from that seat,
+with the round and remaining tile count in its centre. Each corner reads from
+the middle outwards as wind, score, then Riichi stick, so the stick lies
+lengthways against the edge nearest whoever declared it. Opponents' hands stay hidden
 (only their melds and rivers are drawn, exactly as in the stacked view), and the
 whole plan is rotated onto the human's seat so an imported report that puts them
 on another seat still reads with their own side at the bottom.
