@@ -149,6 +149,19 @@ fn ch4(line: u32, needle: &str) -> Citation {
     )
 }
 
+/// Riichi Book 1, ch. 4, "Exercises: building a block" — the 5-block exercises
+/// that keep (Answer 13) and break (Exercise 14) the same bulging float.
+fn ch4_blocks(line: u32, needle: &str) -> Citation {
+    citation(
+        4,
+        "The five-block method",
+        "Exercises: building a block",
+        "RiichiBook1-ch4-five.tex",
+        line,
+        needle,
+    )
+}
+
 fn ch3(line: u32, needle: &str) -> Citation {
     citation(
         3,
@@ -202,6 +215,7 @@ const CH8_GENBUTSU: &str = "Genbutsu and other absolutely safe tiles";
 const CH8_SUJI: &str = "Understanding suji";
 const CH8_KABE: &str = "Understanding tile blockade";
 const CH8_RANKING: &str = "Safety ranking";
+const CH8_BLOCKADE_RANKING: &str = "Tile blockade: Safety ranking";
 const CH8_VS_RIICHI: &str = "Defense against riichi";
 const CH8_STUCK: &str = "What to discard when you get stuck";
 const CH8_READY_SHORTCUT: &str = "Guessing if an opponent has a ready hand";
@@ -941,6 +955,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
             340,
             "If you cannot satisfy the above criteria",
         )),
+        "suji_kabe_safety" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
         }
@@ -1010,8 +1025,9 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     }
 
     if state.category == "nakabukure_ready" {
-        let discard =
-            format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
+        let answer_code = state.correct_action.tile().unwrap_or_default();
+        let answer_tile = Tile::try_from(answer_code).ok();
+        let discard = format_tile_for_display(answer_code, false);
         let wait = state
             .ukeire_tiles
             .first()
@@ -1022,56 +1038,215 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
             .map(|code| format_tile_for_display(code, false))
             .unwrap_or_default();
 
+        // The generator builds exactly one bulging float; its middle tile is
+        // the discard that breaks it. An imported report from before the
+        // variants existed may hold more, so look the answer up by value.
+        let middles = bulge_middles(state);
+        let answer_is_middle = answer_tile.is_some_and(|answer| middles.contains(&answer));
+        let middle = middles.first().copied();
+        let middle_text = middle
+            .map(|tile| format_tile_for_display(&tile.to_string(), false))
+            .unwrap_or_default();
+        let middle_acceptance = middle
+            .and_then(|tile| acceptance_without(state, tile))
+            .unwrap_or_default();
+        let keeps_bulge = !answer_is_middle && middle.is_some();
+
+        if keeps_bulge {
+            // ch. 4 Answer 13 / ch. 3's 2-away example: the book keeps the
+            // float because every rival block is weak, and throws a tile that
+            // costs the least shape even though breaking the bulge accepts
+            // more tiles right now.
+            let rules = vec![
+                BookRule {
+                    id: "keep_until_one_away".to_string(),
+                    rule: "The bulging float is protected while the hand is far from ready; \
+                           at 1-away whether it stays is a judgement about the rival blocks."
+                        .to_string(),
+                    quote: "Try to keep a bulging float shape until a hand becomes 1-away."
+                        .to_string(),
+                    citation: ch3_bulging(708, "until a hand becomes 1-away"),
+                    applies: format!(
+                        "The hand is {} shanten and every rival block is still only a pair plus \
+                         a float or a closed wait, so the bulge is the best block left.",
+                        state.shanten
+                    ),
+                },
+                BookRule {
+                    id: "keep_the_bulge".to_string(),
+                    rule: "Breaking the bulge raises raw acceptance but fills the hand with \
+                           closed-wait protoruns, so the book throws the tile that costs the \
+                           least shape instead."
+                        .to_string(),
+                    quote: "Although doing so increases tile acceptance temporarily, the hand \
+                            will be filled with closed-wait protoruns."
+                        .to_string(),
+                    citation: ch3_bulging(690, "increases tile acceptance temporarily"),
+                    applies: format!(
+                        "Discarding {discard} keeps the bulge; breaking it with {middle_text} \
+                         would accept {middle_acceptance} tiles right now, against the {} this \
+                         discard leaves. The book still keeps the float: raw acceptance is not \
+                         the whole question when the rival blocks are weak.",
+                        state.ukeire_total
+                    ),
+                },
+                BookRule {
+                    id: "keep_the_bulge_as_back_up".to_string(),
+                    rule: "When a rival block is only a pair plus a float, the book keeps the \
+                           bulging float as a back-up for two runs and discards the rival pair's \
+                           spare tile."
+                        .to_string(),
+                    quote: "we should keep two tong4 to maintain the bulging float block in \
+                            pinzu (dots) for now, hoping to get two runs out of it. We should \
+                            thus discard suo2."
+                        .to_string(),
+                    citation: ch4_blocks(694, "hoping to get two runs out of it"),
+                    applies: format!(
+                        "Discarding {discard} leaves the rival pair's partner beside the draw as \
+                         a side-wait protorun and keeps the whole bulge."
+                    ),
+                },
+            ];
+
+            return Some(BookRationale {
+                summary: format!(
+                    "Keep the bulging float: the hand is {} shanten and the rival blocks are \
+                     weak, so the float is still the best block. Breaking it would accept \
+                     {middle_acceptance} tiles right now, more than keeping it, but the book \
+                     discards {discard} and keeps the two-run shape.",
+                    state.shanten
+                ),
+                rules,
+                absent: Vec::new(),
+                source: ch3_bulging(708, "until a hand becomes 1-away"),
+                caveats: vec![
+                    "The book's 1-away examples disagree on purpose: with a weak rival block it \
+                     keeps the bulge (ch4:694), and with a decent rival block it breaks it \
+                     (ch4:725). Counting acceptance alone picks the wrong answer in the first \
+                     case."
+                        .to_string(),
+                ],
+            });
+        }
+
+        if state.shanten == 0 {
+            // ch. 3's ready-hand example: the bulge waits on a tile the hand
+            // already holds twice, so it is the discard.
+            let rules = vec![
+                BookRule {
+                    id: "bulge_pair_wait".to_string(),
+                    rule: "A bulging float left in a ready hand waits on its own middle tile, \
+                           which the hand already holds twice, so only two winning tiles remain."
+                        .to_string(),
+                    quote:
+                        "It is waiting for wan4, but we are already using two of it in the hand, \
+                            leaving only two winning tiles."
+                            .to_string(),
+                    citation: ch3_bulging(702, "leaving only two winning tiles"),
+                    applies: format!(
+                        "Keeping the bulge and discarding {drawn} would wait on {discard}, which \
+                         this hand holds twice: only two winning tiles."
+                    ),
+                },
+                BookRule {
+                    id: "discard_the_bulge".to_string(),
+                    rule:
+                        "In a ready hand the bulge tile itself is the discard: dropping it leaves \
+                           the lone honour as a tanki wait with strictly more winning tiles."
+                            .to_string(),
+                    quote: "We should rather discard wan4 to wait for bei.".to_string(),
+                    citation: ch3_bulging(702, "We should rather discard"),
+                    applies: format!(
+                        "Discarding {discard} waits on {wait} instead: {} live copies against the \
+                         two the bulge would leave.",
+                        state.ukeire_total
+                    ),
+                },
+                BookRule {
+                    id: "keep_until_one_away".to_string(),
+                    rule: "The bulging float's value is in building a side-wait protorun, so the \
+                           book keeps it only until the hand is 1-away."
+                        .to_string(),
+                    quote: "Try to keep a bulging float shape until a hand becomes 1-away."
+                        .to_string(),
+                    citation: ch3_bulging(708, "until a hand becomes 1-away"),
+                    applies: "This hand is already ready, so the shape's protection has expired."
+                        .to_string(),
+                },
+            ];
+
+            return Some(BookRationale {
+                summary: "Drop the bulging float: in a ready hand it waits on its own middle tile \
+                          for only two tiles, while the lone honour has three live copies."
+                    .to_string(),
+                rules,
+                absent: Vec::new(),
+                source: ch3_bulging(681, "accept four kinds of tiles"),
+                caveats: vec![
+                    "The book's ready-hand example is closed; this trainer opens a Yakuhai Pon so \
+                     Riichi cannot mask the discard lesson."
+                        .to_string(),
+                ],
+            });
+        }
+
+        // ch. 4 Exercise 14: a 1-away hand whose rival block became decent, so
+        // the same book now breaks the bulge.
         let rules = vec![
             BookRule {
-                id: "bulge_pair_wait".to_string(),
-                rule: "A bulging float left in a ready hand waits on its own middle tile, \
-                       which the hand already holds twice, so only two winning tiles remain."
+                id: "rival_block_became_decent".to_string(),
+                rule: "A rival block that accepts four kinds to become a group and the head is \
+                       now a better block than the bulging float, so the bulge is the redundant \
+                       tile."
                     .to_string(),
-                quote: "It is waiting for wan4, but we are already using two of it in the hand, \
-                        leaving only two winning tiles."
+                quote: "As we drew another wan1, the block in manzu (cracks) is now a decent \
+                        shape. This can become one group and the head with a draw of wan1 wan2 \
+                        wan4 wan5."
                     .to_string(),
-                citation: ch3_bulging(702, "leaving only two winning tiles"),
+                citation: ch4_blocks(725, "This can become one group and the head with a draw of"),
                 applies: format!(
-                    "Keeping the bulge and discarding {drawn} would wait on {discard}, which \
-                     this hand holds twice: only two winning tiles."
-                ),
-            },
-            BookRule {
-                id: "discard_the_bulge".to_string(),
-                rule: "In a ready hand the bulge tile itself is the discard: dropping it leaves \
-                       the lone honour as a tanki wait with strictly more winning tiles."
-                    .to_string(),
-                quote: "We should rather discard wan4 to wait for bei.".to_string(),
-                citation: ch3_bulging(702, "We should rather discard"),
-                applies: format!(
-                    "Discarding {discard} waits on {wait} instead: {} live copies against the \
-                     two the bulge would leave.",
+                    "Discarding {discard} breaks the bulge but keeps the decent rival block, and \
+                     the hand still accepts {} tiles: more than any keep-the-bulge discard.",
                     state.ukeire_total
                 ),
             },
             BookRule {
                 id: "keep_until_one_away".to_string(),
-                rule: "The bulging float's value is in building a side-wait protorun, so the \
-                       book keeps it only until the hand is 1-away."
+                rule: "The bulging float is kept only until the hand is 1-away, when a completed \
+                       rival block can take its place."
                     .to_string(),
                 quote: "Try to keep a bulging float shape until a hand becomes 1-away.".to_string(),
                 citation: ch3_bulging(708, "until a hand becomes 1-away"),
-                applies: "This hand is already ready, so the shape's protection has expired."
+                applies: "This hand is 1-away, so the shape's protection has expired.".to_string(),
+            },
+            BookRule {
+                id: "break_the_bulge".to_string(),
+                rule: "The bulge breaks into one complete run plus a float, so keeping the rival \
+                       block is worth more than the float's two-run potential."
                     .to_string(),
+                quote: "Therefore, we should discard tong4 to break the bulging float shape."
+                    .to_string(),
+                citation: ch4_blocks(725, "break the bulging float shape"),
+                applies: format!(
+                    "Discarding {discard} leaves the hand with the rival block and {} tiles of \
+                     acceptance; keeping the bulge would accept fewer.",
+                    state.ukeire_total
+                ),
             },
         ];
 
         return Some(BookRationale {
-            summary: "Drop the bulging float: in a ready hand it waits on its own middle tile \
-                      for only two tiles, while the lone honour has three live copies."
-                .to_string(),
+            summary: format!(
+                "Break the bulging float: the rival block became a decent group-and-head shape, \
+                 so discarding {discard} keeps it and still accepts more tiles than keeping the \
+                 bulge would."
+            ),
             rules,
             absent: Vec::new(),
-            source: ch3_bulging(681, "accept four kinds of tiles"),
+            source: ch4_blocks(725, "break the bulging float shape"),
             caveats: vec![
-                "The book's ready-hand example is closed; this trainer opens a Yakuhai Pon so \
-                 Riichi cannot mask the discard lesson."
+                "This is the same shape the 1-away keep hand preserves (ch4:694); the difference \
+                 is the rival block, not the bulge itself."
                     .to_string(),
             ],
         });
@@ -1589,6 +1764,12 @@ fn acceptance_without(state: &GameState, tile: Tile) -> Option<u8> {
 }
 
 /// The ch. 9 seating tip: throw the right player's valueless wind first.
+///
+/// The book is not saying the right player must never Pon you. A Pon on your
+/// own discard comes from the caller's left player, which skips no turn; the
+/// bad case is the right player pairing the wind and Ponning your left
+/// player's discard later. Throwing the copy first spends it on the harmless
+/// call and pulls the other copies out before a pair can form.
 fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
     let answer_code = state.correct_action.tile()?;
     let answer = format_tile_for_display(answer_code, false);
@@ -1609,24 +1790,24 @@ fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
 
     let rules = vec![
         BookRule {
-            id: "call_benefits_right_player".to_string(),
-            rule: "A call by the right player skips the facing player's turn and gives the \
-                   right player an extra draw, so the right player's call is the one most \
-                   worth denying."
+            id: "calls_move_turns".to_string(),
+            rule: "A call transfers a turn, not just tiles: the caller's right player gains the \
+                   tempo, so a Pon by the right player from your left player skips your turn."
                 .to_string(),
             quote: "your act of calling pon/kan benefits the right player while penalizing the \
                     left and the facing players"
                 .to_string(),
             citation: ch9_seating(440, "benefits the right player while penalizing"),
             applies: format!(
-                "The right player's seat wind is {shimocha_wind:?}: a Pon on it would skip the \
-                 facing player and hand the right player the extra draw."
+                "The right player's seat wind is {shimocha_wind:?}: a Pon on it, called from \
+                 your left player, would skip your turn."
             ),
         },
         BookRule {
             id: "shimocha_wind_first".to_string(),
             rule: "Of the valueless winds, throw the right player's wind first and the facing \
-                   player's wind second."
+                   player's second: both can skip your turn, while the left player's call \
+                   cannot."
                 .to_string(),
             quote: "When discarding valueless wind tiles, discard the right player's wind first, \
                     then the facing player's wind next."
@@ -1638,22 +1819,35 @@ fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
             ),
         },
         BookRule {
-            id: "discard_it_early".to_string(),
-            rule: "A wind worth denying to the right player is thrown as early as possible, \
-                   before they can pair it."
+            id: "pon_from_you_skips_nobody".to_string(),
+            rule: "Throw it from your own hand: a Pon on your discard comes from the caller's \
+                   left player, which skips nobody."
                 .to_string(),
             quote: "you should do so sooner rather than later".to_string(),
             citation: ch9_seating(452, "sooner rather than later"),
-            applies: "This is the first discard, so the wind leaves before anyone has shown a \
-                      pair."
+            applies: "This is the first discard, so the copy leaves before the right player \
+                      could pair it and call on someone else's tile."
+                .to_string(),
+        },
+        BookRule {
+            id: "pair_never_forms".to_string(),
+            rule: "A first-turn wind tends to pull the other copies out in the same turn, so \
+                   the pair never forms and the later Pon never happens."
+                .to_string(),
+            quote: "there is a good chance that another player may do the same in the 1st turn \
+                    as well, lowering the chance that the South player builds a pair"
+                .to_string(),
+            citation: ch9_seating(452, "good chance that another player may do the same"),
+            applies: "Everyone is choosing a first discard, so the other copies can leave the \
+                      table before this one pairs."
                 .to_string(),
         },
     ];
 
     Some(BookRationale {
         summary: format!(
-            "Discard the right player's wind ({answer}) first: a Pon on their wind is the call \
-             the book most wants to deny."
+            "Discard the right player's wind ({answer}) first: a Pon from them can skip your \
+             turn, and a first-turn wind is unlikely to come back as a pair."
         ),
         rules,
         absent: Vec::new(),
@@ -1849,11 +2043,13 @@ fn hand_holds_a_dora(state: &GameState) -> bool {
         .any(|tile| dora.contains(&tile))
 }
 
-/// The two pure-defense lessons: the ch. 8 safety chart and its fallback list.
+/// The pure-defense lessons: the ch. 8 safety chart, its ranking mode and its
+/// fallback list.
 fn defense_rationale(state: &GameState) -> Option<BookRationale> {
     let is_chart = state.category == "defense_safety_chart";
+    let is_ranking = state.category == "suji_kabe_safety";
     let is_stuck = state.category == "defense_stuck_heuristic";
-    if !is_chart && !is_stuck {
+    if !is_chart && !is_ranking && !is_stuck {
         return None;
     }
 
@@ -1865,7 +2061,30 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
 
     let mut rules = Vec::new();
     let mut caveats = Vec::new();
-    let summary = if is_chart {
+    let summary = if is_ranking {
+        rules.extend(mechanism_rules(&read, &answer_text));
+        rules.push(chart_row_rule(&read, &answer_text, &state.equivalent_tiles));
+        rules.push(runner_up_rule(state, &facts, answer, &answer_text));
+        rules.push(push_fold_rule(state, &read, &answer_text));
+        caveats.push(
+            "The answer is inside a block in the hand (a pair, a set, or a protorun), so this \
+             discard visibly breaks the hand up to fold; boards where the safest tile is a lone \
+             float are rejected."
+                .to_string(),
+        );
+        caveats.push(
+            "Honor rows are excluded from this drill even where their visible-count row is as \
+             safe: the lesson is the suji and blockade arithmetic in the answer column, not honor \
+             counting."
+                .to_string(),
+        );
+        format!(
+            "Safest discard: {answer_text} is Rank {} ({}), with the runner-up exactly one row \
+             worse.",
+            read.rank.code(),
+            read.rank.label()
+        )
+    } else if is_chart {
         rules.extend(mechanism_rules(&read, &answer_text));
         rules.push(chart_row_rule(&read, &answer_text, &state.equivalent_tiles));
         rules.push(push_fold_rule(state, &read, &answer_text));
@@ -1905,7 +2124,7 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
         )
     };
 
-    let source = if is_chart {
+    let source = if is_chart || is_ranking {
         ch8(CH8_RANKING, 292, "Safety ranking")
     } else {
         ch8(CH8_STUCK, 344, "What to discard when you get stuck")
@@ -2360,6 +2579,57 @@ fn chart_row_rule(
     }
 }
 
+/// Why the next-best tile cannot be confused with the answer.
+///
+/// The ranking lesson is built so the hand's second-best tile is exactly one
+/// row down `tbl:safety`; that gap is what makes the answer learnable instead
+/// of a pile of equally-wrong alternatives.
+fn runner_up_rule(
+    state: &GameState,
+    facts: &crate::safety::SafetyFacts,
+    answer: Tile,
+    answer_text: &str,
+) -> BookRule {
+    let mut distinct: Vec<Tile> = state
+        .tiles
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+    distinct.sort();
+    distinct.dedup();
+
+    let runner = distinct
+        .into_iter()
+        .filter(|tile| *tile != answer)
+        .min_by_key(|tile| facts.rank(*tile).order());
+
+    let applies = match runner {
+        Some(runner) => {
+            let read = facts.read(runner);
+            format!(
+                "{} is Rank {} ({}), exactly one row below {answer_text}; every other tile is \
+                 further down the table.",
+                format_tile_for_display(&runner.to_string(), false),
+                read.rank.code(),
+                read.rank.label()
+            )
+        }
+        None => format!("{answer_text} is the only tile left to compare."),
+    };
+
+    BookRule {
+        id: "runner_up_row".to_string(),
+        rule: "The second-best tile is exactly one row down the chart, so the answer's rank is \
+               the only thing separating the two discards."
+            .to_string(),
+        quote: "No chance $>$ Double one chance $>$ One chance (earlier turns) $>$ One chance \
+                (later turns) $\\simeq$ Non-{\\jap suji}"
+            .to_string(),
+        citation: ch8(CH8_BLOCKADE_RANKING, 263, "No chance $>$ Double one chance"),
+        applies,
+    }
+}
+
 /// The book's push threshold for a hand this far from ready.
 ///
 /// Ch. 8, "Defense against riichi": a 1-away hand may push with Rank C or
@@ -2592,6 +2862,34 @@ fn absent_tiles(
         .collect()
 }
 
+/// The middle tiles (`x+1` in `x, x+1, x+1, x+2`) of every bulging float in the
+/// hand, in tile order.
+///
+/// Only the concealed hand is searched: the ready lesson's open Yakuhai Pon can
+/// never form a bulge, and the generator builds one bulge per hand.
+fn bulge_middles(state: &GameState) -> Vec<Tile> {
+    let counts = hand_counts(state);
+    let mut middles = Vec::new();
+    for suit in [Suit::Man, Suit::Pin, Suit::Sou] {
+        for base in 1..=7u8 {
+            let low = Tile::Suited { suit, value: base };
+            let mid = Tile::Suited {
+                suit,
+                value: base + 1,
+            };
+            let high = Tile::Suited {
+                suit,
+                value: base + 2,
+            };
+            let count = |tile: &Tile| counts.get(tile).copied().unwrap_or(0);
+            if count(&low) >= 1 && count(&mid) >= 2 && count(&high) >= 1 {
+                middles.push(mid);
+            }
+        }
+    }
+    middles
+}
+
 fn hand_counts(state: &GameState) -> std::collections::HashMap<Tile, u8> {
     let mut counts = std::collections::HashMap::new();
     let Some(human) = human(state) else {
@@ -2739,45 +3037,84 @@ mod tests {
     }
 
     #[test]
-    fn nakabukure_hand_gets_a_category_rationale() {
-        let state = generate_puzzle("nakabukure_ready").expect("nakabukure must generate");
+    fn nakabukure_hand_gets_a_rationale_for_each_answer() {
+        // The drill now mixes the ready-hand drop with the 1-away keep and
+        // break hands, so the rationale has to follow whichever hand comes up.
+        let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
 
-        let rationale = rationale_for(&state).expect("nakabukure needs a rationale");
+        for _ in 0..200 {
+            let state = generate_puzzle("nakabukure_ready").expect("nakabukure must generate");
+            let rationale = rationale_for(&state).expect("nakabukure needs a rationale");
+            assert!(rationale.absent.is_empty());
+            assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+            assert!(!rationale.caveats.is_empty());
 
-        assert_eq!(rationale.rules.len(), 3);
-        assert!(rationale.absent.is_empty());
-        assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
-        assert_eq!(rationale.source.chapter, 3);
-        assert_eq!(rationale.source.section, "Bulging float (nakabukure) shape");
-        assert!(!rationale.caveats.is_empty());
+            let answer =
+                Tile::try_from(state.correct_action.tile().expect("answer tile")).expect("tile");
+            let middles = bulge_middles(&state);
+            let kind = if !state.players[0].melds.is_empty() {
+                "ready"
+            } else if middles.contains(&answer) {
+                "break"
+            } else {
+                "keep"
+            };
+            seen.insert(kind);
 
-        let ids: Vec<&str> = rationale
-            .rules
-            .iter()
-            .map(|rule| rule.id.as_str())
-            .collect();
+            let ids: Vec<&str> = rationale
+                .rules
+                .iter()
+                .map(|rule| rule.id.as_str())
+                .collect();
+            match kind {
+                "ready" => {
+                    assert_eq!(state.shanten, 0);
+                    assert_eq!(
+                        ids,
+                        vec![
+                            "bulge_pair_wait",
+                            "discard_the_bulge",
+                            "keep_until_one_away"
+                        ]
+                    );
+                    assert_eq!(rationale.source.chapter, 3);
+                    assert_eq!(rationale.source.section, "Bulging float (nakabukure) shape");
+
+                    let discard = state.correct_action.tile().expect("answer tile");
+                    let wait = state.ukeire_tiles.first().expect("wait tile");
+                    assert!(
+                        rationale.rules[1]
+                            .applies
+                            .contains(&format_tile_for_display(discard, false)),
+                        "the answer rule must name the discard"
+                    );
+                    assert!(
+                        rationale.rules[1]
+                            .applies
+                            .contains(&format_tile_for_display(wait, false)),
+                        "the answer rule must name the wait"
+                    );
+                }
+                "keep" => {
+                    assert_eq!(state.shanten, 1);
+                    assert!(ids.contains(&"keep_the_bulge"));
+                    assert_eq!(rationale.source.chapter, 3);
+                    assert!(rationale.summary.contains("Keep the bulging float"));
+                }
+                "break" => {
+                    assert_eq!(state.shanten, 1);
+                    assert!(ids.contains(&"rival_block_became_decent"));
+                    assert_eq!(rationale.source.chapter, 4);
+                    assert!(rationale.summary.contains("Break the bulging float"));
+                }
+                other => panic!("unexpected nakabukure shape {other}"),
+            }
+        }
+
         assert_eq!(
-            ids,
-            vec![
-                "bulge_pair_wait",
-                "discard_the_bulge",
-                "keep_until_one_away"
-            ]
-        );
-
-        let discard = state.correct_action.tile().expect("answer tile");
-        let wait = state.ukeire_tiles.first().expect("wait tile");
-        assert!(
-            rationale.rules[1]
-                .applies
-                .contains(&format_tile_for_display(discard, false)),
-            "the answer rule must name the discard"
-        );
-        assert!(
-            rationale.rules[1]
-                .applies
-                .contains(&format_tile_for_display(wait, false)),
-            "the answer rule must name the wait"
+            seen.len(),
+            3,
+            "200 draws must cover the ready, keep, and break hands: {seen:?}"
         );
     }
 
@@ -3070,6 +3407,7 @@ mod tests {
             "wind_discard_order",
             "fold_to_riichi",
             "defense_safety_chart",
+            "suji_kabe_safety",
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
@@ -3099,6 +3437,7 @@ mod tests {
             "wind_discard_order",
             "fold_to_riichi",
             "defense_safety_chart",
+            "suji_kabe_safety",
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
@@ -3406,11 +3745,25 @@ mod tests {
             "wind_discard_order",
             "fold_to_riichi",
             "defense_safety_chart",
+            "suji_kabe_safety",
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
+            citations.extend(
+                rationale_for(&state)
+                    .expect("rationale")
+                    .rules
+                    .into_iter()
+                    .map(|rule| rule.citation),
+            );
+        }
+
+        // The bulging-float drill serves three different rule sets, so one
+        // draw could miss two of them; sample it until every answer is covered.
+        for _ in 0..60 {
+            let state = generate_puzzle("nakabukure_ready").expect("scenario must generate");
             citations.extend(
                 rationale_for(&state)
                     .expect("rationale")
@@ -3455,9 +3808,10 @@ mod tests {
         assert_eq!(
             ids,
             vec![
-                "call_benefits_right_player",
+                "calls_move_turns",
                 "shimocha_wind_first",
-                "discard_it_early"
+                "pon_from_you_skips_nobody",
+                "pair_never_forms"
             ]
         );
         assert!(
@@ -3471,6 +3825,45 @@ mod tests {
             rationale.rules
         );
         assert!(!rationale.summary.is_empty());
+    }
+
+    /// The seating tip's danger is a Pon the right player calls from our left
+    /// player. A Pon on our own discard skips nobody, so the rationale must
+    /// not promise a skipped turn for that case.
+    #[test]
+    fn wind_discard_rationale_pins_the_pon_source_of_the_skipped_turn() {
+        let state = generate_puzzle("wind_discard_order").expect("lesson must generate");
+        let rationale = rationale_for(&state).expect("the seating tip needs a rationale");
+
+        let cost = rationale
+            .rules
+            .iter()
+            .find(|rule| rule.id == "calls_move_turns")
+            .expect("the seating cost must be stated");
+        assert!(
+            cost.applies.contains("from your left player"),
+            "the skipped turn comes from the left player's discard: {}",
+            cost.applies
+        );
+
+        let safe = rationale
+            .rules
+            .iter()
+            .find(|rule| rule.id == "pon_from_you_skips_nobody")
+            .expect("the harmless Pon source must be stated");
+        assert!(
+            safe.rule.contains("skips nobody"),
+            "a Pon on our own discard must not be described as skipping a turn: {}",
+            safe.rule
+        );
+
+        assert!(
+            rationale
+                .rules
+                .iter()
+                .any(|rule| rule.id == "pair_never_forms"),
+            "the first-turn pair race must be stated"
+        );
     }
 
     #[test]
@@ -3735,6 +4128,39 @@ mod tests {
         }
 
         assert!(saw_same_suit && saw_different_suit);
+    }
+
+    #[test]
+    fn suji_kabe_rationale_names_the_runner_up_row() {
+        for run in 0..25 {
+            let state = generate_puzzle("suji_kabe_safety").expect("suji kabe must generate");
+            let rationale = rationale_for(&state).expect("suji kabe needs a rationale");
+
+            assert_eq!(rationale.source.chapter, 8);
+            assert!(
+                rationale
+                    .summary
+                    .contains("runner-up exactly one row worse")
+            );
+            assert!(
+                rationale
+                    .rules
+                    .iter()
+                    .any(|rule| rule.id == "suji" || rule.id == "no_chance"),
+                "run {run}: the mechanism must be named"
+            );
+            let runner_up = rationale
+                .rules
+                .iter()
+                .find(|rule| rule.id == "runner_up_row")
+                .expect("the ranking gap must be explained");
+            assert!(
+                runner_up.applies.contains("exactly one row below"),
+                "run {run}: {}",
+                runner_up.applies
+            );
+            assert_eq!(runner_up.citation.source_line, 263);
+        }
     }
 
     #[test]

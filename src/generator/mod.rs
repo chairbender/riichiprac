@@ -20,6 +20,9 @@
 //!   declared Riichi discards the one 100% safe tile, even though it breaks a
 //!   block.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
+//!   `suji_kabe_safety` is the ranking mode of the fold board: the safest tile
+//!   is a suji or no-chance tile, never the free genbutsu, and the runner-up is
+//!   exactly one row down `tbl:safety`.
 //! - `open_hand_defense`: ch. 8.4's open-hand read: an opponent's chii followed
 //!   by a discard in the same suit makes that discard's neighbourhood safe; a
 //!   different-suit discard makes it dangerous.
@@ -138,10 +141,18 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
     },
     ScenarioMeta {
         id: ScenarioId::NakabukureReady,
-        label: "Nakabukure Ready",
-        description: "Block theory: in a ready hand, drop the bulging float for the bigger wait.",
+        label: "Bulging Float",
+        description: "Block theory: the bulging float is a real decision — keep it for two \
+                      runs, or break it for a better block or wait.",
         category: ScenarioCategory::TileEfficiency,
-        tags: &["block_theory", "discard", "nakabukure", "shape"],
+        tags: &[
+            "block_theory",
+            "discard",
+            "nakabukure",
+            "shape",
+            "keep",
+            "break",
+        ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
     },
@@ -311,6 +322,23 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::SujiKabeSafety,
+        label: "Defense: Suji / No-Chance Ranking",
+        description: "The safest tile is a suji or no-chance tile: rank the hand on the book's \
+                      table, where the runner-up is exactly one row worse.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &[
+            "defense",
+            "betaori",
+            "suji",
+            "kabe",
+            "safety_chart",
+            "ranking",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::DefenseStuckHeuristic,
         label: "Defense: Nothing Is Safe",
         description: "No tile is identified as safe: apply the book's fallback and break up the pair.",
@@ -382,6 +410,7 @@ pub enum ScenarioId {
     AiBestAction,
     FoldToRiichi,
     DefenseSafetyChart,
+    SujiKabeSafety,
     DefenseStuckHeuristic,
     OpenHandDefense,
 }
@@ -407,6 +436,7 @@ impl ScenarioId {
         ScenarioId::AiBestAction,
         ScenarioId::FoldToRiichi,
         ScenarioId::DefenseSafetyChart,
+        ScenarioId::SujiKabeSafety,
         ScenarioId::DefenseStuckHeuristic,
         ScenarioId::OpenHandDefense,
     ];
@@ -432,6 +462,7 @@ impl ScenarioId {
             ScenarioId::AiBestAction => "ai_best_action",
             ScenarioId::FoldToRiichi => "fold_to_riichi",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
+            ScenarioId::SujiKabeSafety => "suji_kabe_safety",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
             ScenarioId::OpenHandDefense => "open_hand_defense",
         }
@@ -458,6 +489,7 @@ impl ScenarioId {
             "ai_best_action" => Some(ScenarioId::AiBestAction),
             "fold_to_riichi" => Some(ScenarioId::FoldToRiichi),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
+            "suji_kabe_safety" => Some(ScenarioId::SujiKabeSafety),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
             _ => None,
@@ -489,6 +521,7 @@ impl ScenarioId {
             ),
             ScenarioId::FoldToRiichi => fold_to_riichi::generate(category),
             ScenarioId::DefenseSafetyChart => defense::generate_safety_chart(category),
+            ScenarioId::SujiKabeSafety => defense::generate_suji_kabe(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
             ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
         }

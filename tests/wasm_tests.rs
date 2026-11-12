@@ -229,6 +229,15 @@ fn test_list_scenarios_payload() {
     );
     assert!(
         scenarios.iter().any(|scenario| {
+            scenario["id"] == "suji_kabe_safety"
+                && scenario["category"] == "defense_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the suji/no-chance ranking lesson must be listed as a book lesson"
+    );
+    assert!(
+        scenarios.iter().any(|scenario| {
             scenario["id"] == "open_hand_defense"
                 && scenario["category"] == "defense_decision"
                 && scenario["grading"] == "book_and_mortal"
@@ -2452,9 +2461,46 @@ fn test_ryanmen_rejection_sampling_constraints() {
     }
 }
 
+/// Every bulging float in a tile list, as its middle tile code.
+fn bulge_middles(tiles: &[&str]) -> Vec<String> {
+    let mut middle = Vec::new();
+    for suit in ['m', 'p', 's'] {
+        for base in 1..=7u8 {
+            let low = format!("{base}{suit}");
+            let mid = format!("{}{suit}", base + 1);
+            let high = format!("{}{suit}", base + 2);
+            let count = |code: &str| tiles.iter().filter(|tile| **tile == code).count();
+            if count(&low) >= 1 && count(&mid) >= 2 && count(&high) >= 1 {
+                middle.push(mid);
+            }
+        }
+    }
+    middle
+}
+
+/// Ukeire after discarding one copy of `discard`, read back through agari.
+fn ukeire_after(tiles: &[&str], discard: &str) -> (i8, usize) {
+    let mut remaining = tiles.to_vec();
+    let index = remaining
+        .iter()
+        .position(|tile| *tile == discard)
+        .expect("discard must be in the hand");
+    remaining.remove(index);
+    let parsed = parse_hand(&remaining.join("")).expect("hand must parse in agari");
+    let counts = to_counts(&parsed);
+    (
+        calculate_shanten(&counts).shanten,
+        calculate_ukeire(&counts).total_count as usize,
+    )
+}
+
 #[wasm_bindgen_test]
-fn test_nakabukure_ready_rejection_sampling_constraints() {
-    for run in 0..25 {
+fn test_nakabukure_rejection_sampling_constraints() {
+    let mut saw_ready = false;
+    let mut saw_keep = false;
+    let mut saw_break = false;
+
+    for run in 0..60 {
         let json_output = generate_puzzle("nakabukure_ready".to_string());
         let val: serde_json::Value = serde_json::from_str(&json_output)
             .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
@@ -2465,7 +2511,6 @@ fn test_nakabukure_ready_rejection_sampling_constraints() {
         assert_eq!(val["riichi_sticks"], 0);
         assert_eq!(val["dora_indicators"].as_array().unwrap().len(), 1);
         assert_eq!(val["ura_dora_indicators"].as_array().unwrap().len(), 1);
-        assert_eq!(val["shanten"], 0);
         assert_eq!(val["is_agari"], false);
 
         let players = val["players"].as_array().expect("players array");
@@ -2476,91 +2521,58 @@ fn test_nakabukure_ready_rejection_sampling_constraints() {
             assert!(opponent["riichi_discard_index"].is_null());
         }
 
-        // Human hand, open Yakuhai Pon, and the drawn honour.
         let human = &players[0];
-        assert_eq!(human["hand"].as_array().unwrap().len(), 10);
-        assert_eq!(human["melds"].as_array().unwrap().len(), 1);
-        assert_eq!(human["melds"][0]["meld_type"], "Pon");
-        let meld_tiles = human["melds"][0]["tiles"].as_array().unwrap();
-        assert_eq!(meld_tiles.len(), 3);
-        assert!(meld_tiles.iter().all(|tile| tile == &meld_tiles[0]));
-
         let answer = val["correct_action"]["discard"]
             .as_str()
-            .expect("dama action must include a discard tile");
-        let draw = human["draw"].as_str().expect("human draw");
-        assert_ne!(answer, draw, "run {run}: the draw is not the answer");
-        assert!(
-            draw.ends_with('z'),
-            "run {run}: the alternative discard is the floating honour"
-        );
+            .expect("dama action must include a discard tile")
+            .to_string();
+        let draw = human["draw"].as_str().expect("human draw").to_string();
+        let melds = human["melds"].as_array().unwrap();
 
-        // The visible full hand is exactly hand + draw + open meld.
-        let mut expected: Vec<&str> = human["hand"]
+        // The visible full hand is exactly hand + draw + melds.
+        let mut expected: Vec<String> = human["hand"]
             .as_array()
             .unwrap()
             .iter()
-            .map(|tile| tile.as_str().unwrap())
+            .map(|tile| tile.as_str().unwrap().to_string())
             .collect();
-        expected.push(draw);
-        expected.extend(meld_tiles.iter().map(|tile| tile.as_str().unwrap()));
+        expected.push(draw.clone());
+        for meld in melds {
+            expected.extend(
+                meld["tiles"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|tile| tile.as_str().unwrap().to_string()),
+            );
+        }
         expected.sort();
-        let mut actual: Vec<&str> = val["tiles"]
+        let mut actual: Vec<String> = val["tiles"]
             .as_array()
             .unwrap()
             .iter()
-            .map(|tile| tile.as_str().unwrap())
+            .map(|tile| tile.as_str().unwrap().to_string())
             .collect();
         actual.sort();
         assert_eq!(actual, expected);
 
-        // The bulge tile is held exactly twice.
-        assert_eq!(
-            actual.iter().filter(|tile| **tile == answer).count(),
-            2,
-            "run {run}: the answer is the middle tile of the bulge"
+        // No hand tile is the dora, and the answer is not already in a river.
+        let indicator = parse_hand(val["dora_indicators"][0].as_str().unwrap())
+            .expect("indicator must parse")
+            .remove(0);
+        let dora = indicator_to_dora(indicator).to_string();
+        assert!(
+            !actual.contains(&dora),
+            "run {run}: a hand tile is the dora"
         );
-
-        // The book's discard leaves the lone honour as the only wait, with
-        // three live copies.
-        let wait_tiles: Vec<&str> = val["ukeire_tiles"]
-            .as_array()
-            .expect("ukeire_tiles array")
-            .iter()
-            .map(|tile| tile.as_str().unwrap())
-            .collect();
-        assert_eq!(wait_tiles, vec![draw]);
-        assert_eq!(val["ukeire_total"], 3);
-
-        // The tempting discard leaves the bulge tile, of which only two remain.
-        let mut post_float = actual.clone();
-        let float_index = post_float
-            .iter()
-            .position(|tile| *tile == draw)
-            .expect("draw must be in the full hand");
-        post_float.remove(float_index);
-        let parsed =
-            parse_hand(&post_float.join("")).expect("post-discard hand must parse in agari");
-        let counts = to_counts(&parsed);
-        assert_eq!(calculate_shanten(&counts).shanten, 0);
-        let ukeire = calculate_ukeire(&counts);
-        assert_eq!(ukeire.tiles.len(), 1);
-        assert_eq!(ukeire.tiles[0].tile.to_string(), answer);
-        assert_eq!(ukeire.total_count, 2);
-        assert!(val["ukeire_total"].as_u64().unwrap() > 2);
-
-        // Furiten and availability: neither wait is visible anywhere.
         for player in players {
             for discard in player["discards"].as_array().unwrap() {
-                let tile = discard["tile"].as_str().unwrap();
-                assert_ne!(tile, answer, "run {run}: answer is visibly discarded");
-                assert_ne!(tile, draw, "run {run}: the honour is visibly discarded");
+                assert_ne!(
+                    discard["tile"].as_str().unwrap(),
+                    answer,
+                    "run {run}: the answer is already discarded"
+                );
             }
-        }
-        for indicator in val["dora_indicators"].as_array().unwrap() {
-            let tile = indicator.as_str().unwrap();
-            assert_ne!(tile, answer);
-            assert_ne!(tile, draw);
         }
 
         let total_score: i64 = players
@@ -2568,7 +2580,133 @@ fn test_nakabukure_ready_rejection_sampling_constraints() {
             .map(|player| player["score"].as_i64().expect("score int"))
             .sum();
         assert_eq!(total_score, 100_000);
+
+        let tiles: Vec<&str> = actual.iter().map(|tile| tile.as_str()).collect();
+
+        if melds.len() == 1 {
+            // Ready-hand drop: open Yakuhai Pon, 10 concealed tiles, a floating
+            // honour, and the bulge tile as the answer.
+            saw_ready = true;
+            assert_eq!(val["shanten"], 0);
+            assert_eq!(human["hand"].as_array().unwrap().len(), 10);
+            assert_eq!(human["melds"][0]["meld_type"], "Pon");
+            let meld_tiles = human["melds"][0]["tiles"].as_array().unwrap();
+            assert_eq!(meld_tiles.len(), 3);
+            assert!(meld_tiles.iter().all(|tile| tile == &meld_tiles[0]));
+            assert_ne!(answer, draw, "run {run}: the draw is not the answer");
+            assert!(
+                draw.ends_with('z'),
+                "run {run}: the alternative discard is the floating honour"
+            );
+            assert_eq!(
+                actual.iter().filter(|tile| **tile == answer).count(),
+                2,
+                "run {run}: the answer is the middle tile of the bulge"
+            );
+
+            // The book's discard leaves the lone honour as the only wait, with
+            // three live copies.
+            let wait_tiles: Vec<&str> = val["ukeire_tiles"]
+                .as_array()
+                .expect("ukeire_tiles array")
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            assert_eq!(wait_tiles, vec![draw.as_str()]);
+            assert_eq!(val["ukeire_total"], 3);
+
+            // The tempting discard leaves the bulge tile, of which only two
+            // remain.
+            let (shanten, total) = ukeire_after(&tiles, &draw);
+            assert_eq!(shanten, 0);
+            assert_eq!(total, 2);
+        } else {
+            // 1-away hands are closed.
+            assert!(melds.is_empty());
+            assert_eq!(val["shanten"], 1);
+            assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+            assert_eq!(val["can_riichi"], false);
+
+            let middles = bulge_middles(&tiles);
+            assert_eq!(
+                middles.len(),
+                1,
+                "run {run}: the hand holds exactly one bulging float"
+            );
+            let middle = middles[0].clone();
+
+            let without_answer: Vec<&str> = {
+                let mut remaining = tiles.clone();
+                let index = remaining
+                    .iter()
+                    .position(|tile| *tile == answer)
+                    .expect("answer in hand");
+                remaining.remove(index);
+                remaining
+            };
+
+            if middle == answer {
+                // ch. 4 Exercise 14: the rival block became decent, so the
+                // bulge tile is the discard. No bulge remains, and it accepts
+                // more tiles than any keep-the-bulge discard.
+                saw_break = true;
+                assert!(
+                    bulge_middles(&without_answer).is_empty(),
+                    "run {run}: breaking the bulge must remove it"
+                );
+                let (shanten, broken) = ukeire_after(&tiles, &answer);
+                assert_eq!(shanten, 1);
+                let mut distinct = tiles.clone();
+                distinct.sort();
+                distinct.dedup();
+                for candidate in distinct {
+                    if candidate == answer {
+                        continue;
+                    }
+                    let mut remaining = tiles.clone();
+                    let index = remaining
+                        .iter()
+                        .position(|tile| *tile == candidate)
+                        .expect("candidate in hand");
+                    remaining.remove(index);
+                    if bulge_middles(&remaining).len() != 1 {
+                        continue;
+                    }
+                    let (shanten, kept) = ukeire_after(&tiles, candidate);
+                    if shanten != 1 {
+                        continue;
+                    }
+                    assert!(
+                        broken > kept,
+                        "run {run}: breaking the bulge ({broken}) must beat keeping it \
+                         with {candidate} ({kept})"
+                    );
+                }
+            } else {
+                // ch. 4 Answer 13: the bulge stays and a rival pair's tile is
+                // thrown, even though breaking the bulge accepts more tiles.
+                saw_keep = true;
+                assert!(
+                    bulge_middles(&without_answer).len() == 1,
+                    "run {run}: the keep discard must leave the bulge intact"
+                );
+                let (shanten, kept) = ukeire_after(&tiles, &answer);
+                assert_eq!(shanten, 1);
+                assert_eq!(val["ukeire_total"].as_u64().unwrap() as usize, kept);
+                let (break_shanten, broken) = ukeire_after(&tiles, &middle);
+                assert_eq!(break_shanten, 1);
+                assert!(
+                    broken > kept,
+                    "run {run}: breaking the bulge ({broken}) must accept more than \
+                     keeping it ({kept}), so counting tiles alone is wrong"
+                );
+            }
+        }
     }
+
+    assert!(saw_ready, "the sweep must include a ready-hand drop");
+    assert!(saw_keep, "the sweep must include a keep-the-bulge hand");
+    assert!(saw_break, "the sweep must include a break-the-bulge hand");
 }
 
 #[wasm_bindgen_test]
@@ -2783,6 +2921,55 @@ fn test_fold_to_riichi_payload() {
                 .as_array()
                 .is_some_and(|absent| !absent.is_empty()),
             "run {run}: the other tiles must be listed"
+        );
+    }
+}
+
+#[wasm_bindgen_test]
+fn test_suji_kabe_safety_payload() {
+    for run in 0..20 {
+        let json_output = generate_puzzle("suji_kabe_safety".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}"));
+
+        assert_eq!(val["category"], "suji_kabe_safety");
+        assert_eq!(val["target_action"], "Defend");
+        assert_eq!(val["correct_action"]["type"], "fold");
+        assert_eq!(val["decision"]["kind"], "self_turn");
+        assert_eq!(val["can_riichi"], false);
+        assert!(val["shanten"].as_i64().unwrap() >= 1);
+
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("a fold answer names the discard");
+        let hand = val["players"][0]["hand"].as_array().expect("hand");
+        assert_eq!(hand.len(), 13);
+        assert_eq!(val["players"][0]["draw"], answer);
+        assert!(val["players"][0]["melds"].as_array().unwrap().is_empty());
+
+        // The ranking mode never has a genbutsu tie: the answer is the only
+        // tile on its row.
+        assert!(
+            val["equivalent_tiles"]
+                .as_array()
+                .is_none_or(|ties| ties.is_empty()),
+            "run {run}: the ranking lesson must not accept a 100% tie"
+        );
+
+        // The book panel has to name the mechanism and the one-row runner-up.
+        let rule_ids: Vec<&str> = val["book_rationale"]["rules"]
+            .as_array()
+            .expect("rules")
+            .iter()
+            .filter_map(|rule| rule["id"].as_str())
+            .collect();
+        assert!(
+            rule_ids.contains(&"suji") || rule_ids.contains(&"no_chance"),
+            "run {run}: the rationale must name the suji or blockade read: {rule_ids:?}"
+        );
+        assert!(
+            rule_ids.contains(&"runner_up_row"),
+            "run {run}: the rationale must name the one-row runner-up: {rule_ids:?}"
         );
     }
 }

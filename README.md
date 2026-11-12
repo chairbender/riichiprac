@@ -90,12 +90,12 @@ action list, and the evaluation. React only renders and grades.
 
 ## Defense scenarios
 
-Four lessons train defense. Three answer an opponent's Riichi and the fourth
-reads an open hand's post-`chii` discard. The first two start from a hand that is
-never ready, so the question is only which tile is safest to let go; the fold
-lesson additionally requires the hand to be junk, which is what makes folding
-the book's answer. All are graded by the book's rule; Mortal's answer appears
-beside it after you answer.
+Five lessons train defense. Four answer an opponent's Riichi and the fifth
+reads an open hand's post-`chii` discard. The four Riichi lessons start from a
+hand that is never ready, so the question is only which tile is safest to let
+go; the fold lesson additionally requires the hand to be junk, which is what
+makes folding the book's answer. All are graded by the book's rule; Mortal's
+answer appears beside it after you answer.
 
 **Defense: Fold to Riichi** is ch. 8.1's push/fold shortcut. The hand is 2-away
 with no dora and no value, and one opponent has declared Riichi from a deep
@@ -119,6 +119,15 @@ tile behind a blockade, or an honor ranked by its visible copies — and fills t
 rest of the hand with tiles the chart ranks strictly lower, so the safest
 discard is unique. The book panel names the chart row the answer sits on and
 lists the other tiles with their ranks ("Not this hand").
+
+**Defense: Suji / No-Chance Ranking** is the same fold board without the
+freebie: the answer is never genbutsu, only a suji or no-chance tile. The hand
+also holds a tile exactly one row down `tbl:safety`, and every other tile is
+further down the table, so the drill is about the gap between neighbouring
+rows rather than about spotting a 100% tile. The answer must sit inside a pair,
+a set, or a protorun, so the fold visibly breaks the hand up; the variants cover
+the suji-terminal rows (`A+`, `AA-`, `AA`), `BBB` (suji 4-5-6 or no chance),
+`BB+`, and `BB-`.
 
 **Defense: Nothing Is Safe** is the chapter's fallback, "What to discard when
 you get stuck". Nothing in the hand is Rank B or safer, so the chart identifies
