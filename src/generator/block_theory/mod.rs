@@ -3,6 +3,7 @@ pub mod nobetan_keep;
 pub mod pair_count;
 pub mod pair_count_open;
 pub mod perfect_one_away;
+pub mod protorun_plus_one;
 pub mod protorun_priority;
 pub mod random_hand;
 pub mod ryankan_break;

@@ -307,6 +307,19 @@ fn ch3_pairs(line: u32, needle: &str) -> Citation {
     )
 }
 
+/// Riichi Book 1, ch. 3, "Protorun plus one shape" — the three-type table and
+/// the "break the weaker one" instruction for competing plus-one shapes.
+fn ch3_protorun_plus_one(line: u32, needle: &str) -> Citation {
+    citation(
+        3,
+        "Riichi mahjong basics",
+        "Protorun plus one shape",
+        "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
 /// Riichi Book 1, ch. 5, "Toitoi vs. chiitoitsu" — the three chiitoitsu
 /// criteria and the futile-pair rule that overrides the toitoi plan.
 fn ch5_toitoi(line: u32, needle: &str) -> Citation {
@@ -1147,6 +1160,10 @@ pub(crate) fn scenario_source(category: &str) -> Option<Citation> {
         "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
         "protorun_priority" => Some(ch3(205, "can accept twice as many tiles")),
         "ryankan_break" => Some(ch3_ryankan(523, "break the double closed shape")),
+        "protorun_plus_one" => Some(ch3_protorun_plus_one(
+            574,
+            "priority should be given to the weaker one",
+        )),
         "skipping_block" => Some(ch3_skipping(
             713,
             "increases the kinds of tiles the hand can accept",
@@ -1792,6 +1809,126 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
                 "Only the low ryankan terminal keeps the side wait. The high ryankan \
                  terminal leaves closed waits only, so it is not graded as an equivalent \
                  discard."
+                    .to_string(),
+            ],
+        });
+    }
+
+    if state.category == "protorun_plus_one" {
+        let answer_code = state.correct_action.tile()?.to_string();
+        let answer = format_tile_for_display(&answer_code, false);
+        let accepted = state.ukeire_total;
+        let rival_code = tied_rival_discard(state);
+        let rival = rival_code
+            .as_deref()
+            .map(|code| format_tile_for_display(code, false))
+            .unwrap_or_default();
+        let rival_accepts = rival_code
+            .as_deref()
+            .and_then(|code| Tile::try_from(code).ok())
+            .and_then(|tile| acceptance_without(state, tile))
+            .unwrap_or(accepted);
+
+        let rules = vec![
+            BookRule {
+                id: "protorun_plus_one_acceptance".to_string(),
+                rule: "A protorun plus one accepts two extra tiles that its bare protorun cannot: \
+                       the spare copy of the pair tile is also a triplet candidate."
+                    .to_string(),
+                quote: "A protorun plus one can accept two additional tiles that an isolated \
+                        protorun cannot."
+                    .to_string(),
+                citation: ch3_protorun_plus_one(545, "accept two additional tiles"),
+                applies: "The book's table gives the side wait plus one 3 kinds--10 tiles and \
+                          the closed wait plus one 2 kinds--6 tiles, against 8 and 4 for the \
+                          same protoruns without their cover."
+                    .to_string(),
+            },
+            BookRule {
+                id: "cover_the_weaker_protorun".to_string(),
+                rule: "When two protorun-plus-one shapes compete, keep the cover on the weaker \
+                       protorun and break the stronger one's cover."
+                    .to_string(),
+                quote: "When choosing between which protoruns plus one to break, priority \
+                        should be given to the weaker one."
+                    .to_string(),
+                citation: ch3_protorun_plus_one(574, "priority should be given to the weaker one"),
+                applies: format!(
+                    "Discarding {answer} keeps the closed wait covered. It is the block that \
+                     accepts only one kind on its own, so it needs the back-up more than the \
+                     two-kind side wait does."
+                ),
+            },
+            BookRule {
+                id: "strong_side_wait_needs_no_cover".to_string(),
+                rule: "The side-wait protorun is strong enough without its cover, so its cover \
+                       is the tile to give up."
+                    .to_string(),
+                quote: "the side-wait protorun ... is so strong that we do not need to provide a \
+                        cover by maintaining the plus-one tile"
+                    .to_string(),
+                citation: ch3_protorun_plus_one(574, "do not need to provide a cover"),
+                applies: "The side wait already accepts two kinds bare; the closed wait accepts \
+                          one, which is exactly where the book puts the spare tile."
+                    .to_string(),
+            },
+            BookRule {
+                id: "no_block_too_weak".to_string(),
+                rule: "The five-block method forbids leaving a block that is too weak, and a bare \
+                       closed wait is the weakest block this hand can hold."
+                    .to_string(),
+                quote: "there is no block that is too weak".to_string(),
+                citation: ch4(48, "too weak"),
+                applies: if rival.is_empty() {
+                    format!(
+                        "Both cover breaks accept {accepted} tiles, so acceptance cannot decide."
+                    )
+                } else {
+                    format!(
+                        "Discarding {rival} would leave the closed wait bare at 4 tiles and the \
+                         side wait covered at 10; discarding {answer} keeps the closed wait \
+                         covered at 6 and the side wait bare at 8. Both total {accepted}, so the \
+                         cover placement is the only difference."
+                    )
+                },
+            },
+        ];
+
+        return Some(BookRationale {
+            summary: if rival.is_empty() {
+                format!(
+                    "Break the side wait's cover: the closed wait is the weaker protorun, so it \
+                     keeps its back-up and discards {answer} instead."
+                )
+            } else {
+                format!(
+                    "Break the side wait's cover, not the closed wait's: discarding {answer} or \
+                     {rival} both leave {accepted} tiles, so acceptance ties and the book covers \
+                     the weaker protorun. Discard {answer}."
+                )
+            },
+            rules,
+            absent: Vec::new(),
+            source: ch3_protorun_plus_one(574, "priority should be given to the weaker one"),
+            caveats: vec![
+                if rival.is_empty() {
+                    "The other cover break accepts the same tiles, so the book's cover rule, \
+                     not tile efficiency, decides this drill."
+                        .to_string()
+                } else {
+                    format!(
+                        "Breaking the closed wait's cover ({rival}) accepts the same \
+                         {rival_accepts} tiles as the book's discard; the two hands are mirror \
+                         images where the other protorun keeps its cover. The book grades only \
+                         {answer}, because the weak closed wait is the block that needs \
+                         protecting (ch3:574)."
+                    )
+                },
+                "The book's example is closed; this trainer opens a Yakuhai Pon so Riichi \
+                 cannot mask the discard lesson."
+                    .to_string(),
+                "The drawn tile is one of the two covers, so the answer is sometimes the draw \
+                 and sometimes a hand tile; the drill is the shape comparison, not tsumogiri."
                     .to_string(),
             ],
         });
@@ -2604,6 +2741,42 @@ fn acceptance_without(state: &GameState, tile: Tile) -> Option<u8> {
     let index = tiles.iter().position(|held| *held == tile)?;
     tiles.remove(index);
     Some(crate::generator::evaluate_hand(&tiles).ukeire_total)
+}
+
+/// The other cover break in a `protorun_plus_one` hand: the discard that keeps
+/// the same shanten and the same tile acceptance as the book's answer.
+///
+/// The lesson exists because a cover adds exactly the same two tiles to either
+/// protorun, so breaking the closed wait's cover ties the book's break of the
+/// side wait's cover. The rationale names that tied discard and explains why
+/// the book still rejects it (ch3:574).
+fn tied_rival_discard(state: &GameState) -> Option<String> {
+    let answer = state.correct_action.tile()?.to_string();
+    let human = human(state)?;
+    let mut seen: Vec<&String> = Vec::new();
+
+    for code in human.hand.iter().chain(human.draw.iter()) {
+        if *code == answer || seen.contains(&code) {
+            continue;
+        }
+        seen.push(code);
+
+        let tile = Tile::try_from(code.as_str()).ok()?;
+        let mut tiles: Vec<Tile> = state
+            .tiles
+            .iter()
+            .filter_map(|code| Tile::try_from(code.as_str()).ok())
+            .collect();
+        let index = tiles.iter().position(|held| *held == tile)?;
+        tiles.remove(index);
+
+        let metrics = crate::generator::evaluate_hand(&tiles);
+        if metrics.shanten == state.shanten && metrics.ukeire_total == state.ukeire_total {
+            return Some(code.clone());
+        }
+    }
+
+    None
 }
 
 /// The ch. 5.1 floating sanshoku gate: keep the redundant tile only when the
@@ -5911,6 +6084,7 @@ mod tests {
             "nakabukure_ready",
             "protorun_priority",
             "ryankan_break",
+            "protorun_plus_one",
             "skipping_block",
             "pair_count",
             "pair_count_open",
@@ -5951,6 +6125,7 @@ mod tests {
             "nakabukure_ready",
             "protorun_priority",
             "ryankan_break",
+            "protorun_plus_one",
             "skipping_block",
             "pair_count",
             "pair_count_open",
@@ -6398,6 +6573,7 @@ mod tests {
             "nakabukure_ready",
             "protorun_priority",
             "ryankan_break",
+            "protorun_plus_one",
             "skipping_block",
             "pair_count",
             "pair_count_open",

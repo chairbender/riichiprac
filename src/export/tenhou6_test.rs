@@ -389,6 +389,7 @@ const UNREACHABLE_CLAIMS: &[ScenarioId] = &[
     ScenarioId::NakabukureReady,
     ScenarioId::ProtorunPriority,
     ScenarioId::RyankanBreak,
+    ScenarioId::ProtorunPlusOne,
     ScenarioId::ShouminkanDecision,
 ];
 
