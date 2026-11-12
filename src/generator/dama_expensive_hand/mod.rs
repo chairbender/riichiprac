@@ -29,10 +29,24 @@ mod skeleton;
 use crate::generator::support::retry::generate_with_retries;
 use crate::state::GameState;
 
+pub(crate) use skeleton::Target;
+
 /// Generates a closed, expensive tenpai hand and asks Riichi or dama.
 pub fn generate(category: &str) -> Result<GameState, String> {
+    generate_with_target(category, sample_target())
+}
+
+/// Draws the value band the next request will teach, before any tile exists.
+///
+/// The two bands are equally likely, because they are the section's two
+/// distinct cells: "7700 is acceptable" and "haneman means no riichi".
+pub(crate) fn sample_target() -> Target {
+    skeleton::random_target()
+}
+
+/// Builds a hand and table under an already-drawn value band.
+pub(crate) fn generate_with_target(category: &str, target: Target) -> Result<GameState, String> {
     generate_with_retries("dama_expensive_hand", 20_000, || {
-        let target = skeleton::random_target();
         let built = skeleton::build(target)?;
         board::build(category, &built, target)
     })

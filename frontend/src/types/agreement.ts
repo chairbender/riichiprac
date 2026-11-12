@@ -29,6 +29,11 @@ export interface MortalAgreementReport {
   evaluations: number;
   /** Candidates the lesson generators could not build. */
   generation_failures: number;
+  /**
+   * The situation parameters drawn once for this request, when the lesson has
+   * a parameter concept. Every candidate was filled under this same set.
+   */
+  situation?: string;
   /** Always true on the accepted path. */
   accepted: boolean;
   /** Mortal's top action on the accepted candidate. */

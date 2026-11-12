@@ -48,6 +48,7 @@ function isReport(value: unknown): value is MortalAgreementReport {
     isCount(report.attempts) &&
     isCount(report.evaluations) &&
     isCount(report.generation_failures) &&
+    (report.situation === undefined || typeof report.situation === 'string') &&
     typeof report.accepted === 'boolean' &&
     (report.recommended_action === undefined ||
       typeof report.recommended_action === 'string') &&
@@ -99,9 +100,24 @@ function plural(count: number, one: string, many: string): string {
  * One sentence describing what the filter did, shown under the table.
  *
  * The accepted hand is the point of the setting, so the sentence leads with
- * that and keeps the rejection breakdown short.
+ * that and keeps the rejection breakdown short. When the generated state
+ * carries a pinned situation, its parameter list is appended so the player can
+ * see which condition the hand was deliberately built to isolate — the whole
+ * point of drawing the situation before the tiles.
  */
 export function formatAgreementNotice(report: MortalAgreementReport): string {
+  return withSituation(describeAgreement(report), report);
+}
+
+/** Appends the pinned parameter set when the report carries one. */
+function withSituation(
+  notice: string,
+  report: MortalAgreementReport,
+): string {
+  return report.situation ? `${notice} Situation: ${report.situation}.` : notice;
+}
+
+function describeAgreement(report: MortalAgreementReport): string {
   if (report.attempts <= 1) {
     return 'Mortal agrees with the book answer — first candidate.';
   }

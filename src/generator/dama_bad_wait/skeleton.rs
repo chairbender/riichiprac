@@ -39,13 +39,27 @@ use crate::state::Wind;
 
 /// What the next hand should teach.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Target {
+pub(crate) enum Target {
     /// One or two live simple winning tiles: stay dama (ch7:522).
     DamaFewSimples,
     /// Three or four live winning tiles: call riichi (ch7:521).
     RiichiManyLive,
     /// One or two live tiles on an honor/terminal wait: riichi (ch7:522).
     RiichiHonorTerminal,
+}
+
+impl Target {
+    /// The parameter named for the agreement report.
+    ///
+    /// Each target already isolates one cell of the box, so the wording names
+    /// the cell rather than a list of conditions.
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::DamaFewSimples => "dama: one or two live simple winning tiles",
+            Self::RiichiManyLive => "riichi: three or more live winning tiles",
+            Self::RiichiHonorTerminal => "riichi: one or two live honor/terminal winning tiles",
+        }
+    }
 }
 
 impl Target {

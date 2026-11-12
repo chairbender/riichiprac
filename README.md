@@ -306,19 +306,38 @@ assert!(puzzle.agreement.expect("report").accepted);
 From the WASM evaluator the same filter is
 `evaluator.generate_puzzle_with_agreement(category, '{"enabled": true, "max_candidates": 40}')`,
 which returns `{"state": GameState, "agreement": MortalAgreementReport}`. The
-report records the bound, `attempts`, `evaluations`, and rejects split into
-`action`, `tile`, `incomparable`, and `evaluation_failed`. Passing
+report records the bound, `attempts`, `evaluations`, rejects split into
+`action`, `tile`, `incomparable`, and `evaluation_failed`, and — for a lesson
+with situation parameters — the `situation` string naming the condition set the
+hand was built to isolate (for example `riichi: good wait only`). Passing
 `{"enabled": false}` (or `MortalAgreementOptions::disabled()`) returns the plain
 `generate_puzzle` candidate with no report, so a host can keep one settings blob
 and toggle the filter.
+
+The filter draws the lesson's **situation parameters once per request** and
+re-fills the hand under that same set on every rejected candidate. Filtering
+cannot change the question, so "Mortal must agree" cannot drift the drill toward
+its most obvious hands. A lesson without a parameter concept (the block-theory
+discards, the safety, call and kan lessons, and `dama_genbutsu_wait` /
+`suji_trap_riichi`, whose answer is fixed) keeps the old per-candidate draw. If
+the pinned set cannot be built at all the call fails with an error naming it,
+rather than silently choosing a different situation.
+
+The `riichi_judgement` draw is also weighted toward the isolated conditions now:
+a uniform draw over the eight sets spent five eighths of the hands on two or
+three conditions at once, so the drill rarely tested one condition on its own.
+Single-condition sets (good wait only, extra han only, dealer only) carry five
+times the weight of the all-three set, which puts five eighths of the draw on an
+isolated condition while keeping every combination reachable.
 
 In the app it is the **Mortal must agree** checkbox beside the scenario picker.
 It is per-session and stays disabled until the model is ready; turning it on
 re-deals the hand on screen through the filter, and a short note under the table
 says how many candidates were rejected and why (for example "accepted on 5
-candidates (4 rejected: 3 tile mismatches, 1 incomparable answer)"). The filter
-only applies to book-graded lessons: a Mortal drill has no book answer for Mortal
-to agree with, so it is dealt as usual and graded by the model alone. The default
+candidates (4 rejected: 3 tile mismatches, 1 incomparable answer)"), followed by
+the pinned situation when the lesson has one. The filter only applies to
+book-graded lessons: a Mortal drill has no book answer for Mortal to agree
+with, so it is dealt as usual and graded by the model alone. The default
 page load stays book-only and instant, and a browser without the weights can
 never enable it. The sampling runs in the inference worker, so the table stays
 interactive while it searches.
