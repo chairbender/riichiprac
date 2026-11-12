@@ -90,11 +90,34 @@ action list, and the evaluation. React only renders and grades.
 
 ## Defense scenarios
 
-Three lessons train defense. The first two answer an opponent's Riichi and the
-third reads an open hand's post-`chii` discard. None asks about hand value: the
-generated hand is never ready, so the question is only which tile is safest to
-let go. All are graded by the book's rule; Mortal's answer appears beside it
-after you answer.
+Four lessons train defense. Three answer an opponent's Riichi or open hand with
+the safest tile; the fourth decides whether to defend at all. All are graded by
+the book's rule; Mortal's answer appears beside it after you answer.
+
+**Push or Fold** is ch. 8.1's box:
+
+> Push if two of the following conditions are met: ready hand; high scoring
+> hand; good wait. — ch8:23
+
+> Pushing with a 1-away hand is acceptable only when both of the other two
+> conditions are met. — ch8:62
+
+The lesson isolates that 1-away cell, so the "ready" condition never holds and
+the hand must have both of the others. Both branches deal the same shape — two
+sets, two protoruns and two pairs, the second pair just completed by the draw.
+The push cell makes that shape a guaranteed mangan (a concealed dragon triplet
+that is also three dora, so the worst winning tile is 8000) with side waits on
+both protoruns, then asks for the shape-preserving discard. That discard is a
+pair tile on the chart's most dangerous Rank D row, which the book allows only
+through its own exception: "Only if your hand has a guaranteed mangan, you can
+discard Rank D tiles." The fold cell is the mirror: same shape, but the hand has
+no yaku and its closed-wait protoruns mean at least one way it becomes ready can
+only reach a closed, edge or single wait, so the answer is the threat's genbutsu
+— a tile inside a complete set, which visibly breaks the hand. The wait is judged
+the way the book judges a 1-away hand, on "the best possible wait pattern you can
+choose when the hand becomes ready in the worst possible manner" (ch8:68), which
+the generator checks by enumerating every completion. Both answers are ordinary
+discards: pushing is the shape-preserving pair tile, folding is the safe one.
 
 **Defense: Safest Discard** builds a board where Riichi Book 1, ch. 8's safety
 ranking (`tbl:safety`) has a real answer — a genbutsu, a suji tile, a no-chance

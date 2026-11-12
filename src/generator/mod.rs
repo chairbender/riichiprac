@@ -17,6 +17,8 @@
 //! - `suji_trap_riichi`: ch. 8's immediate suji trap: declare Riichi on the
 //!   discard that makes the wait look like a safe suji.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
+//! - `push_or_fold`: ch. 8.1's push/fold box, isolated on the 1-away cell:
+//!   push a guaranteed mangan with a perfect wait, fold a cheap bad-wait hand.
 //! - `open_hand_defense`: ch. 8.4's open-hand read: an opponent's chii followed
 //!   by a discard in the same suit makes that discard's neighbourhood safe; a
 //!   different-suit discard makes it dangerous.
@@ -41,6 +43,7 @@ mod defense;
 mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
+pub(crate) mod push_or_fold;
 mod riichi_judgement;
 mod shouminkan_decision;
 mod situation;
@@ -296,6 +299,23 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::MortalOnly,
     },
     ScenarioMeta {
+        id: ScenarioId::PushOrFold,
+        label: "Push or Fold",
+        description: "Ch. 8.1 push/fold: a 1-away hand may push only with both a high \
+                      score and a good wait; otherwise fold to the safest tile.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &[
+            "defense",
+            "push_fold",
+            "betaori",
+            "value",
+            "wait",
+            "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::DefenseSafetyChart,
         label: "Defense: Safest Discard",
         description: "An opponent has declared Riichi: discard the tile the book's safety chart ranks safest.",
@@ -374,6 +394,7 @@ pub enum ScenarioId {
     MeldOrNot,
     WindDiscardOrder,
     AiBestAction,
+    PushOrFold,
     DefenseSafetyChart,
     DefenseStuckHeuristic,
     OpenHandDefense,
@@ -398,6 +419,7 @@ impl ScenarioId {
         ScenarioId::WindDiscardOrder,
         ScenarioId::MeldOrNot,
         ScenarioId::AiBestAction,
+        ScenarioId::PushOrFold,
         ScenarioId::DefenseSafetyChart,
         ScenarioId::DefenseStuckHeuristic,
         ScenarioId::OpenHandDefense,
@@ -422,6 +444,7 @@ impl ScenarioId {
             ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::MeldOrNot => "meld_or_not",
             ScenarioId::AiBestAction => "ai_best_action",
+            ScenarioId::PushOrFold => "push_or_fold",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
             ScenarioId::OpenHandDefense => "open_hand_defense",
@@ -447,6 +470,7 @@ impl ScenarioId {
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
+            "push_or_fold" => Some(ScenarioId::PushOrFold),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
@@ -477,6 +501,7 @@ impl ScenarioId {
                  generate_ai_puzzle"
                     .to_string(),
             ),
+            ScenarioId::PushOrFold => push_or_fold::generate(category),
             ScenarioId::DefenseSafetyChart => defense::generate_safety_chart(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
             ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
@@ -546,6 +571,7 @@ pub(crate) fn sample_situation(category: &str) -> Option<Situation> {
         ScenarioId::ChiitoitsuRiichiVsDama => Some(Situation::Chiitoitsu(
             chiitoitsu_riichi_vs_dama::Target::sample(),
         )),
+        ScenarioId::PushOrFold => Some(Situation::PushOrFold(push_or_fold::sample_target())),
         _ => None,
     }
 }

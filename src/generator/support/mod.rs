@@ -9,3 +9,4 @@ pub mod table;
 #[cfg(test)]
 pub(crate) mod testing;
 pub mod tiles;
+pub mod value;

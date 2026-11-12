@@ -728,6 +728,22 @@ pub fn is_near_dora(tile: Tile, dora_indicators: &[Tile]) -> bool {
     })
 }
 
+/// The middle tiles whose discard makes `tile` a suji tile.
+///
+/// Riichi Book 1, ch. 8, "Understanding suji": a tile is safe against a side
+/// wait when the middle tile of that wait is genbutsu. A 4, 5 or 6 has two such
+/// middle tiles (1-7, 2-8, 3-9); a terminal has one. Generation uses this to
+/// keep a tile off the suji rows.
+pub fn suji_deniers(tile: Tile) -> Vec<Tile> {
+    let (Some(suit), Some(value)) = (tile.suit(), tile.value()) else {
+        return Vec::new();
+    };
+    suji_intervals(value)
+        .iter()
+        .map(|(denier, _)| Tile::suited(suit, *denier))
+        .collect()
+}
+
 /// The side-wait intervals that can catch a number tile: `(denier, protorun)`.
 ///
 /// A tile is `suji` when every denier is genbutsu — the opponent cannot wait on
