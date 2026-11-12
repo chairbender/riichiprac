@@ -5,8 +5,9 @@
 //!   nakabukure (bulging float) ready-hand lesson, the ryankan (double
 //!   closed shape) break lesson, the pair count (avoid three pairs in a
 //!   closed hand) lesson, its open-hand companion (keep three pairs when
-//!   a Pon is planned), and the perfect 1-away lesson (which discard keeps
-//!   two side waits and two pairs).
+//!   a Pon is planned), the nobetan (stretched single) lesson: keep 3456 or
+//!   4567 even at a small acceptance cost, and the perfect 1-away lesson
+//!   (which discard keeps two side waits and two pairs).
 //! - `yaku`: the ch. 5 yaku-pursuit decisions. `sanshoku_pursuit` is the
 //!   floating method: keep the redundant tile for sanshoku only when the hand
 //!   has no other yaku or dora.
@@ -93,11 +94,13 @@ use crate::ai::model::MortalV4Model;
 use crate::state::GameState;
 use situation::Situation;
 
+pub(crate) use block_theory::nobetan_keep::nobetan_starts;
 pub(crate) use daiminkan_decision::{DaiminkanTriggerSet, facts as daiminkan_facts};
 pub(crate) use honitsu_decision::{Variant as HonitsuVariant, facts as honitsu_facts};
 pub(crate) use support::analysis::floating_quad_acceptance;
 pub(crate) use support::analysis::wind_to_honor;
 pub use support::analysis::{HandMetrics, evaluate_hand};
+pub(crate) use support::completion::{best_completion, side_wait_routes};
 pub use support::completion::{is_perfect_one_away, perfect_one_away_shape};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
@@ -364,6 +367,18 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         description: "Block theory: keep the new side wait and break the double closed shape.",
         category: ScenarioCategory::TileEfficiency,
         tags: &["block_theory", "discard", "ryankan", "shape", "ryanmen"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_SHAPES),
+    },
+    ScenarioMeta {
+        id: ScenarioId::NobetanKeep,
+        label: "Nobetan: Keep 3456",
+        description: "Block theory: keep the stretched single even though breaking it \
+                      accepts more tiles, because the kept shape leaves far more \
+                      side-wait completions.",
+        category: ScenarioCategory::TileEfficiency,
+        tags: &["block_theory", "discard", "nobetan", "shape", "ryanmen"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
         book: Some(BOOK_CH3_SHAPES),
@@ -760,6 +775,7 @@ pub enum ScenarioId {
     NakabukureReady,
     ProtorunPriority,
     RyankanBreak,
+    NobetanKeep,
     PairCount,
     PairCountOpen,
     PerfectOneAway,
@@ -795,6 +811,7 @@ impl ScenarioId {
         ScenarioId::NakabukureReady,
         ScenarioId::ProtorunPriority,
         ScenarioId::RyankanBreak,
+        ScenarioId::NobetanKeep,
         ScenarioId::PairCount,
         ScenarioId::PairCountOpen,
         ScenarioId::PerfectOneAway,
@@ -830,6 +847,7 @@ impl ScenarioId {
             ScenarioId::NakabukureReady => "nakabukure_ready",
             ScenarioId::ProtorunPriority => "protorun_priority",
             ScenarioId::RyankanBreak => "ryankan_break",
+            ScenarioId::NobetanKeep => "nobetan_keep",
             ScenarioId::PairCount => "pair_count",
             ScenarioId::PairCountOpen => "pair_count_open",
             ScenarioId::PerfectOneAway => "perfect_one_away",
@@ -866,6 +884,7 @@ impl ScenarioId {
             "nakabukure_ready" => Some(ScenarioId::NakabukureReady),
             "protorun_priority" => Some(ScenarioId::ProtorunPriority),
             "ryankan_break" => Some(ScenarioId::RyankanBreak),
+            "nobetan_keep" => Some(ScenarioId::NobetanKeep),
             "pair_count" => Some(ScenarioId::PairCount),
             "pair_count_open" => Some(ScenarioId::PairCountOpen),
             "perfect_one_away" => Some(ScenarioId::PerfectOneAway),
@@ -903,6 +922,7 @@ impl ScenarioId {
             ScenarioId::NakabukureReady => block_theory::nakabukure_ready::generate(category),
             ScenarioId::ProtorunPriority => block_theory::protorun_priority::generate(category),
             ScenarioId::RyankanBreak => block_theory::ryankan_break::generate(category),
+            ScenarioId::NobetanKeep => block_theory::nobetan_keep::generate(category),
             ScenarioId::PairCount => block_theory::pair_count::generate(category),
             ScenarioId::PairCountOpen => block_theory::pair_count_open::generate(category),
             ScenarioId::PerfectOneAway => block_theory::perfect_one_away::generate(category),

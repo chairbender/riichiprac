@@ -17,7 +17,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use agari::parse::to_counts;
+use agari::parse::{parse_hand, to_counts};
 use agari::shanten::{
     calculate_shanten, calculate_shanten_with_melds, calculate_ukeire, calculate_ukeire_with_melds,
 };
@@ -243,8 +243,10 @@ fn ch3_bulging(line: u32, needle: &str) -> Citation {
     )
 }
 
-/// Riichi Book 1, ch. 3, "Stretched single (nobetan) shape" — the "too myopic"
-/// argument that raw tile acceptance is not the goal.
+/// Riichi Book 1, ch. 3, "Stretched single (nobetan) shape" — the stretched
+/// single's definition and side-wait table, the "too myopic" argument that raw
+/// tile acceptance is not the goal, and the 2-away hand where the book keeps
+/// 3456 even though breaking it accepts more tiles.
 fn ch3_nobetan(line: u32, needle: &str) -> Citation {
     citation(
         3,
@@ -1131,6 +1133,10 @@ pub(crate) fn scenario_source(category: &str) -> Option<Citation> {
         "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
         "protorun_priority" => Some(ch3(205, "can accept twice as many tiles")),
         "ryankan_break" => Some(ch3_ryankan(523, "break the double closed shape")),
+        "nobetan_keep" => Some(ch3_nobetan(
+            669,
+            "Try to keep a stretched single shape if a hand has one",
+        )),
         "pair_count" => Some(ch3_pairs(
             336,
             "we should avoid having three pairs in a hand",
@@ -1559,6 +1565,139 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
                  that completed the closed wait); the other tile is graded as equal.",
                 state.ukeire_total
             )],
+        });
+    }
+
+    if state.category == "nobetan_keep" {
+        let answer_code = state.correct_action.tile()?;
+        let answer = format_tile_for_display(answer_code, false);
+        let full = parse_hand(&state.tiles.join("")).ok()?;
+        let answer_tile = parse_hand(answer_code).ok()?.into_iter().next()?;
+        let keep = {
+            let mut tiles = full.clone();
+            let index = tiles.iter().position(|tile| *tile == answer_tile)?;
+            tiles.remove(index);
+            tiles
+        };
+        let starts = crate::generator::nobetan_starts(&keep);
+        let (suit, base) = starts.first().copied()?;
+        let shape: Vec<String> = (base..base + 4)
+            .map(|value| format_tile_for_display(&Tile::suited(suit, value).to_string(), false))
+            .collect();
+        let shape_text = shape.join("");
+
+        // The rival line is the stretched single's end that accepts the most
+        // tiles once the shape is broken.
+        let mut rival: Option<(u8, Tile, usize)> = None;
+        for value in [base, base + 3] {
+            let end = Tile::suited(suit, value);
+            let mut broken = full.clone();
+            let Some(index) = broken.iter().position(|tile| *tile == end) else {
+                continue;
+            };
+            broken.remove(index);
+            let acceptance = calculate_ukeire(&to_counts(&broken)).total_count;
+            let routes = crate::generator::side_wait_routes(&broken);
+            if rival.is_none_or(|(best, _, _)| acceptance > best) {
+                rival = Some((acceptance, end, routes));
+            }
+        }
+        let (rival_acceptance, rival_end, rival_routes) = rival?;
+        let rival_end_text = format_tile_for_display(&rival_end.to_string(), false);
+
+        let keep_routes = crate::generator::side_wait_routes(&keep);
+        let best = crate::generator::best_completion(&keep);
+        let best_waits = best
+            .as_ref()
+            .map(|line| {
+                line.waits
+                    .iter()
+                    .map(|tile| format_tile_for_display(&tile.to_string(), false))
+                    .collect::<Vec<_>>()
+                    .join(" / ")
+            })
+            .unwrap_or_default();
+        let best_count = best.as_ref().map(|line| line.wait_count).unwrap_or(0);
+
+        let rules = vec![
+            BookRule {
+                id: "nobetan_definition".to_string(),
+                rule: "A stretched single (nobetan) is four consecutive tiles in one suit. \
+                       3456 and 4567 are the most versatile: they accept two kinds for a \
+                       three-way wait, two for a side wait, two for a closed wait, and two \
+                       for a pair."
+                    .to_string(),
+                quote: "the middle two ones --- 3456 and 4567 --- are the most versatile"
+                    .to_string(),
+                citation: ch3_nobetan(
+                    649,
+                    "the middle two ones --- 3456 and 4567 --- are the most versatile",
+                ),
+                applies: format!(
+                    "The hand holds {shape_text}; discarding {answer} keeps all four tiles."
+                ),
+            },
+            BookRule {
+                id: "nobetan_keep".to_string(),
+                rule: "Keep a stretched single, in particular 3456 and 4567, until the hand \
+                       becomes ready or 1-away from ready."
+                    .to_string(),
+                quote: "Try to keep a stretched single shape if a hand has one. In particular, \
+                        3456 and 4567 should be kept until the hand becomes ready or 1-away \
+                        from ready."
+                    .to_string(),
+                citation: ch3_nobetan(
+                    669,
+                    "Try to keep a stretched single shape if a hand has one",
+                ),
+                applies: "This hand is 2-away: not ready and not 1-away, so the shape is \
+                          still worth keeping."
+                    .to_string(),
+            },
+            BookRule {
+                id: "nobetan_myopic_acceptance".to_string(),
+                rule: "Breaking an end of the shape accepts more tiles right now, but the book \
+                       calls that too myopic: it leaves only closed and edge waits, while the \
+                       kept shape can still produce side-wait protoruns."
+                    .to_string(),
+                quote: "discarding wan3 or wan6 would lead to the greatest tile acceptance ... \
+                        However, doing so is too myopic. If we do that, all the remaining \
+                        protoruns will be closed-wait or edge-wait ones."
+                    .to_string(),
+                citation: ch3_nobetan(662, "would lead to the greatest tile acceptance"),
+                applies: format!(
+                    "Discarding {answer} accepts {} tiles; breaking {shape_text} with \
+                     {rival_end_text} accepts {rival_acceptance} tiles. The completion enumeration \
+                     reaches a side wait {keep_routes} times when the shape is kept and \
+                     {rival_routes} times when it is broken.",
+                    state.ukeire_total
+                ),
+            },
+        ];
+
+        return Some(BookRationale {
+            summary: format!(
+                "Keep {shape_text}: discarding {answer} accepts {} tiles and still reaches a \
+                 side wait ({best_waits}, {best_count} tiles). Breaking the shape with \
+                 {rival_end_text} accepts {rival_acceptance} tiles, but it leaves \
+                 {rival_routes} side-wait completions against {keep_routes}.",
+                state.ukeire_total
+            ),
+            rules,
+            absent: Vec::new(),
+            source: ch3_nobetan(
+                669,
+                "Try to keep a stretched single shape if a hand has one",
+            ),
+            caveats: vec![
+                "The book's example is a 2-away hand and this trainer keeps that state; once \
+                 the hand is ready or 1-away the rule stops applying (ch3:669)."
+                    .to_string(),
+                "The comparison counts completion routes rather than claiming the broken hand \
+                 has no side wait at all: the pair and float it keeps can still reach one. The \
+                 drill grades the shape-preserving discard the book names."
+                    .to_string(),
+            ],
         });
     }
 
@@ -5205,6 +5344,65 @@ mod tests {
                 .any(|caveat| caveat.contains("high ryankan terminal")),
             "the caveat must say why the other terminal is not equivalent"
         );
+    }
+
+    #[test]
+    fn nobetan_keep_hand_shows_the_acceptance_cost_and_the_side_wait() {
+        for _ in 0..30 {
+            let state = generate_puzzle("nobetan_keep").expect("nobetan keep must generate");
+            let rationale = rationale_for(&state).expect("nobetan keep needs a rationale");
+
+            assert_eq!(rationale.rules.len(), 3);
+            assert!(rationale.absent.is_empty());
+            assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+            assert_eq!(rationale.source.chapter, 3);
+            assert_eq!(rationale.source.section, "Stretched single (nobetan) shape");
+            assert!(!rationale.caveats.is_empty());
+
+            let ids: Vec<&str> = rationale
+                .rules
+                .iter()
+                .map(|rule| rule.id.as_str())
+                .collect();
+            assert_eq!(
+                ids,
+                vec![
+                    "nobetan_definition",
+                    "nobetan_keep",
+                    "nobetan_myopic_acceptance"
+                ]
+            );
+
+            let discard = state.correct_action.tile().expect("answer tile");
+            // The acceptance rule names the discard and states the cost.
+            assert!(rationale.rules[2].applies.contains(discard));
+            assert!(
+                rationale.rules[2]
+                    .applies
+                    .contains(&state.ukeire_total.to_string()),
+                "the rule must state what the answer accepts: {}",
+                rationale.rules[2].applies
+            );
+            // The comparison is about waits, not just the rule's name.
+            assert!(
+                rationale.summary.contains("side wait"),
+                "the summary must show the wait comparison: {}",
+                rationale.summary
+            );
+            assert!(
+                rationale
+                    .rules
+                    .iter()
+                    .all(|rule| rule.citation.chapter == 3 && !rule.quote.is_empty())
+            );
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("2-away")),
+                "the caveat must name the book's state"
+            );
+        }
     }
 
     #[test]

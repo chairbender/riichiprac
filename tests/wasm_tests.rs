@@ -2347,6 +2347,102 @@ fn test_ryanmen_rejection_sampling_constraints() {
         }
     }
 
+    /// The nobetan-keep payload: a closed 2-away hand holding 3456/4567, where
+    /// breaking the shape accepts more tiles but leaves worse waits (ch3:662,
+    /// ch3:669).
+    #[wasm_bindgen_test]
+    fn test_nobetan_keep_payload() {
+        for run in 0..25 {
+            let json_output = generate_puzzle("nobetan_keep".to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+            assert_eq!(val["category"], "nobetan_keep");
+            assert_eq!(val["target_action"], "NaniKiru");
+            assert_eq!(val["correct_action"]["type"], "dama");
+            assert_eq!(val["riichi_sticks"], 0);
+            assert_eq!(val["dora_indicators"].as_array().unwrap().len(), 1);
+            assert_eq!(val["ura_dora_indicators"].as_array().unwrap().len(), 1);
+            assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
+            assert_eq!(val["shanten"], 2);
+            assert_eq!(val["is_agari"], false);
+            assert_eq!(val["can_riichi"], false);
+            assert!(!val["ukeire_tiles"].as_array().unwrap().is_empty());
+            assert!(val["ukeire_total"].as_u64().unwrap() > 0);
+            // The answer is unique, so nothing is graded as equivalent.
+            assert!(val["equivalent_tiles"].as_array().is_none_or(Vec::is_empty));
+
+            let players = val["players"].as_array().expect("players array");
+            assert_eq!(players.len(), 4);
+            for opponent in &players[1..] {
+                assert_eq!(opponent["is_riichi"], false);
+                assert_eq!(opponent["melds"].as_array().unwrap().len(), 0);
+                assert!(opponent["riichi_discard_index"].is_null());
+            }
+
+            // The human hand is closed and the drawn tile is the answer.
+            let human = &players[0];
+            assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+            assert_eq!(human["melds"].as_array().unwrap().len(), 0);
+            let answer = val["correct_action"]["discard"]
+                .as_str()
+                .expect("dama action must include a discard tile");
+            let draw = human["draw"].as_str().expect("human draw");
+            assert_eq!(draw, answer, "the drawn float is the answer");
+            assert!(
+                !human["hand"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|tile| tile.as_str() == Some(answer)),
+                "run {run}: the answer is the drawn tile, not a hand tile"
+            );
+
+            // The book rationale shows the acceptance cost and the wait-quality
+            // comparison instead of only asserting the rule.
+            let rationale = &val["book_rationale"];
+            assert_eq!(rationale["source"]["chapter"], 3);
+            assert_eq!(
+                rationale["source"]["section"],
+                "Stretched single (nobetan) shape"
+            );
+            let rules = rationale["rules"].as_array().expect("rules array");
+            assert_eq!(rules.len(), 3);
+            assert!(rationale["summary"].as_str().unwrap().contains("side wait"));
+
+            // Full hand = concealed hand + draw.
+            let mut expected: Vec<&str> = human["hand"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            expected.push(draw);
+            expected.sort();
+            let mut actual: Vec<&str> = val["tiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            actual.sort();
+            assert_eq!(actual, expected);
+
+            // The answer is never the dora: this is a shape lesson.
+            let indicator = parse_hand(val["dora_indicators"][0].as_str().unwrap())
+                .expect("dora indicator parses")
+                .remove(0);
+            assert_ne!(indicator_to_dora(indicator).to_string(), answer);
+
+            // Scores total 100,000.
+            let total_score: i64 = players
+                .iter()
+                .map(|player| player["score"].as_i64().expect("score int"))
+                .sum();
+            assert_eq!(total_score, 100_000);
+        }
+    }
+
     /// The pair-count payload: a closed 2-away hand whose draw pairs a tile of
     /// a side wait, so the book breaks the pair and keeps the protorun
     /// (ch3:336, ch3:331).
