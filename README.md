@@ -401,7 +401,7 @@ currently cannot be written as a real log (their claimed tile never appears in
 a river), which the tool reports instead of hiding; see `mortal-validation.md`
 for the workflow, the format notes and the findings.
 
-## Mortal-agreement generation (opt-in)
+## Mortal-agreement generation (on by default)
 
 The lessons are written from Riichi Book 1, and Mortal does not always play the
 book's move. `fuzz_scenarios` measures that gap; the generator can also filter it
@@ -454,16 +454,18 @@ times the weight of the all-three set, which puts five eighths of the draw on an
 isolated condition while keeping every combination reachable.
 
 In the app it is the **Mortal must agree** checkbox beside the scenario picker.
-It is per-session and stays disabled until the model is ready; turning it on
-re-deals the hand on screen through the filter, and a short note under the table
-says how many candidates were rejected and why (for example "accepted on 5
-candidates (4 rejected: 3 tile mismatches, 1 incomparable answer)"), followed by
-the pinned situation when the lesson has one. The filter only applies to
-book-graded lessons: a Mortal drill has no book answer for Mortal to agree
-with, so it is dealt as usual and graded by the model alone. The default
-page load stays book-only and instant, and a browser without the weights can
-never enable it. The sampling runs in the inference worker, so the table stays
-interactive while it searches.
+It is per-session and checked by default, including for the first hand; it stays
+disabled until the model is ready. Turning it off re-deals the hand on screen
+without the filter, and a short note under the table says how many candidates
+were rejected and why (for example "accepted on 5 candidates (4 rejected: 3 tile
+mismatches, 1 incomparable answer)"), followed by the pinned situation when the
+lesson has one. The filter only applies to book-graded lessons: a Mortal drill has
+no book answer for Mortal to agree with, so it is dealt as usual and graded by
+the model alone. Nothing persists the setting, so every fresh page load starts
+with it on. A browser that cannot load the weights falls back to a book-only hand
+and clears the checkbox rather than leaving it checked but unable to run. The
+sampling runs in the inference worker, so the table stays interactive while it
+searches.
 
 A candidate costs one forward pass (about 41 ms per pass with `mortal_298k` on a
 desktop CPU, and roughly twice that when Mortal chooses Riichi, because its

@@ -51,6 +51,7 @@ Two clusters dominate and neither is covered today: **8.2 (31 cards)** and
 | `chiitoitsu_riichi_vs_dama` | ch7 chiitoitsu riichi/dama boxes | 1463250985834, 1463251061277, 1464147205450 |
 | `shouminkan_decision` / `_decline` | ch9 kakan conditions | 1463256791280 |
 | `ai_best_action` | Mortal drill, no book rule | — |
+| `skipping_block` | ch3.3 skipping shape: keep the float two ranks from a run over an isolated float of the same rank | 1463194258219, 1463194377641 |
 
 So **4 of 126 cards** are covered outright, plus 3 more that `ryanmen_protorun`
 touches at a shallow level and that `protorun_priority` (§5.1) would teach properly.
@@ -308,13 +309,32 @@ player who did the arithmetic will feel cheated.
 
 #### `protorun_plus_one` / `skipping_block`
 
-Lower value duplicates of the same "which block to break" family; both are
-provable by ukeire. Cards 1463192845266/1463192901441/1463192939504 (protorun plus
-one, ch3:545 `A protorun plus one can accept two additional tiles that an isolated protorun cannot.`,
+Lower value duplicates of the same "which block to break" family. Cards
+1463192845266/1463192901441/1463192939504 (protorun plus one, ch3:545 `A protorun
+plus one can accept two additional tiles that an isolated protorun cannot.`,
 ch3:574 `When choosing between which protoruns plus one to break, priority should be given to the weaker one.`)
 and 1463194258219/1463194377641 (skipping, ch3:713
 `{\LARGE\wan{3}} in a skipping shape is more valuable than isolated {\LARGE\wan{3}}`).
-Build only if the shape family proves popular.
+
+**Implemented (`skipping_block`).** `src/generator/block_theory/skipping_block/`
+deals the book's own hand (ch3:787): two complete sets, three protoruns, and two
+floats of the *same* rank in different suits — one skipping two ranks from a run,
+one isolated — and answers with the isolated tile (ch3:795).
+
+The ukeire claim needed qualifying. In the book's hand both discards leave the
+hand 2-away and accept **exactly the same** tiles: in a hand with five blocks, a
+float is worth only its own kind, so counting acceptance cannot decide it. What
+does decide it is the book's table (`tbl:skipping`, ch3:716): the middle skipping
+shapes (3567, 4678, 2346, 3457) turn into a run plus a protorun on five kinds of
+draws, an isolated tile of that rank on four. `skeleton::verify_lesson` recomputes
+that count (`skipping_turns` vs `isolated_turns`) and rejects the two shapes whose
+float is a middle 5 (`5789`, `1235`), which only tie with an isolated 5. The
+terminal shapes stay in the drill: their three or four draws still beat an
+isolated terminal. The rationale states the acceptance tie outright rather than
+hiding it.
+
+`protorun_plus_one` remains unbuilt; it is the same generator with a protorun
+where the skipping float is.
 
 **Correction (implementation):** `protorun_plus_one` was built in task
 261110-175855, and the "provable by ukeire" claim above does not hold. A cover
