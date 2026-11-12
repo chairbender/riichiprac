@@ -647,8 +647,7 @@
   text-transform: uppercase;
 }
 
-.player-row--human .wind-badge,
-.table-seat-player--human .wind-badge {
+.player-row--human .wind-badge {
   background-color: #1d3a56;
   color: #a5d8ff;
 }
@@ -787,10 +786,13 @@
  * 2D - no perspective, vanishing point, or camera tilt - so this is a diagram
  * of where the seats, melds, and discards are, not a 3D table.
  *
- * Each seat's river starts at its player and runs towards the centre of the
- * table, and its tiles are turned by `--seat-rotation` to face their owner, the
- * way tiles lying on a real table read from above. The middle of the plan is
- * the "wall" square; the four corners are empty, as on a real table.
+ * Every seat is laid out in its owner's own frame: `--seat-rotation` turns its
+ * tiles to face the player, and each side's rules below flip the box
+ * directions so the layout means the same thing from every chair. A river
+ * starts at the corner nearest the middle of the table and fills across the
+ * player's view, row by row, towards the player; melds sit on the player's
+ * right and stack away from them. The compass in the middle is the only part
+ * of the table that carries text or scores.
  */
 .table-physical {
   flex: 1;
@@ -798,12 +800,14 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px;
+  /* A table full of melds can outgrow a phone; scroll it rather than clip it. */
+  overflow-x: auto;
 }
 
 .physical-table {
   /*
-   * Four rivers have to fit across the width, so the top-down view draws its
-   * tiles smaller than the stacked rows do.
+   * Four rivers and the compass have to fit across the width, so the top-down
+   * view draws its tiles smaller than the stacked rows do.
    */
   --river-tile-size: clamp(13px, 4vw, 26px);
   --river-tile-height: calc(var(--river-tile-size) * 4 / 3);
@@ -811,9 +815,8 @@
 
   display: grid;
   /*
-   * The side columns are equal, so the top and bottom rivers sit on the
-   * table's centre line even when one side player has melds to show and the
-   * other does not.
+   * The side columns are equal, so the table stays symmetric, and the middle
+   * column takes whatever the top and bottom seats and the compass need.
    */
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -832,11 +835,15 @@
 .table-seat,
 .table-seat-player,
 .table-seat-body {
+  min-width: 0;
+  min-height: 0;
+}
+
+.table-seat,
+.table-seat-player {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 0;
-  min-height: 0;
 }
 
 .table-seat {
@@ -864,70 +871,79 @@
 }
 
 /*
- * The four sides are mirror images of each other: the meta line sits nearest
- * the player, then the melds, then the river nearest the centre.
+ * A seat body holds the river and the melds side by side in the player's frame:
+ * the river on their left, the melds on their right. A side seat's body turns
+ * with its owner, which is why the two parts read as a column on screen there.
  */
 .table-seat-body {
-  align-items: center;
-}
-
-.table-seat--bottom .table-seat-player {
-  flex-direction: column-reverse;
+  display: flex;
+  gap: var(--physical-gap);
 }
 
 .table-seat--bottom .table-seat-body {
-  flex-direction: column-reverse;
-}
-
-.table-seat--left .table-seat-body {
   flex-direction: row;
 }
 
-.table-seat--right .table-seat-body {
+.table-seat--top .table-seat-body {
   flex-direction: row-reverse;
 }
 
-.table-seat-meta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 2px;
+.table-seat--left .table-seat-body {
+  flex-direction: column;
+}
+
+.table-seat--right .table-seat-body {
+  flex-direction: column-reverse;
 }
 
 /*
- * The side seats are the tightest part of the plan: their label is stacked so
- * the seat never demands more width than its river needs.
+ * Each part is pinned to one side of the body, measured in the player's frame:
+ * the river hugs the middle of the table because it fills towards the player,
+ * while the melds hug the player's own edge and grow away from them. In the
+ * directions below, "towards the middle" is the cross-axis end that faces the
+ * centre for that seat - the top edge for the human, the bottom edge for the
+ * player across, the right for the left player, and the left for the right
+ * player.
  */
-.table-seat--left .table-seat-meta,
-.table-seat--right .table-seat-meta {
-  flex-direction: column;
-  gap: 2px;
+.table-seat--bottom {
+  --centre-side: flex-start;
+  --player-side: flex-end;
 }
 
-.table-seat-meta .wind-badge {
-  padding: 1px 6px;
-  font-size: 0.6rem;
+.table-seat--top {
+  --centre-side: flex-end;
+  --player-side: flex-start;
 }
 
-.table-seat-meta .player-score {
-  font-size: 0.66rem;
+.table-seat--left {
+  --centre-side: flex-end;
+  --player-side: flex-start;
 }
 
-.table-seat-meta .riichi-stick {
-  width: 26px;
+.table-seat--right {
+  --centre-side: flex-start;
+  --player-side: flex-end;
+}
+
+.table-seat-body .river {
+  align-self: var(--centre-side);
+}
+
+.table-seat-body .melds {
+  align-self: var(--player-side);
 }
 
 /* Rivers ------------------------------------------------------------------ */
 
 /*
- * The river is a 6-wide grid in the stacked view. Rotated onto an edge it is
- * the same sequence of discards, so the flat view lays it out with flexbox and
- * changes only the direction the rows grow in.
+ * The river is a 6-wide grid in the stacked view; the plan view keeps the same
+ * sequence of discards and lays it out in the player's frame instead. The
+ * first discard sits at the player's top left, the tiles fill across to the
+ * right, and the next row goes below, so the newest discards end up on the
+ * player's own edge. A side seat reads the same rows as columns.
  */
 .physical-table .river {
   display: flex;
-  align-content: flex-start;
-  justify-content: flex-start;
   gap: var(--physical-gap);
 }
 
@@ -936,51 +952,62 @@
   width: calc(6 * var(--river-tile-height) + 5 * var(--physical-gap));
 }
 
-/* The human's (and the top player's) rows run along the edge, away from them. */
-.physical-table .table-seat--top .river {
-  flex-direction: row-reverse;
-  flex-wrap: wrap;
-}
-
-.physical-table .table-seat--bottom .river {
-  flex-direction: row;
-  flex-wrap: wrap-reverse;
-}
-
 .physical-table .table-seat--left .river,
 .physical-table .table-seat--right .river {
   height: calc(6 * var(--river-tile-height) + 5 * var(--physical-gap));
 }
 
-/* Side rivers run along the edge as columns, filling towards the centre. */
+.physical-table .table-seat--bottom .river {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.physical-table .table-seat--top .river {
+  flex-direction: row-reverse;
+  flex-wrap: wrap-reverse;
+}
+
 .physical-table .table-seat--left .river {
   flex-direction: column;
-  flex-wrap: wrap;
+  flex-wrap: wrap-reverse;
 }
 
 .physical-table .table-seat--right .river {
   flex-direction: column-reverse;
-  flex-wrap: wrap-reverse;
+  flex-wrap: wrap;
 }
 
 /* Melds ------------------------------------------------------------------- */
 
-.physical-table .table-seat--top .melds {
-  flex-direction: row-reverse;
-  max-width: calc(6 * var(--river-tile-height) + 5 * var(--physical-gap));
+/*
+ * Melds sit on the player's right, each one reading in the player's frame, and
+ * every meld after the first is stacked on top of the last, away from the
+ * player. A side seat therefore reads a meld as a column on screen and stacks
+ * its melds as a row.
+ */
+.physical-table .melds {
+  flex-wrap: nowrap;
+  gap: var(--physical-gap);
 }
 
 .physical-table .table-seat--bottom .melds {
-  max-width: calc(6 * var(--river-tile-height) + 5 * var(--physical-gap));
+  flex-direction: column-reverse;
 }
 
-/* A side player's melds stack along their edge, each meld read as a column. */
-.physical-table .table-seat--left .melds {
+.physical-table .table-seat--top .melds {
   flex-direction: column;
 }
 
+.physical-table .table-seat--left .melds {
+  flex-direction: row;
+}
+
 .physical-table .table-seat--right .melds {
-  flex-direction: column-reverse;
+  flex-direction: row-reverse;
+}
+
+.physical-table .table-seat--top .meld {
+  flex-direction: row-reverse;
 }
 
 .physical-table .table-seat--left .meld {
@@ -991,8 +1018,12 @@
   flex-direction: column-reverse;
 }
 
-.physical-table .table-seat--top .meld {
-  flex-direction: row-reverse;
+/*
+ * A real table has no room for words next to the melds: the tiles alone say
+ * what the call is, and the meld's own aria-label still carries the detail.
+ */
+.physical-table .meld-label {
+  display: none;
 }
 
 /*
@@ -1027,17 +1058,27 @@
   transform: rotate(calc(var(--seat-rotation, 0deg) + 90deg));
 }
 
-/* The wall stands in the middle of the table. */
+/* Compass ----------------------------------------------------------------- */
+
+/*
+ * The compass in the middle of the table. One corner per seat shows that
+ * player's wind and score facing them, the round and the wall count sit in the
+ * middle, and a Riichi stick goes on the middle side of the declaring
+ * player's corner - in front of them, as on an automatic table. Nothing else
+ * on the table is labelled.
+ */
 .physical-center {
   grid-area: 2 / 2 / 3 / 3;
   align-self: center;
   justify-self: center;
 
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  grid-template-rows: auto auto auto;
   align-items: center;
-  gap: 1px;
-  padding: 8px 10px;
+  justify-items: center;
+  gap: 2px 6px;
+  padding: 6px 8px;
   border: 1px solid #232a36;
   border-radius: 10px;
   background-color: #171c24;
@@ -1045,7 +1086,116 @@
   white-space: nowrap;
 }
 
-.physical-center-round {
+.compass-seat {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.compass-seat--top {
+  grid-area: 1 / 2 / 2 / 3;
+}
+
+.compass-seat--bottom {
+  grid-area: 3 / 2 / 4 / 3;
+}
+
+.compass-seat--left {
+  grid-area: 2 / 1 / 3 / 2;
+}
+
+.compass-seat--right {
+  grid-area: 2 / 3 / 3 / 4;
+}
+
+/*
+ * A corner reads in its player's frame: the wind and score sit away from the
+ * middle and the Riichi stick lands on the middle side, so a player across the
+ * table gets the same compass corner the human gets, turned around.
+ */
+.compass-player {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.compass-player--top {
+  flex-direction: column;
+}
+
+.compass-player--bottom {
+  flex-direction: column-reverse;
+}
+
+.compass-player--left {
+  flex-direction: row;
+}
+
+.compass-player--right {
+  flex-direction: row-reverse;
+}
+
+.compass-figure {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* The side corners are the tightest part of the compass: stack wind over score. */
+.compass-seat--left .compass-figure,
+.compass-seat--right .compass-figure {
+  flex-direction: column;
+  gap: 0;
+}
+
+.compass-wind {
+  color: #8fb8e0;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.compass-player--human .compass-wind {
+  color: #a5d8ff;
+}
+
+.compass-score {
+  color: #e7ecf3;
+  font-size: 0.6rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.compass-stick {
+  display: block;
+  width: 20px;
+  height: auto;
+}
+
+/*
+ * A Riichi stick points at the player who declared it, so the corners above
+ * and below the compass stand it on end. The square box keeps the turn inside
+ * the layout instead of letting the bar overflow its slot.
+ */
+.compass-player--top .compass-stick,
+.compass-player--bottom .compass-stick {
+  width: 18px;
+  height: 18px;
+  transform: rotate(90deg);
+}
+
+.compass-wall {
+  grid-area: 2 / 2 / 3 / 3;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.compass-round {
   color: #a5d8ff;
   font-size: 0.7rem;
   font-weight: 800;
@@ -1053,7 +1203,7 @@
   text-transform: uppercase;
 }
 
-.physical-center-wall {
+.compass-wall-count {
   color: #e7ecf3;
   font-size: 0.95rem;
   font-weight: 700;
@@ -1061,7 +1211,7 @@
   line-height: 1.1;
 }
 
-.physical-center-label {
+.compass-wall-label {
   font-size: 0.55rem;
   font-weight: 600;
   letter-spacing: 0.04em;

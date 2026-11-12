@@ -52,7 +52,9 @@ The app is a **Constraint Satisfaction Generator**:
   view. The one opt-in exception is the **Top-down table** checkbox in the header: a flat,
   top-down **plan** view (human's seat at the bottom edge, one seat per table edge) that can
   be switched on per session. Even there, stay 2D: no perspective, camera tilt, isometric
-  projection, 3D rendering, or textured table furniture.
+  projection, 3D rendering, or textured table furniture. In that view the table edges hold
+  only tiles: winds, scores, and Riichi sticks live on the compass in the middle, one corner
+  facing each player.
 * **Layout Structure:**
   * 4 strictly vertical flex/grid rows (one for each player).
   * Each opponent row displays their Wind, Points, Melds, and Discard River.
