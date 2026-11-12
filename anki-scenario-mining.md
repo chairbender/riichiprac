@@ -71,7 +71,7 @@ Value is "how much new teaching surface" per unit of work.
 
 | id | Family | Question asked | Answer type | Book | Cards | Effort | Value |
 | --- | --- | --- | --- | --- | ---: | --- | --- |
-| `nakabukure_ready` | shape | Ready hand, bulging float: which discard? | Dama + tile | ch3.3 | 3 | S | High |
+| `nakabukure_ready` | shape | Bulging float: keep it or break it? | Dama + tile | ch3.3, ch4 | 3 | S | High |
 | `protorun_priority` | shape | Ryanmen vs kanchan: which protorun to keep? | Dama + tile | ch3.2 | 6 | S | High |
 | `ryankan_break` | shape | Keep the new ryanmen and break the ryankan? | Dama + tile | ch3.3 | 3 | M | High |
 | `wind_discard_order` | melding | Which valueless wind first? | Dama + tile | ch9.3 | 1 | S | Medium |
@@ -105,39 +105,56 @@ Value is "how much new teaching surface" per unit of work.
 
 ### 5.1 Shape value (ch3)
 
-#### `nakabukure_ready` — "Don't keep the bulge in a ready hand"
+#### `nakabukure_ready` — "Keep the bulge, or break it?"
 
 **Cards.** 1463194085883 (definition), 1463194122718 (keep it until 1-away),
 1463194188982 ("why not in a ready hand → pair wait on the bulge, only 2 winning tiles").
 
-**Book.** ch3 §"Four-tile complex shapes", *Bulging float (nakabukure)*.
+**Book.** ch3 §"Four-tile complex shapes", *Bulging float (nakabukure)*, plus the
+ch4 5-block exercises that keep and break the same shape.
 
 > `Any bulging float shapes from 2334 through 6778 can accept four kinds of tiles to produce a side-wait protorun and a complete run.` — ch3:681
 > `Try to keep a bulging float shape until a hand becomes 1-away.` — ch3:708
+> `Although doing so increases tile acceptance temporarily, the hand will be filled with closed-wait protoruns. Alternatively, you should discard {\LARGE\suo{8}} to maintain the bulging float shape.` — ch3:690
 > `We should rather discard {\LARGE\wan{4}} to wait for {\LARGE\bei}.` — ch3:702
+> `we should keep two {\LARGE\tong{4}} to maintain the bulging float block in {\jap pinzu} (dots) for now, hoping to get two runs out of it. We should thus discard {\LARGE\suo{2}}.` — ch4:694
+> `As we drew another {\LARGE\wan{1}}, the block in {\jap manzu} (cracks) is now a decent shape. ... Therefore, we should discard {\LARGE\tong{4}} to break the bulging float shape.` — ch4:725
 
-The book's own example is a **ready** hand where discarding the honor keeps the
-`3445` block, so the wait lands on the `4` the hand already holds twice (2 winning
-tiles); discarding the bulge instead waits on the single honor (3 tiles).
+The book never says "always discard the bulge". It says keep it while the hand
+is far from ready (ch3:690, ch4:694) and drop it once the ready-hand wait is too
+small (ch3:702) or once a rival block has become a decent group-plus-head shape
+(ch4:725). The drill therefore draws one of three hands:
 
-**Drill.** Human is tenpai with a nakabukure block plus a single-tile wait
-alternative. Prompt: which tile do you discard?
+| Variant | Hand | Answer |
+| --- | --- | --- |
+| `ReadyDrop` | ready hand, open Yakuhai Pon, bulge + floating honour | the bulge tile |
+| `OneAwayKeep` | 1-away, closed; rival block is a pair + float | a rival pair's tile (bulge stays) |
+| `OneAwayBreak` | 1-away, closed; rival block is two pairs + float | the bulge tile |
 
-**Answer.** The bulge tile (`4` in the book's shape).
+**Prompt.** Which tile do you discard?
 
-**Generation.** Skeleton forces a run with a duplicated middle tile (`3445`;
-the book lists 2334–6778), a completed set, a pair, and one floating honor/wind;
-the draw is a tile that makes a second alternative tenpai. Random fill around it;
-then reject unless both candidate discards leave tenpai and the bulge discard wins
-on strictly more tiles.
+**Generation.** Every variant constructs the bulge `x,x+1,x+1,x+2` in a suit of
+its own (x = 2..=6, the book's 2334–6778 range) and randomises the other blocks.
+1-away variants build the book's ch4 block shapes (`1m3m5m5m` and `1m1m3m5m5m`
+generalised to any suit/base) so the rival block has the same character as the
+book's. Rejection then checks the book's arithmetic on the finished hand.
 
-**Verification.** After each candidate discard, `calculate_shanten == 0` and
-`calculate_ukeire().total_count` is strictly larger for the book's discard. Also
-assert the resulting wait is not the bulge tile. This is a very clean rejection
-test: no hand-shape parsing required, just two ukeire calls.
+**Verification.**
+- `ReadyDrop`: both candidate discards leave tenpai; the bulge discard waits on
+  the lone honour with exactly three live copies, the keep discard on the bulge
+  tile with two. `calculate_ukeire` alone decides it.
+- `OneAwayKeep`: the hand is 1-away and holds exactly one bulge; the book's
+  discard leaves the bulge intact and is the best bulge-preserving discard by
+  acceptance; breaking the bulge also leaves 1-away and accepts **strictly
+  more** tiles. Counting acceptance alone therefore gives the wrong answer.
+- `OneAwayBreak`: the hand is 1-away; the bulge discard breaks the float and
+  accepts strictly more tiles than any keep-the-bulge discard; at least one
+  keep-the-bulge discard exists.
 
-**Why first.** Smallest new scenario with a fully mechanical oracle, and it is a
-direct sibling of `ryanmen_protorun` (same answer type, same board scaffolding).
+**Why the mix matters.** The drill used to answer "the bulge tile" every time,
+which let the player pattern-match the shape instead of judging the hand. Now
+roughly a third of hands keep the bulge, and the rationale panel switches
+between the ch3:702, ch3:690/ch4:694, and ch4:725 rules with the hand.
 
 ---
 

@@ -149,6 +149,19 @@ fn ch4(line: u32, needle: &str) -> Citation {
     )
 }
 
+/// Riichi Book 1, ch. 4, "Exercises: building a block" — the 5-block exercises
+/// that keep (Answer 13) and break (Exercise 14) the same bulging float.
+fn ch4_blocks(line: u32, needle: &str) -> Citation {
+    citation(
+        4,
+        "The five-block method",
+        "Exercises: building a block",
+        "RiichiBook1-ch4-five.tex",
+        line,
+        needle,
+    )
+}
+
 fn ch3(line: u32, needle: &str) -> Citation {
     citation(
         3,
@@ -1002,8 +1015,9 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     }
 
     if state.category == "nakabukure_ready" {
-        let discard =
-            format_tile_for_display(state.correct_action.tile().unwrap_or_default(), false);
+        let answer_code = state.correct_action.tile().unwrap_or_default();
+        let answer_tile = Tile::try_from(answer_code).ok();
+        let discard = format_tile_for_display(answer_code, false);
         let wait = state
             .ukeire_tiles
             .first()
@@ -1014,56 +1028,215 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
             .map(|code| format_tile_for_display(code, false))
             .unwrap_or_default();
 
+        // The generator builds exactly one bulging float; its middle tile is
+        // the discard that breaks it. An imported report from before the
+        // variants existed may hold more, so look the answer up by value.
+        let middles = bulge_middles(state);
+        let answer_is_middle = answer_tile.is_some_and(|answer| middles.contains(&answer));
+        let middle = middles.first().copied();
+        let middle_text = middle
+            .map(|tile| format_tile_for_display(&tile.to_string(), false))
+            .unwrap_or_default();
+        let middle_acceptance = middle
+            .and_then(|tile| acceptance_without(state, tile))
+            .unwrap_or_default();
+        let keeps_bulge = !answer_is_middle && middle.is_some();
+
+        if keeps_bulge {
+            // ch. 4 Answer 13 / ch. 3's 2-away example: the book keeps the
+            // float because every rival block is weak, and throws a tile that
+            // costs the least shape even though breaking the bulge accepts
+            // more tiles right now.
+            let rules = vec![
+                BookRule {
+                    id: "keep_until_one_away".to_string(),
+                    rule: "The bulging float is protected while the hand is far from ready; \
+                           at 1-away whether it stays is a judgement about the rival blocks."
+                        .to_string(),
+                    quote: "Try to keep a bulging float shape until a hand becomes 1-away."
+                        .to_string(),
+                    citation: ch3_bulging(708, "until a hand becomes 1-away"),
+                    applies: format!(
+                        "The hand is {} shanten and every rival block is still only a pair plus \
+                         a float or a closed wait, so the bulge is the best block left.",
+                        state.shanten
+                    ),
+                },
+                BookRule {
+                    id: "keep_the_bulge".to_string(),
+                    rule: "Breaking the bulge raises raw acceptance but fills the hand with \
+                           closed-wait protoruns, so the book throws the tile that costs the \
+                           least shape instead."
+                        .to_string(),
+                    quote: "Although doing so increases tile acceptance temporarily, the hand \
+                            will be filled with closed-wait protoruns."
+                        .to_string(),
+                    citation: ch3_bulging(690, "increases tile acceptance temporarily"),
+                    applies: format!(
+                        "Discarding {discard} keeps the bulge; breaking it with {middle_text} \
+                         would accept {middle_acceptance} tiles right now, against the {} this \
+                         discard leaves. The book still keeps the float: raw acceptance is not \
+                         the whole question when the rival blocks are weak.",
+                        state.ukeire_total
+                    ),
+                },
+                BookRule {
+                    id: "keep_the_bulge_as_back_up".to_string(),
+                    rule: "When a rival block is only a pair plus a float, the book keeps the \
+                           bulging float as a back-up for two runs and discards the rival pair's \
+                           spare tile."
+                        .to_string(),
+                    quote: "we should keep two tong4 to maintain the bulging float block in \
+                            pinzu (dots) for now, hoping to get two runs out of it. We should \
+                            thus discard suo2."
+                        .to_string(),
+                    citation: ch4_blocks(694, "hoping to get two runs out of it"),
+                    applies: format!(
+                        "Discarding {discard} leaves the rival pair's partner beside the draw as \
+                         a side-wait protorun and keeps the whole bulge."
+                    ),
+                },
+            ];
+
+            return Some(BookRationale {
+                summary: format!(
+                    "Keep the bulging float: the hand is {} shanten and the rival blocks are \
+                     weak, so the float is still the best block. Breaking it would accept \
+                     {middle_acceptance} tiles right now, more than keeping it, but the book \
+                     discards {discard} and keeps the two-run shape.",
+                    state.shanten
+                ),
+                rules,
+                absent: Vec::new(),
+                source: ch3_bulging(708, "until a hand becomes 1-away"),
+                caveats: vec![
+                    "The book's 1-away examples disagree on purpose: with a weak rival block it \
+                     keeps the bulge (ch4:694), and with a decent rival block it breaks it \
+                     (ch4:725). Counting acceptance alone picks the wrong answer in the first \
+                     case."
+                        .to_string(),
+                ],
+            });
+        }
+
+        if state.shanten == 0 {
+            // ch. 3's ready-hand example: the bulge waits on a tile the hand
+            // already holds twice, so it is the discard.
+            let rules = vec![
+                BookRule {
+                    id: "bulge_pair_wait".to_string(),
+                    rule: "A bulging float left in a ready hand waits on its own middle tile, \
+                           which the hand already holds twice, so only two winning tiles remain."
+                        .to_string(),
+                    quote:
+                        "It is waiting for wan4, but we are already using two of it in the hand, \
+                            leaving only two winning tiles."
+                            .to_string(),
+                    citation: ch3_bulging(702, "leaving only two winning tiles"),
+                    applies: format!(
+                        "Keeping the bulge and discarding {drawn} would wait on {discard}, which \
+                         this hand holds twice: only two winning tiles."
+                    ),
+                },
+                BookRule {
+                    id: "discard_the_bulge".to_string(),
+                    rule:
+                        "In a ready hand the bulge tile itself is the discard: dropping it leaves \
+                           the lone honour as a tanki wait with strictly more winning tiles."
+                            .to_string(),
+                    quote: "We should rather discard wan4 to wait for bei.".to_string(),
+                    citation: ch3_bulging(702, "We should rather discard"),
+                    applies: format!(
+                        "Discarding {discard} waits on {wait} instead: {} live copies against the \
+                         two the bulge would leave.",
+                        state.ukeire_total
+                    ),
+                },
+                BookRule {
+                    id: "keep_until_one_away".to_string(),
+                    rule: "The bulging float's value is in building a side-wait protorun, so the \
+                           book keeps it only until the hand is 1-away."
+                        .to_string(),
+                    quote: "Try to keep a bulging float shape until a hand becomes 1-away."
+                        .to_string(),
+                    citation: ch3_bulging(708, "until a hand becomes 1-away"),
+                    applies: "This hand is already ready, so the shape's protection has expired."
+                        .to_string(),
+                },
+            ];
+
+            return Some(BookRationale {
+                summary: "Drop the bulging float: in a ready hand it waits on its own middle tile \
+                          for only two tiles, while the lone honour has three live copies."
+                    .to_string(),
+                rules,
+                absent: Vec::new(),
+                source: ch3_bulging(681, "accept four kinds of tiles"),
+                caveats: vec![
+                    "The book's ready-hand example is closed; this trainer opens a Yakuhai Pon so \
+                     Riichi cannot mask the discard lesson."
+                        .to_string(),
+                ],
+            });
+        }
+
+        // ch. 4 Exercise 14: a 1-away hand whose rival block became decent, so
+        // the same book now breaks the bulge.
         let rules = vec![
             BookRule {
-                id: "bulge_pair_wait".to_string(),
-                rule: "A bulging float left in a ready hand waits on its own middle tile, \
-                       which the hand already holds twice, so only two winning tiles remain."
+                id: "rival_block_became_decent".to_string(),
+                rule: "A rival block that accepts four kinds to become a group and the head is \
+                       now a better block than the bulging float, so the bulge is the redundant \
+                       tile."
                     .to_string(),
-                quote: "It is waiting for wan4, but we are already using two of it in the hand, \
-                        leaving only two winning tiles."
+                quote: "As we drew another wan1, the block in manzu (cracks) is now a decent \
+                        shape. This can become one group and the head with a draw of wan1 wan2 \
+                        wan4 wan5."
                     .to_string(),
-                citation: ch3_bulging(702, "leaving only two winning tiles"),
+                citation: ch4_blocks(725, "This can become one group and the head with a draw of"),
                 applies: format!(
-                    "Keeping the bulge and discarding {drawn} would wait on {discard}, which \
-                     this hand holds twice: only two winning tiles."
-                ),
-            },
-            BookRule {
-                id: "discard_the_bulge".to_string(),
-                rule: "In a ready hand the bulge tile itself is the discard: dropping it leaves \
-                       the lone honour as a tanki wait with strictly more winning tiles."
-                    .to_string(),
-                quote: "We should rather discard wan4 to wait for bei.".to_string(),
-                citation: ch3_bulging(702, "We should rather discard"),
-                applies: format!(
-                    "Discarding {discard} waits on {wait} instead: {} live copies against the \
-                     two the bulge would leave.",
+                    "Discarding {discard} breaks the bulge but keeps the decent rival block, and \
+                     the hand still accepts {} tiles: more than any keep-the-bulge discard.",
                     state.ukeire_total
                 ),
             },
             BookRule {
                 id: "keep_until_one_away".to_string(),
-                rule: "The bulging float's value is in building a side-wait protorun, so the \
-                       book keeps it only until the hand is 1-away."
+                rule: "The bulging float is kept only until the hand is 1-away, when a completed \
+                       rival block can take its place."
                     .to_string(),
                 quote: "Try to keep a bulging float shape until a hand becomes 1-away.".to_string(),
                 citation: ch3_bulging(708, "until a hand becomes 1-away"),
-                applies: "This hand is already ready, so the shape's protection has expired."
+                applies: "This hand is 1-away, so the shape's protection has expired.".to_string(),
+            },
+            BookRule {
+                id: "break_the_bulge".to_string(),
+                rule: "The bulge breaks into one complete run plus a float, so keeping the rival \
+                       block is worth more than the float's two-run potential."
                     .to_string(),
+                quote: "Therefore, we should discard tong4 to break the bulging float shape."
+                    .to_string(),
+                citation: ch4_blocks(725, "break the bulging float shape"),
+                applies: format!(
+                    "Discarding {discard} leaves the hand with the rival block and {} tiles of \
+                     acceptance; keeping the bulge would accept fewer.",
+                    state.ukeire_total
+                ),
             },
         ];
 
         return Some(BookRationale {
-            summary: "Drop the bulging float: in a ready hand it waits on its own middle tile \
-                      for only two tiles, while the lone honour has three live copies."
-                .to_string(),
+            summary: format!(
+                "Break the bulging float: the rival block became a decent group-and-head shape, \
+                 so discarding {discard} keeps it and still accepts more tiles than keeping the \
+                 bulge would."
+            ),
             rules,
             absent: Vec::new(),
-            source: ch3_bulging(681, "accept four kinds of tiles"),
+            source: ch4_blocks(725, "break the bulging float shape"),
             caveats: vec![
-                "The book's ready-hand example is closed; this trainer opens a Yakuhai Pon so \
-                 Riichi cannot mask the discard lesson."
+                "This is the same shape the 1-away keep hand preserves (ch4:694); the difference \
+                 is the rival block, not the bulge itself."
                     .to_string(),
             ],
         });
@@ -2426,6 +2599,34 @@ fn absent_tiles(
         .collect()
 }
 
+/// The middle tiles (`x+1` in `x, x+1, x+1, x+2`) of every bulging float in the
+/// hand, in tile order.
+///
+/// Only the concealed hand is searched: the ready lesson's open Yakuhai Pon can
+/// never form a bulge, and the generator builds one bulge per hand.
+fn bulge_middles(state: &GameState) -> Vec<Tile> {
+    let counts = hand_counts(state);
+    let mut middles = Vec::new();
+    for suit in [Suit::Man, Suit::Pin, Suit::Sou] {
+        for base in 1..=7u8 {
+            let low = Tile::Suited { suit, value: base };
+            let mid = Tile::Suited {
+                suit,
+                value: base + 1,
+            };
+            let high = Tile::Suited {
+                suit,
+                value: base + 2,
+            };
+            let count = |tile: &Tile| counts.get(tile).copied().unwrap_or(0);
+            if count(&low) >= 1 && count(&mid) >= 2 && count(&high) >= 1 {
+                middles.push(mid);
+            }
+        }
+    }
+    middles
+}
+
 fn hand_counts(state: &GameState) -> std::collections::HashMap<Tile, u8> {
     let mut counts = std::collections::HashMap::new();
     let Some(human) = human(state) else {
@@ -2573,45 +2774,84 @@ mod tests {
     }
 
     #[test]
-    fn nakabukure_hand_gets_a_category_rationale() {
-        let state = generate_puzzle("nakabukure_ready").expect("nakabukure must generate");
+    fn nakabukure_hand_gets_a_rationale_for_each_answer() {
+        // The drill now mixes the ready-hand drop with the 1-away keep and
+        // break hands, so the rationale has to follow whichever hand comes up.
+        let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
 
-        let rationale = rationale_for(&state).expect("nakabukure needs a rationale");
+        for _ in 0..200 {
+            let state = generate_puzzle("nakabukure_ready").expect("nakabukure must generate");
+            let rationale = rationale_for(&state).expect("nakabukure needs a rationale");
+            assert!(rationale.absent.is_empty());
+            assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+            assert!(!rationale.caveats.is_empty());
 
-        assert_eq!(rationale.rules.len(), 3);
-        assert!(rationale.absent.is_empty());
-        assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
-        assert_eq!(rationale.source.chapter, 3);
-        assert_eq!(rationale.source.section, "Bulging float (nakabukure) shape");
-        assert!(!rationale.caveats.is_empty());
+            let answer =
+                Tile::try_from(state.correct_action.tile().expect("answer tile")).expect("tile");
+            let middles = bulge_middles(&state);
+            let kind = if !state.players[0].melds.is_empty() {
+                "ready"
+            } else if middles.contains(&answer) {
+                "break"
+            } else {
+                "keep"
+            };
+            seen.insert(kind);
 
-        let ids: Vec<&str> = rationale
-            .rules
-            .iter()
-            .map(|rule| rule.id.as_str())
-            .collect();
+            let ids: Vec<&str> = rationale
+                .rules
+                .iter()
+                .map(|rule| rule.id.as_str())
+                .collect();
+            match kind {
+                "ready" => {
+                    assert_eq!(state.shanten, 0);
+                    assert_eq!(
+                        ids,
+                        vec![
+                            "bulge_pair_wait",
+                            "discard_the_bulge",
+                            "keep_until_one_away"
+                        ]
+                    );
+                    assert_eq!(rationale.source.chapter, 3);
+                    assert_eq!(rationale.source.section, "Bulging float (nakabukure) shape");
+
+                    let discard = state.correct_action.tile().expect("answer tile");
+                    let wait = state.ukeire_tiles.first().expect("wait tile");
+                    assert!(
+                        rationale.rules[1]
+                            .applies
+                            .contains(&format_tile_for_display(discard, false)),
+                        "the answer rule must name the discard"
+                    );
+                    assert!(
+                        rationale.rules[1]
+                            .applies
+                            .contains(&format_tile_for_display(wait, false)),
+                        "the answer rule must name the wait"
+                    );
+                }
+                "keep" => {
+                    assert_eq!(state.shanten, 1);
+                    assert!(ids.contains(&"keep_the_bulge"));
+                    assert_eq!(rationale.source.chapter, 3);
+                    assert!(rationale.summary.contains("Keep the bulging float"));
+                }
+                "break" => {
+                    assert_eq!(state.shanten, 1);
+                    assert!(ids.contains(&"rival_block_became_decent"));
+                    assert_eq!(rationale.source.chapter, 4);
+                    assert!(rationale.summary.contains("Break the bulging float"));
+                }
+                other => panic!("unexpected nakabukure shape {other}"),
+            }
+        }
+
         assert_eq!(
-            ids,
-            vec![
-                "bulge_pair_wait",
-                "discard_the_bulge",
-                "keep_until_one_away"
-            ]
-        );
-
-        let discard = state.correct_action.tile().expect("answer tile");
-        let wait = state.ukeire_tiles.first().expect("wait tile");
-        assert!(
-            rationale.rules[1]
-                .applies
-                .contains(&format_tile_for_display(discard, false)),
-            "the answer rule must name the discard"
-        );
-        assert!(
-            rationale.rules[1]
-                .applies
-                .contains(&format_tile_for_display(wait, false)),
-            "the answer rule must name the wait"
+            seen.len(),
+            3,
+            "200 draws must cover the ready, keep, and break hands: {seen:?}"
         );
     }
 
@@ -3242,6 +3482,19 @@ mod tests {
             "suji_trap_riichi",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
+            citations.extend(
+                rationale_for(&state)
+                    .expect("rationale")
+                    .rules
+                    .into_iter()
+                    .map(|rule| rule.citation),
+            );
+        }
+
+        // The bulging-float drill serves three different rule sets, so one
+        // draw could miss two of them; sample it until every answer is covered.
+        for _ in 0..60 {
+            let state = generate_puzzle("nakabukure_ready").expect("scenario must generate");
             citations.extend(
                 rationale_for(&state)
                     .expect("rationale")

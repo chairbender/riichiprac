@@ -4,7 +4,7 @@ use agari::parse::to_counts;
 use agari::tile::{Honor, Tile};
 use agari::yaku::{Yaku, detect_yaku_with_context};
 
-use super::skeleton::{self, NakabukureSkeleton};
+use super::skeleton::{self, NakabukureSkeleton, Variant};
 use crate::generator::support::analysis::{HandMetrics, evaluate_counts, wind_to_honor};
 use crate::generator::support::deck::Deck;
 use crate::generator::support::format::format_hand_compact;
@@ -18,7 +18,7 @@ use crate::state::{
     Wind,
 };
 
-/// The validated hand shapes for one nakabukure puzzle.
+/// The validated hand shapes for one bulging-float puzzle.
 struct PreparedHand {
     human_hand: Vec<Tile>,
     full_tiles: Vec<Tile>,
@@ -51,35 +51,67 @@ pub(super) fn build_board(
     let honba = gen_range(0, 4) as u8;
     let scores = random_scores_with_human_first();
 
-    // The human is the current player (about to discard), so the rivers come
-    // from one legal timeline: the human's earlier Pon off Shimocha gives them
-    // one extra discard over a pure rotation.
+    // The open Yakuhai Pon is the ready-hand lesson's way of making Riichi
+    // illegal and the discard the whole question. The closed 1-away variants
+    // hold no meld, so their timeline has no call in it.
+    let has_open_meld = !skeleton.open_meld_tiles.is_empty();
+    let calls: &[(usize, usize)] = if has_open_meld { &[(0, 1)] } else { &[] };
+
+    // The human is the current player (about to discard). With the Pon they
+    // have one extra discard over a pure rotation; without it the timeline is
+    // an ordinary rotation.
     let discard_count = gen_range(1, 7);
-    let plan = self_turn_river_plan(Wind::East, &[(0, 1)], discard_count);
+    let plan = self_turn_river_plan(Wind::East, calls, discard_count);
     let deal = deal_opponents(&mut deck, Wind::East, &scores, &plan)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
 
-    // Furiten: the human's river cannot hold either candidate wait tile.
+    // Neither candidate discard may sit in the human's own river: for the
+    // ready hand that would be furiten, and for the 1-away hands it would look
+    // like a tile the hand already threw away.
     let human_river = deck
-        .draw_excluding(plan.counts[0], &[skeleton.bulge_tile, skeleton.float_tile])
+        .draw_excluding(
+            plan.counts[0],
+            &[skeleton.bulge_tile, skeleton.draw, skeleton.answer_tile],
+        )
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
-    // The book's comparison is three live tiles against two, so every copy of
-    // both waits has to still be in the wall: the human holds one honour and
-    // two bulge tiles, and neither appears in an opponent's hand, a river, or
-    // the indicators.
-    if deck.count(skeleton.float_tile) != 3 || deck.count(skeleton.bulge_tile) != 2 {
-        return Err("Wait tiles are not all live in the wall".to_string());
-    }
+    match skeleton.variant {
+        Variant::ReadyDrop => {
+            // The book's ready-hand comparison is three live tiles against two.
+            // "Live" means unseen: the hand's own copies are already excluded
+            // from the wait count, so neither wait may also sit in a river, a
+            // meld, or one of the indicators. Copies in an opponent's concealed
+            // hand stay unseen, exactly as they would in a real game.
+            let wait_tiles = [skeleton.draw.to_string(), skeleton.bulge_tile.to_string()];
+            for player in &deal.players {
+                for discard in &player.discards {
+                    if wait_tiles.contains(&discard.tile) {
+                        return Err("A wait tile is visible in an opponent river".to_string());
+                    }
+                }
+                for meld in &player.melds {
+                    if meld.tiles.iter().any(|tile| wait_tiles.contains(tile)) {
+                        return Err("A wait tile is visible in an opponent meld".to_string());
+                    }
+                }
+            }
+            if wait_tiles.iter().any(|wait| {
+                *wait == dora_indicator.to_string() || *wait == ura_indicator.to_string()
+            }) {
+                return Err("A wait tile is the dora or ura indicator".to_string());
+            }
 
-    // Reject hands that gain any yaku beyond the intended open Yakuhai.
-    if has_unintended_yaku(skeleton, round_wind, dora_indicator) {
-        return Err("Candidate hand has unintended yaku".to_string());
-    }
+            // Reject ready hands that gain any yaku beyond the intended open
+            // Yakuhai.
+            if has_unintended_yaku(skeleton, round_wind, dora_indicator) {
+                return Err("Candidate hand has unintended yaku".to_string());
+            }
 
-    // The actual lesson: both discards leave tenpai, and the bulge discard
-    // keeps strictly more winning tiles.
-    skeleton::verify_waits(skeleton)?;
+            skeleton::verify_ready_drop(skeleton)?;
+        }
+        Variant::OneAwayKeep => skeleton::verify_one_away_keep(skeleton)?,
+        Variant::OneAwayBreak => skeleton::verify_one_away_break(skeleton)?,
+    }
 
     let prepared = prepare_hand(skeleton)?;
 
@@ -117,13 +149,13 @@ fn prepare_hand(skeleton: &NakabukureSkeleton) -> Result<PreparedHand, String> {
         }
     }
 
-    // The drawn honour is kept in `draw`, so the concealed hand holds the
+    // The drawn tile is kept in `draw`, so the concealed hand holds the
     // bulging float intact: the decision comes before the discard.
     let mut human_hand = skeleton.concealed_tiles.clone();
     let draw_index = human_hand
         .iter()
-        .position(|tile| *tile == skeleton.float_tile)
-        .ok_or_else(|| "Nakabukure skeleton is missing its floating honor".to_string())?;
+        .position(|tile| *tile == skeleton.draw)
+        .ok_or_else(|| "Nakabukure skeleton is missing its drawn tile".to_string())?;
     human_hand.remove(draw_index);
     human_hand.sort();
 
@@ -133,8 +165,8 @@ fn prepare_hand(skeleton: &NakabukureSkeleton) -> Result<PreparedHand, String> {
     let mut post_discard_tiles = full_tiles.clone();
     let post_discard_index = post_discard_tiles
         .iter()
-        .position(|tile| *tile == skeleton.bulge_tile)
-        .ok_or_else(|| "Nakabukure skeleton is missing its bulge tile".to_string())?;
+        .position(|tile| *tile == skeleton.answer_tile)
+        .ok_or_else(|| "Nakabukure skeleton is missing its answer tile".to_string())?;
     post_discard_tiles.remove(post_discard_index);
 
     let metrics = evaluate_counts(&to_counts(&post_discard_tiles));
@@ -160,10 +192,12 @@ fn build_deck(skeleton: &NakabukureSkeleton) -> Result<(Deck, Tile, Tile), Strin
         .draw()
         .ok_or_else(|| "Deck exhausted drawing the ura indicator".to_string())?;
 
-    // Keep value out of the decision: neither wait should be the actual dora.
+    // Keep value out of the decision: if the indicator turns a tile of the hand
+    // into dora, discarding it would cost points for reasons the lesson is not
+    // about.
     let dora = indicator_to_dora(dora_indicator);
-    if dora == skeleton.bulge_tile || dora == skeleton.float_tile {
-        return Err("A wait tile cannot be the dora".to_string());
+    if skeleton.full_tiles.contains(&dora) {
+        return Err("A hand tile cannot be the dora".to_string());
     }
 
     Ok((deck, dora_indicator, ura_indicator))
@@ -196,11 +230,20 @@ fn assemble_state(
 
     let hand_string = format_hand_compact(&full_tiles);
     let tile_strings: Vec<String> = full_tiles.iter().map(|tile| tile.to_string()).collect();
-    let meld_tiles: Vec<String> = skeleton
-        .open_meld_tiles
-        .iter()
-        .map(|tile| tile.to_string())
-        .collect();
+
+    let melds = if skeleton.open_meld_tiles.is_empty() {
+        Vec::new()
+    } else {
+        vec![CalledMeld {
+            meld_type: MeldType::Pon,
+            tiles: skeleton
+                .open_meld_tiles
+                .iter()
+                .map(|tile| tile.to_string())
+                .collect(),
+            called_from: Some(1),
+        }]
+    };
 
     let human_player = PlayerState {
         seat: 0,
@@ -209,20 +252,17 @@ fn assemble_state(
         wind: Wind::East,
         score: scores[0],
         hand: human_hand.iter().map(|tile| tile.to_string()).collect(),
-        // The lone honour is the tile just drawn: discarding it is the
-        // tempting mistake the book's ready-hand example warns about.
-        draw: Some(skeleton.float_tile.to_string()),
+        // The drawn tile completes the shape the hand has to judge: the lone
+        // honour in the ready hand, the rival pair's partner in the 1-away
+        // keep hand, and the third 1m in the break hand.
+        draw: Some(skeleton.draw.to_string()),
         red_fives: Vec::new(),
         discards: {
             let mut discards = discards_from_tiles(&human_river);
             force_tedashi(&mut discards, &human_hand_discards);
             discards
         },
-        melds: vec![CalledMeld {
-            meld_type: MeldType::Pon,
-            tiles: meld_tiles,
-            called_from: Some(1),
-        }],
+        melds,
         is_riichi: false,
         riichi_discard_index: None,
     };
@@ -234,9 +274,10 @@ fn assemble_state(
     GameState {
         category: category.to_string(),
         target_action: TargetAction::NaniKiru,
-        // The open Yakuhai meld makes Riichi illegal, so staying dama is the
-        // only legal declaration for this hand.
-        correct_action: CorrectAction::dama(skeleton.bulge_tile.to_string()),
+        // The ready-hand lesson keeps Riichi illegal with an open Yakuhai Pon;
+        // the 1-away hands are not tenpai, so no declaration is offered either
+        // way and the answer is the discard alone.
+        correct_action: CorrectAction::dama(skeleton.answer_tile.to_string()),
         equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
         scenario_note: None,
@@ -246,8 +287,9 @@ fn assemble_state(
         dama_reasons: Vec::new(),
         shouminkan_triggers: Vec::new(),
         book_rationale: None,
-        // The open Yakuhai Pon makes Riichi illegal; `finalize_state`
-        // recomputes this at the generation boundary.
+        // Only the open Yakuhai Pon (ready variant) forbids Riichi; for the
+        // 1-away hands the hand is not tenpai. `finalize_state` recomputes this
+        // at the generation boundary.
         can_riichi: false,
         hand_string,
         tiles: tile_strings,
@@ -269,13 +311,15 @@ fn assemble_state(
 }
 
 /// Rejects any winning decomposition whose only yaku is not the open dragon
-/// yakuhai. This keeps the scenario a pure tile-efficiency problem.
+/// yakuhai. This keeps the ready-hand scenario a pure tile-efficiency problem.
 fn has_unintended_yaku(
     skeleton: &NakabukureSkeleton,
     round_wind: Wind,
     dora_indicator: Tile,
 ) -> bool {
-    let open_tile = skeleton.open_meld_tiles[0];
+    let Some(&open_tile) = skeleton.open_meld_tiles.first() else {
+        return false;
+    };
     let Tile::Honor(open_honor) = open_tile else {
         return true;
     };
@@ -285,8 +329,8 @@ fn has_unintended_yaku(
     // (discard, winning tile): the book's discard keeps the lone-honour wait;
     // the tempting discard leaves the bulge tile as the wait.
     let paths = [
-        (skeleton.bulge_tile, skeleton.float_tile),
-        (skeleton.float_tile, skeleton.bulge_tile),
+        (skeleton.bulge_tile, skeleton.draw),
+        (skeleton.draw, skeleton.bulge_tile),
     ];
 
     for (discard, wait_tile) in paths {
@@ -329,7 +373,7 @@ fn has_unintended_yaku(
 
 #[cfg(test)]
 mod tests {
-    use super::super::generate;
+    use super::super::{generate, generate_variant};
     use super::*;
     use crate::state::CorrectActionType;
     use agari::parse::parse_hand;
@@ -359,51 +403,13 @@ mod tests {
         discs
     }
 
-    fn assert_nakabukure_constraints(state: &GameState) {
-        assert_eq!(state.category, "nakabukure_ready");
-        assert_eq!(state.target_action, TargetAction::NaniKiru);
-        assert_eq!(state.correct_action.action_type(), CorrectActionType::Dama);
-        assert_eq!(state.tiles.len(), 14);
-        assert_eq!(state.players.len(), 4);
-
-        match (state.round_wind, state.hand_number) {
-            (Wind::East, 1..=4) | (Wind::South, 1..=2) => {}
-            other => panic!("invalid round: {other:?}"),
-        }
-        assert_eq!(state.riichi_sticks, 0);
-        assert_eq!(state.dora_indicators.len(), 1);
-        assert_eq!(state.ura_dora_indicators.len(), 1);
-        assert!(state.tiles_remaining > 0);
+    fn assert_ready_drop_constraints(state: &GameState) {
         assert_eq!(state.shanten, 0);
-        assert!(!state.is_agari);
 
-        for opponent in &state.players[1..] {
-            assert!(!opponent.is_riichi);
-            assert!(opponent.melds.is_empty());
-            assert!(opponent.riichi_discard_index.is_none());
-        }
-
-        // Human hand, open Yakuhai, and the drawn honour.
-        let human = &state.players[0];
-        assert!(human.is_human);
-        assert!(!human.is_riichi);
-        assert_eq!(human.hand.len(), 10);
-        assert_eq!(human.hand.len() + 1 + 3, 14);
-        assert_eq!(human.melds.len(), 1);
-        assert_eq!(human.melds[0].meld_type, MeldType::Pon);
-        assert_eq!(human.melds[0].tiles.len(), 3);
-        assert!(
-            human.melds[0]
-                .tiles
-                .iter()
-                .all(|tile| tile == &human.melds[0].tiles[0])
-        );
-        assert!(matches!(
-            human.melds[0].tiles[0].as_str(),
-            "5z" | "6z" | "7z"
-        ));
-
-        let draw = human.draw.as_deref().expect("human must have a draw");
+        let draw = state.players[0]
+            .draw
+            .as_deref()
+            .expect("human must have a draw");
         assert!(draw.ends_with('z'), "the draw is the floating honour");
 
         // The correct discard is the middle tile of a 4-tile bulge: it appears
@@ -416,27 +422,6 @@ mod tests {
             .filter(|tile| tile.as_str() == answer)
             .count();
         assert_eq!(copies, 2, "the bulge tile is held exactly twice");
-        assert!(
-            state.tiles.iter().any(|tile| tile.as_str() == draw),
-            "the drawn honour is part of the full hand"
-        );
-
-        // The rivers come from one legal turn order: the human's earlier Pon
-        // gives them one extra discard over a pure rotation.
-        crate::generator::support::state_validation::validate_reachable_state(state)
-            .expect("nakabukure table must be reachable");
-        let discard_counts: Vec<usize> = state
-            .players
-            .iter()
-            .map(|player| player.discards.len())
-            .collect();
-        assert!((1..=8).contains(&discard_counts[0]));
-        // The human pon'd Shimocha's discard; the next discard (index 1)
-        // came from the hand and cannot be tsumogiri.
-        assert!(
-            !human.discards[1].is_tsumogiri,
-            "the discard after the Pon must be tedashi"
-        );
 
         // The book's discard leaves the lone honour as the only wait, with all
         // three remaining copies live; the tempting discard leaves the bulge
@@ -457,14 +442,6 @@ mod tests {
         assert_eq!(float_ukeire.tiles.len(), 1);
         assert_eq!(float_ukeire.tiles[0].tile.to_string(), answer);
         assert_eq!(float_ukeire.total_count, 2);
-        assert!(
-            state.ukeire_total > float_ukeire.total_count,
-            "the book's discard must keep strictly more winning tiles"
-        );
-        assert!(
-            !state.ukeire_tiles.contains(&answer.to_string()),
-            "the book's wait must not be the bulge tile itself"
-        );
 
         // Both candidate discards, and nothing else, leave tenpai.
         let mut expected = vec![answer.to_string(), draw.to_string()];
@@ -487,23 +464,141 @@ mod tests {
                 "a wait tile is the dora indicator"
             );
         }
+    }
 
-        // Value constraint: neither wait is the actual dora.
+    /// The two 1-away variants share a table shape: closed hand, no melds.
+    fn assert_one_away_table(state: &GameState) {
+        assert_eq!(state.shanten, 1);
+        assert_eq!(state.correct_action.action_type(), CorrectActionType::Dama);
+
+        let human = &state.players[0];
+        assert!(human.melds.is_empty(), "the 1-away hands are closed");
+        assert_eq!(human.hand.len(), 13);
+        assert_eq!(human.hand.len() + 1, 14);
+        assert!(human.draw.is_some());
+        assert!(!human.is_riichi);
+        assert!(!state.can_riichi, "a 1-away hand cannot declare Riichi");
+
+        let human_discards = human.discards.len();
+        assert!((1..=8).contains(&human_discards));
+
+        // Neither candidate discard is already in the river.
+        let answer = state
+            .correct_action
+            .tile()
+            .expect("answer tile")
+            .to_string();
+        for discard in &human.discards {
+            assert_ne!(
+                discard.tile, answer,
+                "the answer is not already in the river"
+            );
+        }
+
+        // No dora sits in the hand: the decision is pure shape.
         let indicator = parse_hand(&state.dora_indicators[0])
             .expect("dora indicator must parse")
             .remove(0);
         let dora = indicator_to_dora(indicator).to_string();
+        assert!(!state.tiles.contains(&dora), "no hand tile may be the dora");
         assert_ne!(dora, answer);
-        assert_ne!(dora, draw);
+    }
+
+    /// True when the hand still holds a full bulging float after discarding
+    /// one copy of `answer`.
+    fn bulge_survives(tiles: &[String], answer: &str) -> bool {
+        let mut counts: std::collections::BTreeMap<String, usize> = Default::default();
+        let mut removed = false;
+        for tile in tiles {
+            if !removed && tile == answer {
+                removed = true;
+                continue;
+            }
+            *counts.entry(tile.clone()).or_insert(0) += 1;
+        }
+        for suit in ['m', 'p', 's'] {
+            for base in 1..=7u8 {
+                let low = format!("{base}{suit}");
+                let mid = format!("{}{suit}", base + 1);
+                let high = format!("{}{suit}", base + 2);
+                let get = |code: &str| counts.get(code).copied().unwrap_or(0);
+                if get(&low) >= 1 && get(&mid) >= 2 && get(&high) >= 1 {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    fn assert_nakabukure_constraints(state: &GameState) {
+        assert_eq!(state.category, "nakabukure_ready");
+        assert_eq!(state.target_action, TargetAction::NaniKiru);
+        assert_eq!(state.correct_action.action_type(), CorrectActionType::Dama);
+        assert_eq!(state.tiles.len(), 14);
+        assert_eq!(state.players.len(), 4);
+        assert!(!state.is_agari);
+
+        match (state.round_wind, state.hand_number) {
+            (Wind::East, 1..=4) | (Wind::South, 1..=2) => {}
+            other => panic!("invalid round: {other:?}"),
+        }
+        assert_eq!(state.riichi_sticks, 0);
+        assert_eq!(state.dora_indicators.len(), 1);
+        assert_eq!(state.ura_dora_indicators.len(), 1);
+        assert!(state.tiles_remaining > 0);
+
+        for opponent in &state.players[1..] {
+            assert!(!opponent.is_riichi);
+            assert!(opponent.melds.is_empty());
+            assert!(opponent.riichi_discard_index.is_none());
+        }
+
+        let human = &state.players[0];
+        assert!(human.is_human);
+        assert!(!human.is_riichi);
+
+        if human.melds.is_empty() {
+            assert_one_away_table(state);
+        } else {
+            // The ready-hand lesson keeps its open Yakuhai Pon.
+            assert_eq!(state.shanten, 0);
+            assert_eq!(human.hand.len(), 10);
+            assert_eq!(human.hand.len() + 1 + 3, 14);
+            assert_eq!(human.melds.len(), 1);
+            assert_eq!(human.melds[0].meld_type, MeldType::Pon);
+            assert_eq!(human.melds[0].tiles.len(), 3);
+            assert!(
+                human.melds[0]
+                    .tiles
+                    .iter()
+                    .all(|tile| tile == &human.melds[0].tiles[0])
+            );
+            assert!(matches!(
+                human.melds[0].tiles[0].as_str(),
+                "5z" | "6z" | "7z"
+            ));
+            assert!(
+                !human.discards[1].is_tsumogiri,
+                "the discard after the Pon must be tedashi"
+            );
+            assert_ready_drop_constraints(state);
+        }
+
+        // The rivers come from one legal turn order.
+        crate::generator::support::state_validation::validate_reachable_state(state)
+            .expect("nakabukure table must be reachable");
 
         // Scores stay on the 100,000-point table.
         let total_score: i32 = state.players.iter().map(|player| player.score).sum();
         assert_eq!(total_score, 100_000);
 
-        // The visible full hand is exactly hand + draw + open meld.
+        // The visible full hand is exactly hand + draw + melds.
+        let draw = human.draw.as_deref().expect("human must have a draw");
         let mut expected_hand: Vec<String> = human.hand.clone();
         expected_hand.push(draw.to_string());
-        expected_hand.extend(human.melds[0].tiles.iter().cloned());
+        for meld in &human.melds {
+            expected_hand.extend(meld.tiles.iter().cloned());
+        }
         expected_hand.sort();
         let mut actual = state.tiles.clone();
         actual.sort();
@@ -512,25 +607,39 @@ mod tests {
 
     #[test]
     fn test_generate_puzzle_game_state() {
+        for variant in Variant::ALL {
+            let state = generate_variant("nakabukure_ready", variant)
+                .unwrap_or_else(|err| panic!("{variant:?} generation failed: {err}"));
+            assert_nakabukure_constraints(&state);
+        }
+
+        // The mixed entry point must be able to serve every variant.
         let state = generate("nakabukure_ready").expect("Puzzle generation must succeed");
-
         assert_nakabukure_constraints(&state);
+    }
 
-        let answer = state
-            .correct_action
-            .tile()
-            .expect("answer tile")
-            .to_string();
-        let mut post_bulge = state.tiles.clone();
-        let index = post_bulge
-            .iter()
-            .position(|tile| *tile == answer)
-            .expect("correct tile must be in the full hand");
-        post_bulge.remove(index);
-        let parsed = parse_hand(&post_bulge.join("")).expect("post-discard hand must parse");
-        let counts = to_counts(&parsed);
-        assert_eq!(calculate_shanten(&counts).shanten, 0);
-        assert_eq!(calculate_ukeire(&counts).total_count, 3);
+    #[test]
+    fn the_drill_mixes_both_outcomes() {
+        let mut drop = 0;
+        let mut keep = 0;
+        for _ in 0..120 {
+            let state = generate("nakabukure_ready").expect("generation must succeed");
+            let answer = state
+                .correct_action
+                .tile()
+                .expect("answer tile")
+                .to_string();
+            if bulge_survives(&state.tiles, &answer) {
+                keep += 1;
+            } else {
+                drop += 1;
+            }
+        }
+        assert!(drop > 0, "the drill must still ask for the bulge discard");
+        assert!(
+            keep > 0,
+            "the drill must sometimes keep the bulge and discard another tile"
+        );
     }
 
     #[test]
