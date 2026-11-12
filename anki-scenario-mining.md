@@ -316,6 +316,18 @@ and 1463194258219/1463194377641 (skipping, ch3:713
 `{\LARGE\wan{3}} in a skipping shape is more valuable than isolated {\LARGE\wan{3}}`).
 Build only if the shape family proves popular.
 
+**Correction (implementation):** `protorun_plus_one` was built in task
+261110-175855, and the "provable by ukeire" claim above does not hold. A cover
+adds exactly two tiles (one kind) to *either* protorun, so keeping the weak
+shape covered and the strong one bare accepts `(weak + 2) + strong`, and the
+mirror accepts `(strong + 2) + weak` — identical totals and kind counts. The
+book's worked example is a tie on raw acceptance and is decided by its cover
+rule: it *keeps* the weak closed wait's cover and **breaks the strong side
+wait's cover** ("You should thus discard 3p", ch3:574). The generator proves the
+tie and grades the book's answer, with the mirror discard explained rather than
+accepted; see `src/generator/block_theory/protorun_plus_one/`.
+
+
 ---
 
 ### 5.2 Five-block method (ch4)
