@@ -27,8 +27,8 @@ use agari::yaku::Yaku;
 use crate::display::format_tile_for_display;
 use crate::generator::floating_quad_acceptance;
 use crate::generator::{
-    SanshokuFacts, can_be_pinfu_head, is_perfect_one_away, perfect_one_away_shape, sanshoku_facts,
-    wind_from_honor, wind_to_honor,
+    SanshokuFacts, can_be_pinfu_head, is_perfect_one_away, isolated_turns, perfect_one_away_shape,
+    sanshoku_facts, skipping_turns, wind_from_honor, wind_to_honor,
 };
 use crate::safety::{SafetyFacts, SafetyRank, in_open_hand_neighbourhood};
 use crate::state::{
@@ -276,6 +276,20 @@ fn ch3_ryankan(line: u32, needle: &str) -> Citation {
         3,
         "Riichi mahjong basics",
         "Double closed (ryankan) shape",
+        "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
+/// Riichi Book 1, ch. 3, "Skipping shape": the four-tile complex shape whose
+/// float sits two ranks from a complete run, and its value against an isolated
+/// float of the same rank.
+fn ch3_skipping(line: u32, needle: &str) -> Citation {
+    citation(
+        3,
+        "Riichi mahjong basics",
+        "Skipping shape",
         "RiichiBook1-ch3-basics.tex",
         line,
         needle,
@@ -1133,6 +1147,10 @@ pub(crate) fn scenario_source(category: &str) -> Option<Citation> {
         "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
         "protorun_priority" => Some(ch3(205, "can accept twice as many tiles")),
         "ryankan_break" => Some(ch3_ryankan(523, "break the double closed shape")),
+        "skipping_block" => Some(ch3_skipping(
+            713,
+            "increases the kinds of tiles the hand can accept",
+        )),
         "nobetan_keep" => Some(ch3_nobetan(
             669,
             "Try to keep a stretched single shape if a hand has one",
@@ -1204,6 +1222,10 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
 
     if state.category == "wind_discard_order" {
         return wind_discard_rationale(state);
+    }
+
+    if state.category == "skipping_block" {
+        return skipping_block_rationale(state);
     }
 
     if state.category == "pinfu_head" {
@@ -2876,6 +2898,137 @@ fn is_wind_code(code: &str) -> bool {
     matches!(code, "1z" | "2z" | "3z" | "4z")
 }
 
+/// The skipping-shape drill, in the book's own words.
+///
+/// Riichi Book 1, ch. 3, *Skipping shape*: a float two ranks from a run is worth
+/// more than an isolated float of the same rank because it accepts more tiles
+/// that make a protorun or a 3-way wait (ch3:713), and the book's example hand
+/// answers "keep the skipping tile, discard the isolated one" (ch3:795).
+fn skipping_block_rationale(state: &GameState) -> Option<BookRationale> {
+    let answer_code = state.correct_action.tile()?;
+    let answer_tile = Tile::try_from(answer_code).ok()?;
+    let answer = format_tile_for_display(answer_code, false);
+
+    let tiles: Vec<Tile> = state
+        .tiles
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .collect();
+
+    let (skipping_float, run) = skipping_group(&tiles, answer_tile)?;
+    let skipping = format_tile_for_display(&skipping_float.to_string(), false);
+    let run_text: String = run
+        .iter()
+        .map(|tile| format_tile_for_display(&tile.to_string(), false))
+        .collect();
+    let keeping = skipping_turns(skipping_float, run).len();
+    let throwing = isolated_turns(answer_tile).len();
+
+    let rules = vec![
+        BookRule {
+            id: "skipping_definition".to_string(),
+            rule: "A skipping shape is a complete run with a floating tile two ranks away from \
+                   it: 3567, 4678, 2346, 3457 and the terminal variants. The float is not dead \
+                   weight, because the run gives it extra ways to become a protorun."
+                .to_string(),
+            quote: "When we have a floating tile two tiles away from a run, we have a skipping \
+                    shape."
+                .to_string(),
+            citation: ch3_skipping(713, "floating tile two tiles away from a run"),
+            applies: format!("{skipping} sits two ranks from the run {run_text}."),
+        },
+        BookRule {
+            id: "skipping_beats_isolated".to_string(),
+            rule: "A skipping float is worth more than an isolated float of the same rank: it \
+                   accepts strictly more kinds of draws that turn it into a protorun next to \
+                   the run."
+                .to_string(),
+            quote: "in a skipping shape is more valuable than isolated, because it increases the \
+                    kinds of tiles the hand can accept to produce a protorun or a 3-way \
+                    side-wait shape."
+                .to_string(),
+            citation: ch3_skipping(713, "increases the kinds of tiles the hand can accept"),
+            applies: format!(
+                "The skipping {skipping} turns {keeping} kinds of draws into a protorun next to \
+                 the run; an isolated {answer} turns only {throwing}. Both discards leave the \
+                 hand at the same shanten and the same raw acceptance, so the shape decides it."
+            ),
+        },
+        BookRule {
+            id: "skipping_answer".to_string(),
+            rule: "Keep the skipping tile and throw the isolated float instead.".to_string(),
+            quote: "This is because is a part of a skipping shape, but is an isolated floating \
+                    tile."
+                .to_string(),
+            citation: ch3_skipping(795, "is an isolated floating tile"),
+            applies: format!("Discard {answer} and keep {skipping}."),
+        },
+    ];
+
+    Some(BookRationale {
+        summary: format!(
+            "Keep {skipping} and discard {answer}: {skipping} is part of a skipping shape, \
+             {answer} is an isolated float."
+        ),
+        rules,
+        absent: Vec::new(),
+        source: ch3_skipping(713, "increases the kinds of tiles the hand can accept"),
+        caveats: vec![
+            "The hand's own tile acceptance is the same either way: the two floats are worth \
+             only their own kind, so counting acceptance alone does not answer this hand."
+                .to_string(),
+            "Only the shapes whose count strictly beats an isolated float of the same rank are \
+             dealt: the middle shapes accept five protorun draws against four (6 kinds--22 \
+             tiles, ch3:716), the terminal ones three or four against two or three."
+                .to_string(),
+        ],
+    })
+}
+
+/// The skipping float and the run it skips to, read back from a finished state.
+///
+/// The generator always pits two tiles of one rank against each other (the
+/// book's `3m` against `3p`), so the answer's rank names the skipping float and
+/// the answer's own suit never holds it.
+fn skipping_group(tiles: &[Tile], answer: Tile) -> Option<(Tile, [Tile; 3])> {
+    let Tile::Suited { value, .. } = answer else {
+        return None;
+    };
+
+    for &candidate in tiles {
+        if candidate == answer || candidate.value() != Some(value) {
+            continue;
+        }
+        let Tile::Suited {
+            suit,
+            value: float_value,
+        } = candidate
+        else {
+            continue;
+        };
+
+        for low in 1..=7u8 {
+            let run = [
+                Tile::Suited { suit, value: low },
+                Tile::Suited {
+                    suit,
+                    value: low + 1,
+                },
+                Tile::Suited {
+                    suit,
+                    value: low + 2,
+                },
+            ];
+            let skips = low == float_value + 2 || float_value == low + 4;
+            if skips && run.iter().all(|held| tiles.contains(held)) {
+                return Some((candidate, run));
+            }
+        }
+    }
+
+    None
+}
+
 /// Riichi Book 1, ch. 5, *Building the head*: with no pair yet, which lone tiles
 /// may still pair into the pinfu head, and which one never may.
 ///
@@ -4317,11 +4470,10 @@ fn honitsu_rationale(state: &GameState) -> Option<BookRationale> {
                     "make the hand ready without melding and go for \
                                            riichi",
                 ),
-                applies: format!(
-                    "The answer keeps the off-suit side-wait protorun and the other off-suit \
-                     tile, so the hand can still become ready without melding and go for \
-                     riichi."
-                ),
+                applies: "The answer keeps the off-suit side-wait protorun and the other \
+                          off-suit tile, so the hand can still become ready without melding \
+                          and go for riichi."
+                    .to_string(),
             });
             absent.push(AbsentRule {
                 id: "expensive_honitsu".to_string(),
@@ -5306,6 +5458,85 @@ mod tests {
     }
 
     #[test]
+    fn skipping_block_hand_cites_the_shape_value_rule() {
+        for run in 0..20 {
+            let state = generate_puzzle("skipping_block").expect("skipping block must generate");
+            let rationale = rationale_for(&state).expect("skipping block needs a rationale");
+
+            assert_eq!(rationale.source.chapter, 3, "run {run}");
+            assert_eq!(rationale.source.section, "Skipping shape", "run {run}");
+            assert_eq!(
+                rationale.source.source_needle, "increases the kinds of tiles the hand can accept",
+                "run {run}"
+            );
+
+            let ids: Vec<&str> = rationale
+                .rules
+                .iter()
+                .map(|rule| rule.id.as_str())
+                .collect();
+            assert_eq!(
+                ids,
+                vec![
+                    "skipping_definition",
+                    "skipping_beats_isolated",
+                    "skipping_answer"
+                ],
+                "run {run}"
+            );
+            assert!(rationale.absent.is_empty());
+            assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+
+            // The value rule has to name both floats and both counts, because
+            // the hand's own acceptance is a tie.
+            let value_rule = &rationale.rules[1];
+            let answer = state.correct_action.tile().expect("answer tile");
+            let answer_name = format_tile_for_display(answer, false);
+            assert!(
+                value_rule.applies.contains(&answer_name),
+                "run {run}: the value rule must name the isolated float {}",
+                value_rule.applies
+            );
+            assert!(
+                value_rule.applies.contains("kinds of draws"),
+                "run {run}: the value rule must count the draws"
+            );
+
+            // The answer rule names the discard, and the caveat says the raw
+            // acceptance does not decide, which is the whole point of the drill.
+            assert!(rationale.rules[2].applies.contains(&answer_name));
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("same either way")),
+                "run {run}: the caveat must admit the acceptance tie"
+            );
+        }
+    }
+
+    #[test]
+    fn skipping_group_reads_back_the_same_rank_from_a_state() {
+        for _ in 0..20 {
+            let state = generate_puzzle("skipping_block").expect("skipping block must generate");
+            let answer = state.correct_action.tile().expect("answer tile");
+            let answer_tile = Tile::try_from(answer).expect("answer parses");
+            let tiles: Vec<Tile> = state
+                .tiles
+                .iter()
+                .filter_map(|code| Tile::try_from(code.as_str()).ok())
+                .collect();
+
+            let (skipping_float, run) =
+                skipping_group(&tiles, answer_tile).expect("the hand holds a skipping shape");
+            assert_ne!(skipping_float, answer_tile);
+            assert_eq!(skipping_float.value(), answer_tile.value());
+            assert!(run.iter().all(|tile| tiles.contains(tile)));
+            assert!(run.iter().all(|tile| tile.suit() == skipping_float.suit()));
+        }
+    }
+
+    #[test]
     fn ryankan_break_hand_cites_the_wait_quality_instruction() {
         let state = generate_puzzle("ryankan_break").expect("ryankan break must generate");
 
@@ -5680,6 +5911,7 @@ mod tests {
             "nakabukure_ready",
             "protorun_priority",
             "ryankan_break",
+            "skipping_block",
             "pair_count",
             "pair_count_open",
             "perfect_one_away",
@@ -5718,6 +5950,8 @@ mod tests {
             "ryanmen_protorun",
             "nakabukure_ready",
             "protorun_priority",
+            "ryankan_break",
+            "skipping_block",
             "pair_count",
             "pair_count_open",
             "perfect_one_away",
@@ -6164,6 +6398,7 @@ mod tests {
             "nakabukure_ready",
             "protorun_priority",
             "ryankan_break",
+            "skipping_block",
             "pair_count",
             "pair_count_open",
             "perfect_one_away",

@@ -8,3 +8,4 @@ pub mod random_hand;
 pub mod ryankan_break;
 pub mod ryanmen_protorun;
 pub mod shapes;
+pub mod skipping_block;
