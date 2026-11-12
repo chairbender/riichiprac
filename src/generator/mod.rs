@@ -134,10 +134,18 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
     },
     ScenarioMeta {
         id: ScenarioId::NakabukureReady,
-        label: "Nakabukure Ready",
-        description: "Block theory: in a ready hand, drop the bulging float for the bigger wait.",
+        label: "Bulging Float",
+        description: "Block theory: the bulging float is a real decision — keep it for two \
+                      runs, or break it for a better block or wait.",
         category: ScenarioCategory::TileEfficiency,
-        tags: &["block_theory", "discard", "nakabukure", "shape"],
+        tags: &[
+            "block_theory",
+            "discard",
+            "nakabukure",
+            "shape",
+            "keep",
+            "break",
+        ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
     },
