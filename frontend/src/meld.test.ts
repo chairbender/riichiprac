@@ -45,15 +45,41 @@ describe('called tile placement', () => {
     });
   });
 
-  it('leaves Chi, open Kan, and closed Kan tiles upright', () => {
-    expect(calledTile(meld('Chi', 3, ['2s', '3s', '4s']), 0)).toBeNull();
-    expect(calledTile(meld('Kan', 2, ['5z', '5z', '5z', '5z']), 0)).toBeNull();
-    expect(calledTile(meld('Ankan', null, ['5z', '5z', '5z', '5z']), 0)).toBeNull();
+  it('turns a Chi on its leftmost tile, wherever the call came from', () => {
+    // A chi only claims kamicha; the state holds the run, not the claimed
+    // tile's place in it.
+    expect(calledTile(meld('Chi', 3, ['2s', '3s', '4s']), 0)).toEqual({
+      index: 0,
+      from: 'left',
+    });
+    expect(calledTile(meld('Chi', 3, ['4s', '5s', '6s']), 0)).toEqual({
+      index: 0,
+      from: 'left',
+    });
+    // A chi cannot claim any other seat, so a malformed one stays upright.
+    expect(calledTile(meld('Chi', 2, ['2s', '3s', '4s']), 0)).toBeNull();
   });
 
-  it('needs a source and three Pon tiles to place the sideways tile', () => {
+  it('places an open Kan by source, using the last slot from shimocha', () => {
+    const kan = (from: number) => meld('Kan', from, ['5z', '5z', '5z', '5z']);
+
+    expect(calledTile(kan(3), 0)).toEqual({ index: 0, from: 'left' });
+    expect(calledTile(kan(2), 0)).toEqual({ index: 1, from: 'across' });
+    // Four tiles: the shimocha call sits fourth, not third.
+    expect(calledTile(kan(1), 0)).toEqual({ index: 3, from: 'right' });
+  });
+
+  it('leaves a closed Kan upright', () => {
+    expect(
+      calledTile(meld('Ankan', null, ['5z', '5z', '5z', '5z']), 0),
+    ).toBeNull();
+  });
+
+  it('needs a source and the right tile count to place the sideways tile', () => {
     expect(calledTile(meld('Pon', null), 0)).toBeNull();
     // A malformed two-tile Pon has no middle slot to trust.
     expect(calledTile(meld('Pon', 2, ['5z', '5z']), 0)).toBeNull();
+    // An open Kan is four tiles; three is a Pon shape.
+    expect(calledTile(meld('Kan', 2, ['5z', '5z', '5z']), 0)).toBeNull();
   });
 });

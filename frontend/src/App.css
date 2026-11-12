@@ -720,7 +720,7 @@
 }
 
 /*
- * A Pon's called tile is turned sideways, the same way the Riichi declaration
+ * A call's claimed tile is turned sideways, the same way the Riichi declaration
  * tile is: its position in the meld (left, middle, right) says which opponent
  * discarded it.
  */

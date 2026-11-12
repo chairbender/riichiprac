@@ -19,9 +19,9 @@ const CALLED_FROM_LABELS: Record<CalledFrom, string> = {
 
 /**
  * One player's vertically stacked row: wind, score, Riichi marker, open melds,
- * and the discard river. The Riichi declaration tile and a Pon's called tile
- * are rendered sideways, and tsumogiri discards (thrown straight off the draw)
- * carry a dot marker.
+ * and the discard river. The Riichi declaration tile and a call's claimed tile
+ * (Chi, Pon, open Kan) are rendered sideways, and tsumogiri discards (thrown
+ * straight off the draw) carry a dot marker.
  */
 export function PlayerRow({
   player,
