@@ -24,10 +24,24 @@ mod skeleton;
 use crate::generator::support::retry::generate_with_retries;
 use crate::state::GameState;
 
+pub(crate) use skeleton::Target;
+
 /// Generates a closed, riichi-only bad-wait hand and asks Riichi or dama.
 pub fn generate(category: &str) -> Result<GameState, String> {
+    generate_with_target(category, sample_target())
+}
+
+/// Draws the box cell the next request will teach, before any tile exists.
+///
+/// The three cells are already isolated conditions, so the draw stays uniform:
+/// each one is a different question, not a weaker or stronger case.
+pub(crate) fn sample_target() -> Target {
+    skeleton::random_target()
+}
+
+/// Builds a hand and table under an already-drawn box cell.
+pub(crate) fn generate_with_target(category: &str, target: Target) -> Result<GameState, String> {
     generate_with_retries("dama_bad_wait", 20_000, || {
-        let target = skeleton::random_target();
         let skeleton = skeleton::build(target)?;
         board::build(category, &skeleton, target)
     })

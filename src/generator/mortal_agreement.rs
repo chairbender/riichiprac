@@ -16,6 +16,24 @@
 //! runner and the dual verdict use ([`crate::fuzz::compare_action_set`]), so
 //! "Mortal agrees" cannot mean two different things in two places.
 //!
+//! ## One situation per request
+//!
+//! Rejection sampling must not change *what* the drill teaches. The filter
+//! therefore draws the lesson's situation parameters once
+//! (`crate::generator::sample_situation`) and then re-fills the hand under
+//! that same situation on every rejected candidate
+//! (`crate::generator::generate_reachable_candidate_for`). If a lesson has no
+//! parameter concept, every candidate stays an independent full draw. Without
+//! the pin, each retry would redraw the parameters (ch. 7's condition set, the
+//! bad-wait cell, the value band), and the filter would keep whichever draw
+//! Mortal happens to like — which biases the drill toward its most obvious
+//! hands. A pinned set that cannot be built is an error naming the situation,
+//! never a silent re-draw.
+//!
+//! The drawn set is reported in [`MortalAgreementReport::situation`], so a run
+//! makes visible which condition the hand was built to isolate alongside the
+//! rejection counts.
+//!
 //! The filter is deliberately opt-in. Generating one candidate is cheap, but
 //! each candidate costs one forward pass (two when Mortal chooses Riichi,
 //! because its declaration action carries no tile and the evaluator resolves
@@ -41,7 +59,10 @@ use crate::ai::wasm_bridge::{Evaluation, evaluate_state_named};
 use crate::fuzz::{DiscrepancyKind, FuzzOutcome, compare_action_set};
 use crate::state::GameState;
 
-use super::{GeneratedPuzzle, finalize_state, generate_reachable_candidate};
+use super::{
+    GeneratedPuzzle, Situation, finalize_state, generate_reachable_candidate,
+    generate_reachable_candidate_for, sample_situation,
+};
 
 /// How many candidates one call may generate and evaluate by default.
 ///
@@ -141,6 +162,14 @@ pub struct MortalAgreementReport {
     /// unreachable river layout after their own retries).
     #[serde(default)]
     pub generation_failures: usize,
+    /// The situation parameters drawn for this request, when the lesson has any.
+    ///
+    /// Drawn once before the first candidate; every attempt below is filled
+    /// under this same set. `None` means the lesson has no parameter concept
+    /// and each candidate was an independent full draw. The wording names the
+    /// isolated condition, e.g. `riichi: good wait only`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub situation: Option<String>,
     /// True when a candidate was accepted. `false` only appears on the error
     /// path, because a successful call always returns an accepted candidate.
     pub accepted: bool,
@@ -235,12 +264,16 @@ pub fn rejection_for(state: &GameState, evaluation: &Evaluation) -> Option<Agree
 /// tested without candle. The production entry point is
 /// [`generate_with_model`].
 ///
+/// The lesson's situation parameters are drawn once here and then pinned for
+/// every candidate in the loop, so a rejection changes the tiles but never the
+/// question. See `generate_pinned`.
+///
 /// The `mock_table` fixture is returned as-is with no report: it is a fixed UI
 /// mock, not a played-out position, so there is nothing to sample.
 pub fn generate<F>(
     category: &str,
     options: MortalAgreementOptions,
-    mut evaluate: F,
+    evaluate: F,
 ) -> Result<GeneratedPuzzle, String>
 where
     F: FnMut(&GameState) -> Result<Evaluation, String>,
@@ -270,8 +303,28 @@ where
         });
     }
 
+    // The one draw that decides what this request teaches. `None` for a lesson
+    // with no parameters, which keeps the old per-candidate full draw.
+    let situation = sample_situation(category);
+    generate_pinned(category, situation, options, evaluate)
+}
+
+/// The sampling loop proper, with the situation already drawn.
+///
+/// Split from [`generate`] so a test can pin a parameter set directly and see
+/// how the loop reacts to it.
+fn generate_pinned<F>(
+    category: &str,
+    situation: Option<Situation>,
+    options: MortalAgreementOptions,
+    mut evaluate: F,
+) -> Result<GeneratedPuzzle, String>
+where
+    F: FnMut(&GameState) -> Result<Evaluation, String>,
+{
     let mut report = MortalAgreementReport {
         max_candidates: options.max_candidates,
+        situation: situation.map(Situation::label),
         ..MortalAgreementReport::default()
     };
     let mut last_error = String::new();
@@ -281,14 +334,30 @@ where
 
         // The reachability guard runs first, exactly as in `generate_puzzle`:
         // it is cheaper than an inference pass, so a malformed table is never
-        // worth evaluating.
-        let state = match generate_reachable_candidate(category) {
-            Ok(state) => finalize_state(state),
-            Err(err) => {
-                report.generation_failures += 1;
-                last_error = err;
-                continue;
-            }
+        // worth evaluating. A pinned situation means every retry refills under
+        // the same parameters instead of drawing new ones.
+        let state = match situation {
+            Some(situation) => match generate_reachable_candidate_for(category, situation) {
+                Ok(state) => finalize_state(state),
+                Err(err) => {
+                    // Re-filling is the whole point of the pin, so a fill
+                    // failure says this set cannot be built here. Drawing a
+                    // different set would quietly change the question (and
+                    // bias the drill), so report it instead.
+                    let label = report.situation.as_deref().unwrap_or_default();
+                    return Err(format!(
+                        "the drawn {category} situation ({label}) is unachievable: {err}"
+                    ));
+                }
+            },
+            None => match generate_reachable_candidate(category) {
+                Ok(state) => finalize_state(state),
+                Err(err) => {
+                    report.generation_failures += 1;
+                    last_error = err;
+                    continue;
+                }
+            },
         };
 
         let evaluation = match evaluate(&state) {
@@ -317,8 +386,12 @@ where
         }
     }
 
+    let pinned = match report.situation.as_deref() {
+        Some(label) => format!(" under the pinned situation ({label})"),
+        None => String::new(),
+    };
     Err(format!(
-        "no {category} candidate matched Mortal after {} attempt(s) \
+        "no {category} candidate matched Mortal after {} attempt(s){pinned} \
          ({} evaluated; {} action mismatch, {} tile mismatch, {} incomparable, \
          {} evaluation failure(s), {} generation failure(s)); last: {last_error}",
         report.attempts,
@@ -393,6 +466,18 @@ mod tests {
             evaluation.riichi_discard = state.correct_action.tile().map(str::to_string);
         }
         evaluation
+    }
+
+    /// An evaluation that picks some other legal discard, so the state's answer
+    /// is rejected whatever family it belongs to.
+    fn disagreeing_evaluation(state: &GameState) -> Evaluation {
+        let answer = state.correct_action.tile();
+        let other = crate::ai::actions::legal_actions(state)
+            .into_iter()
+            .filter(|info| info.kind == ActionKind::Discard)
+            .find_map(|info| info.tile.filter(|tile| Some(tile.as_str()) != answer))
+            .expect("another discard exists");
+        evaluation_with_top(state, &format!("Discard_{other}"))
     }
 
     fn generate_book_state(category: &str) -> GameState {
@@ -719,6 +804,151 @@ mod tests {
         assert_eq!(json["agreement"]["accepted"], true);
         assert_eq!(json["agreement"]["max_candidates"], 4);
         assert_eq!(json["agreement"]["attempts"], 1);
+        // A lesson without situation parameters reports no pinned set.
+        assert!(json["agreement"].get("situation").is_none());
+    }
+
+    /// Lessons with a parameter concept report the set they were built for.
+    #[test]
+    fn the_report_names_the_drawn_situation() {
+        for category in [
+            "riichi_judgement",
+            "dama_bad_wait",
+            "dama_expensive_hand",
+            "chiitoitsu_riichi_vs_dama",
+        ] {
+            let puzzle = generate(category, MortalAgreementOptions::new(4), |state| {
+                Ok(agreeing_evaluation(state))
+            })
+            .unwrap_or_else(|err| panic!("{category} must accept its own answer: {err}"));
+            let report = puzzle.agreement.expect("report");
+            let label = report
+                .situation
+                .unwrap_or_else(|| panic!("{category} must report its situation"));
+
+            assert!(!label.is_empty(), "{category}");
+            match category {
+                "riichi_judgement" => assert!(
+                    label.starts_with("riichi: ") || label.starts_with("dama: "),
+                    "{label}"
+                ),
+                "dama_bad_wait" => assert!(
+                    label.starts_with("dama: ") || label.starts_with("riichi: "),
+                    "{label}"
+                ),
+                "dama_expensive_hand" => assert!(
+                    label.starts_with("dama: 7700") || label.starts_with("dama: haneman"),
+                    "{label}"
+                ),
+                _ => assert!(
+                    label.starts_with("dama: ") || label.starts_with("riichi: "),
+                    "{label}"
+                ),
+            }
+        }
+    }
+
+    /// Families with no parameter concept keep the old per-candidate draw.
+    #[test]
+    fn lessons_without_parameters_report_no_situation() {
+        for category in [
+            "ryanmen_protorun",
+            "nakabukure_ready",
+            "defense_safety_chart",
+            "dama_genbutsu_wait",
+            "suji_trap_riichi",
+            "wind_discard_order",
+        ] {
+            assert!(
+                crate::generator::sample_situation(category).is_none(),
+                "{category} must not claim a situation parameter"
+            );
+            let puzzle = generate(category, MortalAgreementOptions::new(2), |state| {
+                Ok(agreeing_evaluation(state))
+            })
+            .unwrap_or_else(|err| panic!("{category} must accept its own answer: {err}"));
+            assert!(
+                puzzle.agreement.expect("report").situation.is_none(),
+                "{category}"
+            );
+        }
+    }
+
+    /// The state-visible fingerprint of a `riichi_judgement` parameter set:
+    /// which conditions the finished hand isolates.
+    fn riichi_situation_key(state: &GameState) -> String {
+        format!(
+            "{:?}|{:?}|{}",
+            state.riichi_triggers,
+            state.ukeire_tiles.len(),
+            state.players[0].wind == crate::state::Wind::East,
+        )
+    }
+
+    /// The point of the task: a filter that rejects every candidate refills
+    /// under one drawn situation instead of redrawing it.
+    #[test]
+    fn one_request_pins_one_situation_across_every_candidate() {
+        crate::rng::seed(0x5117_0001);
+
+        let mut keys = Vec::new();
+        let err = generate(
+            "riichi_judgement",
+            MortalAgreementOptions::new(6),
+            |state| {
+                keys.push(riichi_situation_key(state));
+                Ok(disagreeing_evaluation(state))
+            },
+        )
+        .expect_err("every candidate must be rejected");
+
+        assert_eq!(keys.len(), 6, "{err}");
+        assert!(
+            keys.windows(2).all(|pair| pair[0] == pair[1]),
+            "the situation moved between candidates: {keys:?}"
+        );
+        assert!(err.contains("pinned situation"), "{err}");
+    }
+
+    /// A seeded run reproduces the whole table, not just its parameter set.
+    #[test]
+    fn a_seeded_request_replays_the_same_puzzle() {
+        crate::rng::seed(0xc0ff_ee01);
+        let first = crate::generator::generate_puzzle("riichi_judgement").expect("first draw");
+        crate::rng::seed(0xc0ff_ee01);
+        let second = crate::generator::generate_puzzle("riichi_judgement").expect("second draw");
+
+        assert_eq!(first, second, "a seeded draw must be reproducible");
+    }
+
+    /// A drawn set that cannot be built must be reported, not silently
+    /// replaced by an easier one.
+    #[test]
+    fn an_unachievable_pinned_situation_is_reported_instead_of_redrawn() {
+        use crate::generator::chiitoitsu_riichi_vs_dama::{RiichiTriggerSet, Target as Chiitoitsu};
+
+        // The red-five Riichi justification must stand alone; a set that pairs
+        // it with the deal is a parameter draw the family can never build.
+        let impossible = Situation::Chiitoitsu(Chiitoitsu::Riichi(RiichiTriggerSet {
+            red_five_wait: true,
+            dealer: true,
+            ..RiichiTriggerSet::default()
+        }));
+
+        let err = generate_pinned(
+            "chiitoitsu_riichi_vs_dama",
+            Some(impossible),
+            MortalAgreementOptions::new(2),
+            |_| unreachable!("an unachievable situation must fail before evaluation"),
+        )
+        .expect_err("the impossible set must fail");
+
+        assert!(err.contains("unachievable"), "{err}");
+        assert!(
+            err.contains("riichi: dealer + red-five wait"),
+            "the error must name the drawn set: {err}"
+        );
+        assert!(err.contains("chiitoitsu_riichi_vs_dama"), "{err}");
     }
 
     #[test]

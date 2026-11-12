@@ -3,7 +3,7 @@ use crate::state::RiichiTrigger;
 
 /// The set of heuristics that make Riichi correct for one chiitoitsu puzzle.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(super) struct RiichiTriggerSet {
+pub(crate) struct RiichiTriggerSet {
     pub dealer: bool,
     pub tanyao: bool,
     pub red_five_wait: bool,
@@ -13,6 +13,34 @@ pub(super) struct RiichiTriggerSet {
 }
 
 impl RiichiTriggerSet {
+    /// The heuristics named for the agreement report.
+    ///
+    /// The set is the situation parameter for this lesson, so the label spells
+    /// out every active justification: `riichi: dealer + tanyao` is a
+    /// different question from `riichi: suji trap`.
+    pub(crate) fn label(self) -> String {
+        let mut parts = Vec::new();
+        if self.dealer {
+            parts.push("dealer");
+        }
+        if self.tanyao {
+            parts.push("tanyao");
+        }
+        if self.red_five_wait {
+            parts.push("red-five wait");
+        }
+        if self.suji_trap {
+            parts.push("suji trap");
+        }
+        if self.wait_outside_456 {
+            parts.push("wait outside 4-5-6");
+        }
+        if self.score_below_mangan {
+            parts.push("score below mangan");
+        }
+        parts.join(" + ")
+    }
+
     pub(super) fn any(self) -> bool {
         self.dealer
             || self.tanyao

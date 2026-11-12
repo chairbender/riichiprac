@@ -124,7 +124,10 @@ impl WasmMortalEvaluator {
     /// This is the opt-in agreement filter on the generation path: candidates
     /// are generated and evaluated until the model's top-ranked action equals
     /// one of the lesson's accepted answers, within
-    /// [`MortalAgreementOptions::max_candidates`] attempts. `options_json` is
+    /// [`MortalAgreementOptions::max_candidates`] attempts. The lesson's
+    /// situation parameters are drawn once and every candidate is re-filled
+    /// under them, so the filter never changes what the drill teaches.
+    /// `options_json` is
     /// `{"max_candidates": 40}`, `{}` / `""` for the default bound, or
     /// `{"enabled": false}` to get the plain `generate_puzzle` result with no
     /// report.

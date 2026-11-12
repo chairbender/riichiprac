@@ -1,3 +1,23 @@
+//! Seven-pairs Riichi vs dama.
+//!
+//! The 13-tile hand before the draw is five pairs plus three lone tiles. The
+//! drawn tile completes the sixth pair, so Riichi only becomes available on
+//! this turn. Two lone tiles remain:
+//!
+//! - the ordinary model accepts either discard, because the lesson constraints
+//!   hold for both waits;
+//! - the red-five model keeps exactly one red five as the wait and accepts only
+//!   the other lone tile. Discarding the red five would give away the dora and
+//!   the book's red-five justification, so that path has a single
+//!   (action, tile) answer.
+//!
+//! The Riichi path applies at least one Riichi heuristic and keeps every
+//! accepted wait off the dora. The dama path inverts those conditions and
+//! guarantees a Mangan-or-better hand through two dora pairs.
+//!
+//! The branch (and the Riichi heuristics behind it) is drawn once by
+//! [`Target::sample`] before any tile exists, then every fill retry reuses it.
+
 mod board;
 mod dama;
 mod riichi;
@@ -5,37 +25,63 @@ mod scoring;
 mod skeleton;
 mod triggers;
 
+// The trigger set is re-exported only for the pinning tests, which need to pin
+// an unachievable parameter set to exercise the sampler's failure path.
+#[cfg(test)]
+pub(crate) use triggers::RiichiTriggerSet;
+
 use crate::generator::support::retry::generate_with_retries;
 use crate::rng::gen_bool;
 use crate::state::GameState;
 
-/// Generates a newly-tenpai seven-pairs hand that randomly asks for Riichi or
-/// dama.
+/// What the next seven-pairs request should teach.
 ///
-/// The 13-tile hand before the draw is five pairs plus three lone tiles. The
-/// drawn tile completes the sixth pair, so Riichi only becomes available on
-/// this turn. Two lone tiles remain:
-///
-/// - the ordinary model accepts either discard, because the lesson constraints
-///   hold for both waits;
-/// - the red-five model keeps exactly one red five as the wait and accepts only
-///   the other lone tile. Discarding the red five would give away the dora and
-///   the book's red-five justification, so that path has a single
-///   (action, tile) answer.
-///
-/// The Riichi path applies at least one Riichi heuristic and keeps every
-/// accepted wait off the dora. The dama path inverts those conditions and
-/// guarantees a Mangan-or-better hand through two dora pairs.
-pub fn generate(category: &str) -> Result<GameState, String> {
-    generate_with_retries("chiitoitsu", 20_000, || {
-        let skeleton = if gen_bool(0.5) {
-            riichi::build_skeleton(triggers::random())?
+/// Drawn once per request so a rejection sampler can retry the tile fill
+/// without changing the question. The Riichi branch carries the heuristics that
+/// justify the declaration, because they decide the hand shape (and, for the
+/// red-five case, which discards are accepted).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Target {
+    /// Riichi, justified by this non-empty trigger set.
+    Riichi(triggers::RiichiTriggerSet),
+    /// Dama: two dora pairs already make the hand worth mangan or more.
+    Dama,
+}
+
+impl Target {
+    /// Draws the branch the next request will teach, before any tile exists.
+    pub(crate) fn sample() -> Self {
+        if gen_bool(0.5) {
+            Self::Riichi(triggers::random())
         } else {
-            dama::build_skeleton()?
+            Self::Dama
+        }
+    }
+
+    /// The parameter named for the agreement report.
+    pub(crate) fn label(self) -> String {
+        match self {
+            Self::Dama => "dama: mangan-or-better seven pairs".to_string(),
+            Self::Riichi(set) => format!("riichi: {}", set.label()),
+        }
+    }
+}
+
+/// Builds a hand and table under an already-drawn branch.
+pub(crate) fn generate_with_target(category: &str, target: Target) -> Result<GameState, String> {
+    generate_with_retries("chiitoitsu", 20_000, || {
+        let skeleton = match target {
+            Target::Riichi(set) => riichi::build_skeleton(set)?,
+            Target::Dama => dama::build_skeleton()?,
         };
 
         board::build(category, &skeleton)
     })
+}
+
+/// Generates a newly-tenpai seven-pairs hand that asks for Riichi or dama.
+pub fn generate(category: &str) -> Result<GameState, String> {
+    generate_with_target(category, Target::sample())
 }
 
 #[cfg(test)]

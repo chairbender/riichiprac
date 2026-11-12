@@ -39,7 +39,7 @@ use crate::state::Wind;
 
 /// What the next hand should teach.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Target {
+pub(crate) enum Target {
     /// Minimum 7700 but below haneman: dama is the book's acceptable play.
     Dama7700,
     /// Minimum haneman or better: the book says do not riichi.
@@ -47,6 +47,14 @@ pub(super) enum Target {
 }
 
 impl Target {
+    /// The value band named for the agreement report.
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Dama7700 => "dama: 7700 without riichi",
+            Self::DamaHaneman => "dama: haneman or better without riichi",
+        }
+    }
+
     /// The section branch this target must produce.
     pub(super) fn expected_verdict(self) -> Verdict {
         match self {

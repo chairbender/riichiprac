@@ -43,6 +43,7 @@ pub mod mortal_agreement;
 mod open_hand_defense;
 mod riichi_judgement;
 mod shouminkan_decision;
+mod situation;
 mod suji_trap_riichi;
 mod support;
 mod wind_discard_order;
@@ -52,6 +53,7 @@ use serde::Serialize;
 
 use crate::ai::model::MortalV4Model;
 use crate::state::GameState;
+use situation::Situation;
 
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
@@ -513,6 +515,60 @@ pub(crate) fn generate_reachable_candidate(category: &str) -> Result<GameState, 
     Err(format!(
         "generated {category} states were never reachable after \
          {MAX_REACHABILITY_ATTEMPTS} attempts: {last_error}"
+    ))
+}
+
+/// Draws the situation parameters for one puzzle request, once.
+///
+/// This is the "pick the kind of situation first" half of generation: the
+/// returned value names the condition the hand must isolate, and
+/// [`generate_reachable_candidate_for`] then fills tiles under it. `None` means
+/// the lesson has no parameter concept (the block-theory discards, the safety
+/// lessons, the call and kan lessons, and the dama lessons whose answer is
+/// fixed by the hand shape), so each candidate stays an independent full draw.
+pub(crate) fn sample_situation(category: &str) -> Option<Situation> {
+    match ScenarioId::from_id(category)? {
+        ScenarioId::RiichiJudgement => {
+            Some(Situation::RiichiJudgement(riichi_judgement::sample_target()))
+        }
+        ScenarioId::DamaBadWait => Some(Situation::DamaBadWait(dama_bad_wait::sample_target())),
+        ScenarioId::DamaExpensiveHand => Some(Situation::DamaExpensiveHand(
+            dama_expensive_hand::sample_target(),
+        )),
+        ScenarioId::ChiitoitsuRiichiVsDama => Some(Situation::Chiitoitsu(
+            chiitoitsu_riichi_vs_dama::Target::sample(),
+        )),
+        _ => None,
+    }
+}
+
+/// Generate one lesson candidate under already-drawn situation parameters.
+///
+/// The same reachability guard as [`generate_reachable_candidate`], but the
+/// parameters are **not** redrawn: every retry refills the tiles under the same
+/// [`Situation`]. A failure here therefore means the drawn situation could not
+/// be built, which the caller must report rather than paper over by sampling a
+/// different situation — that silent re-draw is exactly what biases a filtered
+/// drill toward its easiest cases.
+pub(crate) fn generate_reachable_candidate_for(
+    category: &str,
+    situation: Situation,
+) -> Result<GameState, String> {
+    let mut last_error = String::new();
+    for _ in 0..MAX_REACHABILITY_ATTEMPTS {
+        match situation.fill(category) {
+            Ok(state) => match support::state_validation::validate_reachable_state(&state) {
+                Ok(()) => return Ok(state),
+                Err(err) => last_error = err,
+            },
+            Err(err) => last_error = err,
+        }
+    }
+
+    Err(format!(
+        "failed to fill the drawn {category} situation ({}) after \
+         {MAX_REACHABILITY_ATTEMPTS} attempt(s): {last_error}",
+        situation.label()
     ))
 }
 

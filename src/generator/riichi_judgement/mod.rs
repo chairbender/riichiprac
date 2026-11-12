@@ -34,8 +34,29 @@ use crate::state::GameState;
 
 /// Generates a standard closed tenpai hand and asks Riichi or dama.
 pub fn generate(category: &str) -> Result<GameState, String> {
+    generate_with_target(category, sample_target())
+}
+
+/// Draws the condition set the next request will teach, before any tile
+/// exists.
+///
+/// The draw is weighted toward the single-condition sets; see
+/// [`skeleton::random_target`]. Callers that need the parameters pinned across
+/// several fills draw once and reuse the value.
+pub(crate) fn sample_target() -> judgement::Conditions {
+    skeleton::random_target()
+}
+
+/// Builds a hand and table under an already-drawn condition set.
+///
+/// The retry loop re-fills the tiles under `target` and never draws a new
+/// condition set, so a rejection sampler can keep retrying without letting the
+/// lesson drift toward the conditions that happen to be easiest to build.
+pub(crate) fn generate_with_target(
+    category: &str,
+    target: judgement::Conditions,
+) -> Result<GameState, String> {
     generate_with_retries("riichi_judgement", 20_000, || {
-        let target = skeleton::random_target();
         let skeleton = skeleton::build(target)?;
         board::build(category, &skeleton, target)
     })
@@ -161,10 +182,7 @@ mod tests {
     }
 
     fn generate_for(target: judgement::Conditions) -> Result<GameState, String> {
-        generate_with_retries("riichi_judgement", 8_000, || {
-            let skeleton = skeleton::build(target)?;
-            board::build("riichi_judgement", &skeleton, target)
-        })
+        generate_with_target("riichi_judgement", target)
     }
 
     fn expected_triggers(conditions: judgement::Conditions) -> Vec<RiichiTrigger> {

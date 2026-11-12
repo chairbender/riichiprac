@@ -59,6 +59,25 @@ impl Conditions {
         self.extra_han || self.good_wait || self.dealer
     }
 
+    /// The condition set named for the agreement report.
+    ///
+    /// The isolated cases say `only` on purpose: seeing `riichi: good wait
+    /// only` in the report is what tells a reader the draw deliberately kept
+    /// the other two conditions off, instead of taking whatever hand the
+    /// random fill happened to produce.
+    pub(crate) fn label(self) -> &'static str {
+        match (self.extra_han, self.good_wait, self.dealer) {
+            (false, false, false) => "dama: bad wait, riichi-only, non-dealer",
+            (true, false, false) => "riichi: extra han only",
+            (false, true, false) => "riichi: good wait only",
+            (false, false, true) => "riichi: dealer only",
+            (true, true, false) => "riichi: extra han + good wait",
+            (true, false, true) => "riichi: extra han + dealer",
+            (false, true, true) => "riichi: good wait + dealer",
+            (true, true, true) => "riichi: all three conditions",
+        }
+    }
+
     /// The non-empty condition sets, used by the generator and its tests.
     pub(super) const RIICHI_SETS: [Conditions; 7] = [
         Conditions {

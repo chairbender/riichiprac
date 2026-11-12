@@ -50,6 +50,24 @@ describe('parseAgreementPayload', () => {
     expect(parsed.report).toBeNull();
   });
 
+  it('keeps the pinned situation and rejects a non-string one', () => {
+    const withSituation = parseAgreementPayload(
+      JSON.stringify({
+        state: table,
+        agreement: report({ situation: 'riichi: dealer only' }),
+      }),
+    );
+    expect(withSituation.report?.situation).toBe('riichi: dealer only');
+
+    const badSituation = parseAgreementPayload(
+      JSON.stringify({
+        state: table,
+        agreement: { ...report(), situation: 7 },
+      }),
+    );
+    expect(badSituation.report).toBeNull();
+  });
+
   it('surfaces the engine error instead of a table', () => {
     expect(() =>
       parseAgreementPayload(
@@ -96,6 +114,17 @@ describe('formatAgreementNotice', () => {
     expect(notice).toBe(
       'Mortal agrees with the book answer — accepted on 3 candidates ' +
         '(2 generation failures).',
+    );
+  });
+
+  it('names the pinned situation when the report carries one', () => {
+    expect(
+      formatAgreementNotice(
+        report({ attempts: 5, evaluations: 5, situation: 'riichi: good wait only' }),
+      ),
+    ).toBe(
+      'Mortal agrees with the book answer — accepted on 5 candidates. ' +
+        'Situation: riichi: good wait only.',
     );
   });
 });

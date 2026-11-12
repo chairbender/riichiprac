@@ -64,17 +64,61 @@ impl Skeleton {
     }
 }
 
-/// Picks the answer the next hand should teach.
+/// Relative draw weights for the eight parameter sets.
 ///
-/// One hand in eight is the book's dama case; the rest carry one or more of
-/// the three conditions, so every condition (and every combination) is seen.
-pub(super) fn random_target() -> Conditions {
-    let roll = gen_range(0, 8);
-    if roll == 0 {
+/// The pool is the book's dama case followed by [`Conditions::RIICHI_SETS`].
+/// A uniform draw over the eight sets meant only three eighths of the hands
+/// isolated one condition; the rest stacked two or three conditions on one
+/// hand, so a player could answer from whichever condition was easiest to spot
+/// and never learn the others. The isolated cases are the point of the box, so
+/// they carry the highest weight:
+///
+/// | set | weight |
+/// |---|---|
+/// | dama (no condition) | 2 |
+/// | one condition | 5 each |
+/// | two conditions | 2 each |
+/// | all three conditions | 1 |
+///
+/// That puts five eighths of the draw on an isolated condition, while the
+/// combinations stay reachable (and the dama case stays the rarer answer, as
+/// the book's rule makes it).
+pub(super) const TARGET_WEIGHTS: [u32; 8] = [2, 5, 5, 5, 2, 2, 2, 1];
+
+/// Sum of [`TARGET_WEIGHTS`]; the draw is a uniform roll in this range.
+pub(super) const TOTAL_TARGET_WEIGHT: u32 = 24;
+
+/// The parameter set at `index`, and its weight.
+fn target_at(index: usize) -> (Conditions, u32) {
+    let target = if index == 0 {
         Conditions::default()
     } else {
-        Conditions::RIICHI_SETS[roll - 1]
+        Conditions::RIICHI_SETS[index - 1]
+    };
+    (target, TARGET_WEIGHTS[index])
+}
+
+/// Maps one roll in `[0, TOTAL_TARGET_WEIGHT)` onto its weighted set.
+///
+/// Pure so the weight table can be asserted exactly instead of sampled.
+pub(super) fn target_for_roll(roll: u32) -> Conditions {
+    let mut remaining = roll % TOTAL_TARGET_WEIGHT;
+    for index in 0..TARGET_WEIGHTS.len() {
+        let (target, weight) = target_at(index);
+        if remaining < weight {
+            return target;
+        }
+        remaining -= weight;
     }
+    Conditions::default()
+}
+
+/// Picks the answer the next hand should teach.
+///
+/// One draw per puzzle request; the tile fill then retries under this same set
+/// (see [`super::generate_with_target`]).
+pub(super) fn random_target() -> Conditions {
+    target_for_roll(gen_range(0, TOTAL_TARGET_WEIGHT as usize) as u32)
 }
 
 /// Builds a hand that satisfies `target` exactly.
@@ -296,6 +340,82 @@ mod tests {
             }
         }
         assert!(riichi > 0 && dama > 0, "riichi {riichi}, dama {dama}");
+    }
+
+    /// The weight table covers exactly the dama case plus the seven non-empty
+    /// condition sets, and each slot is exactly as wide as its weight.
+    #[test]
+    fn every_roll_maps_onto_its_weighted_slot() {
+        assert_eq!(
+            TARGET_WEIGHTS.iter().sum::<u32>(),
+            TOTAL_TARGET_WEIGHT,
+            "the pool total must match the table"
+        );
+
+        let expected: Vec<Conditions> = std::iter::once(Conditions::default())
+            .chain(Conditions::RIICHI_SETS)
+            .collect();
+        assert_eq!(expected.len(), TARGET_WEIGHTS.len());
+
+        let mut counts = vec![0u32; expected.len()];
+        for roll in 0..TOTAL_TARGET_WEIGHT {
+            let target = target_for_roll(roll);
+            let index = expected
+                .iter()
+                .position(|candidate| *candidate == target)
+                .expect("the roll must land on a real set");
+            counts[index] += 1;
+        }
+        assert_eq!(counts, TARGET_WEIGHTS.to_vec());
+    }
+
+    /// The reweighting is the point of the task: an isolated condition should
+    /// dominate the draw, because those are the cases the book's box teaches.
+    #[test]
+    fn single_condition_sets_dominate_the_draw() {
+        let single_weight: u32 = TARGET_WEIGHTS[1..=3].iter().sum();
+        let single_share = f64::from(single_weight) / f64::from(TOTAL_TARGET_WEIGHT);
+        assert!(
+            single_share > 0.6,
+            "isolated conditions are only {single_share:.2} of the pool"
+        );
+
+        crate::rng::seed(0x0005_eed1_1603);
+        let mut single = 0usize;
+        let mut combined = 0usize;
+        let mut dama = 0usize;
+        let mut singles = [0usize; 3];
+        let draws = 4_000;
+        for _ in 0..draws {
+            let target = random_target();
+            match (target.extra_han, target.good_wait, target.dealer) {
+                (false, false, false) => dama += 1,
+                (true, false, false) => {
+                    single += 1;
+                    singles[0] += 1;
+                }
+                (false, true, false) => {
+                    single += 1;
+                    singles[1] += 1;
+                }
+                (false, false, true) => {
+                    single += 1;
+                    singles[2] += 1;
+                }
+                _ => combined += 1,
+            }
+        }
+
+        assert!(
+            singles.iter().all(|&count| count > 0),
+            "every isolated condition must appear: {singles:?}"
+        );
+        assert!(dama > 0, "the dama case must still appear");
+        assert!(combined > 0, "the combinations must still appear");
+        assert!(
+            single as f64 / draws as f64 > 0.55,
+            "only {single}/{draws} draws isolated a condition"
+        );
     }
 
     #[test]
