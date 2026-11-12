@@ -8,7 +8,7 @@ import {
 } from '../types/ai';
 import type { PlayerState, TargetAction } from '../types/game';
 import type { DualGrade } from '../types/verdict';
-import { mortalRecommendedTile } from '../types/verdict';
+import { bookAcceptedTiles, mortalRecommendedTile } from '../types/verdict';
 import { AnswerSummary } from './AnswerSummary';
 import { KanIcon } from './KanIcon';
 import { NextScenarioButton } from './NextScenarioButton';
@@ -76,7 +76,7 @@ export function HandDock({
   const isAiScenario = availableActions !== undefined;
   const kanTile = isAiScenario ? null : findKanCandidateTile(player);
 
-  const bookTile = grade?.book?.expected_tile ?? null;
+  const bookTiles = bookAcceptedTiles(grade?.book ?? null);
   // The drill has no book column, so its selected-tile mark comes from Mortal.
   const selectedTileCorrect = grade?.book
     ? grade.book.is_tile_correct
@@ -213,7 +213,7 @@ export function HandDock({
               stateClass = ' hand-tile-button--correct';
             } else if (isSelected) {
               stateClass = ' hand-tile-button--incorrect';
-            } else if (bookTile === tile) {
+            } else if (bookTiles.includes(tile)) {
               stateClass = ' hand-tile-button--answer';
             }
           }

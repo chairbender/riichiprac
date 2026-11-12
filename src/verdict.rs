@@ -178,6 +178,14 @@ pub struct BookGrade {
     pub is_tile_correct: bool,
     pub expected_action: CorrectActionType,
     pub expected_tile: String,
+    /// Every tile the book accepts for this answer, canonical first.
+    ///
+    /// A shape lesson (either tile of a closed-wait protorun) accepts the drawn
+    /// tile and its twin; a one-tile answer lists just
+    /// [`Self::expected_tile`]. Empty when the answer names no tile (pass/call),
+    /// where there is nothing to render.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub expected_tiles: Vec<String>,
 }
 
 impl BookGrade {
@@ -322,11 +330,25 @@ pub fn grade_book_with_equivalents(
         None => answer.tile.is_empty(),
     };
 
+    // The full accepted set, canonical first. This is what the answer response
+    // displays after submitting: no accepted tile is ever hidden because the
+    // player happened to pick its twin.
+    let mut expected_tiles = Vec::new();
+    if let Some(tile) = expected_tile {
+        expected_tiles.push(tile.to_string());
+        for equivalent in equivalents {
+            if !expected_tiles.iter().any(|known| known == equivalent) {
+                expected_tiles.push(equivalent.clone());
+            }
+        }
+    }
+
     BookGrade {
         is_action_correct,
         is_tile_correct,
         expected_action,
         expected_tile: expected_tile.unwrap_or_default().to_string(),
+        expected_tiles,
     }
 }
 
@@ -711,6 +733,7 @@ mod tests {
                 is_tile_correct: agrees,
                 expected_action: CorrectActionType::Dama,
                 expected_tile: "3p".to_string(),
+                expected_tiles: vec!["3p".to_string()],
             });
             let mortal_grade = mortal.map(|agrees| MortalGrade {
                 model: "test".to_string(),
@@ -986,11 +1009,51 @@ mod tests {
         );
         assert!(book.agrees());
         assert_eq!(book.expected_tile, "3p", "the canonical tile is unchanged");
+        assert_eq!(
+            book.expected_tiles,
+            vec!["3p".to_string(), "5s".to_string()],
+            "the answer response must show every accepted tile, canonical first"
+        );
+        let wire = serde_json::to_value(&book).expect("book grade must serialize");
+        assert_eq!(
+            wire["expected_tiles"],
+            serde_json::json!(["3p", "5s"]),
+            "the WASM payload must carry the full accepted set"
+        );
 
         let miss = grade_answer(&state, &answer(CorrectActionType::Dama, "7p"), None);
         assert!(
             !miss.book.expect("book grade").is_tile_correct,
             "a tile that is neither expected nor equivalent still misses"
+        );
+    }
+
+    #[test]
+    fn a_one_tile_answer_lists_only_that_tile() {
+        let grade = grade_answer(&dama_state(), &answer(CorrectActionType::Dama, "3p"), None);
+        let book = grade.book.expect("book grade");
+        assert_eq!(book.expected_tiles, vec!["3p".to_string()]);
+    }
+
+    #[test]
+    fn a_tileless_answer_lists_no_tiles() {
+        let mut state = crate::fixtures::mock_table::generate("mock_table").unwrap();
+        state.correct_action = CorrectAction::pass();
+
+        let grade = grade_answer(
+            &state,
+            &SubmittedAnswer::new(CorrectActionType::Pass, ""),
+            None,
+        );
+        let book = grade.book.expect("book grade");
+        assert!(
+            book.expected_tiles.is_empty(),
+            "a pass names no tile to display"
+        );
+        let wire = serde_json::to_value(&book).expect("book grade must serialize");
+        assert!(
+            wire.get("expected_tiles").is_none(),
+            "a tile-less answer must not ship an empty list"
         );
     }
 
