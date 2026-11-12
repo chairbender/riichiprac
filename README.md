@@ -37,7 +37,10 @@ Mortal's line is revealed.
 Only one case is called **wrong**: when both the book and Mortal reject your
 answer. Picking the book's line when Mortal disagrees is a **book answer**;
 picking Mortal's line when the book disagrees is **Mortal's line**. Neither is a
-mistake, and the outcome line says so.
+mistake, and the outcome line says so. When a lesson accepts more than one
+answer (two interchangeable discards, for example) and Mortal prefers a
+different one of them, the outcome says the pick is book-accepted and names the
+alternative Mortal preferred, rather than reading as a contradiction.
 
 Mortal is evaluated automatically for every hand. Its recommendation is hidden
 until you answer so the drill is still a decision; **Peek** reveals Mortal's line

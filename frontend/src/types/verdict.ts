@@ -218,3 +218,48 @@ export function mortalRecommendationLabel(grade: MortalGrade | null): string {
   }
   return grade.recommended_label || grade.recommended_action;
 }
+
+/**
+ * The sentence for a Mortal pick that is a different one of the book's
+ * accepted answers, or null when that is not the case.
+ *
+ * A lesson with two tied answers ("discard 5p or 3p") can let Mortal prefer one
+ * while the player picks the other. Both are book-correct, so the verdict must
+ * not read as "Mortal disagrees": this note says the pick is accepted and names
+ * the alternative Mortal preferred from the same set.
+ *
+ * Only a scenario with more than one accepted answer can reach this state. A
+ * one-tile answer, a book-only grade, and a Mortal pick that is not accepted
+ * (a different action family, or a tile outside the set) all return null and
+ * keep the existing wording.
+ */
+export function acceptedAlternativeNote(
+  book: BookGrade | null,
+  mortal: MortalGrade | null,
+): string | null {
+  if (!book || !mortal) return null;
+
+  const accepted = bookAcceptedTiles(book);
+  if (accepted.length < 2) return null;
+
+  // Mortal's Riichi declaration carries its discard as a separate field; a
+  // discard answer carries the tile in its action name. Both must name a tile
+  // the book accepts.
+  const mortalTile = mortalRecommendedTile(mortal);
+  if (mortalTile === null || !accepted.includes(mortalTile)) return null;
+
+  // A shared tile is not a shared answer when the action family differs:
+  // discarding an accepted tile is not the book's Riichi (and vice versa).
+  const actionMatches = mortal.recommended_riichi
+    ? book.expected_action === 'riichi'
+    : book.expected_action === 'dama' ||
+      book.expected_action === 'fold' ||
+      book.expected_action === 'discard';
+  if (!actionMatches) return null;
+
+  const tile = formatTileForDisplay(mortalTile);
+  const preferred = mortal.recommended_riichi
+    ? `Riichi · discard ${tile}`
+    : tile;
+  return `Book-accepted; Mortal preferred ${preferred} from the same accepted set.`;
+}
