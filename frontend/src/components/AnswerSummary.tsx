@@ -1,6 +1,7 @@
 import type { DualGrade } from '../types/verdict';
 import { formatProbability } from '../types/ai';
 import {
+  acceptedAlternativeNote,
   formatAcceptedTiles,
   mortalRecommendationLabel,
   outcomeHeadline,
@@ -130,7 +131,10 @@ function detailLine(grade: DualGrade): string {
     case 'both_agree':
       return 'The book and Mortal agree.';
     case 'book_agrees_mortal_does_not':
-      return `Mortal would play ${mortalPick}.`;
+      return (
+        acceptedAlternativeNote(grade.book, grade.mortal) ??
+        `Mortal would play ${mortalPick}.`
+      );
     case 'mortal_agrees_book_does_not':
       return `The book says ${bookPick(grade)}.`;
     case 'neither_agrees':

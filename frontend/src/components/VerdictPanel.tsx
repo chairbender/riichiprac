@@ -5,6 +5,7 @@ import type { GameState } from '../types/game';
 import type { BookGrade, DualGrade, MortalGrade } from '../types/verdict';
 import { citationLabel } from '../types/game';
 import {
+  acceptedAlternativeNote,
   formatAcceptedTiles,
   mortalRecommendationLabel,
   mortalRecommendedRiichi,
@@ -446,7 +447,10 @@ function outcomeSentence(grade: DualGrade, state: GameState): string {
     case 'both_agree':
       return 'The book and Mortal agree.';
     case 'book_agrees_mortal_does_not':
-      return `The book picks this. Mortal would play ${mortalPick}.`;
+      return (
+        acceptedAlternativeNote(grade.book, grade.mortal) ??
+        `The book picks this. Mortal would play ${mortalPick}.`
+      );
     case 'mortal_agrees_book_does_not':
       return `Mortal picks it. The book says ${bookPick}.`;
     case 'neither_agrees':
