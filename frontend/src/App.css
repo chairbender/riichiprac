@@ -1082,6 +1082,12 @@
   grid-area: 2 / 2 / 3 / 3;
   align-self: center;
   justify-self: center;
+  /*
+   * The centre display is the biggest fixed-size piece of the plan, so keep a
+   * little clear air around it: on a phone the rivers would otherwise touch
+   * the panel once the Riichi sticks are drawn at full size.
+   */
+  margin: 8px;
 
   display: grid;
   grid-template-columns: auto auto auto;
@@ -1160,10 +1166,14 @@
   line-height: 1.1;
 }
 
-/* The bar is horizontal in its own frame; the seat's turn makes it lengthways. */
+/*
+ * The bar is horizontal in its own frame; the seat's turn makes it lengthways.
+ * The compass is the only place the stick is read, so it gets twice the old
+ * size and stays legible against the wind and score.
+ */
 .compass-stick {
   display: block;
-  width: 20px;
+  width: 40px;
   height: auto;
 }
 
