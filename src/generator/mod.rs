@@ -42,6 +42,9 @@
 //!   value band, placement pressure, or score line justifies it.
 //! - `wind_discard_order`: the ch. 9 seating tip: which valueless wind to throw
 //!   first (the right player's).
+//! - `honitsu_decision`: ch. 5.4's honitsu commitment: five-block potential plus
+//!   the hand's value with and without honitsu decide whether to start
+//!   discarding off-suit or to play for efficiency.
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
 //!
 //! The Phase 2 `mock_table` fixture lives in `crate::fixtures`, outside the
@@ -58,6 +61,7 @@ mod dama_genbutsu_wait;
 mod dama_improving_hand;
 mod defense;
 mod fold_to_riichi;
+mod honitsu_decision;
 mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
@@ -77,6 +81,7 @@ use crate::state::GameState;
 use situation::Situation;
 
 pub(crate) use daiminkan_decision::{DaiminkanTriggerSet, facts as daiminkan_facts};
+pub(crate) use honitsu_decision::{Variant as HonitsuVariant, facts as honitsu_facts};
 pub(crate) use support::analysis::floating_quad_acceptance;
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
@@ -97,6 +102,7 @@ pub enum ScenarioCategory {
     AiDecision,
     DefenseDecision,
     MeldingDecision,
+    YakuDecision,
 }
 
 impl ScenarioCategory {
@@ -108,6 +114,7 @@ impl ScenarioCategory {
             ScenarioCategory::AiDecision => "ai_decision",
             ScenarioCategory::DefenseDecision => "defense_decision",
             ScenarioCategory::MeldingDecision => "melding_decision",
+            ScenarioCategory::YakuDecision => "yaku_decision",
         }
     }
 }
@@ -421,6 +428,24 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
     },
+    ScenarioMeta {
+        id: ScenarioId::HonitsuDecision,
+        label: "Honitsu: Commit or Efficiency",
+        description: "Ch. 5.4: five blocks in one suit plus honors is not enough on its own — \
+                      commit to honitsu only when the plan is worth more than the hand played \
+                      straight.",
+        category: ScenarioCategory::YakuDecision,
+        tags: &[
+            "yaku",
+            "honitsu",
+            "commit",
+            "efficiency",
+            "five_blocks",
+            "value",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
 ];
 
 /// Serializes the scenario catalogue for the frontend picker.
@@ -481,6 +506,7 @@ pub enum ScenarioId {
     SujiKabeSafety,
     DefenseStuckHeuristic,
     OpenHandDefense,
+    HonitsuDecision,
 }
 
 impl ScenarioId {
@@ -511,6 +537,7 @@ impl ScenarioId {
         ScenarioId::SujiKabeSafety,
         ScenarioId::DefenseStuckHeuristic,
         ScenarioId::OpenHandDefense,
+        ScenarioId::HonitsuDecision,
     ];
 
     /// The category string understood by the WASM API.
@@ -541,6 +568,7 @@ impl ScenarioId {
             ScenarioId::SujiKabeSafety => "suji_kabe_safety",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
             ScenarioId::OpenHandDefense => "open_hand_defense",
+            ScenarioId::HonitsuDecision => "honitsu_decision",
         }
     }
 
@@ -572,6 +600,7 @@ impl ScenarioId {
             "suji_kabe_safety" => Some(ScenarioId::SujiKabeSafety),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
+            "honitsu_decision" => Some(ScenarioId::HonitsuDecision),
             _ => None,
         }
     }
@@ -608,6 +637,7 @@ impl ScenarioId {
             ScenarioId::SujiKabeSafety => defense::generate_suji_kabe(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
             ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
+            ScenarioId::HonitsuDecision => honitsu_decision::generate(category),
         }
     }
 }
@@ -675,6 +705,9 @@ pub(crate) fn sample_situation(category: &str) -> Option<Situation> {
             chiitoitsu_riichi_vs_dama::Target::sample(),
         )),
         ScenarioId::PushOrFold => Some(Situation::PushOrFold(push_or_fold::sample_target())),
+        ScenarioId::HonitsuDecision => {
+            Some(Situation::HonitsuDecision(honitsu_decision::sample_target()))
+        }
         _ => None,
     }
 }

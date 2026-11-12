@@ -192,6 +192,19 @@ fn ch4_blocks(line: u32, needle: &str) -> Citation {
     )
 }
 
+/// Riichi Book 1, ch. 5, "How to get honitsu" — the section's two conditions for
+/// going for honitsu and its two "do not go" boxes.
+fn ch5_honitsu(line: u32, needle: &str) -> Citation {
+    citation(
+        5,
+        "Pursuing yaku",
+        "How to get honitsu",
+        "RiichiBook1-ch5-yaku.tex",
+        line,
+        needle,
+    )
+}
+
 fn ch3(line: u32, needle: &str) -> Citation {
     citation(
         3,
@@ -1074,6 +1087,10 @@ fn scenario_source(category: &str) -> Option<Citation> {
             567,
             "discard a tile in the same suit",
         )),
+        "honitsu_decision" => Some(ch5_honitsu(
+            468,
+            "five-block potential and hand values with and without",
+        )),
         _ => None,
     }
 }
@@ -1091,6 +1108,9 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     }
     if let Some(push_fold) = push_or_fold_rationale(state) {
         return Some(push_fold);
+    }
+    if let Some(honitsu) = honitsu_rationale(state) {
+        return Some(honitsu);
     }
 
     if state.category == "wind_discard_order" {
@@ -3124,6 +3144,200 @@ fn push_or_fold_rationale(state: &GameState) -> Option<BookRationale> {
     })
 }
 
+/// The ch. 5.4 honitsu lesson: five-block potential plus the hand's value with
+/// and without honitsu (ch5:468).
+///
+/// The three branches are the section's own three hands: Honitsu 1 ("you can go
+/// for honitsu with this hand"), Honitsu 2 ("you should not aim for honitsu",
+/// it would be honitsu-only), and Honitsu 3 ("when the hand value is
+/// sufficiently high (>= 5200) without honitsu, you should not go for honitsu
+/// at the cost of tile efficiency").
+fn honitsu_rationale(state: &GameState) -> Option<BookRationale> {
+    if state.category != "honitsu_decision" {
+        return None;
+    }
+
+    use crate::generator::{HonitsuVariant, honitsu_facts};
+
+    let facts = honitsu_facts(state)?;
+    let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
+    let answer_text = format_tile_for_display(&answer.to_string(), false);
+    let suit = match facts.suit {
+        Suit::Man => "manzu (cracks)",
+        Suit::Pin => "pinzu (dots)",
+        Suit::Sou => "souzu (bamboo)",
+    };
+    let floaters = facts.blocks.floaters.len();
+    let floater_word = if floaters == 1 {
+        "floating tile"
+    } else {
+        "floating tiles"
+    };
+    let honitsu_points = facts
+        .honitsu
+        .as_ref()
+        .map(|reading| reading.value.points)
+        .unwrap_or_default();
+    let without_points = facts
+        .value_without
+        .map(|value| value.points)
+        .unwrap_or_default();
+    let without_text = match facts.value_without {
+        Some(value) => format!("{} points", value.points),
+        None => "no yaku at all".to_string(),
+    };
+
+    let mut rules = vec![BookRule {
+        id: "five_block_potential".to_string(),
+        rule: "A honitsu plan needs five tile blocks or block candidates in the suit plus \
+               honors; four blocks and a floating tile count as five."
+            .to_string(),
+        quote: "five-block potential and hand values with and without honitsu".to_string(),
+        citation: ch5_honitsu(468, "five-block potential and hand values with and without"),
+        applies: format!(
+            "{suit} plus honors hold {} blocks and {floaters} {floater_word}, so this hand \
+             has the five-block potential.",
+            facts.blocks.blocks
+        ),
+    }];
+    let mut caveats = Vec::new();
+    let mut absent = Vec::new();
+
+    let summary = match facts.variant {
+        HonitsuVariant::Commit => {
+            rules.push(BookRule {
+                id: "honitsu_value".to_string(),
+                rule: "Commit when the honitsu hand has more value than the same tiles played \
+                       straight: the fanpai pairs become yaku once they are ponned."
+                    .to_string(),
+                quote: "you can go for {\\jap honitsu} with this hand".to_string(),
+                citation: ch5_honitsu(492, "you can go for {\\jap honitsu} with this hand"),
+                applies: format!(
+                    "The plan is honitsu plus up to {} yakuhai and reaches at least \
+                     {honitsu_points} points, while the same tiles without honitsu are \
+                     worth {without_text}.",
+                    facts.fanpai_blocks
+                ),
+            });
+            rules.push(BookRule {
+                id: "redundant_off_suit".to_string(),
+                rule: "The off-suit tiles are the ones the plan gives up; keeping them would \
+                       not make the hand any more efficient."
+                    .to_string(),
+                quote: "the tiles that are made redundant in the hand".to_string(),
+                citation: ch5_honitsu(495, "the tiles that are made redundant in the hand"),
+                applies: format!(
+                    "{answer_text} leaves the hand, and the other off-suit tiles are the \
+                     rest of the redundant group."
+                ),
+            });
+            caveats.push(
+                "Any off-suit tile in this hand is graded correct: the book treats the \
+                 isolated tile and the closed-wait protorun as one redundant group. The \
+                 order to throw them so the table cannot read the suit (ch5:543) is a \
+                 multi-turn tip, not this discard."
+                    .to_string(),
+            );
+            format!(
+                "Commit to honitsu: discard {answer_text}. The hand has five blocks in \
+                 {suit} plus honors, and the honitsu plan can reach at least \
+                 {honitsu_points} points while the same tiles played straight have \
+                 {without_text}."
+            )
+        }
+        HonitsuVariant::AlreadyHigh => {
+            rules.push(BookRule {
+                id: "value_without_honitsu".to_string(),
+                rule: "When the hand is already sufficiently valuable without honitsu, do not \
+                       give up tile efficiency to chase it."
+                    .to_string(),
+                quote: "when the hand value is sufficiently high ($\\geq$ 5200) \\emph{without} \
+                        {\\jap honitsu}, you should not go for {\\jap honitsu} at the cost of \
+                        tile efficiency"
+                    .to_string(),
+                citation: ch5_honitsu(
+                    517,
+                    "you should not go for {\\jap honitsu} at the cost of tile efficiency",
+                ),
+                applies: format!(
+                    "The worst completion of the kept hand already scores {without_points} \
+                     points without honitsu."
+                ),
+            });
+            caveats.push(
+                "The answer throws the in-suit floating tile and keeps the off-suit side-wait \
+                 protorun, so the hand stays at the same shanten with its acceptance intact. \
+                 The floating dragon stays for its fanpai pair and Pon potential."
+                    .to_string(),
+            );
+            format!(
+                "Play for efficiency: discard {answer_text}. The hand is already worth \
+                 {without_points} points without honitsu, so the five-block honitsu plan \
+                 would trade acceptance for value it already has."
+            )
+        }
+        HonitsuVariant::HonitsuOnly => {
+            rules.push(BookRule {
+                id: "honitsu_only_is_cheap".to_string(),
+                rule: "With no yaku potential besides honitsu, the plan ends as a honitsu-only \
+                       hand, which the book calls very cheap."
+                    .to_string(),
+                quote: "you may end up getting a {\\jap honitsu}-only hand, which is very \
+                        cheap (2000 or 2600 points)"
+                    .to_string(),
+                citation: ch5_honitsu(506, "very cheap (2000 or 2600 points)"),
+                applies: "The plan's only yaku is honitsu: with no fanpai and no dora it is \
+                          the book's honitsu-only hand, two han once the plan melds."
+                    .to_string(),
+            });
+            rules.push(BookRule {
+                id: "stay_closed_for_riichi".to_string(),
+                rule: "Instead of the cheap honitsu, get the hand ready without melding and \
+                       go for riichi."
+                    .to_string(),
+                quote: "you should try to make the hand ready without melding and go for \
+                        riichi"
+                    .to_string(),
+                citation: ch5_honitsu(
+                    506,
+                    "make the hand ready without melding and go for \
+                                           riichi",
+                ),
+                applies: format!(
+                    "The answer keeps the off-suit side-wait protorun and the other off-suit \
+                     tile, so the hand can still become ready without melding and go for \
+                     riichi."
+                ),
+            });
+            absent.push(AbsentRule {
+                id: "expensive_honitsu".to_string(),
+                note: "Committing does not apply: the honitsu group holds no fanpai pair or \
+                       set, so the plan cannot add yakuhai to the two honitsu han."
+                    .to_string(),
+            });
+            caveats.push(
+                "The answer throws a valueless honor. It was the fifth block candidate, and \
+                 giving it up leaves the cheap honitsu plan for a riichi hand with the \
+                 off-suit blocks intact."
+                    .to_string(),
+            );
+            format!(
+                "Play for efficiency: discard {answer_text}. The five blocks are there, but \
+                 the honitsu plan would be honitsu-only — no fanpai, no dora — so the \
+                 closed riichi route with the off-suit blocks intact is better."
+            )
+        }
+    };
+
+    Some(BookRationale {
+        summary,
+        rules,
+        absent,
+        source: ch5_honitsu(468, "five-block potential and hand values with and without"),
+        caveats,
+    })
+}
+
 /// The ch. 8.4 open-hand lesson: read the discard an opponent made after a chii.
 fn open_hand_defense_rationale(state: &GameState) -> Option<BookRationale> {
     if state.category != "open_hand_defense" {
@@ -4243,6 +4457,7 @@ mod tests {
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
+            "honitsu_decision",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             assert!(
@@ -4275,6 +4490,7 @@ mod tests {
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
+            "honitsu_decision",
         ] {
             for _ in 0..10 {
                 let state = generate_puzzle(category).expect("scenario must generate");
@@ -4719,6 +4935,7 @@ mod tests {
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
+            "honitsu_decision",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             citations.extend(
@@ -5049,6 +5266,81 @@ mod tests {
             }
         }
         assert!(saw_push && saw_fold, "both cells must be covered");
+    }
+
+    #[test]
+    fn honitsu_lesson_cites_the_two_factors_and_each_branch() {
+        use crate::generator::HonitsuVariant;
+
+        let mut saw_commit = false;
+        let mut saw_high = false;
+        let mut saw_only = false;
+
+        for _ in 0..60 {
+            let state = generate_puzzle("honitsu_decision").expect("honitsu must generate");
+            let rationale = rationale_for(&state).expect("honitsu needs a rationale");
+            let facts =
+                crate::generator::honitsu_facts(&state).expect("the table has honitsu facts");
+
+            assert_eq!(rationale.source.chapter, 5);
+            assert_eq!(rationale.source.section, "How to get honitsu");
+            assert_eq!(rationale.rules[0].id, "five_block_potential");
+
+            let ids: Vec<&str> = rationale
+                .rules
+                .iter()
+                .map(|rule| rule.id.as_str())
+                .collect();
+            match facts.variant {
+                HonitsuVariant::Commit => {
+                    saw_commit = true;
+                    assert_eq!(
+                        ids,
+                        vec![
+                            "five_block_potential",
+                            "honitsu_value",
+                            "redundant_off_suit"
+                        ]
+                    );
+                    assert!(rationale.summary.starts_with("Commit to honitsu"));
+                    assert!(
+                        rationale
+                            .caveats
+                            .iter()
+                            .any(|caveat| caveat.contains("graded correct")),
+                        "the interchangeable off-suit discards must be explained"
+                    );
+                }
+                HonitsuVariant::AlreadyHigh => {
+                    saw_high = true;
+                    assert_eq!(ids, vec!["five_block_potential", "value_without_honitsu"]);
+                    assert!(rationale.summary.starts_with("Play for efficiency"));
+                }
+                HonitsuVariant::HonitsuOnly => {
+                    saw_only = true;
+                    assert_eq!(
+                        ids,
+                        vec![
+                            "five_block_potential",
+                            "honitsu_only_is_cheap",
+                            "stay_closed_for_riichi"
+                        ]
+                    );
+                    assert!(
+                        rationale
+                            .absent
+                            .iter()
+                            .any(|rule| rule.id == "expensive_honitsu"),
+                        "the cheap branch must say committing does not apply"
+                    );
+                }
+            }
+        }
+
+        assert!(
+            saw_commit && saw_high && saw_only,
+            "all three cells must be covered"
+        );
     }
 
     #[test]
