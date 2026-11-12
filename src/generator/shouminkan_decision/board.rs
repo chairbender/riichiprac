@@ -417,8 +417,8 @@ fn assemble_state(
     players.push(human_player);
     players.extend(deal.players);
 
-    // Both questions are "Call Shouminkan, or discard?", so the prompt stays
-    // the same; only the expected answer changes.
+    // Both questions are "Call the Kan, or discard?", so the prompt stays the
+    // same; only the expected answer changes.
     let (correct_action, shouminkan_triggers) = match answer {
         ShouminkanAnswer::Kan => (
             CorrectAction::kan(skeleton.drawn_tile.to_string()),

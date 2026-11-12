@@ -608,7 +608,7 @@ mod tests {
         );
         assert_eq!(
             DecisionPrompt::from_target(TargetAction::Kan).as_str(),
-            "Call Shouminkan, or discard?"
+            "Call the Kan, or discard?"
         );
         assert_eq!(
             DecisionPrompt::from_target(TargetAction::Riichi).as_str(),

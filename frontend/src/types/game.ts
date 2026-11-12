@@ -72,9 +72,10 @@ export type CorrectActionType =
  *
  * Riichi/dama/fold puzzles carry the discard in `discard`; `fold` is the
  * pure-defense "safest discard" answer, where no declaration is expected. Kan
- * puzzles carry the tile in `tile`, where `"kan"` means add the fourth tile to
- * an open Pon and `"discard"` means pass on the Kan and discard normally. AI
- * scenarios use `best` with the model's Mortal action name.
+ * puzzles carry the tile in `tile`, where `"kan"` means call the quad (an Added
+ * Kan on an open Pon, or a concealed quad from four concealed copies) and
+ * `"discard"` means decline it and discard normally. AI scenarios use `best`
+ * with the model's Mortal action name.
  */
 export type CorrectAction =
   | { type: 'riichi' | 'dama' | 'fold'; discard: string }

@@ -72,6 +72,37 @@ pub fn visible_tile_counts(rivers: &[Vec<Tile>], indicators: &[Tile]) -> HashMap
     counts
 }
 
+/// The ranks a floating fourth copy of `quad` can still turn into a protorun.
+///
+/// Riichi Book 1, ch. 9, "Concealed quad (ankan)": with four 4m, keeping the
+/// fourth copy "can be used a good floating tile" - drawing 3m or 5m makes a
+/// side wait and 2m or 6m a closed wait - and calling the quad "will lose the
+/// ability to accept 2m 3m 5m 6m". Honors have no such protoruns.
+pub(crate) fn floating_quad_acceptance(quad: Tile) -> Vec<Tile> {
+    let Tile::Suited { suit, value } = quad else {
+        return Vec::new();
+    };
+
+    let mut tiles = Vec::new();
+    for delta in [-2i16, -1, 1, 2] {
+        let target = value as i16 + delta;
+        if !(1..=9).contains(&target) {
+            continue;
+        }
+        let target = target as u8;
+        let (low, high) = (value.min(target), value.max(target));
+
+        // Consecutive ranks make a side wait and one-gap ranks a closed wait.
+        // The edge shapes 1-2 and 8-9 are not protoruns, so they are excluded.
+        if high - low > 2 || (low, high) == (1, 2) || (low, high) == (8, 9) {
+            continue;
+        }
+
+        tiles.push(Tile::suited(suit, target));
+    }
+    tiles
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
