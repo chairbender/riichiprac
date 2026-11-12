@@ -6,6 +6,9 @@
 //!   closed shape) break lesson, the pair count (avoid three pairs in a
 //!   closed hand) lesson, and its open-hand companion (keep three pairs when
 //!   a Pon is planned).
+//! - `yaku`: the ch. 5 yaku-pursuit decisions. `sanshoku_pursuit` is the
+//!   floating method: keep the redundant tile for sanshoku only when the hand
+//!   has no other yaku or dora.
 //! - `chiitoi_vs_toitoi`: ch. 5.5's yaku choice: a 1-away chiitoitsu hand
 //!   whose draw turned a pair into a set stays with chiitoitsu when a pair is
 //!   futile, and builds toitoi otherwise.
@@ -80,6 +83,7 @@ mod situation;
 mod suji_trap_riichi;
 mod support;
 mod wind_discard_order;
+mod yaku;
 
 use agari::tile::Tile;
 use serde::Serialize;
@@ -95,6 +99,7 @@ pub(crate) use support::analysis::wind_to_honor;
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
+pub(crate) use yaku::sanshoku_pursuit::{SanshokuFacts, facts as sanshoku_facts};
 
 /// The ch. 5 pinfu-head rule, shared by the lesson and its rationale.
 pub(crate) use pinfu_head::{can_be_pinfu_head, wind_from_honor};
@@ -286,6 +291,13 @@ const BOOK_CH5_TOITOI: BookSection = BookSection {
     section_title: "How to get toitoi / chiitoitsu",
 };
 
+const BOOK_CH5_SANSHOKU: BookSection = BookSection {
+    chapter: 5,
+    chapter_title: "Pursuing yaku",
+    section: 1,
+    section_title: "How to get sanshoku",
+};
+
 /// How an answer is graded for a lesson.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScenarioGrading {
@@ -399,6 +411,19 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
         book: Some(BOOK_CH5_TOITOI),
+    },
+    ScenarioMeta {
+        id: ScenarioId::SanshokuPursuit,
+        label: "Sanshoku Pursuit",
+        description: "Ch. 5.1 floating method: keep the floating tile for sanshoku only when \
+                      the hand has no other yaku or dora; otherwise take the side-wait pinfu.",
+        category: ScenarioCategory::YakuDecision,
+        tags: &[
+            "yaku", "sanshoku", "pinfu", "floating", "dora", "tanyao", "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH5_SANSHOKU),
     },
     ScenarioMeta {
         id: ScenarioId::ChiitoitsuRiichiVsDama,
@@ -718,6 +743,7 @@ pub enum ScenarioId {
     PairCount,
     PairCountOpen,
     ChiitoiVsToitoi,
+    SanshokuPursuit,
     ChiitoitsuRiichiVsDama,
     RiichiJudgement,
     DamaBadWait,
@@ -751,6 +777,7 @@ impl ScenarioId {
         ScenarioId::PairCount,
         ScenarioId::PairCountOpen,
         ScenarioId::ChiitoiVsToitoi,
+        ScenarioId::SanshokuPursuit,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::RiichiJudgement,
         ScenarioId::DamaBadWait,
@@ -784,6 +811,7 @@ impl ScenarioId {
             ScenarioId::PairCount => "pair_count",
             ScenarioId::PairCountOpen => "pair_count_open",
             ScenarioId::ChiitoiVsToitoi => "chiitoi_vs_toitoi",
+            ScenarioId::SanshokuPursuit => "sanshoku_pursuit",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::DamaBadWait => "dama_bad_wait",
@@ -818,6 +846,7 @@ impl ScenarioId {
             "pair_count" => Some(ScenarioId::PairCount),
             "pair_count_open" => Some(ScenarioId::PairCountOpen),
             "chiitoi_vs_toitoi" => Some(ScenarioId::ChiitoiVsToitoi),
+            "sanshoku_pursuit" => Some(ScenarioId::SanshokuPursuit),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
@@ -853,6 +882,7 @@ impl ScenarioId {
             ScenarioId::PairCount => block_theory::pair_count::generate(category),
             ScenarioId::PairCountOpen => block_theory::pair_count_open::generate(category),
             ScenarioId::ChiitoiVsToitoi => chiitoi_vs_toitoi::generate(category),
+            ScenarioId::SanshokuPursuit => yaku::sanshoku_pursuit::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::DamaBadWait => dama_bad_wait::generate(category),

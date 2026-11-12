@@ -392,6 +392,28 @@ the book: only chase the yaku when the hand has *no other yaku or dora*
 (ch5:74, ch5:129), and never step back to 2-away to switch (ch5:110). Buildable,
 but needs a yaku-enumeration oracle.
 
+**Implemented.** `src/generator/yaku/sanshoku_pursuit/` rebuilds the book's
+second floating hand: after drawing `5s`, `3m5m6m 345p 345s 789s 11s` is tenpai
+with an extra tile, and the player chooses between the closed-wait `345`
+sanshoku (discard `6m`) and the side-wait pinfu (discard `3m`). The skeleton
+generalizes over the three suits and the run values `234`–`567`, and splits the
+three gate cases:
+
+| Half | Shape | Answer |
+| --- | --- | --- |
+| `NoOtherValue` | terminal pair + `789` extra run, no dora | Chase: discard `x+3` |
+| `Dora` | the same shape with a dora on the completed run | Efficiency: discard `x` |
+| `Tanyao` | all-simple pair + `678` extra run, no dora | Efficiency: discard `x` |
+
+`support::yaku::discard_lines` enumerates every tenpai discard, every winning
+tile and every yaku reading, so the skeleton proves the two candidate lines
+without a hand-written score table: the efficiency line is pinfu-only, the
+chase line is sanshoku-only (closed wait), no third discard reaches either
+yaku, and the gate turns on exactly the dora / tanyao / other-yaku presence the
+book names. `rationale::sanshoku_rationale` recomputes the same gate from the
+finished state and cites ch5:62 (floating), ch5:74 (the gate), ch5:110
+(no step back to 2-away), and ch5:129 (the double-closed companion).
+
 **`ittsu_vs_side_wait`** — do **not** build as graded. The book itself weighs the two
 by acceptance and then argues about melding:
 

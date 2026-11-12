@@ -290,6 +290,15 @@ fn test_list_scenarios_payload() {
         }),
         "the pinfu head lesson must be listed as a yaku decision"
     );
+    assert!(
+        scenarios.iter().any(|scenario| {
+            scenario["id"] == "sanshoku_pursuit"
+                && scenario["category"] == "yaku_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the sanshoku-pursuit lesson must be listed as a yaku decision"
+    );
 }
 
 #[wasm_bindgen_test]
@@ -4395,6 +4404,104 @@ fn test_daiminkan_decision_payload() {
     assert!(
         kan_count >= 15 && pass_count >= 15,
         "the payload sweep must cover both answers, got {kan_count} Kan / {pass_count} pass"
+    );
+}
+
+#[wasm_bindgen_test]
+fn test_sanshoku_pursuit_payload() {
+    let mut chase_count = 0usize;
+    let mut efficiency_count = 0usize;
+
+    for run in 0..80 {
+        let json = generate_puzzle("sanshoku_pursuit".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json}"));
+
+        assert_eq!(val["category"], "sanshoku_pursuit");
+        assert_eq!(val["target_action"], "NaniKiru");
+        assert_eq!(val["decision"]["kind"], "self_turn");
+        assert_eq!(val["correct_action"]["type"], "dama");
+        assert_eq!(val["can_riichi"], true, "a closed tenpai hand may riichi");
+
+        let players = val["players"].as_array().expect("players array");
+        assert_eq!(players.len(), 4);
+        let human = &players[0];
+        assert_eq!(human["is_human"], true);
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(human["draw"].is_string());
+        assert_eq!(human["melds"].as_array().unwrap().len(), 0);
+        assert_eq!(human["is_riichi"], false);
+        for opponent in &players[1..] {
+            assert_eq!(opponent["melds"].as_array().unwrap().len(), 0);
+            assert_eq!(opponent["is_riichi"], false);
+        }
+
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("the sanshoku answer names a discard");
+        assert!(
+            human["hand"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|tile| tile.as_str() == Some(answer)),
+            "run {run}: the answer must be a hand tile"
+        );
+        assert_ne!(
+            human["draw"].as_str(),
+            Some(answer),
+            "run {run}: the answer must not be the draw"
+        );
+        assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
+        assert_eq!(val["shanten"], 0, "the answer leaves tenpai");
+
+        let source = &val["book_rationale"]["source"];
+        assert_eq!(source["chapter"], 5);
+        assert_eq!(source["section"], "Floating");
+        assert_eq!(source["source_line"], 74);
+
+        let rules = val["book_rationale"]["rules"]
+            .as_array()
+            .expect("the ch. 5.1 gate needs its rules");
+        let ids: Vec<&str> = rules
+            .iter()
+            .map(|rule| rule["id"].as_str().expect("rule id"))
+            .collect();
+        assert!(ids.contains(&"floating"), "run {run}: {ids:?}");
+        assert!(ids.contains(&"one_away_only"), "run {run}: {ids:?}");
+        assert!(ids.contains(&"same_gate_ryankan"), "run {run}: {ids:?}");
+
+        if ids.contains(&"no_other_value") {
+            chase_count += 1;
+            assert!(!ids.contains(&"other_value"));
+            assert!(
+                val["book_rationale"]["summary"]
+                    .as_str()
+                    .is_some_and(|summary| summary.contains("Chase")),
+                "run {run}: the chase summary"
+            );
+        } else {
+            efficiency_count += 1;
+            assert!(ids.contains(&"other_value"), "run {run}: {ids:?}");
+            assert!(
+                val["book_rationale"]["summary"]
+                    .as_str()
+                    .is_some_and(|summary| summary.contains("side-wait")),
+                "run {run}: the efficiency summary"
+            );
+        }
+
+        let total_score: i64 = players
+            .iter()
+            .map(|player| player["score"].as_i64().expect("score int"))
+            .sum();
+        assert_eq!(total_score, 100_000);
+    }
+
+    assert!(
+        chase_count >= 15 && efficiency_count >= 30,
+        "the payload sweep must cover both branches, got {chase_count} chase / \
+         {efficiency_count} efficiency"
     );
 }
 

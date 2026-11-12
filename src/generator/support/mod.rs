@@ -10,3 +10,4 @@ pub mod table;
 pub(crate) mod testing;
 pub mod tiles;
 pub mod value;
+pub mod yaku;
