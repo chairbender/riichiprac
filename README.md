@@ -68,6 +68,27 @@ case.
 If the weights are missing, the app still trains: the hand is graded against the
 book only, the Mortal column says so, and no answer is labelled wrong.
 
+## Table views
+
+The header's **Top-down table** checkbox switches the same hand between two
+mobile-first portrait renderings; it never re-deals, so the answer and any
+submitted grade stay put. The choice is per session and is not persisted.
+
+- **Stacked** (default): four player rows in turn order, with the human's row
+  directly above the docked hand.
+- **Top-down**: a flat plan view of the table. The human's seat is the bottom
+  edge (the hand stays in the dock below it), shimocha is on the right, toimen
+  at the top, and kamicha on the left. Each river runs from its player towards
+  the middle of the table, and every tile is turned to face its owner, so the
+  side rivers read sideways and the top river upside down.
+
+The top-down view is 2D only: no camera tilt, vanishing point, or 3D projection.
+It is a diagram of where the seats, melds, and discards are. The wall count sits
+in the middle of the plan, opponents' hands stay hidden (only their melds and
+rivers are drawn, exactly as in the stacked view), and the whole plan is rotated
+onto the human's seat so an imported report that puts them on another seat still
+reads with their own side at the bottom.
+
 ## Choosing scenarios
 
 The header's **Scenario** control opens a pool picker instead of a flat

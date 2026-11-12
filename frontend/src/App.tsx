@@ -7,6 +7,7 @@ import { ActionBar } from './components/ActionBar';
 import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
 import { NextScenarioButton } from './components/NextScenarioButton';
+import { PhysicalTable } from './components/PhysicalTable';
 import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { ScenarioPicker } from './components/ScenarioPicker';
@@ -36,6 +37,21 @@ import './App.css';
  * checkbox state, so the two cannot drift.
  */
 const DEFAULT_REQUIRE_AGREEMENT = true;
+
+/**
+ * How the table is drawn. `stacked` is the mobile-first default: four rows in
+ * turn order with the hand docked at the bottom. `physical` is the opt-in plan
+ * view (top-down only, never perspective) that arranges the seats around the
+ * table with the human at the bottom edge.
+ *
+ * The choice is not persisted (there is no localStorage/sessionStorage entry),
+ * so every fresh page load starts from the stacked default. The tables are the
+ * same puzzle either way: switching only changes how the state is drawn.
+ */
+type TableLayout = 'stacked' | 'physical';
+
+/** The table starts stacked, so the first hand matches the documented layout. */
+const DEFAULT_TABLE_LAYOUT: TableLayout = 'stacked';
 
 export const App = () => {
   const gameState = useGameStore((state) => state.gameState);
@@ -91,6 +107,13 @@ export const App = () => {
   const [requireAgreement, setRequireAgreement] = useState(
     DEFAULT_REQUIRE_AGREEMENT,
   );
+  /**
+   * Per-session table view, stacked by default. Switching it re-draws the same
+   * hand; nothing is regenerated, so the answer and any submitted grade stay
+   * put.
+   */
+  const [tableLayout, setTableLayout] =
+    useState<TableLayout>(DEFAULT_TABLE_LAYOUT);
   const [exportDescription, setExportDescription] = useState('');
   const manifestRef = useRef<ScenarioOption[] | null>(null);
   const loadRequestId = useRef(0);
@@ -377,6 +400,11 @@ export const App = () => {
     void loadPuzzle(selection, next);
   };
 
+  const handleLayoutChange = (event: ChangeEvent<HTMLInputElement>) => {
+    // Redraw only: the puzzle, the answer, and the grade are untouched.
+    setTableLayout(event.target.checked ? 'physical' : 'stacked');
+  };
+
   const showVerdict = useCallback(() => {
     const panel = document.getElementById('verdict-panel');
     if (!panel) return;
@@ -415,7 +443,8 @@ export const App = () => {
   };
 
   // The human is anchored at the bottom (just above the hand dock); the other
-  // seats stack above it in turn order. See `stackOrder`.
+  // seats stack above it in turn order. See `stackOrder`. The top-down view
+  // anchors the same way, with the seats placed round the table instead.
   const orderedPlayers = gameState ? stackOrder(gameState.players) : [];
 
   const humanPlayer =
@@ -470,7 +499,7 @@ export const App = () => {
             onChange={handleSelectionChange}
           />
 
-          <label className="agreement-toggle" title={agreementHint}>
+          <label className="app-toggle" title={agreementHint}>
             <input
               type="checkbox"
               checked={requireAgreement}
@@ -478,6 +507,18 @@ export const App = () => {
               onChange={handleAgreementChange}
             />
             <span>Mortal must agree</span>
+          </label>
+
+          <label
+            className="app-toggle"
+            title="Draw the table from above, with your seat at the bottom edge and the tiles turned to face each player. Stays flat: no 3D or camera tilt."
+          >
+            <input
+              type="checkbox"
+              checked={tableLayout === 'physical'}
+              onChange={handleLayoutChange}
+            />
+            <span>Top-down table</span>
           </label>
 
           <NextScenarioButton onClick={handleNextScenario} disabled={isLoading} />
@@ -531,7 +572,9 @@ export const App = () => {
         />
       )}
 
-      <main className="table-stack">
+      <main
+        className={tableLayout === 'physical' ? 'table-physical' : 'table-stack'}
+      >
         {statusMessage && <div className="status-msg">{statusMessage}</div>}
         {error && (
           <div className="error-msg" role="alert">
@@ -539,13 +582,17 @@ export const App = () => {
           </div>
         )}
 
-        {orderedPlayers.map((player) => (
-          <PlayerRow
-            key={player.seat}
-            player={player}
-            highlightLastDiscard={claimedFrom === player.seat}
-          />
-        ))}
+        {gameState && tableLayout === 'physical' ? (
+          <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
+        ) : (
+          orderedPlayers.map((player) => (
+            <PlayerRow
+              key={player.seat}
+              player={player}
+              highlightLastDiscard={claimedFrom === player.seat}
+            />
+          ))
+        )}
       </main>
 
       {gameState && !dualGrade && actionBarActions.length > 0 && (

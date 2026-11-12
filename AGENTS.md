@@ -47,7 +47,12 @@ The app is a **Constraint Satisfaction Generator**:
 
 ## 4. UI / UX Design Constraints (React)
 * **Mobile-First, Stacked Layout:** The UI must be optimized for portrait mode on mobile devices.
-* **NO SKEUOMORPHISM:** Do NOT attempt to build a physically accurate, square Mahjong table. 
+  The stacked layout is the default view.
+* **NO SKEUOMORPHISM:** Do NOT build a physically rich, square Mahjong table as the default
+  view. The one opt-in exception is the **Top-down table** checkbox in the header: a flat,
+  top-down **plan** view (human's seat at the bottom edge, one seat per table edge) that can
+  be switched on per session. Even there, stay 2D: no perspective, camera tilt, isometric
+  projection, 3D rendering, or textured table furniture.
 * **Layout Structure:**
   * 4 strictly vertical flex/grid rows (one for each player).
   * Each opponent row displays their Wind, Points, Melds, and Discard River.
