@@ -34,6 +34,9 @@
 //!   both cheap and slow.
 //! - `wind_discard_order`: the ch. 9 seating tip: which valueless wind to throw
 //!   first (the right player's).
+//! - `pinfu_head`: ch. 5's pinfu head: a hand with no pair yet keeps its
+//!   terminals and valueless winds, because the value honor can never pair into
+//!   the pinfu head.
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
 //!
 //! The Phase 2 `mock_table` fixture lives in `crate::fixtures`, outside the
@@ -51,6 +54,7 @@ mod defense;
 mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
+mod pinfu_head;
 mod riichi_judgement;
 mod shouminkan_decision;
 mod situation;
@@ -70,6 +74,9 @@ pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
 
+/// The ch. 5 pinfu-head rule, shared by the lesson and its rationale.
+pub(crate) use pinfu_head::{can_be_pinfu_head, wind_from_honor};
+
 pub use mortal_agreement::{
     AgreementRejection, AgreementRejections, MortalAgreementOptions, MortalAgreementReport,
 };
@@ -85,6 +92,8 @@ pub enum ScenarioCategory {
     AiDecision,
     DefenseDecision,
     MeldingDecision,
+    /// Pursuing a yaku: the hand value, not the raw shape, decides the tile.
+    YakuDecision,
 }
 
 impl ScenarioCategory {
@@ -96,6 +105,7 @@ impl ScenarioCategory {
             ScenarioCategory::AiDecision => "ai_decision",
             ScenarioCategory::DefenseDecision => "defense_decision",
             ScenarioCategory::MeldingDecision => "melding_decision",
+            ScenarioCategory::YakuDecision => "yaku_decision",
         }
     }
 }
@@ -371,6 +381,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
     },
+    ScenarioMeta {
+        id: ScenarioId::PinfuHead,
+        label: "Pinfu: Build the Head",
+        description: "No pair yet: keep the terminals and valueless winds, because the value \
+                      honor can never be the pinfu head.",
+        category: ScenarioCategory::YakuDecision,
+        tags: &["yaku", "pinfu", "head", "discard", "honor"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
 ];
 
 /// Serializes the scenario catalogue for the frontend picker.
@@ -428,6 +448,7 @@ pub enum ScenarioId {
     SujiKabeSafety,
     DefenseStuckHeuristic,
     OpenHandDefense,
+    PinfuHead,
 }
 
 impl ScenarioId {
@@ -455,6 +476,7 @@ impl ScenarioId {
         ScenarioId::SujiKabeSafety,
         ScenarioId::DefenseStuckHeuristic,
         ScenarioId::OpenHandDefense,
+        ScenarioId::PinfuHead,
     ];
 
     /// The category string understood by the WASM API.
@@ -482,6 +504,7 @@ impl ScenarioId {
             ScenarioId::SujiKabeSafety => "suji_kabe_safety",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
             ScenarioId::OpenHandDefense => "open_hand_defense",
+            ScenarioId::PinfuHead => "pinfu_head",
         }
     }
 
@@ -510,6 +533,7 @@ impl ScenarioId {
             "suji_kabe_safety" => Some(ScenarioId::SujiKabeSafety),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
+            "pinfu_head" => Some(ScenarioId::PinfuHead),
             _ => None,
         }
     }
@@ -543,6 +567,7 @@ impl ScenarioId {
             ScenarioId::SujiKabeSafety => defense::generate_suji_kabe(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
             ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
+            ScenarioId::PinfuHead => pinfu_head::generate(category),
         }
     }
 }

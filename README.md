@@ -178,6 +178,34 @@ uses a suit dora indicator, so each held wind really is valueless. When the
 human is the dealer the table is the opening draw; on any other seat the board
 stops right after Kamicha's first discard, which is when the human first draws.
 
+## Pinfu head
+
+`Pinfu: Build the Head` is the ch. 5 "Building the head" exercise:
+
+> To claim pinfu, the head must be a pair of number tiles or valueless wind
+> tiles. Therefore, try not to discard terminals or valueless wind tiles
+> lightly when having a pinfu hand. Keep this in mind especially when a hand is
+> lacking any pair. — ch5:449
+
+> The hand has a potential to have pinfu, so we should not discard any of
+> 1m 9p E at this point. All of these three tiles may appear useless, but they
+> can be the head of a pinfu hand when any of them grows into a pair. On the
+> other hand, the value tile fa cannot be the head of pinfu. We should discard
+> fa in this case. — ch5:458
+
+Every hand is closed, 2-away, and holds **no pair yet**: two complete runs and
+two side-wait protoruns, three lone terminals or valueless winds with nothing of
+their suit within two ranks, and one lone value honor — a dragon, the round wind,
+or the seat wind. The answer is the value honor, and it is proved structurally
+rather than by score or acceptance: it is the only tile in the fourteen that can
+never be the pinfu head, so the three seemingly useless singles stay.
+
+The first-turn table has no calls, Riichi, or furiten, and the dora is never the
+answer, so nothing but the head rule can decide the discard. The book panel
+names the tiles kept and why the value honor is barred, and "Not this hand"
+notes that pairing the value honor would give a yakuhai head instead — a
+different hand from pinfu.
+
 ## Hosting the model weights
 
 The ~43 MB `mortal_298k.safetensors` file is not committed. It is published as a

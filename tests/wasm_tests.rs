@@ -263,6 +263,15 @@ fn test_list_scenarios_payload() {
         }),
         "the concealed quad lesson must be listed as a kan decision"
     );
+    assert!(
+        scenarios.iter().any(|scenario| {
+            scenario["id"] == "pinfu_head"
+                && scenario["category"] == "yaku_decision"
+                && scenario["grading"] == "book_and_mortal"
+                && scenario["requires_ai"] == false
+        }),
+        "the pinfu head lesson must be listed as a yaku decision"
+    );
 }
 
 #[wasm_bindgen_test]
@@ -3500,6 +3509,103 @@ fn test_wind_discard_order_payload() {
             .map(|player| player["score"].as_i64().expect("score int"))
             .sum();
         assert_eq!(total_score, 100_000);
+    }
+}
+
+#[wasm_bindgen_test]
+fn test_pinfu_head_payload() {
+    fn wind_code(name: &str) -> &'static str {
+        match name {
+            "East" => "1z",
+            "South" => "2z",
+            "West" => "3z",
+            "North" => "4z",
+            other => panic!("unknown wind {other}"),
+        }
+    }
+
+    for run in 0..25 {
+        let json_output = generate_puzzle("pinfu_head".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}"));
+
+        assert_eq!(val["category"], "pinfu_head");
+        assert_eq!(val["target_action"], "NaniKiru");
+        assert_eq!(val["correct_action"]["type"], "dama");
+        assert_eq!(val["current_turn"], 0);
+        assert!(val["equivalent_tiles"].as_array().is_none_or(Vec::is_empty));
+        assert!(val["shanten"].as_i64().unwrap() >= 2);
+
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("the answer names the discard")
+            .to_string();
+        let players = val["players"].as_array().expect("players array");
+        assert_eq!(players.len(), 4);
+
+        let human = &players[0];
+        assert_eq!(human["is_human"], true);
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(human["draw"].is_string());
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        assert!(human["discards"].as_array().unwrap().is_empty());
+        for player in players {
+            assert!(player["melds"].as_array().unwrap().is_empty());
+            assert_eq!(player["is_riichi"], false);
+            assert!(player["discards"].as_array().unwrap().len() <= 1);
+        }
+
+        // No pair yet, and exactly one value honor: the answer.
+        let tiles: Vec<&str> = val["tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        assert_eq!(tiles.len(), 14);
+        let mut sorted = tiles.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(sorted.len(), 14, "run {run}: the hand holds a pair");
+
+        let seat_wind = wind_code(human["wind"].as_str().unwrap());
+        let round_wind = wind_code(val["round_wind"].as_str().unwrap());
+
+        let value_honor = |code: &str| match code {
+            "5z" | "6z" | "7z" => true,
+            other => other == seat_wind || other == round_wind,
+        };
+        let value_honors: Vec<&str> = tiles
+            .iter()
+            .copied()
+            .filter(|code| value_honor(code))
+            .collect();
+        assert_eq!(value_honors.len(), 1, "run {run}: exactly one value honor");
+        assert_eq!(value_honors[0], answer.as_str(), "run {run}");
+
+        // Every other tile can still pair into the pinfu head.
+        for code in &tiles {
+            if *code == answer {
+                continue;
+            }
+            assert!(
+                !value_honor(code),
+                "run {run}: {code} is a second value honor"
+            );
+        }
+
+        assert_eq!(val["book_rationale"]["source"]["chapter"], 5);
+        assert_eq!(
+            val["book_rationale"]["source"]["section"],
+            "Building the head"
+        );
+        assert!(
+            !val["book_rationale"]["rules"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
     }
 }
 
