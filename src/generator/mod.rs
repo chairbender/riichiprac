@@ -32,6 +32,9 @@
 //!   tile.
 //! - `meld_or_not`: the ch. 9.1 call decision: pass on a Pon when the hand is
 //!   both cheap and slow.
+//! - `daiminkan_decision`: the ch. 9.3.2 open quad (daiminkan) call decision:
+//!   take the fourth copy of a concealed dragon triplet only when the book's
+//!   value band, placement pressure, or score line justifies it.
 //! - `wind_discard_order`: the ch. 9 seating tip: which valueless wind to throw
 //!   first (the right player's).
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
@@ -43,6 +46,7 @@ pub mod ai_best_action;
 mod ankan_decision;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
+mod daiminkan_decision;
 mod dama_bad_wait;
 mod dama_expensive_hand;
 mod dama_genbutsu_wait;
@@ -65,6 +69,7 @@ use crate::ai::model::MortalV4Model;
 use crate::state::GameState;
 use situation::Situation;
 
+pub(crate) use daiminkan_decision::{DaiminkanTriggerSet, facts as daiminkan_facts};
 pub(crate) use support::analysis::floating_quad_acceptance;
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
@@ -318,6 +323,17 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::DaiminkanDecision,
+        label: "Open Quad Decision",
+        description: "An opponent discards the fourth copy of your dragon triplet: call the \
+                      open quad only when the hand's value, the placement, or the score line \
+                      asks for it.",
+        category: ScenarioCategory::KanDecision,
+        tags: &["kan", "daiminkan", "open_quad", "call", "value_band"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::AiBestAction,
         label: "AI Best Action",
         description: "Any decision: discard, call, or win — the answer is Mortal v4's top action.",
@@ -422,6 +438,7 @@ pub enum ScenarioId {
     ShouminkanDecision,
     AnkanDecision,
     MeldOrNot,
+    DaiminkanDecision,
     WindDiscardOrder,
     AiBestAction,
     DefenseSafetyChart,
@@ -450,6 +467,7 @@ impl ScenarioId {
         ScenarioId::AnkanDecision,
         ScenarioId::WindDiscardOrder,
         ScenarioId::MeldOrNot,
+        ScenarioId::DaiminkanDecision,
         ScenarioId::AiBestAction,
         ScenarioId::DefenseSafetyChart,
         ScenarioId::SujiKabeSafety,
@@ -477,6 +495,7 @@ impl ScenarioId {
             ScenarioId::AnkanDecision => "ankan_decision",
             ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::MeldOrNot => "meld_or_not",
+            ScenarioId::DaiminkanDecision => "daiminkan_decision",
             ScenarioId::AiBestAction => "ai_best_action",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
             ScenarioId::SujiKabeSafety => "suji_kabe_safety",
@@ -505,6 +524,7 @@ impl ScenarioId {
             "ankan_decision" => Some(ScenarioId::AnkanDecision),
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
+            "daiminkan_decision" => Some(ScenarioId::DaiminkanDecision),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
             "suji_kabe_safety" => Some(ScenarioId::SujiKabeSafety),
@@ -534,6 +554,7 @@ impl ScenarioId {
             ScenarioId::AnkanDecision => ankan_decision::generate(category),
             ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
             ScenarioId::MeldOrNot => meld_or_not::generate(category),
+            ScenarioId::DaiminkanDecision => daiminkan_decision::generate(category),
             ScenarioId::AiBestAction => Err(
                 "ai_best_action requires the loaded Mortal model; use the evaluator's \
                  generate_ai_puzzle"

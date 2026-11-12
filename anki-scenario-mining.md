@@ -675,6 +675,31 @@ once and it unlocks `daiminkan_decision`, the pon-seating tips, and the sanshoku
 **`daiminkan_decision`** — lowest priority of the kan family; same UI cost as
 `meld_or_not` for one card.
 
+**Implemented.** `src/generator/daiminkan_decision/` deals the book's own shape
+— a called run (chi), a concealed run, an honor pair, a two-tile protorun and
+three concealed dragon copies — and has the player's right-hand player discard the
+fourth copy. One neutral call ("Call the Kan, or pass?") is split 50/50 before
+rejection sampling, so the prompt never hints the answer:
+
+| Half | Shape | Table | Answer |
+| --- | --- | --- | --- |
+| `GoodWaitValue` | ready, side wait, 2000 points (chun + one dora) | even scores | Kan |
+| `CheapGoodWait` | ready, side wait, 1000 points (chun only) | South-4, 2nd/3rd, gap inside the quad's 1000→1300 | Kan |
+| `CheapGoodWait` / `BadWaitValue` | the same cheap hand, or the 2000-point hand on a bad wait | fourth, >12,000 behind third | Kan |
+| `BadWaitValue` | ready, edge/closed wait, 2000 points | even scores | Pass |
+| `CheapGoodWait` | ready, side wait, 1000 points | even scores | Pass |
+
+The three Kan rows are exactly the book's three situations (ch9:323–325); the
+two Pass rows are its two refusal boxes (ch9:350, ch9:358). `agari`'s scorer
+measures the hand before and after the quad (`value.rs`), so the rationale
+states real points — 2000→2600 and 1000→1300, i.e. the book's minipoint
+argument without inventing the quad's new dora — and the placement gap is drawn
+from that same window. `rationale::daiminkan_rationale` recomputes everything
+from the state, and the frontend renders the offer as a **Kan** button beside
+**Pass** (`call_offer.action == "Kan"`, graded as `kan` with the offer's tile).
+The lesson is a `TargetAction::Call` board rather than `Kan` because its decline
+answer is a pass, not a discard.
+
 ---
 
 ## 6. Rejected or deliberately deferred

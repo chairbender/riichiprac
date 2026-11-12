@@ -58,9 +58,15 @@ export function isCorrectAction(value: unknown): value is CorrectAction {
     : typeof action.tile === 'string';
 }
 
-/** Whether the state asks to call or pass on an opponent's discard. */
-export function isCallDecision(action: CorrectAction): boolean {
-  return action.type === 'pass';
+/**
+ * Whether the state asks to call or pass on an opponent's discard.
+ *
+ * The engine puts the offered call in `call_offer`, which is the authority: a
+ * Pon/Chi lesson passes on it, and the open-quad lesson either calls a Kan or
+ * passes, so its answer can be `kan` rather than `pass`.
+ */
+export function isCallDecision(state: GameState): boolean {
+  return Boolean(state.call_offer) || state.correct_action?.type === 'pass';
 }
 
 /**
@@ -77,12 +83,24 @@ export function callOfferActions(state: GameState): AiActionInfo[] {
     {
       action: offer.action,
       label: offer.label,
-      type: offer.action === 'Chi' ? 'chi' : 'pon',
+      type: callType(offer.action),
       tile: offer.tile,
       tiles: offer.tiles ?? [],
     },
     { action: 'Pass', label: 'Pass', type: 'pass' },
   ];
+}
+
+/** Coarse action family for a book lesson's offered call. */
+function callType(action: string): AiActionInfo['type'] {
+  switch (action) {
+    case 'Chi':
+      return 'chi';
+    case 'Kan':
+      return 'kan';
+    default:
+      return 'pon';
+  }
 }
 
 /** Whether the payload belongs to a Kan (Shouminkan or Ankan) lesson. */
