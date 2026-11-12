@@ -387,6 +387,26 @@ impl SafetyFacts {
         self.read(tile).rank
     }
 
+    /// True when the chapter calls this tile 100% safe, not merely rankable.
+    ///
+    /// Riichi Book 1, ch. 8, "Genbutsu and other absolutely safe tiles" lists
+    /// three kinds: the threat's genbutsu, a fourth honor tile, and an absolute
+    /// "no chance" tile. A tile whose four copies are all visible is dead for
+    /// the same reason: nobody can win on a tile no copy of which is left.
+    ///
+    /// The chart row alone is not the test. `AAA` is the fourth honor (and the
+    /// fourth suji terminal, which is also fully visible), and a blockade can
+    /// make a neighbour a no-chance tile while its row is only `BBB`. Both are
+    /// 100% safe in the book's sense even though the chart keeps the
+    /// conservative row, so a fold lesson's generator has to know about them.
+    pub fn is_absolutely_safe(&self, tile: Tile) -> bool {
+        let read = self.read(tile);
+        read.rank == SafetyRank::Genbutsu
+            || read.rank == SafetyRank::Aaa
+            || read.mechanism == SafetyMechanism::NoChance
+            || self.visible_of(tile) >= 4
+    }
+
     fn read_honor(&self, tile: Tile, honor: Honor) -> TileRead {
         let (rank, reason) = match self.visible_of(tile) {
             4 => (SafetyRank::Aaa, "all four copies are visible"),
@@ -1093,6 +1113,51 @@ mod tests {
         assert_eq!(facts.read(tile("2m")).rank, SafetyRank::Ddd);
         assert_eq!(facts.read(tile("3m")).rank, SafetyRank::Dd);
         assert_eq!(facts.read(tile("5m")).rank, SafetyRank::D);
+    }
+
+    #[test]
+    fn absolutely_safe_covers_the_chapters_three_kinds() {
+        // Kind one: the threat's own river.
+        let facts = no_visibility(&["3p"], Wind::South);
+        assert!(facts.is_absolutely_safe(tile("3p")));
+        assert!(!facts.is_absolutely_safe(tile("3s")));
+
+        // Kind two: a fourth honor tile.
+        let facts = with_visibility(&[], &["5z", "5z", "5z", "5z"], Wind::East, Wind::East);
+        assert!(facts.is_absolutely_safe(tile("5z")));
+        assert_eq!(facts.read(tile("5z")).rank, SafetyRank::Aaa);
+
+        // A second honor copy is only Rank A (or A+ for a valueless wind): a
+        // pair can still be a single wait, so it is not 100% safe.
+        let facts = with_visibility(&[], &["3z", "3z"], Wind::East, Wind::East);
+        assert!(!facts.is_absolutely_safe(tile("3z")));
+        assert_eq!(facts.read(tile("3z")).rank, SafetyRank::APlus);
+
+        // Kind three: an absolute no-chance tile behind a blockade. Four 2m
+        // visible denies the 2-3 protorun, so 1m cannot be part of any run.
+        let facts = with_visibility(&[], &["2m", "2m", "2m", "2m"], Wind::South, Wind::East);
+        assert!(facts.is_absolutely_safe(tile("1m")));
+        assert_eq!(facts.read(tile("1m")).mechanism, SafetyMechanism::NoChance);
+
+        // A rank below the top row is not 100% safe: a suji tile is only
+        // relatively safe.
+        let facts = no_visibility(&["4m"], Wind::South);
+        assert!(!facts.is_absolutely_safe(tile("1m")));
+        assert_eq!(facts.read(tile("1m")).rank, SafetyRank::APlus);
+    }
+
+    #[test]
+    fn a_dead_tile_is_absolutely_safe_even_off_the_chart() {
+        // Four visible 5m: no wait can need it, although the chart would rank a
+        // non-suji 5m as rank D.
+        let facts = with_visibility(
+            &[],
+            &["5m", "5m", "5m", "5m", "9p"],
+            Wind::South,
+            Wind::East,
+        );
+        assert_eq!(facts.visible_of(tile("5m")), 4);
+        assert!(facts.is_absolutely_safe(tile("5m")));
     }
 
     #[test]

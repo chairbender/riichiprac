@@ -18,6 +18,9 @@
 //!   at least six kinds of draws improve the ready hand's score or wait.
 //! - `suji_trap_riichi`: ch. 8's immediate suji trap: declare Riichi on the
 //!   discard that makes the wait look like a safe suji.
+//! - `fold_to_riichi`: ch. 8.1/8.3's betaori drill: a junk hand facing a
+//!   declared Riichi discards the one 100% safe tile, even though it breaks a
+//!   block.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
 //!   `suji_kabe_safety` is the ranking mode of the fold board: the safest tile
 //!   is a suji or no-chance tile, never the free genbutsu, and the runner-up is
@@ -48,6 +51,7 @@ mod dama_expensive_hand;
 mod dama_genbutsu_wait;
 mod dama_improving_hand;
 mod defense;
+mod fold_to_riichi;
 mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
@@ -327,6 +331,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::MortalOnly,
     },
     ScenarioMeta {
+        id: ScenarioId::FoldToRiichi,
+        label: "Defense: Fold to Riichi",
+        description: "An opponent has declared Riichi against a junk hand: discard the one \
+                      tile the book calls 100% safe.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &["defense", "betaori", "fold", "genbutsu", "discard"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::DefenseSafetyChart,
         label: "Defense: Safest Discard",
         description: "An opponent has declared Riichi: discard the tile the book's safety chart ranks safest.",
@@ -424,6 +438,7 @@ pub enum ScenarioId {
     MeldOrNot,
     WindDiscardOrder,
     AiBestAction,
+    FoldToRiichi,
     DefenseSafetyChart,
     SujiKabeSafety,
     DefenseStuckHeuristic,
@@ -451,6 +466,7 @@ impl ScenarioId {
         ScenarioId::WindDiscardOrder,
         ScenarioId::MeldOrNot,
         ScenarioId::AiBestAction,
+        ScenarioId::FoldToRiichi,
         ScenarioId::DefenseSafetyChart,
         ScenarioId::SujiKabeSafety,
         ScenarioId::DefenseStuckHeuristic,
@@ -478,6 +494,7 @@ impl ScenarioId {
             ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::MeldOrNot => "meld_or_not",
             ScenarioId::AiBestAction => "ai_best_action",
+            ScenarioId::FoldToRiichi => "fold_to_riichi",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
             ScenarioId::SujiKabeSafety => "suji_kabe_safety",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
@@ -506,6 +523,7 @@ impl ScenarioId {
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
+            "fold_to_riichi" => Some(ScenarioId::FoldToRiichi),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
             "suji_kabe_safety" => Some(ScenarioId::SujiKabeSafety),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
@@ -539,6 +557,7 @@ impl ScenarioId {
                  generate_ai_puzzle"
                     .to_string(),
             ),
+            ScenarioId::FoldToRiichi => fold_to_riichi::generate(category),
             ScenarioId::DefenseSafetyChart => defense::generate_safety_chart(category),
             ScenarioId::SujiKabeSafety => defense::generate_suji_kabe(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
