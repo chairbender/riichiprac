@@ -63,7 +63,11 @@ pub(super) fn build_board(category: &str, skeleton: &Skeleton) -> Result<GameSta
     // The last call is the chii the human is reading, so the tile thrown right
     // after it is the last discard on the table. The three calls therefore land
     // on the threat's last three discards, and those three come from the hand:
-    // `force_tedashi` must clear their tsumogiri flags.
+    // `force_tedashi` must clear their tsumogiri flags. The plan's greedy order
+    // would put the calls on the threat's earliest discards instead, so the
+    // board re-anchors them and drops the plan's own call records; `validate`
+    // re-derives the truth from the finished state.
+    plan.calls.clear();
     plan.hand_discards[THREAT_SEAT] =
         (counts[THREAT_SEAT] - THREAT_CALLS..counts[THREAT_SEAT]).collect();
 

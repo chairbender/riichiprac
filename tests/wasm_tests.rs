@@ -4037,6 +4037,79 @@ fn test_open_hand_defense_payload() {
     );
 }
 
+/// Every open meld a lesson deals has to be backed by a discard in the river it
+/// names.
+///
+/// This is the general guard behind the reported `open_hand_defense` board: a
+/// call consumes a discard, so `players[called_from].discards` must hold a tile
+/// the meld could have claimed. `validate_reachable_state` rejects tables that
+/// do not, and the lessons below plant the claimed tile on purpose.
+#[wasm_bindgen_test]
+fn test_melded_lessons_back_every_call_with_a_discard() {
+    for category in [
+        "open_hand_defense",
+        "ryanmen_protorun",
+        "nakabukure_ready",
+        "protorun_priority",
+        "ryankan_break",
+        "protorun_plus_one",
+        "daiminkan_decision",
+    ] {
+        for run in 0..10 {
+            let json_output = generate_puzzle(category.to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("{category} run {run}: invalid JSON: {err}"));
+            let players = val["players"].as_array().expect("players array");
+
+            for player in players {
+                for meld in meld_list(player) {
+                    let source = meld["called_from"]
+                        .as_u64()
+                        .expect("an open meld names its source")
+                        as usize;
+                    let claimable: Vec<&str> = match meld["meld_type"].as_str() {
+                        // Any tile of the run can be the claimed one.
+                        Some("Chi") => meld["tiles"]
+                            .as_array()
+                            .expect("meld tiles")
+                            .iter()
+                            .filter_map(|tile| tile.as_str())
+                            .collect(),
+                        _ => meld["tiles"]
+                            .as_array()
+                            .expect("meld tiles")
+                            .first()
+                            .and_then(|tile| tile.as_str())
+                            .into_iter()
+                            .collect(),
+                    };
+                    assert!(
+                        players[source]["discards"]
+                            .as_array()
+                            .expect("source river")
+                            .iter()
+                            .any(|discard| {
+                                claimable.contains(&discard["tile"].as_str().unwrap_or_default())
+                            }),
+                        "{category} run {run}: the {} {:?} claims from seat {source}, whose river \
+                         never shows a claimed tile",
+                        meld["meld_type"],
+                        claimable
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// The melds of a player payload, or an empty list when there are none.
+fn meld_list(player: &serde_json::Value) -> Vec<&serde_json::Value> {
+    player["melds"]
+        .as_array()
+        .map(|melds| melds.iter().collect())
+        .unwrap_or_default()
+}
+
 /// Regression for the reported board: the threat showed three open melds while
 /// the seat it called from still displayed five discards, none of them a tile
 /// the threat could have claimed. Every call has to be backed by a discard in

@@ -18,6 +18,41 @@ pub struct RiverPlan {
     /// timeline does not model closed/added kans, whose replacement draw does
     /// allow a tsumogiri follow-up.
     pub hand_discards: [Vec<usize>; 4],
+    /// Every planned call, in the order the walk made it.
+    ///
+    /// A call consumes one of the source's discards, so its `index` is where the
+    /// claimed tile has to sit in `state.players[source].discards`.
+    pub calls: Vec<PlannedCall>,
+}
+
+/// One call inside a [`RiverPlan`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlannedCall {
+    /// Seat that made the call.
+    pub caller: usize,
+    /// Seat whose discard it claimed.
+    pub source: usize,
+    /// Index of the claimed discard in the source's river.
+    pub index: usize,
+}
+
+/// One tile an open meld claims from an opponent's river.
+///
+/// The claimed tile is a separate physical copy of the kind, because the state
+/// keeps the discard that produced it: `state_validation` counts it as one of
+/// the source's discards, and the tenhou.net/6 exporter looks for the claim
+/// there.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClaimPlant {
+    /// Seat that discarded the claimed tile.
+    pub source: usize,
+    /// Index of that discard in the source's river.
+    pub index: usize,
+    /// The claimed tile, already taken out of the deck.
+    pub tile: Tile,
+    /// The meld's tiles: no other river entry may be claimable by it, so the
+    /// claim can only land on `index`.
+    pub meld: Vec<Tile>,
 }
 
 /// Plans one legal, reachable discard timeline.
@@ -60,6 +95,12 @@ pub fn plan_rivers(
             // The caller's next discard is the entry at the current count, and
             // it comes from the hand rather than a draw.
             plan.hand_discards[caller].push(plan.counts[caller]);
+            // The discard just made is the one the call claims.
+            plan.calls.push(PlannedCall {
+                caller,
+                source: seat,
+                index: plan.counts[seat] - 1,
+            });
             seat = caller;
         } else {
             seat = (seat + 1) % 4;
@@ -268,13 +309,44 @@ pub fn deal_opponents(
     scores: &[i32; 4],
     plan: &RiverPlan,
 ) -> Option<OpponentDeal> {
+    deal_opponents_claiming(deck, human_wind, scores, plan, &[])
+}
+
+/// Deals the three opponents, planting every claimed tile in the river it came
+/// from.
+///
+/// A call consumes a discard, so the source's river has to show the tile the
+/// caller took (see [`ClaimPlant`]). Each plant lands on its planned index, and
+/// every other entry in that river steers clear of the claiming melds, so the
+/// claim can only sit where it was planted.
+pub fn deal_opponents_claiming(
+    deck: &mut Deck,
+    human_wind: Wind,
+    scores: &[i32; 4],
+    plan: &RiverPlan,
+    claims: &[ClaimPlant],
+) -> Option<OpponentDeal> {
     let opponent_meta = [(1usize, "Shimocha"), (2, "Toimen"), (3, "Kamicha")];
 
     let mut players = Vec::with_capacity(3);
     let mut rivers = Vec::with_capacity(3);
     for (index, (seat, name)) in opponent_meta.iter().enumerate() {
         let hand = deck.draw_n(13)?;
-        let river = deck.draw_n(plan.counts[*seat])?;
+        let avoid: Vec<Tile> = claims
+            .iter()
+            .filter(|claim| claim.source == *seat)
+            .flat_map(|claim| claim.meld.iter().copied())
+            .collect();
+        let mut river = Vec::with_capacity(plan.counts[*seat]);
+        for slot in 0..plan.counts[*seat] {
+            let planted = claims
+                .iter()
+                .find(|claim| claim.source == *seat && claim.index == slot);
+            match planted {
+                Some(claim) => river.push(claim.tile),
+                None => river.push(deck.draw_excluding(1, &avoid)?.pop()?),
+            }
+        }
         rivers.push(river.clone());
         let mut discards = discards_from_tiles(&river);
         force_tedashi(&mut discards, &plan.hand_discards[*seat]);
@@ -299,7 +371,7 @@ pub fn deal_opponents(
 
 #[cfg(test)]
 mod tests {
-    use agari::tile::Suit;
+    use agari::tile::{Honor, Suit};
 
     use super::*;
 
@@ -360,6 +432,53 @@ mod tests {
         let plan = plan_rivers(dealer_seat(Wind::East), 3, &[(0, 1)], 3);
         assert_eq!(plan.hand_discards[0], vec![1]);
         assert!(plan.hand_discards[1].is_empty());
+    }
+
+    #[test]
+    fn river_plan_records_the_discard_each_call_claims() {
+        let plan = plan_rivers(dealer_seat(Wind::East), 3, &[(0, 1)], 3);
+        assert_eq!(
+            plan.calls,
+            vec![PlannedCall {
+                caller: 0,
+                source: 1,
+                index: 0,
+            }]
+        );
+    }
+
+    #[test]
+    fn a_claiming_deal_plants_the_claimed_tile_at_its_index() {
+        let mut deck = Deck::fresh();
+        let plan = plan_rivers(dealer_seat(Wind::East), 3, &[(0, 1)], 3);
+        let call = plan.calls[0];
+        let claimed = Tile::Honor(Honor::White);
+        deck.take(claimed).expect("the claimed copy is available");
+        let deal = deal_opponents_claiming(
+            &mut deck,
+            Wind::East,
+            &[25_000; 4],
+            &plan,
+            &[ClaimPlant {
+                source: call.source,
+                index: call.index,
+                tile: claimed,
+                meld: vec![claimed; 3],
+            }],
+        )
+        .expect("the deck supplies the rivers");
+
+        // `rivers` runs in opponent order: seat 1 first.
+        let source_river = &deal.rivers[call.source - 1];
+        assert_eq!(source_river.len(), plan.counts[call.source]);
+        assert_eq!(source_river[call.index], claimed);
+        assert!(
+            source_river
+                .iter()
+                .enumerate()
+                .all(|(index, tile)| index == call.index || *tile != claimed),
+            "only the planted slot may show the claimed tile: {source_river:?}"
+        );
     }
 
     #[test]

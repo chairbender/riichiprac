@@ -368,9 +368,14 @@ fn finish_discard(seat: &mut ReplayedSeat, entry: &Value, last_draw: Option<u8>,
 ///
 /// The meld-free lessons emit replayable tables by construction. An open-meld
 /// lesson only qualifies once it plants the claimed tile in the source's river:
-/// `open_hand_defense` does, so its three calls land on Toimen's last three
-/// discards. The lessons in [`UNREACHABLE_CLAIMS`] still draw the claimed tile
-/// from the deck instead of discarding it.
+/// `open_hand_defense` does for its three calls, and the block-theory drills do
+/// for their open Pon. The one lesson left in [`UNREACHABLE_CLAIMS`] cannot: its
+/// Pon holds three copies and the caller holds the fourth, so there is no spare
+/// copy to be a discard.
+///
+/// `daiminkan_decision` plants its open Chi's discard too, but the exporter
+/// cannot write a `ReactToDiscard` snapshot yet: the tail draw that follows the
+/// answer has no tile to show (see `append_decision_turn`), so it stays out.
 const EXPORTABLE: &[ScenarioId] = &[
     ScenarioId::ChiitoitsuRiichiVsDama,
     ScenarioId::OpenHandDefense,
@@ -381,23 +386,22 @@ const EXPORTABLE: &[ScenarioId] = &[
     ScenarioId::FoldToRiichi,
     ScenarioId::DefenseStuckHeuristic,
     ScenarioId::SanshokuPursuit,
-];
-
-/// Scenarios that hold an open meld whose claimed tile no river contains.
-///
-/// The generators pick the pon/chi tiles from the hand skeleton and then draw
-/// the opponents' rivers from the deck, so the discarder never discarded the
-/// claimed tile. Such a table cannot be written as a real game log at all: a
-/// claim has to land on an actual discard. The exporter rejects it instead of
-/// quietly changing the table.
-const UNREACHABLE_CLAIMS: &[ScenarioId] = &[
     ScenarioId::RyanmenProtorun,
     ScenarioId::NakabukureReady,
     ScenarioId::ProtorunPriority,
     ScenarioId::RyankanBreak,
     ScenarioId::ProtorunPlusOne,
-    ScenarioId::ShouminkanDecision,
 ];
+
+/// Scenarios that hold an open meld whose claimed tile no river can contain.
+///
+/// The added-kan Pon shows three copies and the caller holds the fourth (the
+/// drawn tile about to extend it), so all four copies are on the caller's side
+/// and no spare copy exists to be a witness discard. Such a table cannot be
+/// written as a real game log at all: a claim has to land on an actual discard.
+/// The exporter rejects it instead of quietly changing the table. Every other
+/// melded lesson plants its claimed tile and is listed in [`EXPORTABLE`].
+const UNREACHABLE_CLAIMS: &[ScenarioId] = &[ScenarioId::ShouminkanDecision];
 
 fn assert_replayable(state: &GameState, export: &Tenhou6Export, label: &str) {
     // The log's absolute seats are rotated: seat 0 is East in E1, which is the

@@ -19,8 +19,9 @@ use super::{DaiminkanTriggerSet, facts, quad_window};
 use crate::generator::support::deck::{ALL_TILES, Deck};
 use crate::generator::support::format::format_hand_compact;
 use crate::generator::support::table::{
-    discards_from_tiles, losing_badly_ranked_scores, placement_desperation_ranked_scores,
-    plan_rivers, random_round, random_table_scores, scores_for_seats,
+    discards_from_tiles, force_tedashi, losing_badly_ranked_scores,
+    placement_desperation_ranked_scores, plan_rivers, random_round, random_table_scores,
+    scores_for_seats,
 };
 use crate::rng::{choose, gen_range, shuffle};
 use crate::state::{
@@ -108,7 +109,26 @@ pub(super) fn build(
         DaiminkanTable::Balanced => gen_range(2, 7),
         _ => gen_range(6, 12),
     };
-    let plan = plan_rivers(dealer_seat(human_wind), from, &[], min_discards);
+    // The human already has an open Chi, called from Kamicha (seat 3), so the
+    // timeline runs through that call.
+    let plan = plan_rivers(dealer_seat(human_wind), from, &[(0, 3)], min_discards);
+    let chi_claim = plan
+        .calls
+        .iter()
+        .find(|call| call.caller == 0 && call.source == 3)
+        .copied()
+        .ok_or_else(|| "the open Chi's call is missing from the timeline".to_string())?;
+    // A Chi consumes a discard, so seat 3's river has to show a tile the human
+    // took. The claimed copy is a spare tile of one of the run's ranks; prefer
+    // one that is not a winning tile, which would shrink the wait.
+    let chi_claimed = skeleton
+        .open_run
+        .iter()
+        .copied()
+        .filter(|tile| !skeleton.wait_tiles.contains(tile))
+        .find(|tile| deck.has(*tile))
+        .ok_or_else(|| "no spare copy of the Chi's run is left in the deck".to_string())?;
+    deck.take(chi_claimed)?;
 
     // The human is not furiten: no winning tile may sit in their own river.
     let human_river = deck
@@ -116,28 +136,50 @@ pub(super) fn build(
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
     let mut players = Vec::with_capacity(4);
-    players.push(human_player(human_wind, scores[0], skeleton, &human_river));
+    players.push(human_player(
+        human_wind,
+        scores[0],
+        skeleton,
+        &human_river,
+        &plan.hand_discards[0],
+    ));
+    // The offered quad is the offering seat's last discard, and the Chi claim
+    // is planted where the timeline says it landed. No other river entry may
+    // look claimable, so both tiles read at their own slot.
+    let avoid: Vec<Tile> = skeleton
+        .open_run
+        .iter()
+        .copied()
+        .chain(std::iter::once(skeleton.quad_tile))
+        .collect();
     for (seat, score) in scores.iter().enumerate().skip(1) {
         let hand = deck
             .draw_n(13)
             .ok_or_else(|| "Deck exhausted dealing an opponent".to_string())?;
-        let river = if seat == from {
-            let mut river = deck
-                .draw_n(plan.counts[seat] - 1)
-                .ok_or_else(|| "Deck exhausted drawing the offering river".to_string())?;
-            river.push(skeleton.quad_tile);
-            river
-        } else {
-            deck.draw_n(plan.counts[seat])
-                .ok_or_else(|| "Deck exhausted drawing an opponent river".to_string())?
-        };
+        let offer_slot = (seat == from).then(|| plan.counts[seat] - 1);
+        let mut river = Vec::with_capacity(plan.counts[seat]);
+        for slot in 0..plan.counts[seat] {
+            if Some(slot) == offer_slot {
+                river.push(skeleton.quad_tile);
+            } else if seat == chi_claim.source && slot == chi_claim.index {
+                river.push(chi_claimed);
+            } else {
+                river.push(
+                    deck.draw_excluding(1, &avoid)
+                        .ok_or_else(|| "Deck exhausted drawing an opponent river".to_string())?
+                        .pop()
+                        .ok_or_else(|| "Deck exhausted drawing an opponent river".to_string())?,
+                );
+            }
+        }
         let mut discards = discards_from_tiles(&river);
-        if seat == from {
-            // The offered tile is the source's last discard, from their hand.
-            if let Some(last) = discards.last_mut() {
+        if let Some(slot) = offer_slot {
+            // The offered tile comes from the hand.
+            if let Some(last) = discards.get_mut(slot) {
                 last.is_tsumogiri = false;
             }
         }
+        force_tedashi(&mut discards, &plan.hand_discards[seat]);
         players.push(PlayerState {
             seat,
             name: match seat {
@@ -316,9 +358,13 @@ fn human_player(
     score: i32,
     skeleton: &DaiminkanSkeleton,
     river: &[Tile],
+    hand_discards: &[usize],
 ) -> PlayerState {
     let mut hand = skeleton.concealed_tiles.clone();
     hand.sort();
+    let mut discards = discards_from_tiles(river);
+    // A discard thrown right after the open Chi comes from the hand.
+    force_tedashi(&mut discards, hand_discards);
 
     PlayerState {
         seat: 0,
@@ -329,7 +375,7 @@ fn human_player(
         hand: hand.iter().map(ToString::to_string).collect(),
         draw: None,
         red_fives: Vec::new(),
-        discards: discards_from_tiles(river),
+        discards,
         melds: vec![CalledMeld {
             meld_type: MeldType::Chi,
             tiles: skeleton.open_run.iter().map(ToString::to_string).collect(),

@@ -9,4 +9,5 @@ pub mod random_hand;
 pub mod ryankan_break;
 pub mod ryanmen_protorun;
 pub mod shapes;
+pub(crate) mod shared;
 pub mod skipping_block;
