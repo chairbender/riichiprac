@@ -76,18 +76,23 @@ submitted grade stay put. The choice is per session and is not persisted.
 
 - **Stacked** (default): four player rows in turn order, with the human's row
   directly above the docked hand.
-- **Top-down**: a flat plan view of the table. The human's seat is the bottom
-  edge (the hand stays in the dock below it), shimocha is on the right, toimen
-  at the top, and kamicha on the left. Each river runs from its player towards
-  the middle of the table, and every tile is turned to face its owner, so the
-  side rivers read sideways and the top river upside down.
+- **Top-down**: a flat plan view of the table. The human's seat is the bottom edge
+  (the hand stays in the dock below it), shimocha is on the right, toimen at the
+  top, and kamicha on the left. Each river starts at the corner nearest the
+  middle of the table, fills left to right, and then drops a row towards its
+  player, with the newest discards nearest that player's edge, and every tile is
+  turned to face its owner, so the side rivers read sideways and the top river
+  upside down. Melds sit on a player's right and each new meld stacks on top of
+  the last, away from them.
 
 The top-down view is 2D only: no camera tilt, vanishing point, or 3D projection.
-It is a diagram of where the seats, melds, and discards are. The wall count sits
-in the middle of the plan, opponents' hands stay hidden (only their melds and
-rivers are drawn, exactly as in the stacked view), and the whole plan is rotated
-onto the human's seat so an imported report that puts them on another seat still
-reads with their own side at the bottom.
+It is a diagram of where the seats, melds, and discards are. The table edges
+carry no text at all: a compass in the middle shows each player's wind and score
+in the corner facing them, the round and wall count in its centre, and a Riichi
+stick on the corner in front of whoever declared. Opponents' hands stay hidden
+(only their melds and rivers are drawn, exactly as in the stacked view), and the
+whole plan is rotated onto the human's seat so an imported report that puts them
+on another seat still reads with their own side at the bottom.
 
 ## Choosing scenarios
 
