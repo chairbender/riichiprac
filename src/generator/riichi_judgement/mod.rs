@@ -20,7 +20,9 @@
 //! live wait quality, seat wind — match that target exactly. Board cases where
 //! the later ch. 7 sections prefer dama (a 1-2 tile bad wait, being in the
 //! lead, a genbutsu wait, a hand already worth 7700+) are deliberately kept
-//! out of the sample.
+//! out of the sample. So is any hand holding four copies of a tile: that makes
+//! a closed kan (ankan) legal, which is a different lesson and an action the
+//! UI never offers here.
 
 mod board;
 // The wait-quality and han helpers are shared with the `dama_bad_wait`
@@ -254,6 +256,22 @@ mod tests {
         let mut actual = state.tiles.clone();
         actual.sort();
         assert_eq!(actual, expected, "displayed tiles must match the hand");
+
+        // Four copies of one tile would make a closed kan (ankan) legal. This
+        // lesson asks Riichi or dama; the UI only offers the Kan call on a Kan
+        // lesson, so a quad would leave Mortal evaluating an action the player
+        // cannot take.
+        let mut copies: HashMap<&str, usize> = HashMap::new();
+        for tile in &state.tiles {
+            *copies.entry(tile.as_str()).or_default() += 1;
+        }
+        let quad = copies.iter().find(|(_, count)| **count >= 4);
+        assert!(
+            quad.is_none(),
+            "the hand {} offers a closed kan on {}",
+            state.hand_string,
+            quad.map(|(tile, _)| *tile).unwrap_or_default()
+        );
 
         for opponent in &state.players[1..] {
             assert!(!opponent.is_human);
@@ -560,6 +578,30 @@ mod tests {
                 } else {
                     TargetAction::Dama
                 }
+            );
+        }
+    }
+
+    /// The reported bug: a Riichi-judgement hand held two quads (2222p and
+    /// 6666s). Four concealed copies make a closed kan (ankan) legal, but the
+    /// lesson asks Riichi or dama and the UI only offers the Kan call on a Kan
+    /// lesson, so Mortal evaluated a move the player could not make. The hand
+    /// must never hold four copies of a tile.
+    #[test]
+    fn test_riichi_judgement_never_deals_a_closed_kan() {
+        for run in 0..300 {
+            let state = generate("riichi_judgement")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+            let mut copies: HashMap<&str, usize> = HashMap::new();
+            for tile in &state.tiles {
+                *copies.entry(tile.as_str()).or_default() += 1;
+            }
+            let quad = copies.iter().find(|(_, count)| **count >= 4);
+            assert!(
+                quad.is_none(),
+                "run {run}: the hand {} offers a closed kan on {}",
+                state.hand_string,
+                quad.map(|(tile, _)| *tile).unwrap_or_default()
             );
         }
     }

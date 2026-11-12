@@ -93,7 +93,7 @@ use agari::tile::Tile;
 use serde::Serialize;
 
 use crate::ai::model::MortalV4Model;
-use crate::state::GameState;
+use crate::state::{GameState, TargetAction};
 use situation::Situation;
 
 pub(crate) use block_theory::nobetan_keep::nobetan_starts;
@@ -1007,6 +1007,46 @@ pub fn generate_puzzle(category: &str) -> Result<GameState, String> {
     generate_reachable_candidate(category).map(finalize_state)
 }
 
+/// Whether the lesson's own answer set includes the Kan call.
+///
+/// A Kan lesson asks about the quad (`TargetAction::Kan`), the open-quad lesson
+/// offers it as a call, and the AI drill renders every legal action. Every
+/// other lesson never shows a Call Kan control.
+fn lesson_offers_kan(state: &GameState) -> bool {
+    matches!(state.target_action, TargetAction::Kan | TargetAction::Best)
+        || state
+            .call_offer
+            .as_ref()
+            .is_some_and(|offer| offer.action == "Kan")
+}
+
+/// The tile of a concealed quad the human could call a closed kan on, if any.
+///
+/// Four copies in hand plus the draw make an ankan legal. The UI only offers
+/// the Kan call on a lesson that asks about it, so any other lesson must not
+/// deal a quad: Mortal would then evaluate an action the player cannot take.
+fn concealed_quad_tile(state: &GameState) -> Option<&str> {
+    let human = state.players.first()?;
+    let mut counts: std::collections::HashMap<&str, u8> = std::collections::HashMap::new();
+    for tile in human.hand.iter().chain(human.draw.iter()) {
+        let count = counts.entry(tile.as_str()).or_default();
+        *count += 1;
+        if *count >= 4 {
+            return Some(tile.as_str());
+        }
+    }
+    None
+}
+
+/// The rejection reason for a hand the lesson's answer set cannot use.
+fn accidental_kan(state: &GameState) -> Option<String> {
+    if lesson_offers_kan(state) {
+        return None;
+    }
+    concealed_quad_tile(state)
+        .map(|tile| format!("the hand held four {tile} in a lesson that does not offer the Kan"))
+}
+
 /// Generate one lesson candidate that passes the reachability guard.
 ///
 /// This is the generation half of [`generate_puzzle`], exposed inside the crate
@@ -1026,6 +1066,14 @@ pub(crate) fn generate_reachable_candidate(category: &str) -> Result<GameState, 
             Some(id) => id.generate(category)?,
             None => block_theory::ryanmen_protorun::generate(category)?,
         };
+
+        // The answer vocabulary of a non-Kan lesson has no way to call a quad,
+        // so a hand holding four copies would ask a question the UI cannot
+        // answer.
+        if let Some(reason) = accidental_kan(&state) {
+            last_error = reason;
+            continue;
+        }
 
         // Final guard: a lesson may have shaped its rivers and melds freely,
         // but the finished table still has to be a position a real game could
@@ -1085,10 +1133,18 @@ pub(crate) fn generate_reachable_candidate_for(
     let mut last_error = String::new();
     for _ in 0..MAX_REACHABILITY_ATTEMPTS {
         match situation.fill(category) {
-            Ok(state) => match support::state_validation::validate_reachable_state(&state) {
-                Ok(()) => return Ok(state),
-                Err(err) => last_error = err,
-            },
+            Ok(state) => {
+                // The same accidental-kan rule as `generate_reachable_candidate`,
+                // applied before the reachability walk.
+                if let Some(reason) = accidental_kan(&state) {
+                    last_error = reason;
+                    continue;
+                }
+                match support::state_validation::validate_reachable_state(&state) {
+                    Ok(()) => return Ok(state),
+                    Err(err) => last_error = err,
+                }
+            }
             Err(err) => last_error = err,
         }
     }
@@ -1311,6 +1367,34 @@ mod tests {
                         id.as_str()
                     )
                 });
+            }
+        }
+    }
+
+    /// No lesson that does not ask about the Kan may deal the human four copies
+    /// of a tile.
+    ///
+    /// Four concealed copies make a closed kan legal. The hand dock only shows
+    /// the Call Kan toggle on a Kan lesson, so a quad would leave Mortal
+    /// evaluating an action the player cannot take.
+    #[test]
+    fn non_kan_lessons_never_deal_a_concealed_quad() {
+        for &id in ScenarioId::ALL {
+            if id == ScenarioId::AiBestAction {
+                continue;
+            }
+            for run in 0..15 {
+                let state = generate_puzzle(id.as_str())
+                    .unwrap_or_else(|err| panic!("{} run {run} failed: {err}", id.as_str()));
+                if lesson_offers_kan(&state) {
+                    continue;
+                }
+                assert!(
+                    concealed_quad_tile(&state).is_none(),
+                    "{} run {run} dealt a quad the lesson cannot use: {}",
+                    id.as_str(),
+                    state.hand_string
+                );
             }
         }
     }

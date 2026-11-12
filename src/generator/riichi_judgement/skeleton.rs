@@ -10,6 +10,10 @@
 //!
 //! The skeleton also rejects any hand where another discard would leave tenpai,
 //! so the lesson is about Riichi vs dama and never about which tile to throw.
+//! It rejects four copies of one tile too: that would make a closed kan legal,
+//! a decision this lesson does not ask about.
+
+use std::collections::HashMap;
 
 use agari::hand::{HandStructure, decompose_hand};
 use agari::parse::{to_counts, validate_hand};
@@ -169,6 +173,13 @@ pub(super) fn build(target: Conditions) -> Result<Skeleton, String> {
         };
         let mut full_tiles = tenpai_tiles.clone();
         full_tiles.push(discard_tile);
+        // Four concealed copies would make a closed kan (ankan) legal. This
+        // lesson asks Riichi or dama, and the UI only offers the Kan call on a
+        // Kan lesson, so a quad would leave Mortal evaluating an action the
+        // player cannot take.
+        if holds_four_of_a_kind(&full_tiles) {
+            continue;
+        }
         if validate_hand(&full_tiles).is_err() {
             continue;
         }
@@ -296,6 +307,19 @@ fn wait_quality_matches(quality: WaitQuality, target: Conditions) -> bool {
         quality.live_kinds >= GOOD_WAIT_MIN_KINDS && quality.live_tiles >= GOOD_WAIT_MIN_TILES;
     let usable = quality.live_tiles >= MIN_LIVE_TILES;
     usable && good == target.good_wait
+}
+
+/// True when the hand holds four copies of one tile.
+///
+/// The four copies make a closed kan (ankan) legal. This lesson asks Riichi or
+/// dama, so a quad would add a decision the answer and the UI never offer.
+fn holds_four_of_a_kind(tiles: &[Tile]) -> bool {
+    let mut counts: HashMap<Tile, u8> = HashMap::new();
+    tiles.iter().any(|&tile| {
+        let count = counts.entry(tile).or_default();
+        *count += 1;
+        *count >= 4
+    })
 }
 
 /// The tile codes whose removal leaves a tenpai hand, if there is exactly one.
