@@ -361,6 +361,20 @@ Drill: 1-away chiitoitsu where one pair just became a set. Answer: keep the pair
 (chiitoitsu) if any pair is dead (4 visible), otherwise build toitoi. Verification:
 visible-count check on each pair — fully mechanical.
 
+**Implemented.** `src/generator/chiitoi_vs_toitoi/` deals the book's own
+`77m 88m 1p 333p 55s 7s EE S` shape: four pairs, the triplet the draw completed,
+and three lone tiles. `skeleton::Variant::FutilePair` puts both remaining copies
+of one pair in two opponents' rivers (all four visible), so the answer is the
+drawn third copy; `Variant::BuildToitoi` leaves every pair live but gives the
+hand a dragon pair, so the answer is a lone tile. The skeleton proves both
+answers with `agari`: the chiitoitsu discard restores five pairs and waits on
+three lone tiles (nine tiles), while the toitoi discard keeps the set and waits
+on two (six), so raw acceptance prefers the wrong move on purpose. The board
+re-derives the dead pairs from the finished payload (`board::validate`), and
+`rationale::chiitoi_vs_toitoi_rationale` cites ch5:611/612/613/618/621, listing
+the chiitoitsu criteria that do not hold in the "Not this hand" section on the
+toitoi branch.
+
 **`honitsu_decision`** — medium/large. Cards 1463247212821…1463247652943.
 
 > `we should consider two factors --- five-block potential and hand values with and without {\jap honitsu}` — ch5:468
@@ -377,6 +391,28 @@ as rationale text only.
 the book: only chase the yaku when the hand has *no other yaku or dora*
 (ch5:74, ch5:129), and never step back to 2-away to switch (ch5:110). Buildable,
 but needs a yaku-enumeration oracle.
+
+**Implemented.** `src/generator/yaku/sanshoku_pursuit/` rebuilds the book's
+second floating hand: after drawing `5s`, `3m5m6m 345p 345s 789s 11s` is tenpai
+with an extra tile, and the player chooses between the closed-wait `345`
+sanshoku (discard `6m`) and the side-wait pinfu (discard `3m`). The skeleton
+generalizes over the three suits and the run values `234`–`567`, and splits the
+three gate cases:
+
+| Half | Shape | Answer |
+| --- | --- | --- |
+| `NoOtherValue` | terminal pair + `789` extra run, no dora | Chase: discard `x+3` |
+| `Dora` | the same shape with a dora on the completed run | Efficiency: discard `x` |
+| `Tanyao` | all-simple pair + `678` extra run, no dora | Efficiency: discard `x` |
+
+`support::yaku::discard_lines` enumerates every tenpai discard, every winning
+tile and every yaku reading, so the skeleton proves the two candidate lines
+without a hand-written score table: the efficiency line is pinfu-only, the
+chase line is sanshoku-only (closed wait), no third discard reaches either
+yaku, and the gate turns on exactly the dora / tanyao / other-yaku presence the
+book names. `rationale::sanshoku_rationale` recomputes the same gate from the
+finished state and cites ch5:62 (floating), ch5:74 (the gate), ch5:110
+(no step back to 2-away), and ch5:129 (the double-closed companion).
 
 **`ittsu_vs_side_wait`** — do **not** build as graded. The book itself weighs the two
 by acceptance and then argues about melding:

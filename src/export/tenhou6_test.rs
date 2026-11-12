@@ -374,6 +374,7 @@ const EXPORTABLE: &[ScenarioId] = &[
     ScenarioId::SujiKabeSafety,
     ScenarioId::FoldToRiichi,
     ScenarioId::DefenseStuckHeuristic,
+    ScenarioId::SanshokuPursuit,
 ];
 
 /// Scenarios that hold an open meld whose claimed tile no river contains.

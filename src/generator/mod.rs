@@ -7,6 +7,12 @@
 //!   closed hand) lesson, its open-hand companion (keep three pairs when
 //!   a Pon is planned), and the perfect 1-away lesson (which discard keeps
 //!   two side waits and two pairs).
+//! - `yaku`: the ch. 5 yaku-pursuit decisions. `sanshoku_pursuit` is the
+//!   floating method: keep the redundant tile for sanshoku only when the hand
+//!   has no other yaku or dora.
+//! - `chiitoi_vs_toitoi`: ch. 5.5's yaku choice: a 1-away chiitoitsu hand
+//!   whose draw turned a pair into a set stays with chiitoitsu when a pair is
+//!   futile, and builds toitoi otherwise.
 //! - `chiitoitsu_riichi_vs_dama`: seven-pairs Riichi/dama family.
 //! - `riichi_judgement`: ch. 7's general three-condition Riichi/dama rule.
 //! - `dama_bad_wait`: ch. 7's bad-wait box: riichi with three or more live
@@ -46,6 +52,9 @@
 //! - `pinfu_head`: ch. 5's pinfu head: a hand with no pair yet keeps its
 //!   terminals and valueless winds, because the value honor can never pair into
 //!   the pinfu head.
+//! - `honitsu_decision`: ch. 5.4's honitsu commitment: five-block potential plus
+//!   the hand's value with and without honitsu decide whether to start
+//!   discarding off-suit or to play for efficiency.
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
 //!
 //! The Phase 2 `mock_table` fixture lives in `crate::fixtures`, outside the
@@ -54,6 +63,7 @@
 pub mod ai_best_action;
 mod ankan_decision;
 mod block_theory;
+mod chiitoi_vs_toitoi;
 mod chiitoitsu_riichi_vs_dama;
 mod daiminkan_decision;
 mod dama_bad_wait;
@@ -62,6 +72,7 @@ mod dama_genbutsu_wait;
 mod dama_improving_hand;
 mod defense;
 mod fold_to_riichi;
+mod honitsu_decision;
 mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
@@ -73,6 +84,7 @@ mod situation;
 mod suji_trap_riichi;
 mod support;
 mod wind_discard_order;
+mod yaku;
 
 use agari::tile::Tile;
 use serde::Serialize;
@@ -82,11 +94,14 @@ use crate::state::GameState;
 use situation::Situation;
 
 pub(crate) use daiminkan_decision::{DaiminkanTriggerSet, facts as daiminkan_facts};
+pub(crate) use honitsu_decision::{Variant as HonitsuVariant, facts as honitsu_facts};
 pub(crate) use support::analysis::floating_quad_acceptance;
+pub(crate) use support::analysis::wind_to_honor;
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::completion::{is_perfect_one_away, perfect_one_away_shape};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
+pub(crate) use yaku::sanshoku_pursuit::{SanshokuFacts, facts as sanshoku_facts};
 
 /// The ch. 5 pinfu-head rule, shared by the lesson and its rationale.
 pub(crate) use pinfu_head::{can_be_pinfu_head, wind_from_honor};
@@ -264,6 +279,27 @@ const BOOK_CH5_PINFU: BookSection = BookSection {
     section_title: "How to get pinfu",
 };
 
+const BOOK_CH5_HONITSU: BookSection = BookSection {
+    chapter: 5,
+    chapter_title: "Pursuing yaku",
+    section: 4,
+    section_title: "How to get honitsu",
+};
+
+const BOOK_CH5_TOITOI: BookSection = BookSection {
+    chapter: 5,
+    chapter_title: "Pursuing yaku",
+    section: 5,
+    section_title: "How to get toitoi / chiitoitsu",
+};
+
+const BOOK_CH5_SANSHOKU: BookSection = BookSection {
+    chapter: 5,
+    chapter_title: "Pursuing yaku",
+    section: 1,
+    section_title: "How to get sanshoku",
+};
+
 /// How an answer is graded for a lesson.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScenarioGrading {
@@ -377,6 +413,37 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
         book: Some(BOOK_CH3_BASIC),
+    },
+    ScenarioMeta {
+        id: ScenarioId::ChiitoiVsToitoi,
+        label: "Chiitoitsu vs Toitoi",
+        description: "Yaku pursuit: a pair just became a set. Stay with chiitoitsu when a \
+                      pair is futile; otherwise keep the set and build toitoi.",
+        category: ScenarioCategory::YakuDecision,
+        tags: &[
+            "yaku",
+            "chiitoitsu",
+            "toitoi",
+            "pairs",
+            "futile_pair",
+            "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH5_TOITOI),
+    },
+    ScenarioMeta {
+        id: ScenarioId::SanshokuPursuit,
+        label: "Sanshoku Pursuit",
+        description: "Ch. 5.1 floating method: keep the floating tile for sanshoku only when \
+                      the hand has no other yaku or dora; otherwise take the side-wait pinfu.",
+        category: ScenarioCategory::YakuDecision,
+        tags: &[
+            "yaku", "sanshoku", "pinfu", "floating", "dora", "tanyao", "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH5_SANSHOKU),
     },
     ScenarioMeta {
         id: ScenarioId::ChiitoitsuRiichiVsDama,
@@ -613,6 +680,25 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
         book: Some(BOOK_CH5_PINFU),
     },
+    ScenarioMeta {
+        id: ScenarioId::HonitsuDecision,
+        label: "Honitsu: Commit or Efficiency",
+        description: "Ch. 5.4: five blocks in one suit plus honors is not enough on its own — \
+                      commit to honitsu only when the plan is worth more than the hand played \
+                      straight.",
+        category: ScenarioCategory::YakuDecision,
+        tags: &[
+            "yaku",
+            "honitsu",
+            "commit",
+            "efficiency",
+            "five_blocks",
+            "value",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH5_HONITSU),
+    },
 ];
 
 /// Serializes the scenario catalogue for the frontend picker.
@@ -677,6 +763,8 @@ pub enum ScenarioId {
     PairCount,
     PairCountOpen,
     PerfectOneAway,
+    ChiitoiVsToitoi,
+    SanshokuPursuit,
     ChiitoitsuRiichiVsDama,
     RiichiJudgement,
     DamaBadWait,
@@ -697,6 +785,7 @@ pub enum ScenarioId {
     DefenseStuckHeuristic,
     OpenHandDefense,
     PinfuHead,
+    HonitsuDecision,
 }
 
 impl ScenarioId {
@@ -709,6 +798,8 @@ impl ScenarioId {
         ScenarioId::PairCount,
         ScenarioId::PairCountOpen,
         ScenarioId::PerfectOneAway,
+        ScenarioId::ChiitoiVsToitoi,
+        ScenarioId::SanshokuPursuit,
         ScenarioId::ChiitoitsuRiichiVsDama,
         ScenarioId::RiichiJudgement,
         ScenarioId::DamaBadWait,
@@ -729,6 +820,7 @@ impl ScenarioId {
         ScenarioId::DefenseStuckHeuristic,
         ScenarioId::OpenHandDefense,
         ScenarioId::PinfuHead,
+        ScenarioId::HonitsuDecision,
     ];
 
     /// The category string understood by the WASM API.
@@ -741,6 +833,8 @@ impl ScenarioId {
             ScenarioId::PairCount => "pair_count",
             ScenarioId::PairCountOpen => "pair_count_open",
             ScenarioId::PerfectOneAway => "perfect_one_away",
+            ScenarioId::ChiitoiVsToitoi => "chiitoi_vs_toitoi",
+            ScenarioId::SanshokuPursuit => "sanshoku_pursuit",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::DamaBadWait => "dama_bad_wait",
@@ -761,6 +855,7 @@ impl ScenarioId {
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
             ScenarioId::OpenHandDefense => "open_hand_defense",
             ScenarioId::PinfuHead => "pinfu_head",
+            ScenarioId::HonitsuDecision => "honitsu_decision",
         }
     }
 
@@ -774,6 +869,8 @@ impl ScenarioId {
             "pair_count" => Some(ScenarioId::PairCount),
             "pair_count_open" => Some(ScenarioId::PairCountOpen),
             "perfect_one_away" => Some(ScenarioId::PerfectOneAway),
+            "chiitoi_vs_toitoi" => Some(ScenarioId::ChiitoiVsToitoi),
+            "sanshoku_pursuit" => Some(ScenarioId::SanshokuPursuit),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
@@ -794,6 +891,7 @@ impl ScenarioId {
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
             "pinfu_head" => Some(ScenarioId::PinfuHead),
+            "honitsu_decision" => Some(ScenarioId::HonitsuDecision),
             _ => None,
         }
     }
@@ -808,6 +906,8 @@ impl ScenarioId {
             ScenarioId::PairCount => block_theory::pair_count::generate(category),
             ScenarioId::PairCountOpen => block_theory::pair_count_open::generate(category),
             ScenarioId::PerfectOneAway => block_theory::perfect_one_away::generate(category),
+            ScenarioId::ChiitoiVsToitoi => chiitoi_vs_toitoi::generate(category),
+            ScenarioId::SanshokuPursuit => yaku::sanshoku_pursuit::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::DamaBadWait => dama_bad_wait::generate(category),
@@ -832,6 +932,7 @@ impl ScenarioId {
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
             ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
             ScenarioId::PinfuHead => pinfu_head::generate(category),
+            ScenarioId::HonitsuDecision => honitsu_decision::generate(category),
         }
     }
 }
@@ -899,6 +1000,9 @@ pub(crate) fn sample_situation(category: &str) -> Option<Situation> {
             chiitoitsu_riichi_vs_dama::Target::sample(),
         )),
         ScenarioId::PushOrFold => Some(Situation::PushOrFold(push_or_fold::sample_target())),
+        ScenarioId::HonitsuDecision => {
+            Some(Situation::HonitsuDecision(honitsu_decision::sample_target()))
+        }
         _ => None,
     }
 }
