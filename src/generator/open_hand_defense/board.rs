@@ -14,7 +14,7 @@ use crate::generator::support::table::{
     self_turn_river_plan,
 };
 use crate::rng::{choose, gen_range, shuffle};
-use crate::safety::in_open_hand_neighbourhood;
+use crate::safety::{SafetyFacts, in_open_hand_neighbourhood};
 use crate::state::{
     CalledMeld, CorrectAction, DecisionContext, GameState, MeldType, PlayerState, TargetAction,
     Wind,
@@ -190,6 +190,15 @@ fn reserve_threat(deck: &mut Deck, skeleton: &Skeleton) -> Result<(), String> {
 /// and four lone honors: exactly 2-away, so the lesson is a defensive fold and
 /// Riichi is never on offer. Discarding the answer breaks the only protorun,
 /// which is what makes the fold visible rather than an efficiency move.
+///
+/// The fill never hands the defender a tile that is 100% safe for a different
+/// reason than the lesson's read. Riichi Book 1, ch. 8, "Genbutsu and other
+/// absolutely safe tiles": "a fourth honor tile is 100% safe" when the other
+/// three copies are visible. The threat's pon already shows three copies of
+/// `prior_pon`, so a lone copy of it in the human hand would be exactly that
+/// fourth honor: a discard the user could defend with instead of reading the
+/// chii. Random fill can still produce another dead tile, so `validate` checks
+/// the finished table against the safety chart as well.
 fn build_human_hand(deck: &mut Deck, skeleton: &Skeleton) -> Result<(Vec<Tile>, Tile), String> {
     let mut tiles: Vec<Tile> = Vec::with_capacity(14);
     take(deck, &mut tiles, skeleton.answer)?;
@@ -222,7 +231,9 @@ fn build_human_hand(deck: &mut Deck, skeleton: &Skeleton) -> Result<(Vec<Tile>, 
     }
 
     // Four lone honors. Honor singles never form a protorun with anything, so
-    // the hand keeps exactly one partial block: the answer's protorun.
+    // the hand keeps exactly one partial block: the answer's protorun. The
+    // threat's pon tiles are skipped: all three other copies are on the table,
+    // so a fourth one would be a 100% safe discard that outranks the lesson.
     let mut floats: Vec<Tile> = Vec::with_capacity(4);
     for honor in [
         Honor::East,
@@ -237,7 +248,8 @@ fn build_human_hand(deck: &mut Deck, skeleton: &Skeleton) -> Result<(Vec<Tile>, 
             break;
         }
         let tile = Tile::Honor(honor);
-        if tiles.contains(&tile) || !allowed(tile) || !deck.has(tile) {
+        if tile == skeleton.prior_pon || tiles.contains(&tile) || !allowed(tile) || !deck.has(tile)
+        {
             continue;
         }
         take(deck, &mut tiles, tile)?;
@@ -608,6 +620,29 @@ fn validate(state: &GameState, skeleton: &Skeleton) -> Result<(), String> {
         _ => {}
     }
 
+    // Being genbutsu is not the only way to be 100% safe. The chapter's second
+    // and third absolute-safety kinds are live here: a fourth honor tile (the
+    // threat's pon exposes three copies) and an absolute no-chance tile.
+    // Either would be a legitimate alternative to the lesson's read, so the
+    // board may not hand the defender one. Riichi Book 1, ch. 8, "Genbutsu and
+    // other absolutely safe tiles": genbutsu, "a fourth honor tile", and "an
+    // absolute ``no chance'' tile" are the 100% tiles.
+    let facts = SafetyFacts::from_state(state, THREAT_SEAT)
+        .ok_or_else(|| "no safety facts for the threat".to_string())?;
+    let competing: Vec<Tile> = held
+        .iter()
+        .copied()
+        .filter(|tile| *tile != answer && facts.is_absolutely_safe(*tile))
+        .collect();
+    if !competing.is_empty() {
+        return Err(format!(
+            "the board must hold no second 100% safe tile, found {competing:?}"
+        ));
+    }
+    if skeleton.case == OpenHandCase::DifferentSuit && !facts.is_absolutely_safe(answer) {
+        return Err("the trap answer must be 100% safe".to_string());
+    }
+
     // The threat really is tenpai, and its wait is where the case says.
     let concealed: Vec<Tile> = threat
         .hand
@@ -806,6 +841,22 @@ mod tests {
             );
         }
 
+        // The chapter's 100% set, not just genbutsu: no dead fourth honor and
+        // no no-chance tile may compete with the read (ch. 8, "Genbutsu and
+        // other absolutely safe tiles").
+        let facts = SafetyFacts::from_state(state, THREAT_SEAT).expect("safety facts");
+        let competing: Vec<Tile> = unique(human_tiles.iter().copied())
+            .into_iter()
+            .filter(|tile| *tile != answer && facts.is_absolutely_safe(*tile))
+            .collect();
+        assert!(
+            competing.is_empty(),
+            "a second 100% safe tile beats the lesson: {competing:?}"
+        );
+        if !same_suit {
+            assert!(facts.is_absolutely_safe(answer));
+        }
+
         // The threat is tenpai with three melds, and the wait is where the
         // book's read says it is.
         let concealed: Vec<Tile> = threat
@@ -877,6 +928,34 @@ mod tests {
             elapsed < std::time::Duration::from_secs(15),
             "100 generations took {elapsed:?}"
         );
+    }
+
+    /// Regression for the reported board: the drawn honor could be the fourth
+    /// copy of the threat's pon. Riichi Book 1, ch. 8, "Genbutsu and other
+    /// absolutely safe tiles" calls a fourth honor tile 100% safe when the
+    /// other three copies are visible, so that discard beat the intended chii
+    /// read and the user rightly asked why it was graded wrong. The threat's
+    /// pon tile may never appear in the human hand again.
+    #[test]
+    fn the_threats_pon_honor_never_sits_in_the_human_hand() {
+        for run in 0..120 {
+            let state = generate("open_hand_defense").expect("generate");
+            let pon = threat(&state)
+                .melds
+                .iter()
+                .find(|meld| meld.meld_type == MeldType::Pon)
+                .expect("the threat pons first")
+                .tiles
+                .first()
+                .expect("a pon has tiles")
+                .clone();
+            let player = human(&state);
+            let holds = player.hand.contains(&pon) || player.draw.as_ref() == Some(&pon);
+            assert!(
+                !holds,
+                "run {run}: the fourth copy of {pon} is a 100% safe discard"
+            );
+        }
     }
 
     #[test]
