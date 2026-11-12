@@ -328,7 +328,8 @@ re-fills the hand under that same set on every rejected candidate. Filtering
 cannot change the question, so "Mortal must agree" cannot drift the drill toward
 its most obvious hands. A lesson without a parameter concept (the block-theory
 discards, the safety, call and kan lessons, and `dama_genbutsu_wait` /
-`suji_trap_riichi`, whose answer is fixed) keeps the old per-candidate draw. If
+`dama_improving_hand` / `suji_trap_riichi`, whose answer is fixed) keeps the old
+per-candidate draw. If
 the pinned set cannot be built at all the call fails with an error naming it,
 rather than silently choosing a different situation.
 

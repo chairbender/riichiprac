@@ -347,6 +347,8 @@ impl DamaReason {
             Self::NoSujiTrap => "no_suji_trap",
             Self::Mangan => "mangan",
             Self::HanemanPlus => "haneman_plus",
+            Self::EarlyTurn => "early_turn",
+            Self::ImprovingHand => "improving_hand",
         }
     }
 
@@ -413,6 +415,29 @@ impl DamaReason {
                     "Don't riichi if the minimum hand value is",
                 ),
             }),
+            Self::EarlyTurn => Some(RuleText {
+                rule: "The first half of the box: it is still an early turn \
+                       (8th turn or before), so an improving draw still has time \
+                       to arrive.",
+                quote: "It is still an early turn (8th turn or before);",
+                citation: ch7(
+                    "Many possibilities of improving the hand",
+                    658,
+                    "It is still an early turn",
+                ),
+            }),
+            Self::ImprovingHand => Some(RuleText {
+                rule: "It makes sense to keep dama only when it is still an early turn \
+                       and at least six kinds of tiles improve the score or the wait, or \
+                       one kind improves the score by three han in one step.",
+                quote: "There are at least six kinds of tiles that can improve the scores \
+                        and/or the wait",
+                citation: ch7(
+                    "Many possibilities of improving the hand",
+                    659,
+                    "at least six kinds of tiles that can improve the scores",
+                ),
+            }),
             Self::NoTanyao | Self::NoRedFiveWait | Self::NoSujiTrap => None,
         }
     }
@@ -434,7 +459,9 @@ impl DamaReason {
             | Self::GenbutsuWait
             | Self::MiddleWait
             | Self::Mangan
-            | Self::HanemanPlus => None,
+            | Self::HanemanPlus
+            | Self::EarlyTurn
+            | Self::ImprovingHand => None,
         }
     }
 }
@@ -734,6 +761,21 @@ fn applies_dama(reason: DamaReason, state: &GameState) -> String {
         DamaReason::HanemanPlus => {
             "Even the worst winning tile gives haneman or better without Riichi.".to_string()
         }
+        DamaReason::EarlyTurn => {
+            let discards = human(state).map_or(0, |player| player.discards.len());
+            format!(
+                "Only {discards} discards are in your river, so this is turn {} of the \
+                 early turns the box names.",
+                discards + 1
+            )
+        }
+        DamaReason::ImprovingHand => {
+            let turn = human(state).map_or(0, |player| player.discards.len() + 1);
+            format!(
+                "It is only the {turn}th turn and the ready hand has at least six kinds \
+                 of draws that raise its score or improve its wait."
+            )
+        }
     }
 }
 
@@ -815,6 +857,12 @@ fn summary_for(state: &GameState) -> String {
                 .to_string()
         };
     }
+    if state.category == "dama_improving_hand" {
+        return "Stay in dama: it is still an early turn, and the ready hand has at least \
+                six kinds of draws that improve its score or its wait, so the book waits \
+                for one of them."
+            .to_string();
+    }
     if !state.riichi_triggers.is_empty() {
         return "Declare Riichi: the book's chiitoitsu criteria pick this hand.".to_string();
     }
@@ -865,6 +913,25 @@ fn caveats_for(state: &GameState) -> Vec<String> {
             "The book only respects a loud player whose call is actually being feared: \
              against a bad call that nobody folds to, it says to declare Riichi even when \
              your winning tiles are that player's genbutsu (ch7:566)."
+                .to_string(),
+        );
+    } else if state.category == "dama_improving_hand" {
+        caveats.push(
+            "The count comes from the ready hand's shape: the han without Riichi (with the \
+             table's dora) and the theoretical four-copies wait. The generator keeps every \
+             counted kind live, so the table never shows an improving tile in a river."
+                .to_string(),
+        );
+        caveats.push(
+            "The book stops preferring dama after the 9th turn: 'After passing the 9th turn \
+             (the midpoint of the middle row of your discards), you'd better call riichi even \
+             if the second condition is met' (ch7:665). This table keeps every river at seven \
+             discards or fewer."
+                .to_string(),
+        );
+        caveats.push(
+            "Either single can be the tanki, so both tanki discards are graded as the same \
+             answer; the count is verified for both kept hands."
                 .to_string(),
         );
     } else if state.category == "dama_expensive_hand" {
@@ -950,6 +1017,11 @@ fn scenario_source(category: &str) -> Option<Citation> {
         )),
         "suji_trap_riichi" => Some(ch8("Suji trap", 170, "immediate {\\jap suji}-trap riichi")),
         "dama_expensive_hand" => Some(ch7("High scoring hand", 569, "it is OK to go {\\jap dama}")),
+        "dama_improving_hand" => Some(ch7(
+            "Many possibilities of improving the hand",
+            723,
+            "14 kinds--49 tiles",
+        )),
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
         "ankan_decision" => Some(ch9_ankan(269, "needs to be close to ready")),
         "meld_or_not" => Some(ch9_meld(72, "Don't meld with a cheap and slow hand")),
@@ -3009,6 +3081,8 @@ mod tests {
             DamaReason::MiddleWait,
             DamaReason::Mangan,
             DamaReason::HanemanPlus,
+            DamaReason::EarlyTurn,
+            DamaReason::ImprovingHand,
         ];
         let absent = [
             DamaReason::NoTanyao,
@@ -3820,6 +3894,8 @@ mod tests {
             DamaReason::MiddleWait,
             DamaReason::Mangan,
             DamaReason::HanemanPlus,
+            DamaReason::EarlyTurn,
+            DamaReason::ImprovingHand,
         ] {
             citations.push(reason.rationale().expect("positive reason").citation);
         }
