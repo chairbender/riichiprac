@@ -1,7 +1,7 @@
 import type { DualGrade } from '../types/verdict';
-import { formatTileForDisplay } from '../display';
 import { formatProbability } from '../types/ai';
 import {
+  formatAcceptedTiles,
   mortalRecommendationLabel,
   outcomeHeadline,
   outcomeTone,
@@ -152,19 +152,23 @@ function detailLine(grade: DualGrade): string {
 
 function bookPick(grade: DualGrade): string {
   if (!grade.book) return 'something else';
-  const tile = grade.book.expected_tile;
-  const tileName = formatTileForDisplay(tile);
+  // A tied shape lesson names both accepted discards: "discarding 5p or 3p".
+  const tiles = formatAcceptedTiles(grade.book);
   switch (grade.book.expected_action) {
     case 'kan':
-      return `Kan on ${tileName}`;
+      return `Kan on ${tiles}`;
     case 'discard':
-      return `No Kan, discard ${tileName}`;
+      return `No Kan, discard ${tiles}`;
     case 'riichi':
-      return `Riichi, discarding ${tileName}`;
+      return `Riichi, discarding ${tiles}`;
     case 'dama':
-      return `Dama, discarding ${tileName}`;
+      return `Dama, discarding ${tiles}`;
     case 'fold':
-      return `Fold, discarding ${tileName}`;
+      return `Fold, discarding ${tiles}`;
+    case 'pass':
+      return 'Pass on the call';
+    case 'call':
+      return 'Take the call';
     default:
       return actionTypeLabel(grade.book.expected_action);
   }
@@ -182,6 +186,10 @@ function actionTypeLabel(action: string): string {
       return 'Kan';
     case 'discard':
       return 'No Kan';
+    case 'pass':
+      return 'Pass';
+    case 'call':
+      return 'Call';
     default:
       return 'Mortal action';
   }

@@ -1,11 +1,11 @@
 import { callDecisionFor } from '../callDecision';
-import { formatTileForDisplay } from '../display';
 import type { AiEvaluation, AiStatus } from '../types/ai';
 import { actionLabel, formatProbability } from '../types/ai';
 import type { GameState } from '../types/game';
-import type { DualGrade, MortalGrade } from '../types/verdict';
+import type { BookGrade, DualGrade, MortalGrade } from '../types/verdict';
 import { citationLabel } from '../types/game';
 import {
+  formatAcceptedTiles,
   mortalRecommendationLabel,
   mortalRecommendedRiichi,
   mortalRecommendedTile,
@@ -117,7 +117,7 @@ export function VerdictPanel({
           {book ? (
             <>
               <p className="verdict-recommendation">
-                {describeBookAction(state)}
+                {describeBookAnswer(state, book)}
                 {book.expected_tile && (
                   <Tile
                     code={book.expected_tile}
@@ -130,10 +130,12 @@ export function VerdictPanel({
                 <Mark label="action" ok={book.is_action_correct} />
                 <Mark
                   label={
-                    state.correct_action.type === 'kan' ||
-                    state.correct_action.type === 'discard'
-                      ? 'tile'
-                      : 'discard'
+                    state.correct_action.type === 'pass'
+                      ? 'call'
+                      : state.correct_action.type === 'kan' ||
+                          state.correct_action.type === 'discard'
+                        ? 'tile'
+                        : 'discard'
                   }
                   ok={book.is_tile_correct}
                 />
@@ -326,30 +328,32 @@ function PeekedMortal({
   );
 }
 
-function describeBookAction(state: GameState): string {
+/**
+ * The book's answer as one line of text, naming every accepted tile.
+ *
+ * A shape lesson accepts two interchangeable discards ("discard 5p or 3p"), so
+ * the response never hides the half the player did not pick; a one-tile answer
+ * reads exactly as before.
+ */
+function describeBookAnswer(state: GameState, book: BookGrade | null): string {
+  const accepted = formatAcceptedTiles(book);
   switch (state.correct_action.type) {
     case 'riichi':
-      return `Riichi · discard ${formatTileForDisplay(
-        state.correct_action.discard,
-      )}`;
+      return `Riichi · discard ${accepted}`;
     case 'dama':
       // The ryanmen lesson asks which tile to discard; calling it "Dama" would
       // mislabel a tile-efficiency drill as a Riichi-vs-dama decision.
       return state.target_action === 'NaniKiru'
-        ? `Discard ${formatTileForDisplay(state.correct_action.discard)}`
-        : `Dama · discard ${formatTileForDisplay(
-            state.correct_action.discard,
-          )}`;
+        ? `Discard ${accepted}`
+        : `Dama · discard ${accepted}`;
     case 'fold':
-      return `Fold · discard ${formatTileForDisplay(
-        state.correct_action.discard,
-      )}`;
+      return `Fold · discard ${accepted}`;
     case 'kan':
-      return `Added Kan on ${formatTileForDisplay(state.correct_action.tile)}`;
+      return `Added Kan on ${accepted}`;
     case 'discard':
-      return `Pass on the Kan · discard ${formatTileForDisplay(
-        state.correct_action.tile,
-      )}`;
+      return `Pass on the Kan · discard ${accepted}`;
+    case 'pass':
+      return `Pass on ${state.call_offer?.label ?? 'the call'}`;
     case 'best':
       return state.correct_action.label;
   }
@@ -435,7 +439,7 @@ function preAnswerState({
 }
 
 function outcomeSentence(grade: DualGrade, state: GameState): string {
-  const bookPick = describeBookAction(state);
+  const bookPick = describeBookAnswer(state, grade.book);
   const mortalPick = mortalRecommendationLabel(grade.mortal);
 
   switch (grade.outcome) {

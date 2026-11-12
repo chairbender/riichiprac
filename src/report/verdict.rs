@@ -19,6 +19,12 @@ pub fn evaluate(expected: &CorrectAction, answer: &ReportedAction) -> ReportVerd
 /// This is only a warning: a malformed answer may be part of the bug being
 /// reported, and rejecting the report would hide it.
 pub fn answer_tile_visible(table: &crate::state::GameState, answer: &ReportedAction) -> bool {
+    // A call-or-pass answer names no tile: the thing it names is the opponent's
+    // discard, which the table shows in the source's river.
+    if answer.tile.is_empty() {
+        return true;
+    }
+
     let Some(human) = table.players.iter().find(|player| player.is_human) else {
         return false;
     };
@@ -34,6 +40,19 @@ mod tests {
 
     fn answer(action: CorrectActionType, tile: &str) -> ReportedAction {
         ReportedAction::new(action, tile)
+    }
+
+    #[test]
+    fn a_pass_answer_names_no_tile_to_look_for() {
+        let table = crate::fixtures::mock_table::generate("mock_table").expect("fixture");
+        assert!(answer_tile_visible(
+            &table,
+            &answer(CorrectActionType::Pass, "")
+        ));
+        assert!(!answer_tile_visible(
+            &table,
+            &answer(CorrectActionType::Pass, "not-in-hand")
+        ));
     }
 
     #[test]

@@ -63,6 +63,9 @@ pub enum TargetAction {
     Fold,
     NaniKiru,
     Kan,
+    /// A call decision: an opponent's discard offers a Pon/Chi, and the answer
+    /// is whether to take it or pass. Riichi Book 1, ch. 9.
+    Call,
     /// The correct answer is the loaded model's top legal action.
     Best,
     /// Pure defense: choose the safest tile against an opponent's riichi or
@@ -84,6 +87,12 @@ pub enum CorrectActionType {
     Kan,
     /// Pass on the Kan and discard normally.
     Discard,
+    /// Pass on the offered call and keep the hand concealed. Riichi Book 1,
+    /// ch. 9's "cheap and slow" answer.
+    Pass,
+    /// Take the offered call (Pon or Chi). Only ever a submitted answer: a
+    /// book call lesson grades passing as correct and a call as the mistake.
+    Call,
     /// The answer is the model's top action for an AI scenario.
     Best,
 }
@@ -106,6 +115,9 @@ pub enum CorrectAction {
     Kan { tile: String },
     /// Pass on the Kan and discard `tile`.
     Discard { tile: String },
+    /// Pass on the call an opponent's discard offers (Riichi Book 1, ch. 9).
+    /// The offered call itself is in [`GameState::call_offer`].
+    Pass,
     /// AI scenario: the model's top action, with any concrete tiles needed
     /// to render or grade it.
     Best {
@@ -150,6 +162,11 @@ impl CorrectAction {
         Self::Discard { tile: tile.into() }
     }
 
+    /// Pass on the call an opponent's discard offers.
+    pub fn pass() -> Self {
+        Self::Pass
+    }
+
     /// Build an AI-scenario answer from a model action.
     pub fn best(
         action: impl Into<String>,
@@ -173,6 +190,7 @@ impl CorrectAction {
             Self::Fold { .. } => CorrectActionType::Fold,
             Self::Kan { .. } => CorrectActionType::Kan,
             Self::Discard { .. } => CorrectActionType::Discard,
+            Self::Pass => CorrectActionType::Pass,
             Self::Best { .. } => CorrectActionType::Best,
         }
     }
@@ -184,9 +202,29 @@ impl CorrectAction {
                 Some(discard)
             }
             Self::Kan { tile } | Self::Discard { tile } => Some(tile),
+            Self::Pass => None,
             Self::Best { tile, .. } => tile.as_deref(),
         }
     }
+}
+
+/// A call an opponent's discard offers the human, when the lesson asks whether
+/// to meld or pass (Riichi Book 1, ch. 9).
+///
+/// The state carries the offer explicitly instead of letting the UI re-derive
+/// it: whether a Pon or a Chi is available, and which two hand tiles a Chi
+/// would consume, are game rules, and this project keeps game rules in Rust.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallOffer {
+    /// Mortal action vocabulary name: `Pon` or `Chi`.
+    pub action: String,
+    /// Human-readable label, e.g. `Pon 5z` or `Chi 4m 5m on 6m`.
+    pub label: String,
+    /// The discarded tile being offered.
+    pub tile: String,
+    /// Hand tiles the call would consume (a Chi's two tiles; empty for a Pon).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tiles: Vec<String>,
 }
 
 /// Reasons a scenario recommends upgrading an open Pon to an Added Kan.
@@ -290,6 +328,10 @@ pub enum DamaReason {
     NoSujiTrap,
     /// The hand is already Mangan or better without Riichi.
     Mangan,
+    /// The worst winning tile still gives a haneman or better without Riichi.
+    /// Riichi Book 1, ch. 7, "High scoring hand": "Don't riichi if the minimum
+    /// hand value is haneman or better."
+    HanemanPlus,
 }
 
 /// Discard tile in a player's river.
@@ -421,6 +463,13 @@ pub struct GameState {
     /// fact without naming the answer. Empty for every self-explanatory table.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scenario_note: Option<String>,
+    /// The call an opponent's discard offers, for a call-or-pass lesson.
+    ///
+    /// Present only on a book melding decision; the UI renders one button for
+    /// the call and one for passing, and `correct_action` grades the choice.
+    /// AI reaction states carry their legal actions in `ai_decision` instead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub call_offer: Option<CallOffer>,
     /// Model-derived answer and full ranking for AI scenarios.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_decision: Option<AiDecision>,

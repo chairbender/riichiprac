@@ -16,6 +16,7 @@ export type TargetAction =
   | 'Fold'
   | 'NaniKiru'
   | 'Kan'
+  | 'Call'
   | 'Best'
   | 'Defend';
 
@@ -44,7 +45,8 @@ export type DamaReason =
   | 'middle_wait'
   | 'no_red_five_wait'
   | 'no_suji_trap'
-  | 'mangan';
+  | 'mangan'
+  | 'haneman_plus';
 
 /** Reasons a scenario recommends upgrading an open Pon to an Added Kan. */
 export type ShouminkanTrigger =
@@ -61,6 +63,8 @@ export type CorrectActionType =
   | 'fold'
   | 'kan'
   | 'discard'
+  | 'pass'
+  | 'call'
   | 'best';
 
 /**
@@ -75,6 +79,7 @@ export type CorrectActionType =
 export type CorrectAction =
   | { type: 'riichi' | 'dama' | 'fold'; discard: string }
   | { type: 'kan' | 'discard'; tile: string }
+  | { type: 'pass' }
   | {
       type: 'best';
       action: string;
@@ -82,6 +87,18 @@ export type CorrectAction =
       tile?: string | null;
       tiles?: string[];
     };
+
+/** A call an opponent's discard offers, for a call-or-pass lesson. */
+export interface CallOffer {
+  /** Mortal action name: `Pon` or `Chi`. */
+  action: string;
+  /** Human-readable label, e.g. `Pon 5z`. */
+  label: string;
+  /** The discarded tile being offered. */
+  tile: string;
+  /** Hand tiles the call would consume (a Chi's two tiles). */
+  tiles?: string[];
+}
 
 /** What kind of decision the state presents. */
 export type DecisionContext =
@@ -187,6 +204,11 @@ export interface GameState {
    * answer tile.
    */
   scenario_note?: string | null;
+  /**
+   * The call an opponent's discard offers, on a call-or-pass lesson. The book
+   * answer is `correct_action.type === 'pass'`.
+   */
+  call_offer?: CallOffer | null;
   /** Model-derived answer and full ranking for AI scenarios. */
   ai_decision?: AiDecision | null;
   /** Heuristics that justify Riichi for this scenario. */

@@ -12,6 +12,8 @@ const CORRECT_ACTION_TYPES: CorrectActionType[] = [
   'fold',
   'kan',
   'discard',
+  'pass',
+  'call',
   'best',
 ];
 
@@ -44,11 +46,43 @@ export function isCorrectAction(value: unknown): value is CorrectAction {
     );
   }
 
+  // A pass names no tile: the call it declines is in `call_offer`.
+  if (action.type === 'pass') {
+    return true;
+  }
+
   return action.type === 'riichi' ||
     action.type === 'dama' ||
     action.type === 'fold'
     ? typeof action.discard === 'string'
     : typeof action.tile === 'string';
+}
+
+/** Whether the state asks to call or pass on an opponent's discard. */
+export function isCallDecision(action: CorrectAction): boolean {
+  return action.type === 'pass';
+}
+
+/**
+ * The two buttons a book call lesson renders: the offered call and Pass.
+ *
+ * The offer comes from the Rust payload (`call_offer`), so whether a Pon or a
+ * Chi is available is decided by the engine, not re-derived in React.
+ */
+export function callOfferActions(state: GameState): AiActionInfo[] {
+  const offer = state.call_offer;
+  if (!offer) return [];
+
+  return [
+    {
+      action: offer.action,
+      label: offer.label,
+      type: offer.action === 'Chi' ? 'chi' : 'pon',
+      tile: offer.tile,
+      tiles: offer.tiles ?? [],
+    },
+    { action: 'Pass', label: 'Pass', type: 'pass' },
+  ];
 }
 
 /** Whether the payload belongs to the Kan (Shouminkan) lesson. */
@@ -75,6 +109,7 @@ export function canDeclareRiichi(state: GameState): boolean {
 /** The tile the player must click for the answer, when one is required. */
 export function correctActionTile(action: CorrectAction): string | null {
   if (action.type === 'best') return action.tile ?? null;
+  if (action.type === 'pass') return null;
   return 'discard' in action ? action.discard : action.tile;
 }
 

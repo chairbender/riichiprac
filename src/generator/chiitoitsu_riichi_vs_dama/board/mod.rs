@@ -194,6 +194,7 @@ fn assemble_state(
         },
         decision: DecisionContext::SelfTurn,
         scenario_note: None,
+        call_offer: None,
         ai_decision: None,
         riichi_triggers: skeleton.triggers.to_vec(),
         dama_reasons,

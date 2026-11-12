@@ -24,8 +24,9 @@ pub use report::{
 };
 pub use safety::{SafetyFacts, SafetyRank, StuckRules, TileRead};
 pub use state::{
-    CalledMeld, CorrectAction, CorrectActionType, DamaReason, DecisionContext, DiscardTile,
-    GameState, MeldType, PlayerState, RiichiTrigger, ShouminkanTrigger, TargetAction, Wind,
+    CallOffer, CalledMeld, CorrectAction, CorrectActionType, DamaReason, DecisionContext,
+    DiscardTile, GameState, MeldType, PlayerState, RiichiTrigger, ShouminkanTrigger, TargetAction,
+    Wind,
 };
 pub use verdict::{
     AnswerOutcome, BookGrade, DualGrade, GradingMode, MortalConfidence, MortalGrade,
@@ -132,6 +133,13 @@ mod tests {
             assert_eq!(json["tile"], "5p");
             assert!(json.get("discard").is_none());
         }
+
+        let pass = CorrectAction::pass();
+        let json = serde_json::to_value(&pass).expect("pass action must serialize");
+        assert_eq!(json["type"], "pass");
+        assert!(json.get("tile").is_none());
+        assert_eq!(pass.action_type(), CorrectActionType::Pass);
+        assert_eq!(pass.tile(), None);
 
         let best = CorrectAction::best(
             "Chi_Low",

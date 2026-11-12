@@ -8,7 +8,7 @@ import {
 } from '../types/ai';
 import type { PlayerState, TargetAction } from '../types/game';
 import type { DualGrade } from '../types/verdict';
-import { mortalRecommendedTile } from '../types/verdict';
+import { bookAcceptedTiles, mortalRecommendedTile } from '../types/verdict';
 import { AnswerSummary } from './AnswerSummary';
 import { KanIcon } from './KanIcon';
 import { NextScenarioButton } from './NextScenarioButton';
@@ -76,7 +76,7 @@ export function HandDock({
   const isAiScenario = availableActions !== undefined;
   const kanTile = isAiScenario ? null : findKanCandidateTile(player);
 
-  const bookTile = grade?.book?.expected_tile ?? null;
+  const bookTiles = bookAcceptedTiles(grade?.book ?? null);
   // The drill has no book column, so its selected-tile mark comes from Mortal.
   const selectedTileCorrect = grade?.book
     ? grade.book.is_tile_correct
@@ -86,7 +86,8 @@ export function HandDock({
   let handHint = 'Dama selected - tap a tile to discard';
   if (isAnswered) {
     handHint = 'Answer submitted';
-  } else if (isAiScenario && !canDiscard) {
+  } else if (!canDiscard) {
+    // An AI reaction or a book call lesson: the answer is a button, not a tile.
     handHint = 'Choose a call or Pass';
   } else if (callKan) {
     handHint = `Kan armed - tap ${formatTileForDisplay(
@@ -212,7 +213,7 @@ export function HandDock({
               stateClass = ' hand-tile-button--correct';
             } else if (isSelected) {
               stateClass = ' hand-tile-button--incorrect';
-            } else if (bookTile === tile) {
+            } else if (bookTiles.includes(tile)) {
               stateClass = ' hand-tile-button--answer';
             }
           }
@@ -236,7 +237,7 @@ export function HandDock({
               type="button"
               className={`hand-tile-button${stateClass}${aiClass}`}
               onClick={() => onSelectTile(tile, index)}
-              disabled={isAnswered || (isAiScenario && !canDiscard)}
+              disabled={isAnswered || !canDiscard}
               aria-label={`${
                 callKan
                   ? `Declare Kan on ${formatTileForDisplay(

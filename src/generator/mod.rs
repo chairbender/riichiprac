@@ -12,6 +12,8 @@
 //!   winning tiles, dama with one or two simple ones.
 //! - `dama_genbutsu_wait`: ch. 7's genbutsu wait: dama when one winning tile is
 //!   the genbutsu of the player everyone is folding to.
+//! - `dama_expensive_hand`: ch. 7's high scoring hand: dama when the worst
+//!   winning tile is already worth 7700, and never riichi at haneman or better.
 //! - `suji_trap_riichi`: ch. 8's immediate suji trap: declare Riichi on the
 //!   discard that makes the wait look like a safe suji.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
@@ -20,6 +22,8 @@
 //!   different-suit discard makes it dangerous.
 //! - `shouminkan_decision`: Added Kan decision lesson (Kan or decline, one
 //!   neutral prompt).
+//! - `meld_or_not`: the ch. 9.1 call decision: pass on a Pon when the hand is
+//!   both cheap and slow.
 //! - `wind_discard_order`: the ch. 9 seating tip: which valueless wind to throw
 //!   first (the right player's).
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
@@ -31,8 +35,10 @@ pub mod ai_best_action;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
 mod dama_bad_wait;
+mod dama_expensive_hand;
 mod dama_genbutsu_wait;
 mod defense;
+mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
 mod riichi_judgement;
@@ -216,6 +222,23 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::DamaExpensiveHand,
+        label: "Dama: Expensive Hand",
+        description: "Ch. 7 high scoring hand: the worst winning tile already scores 7700, \
+                      so dama is fine and haneman+ means no riichi.",
+        category: ScenarioCategory::RiichiDecision,
+        tags: &[
+            "riichi",
+            "dama",
+            "mangan",
+            "haneman",
+            "score",
+            "expensive_hand",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::SujiTrapRiichi,
         label: "Riichi: Immediate Suji Trap",
         description: "Ch. 8 suji trap: two discards leave the same wait, but only one \
@@ -240,6 +263,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         description: "First turn with two or three valueless winds: throw the right player's wind first.",
         category: ScenarioCategory::MeldingDecision,
         tags: &["melding", "seating", "wind", "discard", "first_turn"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
+        id: ScenarioId::MeldOrNot,
+        label: "Meld or Not",
+        description: "A Pon is offered on a cheap and slow hand: pass, unless the book's \
+                      exceptions apply.",
+        category: ScenarioCategory::MeldingDecision,
+        tags: &["melding", "call", "pon", "pass", "cheap_slow"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
     },
@@ -325,8 +358,10 @@ pub enum ScenarioId {
     RiichiJudgement,
     DamaBadWait,
     DamaGenbutsuWait,
+    DamaExpensiveHand,
     SujiTrapRiichi,
     ShouminkanDecision,
+    MeldOrNot,
     WindDiscardOrder,
     AiBestAction,
     DefenseSafetyChart,
@@ -347,9 +382,11 @@ impl ScenarioId {
         ScenarioId::RiichiJudgement,
         ScenarioId::DamaBadWait,
         ScenarioId::DamaGenbutsuWait,
+        ScenarioId::DamaExpensiveHand,
         ScenarioId::SujiTrapRiichi,
         ScenarioId::ShouminkanDecision,
         ScenarioId::WindDiscardOrder,
+        ScenarioId::MeldOrNot,
         ScenarioId::AiBestAction,
         ScenarioId::DefenseSafetyChart,
         ScenarioId::DefenseStuckHeuristic,
@@ -369,9 +406,11 @@ impl ScenarioId {
             ScenarioId::RiichiJudgement => "riichi_judgement",
             ScenarioId::DamaBadWait => "dama_bad_wait",
             ScenarioId::DamaGenbutsuWait => "dama_genbutsu_wait",
+            ScenarioId::DamaExpensiveHand => "dama_expensive_hand",
             ScenarioId::SujiTrapRiichi => "suji_trap_riichi",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
             ScenarioId::WindDiscardOrder => "wind_discard_order",
+            ScenarioId::MeldOrNot => "meld_or_not",
             ScenarioId::AiBestAction => "ai_best_action",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
@@ -392,9 +431,11 @@ impl ScenarioId {
             "riichi_judgement" => Some(ScenarioId::RiichiJudgement),
             "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
             "dama_genbutsu_wait" => Some(ScenarioId::DamaGenbutsuWait),
+            "dama_expensive_hand" => Some(ScenarioId::DamaExpensiveHand),
             "suji_trap_riichi" => Some(ScenarioId::SujiTrapRiichi),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
+            "meld_or_not" => Some(ScenarioId::MeldOrNot),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
@@ -416,9 +457,11 @@ impl ScenarioId {
             ScenarioId::RiichiJudgement => riichi_judgement::generate(category),
             ScenarioId::DamaBadWait => dama_bad_wait::generate(category),
             ScenarioId::DamaGenbutsuWait => dama_genbutsu_wait::generate(category),
+            ScenarioId::DamaExpensiveHand => dama_expensive_hand::generate(category),
             ScenarioId::SujiTrapRiichi => suji_trap_riichi::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
             ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
+            ScenarioId::MeldOrNot => meld_or_not::generate(category),
             ScenarioId::AiBestAction => Err(
                 "ai_best_action requires the loaded Mortal model; use the evaluator's \
                  generate_ai_puzzle"

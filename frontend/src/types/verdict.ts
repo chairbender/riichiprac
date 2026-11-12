@@ -27,8 +27,24 @@ export type MortalConfidence = 'high' | 'medium' | 'low' | 'unknown';
 export type BookGrade = {
   is_action_correct: boolean;
   is_tile_correct: boolean;
-  expected_action: 'riichi' | 'dama' | 'fold' | 'kan' | 'discard' | 'best';
+  expected_action:
+    | 'riichi'
+    | 'dama'
+    | 'fold'
+    | 'kan'
+    | 'discard'
+    | 'pass'
+    | 'call'
+    | 'best';
   expected_tile: string;
+  /**
+   * Every tile the book accepts, canonical first.
+   *
+   * A shape lesson accepts two interchangeable tiles (either side of a
+   * closed-wait protorun); a one-tile answer carries just its own tile. Empty
+   * or absent for a tile-less answer (pass/call) and on older payloads.
+   */
+  expected_tiles?: string[];
 };
 
 export interface MortalGrade {
@@ -64,6 +80,36 @@ export interface DualGrade {
   /** Absent when no evaluation exists for a book lesson. */
   mortal: MortalGrade | null;
   outcome: AnswerOutcome;
+}
+
+/**
+ * Every tile the book accepts, canonical first.
+ *
+ * A new grade carries the full set in `expected_tiles`, so a scenario with two
+ * tied discards lists both whichever one the player picked. An older payload
+ * (or a one-tile answer) carries only `expected_tile`; that tile is prepended
+ * so the set is never missing the canonical answer.
+ */
+export function bookAcceptedTiles(book: BookGrade | null): string[] {
+  if (!book) return [];
+  const accepted = [...(book.expected_tiles ?? [])];
+  if (book.expected_tile && !accepted.includes(book.expected_tile)) {
+    accepted.unshift(book.expected_tile);
+  }
+  return accepted;
+}
+
+/**
+ * The accepted tiles as player-facing text: `5p`, `5p or 3p`, or
+ * `5p, 3p, or 1p`. Empty when the answer names no tile.
+ */
+export function formatAcceptedTiles(book: BookGrade | null): string {
+  const tiles = bookAcceptedTiles(book).map((tile) =>
+    formatTileForDisplay(tile),
+  );
+  if (tiles.length <= 1) return tiles[0] ?? '';
+  if (tiles.length === 2) return `${tiles[0]} or ${tiles[1]}`;
+  return `${tiles.slice(0, -1).join(', ')}, or ${tiles[tiles.length - 1]}`;
 }
 
 /** True only when both perspectives reject the answer. */

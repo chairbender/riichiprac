@@ -303,6 +303,7 @@ fn describe_correct_action(action: &CorrectAction) -> String {
             "Pass on the Kan and discard {}",
             format_tile_for_display(tile, false)
         ),
+        CorrectAction::Pass => "Pass on the offered call".to_string(),
         CorrectAction::Best { action, tile, .. } => match tile {
             Some(tile) => format!(
                 "{} ({})",
@@ -336,6 +337,11 @@ fn describe_reported_action(answer: &ReportedAction) -> String {
             "Pass on the Kan and discard {}",
             format_tile_for_display(&answer.tile, false)
         ),
+        CorrectActionType::Pass => "Pass on the offered call".to_string(),
+        CorrectActionType::Call => answer
+            .action_name
+            .clone()
+            .unwrap_or_else(|| "Call".to_string()),
         CorrectActionType::Best => answer
             .action_name
             .clone()

@@ -114,6 +114,19 @@ fn ch9_seating(line: u32, needle: &str) -> Citation {
     )
 }
 
+/// Riichi Book 1, ch. 9, "To meld or not to meld?" — the cheap-and-slow rule and
+/// its exceptions.
+fn ch9_meld(line: u32, needle: &str) -> Citation {
+    citation(
+        9,
+        "Melding judgement",
+        "To meld or not to meld?",
+        "RiichiBook1-ch9-call.tex",
+        line,
+        needle,
+    )
+}
+
 fn ch8(section: &str, line: u32, needle: &str) -> Citation {
     citation(
         8,
@@ -303,6 +316,7 @@ impl DamaReason {
             Self::NoRedFiveWait => "no_red_five_wait",
             Self::NoSujiTrap => "no_suji_trap",
             Self::Mangan => "mangan",
+            Self::HanemanPlus => "haneman_plus",
         }
     }
 
@@ -359,6 +373,16 @@ impl DamaReason {
                 quote: "it is OK to go dama",
                 citation: ch7("High scoring hand", 569, "it is OK to go {\\jap dama}"),
             }),
+            Self::HanemanPlus => Some(RuleText {
+                rule: "When even the worst winning tile scores a haneman or better \
+                       without Riichi, the book does not declare Riichi at all.",
+                quote: "Don't riichi if the minimum hand value is {\\jap haneman} or better.",
+                citation: ch7(
+                    "High scoring hand",
+                    646,
+                    "Don't riichi if the minimum hand value is",
+                ),
+            }),
             Self::NoTanyao | Self::NoRedFiveWait | Self::NoSujiTrap => None,
         }
     }
@@ -379,7 +403,8 @@ impl DamaReason {
             | Self::FewLiveWinningTiles
             | Self::GenbutsuWait
             | Self::MiddleWait
-            | Self::Mangan => None,
+            | Self::Mangan
+            | Self::HanemanPlus => None,
         }
     }
 }
@@ -676,6 +701,9 @@ fn applies_dama(reason: DamaReason, state: &GameState) -> String {
         DamaReason::NoRedFiveWait => "No red five is held.".to_string(),
         DamaReason::NoSujiTrap => "Your river holds no suji of the wait.".to_string(),
         DamaReason::Mangan => "The hand is already mangan without Riichi.".to_string(),
+        DamaReason::HanemanPlus => {
+            "Even the worst winning tile gives haneman or better without Riichi.".to_string()
+        }
     }
 }
 
@@ -746,6 +774,17 @@ fn summary_for(state: &GameState) -> String {
                 opponents read it as safe."
             .to_string();
     }
+    if state.category == "dama_expensive_hand" {
+        return if state.dama_reasons.contains(&DamaReason::HanemanPlus) {
+            "Stay in dama: even the worst winning tile gives haneman or better without \
+             Riichi, so the book does not declare."
+                .to_string()
+        } else {
+            "Stay in dama: the hand is already worth at least 7700 without Riichi, so \
+             the declaration would only warn the table."
+                .to_string()
+        };
+    }
     if !state.riichi_triggers.is_empty() {
         return "Declare Riichi: the book's chiitoitsu criteria pick this hand.".to_string();
     }
@@ -796,6 +835,20 @@ fn caveats_for(state: &GameState) -> Vec<String> {
             "The book only respects a loud player whose call is actually being feared: \
              against a bad call that nobody folds to, it says to declare Riichi even when \
              your winning tiles are that player's genbutsu (ch7:566)."
+                .to_string(),
+        );
+    } else if state.category == "dama_expensive_hand" {
+        caveats.push(
+            "The value is recomputed at the worst winning tile of the wait, counted by \
+             ron and without Riichi: the book asks for at least 7700 (5200 without red \
+             fives). Dora and a red five supply the value here, on top of tanyao, pinfu \
+             and iipeikou."
+                .to_string(),
+        );
+        caveats.push(
+            "The book still allows Riichi with an expensive hand when you are far behind, \
+             or early enough with a good enough wait. This table puts you in front and \
+             past the 6th turn, so those exceptions do not apply."
                 .to_string(),
         );
     } else if !state.dama_reasons.is_empty() {
@@ -866,7 +919,9 @@ fn scenario_source(category: &str) -> Option<Citation> {
             "one of your winning tiles is among their",
         )),
         "suji_trap_riichi" => Some(ch8("Suji trap", 170, "immediate {\\jap suji}-trap riichi")),
+        "dama_expensive_hand" => Some(ch7("High scoring hand", 569, "it is OK to go {\\jap dama}")),
         "shouminkan_decision" => Some(ch9(360, "From an open set to an open quad")),
+        "meld_or_not" => Some(ch9_meld(72, "Don't meld with a cheap and slow hand")),
         "wind_discard_order" => Some(ch9_seating(455, "discard the right player's wind first")),
         "ryanmen_protorun" => Some(ch4(44, "completely redundant")),
         "nakabukure_ready" => Some(ch3_bulging(681, "accept four kinds of tiles")),
@@ -904,6 +959,10 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
 
     if state.category == "wind_discard_order" {
         return wind_discard_rationale(state);
+    }
+
+    if state.category == "meld_or_not" {
+        return meld_or_not_rationale(state);
     }
 
     // `shouminkan_decline` is retired as a scenario id, but old saved reports
@@ -1606,6 +1665,182 @@ fn is_wind_code(code: &str) -> bool {
     matches!(code, "1z" | "2z" | "3z" | "4z")
 }
 
+/// The ch. 9.1 lesson: never meld a hand that is both cheap and slow.
+fn meld_or_not_rationale(state: &GameState) -> Option<BookRationale> {
+    let offer = state.call_offer.as_ref()?;
+    let claimed = format_tile_for_display(&offer.tile, false);
+
+    // The book's "slow" test is the shanten *after* melding. Recompute the
+    // best case over every discard the call would leave behind, so the note
+    // never overstates the hand.
+    let after_meld = state
+        .players
+        .iter()
+        .find(|player| player.is_human)
+        .and_then(|player| best_shanten_after_call(state, player));
+
+    let slow = match after_meld {
+        Some(shanten) => {
+            format!("Even after the Pon and the best discard, the hand is still {shanten}-away.")
+        }
+        None => "Even after the call the hand is still far from ready.".to_string(),
+    };
+    let no_dora = if hand_holds_a_dora(state) {
+        "The hand does hold a dora, so this board never claims that it is dora-free.".to_string()
+    } else {
+        format!(
+            "It holds no dora and no other complete set, so as it stands its only yaku is the \
+             {claimed} yakuhai: a 1000-point hand."
+        )
+    };
+
+    let rules = vec![
+        BookRule {
+            id: "cheap_and_slow".to_string(),
+            rule: "Do not meld a hand that is both cheap and far from ready: the call opens \
+                   the hand, gives up safety tiles, and still wins little and late."
+                .to_string(),
+            quote: "Melding with a cheap and slow hand is one of the two biggest sins in \
+                    riichi mahjong."
+                .to_string(),
+            citation: ch9_meld(30, "one of the two biggest sins"),
+            applies: format!(
+                "{slow} {no_dora} Passing on {claimed} keeps both the value and the safe tiles."
+            ),
+        },
+        BookRule {
+            id: "melding_judgement_1".to_string(),
+            rule: "The rule's short form: a hand must be either expensive or fast before a \
+                   call is worth making."
+                .to_string(),
+            quote: "Don't meld with a cheap and slow hand!".to_string(),
+            citation: ch9_meld(72, "Don't meld with a cheap and slow hand"),
+            applies: format!(
+                "This hand is neither: the {claimed} Pon leaves it cheap, and the same call \
+                 leaves it slow."
+            ),
+        },
+        BookRule {
+            id: "slow_definition".to_string(),
+            rule: "Slow means 2-away or worse after melding, and with bad waits.".to_string(),
+            quote: "we mean that the hand is 2-away or worse after melding".to_string(),
+            citation: ch9_meld(33, "the hand is 2-away or worse"),
+            applies: format!(
+                "The shape left behind after the {claimed} Pon is built only from closed and \
+                 edge protoruns, so there is no side wait to reach."
+            ),
+        },
+    ];
+
+    Some(BookRationale {
+        summary: format!(
+            "Pass on the {claimed}: the hand is cheap and slow, so the book's first melding \
+             judgement forbids the call."
+        ),
+        rules,
+        absent: vec![
+            AbsentRule {
+                id: "slow_but_expensive".to_string(),
+                note: "Meld when a slow hand still has 7700+ potential: the book's own example \
+                       calls a Pon and discards a 9p, because the open hand can reach 7700. \
+                       This hand's only value is the yakuhai."
+                    .to_string(),
+            },
+            AbsentRule {
+                id: "cheap_but_fast".to_string(),
+                note: "Meld when the call keeps the hand fast: \"all the remaining blocks have a \
+                       good wait\" (ch. 9). Here every remaining block is closed or edge."
+                    .to_string(),
+            },
+            AbsentRule {
+                id: "eliminating_bad_wait".to_string(),
+                note: "\"If you can eliminate a bad wait and make the hand ready, meld!\" \
+                       (ch. 9). This call does not reach ready and does not remove a bad wait."
+                    .to_string(),
+            },
+            AbsentRule {
+                id: "concealed_value_tiles".to_string(),
+                note: "\"If you have a concealed set of value tiles, you can meld with a cheap \
+                       and slow hand\" (ch. 9). This hand holds no concealed value set: its \
+                       remaining blocks are all suited."
+                    .to_string(),
+            },
+        ],
+        source: ch9_meld(72, "Don't meld with a cheap and slow hand"),
+        caveats: vec![
+            "The book also allows a cheap-and-slow call when you are ahead in South-4, when two \
+             or more Riichi sticks are on the table, or when you are the losing dealer and want \
+             to hurry the table."
+                .to_string(),
+        ],
+    })
+}
+
+/// The best (lowest) shanten the hand can reach after the offered call, over
+/// every discard the call would leave.
+fn best_shanten_after_call(state: &GameState, player: &crate::state::PlayerState) -> Option<i8> {
+    let offer = state.call_offer.as_ref()?;
+    let mut remaining: Vec<Tile> = player
+        .hand
+        .iter()
+        .map(|code| Tile::try_from(code.as_str()).ok())
+        .collect::<Option<Vec<_>>>()?;
+    if remaining.len() != 13 {
+        return None;
+    }
+
+    // Consume the hand tiles the call uses: two copies of the claimed tile for
+    // a Pon, the two named tiles for a Chi.
+    let consumed: Vec<Tile> = if offer.action == "Pon" {
+        let tile = Tile::try_from(offer.tile.as_str()).ok()?;
+        vec![tile, tile]
+    } else {
+        offer
+            .tiles
+            .iter()
+            .map(|code| Tile::try_from(code.as_str()).ok())
+            .collect::<Option<Vec<_>>>()?
+    };
+    for tile in consumed {
+        let index = remaining.iter().position(|held| *held == tile)?;
+        remaining.remove(index);
+    }
+
+    let mut best: Option<i8> = None;
+    let mut seen = Vec::new();
+    for discard in remaining.clone() {
+        if seen.contains(&discard) {
+            continue;
+        }
+        seen.push(discard);
+        let mut after = remaining.clone();
+        let index = after.iter().position(|tile| *tile == discard)?;
+        after.remove(index);
+        let shanten = agari::shanten::calculate_shanten_with_melds(&to_counts(&after), 1).shanten;
+        best = Some(best.map_or(shanten, |current| current.min(shanten)));
+    }
+    best
+}
+
+/// Whether any tile the human holds is a dora.
+fn hand_holds_a_dora(state: &GameState) -> bool {
+    let Some(player) = human(state) else {
+        return false;
+    };
+    let dora: Vec<Tile> = state
+        .dora_indicators
+        .iter()
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .map(agari::context::indicator_to_dora)
+        .collect();
+    player
+        .hand
+        .iter()
+        .chain(player.draw.iter())
+        .filter_map(|code| Tile::try_from(code.as_str()).ok())
+        .any(|tile| dora.contains(&tile))
+}
+
 /// The two pure-defense lessons: the ch. 8 safety chart and its fallback list.
 fn defense_rationale(state: &GameState) -> Option<BookRationale> {
     let is_chart = state.category == "defense_safety_chart";
@@ -2216,6 +2451,8 @@ pub fn action_type_label(action: CorrectActionType) -> &'static str {
         CorrectActionType::Fold => "Fold",
         CorrectActionType::Kan => "Kan",
         CorrectActionType::Discard => "No Kan",
+        CorrectActionType::Pass => "Pass",
+        CorrectActionType::Call => "Call",
         CorrectActionType::Best => "Mortal action",
     }
 }
@@ -2260,6 +2497,7 @@ mod tests {
             DamaReason::FewLiveWinningTiles,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
+            DamaReason::HanemanPlus,
         ];
         let absent = [
             DamaReason::NoTanyao,
@@ -2971,6 +3209,7 @@ mod tests {
             DamaReason::GenbutsuWait,
             DamaReason::MiddleWait,
             DamaReason::Mangan,
+            DamaReason::HanemanPlus,
         ] {
             citations.push(reason.rationale().expect("positive reason").citation);
         }
@@ -2995,6 +3234,7 @@ mod tests {
             "dama_bad_wait",
             "dama_genbutsu_wait",
             "shouminkan_decision",
+            "meld_or_not",
             "wind_discard_order",
             "defense_safety_chart",
             "defense_stuck_heuristic",

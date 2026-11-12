@@ -430,6 +430,7 @@ fn assemble_state(
         correct_action: CorrectAction::riichi(skeleton.trap_discard.to_string()),
         equivalent_tiles: Vec::new(),
         decision: DecisionContext::SelfTurn,
+        call_offer: None,
         scenario_note: None,
         ai_decision: None,
         riichi_triggers: vec![RiichiTrigger::ImmediateSujiTrap],
