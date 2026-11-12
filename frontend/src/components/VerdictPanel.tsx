@@ -91,7 +91,7 @@ export function VerdictPanel({
         {peeked && !isDrill && evaluation && (
           <div className="verdict-peek-card">
             <ColumnHeader label="Mortal" source={evaluation.model} />
-            <PeekedMortal evaluation={evaluation} redFives={redFives} />
+            <PeekedMortal evaluation={evaluation} redFives={redFives} state={state} />
           </div>
         )}
       </section>
@@ -163,6 +163,7 @@ export function VerdictPanel({
               mortal={mortal}
               redFives={redFives}
               evaluation={evaluation}
+              state={state}
             />
           ) : (
             <MortalUnavailable aiStatus={aiStatus} aiError={aiError} onRetry={onRetry} />
@@ -202,14 +203,16 @@ function MortalBody({
   mortal,
   redFives,
   evaluation,
+  state,
 }: {
   mortal: MortalGrade;
   redFives: string[];
   evaluation: AiEvaluation | null;
+  state: GameState;
 }) {
   const tile = mortalRecommendedTile(mortal);
   const riichi = mortalRecommendedRiichi(mortal);
-  const call = callDecisionFor(evaluation);
+  const call = callDecisionFor(evaluation, state);
 
   return (
     <>
@@ -287,9 +290,11 @@ function MortalUnavailable({
 function PeekedMortal({
   evaluation,
   redFives,
+  state,
 }: {
   evaluation: AiEvaluation;
   redFives: string[];
+  state: GameState;
 }) {
   const top = evaluation.evaluations[0];
   // A Riichi recommendation is tile-less in Mortal's action space; the
@@ -298,7 +303,7 @@ function PeekedMortal({
     top?.type === 'riichi'
       ? evaluation.riichi_discard ?? null
       : top?.tile ?? null;
-  const call = callDecisionFor(evaluation);
+  const call = callDecisionFor(evaluation, state);
   return (
     <>
       <p className="verdict-recommendation">

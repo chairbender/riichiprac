@@ -1,8 +1,27 @@
 import { formatMortalTileForDisplay } from './display';
 import type { AiActionEvaluation, AiEvaluation } from './types/ai';
+import type { GameState } from './types/game';
 
 /** Call families, matching `ActionKind` in the Rust payload. */
 const CALL_TYPES = new Set(['chi', 'pon', 'kan']);
+
+/**
+ * Whether this state offers the Kan call as something the player can submit.
+ *
+ * The hand dock only shows the Call Kan toggle on a Kan lesson, and the action
+ * bar only shows it when the payload carries the action. A hand that merely
+ * happens to hold four copies is not asking about the quad, so Mortal's kan
+ * probability must not be reported as a call decision.
+ */
+function offersKan(state: GameState): boolean {
+  if (state.target_action === 'Kan' || state.call_offer?.action === 'Kan') {
+    return true;
+  }
+  // The AI drill renders every legal action, including a self-turn ankan.
+  return (
+    state.ai_decision?.actions.some((action) => action.type === 'kan') ?? false
+  );
+}
 
 export interface CallOption {
   /** Mortal action name, or `__decline` for the aggregate no-call option. */
@@ -33,11 +52,14 @@ export interface CallDecision {
  */
 export function callDecisionFor(
   evaluation: AiEvaluation | null,
+  state: GameState,
 ): CallDecision | null {
   if (!evaluation) return null;
 
-  const calls = evaluation.evaluations.filter((action) =>
-    CALL_TYPES.has(action.type),
+  const calls = evaluation.evaluations.filter(
+    (action) =>
+      CALL_TYPES.has(action.type) &&
+      (action.type !== 'kan' || offersKan(state)),
   );
   if (calls.length === 0) return null;
 
