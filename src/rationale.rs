@@ -21,11 +21,14 @@ use agari::parse::to_counts;
 use agari::shanten::{
     calculate_shanten, calculate_shanten_with_melds, calculate_ukeire, calculate_ukeire_with_melds,
 };
-use agari::tile::{Suit, Tile};
+use agari::tile::{Honor, Suit, Tile};
 use agari::yaku::Yaku;
 
 use crate::display::format_tile_for_display;
-use crate::generator::{SanshokuFacts, floating_quad_acceptance, sanshoku_facts};
+use crate::generator::floating_quad_acceptance;
+use crate::generator::{
+    SanshokuFacts, can_be_pinfu_head, sanshoku_facts, wind_from_honor, wind_to_honor,
+};
 use crate::safety::{SafetyFacts, SafetyRank, in_open_hand_neighbourhood};
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, MeldType, RiichiTrigger,
@@ -204,6 +207,19 @@ fn ch5(section: &str, line: u32, needle: &str) -> Citation {
     )
 }
 
+/// Riichi Book 1, ch. 5, "How to get honitsu" — the section's two conditions for
+/// going for honitsu and its two "do not go" boxes.
+fn ch5_honitsu(line: u32, needle: &str) -> Citation {
+    citation(
+        5,
+        "Pursuing yaku",
+        "How to get honitsu",
+        "RiichiBook1-ch5-yaku.tex",
+        line,
+        needle,
+    )
+}
+
 fn ch3(line: u32, needle: &str) -> Citation {
     citation(
         3,
@@ -243,6 +259,32 @@ fn ch3_pairs(line: u32, needle: &str) -> Citation {
         "Riichi mahjong basics",
         "Pairs and sets",
         "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
+/// Riichi Book 1, ch. 5, "Toitoi vs. chiitoitsu" — the three chiitoitsu
+/// criteria and the futile-pair rule that overrides the toitoi plan.
+fn ch5_toitoi(line: u32, needle: &str) -> Citation {
+    citation(
+        5,
+        "Pursuing yaku",
+        "Toitoi vs. chiitoitsu",
+        "RiichiBook1-ch5-yaku.tex",
+        line,
+        needle,
+    )
+}
+
+/// Riichi Book 1, ch. 5, "How to get pinfu", *Building the head*: the head must
+/// be a pair of number tiles or valueless wind tiles, never a value honor.
+fn ch5_pinfu_head(line: u32, needle: &str) -> Citation {
+    citation(
+        5,
+        "Pursuing yaku",
+        "Building the head",
+        "RiichiBook1-ch5-yaku.tex",
         line,
         needle,
     )
@@ -1032,7 +1074,11 @@ fn caveats_for(state: &GameState) -> Vec<String> {
     caveats
 }
 
-fn scenario_source(category: &str) -> Option<Citation> {
+/// The book citation the verdict panel shows as a lesson's provenance.
+///
+/// Exposed inside the crate so the scenario manifest can be checked against the
+/// citation it teaches instead of a second, hand-maintained chapter list.
+pub(crate) fn scenario_source(category: &str) -> Option<Citation> {
     match category {
         "chiitoitsu_riichi_vs_dama" => Some(ch7(CHIITOITSU_BOX, 345, "Riichi judgement")),
         "riichi_judgement" => Some(ch7(GENERAL_RULE, 55, "at least one")),
@@ -1066,6 +1112,7 @@ fn scenario_source(category: &str) -> Option<Citation> {
             351,
             "having three pairs is actually better than having two pairs",
         )),
+        "chiitoi_vs_toitoi" => Some(ch5_toitoi(618, "must stick with {\\jap chiitoitsu}")),
         "defense_safety_chart" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
         "fold_to_riichi" => Some(ch8(
             CH8_VS_RIICHI,
@@ -1087,6 +1134,14 @@ fn scenario_source(category: &str) -> Option<Citation> {
             "discard a tile in the same suit",
         )),
         "sanshoku_pursuit" => Some(ch5("Floating", 74, "Only when there is no other")),
+        "pinfu_head" => Some(ch5_pinfu_head(
+            449,
+            "the head must be a pair of number tiles or valueless wind tiles",
+        )),
+        "honitsu_decision" => Some(ch5_honitsu(
+            468,
+            "five-block potential and hand values with and without",
+        )),
         _ => None,
     }
 }
@@ -1105,6 +1160,9 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
     if let Some(push_fold) = push_or_fold_rationale(state) {
         return Some(push_fold);
     }
+    if let Some(honitsu) = honitsu_rationale(state) {
+        return Some(honitsu);
+    }
 
     if state.category == "sanshoku_pursuit" {
         return sanshoku_rationale(state);
@@ -1112,6 +1170,10 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
 
     if state.category == "wind_discard_order" {
         return wind_discard_rationale(state);
+    }
+
+    if state.category == "pinfu_head" {
+        return pinfu_head_rationale(state);
     }
 
     if state.category == "meld_or_not" {
@@ -1750,6 +1812,10 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
         });
     }
 
+    if state.category == "chiitoi_vs_toitoi" {
+        return chiitoi_vs_toitoi_rationale(state);
+    }
+
     if state.category != "ryanmen_protorun" {
         return None;
     }
@@ -1828,6 +1894,259 @@ fn dragon_pair(state: &GameState) -> Option<String> {
     pair_codes(state)
         .into_iter()
         .find(|code| matches!(code.as_str(), "5z" | "6z" | "7z"))
+}
+
+/// The ch. 5.5 yaku choice: stay with chiitoitsu when a pair is futile,
+/// otherwise keep the new set and go for toitoi.
+///
+/// The answer is not a tile-efficiency count: the chiitoitsu discard usually
+/// keeps more tiles, so the rationale has to show the dead pair (or the live
+/// value pair) that decides it.
+fn chiitoi_vs_toitoi_rationale(state: &GameState) -> Option<BookRationale> {
+    let answer_code = state.correct_action.tile()?;
+    let answer = format_tile_for_display(answer_code, false);
+    let drawn_code = human(state)?.draw.clone()?;
+    let drawn = format_tile_for_display(&drawn_code, false);
+    let pairs = pair_codes(state);
+
+    let dead: Vec<&String> = pairs
+        .iter()
+        .filter(|code| table_copies(state, code) >= 4)
+        .collect();
+    let dead_text = join_codes(dead.iter().copied());
+
+    if !dead.is_empty() {
+        let value_pairs: Vec<&String> = pairs
+            .iter()
+            .filter(|code| is_value_pair(state, code))
+            .collect();
+        let middle_pairs = middle_simple_pairs(&pairs);
+
+        let mut rules = vec![
+            BookRule {
+                id: "futile_pair".to_string(),
+                rule: "A pair whose other two copies are already on the table can never \
+                       become a set, so toitoi is impossible and the hand must stay with \
+                       chiitoitsu."
+                    .to_string(),
+                quote: "If there is one or more futile pair in your hand, you must stick \
+                        with {\\jap chiitoitsu}."
+                    .to_string(),
+                citation: ch5_toitoi(618, "must stick with {\\jap chiitoitsu}"),
+                applies: format!(
+                    "The {dead_text} pair is dead: all four copies are visible, so keeping \
+                     the drawn {drawn} as a set would chase a toitoi that cannot complete."
+                ),
+            },
+            BookRule {
+                id: "keep_five_pairs".to_string(),
+                rule: "The dead pair makes the seven pairs the only live plan, so the draw \
+                       that completed a set is the tile to give back."
+                    .to_string(),
+                quote: "There is a futile pair in your hand.".to_string(),
+                citation: ch5_toitoi(611, "There is a futile pair in your hand"),
+                applies: format!(
+                    "Discarding {answer} restores five pairs and three lone tiles; {} tiles \
+                     improve the chiitoitsu hand.",
+                    state.ukeire_total
+                ),
+            },
+        ];
+
+        if value_pairs.is_empty() {
+            rules.push(BookRule {
+                id: "no_value_pair".to_string(),
+                rule: "A toitoi hand without a pair of value tiles is worth only 2600 or \
+                       even 2000 points, which is another reason to stay with chiitoitsu."
+                    .to_string(),
+                quote: "There is no pair of value tiles in your hand.".to_string(),
+                citation: ch5_toitoi(612, "There is no pair of value tiles in your hand"),
+                applies: "None of the pairs is a dragon or a seat/round wind.".to_string(),
+            });
+        }
+        if middle_pairs >= 3 {
+            rules.push(BookRule {
+                id: "three_middle_pairs".to_string(),
+                rule: "Three or more pairs of simple tiles between 3 and 7 are likely to be \
+                       claimed by the opponents, so they are hard to turn into triplets."
+                    .to_string(),
+                quote: "There are three or more pairs of simple tiles between 3 and 7 in \
+                        your hand."
+                    .to_string(),
+                citation: ch5_toitoi(613, "three or more pairs of simple tiles between 3 and 7"),
+                applies: format!("{middle_pairs} of the pairs are simple tiles between 3 and 7."),
+            });
+        }
+
+        return Some(BookRationale {
+            summary: format!(
+                "Stay with chiitoitsu: the {dead_text} pair is futile, so toitoi can never \
+                 complete. Discard the drawn {answer}."
+            ),
+            rules,
+            absent: Vec::new(),
+            source: ch5_toitoi(618, "must stick with {\\jap chiitoitsu}"),
+            caveats: vec![
+                "A pair is futile when both of its remaining copies are visible. The board \
+                 puts them in two opponents' rivers, the same read the book makes when the \
+                 opponents have already discarded two tiles of the pair (ch5:618)."
+                    .to_string(),
+            ],
+        });
+    }
+
+    // No pair is dead: the book's first criterion points the other way, so the
+    // new triplet stays and the discard is a lone tile.
+    let value_pairs: Vec<&String> = pairs
+        .iter()
+        .filter(|code| is_value_pair(state, code))
+        .collect();
+    let value_text = join_codes(value_pairs.iter().copied());
+    let middle_pairs = middle_simple_pairs(&pairs);
+    let chiitoitsu_total = Tile::try_from(drawn_code.as_str())
+        .ok()
+        .and_then(|tile| acceptance_without(state, tile))
+        .unwrap_or_default();
+
+    let rules = vec![
+        BookRule {
+            id: "no_futile_pair".to_string(),
+            rule: "Without a futile pair the hand can still turn its pairs into sets, so the \
+                   book goes for toitoi instead of the seven pairs."
+                .to_string(),
+            quote: "If not, you can go for {\\jap toitoi}.".to_string(),
+            citation: ch5_toitoi(618, "If not, you can go for {\\jap toitoi}"),
+            applies: format!(
+                "No pair is dead: each pair still has an unseen copy, so the {drawn} triplet \
+                 can stay."
+            ),
+        },
+        BookRule {
+            id: "value_pair".to_string(),
+            rule: "One pair of value tiles lifts the toitoi plan from a bare 2000-2600 to \
+                   5200, which makes the set worth keeping."
+                .to_string(),
+            quote: "With one pair of value tiles, you can aim for 5200 with {\\jap toitoi}"
+                .to_string(),
+            citation: ch5_toitoi(621, "With one pair of value tiles, you can aim for 5200"),
+            applies: format!(
+                "The hand holds a value pair ({value_text}), so toitoi is worth chasing."
+            ),
+        },
+        BookRule {
+            id: "keep_the_set".to_string(),
+            rule: "Keeping the new triplet makes the hand 2-away for toitoi, so the discard \
+                   is a lone tile rather than the drawn third copy."
+                .to_string(),
+            quote: "makes the hand also 2-away from ready for {\\jap toitoi}".to_string(),
+            citation: ch5_toitoi(
+                603,
+                "makes the hand also 2-away from ready for {\\jap toitoi}",
+            ),
+            applies: format!(
+                "Discarding {answer} keeps {drawn} as a set and leaves four pairs, but the \
+                 chiitoitsu line would accept {chiitoitsu_total} tiles against the {} here: \
+                 counting acceptance alone picks the wrong move.",
+                state.ukeire_total
+            ),
+        },
+    ];
+
+    Some(BookRationale {
+        summary: format!(
+            "Keep the set and build toitoi: no pair is futile, so the {drawn} triplet can \
+             grow into the four sets. Discard the lone tile {answer}."
+        ),
+        rules,
+        absent: vec![
+            AbsentRule {
+                id: "futile_pair".to_string(),
+                note: "No pair is futile: at most one copy of any pair tile is visible, so \
+                       every pair can still become a set."
+                    .to_string(),
+            },
+            AbsentRule {
+                id: "three_middle_pairs".to_string(),
+                note: format!(
+                    "Only {middle_pairs} pairs are simple tiles between 3 and 7, so the book's \
+                     third chiitoitsu condition does not apply."
+                ),
+            },
+        ],
+        source: ch5_toitoi(618, "If not, you can go for {\\jap toitoi}"),
+        caveats: vec![
+            "The three lone tiles are interchangeable to both plans, so all three are graded \
+             as the same answer."
+                .to_string(),
+            "The counted chiitoitsu line accepts more tiles, but the book's first criterion is \
+             the dead pair, not raw acceptance (ch5:618)."
+                .to_string(),
+        ],
+    })
+}
+
+/// Copies of `code` the player can see: the hand, every river, every open meld,
+/// and the dora indicators. Opponents' concealed hands stay unseen.
+fn table_copies(state: &GameState, code: &str) -> u8 {
+    let mut total = state
+        .tiles
+        .iter()
+        .filter(|held| held.as_str() == code)
+        .count() as u8;
+    for player in &state.players {
+        total += player
+            .discards
+            .iter()
+            .filter(|discard| discard.tile == code)
+            .count() as u8;
+        for meld in &player.melds {
+            total += meld
+                .tiles
+                .iter()
+                .filter(|tile| tile.as_str() == code)
+                .count() as u8;
+        }
+    }
+    total += state
+        .dora_indicators
+        .iter()
+        .filter(|indicator| indicator.as_str() == code)
+        .count() as u8;
+    total
+}
+
+/// A dragon pair, or a pair of the round or seat wind.
+fn is_value_pair(state: &GameState, code: &str) -> bool {
+    let Some(Tile::Honor(honor)) = Tile::try_from(code).ok() else {
+        return false;
+    };
+    matches!(honor, Honor::White | Honor::Green | Honor::Red)
+        || honor == wind_to_honor(state.round_wind)
+        || human(state).is_some_and(|player| honor == wind_to_honor(player.wind))
+}
+
+/// Pairs of simple tiles between 3 and 7 (ch5:613).
+fn middle_simple_pairs(pairs: &[String]) -> usize {
+    pairs
+        .iter()
+        .filter(|code| {
+            matches!(
+                Tile::try_from(code.as_str()),
+                Ok(Tile::Suited { value: 3..=7, .. })
+            )
+        })
+        .count()
+}
+
+fn join_codes<'a>(codes: impl Iterator<Item = &'a String>) -> String {
+    let names: Vec<String> = codes
+        .map(|code| format_tile_for_display(code, false))
+        .collect();
+    if names.is_empty() {
+        "value".to_string()
+    } else {
+        names.join(" / ")
+    }
 }
 
 /// Copies of the Pon target still unseen: the hand holds two, and anything in
@@ -2191,6 +2510,152 @@ fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
 
 fn is_wind_code(code: &str) -> bool {
     matches!(code, "1z" | "2z" | "3z" | "4z")
+}
+
+/// Riichi Book 1, ch. 5, *Building the head*: with no pair yet, which lone tiles
+/// may still pair into the pinfu head, and which one never may.
+///
+/// The rule is structural: the book splits the tile types, not the hand. Every
+/// number tile and every valueless wind can be the head; a value honor (a
+/// dragon, the round wind, or the seat wind) cannot, because pairing it makes a
+/// yakuhai head instead. The generated hand holds exactly one value honor and
+/// nothing else that is barred, so the reason below reads straight off the
+/// table.
+fn pinfu_head_rationale(state: &GameState) -> Option<BookRationale> {
+    let answer_code = state.correct_action.tile()?;
+    let answer = format_tile_for_display(answer_code, false);
+    let answer_tile = Tile::try_from(answer_code).ok()?;
+    let round = state.round_wind;
+    let seat = human(state)?.wind;
+
+    let tiles: Vec<(String, Tile)> = state
+        .tiles
+        .iter()
+        .filter_map(|code| {
+            Tile::try_from(code.as_str())
+                .ok()
+                .map(|tile| (code.clone(), tile))
+        })
+        .collect();
+
+    // The loose tiles the book says to keep: its lone terminals and its
+    // valueless wind. The lesson keeps every terminal out of its blocks (the
+    // bulges and protoruns are middle shapes), so these are exactly the hand's
+    // spare floats, not tiles a run already needs.
+    let kept: Vec<String> = tiles
+        .iter()
+        .filter(|(_, tile)| *tile != answer_tile)
+        .filter(|(_, tile)| can_be_pinfu_head(*tile, round, seat))
+        .filter(|(_, tile)| is_terminal_or_honor(*tile))
+        .filter(|(_, tile)| tiles.iter().filter(|(_, other)| other == tile).count() == 1)
+        .map(|(code, _)| format_tile_for_display(code, false))
+        .collect();
+    let kept_text = if kept.is_empty() {
+        "the lone tiles in hand".to_string()
+    } else {
+        kept.join(" / ")
+    };
+    let kept_count = kept.len();
+
+    // Which value honor the answer is, so the rule can say why it is barred.
+    let role = match answer_tile {
+        Tile::Honor(honor) => match wind_from_honor(honor) {
+            Some(wind) if wind == round => format!("The round wind {answer}"),
+            Some(wind) if wind == seat => format!("Your seat wind {answer}"),
+            Some(_) => answer.to_string(),
+            None => format!("The dragon {answer}"),
+        },
+        Tile::Suited { .. } => answer.to_string(),
+    };
+
+    let rules = vec![
+        BookRule {
+            id: "pinfu_head_rule".to_string(),
+            rule: "The head of a pinfu hand must be a pair of number tiles or valueless wind \
+                   tiles, so while the hand has no committed head those loose tiles are what it \
+                   is waiting to pair."
+                .to_string(),
+            quote: "To claim pinfu, the head must be a pair of number tiles or valueless wind \
+                    tiles."
+                .to_string(),
+            citation: ch5_pinfu_head(
+                449,
+                "the head must be a pair of number tiles or valueless wind tiles",
+            ),
+            applies: format!(
+                "The hand has no committed head yet, so the head is still to be built: \
+                 {kept_text} can each grow into it."
+            ),
+        },
+        BookRule {
+            id: "value_honor_cannot_be_head".to_string(),
+            rule: "A value honor — a dragon, the round wind, or the seat wind — can never be the \
+                   head of pinfu: pairing it makes a yakuhai head, which is a different hand."
+                .to_string(),
+            quote: "the value tile fa cannot be the head of pinfu".to_string(),
+            citation: ch5_pinfu_head(458, "cannot be the head of {\\jap pinfu}"),
+            applies: format!(
+                "{role} is a value honor, so pairing it would give a yakuhai head instead: it \
+                 is the one tile in these fourteen that can never be the pinfu head."
+            ),
+        },
+        BookRule {
+            id: "keep_terminals_and_winds".to_string(),
+            rule: "Terminals and valueless winds look useless, but they are exactly the tiles \
+                   that may grow into the pinfu head, so they go only once a pair exists."
+                .to_string(),
+            quote: "try not to discard terminals or valueless wind tiles lightly when having a \
+                    pinfu hand"
+                .to_string(),
+            citation: ch5_pinfu_head(
+                449,
+                "try not to discard terminals or valueless wind tiles lightly",
+            ),
+            applies: format!("Discarding {answer} keeps {kept_text}."),
+        },
+    ];
+
+    Some(BookRationale {
+        summary: format!(
+            "Discard {answer}: every other lone tile here can still pair into the pinfu head, \
+             while the value honor never can."
+        ),
+        rules,
+        absent: vec![AbsentRule {
+            id: "yakuhai_head".to_string(),
+            note: "Pairing the value honor would give a yakuhai head, but that is a different \
+                   hand: this drill keeps pinfu alive rather than settling for the yakuhai."
+                .to_string(),
+        }],
+        source: ch5_pinfu_head(
+            449,
+            "the head must be a pair of number tiles or valueless wind tiles",
+        ),
+        caveats: vec![
+            "The head is not settled — the book's \"especially when a hand is lacking any \
+             pair\" case. The hand's only duplicate sits inside a bulge, which splits into a \
+             run plus a float, so it is shape rather than a committed head."
+                .to_string(),
+            "Value is held fixed: the answer is never the dora, and the hand is closed and \
+             2-away, so the answer comes from the head rule rather than from score or a wait \
+             comparison."
+                .to_string(),
+            format!(
+                "The {kept_count} tiles kept beside the value honor are the hand's lone \
+                 terminals and its valueless wind. They look useless the way the book's \
+                 1m / 9p / E do: pairing one is their way into the head."
+            ),
+        ],
+    })
+}
+
+/// True for a terminal or an honor: the tiles the book says to keep while the
+/// pinfu head is still open.
+fn is_terminal_or_honor(tile: Tile) -> bool {
+    match tile {
+        Tile::Honor(_) => true,
+        Tile::Suited { value, .. } => value == 1 || value == 9,
+    }
 }
 
 /// The ch. 9.1 lesson: never meld a hand that is both cheap and slow.
@@ -3325,6 +3790,200 @@ fn push_or_fold_rationale(state: &GameState) -> Option<BookRationale> {
             23,
             "Push} if {\\bf two} of the following conditions are met",
         ),
+        caveats,
+    })
+}
+
+/// The ch. 5.4 honitsu lesson: five-block potential plus the hand's value with
+/// and without honitsu (ch5:468).
+///
+/// The three branches are the section's own three hands: Honitsu 1 ("you can go
+/// for honitsu with this hand"), Honitsu 2 ("you should not aim for honitsu",
+/// it would be honitsu-only), and Honitsu 3 ("when the hand value is
+/// sufficiently high (>= 5200) without honitsu, you should not go for honitsu
+/// at the cost of tile efficiency").
+fn honitsu_rationale(state: &GameState) -> Option<BookRationale> {
+    if state.category != "honitsu_decision" {
+        return None;
+    }
+
+    use crate::generator::{HonitsuVariant, honitsu_facts};
+
+    let facts = honitsu_facts(state)?;
+    let answer = Tile::try_from(state.correct_action.tile()?).ok()?;
+    let answer_text = format_tile_for_display(&answer.to_string(), false);
+    let suit = match facts.suit {
+        Suit::Man => "manzu (cracks)",
+        Suit::Pin => "pinzu (dots)",
+        Suit::Sou => "souzu (bamboo)",
+    };
+    let floaters = facts.blocks.floaters.len();
+    let floater_word = if floaters == 1 {
+        "floating tile"
+    } else {
+        "floating tiles"
+    };
+    let honitsu_points = facts
+        .honitsu
+        .as_ref()
+        .map(|reading| reading.value.points)
+        .unwrap_or_default();
+    let without_points = facts
+        .value_without
+        .map(|value| value.points)
+        .unwrap_or_default();
+    let without_text = match facts.value_without {
+        Some(value) => format!("{} points", value.points),
+        None => "no yaku at all".to_string(),
+    };
+
+    let mut rules = vec![BookRule {
+        id: "five_block_potential".to_string(),
+        rule: "A honitsu plan needs five tile blocks or block candidates in the suit plus \
+               honors; four blocks and a floating tile count as five."
+            .to_string(),
+        quote: "five-block potential and hand values with and without honitsu".to_string(),
+        citation: ch5_honitsu(468, "five-block potential and hand values with and without"),
+        applies: format!(
+            "{suit} plus honors hold {} blocks and {floaters} {floater_word}, so this hand \
+             has the five-block potential.",
+            facts.blocks.blocks
+        ),
+    }];
+    let mut caveats = Vec::new();
+    let mut absent = Vec::new();
+
+    let summary = match facts.variant {
+        HonitsuVariant::Commit => {
+            rules.push(BookRule {
+                id: "honitsu_value".to_string(),
+                rule: "Commit when the honitsu hand has more value than the same tiles played \
+                       straight: the fanpai pairs become yaku once they are ponned."
+                    .to_string(),
+                quote: "you can go for {\\jap honitsu} with this hand".to_string(),
+                citation: ch5_honitsu(492, "you can go for {\\jap honitsu} with this hand"),
+                applies: format!(
+                    "The plan is honitsu plus up to {} yakuhai and reaches at least \
+                     {honitsu_points} points, while the same tiles without honitsu are \
+                     worth {without_text}.",
+                    facts.fanpai_blocks
+                ),
+            });
+            rules.push(BookRule {
+                id: "redundant_off_suit".to_string(),
+                rule: "The off-suit tiles are the ones the plan gives up; keeping them would \
+                       not make the hand any more efficient."
+                    .to_string(),
+                quote: "the tiles that are made redundant in the hand".to_string(),
+                citation: ch5_honitsu(495, "the tiles that are made redundant in the hand"),
+                applies: format!(
+                    "{answer_text} leaves the hand, and the other off-suit tiles are the \
+                     rest of the redundant group."
+                ),
+            });
+            caveats.push(
+                "Any off-suit tile in this hand is graded correct: the book treats the \
+                 isolated tile and the closed-wait protorun as one redundant group. The \
+                 order to throw them so the table cannot read the suit (ch5:543) is a \
+                 multi-turn tip, not this discard."
+                    .to_string(),
+            );
+            format!(
+                "Commit to honitsu: discard {answer_text}. The hand has five blocks in \
+                 {suit} plus honors, and the honitsu plan can reach at least \
+                 {honitsu_points} points while the same tiles played straight have \
+                 {without_text}."
+            )
+        }
+        HonitsuVariant::AlreadyHigh => {
+            rules.push(BookRule {
+                id: "value_without_honitsu".to_string(),
+                rule: "When the hand is already sufficiently valuable without honitsu, do not \
+                       give up tile efficiency to chase it."
+                    .to_string(),
+                quote: "when the hand value is sufficiently high ($\\geq$ 5200) \\emph{without} \
+                        {\\jap honitsu}, you should not go for {\\jap honitsu} at the cost of \
+                        tile efficiency"
+                    .to_string(),
+                citation: ch5_honitsu(
+                    517,
+                    "you should not go for {\\jap honitsu} at the cost of tile efficiency",
+                ),
+                applies: format!(
+                    "The worst completion of the kept hand already scores {without_points} \
+                     points without honitsu."
+                ),
+            });
+            caveats.push(
+                "The answer throws the in-suit floating tile and keeps the off-suit side-wait \
+                 protorun, so the hand stays at the same shanten with its acceptance intact. \
+                 The floating dragon stays for its fanpai pair and Pon potential."
+                    .to_string(),
+            );
+            format!(
+                "Play for efficiency: discard {answer_text}. The hand is already worth \
+                 {without_points} points without honitsu, so the five-block honitsu plan \
+                 would trade acceptance for value it already has."
+            )
+        }
+        HonitsuVariant::HonitsuOnly => {
+            rules.push(BookRule {
+                id: "honitsu_only_is_cheap".to_string(),
+                rule: "With no yaku potential besides honitsu, the plan ends as a honitsu-only \
+                       hand, which the book calls very cheap."
+                    .to_string(),
+                quote: "you may end up getting a {\\jap honitsu}-only hand, which is very \
+                        cheap (2000 or 2600 points)"
+                    .to_string(),
+                citation: ch5_honitsu(506, "very cheap (2000 or 2600 points)"),
+                applies: "The plan's only yaku is honitsu: with no fanpai and no dora it is \
+                          the book's honitsu-only hand, two han once the plan melds."
+                    .to_string(),
+            });
+            rules.push(BookRule {
+                id: "stay_closed_for_riichi".to_string(),
+                rule: "Instead of the cheap honitsu, get the hand ready without melding and \
+                       go for riichi."
+                    .to_string(),
+                quote: "you should try to make the hand ready without melding and go for \
+                        riichi"
+                    .to_string(),
+                citation: ch5_honitsu(
+                    506,
+                    "make the hand ready without melding and go for \
+                                           riichi",
+                ),
+                applies: format!(
+                    "The answer keeps the off-suit side-wait protorun and the other off-suit \
+                     tile, so the hand can still become ready without melding and go for \
+                     riichi."
+                ),
+            });
+            absent.push(AbsentRule {
+                id: "expensive_honitsu".to_string(),
+                note: "Committing does not apply: the honitsu group holds no fanpai pair or \
+                       set, so the plan cannot add yakuhai to the two honitsu han."
+                    .to_string(),
+            });
+            caveats.push(
+                "The answer throws a valueless honor. It was the fifth block candidate, and \
+                 giving it up leaves the cheap honitsu plan for a riichi hand with the \
+                 off-suit blocks intact."
+                    .to_string(),
+            );
+            format!(
+                "Play for efficiency: discard {answer_text}. The five blocks are there, but \
+                 the honitsu plan would be honitsu-only — no fanpai, no dora — so the \
+                 closed riichi route with the off-suit blocks intact is better."
+            )
+        }
+    };
+
+    Some(BookRationale {
+        summary,
+        rules,
+        absent,
+        source: ch5_honitsu(468, "five-block potential and hand values with and without"),
         caveats,
     })
 }
@@ -4485,6 +5144,72 @@ mod tests {
     }
 
     #[test]
+    fn chiitoi_vs_toitoi_rationale_follows_the_dead_pair() {
+        let mut chiitoitsu = false;
+        let mut toitoi = false;
+
+        for _ in 0..80 {
+            let state = generate_puzzle("chiitoi_vs_toitoi").expect("scenario must generate");
+            let rationale = state.book_rationale.clone().expect("rationale");
+
+            assert_eq!(rationale.source.chapter, 5);
+            assert_eq!(rationale.source.section, "Toitoi vs. chiitoitsu");
+            assert!(rationale.rules.iter().all(|rule| !rule.applies.is_empty()));
+
+            let dead: Vec<String> = pair_codes(&state)
+                .into_iter()
+                .filter(|code| table_copies(&state, code) >= 4)
+                .collect();
+
+            if dead.is_empty() {
+                toitoi = true;
+                assert!(rationale.summary.contains("toitoi"));
+                assert!(
+                    rationale
+                        .rules
+                        .iter()
+                        .any(|rule| rule.id == "no_futile_pair"),
+                    "the toitoi branch must cite \"If not, you can go for toitoi\""
+                );
+                assert!(
+                    rationale.rules.iter().any(|rule| rule.id == "value_pair"),
+                    "the toitoi branch must name the value pair"
+                );
+                assert!(
+                    rationale
+                        .absent
+                        .iter()
+                        .any(|absent| absent.id == "futile_pair"),
+                    "the absent futile pair belongs in the \"not this hand\" list"
+                );
+                assert!(
+                    rationale
+                        .rules
+                        .iter()
+                        .any(|rule| rule.applies.contains("counting acceptance")),
+                    "the explanation must show that the counted line wins"
+                );
+            } else {
+                chiitoitsu = true;
+                assert!(rationale.summary.contains("chiitoitsu"));
+                assert!(
+                    rationale.rules.iter().any(|rule| rule.id == "futile_pair"),
+                    "the chiitoitsu branch must cite the futile-pair rule"
+                );
+                assert!(rationale.absent.is_empty());
+                let dead_name = format_tile_for_display(&dead[0], false);
+                assert!(
+                    rationale.summary.contains(&dead_name),
+                    "the summary must name the dead pair {dead_name}"
+                );
+            }
+        }
+
+        assert!(chiitoitsu, "the drill must explain a chiitoitsu hand");
+        assert!(toitoi, "the drill must explain a toitoi hand");
+    }
+
+    #[test]
     fn generated_book_scenarios_carry_a_rationale() {
         for category in [
             "ryanmen_protorun",
@@ -4493,6 +5218,7 @@ mod tests {
             "ryankan_break",
             "pair_count",
             "pair_count_open",
+            "chiitoi_vs_toitoi",
             "sanshoku_pursuit",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
@@ -4507,6 +5233,8 @@ mod tests {
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
+            "pinfu_head",
+            "honitsu_decision",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             assert!(
@@ -4527,6 +5255,7 @@ mod tests {
             "protorun_priority",
             "pair_count",
             "pair_count_open",
+            "chiitoi_vs_toitoi",
             "sanshoku_pursuit",
             "chiitoitsu_riichi_vs_dama",
             "riichi_judgement",
@@ -4540,6 +5269,8 @@ mod tests {
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
+            "pinfu_head",
+            "honitsu_decision",
         ] {
             for _ in 0..10 {
                 let state = generate_puzzle(category).expect("scenario must generate");
@@ -4969,6 +5700,7 @@ mod tests {
             "ryankan_break",
             "pair_count",
             "pair_count_open",
+            "chiitoi_vs_toitoi",
             "sanshoku_pursuit",
             "riichi_judgement",
             "dama_bad_wait",
@@ -4985,6 +5717,8 @@ mod tests {
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
+            "pinfu_head",
+            "honitsu_decision",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             citations.extend(
@@ -5100,6 +5834,99 @@ mod tests {
                 .any(|rule| rule.id == "pair_never_forms"),
             "the first-turn pair race must be stated"
         );
+    }
+
+    #[test]
+    fn pinfu_head_rationale_cites_the_head_rule_for_every_answer() {
+        let mut saw_dragon = false;
+        let mut saw_table_wind = false;
+
+        for run in 0..80 {
+            let state = generate_puzzle("pinfu_head").expect("lesson must generate");
+            let rationale = rationale_for(&state).expect("the head rule needs a rationale");
+
+            assert_eq!(rationale.source.chapter, 5, "run {run}");
+            assert_eq!(rationale.source.section, "Building the head", "run {run}");
+            assert_eq!(
+                rationale.source.source_needle,
+                "the head must be a pair of number tiles or valueless wind tiles",
+                "run {run}"
+            );
+
+            let ids: Vec<&str> = rationale
+                .rules
+                .iter()
+                .map(|rule| rule.id.as_str())
+                .collect();
+            assert_eq!(
+                ids,
+                vec![
+                    "pinfu_head_rule",
+                    "value_honor_cannot_be_head",
+                    "keep_terminals_and_winds"
+                ],
+                "run {run}"
+            );
+
+            let answer = state.correct_action.tile().expect("answer tile");
+            let answer_name = format_tile_for_display(answer, false);
+            assert!(
+                rationale.summary.contains(&answer_name),
+                "run {run}: {}",
+                rationale.summary
+            );
+            assert!(
+                rationale.rules[0].applies.contains("no committed head"),
+                "run {run}: the head is still to be built"
+            );
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("3 tiles kept")),
+                "run {run}: the book's three keepers must be named"
+            );
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("bulge")),
+                "run {run}: the duplicate must be explained as the bulge"
+            );
+            assert!(
+                rationale.rules[1].applies.contains(&answer_name)
+                    && rationale.rules[1].applies.contains("value honor"),
+                "run {run}: {}",
+                rationale.rules[1].applies
+            );
+            assert!(
+                rationale
+                    .absent
+                    .iter()
+                    .any(|absent| absent.id == "yakuhai_head"),
+                "run {run}: the yakuhai alternative must be named"
+            );
+
+            if matches!(answer, "5z" | "6z" | "7z") {
+                saw_dragon = true;
+                assert!(
+                    rationale.rules[1].applies.contains("dragon"),
+                    "run {run}: {}",
+                    rationale.rules[1].applies
+                );
+            } else {
+                saw_table_wind = true;
+                assert!(
+                    rationale.rules[1].applies.contains("round wind")
+                        || rationale.rules[1].applies.contains("seat wind"),
+                    "run {run}: {}",
+                    rationale.rules[1].applies
+                );
+            }
+        }
+
+        assert!(saw_dragon, "a dragon answer must be generated");
+        assert!(saw_table_wind, "a round/seat wind answer must be generated");
     }
 
     #[test]
@@ -5315,6 +6142,81 @@ mod tests {
             }
         }
         assert!(saw_push && saw_fold, "both cells must be covered");
+    }
+
+    #[test]
+    fn honitsu_lesson_cites_the_two_factors_and_each_branch() {
+        use crate::generator::HonitsuVariant;
+
+        let mut saw_commit = false;
+        let mut saw_high = false;
+        let mut saw_only = false;
+
+        for _ in 0..60 {
+            let state = generate_puzzle("honitsu_decision").expect("honitsu must generate");
+            let rationale = rationale_for(&state).expect("honitsu needs a rationale");
+            let facts =
+                crate::generator::honitsu_facts(&state).expect("the table has honitsu facts");
+
+            assert_eq!(rationale.source.chapter, 5);
+            assert_eq!(rationale.source.section, "How to get honitsu");
+            assert_eq!(rationale.rules[0].id, "five_block_potential");
+
+            let ids: Vec<&str> = rationale
+                .rules
+                .iter()
+                .map(|rule| rule.id.as_str())
+                .collect();
+            match facts.variant {
+                HonitsuVariant::Commit => {
+                    saw_commit = true;
+                    assert_eq!(
+                        ids,
+                        vec![
+                            "five_block_potential",
+                            "honitsu_value",
+                            "redundant_off_suit"
+                        ]
+                    );
+                    assert!(rationale.summary.starts_with("Commit to honitsu"));
+                    assert!(
+                        rationale
+                            .caveats
+                            .iter()
+                            .any(|caveat| caveat.contains("graded correct")),
+                        "the interchangeable off-suit discards must be explained"
+                    );
+                }
+                HonitsuVariant::AlreadyHigh => {
+                    saw_high = true;
+                    assert_eq!(ids, vec!["five_block_potential", "value_without_honitsu"]);
+                    assert!(rationale.summary.starts_with("Play for efficiency"));
+                }
+                HonitsuVariant::HonitsuOnly => {
+                    saw_only = true;
+                    assert_eq!(
+                        ids,
+                        vec![
+                            "five_block_potential",
+                            "honitsu_only_is_cheap",
+                            "stay_closed_for_riichi"
+                        ]
+                    );
+                    assert!(
+                        rationale
+                            .absent
+                            .iter()
+                            .any(|rule| rule.id == "expensive_honitsu"),
+                        "the cheap branch must say committing does not apply"
+                    );
+                }
+            }
+        }
+
+        assert!(
+            saw_commit && saw_high && saw_only,
+            "all three cells must be covered"
+        );
     }
 
     #[test]

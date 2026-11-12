@@ -68,6 +68,28 @@ case.
 If the weights are missing, the app still trains: the hand is graded against the
 book only, the Mortal column says so, and no answer is labelled wrong.
 
+## Choosing scenarios
+
+The header's **Scenario** control opens a pool picker instead of a flat
+dropdown. Every lesson is filed under the Riichi Book 1 chapter and section it
+teaches (`ch8.4 · Defense against open hands`, `ch9.3 · Calling kan`, …), with a
+checkbox per lesson and a tri-state checkbox per section that selects or clears
+the whole group. The pool can be the whole catalogue ("All scenarios (random)",
+which keeps the AI drill out until the model is ready), one section, one lesson,
+or any hand-picked mix to randomise between. **Only** deals one lesson without
+touching the rest of the selection.
+
+The grouping is not a frontend list: `SCENARIO_MANIFEST` in
+`src/generator/mod.rs` carries each lesson's `BookSection`, `list_scenarios()`
+serialises it, and a Rust test pins every group's chapter to the citation the
+verdict panel shows. Lessons with no book rule (the Mortal drill) land in
+"Other".
+
+Edits are staged: ticking boxes changes the draft pool shown in the panel footer
+("Pool: 5 scenarios · 3 sections"), and **Deal from pool** generates one hand
+from it. Cancel, Escape, or a click outside discards the draft, so building a
+pool never fires a burst of generations or Mortal forward passes.
+
 ## AI Best Action scenario
 
 `AI Best Action` generates a random, deck-consistent table and presents whatever
@@ -122,6 +144,13 @@ the way the book judges a 1-away hand, on "the best possible wait pattern you ca
 choose when the hand becomes ready in the worst possible manner" (ch8:68), which
 the generator checks by enumerating every completion. Both answers are ordinary
 discards: pushing is the shape-preserving pair tile, folding is the safe one.
+
+Because this lesson (and the Riichi-vs-dama one) derives `target_action` from the
+correct answer, the hand dock's pre-answer line never names the action: it reads
+"Tap a tile to discard" whatever the answer is, and only the armed toggles the
+player switched on themselves are mentioned. Push or Fold is named after the
+answer, in the book verdict. The rule lives in `frontend/src/handHint.ts`, so no
+future lesson can reintroduce an answer-shaped hint.
 
 **Defense: Fold to Riichi** is ch. 8.1's push/fold shortcut. The hand is 2-away
 with no dora and no value, and one opponent has declared Riichi from a deep
@@ -224,6 +253,43 @@ the round wind or the human's own wind, keeps every filler tile in a suit, and
 uses a suit dora indicator, so each held wind really is valueless. When the
 human is the dealer the table is the opening draw; on any other seat the board
 stops right after Kamicha's first discard, which is when the human first draws.
+
+## Pinfu head
+
+`Pinfu: Build the Head` is the ch. 5 "Building the head" exercise:
+
+> To claim pinfu, the head must be a pair of number tiles or valueless wind
+> tiles. Therefore, try not to discard terminals or valueless wind tiles
+> lightly when having a pinfu hand. Keep this in mind especially when a hand is
+> lacking any pair. — ch5:449
+
+> The hand has a potential to have pinfu, so we should not discard any of
+> 1m 9p E at this point. All of these three tiles may appear useless, but they
+> can be the head of a pinfu hand when any of them grows into a pair. On the
+> other hand, the value tile fa cannot be the head of pinfu. We should discard
+> fa in this case. — ch5:458
+
+Every hand copies the *texture* of the book's own example (`1m 4m 6m | 23p 67p
+9p | 5667s | E fa`), not a clean template: two side-wait protoruns, a middle
+closed wait that looks like a float, a bulging float whose doubled middle is the
+hand's only duplicate, one isolated terminal, one terminal exactly two ranks
+from a block (the book's `9p` beside `67p`), one valueless wind, and one lone
+value honor — a dragon, the round wind, or the seat wind. The head is therefore
+**not settled**: the only repeat is shape inside the bulge, and the bulges and
+closed waits are middle shapes, so no terminal ever lives in a block and both
+terminals really are spare floats.
+
+The answer is that value honor, proved structurally rather than by score or
+acceptance: it is the only tile in the fourteen that can never be the pinfu
+head. The distractors are what the book's example turns on — the duplicate, the
+closed wait, and the terminal beside a protorun all look discardable — so the
+drill is a read of the whole hand, not a hunt for the single honor.
+
+The first-turn table has no calls, Riichi, or furiten, and the dora is never the
+answer, so nothing but the head rule can decide the discard. The book panel
+names the tiles kept (the lone terminals and the valueless wind) and why the
+value honor is barred, and "Not this hand" notes that pairing the value honor
+would give a yakuhai head instead — a different hand from pinfu.
 
 ## Hosting the model weights
 

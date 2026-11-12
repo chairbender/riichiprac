@@ -1,5 +1,6 @@
 import { findKanCandidateTile } from '../actions';
 import { formatTileForDisplay } from '../display';
+import { handHint } from '../handHint';
 import type { SubmittedAnswer } from '../store/useGameStore';
 import type { AiActionInfo, AiEvaluation } from '../types/ai';
 import {
@@ -33,7 +34,11 @@ interface HandDockProps {
   canRiichi?: boolean;
   /** Whether Mortal's probability badges may be shown. */
   revealMortal?: boolean;
-  /** What the state asks for; a `Defend` lesson is a pure-defense fold. */
+  /**
+   * The state's target action. Only used to decide whether this lesson owns the
+   * Call Kan toggle: the push/fold lesson derives its target from the correct
+   * answer, so pre-answer copy must never branch on it.
+   */
   targetAction?: TargetAction;
   /** Disables the post-answer Next Scenario control while a puzzle loads. */
   nextDisabled?: boolean;
@@ -89,29 +94,15 @@ export function HandDock({
     : (grade?.mortal?.matches_tile ?? false);
   const mortalTile = mortalRecommendedTile(grade?.mortal ?? null);
 
-  let handHint = 'Dama selected - tap a tile to discard';
-  if (isAnswered) {
-    handHint = 'Answer submitted';
-  } else if (!canDiscard) {
-    // An AI reaction or a book call lesson: the answer is a button, not a tile.
-    handHint = 'Choose a call or Pass';
-  } else if (callKan) {
-    handHint = `Kan armed - tap ${formatTileForDisplay(
-      kanTile ?? '',
-    )} to declare Kan`;
-  } else if (callRiichi) {
-    handHint = 'Riichi selected - tap a tile to discard';
-  } else if (isAiScenario) {
-    handHint = 'Tap a tile to discard';
-  } else if (targetAction === 'NaniKiru') {
-    handHint = 'Tap the tile to discard';
-  } else if (targetAction === 'Defend' || targetAction === 'Fold') {
-    handHint = 'Fold - tap the safest tile';
-  } else if (targetAction === 'Push') {
-    handHint = 'Push - tap the tile that keeps the hand';
-  } else if (kanTile) {
-    handHint = 'Tap a tile to discard, or arm Call Kan';
-  }
+  // Never derive this from `targetAction`: the push/fold lesson sets it from
+  // the correct answer, so naming the action here would give the answer away.
+  const hint = handHint({
+    isAnswered,
+    canDiscard,
+    callKan,
+    callRiichi,
+    kanTileLabel: kanTile && formatTileForDisplay(kanTile),
+  });
 
   // Mark specific copies as red fives; a tile code can appear more than once.
   const redFiveCounts = new Map<string, number>();
@@ -205,7 +196,7 @@ export function HandDock({
       )}
 
       <div className="hand-dock-label" aria-live="polite">
-        {handHint}
+        {hint}
       </div>
 
       <div
