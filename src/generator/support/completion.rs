@@ -1,21 +1,27 @@
-//! Mechanical completion enumeration for 1-away hands.
+//! Mechanical completion enumeration for 1-away and 2-away hands.
 //!
-//! A 1-away hand's raw `ukeire` only says which tiles take it to tenpai; it
-//! says nothing about the *wait* that tenpai will have. Lessons that grade wait
-//! quality instead of raw acceptance need to walk one step further:
+//! A hand's raw `ukeire` only says which tiles take it one step closer to
+//! tenpai; it says nothing about the *wait* that tenpai will have. Lessons that
+//! grade wait quality instead of raw acceptance need to walk further:
 //!
-//! 1. for every tile the 1-away hand accepts, draw it;
-//! 2. for every discard that still leaves tenpai, list the winning tiles;
-//! 3. classify each winning tile from the winning decomposition -- inside a
-//!    run it is a side (ryanmen), closed (kanchan), or edge (penchan) wait, on
-//!    the pair it is a single (tanki) wait, and on a triplet it is a double-pair
+//! 1. for every tile the hand accepts, draw it;
+//! 2. for every discard that still leaves the hand one step closer, repeat;
+//! 3. at 1-away, for every discard that still leaves tenpai, list the winning
+//!    tiles;
+//! 4. classify each winning tile from the winning decomposition -- inside a run
+//!    it is a side (ryanmen), closed (kanchan), or edge (penchan) wait, on the
+//!    pair it is a single (tanki) wait, and on a triplet it is a double-pair
 //!    (shanpon) wait.
 //!
 //! That is the oracle Riichi Book 1 asks for when it ranks a hand by the wait it
 //! can still reach: ch3:506 ("it will ultimately become a single closed-wait
 //! protorun when this block remains incomplete when the hand is ready") and
 //! ch3:523 ("we should keep it and break the double closed shape instead").
-//! `nobetan_keep` and `perfect_one_away` need the same walk.
+//! `ryankan_break` uses the 1-away walk; `nobetan_keep` uses the 2-away walk to
+//! compare the waits the kept shape can still reach with the waits the broken
+//! hand can: the book's claim is that breaking a stretched single fills the
+//! hand with "closed-wait or edge-wait" protoruns (ch3:662), so the kept shape
+//! must leave strictly more side-wait completions.
 
 use agari::hand::{HandStructure, Meld, decompose_hand};
 use agari::parse::to_counts;
@@ -53,6 +59,8 @@ pub struct CompletionLine {
     pub discard: Tile,
     /// Every tile that would win the resulting tenpai hand.
     pub waits: Vec<Tile>,
+    /// How many copies of those winning tiles are still live.
+    pub wait_count: u8,
     /// The wait shapes those winning tiles can represent.
     pub shapes: Vec<WaitShape>,
 }
@@ -115,6 +123,7 @@ pub fn completion_lines(tiles: &[Tile]) -> Vec<CompletionLine> {
                 draw: accepted.tile,
                 discard,
                 waits,
+                wait_count: winning.total_count,
                 shapes,
             });
         }
@@ -123,11 +132,131 @@ pub fn completion_lines(tiles: &[Tile]) -> Vec<CompletionLine> {
     lines
 }
 
-/// True when completing the hand once can still reach a side wait.
+/// One way a 2-away hand can reach tenpai.
+///
+/// The first draw takes the hand to 1-away and the first discard keeps it
+/// there; [`CompletionLine`]s then record every tenpai the remaining 1-away
+/// hand can still reach. Grouping by the first draw is what lets a lesson ask
+/// "can this hand reach a side wait *whatever* it draws?" instead of only
+/// "can it reach one somehow?".
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TwoStepLine {
+    /// The accepted tile that took the hand from 2-away to 1-away.
+    pub draw: Tile,
+    /// The discard that left the hand 1-away.
+    pub discard: Tile,
+    /// Every tenpai the remaining 1-away hand can still reach.
+    pub lines: Vec<CompletionLine>,
+}
+
+impl TwoStepLine {
+    /// True when this first step can still end on a side wait.
+    pub fn has_side_wait(&self) -> bool {
+        self.lines.iter().any(CompletionLine::has_side_wait)
+    }
+}
+
+/// Enumerates every completion of a 2-away hand.
+///
+/// For each accepted draw, every discard that leaves 1-away is walked with
+/// [`completion_lines`], so the result names the tenpai waits that follow each
+/// first step. Lines are returned in acceptance order.
+pub fn two_step_lines(tiles: &[Tile]) -> Vec<TwoStepLine> {
+    let counts = to_counts(tiles);
+    if calculate_shanten(&counts).shanten != 2 {
+        return Vec::new();
+    }
+
+    let mut lines = Vec::new();
+    for accepted in calculate_ukeire(&counts).tiles {
+        let mut drawn = tiles.to_vec();
+        drawn.push(accepted.tile);
+
+        let mut seen = Vec::new();
+        for discard in drawn.clone() {
+            if seen.contains(&discard) {
+                continue;
+            }
+            seen.push(discard);
+
+            let mut one_away = drawn.clone();
+            let index = one_away
+                .iter()
+                .position(|tile| *tile == discard)
+                .expect("discard came from the drawn hand");
+            one_away.remove(index);
+
+            if calculate_shanten(&to_counts(&one_away)).shanten != 1 {
+                continue;
+            }
+
+            lines.push(TwoStepLine {
+                draw: accepted.tile,
+                discard,
+                lines: completion_lines(&one_away),
+            });
+        }
+    }
+
+    lines
+}
+
+/// True when completing the hand can still reach a side wait.
+///
+/// A 1-away hand is walked one step (draw, discard, tenpai) and a 2-away hand
+/// two steps (draw, discard, draw, discard, tenpai). Tenpai and complete hands
+/// have no route to walk and report `false`.
 pub fn can_reach_side_wait(tiles: &[Tile]) -> bool {
-    completion_lines(tiles)
-        .iter()
-        .any(CompletionLine::has_side_wait)
+    match calculate_shanten(&to_counts(tiles)).shanten {
+        1 => completion_lines(tiles)
+            .iter()
+            .any(CompletionLine::has_side_wait),
+        2 => two_step_lines(tiles).iter().any(TwoStepLine::has_side_wait),
+        _ => false,
+    }
+}
+
+/// The completion with the most live winning tiles, if the hand can reach one.
+///
+/// Ties are broken toward a side wait, because that is the outcome a player
+/// would pick between two equally live waits. This is the line a lesson shows
+/// when it argues about *wait quality*: "your best tenpai" rather than "some
+/// tenpai".
+pub fn best_completion(tiles: &[Tile]) -> Option<CompletionLine> {
+    let lines: Vec<CompletionLine> = match calculate_shanten(&to_counts(tiles)).shanten {
+        1 => completion_lines(tiles),
+        2 => two_step_lines(tiles)
+            .into_iter()
+            .flat_map(|line| line.lines)
+            .collect(),
+        _ => return None,
+    };
+
+    lines.into_iter().max_by_key(|line| {
+        (
+            line.wait_count,
+            u8::from(line.has_side_wait()),
+            line.waits.len(),
+        )
+    })
+}
+
+/// How many tenpai routes out of a hand can end on a side wait.
+///
+/// The route count is the wait-quality comparison a lesson can print: keeping
+/// a stretched single leaves more ways to reach a side wait than breaking it
+/// does, even when the broken hand accepts more tiles right now.
+pub fn side_wait_routes(tiles: &[Tile]) -> usize {
+    let lines: Vec<CompletionLine> = match calculate_shanten(&to_counts(tiles)).shanten {
+        1 => completion_lines(tiles),
+        2 => two_step_lines(tiles)
+            .into_iter()
+            .flat_map(|line| line.lines)
+            .collect(),
+        _ => return 0,
+    };
+
+    lines.iter().filter(|line| line.has_side_wait()).count()
 }
 
 /// Classifies one winning tile against the tenpai hand it completes.
@@ -272,5 +401,44 @@ mod tests {
     fn a_tenpai_hand_has_no_completion_lines() {
         let hand = tiles("123m456p77s111z22z");
         assert!(completion_lines(&hand).is_empty());
+    }
+
+    #[test]
+    fn a_2_away_hand_lists_two_step_lines() {
+        // The book's nobetan hand: discarding 9s keeps 3456m, and the two-step
+        // walk reaches a side wait.
+        let hand = tiles("3456m11p35p12s667s");
+        let lines = two_step_lines(&hand);
+        assert!(!lines.is_empty());
+        assert!(lines.iter().any(TwoStepLine::has_side_wait));
+        assert!(can_reach_side_wait(&hand));
+
+        // Breaking the shape leaves only the pair-beside-a-float route, and it
+        // is strictly worse than keeping the shape.
+        let broken = tiles("456m11p35p12s667s9s");
+        assert!(side_wait_routes(&hand) > side_wait_routes(&broken));
+    }
+
+    #[test]
+    fn the_best_completion_is_the_most_live_wait() {
+        let hand = tiles("3456m11p35p12s667s");
+        let best = best_completion(&hand).expect("the hand must reach tenpai");
+        assert!(best.has_side_wait());
+        assert!(best.wait_count > 0);
+
+        // Every line's wait count is at most the best one.
+        for line in two_step_lines(&hand) {
+            for inner in line.lines {
+                assert!(inner.wait_count <= best.wait_count);
+            }
+        }
+    }
+
+    #[test]
+    fn tenpai_hands_have_no_two_step_lines() {
+        let hand = tiles("123m456p77s111z22z");
+        assert!(two_step_lines(&hand).is_empty());
+        assert_eq!(side_wait_routes(&hand), 0);
+        assert!(best_completion(&hand).is_none());
     }
 }
