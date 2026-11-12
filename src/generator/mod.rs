@@ -48,6 +48,9 @@
 //! - `pinfu_head`: ch. 5's pinfu head: a hand with no pair yet keeps its
 //!   terminals and valueless winds, because the value honor can never pair into
 //!   the pinfu head.
+//! - `honitsu_decision`: ch. 5.4's honitsu commitment: five-block potential plus
+//!   the hand's value with and without honitsu decide whether to start
+//!   discarding off-suit or to play for efficiency.
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
 //!
 //! The Phase 2 `mock_table` fixture lives in `crate::fixtures`, outside the
@@ -65,6 +68,7 @@ mod dama_genbutsu_wait;
 mod dama_improving_hand;
 mod defense;
 mod fold_to_riichi;
+mod honitsu_decision;
 mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
@@ -85,6 +89,7 @@ use crate::state::GameState;
 use situation::Situation;
 
 pub(crate) use daiminkan_decision::{DaiminkanTriggerSet, facts as daiminkan_facts};
+pub(crate) use honitsu_decision::{Variant as HonitsuVariant, facts as honitsu_facts};
 pub(crate) use support::analysis::floating_quad_acceptance;
 pub(crate) use support::analysis::wind_to_honor;
 pub use support::analysis::{HandMetrics, evaluate_hand};
@@ -265,6 +270,13 @@ const BOOK_CH5_PINFU: BookSection = BookSection {
     chapter_title: "Pursuing yaku",
     section: 3,
     section_title: "How to get pinfu",
+};
+
+const BOOK_CH5_HONITSU: BookSection = BookSection {
+    chapter: 5,
+    chapter_title: "Pursuing yaku",
+    section: 4,
+    section_title: "How to get honitsu",
 };
 
 const BOOK_CH5_TOITOI: BookSection = BookSection {
@@ -623,6 +635,25 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
         book: Some(BOOK_CH5_PINFU),
     },
+    ScenarioMeta {
+        id: ScenarioId::HonitsuDecision,
+        label: "Honitsu: Commit or Efficiency",
+        description: "Ch. 5.4: five blocks in one suit plus honors is not enough on its own — \
+                      commit to honitsu only when the plan is worth more than the hand played \
+                      straight.",
+        category: ScenarioCategory::YakuDecision,
+        tags: &[
+            "yaku",
+            "honitsu",
+            "commit",
+            "efficiency",
+            "five_blocks",
+            "value",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH5_HONITSU),
+    },
 ];
 
 /// Serializes the scenario catalogue for the frontend picker.
@@ -707,6 +738,7 @@ pub enum ScenarioId {
     DefenseStuckHeuristic,
     OpenHandDefense,
     PinfuHead,
+    HonitsuDecision,
 }
 
 impl ScenarioId {
@@ -739,6 +771,7 @@ impl ScenarioId {
         ScenarioId::DefenseStuckHeuristic,
         ScenarioId::OpenHandDefense,
         ScenarioId::PinfuHead,
+        ScenarioId::HonitsuDecision,
     ];
 
     /// The category string understood by the WASM API.
@@ -771,6 +804,7 @@ impl ScenarioId {
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
             ScenarioId::OpenHandDefense => "open_hand_defense",
             ScenarioId::PinfuHead => "pinfu_head",
+            ScenarioId::HonitsuDecision => "honitsu_decision",
         }
     }
 
@@ -804,6 +838,7 @@ impl ScenarioId {
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
             "pinfu_head" => Some(ScenarioId::PinfuHead),
+            "honitsu_decision" => Some(ScenarioId::HonitsuDecision),
             _ => None,
         }
     }
@@ -842,6 +877,7 @@ impl ScenarioId {
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
             ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
             ScenarioId::PinfuHead => pinfu_head::generate(category),
+            ScenarioId::HonitsuDecision => honitsu_decision::generate(category),
         }
     }
 }
@@ -909,6 +945,9 @@ pub(crate) fn sample_situation(category: &str) -> Option<Situation> {
             chiitoitsu_riichi_vs_dama::Target::sample(),
         )),
         ScenarioId::PushOrFold => Some(Situation::PushOrFold(push_or_fold::sample_target())),
+        ScenarioId::HonitsuDecision => {
+            Some(Situation::HonitsuDecision(honitsu_decision::sample_target()))
+        }
         _ => None,
     }
 }

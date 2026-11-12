@@ -3830,6 +3830,91 @@ fn test_wind_discard_order_payload() {
 }
 
 #[wasm_bindgen_test]
+fn test_honitsu_decision_payload() {
+    for run in 0..20 {
+        let json_output = generate_puzzle("honitsu_decision".to_string());
+        let val: serde_json::Value = serde_json::from_str(&json_output)
+            .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}"));
+
+        assert_eq!(val["category"], "honitsu_decision");
+        assert_eq!(val["target_action"], "NaniKiru");
+        assert_eq!(val["correct_action"]["type"], "dama");
+        let answer = val["correct_action"]["discard"]
+            .as_str()
+            .expect("the answer names the discard")
+            .to_string();
+        let tiles: Vec<&str> = val["tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tile| tile.as_str().unwrap())
+            .collect();
+        assert_eq!(tiles.len(), 14, "run {run}");
+        assert!(tiles.contains(&answer.as_str()), "run {run}");
+
+        let players = val["players"].as_array().expect("players array");
+        assert_eq!(players.len(), 4);
+        let human = &players[0];
+        assert_eq!(human["is_human"], true);
+        assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+        assert!(human["draw"].is_string());
+        assert!(human["melds"].as_array().unwrap().is_empty());
+        assert_eq!(human["is_riichi"], false);
+        for player in players {
+            assert!(player["melds"].as_array().unwrap().is_empty());
+            assert_eq!(player["is_riichi"], false);
+        }
+
+        // The hand is a middle-turn, concealed decision.
+        assert!(val["hand_number"].as_u64().unwrap() >= 1);
+        assert!(
+            human["discards"].as_array().unwrap().len() >= 6,
+            "run {run}"
+        );
+
+        // The answer and every accepted equivalent are hand tiles.
+        let mut accepted: Vec<String> = vec![answer];
+        if let Some(equivalents) = val["equivalent_tiles"].as_array() {
+            accepted.extend(
+                equivalents
+                    .iter()
+                    .map(|tile| tile.as_str().unwrap().to_string()),
+            );
+        }
+        for tile in &accepted {
+            assert!(
+                tiles.contains(&tile.as_str()),
+                "run {run}: {tile} is not in hand"
+            );
+        }
+
+        // No hand tile is dora, so the lesson's checked value is the shown one.
+        let indicator = val["dora_indicators"][0]
+            .as_str()
+            .expect("a dora indicator");
+        let indicator = Tile::try_from(indicator).expect("the indicator parses");
+        let dora = indicator_to_dora(indicator).to_string();
+        assert!(
+            !tiles.contains(&dora.as_str()),
+            "run {run}: the dora is in hand"
+        );
+
+        // The ch. 5.4 rationale is attached and cites the section's two factors.
+        assert_eq!(val["book_rationale"]["source"]["chapter"], 5);
+        assert_eq!(
+            val["book_rationale"]["source"]["section"],
+            "How to get honitsu"
+        );
+        assert!(
+            !val["book_rationale"]["rules"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+}
+
+#[wasm_bindgen_test]
 fn test_pinfu_head_payload() {
     fn wind_code(name: &str) -> &'static str {
         match name {
@@ -3852,7 +3937,6 @@ fn test_pinfu_head_payload() {
         assert_eq!(val["current_turn"], 0);
         assert!(val["equivalent_tiles"].as_array().is_none_or(Vec::is_empty));
         assert!(val["shanten"].as_i64().unwrap() >= 2);
-
         let answer = val["correct_action"]["discard"]
             .as_str()
             .expect("the answer names the discard")
