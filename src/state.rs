@@ -332,6 +332,13 @@ pub enum DamaReason {
     /// Riichi Book 1, ch. 7, "High scoring hand": "Don't riichi if the minimum
     /// hand value is haneman or better."
     HanemanPlus,
+    /// It is still an early turn (8th turn or before), the first half of the
+    /// ch. 7 "improving the hand" box (ch7:658).
+    EarlyTurn,
+    /// There are at least six kinds of tiles that improve the score or the wait,
+    /// or one three-han step. Riichi Book 1, ch. 7, "Many possibilities of
+    /// improving the hand": the box at ch7:656-660.
+    ImprovingHand,
 }
 
 /// Discard tile in a player's river.

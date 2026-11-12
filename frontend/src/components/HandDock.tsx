@@ -50,7 +50,8 @@ interface HandDockProps {
  * The human player's active hand, pinned to the bottom of the viewport.
  * The "Call Riichi" and "Call Kan" toggles arm a declaration; clicking a tile
  * then submits the armed action together with the clicked tile. The Kan button
- * only appears when the hand holds the fourth tile of an open Pon.
+ * only appears on a Kan lesson that holds a callable quad: the fourth tile of
+ * an open Pon, or four concealed copies.
  */
 export function HandDock({
   player,
@@ -74,7 +75,12 @@ export function HandDock({
   const tiles = player.draw ? [...player.hand, player.draw] : player.hand;
   const isAnswered = grade !== null;
   const isAiScenario = availableActions !== undefined;
-  const kanTile = isAiScenario ? null : findKanCandidateTile(player);
+  // Only a Kan lesson offers the call: any hand can hold four copies, but only
+  // these puzzles ask about them.
+  const kanTile =
+    isAiScenario || targetAction !== 'Kan'
+      ? null
+      : findKanCandidateTile(player);
 
   const bookTiles = bookAcceptedTiles(grade?.book ?? null);
   // The drill has no book column, so its selected-tile mark comes from Mortal.
@@ -92,7 +98,7 @@ export function HandDock({
   } else if (callKan) {
     handHint = `Kan armed - tap ${formatTileForDisplay(
       kanTile ?? '',
-    )} to declare Shouminkan`;
+    )} to declare Kan`;
   } else if (callRiichi) {
     handHint = 'Riichi selected - tap a tile to discard';
   } else if (isAiScenario) {

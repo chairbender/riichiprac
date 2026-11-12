@@ -90,9 +90,13 @@ action list, and the evaluation. React only renders and grades.
 
 ## Defense scenarios
 
-Four lessons train defense. Three answer an opponent's Riichi or open hand with
-the safest tile; the fourth decides whether to defend at all. All are graded by
-the book's rule; Mortal's answer appears beside it after you answer.
+Six lessons train defense. Four answer an opponent's Riichi with a tile choice,
+one reads an open hand's post-`chii` discard, and **Push or Fold** decides
+whether to defend at all. The tile-choice Riichi lessons start from a hand that
+is never ready, so the question is only which tile is safest to let go; the fold
+lesson additionally requires the hand to be junk, which is what makes folding
+the book's answer. All are graded by the book's rule; Mortal's answer appears
+beside it after you answer.
 
 **Push or Fold** is ch. 8.1's box:
 
@@ -119,12 +123,38 @@ choose when the hand becomes ready in the worst possible manner" (ch8:68), which
 the generator checks by enumerating every completion. Both answers are ordinary
 discards: pushing is the shape-preserving pair tile, folding is the safe one.
 
+**Defense: Fold to Riichi** is ch. 8.1's push/fold shortcut. The hand is 2-away
+with no dora and no value, and one opponent has declared Riichi from a deep
+river:
+
+> Fold if **two** of the following conditions are met: 1-away (or worse) hand;
+> Low scoring hand; Bad wait. — ch8:31-36
+
+The hand meets the first two, so "Defense against riichi" applies: "If you
+cannot satisfy the above criteria, you must completely fold (betaori)"
+(ch8:340). Exactly one tile in the hand is 100% safe — the threat's genbutsu
+(ch8:100) — and it sits inside a pair, a protorun, or a completed run, so the
+fold visibly gives up a block. Every other tile is strictly more dangerous on
+the safety chart, so there is one answer. The threat is genuinely tenpai on the
+declaration and never on the safe tile, and every hand tile type is kept out of
+every river except the answer, so no second tile can be genbutsu.
+
+
 **Defense: Safest Discard** builds a board where Riichi Book 1, ch. 8's safety
 ranking (`tbl:safety`) has a real answer — a genbutsu, a suji tile, a no-chance
 tile behind a blockade, or an honor ranked by its visible copies — and fills the
 rest of the hand with tiles the chart ranks strictly lower, so the safest
 discard is unique. The book panel names the chart row the answer sits on and
 lists the other tiles with their ranks ("Not this hand").
+
+**Defense: Suji / No-Chance Ranking** is the same fold board without the
+freebie: the answer is never genbutsu, only a suji or no-chance tile. The hand
+also holds a tile exactly one row down `tbl:safety`, and every other tile is
+further down the table, so the drill is about the gap between neighbouring
+rows rather than about spotting a 100% tile. The answer must sit inside a pair,
+a set, or a protorun, so the fold visibly breaks the hand up; the variants cover
+the suji-terminal rows (`A+`, `AA-`, `AA`), `BBB` (suji 4-5-6 or no chance),
+`BB+`, and `BB-`.
 
 **Defense: Nothing Is Safe** is the chapter's fallback, "What to discard when
 you get stuck". Nothing in the hand is Rank B or safer, so the chart identifies
@@ -146,7 +176,10 @@ the read is true on the hidden hand as well as the visible table.
 The safety chart itself is `src/safety.rs`: the fifteen rows of `tbl:safety`
 plus the suji and blockade arithmetic they are derived from, and the
 `in_open_hand_neighbourhood` helper the ch. 8.4 lesson shares with its
-rationale. The generator only places tiles; every rank is recomputed from what
+rationale. `SafetyFacts::is_absolutely_safe` encodes the chapter's three 100%
+kinds (genbutsu, a fourth honor, a no-chance tile), which is how the fold lesson
+insists the answer is the hand's only tile that is safe rather than merely
+rankable. The generator only places tiles; every rank is recomputed from what
 the defender can see (the threat's river, all four rivers, open melds, the dora
 indicator, and the defender's own hand).
 
@@ -342,7 +375,8 @@ re-fills the hand under that same set on every rejected candidate. Filtering
 cannot change the question, so "Mortal must agree" cannot drift the drill toward
 its most obvious hands. A lesson without a parameter concept (the block-theory
 discards, the safety, call and kan lessons, and `dama_genbutsu_wait` /
-`suji_trap_riichi`, whose answer is fixed) keeps the old per-candidate draw. If
+`dama_improving_hand` / `suji_trap_riichi`, whose answer is fixed) keeps the old
+per-candidate draw. If
 the pinned set cannot be built at all the call fails with an error naming it,
 rather than silently choosing a different situation.
 

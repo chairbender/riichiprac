@@ -57,7 +57,7 @@ interface GameStore {
   error: string | null;
   /** Whether the player has armed the "Call Riichi" toggle. */
   callRiichi: boolean;
-  /** Whether the player has armed the Shouminkan call. */
+  /** Whether the player has armed the Kan call (Added Kan or concealed quad). */
   callKan: boolean;
 
   /** The answer the player submitted, in trainer vocabulary. */
@@ -419,6 +419,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     toggleKan: () =>
       set((state) => {
         if (!state.gameState || state.dualGrade) return state;
+        // Only a Kan lesson offers the call; another lesson can hold four
+        // concealed copies without asking about them.
+        if (state.gameState.target_action !== 'Kan') return state;
 
         const human = state.gameState.players.find((player) => player.is_human);
         if (!human || !findKanCandidateTile(human)) return state;

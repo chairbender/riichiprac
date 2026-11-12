@@ -639,6 +639,26 @@ Close sibling of `shouminkan_decision`, same answer family (`Kan`/`Discard`). Th
 only plumbing gap: `findKanCandidateTile` in the frontend only detects an open Pon;
 an Ankan needs four concealed copies. Small, bounded change.
 
+**Implemented.** `src/generator/ankan_decision/` builds one neutral question and
+splits it 50/50 before rejection sampling:
+
+| Half | Shape | Answer |
+| --- | --- | --- |
+| `OneAwayGoodWait` | honor quad + complete run + honor pair + one side wait + one closed wait + dead honor floater; the book's example (1) | Kan |
+| `TwoAwayAllGoodWaits` | honor quad + honor pair + three side waits + two dead honor floaters; example (3) | Kan |
+| `FloatingTileDecline` | 4-or-6 middle-tile quad + pair + bulging float + run + lone tile; the book's `4444m 88m 4567p 456s 8s` box | Discard the lone tile |
+
+The quad is an honor in the Kan halves (its fourth copy is dead) and a middle
+tile in the decline half (its fourth copy still accepts 2/3/5/6 around 4m), so
+the coin flip is the only thing that differs between the two answers. The
+skeleton verifies the post-quad shanten with `agari` and, for the decline, that
+keeping the four copies accepts the floating copy's protoruns while the quad
+line accepts none of them; `rationale::ankan_rationale` recomputes both numbers
+from the state and cites ch9:269 / 233–234 / 282 / 313. `findKanCandidateTile`
+now also reports four concealed copies, and the Kan toggle is gated on
+`target_action === 'Kan'` so an ordinary hand that happens to hold a quad is
+never offered the call.
+
 **`meld_or_not`** (large, high value). Cards 1463255782615, 1463256320218, 1463256486957.
 
 > `Melding with a cheap \emph{and} slow hand is one of the two biggest sins in riichi mahjong.` — ch9:30

@@ -26,9 +26,9 @@
 //!
 //! Lessons with no parameter concept return `None` and keep the old behaviour,
 //! where every candidate is an independent full draw: the block-theory
-//! discards, the defense/safety lessons, the call and kan lessons, and the two
+//! discards, the defense/safety lessons, the call and kan lessons, and the
 //! dama lessons whose answer is fixed by the hand shape (`dama_genbutsu_wait`,
-//! `suji_trap_riichi`).
+//! `dama_improving_hand`, `suji_trap_riichi`).
 
 use crate::state::GameState;
 

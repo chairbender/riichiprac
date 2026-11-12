@@ -14,9 +14,17 @@
 //!   the genbutsu of the player everyone is folding to.
 //! - `dama_expensive_hand`: ch. 7's high scoring hand: dama when the worst
 //!   winning tile is already worth 7700, and never riichi at haneman or better.
+//! - `dama_improving_hand`: ch. 7's improving hand: on an early turn, dama when
+//!   at least six kinds of draws improve the ready hand's score or wait.
 //! - `suji_trap_riichi`: ch. 8's immediate suji trap: declare Riichi on the
 //!   discard that makes the wait look like a safe suji.
+//! - `fold_to_riichi`: ch. 8.1/8.3's betaori drill: a junk hand facing a
+//!   declared Riichi discards the one 100% safe tile, even though it breaks a
+//!   block.
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
+//!   `suji_kabe_safety` is the ranking mode of the fold board: the safest tile
+//!   is a suji or no-chance tile, never the free genbutsu, and the runner-up is
+//!   exactly one row down `tbl:safety`.
 //! - `push_or_fold`: ch. 8.1's push/fold box, isolated on the 1-away cell:
 //!   push a guaranteed mangan with a perfect wait, fold a cheap bad-wait hand.
 //! - `open_hand_defense`: ch. 8.4's open-hand read: an opponent's chii followed
@@ -24,6 +32,9 @@
 //!   different-suit discard makes it dangerous.
 //! - `shouminkan_decision`: Added Kan decision lesson (Kan or decline, one
 //!   neutral prompt).
+//! - `ankan_decision`: concealed quad decision lesson (Kan or decline, one
+//!   neutral prompt): four concealed copies, close to ready or a good floating
+//!   tile.
 //! - `meld_or_not`: the ch. 9.1 call decision: pass on a Pon when the hand is
 //!   both cheap and slow.
 //! - `wind_discard_order`: the ch. 9 seating tip: which valueless wind to throw
@@ -34,12 +45,15 @@
 //! lesson registry.
 
 pub mod ai_best_action;
+mod ankan_decision;
 mod block_theory;
 mod chiitoitsu_riichi_vs_dama;
 mod dama_bad_wait;
 mod dama_expensive_hand;
 mod dama_genbutsu_wait;
+mod dama_improving_hand;
 mod defense;
+mod fold_to_riichi;
 mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
@@ -58,6 +72,7 @@ use crate::ai::model::MortalV4Model;
 use crate::state::GameState;
 use situation::Situation;
 
+pub(crate) use support::analysis::floating_quad_acceptance;
 pub use support::analysis::{HandMetrics, evaluate_hand};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
@@ -252,6 +267,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::BookAndMortal,
     },
     ScenarioMeta {
+        id: ScenarioId::DamaImprovingHand,
+        label: "Dama: Improving Hand",
+        description: "Ch. 7 improving hand: an early ready hand with many improving \
+                      draws stays dama instead of declaring Riichi.",
+        category: ScenarioCategory::RiichiDecision,
+        tags: &["riichi", "dama", "improving", "early_turn", "tanki", "wait"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::SujiTrapRiichi,
         label: "Riichi: Immediate Suji Trap",
         description: "Ch. 8 suji trap: two discards leave the same wait, but only one \
@@ -267,6 +292,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         description: "Open Pon, fourth tile drawn: decide whether to upgrade to an Added Kan or discard.",
         category: ScenarioCategory::KanDecision,
         tags: &["kan", "shouminkan", "decline"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
+        id: ScenarioId::AnkanDecision,
+        label: "Concealed Quad Decision",
+        description: "Four concealed copies: declare the concealed quad only when the hand is \
+                      close to ready, never when the fourth copy is a good floating tile.",
+        category: ScenarioCategory::KanDecision,
+        tags: &["kan", "ankan", "decline", "floating_tile"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
     },
@@ -299,6 +334,16 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         grading: ScenarioGrading::MortalOnly,
     },
     ScenarioMeta {
+        id: ScenarioId::FoldToRiichi,
+        label: "Defense: Fold to Riichi",
+        description: "An opponent has declared Riichi against a junk hand: discard the one \
+                      tile the book calls 100% safe.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &["defense", "betaori", "fold", "genbutsu", "discard"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
         id: ScenarioId::PushOrFold,
         label: "Push or Fold",
         description: "Ch. 8.1 push/fold: a 1-away hand may push only with both a high \
@@ -321,6 +366,23 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         description: "An opponent has declared Riichi: discard the tile the book's safety chart ranks safest.",
         category: ScenarioCategory::DefenseDecision,
         tags: &["defense", "betaori", "safety_chart", "suji", "genbutsu"],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+    },
+    ScenarioMeta {
+        id: ScenarioId::SujiKabeSafety,
+        label: "Defense: Suji / No-Chance Ranking",
+        description: "The safest tile is a suji or no-chance tile: rank the hand on the book's \
+                      table, where the runner-up is exactly one row worse.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &[
+            "defense",
+            "betaori",
+            "suji",
+            "kabe",
+            "safety_chart",
+            "ranking",
+        ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
     },
@@ -389,13 +451,17 @@ pub enum ScenarioId {
     DamaBadWait,
     DamaGenbutsuWait,
     DamaExpensiveHand,
+    DamaImprovingHand,
     SujiTrapRiichi,
     ShouminkanDecision,
+    AnkanDecision,
     MeldOrNot,
     WindDiscardOrder,
     AiBestAction,
+    FoldToRiichi,
     PushOrFold,
     DefenseSafetyChart,
+    SujiKabeSafety,
     DefenseStuckHeuristic,
     OpenHandDefense,
 }
@@ -414,13 +480,17 @@ impl ScenarioId {
         ScenarioId::DamaBadWait,
         ScenarioId::DamaGenbutsuWait,
         ScenarioId::DamaExpensiveHand,
+        ScenarioId::DamaImprovingHand,
         ScenarioId::SujiTrapRiichi,
         ScenarioId::ShouminkanDecision,
+        ScenarioId::AnkanDecision,
         ScenarioId::WindDiscardOrder,
         ScenarioId::MeldOrNot,
         ScenarioId::AiBestAction,
+        ScenarioId::FoldToRiichi,
         ScenarioId::PushOrFold,
         ScenarioId::DefenseSafetyChart,
+        ScenarioId::SujiKabeSafety,
         ScenarioId::DefenseStuckHeuristic,
         ScenarioId::OpenHandDefense,
     ];
@@ -439,13 +509,17 @@ impl ScenarioId {
             ScenarioId::DamaBadWait => "dama_bad_wait",
             ScenarioId::DamaGenbutsuWait => "dama_genbutsu_wait",
             ScenarioId::DamaExpensiveHand => "dama_expensive_hand",
+            ScenarioId::DamaImprovingHand => "dama_improving_hand",
             ScenarioId::SujiTrapRiichi => "suji_trap_riichi",
             ScenarioId::ShouminkanDecision => "shouminkan_decision",
+            ScenarioId::AnkanDecision => "ankan_decision",
             ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::MeldOrNot => "meld_or_not",
             ScenarioId::AiBestAction => "ai_best_action",
+            ScenarioId::FoldToRiichi => "fold_to_riichi",
             ScenarioId::PushOrFold => "push_or_fold",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
+            ScenarioId::SujiKabeSafety => "suji_kabe_safety",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
             ScenarioId::OpenHandDefense => "open_hand_defense",
         }
@@ -465,13 +539,17 @@ impl ScenarioId {
             "dama_bad_wait" => Some(ScenarioId::DamaBadWait),
             "dama_genbutsu_wait" => Some(ScenarioId::DamaGenbutsuWait),
             "dama_expensive_hand" => Some(ScenarioId::DamaExpensiveHand),
+            "dama_improving_hand" => Some(ScenarioId::DamaImprovingHand),
             "suji_trap_riichi" => Some(ScenarioId::SujiTrapRiichi),
             "shouminkan_decision" => Some(ScenarioId::ShouminkanDecision),
+            "ankan_decision" => Some(ScenarioId::AnkanDecision),
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
+            "fold_to_riichi" => Some(ScenarioId::FoldToRiichi),
             "push_or_fold" => Some(ScenarioId::PushOrFold),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
+            "suji_kabe_safety" => Some(ScenarioId::SujiKabeSafety),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
             _ => None,
@@ -492,8 +570,10 @@ impl ScenarioId {
             ScenarioId::DamaBadWait => dama_bad_wait::generate(category),
             ScenarioId::DamaGenbutsuWait => dama_genbutsu_wait::generate(category),
             ScenarioId::DamaExpensiveHand => dama_expensive_hand::generate(category),
+            ScenarioId::DamaImprovingHand => dama_improving_hand::generate(category),
             ScenarioId::SujiTrapRiichi => suji_trap_riichi::generate(category),
             ScenarioId::ShouminkanDecision => shouminkan_decision::generate(category),
+            ScenarioId::AnkanDecision => ankan_decision::generate(category),
             ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
             ScenarioId::MeldOrNot => meld_or_not::generate(category),
             ScenarioId::AiBestAction => Err(
@@ -501,8 +581,10 @@ impl ScenarioId {
                  generate_ai_puzzle"
                     .to_string(),
             ),
+            ScenarioId::FoldToRiichi => fold_to_riichi::generate(category),
             ScenarioId::PushOrFold => push_or_fold::generate(category),
             ScenarioId::DefenseSafetyChart => defense::generate_safety_chart(category),
+            ScenarioId::SujiKabeSafety => defense::generate_suji_kabe(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
             ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
         }
@@ -647,7 +729,10 @@ const MAX_REACHABILITY_ATTEMPTS: usize = 8;
 /// report import.
 pub fn finalize_state(mut state: GameState) -> GameState {
     state.book_rationale = crate::rationale::rationale_for(&state);
-    state.can_riichi = crate::ai::actions::riichi_is_legal(&state);
+    // A Kan decision asks about the quad before anything else, so the Riichi
+    // toggle must never appear on it even when the closed hand could declare.
+    state.can_riichi = !matches!(state.target_action, crate::state::TargetAction::Kan)
+        && crate::ai::actions::riichi_is_legal(&state);
     state
 }
 

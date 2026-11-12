@@ -55,7 +55,7 @@ pub(crate) struct Conditions {
 
 impl Conditions {
     /// True when the book's rule picks Riichi.
-    pub(super) fn picks_riichi(self) -> bool {
+    pub(crate) fn picks_riichi(self) -> bool {
         self.extra_han || self.good_wait || self.dealer
     }
 
@@ -157,7 +157,7 @@ pub(crate) fn wait_quality(tenpai_tiles: &[Tile], visible: &HashMap<Tile, u8>) -
 /// Reading the *best* decomposition is deliberate: a hand that can be scored
 /// with a yaku is worth at least one han, and the book's condition 1 asks
 /// whether the hand "has at least one han other than riichi".
-pub(super) fn han_without_riichi(
+pub(crate) fn han_without_riichi(
     winning_tiles: &[Tile],
     wait: Tile,
     round_wind: Wind,
