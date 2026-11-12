@@ -32,7 +32,7 @@ use agari::parse::to_counts;
 use agari::shanten::calculate_shanten;
 use agari::tile::{Honor, Suit, Tile};
 
-use crate::generator::support::completion::completion_lines;
+use crate::generator::support::completion::every_draw_reaches_side_wait;
 use crate::generator::support::value::{Value, worst_completion_value};
 use crate::rng::{choose, gen_range};
 use crate::state::Wind;
@@ -288,25 +288,11 @@ fn attempt(target: Target, round_wind: Wind, seat_wind: Wind) -> Result<Skeleton
 ///
 /// This is the book's test for a 1-away hand's wait (ch8:68): "your judgement
 /// should be based on the \emph{best} possible wait pattern you can choose when
-/// the hand becomes ready in the \emph{worst} possible manner". A hand passes
-/// only when *every* acceptance tile has at least one discard that leaves
-/// tenpai on a side wait (see [`completion_lines`]).
+/// the hand becomes ready in the \emph{worst} possible manner". The walk lives
+/// in [`crate::generator::support::completion`] because the perfect-1-away
+/// lesson asks the same question of the same shape.
 pub(crate) fn good_wait(tiles: &[Tile]) -> bool {
-    let lines = completion_lines(tiles);
-    if lines.is_empty() {
-        return false;
-    }
-
-    let mut draws: Vec<Tile> = lines.iter().map(|line| line.draw).collect();
-    draws.sort();
-    draws.dedup();
-
-    draws.iter().all(|draw| {
-        lines
-            .iter()
-            .filter(|line| line.draw == *draw)
-            .any(|line| line.has_side_wait())
-    })
+    every_draw_reaches_side_wait(tiles)
 }
 
 /// True when `candidate` shares no rank with, and no rank adjacent to, the

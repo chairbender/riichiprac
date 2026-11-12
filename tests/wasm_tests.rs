@@ -2735,6 +2735,64 @@ fn test_ryanmen_rejection_sampling_constraints() {
         }
     }
 
+    /// The perfect-1-away payload: the draw builds a double closed shape, so the
+    /// book discards it to keep two side waits and two pairs (ch3:382, ch3:389).
+    #[wasm_bindgen_test]
+    fn test_perfect_one_away_payload() {
+        for run in 0..10 {
+            let json_output = generate_puzzle("perfect_one_away".to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("run {run}: invalid JSON: {err}: {json_output}"));
+
+            assert_eq!(val["category"], "perfect_one_away");
+            assert_eq!(val["target_action"], "NaniKiru");
+            assert_eq!(val["correct_action"]["type"], "dama");
+            assert_eq!(val["tiles"].as_array().unwrap().len(), 14);
+            assert_eq!(val["shanten"], 1);
+            assert_eq!(val["can_riichi"], false);
+            assert!(val["ukeire_total"].as_u64().unwrap() > 0);
+
+            let players = val["players"].as_array().expect("players array");
+            let human = &players[0];
+            assert_eq!(human["hand"].as_array().unwrap().len(), 13);
+            assert_eq!(human["melds"].as_array().unwrap().len(), 0);
+            let draw = human["draw"].as_str().expect("human draw");
+            let answer = val["correct_action"]["discard"]
+                .as_str()
+                .expect("dama action must include a discard tile");
+            assert_eq!(draw, answer, "run {run}: the book discards the drawn tile");
+
+            // The thirteen tiles left behind are the book's perfect 1-away.
+            let tiles: Vec<&str> = val["tiles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tile| tile.as_str().unwrap())
+                .collect();
+            let mut post = tiles.clone();
+            let index = post
+                .iter()
+                .position(|tile| *tile == answer)
+                .expect("answer must be in the hand");
+            post.remove(index);
+            let post_tiles = parse_hand(&post.join("")).expect("post-discard hand parses");
+            assert!(
+                riichiprac::generator::perfect_one_away_shape(&post_tiles).is_some(),
+                "run {run}: the answer must leave two side waits and two pairs"
+            );
+            assert!(
+                riichiprac::generator::is_perfect_one_away(&post_tiles),
+                "run {run}: every completion must still reach a side wait"
+            );
+
+            // No graded discard is the dora.
+            let indicator = parse_hand(val["dora_indicators"][0].as_str().unwrap())
+                .expect("dora indicator parses")
+                .remove(0);
+            assert_ne!(indicator_to_dora(indicator).to_string(), answer);
+        }
+    }
+
     #[wasm_bindgen_test]
     fn test_shouminkan_decision_payload() {
         let mut kan_count = 0usize;

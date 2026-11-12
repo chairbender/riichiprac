@@ -1,6 +1,7 @@
 pub mod nakabukure_ready;
 pub mod pair_count;
 pub mod pair_count_open;
+pub mod perfect_one_away;
 pub mod protorun_priority;
 pub mod random_hand;
 pub mod ryankan_break;

@@ -4,8 +4,9 @@
 //!   protorun priority (side wait before closed wait) lesson, the
 //!   nakabukure (bulging float) ready-hand lesson, the ryankan (double
 //!   closed shape) break lesson, the pair count (avoid three pairs in a
-//!   closed hand) lesson, and its open-hand companion (keep three pairs when
-//!   a Pon is planned).
+//!   closed hand) lesson, its open-hand companion (keep three pairs when
+//!   a Pon is planned), and the perfect 1-away lesson (which discard keeps
+//!   two side waits and two pairs).
 //! - `yaku`: the ch. 5 yaku-pursuit decisions. `sanshoku_pursuit` is the
 //!   floating method: keep the redundant tile for sanshoku only when the hand
 //!   has no other yaku or dora.
@@ -97,6 +98,7 @@ pub(crate) use honitsu_decision::{Variant as HonitsuVariant, facts as honitsu_fa
 pub(crate) use support::analysis::floating_quad_acceptance;
 pub(crate) use support::analysis::wind_to_honor;
 pub use support::analysis::{HandMetrics, evaluate_hand};
+pub use support::completion::{is_perfect_one_away, perfect_one_away_shape};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
 pub(crate) use yaku::sanshoku_pursuit::{SanshokuFacts, facts as sanshoku_facts};
@@ -389,6 +391,24 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
             "shape",
             "pon",
             "open_hand",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_BASIC),
+    },
+    ScenarioMeta {
+        id: ScenarioId::PerfectOneAway,
+        label: "Perfect 1-Away",
+        description: "Block theory: keep the perfect 1-away (two side waits, two pairs) \
+                      instead of the draw that accepts slightly more tiles.",
+        category: ScenarioCategory::TileEfficiency,
+        tags: &[
+            "block_theory",
+            "discard",
+            "perfect",
+            "shape",
+            "ryanmen",
+            "ryankan",
         ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
@@ -742,6 +762,7 @@ pub enum ScenarioId {
     RyankanBreak,
     PairCount,
     PairCountOpen,
+    PerfectOneAway,
     ChiitoiVsToitoi,
     SanshokuPursuit,
     ChiitoitsuRiichiVsDama,
@@ -776,6 +797,7 @@ impl ScenarioId {
         ScenarioId::RyankanBreak,
         ScenarioId::PairCount,
         ScenarioId::PairCountOpen,
+        ScenarioId::PerfectOneAway,
         ScenarioId::ChiitoiVsToitoi,
         ScenarioId::SanshokuPursuit,
         ScenarioId::ChiitoitsuRiichiVsDama,
@@ -810,6 +832,7 @@ impl ScenarioId {
             ScenarioId::RyankanBreak => "ryankan_break",
             ScenarioId::PairCount => "pair_count",
             ScenarioId::PairCountOpen => "pair_count_open",
+            ScenarioId::PerfectOneAway => "perfect_one_away",
             ScenarioId::ChiitoiVsToitoi => "chiitoi_vs_toitoi",
             ScenarioId::SanshokuPursuit => "sanshoku_pursuit",
             ScenarioId::ChiitoitsuRiichiVsDama => "chiitoitsu_riichi_vs_dama",
@@ -845,6 +868,7 @@ impl ScenarioId {
             "ryankan_break" => Some(ScenarioId::RyankanBreak),
             "pair_count" => Some(ScenarioId::PairCount),
             "pair_count_open" => Some(ScenarioId::PairCountOpen),
+            "perfect_one_away" => Some(ScenarioId::PerfectOneAway),
             "chiitoi_vs_toitoi" => Some(ScenarioId::ChiitoiVsToitoi),
             "sanshoku_pursuit" => Some(ScenarioId::SanshokuPursuit),
             "chiitoitsu_riichi_vs_dama" => Some(ScenarioId::ChiitoitsuRiichiVsDama),
@@ -881,6 +905,7 @@ impl ScenarioId {
             ScenarioId::RyankanBreak => block_theory::ryankan_break::generate(category),
             ScenarioId::PairCount => block_theory::pair_count::generate(category),
             ScenarioId::PairCountOpen => block_theory::pair_count_open::generate(category),
+            ScenarioId::PerfectOneAway => block_theory::perfect_one_away::generate(category),
             ScenarioId::ChiitoiVsToitoi => chiitoi_vs_toitoi::generate(category),
             ScenarioId::SanshokuPursuit => yaku::sanshoku_pursuit::generate(category),
             ScenarioId::ChiitoitsuRiichiVsDama => chiitoitsu_riichi_vs_dama::generate(category),
