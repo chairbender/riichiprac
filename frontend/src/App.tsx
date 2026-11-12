@@ -25,6 +25,13 @@ import { useGameStore } from './store/useGameStore';
 import { ensureWasmReady } from './wasm';
 import './App.css';
 
+/**
+ * Whether the Mortal-agreement filter starts enabled. Kept as a named constant
+ * because the first hand is dealt from this value rather than from the
+ * checkbox state, so the two cannot drift.
+ */
+const DEFAULT_REQUIRE_AGREEMENT = true;
+
 export const App = () => {
   const gameState = useGameStore((state) => state.gameState);
   const isLoading = useGameStore((state) => state.isLoading);
@@ -69,12 +76,15 @@ export const App = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [agreementLoading, setAgreementLoading] = useState(false);
   /**
-   * Per-session opt-in: deal book-graded hands only where Mortal plays the book
-   * answer. A Mortal-only drill has no book answer, so the pool keeps it and
-   * the drill is dealt as usual. Not persisted, so a browser without the
-   * weights never starts in a state it cannot generate.
+   * Per-session choice, on by default: deal book-graded hands only where Mortal
+   * plays the book answer. A Mortal-only drill has no book answer, so the pool
+   * keeps it and the drill is dealt as usual. Nothing persists this setting
+   * (there is no localStorage/sessionStorage entry), so the default applies on
+   * every fresh page load; a stored value never overrides it.
    */
-  const [requireAgreement, setRequireAgreement] = useState(false);
+  const [requireAgreement, setRequireAgreement] = useState(
+    DEFAULT_REQUIRE_AGREEMENT,
+  );
   const [exportDescription, setExportDescription] = useState('');
   const manifestRef = useRef<ScenarioOption[] | null>(null);
   const loadRequestId = useRef(0);
@@ -142,11 +152,13 @@ export const App = () => {
             if (requestId !== loadRequestId.current) return;
             const mortal = useGameStore.getState().mortal;
             if (!mortal) {
-              throw new Error(
-                useGameStore.getState().aiError ??
-                  'Mortal is unavailable, so a Mortal-agreeing hand cannot be ' +
-                    'generated. Turn off "Mortal must agree" to keep practising.',
-              );
+              // The default is on, but a browser without the weights must still
+              // get a table: deal the ordinary book-graded hand and clear the
+              // checkbox, which is disabled while Mortal is unavailable and
+              // would otherwise claim a filter that cannot run.
+              setRequireAgreement(false);
+              loadFromJson(generate_puzzle(category));
+              return;
             }
             // Let the loading state paint before the worker starts sampling.
             await new Promise<void>((resolve) => {
@@ -179,9 +191,10 @@ export const App = () => {
     ],
   );
 
-  // The filter is a per-session choice, so the first hand is always book-only.
+  // The filter is on by default, so the first hand is dealt through it too.
+  // `loadPuzzle` falls back to a book-only deal when Mortal cannot load.
   useEffect(() => {
-    void loadPuzzle(ALL_SCENARIOS, false);
+    void loadPuzzle(ALL_SCENARIOS, DEFAULT_REQUIRE_AGREEMENT);
   }, [loadPuzzle]);
 
   // Start loading the Mortal weights in the background on first paint.
