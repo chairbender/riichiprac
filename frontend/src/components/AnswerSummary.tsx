@@ -68,7 +68,11 @@ export function AnswerSummary({ grade, onDetails }: AnswerSummaryProps) {
         className="answer-summary-details"
         type="button"
         onClick={onDetails}
-        aria-label="Show the full book and Mortal comparison"
+        aria-label={
+          grade.mode === 'mortal_only'
+            ? 'Show the full Mortal verdict'
+            : 'Show the full book and Mortal comparison'
+        }
       >
         Details
       </button>

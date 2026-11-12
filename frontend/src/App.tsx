@@ -67,9 +67,10 @@ export const App = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [agreementLoading, setAgreementLoading] = useState(false);
   /**
-   * Per-session opt-in: only deal hands where Mortal plays the book answer.
-   * Not persisted, so a browser without the weights never starts in a state it
-   * cannot generate.
+   * Per-session opt-in: deal book-graded hands only where Mortal plays the book
+   * answer. A Mortal-only drill has no book answer, so the pool keeps it and
+   * the drill is dealt as usual. Not persisted, so a browser without the
+   * weights never starts in a state it cannot generate.
    */
   const [requireAgreement, setRequireAgreement] = useState(false);
   const [exportDescription, setExportDescription] = useState('');
@@ -267,7 +268,7 @@ export const App = () => {
 
   const agreementHint =
     aiStatus === 'ready'
-      ? 'Deal only hands where the embedded Mortal model plays the book answer. Each hand may need several forward passes.'
+      ? 'Deal book-graded hands only when the embedded Mortal model plays the book answer. AI drills have no book answer, so they are dealt as usual and graded by Mortal alone. Each agreeing hand may need several forward passes.'
       : aiStatus === 'error'
         ? 'Mortal is unavailable, so this filter cannot run.'
         : 'Waiting for the Mortal model to load…';
