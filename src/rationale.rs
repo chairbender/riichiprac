@@ -25,6 +25,7 @@ use agari::tile::{Suit, Tile};
 
 use crate::display::format_tile_for_display;
 use crate::generator::floating_quad_acceptance;
+use crate::generator::{can_be_pinfu_head, wind_from_honor};
 use crate::safety::{SafetyFacts, SafetyRank, in_open_hand_neighbourhood};
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, MeldType, RiichiTrigger,
@@ -231,6 +232,19 @@ fn ch3_pairs(line: u32, needle: &str) -> Citation {
         "Riichi mahjong basics",
         "Pairs and sets",
         "RiichiBook1-ch3-basics.tex",
+        line,
+        needle,
+    )
+}
+
+/// Riichi Book 1, ch. 5, "How to get pinfu", *Building the head*: the head must
+/// be a pair of number tiles or valueless wind tiles, never a value honor.
+fn ch5_pinfu_head(line: u32, needle: &str) -> Citation {
+    citation(
+        5,
+        "Pursuing yaku",
+        "Building the head",
+        "RiichiBook1-ch5-yaku.tex",
         line,
         needle,
     )
@@ -1074,6 +1088,10 @@ fn scenario_source(category: &str) -> Option<Citation> {
             567,
             "discard a tile in the same suit",
         )),
+        "pinfu_head" => Some(ch5_pinfu_head(
+            449,
+            "the head must be a pair of number tiles or valueless wind tiles",
+        )),
         _ => None,
     }
 }
@@ -1095,6 +1113,10 @@ fn category_rationale(state: &GameState) -> Option<BookRationale> {
 
     if state.category == "wind_discard_order" {
         return wind_discard_rationale(state);
+    }
+
+    if state.category == "pinfu_head" {
+        return pinfu_head_rationale(state);
     }
 
     if state.category == "meld_or_not" {
@@ -1986,6 +2008,152 @@ fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
 
 fn is_wind_code(code: &str) -> bool {
     matches!(code, "1z" | "2z" | "3z" | "4z")
+}
+
+/// Riichi Book 1, ch. 5, *Building the head*: with no pair yet, which lone tiles
+/// may still pair into the pinfu head, and which one never may.
+///
+/// The rule is structural: the book splits the tile types, not the hand. Every
+/// number tile and every valueless wind can be the head; a value honor (a
+/// dragon, the round wind, or the seat wind) cannot, because pairing it makes a
+/// yakuhai head instead. The generated hand holds exactly one value honor and
+/// nothing else that is barred, so the reason below reads straight off the
+/// table.
+fn pinfu_head_rationale(state: &GameState) -> Option<BookRationale> {
+    let answer_code = state.correct_action.tile()?;
+    let answer = format_tile_for_display(answer_code, false);
+    let answer_tile = Tile::try_from(answer_code).ok()?;
+    let round = state.round_wind;
+    let seat = human(state)?.wind;
+
+    let tiles: Vec<(String, Tile)> = state
+        .tiles
+        .iter()
+        .filter_map(|code| {
+            Tile::try_from(code.as_str())
+                .ok()
+                .map(|tile| (code.clone(), tile))
+        })
+        .collect();
+
+    // The loose tiles the book says to keep: its lone terminals and its
+    // valueless wind. The lesson keeps every terminal out of its blocks (the
+    // bulges and protoruns are middle shapes), so these are exactly the hand's
+    // spare floats, not tiles a run already needs.
+    let kept: Vec<String> = tiles
+        .iter()
+        .filter(|(_, tile)| *tile != answer_tile)
+        .filter(|(_, tile)| can_be_pinfu_head(*tile, round, seat))
+        .filter(|(_, tile)| is_terminal_or_honor(*tile))
+        .filter(|(_, tile)| tiles.iter().filter(|(_, other)| other == tile).count() == 1)
+        .map(|(code, _)| format_tile_for_display(code, false))
+        .collect();
+    let kept_text = if kept.is_empty() {
+        "the lone tiles in hand".to_string()
+    } else {
+        kept.join(" / ")
+    };
+    let kept_count = kept.len();
+
+    // Which value honor the answer is, so the rule can say why it is barred.
+    let role = match answer_tile {
+        Tile::Honor(honor) => match wind_from_honor(honor) {
+            Some(wind) if wind == round => format!("The round wind {answer}"),
+            Some(wind) if wind == seat => format!("Your seat wind {answer}"),
+            Some(_) => answer.to_string(),
+            None => format!("The dragon {answer}"),
+        },
+        Tile::Suited { .. } => answer.to_string(),
+    };
+
+    let rules = vec![
+        BookRule {
+            id: "pinfu_head_rule".to_string(),
+            rule: "The head of a pinfu hand must be a pair of number tiles or valueless wind \
+                   tiles, so while the hand has no committed head those loose tiles are what it \
+                   is waiting to pair."
+                .to_string(),
+            quote: "To claim pinfu, the head must be a pair of number tiles or valueless wind \
+                    tiles."
+                .to_string(),
+            citation: ch5_pinfu_head(
+                449,
+                "the head must be a pair of number tiles or valueless wind tiles",
+            ),
+            applies: format!(
+                "The hand has no committed head yet, so the head is still to be built: \
+                 {kept_text} can each grow into it."
+            ),
+        },
+        BookRule {
+            id: "value_honor_cannot_be_head".to_string(),
+            rule: "A value honor — a dragon, the round wind, or the seat wind — can never be the \
+                   head of pinfu: pairing it makes a yakuhai head, which is a different hand."
+                .to_string(),
+            quote: "the value tile fa cannot be the head of pinfu".to_string(),
+            citation: ch5_pinfu_head(458, "cannot be the head of {\\jap pinfu}"),
+            applies: format!(
+                "{role} is a value honor, so pairing it would give a yakuhai head instead: it \
+                 is the one tile in these fourteen that can never be the pinfu head."
+            ),
+        },
+        BookRule {
+            id: "keep_terminals_and_winds".to_string(),
+            rule: "Terminals and valueless winds look useless, but they are exactly the tiles \
+                   that may grow into the pinfu head, so they go only once a pair exists."
+                .to_string(),
+            quote: "try not to discard terminals or valueless wind tiles lightly when having a \
+                    pinfu hand"
+                .to_string(),
+            citation: ch5_pinfu_head(
+                449,
+                "try not to discard terminals or valueless wind tiles lightly",
+            ),
+            applies: format!("Discarding {answer} keeps {kept_text}."),
+        },
+    ];
+
+    Some(BookRationale {
+        summary: format!(
+            "Discard {answer}: every other lone tile here can still pair into the pinfu head, \
+             while the value honor never can."
+        ),
+        rules,
+        absent: vec![AbsentRule {
+            id: "yakuhai_head".to_string(),
+            note: "Pairing the value honor would give a yakuhai head, but that is a different \
+                   hand: this drill keeps pinfu alive rather than settling for the yakuhai."
+                .to_string(),
+        }],
+        source: ch5_pinfu_head(
+            449,
+            "the head must be a pair of number tiles or valueless wind tiles",
+        ),
+        caveats: vec![
+            "The head is not settled — the book's \"especially when a hand is lacking any \
+             pair\" case. The hand's only duplicate sits inside a bulge, which splits into a \
+             run plus a float, so it is shape rather than a committed head."
+                .to_string(),
+            "Value is held fixed: the answer is never the dora, and the hand is closed and \
+             2-away, so the answer comes from the head rule rather than from score or a wait \
+             comparison."
+                .to_string(),
+            format!(
+                "The {kept_count} tiles kept beside the value honor are the hand's lone \
+                 terminals and its valueless wind. They look useless the way the book's \
+                 1m / 9p / E do: pairing one is their way into the head."
+            ),
+        ],
+    })
+}
+
+/// True for a terminal or an honor: the tiles the book says to keep while the
+/// pinfu head is still open.
+fn is_terminal_or_honor(tile: Tile) -> bool {
+    match tile {
+        Tile::Honor(_) => true,
+        Tile::Suited { value, .. } => value == 1 || value == 9,
+    }
 }
 
 /// The ch. 9.1 lesson: never meld a hand that is both cheap and slow.
@@ -4243,6 +4411,7 @@ mod tests {
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
+            "pinfu_head",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             assert!(
@@ -4275,6 +4444,7 @@ mod tests {
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
+            "pinfu_head",
         ] {
             for _ in 0..10 {
                 let state = generate_puzzle(category).expect("scenario must generate");
@@ -4719,6 +4889,7 @@ mod tests {
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
+            "pinfu_head",
         ] {
             let state = generate_puzzle(category).expect("scenario must generate");
             citations.extend(
@@ -4834,6 +5005,99 @@ mod tests {
                 .any(|rule| rule.id == "pair_never_forms"),
             "the first-turn pair race must be stated"
         );
+    }
+
+    #[test]
+    fn pinfu_head_rationale_cites_the_head_rule_for_every_answer() {
+        let mut saw_dragon = false;
+        let mut saw_table_wind = false;
+
+        for run in 0..80 {
+            let state = generate_puzzle("pinfu_head").expect("lesson must generate");
+            let rationale = rationale_for(&state).expect("the head rule needs a rationale");
+
+            assert_eq!(rationale.source.chapter, 5, "run {run}");
+            assert_eq!(rationale.source.section, "Building the head", "run {run}");
+            assert_eq!(
+                rationale.source.source_needle,
+                "the head must be a pair of number tiles or valueless wind tiles",
+                "run {run}"
+            );
+
+            let ids: Vec<&str> = rationale
+                .rules
+                .iter()
+                .map(|rule| rule.id.as_str())
+                .collect();
+            assert_eq!(
+                ids,
+                vec![
+                    "pinfu_head_rule",
+                    "value_honor_cannot_be_head",
+                    "keep_terminals_and_winds"
+                ],
+                "run {run}"
+            );
+
+            let answer = state.correct_action.tile().expect("answer tile");
+            let answer_name = format_tile_for_display(answer, false);
+            assert!(
+                rationale.summary.contains(&answer_name),
+                "run {run}: {}",
+                rationale.summary
+            );
+            assert!(
+                rationale.rules[0].applies.contains("no committed head"),
+                "run {run}: the head is still to be built"
+            );
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("3 tiles kept")),
+                "run {run}: the book's three keepers must be named"
+            );
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("bulge")),
+                "run {run}: the duplicate must be explained as the bulge"
+            );
+            assert!(
+                rationale.rules[1].applies.contains(&answer_name)
+                    && rationale.rules[1].applies.contains("value honor"),
+                "run {run}: {}",
+                rationale.rules[1].applies
+            );
+            assert!(
+                rationale
+                    .absent
+                    .iter()
+                    .any(|absent| absent.id == "yakuhai_head"),
+                "run {run}: the yakuhai alternative must be named"
+            );
+
+            if matches!(answer, "5z" | "6z" | "7z") {
+                saw_dragon = true;
+                assert!(
+                    rationale.rules[1].applies.contains("dragon"),
+                    "run {run}: {}",
+                    rationale.rules[1].applies
+                );
+            } else {
+                saw_table_wind = true;
+                assert!(
+                    rationale.rules[1].applies.contains("round wind")
+                        || rationale.rules[1].applies.contains("seat wind"),
+                    "run {run}: {}",
+                    rationale.rules[1].applies
+                );
+            }
+        }
+
+        assert!(saw_dragon, "a dragon answer must be generated");
+        assert!(saw_table_wind, "a round/seat wind answer must be generated");
     }
 
     #[test]
