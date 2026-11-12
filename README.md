@@ -68,6 +68,28 @@ case.
 If the weights are missing, the app still trains: the hand is graded against the
 book only, the Mortal column says so, and no answer is labelled wrong.
 
+## Choosing scenarios
+
+The header's **Scenario** control opens a pool picker instead of a flat
+dropdown. Every lesson is filed under the Riichi Book 1 chapter and section it
+teaches (`ch8.4 · Defense against open hands`, `ch9.3 · Calling kan`, …), with a
+checkbox per lesson and a tri-state checkbox per section that selects or clears
+the whole group. The pool can be the whole catalogue ("All scenarios (random)",
+which keeps the AI drill out until the model is ready), one section, one lesson,
+or any hand-picked mix to randomise between. **Only** deals one lesson without
+touching the rest of the selection.
+
+The grouping is not a frontend list: `SCENARIO_MANIFEST` in
+`src/generator/mod.rs` carries each lesson's `BookSection`, `list_scenarios()`
+serialises it, and a Rust test pins every group's chapter to the citation the
+verdict panel shows. Lessons with no book rule (the Mortal drill) land in
+"Other".
+
+Edits are staged: ticking boxes changes the draft pool shown in the panel footer
+("Pool: 5 scenarios · 3 sections"), and **Deal from pool** generates one hand
+from it. Cancel, Escape, or a click outside discards the draft, so building a
+pool never fires a burst of generations or Mortal forward passes.
+
 ## AI Best Action scenario
 
 `AI Best Action` generates a random, deck-consistent table and presents whatever

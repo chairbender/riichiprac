@@ -134,7 +134,126 @@ pub struct ScenarioMeta {
     pub requires_ai: bool,
     /// Which perspectives grade this lesson.
     pub grading: ScenarioGrading,
+    /// The Riichi Book 1 section the lesson teaches, when it has one. Groups
+    /// the picker by chapter and section instead of the broad `category`.
+    pub book: Option<BookSection>,
 }
+
+/// A numbered Riichi Book 1 section a lesson teaches.
+///
+/// `section` is the book's own `\section` number (`ch8.4`), not a subsection,
+/// so picker groups line up with the chapter/section language the verdict panel
+/// uses. The titles are the book's own heading text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BookSection {
+    pub chapter: u8,
+    pub chapter_title: &'static str,
+    pub section: u8,
+    pub section_title: &'static str,
+}
+
+impl BookSection {
+    /// Stable grouping key, e.g. `ch8.4`.
+    pub fn key(self) -> String {
+        format!("ch{}.{}", self.chapter, self.section)
+    }
+
+    /// Picker label, e.g. `ch8.4 · Defense against open hands`.
+    pub fn label(self) -> String {
+        format!("{} · {}", self.key(), self.section_title)
+    }
+}
+
+const BOOK_CH3_BASIC: BookSection = BookSection {
+    chapter: 3,
+    chapter_title: "Riichi mahjong basics",
+    section: 2,
+    section_title: "Basic building blocks",
+};
+
+const BOOK_CH3_SHAPES: BookSection = BookSection {
+    chapter: 3,
+    chapter_title: "Riichi mahjong basics",
+    section: 3,
+    section_title: "Complex shapes",
+};
+
+const BOOK_CH4_REDUNDANT: BookSection = BookSection {
+    chapter: 4,
+    chapter_title: "The five-block method",
+    section: 1,
+    section_title: "Finding a redundant tile",
+};
+
+const BOOK_CH7_RIICHI: BookSection = BookSection {
+    chapter: 7,
+    chapter_title: "Riichi judgement",
+    section: 1,
+    section_title: "To riichi or not to riichi?",
+};
+
+const BOOK_CH7_INSTA: BookSection = BookSection {
+    chapter: 7,
+    chapter_title: "Riichi judgement",
+    section: 2,
+    section_title: "Insta-riichi",
+};
+
+const BOOK_CH7_DAMA: BookSection = BookSection {
+    chapter: 7,
+    chapter_title: "Riichi judgement",
+    section: 3,
+    section_title: "When not to riichi",
+};
+
+const BOOK_CH8_PUSH_FOLD: BookSection = BookSection {
+    chapter: 8,
+    chapter_title: "Defense judgement",
+    section: 1,
+    section_title: "To push or to fold?",
+};
+
+const BOOK_CH8_BASICS: BookSection = BookSection {
+    chapter: 8,
+    chapter_title: "Defense judgement",
+    section: 2,
+    section_title: "Defense basics",
+};
+
+const BOOK_CH8_AGAINST_RIICHI: BookSection = BookSection {
+    chapter: 8,
+    chapter_title: "Defense judgement",
+    section: 3,
+    section_title: "Defense against riichi",
+};
+
+const BOOK_CH8_OPEN_HANDS: BookSection = BookSection {
+    chapter: 8,
+    chapter_title: "Defense judgement",
+    section: 4,
+    section_title: "Defense against open hands",
+};
+
+const BOOK_CH9_MELD: BookSection = BookSection {
+    chapter: 9,
+    chapter_title: "Melding judgement",
+    section: 1,
+    section_title: "To meld or not to meld?",
+};
+
+const BOOK_CH9_KAN: BookSection = BookSection {
+    chapter: 9,
+    chapter_title: "Melding judgement",
+    section: 3,
+    section_title: "Calling kan",
+};
+
+const BOOK_CH9_TIPS: BookSection = BookSection {
+    chapter: 9,
+    chapter_title: "Melding judgement",
+    section: 4,
+    section_title: "Miscellaneous tips for melding",
+};
 
 /// How an answer is graded for a lesson.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -164,6 +283,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["block_theory", "discard", "ryanmen"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH4_REDUNDANT),
     },
     ScenarioMeta {
         id: ScenarioId::NakabukureReady,
@@ -181,6 +301,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_SHAPES),
     },
     ScenarioMeta {
         id: ScenarioId::ProtorunPriority,
@@ -190,6 +311,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["block_theory", "discard", "protorun", "ryanmen", "kanchan"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_BASIC),
     },
     ScenarioMeta {
         id: ScenarioId::RyankanBreak,
@@ -199,6 +321,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["block_theory", "discard", "ryankan", "shape", "ryanmen"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_SHAPES),
     },
     ScenarioMeta {
         id: ScenarioId::PairCount,
@@ -208,6 +331,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["block_theory", "discard", "pairs", "shape", "protorun"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_BASIC),
     },
     ScenarioMeta {
         id: ScenarioId::PairCountOpen,
@@ -225,6 +349,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH3_BASIC),
     },
     ScenarioMeta {
         id: ScenarioId::ChiitoitsuRiichiVsDama,
@@ -234,6 +359,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["chiitoitsu", "riichi", "dama"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH7_INSTA),
     },
     ScenarioMeta {
         id: ScenarioId::RiichiJudgement,
@@ -243,6 +369,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["riichi", "dama", "wait", "dealer", "han"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH7_RIICHI),
     },
     ScenarioMeta {
         id: ScenarioId::DamaBadWait,
@@ -253,6 +380,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["riichi", "dama", "bad_wait", "live_tiles", "honor_terminal"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH7_DAMA),
     },
     ScenarioMeta {
         id: ScenarioId::DamaGenbutsuWait,
@@ -263,6 +391,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["riichi", "dama", "genbutsu", "wait", "defense"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH7_DAMA),
     },
     ScenarioMeta {
         id: ScenarioId::DamaExpensiveHand,
@@ -280,6 +409,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH7_DAMA),
     },
     ScenarioMeta {
         id: ScenarioId::DamaImprovingHand,
@@ -290,6 +420,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["riichi", "dama", "improving", "early_turn", "tanki", "wait"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH7_DAMA),
     },
     ScenarioMeta {
         id: ScenarioId::SujiTrapRiichi,
@@ -300,6 +431,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["riichi", "suji", "trap", "wait", "discard", "defense"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_BASICS),
     },
     ScenarioMeta {
         id: ScenarioId::ShouminkanDecision,
@@ -309,6 +441,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["kan", "shouminkan", "decline"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH9_KAN),
     },
     ScenarioMeta {
         id: ScenarioId::AnkanDecision,
@@ -319,6 +452,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["kan", "ankan", "decline", "floating_tile"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH9_KAN),
     },
     ScenarioMeta {
         id: ScenarioId::WindDiscardOrder,
@@ -328,6 +462,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["melding", "seating", "wind", "discard", "first_turn"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH9_TIPS),
     },
     ScenarioMeta {
         id: ScenarioId::MeldOrNot,
@@ -338,6 +473,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["melding", "call", "pon", "pass", "cheap_slow"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH9_MELD),
     },
     ScenarioMeta {
         id: ScenarioId::DaiminkanDecision,
@@ -349,6 +485,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["kan", "daiminkan", "open_quad", "call", "value_band"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH9_KAN),
     },
     ScenarioMeta {
         id: ScenarioId::AiBestAction,
@@ -358,6 +495,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["ai", "mortal", "discard", "call", "any_decision"],
         requires_ai: true,
         grading: ScenarioGrading::MortalOnly,
+        book: None,
     },
     ScenarioMeta {
         id: ScenarioId::FoldToRiichi,
@@ -368,6 +506,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["defense", "betaori", "fold", "genbutsu", "discard"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_AGAINST_RIICHI),
     },
     ScenarioMeta {
         id: ScenarioId::PushOrFold,
@@ -385,6 +524,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_PUSH_FOLD),
     },
     ScenarioMeta {
         id: ScenarioId::DefenseSafetyChart,
@@ -394,6 +534,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["defense", "betaori", "safety_chart", "suji", "genbutsu"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_BASICS),
     },
     ScenarioMeta {
         id: ScenarioId::SujiKabeSafety,
@@ -411,6 +552,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         ],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_BASICS),
     },
     ScenarioMeta {
         id: ScenarioId::DefenseStuckHeuristic,
@@ -420,6 +562,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["defense", "betaori", "heuristic", "pairs", "discard"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_AGAINST_RIICHI),
     },
     ScenarioMeta {
         id: ScenarioId::OpenHandDefense,
@@ -430,6 +573,7 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         tags: &["defense", "open_hand", "chi", "neighbourhood", "discard"],
         requires_ai: false,
         grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_OPEN_HANDS),
     },
     ScenarioMeta {
         id: ScenarioId::PinfuHead,
@@ -446,6 +590,18 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
 /// Serializes the scenario catalogue for the frontend picker.
 pub fn list_scenarios_json() -> String {
     #[derive(Serialize)]
+    struct BookSectionJson {
+        chapter: u8,
+        chapter_title: &'static str,
+        section: u8,
+        section_title: &'static str,
+        /// Stable key the picker groups on, e.g. `ch8.4`.
+        key: String,
+        /// Ready-made display label, e.g. `ch8.4 · Defense against open hands`.
+        label: String,
+    }
+
+    #[derive(Serialize)]
     struct ScenarioMetaJson {
         id: &'static str,
         label: &'static str,
@@ -454,6 +610,8 @@ pub fn list_scenarios_json() -> String {
         tags: &'static [&'static str],
         requires_ai: bool,
         grading: &'static str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        book: Option<BookSectionJson>,
     }
 
     let scenarios: Vec<ScenarioMetaJson> = SCENARIO_MANIFEST
@@ -466,6 +624,14 @@ pub fn list_scenarios_json() -> String {
             tags: meta.tags,
             requires_ai: meta.requires_ai,
             grading: meta.grading.as_str(),
+            book: meta.book.map(|book| BookSectionJson {
+                chapter: book.chapter,
+                chapter_title: book.chapter_title,
+                section: book.section,
+                section_title: book.section_title,
+                key: book.key(),
+                label: book.label(),
+            }),
         })
         .collect();
 
@@ -820,6 +986,61 @@ mod tests {
     }
 
     #[test]
+    fn every_book_lesson_names_a_numbered_section() {
+        for meta in SCENARIO_MANIFEST {
+            match meta.book {
+                // The Mortal drill has no book rule to cite, so the picker
+                // files it under "Other" instead of inventing a group.
+                None => assert_eq!(meta.id, ScenarioId::AiBestAction),
+                Some(book) => {
+                    assert!(
+                        (1..=10).contains(&book.chapter),
+                        "{}: chapter {} outside the book",
+                        meta.id.as_str(),
+                        book.chapter
+                    );
+                    assert!(
+                        (1..=12).contains(&book.section),
+                        "{}: section {} outside the chapter",
+                        meta.id.as_str(),
+                        book.section
+                    );
+                    assert!(!book.chapter_title.is_empty());
+                    assert!(!book.section_title.is_empty());
+                    assert_eq!(book.key(), format!("ch{}.{}", book.chapter, book.section));
+                    assert!(book.label().starts_with(&book.key()));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn picker_group_matches_the_lesson_citation() {
+        for meta in SCENARIO_MANIFEST {
+            let Some(book) = meta.book else { continue };
+            let citation = crate::rationale::scenario_source(meta.id.as_str())
+                .unwrap_or_else(|| panic!("{} has no book citation", meta.id.as_str()));
+
+            // The group is a section (ch7.3); the citation is the subsection
+            // inside it, so only the chapter must line up.
+            assert_eq!(
+                book.chapter,
+                citation.chapter,
+                "{}: picker group ch{} but the citation is ch{}",
+                meta.id.as_str(),
+                book.chapter,
+                citation.chapter
+            );
+            assert_eq!(
+                book.chapter_title,
+                citation.chapter_title,
+                "{}: chapter title drifted from the citation",
+                meta.id.as_str()
+            );
+        }
+    }
+
+    #[test]
     fn list_scenarios_json_serializes_the_manifest() {
         let parsed: serde_json::Value =
             serde_json::from_str(&list_scenarios_json()).expect("manifest must be valid JSON");
@@ -830,11 +1051,19 @@ mod tests {
         assert_eq!(scenarios[0]["category"], "tile_efficiency");
         assert_eq!(scenarios[0]["requires_ai"], false);
         assert!(scenarios[0]["tags"].is_array());
+        assert_eq!(scenarios[0]["book"]["chapter"], 4);
+        assert_eq!(scenarios[0]["book"]["section"], 1);
+        assert_eq!(scenarios[0]["book"]["key"], "ch4.1");
+        assert_eq!(
+            scenarios[0]["book"]["label"],
+            "ch4.1 · Finding a redundant tile"
+        );
         assert!(
             scenarios
                 .iter()
                 .any(|scenario| scenario["id"] == "ai_best_action"
-                    && scenario["requires_ai"] == true)
+                    && scenario["requires_ai"] == true
+                    && scenario["book"].is_null())
         );
         assert!(
             scenarios

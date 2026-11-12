@@ -1034,7 +1034,11 @@ fn caveats_for(state: &GameState) -> Vec<String> {
     caveats
 }
 
-fn scenario_source(category: &str) -> Option<Citation> {
+/// The book citation the verdict panel shows as a lesson's provenance.
+///
+/// Exposed inside the crate so the scenario manifest can be checked against the
+/// citation it teaches instead of a second, hand-maintained chapter list.
+pub(crate) fn scenario_source(category: &str) -> Option<Citation> {
     match category {
         "chiitoitsu_riichi_vs_dama" => Some(ch7(CHIITOITSU_BOX, 345, "Riichi judgement")),
         "riichi_judgement" => Some(ch7(GENERAL_RULE, 55, "at least one")),
