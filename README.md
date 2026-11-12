@@ -77,9 +77,11 @@ action at generation time; it is not a hand-written lesson. It is a declared
 **Mortal drill**: the book column says there is no book rule, and the drill is
 graded by the model alone.
 
-The scenario requires the model weights. The picker marks it as model-backed,
-and the "All scenarios" random pool always skips it so that the default rotation
-only contains lessons with both perspectives. Select it by name to drill it.
+The scenario requires the model weights. Until the model is ready it stays out
+of the "All scenarios" pool so a first launch does not block on the download.
+After that it is drawn like any other lesson: the verdict panel renders the
+single Mortal perspective, with no book column and no agreement sampling.
+Select it by name to drill it directly.
 
 The AI scenario is generated entirely in Rust/WASM: the state is built from the
 shared deck, validated, encoded, evaluated once (plus a second pass when the
@@ -333,7 +335,9 @@ It is per-session and stays disabled until the model is ready; turning it on
 re-deals the hand on screen through the filter, and a short note under the table
 says how many candidates were rejected and why (for example "accepted on 5
 candidates (4 rejected: 3 tile mismatches, 1 incomparable answer)"), followed by
-the pinned situation when the lesson has one. The default
+the pinned situation when the lesson has one. The filter only applies to
+book-graded lessons: a Mortal drill has no book answer for Mortal to agree
+with, so it is dealt as usual and graded by the model alone. The default
 page load stays book-only and instant, and a browser without the weights can
 never enable it. The sampling runs in the inference worker, so the table stays
 interactive while it searches.
@@ -349,8 +353,8 @@ When the bound runs out the call returns an error naming the rejection counts
 instead of a hand the model would not play.
 
 `ai_best_action` is not sampled here (its answer is Mortal's own argmax; use
-`generate_ai_puzzle`), and the `mock_table` UI fixture is returned unchanged with
-no report.
+`generate_ai_puzzle`), but it still takes part in the app's random rotation. The
+`mock_table` UI fixture is returned unchanged with no report.
 
 ## Fuzzing for generator / Mortal disagreements
 

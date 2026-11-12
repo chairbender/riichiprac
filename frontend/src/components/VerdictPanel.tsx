@@ -71,7 +71,7 @@ export function VerdictPanel({
         className="verdict-panel"
         id="verdict-panel"
         tabIndex={-1}
-        aria-label="Book and Mortal comparison"
+        aria-label={isDrill ? 'Mortal drill verdict' : 'Book and Mortal comparison'}
       >
         <div className={`verdict-preanswer verdict-preanswer--${preAnswer.tone}`}>
           <span className="verdict-preanswer-text">{preAnswer.text}</span>
@@ -106,7 +106,7 @@ export function VerdictPanel({
       className={`verdict-panel verdict-panel--${tone}`}
       id="verdict-panel"
       tabIndex={-1}
-      aria-label="Book and Mortal comparison"
+      aria-label={isDrill ? 'Mortal drill verdict' : 'Book and Mortal comparison'}
     >
       <div className="verdict-columns">
         <div className="verdict-column verdict-column--book">
@@ -383,8 +383,12 @@ function preAnswerState({
   if (aiStatus === 'error') {
     return {
       text: aiError
-        ? `Mortal unavailable — this hand is graded against the book only. (${aiError})`
-        : 'Mortal unavailable — this hand is graded against the book only.',
+        ? isDrill
+          ? `Mortal unavailable — this drill cannot be graded without it. (${aiError})`
+          : `Mortal unavailable — this hand is graded against the book only. (${aiError})`
+        : isDrill
+          ? 'Mortal unavailable — this drill cannot be graded without it.'
+          : 'Mortal unavailable — this hand is graded against the book only.',
       tone: 'error',
       canPeek: false,
       canRetry: true,

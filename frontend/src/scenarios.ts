@@ -78,19 +78,19 @@ export function scenarioLabel(
 /**
  * Pick one real scenario at random for the "All scenarios" option.
  *
- * AI scenarios are excluded until the model is ready so a first launch does not
- * block on the weights. Mortal-only drills are always excluded: "All scenarios"
- * means "a lesson with both perspectives", which the dual verdict panel
- * promises. The drill stays reachable by name in the picker.
+ * AI-backed lessons are excluded until the model is ready so a first launch
+ * does not block on the weights; once it is, the pool is the whole catalogue,
+ * Mortal-only drills included. A drill has no book answer, so the
+ * "Mortal must agree" filter is not applied to it — `loadPuzzle` routes it to
+ * the evaluator instead. The verdict panel renders it as a single-perspective
+ * drill rather than pretending a book perspective exists.
  */
 export function pickRandomScenario(
   scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
   includeRequiresAi = true,
 ): ScenarioId {
   const pool = (scenarios.length > 0 ? scenarios : FALLBACK_SCENARIOS).filter(
-    (scenario) =>
-      (includeRequiresAi || !scenario.requires_ai) &&
-      scenario.grading !== 'mortal_only',
+    (scenario) => includeRequiresAi || !scenario.requires_ai,
   );
   const finalPool = pool.length > 0 ? pool : FALLBACK_SCENARIOS;
   return finalPool[Math.floor(Math.random() * finalPool.length)].id;
