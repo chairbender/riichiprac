@@ -364,10 +364,16 @@ fn finish_discard(seat: &mut ReplayedSeat, entry: &Value, last_draw: Option<u8>,
 
 // --- Tests ----------------------------------------------------------------
 
-/// Scenarios whose open melds the generator can back with a real discard: they
-/// have no melds at all, so every table they emit is replayable.
+/// Scenarios whose open melds the generator can back with a real discard.
+///
+/// The meld-free lessons emit replayable tables by construction. An open-meld
+/// lesson only qualifies once it plants the claimed tile in the source's river:
+/// `open_hand_defense` does, so its three calls land on Toimen's last three
+/// discards. The lessons in [`UNREACHABLE_CLAIMS`] still draw the claimed tile
+/// from the deck instead of discarding it.
 const EXPORTABLE: &[ScenarioId] = &[
     ScenarioId::ChiitoitsuRiichiVsDama,
+    ScenarioId::OpenHandDefense,
     ScenarioId::RiichiJudgement,
     ScenarioId::WindDiscardOrder,
     ScenarioId::DefenseSafetyChart,
