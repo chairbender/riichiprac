@@ -1581,6 +1581,12 @@ fn acceptance_without(state: &GameState, tile: Tile) -> Option<u8> {
 }
 
 /// The ch. 9 seating tip: throw the right player's valueless wind first.
+///
+/// The book is not saying the right player must never Pon you. A Pon on your
+/// own discard comes from the caller's left player, which skips no turn; the
+/// bad case is the right player pairing the wind and Ponning your left
+/// player's discard later. Throwing the copy first spends it on the harmless
+/// call and pulls the other copies out before a pair can form.
 fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
     let answer_code = state.correct_action.tile()?;
     let answer = format_tile_for_display(answer_code, false);
@@ -1601,24 +1607,24 @@ fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
 
     let rules = vec![
         BookRule {
-            id: "call_benefits_right_player".to_string(),
-            rule: "A call by the right player skips the facing player's turn and gives the \
-                   right player an extra draw, so the right player's call is the one most \
-                   worth denying."
+            id: "calls_move_turns".to_string(),
+            rule: "A call transfers a turn, not just tiles: the caller's right player gains the \
+                   tempo, so a Pon by the right player from your left player skips your turn."
                 .to_string(),
             quote: "your act of calling pon/kan benefits the right player while penalizing the \
                     left and the facing players"
                 .to_string(),
             citation: ch9_seating(440, "benefits the right player while penalizing"),
             applies: format!(
-                "The right player's seat wind is {shimocha_wind:?}: a Pon on it would skip the \
-                 facing player and hand the right player the extra draw."
+                "The right player's seat wind is {shimocha_wind:?}: a Pon on it, called from \
+                 your left player, would skip your turn."
             ),
         },
         BookRule {
             id: "shimocha_wind_first".to_string(),
             rule: "Of the valueless winds, throw the right player's wind first and the facing \
-                   player's wind second."
+                   player's second: both can skip your turn, while the left player's call \
+                   cannot."
                 .to_string(),
             quote: "When discarding valueless wind tiles, discard the right player's wind first, \
                     then the facing player's wind next."
@@ -1630,22 +1636,35 @@ fn wind_discard_rationale(state: &GameState) -> Option<BookRationale> {
             ),
         },
         BookRule {
-            id: "discard_it_early".to_string(),
-            rule: "A wind worth denying to the right player is thrown as early as possible, \
-                   before they can pair it."
+            id: "pon_from_you_skips_nobody".to_string(),
+            rule: "Throw it from your own hand: a Pon on your discard comes from the caller's \
+                   left player, which skips nobody."
                 .to_string(),
             quote: "you should do so sooner rather than later".to_string(),
             citation: ch9_seating(452, "sooner rather than later"),
-            applies: "This is the first discard, so the wind leaves before anyone has shown a \
-                      pair."
+            applies: "This is the first discard, so the copy leaves before the right player \
+                      could pair it and call on someone else's tile."
+                .to_string(),
+        },
+        BookRule {
+            id: "pair_never_forms".to_string(),
+            rule: "A first-turn wind tends to pull the other copies out in the same turn, so \
+                   the pair never forms and the later Pon never happens."
+                .to_string(),
+            quote: "there is a good chance that another player may do the same in the 1st turn \
+                    as well, lowering the chance that the South player builds a pair"
+                .to_string(),
+            citation: ch9_seating(452, "good chance that another player may do the same"),
+            applies: "Everyone is choosing a first discard, so the other copies can leave the \
+                      table before this one pairs."
                 .to_string(),
         },
     ];
 
     Some(BookRationale {
         summary: format!(
-            "Discard the right player's wind ({answer}) first: a Pon on their wind is the call \
-             the book most wants to deny."
+            "Discard the right player's wind ({answer}) first: a Pon from them can skip your \
+             turn, and a first-turn wind is unlikely to come back as a pair."
         ),
         rules,
         absent: Vec::new(),
@@ -3286,9 +3305,10 @@ mod tests {
         assert_eq!(
             ids,
             vec![
-                "call_benefits_right_player",
+                "calls_move_turns",
                 "shimocha_wind_first",
-                "discard_it_early"
+                "pon_from_you_skips_nobody",
+                "pair_never_forms"
             ]
         );
         assert!(
@@ -3302,6 +3322,45 @@ mod tests {
             rationale.rules
         );
         assert!(!rationale.summary.is_empty());
+    }
+
+    /// The seating tip's danger is a Pon the right player calls from our left
+    /// player. A Pon on our own discard skips nobody, so the rationale must
+    /// not promise a skipped turn for that case.
+    #[test]
+    fn wind_discard_rationale_pins_the_pon_source_of_the_skipped_turn() {
+        let state = generate_puzzle("wind_discard_order").expect("lesson must generate");
+        let rationale = rationale_for(&state).expect("the seating tip needs a rationale");
+
+        let cost = rationale
+            .rules
+            .iter()
+            .find(|rule| rule.id == "calls_move_turns")
+            .expect("the seating cost must be stated");
+        assert!(
+            cost.applies.contains("from your left player"),
+            "the skipped turn comes from the left player's discard: {}",
+            cost.applies
+        );
+
+        let safe = rationale
+            .rules
+            .iter()
+            .find(|rule| rule.id == "pon_from_you_skips_nobody")
+            .expect("the harmless Pon source must be stated");
+        assert!(
+            safe.rule.contains("skips nobody"),
+            "a Pon on our own discard must not be described as skipping a turn: {}",
+            safe.rule
+        );
+
+        assert!(
+            rationale
+                .rules
+                .iter()
+                .any(|rule| rule.id == "pair_never_forms"),
+            "the first-turn pair race must be stated"
+        );
     }
 
     #[test]
