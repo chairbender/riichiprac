@@ -90,11 +90,28 @@ action list, and the evaluation. React only renders and grades.
 
 ## Defense scenarios
 
-Three lessons train defense. The first two answer an opponent's Riichi and the
-third reads an open hand's post-`chii` discard. None asks about hand value: the
-generated hand is never ready, so the question is only which tile is safest to
-let go. All are graded by the book's rule; Mortal's answer appears beside it
-after you answer.
+Four lessons train defense. Three answer an opponent's Riichi and the fourth
+reads an open hand's post-`chii` discard. The first two start from a hand that is
+never ready, so the question is only which tile is safest to let go; the fold
+lesson additionally requires the hand to be junk, which is what makes folding
+the book's answer. All are graded by the book's rule; Mortal's answer appears
+beside it after you answer.
+
+**Defense: Fold to Riichi** is ch. 8.1's push/fold shortcut. The hand is 2-away
+with no dora and no value, and one opponent has declared Riichi from a deep
+river:
+
+> Fold if **two** of the following conditions are met: 1-away (or worse) hand;
+> Low scoring hand; Bad wait. — ch8:31-36
+
+The hand meets the first two, so "Defense against riichi" applies: "If you
+cannot satisfy the above criteria, you must completely fold (betaori)"
+(ch8:340). Exactly one tile in the hand is 100% safe — the threat's genbutsu
+(ch8:100) — and it sits inside a pair, a protorun, or a completed run, so the
+fold visibly gives up a block. Every other tile is strictly more dangerous on
+the safety chart, so there is one answer. The threat is genuinely tenpai on the
+declaration and never on the safe tile, and every hand tile type is kept out of
+every river except the answer, so no second tile can be genbutsu.
 
 **Defense: Safest Discard** builds a board where Riichi Book 1, ch. 8's safety
 ranking (`tbl:safety`) has a real answer — a genbutsu, a suji tile, a no-chance
@@ -123,7 +140,10 @@ the read is true on the hidden hand as well as the visible table.
 The safety chart itself is `src/safety.rs`: the fifteen rows of `tbl:safety`
 plus the suji and blockade arithmetic they are derived from, and the
 `in_open_hand_neighbourhood` helper the ch. 8.4 lesson shares with its
-rationale. The generator only places tiles; every rank is recomputed from what
+rationale. `SafetyFacts::is_absolutely_safe` encodes the chapter's three 100%
+kinds (genbutsu, a fourth honor, a no-chance tile), which is how the fold lesson
+insists the answer is the hand's only tile that is safe rather than merely
+rankable. The generator only places tiles; every rank is recomputed from what
 the defender can see (the threat's river, all four rivers, open melds, the dora
 indicator, and the defender's own hand).
 

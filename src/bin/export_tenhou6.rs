@@ -42,6 +42,7 @@ const EXPORTABLE: &[ScenarioId] = &[
     ScenarioId::WindDiscardOrder,
     ScenarioId::DefenseSafetyChart,
     ScenarioId::DefenseStuckHeuristic,
+    ScenarioId::FoldToRiichi,
 ];
 
 #[derive(Debug)]

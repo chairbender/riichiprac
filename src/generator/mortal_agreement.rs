@@ -855,6 +855,7 @@ mod tests {
             "ryanmen_protorun",
             "nakabukure_ready",
             "defense_safety_chart",
+            "fold_to_riichi",
             "dama_genbutsu_wait",
             "suji_trap_riichi",
             "wind_discard_order",
