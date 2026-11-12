@@ -384,8 +384,8 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
     ScenarioMeta {
         id: ScenarioId::PinfuHead,
         label: "Pinfu: Build the Head",
-        description: "No pair yet: keep the terminals and valueless winds, because the value \
-                      honor can never be the pinfu head.",
+        description: "The head is still open: keep the terminals and valueless winds, because \
+                      the value honor can never be the pinfu head.",
         category: ScenarioCategory::YakuDecision,
         tags: &["yaku", "pinfu", "head", "discard", "honor"],
         requires_ai: false,

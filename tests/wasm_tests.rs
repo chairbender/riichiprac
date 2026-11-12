@@ -3556,7 +3556,8 @@ fn test_pinfu_head_payload() {
             assert!(player["discards"].as_array().unwrap().len() <= 1);
         }
 
-        // No pair yet, and exactly one value honor: the answer.
+        // No committed head: the bulge's doubled middle is the only repeat,
+        // and the hand keeps one valueless wind beside the value honor.
         let tiles: Vec<&str> = val["tiles"]
             .as_array()
             .unwrap()
@@ -3564,10 +3565,32 @@ fn test_pinfu_head_payload() {
             .map(|tile| tile.as_str().unwrap())
             .collect();
         assert_eq!(tiles.len(), 14);
-        let mut sorted = tiles.clone();
-        sorted.sort_unstable();
-        sorted.dedup();
-        assert_eq!(sorted.len(), 14, "run {run}: the hand holds a pair");
+        let mut counts = std::collections::BTreeMap::new();
+        for code in &tiles {
+            *counts.entry(*code).or_insert(0usize) += 1;
+        }
+        let repeated: Vec<&&str> = counts
+            .iter()
+            .filter(|(_, count)| **count > 1)
+            .map(|(code, _)| code)
+            .collect();
+        assert_eq!(
+            repeated.len(),
+            1,
+            "run {run}: one repeated type: {repeated:?}"
+        );
+        assert_eq!(counts[repeated[0]], 2, "run {run}: the bulge's middle");
+
+        let terminals = tiles
+            .iter()
+            .filter(|code| {
+                (code.starts_with('1') || code.starts_with('9'))
+                    && matches!(code.chars().last(), Some('m' | 'p' | 's'))
+            })
+            .count();
+        assert_eq!(terminals, 2, "run {run}: two terminal floats");
+        let honors = tiles.iter().filter(|code| code.ends_with('z')).count();
+        assert_eq!(honors, 2, "run {run}: one value honor and one wind");
 
         let seat_wind = wind_code(human["wind"].as_str().unwrap());
         let round_wind = wind_code(val["round_wind"].as_str().unwrap());

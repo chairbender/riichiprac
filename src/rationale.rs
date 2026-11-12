@@ -2000,18 +2000,16 @@ fn pinfu_head_rationale(state: &GameState) -> Option<BookRationale> {
         })
         .collect();
 
-    // The lone tiles the book says to keep: a head-capable tile held once, with
-    // nothing of its suit within two ranks.
+    // The loose tiles the book says to keep: its lone terminals and its
+    // valueless wind. The lesson keeps every terminal out of its blocks (the
+    // bulges and protoruns are middle shapes), so these are exactly the hand's
+    // spare floats, not tiles a run already needs.
     let kept: Vec<String> = tiles
         .iter()
         .filter(|(_, tile)| *tile != answer_tile)
         .filter(|(_, tile)| can_be_pinfu_head(*tile, round, seat))
+        .filter(|(_, tile)| is_terminal_or_honor(*tile))
         .filter(|(_, tile)| tiles.iter().filter(|(_, other)| other == tile).count() == 1)
-        .filter(|(_, tile)| {
-            !tiles
-                .iter()
-                .any(|(_, other)| other != tile && neighbours_within_two(*tile, *other))
-        })
         .map(|(code, _)| format_tile_for_display(code, false))
         .collect();
     let kept_text = if kept.is_empty() {
@@ -2036,8 +2034,8 @@ fn pinfu_head_rationale(state: &GameState) -> Option<BookRationale> {
         BookRule {
             id: "pinfu_head_rule".to_string(),
             rule: "The head of a pinfu hand must be a pair of number tiles or valueless wind \
-                   tiles, so while the hand has no pair those lone tiles are what it is waiting \
-                   to pair."
+                   tiles, so while the hand has no committed head those loose tiles are what it \
+                   is waiting to pair."
                 .to_string(),
             quote: "To claim pinfu, the head must be a pair of number tiles or valueless wind \
                     tiles."
@@ -2047,8 +2045,8 @@ fn pinfu_head_rationale(state: &GameState) -> Option<BookRationale> {
                 "the head must be a pair of number tiles or valueless wind tiles",
             ),
             applies: format!(
-                "The hand has no pair yet, so the head is still to be built: {kept_text} can \
-                 each grow into it."
+                "The hand has no committed head yet, so the head is still to be built: \
+                 {kept_text} can each grow into it."
             ),
         },
         BookRule {
@@ -2096,36 +2094,29 @@ fn pinfu_head_rationale(state: &GameState) -> Option<BookRationale> {
             "the head must be a pair of number tiles or valueless wind tiles",
         ),
         caveats: vec![
-            "The hand has no pair yet — the book's \"especially when a hand is lacking any \
-             pair\" case — so the head is still the block that pinfu has to build."
+            "The head is not settled — the book's \"especially when a hand is lacking any \
+             pair\" case. The hand's only duplicate sits inside a bulge, which splits into a \
+             run plus a float, so it is shape rather than a committed head."
                 .to_string(),
             "Value is held fixed: the answer is never the dora, and the hand is closed and \
              2-away, so the answer comes from the head rule rather than from score or a wait \
              comparison."
                 .to_string(),
             format!(
-                "The {kept_count} tiles kept beside the value honor are isolated on purpose (a \
-                 terminal with nothing of its suit within two ranks, or a valueless wind), so \
-                 pairing one really is their only use."
+                "The {kept_count} tiles kept beside the value honor are the hand's lone \
+                 terminals and its valueless wind. They look useless the way the book's \
+                 1m / 9p / E do: pairing one is their way into the head."
             ),
         ],
     })
 }
 
-/// True when two suited tiles of one suit sit within two ranks.
-fn neighbours_within_two(left: Tile, right: Tile) -> bool {
-    match (left, right) {
-        (
-            Tile::Suited {
-                suit: left_suit,
-                value: left_value,
-            },
-            Tile::Suited {
-                suit: right_suit,
-                value: right_value,
-            },
-        ) => left_suit == right_suit && (left_value as i16 - right_value as i16).abs() <= 2,
-        _ => false,
+/// True for a terminal or an honor: the tiles the book says to keep while the
+/// pinfu head is still open.
+fn is_terminal_or_honor(tile: Tile) -> bool {
+    match tile {
+        Tile::Honor(_) => true,
+        Tile::Suited { value, .. } => value == 1 || value == 9,
     }
 }
 
@@ -4265,8 +4256,22 @@ mod tests {
                 rationale.summary
             );
             assert!(
-                rationale.rules[0].applies.contains("no pair"),
+                rationale.rules[0].applies.contains("no committed head"),
                 "run {run}: the head is still to be built"
+            );
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("3 tiles kept")),
+                "run {run}: the book's three keepers must be named"
+            );
+            assert!(
+                rationale
+                    .caveats
+                    .iter()
+                    .any(|caveat| caveat.contains("bulge")),
+                "run {run}: the duplicate must be explained as the bulge"
             );
             assert!(
                 rationale.rules[1].applies.contains(&answer_name)

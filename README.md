@@ -193,18 +193,27 @@ stops right after Kamicha's first discard, which is when the human first draws.
 > other hand, the value tile fa cannot be the head of pinfu. We should discard
 > fa in this case. — ch5:458
 
-Every hand is closed, 2-away, and holds **no pair yet**: two complete runs and
-two side-wait protoruns, three lone terminals or valueless winds with nothing of
-their suit within two ranks, and one lone value honor — a dragon, the round wind,
-or the seat wind. The answer is the value honor, and it is proved structurally
-rather than by score or acceptance: it is the only tile in the fourteen that can
-never be the pinfu head, so the three seemingly useless singles stay.
+Every hand copies the *texture* of the book's own example (`1m 4m 6m | 23p 67p
+9p | 5667s | E fa`), not a clean template: two side-wait protoruns, a middle
+closed wait that looks like a float, a bulging float whose doubled middle is the
+hand's only duplicate, one isolated terminal, one terminal exactly two ranks
+from a block (the book's `9p` beside `67p`), one valueless wind, and one lone
+value honor — a dragon, the round wind, or the seat wind. The head is therefore
+**not settled**: the only repeat is shape inside the bulge, and the bulges and
+closed waits are middle shapes, so no terminal ever lives in a block and both
+terminals really are spare floats.
+
+The answer is that value honor, proved structurally rather than by score or
+acceptance: it is the only tile in the fourteen that can never be the pinfu
+head. The distractors are what the book's example turns on — the duplicate, the
+closed wait, and the terminal beside a protorun all look discardable — so the
+drill is a read of the whole hand, not a hunt for the single honor.
 
 The first-turn table has no calls, Riichi, or furiten, and the dora is never the
 answer, so nothing but the head rule can decide the discard. The book panel
-names the tiles kept and why the value honor is barred, and "Not this hand"
-notes that pairing the value honor would give a yakuhai head instead — a
-different hand from pinfu.
+names the tiles kept (the lone terminals and the valueless wind) and why the
+value honor is barred, and "Not this hand" notes that pairing the value honor
+would give a yakuhai head instead — a different hand from pinfu.
 
 ## Hosting the model weights
 
