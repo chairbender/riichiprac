@@ -1,4 +1,19 @@
+/*
+ * Type scale.
+ *
+ * Every font size in App.css is in `rem`, so this one root size is the single
+ * knob for the whole UI: 118.75% of the browser's base (19px at the usual
+ * 16px) scales the type up by ~19% without touching the individual rules.
+ * Using a percentage rather than a fixed px size keeps the user's own
+ * browser/OS font-size preference as the starting point.
+ *
+ * `text-size-adjust: 100%` stops iOS Safari from inflating text on its own in
+ * landscape, so the layout stays the one verified on a phone.
+ */
 :root {
+  font-size: 118.75%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
     sans-serif;

@@ -8,10 +8,19 @@
  * four player rows, and the human hand docked to the bottom of the viewport.
  * No square table, no absolute positioning, no skeuomorphism.
  */
+/*
+ * Tile sizes.
+ *
+ * The 14-tile hand and the 6-wide river are what bound these numbers, not the
+ * tiles themselves: on a phone the hand tiles are limited by the width of one
+ * grid column, so the clamp only caps them on wide screens. These values sit at
+ * roughly the largest tiles that still fit one hand row and one river (plus its
+ * label column) without a horizontal scrollbar at the 320px design floor.
+ */
 .app-shell {
-  --river-tile-size: clamp(20px, 6.2vw, 30px);
+  --river-tile-size: clamp(25px, 7.3vw, 35px);
   --river-tile-height: calc(var(--river-tile-size) * 4 / 3);
-  --hand-tile-size: clamp(18px, 5.4vw, 32px);
+  --hand-tile-size: clamp(21px, 6.7vw, 38px);
 
   display: flex;
   flex-direction: column;
@@ -52,7 +61,7 @@
 
 .app-title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #e7ecf3;
@@ -85,8 +94,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  max-width: 210px;
-  padding: 6px 8px;
+  max-width: 240px;
+  padding: 8px 10px;
   border: 1px solid #34506e;
   border-radius: 8px;
   background-color: #1a2a3c;
@@ -272,7 +281,7 @@
 
 .scenario-item-only {
   flex: none;
-  padding: 2px 6px;
+  padding: 4px 8px;
   border: 1px solid #34506e;
   border-radius: 6px;
   background-color: transparent;
@@ -318,7 +327,7 @@
 
 .scenario-picker-cancel,
 .scenario-picker-deal {
-  padding: 5px 10px;
+  padding: 8px 12px;
   border: 1px solid #34506e;
   border-radius: 8px;
   font-family: inherit;
@@ -373,6 +382,8 @@
 }
 
 .app-toggle input {
+  width: 1.15em;
+  height: 1.15em;
   margin: 0;
   accent-color: #4f8bc9;
   cursor: pointer;
@@ -388,7 +399,7 @@
 }
 
 .new-hand-button {
-  padding: 6px 12px;
+  padding: 8px 14px;
   border: 1px solid #34506e;
   border-radius: 8px;
   background-color: #1a2a3c;
@@ -418,7 +429,7 @@
  */
 .new-hand-button--dock {
   width: 100%;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-color: #3b5bdb;
   background-color: #1c2b52;
   font-size: 0.84rem;
@@ -480,10 +491,13 @@
 }
 
 .table-stat-label {
+  min-width: 0;
+  overflow: hidden;
   color: #8b94a7;
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.06em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -501,7 +515,7 @@
 
 .table-riichi-stick {
   display: block;
-  width: 30px;
+  width: 32px;
   height: auto;
 }
 
@@ -513,7 +527,7 @@
 
 .dora-tile {
   display: block;
-  width: 24px;
+  width: 28px;
   height: auto;
 }
 
@@ -521,8 +535,9 @@
 .table-legend {
   grid-column: 1 / -1;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 2px 8px;
   min-width: 0;
   padding: 4px 8px;
   border: 1px solid #262b36;
@@ -534,6 +549,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-width: 0;
+  flex: 1 1 auto;
   color: #b9c2d0;
   font-size: 0.7rem;
 }
@@ -662,7 +679,7 @@
 
 .riichi-stick {
   display: block;
-  width: 46px;
+  width: 54px;
   height: auto;
 }
 
@@ -809,7 +826,7 @@
    * Four rivers and the compass have to fit across the width, so the top-down
    * view draws its tiles smaller than the stacked rows do.
    */
-  --river-tile-size: clamp(13px, 4vw, 26px);
+  --river-tile-size: clamp(15px, 4.6vw, 30px);
   --river-tile-height: calc(var(--river-tile-size) * 4 / 3);
   --physical-gap: clamp(2px, 0.6vw, 4px);
 
@@ -1146,8 +1163,8 @@
  */
 .compass-wind {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   filter: brightness(0) invert(1);
 }
 
@@ -1173,7 +1190,7 @@
  */
 .compass-stick {
   display: block;
-  width: 40px;
+  width: 47px;
   height: auto;
 }
 
@@ -1213,13 +1230,15 @@
   flex-direction: column;
   gap: 5px;
 
-  padding: 8px 10px;
+  padding: 8px 4px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
   border-top: 1px solid #2a3140;
   background-color: #12141a;
 }
 
 .hand-dock-label {
+  /* Keep the hint aligned with the first tile rather than the old 10px edge. */
+  padding: 0 4px;
   color: #8b94a7;
   font-size: 0.66rem;
   font-weight: 700;
@@ -1247,7 +1266,7 @@
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border: 1px solid #4a2a2a;
   border-radius: 10px;
   background-color: #1d1717;
@@ -1287,7 +1306,7 @@
 
 .riichi-toggle-stick {
   display: block;
-  width: 32px;
+  width: 38px;
   height: auto;
   flex: 0 0 auto;
 }
@@ -1319,7 +1338,7 @@
   justify-content: center;
   gap: 7px;
 
-  padding: 8px 12px;
+  padding: 10px 14px;
   border: 1px solid #4a3a1f;
   border-radius: 10px;
   background-color: #1d1a14;
@@ -1360,7 +1379,7 @@
 
 .kan-toggle-icon {
   display: block;
-  width: 36px;
+  width: 42px;
   height: auto;
   flex: 0 0 auto;
 }
@@ -1413,7 +1432,7 @@
   display: grid;
   align-items: end;
   justify-items: center;
-  gap: clamp(1px, 0.5vw, 3px);
+  gap: clamp(1px, 0.4vw, 3px);
   width: 100%;
   padding-bottom: 2px;
 }
@@ -1431,7 +1450,8 @@
   align-items: flex-end;
   justify-content: center;
   width: 100%;
-  padding: 0;
+  /* Extra height above the tile gives the thumb a taller target than the tile. */
+  padding: 4px 0 0;
   border: 0;
   border-radius: 5px;
   background-color: transparent;
@@ -1614,7 +1634,7 @@
 
 .answer-summary-details {
   margin-left: auto;
-  padding: 3px 10px;
+  padding: 6px 12px;
   border: 1px solid #4dabf7;
   border-radius: 999px;
   background-color: transparent;
@@ -1691,8 +1711,8 @@
 }
 
 .ai-spinner {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   flex: 0 0 auto;
   border: 2px solid #33415c;
   border-top-color: #74c0fc;
@@ -1998,7 +2018,7 @@
 }
 
 .state-button {
-  padding: 6px 10px;
+  padding: 8px 12px;
   border: 1px solid #3b5bdb;
   border-radius: 8px;
   background-color: #1c2b52;
@@ -2055,7 +2075,11 @@
   background-color: #10141c;
   color: #dee2e6;
   font: inherit;
-  font-size: 0.75rem;
+  /*
+   * 1rem, not a smaller label size: iOS Safari zooms the whole page when a
+   * focused input's text is under 16px, which would undo the layout mid-edit.
+   */
+  font-size: 1rem;
   line-height: 1.4;
   resize: vertical;
 }
@@ -2151,7 +2175,11 @@
   border: 1px solid #303748;
   border-radius: 10px;
   background-color: #171a21;
-  scroll-margin-top: 76px;
+  /*
+   * No fixed scroll-margin: the sticky header's height changes with the type
+   * scale and with how its controls wrap, so `showVerdict` offsets the scroll
+   * by the header's measured height instead.
+   */
 }
 
 .verdict-panel:focus {
@@ -2191,10 +2219,13 @@
 
 .verdict-preanswer-text {
   flex: 1 1 200px;
+  /* The error path can carry a long weights URL; wrap it instead of widening the page. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .verdict-peek {
-  padding: 3px 10px;
+  padding: 6px 12px;
   border: 1px solid #4dabf7;
   border-radius: 999px;
   background-color: transparent;
@@ -2214,7 +2245,12 @@
   gap: 8px;
 }
 
-@media (max-width: 339px) {
+/*
+ * The two columns need a real minimum width now that the type is larger: below
+ * this the recommendation, marks, and probability lines wrap into a mess, so
+ * fold them into one column (both fit on a 390px phone; narrow phones stack).
+ */
+@media (max-width: 380px) {
   .verdict-columns {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2275,7 +2311,7 @@
 }
 
 .verdict-tile {
-  width: 22px;
+  width: 26px;
   height: auto;
 }
 
@@ -2348,9 +2384,14 @@
   list-style: none;
 }
 
+/*
+ * The label column flexes and the bar keeps a small fixed floor so the row
+ * still fits inside a verdict column on a 320px phone; fixed 70px and 38px
+ * tracks used to overflow once the type grew.
+ */
 .call-report-option {
   display: grid;
-  grid-template-columns: minmax(58px, 1fr) 70px 38px;
+  grid-template-columns: minmax(48px, 1fr) minmax(28px, 64px) auto;
   align-items: center;
   gap: 5px;
   color: #e7ecf3;
