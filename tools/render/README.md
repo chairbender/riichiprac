@@ -85,7 +85,11 @@ It serves a browser UI (no build step, local only) with:
 - **top fillet spread** and **bottom fillet spread** — the two independent
   Bézier controls, drawn live as the exact cross-section the mesh uses;
 - **mask blur** (mm), **paint edge** (fraction + mm inset) and **preview
-  samples**.
+  samples**;
+- **lighting**: key azimuth/elevation/power/softness, fill azimuth/elevation/
+  power, rim power and ambient strength, with a live top-view compass of the
+  rig. The preview shows the effect on the decal; the body sprites need the full
+  render.
 
 "Render preview" writes a throwaway spec, rasterises the recoloured symbol and
 renders **only the decal** at 2×, 48 samples, a 0.6 carve grid and 4 AO samples —
@@ -285,15 +289,28 @@ decal edge. The fix (unpremultiply the bilinearly sampled decal before the
 straight-alpha `over`) is in `warp_onto`; if a seam ever returns, check alpha
 handling there before touching the inset.
 
-### Lighting: top-heavy key
+### Lighting: top-heavy key, spherical controls
 
 Tenhou reads as a table lit from above: the edge of a tile facing up is the
-brightest surface. The key is a large area light almost overhead (~52 units up,
-20 units in front of the hand row), so the top edge (normal +Z) takes ~95% of
-its irradiance while the vertical face takes ~29%. A lower front-right fill and
-a rear rim keep the face readable and give the side and bevel shapes their
-distinction. The effect comes from the light *angle*, not from moving the light
-closer — see the position-independence constraint below.
+brightest surface. The rig is stored in **spherical coordinates** around each
+light's target (`azimuthDeg`, `elevationDeg`, `distance`; azimuth 0 is front,
+90 right, 180 behind, 270 left), which is what the tuner's direction sliders
+edit. `build_lights` turns those into positions; do not hand-place xyz.
+
+- **key**: azimuth 0, elevation 74, 56 units out. Centred over the hand row, so
+  the up-facing top edge takes ~95% of its irradiance and the vertical face
+  ~28%; nothing is biased to the left any more.
+- **fill**: azimuth 46, elevation 12, 34 units. Lights the face and the right
+  side.
+- **rim**: azimuth 170, elevation 45, 40 units, behind.
+- **ambient** world strength 0.35.
+
+Watch the fill azimuth: at 25° it sits close to the face's specular mirror and
+the glossy paint picks up a broad white sheen (measured red floor went from
+RGB(204, 18, 1) at 46° to RGB(214, 163, 168) at 25°). Keep it around 45° or drop
+its power; the tuner exposes it so you can see this directly. The effect comes
+from the light *angle*, not from moving the light closer — see the
+position-independence constraint below.
 
 ### Lighting must be position-independent for decals (§5/§12.3 consequence)
 

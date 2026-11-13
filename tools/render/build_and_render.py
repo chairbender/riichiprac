@@ -322,6 +322,13 @@ def build_camera(scene: bpy.types.Scene, spec: dict) -> bpy.types.Object:
 
 
 def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
+    """Place the area rig from spherical coordinates around each target.
+
+    azimuth 0 points at the player (front, -Y), 90 is +X (right), 180 is +Y
+    (behind) and 270 is -X (left); elevation is degrees above the horizontal.
+    That makes "light from above the tile" a single number and keeps the tuner's
+    direction sliders meaningful.
+    """
     for entry in spec["lights"]:
         data = bpy.data.lights.new(entry["id"], "AREA")
         data.shape = "RECTANGLE"
@@ -329,9 +336,19 @@ def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
         data.size_y = entry["sizeY"]
         data.energy = entry["energyW"]
         data.color = hex_linear(entry["hex"])[:3]
+        target = Vector(entry["target"])
+        azimuth = math.radians(entry["azimuthDeg"])
+        elevation = math.radians(entry["elevationDeg"])
+        direction = Vector(
+            (
+                math.sin(azimuth) * math.cos(elevation),
+                -math.cos(azimuth) * math.cos(elevation),
+                math.sin(elevation),
+            )
+        )
         obj = new_object(entry["id"], data)
-        obj.location = Vector(entry["location"])
-        aim(obj, entry["target"])
+        obj.location = target + direction * entry["distance"]
+        aim(obj, target)
 
 
 # --------------------------------------------------------------------------- #

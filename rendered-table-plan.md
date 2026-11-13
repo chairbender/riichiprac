@@ -414,9 +414,13 @@ for Tasks 2–3:
   face. Consequence for Task 3: each code needs its symbol-only SVG and a
   ~330k-vertex face at `gridScale: 1.0`; expect ~80 s per decal render with AO
   and cut `gridScale`/AO samples for the 190-decal set.
-- **Lighting is top-heavy.** The key sits almost overhead, so the up-facing edge
-  is the brightest surface (Tenhou's read); the fill is low and frontal, and the
-  rim is behind. The angles do the work; the rig stays distant for decals.
+- **Lighting is top-heavy.** The rig is spherical (azimuth/elevation/distance
+  around each target): the key sits at 0° / 74° over the hand row, so the
+  up-facing edge is the brightest surface with no left/right bias; the fill is
+  at 46° / 12° and the rim behind at 170° / 45°. The angles do the work; the rig
+  stays distant for decals. A frontal fill (< ~35° azimuth) puts a broad
+  specular sheen on the glossy paint and washes the red out, so it is kept at
+  ~45°.
 
 ## 13. Task chain
 

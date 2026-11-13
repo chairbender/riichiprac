@@ -98,50 +98,44 @@
   "lights": [
     {
       "id": "key",
-      "location": [
-        -8,
-        -20,
-        52
-      ],
       "target": [
         0,
         0.6,
         0
       ],
+      "azimuthDeg": 0,
+      "elevationDeg": 74,
+      "distance": 56,
       "size": 26,
       "sizeY": 20,
-      "energyW": 90000,
+      "energyW": 97200,
       "hex": "#fff4e4"
     },
     {
       "id": "fill",
-      "location": [
-        24,
-        -24,
-        7
-      ],
       "target": [
         0,
         -1,
         0.3
       ],
-      "size": 38,
-      "sizeY": 24,
-      "energyW": 16000,
+      "azimuthDeg": 46,
+      "elevationDeg": 12,
+      "distance": 34,
+      "size": 42,
+      "sizeY": 27,
+      "energyW": 26700,
       "hex": "#dfe9ff"
     },
     {
       "id": "rim",
-      "location": [
-        4,
-        26,
-        30
-      ],
       "target": [
         0,
         0,
         0
       ],
+      "azimuthDeg": 170,
+      "elevationDeg": 45,
+      "distance": 40,
       "size": 28,
       "sizeY": 20,
       "energyW": 22000,
@@ -163,17 +157,17 @@
     "renderScale": 3,
     "paddingPixels": 1,
     "carve": {
-      "depthFractionOfThickness": 0.004,
+      "depthFractionOfThickness": 0.0039,
       "profile": {
-        "topSpread": 0.89,
+        "topSpread": 1,
         "bottomSpread": 0.39
       },
       "gridScale": 1,
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75,
       "occlusionSamples": 16,
-      "blurUnits": 0.006944,
-      "transitionUnits": 0.008889,
+      "blurUnits": 0.0069642857142857145,
+      "transitionUnits": 0.012499999999999999,
       "paintEdge": 0.3
     },
     "rigs": {

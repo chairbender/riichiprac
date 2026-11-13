@@ -39,9 +39,13 @@ const num = (value, fallback) => {
 };
 
 const mmPerUnit = base.tile.proportionsMm.height;
+const light = (id) => base.lights.find((entry) => entry.id === id);
 
 function currentParams() {
   const carve = base.decals.carve;
+  const key = light("key");
+  const fill = light("fill");
+  const rim = light("rim");
   return {
     depth: carve.depthFractionOfThickness,
     topSpread: carve.profile.topSpread,
@@ -50,10 +54,41 @@ function currentParams() {
     transitionMm: carve.transitionUnits * mmPerUnit,
     paintEdge: carve.paintEdge,
     paintRed: base.tile.materials.paint.red,
+    keyAzimuth: key.azimuthDeg,
+    keyElevation: key.elevationDeg,
+    keyPower: key.energyW,
+    keySize: key.size,
+    fillAzimuth: fill.azimuthDeg,
+    fillElevation: fill.elevationDeg,
+    fillPower: fill.energyW,
+    rimPower: rim.energyW,
+    worldStrength: base.world.strength,
     samples: 48,
     tileThicknessMm: base.tile.proportionsMm.thickness,
     faceHeightMm: mmPerUnit,
   };
+}
+
+function applyLighting(spec, params) {
+  const update = (id, patch) => {
+    const entry = spec.lights.find((item) => item.id === id);
+    Object.assign(entry, patch);
+  };
+  update("key", {
+    azimuthDeg: clamp(num(params.keyAzimuth, light("key").azimuthDeg), 0, 360),
+    elevationDeg: clamp(num(params.keyElevation, light("key").elevationDeg), 0, 89),
+    energyW: clamp(num(params.keyPower, light("key").energyW), 0, 300000),
+    size: clamp(num(params.keySize, light("key").size), 4, 60),
+  });
+  update("fill", {
+    azimuthDeg: clamp(num(params.fillAzimuth, light("fill").azimuthDeg), 0, 360),
+    elevationDeg: clamp(num(params.fillElevation, light("fill").elevationDeg), 0, 89),
+    energyW: clamp(num(params.fillPower, light("fill").energyW), 0, 150000),
+  });
+  update("rim", {
+    energyW: clamp(num(params.rimPower, light("rim").energyW), 0, 150000),
+  });
+  spec.world.strength = clamp(num(params.worldStrength, base.world.strength), 0, 2);
 }
 
 function buildPreviewSpec(params) {
@@ -85,6 +120,7 @@ function buildPreviewSpec(params) {
   if (/^#[0-9a-f]{6}$/i.test(params.paintRed ?? '')) {
     spec.tile.materials.paint.red = params.paintRed;
   }
+  applyLighting(spec, params);
   spec.preview = { decalOnly: true };
   return spec;
 }
@@ -114,6 +150,7 @@ function applyParams(params) {
   if (/^#[0-9a-f]{6}$/i.test(params.paintRed ?? '')) {
     spec.tile.materials.paint.red = params.paintRed;
   }
+  applyLighting(spec, params);
   writeFileSync(baseSpecPath, JSON.stringify(spec, null, 2) + '\n');
 }
 
