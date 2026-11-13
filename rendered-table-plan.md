@@ -15,7 +15,7 @@ the app a fully client-side, thin React client:
 
 - fixed camera, real perspective, visible tile sides and position-dependent highlights;
 - lit tile faces, including the symbol, baked per orientation;
-- smooth, soft shadows and an ivory/blue tile material that reads as physical;
+- smooth, soft shadows and a white melamine/blue melamine tile material that reads as physical;
 - no runtime 3D, WebGL, or 3D library;
 - the stacked layout stays the default and the flat top-down plan view stays available;
 - keyboard and screen-reader parity with the existing table views.
@@ -28,7 +28,7 @@ that depends only on its orientation, not its position. We follow that split:
 
 - **Body sprites are per slot.** The bevel highlights, sides, top edge, shadow, and blue
   back change with the camera angle at that position.
-- **Face decals are per tile code × orientation.** The ivory face and symbol are lit once
+- **Face decals are per tile code × orientation.** The white melamine face and symbol are lit once
   for each orientation class and reused at every position.
 
 Alternatives considered:
@@ -64,22 +64,26 @@ No 3D math, no WebGL, no canvas rendering, and no runtime SVG rasterisation are 
 
 ### Body sprite (one per slot and pose)
 
-- Beveled tile box: ivory front/sides, blue back.
+- Beveled tile box: white melamine front/sides, blue melamine backing.
 - Position-dependent lighting: bevel highlights, side faces, top edge, contact shadow.
 - Face-up and face-down variants as needed.
 - Rendered at the tile's actual slot, cropped to the slot's scene-pixel bounds.
 
 ### Face decal (one per tile code × orientation)
 
-- The full tile face: ivory background, symbol, and face shading, rendered lit.
+- The full tile face: the white melamine background, the engraved painted
+  symbol, and face shading, rendered lit. The symbol is real geometry: a
+  symbol-only SVG mask recesses the face plate before the paint texture is
+  applied, so the carve catches the light.
 - Orientation-dependent, **not** position-dependent.
 - Composited over the body's flat face and clipped to the inner face, so the body's bevel
   ring and position lighting remain visible.
-- The source is the existing `riichi-mahjong-tiles` full-face SVG. We do not need icon-only
-  extraction; the full face is the texture. The npm package ships React components rather
-  than raw SVG files, so Task 3 vendors the public-domain upstream SVGs into
-  `tools/render/faces/` at a pinned upstream commit and rasterises those; no new npm
-  dependency enters the frontend for this.
+- The source is the `riichi-mahjong-tiles` **symbol-only** SVG. Its alpha is the carve mask
+  and its colour is the paint; the face itself is the melamine material colour, which
+  matches the body underlay. The npm package ships React components rather than raw SVG
+  files, so Task 3 vendors the public-domain upstream SVGs into `tools/render/faces/` at a
+  pinned upstream commit and rasterises those; no new npm dependency enters the frontend
+  for this.
 
 ### Overlays
 
@@ -141,13 +145,13 @@ The Blender script constructs everything procedurally:
 1. Reset the scene and build the table: felt plane, rail, wall ring, hand apron, compass
    base as needed.
 2. Build the tile body: a cube scaled to the tile dimensions, a bevel modifier with 3–4
-   segments, weighted normals, ivory and blue materials.
+   segments, weighted normals, white and blue melamine materials.
 3. Add the camera and area-light rig, tone mapping, denoise, and transparent film.
 4. For each body slot, place the tile at its slot transform, set the render crop, render a
    transparent body sprite, and record its scene-pixel rect and draw order.
 5. For each tile code × orientation class, place the tile on a canonical face-on rig
-   (section 12), apply the rasterised full-face texture, render the lit face
-   orthographically, crop it to the inner face, and record the face quad.
+   (section 12), carve the inset face plate from the symbol-only mask and paint it, render
+   the lit face orthographically, crop it to the inner face, and record the face quad.
 6. Render the static table background from the same camera.
 7. Compute, for every slot and orientation, the CSS `matrix3d` that maps the decal's
    local pixel rectangle onto that slot's face quad, and write it into the manifest.
@@ -169,6 +173,9 @@ batch is rerun.
   run the app.
 - Pin the Blender version and record render settings (engine, samples, denoise, colour
   management) so assets can be reproduced.
+- The Cycles *pixels* are deterministic (fixed seed, fixed samples, CPU). Blender's PNG
+  container bytes can still differ between runs, so compare decoded pixels when checking
+  reproducibility, not file hashes.
 - Never hand-edit a generated sprite.
 
 ## 7. Initial scene spec
@@ -177,14 +184,20 @@ These are the starting scene values for Task 1. Section 12 fixes the architectur
 and output rules; Task 1 may tune the numeric material/camera values against its
 first renders, but it does not reopen the section 12 decisions.
 
-- Tile face 0.75 × 1.0 units, body thickness 0.5 units.
-- Small bevel, 3–4 segments; ivory body with a soft specular response; blue back.
+- Tile proportions follow jansou tiles: 28 × 21 × 16.5 mm (height × width ×
+  thickness), including the backing. The spec stores that ratio plus one world
+  height, so at height 1.0 the face is 0.75 × 1.0 and the thickness 0.58929.
+  The backing is the rear 30% of the thickness.
+- Small bevel, 3–4 segments; white melamine body with a glossy specular response; blue melamine backing.
 - Fixed perspective camera with a long lens (subtle convergence and peripheral side faces,
   close to Tenhou).
-- Key/fill/rim area lights from above/front-left; a soft contact shadow.
+- Key/fill/rim area lights from above/front-left; a soft contact shadow. Task 1.5
+  ([`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md))
+  replaces the single key with parlor strip lights before the bulk asset bakes.
 - AgX colour management; denoised Cycles render.
-- Hand tiles stay vertical; the blue back wraps the rear 40% of the top edge to give the
-  sliver (section 12, item 6).
+- Hand tiles stay vertical; the blue backing (the back face plus the rear 30% of
+  every side edge) gives the blue rim on the top and side edges (section 12,
+  item 6).
 - Face decals are rendered on the canonical face-on orthographic rig (section 12, item 3).
 
 ## 8. Manifest shape
@@ -291,13 +304,13 @@ headless browser).
    `faceInset = 0.035` tile-width units (about 4.7% of the 0.75-wide face, equal
    to the bevel radius) on every edge. It is cropped to that rectangle plus a
    1 px transparent gutter so resampling cannot show a seam. The body's face
-   underlay uses the same ivory base colour, so the decal edge blends without a
+   underlay uses the same face base colour, so the decal edge blends without a
    runtime mask, feather, or blend mode.
 3. **Canonical slots and face projection.** Every face is rendered on a
    canonical face-on orthographic rig, never from the scene camera, so a decal
    is position-independent. `upright` stands the tile vertically facing the
    camera; the four flat classes lay it horizontally with the symbol at
-   0/90/180/270°. The scene light rig and ivory material are reused, so vertical
+   0/90/180/270°. The scene light rig and melamine material are reused, so vertical
    and horizontal lighting still differ. Ortho scale is one tile width and the
    render is transparent outside the face.
 4. **Decal placement.** The pipeline computes a per-slot CSS `matrix3d`
@@ -307,11 +320,14 @@ headless browser).
 5. **Body underlay and layering.** Every body sprite has an opaque face
    underlay. Paint order is background → bodies by ascending `drawOrder` → face
    decals → runtime overlays. Decals stay inside the bevel and never cover it.
-6. **Blue sliver.** No forward lean and no separate sliver sprite. The body's
-   blue back material wraps the rear 40% of the top edge
-   (`backTopEdgeFraction = 0.4`), so the fixed raised camera sees a thin blue
-   line above the ivory face of a vertical hand tile. Task 1 checks the visible
-   width at final resolution.
+6. **Blue backing and sliver.** No forward lean and no separate sliver sprite.
+   The tile is a white melamine face plate on a solid blue melamine backing: the back face and
+   the rear 30% of **every** side edge are blue (`backEdgeFraction = 0.3`), so
+   the fixed raised camera sees a thin blue line above the white face of a
+   vertical hand tile *and* a blue band down the visible side. Task 1 corrected
+   this from "top edge only": the first render had an all-white side, which is
+   wrong for a backed tile, and then tuned the backing from 40% to 30%. Task 1
+   checks the visible width at final resolution.
 7. **Shadows.** Contact shadows and felt ambient occlusion are baked into the
    body sprites and the background; each body crop includes a 32 px (2×) shadow
    gutter. There is no runtime shadow layer and no CSS shadow on tiles. Kans
@@ -350,9 +366,65 @@ headless browser).
     A regeneration commits the script/spec, manifest, and sprites together.
 14. **SVG rasteriser and source.** `@resvg/resvg-js` 2.6.2, pinned, run from the
     offline `tools/render` package. No `sharp`, no system `rsvg`, and no headless
-    browser. Raw full-face SVGs are vendored from the public-domain
+    browser. Raw symbol-only SVGs are vendored from the public-domain
     `riichi-mahjong-tiles` upstream at a pinned commit under
     `tools/render/faces/` (the npm package only ships React components).
+
+### Task 1 spike results
+
+The Task 1 spike ([`tools/render/README.md`](tools/render/README.md)) proves the
+body/decal split and confirms items 2, 3, 6, and 7 above. One constraint it adds
+for Tasks 2–3:
+
+- **The light rig must be distant.** Decals are lit once per orientation but
+  composite onto bodies at many positions. A close area rig made the face
+  24–30% brighter at one hand slot than at the canonical upright rig, which
+  showed as a visible rectangle around the decal. The spec now uses a large,
+  distant rig (key ≈ 66 units away) so illumination varies only a few percent
+  across the hand row. Do not move the lights closer without re-checking the
+  decal/body seam.
+- Measured at `hand-0`: the 0.58929-unit top edge projects to 43.75 device px,
+  of which the rear 30% blue is an 11 px run above a 191.92 px face (≈ 5.5 CSS
+  px of blue at 2×). The backing reads as a sliver; no lean or extra sprite. The
+  same 30% band wraps the visible side, and the blue is a deep royal base
+  (`#132986`) that renders as ≈ RGB(4, 69, 166) on the back face and
+  ≈ RGB(71, 109, 196) on the key-lit top edge.
+- The decal is 492 × 672 px at 3× CSS (inset 0.68 × 0.93 plus a 1 px gutter).
+  Its face colour matches the body face within ~1.4% at the seam (canonical rig
+  vs an off-centre hand slot), which is invisible at 2×; treat ~2% as the
+  tolerance. No runtime mask or blend mode is needed.
+- **Material:** jansou tiles are white **melamine** with a coloured melamine
+  backing, not ivory. The spec keys are `materials.face` / `materials.backing`
+  (both tagged `melamine`), tuned as a glossy thermoset: roughness 0.16 / 0.18
+  plus a clear coat, not matte plastic. The engraved paint has its own glossy
+  material (`materials.paint`, roughness 0.16, coat 0.35); its specular line on
+  the bottom fillet is the cue that sells the engraving.
+- **The symbol is carved, not printed.** A symbol-only SVG supplies the carve
+  mask and the paint. A distance field across an explicit `transitionUnits`
+  (from the lip to the flat floor), shaped by a cubic Bézier with independent
+  top/bottom fillet controls (`topSpread` / `bottomSpread`), recesses a
+  subdivided face plate by 0.5% of the thickness (≈ 0.08 mm at jansou scale).
+  The paint boundary is a fraction of that transition (`paintEdge`), so it can
+  sit inside the lip and leave a bare melamine bevel. The paint red is a spec override.
+- **Parameter tuner.** `node tools/render/tune.mjs` serves a local UI at
+  `localhost:7457` with the red, depth, both Bézier spreads, blur and paint
+  edge; it draws the exact cross-section and renders a decal-only preview in
+  ~4–6 s. "Apply to spec" writes back to `scene-spec.json`. Dev-only, not shipped. Glossy paint catches a bright
+  specular line on each bottom fillet (where the well wall curves into the
+  floor), and a little cavity occlusion keeps the red from reading flat. The carve
+  is baked into the lit decal, so it is orientation-lit like the rest of the
+  face. Consequence for Task 3: each code needs its symbol-only SVG and a
+  ~330k-vertex face at `gridScale: 1.0`; expect ~80 s per decal render with AO
+  and cut `gridScale`/AO samples for the 190-decal set.
+- **Lighting is top-heavy, key-dominant.** The rig is spherical
+  (azimuth/elevation/distance around each target): the key sits at 0° / 77°
+  over the hand row, the fill off-axis at 45° / 11° and the rim behind at
+  170° / 45°; ambient 0.5. The key is the dominant light on the up-facing edge,
+  so the edge is the brightest surface with no left/right bias. A bright or
+  frontal fill sits near the face's specular mirror, owns the flat face's sheen
+  and desaturates the glossy paint, so the fill stays off-axis. Exact powers are
+  tuned in `tools/render/scene-spec.json`; the angles do the work and the rig
+  stays distant for decals.
 
 ## 13. Task chain
 
@@ -373,6 +445,15 @@ headless browser).
 | 12 | 261113-070318 | Polish and cutover | all |
 
 Tasks 2 and 3 can run in parallel after Task 1. Tasks 5–8 can run in parallel after Task 4.
+
+**Task 1.5 (proposed, no command-center ID yet): parlor strip-light rig.** Task 1
+ships a single large studio key; the target look is a mahjong parlor with
+linear fluorescents, whose reflections read as long white streaks on the bevels
+and inside the engraving. Task 1.5 replaces the key with 2–4 elongated strip
+lights, exposes their length/width/roll in the tuner, and rolls the carve back
+toward a physical depth. It must run **before Tasks 2 and 3**, because the rig is
+baked into every body sprite and decal. Plan:
+[`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md).
 
 ## 14. Risks
 

@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Carved face tuner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1713;
+        --panel: #12211a;
+        --line: #24382f;
+        --text: #e8f1ec;
+        --muted: #8fb2a4;
+        --accent: #57b98b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.5 "Fira Sans", "DejaVu Sans", system-ui, sans-serif;
+      }
+      header {
+        padding: 18px 24px 12px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      header h1 { margin: 0; font-size: 20px; letter-spacing: 0.2px; }
+      header p { margin: 0; color: var(--muted); font-size: 13px; }
+      main {
+        display: grid;
+        grid-template-columns: minmax(320px, 430px) minmax(360px, 1fr);
+        gap: 20px;
+        padding: 20px 24px 40px;
+        align-items: start;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px;
+      }
+      h2 {
+        margin: 0 0 14px;
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      .control { margin-bottom: 16px; }
+      .control > .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+      .control label { font-size: 13px; }
+      .control output {
+        font-family: "Fira Mono", "DejaVu Sans Mono", monospace;
+        font-size: 12px;
+        color: var(--accent);
+      }
+      .hint { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+      input[type="range"] { width: 100%; accent-color: var(--accent); }
+      select {
+        width: 100%;
+        padding: 7px 9px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: #0f1c16;
+        color: var(--text);
+        font: inherit;
+        font-size: 13px;
+      }
+      input[type="color"] {
+        width: 100%;
+        height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: none;
+        padding: 2px;
+      }
+      details {
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+        margin-top: 6px;
+      }
+      summary {
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+      .buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+      button {
+        font: inherit;
+        font-size: 13px;
+        padding: 9px 14px;
+        border-radius: 7px;
+        border: 1px solid var(--line);
+        background: #1a2f25;
+        color: var(--text);
+        cursor: pointer;
+      }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #06130c; font-weight: 600; }
+      button:disabled { opacity: 0.45; cursor: default; }
+      #status { margin-top: 14px; font-size: 12.5px; color: var(--muted); min-height: 20px; }
+      #status.error { color: #ff9b8a; }
+      #compass { width: 100%; max-width: 430px; height: auto; display: block; margin: 0 auto; }
+      #profile { width: 100%; height: auto; display: block; }
+      #decalWrap {
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: #0a120e;
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #decal { display: block; width: 100%; max-width: 430px; height: auto; }
+      #decalMeta { margin-top: 10px; color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; gap: 10px; }
+      code { font-family: "Fira Mono", "DejaVu Sans Mono", monospace; font-size: 12px; color: var(--accent); }
+      @media (max-width: 900px) {
+        main { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Carved face tuner</h1>
+      <p>
+        Preview renders only the upright 1m decal at 2×, fast samples and a coarse carve grid.
+        Apply writes into <code>scene-spec.json</code>; run <code>bash tools/render/render.sh</code> for the full set.
+      </p>
+    </header>
+    <main>
+      <section>
+        <h2>Parameters</h2>
+
+        <div class="control">
+          <div class="row"><label for="paintRed">Manzu red</label><output id="paintRedOut"></output></div>
+          <input id="paintRed" type="color" />
+          <div class="hint">Recolours the red fills only; the black bar and the internal shading are preserved.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="depth">Carve depth</label><output id="depthOut"></output></div>
+          <input id="depth" type="range" min="0" max="0.02" step="0.0001" />
+          <div class="hint">Fraction of the 16.5 mm thickness, fine steps at the shallow end. 0.08 mm is 0.005.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="transitionMm">Transition width</label><output id="transitionOut"></output></div>
+          <input id="transitionMm" type="range" min="0.03" max="0.8" step="0.005" />
+          <div class="hint">Distance from the lip to the flat floor. Larger lets the curvature run further into the bottom.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="topSpread">Top fillet spread</label><output id="topSpreadOut"></output></div>
+          <input id="topSpread" type="range" min="0" max="1" step="0.01" />
+          <div class="hint">Bézier control where the face rolls into the well. 0 = none, 1 = widest/softest.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="bottomSpread">Bottom fillet spread</label><output id="bottomSpreadOut"></output></div>
+          <input id="bottomSpread" type="range" min="0" max="1" step="0.01" />
+          <div class="hint">Bézier control where the wall curves into the floor. Drives the glossy highlight.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="blurMm">Mask blur</label><output id="blurOut"></output></div>
+          <input id="blurMm" type="range" min="0.02" max="0.4" step="0.005" />
+          <div class="hint">Smoothing of the symbol edge. Also caps how wide the transition can be.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="paintEdge">Paint edge</label><output id="paintEdgeOut"></output></div>
+          <input id="paintEdge" type="range" min="0" max="1" step="0.01" />
+          <div class="hint">Where the paint starts inside the transition. 0 = at the lip, 1 = only at the floor.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="samples">Preview samples</label><output id="samplesOut"></output></div>
+          <input id="samples" type="range" min="8" max="64" step="8" />
+          <div class="hint">Render cost only; denoised either way.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="mode">Preview image</label><output id="modeOut"></output></div>
+          <select id="mode">
+            <option value="tile">Full tile (body + decal)</option>
+            <option value="decal">Decal only (fast)</option>
+          </select>
+          <div class="hint">The full tile shows the body's top-edge and side lighting; it takes ~3× longer.</div>
+        </div>
+
+        <details open>
+          <summary>Lighting</summary>
+          <div class="hint" style="margin-bottom: 12px">
+            Azimuth is around the tile: 0° front, 90° right, 180° behind, 270° left.
+            Elevation is degrees above horizontal; a top-lit upright tile wants the key near 0° / 70–80°.
+          </div>
+
+          <div class="control">
+            <div class="row"><label for="keyAzimuth">Key azimuth</label><output id="keyAzimuthOut"></output></div>
+            <input id="keyAzimuth" type="range" min="0" max="360" step="1" />
+          </div>
+          <div class="control">
+            <div class="row"><label for="keyElevation">Key elevation</label><output id="keyElevationOut"></output></div>
+            <input id="keyElevation" type="range" min="0" max="89" step="1" />
+          </div>
+          <div class="control">
+            <div class="row"><label for="keyPower">Key power</label><output id="keyPowerOut"></output></div>
+            <input id="keyPower" type="range" min="0" max="200000" step="2000" />
+          </div>
+          <div class="control">
+            <div class="row"><label for="keySize">Key softness</label><output id="keySizeOut"></output></div>
+            <input id="keySize" type="range" min="4" max="60" step="1" />
+          </div>
+          <div class="control">
+            <div class="row"><label for="fillAzimuth">Fill azimuth</label><output id="fillAzimuthOut"></output></div>
+            <input id="fillAzimuth" type="range" min="0" max="360" step="1" />
+          </div>
+          <div class="control">
+            <div class="row"><label for="fillElevation">Fill elevation</label><output id="fillElevationOut"></output></div>
+            <input id="fillElevation" type="range" min="0" max="89" step="1" />
+          </div>
+          <div class="control">
+            <div class="row"><label for="fillPower">Fill power</label><output id="fillPowerOut"></output></div>
+            <input id="fillPower" type="range" min="0" max="120000" step="1000" />
+          </div>
+          <div class="control">
+            <div class="row"><label for="rimPower">Rim power</label><output id="rimPowerOut"></output></div>
+            <input id="rimPower" type="range" min="0" max="120000" step="1000" />
+          </div>
+          <div class="control">
+            <div class="row"><label for="worldStrength">Ambient strength</label><output id="worldStrengthOut"></output></div>
+            <input id="worldStrength" type="range" min="0" max="1.5" step="0.01" />
+          </div>
+        </details>
+
+        <div class="buttons">
+          <button id="render" class="primary">Render preview</button>
+          <button id="apply">Apply to spec</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div id="status"></div>
+      </section>
+
+      <section>
+        <h2>Light rig (top view)</h2>
+        <svg id="compass" viewBox="0 0 420 160" aria-label="light directions"></svg>
+
+        <h2 style="margin-top: 18px">Cross-section</h2>
+        <svg id="profile" viewBox="0 0 420 180" aria-label="groove cross-section"></svg>
+        <div class="hint" id="profileNote"></div>
+
+        <h2 style="margin-top: 18px">Preview decal</h2>
+        <div id="decalWrap"><img id="decal" alt="rendered decal preview" /></div>
+        <div id="decalMeta"><span id="decalTime"></span><span id="decalDims"></span></div>
+      </section>
+    </main>
+
+    <script>
+      const ids = [
+        "paintRed",
+        "depth",
+        "transitionMm",
+        "topSpread",
+        "bottomSpread",
+        "blurMm",
+        "paintEdge",
+        "keyAzimuth",
+        "keyElevation",
+        "keyPower",
+        "keySize",
+        "fillAzimuth",
+        "fillElevation",
+        "fillPower",
+        "rimPower",
+        "worldStrength",
+        "samples",
+      ];
+      const el = (id) => document.getElementById(id);
+      const state = { params: null, thicknessMm: 16.5, faceHeightMm: 28 };
+
+      function readParams() {
+        return {
+          paintRed: el("paintRed").value,
+          depth: Number(el("depth").value),
+          transitionMm: Number(el("transitionMm").value),
+          topSpread: Number(el("topSpread").value),
+          bottomSpread: Number(el("bottomSpread").value),
+          blurMm: Number(el("blurMm").value),
+          paintEdge: Number(el("paintEdge").value),
+          keyAzimuth: Number(el("keyAzimuth").value),
+          keyElevation: Number(el("keyElevation").value),
+          keyPower: Number(el("keyPower").value),
+          keySize: Number(el("keySize").value),
+          fillAzimuth: Number(el("fillAzimuth").value),
+          fillElevation: Number(el("fillElevation").value),
+          fillPower: Number(el("fillPower").value),
+          rimPower: Number(el("rimPower").value),
+          worldStrength: Number(el("worldStrength").value),
+          mode: el("mode").value,
+          samples: Number(el("samples").value),
+        };
+      }
+
+      function writeParams(params) {
+        const set = (id, value) => {
+          if (value !== undefined) el(id).value = value;
+        };
+        set("paintRed", params.paintRed);
+        set("depth", params.depth);
+        set("transitionMm", params.transitionMm);
+        set("topSpread", params.topSpread);
+        set("bottomSpread", params.bottomSpread);
+        set("blurMm", params.blurMm);
+        set("paintEdge", params.paintEdge);
+        set("keyAzimuth", params.keyAzimuth);
+        set("keyElevation", params.keyElevation);
+        set("keyPower", params.keyPower);
+        set("keySize", params.keySize);
+        set("fillAzimuth", params.fillAzimuth);
+        set("fillElevation", params.fillElevation);
+        set("fillPower", params.fillPower);
+        set("rimPower", params.rimPower);
+        set("worldStrength", params.worldStrength);
+        if (params.mode) el("mode").value = params.mode;
+        set("samples", params.samples ?? 48);
+      }
+
+      // Same cubic Bézier as build_and_render.py: P0=(0,0), P1=(top,0),
+      // P2=(1-bottom,1), P3=(1,1).
+      function profilePoint(t, top, bottom) {
+        const one = 1 - t;
+        return {
+          x:
+            3 * one * one * t * top +
+            3 * one * t * t * (1 - bottom) +
+            t * t * t,
+          y: t * t * (3 - 2 * t),
+        };
+      }
+
+      function drawCompass() {
+        const params = readParams();
+        const cx = 210;
+        const cy = 82;
+        const r = 52;
+        const point = (az) => ({
+          x: cx + Math.sin((az * Math.PI) / 180) * r,
+          y: cy + Math.cos((az * Math.PI) / 180) * r,
+        });
+        const key = point(params.keyAzimuth);
+        const fill = point(params.fillAzimuth);
+        const arrow = (p, colour, label, elevation) => `
+          <line x1="${cx}" y1="${cy}" x2="${p.x}" y2="${p.y}" stroke="${colour}" stroke-width="2.2" marker-end="url(#arrow-${label})"></line>
+          <text x="${p.x + (p.x - cx) * 0.28}" y="${p.y + (p.y - cy) * 0.28}" fill="${colour}" font-size="10" text-anchor="middle">${label} ${elevation}°</text>`;
+        const svg = el("compass");
+        svg.innerHTML = `
+          <defs>
+            <marker id="arrow-key" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#ffd9a0"/></marker>
+            <marker id="arrow-fill" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#9fc6ff"/></marker>
+          </defs>
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#24382f"></circle>
+          <text x="${cx}" y="${cy + r + 24}" fill="#8fb2a4" font-size="11" text-anchor="middle">front</text>
+          <text x="${cx}" y="${cy - r - 10}" fill="#8fb2a4" font-size="11" text-anchor="middle">back</text>
+          <text x="${cx - r - 14}" y="${cy + 4}" fill="#8fb2a4" font-size="11" text-anchor="middle">L</text>
+          <text x="${cx + r + 14}" y="${cy + 4}" fill="#8fb2a4" font-size="11" text-anchor="middle">R</text>
+          <rect x="${cx - 6}" y="${cy + r - 14}" width="12" height="18" rx="2" fill="#f5f0eb" opacity="0.75"></rect>
+          ${arrow(key, "#ffd9a0", "key", params.keyElevation)}
+          ${arrow(fill, "#9fc6ff", "fill", params.fillElevation)}
+          <text x="12" y="152" fill="#5f7d6e" font-size="10">top-view azimuth · tile face points to front</text>
+        `;
+        el("keyAzimuthOut").textContent = `${params.keyAzimuth}°`;
+        el("keyElevationOut").textContent = `${params.keyElevation}°`;
+        el("keyPowerOut").textContent = `${(params.keyPower / 1000).toFixed(1)} kW`;
+        el("keySizeOut").textContent = `${params.keySize}`;
+        el("fillAzimuthOut").textContent = `${params.fillAzimuth}°`;
+        el("fillElevationOut").textContent = `${params.fillElevation}°`;
+        el("fillPowerOut").textContent = `${(params.fillPower / 1000).toFixed(1)} kW`;
+        el("rimPowerOut").textContent = `${(params.rimPower / 1000).toFixed(1)} kW`;
+        el("worldStrengthOut").textContent = params.worldStrength.toFixed(2);
+      }
+
+      function drawProfile() {
+        const params = readParams();
+        const depthMm = params.depth * state.thicknessMm;
+        const transitionMm = params.transitionMm;
+        const svg = el("profile");
+        const left = 40;
+        const right = 380;
+        const domainMm = 1.1; // -0.15 .. 0.95 mm
+        const pxPerMm = (right - left) / domainMm;
+        const xOf = (mm) => left + (mm + 0.15) * pxPerMm;
+        const faceY = 36;
+        const depthPx = 66;
+        const floorY = faceY + depthPx;
+        const samples = 90;
+        const topPath = [];
+        const bottomPath = [];
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const p = profilePoint(t, params.topSpread, params.bottomSpread);
+          const px = xOf(p.x * transitionMm);
+          const py = faceY + p.y * depthPx;
+          (t <= 0.5 ? topPath : bottomPath).push(`${px.toFixed(1)},${py.toFixed(1)}`);
+        }
+        const curveEnd = bottomPath[bottomPath.length - 1];
+
+        let paintT = 0;
+        for (let i = 0; i <= 400; i += 1) {
+          const t = i / 400;
+          if (profilePoint(t, params.topSpread, params.bottomSpread).x >= params.paintEdge) {
+            paintT = t;
+            break;
+          }
+        }
+        const paintPoint = profilePoint(paintT, params.topSpread, params.bottomSpread);
+        const paintX = xOf(paintPoint.x * transitionMm);
+        const paintY = faceY + paintPoint.y * depthPx;
+        const paintInsetMm = params.paintEdge * transitionMm;
+        const exaggeration = (depthPx / Math.max(depthMm, 0.001)) / pxPerMm;
+
+        svg.innerHTML = `
+          <line x1="${xOf(-0.15)}" y1="${faceY}" x2="${xOf(0)}" y2="${faceY}" stroke="#7fa18f" stroke-width="2"></line>
+          <polyline points="${topPath.join(" ")}" fill="none" stroke="#7ec8ff" stroke-width="2.5" stroke-linecap="round"></polyline>
+          <polyline points="${bottomPath.join(" ")}" fill="none" stroke="#ffb86b" stroke-width="2.5" stroke-linecap="round"></polyline>
+          <line x1="${curveEnd.split(",")[0]}" y1="${floorY}" x2="${xOf(0.95)}" y2="${floorY}" stroke="#7fa18f" stroke-width="2"></line>
+          <line x1="${paintX}" y1="${faceY}" x2="${paintX}" y2="${paintY}" stroke="#ff7a6b" stroke-width="1" stroke-dasharray="3 3"></line>
+          <circle cx="${paintX}" cy="${paintY}" r="3.5" fill="#ff7a6b"></circle>
+          <text x="${xOf(-0.15)}" y="${faceY - 8}" fill="#8fb2a4" font-size="11">face</text>
+          <text x="${xOf(0.95)}" y="${floorY + 18}" fill="#8fb2a4" font-size="11" text-anchor="end">floor</text>
+          <text x="${xOf(0.02)}" y="${faceY + 16}" fill="#7ec8ff" font-size="11">top fillet</text>
+          <text x="${xOf(transitionMm) - 4}" y="${floorY - 8}" fill="#ffb86b" font-size="11" text-anchor="end">bottom fillet</text>
+          <text x="${paintX + 5}" y="${paintY - 10}" fill="#ff7a6b" font-size="10">paint edge ${paintInsetMm.toFixed(2)} mm</text>
+          <text x="${xOf(-0.15)}" y="172" fill="#5f7d6e" font-size="10">0.5 mm horizontal scale · depth shown ×${exaggeration.toFixed(1)}</text>
+        `;
+
+        el("depthOut").textContent = `${(params.depth * 100).toFixed(2)}% · ${depthMm.toFixed(3)} mm`;
+        el("transitionOut").textContent = `${transitionMm.toFixed(2)} mm`;
+        el("topSpreadOut").textContent = params.topSpread.toFixed(2);
+        el("bottomSpreadOut").textContent = params.bottomSpread.toFixed(2);
+        el("blurOut").textContent = `${params.blurMm.toFixed(2)} mm`;
+        el("paintEdgeOut").textContent = `${params.paintEdge.toFixed(2)} · ${paintInsetMm.toFixed(2)} mm`;
+        el("samplesOut").textContent = `${params.samples}`;
+        el("paintRedOut").textContent = params.paintRed;
+        el("profileNote").textContent =
+          "The curve is the exact Bézier the mesh uses; the horizontal scale is physical, the depth is exaggerated.";
+        el("modeOut").textContent = params.mode === "decal" ? "decal only" : "full tile";
+      }
+
+      const images = { tile: null, decal: null };
+
+      function showPreview() {
+        const mode = el("mode").value;
+        const src = images[mode] ?? images[mode === "tile" ? "decal" : "tile"];
+        if (src) el("decal").src = src;
+        el("decalDims").textContent =
+          mode === "tile" ? "body + decal · preview 2× · final 3×" : "decal · preview 2× · final 3×";
+        el("modeOut").textContent = mode === "decal" ? "decal only" : "full tile";
+      }
+
+      function drawAll() {
+        drawProfile();
+        drawCompass();
+      }
+
+      function setStatus(message, isError = false) {
+        const status = el("status");
+        status.textContent = message;
+        status.classList.toggle("error", isError);
+      }
+
+      async function loadState() {
+        const response = await fetch("/api/state");
+        const data = await response.json();
+        state.params = data.params;
+        state.thicknessMm = data.params.tileThicknessMm;
+        state.faceHeightMm = data.params.faceHeightMm;
+        writeParams(data.params);
+        drawAll();
+        images.decal = data.decalExists ? data.decal : null;
+        images.tile = data.compositeExists ? data.composite : null;
+        if (images.decal || images.tile) {
+          showPreview();
+          el("decalTime").textContent = "last preview loaded";
+        } else {
+          setStatus("No preview yet — press Render preview.");
+        }
+        if (!data.blenderFound) {
+          setStatus(`Blender not found at ${data.blender}`, true);
+        }
+        el("decal").addEventListener("load", () => {
+          el("decalTime").textContent = `rendered ${new Date().toLocaleTimeString()}`;
+        });
+      }
+
+      async function renderPreview() {
+        const button = el("render");
+        button.disabled = true;
+        setStatus("Rendering preview…");
+        try {
+          const response = await fetch("/api/render", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(readParams()),
+          });
+          const data = await response.json();
+          if (!data.ok) throw new Error(data.error || "render failed");
+          images.decal = data.decal;
+          if (data.composite) images.tile = data.composite;
+          showPreview();
+          setStatus(`Preview ready in ${data.elapsed}s.`);
+        } catch (error) {
+          setStatus(`Render failed: ${error.message}`, true);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function applyParams() {
+        setStatus("Writing parameters into scene-spec.json…");
+        try {
+          const response = await fetch("/api/apply", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(readParams()),
+          });
+          const data = await response.json();
+          if (!data.ok) throw new Error(data.error || "apply failed");
+          setStatus("Applied. Run: bash tools/render/render.sh");
+        } catch (error) {
+          setStatus(`Apply failed: ${error.message}`, true);
+        }
+      }
+
+      for (const id of ids) {
+        el(id).addEventListener("input", drawAll);
+      }
+      el("mode").addEventListener("change", () => {
+        drawAll();
+        showPreview();
+      });
+      el("render").addEventListener("click", renderPreview);
+      el("apply").addEventListener("click", applyParams);
+      el("reset").addEventListener("click", () => {
+        writeParams(state.params);
+        drawAll();
+        setStatus("Reset to the values in scene-spec.json.");
+      });
+
+      loadState().catch((error) => setStatus(`Failed to load state: ${error.message}`, true));
+    </script>
+  </body>
+</html>

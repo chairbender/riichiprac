@@ -1,0 +1,206 @@
+{
+  "version": 1,
+  "name": "rendered-table-v1",
+  "blender": {
+    "requiredVersion": "4.5.9"
+  },
+  "scene": {
+    "widthCss": 1440,
+    "heightCss": 900,
+    "pixelRatio": 2,
+    "engine": "CYCLES",
+    "device": "CPU",
+    "samples": 256,
+    "useAdaptiveSampling": true,
+    "adaptiveThreshold": 0.01,
+    "denoise": true,
+    "denoiser": "OPENIMAGEDENOISE",
+    "filmTransparent": true,
+    "colorManagement": {
+      "displayDevice": "sRGB",
+      "viewTransform": "AgX",
+      "look": "AgX - Medium High Contrast",
+      "exposure": 0,
+      "gamma": 1
+    }
+  },
+  "tile": {
+    "proportionsMm": {
+      "height": 28,
+      "width": 21,
+      "thickness": 16.5
+    },
+    "heightUnits": 1,
+    "bevel": {
+      "width": 0.035,
+      "segments": 4,
+      "angleLimitDegrees": 30,
+      "hardenNormals": true
+    },
+    "faceInset": 0.035,
+    "backEdgeFraction": 0.3,
+    "materials": {
+      "face": {
+        "material": "melamine",
+        "hex": "#f5f0eb",
+        "roughness": 0.16,
+        "coat": 0.4,
+        "coatRoughness": 0.1
+      },
+      "backing": {
+        "material": "melamine",
+        "hex": "#132986",
+        "roughness": 0.18,
+        "coat": 0.35,
+        "coatRoughness": 0.1
+      },
+      "paint": {
+        "material": "engraving paint",
+        "roughness": 0.16,
+        "coat": 0.35,
+        "coatRoughness": 0.1,
+        "red": "#a60c0c",
+        "redBase": "#b93c3c"
+      }
+    }
+  },
+  "table": {
+    "size": 80,
+    "surface": {
+      "hex": "#12533a",
+      "roughness": 0.92
+    },
+    "shadowCatcher": true
+  },
+  "world": {
+    "hex": "#b9c6d6",
+    "strength": 0.5
+  },
+  "camera": {
+    "position": [
+      0,
+      -26.4,
+      9
+    ],
+    "target": [
+      0,
+      1,
+      0.2
+    ],
+    "lensMm": 65,
+    "sensorWidthMm": 36,
+    "sensorFit": "HORIZONTAL",
+    "shiftX": 0,
+    "shiftY": 0.16,
+    "clipStart": 1,
+    "clipEnd": 200
+  },
+  "lights": [
+    {
+      "id": "key",
+      "target": [
+        0,
+        0.6,
+        0
+      ],
+      "azimuthDeg": 0,
+      "elevationDeg": 77,
+      "distance": 56,
+      "size": 26,
+      "sizeY": 20,
+      "energyW": 200000,
+      "hex": "#fff4e4"
+    },
+    {
+      "id": "fill",
+      "target": [
+        0,
+        -1,
+        0.3
+      ],
+      "azimuthDeg": 45,
+      "elevationDeg": 11,
+      "distance": 34,
+      "size": 42,
+      "sizeY": 27,
+      "energyW": 23000,
+      "hex": "#dfe9ff"
+    },
+    {
+      "id": "rim",
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "azimuthDeg": 170,
+      "elevationDeg": 45,
+      "distance": 40,
+      "size": 28,
+      "sizeY": 20,
+      "energyW": 22000,
+      "hex": "#ffffff"
+    }
+  ],
+  "hand": {
+    "count": 14,
+    "spacing": 0.82,
+    "centerX": 0,
+    "y": -4.4,
+    "pose": "hand-upright"
+  },
+  "decals": {
+    "cssFace": [
+      180,
+      240
+    ],
+    "renderScale": 3,
+    "paddingPixels": 1,
+    "carve": {
+      "depthFractionOfThickness": 0.0143,
+      "profile": {
+        "topSpread": 0.92,
+        "bottomSpread": 0.92
+      },
+      "gridScale": 1,
+      "occlusionDistance": 0.2,
+      "occlusionStrength": 0.75,
+      "occlusionSamples": 16,
+      "blurUnits": 0.0069642857142857145,
+      "transitionUnits": 0.018035714285714287,
+      "paintEdge": 0.18
+    },
+    "rigs": {
+      "upright": {
+        "slotY": -4.4,
+        "cameraDistance": 5,
+        "symbolRotationDeg": 0
+      }
+    }
+  },
+  "spike": {
+    "slotIndex": 0,
+    "shadowGutterDevicePx": 32,
+    "zoom": {
+      "x": 24,
+      "y": 24,
+      "width": 180,
+      "height": 80,
+      "scale": 4
+    },
+    "decal": {
+      "code": "1m",
+      "orientation": "upright",
+      "symbolSvg": "faces/Regular-Man1-symbol.svg"
+    }
+  },
+  "outputs": {
+    "body": "hand-{index}.body.png",
+    "back": "hand-{index}.back.png",
+    "decal": "{code}-{orientation}.decal.png",
+    "composite": "{code}-{orientation}.composite.png",
+    "zoom": "contact-zoom.png",
+    "manifest": "manifest.json",
+    "contactSheet": "contact-sheet.png"
+  }
+}
