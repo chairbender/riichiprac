@@ -25,10 +25,8 @@ interface AppControlsProps {
 /**
  * The scenario-pool, agreement, view, and next-hand controls.
  *
- * Kept in one component because the stacked/top-down shell shows them in its
- * header while the isometric shell hides them in its menu drawer. Both mounts
- * therefore offer exactly the same controls, so a setting added to one can
- * never be missing from the other.
+ * Kept in one component so every shell offers exactly the same controls: a
+ * setting added here can never be missing from another layout.
  */
 export function AppControls({
   scenarios,
@@ -71,7 +69,6 @@ export function AppControls({
         >
           <option value="stacked">Stacked</option>
           <option value="topdown">Top-down</option>
-          <option value="isometric">Isometric (experimental)</option>
         </select>
       </label>
 

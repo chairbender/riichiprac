@@ -54,23 +54,6 @@ describe('useSettingsStore', () => {
     expect(useSettingsStore.getState().view).toBe('stacked');
   });
 
-  it('persists the experimental isometric view under the settings key', async () => {
-    const storage = memoryStorage();
-    setLocalStorage(storage);
-
-    const { useSettingsStore, SETTINGS_STORAGE_KEY } =
-      await loadSettingsStore();
-    useSettingsStore.getState().setView('isometric');
-
-    expect(JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null')).toEqual(
-      { version: 1, view: 'isometric' },
-    );
-
-    // A reload is a fresh module import reading the same storage.
-    const reloaded = await loadSettingsStore();
-    expect(reloaded.useSettingsStore.getState().view).toBe('isometric');
-  });
-
   it('persists every view and keeps it across a reload', async () => {
     const storage = memoryStorage();
     setLocalStorage(storage);
@@ -78,7 +61,7 @@ describe('useSettingsStore', () => {
     const { useSettingsStore, SETTINGS_STORAGE_KEY } =
       await loadSettingsStore();
 
-    for (const view of ['topdown', 'stacked', 'isometric'] as const) {
+    for (const view of ['topdown', 'stacked'] as const) {
       useSettingsStore.getState().setView(view);
       expect(
         JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null'),
@@ -87,6 +70,21 @@ describe('useSettingsStore', () => {
       const reloaded = await loadSettingsStore();
       expect(reloaded.useSettingsStore.getState().view).toBe(view);
     }
+  });
+
+  it('migrates a stored experimental isometric view to the default', async () => {
+    const storage = memoryStorage();
+    setLocalStorage(storage);
+    storage.setItem(
+      'riichiprac.settings',
+      JSON.stringify({ version: 1, view: 'isometric' }),
+    );
+
+    const { DEFAULT_TABLE_VIEW, useSettingsStore } =
+      await loadSettingsStore();
+
+    expect(DEFAULT_TABLE_VIEW).toBe('stacked');
+    expect(useSettingsStore.getState().view).toBe('stacked');
   });
 
   it('falls back to stacked for malformed or unknown stored values', async () => {
@@ -99,6 +97,7 @@ describe('useSettingsStore', () => {
       '[]',
       JSON.stringify({ version: 1, view: 'physical' }),
       JSON.stringify({ version: 1, view: 'sideways' }),
+      JSON.stringify({ version: 1, view: 'isometric' }),
       JSON.stringify({ version: 1 }),
     ]) {
       storage.setItem('riichiprac.settings', raw);

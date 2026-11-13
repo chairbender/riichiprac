@@ -45,7 +45,7 @@ The app is a **Constraint Satisfaction Generator**:
   * Takes JSON from WASM and renders it. Captures user clicks and compares them to the `correct_action` in the JSON payload.
   * Uses `riichi-mahjong-tiles` (SVG) for tile rendering in the stacked and top-down views.
 * **Offline table renderer (asset pipeline, not shipped code):**
-  * The opt-in rendered table view uses sprites baked offline from a 3D scene. Blender builds the scene, camera, lights, and materials from a committed Python/JSON spec; an offline SVG rasteriser (resvg/sharp) produces tile-face textures. No headless browser is part of the pipeline.
+  * The opt-in rendered table view uses sprites baked offline from a 3D scene. Blender 4.5.9 LTS builds the scene, camera, lights, and materials from a committed Python/JSON spec; `@resvg/resvg-js` is the offline SVG rasteriser for tile-face textures. No headless browser is part of the pipeline.
   * The generator, spec, generated sprites, and manifest are committed. The design and regeneration steps live in `rendered-table-plan.md`; read it before touching rendered-table assets or layout.
   * The runtime is 2D composition only: images plus DOM. **Do NOT add a 3D/WebGL library to the frontend, and do not rasterise tile art in the browser.**
 

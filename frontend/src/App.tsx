@@ -5,11 +5,8 @@ import { callOfferActions, canDeclareRiichi, isCallDecision } from './actions';
 import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import { ActionBar } from './components/ActionBar';
 import { AppControls } from './components/AppControls';
-import { DecisionPopup } from './components/DecisionPopup';
 import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
-import { IsometricShell } from './components/IsometricShell';
-import { IsometricTable } from './components/IsometricTable';
 import { PhysicalTable } from './components/PhysicalTable';
 import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
@@ -478,7 +475,7 @@ export const App = () => {
         : 'Waiting for the Mortal model to load…';
 
   const viewHint =
-    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view, and isometric is the angled table view still being built. Stays 2D: no 3D or perspective.';
+    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view. Stays 2D: no 3D or perspective.';
 
   const statusMessage = agreementLoading
     ? 'Finding a hand Mortal agrees with…'
@@ -488,8 +485,8 @@ export const App = () => {
         ? 'Loading table…'
         : null;
 
-  // The same elements feed the stacked shell's header/body and the isometric
-  // shell's menu drawer, so the drawer cannot fall behind the header.
+  // The header controls, built once so the stacked and top-down layouts cannot
+  // drift apart.
   const controls = (
     <AppControls
       scenarios={scenarios}
@@ -566,49 +563,6 @@ export const App = () => {
     />
   ) : null;
 
-  /*
-   * The isometric view owns the whole viewport. Its controls, table details,
-   * verdict, and notes all live in a drawer so only the menu button floats over
-   * the table; the action strip and hand dock belong to the stacked shell and
-   * stay out of this view (the hand arrives in a later part, and non-discard
-   * answers use the floating popup).
-   */
-  if (tableView === 'isometric') {
-    const answered = dualGrade !== null;
-
-    return (
-      <IsometricShell
-        state={gameState}
-        statusMessage={statusMessage}
-        error={error}
-        answered={answered}
-        nextDisabled={isLoading}
-        onNextScenario={handleNextScenario}
-        table={<IsometricTable state={gameState ?? undefined} />}
-        popup={
-          isCallLesson && !answered ? (
-            <DecisionPopup
-              actions={callActions}
-              title="Call or pass?"
-              onAction={submitAction}
-            />
-          ) : null
-        }
-        menu={
-          <>
-            <div className="app-controls app-controls--menu">{controls}</div>
-            {tableInformation}
-            {exportImportControls}
-            {positionDescriptionCard}
-            {agreementNotice}
-            {scenarioNote}
-            {verdictPanel}
-          </>
-        }
-      />
-    );
-  }
-
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -643,9 +597,9 @@ export const App = () => {
         )}
 
         {/*
-         * The isometric view returned above. Here the persisted view picks
-         * between the stacked rows and the top-down plan; nothing else about
-         * the hand changes when it switches, so the answer and grade stay put.
+         * The persisted view picks between the stacked rows and the top-down
+         * plan; nothing else about the hand changes when it switches, so the
+         * answer and grade stay put.
          */}
         {tableView === 'topdown' && gameState ? (
           <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
