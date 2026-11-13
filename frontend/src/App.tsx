@@ -408,7 +408,15 @@ export const App = () => {
   const showVerdict = useCallback(() => {
     const panel = document.getElementById('verdict-panel');
     if (!panel) return;
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // The header is sticky and its height follows the type scale and the width
+    // at which its controls wrap, so offset by the height measured right now: a
+    // fixed scroll margin hid the top of the panel behind it on phones.
+    const header = document.querySelector<HTMLElement>('.app-header');
+    const offset = (header?.offsetHeight ?? 0) + 12;
+    window.scrollTo({
+      top: panel.getBoundingClientRect().top + window.scrollY - offset,
+      behavior: 'smooth',
+    });
     panel.focus({ preventScroll: true });
   }, []);
 
