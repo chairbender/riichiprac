@@ -142,11 +142,11 @@
           "group": "tube",
           "target": [
             0,
-            0.6,
+            -8.5,
             0
           ],
           "azimuthDeg": 0,
-          "elevationDeg": 62,
+          "elevationDeg": 50,
           "distance": 56,
           "size": 40,
           "sizeY": 2.5,
@@ -222,7 +222,7 @@
           "distance": 34,
           "size": 42,
           "sizeY": 27,
-          "energyW": 8000,
+          "energyW": 2500,
           "hex": "#cfe4d3"
         },
         {
@@ -276,9 +276,10 @@
       240
     ],
     "renderScale": 3,
+    "compositeSupersample": 1,
     "paddingPixels": 1,
     "carve": {
-      "depthFractionOfThickness": 0.0075,
+      "depthFractionOfThickness": 0.0121,
       "profile": {
         "topSpread": 0.6,
         "bottomSpread": 0.8
@@ -287,8 +288,8 @@
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75,
       "occlusionSamples": 16,
-      "blurUnits": 0.0042857143,
-      "transitionUnits": 0.010714285700000001,
+      "blurUnits": 0.004285714285714286,
+      "transitionUnits": 0.010714285714285714,
       "paintEdge": 0.18
     },
     "rigs": {

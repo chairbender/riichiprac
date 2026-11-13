@@ -82,6 +82,14 @@ const panels = [
     background: felt(bodyWidth),
   },
   {
+    caption: 'Composite at shipped 2x (1:1 device px)',
+    href: compositeHref,
+    width: slot.width,
+    height: slot.height,
+    natural: true,
+    background: felt(slot.width),
+  },
+  {
     caption: 'Face decal: carved, painted, lit (1 px gutter)',
     href: decalHref,
     width: decalWidth,
@@ -105,26 +113,43 @@ const zoomTop = panelsTop + panelHeight + 78;
 const statsLeft = margin + zoomWidth + 48;
 const sheetHeight = Math.ceil(zoomTop + zoomHeight + 64);
 
-const panelSvg = (panel) => `
+const panelSvg = (panel) => {
+  const imageWidth = panel.natural ? panel.width : panel.width;
+  const imageHeight = panel.natural ? panel.height : panelHeight;
+  const top = panel.natural ? Math.round((panelHeight - imageHeight) / 2) : 0;
+  return `
   <text x="${panel.x}" y="136" font-family="${SANS}" font-size="16" fill="#a8c7b8">${escape(panel.caption)}</text>
   <g transform="translate(${panel.x} ${panelsTop})">
     ${panel.background}
-    <image x="0" y="0" width="${panel.width}" height="${panelHeight}" href="${panel.href}"/>
+    <image x="0" y="${top}" width="${imageWidth}" height="${imageHeight}" href="${panel.href}"/>
     <rect x="0.5" y="0.5" width="${panel.width - 1}" height="${panelHeight - 1}" fill="none" stroke="#24382f"/>
   </g>`;
+};
 
 const tile = manifest.tile;
+const rig = manifest.rig;
+const rigLights = rig.lights
+  .map(
+    (light) =>
+      `${light.id} ${light.size}x${light.sizeY} @${light.elevationDeg}/${light.azimuthDeg}°` +
+      `${light.rollDeg ? ` roll ${light.rollDeg}°` : ''} ${Math.round(light.energyW / 1000)} kW`,
+  )
+  .join('  ·  ');
 const stats = [
   `tile   ${tile.proportionsMm.height} x ${tile.proportionsMm.width} x ${tile.proportionsMm.thickness} mm (h x w x t), ${tile.material}`,
   `       = ${tile.units.height.toFixed(2)} x ${tile.units.width.toFixed(2)} x ${tile.units.thickness.toFixed(4)} units, backing ${Math.round(tile.backEdgeFraction * 100)}%`,
+  `rig    ${rig.preset} · ${rig.lights.length} lights · ambient ${rig.world.strength}`,
+  `       ${rigLights}`,
   `body   x=${slot.x} y=${slot.y} w=${slot.width} h=${slot.height} px (device, ${manifest.pixelRatio}x)`,
   `face   TL ${slot.faceQuad[0].join(', ')}  TR ${slot.faceQuad[1].join(', ')}`,
   `       BR ${slot.faceQuad[2].join(', ')}  BL ${slot.faceQuad[3].join(', ')}`,
   `sliver ${manifest.measurements.blueSliverMeasuredPx} px measured, ${manifest.measurements.blueSliverExpectedPx} px expected`,
   `edge   ${manifest.measurements.topEdgeProjectedPx} px top edge / ${manifest.measurements.faceHeightPx} px face`,
-  `decal  ${manifest.decals.pixels[0]}x${manifest.decals.pixels[1]} px, ${manifest.decals.paddingPixels} px gutter`,
+  `decal  ${manifest.decals.pixels[0]}x${manifest.decals.pixels[1]} px, ${manifest.decals.paddingPixels} px gutter, ${manifest.decals.compositeSupersample}x composite`,
   `carve  ${manifest.decals.carve.depthUnits} units deep (${Math.round(manifest.decals.carve.depthFractionOfThickness * 1000) / 10}% of thickness), ${manifest.decals.carve.grid.join('x')} grid`,
   `       paint edge ${Math.round(manifest.decals.carve.paintEdge * 100)}% of transition, occlusion ${manifest.decals.carve.occlusionDistance} / ${manifest.decals.carve.occlusionStrength}`,
+  `peak   body ${manifest.measurements.bodyMaxChannel}/255 (${manifest.measurements.bodyClippedPixels} clipped) · decal ${manifest.measurements.decalMaxChannel}/255 (${manifest.measurements.decalClippedPixels} clipped)`,
+  `bake   decal ${manifest.measurements.decalBakeSeconds}s`,
   `orientation ${slot.orientation}   drawOrder ${slot.drawOrder}   gutter ${slot.shadowGutterPx} px`,
   `back   ${backFile} ${backSize.width}x${backSize.height} px (diagnostic only)`,
 ];
@@ -147,7 +172,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sheetWidth}" heigh
 
   ${panels.map(panelSvg).join('')}
 
-  <text x="${margin}" y="${zoomTop - 16}" font-family="${SANS}" font-size="16" fill="#a8c7b8">Composite top-left corner, ${zoomScale}x nearest: blue backing sliver above the white front edge, key-lit bevel</text>
+  <text x="${margin}" y="${zoomTop - 16}" font-family="${SANS}" font-size="16" fill="#a8c7b8">Composite top-left corner, ${zoomScale}x nearest: blue backing sliver above the white front edge, tube-lit bevel streak</text>
   <g transform="translate(${margin} ${zoomTop})">
     <rect x="0" y="0" width="${zoomWidth}" height="${zoomHeight}" fill="${spec.table.surface.hex}"/>
     <image x="0" y="0" width="${zoomWidth}" height="${zoomHeight}" href="${zoomHref}"/>

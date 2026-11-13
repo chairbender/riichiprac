@@ -699,9 +699,11 @@ def over(dst: np.ndarray, src: np.ndarray) -> np.ndarray:
 def composite_supersample(matrix: np.ndarray, override: int | None = None) -> int:
     """Sub-pixel samples per axis when warping the decal onto the body.
 
-    Derived from the homography: the decal is ~3.75x denser than the face it
-    lands on in the spike, so a point sample per pixel aliases a 1 px specular
-    line into dashes. 1.25x the texel ratio keeps the box filter past Nyquist.
+    `override` comes from `decals.compositeSupersample`: 1 is a single bilinear
+    sample (the Task 1.5 default, which shows a sub-pixel fillet highlight as a
+    bright dashed "sparkle"), and any higher number box-filters the pixel. Left
+    unset, the value is derived from the homography so the box filter stays just
+    past Nyquist; the decal is ~3.75x denser than the face it lands on.
     """
     if override:
         return int(max(1, override))
@@ -720,13 +722,13 @@ def warp_onto(
     """Warp the decal onto the canvas with a homography and composite it.
 
     The decal is rendered at 3x CSS while the face it lands on is under 100 CSS
-    px, so this is a heavy *minification* (~3.75x in the spike). A single
-    bilinear sample per output pixel skips most texels, and a 1 px specular line
-    inside a fillet then flips on and off from pixel to pixel: the fillet reads
-    as dashes or "zebra stripes". Every output pixel is therefore box-filtered
-    with an N x N grid of sub-pixel samples, N derived from the decal pixels per
-    canvas pixel, so the streak resolves as a continuous (if dimmer) line. That
-    is also what the browser's own image filtering does at runtime.
+    px, so this is a heavy *minification* (~3.75x in the spike). One bilinear
+    sample per output pixel skips most texels, and a 1 px specular line inside a
+    fillet then flips on and off from pixel to pixel: the fillet reads as dashes
+    or "zebra stripes". At `supersample > 1` every output pixel is box-filtered
+    with an N x N grid of sub-pixel samples, so the streak resolves as a
+    continuous (if dimmer) line, which is what the browser's own image filtering
+    does at runtime.
     """
     inverse = np.linalg.inv(matrix)
     height, width = canvas.shape[:2]
@@ -1260,8 +1262,13 @@ def main() -> None:
         die("face homography does not map the decal rect onto the face quad")
 
     # ---- composite panel ------------------------------------------------- #
-    supersample = composite_supersample(matrix)
-    log(f"composite supersample: {supersample}x{supersample} (decal minification)")
+    supersample = composite_supersample(
+        matrix, spec["decals"].get("compositeSupersample")
+    )
+    log(
+        f"composite: {supersample}x{supersample} samples per pixel"
+        + (" (point-sampled: sub-pixel highlights sparkle)" if supersample == 1 else "")
+    )
     composite = warp_onto(body_with_shadow, decal, matrix, (x0, y0), supersample)
     composite_path = out_dir / spec["outputs"]["composite"].format(
         code=decal_spec["code"], orientation=decal_spec["orientation"]
@@ -1330,6 +1337,7 @@ def main() -> None:
             "paddingPixels": padding,
             "frameUnits": [frame_w, frame_h],
             "renderedAtScale": spec["decals"]["renderScale"],
+            "compositeSupersample": supersample,
             "carve": {
                 "depthUnits": round(
                     spec["decals"]["carve"]["depthFractionOfThickness"]

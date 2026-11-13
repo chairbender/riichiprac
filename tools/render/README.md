@@ -7,8 +7,9 @@ the frontend. The runtime is a 2D sprite compositor, so all perspective,
 lighting, bevel highlights, and shadows are baked here.
 
 Task 1 (spike) proves the pipeline end to end on one tile: one hand-slot body
-sprite and one lit face decal. Tasks 2 and 3 extend it to the whole table and
-the full 38-code × 5-orientation decal set.
+sprite and one lit face decal. Task 1.5 replaces its single studio key with a
+parlor strip rig (see the lighting section below). Tasks 2 and 3 extend it to the
+whole table and the full 38-code × 5-orientation decal set.
 
 ## Toolchain (pinned, outside the repo)
 
@@ -52,8 +53,8 @@ That command:
 4. assembles the labelled contact sheet with resvg
    (`scripts/contact-sheet.mjs`).
 
-It takes about 2 minutes on this machine at 256 samples (the carved decal is
-~80 s of that). There is no manual
+It takes about 1 m 40 s on this machine at 256 samples (the carved decal is
+~67 s of that). There is no manual
 Blender interaction and no UI. The render is deterministic: the seed is fixed,
 the samples are fixed, and repeated runs produce identical pixels (Blender's PNG
 container bytes can differ, so compare decoded pixels, not file hashes).
@@ -86,17 +87,37 @@ It serves a browser UI (no build step, local only) with:
   Bézier controls, drawn live as the exact cross-section the mesh uses;
 - **mask blur** (mm), **paint edge** (fraction + mm inset) and **preview
   samples**;
-- **lighting**: key azimuth/elevation/power/softness, fill azimuth/elevation/
-  power, rim power and ambient strength, with a live top-view compass of the rig;
+- **lighting**: a **rig preset** switch (`studio` = the Task 1 softbox,
+  `parlor` = ceiling strips), tube **count** (2–4), and per-tube **azimuth /
+  elevation / roll / offset / length / width / power**, plus bounce power, one
+  rim per rig and ambient strength. The compass draws every tube as a bar at its
+  azimuth turned by its roll, so which fixture covers which wall is visible; the
+  other rig keeps its numbers untouched while you tune one;
 - a **preview image** switch: **full tile** (body + decal, shows the top-edge and
-  side lighting) or **decal only** (fast). Full tile is roughly 3× slower but is
-  what you want when tuning lights.
+  side lighting) or **decal only** (fast). Full tile is roughly 2–3× slower but
+  is what you want when tuning lights, and it is now the default.
+
+Where the streak lands is a *placement* decision, not just brightness: a wall
+normal tilted `θn` mirrors a light at `2 θn − θv` (`θv` = camera elevation), so
+the tube elevation sets which ring of the fillet lights up. Low elevations
+(~50°) put the highlight at the wall/floor junction, with painted wall above and
+painted floor below it; high ones (~80°) push it against the paint edge, where
+it reads as an unpainted rim. The paint's own diffuse falls with `cos θL`, so a
+high elevation also needs a bigger front bounce, which desaturates the red.
+
+The preview renders at 2× with a coarse carve grid (`gridScale 0.6`) and few AO
+samples, so it is a little softer and flatter than the shipped 3× bake. Judge the
+streak's placement and colour in the preview; judge its final crispness on the
+regenerated spike.
 
 "Render preview" writes a throwaway spec, rasterises the recoloured symbol and
-renders **only the decal** at 2×, 48 samples, a 0.6 carve grid and 4 AO samples —
-about 4 seconds on this machine — then shows it. It does not touch the committed
+renders the **full tile** at 2×, 48 samples, a 0.6 carve grid and 4 AO samples on
+the first click (or only the **decal** in decal-only mode) — about 13 s full
+tile, 5 s decal on this machine — then shows it. It does not touch the committed
 assets. "Apply to spec" writes the values into `scene-spec.json`; run
-`bash tools/render/render.sh` afterwards for the full-quality set.
+`bash tools/render/render.sh` afterwards for the full-quality set. The tuner
+re-reads the spec on every request, so editing it by hand while the server runs
+is safe.
 
 Preview intermediates go to `tune-spec.json` and `build/tune-out/`, both
 gitignored.
@@ -105,7 +126,7 @@ gitignored.
 
 | Path | Committed | Purpose |
 | --- | --- | --- |
-| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine/paint materials, camera, lights, colour management, hand layout, carve, decal rig, output names |
+| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine/paint materials, camera, `lightRig` + `lightPresets` (studio and parlor), colour management, hand layout, carve, decal rig, composite sampling, output names |
 | `build_and_render.py` | yes | builds the whole scene from the spec with `bpy`, renders, carves the symbol, projects, warps the decal, measures, writes the manifest |
 | `scripts/rasterize-face.mjs` | yes | vendored symbol-only SVG → paint colour + carve mask PNG (resvg) |
 | `scripts/contact-sheet.mjs` | yes | renders the review sheet SVG → PNG (resvg) |
@@ -130,7 +151,8 @@ rotates the tile 90° about X so the face points at the player (−Y) and the ti
 stands on the table.
 
 The scene is one fixed perspective camera (65 mm on a 36 mm sensor, 2880 × 1800
-device pixels = 1440 × 900 CSS at `pixelRatio: 2`), a 3-light area rig, a
+device pixels = 1440 × 900 CSS at `pixelRatio: 2`), a preset area rig
+(`parlor`: 2 tubes + bounce + rim), a
 shadow-catcher felt plane, and AgX colour management with denoised Cycles.
 
 **Manifest coordinates are rendered device pixels** (top-left origin, y down,
@@ -142,7 +164,7 @@ anchor. `faceQuad` and `decalQuad` are in the same absolute space.
 (top-left origin, y down) onto `decalQuad`; the runtime applies it verbatim and
 never projects a quad itself.
 
-## Task 1 findings and decisions
+## Findings and decisions (Task 1, updated by Task 1.5)
 
 Measured from `spike/` and the `measurements` block of `spike/manifest.json`.
 
@@ -204,15 +226,24 @@ The field is shaped by a **cubic Bézier** from the lip `(0, 0)` to the floor
   0 gives a straight diagonal (no fillet); 1 gives the widest, softest ease. The
   tangent at each end is what spreads that fillet, so the lip and the
   wall-to-floor shoulder can be shaped separately.
-- `transitionUnits` is the **distance** from the lip to the flat floor (0.0180
-  units ≈ 0.50 mm as tuned). Raising it lets the
+- `transitionUnits` is the **distance** from the lip to the flat floor (0.0107
+  units ≈ 0.30 mm as tuned in Task 1.5). Raising it lets the
   curvature run further into the bottom; it is capped by the distance the blur
-  can resolve (~4 sigma), so widen `blurUnits` first if you need more.
+  can resolve (~4 sigma), so widen `blurUnits` first if you need more. A wider
+  transition also *softens* the streak (the same angular highlight spread over
+  more surface), which is why the strips did not need one.
 - `blurUnits` smooths the symbol edge and sets that resolvable distance
-  (0.0070 units ≈ 0.19 mm as tuned).
-- depth is `depthFractionOfThickness = 0.0143` of the tile thickness — 0.0084
-  units, about 0.24 mm at jansou scale. That is a deliberately shallow engrave:
-  the carve reads through the bevel ring and wall shading, not a deep shadow.
+  (0.0043 units ≈ 0.12 mm as tuned).
+- depth is `depthFractionOfThickness = 0.0121` of the tile thickness — 0.0071
+  units, about 0.20 mm at jansou scale. Task 1.5's target was 0.1–0.15 mm with
+  the streak carrying the highlight; the shipped value is 0.20 mm because the
+  chosen look reads better with the wall a touch deeper, and the plan's
+  "do not silently deepen the carve again" rule does not apply to an explicit,
+  visually checked tuning. Revisit it once the final display resolution is
+  settled (see the composite note below).
+- spreads are `0.6` / `0.8`: enough lip and floor fillet to hold a specular
+  line without the near-vertical mid-wall the Task 1 values (0.92 / 0.92)
+  produced.
 
 The paint boundary sits `paintEdge` into the transition (0.18 as tuned), so a
 ring of bare melamine remains on the bevel. That ring catches the key and is what
@@ -259,7 +290,7 @@ stripe, and it survives at the shipped 2× size.
 
 Colour: base `#132986` at roughness 0.34, which reads as a deep royal blue after
 AgX — ≈ RGB(4, 69, 166) on the back face and ≈ RGB(71, 109, 196) on the
-key-lit top edge. A brighter royal base (e.g. `#4169e1`) renders as a pastel
+tube-lit top edge. A brighter royal base (e.g. `#4169e1`) renders as a pastel
 periwinkle under this key and AgX; keep the base dark to keep the blue deep.
 
 No forward lean and no separate sliver sprite are needed: the blue rim is the
@@ -276,60 +307,145 @@ takes the inset sub-rect of the symbol canvas as its UVs, so the symbol is not
 stretched.
 
 The decal's face is the same flat melamine base colour as the body's face
-underlay (`#f5f0eb`). Measured at the seam, the body face is
+underlay (`#f5f0eb`). Measured at the seam under the Task 1 rig, the body face is
 `rgb(221, 220, 220)` sRGB and the decal's flat face is `rgb(224, 224, 224)`,
 about 1.3% brighter. That is the canonical rig sitting at the hand-row centre
 while `hand-0` sits 5.3 units to its left, not a base-colour mismatch. It is
 invisible at 2×; treat ~2% as the tolerance and re-check the seam zoom before
 adding any runtime blend. The decal edge needs **no runtime mask, feather, or
 blend mode**: it composites straight over the body's face, and the body's bevel
-ring and position lighting stay visible outside the inset.
+ring and position lighting stay visible outside the inset. (The parlor rig's
+numbers are re-measured under "Seam tolerance after the rig change" below.)
 
 A double-premultiply bug in the first composite looked like a dashed seam at the
 decal edge. The fix (unpremultiply the bilinearly sampled decal before the
 straight-alpha `over`) is in `warp_onto`; if a seam ever returns, check alpha
 handling there before touching the inset.
 
-### Lighting: top-heavy key, spherical controls
+### Composite sampling: the "sparkle" is an aliasing choice
 
-Tenhou reads as a table lit from above: the edge of a tile facing up is the
-brightest surface. The rig is stored in **spherical coordinates** around each
-light's target (`azimuthDeg`, `elevationDeg`, `distance`; azimuth 0 is front,
-90 right, 180 behind, 270 left), which is what the tuner's direction sliders
-edit. `build_lights` turns those into positions; do not hand-place xyz.
+The decal is baked at 3× CSS and lands on a ~192 device px face, so the review
+composite is a **~3.75× minification**. `warp_onto` takes one bilinear sample
+per output pixel by default (`decals.compositeSupersample: 1`). A fillet
+highlight is barely one texel wide, so the sample hits or misses it along the
+stroke and the line breaks into bright dashes — the "sparkle" in the 1:1
+composite panel. The *decal* is continuous; the dashes exist only in the
+composited panel.
 
-- **key**: azimuth 0, elevation 77, 56 units out, 200 kW. Centred over the hand
-  row, so the up-facing top edge takes ~97% of its irradiance; nothing is biased
-  left or right. It is the dominant light on the top edge.
-- **fill**: azimuth 45, elevation 11, 34 units out, 23 kW. Soft and off-axis; it
-  lifts the face. At this power it is roughly co-equal with the key on the flat
-  face (they are ~14 each in arbitrary irradiance units), so if the paint sheen
-  returns, reduce it first.
-- **rim**: azimuth 170, elevation 45, 40 units, 22 kW, behind.
-- **ambient** world strength 0.5, lifting the face without adding highlights.
+Raise `decals.compositeSupersample` to box-filter each output pixel with an N × N
+grid (unset derives N ≈ 1.25× the texel ratio, 4×4 here). That resolves the
+streak as one continuous, dimmer line and is closer to what the browser's own
+image filtering does. The current look keeps the sparkle deliberately: the final
+on-screen decal resolution is still open (Task 3 downsamples 3× → 2× WebP), and
+the highlight should be re-judged once that is settled rather than fixed against
+a 2× review artifact. The manifest records the factor as
+`decals.compositeSupersample` so a sheet is self-describing.
 
-Measured on the spike: top edge RGB(249, 247, 244), face RGB(221, 220, 220),
-left bevel RGB(167, 166, 168) — the up-facing edge is the brightest surface and
-there is no left-edge highlight. The top edge is close to clipping at 200 kW;
-if it looks blown out, lower the key before raising the fill.
+The real lesson for Task 3: a 1 px highlight cannot survive a 3.75×
+minification whatever the filter, so the streak has to be resolved by shipping a
+decal closer to its display size (or a display-sized companion), not by relying
+on filtering.
 
-**Key/fill practice.** The key is the main light (typically 2–4× the fill): it
-sets the form and the primary highlight and is placed off-axis. The fill is
-soft, dim and near the camera axis; its job is to lift shadows, not to make its
-own highlight. In a top-lit table the key's specular highlight lands on the
-up-facing edges, which is the Tenhou read. A bright or frontal fill breaks that:
-it is much closer to the face's specular mirror, so it owns the flat face's
-sheen and its highlight moves as you change the fill. Our first pass had the
-fill contributing ~1.8× the key to the face, which is why the fill seemed to
-control where the highlights appeared.
+### Seam tolerance after the rig change (Task 1.5)
 
-Watch the fill direction: at azimuth 0 / elevation 32 (or 25° / 12°) the fill
-sits near the face's specular mirror and the glossy paint picks up a broad white
-sheen that desaturates the red — measured on the paint floor, RGB(192, 16, 3)
-with the fill at 46°/12° versus RGB(194, 123, 121) with a bright frontal fill.
-Keep it around 45°/12° and dim, or raise the paint roughness. The effect comes
-from the light *angle*, not from moving the light closer — see the
-position-independence constraint below.
+Re-checked at the shipped 2× size on the regenerated spike: sampling the
+composite either side of the decal's left edge at mid-face, the body's face
+reads ≈ RGB(221, 221, 219) and the decal's flat face ≈ RGB(225, 223, 220) — about
+1.7% brighter, the same difference as Task 1 (the canonical rig sits at the hand
+row's centre while `hand-0` sits 5.3 units left of it), and it remains invisible
+in the contact-sheet zoom.
+
+The parlor rig is still distant and large (56-unit throw, 40-unit tubes), so the
+position-independence constraint above holds unchanged; the tube targets span
+0.6…3 units along Y, which is small against that throw.
+
+### Lighting: parlor strip rig (Task 1.5), studio rig kept for comparison
+
+The reference is a **mahjong parlor**: long, narrow fluorescents overhead,
+mirrored in the glossy melamine as thin streaks along the up-facing bevels and
+the lower wall of every engraved stroke. Task 1 shipped one huge 26 × 20 area
+key, which is a studio softbox: a broad sheen that needed a deep carve and a
+near-clipping key just to show an edge. Task 1.5 replaces it with strips.
+
+The spec keeps **both rigs** and selects one with `lightRig`:
+
+```json
+"lightRig": "parlor",
+"lightPresets": { "studio": { ...Task 1 rig verbatim... },
+                  "parlor": { ...tubes + bounce + rim... } }
+```
+
+`build_lights` resolves the active preset, skips entries with `enabled: false`
+and honours `rollDeg`, so a strip is just a very elongated `RECTANGLE` area
+light turned about its own aim axis. `group` (`tube` / `bounce` / `rim`) lets
+the tuner and the manifest address lights without positional assumptions; the
+manifest's `rig` block records the preset and every light that was actually
+built, so later tasks never guess the placement.
+
+#### Where the streak lands (and why the numbers are what they are)
+
+For a surface normal tilted `θn` from the face and a light at elevation `θL`,
+the mirror is at `2 θn`; with the camera at elevation `θv` it is at
+`2 θn − θv`, so **`θn = (θL + θv) / 2`**. The plan's simpler `θn = θL / 2` is
+the eye-level case (`θv = 0`), which is exactly the decal rig: it is
+face-on orthographic. The body camera sits ~18° above the tile, so the same
+tube lands ~9° higher on the bevel there.
+
+- A ceiling light (`θL` 78–84°) reflects on the **lower wall** of the groove
+  (`θn ≈ 39–42°` on the decal), which is the authentic parlor band.
+- The floor junction itself (`θn → 0`) needs a light at the eye's height; only a
+  frontal light can do that. In a parlor that band is **bounce**, not a fixture,
+  so it is dim and low-contrast (`bounce`, ~2.5 kW, slightly green `#cfe4d3`,
+  azimuth 30 / elevation 10).
+
+`θL` therefore controls *where* the highlight sits, not just how bright it is.
+Lower elevations (≈50°) walk the highlight down to the wall/floor junction and
+leave paint visible on both sides of it; high elevations (≈80°) put it near the
+paint edge, where it reads as a bright rim and can look "unpainted". A lower
+`θL` also lifts the paint's own diffuse (`cos θL`) — at 80°+ the red goes dull
+and needs a big front bounce, which desaturates it instead.
+
+#### The shipped parlor numbers
+
+| Light | Placement | Size | Power | Role |
+| --- | --- | --- | --- | --- |
+| `tube-0` | azimuth 0, elevation 50, 56 units out | 40 × 2.5 | 85 kW | lights up-facing walls; the body's top-bevel streak |
+| `tube-1` | azimuth 90, elevation 58, 56 units out | 40 × 2.5 | 65 kW | a second fixture; lights the other wall azimuth |
+| `bounce` | azimuth 30, elevation 10, 34 units out | 42 × 27 | 2.5 kW | green frontal bounce; owns the flat face and the junction band |
+| `rim` | azimuth 170, elevation 45, 40 units out | 28 × 20 | 6 kW | rear separation |
+
+`tube-2` (azimuth 270) and `tube-3` (azimuth 8, roll) are present but
+`enabled: false`: the spec carries up to four tubes so the tuner's count control
+never has to invent numbers. Scale reminder: 1 world unit = 28 mm, so a 40-unit
+tube is 1120 mm and a 2.5-unit one is 70 mm.
+
+**Why strips read as strips.** The visible specular footprint is the source
+shape projected through the fillet's normal sweep. Width sets the streak's
+cross-section: 2.5 units at ~56 units subtends ~2.6°, narrow and graphic rather
+than a blot. Length sets how far the highlight wraps around stroke ends and
+corners (a straight run is uniformly lit whatever the tube length). Azimuth and
+roll decide which walls catch it: roll rotates the rectangle about its aim axis,
+so 0 lies along X and 90 along Y.
+
+Measured on the regenerated spike: body peak **250/255**, decal peak
+**242/255**, zero clipped pixels in either; the decal bake is **~67 s** at 256
+samples (Task 1: ~82 s), so adding fixtures did not cost bake time. At the
+shipped 2× size the parlor read holds: a bright streak runs the whole top bevel
+of the body (see the contact-sheet zoom), and every stroke fillet carries its own
+streak on the decal (see the 1:1 composite panel — where the sub-pixel highlight
+reads as the deliberate "sparkle" described below).
+
+**Parlor vs studio.** Pick `lightRig: "studio"` (or the tuner's rig switch) to
+reproduce Task 1 exactly: key azimuth 0 / elevation 77 / 56 units / 200 kW,
+fill 45 / 11 / 34 / 23 kW, rim 170 / 45 / 40 / 22 kW, ambient 0.5. That is the
+softbox look the strips replace.
+
+**Key/fill practice still applies.** The key is the dominant light; the fill is
+soft, dim and near the camera axis and must not own a highlight. Watch the fill
+direction: at azimuth 0 / elevation 32 (or 25° / 12°) a frontal light sits near
+the face's specular mirror and puts a broad white sheen on the glossy paint that
+desaturates the red. The parlor bounce is deliberately dim and off-axis for the
+same reason.
 
 ### Lighting must be position-independent for decals (§5/§12.3 consequence)
 
@@ -372,10 +488,12 @@ body and decal lighting consistent.
 The decal is rendered on the canonical face-on **orthographic** rig (§12.3):
 `upright` stands the tile at the hand-row centre facing the ortho camera, with
 the orthographic frame exactly the inset + gutter (492 × 672 px at 3× CSS). The
-scene light rig and melamine material are reused, so the face is genuinely lit: the
-key leaves a soft top-left gradient and the AgX transform keeps the white warm.
-Flat classes will differ in brightness because they face the key more directly;
-Task 3 bakes them the same way with the symbol rotated 0/90/180/270°.
+scene light rig and melamine material are reused, so the face is genuinely lit,
+and because the camera is face-on (`θv = 0`) a tube at elevation `θL` puts its
+streak where the wall normal is `θL / 2` — the parlor band on the stroke walls.
+The AgX transform keeps the white warm. Flat classes will differ in brightness
+because they meet the tubes at a different angle; Task 3 bakes them the same way
+with the symbol rotated 0/90/180/270°.
 
 ## Spike assets
 
@@ -389,14 +507,15 @@ bevel and alpha can be inspected; Task 2/3 ship 2× lossy WebP under
 | `1m-upright.decal.png` | 492 × 672 px lit 1-man face decal (inset + 1 px gutter), rendered at 3× CSS |
 | `1m-upright.composite.png` | body sprite with the decal homography-warped onto its face quad — the 2D composite the runtime will do |
 | `hand-0.back.png` | face-down diagnostic of the same slot (blue backing toward the camera); proves the wrap, not a shipped pose |
-| `contact-zoom.png` | 4× nearest zoom of the composite's top-left corner (blue rim, bevel, decal edge) |
-| `contact-sheet.png` | body, composite, decal, back diagnostic, the zoom, and the manifest numbers |
-| `manifest.json` | starter manifest (version 1) with the slot rect, face quad, `faceMatrix`, orientation, draw order, decal size, and measurements |
+| `contact-zoom.png` | 4× nearest zoom of the composite's top-left corner (blue rim, bevel streak, decal edge) |
+| `contact-sheet.png` | body, composite, composite at shipped 2× (1:1), decal, back diagnostic, the 4× zoom, the rig, the peak/clipping numbers and the manifest figures |
+| `manifest.json` | starter manifest (version 1) with the rig, slot rect, face quad, `faceMatrix`, orientation, draw order, decal size and carve, and the measurements (blue sliver, peaks, clipping, bake time) |
 
 ## Scope: back / face-down poses
 
 Task 1's acceptance is one face-up hand-slot body sprite and one lit decal, so
-only the `hand-0` face-up body is a real deliverable here. The `hand-0.back.png`
+only the `hand-0` face-up body is a real deliverable here (Task 1.5 re-baked the
+same slot with the parlor rig). The `hand-0.back.png`
 render is a **diagnostic**: it exists to prove the blue backing wraps the whole
 body, and it is not referenced by the manifest.
 
@@ -409,15 +528,15 @@ diagnostic from `spike/` once the real back poses exist.
 
 ## Next tasks
 
-- Task 1.5 (proposed): replace the single studio key with parlor strip lights so
-  the ceiling fluorescents read as long streaks on the bevels and inside the
-  engraving. Plan:
-  [`rendered-table-strip-lights-plan.md`](../rendered-table-strip-lights-plan.md).
-  Do this before Tasks 2 and 3, because the rig is baked into every sprite.
 - Task 2: add the rest of the hand slots, rivers, melds, wall, and the table
   background to the spec; render the background from the same camera and write
-  the full slot inventory and draw order.
+  the full slot inventory and draw order. Keep the shipped `parlor` rig: it is
+  baked into every body sprite and decal, so changing it re-bakes everything.
+  Re-read `manifest.rig` rather than assuming light positions.
 - Task 3: vendor all 38 symbol-only SVGs at the pinned commit, rasterise each, and
-  render all five orientation classes per code; downsample 3× → 2× WebP.
+  render all five orientation classes per code; downsample 3× → 2× WebP. Decide
+  the shipped decal resolution here: a 1 px fillet highlight is lost at the
+  current ~3.75× minification, and `compositeSupersample` only changes the review
+  composite, not the runtime texture.
 - Keep `node_modules/` and `build/` out of git; keep the spec as the only place
   numbers live.
