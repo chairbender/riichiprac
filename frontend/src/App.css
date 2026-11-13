@@ -400,7 +400,7 @@
 
 /*
  * View picker: one compact select that chooses between the stacked rows, the
- * top-down plan, and the experimental isometric table.
+ * top-down plan, and the isometric table.
  */
 .app-view-picker {
   cursor: default;
@@ -1358,56 +1358,112 @@
   line-height: 1.1;
 }
 
-/* Isometric table view (experimental placeholder) ------------------------- */
+/* Isometric table view ----------------------------------------------------- */
 
 /*
- * Part 0 of the isometric chain: the view can be selected, but the table is not
- * built yet, so this panel stands in where the plan would be. It is deliberately
- * plain and flat: no perspective, no pretend table furniture.
+ * The isometric table is one SVG with a fixed viewBox, scaled to the app
+ * column. Its geometry and projection live in `iso.ts`; this file paints it.
+ * The felt vignette is drawn inside the SVG so it scales with the viewBox, and
+ * later tile parts reuse the same fixed light tokens.
  */
-.isometric-placeholder {
+.isometric-table {
+  flex: 1;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 20px 16px;
-  border: 1px dashed #34506e;
-  border-radius: 12px;
-  background-color: #14181f;
-  text-align: center;
-}
-
-.isometric-placeholder-title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  gap: 8px;
-  margin: 0;
-  color: #a5d8ff;
-  font-size: 0.9rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  min-height: 0;
 }
 
-.isometric-placeholder-badge {
-  padding: 2px 7px;
-  border: 1px solid #7a5c2c;
-  border-radius: 999px;
-  background-color: #1f1a12;
-  color: #ffd43b;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+.isometric-svg {
+  display: block;
+  width: 100%;
+  max-width: 780px;
+  height: auto;
+  /* Shadows along the rail may reach just outside the viewBox. */
+  overflow: visible;
 }
 
-.isometric-placeholder-text {
-  max-width: 34em;
-  margin: 0;
-  color: #8b94a7;
-  font-size: 0.78rem;
-  line-height: 1.5;
+/* The table rail, a shade darker than the felt. */
+.iso-rail {
+  fill: #0c1015;
+}
+
+.iso-felt {
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 1.5;
+}
+
+/*
+ * Each seat band is the trapezoid along its own edge. Faint fills and dashed
+ * outlines keep the table reading as four cleared places without putting text
+ * or scores on the plane; the compass owns those in a later part.
+ */
+.iso-seat polygon {
+  fill: rgba(255, 255, 255, 0.025);
+  stroke: rgba(160, 235, 195, 0.16);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 7;
+  stroke-linejoin: round;
+}
+
+.iso-seat--human polygon {
+  fill: rgba(150, 230, 190, 0.06);
+  stroke: rgba(160, 235, 195, 0.32);
+  /* Solid rather than dashed: the bottom edge is the human's place. */
+  stroke-dasharray: none;
+}
+
+/* The centre square is reserved for the compass. */
+.iso-centre {
+  fill: rgba(4, 10, 7, 0.28);
+  stroke: rgba(160, 235, 195, 0.2);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 7;
+  stroke-linejoin: round;
+}
+
+/*
+ * Dev-only alignment overlay (`?isoDebug` in a dev build). Bright, thin, and
+ * never interactive; it is not part of the table's look.
+ */
+.iso-debug {
+  pointer-events: none;
+}
+
+.iso-debug-grid line {
+  stroke: #ff4fd8;
+  stroke-width: 1;
+  opacity: 0.28;
+}
+
+.iso-debug-edges circle {
+  fill: #ffd43b;
+}
+
+.iso-debug-seat line {
+  stroke: #7cf7ff;
+  stroke-width: 2;
+  opacity: 0.9;
+}
+
+.iso-debug-seat circle {
+  fill: #7cf7ff;
+}
+
+.iso-debug-centre circle {
+  fill: none;
+  stroke: #ffd43b;
+  stroke-width: 2;
+}
+
+.iso-debug text {
+  fill: #eafcff;
+  font-size: 14px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #06121a;
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 /* Pinned human hand ------------------------------------------------------- */

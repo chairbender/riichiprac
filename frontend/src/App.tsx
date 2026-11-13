@@ -477,7 +477,7 @@ export const App = () => {
         : 'Waiting for the Mortal model to load…';
 
   const viewHint =
-    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view, and isometric is experimental (it currently shows a placeholder). Stays 2D: no 3D or camera tilt.';
+    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view, and isometric is the angled table view still being built. Stays 2D: no 3D or perspective.';
 
   const statusMessage = agreementLoading
     ? 'Finding a hand Mortal agrees with…'
@@ -600,7 +600,7 @@ export const App = () => {
          * changes when it switches, so the answer and grade stay put.
          */}
         {tableView === 'isometric' ? (
-          <IsometricTable />
+          <IsometricTable state={gameState ?? undefined} />
         ) : tableView === 'topdown' && gameState ? (
           <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
         ) : (
