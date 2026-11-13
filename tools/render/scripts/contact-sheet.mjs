@@ -4,9 +4,9 @@
  *
  * The sheet is an SVG (images as data URIs) rasterised with the same pinned
  * resvg engine used for the face textures. It shows the body sprite, the lit
- * face decal, the homography composite, and a pixel zoom of the top edge, with
- * the manifest numbers spelled out so the render can be reviewed without
- * opening Blender.
+ * face decal, the homography composite, the face-down diagnostic, and a pixel
+ * zoom of the top edge, with the manifest numbers spelled out so the render can
+ * be reviewed without opening Blender.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -20,13 +20,28 @@ const packageJson = JSON.parse(readFileSync(join(renderDir, 'package.json'), 'ut
 const resvgVersion = packageJson.dependencies['@resvg/resvg-js'];
 const manifest = JSON.parse(readFileSync(join(outDir, spec.outputs.manifest), 'utf8'));
 const slot = manifest.slots[0];
+const slotIndex = slot.id.split('-').pop();
 const decalCode = spec.spike.decal.code;
 const orientation = spec.spike.decal.orientation;
 
 const png = (file) => `data:image/png;base64,${readFileSync(join(outDir, file)).toString('base64')}`;
-const bodyHref = png(slot.body);
-const decalHref = png(manifest.faces[decalCode][orientation]);
-const compositeHref = png(spec.outputs.composite.replace('{code}', decalCode).replace('{orientation}', orientation));
+
+/** Read a PNG's intrinsic size from its IHDR chunk. */
+const pngSize = (file) => {
+  const buffer = readFileSync(join(outDir, file));
+  if (buffer.toString('ascii', 1, 4) !== 'PNG') throw new Error(`${file} is not a PNG`);
+  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+};
+
+const bodyFile = slot.body;
+const backFile = spec.outputs.back.replace('{index}', slotIndex);
+const decalFile = manifest.faces[decalCode][orientation];
+const compositeFile = spec.outputs.composite.replace('{code}', decalCode).replace('{orientation}', orientation);
+
+const bodyHref = png(bodyFile);
+const backHref = png(backFile);
+const decalHref = png(decalFile);
+const compositeHref = png(compositeFile);
 const zoomHref = png(spec.outputs.zoom);
 
 const escape = (text) =>
@@ -38,30 +53,65 @@ const MONO = 'Fira Mono, DejaVu Sans Mono, monospace';
 const panelHeight = 608;
 const bodyScale = panelHeight / slot.height;
 const bodyWidth = slot.width * bodyScale;
+const backSize = pngSize(backFile);
+const backWidth = backSize.width * (panelHeight / backSize.height);
 const decalScale = panelHeight / manifest.decals.pixels[1];
 const decalWidth = manifest.decals.pixels[0] * decalScale;
 const gap = 60;
 const margin = 48;
-const sheetWidth = Math.ceil(margin * 2 + bodyWidth * 2 + decalWidth + gap * 2);
 const panelsTop = 150;
 const zoomCrop = spec.spike.zoom;
 const zoomScale = zoomCrop.scale;
 const zoomWidth = zoomCrop.width * zoomScale;
 const zoomHeight = zoomCrop.height * zoomScale;
+
+const felt = (width) => `<rect x="0" y="0" width="${width}" height="${panelHeight}" fill="${spec.table.surface.hex}"/>`;
+const checker = (width) => `<rect x="0" y="0" width="${width}" height="${panelHeight}" fill="url(#checker)"/>`;
+
+const panels = [
+  {
+    caption: 'Body sprite (alpha, baked contact shadow)',
+    href: bodyHref,
+    width: bodyWidth,
+    background: felt(bodyWidth),
+  },
+  {
+    caption: 'Composite: body + decal, real slot',
+    href: compositeHref,
+    width: bodyWidth,
+    background: felt(bodyWidth),
+  },
+  {
+    caption: 'Face decal (1 px gutter)',
+    href: decalHref,
+    width: decalWidth,
+    background: checker(decalWidth),
+  },
+  {
+    caption: 'Back pose (diagnostic): blue backing wraps every edge',
+    href: backHref,
+    width: backWidth,
+    background: felt(backWidth),
+  },
+];
+
+let cursor = margin;
+for (const panel of panels) {
+  panel.x = cursor;
+  cursor += panel.width + gap;
+}
+const sheetWidth = Math.ceil(cursor - gap + margin);
 const zoomTop = panelsTop + panelHeight + 78;
 const statsLeft = margin + zoomWidth + 48;
 const sheetHeight = Math.ceil(zoomTop + zoomHeight + 64);
 
-const panel = (x, href, width, height, background) => `
-    <g transform="translate(${x} ${panelsTop})">
-      ${background}
-      <image x="0" y="0" width="${width}" height="${height}" href="${href}"/>
-      <rect x="0.5" y="0.5" width="${width - 1}" height="${height - 1}" fill="none" stroke="#24382f"/>
-    </g>`;
-
-const felt = `<rect x="0" y="0" width="${bodyWidth}" height="${panelHeight}" fill="${spec.table.surface.hex}"/>`;
-const compositeFelt = `<rect x="0" y="0" width="${bodyWidth}" height="${panelHeight}" fill="${spec.table.surface.hex}"/>`;
-const checker = `<rect x="0" y="0" width="${decalWidth}" height="${panelHeight}" fill="url(#checker)"/>`;
+const panelSvg = (panel) => `
+  <text x="${panel.x}" y="136" font-family="${SANS}" font-size="16" fill="#a8c7b8">${escape(panel.caption)}</text>
+  <g transform="translate(${panel.x} ${panelsTop})">
+    ${panel.background}
+    <image x="0" y="0" width="${panel.width}" height="${panelHeight}" href="${panel.href}"/>
+    <rect x="0.5" y="0.5" width="${panel.width - 1}" height="${panelHeight - 1}" fill="none" stroke="#24382f"/>
+  </g>`;
 
 const stats = [
   `body   x=${slot.x} y=${slot.y} w=${slot.width} h=${slot.height} px (device, ${manifest.pixelRatio}x)`,
@@ -71,12 +121,10 @@ const stats = [
   `edge   ${manifest.measurements.topEdgeProjectedPx} px top edge / ${manifest.measurements.faceHeightPx} px face`,
   `decal  ${manifest.decals.pixels[0]}x${manifest.decals.pixels[1]} px, ${manifest.decals.paddingPixels} px gutter`,
   `orientation ${slot.orientation}   drawOrder ${slot.drawOrder}   gutter ${slot.shadowGutterPx} px`,
+  `back   ${backFile} ${backSize.width}x${backSize.height} px (diagnostic only)`,
 ];
 
-const matrixLines = [];
-const matrixText = slot.faceMatrix;
-const matrixChunks = matrixText.match(/.{1,78}/g) ?? [];
-matrixLines.push(...matrixChunks);
+const matrixLines = slot.faceMatrix.match(/.{1,78}/g) ?? [];
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sheetWidth}" height="${sheetHeight}" viewBox="0 0 ${sheetWidth} ${sheetHeight}">
   <defs>
@@ -92,15 +140,9 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sheetWidth}" heigh
   <text x="${margin}" y="58" font-family="${SANS}" font-size="30" fill="#eef5f0">Rendered table spike: body sprite + lit face decal</text>
   <text x="${margin}" y="90" font-family="${SANS}" font-size="17" fill="#8fb2a4">Blender ${manifest.blender} · Cycles ${spec.scene.samples} samples · AgX · ${manifest.pixelRatio}x device pixels · slot ${slot.id} (${slot.orientation}) · ${decalCode} face</text>
 
-  <text x="${margin}" y="136" font-family="${SANS}" font-size="16" fill="#a8c7b8">Body sprite (alpha, baked contact shadow)</text>
-  <text x="${margin + bodyWidth + gap}" y="136" font-family="${SANS}" font-size="16" fill="#a8c7b8">Composite: body + decal, real slot</text>
-  <text x="${margin + bodyWidth * 2 + gap * 2}" y="136" font-family="${SANS}" font-size="16" fill="#a8c7b8">Face decal (1 px gutter)</text>
+  ${panels.map(panelSvg).join('')}
 
-  ${panel(margin, bodyHref, bodyWidth, panelHeight, felt)}
-  ${panel(margin + bodyWidth + gap, compositeHref, bodyWidth, panelHeight, compositeFelt)}
-  ${panel(margin + bodyWidth * 2 + gap * 2, decalHref, decalWidth, panelHeight, checker)}
-
-  <text x="${margin}" y="${zoomTop - 16}" font-family="${SANS}" font-size="16" fill="#a8c7b8">Composite top-left corner, ${zoomScale}x nearest: blue back sliver above the ivory front edge, key-lit bevel</text>
+  <text x="${margin}" y="${zoomTop - 16}" font-family="${SANS}" font-size="16" fill="#a8c7b8">Composite top-left corner, ${zoomScale}x nearest: blue backing sliver above the ivory front edge, key-lit bevel</text>
   <g transform="translate(${margin} ${zoomTop})">
     <rect x="0" y="0" width="${zoomWidth}" height="${zoomHeight}" fill="${spec.table.surface.hex}"/>
     <image x="0" y="0" width="${zoomWidth}" height="${zoomHeight}" href="${zoomHref}"/>

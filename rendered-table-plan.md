@@ -186,8 +186,9 @@ first renders, but it does not reopen the section 12 decisions.
   close to Tenhou).
 - Key/fill/rim area lights from above/front-left; a soft contact shadow.
 - AgX colour management; denoised Cycles render.
-- Hand tiles stay vertical; the blue back wraps the rear 40% of the top edge to give the
-  sliver (section 12, item 6).
+- Hand tiles stay vertical; the blue backing (the back face plus the rear 40% of
+  every side edge) gives the blue rim on the top and side edges (section 12,
+  item 6).
 - Face decals are rendered on the canonical face-on orthographic rig (section 12, item 3).
 
 ## 8. Manifest shape
@@ -310,11 +311,14 @@ headless browser).
 5. **Body underlay and layering.** Every body sprite has an opaque face
    underlay. Paint order is background → bodies by ascending `drawOrder` → face
    decals → runtime overlays. Decals stay inside the bevel and never cover it.
-6. **Blue sliver.** No forward lean and no separate sliver sprite. The body's
-   blue back material wraps the rear 40% of the top edge
-   (`backTopEdgeFraction = 0.4`), so the fixed raised camera sees a thin blue
-   line above the ivory face of a vertical hand tile. Task 1 checks the visible
-   width at final resolution.
+6. **Blue backing and sliver.** No forward lean and no separate sliver sprite.
+   The tile is an ivory face plate on a solid blue backing: the back face and
+   the rear 40% of **every** side edge are blue (`backEdgeFraction = 0.4`), so
+   the fixed raised camera sees a thin blue line above the ivory face of a
+   vertical hand tile *and* a blue band down the visible side. Task 1 corrected
+   this from "top edge only": the first render had an all-ivory side, which is
+   wrong for a backed tile. Task 1 checks the visible width at final
+   resolution.
 7. **Shadows.** Contact shadows and felt ambient occlusion are baked into the
    body sprites and the background; each body crop includes a 32 px (2×) shadow
    gutter. There is no runtime shadow layer and no CSS shadow on tiles. Kans
@@ -372,7 +376,10 @@ for Tasks 2–3:
   decal/body seam.
 - Measured at `hand-0`: the 0.5-unit top edge projects to 37.25 device px, of
   which the rear 40% blue is a 13 px run above a 191.92 px face (≈ 6.5 CSS px of
-  blue at 2×). The top-strip method reads as a sliver; no lean or extra sprite.
+  blue at 2×). The backing reads as a sliver; no lean or extra sprite. The same
+  40% band now wraps the visible side, and the blue is a deep royal base
+  (`#16309e`) that renders as ≈ RGB(16, 83, 188) on the back face and
+  ≈ RGB(83, 122, 212) on the key-lit top edge.
 - The decal is 492 × 672 px at 3× CSS (inset 0.68 × 0.93 plus a 1 px gutter).
   Its ivory lands within 1/255 of the body face at the seam, so no runtime mask
   or blend mode is needed.

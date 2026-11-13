@@ -1,9 +1,7 @@
 {
   "version": 1,
   "name": "rendered-table-v1",
-  "blender": {
-    "requiredVersion": "4.5.9"
-  },
+  "blender": { "requiredVersion": "4.5.9" },
   "scene": {
     "widthCss": 1440,
     "heightCss": 900,
@@ -35,41 +33,21 @@
       "hardenNormals": true
     },
     "faceInset": 0.035,
-    "backTopEdgeFraction": 0.4,
+    "backEdgeFraction": 0.4,
     "materials": {
-      "ivory": {
-        "hex": "#f5f0eb",
-        "roughness": 0.35
-      },
-      "blue": {
-        "hex": "#2a5fa6",
-        "roughness": 0.38
-      }
+      "ivory": { "hex": "#f5f0eb", "roughness": 0.35 },
+      "blue": { "hex": "#16309e", "roughness": 0.34 }
     }
   },
   "table": {
     "size": 80,
-    "surface": {
-      "hex": "#12533a",
-      "roughness": 0.92
-    },
+    "surface": { "hex": "#12533a", "roughness": 0.92 },
     "shadowCatcher": true
   },
-  "world": {
-    "hex": "#b9c6d6",
-    "strength": 0.3
-  },
+  "world": { "hex": "#b9c6d6", "strength": 0.3 },
   "camera": {
-    "position": [
-      0,
-      -26.4,
-      9.0
-    ],
-    "target": [
-      0,
-      1.0,
-      0.2
-    ],
+    "position": [0, -26.4, 9.0],
+    "target": [0, 1.0, 0.2],
     "lensMm": 65,
     "sensorWidthMm": 36,
     "sensorFit": "HORIZONTAL",
@@ -81,16 +59,8 @@
   "lights": [
     {
       "id": "key",
-      "location": [
-        -27,
-        -42,
-        48
-      ],
-      "target": [
-        0,
-        0.5,
-        0
-      ],
+      "location": [-27, -42, 48],
+      "target": [0, 0.5, 0],
       "size": 27,
       "sizeY": 21,
       "energyW": 97200,
@@ -98,16 +68,8 @@
     },
     {
       "id": "fill",
-      "location": [
-        30,
-        -30,
-        27
-      ],
-      "target": [
-        0,
-        0,
-        0
-      ],
+      "location": [30, -30, 27],
+      "target": [0, 0, 0],
       "size": 42,
       "sizeY": 27,
       "energyW": 26700,
@@ -115,16 +77,8 @@
     },
     {
       "id": "rim",
-      "location": [
-        6,
-        30,
-        36
-      ],
-      "target": [
-        0,
-        0,
-        0
-      ],
+      "location": [6, 30, 36],
+      "target": [0, 0, 0],
       "size": 30,
       "sizeY": 21,
       "energyW": 31600,
@@ -139,10 +93,7 @@
     "pose": "hand-upright"
   },
   "decals": {
-    "cssFace": [
-      180,
-      240
-    ],
+    "cssFace": [180, 240],
     "renderScale": 3,
     "paddingPixels": 1,
     "rigs": {
@@ -165,6 +116,7 @@
   },
   "outputs": {
     "body": "hand-{index}.body.png",
+    "back": "hand-{index}.back.png",
     "decal": "{code}-{orientation}.decal.png",
     "composite": "{code}-{orientation}.composite.png",
     "zoom": "contact-zoom.png",

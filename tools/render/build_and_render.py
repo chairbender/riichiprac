@@ -221,7 +221,7 @@ def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types
     height = tile["height"]
     thickness = tile["thickness"]
     bevel = tile["bevel"]
-    back_frac = tile["backTopEdgeFraction"]
+    back_frac = tile["backEdgeFraction"]
 
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=1.0)
@@ -230,8 +230,8 @@ def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types
             (vert.co.x * width, vert.co.y * height, (vert.co.z + 0.5) * thickness)
         )
 
-    # Split the body on the plane the blue back wraps to, so the far/top edge of
-    # a standing tile can be ivory at the front and blue at the back.
+    # Split the body on the plane the blue backing wraps to: the rear band of
+    # every side edge becomes blue, and the front band stays ivory.
     cut_z = back_frac * thickness
     bmesh.ops.bisect_plane(
         bm,
@@ -242,11 +242,13 @@ def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types
     )
     bm.normal_update()
 
+    # The tile is an ivory face plate on a solid blue backing: the back face and
+    # the rear band of *every* side edge are blue, so the colour wraps the whole
+    # perimeter, not just the top edge.
     for face in bm.faces:
         centre = face.calc_center_median()
-        is_blue = face.normal.z < -0.5 or (
-            face.normal.y > 0.5 and centre.z < cut_z - 1e-5
-        )
+        is_side = abs(face.normal.z) < 0.5
+        is_blue = face.normal.z < -0.5 or (is_side and centre.z < cut_z - 1e-5)
         face.material_index = 1 if is_blue else 0
 
     mesh = bpy.data.meshes.new("tile-body")
@@ -340,6 +342,14 @@ def pose_matrix(pose: str, slot: dict, spec: dict) -> Matrix:
     if pose == "hand-upright":
         rotation = Matrix.Rotation(math.radians(90.0), 4, "X")
         location = Vector((slot["x"], slot["y"] + tile["thickness"], tile["height"] / 2.0))
+        return Matrix.Translation(location) @ rotation
+    if pose == "hand-upright-back":
+        # Same standing tile turned 180 degrees about the vertical axis, so the
+        # blue back faces the player's camera (concealed hand pose).
+        rotation = Matrix.Rotation(math.radians(180.0), 4, "Z") @ Matrix.Rotation(
+            math.radians(90.0), 4, "X"
+        )
+        location = Vector((slot["x"], slot["y"], tile["height"] / 2.0))
         return Matrix.Translation(location) @ rotation
     raise ValueError(f"unknown pose {pose!r}")
 
@@ -451,6 +461,61 @@ def render_region(
 def clear_border(scene: bpy.types.Scene) -> None:
     scene.render.use_border = False
     scene.render.use_crop_to_border = False
+
+
+def bake_body(
+    spec: dict,
+    scene: bpy.types.Scene,
+    camera: bpy.types.Object,
+    tile: bpy.types.Object,
+    table: bpy.types.Object,
+    slot: dict,
+    out_dir: Path,
+    path: Path,
+    gutter: int,
+) -> tuple[np.ndarray, tuple[int, int, int, int], bool]:
+    """Bake one body sprite: the posed tile over its shadow-catcher contact shadow.
+
+    Returns the sprite, its device-pixel crop rect, and whether the crop hit the
+    frame edge (which would clip the shadow).
+    """
+    apply_pose(tile, slot, spec)
+    sync_view_layer()
+
+    projected = [
+        project(scene, camera, tile.matrix_world @ corner) for corner in tile_corners(spec)
+    ]
+    xs = [point[0] for point in projected]
+    ys = [point[1] for point in projected]
+    render_width = scene.render.resolution_x
+    render_height = scene.render.resolution_y
+    x0 = max(0, math.floor(min(xs) - gutter))
+    y0 = max(0, math.floor(min(ys) - gutter))
+    x1 = min(render_width, math.ceil(max(xs) + gutter))
+    y1 = min(render_height, math.ceil(max(ys) + gutter))
+    rect = (x0, y0, x1, y1)
+    clipped = x0 == 0 or y0 == 0 or x1 == render_width or y1 == render_height
+
+    # Pass 1: the tile alone with transparent film.
+    table.hide_render = True
+    body = render_region(scene, out_dir / "_body-pass.png", rect)
+    if body.shape[:2] != (y1 - y0, x1 - x0):
+        die(f"body render is {body.shape[1]}x{body.shape[0]}, expected {x1 - x0}x{y1 - y0}")
+
+    # Pass 2: the contact shadow. The tile is invisible to the camera but still
+    # occludes the key lights, so the shadow catcher returns shadow as alpha.
+    table.hide_render = False
+    tile.visible_camera = False
+    shadow = render_region(scene, out_dir / "_shadow-pass.png", rect)
+    tile.visible_camera = True
+    clear_border(scene)
+    (out_dir / "_body-pass.png").unlink()
+    (out_dir / "_shadow-pass.png").unlink()
+
+    sprite = over(shadow, body)  # tile over its contact shadow
+    save_rgba(path, sprite)
+    log(f"body sprite: {path} ({x1 - x0}x{y1 - y0}), clipped={clipped}")
+    return sprite, rect, clipped
 
 
 # --------------------------------------------------------------------------- #
@@ -586,6 +651,8 @@ def main() -> None:
     blender_version = check_blender_version(spec)
     scene = reset_scene()
     configure_render(scene, spec)
+    render_width = scene.render.resolution_x
+    render_height = scene.render.resolution_y
     materials = build_materials(spec)
     build_world(scene, spec)
     camera = build_camera(scene, spec)
@@ -599,47 +666,19 @@ def main() -> None:
     if not 0 <= spike_index < len(slots):
         die(f"spike.slotIndex {spike_index} is outside the {len(slots)} hand slots")
     slot = slots[spike_index]
-    apply_pose(tile, slot, spec)
-    sync_view_layer()
-
-    project_corners = [
-        project(scene, camera, tile.matrix_world @ corner) for corner in tile_corners(spec)
-    ]
-    xs = [point[0] for point in project_corners]
-    ys = [point[1] for point in project_corners]
     gutter = spec["spike"]["shadowGutterDevicePx"]
-    render_width = scene.render.resolution_x
-    render_height = scene.render.resolution_y
-    x0 = max(0, math.floor(min(xs) - gutter))
-    y0 = max(0, math.floor(min(ys) - gutter))
-    x1 = min(render_width, math.ceil(max(xs) + gutter))
-    y1 = min(render_height, math.ceil(max(ys) + gutter))
-    crop = (x0, y0, x1, y1)
-    clipped = x0 == 0 or y0 == 0 or x1 == render_width or y1 == render_height
-    log(f"body crop: {crop} ({x1 - x0}x{y1 - y0} device px), clipped={clipped}")
-
-    tile_rect = (x0, y0, x1, y1)
     body_path = out_dir / spec["outputs"]["body"].format(index=slot["index"])
+    body_with_shadow, tile_rect, clipped = bake_body(
+        spec, scene, camera, tile, table, slot, out_dir, body_path, gutter
+    )
+    x0, y0, x1, y1 = tile_rect
 
-    # Pass 1: the tile alone with transparent film.
-    table.hide_render = True
-    body = render_region(scene, out_dir / "_body-pass.png", tile_rect)
-    if body.shape[:2] != (y1 - y0, x1 - x0):
-        die(f"body render is {body.shape[1]}x{body.shape[0]}, expected {x1 - x0}x{y1 - y0}")
-
-    # Pass 2: the contact shadow. The tile is invisible to the camera but still
-    # occludes the key lights, so the shadow catcher returns shadow as alpha.
-    table.hide_render = False
-    tile.visible_camera = False
-    shadow = render_region(scene, out_dir / "_shadow-pass.png", tile_rect)
-    tile.visible_camera = True
-    clear_border(scene)
-    (out_dir / "_body-pass.png").unlink()
-    (out_dir / "_shadow-pass.png").unlink()
-
-    body_with_shadow = over(shadow, body)  # tile over its contact shadow
-    save_rgba(body_path, body_with_shadow)
-    log(f"body sprite: {body_path}")
+    # Diagnostic only: the same slot face-down, to prove the blue backing wraps
+    # the whole body. Real face-down/concealed body poses are baked with the
+    # slot inventory (Task 2) and consumed by Tasks 5 and 11.
+    back_slot = dict(slot, pose="hand-upright-back")
+    back_path = out_dir / spec["outputs"]["back"].format(index=slot["index"])
+    bake_body(spec, scene, camera, tile, table, back_slot, out_dir, back_path, gutter)
 
     # ---- face decal ------------------------------------------------------ #
     tile_spec = spec["tile"]
@@ -721,6 +760,7 @@ def main() -> None:
     scene.camera = camera
     scene.render.resolution_x = render_width
     scene.render.resolution_y = render_height
+    apply_pose(tile, slot, spec)  # the diagnostic back bake left the tile flipped
     sync_view_layer()
     face_quad = [
         project(scene, camera, tile.matrix_world @ corner) for corner in face_corners(spec)
@@ -822,7 +862,7 @@ def main() -> None:
         "measurements": {
             "faceHeightPx": round(face_height_px, 2),
             "topEdgeProjectedPx": round(edge_px, 2),
-            "blueSliverExpectedPx": round(edge_px * tile_spec["backTopEdgeFraction"], 2),
+            "blueSliverExpectedPx": round(edge_px * tile_spec["backEdgeFraction"], 2),
             "blueSliverMeasuredPx": sliver["bluePx"],
         },
     }
@@ -832,7 +872,7 @@ def main() -> None:
     log(
         "blue sliver: "
         f"{sliver['bluePx']} device px measured, "
-        f"{round(edge_px * tile_spec['backTopEdgeFraction'], 2)} px expected "
+        f"{round(edge_px * tile_spec['backEdgeFraction'], 2)} px expected "
         f"of a {round(edge_px, 2)} px top edge, on a {round(face_height_px, 2)} px face"
     )
 

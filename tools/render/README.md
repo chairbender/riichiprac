@@ -71,7 +71,7 @@ BLENDER=/path/to/blender bash tools/render/render.sh [spec.json] [out-dir]
 | `scripts/rasterize-face.mjs` | yes | vendored SVG → face texture PNG (resvg) |
 | `scripts/contact-sheet.mjs` | yes | renders the review sheet SVG → PNG (resvg) |
 | `faces/` | yes | vendored public-domain full-face SVGs + provenance (`faces/SOURCE.md`) |
-| `spike/` | yes | Task 1 spike outputs: body sprite, decal, composite, zoom, contact sheet, starter manifest |
+| `spike/` | yes | Task 1 spike outputs: body sprite, back diagnostic, decal, composite, zoom, contact sheet, starter manifest |
 | `node_modules/`, `build/` | no | installed dependencies and intermediate face textures |
 
 Generated sprites are never hand-edited. A regeneration commits the spec/script
@@ -108,30 +108,42 @@ Measured from `spike/` and the `measurements` block of `spike/manifest.json`.
 y = −4.4), so the sprite is baked where that tile will actually sit, not on a
 neutral stage. The slot is left of the camera axis, which is what makes the
 shading position-dependent: the near (left) bevel catches the key light, the
-right bevel and the right side face fall into the fill, and the right side is
-visible at all (the face quad is a true trapezoid: top edge 151.1 px, bottom
-edge 149.3 px, centre sheared 14 px). A slot at the row centre would lose the
-side face and flatten the bevel contrast. The crop is 268 × 308 device px
-including the 32 px shadow gutter.
+right bevel falls into the fill, and the right side of the body is visible at all
+(the face quad is a true trapezoid: top edge 151.1 px, bottom edge 149.3 px,
+centre sheared 14 px). A slot at the row centre would lose the side face and
+flatten the bevel contrast. The crop is 268 × 308 device px including the 32 px
+shadow gutter. On the visible side the ivory front band meets the blue rear
+band at the backing line, which is what makes the wrap read as a physical
+backing rather than a painted stripe.
 
 Bevel: width 0.035, 4 segments, miter arc, `harden_normals`, weighted normals,
 shade smooth. Four segments is enough to hold a clean highlight at 2× without
 looking faceted.
 
-### Blue sliver: top-strip, no forward lean (§12.6 confirmed)
+### Blue backing: wraps every edge, no forward lean (§12.6, corrected)
 
-The body's blue back material wraps the **rear 40%** of the top edge
-(`backTopEdgeFraction: 0.4`); the front 60% stays ivory. At the hand slot the
-raised camera projects the 0.5-unit top edge to **37.25 device px** of which the
-blue run measures **13 device px** (expected 14.9; the top bevel arc eats the
-difference) on a **191.92 device px** face. That is ~6.5 CSS px of blue above a
-~96 CSS px face — a visible line, not a stripe, and it survives at the shipped
-2× size.
+The tile is an ivory face plate on a **solid blue backing**. The blue is not a
+single stripe on the top: the back face and the **rear 40% of every side edge**
+are blue (`backEdgeFraction: 0.4`), so the colour wraps the whole body. On a
+standing hand tile that gives a blue line along the top and a blue band down the
+visible side, and from behind the tile is solid blue (see the back diagnostic).
 
-No forward lean and no separate sliver sprite are needed: the blue line is the
+At the hand slot the raised camera projects the 0.5-unit top edge to **37.25
+device px**, of which the blue run measures **13 device px** (expected 14.9; the
+top bevel arc eats the difference) on a **191.92 device px** face. That is ~6.5
+CSS px of blue above a ~96 CSS px face — a visible line, not a stripe, and it
+survives at the shipped 2× size.
+
+Colour: base `#16309e` at roughness 0.34, which reads as a deep royal blue after
+AgX — ≈ RGB(16, 83, 188) on the back face and ≈ RGB(83, 122, 212) on the
+key-lit top edge. A brighter royal base (e.g. `#4169e1`) renders as a pastel
+periwinkle under this key and AgX; keep the base dark to keep the blue deep.
+
+No forward lean and no separate sliver sprite are needed: the blue rim is the
 same geometry as the body, so it moves with the tile and its contact shading.
-The ivory front strip reads as the face plate's edge and blends into the face;
-do not add a third material for it.
+The ivory front band reads as the face plate's edge and blends into the face; do
+not add a third material for it. If a fully blue side is wanted instead of a
+backed plate, set `backEdgeFraction` to 1.0 — no script change.
 
 ### Decal inset and blending (§12.2 confirmed)
 
@@ -210,9 +222,24 @@ bevel and alpha can be inspected; Task 2/3 ship 2× lossy WebP under
 | `hand-0.body.png` | 268 × 308 device px body sprite for the leftmost hand slot, alpha + baked shadow |
 | `1m-upright.decal.png` | 492 × 672 px lit 1-man face decal (inset + 1 px gutter), rendered at 3× CSS |
 | `1m-upright.composite.png` | body sprite with the decal homography-warped onto its face quad — the 2D composite the runtime will do |
-| `contact-zoom.png` | 4× nearest zoom of the composite's top-left corner (blue sliver, bevel, decal edge) |
-| `contact-sheet.png` | body, composite, decal, the zoom, and the manifest numbers |
+| `hand-0.back.png` | face-down diagnostic of the same slot (blue backing toward the camera); proves the wrap, not a shipped pose |
+| `contact-zoom.png` | 4× nearest zoom of the composite's top-left corner (blue rim, bevel, decal edge) |
+| `contact-sheet.png` | body, composite, decal, back diagnostic, the zoom, and the manifest numbers |
 | `manifest.json` | starter manifest (version 1) with the slot rect, face quad, `faceMatrix`, orientation, draw order, decal size, and measurements |
+
+## Scope: back / face-down poses
+
+Task 1's acceptance is one face-up hand-slot body sprite and one lit decal, so
+only the `hand-0` face-up body is a real deliverable here. The `hand-0.back.png`
+render is a **diagnostic**: it exists to prove the blue backing wraps the whole
+body, and it is not referenced by the manifest.
+
+Real face-down bodies belong with the full body-pose bake in Task 2 (the slot
+inventory, including concealed hands) and are consumed by Task 5 (opponent
+concealed hands) and Task 11 (wall/dora tiles). They use the same
+`hand-upright-back` pose and `bake_body` call; there is nothing new to design,
+just more slots and the draw order of a stacked back row. Task 2 should drop this
+diagnostic from `spike/` once the real back poses exist.
 
 ## Next tasks
 
