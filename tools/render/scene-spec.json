@@ -25,7 +25,7 @@
   "tile": {
     "width": 0.75,
     "height": 1.0,
-    "thickness": 0.5,
+    "thickness": 0.45,
     "bevel": {
       "width": 0.035,
       "segments": 4,
@@ -33,10 +33,10 @@
       "hardenNormals": true
     },
     "faceInset": 0.035,
-    "backEdgeFraction": 0.4,
+    "backEdgeFraction": 0.3,
     "materials": {
       "ivory": { "hex": "#f5f0eb", "roughness": 0.35 },
-      "blue": { "hex": "#16309e", "roughness": 0.34 }
+      "blue": { "hex": "#132986", "roughness": 0.34 }
     }
   },
   "table": {

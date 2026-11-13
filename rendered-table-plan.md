@@ -180,13 +180,14 @@ These are the starting scene values for Task 1. Section 12 fixes the architectur
 and output rules; Task 1 may tune the numeric material/camera values against its
 first renders, but it does not reopen the section 12 decisions.
 
-- Tile face 0.75 × 1.0 units, body thickness 0.5 units.
+- Tile face 0.75 × 1.0 units, body thickness 0.45 units (Task 1 tuned it down from
+  0.5 to slim the visible edge).
 - Small bevel, 3–4 segments; ivory body with a soft specular response; blue back.
 - Fixed perspective camera with a long lens (subtle convergence and peripheral side faces,
   close to Tenhou).
 - Key/fill/rim area lights from above/front-left; a soft contact shadow.
 - AgX colour management; denoised Cycles render.
-- Hand tiles stay vertical; the blue backing (the back face plus the rear 40% of
+- Hand tiles stay vertical; the blue backing (the back face plus the rear 30% of
   every side edge) gives the blue rim on the top and side edges (section 12,
   item 6).
 - Face decals are rendered on the canonical face-on orthographic rig (section 12, item 3).
@@ -313,12 +314,12 @@ headless browser).
    decals → runtime overlays. Decals stay inside the bevel and never cover it.
 6. **Blue backing and sliver.** No forward lean and no separate sliver sprite.
    The tile is an ivory face plate on a solid blue backing: the back face and
-   the rear 40% of **every** side edge are blue (`backEdgeFraction = 0.4`), so
+   the rear 30% of **every** side edge are blue (`backEdgeFraction = 0.3`), so
    the fixed raised camera sees a thin blue line above the ivory face of a
    vertical hand tile *and* a blue band down the visible side. Task 1 corrected
    this from "top edge only": the first render had an all-ivory side, which is
-   wrong for a backed tile. Task 1 checks the visible width at final
-   resolution.
+   wrong for a backed tile, and then tuned the backing from 40% to 30%. Task 1
+   checks the visible width at final resolution.
 7. **Shadows.** Contact shadows and felt ambient occlusion are baked into the
    body sprites and the background; each body crop includes a 32 px (2×) shadow
    gutter. There is no runtime shadow layer and no CSS shadow on tiles. Kans
@@ -374,12 +375,12 @@ for Tasks 2–3:
   distant rig (key ≈ 66 units away) so illumination varies only a few percent
   across the hand row. Do not move the lights closer without re-checking the
   decal/body seam.
-- Measured at `hand-0`: the 0.5-unit top edge projects to 37.25 device px, of
-  which the rear 40% blue is a 13 px run above a 191.92 px face (≈ 6.5 CSS px of
+- Measured at `hand-0`: the 0.45-unit top edge projects to 33.59 device px, of
+  which the rear 30% blue is an 8 px run above a 191.92 px face (≈ 4 CSS px of
   blue at 2×). The backing reads as a sliver; no lean or extra sprite. The same
-  40% band now wraps the visible side, and the blue is a deep royal base
-  (`#16309e`) that renders as ≈ RGB(16, 83, 188) on the back face and
-  ≈ RGB(83, 122, 212) on the key-lit top edge.
+  30% band wraps the visible side, and the blue is a deep royal base
+  (`#132986`) that renders as ≈ RGB(4, 68, 166) on the back face and
+  ≈ RGB(71, 109, 196) on the key-lit top edge.
 - The decal is 492 × 672 px at 3× CSS (inset 0.68 × 0.93 plus a 1 px gutter).
   Its ivory lands within 1/255 of the body face at the seam, so no runtime mask
   or blend mode is needed.

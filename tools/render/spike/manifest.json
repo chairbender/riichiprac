@@ -36,9 +36,9 @@
       "pose": "hand-upright",
       "body": "hand-0.body.png",
       "x": 139,
-      "y": 1489,
-      "width": 268,
-      "height": 308,
+      "y": 1492,
+      "width": 266,
+      "height": 305,
       "faceQuad": [
         [
           180.172,
@@ -89,8 +89,8 @@
   },
   "measurements": {
     "faceHeightPx": 191.92,
-    "topEdgeProjectedPx": 37.25,
-    "blueSliverExpectedPx": 14.9,
-    "blueSliverMeasuredPx": 13
+    "topEdgeProjectedPx": 33.59,
+    "blueSliverExpectedPx": 10.08,
+    "blueSliverMeasuredPx": 8
   }
 }
