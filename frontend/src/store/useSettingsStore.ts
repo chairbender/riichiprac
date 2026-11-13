@@ -6,10 +6,13 @@ import { create } from 'zustand';
  * `stacked` is the mobile-first four-row layout and the default, so a browser
  * that has never saved a setting sees exactly what it saw before. `topdown` is
  * the flat plan view (`PhysicalTable`), with the human anchored at the bottom
- * edge. `isometric` is the angled table view (`IsometricTable`), which is still
- * being built part by part and currently shows the empty table plane.
+ * edge.
+ *
+ * A stored `isometric` value is intentionally not a member any more: the
+ * experimental angled view was removed, and an old blob that still names it
+ * falls back to the default through {@link isTableView}.
  */
-export type TableView = 'stacked' | 'topdown' | 'isometric';
+export type TableView = 'stacked' | 'topdown';
 
 /** The view a browser with no stored choice gets. */
 export const DEFAULT_TABLE_VIEW: TableView = 'stacked';
@@ -36,7 +39,7 @@ export interface FrontendSettings {
 
 /** Narrow an arbitrary value (select value, stored blob) to a {@link TableView}. */
 export function isTableView(value: unknown): value is TableView {
-  return value === 'stacked' || value === 'topdown' || value === 'isometric';
+  return value === 'stacked' || value === 'topdown';
 }
 
 /**

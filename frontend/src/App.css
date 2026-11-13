@@ -399,8 +399,8 @@
 }
 
 /*
- * View picker: one compact select that chooses between the stacked rows, the
- * top-down plan, and the isometric table.
+ * View picker: one compact select that chooses between the stacked rows and the
+ * top-down plan.
  */
 .app-view-picker {
   cursor: default;
@@ -1358,15 +1358,16 @@
   line-height: 1.1;
 }
 
-/* Isometric full-screen stage --------------------------------------------- */
+/* Full-screen table stage -------------------------------------------------- */
 
 /*
- * The isometric view is not an app column: the stage is the viewport, on a dark
- * page, and the fitted table is the only thing on it. The chrome (menu, status,
- * decision popup) floats above the table, so opening the menu or answering
- * cannot resize or re-fit the play area.
+ * The stage is the viewport, on a dark page, and the fitted table is the only
+ * thing on it. The chrome (menu, status, decision popup) floats above the
+ * table, so opening the menu or answering cannot resize or re-fit the play
+ * area. This is shared table chrome: the offline rendered table mounts its
+ * sprite compositor here, and the stacked/top-down layouts keep their own shell.
  */
-.iso-stage {
+.table-stage {
   position: relative;
   width: 100%;
   height: 100vh;
@@ -1377,137 +1378,19 @@
   color: #e7ecf3;
 }
 
-.iso-table-layer {
+.table-stage-table {
   position: absolute;
   inset: 0;
 }
 
-/*
- * The isometric table is one SVG, sized to the stage. `iso.ts` fits the whole
- * footprint (play area, wall ring, hand apron) to this box and the component
- * sets the viewBox to the measured stage, so one SVG user unit is one CSS
- * pixel. The felt vignette is drawn inside the SVG, and later tile parts reuse
- * the same fixed light tokens.
- */
-.isometric-table {
-  position: absolute;
-  inset: 0;
-}
-
-.isometric-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* The reserved wall ring: an empty rail outside the felt. */
-.iso-wall-ring {
-  fill: #0b0f14;
-  stroke: rgba(255, 255, 255, 0.05);
-  stroke-width: 1.5;
-  stroke-linejoin: round;
-}
-
-/* The reserved hand apron in front of the human's edge. */
-.iso-apron {
-  fill: #090d11;
-  stroke: rgba(160, 235, 195, 0.14);
-  stroke-width: 1.5;
-  stroke-dasharray: 8 10;
-  stroke-linejoin: round;
-}
-
-/* The table rail, a shade darker than the felt. */
-.iso-rail {
-  fill: #10161c;
-}
-
-.iso-felt {
-  stroke: rgba(255, 255, 255, 0.1);
-  stroke-width: 1.5;
-}
-
-/*
- * Each seat band is the trapezoid along its own edge. Faint fills and dashed
- * outlines keep the table reading as four cleared places without putting text
- * or scores on the plane; the compass owns those in a later part.
- */
-.iso-seat polygon {
-  fill: rgba(255, 255, 255, 0.025);
-  stroke: rgba(160, 235, 195, 0.16);
-  stroke-width: 1.5;
-  stroke-dasharray: 6 7;
-  stroke-linejoin: round;
-}
-
-.iso-seat--human polygon {
-  fill: rgba(150, 230, 190, 0.06);
-  stroke: rgba(160, 235, 195, 0.32);
-  /* Solid rather than dashed: the bottom edge is the human's place. */
-  stroke-dasharray: none;
-}
-
-/* The centre square is reserved for the compass. */
-.iso-centre {
-  fill: rgba(4, 10, 7, 0.28);
-  stroke: rgba(160, 235, 195, 0.2);
-  stroke-width: 1.5;
-  stroke-dasharray: 5 7;
-  stroke-linejoin: round;
-}
-
-/*
- * Dev-only alignment overlay (`?isoDebug` in a dev build). Bright, thin, and
- * never interactive; it is not part of the table's look.
- */
-.iso-debug {
-  pointer-events: none;
-}
-
-.iso-debug-grid line {
-  stroke: #ff4fd8;
-  stroke-width: 1;
-  opacity: 0.28;
-}
-
-.iso-debug-edges circle {
-  fill: #ffd43b;
-}
-
-.iso-debug-seat line {
-  stroke: #7cf7ff;
-  stroke-width: 2;
-  opacity: 0.9;
-}
-
-.iso-debug-seat circle {
-  fill: #7cf7ff;
-}
-
-.iso-debug-centre circle {
-  fill: none;
-  stroke: #ffd43b;
-  stroke-width: 2;
-}
-
-.iso-debug text {
-  fill: #eafcff;
-  font-size: 14px;
-  font-weight: 700;
-  paint-order: stroke;
-  stroke: #06121a;
-  stroke-width: 3px;
-  stroke-linejoin: round;
-}
-
-/* Isometric floating chrome ----------------------------------------------- */
+/* Floating chrome ---------------------------------------------------------- */
 
 /*
  * Only the menu button, a minimal status, and (once answered) Next Scenario
  * float over the stage. The toolbar itself ignores pointer events so a click
  * between its controls reaches the table; each child takes them back.
  */
-.iso-toolbar {
+.table-stage-toolbar {
   position: absolute;
   top: 0;
   left: 0;
@@ -1522,11 +1405,11 @@
   pointer-events: none;
 }
 
-.iso-toolbar > * {
+.table-stage-toolbar > * {
   pointer-events: auto;
 }
 
-.iso-menu-button {
+.table-stage-menu-button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1544,21 +1427,21 @@
   -webkit-backdrop-filter: blur(8px);
 }
 
-.iso-menu-button:hover {
+.table-stage-menu-button:hover {
   background-color: rgba(22, 31, 42, 0.92);
 }
 
-.iso-menu-button:focus-visible {
+.table-stage-menu-button:focus-visible {
   outline: 2px solid #74c0fc;
   outline-offset: 2px;
 }
 
-.iso-menu-icon {
+.table-stage-menu-icon {
   font-size: 1rem;
   line-height: 1;
 }
 
-.iso-toolbar-status {
+.table-stage-status {
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -1570,21 +1453,21 @@
   -webkit-backdrop-filter: blur(8px);
 }
 
-.iso-status-round {
+.table-stage-status-round {
   color: #e7ecf3;
   font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.03em;
 }
 
-.iso-status-detail {
+.table-stage-status-detail {
   color: #93a0b3;
   font-size: 0.66rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.iso-toolbar .new-hand-button {
+.table-stage-toolbar .new-hand-button {
   padding: 9px 14px;
   border-color: #3b5bdb;
   background-color: rgba(28, 43, 82, 0.92);
@@ -1592,7 +1475,7 @@
 }
 
 /* Load and error notices sit on the table, not in a centred status line. */
-.iso-overlay {
+.table-stage-overlay {
   position: absolute;
   top: 76px;
   left: 50%;
@@ -1613,7 +1496,7 @@
   -webkit-backdrop-filter: blur(8px);
 }
 
-.iso-overlay--error {
+.table-stage-overlay--error {
   border-color: #7a2c2c;
   background-color: rgba(36, 23, 23, 0.92);
   color: #ff8a8a;
@@ -1624,7 +1507,7 @@
  * taking a strip below the table. The bottom offset keeps it clear of the hand
  * apron, which later parts fill in.
  */
-.iso-decision-popup {
+.stage-decision-popup {
   position: absolute;
   right: max(16px, env(safe-area-inset-right));
   bottom: max(15vh, 96px);
@@ -1643,7 +1526,7 @@
   -webkit-backdrop-filter: blur(10px);
 }
 
-.iso-decision-popup-title {
+.stage-decision-popup-title {
   color: #93a0b3;
   font-size: 0.64rem;
   font-weight: 800;
@@ -1651,13 +1534,13 @@
   text-transform: uppercase;
 }
 
-.iso-decision-actions {
+.stage-decision-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.iso-decision-button {
+.stage-decision-button {
   flex: 1 1 auto;
   padding: 10px 16px;
   border: 1px solid #3b5bdb;
@@ -1670,23 +1553,23 @@
   touch-action: manipulation;
 }
 
-.iso-decision-button:hover {
+.stage-decision-button:hover {
   border-color: #4dabf7;
   background-color: #223147;
 }
 
-.iso-decision-button--pass {
+.stage-decision-button--pass {
   border-color: #343b4a;
   background-color: transparent;
   color: #adb5bd;
 }
 
-.iso-decision-button--pass:hover {
+.stage-decision-button--pass:hover {
   border-color: #495057;
   background-color: rgba(255, 255, 255, 0.04);
 }
 
-.iso-decision-button:focus-visible {
+.stage-decision-button:focus-visible {
   outline: 2px solid #74c0fc;
   outline-offset: 2px;
 }
@@ -1697,14 +1580,14 @@
  * A fixed overlay, so opening it never changes the stage's size or re-fits the
  * table. The drawer is a sibling of the table, not a layout participant.
  */
-.iso-menu-backdrop {
+.table-stage-menu-backdrop {
   position: fixed;
   inset: 0;
   z-index: 40;
   background-color: rgba(3, 6, 9, 0.55);
 }
 
-.iso-menu-drawer {
+.table-stage-menu-drawer {
   position: absolute;
   top: 8px;
   left: 8px;
@@ -1720,7 +1603,7 @@
   overflow: hidden;
 }
 
-.iso-menu-head {
+.table-stage-menu-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1729,7 +1612,7 @@
   border-bottom: 1px solid #232c38;
 }
 
-.iso-menu-title {
+.table-stage-menu-title {
   margin: 0;
   color: #e7ecf3;
   font-size: 0.95rem;
@@ -1737,7 +1620,7 @@
   letter-spacing: 0.02em;
 }
 
-.iso-menu-close {
+.table-stage-menu-close {
   padding: 6px 12px;
   border: 1px solid #34506e;
   border-radius: 8px;
@@ -1748,16 +1631,16 @@
   cursor: pointer;
 }
 
-.iso-menu-close:hover {
+.table-stage-menu-close:hover {
   background-color: rgba(77, 171, 247, 0.12);
 }
 
-.iso-menu-close:focus-visible {
+.table-stage-menu-close:focus-visible {
   outline: 2px solid #74c0fc;
   outline-offset: 2px;
 }
 
-.iso-menu-body {
+.table-stage-menu-body {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1768,21 +1651,21 @@
 }
 
 /* The drawer owns the spacing, so blocks that carry their own margins sit flush. */
-.iso-menu-body .table-info,
-.iso-menu-body .state-controls {
+.table-stage-menu-body .table-info,
+.table-stage-menu-body .state-controls {
   padding: 0;
   border: 0;
   background: none;
 }
 
-.iso-menu-body .table-info {
+.table-stage-menu-body .table-info {
   gap: 6px;
 }
 
-.iso-menu-body .position-description,
-.iso-menu-body .scenario-note,
-.iso-menu-body .agreement-note,
-.iso-menu-body .verdict-panel {
+.table-stage-menu-body .position-description,
+.table-stage-menu-body .scenario-note,
+.table-stage-menu-body .agreement-note,
+.table-stage-menu-body .verdict-panel {
   margin: 0;
 }
 

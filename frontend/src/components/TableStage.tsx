@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { GameState } from '../types/game';
 import { NextScenarioButton } from './NextScenarioButton';
 
-interface IsometricShellProps {
+interface TableStageProps {
   /** The hand on screen, or null while the next one loads. */
   state: GameState | null;
   /** A load/agreement status line, shown as a light overlay. */
@@ -16,16 +16,16 @@ interface IsometricShellProps {
   onNextScenario: () => void;
   /** Everything that used to live in the header and TableInfo. */
   menu: ReactNode;
-  /** The fitted table SVG. */
+  /** The fitted table view. */
   table: ReactNode;
   /** The top-right decision panel, when the hand needs a non-discard answer. */
   popup?: ReactNode;
 }
 
-const DRAWER_ID = 'iso-menu-drawer';
+const DRAWER_ID = 'table-stage-menu-drawer';
 
 /**
- * Full-screen shell for the isometric view.
+ * Full-screen shell for a fitted table view.
  *
  * Unlike the stacked layout there is no 680px column and no header: the stage
  * is the viewport, the table is fitted inside it, and only a small top-left
@@ -36,8 +36,13 @@ const DRAWER_ID = 'iso-menu-drawer';
  * The drawer and the decision popup are positioned overlays, never layout
  * siblings of the table. Opening the menu therefore cannot resize or re-fit
  * the table behind it.
+ *
+ * The shell is generic table chrome, not part of any one renderer: the offline
+ * rendered table mounts its sprite compositor here (Task 4 of the rendered-table
+ * chain). It is kept out of the view switch until that view exists, so the app
+ * still offers only the stacked and top-down views.
  */
-export function IsometricShell({
+export function TableStage({
   state,
   statusMessage,
   error,
@@ -47,7 +52,7 @@ export function IsometricShell({
   menu,
   table,
   popup,
-}: IsometricShellProps) {
+}: TableStageProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -74,37 +79,37 @@ export function IsometricShell({
   }, [menuOpen, closeMenu]);
 
   return (
-    <div className="iso-stage">
-      <div className="iso-table-layer">{table}</div>
+    <div className="table-stage">
+      <div className="table-stage-table">{table}</div>
 
-      <div className="iso-toolbar">
+      <div className="table-stage-toolbar">
         <button
           ref={menuButtonRef}
           type="button"
-          className="iso-menu-button"
+          className="table-stage-menu-button"
           onClick={() => setMenuOpen((open) => !open)}
           aria-expanded={menuOpen}
           aria-controls={DRAWER_ID}
           aria-label="Table menu"
         >
-          <span className="iso-menu-icon" aria-hidden="true">
+          <span className="table-stage-menu-icon" aria-hidden="true">
             ☰
           </span>
           <span>Menu</span>
         </button>
 
-        <div className="iso-toolbar-status">
+        <div className="table-stage-status">
           {state ? (
             <>
-              <span className="iso-status-round">
+              <span className="table-stage-status-round">
                 {state.round_wind} {state.hand_number}
               </span>
-              <span className="iso-status-detail">
+              <span className="table-stage-status-detail">
                 {state.honba} honba · {state.tiles_remaining} tiles left
               </span>
             </>
           ) : (
-            <span className="iso-status-detail" role="status">
+            <span className="table-stage-status-detail" role="status">
               {statusMessage ?? 'Loading table…'}
             </span>
           )}
@@ -119,13 +124,19 @@ export function IsometricShell({
       </div>
 
       {statusMessage && state && (
-        <div className="iso-overlay iso-overlay--status" role="status">
+        <div
+          className="table-stage-overlay table-stage-overlay--status"
+          role="status"
+        >
           {statusMessage}
         </div>
       )}
 
       {error && (
-        <div className="iso-overlay iso-overlay--error" role="alert">
+        <div
+          className="table-stage-overlay table-stage-overlay--error"
+          role="alert"
+        >
           {error}
         </div>
       )}
@@ -133,26 +144,26 @@ export function IsometricShell({
       {popup}
 
       {menuOpen && (
-        <div className="iso-menu-backdrop" onClick={closeMenu}>
+        <div className="table-stage-menu-backdrop" onClick={closeMenu}>
           <aside
-            className="iso-menu-drawer"
+            className="table-stage-menu-drawer"
             id={DRAWER_ID}
             role="dialog"
             aria-label="Table menu"
             onClick={(event) => event.stopPropagation()}
           >
-            <header className="iso-menu-head">
-              <h2 className="iso-menu-title">Menu</h2>
+            <header className="table-stage-menu-head">
+              <h2 className="table-stage-menu-title">Menu</h2>
               <button
                 ref={closeButtonRef}
                 type="button"
-                className="iso-menu-close"
+                className="table-stage-menu-close"
                 onClick={closeMenu}
               >
                 Close
               </button>
             </header>
-            <div className="iso-menu-body">{menu}</div>
+            <div className="table-stage-menu-body">{menu}</div>
           </aside>
         </div>
       )}

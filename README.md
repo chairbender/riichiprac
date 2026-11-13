@@ -70,9 +70,11 @@ book only, the Mortal column says so, and no answer is labelled wrong.
 
 ## Table views
 
-The header's **Top-down table** checkbox switches the same hand between two
-mobile-first portrait renderings; it never re-deals, so the answer and any
-submitted grade stay put. The choice is per session and is not persisted.
+The header's **View** select switches the same hand between two mobile-first
+portrait renderings; it never re-deals, so the answer and any submitted grade
+stay put. The choice is persisted in `localStorage`; an old stored value the app
+no longer understands (including the removed experimental view) falls back to
+the default on load.
 
 - **Stacked** (default): four player rows in turn order, with the human's row
   directly above the docked hand.
