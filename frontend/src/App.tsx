@@ -547,7 +547,12 @@ export const App = () => {
 
       {gameState && mortalAgreement && (
         <p className="agreement-note" role="status">
-          {formatAgreementNotice(mortalAgreement)}
+          {formatAgreementNotice(
+            mortalAgreement,
+            // A non-empty `equivalent_tiles` means the lesson accepts more
+            // than the canonical answer, so Mortal only has to match one.
+            (gameState.equivalent_tiles?.length ?? 0) > 0,
+          )}
         </p>
       )}
 
