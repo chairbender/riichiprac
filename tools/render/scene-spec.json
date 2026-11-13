@@ -104,11 +104,11 @@
         0
       ],
       "azimuthDeg": 0,
-      "elevationDeg": 70,
+      "elevationDeg": 77,
       "distance": 56,
       "size": 26,
       "sizeY": 20,
-      "energyW": 110000,
+      "energyW": 200000,
       "hex": "#fff4e4"
     },
     {
@@ -118,12 +118,12 @@
         -1,
         0.3
       ],
-      "azimuthDeg": 46,
-      "elevationDeg": 12,
+      "azimuthDeg": 45,
+      "elevationDeg": 11,
       "distance": 34,
       "size": 42,
       "sizeY": 27,
-      "energyW": 7000,
+      "energyW": 23000,
       "hex": "#dfe9ff"
     },
     {
@@ -157,18 +157,18 @@
     "renderScale": 3,
     "paddingPixels": 1,
     "carve": {
-      "depthFractionOfThickness": 0.0039,
+      "depthFractionOfThickness": 0.0143,
       "profile": {
-        "topSpread": 1,
-        "bottomSpread": 0.39
+        "topSpread": 0.92,
+        "bottomSpread": 0.92
       },
       "gridScale": 1,
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75,
       "occlusionSamples": 16,
       "blurUnits": 0.0069642857142857145,
-      "transitionUnits": 0.012499999999999999,
-      "paintEdge": 0.3
+      "transitionUnits": 0.018035714285714287,
+      "paintEdge": 0.18
     },
     "rigs": {
       "upright": {

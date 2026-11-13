@@ -415,14 +415,14 @@ for Tasks 2–3:
   ~330k-vertex face at `gridScale: 1.0`; expect ~80 s per decal render with AO
   and cut `gridScale`/AO samples for the 190-decal set.
 - **Lighting is top-heavy, key-dominant.** The rig is spherical
-  (azimuth/elevation/distance around each target): the key sits at 0° / 70° over
-  the hand row (110 kW), the fill at 46° / 12° (7 kW) and the rim behind at
-  170° / 45°; ambient 0.5. The key is the main light — ~25× the fill on the top
-  edge and ~3× on the face — so the up-facing edge is the brightest surface with
-  no left/right bias. A bright or frontal fill sits near the face's specular
-  mirror, owns the flat face's sheen and desaturates the glossy paint, so the
-  fill is kept dim and off-axis. The angles do the work; the rig stays distant
-  for decals.
+  (azimuth/elevation/distance around each target): the key sits at 0° / 77°
+  over the hand row, the fill off-axis at 45° / 11° and the rim behind at
+  170° / 45°; ambient 0.5. The key is the dominant light on the up-facing edge,
+  so the edge is the brightest surface with no left/right bias. A bright or
+  frontal fill sits near the face's specular mirror, owns the flat face's sheen
+  and desaturates the glossy paint, so the fill stays off-axis. Exact powers are
+  tuned in `tools/render/scene-spec.json`; the angles do the work and the rig
+  stays distant for decals.
 
 ## 13. Task chain
 

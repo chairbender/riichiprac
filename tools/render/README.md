@@ -204,17 +204,17 @@ The field is shaped by a **cubic Bézier** from the lip `(0, 0)` to the floor
   0 gives a straight diagonal (no fillet); 1 gives the widest, softest ease. The
   tangent at each end is what spreads that fillet, so the lip and the
   wall-to-floor shoulder can be shaped separately.
-- `transitionUnits` is the **distance** from the lip to the flat floor (0.0089
-  units ≈ 0.25 mm by default). Raising it lets the
+- `transitionUnits` is the **distance** from the lip to the flat floor (0.0180
+  units ≈ 0.50 mm as tuned). Raising it lets the
   curvature run further into the bottom; it is capped by the distance the blur
   can resolve (~4 sigma), so widen `blurUnits` first if you need more.
 - `blurUnits` smooths the symbol edge and sets that resolvable distance
-  (0.0069 units ≈ 0.19 mm by default).
-- depth is `depthFractionOfThickness = 0.005` of the tile thickness — 0.00295
-  units, about 0.08 mm at jansou scale. That is a deliberately shallow engrave:
+  (0.0070 units ≈ 0.19 mm as tuned).
+- depth is `depthFractionOfThickness = 0.0143` of the tile thickness — 0.0084
+  units, about 0.24 mm at jansou scale. That is a deliberately shallow engrave:
   the carve reads through the bevel ring and wall shading, not a deep shadow.
 
-The paint boundary sits `paintEdge` into the transition (0.3 by default), so a
+The paint boundary sits `paintEdge` into the transition (0.18 as tuned), so a
 ring of bare melamine remains on the bevel. That ring catches the key and is what
 makes the carve read as a bevelled recess rather than a flat print. Because the
 gate reads the distance field rather than the hard symbol alpha, this control
@@ -228,8 +228,8 @@ upstream red; the two are equal at the committed defaults.
 A groove floor has the same normal as the face, so its diffuse response is
 identical and a wide stroke would still look flat. The decal material therefore
 adds **cavity occlusion** (Cycles AO, distance 0.2 units, strength 0.75), which
-darkens the inside of the engraving. At 0.08 mm depth the cavity is shallow, so
-the diffuse darkening is small (the face measures ≈ RGB(215, 214, 213); the
+darkens the inside of the engraving. At 0.24 mm depth the cavity is still shallow,
+so the diffuse darkening is small (the face measures ≈ RGB(221, 220, 220); the
 floor is within a few levels); the read comes from the bare bevel ring, the wall
 shading, and the gloss highlight on the bottom fillet. If the carve needs to
 read stronger without more depth, raise `occlusionStrength`, widen the bevel, or
@@ -277,8 +277,8 @@ stretched.
 
 The decal's face is the same flat melamine base colour as the body's face
 underlay (`#f5f0eb`). Measured at the seam, the body face is
-`rgb(215, 214, 213)` sRGB and the decal's flat face is `rgb(218, 216, 216)`,
-about 1.4% brighter. That is the canonical rig sitting at the hand-row centre
+`rgb(221, 220, 220)` sRGB and the decal's flat face is `rgb(224, 224, 224)`,
+about 1.3% brighter. That is the canonical rig sitting at the hand-row centre
 while `hand-0` sits 5.3 units to its left, not a base-colour mismatch. It is
 invisible at 2×; treat ~2% as the tolerance and re-check the seam zoom before
 adding any runtime blend. The decal edge needs **no runtime mask, feather, or
@@ -298,18 +298,20 @@ light's target (`azimuthDeg`, `elevationDeg`, `distance`; azimuth 0 is front,
 90 right, 180 behind, 270 left), which is what the tuner's direction sliders
 edit. `build_lights` turns those into positions; do not hand-place xyz.
 
-- **key**: azimuth 0, elevation 70, 56 units out, 110 kW. Centred over the hand
-  row, so the up-facing top edge takes ~95% of its irradiance; nothing is biased
-  left or right. It is the dominant light: on the top edge it is ~25× the fill,
-  and on the vertical face ~3×.
-- **fill**: azimuth 46, elevation 12, 34 units out, 7 kW. A soft, dim fill that
-  lifts the face; it is deliberately not allowed to become a second key.
+- **key**: azimuth 0, elevation 77, 56 units out, 200 kW. Centred over the hand
+  row, so the up-facing top edge takes ~97% of its irradiance; nothing is biased
+  left or right. It is the dominant light on the top edge.
+- **fill**: azimuth 45, elevation 11, 34 units out, 23 kW. Soft and off-axis; it
+  lifts the face. At this power it is roughly co-equal with the key on the flat
+  face (they are ~14 each in arbitrary irradiance units), so if the paint sheen
+  returns, reduce it first.
 - **rim**: azimuth 170, elevation 45, 40 units, 22 kW, behind.
 - **ambient** world strength 0.5, lifting the face without adding highlights.
 
-Measured on the spike: top edge RGB(239, 237, 234), face RGB(213, 211, 209),
-left bevel RGB(166, 167, 168) — the up-facing edge is the brightest surface and
-there is no left-edge highlight.
+Measured on the spike: top edge RGB(249, 247, 244), face RGB(221, 220, 220),
+left bevel RGB(167, 166, 168) — the up-facing edge is the brightest surface and
+there is no left-edge highlight. The top edge is close to clipping at 200 kW;
+if it looks blown out, lower the key before raising the fill.
 
 **Key/fill practice.** The key is the main light (typically 2–4× the fill): it
 sets the form and the primary highlight and is placed off-axis. The fill is

@@ -43,15 +43,15 @@
     ],
     "renderedAtScale": 3,
     "carve": {
-      "depthUnits": 0.0023,
-      "depthFractionOfThickness": 0.0039,
+      "depthUnits": 0.00843,
+      "depthFractionOfThickness": 0.0143,
       "blurUnits": 0.0069642857142857145,
-      "transitionUnits": 0.012499999999999999,
+      "transitionUnits": 0.018035714285714287,
       "profile": {
-        "topSpread": 1,
-        "bottomSpread": 0.39
+        "topSpread": 0.92,
+        "bottomSpread": 0.92
       },
-      "paintEdge": 0.3,
+      "paintEdge": 0.18,
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75,
       "grid": [
