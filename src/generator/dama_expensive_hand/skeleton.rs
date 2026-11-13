@@ -48,10 +48,13 @@ pub(crate) enum Target {
 
 impl Target {
     /// The value band named for the agreement report.
+    ///
+    /// The band is a fact about the finished hand, so the label states the
+    /// value and leaves the play to the player standing at the table.
     pub(crate) fn label(self) -> &'static str {
         match self {
-            Self::Dama7700 => "dama: 7700 without riichi",
-            Self::DamaHaneman => "dama: haneman or better without riichi",
+            Self::Dama7700 => "hand worth 7700",
+            Self::DamaHaneman => "hand worth at least a haneman",
         }
     }
 

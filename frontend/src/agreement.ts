@@ -112,6 +112,8 @@ function plural(count: number, one: string, many: string): string {
  * When the generated state carries a pinned situation, its parameter list is
  * appended so the player can see which condition the hand was deliberately
  * built to isolate — the whole point of drawing the situation before the tiles.
+ * The engine writes that string from table facts only; it never names the
+ * recommended action, since this notice is on screen before the player answers.
  */
 export function formatAgreementNotice(
   report: MortalAgreementReport,
@@ -120,7 +122,13 @@ export function formatAgreementNotice(
   return withSituation(describeAgreement(report, multipleBookAnswers), report);
 }
 
-/** Appends the pinned parameter set when the report carries one. */
+/**
+ * Appends the pinned parameter set when the report carries one.
+ *
+ * The string is drawn from the table's own facts (`extra han, bad wait,
+ * non-dealer`, `one or two live simple winning tiles`) and never names the
+ * answer, because the note sits above the answer buttons.
+ */
 function withSituation(
   notice: string,
   report: MortalAgreementReport,

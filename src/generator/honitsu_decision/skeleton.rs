@@ -82,11 +82,14 @@ impl Variant {
     }
 
     /// The parameter list shown in the agreement report.
+    ///
+    /// The label describes the hand the branch builds, not the call it teaches:
+    /// the note is shown under a scenario the player has not answered yet.
     pub(crate) fn label(self) -> &'static str {
         match self {
-            Self::Commit => "commit: five blocks and a honitsu with two yakuhai",
-            Self::AlreadyHigh => "efficiency: already worth at least 5200 without honitsu",
-            Self::HonitsuOnly => "efficiency: honitsu would be honitsu-only (2000/2600)",
+            Self::Commit => "five blocks and a honitsu with two yakuhai",
+            Self::AlreadyHigh => "already worth at least 5200 without honitsu",
+            Self::HonitsuOnly => "a honitsu would be honitsu-only (2000/2600)",
         }
     }
 

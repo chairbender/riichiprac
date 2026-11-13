@@ -89,10 +89,16 @@ impl Situation {
 
     /// The parameter list, for the agreement report and the UI note.
     ///
-    /// The wording names the isolated condition in plain English, e.g. `riichi:
-    /// good wait only` or `dama: one or two live simple winning tiles`, so a
-    /// player (or a bug report) can see which cell of the lesson's box the
+    /// The wording names the isolated condition in plain English, e.g. `extra
+    /// han, good wait, non-dealer` or `one or two live simple winning tiles`, so
+    /// a player (or a bug report) can see which cell of the lesson's box the
     /// hand was deliberately built for.
+    ///
+    /// It must never name the recommended action. The note is drawn under the
+    /// table *before* the player answers, so a label such as `riichi: good wait
+    /// only` or `dama: 7700 without riichi` is the answer itself. Every family
+    /// label therefore states table facts only; see
+    /// `mortal_agreement::the_situation_label_never_names_the_answer`.
     pub(crate) fn label(self) -> String {
         match self {
             Self::RiichiJudgement(target) => target.label().to_string(),

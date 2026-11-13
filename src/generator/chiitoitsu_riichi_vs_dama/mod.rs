@@ -59,10 +59,14 @@ impl Target {
     }
 
     /// The parameter named for the agreement report.
+    ///
+    /// Both branches hand the player a seven-pairs hand, so the label starts
+    /// the same way and only the fact that distinguishes them follows. It
+    /// never names the action: the note is shown before the player answers.
     pub(crate) fn label(self) -> String {
         match self {
-            Self::Dama => "dama: mangan-or-better seven pairs".to_string(),
-            Self::Riichi(set) => format!("riichi: {}", set.label()),
+            Self::Dama => "seven pairs worth mangan or more".to_string(),
+            Self::Riichi(set) => format!("seven pairs, {}", set.label()),
         }
     }
 }

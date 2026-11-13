@@ -473,7 +473,9 @@ which returns `{"state": GameState, "agreement": MortalAgreementReport}`. The
 report records the bound, `attempts`, `evaluations`, rejects split into
 `action`, `tile`, `incomparable`, and `evaluation_failed`, and — for a lesson
 with situation parameters — the `situation` string naming the condition set the
-hand was built to isolate (for example `riichi: good wait only`). Passing
+hand was built to isolate (for example `extra han, bad wait, non-dealer`). That
+string describes the table's own facts and never names the recommended action:
+the app prints it under a hand the player has not answered yet. Passing
 `{"enabled": false}` (or `MortalAgreementOptions::disabled()`) returns the plain
 `generate_puzzle` candidate with no report, so a host can keep one settings blob
 and toggle the filter.
@@ -502,7 +504,10 @@ without the filter, and a short note under the table says how many generated
 scenarios were rejected and why (for example "Took 5 attempts to generate a
 scenario where Mortal agrees with the book answer (4 scenarios rejected: 3 tile
 mismatches, 1 incomparable answer)"), followed by the pinned situation when the
-lesson has one. The filter only applies to book-graded lessons: a Mortal drill has
+lesson has one. The situation clause states the hand's facts only — live-tile
+counts, hand value, the drawn ch. 7 conditions — so it explains which cell of a
+drill was built without revealing what to do with it. The filter only applies to
+book-graded lessons: a Mortal drill has
 no book answer for Mortal to agree with, so it is dealt as usual and graded by
 the model alone. Nothing persists the setting, so every fresh page load starts
 with it on. A browser that cannot load the weights falls back to a book-only hand

@@ -54,10 +54,10 @@ describe('parseAgreementPayload', () => {
     const withSituation = parseAgreementPayload(
       JSON.stringify({
         state: table,
-        agreement: report({ situation: 'riichi: dealer only' }),
+        agreement: report({ situation: 'extra han, bad wait, dealer' }),
       }),
     );
-    expect(withSituation.report?.situation).toBe('riichi: dealer only');
+    expect(withSituation.report?.situation).toBe('extra han, bad wait, dealer');
 
     const badSituation = parseAgreementPayload(
       JSON.stringify({
@@ -120,12 +120,25 @@ describe('formatAgreementNotice', () => {
   it('names the pinned situation when the report carries one', () => {
     expect(
       formatAgreementNotice(
-        report({ attempts: 5, evaluations: 5, situation: 'riichi: good wait only' }),
+        report({ attempts: 5, evaluations: 5, situation: 'no extra han, good wait, non-dealer' }),
       ),
     ).toBe(
       'Took 5 attempts to generate a scenario where Mortal agrees with the book answer. ' +
-        'Situation: riichi: good wait only.',
+        'Situation: no extra han, good wait, non-dealer.',
     );
+  });
+
+  it('keeps the notice free of any action the player has not picked yet', () => {
+    // The engine owns the situation wording; this guards the sentence frame
+    // around it, which must not introduce an action either.
+    const notice = formatAgreementNotice(
+      report({ attempts: 3, evaluations: 3, situation: 'extra han, bad wait, dealer' }),
+      true,
+    );
+
+    for (const action of ['riichi', 'dama', 'push', 'fold', 'commit']) {
+      expect(notice.toLowerCase()).not.toContain(action);
+    }
   });
 
   it('says "at least one" when the scenario accepts several book answers', () => {

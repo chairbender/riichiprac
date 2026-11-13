@@ -60,10 +60,14 @@ impl Target {
     }
 
     /// The parameter list shown in the agreement report.
+    ///
+    /// The box cell is the two facts about the table (distance to tenpai, hand
+    /// value, wait shape); the label states those facts and never the action
+    /// the book picks for them, because the note is shown before the answer.
     pub(crate) fn label(self) -> &'static str {
         match self {
-            Self::Push => "push: 1-away, guaranteed mangan, perfect wait",
-            Self::Fold => "fold: 1-away, low score, bad wait",
+            Self::Push => "1-away, guaranteed mangan, perfect wait",
+            Self::Fold => "1-away, low score, bad wait",
         }
     }
 

@@ -167,7 +167,9 @@ pub struct MortalAgreementReport {
     /// Drawn once before the first candidate; every attempt below is filled
     /// under this same set. `None` means the lesson has no parameter concept
     /// and each candidate was an independent full draw. The wording names the
-    /// isolated condition, e.g. `riichi: good wait only`.
+    /// isolated condition, e.g. `extra han, bad wait, non-dealer`, and never the
+    /// answer: the frontend prints it under a scenario that has not been
+    /// answered yet.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub situation: Option<String>,
     /// True when a candidate was accepted. `false` only appears on the error
@@ -830,26 +832,51 @@ mod tests {
             assert!(!label.is_empty(), "{category}");
             match category {
                 "riichi_judgement" => assert!(
-                    label.starts_with("riichi: ") || label.starts_with("dama: "),
+                    label.ends_with("dealer") || label.ends_with("non-dealer"),
                     "{label}"
                 ),
-                "dama_bad_wait" => assert!(
-                    label.starts_with("dama: ") || label.starts_with("riichi: "),
-                    "{label}"
-                ),
-                "dama_expensive_hand" => assert!(
-                    label.starts_with("dama: 7700") || label.starts_with("dama: haneman"),
-                    "{label}"
-                ),
-                "push_or_fold" => assert!(
-                    label.starts_with("push: ") || label.starts_with("fold: "),
-                    "{label}"
-                ),
-                _ => assert!(
-                    label.starts_with("dama: ") || label.starts_with("riichi: "),
-                    "{label}"
-                ),
+                "dama_bad_wait" => assert!(label.contains("live "), "{label}"),
+                "dama_expensive_hand" => assert!(label.starts_with("hand worth "), "{label}"),
+                "push_or_fold" => assert!(label.starts_with("1-away, "), "{label}"),
+                _ => assert!(label.starts_with("seven pairs"), "{label}"),
             }
+        }
+    }
+
+    /// The situation note is drawn under a scenario the player has not answered
+    /// yet, so it may describe the table but never the recommended action.
+    ///
+    /// A label such as `riichi: good wait only` or `dama: 7700 without riichi`
+    /// is the answer, and the app printed it before the player picked.
+    #[test]
+    fn the_situation_label_never_names_the_answer() {
+        for category in [
+            "riichi_judgement",
+            "dama_bad_wait",
+            "dama_expensive_hand",
+            "chiitoitsu_riichi_vs_dama",
+            "push_or_fold",
+            "honitsu_decision",
+        ] {
+            let mut seen = 0;
+            for _ in 0..64 {
+                let Some(situation) = crate::generator::sample_situation(category) else {
+                    continue;
+                };
+                seen += 1;
+                let label = situation.label();
+                for action in ["riichi", "dama", "push", "fold", "commit", "efficiency"] {
+                    assert!(
+                        !label.to_lowercase().contains(action),
+                        "{category} situation names the answer: {label}"
+                    );
+                }
+                assert!(
+                    !label.ends_with(':') && !label.contains(": "),
+                    "{category} situation reads as an action prefix: {label}"
+                );
+            }
+            assert!(seen > 0, "{category} must report a situation");
         }
     }
 
@@ -951,7 +978,7 @@ mod tests {
 
         assert!(err.contains("unachievable"), "{err}");
         assert!(
-            err.contains("riichi: dealer + red-five wait"),
+            err.contains("seven pairs, dealer + red-five wait"),
             "the error must name the drawn set: {err}"
         );
         assert!(err.contains("chiitoitsu_riichi_vs_dama"), "{err}");
