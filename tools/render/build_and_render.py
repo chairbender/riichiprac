@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import math
 import sys
+import time
 from pathlib import Path
 
 import bpy
@@ -321,6 +322,24 @@ def build_camera(scene: bpy.types.Scene, spec: dict) -> bpy.types.Object:
     return obj
 
 
+def active_lights(spec: dict) -> list[dict]:
+    """The lights actually built: the selected preset's enabled entries.
+
+    The spec carries both rigs so the tuner can compare them without editing
+    anything: `studio` is Task 1's single softbox key, `parlor` is the strip
+    rig. `lightRig` names the active preset; `enabled: false` parks a tube
+    without deleting its numbers. A spec with a plain `lights` list (Task 1
+    format) still works.
+    """
+    presets = spec.get("lightPresets")
+    if not presets:
+        return [entry for entry in spec["lights"] if entry.get("enabled", True)]
+    name = spec.get("lightRig")
+    if name not in presets:
+        die(f"lightRig {name!r} is not one of {sorted(presets)}")
+    return [entry for entry in presets[name]["lights"] if entry.get("enabled", True)]
+
+
 def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
     """Place the area rig from spherical coordinates around each target.
 
@@ -328,8 +347,25 @@ def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
     (behind) and 270 is -X (left); elevation is degrees above the horizontal.
     That makes "light from above the tile" a single number and keeps the tuner's
     direction sliders meaningful.
+
+    `rollDeg` then turns the rectangle about its own aim axis (local Z), so a
+    long thin tube can lie along X (0) or stand along Y (90) without moving the
+    aim or the target. That is the whole strip-light trick: length shapes the
+    streak, width shapes its cross-section, roll picks which strokes catch it.
     """
-    for entry in spec["lights"]:
+    lights = active_lights(spec)
+    if not lights:
+        die("the active light rig is empty")
+    log(
+        f"rig {spec.get('lightRig', 'lights')}: "
+        + ", ".join(
+            f"{entry['id']} ({entry['size']:g}x{entry['sizeY']:g}, "
+            f"{entry['elevationDeg']:g}°, roll {entry.get('rollDeg', 0):g}°, "
+            f"{entry['energyW'] / 1000:g} kW)"
+            for entry in lights
+        )
+    )
+    for entry in lights:
         data = bpy.data.lights.new(entry["id"], "AREA")
         data.shape = "RECTANGLE"
         data.size = entry["size"]
@@ -349,6 +385,44 @@ def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
         obj = new_object(entry["id"], data)
         obj.location = target + direction * entry["distance"]
         aim(obj, target)
+        roll = entry.get("rollDeg", 0.0)
+        if roll:
+            # Post-multiply: the rotation is about the light's own aim axis.
+            obj.matrix_world = obj.matrix_world @ Matrix.Rotation(math.radians(roll), 4, "Z")
+        obj["group"] = entry.get("group", "key")
+
+
+def rig_record(spec: dict) -> dict:
+    """The active rig as it was built, for the manifest.
+
+    Recorded from the same resolved list `build_lights` consumes, so the
+    manifest can never describe a rig the sprites were not baked with. Task 2/3
+    read this instead of assuming light positions.
+    """
+    return {
+        "preset": spec.get("lightRig"),
+        "convention": (
+            "azimuth 0 front (-Y), 90 +X, 180 behind, 270 -X; elevation above "
+            "horizontal; roll about the light's aim axis in degrees"
+        ),
+        "lights": [
+            {
+                "id": entry["id"],
+                "group": entry.get("group", "key"),
+                "target": entry["target"],
+                "azimuthDeg": entry["azimuthDeg"],
+                "elevationDeg": entry["elevationDeg"],
+                "distance": entry["distance"],
+                "size": entry["size"],
+                "sizeY": entry["sizeY"],
+                "rollDeg": entry.get("rollDeg", 0.0),
+                "energyW": entry["energyW"],
+                "hex": entry["hex"],
+            }
+            for entry in active_lights(spec)
+        ],
+        "world": {"hex": spec["world"]["hex"], "strength": spec["world"]["strength"]},
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -679,6 +753,26 @@ def measure_blue_sliver(sprite: np.ndarray, column: int) -> dict:
             break
         run += 1
     return {"bluePx": run, "topRow": top}
+
+
+def channel_stats(sprite: np.ndarray, alpha_floor: float = 0.5) -> dict:
+    """Peak stored value and clipped-pixel count over an opaque sprite.
+
+    `load_rgba` hands back the stored 8-bit values as 0..1 without converting to
+    linear, so a channel at 1.0 is a clipped byte. "No clipping" then becomes a
+    number in the manifest instead of an eyeball judgement.
+    """
+    opaque = sprite[..., 3] >= alpha_floor
+    rgb = sprite[..., :3][opaque]
+    if rgb.size == 0:
+        return {"maxChannel": 0, "clippedPixels": 0, "opaquePixels": 0}
+    peak = float(rgb.max()) * 255.0
+    clipped = int((rgb >= 254.5 / 255.0).any(axis=1).sum())
+    return {
+        "maxChannel": round(peak, 1),
+        "clippedPixels": clipped,
+        "opaquePixels": int(opaque.sum()),
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -1099,9 +1193,12 @@ def main() -> None:
     decal_spec = spec["spike"]["decal"]
     padding = spec["decals"]["paddingPixels"]
     top = tile_spec["thickness"]
+    decal_started = time.perf_counter()
     decal_path, decal_width, decal_height, frame_w, frame_h = bake_decal(
         spec, scene, camera, tile, table, out_dir
     )
+    decal_seconds = time.perf_counter() - decal_started
+    log(f"decal bake: {decal_seconds:.1f}s")
     if preview_only:
         log("preview: decal only, skipping body/composite/manifest")
         return
@@ -1162,6 +1259,8 @@ def main() -> None:
     )
     edge_px = abs(top_front[1] - top_back[1])
     face_height_px = abs(face_quad[3][1] - face_quad[0][1])
+    body_stats = channel_stats(body_with_shadow)
+    decal_stats = channel_stats(decal)
 
     manifest = {
         "version": 1,
@@ -1192,6 +1291,7 @@ def main() -> None:
             round(spec["decals"]["cssFace"][1] * 2),
         ],
         "background": None,
+        "rig": rig_record(spec),
         "decals": {
             "pixels": [decal_width, decal_height],
             "paddingPixels": padding,
@@ -1245,6 +1345,11 @@ def main() -> None:
             "topEdgeProjectedPx": round(edge_px, 2),
             "blueSliverExpectedPx": round(edge_px * tile_spec["backEdgeFraction"], 2),
             "blueSliverMeasuredPx": sliver["bluePx"],
+            "bodyMaxChannel": body_stats["maxChannel"],
+            "bodyClippedPixels": body_stats["clippedPixels"],
+            "decalMaxChannel": decal_stats["maxChannel"],
+            "decalClippedPixels": decal_stats["clippedPixels"],
+            "decalBakeSeconds": round(decal_seconds, 1),
         },
     }
     manifest_path = out_dir / spec["outputs"]["manifest"]
@@ -1255,6 +1360,11 @@ def main() -> None:
         f"{sliver['bluePx']} device px measured, "
         f"{round(edge_px * tile_spec['backEdgeFraction'], 2)} px expected "
         f"of a {round(edge_px, 2)} px top edge, on a {round(face_height_px, 2)} px face"
+    )
+    log(
+        f"rig: {manifest['rig']['preset']} · "
+        f"body peak {body_stats['maxChannel']}/255 ({body_stats['clippedPixels']} clipped) · "
+        f"decal peak {decal_stats['maxChannel']}/255 ({decal_stats['clippedPixels']} clipped)"
     )
 
 

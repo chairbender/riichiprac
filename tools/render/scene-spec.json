@@ -74,7 +74,175 @@
   },
   "world": {
     "hex": "#b9c6d6",
-    "strength": 0.5
+    "strength": 0.4
+  },
+  "lightRig": "parlor",
+  "lightPresets": {
+    "studio": {
+      "label": "Task 1 studio (one softbox key + fill + rim)",
+      "lights": [
+        {
+          "id": "key",
+          "target": [
+            0,
+            0.6,
+            0
+          ],
+          "azimuthDeg": 0,
+          "elevationDeg": 77,
+          "distance": 56,
+          "size": 26,
+          "sizeY": 20,
+          "energyW": 200000,
+          "hex": "#fff4e4",
+          "group": "key",
+          "rollDeg": 0
+        },
+        {
+          "id": "fill",
+          "target": [
+            0,
+            -1,
+            0.3
+          ],
+          "azimuthDeg": 45,
+          "elevationDeg": 11,
+          "distance": 34,
+          "size": 42,
+          "sizeY": 27,
+          "energyW": 23000,
+          "hex": "#dfe9ff",
+          "group": "fill",
+          "rollDeg": 0
+        },
+        {
+          "id": "rim",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "azimuthDeg": 170,
+          "elevationDeg": 45,
+          "distance": 40,
+          "size": 28,
+          "sizeY": 20,
+          "energyW": 22000,
+          "hex": "#ffffff",
+          "group": "rim",
+          "rollDeg": 0
+        }
+      ]
+    },
+    "parlor": {
+      "label": "Parlor strips (ceiling tubes + green bounce + rim)",
+      "lights": [
+        {
+          "id": "tube-0",
+          "group": "tube",
+          "target": [
+            0,
+            0.6,
+            0
+          ],
+          "azimuthDeg": 0,
+          "elevationDeg": 62,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "energyW": 85000,
+          "hex": "#fdf9f1",
+          "enabled": true
+        },
+        {
+          "id": "tube-1",
+          "group": "tube",
+          "target": [
+            -2,
+            3,
+            0
+          ],
+          "azimuthDeg": 90,
+          "elevationDeg": 58,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "energyW": 65000,
+          "hex": "#fdf9f1",
+          "enabled": true
+        },
+        {
+          "id": "tube-2",
+          "group": "tube",
+          "target": [
+            2,
+            2.5,
+            0
+          ],
+          "azimuthDeg": 270,
+          "elevationDeg": 58,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "enabled": false,
+          "energyW": 55000,
+          "hex": "#fdf9f1"
+        },
+        {
+          "id": "tube-3",
+          "group": "tube",
+          "target": [
+            1.5,
+            -2,
+            0
+          ],
+          "azimuthDeg": 8,
+          "elevationDeg": 74,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "enabled": false,
+          "energyW": 60000,
+          "hex": "#fdf9f1"
+        },
+        {
+          "id": "bounce",
+          "group": "bounce",
+          "target": [
+            0,
+            -1,
+            0.3
+          ],
+          "azimuthDeg": 30,
+          "elevationDeg": 10,
+          "distance": 34,
+          "size": 42,
+          "sizeY": 27,
+          "energyW": 8000,
+          "hex": "#cfe4d3"
+        },
+        {
+          "id": "rim",
+          "group": "rim",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "azimuthDeg": 170,
+          "elevationDeg": 45,
+          "distance": 40,
+          "size": 28,
+          "sizeY": 20,
+          "energyW": 6000,
+          "hex": "#ffffff"
+        }
+      ]
+    }
   },
   "camera": {
     "position": [
@@ -95,53 +263,6 @@
     "clipStart": 1,
     "clipEnd": 200
   },
-  "lights": [
-    {
-      "id": "key",
-      "target": [
-        0,
-        0.6,
-        0
-      ],
-      "azimuthDeg": 0,
-      "elevationDeg": 77,
-      "distance": 56,
-      "size": 26,
-      "sizeY": 20,
-      "energyW": 200000,
-      "hex": "#fff4e4"
-    },
-    {
-      "id": "fill",
-      "target": [
-        0,
-        -1,
-        0.3
-      ],
-      "azimuthDeg": 45,
-      "elevationDeg": 11,
-      "distance": 34,
-      "size": 42,
-      "sizeY": 27,
-      "energyW": 23000,
-      "hex": "#dfe9ff"
-    },
-    {
-      "id": "rim",
-      "target": [
-        0,
-        0,
-        0
-      ],
-      "azimuthDeg": 170,
-      "elevationDeg": 45,
-      "distance": 40,
-      "size": 28,
-      "sizeY": 20,
-      "energyW": 22000,
-      "hex": "#ffffff"
-    }
-  ],
   "hand": {
     "count": 14,
     "spacing": 0.82,
@@ -157,17 +278,17 @@
     "renderScale": 3,
     "paddingPixels": 1,
     "carve": {
-      "depthFractionOfThickness": 0.0143,
+      "depthFractionOfThickness": 0.0075,
       "profile": {
-        "topSpread": 0.92,
-        "bottomSpread": 0.92
+        "topSpread": 0.6,
+        "bottomSpread": 0.8
       },
       "gridScale": 1,
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75,
       "occlusionSamples": 16,
-      "blurUnits": 0.0069642857142857145,
-      "transitionUnits": 0.018035714285714287,
+      "blurUnits": 0.0042857143,
+      "transitionUnits": 0.010714285700000001,
       "paintEdge": 0.18
     },
     "rigs": {
