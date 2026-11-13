@@ -170,6 +170,18 @@ export const TILE_FACE_LENGTH = 1;
 export const TILE_THICKNESS = 0.5;
 
 /**
+ * How much of an upright tile's top face reads as its blue back, as a fraction
+ * of the tile's thickness.
+ *
+ * A true orthographic camera at this pitch would hide the back plane entirely;
+ * a standing tile only shows its ivory top edge. The sliver is the deliberate
+ * Tenhou-style cue that the tile is a physical slab with a coloured back, and it
+ * is what makes a row of hand tiles read as tiles rather than cards. It runs
+ * along the far edge of the top face, so it never eats into the artwork.
+ */
+export const TILE_BACK_SLIVER = 0.3;
+
+/**
  * How far a standing hand's face is set in from the human's apron edge, in tile
  * units.
  *
@@ -613,7 +625,9 @@ export interface TileFaceFrame {
  *
  * The artwork always goes on `face`; `outline` is that face's edge, and `edge`
  * is the face that shows the tile's thickness (its top when standing, its front
- * side when lying flat).
+ * side when lying flat). `silhouette` is the union of the face and the
+ * thickness, so the body is painted as one connected shape with no seam across
+ * the tile's own edge.
  */
 export interface TileFaces {
   /** Affine frame for the tile's artwork. */
@@ -622,6 +636,25 @@ export interface TileFaces {
   outline: ScreenQuad;
   /** The tile's thickness, facing the camera. */
   edge: ScreenQuad;
+  /** The whole visible body, as one closed outline. */
+  silhouette: readonly ScreenPoint[];
+  /**
+   * The strip of blue back visible along an upright tile's far top edge, or
+   * absent when the tile lies face-up and its back is against the table.
+   */
+  back?: ScreenQuad;
+}
+
+/** Interpolate between two screen points. */
+function lerpScreen(
+  from: ScreenPoint,
+  to: ScreenPoint,
+  amount: number,
+): ScreenPoint {
+  return {
+    x: from.x + (to.x - from.x) * amount,
+    y: from.y + (to.y - from.y) * amount,
+  };
 }
 
 /**
@@ -667,6 +700,12 @@ export function uprightTileFaces(
   const bottomRight = toScreen(corner(half, 0, 0));
   const topLeft = toScreen(corner(-half, 0, TILE_FACE_LENGTH));
   const topRight = toScreen(corner(half, 0, TILE_FACE_LENGTH));
+  const backLeft = toScreen(
+    corner(-half, TILE_THICKNESS, TILE_FACE_LENGTH),
+  );
+  const backRight = toScreen(
+    corner(half, TILE_THICKNESS, TILE_FACE_LENGTH),
+  );
 
   return {
     face: {
@@ -681,11 +720,20 @@ export function uprightTileFaces(
       },
     },
     outline: [topLeft, topRight, bottomRight, bottomLeft],
-    edge: [
-      topLeft,
+    edge: [topLeft, topRight, backRight, backLeft],
+    silhouette: [
+      bottomLeft,
+      bottomRight,
       topRight,
-      toScreen(corner(half, TILE_THICKNESS, TILE_FACE_LENGTH)),
-      toScreen(corner(-half, TILE_THICKNESS, TILE_FACE_LENGTH)),
+      backRight,
+      backLeft,
+      topLeft,
+    ],
+    back: [
+      backLeft,
+      backRight,
+      lerpScreen(backRight, topRight, TILE_BACK_SLIVER),
+      lerpScreen(backLeft, topLeft, TILE_BACK_SLIVER),
     ],
   };
 }
@@ -743,6 +791,8 @@ export function flatTileFaces(
   const topNearRight = toScreen(
     corner(halfWidth, -halfLength, TILE_THICKNESS),
   );
+  const bottomNearLeft = toScreen(corner(-halfWidth, -halfLength, 0));
+  const bottomNearRight = toScreen(corner(halfWidth, -halfLength, 0));
 
   return {
     face: {
@@ -757,11 +807,14 @@ export function flatTileFaces(
       },
     },
     outline: [topFarLeft, topFarRight, topNearRight, topNearLeft],
-    edge: [
-      topNearLeft,
+    edge: [topNearLeft, topNearRight, bottomNearRight, bottomNearLeft],
+    silhouette: [
+      topFarLeft,
+      topFarRight,
       topNearRight,
-      toScreen(corner(halfWidth, -halfLength, 0)),
-      toScreen(corner(-halfWidth, -halfLength, 0)),
+      bottomNearRight,
+      bottomNearLeft,
+      topNearLeft,
     ],
   };
 }

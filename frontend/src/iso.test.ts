@@ -15,6 +15,7 @@ import {
   SIDE_TANGENT,
   TABLE_HALF_SIZE,
   TABLE_SIZE,
+  TILE_BACK_SLIVER,
   TILE_FACE_LENGTH,
   TILE_FACE_WIDTH,
   TILE_THICKNESS,
@@ -535,6 +536,37 @@ describe('isometric tile faces', () => {
     );
   });
 
+  it('makes the tile one connected body with a thin blue back sliver', () => {
+    const faces = uprightTileFaces(
+      { x: 0, y: -HAND_FACE_OFFSET, z: 0 },
+      0,
+      unitProject,
+    );
+
+    // The silhouette is the face and its top edge as a single outline, so
+    // there is no seam across the tile's own top edge.
+    for (const corner of faces.outline) {
+      expect(faces.silhouette).toContain(corner);
+    }
+    expect(faces.silhouette).toContain(faces.edge[2]);
+    expect(faces.silhouette).toContain(faces.edge[3]);
+
+    // The back sliver starts on the silhouette's far top edge and reaches a
+    // fixed fraction of the way down the top face.
+    const back = faces.back;
+    expect(back).toBeDefined();
+    if (!back) return;
+
+    expect(back[0]).toEqual(faces.edge[3]);
+    expect(back[1]).toEqual(faces.edge[2]);
+    expect(back[2].y).toBeGreaterThan(back[1].y);
+    expect(back[2].y).toBeLessThan(faces.outline[1].y);
+    expect(
+      (back[2].y - back[1].y) /
+        (faces.outline[1].y - back[1].y),
+    ).toBeCloseTo(TILE_BACK_SLIVER, 10);
+  });
+
   it('keeps the projected hand inside the apron band', () => {
     const apron = projectBounds(handApronCorners());
 
@@ -544,7 +576,13 @@ describe('isometric tile faces', () => {
         slot.rotation,
         unitProject,
       );
-      for (const point of [...faces.outline, ...faces.edge]) {
+      const points = [
+        ...faces.outline,
+        ...faces.edge,
+        ...faces.silhouette,
+        ...(faces.back ?? []),
+      ];
+      for (const point of points) {
         expect(point.y).toBeGreaterThanOrEqual(apron.minY - 1e-9);
         expect(point.y).toBeLessThanOrEqual(apron.maxY + 1e-9);
       }
@@ -606,6 +644,13 @@ describe('isometric tile faces', () => {
       faces.edge[0].y + TILE_THICKNESS * ISO_HEIGHT_SCALE,
       10,
     );
+
+    // A face-up tile's back is against the table, so only the body and its
+    // front side are visible, again as one connected outline.
+    expect(faces.back).toBeUndefined();
+    expect(faces.silhouette).toContain(faces.edge[2]);
+    expect(faces.silhouette).toContain(faces.edge[3]);
+    expect(faces.silhouette).toContain(faces.outline[0]);
   });
 
   it('turns a flat tile sideways for Riichi and called tiles', () => {

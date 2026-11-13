@@ -1,6 +1,11 @@
 import { formatTileForDisplay } from '../display';
 import { flatTileFaces, uprightTileFaces } from '../iso';
-import type { ScreenQuad, TablePoint, TileFaces, ToScreen } from '../iso';
+import type {
+  ScreenPoint,
+  TablePoint,
+  TileFaces,
+  ToScreen,
+} from '../iso';
 import type { SeatRotation } from '../seatOrder';
 import { Tile } from './Tile';
 
@@ -14,9 +19,9 @@ import { Tile } from './Tile';
 const TILE_ART_WIDTH = 300;
 const TILE_ART_HEIGHT = 400;
 
-/** The `points` attribute for a projected quad. */
-function quadPoints(quad: ScreenQuad): string {
-  return quad.map((point) => `${point.x},${point.y}`).join(' ');
+/** The `points` attribute for a projected outline. */
+function pointsAttribute(points: readonly ScreenPoint[]): string {
+  return points.map((point) => `${point.x},${point.y}`).join(' ');
 }
 
 /**
@@ -129,8 +134,24 @@ export function IsometricTile({
       role="img"
       aria-label={label}
     >
-      {/* The tile's thickness, behind the face so the face's edge stays crisp. */}
-      <polygon className="iso-tile__edge" points={quadPoints(faces.edge)} />
+      {/*
+       * One ivory body for the whole tile, so the top edge and the face are
+       * the same piece rather than two bars with a seam between them.
+       */}
+      <polygon
+        className="iso-tile__body"
+        points={pointsAttribute(faces.silhouette)}
+      />
+
+      {/*
+       * A standing tile shows a thin strip of its blue back over the far top
+       * edge; a flat tile shows its shaded front side instead.
+       */}
+      {faces.back ? (
+        <polygon className="iso-tile__back" points={pointsAttribute(faces.back)} />
+      ) : (
+        <polygon className="iso-tile__side" points={pointsAttribute(faces.edge)} />
+      )}
 
       {/* The existing artwork, mapped onto the projected face. */}
       <g aria-hidden="true" transform={`matrix(${faceMatrix(faces.face)})`}>
@@ -142,10 +163,10 @@ export function IsometricTile({
         />
       </g>
 
-      {/* A hairline around the face keeps neighbouring tiles from merging. */}
+      {/* A hairline around the whole body keeps neighbouring tiles from merging. */}
       <polygon
         className="iso-tile__outline"
-        points={quadPoints(faces.outline)}
+        points={pointsAttribute(faces.silhouette)}
       />
 
       {tsumogiri && (
