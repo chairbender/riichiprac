@@ -38,3 +38,28 @@ export function formatMortalTileForDisplay(tile: string): string {
     ? formatTileForDisplay(tile.slice(0, -1), true)
     : formatTileForDisplay(tile);
 }
+
+/**
+ * Flag which copies of each tile are red fives, one flag per tile.
+ *
+ * `redFives` lists tile codes, not positions, so a hand holding two 5p with one
+ * red five marks the first 5p in hand order and leaves the second normal. Both
+ * the docked hand and the isometric hand use this, so the same copy is red in
+ * every view.
+ */
+export function redFiveFlags(
+  tiles: readonly string[],
+  redFives: readonly string[],
+): boolean[] {
+  const remaining = new Map<string, number>();
+  for (const code of redFives) {
+    remaining.set(code, (remaining.get(code) ?? 0) + 1);
+  }
+
+  return tiles.map((tile) => {
+    const count = remaining.get(tile) ?? 0;
+    if (count === 0) return false;
+    remaining.set(tile, count - 1);
+    return true;
+  });
+}

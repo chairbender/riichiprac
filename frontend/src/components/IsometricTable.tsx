@@ -19,7 +19,8 @@ import {
   tablePlaneCorners,
   wallRingCorners,
 } from '../iso';
-import type { ScreenPoint, TablePoint, Viewport } from '../iso';
+import type { TablePoint, ToScreen, Viewport } from '../iso';
+import { IsometricHand } from './IsometricHand';
 
 /**
  * The quiet border around the fitted table, in CSS pixels.
@@ -88,9 +89,6 @@ function useStageViewport(ref: RefObject<HTMLDivElement>): Viewport {
 
   return viewport;
 }
-
-/** Convert a table point to an SVG user-space point. */
-type ToScreen = (point: TablePoint) => ScreenPoint;
 
 /** The `points` attribute value for a projected table polygon. */
 function polygonPoints(
@@ -270,10 +268,10 @@ interface IsometricTableProps {
  * second scaling system in CSS.
  *
  * The fitted content is the full footprint: the 12-by-12 playing surface, the
- * wall ring outside it, and the human's hand apron below that. The wall and
- * apron are drawn as empty reserved rails now; later parts fill them in, and
- * because they are already inside the fitted bounds the play area never moves
- * when they arrive.
+ * wall ring outside it, and the human's hand apron below that. The wall ring is
+ * still an empty reserved rail; the apron now holds the human's concealed hand.
+ * Both are already inside the fitted bounds, so adding them never moves the play
+ * area.
  *
  * The camera is fixed at a 30° pitch with no perspective, so the plane is a 2:1
  * rectangle: the human's edge runs along the bottom, shimocha is on the right,
@@ -305,6 +303,7 @@ export function IsometricTable({ state }: IsometricTableProps) {
   );
 
   const seated = playersBySide(state);
+  const humanSeat = seated.get('bottom') ?? null;
   const railHalfSize = TABLE_HALF_SIZE + 0.55;
   const bands = seatBands();
 
@@ -349,9 +348,9 @@ export function IsometricTable({ state }: IsometricTableProps) {
         </defs>
 
         {/*
-         * Reserved footprint, drawn but empty. The apron is the human's rail
-         * and the wall ring is the four-sided wall; both are fitted into the
-         * stage now so later parts cannot move the play area.
+         * Reserved footprint. The apron is the human's rail and holds their
+         * hand; the wall ring is still the empty four-sided wall. Both are
+         * fitted into the stage now so later parts cannot move the play area.
          */}
         <g aria-hidden="true">
           <polygon
@@ -409,6 +408,15 @@ export function IsometricTable({ state }: IsometricTableProps) {
             points={polygonPoints(centreCorners(), toScreen)}
           />
         </g>
+
+        {/*
+         * The human's own concealed hand stands on the apron in front of their
+         * seat. The bottom seat is the human by `tablePlacements`, so this is
+         * the same hand the docked hand shows in the other views.
+         */}
+        {humanSeat && (
+          <IsometricHand player={humanSeat} toScreen={toScreen} />
+        )}
 
         {SHOW_DEBUG_OVERLAY && <DebugOverlay toScreen={toScreen} />}
       </svg>

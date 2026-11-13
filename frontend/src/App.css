@@ -1457,6 +1457,52 @@
 }
 
 /*
+ * Isometric tiles and the human's hand.
+ *
+ * The artwork is the same `Tile` SVG as the other views, mapped onto the tile's
+ * face by the component; these rules only add the tile's thickness, the hairline
+ * that separates neighbours, and the tsumogiri dot. Colours are the flat
+ * Tenhou-style cues from `ISO_LIGHT`, not textures or gradients.
+ */
+.iso-tile__edge {
+  stroke-linejoin: round;
+}
+
+/* A standing tile shows its pale top edge above the face. */
+.iso-tile--upright .iso-tile__edge {
+  fill: #e9e1cd;
+  stroke: rgba(12, 18, 15, 0.55);
+  stroke-width: 1;
+}
+
+/* A flat tile shows the shaded front of its body below the face. */
+.iso-tile--flat .iso-tile__edge {
+  fill: #a9a395;
+  stroke: rgba(12, 18, 15, 0.5);
+  stroke-width: 1;
+}
+
+.iso-tile__outline {
+  fill: none;
+  stroke: rgba(10, 14, 12, 0.6);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* Tsumogiri: thrown straight off the draw, so dimmed with a corner dot. */
+.iso-tile--tsumogiri {
+  filter: brightness(0.72) saturate(0.85);
+}
+
+.iso-tile__tsumogiri-dot {
+  fill: #4dd4ac;
+  stroke: #0d1016;
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+/*
  * Dev-only alignment overlay (`?isoDebug` in a dev build). Bright, thin, and
  * never interactive; it is not part of the table's look.
  */

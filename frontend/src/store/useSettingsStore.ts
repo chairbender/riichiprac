@@ -7,7 +7,8 @@ import { create } from 'zustand';
  * that has never saved a setting sees exactly what it saw before. `topdown` is
  * the flat plan view (`PhysicalTable`), with the human anchored at the bottom
  * edge. `isometric` is the angled table view (`IsometricTable`), which is still
- * being built part by part and currently shows the empty table plane.
+ * being built part by part and currently draws the table and the human's own
+ * concealed hand.
  */
 export type TableView = 'stacked' | 'topdown' | 'isometric';
 

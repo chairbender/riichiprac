@@ -570,8 +570,8 @@ export const App = () => {
    * The isometric view owns the whole viewport. Its controls, table details,
    * verdict, and notes all live in a drawer so only the menu button floats over
    * the table; the action strip and hand dock belong to the stacked shell and
-   * stay out of this view (the hand arrives in a later part, and non-discard
-   * answers use the floating popup).
+   * stay out of this view (the human's hand is drawn on the table, and
+   * non-discard answers use the floating popup).
    */
   if (tableView === 'isometric') {
     const answered = dualGrade !== null;

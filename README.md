@@ -70,9 +70,9 @@ book only, the Mortal column says so, and no answer is labelled wrong.
 
 ## Table views
 
-The header's **Top-down table** checkbox switches the same hand between two
-mobile-first portrait renderings; it never re-deals, so the answer and any
-submitted grade stay put. The choice is per session and is not persisted.
+The header's **View** dropdown switches the same hand between renderings; it
+never re-deals, so the answer and any submitted grade stay put. The choice is
+persisted in `localStorage`.
 
 - **Stacked** (default): four player rows in turn order, with the human's row
   directly above the docked hand.
@@ -84,6 +84,13 @@ submitted grade stay put. The choice is per session and is not persisted.
   turned to face its owner, so the side rivers read sideways and the top river
   upside down. Melds sit on a player's right and each new meld stacks on top of
   the last, away from them.
+- **Isometric**: an angled Tenhou-style table, still pure 2D (one SVG, a fixed
+  30° camera, no perspective or 3D library). The human sits at the bottom edge
+  with their own concealed hand standing on the table in front of them, upright
+  and in the same order as the docked hand, with the drawn tile set apart on the
+  right. Red fives and honour tiles use the same artwork as every other view. The
+  view is being built in parts: opponents' hands, rivers, melds, and the centre
+  compass are still to come.
 
 The top-down view is 2D only: no camera tilt, vanishing point, or 3D projection.
 It is a diagram of where the seats, melds, and discards are. The table edges

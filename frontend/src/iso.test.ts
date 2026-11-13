@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   CENTRE_HALF_SIZE,
   HAND_APRON_DEPTH,
+  HAND_CONCEALED_COUNT,
+  HAND_DRAW_GAP,
+  HAND_FACE_OFFSET,
+  HAND_LEFT,
+  HAND_MAX_WIDTH,
+  HAND_TILE_GAP,
   ISO_DEPTH_SCALE,
   ISO_HEIGHT_SCALE,
   ISO_PITCH_DEGREES,
@@ -9,10 +15,15 @@ import {
   SIDE_TANGENT,
   TABLE_HALF_SIZE,
   TABLE_SIZE,
+  TILE_FACE_LENGTH,
+  TILE_FACE_WIDTH,
+  TILE_THICKNESS,
   WALL_RING_DEPTH,
   centreCorners,
   fitProjection,
+  flatTileFaces,
   handApronCorners,
+  handSlots,
   project,
   projectBounds,
   seatBandCorners,
@@ -21,6 +32,7 @@ import {
   tableFootprintBounds,
   tablePlaneCorners,
   unproject,
+  uprightTileFaces,
   wallRingCorners,
 } from './iso';
 import type { ProjectedBounds, TablePoint } from './iso';
@@ -373,3 +385,244 @@ describe('projection fitting', () => {
     expect(Number.isFinite(fit.origin.y)).toBe(true);
   });
 });
+
+/** Project a table point with the fitted scale left at one unit per tile. */
+function unitProject(point: TablePoint) {
+  return project(point);
+}
+
+describe('hand layout', () => {
+  it('uses the same 3:4 face as the top-down tile artwork', () => {
+    expect(TILE_FACE_WIDTH).toBe(0.75);
+    expect(TILE_FACE_LENGTH).toBe(1);
+    expect(TILE_FACE_WIDTH / TILE_FACE_LENGTH).toBeCloseTo(0.75, 10);
+    // The body is thinner than the face is wide, so tiles read as slabs.
+    expect(TILE_THICKNESS).toBeLessThan(TILE_FACE_WIDTH);
+  });
+
+  it('lays a full hand out from one fixed left edge', () => {
+    const slots = handSlots('bottom', HAND_CONCEALED_COUNT, true);
+    expect(slots).toHaveLength(HAND_CONCEALED_COUNT + 1);
+    expect(slots.filter((slot) => !slot.isDraw)).toHaveLength(
+      HAND_CONCEALED_COUNT,
+    );
+    expect(slots[slots.length - 1].isDraw).toBe(true);
+
+    // The first face starts at the row's anchor, so a draw cannot shift it.
+    expect(slots[0].centre.x - TILE_FACE_WIDTH / 2).toBeCloseTo(
+      HAND_LEFT,
+      10,
+    );
+
+    // Concealed tiles sit one hairline apart, edge to edge.
+    for (let index = 1; index < HAND_CONCEALED_COUNT; index += 1) {
+      expect(slots[index].centre.x - slots[index - 1].centre.x).toBeCloseTo(
+        TILE_FACE_WIDTH + HAND_TILE_GAP,
+        10,
+      );
+    }
+
+    // The draw stands off the hand's right edge by the draw gap.
+    const lastConcealed = slots[HAND_CONCEALED_COUNT - 1];
+    const draw = slots[HAND_CONCEALED_COUNT];
+    expect(
+      draw.centre.x -
+        TILE_FACE_WIDTH / 2 -
+        (lastConcealed.centre.x + TILE_FACE_WIDTH / 2),
+    ).toBeCloseTo(HAND_DRAW_GAP, 10);
+
+    // A full hand is centred on the seat: equal margins either side.
+    expect(draw.centre.x + TILE_FACE_WIDTH / 2).toBeCloseTo(-HAND_LEFT, 10);
+    expect(HAND_MAX_WIDTH).toBeCloseTo(-HAND_LEFT * 2, 10);
+  });
+
+  it('never moves the tiles in hand when the draw arrives', () => {
+    const withoutDraw = handSlots('bottom', HAND_CONCEALED_COUNT, false);
+    const withDraw = handSlots('bottom', HAND_CONCEALED_COUNT, true);
+
+    expect(withoutDraw).toHaveLength(HAND_CONCEALED_COUNT);
+    expect(withDraw.slice(0, HAND_CONCEALED_COUNT)).toEqual(withoutDraw);
+  });
+
+  it('keeps the row anchored after a call, leaving room for melds', () => {
+    const slots = handSlots('bottom', 10, true);
+    expect(slots).toHaveLength(11);
+    expect(slots[0].centre.x - TILE_FACE_WIDTH / 2).toBeCloseTo(
+      HAND_LEFT,
+      10,
+    );
+
+    const draw = slots[slots.length - 1];
+    expect(draw.isDraw).toBe(true);
+    // The drawn tile stops well short of the right edge a full hand reaches,
+    // which is where the called melds will be laid out.
+    expect(draw.centre.x + TILE_FACE_WIDTH / 2).toBeLessThan(
+      -HAND_LEFT - TILE_FACE_WIDTH,
+    );
+  });
+
+  it('puts the whole hand inside the reserved apron', () => {
+    const slots = handSlots('bottom', HAND_CONCEALED_COUNT, true);
+    const firstLeft = slots[0].centre.x - TILE_FACE_WIDTH / 2;
+    const lastRight = slots[slots.length - 1].centre.x + TILE_FACE_WIDTH / 2;
+
+    expect(firstLeft).toBeGreaterThan(-(TABLE_HALF_SIZE + WALL_RING_DEPTH));
+    expect(lastRight).toBeLessThan(TABLE_HALF_SIZE + WALL_RING_DEPTH);
+  });
+
+  it('turns each seat’s hand to that seat’s edge', () => {
+    for (const side of TABLE_SIDES) {
+      const slots = handSlots(side, 1, false);
+      expect(slots).toHaveLength(1);
+
+      const [slot] = slots;
+      const normal = SIDE_NORMAL[side];
+      const tangent = SIDE_TANGENT[side];
+      const along = HAND_LEFT + TILE_FACE_WIDTH / 2;
+
+      expect(slot.rotation).toBe(SIDE_ROTATION[side]);
+      expect(slot.centre.x).toBeCloseTo(
+        normal.x * HAND_FACE_OFFSET + tangent.x * along,
+        10,
+      );
+      expect(slot.centre.y).toBeCloseTo(
+        normal.y * HAND_FACE_OFFSET + tangent.y * along,
+        10,
+      );
+      expect(slot.centre.z).toBe(0);
+    }
+  });
+
+  it('places the face plane inside the apron, not on its edge', () => {
+    const apronFar = TABLE_HALF_SIZE + WALL_RING_DEPTH;
+    expect(HAND_FACE_OFFSET).toBeGreaterThan(apronFar);
+    expect(HAND_FACE_OFFSET).toBeLessThan(apronFar + HAND_APRON_DEPTH);
+  });
+});
+
+describe('isometric tile faces', () => {
+  it('stands a hand tile upright with its top edge visible', () => {
+    const centre = { x: 0, y: -HAND_FACE_OFFSET, z: 0 };
+    const faces = uprightTileFaces(centre, 0, unitProject);
+
+    // The face is exactly one tile wide and one tile tall, foreshortened by
+    // the camera pitch.
+    expect(faces.face.across.x).toBeCloseTo(TILE_FACE_WIDTH, 10);
+    expect(faces.face.across.y).toBeCloseTo(0, 10);
+    expect(faces.face.down.x).toBeCloseTo(0, 10);
+    expect(faces.face.down.y).toBeCloseTo(
+      TILE_FACE_LENGTH * ISO_HEIGHT_SCALE,
+      10,
+    );
+
+    // The artwork's top-left is the face's top-left.
+    expect(faces.face.origin.x).toBeCloseTo(-TILE_FACE_WIDTH / 2, 10);
+    expect(faces.face.origin.y).toBeCloseTo(
+      -(-HAND_FACE_OFFSET * ISO_DEPTH_SCALE +
+        TILE_FACE_LENGTH * ISO_HEIGHT_SCALE),
+      10,
+    );
+
+    // The top edge reaches back across the thickness, compressed by depth.
+    expect(faces.edge[0]).toEqual(faces.outline[0]);
+    expect(faces.edge[2].y).toBeCloseTo(
+      faces.outline[0].y - TILE_THICKNESS * ISO_DEPTH_SCALE,
+      10,
+    );
+    expect(faces.edge[2].x).toBeCloseTo(
+      faces.outline[0].x + TILE_FACE_WIDTH,
+      10,
+    );
+  });
+
+  it('keeps the projected hand inside the apron band', () => {
+    const apron = projectBounds(handApronCorners());
+
+    for (const slot of handSlots('bottom', HAND_CONCEALED_COUNT, true)) {
+      const faces = uprightTileFaces(
+        slot.centre,
+        slot.rotation,
+        unitProject,
+      );
+      for (const point of [...faces.outline, ...faces.edge]) {
+        expect(point.y).toBeGreaterThanOrEqual(apron.minY - 1e-9);
+        expect(point.y).toBeLessThanOrEqual(apron.maxY + 1e-9);
+      }
+    }
+  });
+
+  it('turns a standing tile’s face to its seat', () => {
+    for (const side of TABLE_SIDES) {
+      const [slot] = handSlots(side, 1, false);
+      const faces = uprightTileFaces(
+        slot.centre,
+        slot.rotation,
+        unitProject,
+      );
+      const length = Math.hypot(
+        faces.face.across.x,
+        faces.face.across.y,
+      );
+      const across = {
+        x: faces.face.across.x / length,
+        y: faces.face.across.y / length,
+      };
+      const tangent = screenDirection(SIDE_TANGENT[side]);
+
+      expect(across.x).toBeCloseTo(tangent.x, 10);
+      expect(across.y).toBeCloseTo(tangent.y, 10);
+    }
+  });
+
+  it('lays a flat tile face-up, with its thickness towards the player', () => {
+    const centre = { x: 0, y: -4, z: 0 };
+    const faces = flatTileFaces(centre, 0, unitProject);
+
+    // The artwork's top sits on the far edge, so it reads upright to the player.
+    expect(faces.face.origin.x).toBeCloseTo(-TILE_FACE_WIDTH / 2, 10);
+    expect(faces.face.origin.y).toBeCloseTo(
+      -(
+        (centre.y + TILE_FACE_LENGTH / 2) * ISO_DEPTH_SCALE +
+        TILE_THICKNESS * ISO_HEIGHT_SCALE
+      ),
+      10,
+    );
+    expect(faces.face.across.x).toBeCloseTo(TILE_FACE_WIDTH, 10);
+    expect(faces.face.across.y).toBeCloseTo(0, 10);
+    // Top (far) to bottom (near) runs down the screen.
+    expect(faces.face.down.x).toBeCloseTo(0, 10);
+    expect(faces.face.down.y).toBeCloseTo(
+      TILE_FACE_LENGTH * ISO_DEPTH_SCALE,
+      10,
+    );
+
+    // The front side is a band of the tile's thickness below the near edge.
+    expect(faces.edge[0]).toEqual(faces.outline[3]);
+    expect(faces.edge[0].y).toBeCloseTo(
+      -(-4.5 * ISO_DEPTH_SCALE + TILE_THICKNESS * ISO_HEIGHT_SCALE),
+      10,
+    );
+    expect(faces.edge[2].y).toBeCloseTo(
+      faces.edge[0].y + TILE_THICKNESS * ISO_HEIGHT_SCALE,
+      10,
+    );
+  });
+
+  it('turns a flat tile sideways for Riichi and called tiles', () => {
+    const centre = { x: 0, y: -4, z: 0 };
+    const upright = flatTileFaces(centre, 0, unitProject);
+    const sideways = flatTileFaces(centre, 0, unitProject, true);
+
+    // A quarter turn swaps the footprint: the face is now one long across the
+    // player's view and three quarters deep.
+    expect(upright.face.across.x).toBeCloseTo(TILE_FACE_WIDTH, 10);
+    expect(sideways.face.across.y).toBeCloseTo(
+      TILE_FACE_WIDTH * ISO_DEPTH_SCALE,
+      10,
+    );
+    // The art's top points to the player's right, the top-down convention.
+    expect(sideways.face.down.x).toBeCloseTo(-TILE_FACE_LENGTH, 10);
+    expect(sideways.face.down.y).toBeCloseTo(0, 10);
+  });
+});
+

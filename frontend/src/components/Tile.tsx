@@ -97,9 +97,24 @@ interface TileProps {
   className?: string;
   /** Render the red-five variant of a 5 tile. */
   isRedFive?: boolean;
+  /**
+   * Optional viewport for a nested SVG, in the parent SVG's user units.
+   *
+   * The isometric view embeds this artwork inside a transformed group, where
+   * the tile needs an explicit 300x400 viewport. The stacked and top-down views
+   * leave these unset and size the SVG with CSS instead.
+   */
+  width?: number;
+  height?: number;
 }
 
-export function Tile({ code, className, isRedFive = false }: TileProps) {
+export function Tile({
+  code,
+  className,
+  isRedFive = false,
+  width,
+  height,
+}: TileProps) {
   const TileSvg =
     (isRedFive ? RED_FIVE_MAP[code] : undefined) ??
     TILE_MAP[code] ??
@@ -109,6 +124,8 @@ export function Tile({ code, className, isRedFive = false }: TileProps) {
   return (
     <TileSvg
       className={className}
+      width={width}
+      height={height}
       role="img"
       aria-label={label}
       focusable="false"

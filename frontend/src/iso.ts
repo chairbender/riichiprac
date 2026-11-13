@@ -1,5 +1,5 @@
-import { TABLE_SIDES } from './seatOrder';
-import type { TableSide } from './seatOrder';
+import { SIDE_ROTATION, TABLE_SIDES } from './seatOrder';
+import type { SeatRotation, TableSide } from './seatOrder';
 
 /**
  * Geometry for the isometric table view.
@@ -39,6 +39,22 @@ export interface ScreenPoint {
   /** Screen y, positive downwards (SVG's own direction). */
   y: number;
 }
+
+/**
+ * Converts a table point into the fitted view's SVG user space.
+ *
+ * The isometric table builds one of these from its {@link Projection} and hands
+ * it to the tile renderers, so every part of the scene shares one scale.
+ */
+export type ToScreen = (point: TablePoint) => ScreenPoint;
+
+/** Four screen points in painting order: a projected quadrilateral. */
+export type ScreenQuad = readonly [
+  ScreenPoint,
+  ScreenPoint,
+  ScreenPoint,
+  ScreenPoint,
+];
 
 /** The size of the area the table has to fit inside, in CSS pixels. */
 export interface Viewport {
@@ -136,6 +152,82 @@ export const WALL_RING_DEPTH = 1.5;
  * human's edge; every other seat's hand sits inside the play area for now.
  */
 export const HAND_APRON_DEPTH = 3;
+
+/**
+ * A mahjong tile's face width, in table units.
+ *
+ * A tile is three units wide for every four it is long, the same 3:4 proportion
+ * as the `riichi-mahjong-tiles` artwork (a 300x400 viewBox). One table unit is
+ * therefore a tile's long side: the river rows and seat bands are sized in that
+ * unit, and a face is always 0.75 of one.
+ */
+export const TILE_FACE_WIDTH = 0.75;
+
+/** A tile's face length, in table units; also the height of a standing tile. */
+export const TILE_FACE_LENGTH = 1;
+
+/** A tile's thickness, in table units: the depth of its body. */
+export const TILE_THICKNESS = 0.5;
+
+/**
+ * How far a standing hand's face is set in from the human's apron edge, in tile
+ * units.
+ *
+ * This is the only free number in the hand layout: the tile body reaches
+ * {@link TILE_THICKNESS} back towards the table and the face rises
+ * {@link TILE_FACE_LENGTH} above the plane, so its projected height is
+ * `0.5 + sin(30°)` units. Setting it half a unit inside the apron edge keeps the
+ * whole projected tile within the apron's 1.5-unit screen band, with a sliver
+ * of table in front of it.
+ */
+export const HAND_FRONT_MARGIN = 0.5;
+
+/** Face-to-face gap between neighbouring concealed hand tiles, in tile units. */
+export const HAND_TILE_GAP = 0.04;
+
+/**
+ * The extra gap before the drawn tile, in tile units.
+ *
+ * A drawn tile stands apart from the thirteen concealed tiles so the hand reads
+ * as "these are kept, this one just arrived", exactly as a player sets it down.
+ * The gap is measured between the last concealed tile's face and the drawn
+ * tile's face.
+ */
+export const HAND_DRAW_GAP = 0.5;
+
+/** How many tiles a full concealed hand holds, before any call or the draw. */
+export const HAND_CONCEALED_COUNT = 13;
+
+/**
+ * The width of the widest a hand can be: thirteen concealed tiles and a drawn
+ * tile, with the draw's extra gap. Every hand is laid out from this left edge,
+ * so drawing a tile never shifts the tiles already in hand.
+ */
+export const HAND_MAX_WIDTH =
+  (HAND_CONCEALED_COUNT + 1) * TILE_FACE_WIDTH +
+  (HAND_CONCEALED_COUNT - 1) * HAND_TILE_GAP +
+  HAND_DRAW_GAP;
+
+/**
+ * The local x of the left edge of a hand row, in table units from the seat's
+ * centre line.
+ *
+ * The full fourteen-tile hand is centred on the seat, and a shorter hand (after
+ * a call) keeps that same left edge. The empty room that leaves on the right is
+ * where the called melds will sit in a later part.
+ */
+export const HAND_LEFT = -HAND_MAX_WIDTH / 2;
+
+/**
+ * Distance from the table centre to a standing hand's face plane, in tile
+ * units, along the seat's outward normal.
+ *
+ * The face is the outermost plane of the tile, so the body runs
+ * {@link TILE_THICKNESS} back from here. The apron's own edge is
+ * {@link HAND_FRONT_MARGIN} further out.
+ */
+export const HAND_FACE_OFFSET =
+  TABLE_HALF_SIZE + WALL_RING_DEPTH + HAND_APRON_DEPTH - HAND_FRONT_MARGIN;
 
 
 /**
@@ -406,6 +498,274 @@ export function seatBands(
   }
   return bands;
 }
+
+/**
+ * One tile's place in a seat's concealed hand.
+ *
+ * Coordinates are already on the table: the slot's `centre` is the middle of
+ * the tile's face along its bottom edge, on the table plane. The renderer raises
+ * the face from there.
+ */
+export interface HandSlot {
+  /** Index into the concealed hand, or `-1` for the drawn tile. */
+  index: number;
+  /** True for the tile just drawn, which stands apart from the rest. */
+  isDraw: boolean;
+  /** Middle of the face's bottom edge, in table coordinates. */
+  centre: TablePoint;
+  /** Clockwise turn of the tile from the human's own reading direction. */
+  rotation: SeatRotation;
+}
+
+/**
+ * Lay a seat's concealed hand out on the table, in tile units.
+ *
+ * Tiles are placed edge to edge with a hairline gap so their thicknesses read
+ * separately. The row is anchored at {@link HAND_LEFT}, which is the left edge
+ * of a full fourteen-tile hand, so the concealed tiles never move when the draw
+ * arrives; the drawn tile stands one gap further out. A hand shortened by a
+ * call keeps the same left edge, leaving the room its melds will take on the
+ * seat's right.
+ *
+ * The slots run in the seat's own reading order, from that player's left to
+ * their right, and are already turned to the seat's edge: `centre` is measured
+ * along the seat's tangent and outward normal, and `rotation` is its
+ * {@link SIDE_ROTATION}. The bottom seat is the human's own, with a rotation of
+ * zero, so its slots run left to right on screen.
+ */
+export function handSlots(
+  side: TableSide,
+  concealed: number,
+  hasDraw: boolean,
+): HandSlot[] {
+  const count = Math.max(0, Math.floor(concealed));
+  const tangent = SIDE_TANGENT[side];
+  const normal = SIDE_NORMAL[side];
+  const rotation = SIDE_ROTATION[side];
+
+  const seatPoint = (localX: number): TablePoint => ({
+    x: tangent.x * localX + normal.x * HAND_FACE_OFFSET,
+    y: tangent.y * localX + normal.y * HAND_FACE_OFFSET,
+    z: 0,
+  });
+
+  const slots: HandSlot[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const localX = HAND_LEFT + index * (TILE_FACE_WIDTH + HAND_TILE_GAP);
+    slots.push({
+      index,
+      isDraw: false,
+      centre: seatPoint(localX + TILE_FACE_WIDTH / 2),
+      rotation,
+    });
+  }
+
+  if (hasDraw) {
+    const drawLeft =
+      count === 0
+        ? HAND_LEFT
+        : HAND_LEFT +
+          count * TILE_FACE_WIDTH +
+          (count - 1) * HAND_TILE_GAP +
+          HAND_DRAW_GAP;
+    slots.push({
+      index: -1,
+      isDraw: true,
+      centre: seatPoint(drawLeft + TILE_FACE_WIDTH / 2),
+      rotation,
+    });
+  }
+
+  return slots;
+}
+
+/** Turn a table-plane direction clockwise by a seat rotation, in degrees. */
+function rotatePlan(
+  direction: { x: number; y: number },
+  rotation: SeatRotation,
+): { x: number; y: number } {
+  const radians = (rotation * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return {
+    x: direction.x * cos + direction.y * sin,
+    y: -direction.x * sin + direction.y * cos,
+  };
+}
+
+/**
+ * Where a standing tile's artwork face sits on screen.
+ *
+ * `origin` is the face's top-left corner, `across` runs along the face's width
+ * to its top-right corner, and `down` runs down the face to its bottom-left
+ * corner. Those three are an affine frame: mapping the 300x400 tile artwork
+ * onto `origin + across * (x / 300) + down * (y / 400)` puts the art on the
+ * face with its top towards the tile's top, at any seat rotation.
+ */
+export interface TileFaceFrame {
+  origin: ScreenPoint;
+  across: ScreenPoint;
+  down: ScreenPoint;
+}
+
+/**
+ * A tile's visible faces, in SVG user space.
+ *
+ * The artwork always goes on `face`; `outline` is that face's edge, and `edge`
+ * is the face that shows the tile's thickness (its top when standing, its front
+ * side when lying flat).
+ */
+export interface TileFaces {
+  /** Affine frame for the tile's artwork. */
+  face: TileFaceFrame;
+  /** The artwork face's outline, clockwise from its top-left. */
+  outline: ScreenQuad;
+  /** The tile's thickness, facing the camera. */
+  edge: ScreenQuad;
+}
+
+/**
+ * Project a standing tile: its face towards its own seat, its top visible.
+ *
+ * A hand tile stands up on the table, so the camera sees the full artwork face
+ * and a thin top face beyond it, exactly like the real tiles in front of a
+ * player. The face's height is foreshortened by {@link ISO_HEIGHT_SCALE} (the
+ * 30° pitch), and the top face by {@link ISO_DEPTH_SCALE}; both stay in tile
+ * units, so the same code works at any fitted scale.
+ *
+ * `centre` is the middle of the face's bottom edge, as placed by
+ * {@link handSlots}, and `rotation` turns the tile to its seat. Only the human's
+ * bottom seat is drawn as a face for now; a face turned away from the camera
+ * collapses to a line, which is the cue a later part needs for tile backs.
+ */
+export function uprightTileFaces(
+  centre: TablePoint,
+  rotation: SeatRotation,
+  toScreen: ToScreen,
+): TileFaces {
+  const acrossDirection = rotatePlan({ x: 1, y: 0 }, rotation);
+  const inwardDirection = rotatePlan({ x: 0, y: 1 }, rotation);
+  const half = TILE_FACE_WIDTH / 2;
+
+  const corner = (
+    along: number,
+    inward: number,
+    height: number,
+  ): TablePoint => ({
+    x:
+      centre.x +
+      acrossDirection.x * along +
+      inwardDirection.x * inward,
+    y:
+      centre.y +
+      acrossDirection.y * along +
+      inwardDirection.y * inward,
+    z: centre.z + height,
+  });
+
+  const bottomLeft = toScreen(corner(-half, 0, 0));
+  const bottomRight = toScreen(corner(half, 0, 0));
+  const topLeft = toScreen(corner(-half, 0, TILE_FACE_LENGTH));
+  const topRight = toScreen(corner(half, 0, TILE_FACE_LENGTH));
+
+  return {
+    face: {
+      origin: topLeft,
+      across: {
+        x: topRight.x - topLeft.x,
+        y: topRight.y - topLeft.y,
+      },
+      down: {
+        x: bottomLeft.x - topLeft.x,
+        y: bottomLeft.y - topLeft.y,
+      },
+    },
+    outline: [topLeft, topRight, bottomRight, bottomLeft],
+    edge: [
+      topLeft,
+      topRight,
+      toScreen(corner(half, TILE_THICKNESS, TILE_FACE_LENGTH)),
+      toScreen(corner(-half, TILE_THICKNESS, TILE_FACE_LENGTH)),
+    ],
+  };
+}
+
+/**
+ * Project a tile lying face-up on the table, as discards and melds do.
+ *
+ * The artwork sits on the tile's top face, with the top of the tile away from
+ * its owner so the owner reads it upright; the tile's front side is the
+ * thickness band facing the camera. `centre` is the middle of the top face's
+ * footprint on the table plane, and `rotation` is the owner's seat rotation.
+ *
+ * `sideways` turns the whole tile a quarter turn, the convention both for a
+ * Riichi declaration discard and for a called tile inside a meld. Turning the
+ * tile rather than only its artwork keeps the footprint truthful: a sideways
+ * tile is one long by three-quarters wide, exactly as it lies on the table.
+ */
+export function flatTileFaces(
+  centre: TablePoint,
+  rotation: SeatRotation,
+  toScreen: ToScreen,
+  sideways = false,
+): TileFaces {
+  const turn = ((rotation + (sideways ? 90 : 0)) % 360) as SeatRotation;
+  const acrossDirection = rotatePlan({ x: 1, y: 0 }, turn);
+  const inwardDirection = rotatePlan({ x: 0, y: 1 }, turn);
+  const halfWidth = TILE_FACE_WIDTH / 2;
+  const halfLength = TILE_FACE_LENGTH / 2;
+
+  const corner = (
+    along: number,
+    inward: number,
+    height: number,
+  ): TablePoint => ({
+    x:
+      centre.x +
+      acrossDirection.x * along +
+      inwardDirection.x * inward,
+    y:
+      centre.y +
+      acrossDirection.y * along +
+      inwardDirection.y * inward,
+    z: centre.z + height,
+  });
+
+  const topFarLeft = toScreen(
+    corner(-halfWidth, halfLength, TILE_THICKNESS),
+  );
+  const topFarRight = toScreen(
+    corner(halfWidth, halfLength, TILE_THICKNESS),
+  );
+  const topNearLeft = toScreen(
+    corner(-halfWidth, -halfLength, TILE_THICKNESS),
+  );
+  const topNearRight = toScreen(
+    corner(halfWidth, -halfLength, TILE_THICKNESS),
+  );
+
+  return {
+    face: {
+      origin: topFarLeft,
+      across: {
+        x: topFarRight.x - topFarLeft.x,
+        y: topFarRight.y - topFarLeft.y,
+      },
+      down: {
+        x: topNearLeft.x - topFarLeft.x,
+        y: topNearLeft.y - topFarLeft.y,
+      },
+    },
+    outline: [topFarLeft, topFarRight, topNearRight, topNearLeft],
+    edge: [
+      topNearLeft,
+      topNearRight,
+      toScreen(corner(halfWidth, -halfLength, 0)),
+      toScreen(corner(-halfWidth, -halfLength, 0)),
+    ],
+  };
+}
+
 
 /**
  * The shared pseudo-lighting for the table, in tile widths.

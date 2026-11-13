@@ -1,5 +1,8 @@
 import { findKanCandidateTile } from '../actions';
-import { formatTileForDisplay } from '../display';
+import {
+  formatTileForDisplay,
+  redFiveFlags as computeRedFiveFlags,
+} from '../display';
 import { handHint } from '../handHint';
 import type { SubmittedAnswer } from '../store/useGameStore';
 import type { AiActionInfo, AiEvaluation } from '../types/ai';
@@ -105,16 +108,7 @@ export function HandDock({
   });
 
   // Mark specific copies as red fives; a tile code can appear more than once.
-  const redFiveCounts = new Map<string, number>();
-  for (const code of player.red_fives) {
-    redFiveCounts.set(code, (redFiveCounts.get(code) ?? 0) + 1);
-  }
-  const redFiveFlags = tiles.map((tile) => {
-    const remaining = redFiveCounts.get(tile) ?? 0;
-    if (remaining === 0) return false;
-    redFiveCounts.set(tile, remaining - 1);
-    return true;
-  });
+  const redFiveFlags = computeRedFiveFlags(tiles, player.red_fives);
 
   // Mortal's per-tile probabilities are a spoiler until the answer exists (or
   // the player deliberately peeked), so they are gated on `revealMortal`.
