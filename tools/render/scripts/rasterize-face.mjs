@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 /**
- * Rasterise the spike tile face SVGs to PNG textures for the Blender scene.
+ * Rasterise the spike tile symbol SVG to a PNG texture for the Blender scene.
  *
- * Two rasters come from the same 300 x 400 viewBox, so they align exactly:
- *   <code>-<w>x<h>.png        the full face (white plate + symbol) = albedo
- *   <code>-symbol-<w>x<h>.png the symbol alone on transparent = carve mask
+ * The upstream "regular" variant is the symbol alone (no face plate) on a
+ * transparent 300 x 400 canvas. One raster serves two jobs:
+ *   - its alpha is the carve mask (blurred into the groove profile)
+ *   - its colour is the engraving paint (red/black)
+ * The face itself is the melamine material colour, so no full-face raster is
+ * needed: the symbol-only SVG aligns with the upstream full-face variant.
  *
  * Uses @resvg/resvg-js (the pinned offline SVG rasteriser). No headless browser,
  * no sharp, no system rsvg.
@@ -24,33 +27,24 @@ const width = Math.round(cssWidth * scale);
 const height = Math.round(cssHeight * scale);
 
 const decal = spec.spike.decal;
-const faceDir = join(renderDir, 'build', 'faces');
+const sourcePath = resolve(dirname(specPath), decal.symbolSvg);
+const outPath = join(renderDir, 'build', 'faces', `${decal.code}-symbol-${width}x${height}.png`);
 
-function rasterise(sourcePath, outPath, label) {
-  const svg = readFileSync(sourcePath, 'utf8');
-  const rendered = new Resvg(svg, {
-    fitTo: { mode: 'width', value: width },
-    background: 'rgba(0, 0, 0, 0)',
-    shapeRendering: 2,
-    imageRendering: 0,
-  }).render();
-  if (rendered.width !== width || rendered.height !== height) {
-    throw new Error(
-      `${label} rasterised at ${rendered.width}x${rendered.height}, expected ${width}x${height}`,
-    );
-  }
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, rendered.asPng());
-  console.log(`[render] ${label} ${decal.code}: ${sourcePath} -> ${outPath} (${width}x${height})`);
+const svg = readFileSync(sourcePath, 'utf8');
+const rendered = new Resvg(svg, {
+  fitTo: { mode: 'width', value: width },
+  background: 'rgba(0, 0, 0, 0)',
+  shapeRendering: 2,
+  imageRendering: 0,
+}).render();
+if (rendered.width !== width || rendered.height !== height) {
+  throw new Error(
+    `symbol rasterised at ${rendered.width}x${rendered.height}, expected ${width}x${height}`,
+  );
 }
 
-rasterise(
-  resolve(dirname(specPath), decal.svg),
-  join(faceDir, `${decal.code}-${width}x${height}.png`),
-  'face',
-);
-rasterise(
-  resolve(dirname(specPath), decal.symbolSvg),
-  join(faceDir, `${decal.code}-symbol-${width}x${height}.png`),
-  'carve mask',
+mkdirSync(dirname(outPath), { recursive: true });
+writeFileSync(outPath, rendered.asPng());
+console.log(
+  `[render] symbol/paint ${decal.code}: ${sourcePath} -> ${outPath} (${width}x${height})`,
 );

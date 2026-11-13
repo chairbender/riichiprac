@@ -43,9 +43,16 @@
     ],
     "renderedAtScale": 3,
     "carve": {
-      "depthUnits": 0.01179,
-      "depthFractionOfThickness": 0.02,
-      "blurPixels": 1.0,
+      "depthUnits": 0.01473,
+      "depthFractionOfThickness": 0.025,
+      "blurPixels": 2.5,
+      "profile": {
+        "lip": 0.5,
+        "floor": 0.9
+      },
+      "paintThreshold": 0.72,
+      "occlusionDistance": 0.2,
+      "occlusionStrength": 0.75,
       "grid": [
         492,
         672

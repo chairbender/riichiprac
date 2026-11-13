@@ -78,11 +78,12 @@ No 3D math, no WebGL, no canvas rendering, and no runtime SVG rasterisation are 
 - Orientation-dependent, **not** position-dependent.
 - Composited over the body's flat face and clipped to the inner face, so the body's bevel
   ring and position lighting remain visible.
-- The source is the existing `riichi-mahjong-tiles` full-face SVG. We do not need icon-only
-  extraction; the full face is the texture. The npm package ships React components rather
-  than raw SVG files, so Task 3 vendors the public-domain upstream SVGs into
-  `tools/render/faces/` at a pinned upstream commit and rasterises those; no new npm
-  dependency enters the frontend for this.
+- The source is the `riichi-mahjong-tiles` **symbol-only** SVG. Its alpha is the carve mask
+  and its colour is the paint; the face itself is the melamine material colour, which
+  matches the body underlay. The npm package ships React components rather than raw SVG
+  files, so Task 3 vendors the public-domain upstream SVGs into `tools/render/faces/` at a
+  pinned upstream commit and rasterises those; no new npm dependency enters the frontend
+  for this.
 
 ### Overlays
 
@@ -149,9 +150,8 @@ The Blender script constructs everything procedurally:
 4. For each body slot, place the tile at its slot transform, set the render crop, render a
    transparent body sprite, and record its scene-pixel rect and draw order.
 5. For each tile code × orientation class, place the tile on a canonical face-on rig
-   (section 12), apply the rasterised full-face texture to the inset face plate with the
-   symbol-only mask carving the recess, render the lit face orthographically, crop it to
-   the inner face, and record the face quad.
+   (section 12), carve the inset face plate from the symbol-only mask and paint it, render
+   the lit face orthographically, crop it to the inner face, and record the face quad.
 6. Render the static table background from the same camera.
 7. Compute, for every slot and orientation, the CSS `matrix3d` that maps the decal's
    local pixel rectangle onto that slot's face quad, and write it into the manifest.
@@ -364,7 +364,7 @@ headless browser).
     A regeneration commits the script/spec, manifest, and sprites together.
 14. **SVG rasteriser and source.** `@resvg/resvg-js` 2.6.2, pinned, run from the
     offline `tools/render` package. No `sharp`, no system `rsvg`, and no headless
-    browser. Raw full-face SVGs are vendored from the public-domain
+    browser. Raw symbol-only SVGs are vendored from the public-domain
     `riichi-mahjong-tiles` upstream at a pinned commit under
     `tools/render/faces/` (the npm package only ships React components).
 
@@ -395,13 +395,16 @@ for Tasks 2–3:
   backing, not ivory. The spec keys are `materials.face` / `materials.backing`
   (both tagged `melamine`), tuned as a glossy thermoset: roughness 0.16 / 0.18
   plus a clear coat, not matte plastic.
-- **The symbol is carved, not printed.** A symbol-only SVG mask (same viewBox as
-  the merged face, so it aligns pixel-for-pixel) recesses a subdivided face
-  plate by 2% of the thickness (≈ 0.33 mm at jansou scale) before the paint
-  texture is applied. The carve is baked into the lit decal, so it is
-  orientation-lit like the rest of the face. Consequence for Task 3: each code
-  needs its symbol-only SVG and a ~330k-vertex face at `gridScale: 1.0`; expect
-  ~42 s per decal render and consider `gridScale` 0.75 for the 190-decal set.
+- **The symbol is carved, not printed.** A symbol-only SVG supplies the carve
+  mask and the paint. A smootherstep groove profile (rounded lip and rounded
+  floor shoulder) recesses a subdivided face plate by 2.5% of the thickness
+  (≈ 0.41 mm at jansou scale); the paint boundary sits slightly inside the lip,
+  so a thin bare melamine bevel catches the key. Satin paint plus cavity
+  occlusion make the wide red strokes read as sunk rather than flat. The carve
+  is baked into the lit decal, so it is orientation-lit like the rest of the
+  face. Consequence for Task 3: each code needs its symbol-only SVG and a
+  ~330k-vertex face at `gridScale: 1.0`; expect ~90 s per decal render with AO
+  and cut `gridScale`/AO samples for the 190-decal set.
 - **Lighting is top-heavy.** The key sits almost overhead, so the up-facing edge
   is the brightest surface (Tenhou's read); the fill is low and frontal, and the
   rim is behind. The angles do the work; the rig stays distant for decals.

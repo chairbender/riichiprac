@@ -708,6 +708,17 @@ def bilinear2d(array: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
     )
 
 
+def smootherstep(edge0: float, edge1: float, x: np.ndarray) -> np.ndarray:
+    """Quintic ease with zero first and second derivatives at both ends.
+
+    Zero curvature at the ends is what gives the carve a rounded lip where it
+    leaves the face and a rounded shoulder where it bottoms out, instead of a
+    knife-edge wall.
+    """
+    t = np.clip((x - edge0) / (edge1 - edge0), 0.0, 1.0)
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+
+
 def build_carved_face(
     spec: dict,
     material: bpy.types.Material,
@@ -720,10 +731,13 @@ def build_carved_face(
 ) -> bpy.types.Object:
     """Subdivided face plate with the painted symbol physically recessed.
 
-    The symbol mask's alpha is blurred into a smooth groove profile, sampled per
-    grid vertex, and pushed into the tile by `depthFractionOfThickness`. UVs stay
-    a planar top-down projection, so the merged face texture paints the groove
-    exactly where the carve is.
+    The symbol mask's alpha is blurred into a groove profile, then remapped with
+    a smootherstep so the groove leaves the face and bottoms out with rounded
+    shoulders. The lip is pinned at the mask's 0.5 contour, which is exactly the
+    paint edge in the face texture, so the whole wall is inside the painted
+    symbol instead of half of it showing bare face colour. UVs stay a planar
+    top-down projection, so the paint reaches up the wall as it would on a
+    filled engraving.
     """
     carve = spec["decals"]["carve"]
     depth = carve["depthFractionOfThickness"] * spec["tile"]["thickness"]
@@ -738,10 +752,13 @@ def build_carved_face(
     uu, vv = np.meshgrid(u, v)
 
     mask_height, mask_width = mask.shape
-    heights = bilinear2d(
+    sampled = bilinear2d(
         mask, uu * (mask_width - 1), (1.0 - vv) * (mask_height - 1)
     )
-    z = top - depth * heights
+    profile = smootherstep(
+        carve["profile"]["lip"], carve["profile"]["floor"], sampled
+    )
+    z = top - depth * profile
 
     xx, yy = np.meshgrid(grid_x, grid_y)
     verts = np.stack([xx.ravel(), yy.ravel(), z.ravel()], axis=1)
@@ -838,18 +855,14 @@ def main() -> None:
 
     texture_width = round(spec["decals"]["cssFace"][0] * spec["decals"]["renderScale"])
     texture_height = round(spec["decals"]["cssFace"][1] * spec["decals"]["renderScale"])
-    face_texture = (
-        RENDER_DIR / "build" / "faces" / f"{decal_spec['code']}-{texture_width}x{texture_height}.png"
-    )
     symbol_texture = (
         RENDER_DIR
         / "build"
         / "faces"
         / f"{decal_spec['code']}-symbol-{texture_width}x{texture_height}.png"
     )
-    for path in (face_texture, symbol_texture):
-        if not path.exists():
-            die(f"{path} is missing; run scripts/rasterize-face.mjs first")
+    if not symbol_texture.exists():
+        die(f"{symbol_texture} is missing; run scripts/rasterize-face.mjs first")
 
     tile.hide_render = True
     table.hide_render = True
@@ -857,17 +870,75 @@ def main() -> None:
     decal_material = new_material("face-decal")
     nodes = decal_material.node_tree.nodes
     links = decal_material.node_tree.links
-    bsdf = principled(decal_material)
-    texture = nodes.new("ShaderNodeTexImage")
-    texture.image = bpy.data.images.load(str(face_texture))
-    texture.image.colorspace_settings.name = "sRGB"
-    texture.interpolation = "Linear"
-    links.new(texture.outputs["Color"], bsdf.inputs["Base Color"])
-    links.new(texture.outputs["Alpha"], bsdf.inputs["Alpha"])
     face_spec = tile_spec["materials"]["face"]
-    bsdf.inputs["Roughness"].default_value = face_spec["roughness"]
-    bsdf.inputs["Coat Weight"].default_value = face_spec["coat"]
-    bsdf.inputs["Coat Roughness"].default_value = face_spec["coatRoughness"]
+    paint_spec = tile_spec["materials"]["paint"]
+
+    # Flat melamine face: the same base colour as the body's face underlay, so
+    # the decal edge is invisible and the bevel ring stays the body's job.
+    face_bsdf = principled(decal_material)
+    face_bsdf.inputs["Roughness"].default_value = face_spec["roughness"]
+    face_bsdf.inputs["Specular IOR Level"].default_value = 0.5
+    face_bsdf.inputs["Coat Weight"].default_value = face_spec["coat"]
+    face_bsdf.inputs["Coat Roughness"].default_value = face_spec["coatRoughness"]
+
+    # Cavity occlusion. A groove floor has the same normal as the face, so its
+    # diffuse response is identical and a wide stroke would read as flat paint.
+    # The AO node darkens the inside of the carve where the walls block the
+    # environment, which is what makes the wide red areas look sunk in.
+    ambient = nodes.new("ShaderNodeAmbientOcclusion")
+    ambient.inputs["Distance"].default_value = spec["decals"]["carve"]["occlusionDistance"]
+    occlusion_strength = spec["decals"]["carve"]["occlusionStrength"]
+    ambient.samples = 16
+    ambient.only_local = True
+
+    face_colour = nodes.new("ShaderNodeRGB")
+    face_colour.outputs["Color"].default_value = hex_linear(face_spec["hex"])
+    face_ao = nodes.new("ShaderNodeMixRGB")
+    face_ao.blend_type = "MULTIPLY"
+    face_ao.inputs["Fac"].default_value = occlusion_strength
+    links.new(face_colour.outputs["Color"], face_ao.inputs[1])
+    links.new(ambient.outputs["Color"], face_ao.inputs[2])
+    links.new(face_ao.outputs["Color"], face_bsdf.inputs["Base Color"])
+
+    # Engraved paint: the symbol-only SVG supplies both the colour and the mask.
+    # It is a satin finish, not the high-gloss melamine, so the groove shading
+    # reads instead of looking like a domed inlay.
+    symbol_image = bpy.data.images.load(str(symbol_texture))
+    symbol_image.colorspace_settings.name = "sRGB"
+    symbol_node = nodes.new("ShaderNodeTexImage")
+    symbol_node.image = symbol_image
+    symbol_node.interpolation = "Linear"
+
+    paint_bsdf = nodes.new("ShaderNodeBsdfPrincipled")
+    paint_base = nodes.new("ShaderNodeMixRGB")
+    paint_base.blend_type = "MULTIPLY"
+    paint_base.inputs["Fac"].default_value = occlusion_strength
+    links.new(symbol_node.outputs["Color"], paint_base.inputs[1])
+    links.new(ambient.outputs["Color"], paint_base.inputs[2])
+    links.new(paint_base.outputs["Color"], paint_bsdf.inputs["Base Color"])
+    paint_bsdf.inputs["Roughness"].default_value = paint_spec["roughness"]
+    paint_bsdf.inputs["Specular IOR Level"].default_value = 0.4
+    paint_bsdf.inputs["Coat Weight"].default_value = paint_spec["coat"]
+    paint_bsdf.inputs["Coat Roughness"].default_value = paint_spec["coatRoughness"]
+
+    # The paint boundary sits inside the lip, so a thin ring of bare melamine
+    # remains on the bevel. That ring is what catches the key and makes the
+    # carve read as a bevelled recess rather than a flat print.
+    threshold = spec["decals"]["carve"]["paintThreshold"]
+    paint_gate = nodes.new("ShaderNodeMapRange")
+    paint_gate.inputs["From Min"].default_value = threshold - 0.03
+    paint_gate.inputs["From Max"].default_value = threshold + 0.03
+    paint_gate.inputs["To Min"].default_value = 0.0
+    paint_gate.inputs["To Max"].default_value = 1.0
+    paint_gate.clamp = True
+    links.new(symbol_node.outputs["Alpha"], paint_gate.inputs["Value"])
+
+    paint_mix = nodes.new("ShaderNodeMixShader")
+    links.new(paint_gate.outputs["Result"], paint_mix.inputs["Fac"])
+    links.new(face_bsdf.outputs["BSDF"], paint_mix.inputs[1])
+    links.new(paint_bsdf.outputs["BSDF"], paint_mix.inputs[2])
+    output_node = nodes["Material Output"]
+    links.new(paint_mix.outputs["Shader"], output_node.inputs["Surface"])
 
     half_w = tile_spec["width"] / 2.0 - tile_spec["faceInset"]
     half_h = tile_spec["height"] / 2.0 - tile_spec["faceInset"]
@@ -1017,6 +1088,10 @@ def main() -> None:
                     "depthFractionOfThickness"
                 ],
                 "blurPixels": spec["decals"]["carve"]["blurPixels"],
+                "profile": spec["decals"]["carve"]["profile"],
+                "paintThreshold": spec["decals"]["carve"]["paintThreshold"],
+                "occlusionDistance": spec["decals"]["carve"]["occlusionDistance"],
+                "occlusionStrength": spec["decals"]["carve"]["occlusionStrength"],
                 "grid": [
                     max(2, round(decal_width * spec["decals"]["carve"]["gridScale"])),
                     max(2, round(decal_height * spec["decals"]["carve"]["gridScale"])),

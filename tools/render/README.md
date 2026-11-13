@@ -66,11 +66,11 @@ BLENDER=/path/to/blender bash tools/render/render.sh [spec.json] [out-dir]
 
 | Path | Committed | Purpose |
 | --- | --- | --- |
-| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine materials, camera, lights, colour management, hand layout, carve, decal rig, output names |
+| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine/paint materials, camera, lights, colour management, hand layout, carve, decal rig, output names |
 | `build_and_render.py` | yes | builds the whole scene from the spec with `bpy`, renders, carves the symbol, projects, warps the decal, measures, writes the manifest |
-| `scripts/rasterize-face.mjs` | yes | vendored face + symbol-only SVGs → face texture and carve mask PNGs (resvg) |
+| `scripts/rasterize-face.mjs` | yes | vendored symbol-only SVG → paint colour + carve mask PNG (resvg) |
 | `scripts/contact-sheet.mjs` | yes | renders the review sheet SVG → PNG (resvg) |
-| `faces/` | yes | vendored public-domain full-face and symbol-only SVGs + provenance (`faces/SOURCE.md`) |
+| `faces/` | yes | vendored public-domain symbol-only SVGs + provenance (`faces/SOURCE.md`) |
 | `spike/` | yes | Task 1 spike outputs: body sprite, back diagnostic, decal, composite, zoom, contact sheet, starter manifest |
 | `node_modules/`, `build/` | no | installed dependencies and intermediate face textures |
 
@@ -127,34 +127,55 @@ looking faceted.
 ### Material: white melamine, not ivory
 
 Jansou tiles are white **melamine** with a coloured melamine backing, not ivory.
-The spec's material keys are `materials.face` and `materials.backing`, both
-tagged `melamine`; the face is an off-white `#f5f0eb` and the backing royal blue
+The spec's material keys are `materials.face`, `materials.backing` and
+`materials.paint`; the face is an off-white `#f5f0eb` and the backing royal blue
 `#132986`. Melamine is an opaque, hard thermoset with a glossy surface, so the
 Principled material uses low roughness (0.16 face, 0.18 backing) plus a clear
 coat (0.40 / 0.35, coat roughness 0.10) rather than the matte plastic of the
-earlier passes. The engraved symbol is filled with the same glossy finish: the
-decal's albedo texture carries the paint, so the paint and the plate share one
-material.
+earlier passes.
+
+The engraved paint is its **own material** (`materials.paint`: roughness 0.42,
+coat 0.08). A high-gloss paint made the red look like a domed inlay; satin paint
+lets the groove shading read. The symbol-only SVG supplies the paint colour and
+the mask, so the paint boundary and the carve can be placed independently.
 
 ### Carved symbol, not a decal print
 
 The symbol is physically recessed and painted, not printed flat. The pipeline
 rasterises the **symbol-only** upstream SVG (`Regular-Man1-symbol.svg`, the same
-300 × 400 viewBox as the merged face, so it aligns pixel-for-pixel) to a mask,
-blurs the mask into a groove profile, and displaces a subdivided face plate
-inward by `depthFractionOfThickness = 0.02` of the tile thickness — 0.0118
-units, about 0.33 mm at jansou scale. UVs stay a planar top-down projection, so
-the merged face texture paints the groove floor and walls exactly where the
-carve is; the bare face colour shows through the unpainted holes in a stroke.
+300 × 400 viewBox as the upstream full-face variant, so it aligns
+pixel-for-pixel) and uses it twice: its alpha is the **carve mask**, its colour
+is the **paint**. The face itself is the flat melamine material colour, which
+also matches the body's face underlay exactly.
+
+The mask is blurred and remapped with a **smootherstep** into a groove profile:
+
+- the lip is pinned at the mask's 0.5 contour (the paint's natural edge),
+- the quintic ease gives zero curvature at both ends, so the surface leaves the
+  face and bottoms out through a **rounded lip** and a **rounded floor shoulder**
+  rather than a knife edge,
+- depth is `depthFractionOfThickness = 0.025` of the tile thickness — 0.0147
+  units, about 0.41 mm at jansou scale.
+
+The paint boundary sits slightly inside the lip (`paintThreshold = 0.72`), so a
+thin ring of bare melamine remains on the bevel. That ring catches the key and is
+what makes the carve read as a bevelled recess rather than a flat print.
+
+A groove floor has the same normal as the face, so its diffuse response is
+identical and a wide stroke would still look flat. The decal material therefore
+adds **cavity occlusion** (Cycles AO, distance 0.2 units, strength 0.75), which
+darkens the inside of the engraving; measured, the red floor sits at
+≈ RGB(151, 66, 58) against the ≈ RGB(215, 214, 213) face. The key catches the
+lower wall of each stroke and shadows the upper wall, completing the carved
+read.
 
 The carve is baked into the **lit face decal**, so it is orientation-lit and
-position-independent like the rest of the decal: the key catches the lower wall
-of each stroke and shadows the upper wall, which is what makes it read as
-engraved rather than painted. At spike resolution the grid is 492 × 672 (about
-330k vertices, `gridScale: 1.0`) and the decal render alone takes ~42 s at 256
-samples; Task 3 should consider `gridScale` 0.75 or a cheaper displacement for
-the 190-decal set. The body sprite is unaffected: its face underlay is flat and
-the carve lives entirely inside the inset decal.
+position-independent like the rest of the decal. At spike resolution the grid is
+492 × 672 (about 330k vertices, `gridScale: 1.0`) and the decal render alone
+takes ~90 s at 256 samples with AO; Task 3 should reduce `gridScale`, AO
+samples, or bake the occlusion into a texture for the 190-decal set. The body
+sprite is unaffected: its face underlay is flat and the carve lives entirely
+inside the inset decal.
 
 ### Blue backing: wraps every edge, no forward lean (§12.6, corrected)
 
@@ -185,11 +206,11 @@ backed plate, set `backEdgeFraction` to 1.0 — no script change.
 
 The decal is the inner face inset by `faceInset = 0.035` on every edge, cropped
 to that rectangle plus a **1 px transparent gutter**. The Blender decal plane
-takes the inset sub-rect of the full-face texture as its UVs, so the symbol is
-not stretched.
+takes the inset sub-rect of the symbol canvas as its UVs, so the symbol is not
+stretched.
 
-The body's face underlay uses the same face base colour as the decal texture's
-plate (`#f5f0eb`). Measured at the seam, the body face is
+The decal's face is the same flat melamine base colour as the body's face
+underlay (`#f5f0eb`). Measured at the seam, the body face is
 `rgb(215, 214, 213)` sRGB and the decal's flat face is `rgb(218, 216, 216)`,
 about 1.4% brighter. That is the canonical rig sitting at the hand-row centre
 while `hand-0` sits 5.3 units to its left, not a base-colour mismatch. It is
@@ -294,7 +315,7 @@ diagnostic from `spike/` once the real back poses exist.
 - Task 2: add the rest of the hand slots, rivers, melds, wall, and the table
   background to the spec; render the background from the same camera and write
   the full slot inventory and draw order.
-- Task 3: vendor all 38 full-face SVGs at the pinned commit, rasterise each, and
+- Task 3: vendor all 38 symbol-only SVGs at the pinned commit, rasterise each, and
   render all five orientation classes per code; downsample 3× → 2× WebP.
 - Keep `node_modules/` and `build/` out of git; keep the spec as the only place
   numbers live.
