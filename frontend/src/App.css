@@ -944,6 +944,15 @@
  */
 .physical-table .river {
   display: flex;
+  /*
+   * The shared river rule aligns with `start`, which is the physical left/top
+   * of the screen. In the plan view each river is packed in its owner's frame,
+   * so a wrapped row has to follow the reversed main axis: `flex-start` puts
+   * the first tile of the new row at the player's left (screen right for the
+   * seat across, screen bottom for the right-hand seat).
+   */
+  justify-content: flex-start;
+  align-content: flex-start;
   gap: var(--physical-gap);
 }
 
@@ -1062,23 +1071,31 @@
 
 /*
  * The compass in the middle of the table. One corner per seat shows that
- * player's wind and score facing them, the round and the wall count sit in the
- * middle, and a Riichi stick goes on the middle side of the declaring
- * player's corner - in front of them, as on an automatic table. Nothing else
- * on the table is labelled.
+ * player's wind, score, and Riichi stick facing them, with the round and the
+ * remaining tile count in the middle. Nothing else on the table is labelled.
+ *
+ * A side corner turns its stack sideways, so its painted box is wider than
+ * its layout box. The generous column gap and padding keep that turn inside
+ * the panel instead of letting it run into the wall.
  */
 .physical-center {
   grid-area: 2 / 2 / 3 / 3;
   align-self: center;
   justify-self: center;
+  /*
+   * The centre display is the biggest fixed-size piece of the plan, so keep a
+   * little clear air around it: on a phone the rivers would otherwise touch
+   * the panel once the Riichi sticks are drawn at full size.
+   */
+  margin: 8px;
 
   display: grid;
   grid-template-columns: auto auto auto;
   grid-template-rows: auto auto auto;
   align-items: center;
   justify-items: center;
-  gap: 2px 6px;
-  padding: 6px 8px;
+  gap: 6px 12px;
+  padding: 10px 12px;
   border: 1px solid #232a36;
   border-radius: 10px;
   background-color: #171c24;
@@ -1088,7 +1105,8 @@
 
 .compass-seat {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -1109,55 +1127,34 @@
 }
 
 /*
- * A corner reads in its player's frame: the wind and score sit away from the
- * middle and the Riichi stick lands on the middle side, so a player across the
- * table gets the same compass corner the human gets, turned around.
+ * One player's corner, read from the middle of the table outwards: wind, then
+ * score, then Riichi stick. The component turns the whole stack with the
+ * seat's rotation, so every player reads it upright and the stick ends up on
+ * their side of the compass, lengthways along their own edge.
  */
 .compass-player {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-}
-
-.compass-player--top {
-  flex-direction: column;
-}
-
-.compass-player--bottom {
-  flex-direction: column-reverse;
-}
-
-.compass-player--left {
-  flex-direction: row;
-}
-
-.compass-player--right {
-  flex-direction: row-reverse;
-}
-
-.compass-figure {
-  display: flex;
-  align-items: center;
   gap: 3px;
 }
 
-/* The side corners are the tightest part of the compass: stack wind over score. */
-.compass-seat--left .compass-figure,
-.compass-seat--right .compass-figure {
-  flex-direction: column;
-  gap: 0;
-}
-
+/*
+ * The symbol alone, with no tile body, recoloured to white for the dark
+ * compass. The filter also clears the glyph's own blue fill.
+ */
 .compass-wind {
-  color: #8fb8e0;
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  display: block;
+  width: 22px;
+  height: 22px;
+  filter: brightness(0) invert(1);
 }
 
+/* Keep the human's wind marked without relying on the old text colour. */
 .compass-player--human .compass-wind {
-  color: #a5d8ff;
+  filter: brightness(0) invert(1)
+    drop-shadow(0 0 1px rgba(165, 216, 255, 0.55));
 }
 
 .compass-score {
@@ -1166,24 +1163,18 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-}
-
-.compass-stick {
-  display: block;
-  width: 20px;
-  height: auto;
+  line-height: 1.1;
 }
 
 /*
- * A Riichi stick points at the player who declared it, so the corners above
- * and below the compass stand it on end. The square box keeps the turn inside
- * the layout instead of letting the bar overflow its slot.
+ * The bar is horizontal in its own frame; the seat's turn makes it lengthways.
+ * The compass is the only place the stick is read, so it gets twice the old
+ * size and stays legible against the wind and score.
  */
-.compass-player--top .compass-stick,
-.compass-player--bottom .compass-stick {
-  width: 18px;
-  height: 18px;
-  transform: rotate(90deg);
+.compass-stick {
+  display: block;
+  width: 40px;
+  height: auto;
 }
 
 .compass-wall {
@@ -1209,13 +1200,6 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
-}
-
-.compass-wall-label {
-  font-size: 0.55rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 /* Pinned human hand ------------------------------------------------------- */
