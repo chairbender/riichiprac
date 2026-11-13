@@ -31,6 +31,84 @@
     480
   ],
   "background": null,
+  "rig": {
+    "preset": "parlor",
+    "convention": "azimuth 0 front (-Y), 90 +X, 180 behind, 270 -X; elevation above horizontal; roll about the light's aim axis in degrees",
+    "lights": [
+      {
+        "id": "tube-0",
+        "group": "tube",
+        "target": [
+          0,
+          -8.5,
+          0
+        ],
+        "azimuthDeg": 0,
+        "elevationDeg": 50,
+        "distance": 56,
+        "size": 40,
+        "sizeY": 2.5,
+        "rollDeg": 0,
+        "energyW": 85000,
+        "hex": "#fdf9f1"
+      },
+      {
+        "id": "tube-1",
+        "group": "tube",
+        "target": [
+          -2,
+          3,
+          0
+        ],
+        "azimuthDeg": 90,
+        "elevationDeg": 58,
+        "distance": 56,
+        "size": 40,
+        "sizeY": 2.5,
+        "rollDeg": 0,
+        "energyW": 65000,
+        "hex": "#fdf9f1"
+      },
+      {
+        "id": "bounce",
+        "group": "bounce",
+        "target": [
+          0,
+          -1,
+          0.3
+        ],
+        "azimuthDeg": 30,
+        "elevationDeg": 10,
+        "distance": 34,
+        "size": 42,
+        "sizeY": 27,
+        "rollDeg": 0.0,
+        "energyW": 2500,
+        "hex": "#cfe4d3"
+      },
+      {
+        "id": "rim",
+        "group": "rim",
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "azimuthDeg": 170,
+        "elevationDeg": 45,
+        "distance": 40,
+        "size": 28,
+        "sizeY": 20,
+        "rollDeg": 0.0,
+        "energyW": 6000,
+        "hex": "#ffffff"
+      }
+    ],
+    "world": {
+      "hex": "#b9c6d6",
+      "strength": 0.4
+    }
+  },
   "decals": {
     "pixels": [
       492,
@@ -42,14 +120,15 @@
       0.9333333333333333
     ],
     "renderedAtScale": 3,
+    "compositeSupersample": 1,
     "carve": {
-      "depthUnits": 0.00843,
-      "depthFractionOfThickness": 0.0143,
-      "blurUnits": 0.0069642857142857145,
-      "transitionUnits": 0.018035714285714287,
+      "depthUnits": 0.00713,
+      "depthFractionOfThickness": 0.0121,
+      "blurUnits": 0.004285714285714286,
+      "transitionUnits": 0.010714285714285714,
       "profile": {
-        "topSpread": 0.92,
-        "bottomSpread": 0.92
+        "topSpread": 0.6,
+        "bottomSpread": 0.8
       },
       "paintEdge": 0.18,
       "occlusionDistance": 0.2,
@@ -122,6 +201,11 @@
     "faceHeightPx": 191.92,
     "topEdgeProjectedPx": 43.75,
     "blueSliverExpectedPx": 13.12,
-    "blueSliverMeasuredPx": 11
+    "blueSliverMeasuredPx": 11,
+    "bodyMaxChannel": 250.0,
+    "bodyClippedPixels": 0,
+    "decalMaxChannel": 242.0,
+    "decalClippedPixels": 0,
+    "decalBakeSeconds": 67.3
   }
 }

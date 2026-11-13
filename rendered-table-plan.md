@@ -191,9 +191,10 @@ first renders, but it does not reopen the section 12 decisions.
 - Small bevel, 3–4 segments; white melamine body with a glossy specular response; blue melamine backing.
 - Fixed perspective camera with a long lens (subtle convergence and peripheral side faces,
   close to Tenhou).
-- Key/fill/rim area lights from above/front-left; a soft contact shadow. Task 1.5
-  ([`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md))
-  replaces the single key with parlor strip lights before the bulk asset bakes.
+- A preset area rig from above/front-left; a soft contact shadow. The shipped
+  `parlor` preset (Task 1.5) is two ceiling tubes + a green bounce + a rim; the
+  `studio` preset keeps Task 1's key/fill/rim for comparison
+  ([`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md)).
 - AgX colour management; denoised Cycles render.
 - Hand tiles stay vertical; the blue backing (the back face plus the rear 30% of
   every side edge) gives the blue rim on the top and side edges (section 12,
@@ -432,8 +433,9 @@ for Tasks 2–3:
 | --- | --- | --- | --- |
 | 0 | 261113-0703 | Remove the experimental view; finalise architecture and pipeline | — |
 | 1 | 261113-070303 | Blender spike: one body sprite and one lit face decal | 0 |
-| 2 | 261113-070305 | Bake hand slots, table background, and manifest | 1 |
-| 3 | 261113-070307 | Bake lit face decals for every code × orientation | 1 |
+| 1.5 | 261113-1238 | Parlor strip-light rig and carve re-tune | 1 |
+| 2 | 261113-070305 | Bake hand slots, table background, and manifest | 1.5 |
+| 3 | 261113-070307 | Bake lit face decals for every code × orientation | 1.5 |
 | 4 | 261113-070308 | Runtime compositor and human hand | 2, 3 |
 | 5 | 261113-070309 | Opponent concealed hands | 2, 4 |
 | 6 | 261113-070311 | Discard rivers | 2, 4 |
@@ -446,14 +448,16 @@ for Tasks 2–3:
 
 Tasks 2 and 3 can run in parallel after Task 1. Tasks 5–8 can run in parallel after Task 4.
 
-**Task 1.5 (proposed, no command-center ID yet): parlor strip-light rig.** Task 1
-ships a single large studio key; the target look is a mahjong parlor with
-linear fluorescents, whose reflections read as long white streaks on the bevels
-and inside the engraving. Task 1.5 replaces the key with 2–4 elongated strip
-lights, exposes their length/width/roll in the tuner, and rolls the carve back
-toward a physical depth. It must run **before Tasks 2 and 3**, because the rig is
-baked into every body sprite and decal. Plan:
-[`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md).
+**Task 1.5 (done, 261113-1238): parlor strip-light rig.** Task 1 shipped a
+single large studio key; the target look is a mahjong parlor with linear
+fluorescents, whose reflections read as long white streaks on the bevels and
+inside the engraving. Task 1.5 replaced the key with two enabled 40 × 2.5-unit
+tubes plus a dim green bounce and a rim, exposed the rig (count, length, width,
+elevation, azimuth, roll, power) in the tuner behind a `studio` / `parlor`
+preset switch, and retuned the carve. The studio rig is kept verbatim in the
+spec for comparison. Plan and outcome:
+[`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md),
+[`tools/render/README.md`](tools/render/README.md).
 
 ## 14. Risks
 

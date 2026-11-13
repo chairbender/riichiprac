@@ -1,8 +1,11 @@
 # Rendered Table Task 1.5: Parlor Strip-Light Rig
 
-Status: proposed follow-up to Task 1. **Run before Tasks 2 and 3**, because the
-rig is baked into every body sprite and face decal and re-baking the full set
-later is expensive.
+Status: **done** (command-center task 261113-1238). Kept as the design record
+for the shipped rig; numbers and measured results are in
+[`tools/render/README.md`](tools/render/README.md).
+
+It ran before Tasks 2 and 3, because the rig is baked into every body sprite and
+face decal and re-baking the full set later is expensive.
 
 Parent design: [`rendered-table-plan.md`](rendered-table-plan.md). Task 1 assets
 and the tuner live in [`tools/render/`](tools/render/README.md).
@@ -171,7 +174,34 @@ Insert between Task 1 and Tasks 2/3:
 
 No new command-center ID yet; create one when this is scheduled.
 
-## 9. Risks and fallbacks
+## 9. Outcome (what shipped)
+
+Recorded after the bake so the plan matches the assets; full detail is in
+[`tools/render/README.md`](tools/render/README.md).
+
+- **Rig**: `parlor` = `tube-0` (az 0 / elev 50 / 85 kW), `tube-1` (az 90 /
+  elev 58 / 65 kW), `bounce` (az 30 / elev 10 / 2.5 kW, `#cfe4d3`), `rim`
+  (az 170 / elev 45 / 6 kW), ambient 0.4. `tube-2`/`tube-3` ship disabled; the
+  spec carries four so the tuner's count control never invents numbers. Sizes
+  are 40 × 2.5 units (1120 × 70 mm) at a 56-unit throw.
+- **Studio preset**: Task 1's rig is kept verbatim under `lightPresets.studio`.
+- **Carve**: 0.0121 of thickness (0.20 mm) over a 0.30 mm transition, spreads
+  0.6 / 0.8, blur 0.12 mm. That is deeper than the 0.1–0.15 mm this plan asked
+  for: the streak was tuned visually and the chosen look wants the wall a little
+  deeper. Not the plan's fallback (a silently deepened carve) — it is recorded
+  here instead.
+- **Measured**: body peak 250/255, decal peak 242/255, no clipped pixels; the
+  decal bake is ~67 s at 256 samples, *faster* than Task 1's ~82 s; the seam is
+  still invisible at 2×; the render is still seeded and deterministic.
+- **The sparkle**: the 1:1 review composite point-samples the decal, so the
+  sub-pixel fillet highlight shows as bright dashes. Kept on purpose until the
+  final display resolution is settled; `decals.compositeSupersample` opts into a
+  box filter. See the README's composite-sampling section.
+- **Tuner**: rig preset switch, tube count, per-tube azimuth/elevation/roll/
+  offset/length/width/power, bounce power, one rim per rig, plus the existing
+  carve controls. The compass draws each tube as a rotated bar.
+
+## 9b. Risks and fallbacks
 
 - **Busy lighting.** Several tubes mean several highlights and softer, more
   complex shadows. If it reads cluttered, reduce to two tubes or shorten them.

@@ -27,7 +27,12 @@ const blender =
   process.env.BLENDER ?? '/home/kylehipke/.local/opt/blender-4.5.9/blender';
 const port = Number(process.env.PORT ?? 7457);
 
-const base = JSON.parse(readFileSync(baseSpecPath, 'utf8'));
+let base = JSON.parse(readFileSync(baseSpecPath, 'utf8'));
+// Re-read before every request so an edit on disk (or an apply) is never
+// silently reverted by a stale in-memory copy.
+const reloadBase = () => {
+  base = JSON.parse(readFileSync(baseSpecPath, 'utf8'));
+};
 const decalFile = base.outputs.decal
   .replace('{code}', base.spike.decal.code)
   .replace('{orientation}', base.spike.decal.orientation);
@@ -42,13 +47,32 @@ const num = (value, fallback) => {
 };
 
 const mmPerUnit = base.tile.proportionsMm.height;
-const light = (id) => base.lights.find((entry) => entry.id === id);
+const rigNames = Object.keys(base.lightPresets);
+const rigLights = (name) => base.lightPresets[name].lights;
+const rigLight = (name, id) => rigLights(name).find((entry) => entry.id === id);
+const tubeEntries = (name) => rigLights(name).filter((entry) => entry.group === "tube");
+
+function tubeParams(entry) {
+  return {
+    id: entry.id,
+    enabled: entry.enabled !== false,
+    targetY: entry.target[1],
+    azimuthDeg: entry.azimuthDeg,
+    elevationDeg: entry.elevationDeg,
+    rollDeg: entry.rollDeg ?? 0,
+    size: entry.size,
+    sizeY: entry.sizeY,
+    energyW: entry.energyW,
+  };
+}
 
 function currentParams() {
   const carve = base.decals.carve;
-  const key = light("key");
-  const fill = light("fill");
-  const rim = light("rim");
+  const studio = (id) => rigLight("studio", id);
+  const parlor = (id) => rigLight("parlor", id);
+  const tubes = tubeEntries("parlor").map(tubeParams);
+  const key = studio("key");
+  const fill = studio("fill");
   return {
     depth: carve.depthFractionOfThickness,
     topSpread: carve.profile.topSpread,
@@ -57,6 +81,8 @@ function currentParams() {
     transitionMm: carve.transitionUnits * mmPerUnit,
     paintEdge: carve.paintEdge,
     paintRed: base.tile.materials.paint.red,
+    rig: base.lightRig,
+    rigs: rigNames,
     keyAzimuth: key.azimuthDeg,
     keyElevation: key.elevationDeg,
     keyPower: key.energyW,
@@ -64,7 +90,11 @@ function currentParams() {
     fillAzimuth: fill.azimuthDeg,
     fillElevation: fill.elevationDeg,
     fillPower: fill.energyW,
-    rimPower: rim.energyW,
+    studioRimPower: studio("rim").energyW,
+    parlorRimPower: parlor("rim").energyW,
+    bouncePower: parlor("bounce").energyW,
+    tubeCount: tubes.filter((tube) => tube.enabled).length,
+    tubes,
     worldStrength: base.world.strength,
     mode: "tile",
     samples: 48,
@@ -74,26 +104,54 @@ function currentParams() {
 }
 
 function applyLighting(spec, params) {
-  const update = (id, patch) => {
-    const entry = spec.lights.find((item) => item.id === id);
-    Object.assign(entry, patch);
+  spec.lightRig = params.rig === "parlor" ? "parlor" : "studio";
+  const update = (name, id, patch) => {
+    const entry = spec.lightPresets[name].lights.find((item) => item.id === id);
+    if (entry) Object.assign(entry, patch);
   };
-  update("key", {
-    azimuthDeg: clamp(num(params.keyAzimuth, light("key").azimuthDeg), 0, 360),
-    elevationDeg: clamp(num(params.keyElevation, light("key").elevationDeg), 0, 89),
-    energyW: clamp(num(params.keyPower, light("key").energyW), 0, 300000),
-    size: clamp(num(params.keySize, light("key").size), 4, 60),
+
+  update("studio", "key", {
+    azimuthDeg: clamp(num(params.keyAzimuth, rigLight("studio", "key").azimuthDeg), 0, 360),
+    elevationDeg: clamp(num(params.keyElevation, rigLight("studio", "key").elevationDeg), 0, 89),
+    energyW: clamp(num(params.keyPower, rigLight("studio", "key").energyW), 0, 300000),
+    size: clamp(num(params.keySize, rigLight("studio", "key").size), 4, 60),
   });
-  update("fill", {
-    azimuthDeg: clamp(num(params.fillAzimuth, light("fill").azimuthDeg), 0, 360),
-    elevationDeg: clamp(num(params.fillElevation, light("fill").elevationDeg), 0, 89),
-    energyW: clamp(num(params.fillPower, light("fill").energyW), 0, 150000),
+  update("studio", "fill", {
+    azimuthDeg: clamp(num(params.fillAzimuth, rigLight("studio", "fill").azimuthDeg), 0, 360),
+    elevationDeg: clamp(num(params.fillElevation, rigLight("studio", "fill").elevationDeg), 0, 89),
+    energyW: clamp(num(params.fillPower, rigLight("studio", "fill").energyW), 0, 150000),
   });
-  update("rim", {
-    energyW: clamp(num(params.rimPower, light("rim").energyW), 0, 150000),
+  update("studio", "rim", {
+    energyW: clamp(num(params.studioRimPower, rigLight("studio", "rim").energyW), 0, 150000),
   });
+  update("parlor", "rim", {
+    energyW: clamp(num(params.parlorRimPower, rigLight("parlor", "rim").energyW), 0, 150000),
+  });
+  update("parlor", "bounce", {
+    energyW: clamp(num(params.bouncePower, rigLight("parlor", "bounce").energyW), 0, 60000),
+  });
+
+  const tubes = spec.lightPresets.parlor.lights.filter((entry) => entry.group === "tube");
+  const incoming = Array.isArray(params.tubes) ? params.tubes : [];
+  tubes.forEach((entry, index) => {
+    const source = incoming[index];
+    if (!source) return;
+    entry.target[1] = clamp(num(source.targetY, entry.target[1]), -10, 10);
+    entry.azimuthDeg = clamp(num(source.azimuthDeg, entry.azimuthDeg), 0, 359);
+    entry.elevationDeg = clamp(num(source.elevationDeg, entry.elevationDeg), 20, 89);
+    entry.rollDeg = clamp(num(source.rollDeg, entry.rollDeg ?? 0), 0, 180);
+    entry.size = clamp(num(source.size, entry.size), 6, 80);
+    entry.sizeY = clamp(num(source.sizeY, entry.sizeY), 0.6, 12);
+    entry.energyW = clamp(num(source.energyW, entry.energyW), 0, 200000);
+  });
+  const count = Math.round(clamp(num(params.tubeCount, 3), 1, tubes.length));
+  tubes.forEach((entry, index) => {
+    entry.enabled = index < count;
+  });
+
   spec.world.strength = clamp(num(params.worldStrength, base.world.strength), 0, 2);
 }
+
 
 function buildPreviewSpec(params) {
   const spec = structuredClone(base);
@@ -226,6 +284,7 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (request.method === 'GET' && url.pathname === '/api/state') {
+      reloadBase();
       sendJson(response, 200, {
         params: currentParams(),
         blender,
@@ -244,6 +303,7 @@ const server = http.createServer(async (request, response) => {
         return;
       }
       const params = await readBody(request);
+      reloadBase();
       busy = true;
       const started = Date.now();
       console.log(`[tune] preview render with ${JSON.stringify(params)}`);
@@ -257,7 +317,7 @@ const server = http.createServer(async (request, response) => {
           mode: params.mode === "decal" ? "decal" : "tile",
           decal: `/decal.png?v=${Date.now()}`,
           composite: `/composite.png?v=${Date.now()}`,
-          log: output.split('\n').filter((line) => line.includes('[render]')).slice(-6),
+          log: output.split('\n').filter((line) => line.includes('[render]')).slice(-7),
         });
       } catch (error) {
         console.error('[tune] preview failed');
@@ -273,6 +333,7 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === 'POST' && url.pathname === '/api/apply') {
       const params = await readBody(request);
+      reloadBase();
       applyParams(params);
       console.log('[tune] applied parameters to scene-spec.json');
       sendJson(response, 200, { ok: true });
