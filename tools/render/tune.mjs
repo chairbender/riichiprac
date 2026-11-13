@@ -38,19 +38,21 @@ const num = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const mmPerUnit = base.tile.proportionsMm.height;
+
 function currentParams() {
   const carve = base.decals.carve;
   return {
     depth: carve.depthFractionOfThickness,
     topSpread: carve.profile.topSpread,
     bottomSpread: carve.profile.bottomSpread,
-    blur: carve.blurPixels,
-    paintThreshold: carve.paintThreshold,
+    blurMm: carve.blurUnits * mmPerUnit,
+    transitionMm: carve.transitionUnits * mmPerUnit,
+    paintEdge: carve.paintEdge,
     paintRed: base.tile.materials.paint.red,
     samples: 48,
     tileThicknessMm: base.tile.proportionsMm.thickness,
-    lip: carve.profile.lip,
-    floor: carve.profile.floor,
+    faceHeightMm: mmPerUnit,
   };
 }
 
@@ -62,14 +64,12 @@ function buildPreviewSpec(params) {
   carve.depthFractionOfThickness = clamp(
     num(params.depth, carve.depthFractionOfThickness),
     0,
-    0.12,
+    0.03,
   );
-  carve.blurPixels = clamp(num(params.blur, carve.blurPixels), 0.5, 16);
-  carve.paintThreshold = clamp(
-    num(params.paintThreshold, carve.paintThreshold),
-    0.4,
-    0.95,
-  );
+  carve.blurUnits = clamp(num(params.blurMm, carve.blurUnits * mmPerUnit), 0.02, 0.6) / mmPerUnit;
+  carve.transitionUnits =
+    clamp(num(params.transitionMm, carve.transitionUnits * mmPerUnit), 0.02, 1.6) / mmPerUnit;
+  carve.paintEdge = clamp(num(params.paintEdge, carve.paintEdge), 0, 1);
   carve.gridScale = 0.6;
   carve.occlusionSamples = 4;
   carve.profile.topSpread = clamp(
@@ -95,14 +95,12 @@ function applyParams(params) {
   carve.depthFractionOfThickness = clamp(
     num(params.depth, carve.depthFractionOfThickness),
     0,
-    0.12,
+    0.03,
   );
-  carve.blurPixels = clamp(num(params.blur, carve.blurPixels), 0.5, 16);
-  carve.paintThreshold = clamp(
-    num(params.paintThreshold, carve.paintThreshold),
-    0.4,
-    0.95,
-  );
+  carve.blurUnits = clamp(num(params.blurMm, carve.blurUnits * mmPerUnit), 0.02, 0.6) / mmPerUnit;
+  carve.transitionUnits =
+    clamp(num(params.transitionMm, carve.transitionUnits * mmPerUnit), 0.02, 1.6) / mmPerUnit;
+  carve.paintEdge = clamp(num(params.paintEdge, carve.paintEdge), 0, 1);
   carve.profile.topSpread = clamp(
     num(params.topSpread, carve.profile.topSpread),
     0,

@@ -78,10 +78,14 @@ It serves a browser UI (no build step, local only) with:
 - **Manzu red** — recolours the red fills only; the rasteriser preserves each
   fill's relative brightness, so the paint's internal shading and the black bar
   survive;
-- **carve depth** as a fraction of the 16.5 mm tile thickness (mm shown);
+- **carve depth** as a fraction of the 16.5 mm tile thickness (mm shown), with
+  fine 0.0001 steps over 0..0.02 so the shallow end has room;
+- **transition width** (mm) — how far the curvature runs from the lip into the
+  flat bottom;
 - **top fillet spread** and **bottom fillet spread** — the two independent
   Bézier controls, drawn live as the exact cross-section the mesh uses;
-- **edge blur**, **paint edge** and **preview samples**.
+- **mask blur** (mm), **paint edge** (fraction + mm inset) and **preview
+  samples**.
 
 "Render preview" writes a throwaway spec, rasterises the recoloured symbol and
 renders **only the decal** at 2×, 48 samples, a 0.6 carve grid and 4 AO samples —
@@ -183,25 +187,33 @@ pixel-for-pixel) and uses it twice: its alpha is the **carve mask**, its colour
 is the **paint**. The face itself is the flat melamine material colour, which
 also matches the body's face underlay exactly.
 
-The mask is blurred and remapped through a **cubic Bézier** into a groove
-profile. The curve runs from the lip `(0, 0)` to the floor `(1, 1)` with control
-points `(topSpread, 0)` and `(1 - bottomSpread, 1)`:
+The mask is blurred, converted to an **approximate signed distance** (inverting
+the Gaussian erf: `alpha = 0.5 (1 + erf(d / (sigma sqrt 2)))`), and normalised by
+`transitionUnits` into a 0..1 **carve field**: 0 at the lip, 1 at the floor. The
+field drives both the mesh height and the paint boundary.
+
+The field is shaped by a **cubic Bézier** from the lip `(0, 0)` to the floor
+`(1, 1)` with control points `(topSpread, 0)` and `(1 - bottomSpread, 1)`:
 
 - `topSpread` and `bottomSpread` are **independent** controls for the two edges.
   0 gives a straight diagonal (no fillet); 1 gives the widest, softest ease. The
   tangent at each end is what spreads that fillet, so the lip and the
   wall-to-floor shoulder can be shaped separately.
-- the lip is pinned at the mask's `profile.lip` contour (the paint's natural
-  edge) and the floor at `profile.floor`,
-- `blurPixels: 5.0` (at 540 px face width) widens the mask ramp so both fillets
-  have enough swept normal range for the gloss to catch on the bottom curve,
+- `transitionUnits` is the **distance** from the lip to the flat floor (0.0089
+  units ≈ 0.25 mm by default). Raising it lets the
+  curvature run further into the bottom; it is capped by the distance the blur
+  can resolve (~4 sigma), so widen `blurUnits` first if you need more.
+- `blurUnits` smooths the symbol edge and sets that resolvable distance
+  (0.0069 units ≈ 0.19 mm by default).
 - depth is `depthFractionOfThickness = 0.005` of the tile thickness — 0.00295
   units, about 0.08 mm at jansou scale. That is a deliberately shallow engrave:
   the carve reads through the bevel ring and wall shading, not a deep shadow.
 
-The paint boundary sits slightly inside the lip (`paintThreshold = 0.62`), so a
-thin ring of bare melamine remains on the bevel. That ring catches the key and is
-what makes the carve read as a bevelled recess rather than a flat print.
+The paint boundary sits `paintEdge` into the transition (0.3 by default), so a
+ring of bare melamine remains on the bevel. That ring catches the key and is what
+makes the carve read as a bevelled recess rather than a flat print. Because the
+gate reads the distance field rather than the hard symbol alpha, this control
+actually moves the paint edge.
 
 `materials.paint.red` recolours the symbol's red fills at raster time (the
 rasteriser keeps each fill's relative brightness, so the paint's internal

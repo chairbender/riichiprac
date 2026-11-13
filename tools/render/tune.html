@@ -132,8 +132,14 @@
 
         <div class="control">
           <div class="row"><label for="depth">Carve depth</label><output id="depthOut"></output></div>
-          <input id="depth" type="range" min="0" max="0.12" step="0.001" />
-          <div class="hint">Fraction of the 16.5 mm tile thickness. The 0.08 mm look is ~0.005.</div>
+          <input id="depth" type="range" min="0" max="0.02" step="0.0001" />
+          <div class="hint">Fraction of the 16.5 mm thickness, fine steps at the shallow end. 0.08 mm is 0.005.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="transitionMm">Transition width</label><output id="transitionOut"></output></div>
+          <input id="transitionMm" type="range" min="0.03" max="0.8" step="0.005" />
+          <div class="hint">Distance from the lip to the flat floor. Larger lets the curvature run further into the bottom.</div>
         </div>
 
         <div class="control">
@@ -149,15 +155,15 @@
         </div>
 
         <div class="control">
-          <div class="row"><label for="blur">Edge blur</label><output id="blurOut"></output></div>
-          <input id="blur" type="range" min="0.5" max="14" step="0.1" />
-          <div class="hint">Blur of the symbol mask before the profile; widens the groove overall.</div>
+          <div class="row"><label for="blurMm">Mask blur</label><output id="blurOut"></output></div>
+          <input id="blurMm" type="range" min="0.02" max="0.4" step="0.005" />
+          <div class="hint">Smoothing of the symbol edge. Also caps how wide the transition can be.</div>
         </div>
 
         <div class="control">
-          <div class="row"><label for="paintThreshold">Paint edge</label><output id="paintThresholdOut"></output></div>
-          <input id="paintThreshold" type="range" min="0.45" max="0.9" step="0.01" />
-          <div class="hint">0.5 puts paint at the lip; higher leaves a wider bare melamine bevel.</div>
+          <div class="row"><label for="paintEdge">Paint edge</label><output id="paintEdgeOut"></output></div>
+          <input id="paintEdge" type="range" min="0" max="1" step="0.01" />
+          <div class="hint">Where the paint starts inside the transition. 0 = at the lip, 1 = only at the floor.</div>
         </div>
 
         <div class="control">
@@ -189,23 +195,25 @@
       const ids = [
         "paintRed",
         "depth",
+        "transitionMm",
         "topSpread",
         "bottomSpread",
-        "blur",
-        "paintThreshold",
+        "blurMm",
+        "paintEdge",
         "samples",
       ];
       const el = (id) => document.getElementById(id);
-      const state = { params: null, thicknessMm: 16.5, lip: 0.5, floor: 0.9 };
+      const state = { params: null, thicknessMm: 16.5, faceHeightMm: 28 };
 
       function readParams() {
         return {
           paintRed: el("paintRed").value,
           depth: Number(el("depth").value),
+          transitionMm: Number(el("transitionMm").value),
           topSpread: Number(el("topSpread").value),
           bottomSpread: Number(el("bottomSpread").value),
-          blur: Number(el("blur").value),
-          paintThreshold: Number(el("paintThreshold").value),
+          blurMm: Number(el("blurMm").value),
+          paintEdge: Number(el("paintEdge").value),
           samples: Number(el("samples").value),
         };
       }
@@ -213,11 +221,12 @@
       function writeParams(params) {
         el("paintRed").value = params.paintRed;
         el("depth").value = params.depth;
+        el("transitionMm").value = params.transitionMm;
         el("topSpread").value = params.topSpread;
         el("bottomSpread").value = params.bottomSpread;
-        el("blur").value = params.blur;
-        el("paintThreshold").value = params.paintThreshold;
-        el("samples").value = params.samples ?? 32;
+        el("blurMm").value = params.blurMm;
+        el("paintEdge").value = params.paintEdge;
+        el("samples").value = params.samples ?? 48;
       }
 
       // Same cubic Bézier as build_and_render.py: P0=(0,0), P1=(top,0),
@@ -235,71 +244,71 @@
 
       function drawProfile() {
         const params = readParams();
+        const depthMm = params.depth * state.thicknessMm;
+        const transitionMm = params.transitionMm;
         const svg = el("profile");
-        const x0 = 40;
-        const x1 = 380;
-        const faceY = 34;
-        const floorY = 140;
+        const left = 40;
+        const right = 380;
+        const domainMm = 1.1; // -0.15 .. 0.95 mm
+        const pxPerMm = (right - left) / domainMm;
+        const xOf = (mm) => left + (mm + 0.15) * pxPerMm;
+        const faceY = 36;
+        const depthPx = 66;
+        const floorY = faceY + depthPx;
         const samples = 90;
         const topPath = [];
         const bottomPath = [];
         for (let i = 0; i <= samples; i += 1) {
           const t = i / samples;
           const p = profilePoint(t, params.topSpread, params.bottomSpread);
-          const px = x0 + p.x * (x1 - x0);
-          const py = faceY + p.y * (floorY - faceY);
+          const px = xOf(p.x * transitionMm);
+          const py = faceY + p.y * depthPx;
           (t <= 0.5 ? topPath : bottomPath).push(`${px.toFixed(1)},${py.toFixed(1)}`);
         }
-        const curveStart = topPath[0];
         const curveEnd = bottomPath[bottomPath.length - 1];
-        const join = topPath[topPath.length - 1];
 
-        const lip = state.lip;
-        const floor = state.floor;
-        const uPaint = Math.min(
-          1,
-          Math.max(0, (params.paintThreshold - lip) / (floor - lip)),
-        );
-        // Invert x(t) numerically for the paint edge marker.
+        // Invert x(t) for the paint edge marker.
         let paintT = 0;
         for (let i = 0; i <= 400; i += 1) {
           const t = i / 400;
-          if (profilePoint(t, params.topSpread, params.bottomSpread).x >= uPaint) {
+          if (profilePoint(t, params.topSpread, params.bottomSpread).x >= params.paintEdge) {
             paintT = t;
             break;
           }
         }
         const paintPoint = profilePoint(paintT, params.topSpread, params.bottomSpread);
-        const paintX = x0 + paintPoint.x * (x1 - x0);
-        const paintY = faceY + paintPoint.y * (floorY - faceY);
+        const paintX = xOf(paintPoint.x * transitionMm);
+        const paintY = faceY + paintPoint.y * depthPx;
+        const paintInsetMm = params.paintEdge * transitionMm;
+
+        // Vertical exaggeration relative to the horizontal scale.
+        const exaggeration = (depthPx / Math.max(depthMm, 0.001)) / pxPerMm;
 
         svg.innerHTML = `
-          <rect x="0" y="0" width="420" height="180" fill="none"></rect>
-          <line x1="10" y1="${faceY}" x2="${x0}" y2="${faceY}" stroke="#7fa18f" stroke-width="2"></line>
-          <line x1="${x0}" y1="${faceY}" x2="${curveStart.split(",")[0]}" y2="${faceY}" stroke="#7fa18f" stroke-width="2"></line>
+          <line x1="${xOf(-0.15)}" y1="${faceY}" x2="${xOf(0)}" y2="${faceY}" stroke="#7fa18f" stroke-width="2"></line>
           <polyline points="${topPath.join(" ")}" fill="none" stroke="#7ec8ff" stroke-width="2.5" stroke-linecap="round"></polyline>
           <polyline points="${bottomPath.join(" ")}" fill="none" stroke="#ffb86b" stroke-width="2.5" stroke-linecap="round"></polyline>
-          <line x1="${curveEnd.split(",")[0]}" y1="${floorY}" x2="410" y2="${floorY}" stroke="#7fa18f" stroke-width="2"></line>
+          <line x1="${curveEnd.split(",")[0]}" y1="${floorY}" x2="${xOf(0.95)}" y2="${floorY}" stroke="#7fa18f" stroke-width="2"></line>
           <line x1="${paintX}" y1="${faceY}" x2="${paintX}" y2="${paintY}" stroke="#ff7a6b" stroke-width="1" stroke-dasharray="3 3"></line>
           <circle cx="${paintX}" cy="${paintY}" r="3.5" fill="#ff7a6b"></circle>
-          <text x="10" y="${faceY - 8}" fill="#8fb2a4" font-size="11">face</text>
-          <text x="410" y="${floorY + 18}" fill="#8fb2a4" font-size="11" text-anchor="end">floor</text>
-          <text x="${x0 + 4}" y="${faceY + 18}" fill="#7ec8ff" font-size="11">top fillet</text>
-          <text x="${x1 - 4}" y="${floorY - 8}" fill="#ffb86b" font-size="11" text-anchor="end">bottom fillet</text>
-          <text x="${paintX + 5}" y="${paintY - 10}" fill="#ff7a6b" font-size="10">paint edge</text>
-          <text x="${x0}" y="172" fill="#5f7d6e" font-size="10">distance across the groove (normalised)</text>
+          <text x="${xOf(-0.15)}" y="${faceY - 8}" fill="#8fb2a4" font-size="11">face</text>
+          <text x="${xOf(0.95)}" y="${floorY + 18}" fill="#8fb2a4" font-size="11" text-anchor="end">floor</text>
+          <text x="${xOf(0.02)}" y="${faceY + 16}" fill="#7ec8ff" font-size="11">top fillet</text>
+          <text x="${xOf(transitionMm) - 4}" y="${floorY - 8}" fill="#ffb86b" font-size="11" text-anchor="end">bottom fillet</text>
+          <text x="${paintX + 5}" y="${paintY - 10}" fill="#ff7a6b" font-size="10">paint edge ${paintInsetMm.toFixed(2)} mm</text>
+          <text x="${xOf(-0.15)}" y="172" fill="#5f7d6e" font-size="10">0.5 mm horizontal scale · depth shown ×${exaggeration.toFixed(1)}</text>
         `;
 
-        const mm = (params.depth * state.thicknessMm).toFixed(3);
-        el("depthOut").textContent = `${(params.depth * 100).toFixed(2)}% · ${mm} mm`;
+        el("depthOut").textContent = `${(params.depth * 100).toFixed(2)}% · ${depthMm.toFixed(3)} mm`;
+        el("transitionOut").textContent = `${transitionMm.toFixed(2)} mm`;
         el("topSpreadOut").textContent = params.topSpread.toFixed(2);
         el("bottomSpreadOut").textContent = params.bottomSpread.toFixed(2);
-        el("blurOut").textContent = params.blur.toFixed(1);
-        el("paintThresholdOut").textContent = params.paintThreshold.toFixed(2);
+        el("blurOut").textContent = `${params.blurMm.toFixed(2)} mm`;
+        el("paintEdgeOut").textContent = `${params.paintEdge.toFixed(2)} · ${paintInsetMm.toFixed(2)} mm`;
         el("samplesOut").textContent = `${params.samples}`;
         el("paintRedOut").textContent = params.paintRed;
         el("profileNote").textContent =
-          "Depth is exaggerated vertically; the curve is the exact Bézier the mesh uses.";
+          "The curve is the exact Bézier the mesh uses; the horizontal scale is physical, the depth is exaggerated.";
         el("decalDims").textContent = "preview 2× · final 3×";
       }
 
@@ -314,8 +323,7 @@
         const data = await response.json();
         state.params = data.params;
         state.thicknessMm = data.params.tileThicknessMm;
-        state.lip = data.params.lip;
-        state.floor = data.params.floor;
+        state.faceHeightMm = data.params.faceHeightMm;
         writeParams(data.params);
         drawProfile();
         if (data.decalExists) {
@@ -372,7 +380,6 @@
       for (const id of ids) {
         el(id).addEventListener("input", drawProfile);
       }
-      el("paintRed").addEventListener("input", drawProfile);
       el("render").addEventListener("click", renderPreview);
       el("apply").addEventListener("click", applyParams);
       el("reset").addEventListener("click", () => {

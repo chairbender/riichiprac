@@ -690,6 +690,32 @@ def blur2d(array: np.ndarray, sigma: float) -> np.ndarray:
     return result
 
 
+def _inverse_erf_table() -> tuple[np.ndarray, np.ndarray]:
+    x = np.linspace(-0.9999, 0.9999, 20001)
+    f = np.array([math.erf(value) for value in x], dtype=np.float64)
+    return f, x
+
+
+_ERF_VALUES, _ERFINV_VALUES = _inverse_erf_table()
+
+
+def alpha_to_distance(alpha: np.ndarray, sigma_px: float) -> np.ndarray:
+    """Approximate signed distance (pixels, positive inside) from a blurred mask.
+
+    A straight edge blurred by a Gaussian has alpha = 0.5 (1 + erf(d / (sigma *
+    sqrt(2)))), so inverting the erf recovers d. That gives the carve an explicit
+    distance coordinate instead of a normalised alpha, which is what lets the
+    transition width be a parameter. The estimate saturates around 3 sigma inside,
+    so a transition wider than ~4 sigma needs a larger blur.
+    """
+    value = np.clip(2.0 * alpha - 1.0, -0.9999, 0.9999)
+    return (
+        np.interp(value, _ERF_VALUES, _ERFINV_VALUES)
+        * sigma_px
+        * math.sqrt(2.0)
+    )
+
+
 def bilinear2d(array: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
     height, width = array.shape
     xs = np.clip(xs, 0.0, width - 1.001)
@@ -737,7 +763,7 @@ def bezier_profile(
 def build_carved_face(
     spec: dict,
     material: bpy.types.Material,
-    mask: np.ndarray,
+    field: np.ndarray,
     half_w: float,
     half_h: float,
     top: float,
@@ -746,10 +772,9 @@ def build_carved_face(
 ) -> bpy.types.Object:
     """Subdivided face plate with the painted symbol physically recessed.
 
-    The symbol mask's alpha is blurred into a groove profile, then remapped
-    through a cubic Bézier so the groove leaves the face and bottoms out with
-    independently shaped fillets. The lip is pinned at the mask's `lip` contour
-    and the floor at `floor`; UVs stay a planar top-down projection, so the paint
+    `field` is the 0..1 distance across the carve transition (0 at the lip, 1 at
+    the floor). It is remapped through a cubic Bézier so the two fillets are
+    shaped independently. UVs stay a planar top-down projection, so the paint
     reaches up the wall as it would on a filled engraving.
     """
     carve = spec["decals"]["carve"]
@@ -764,14 +789,13 @@ def build_carved_face(
     v = np.linspace(v1, v0, rows)  # row 0 is the top of the face (v = v1)
     uu, vv = np.meshgrid(u, v)
 
-    mask_height, mask_width = mask.shape
+    field_height, field_width = field.shape
     sampled = bilinear2d(
-        mask, uu * (mask_width - 1), (1.0 - vv) * (mask_height - 1)
+        field, uu * (field_width - 1), (1.0 - vv) * (field_height - 1)
     )
     profile = carve["profile"]
-    u_norm = (sampled - profile["lip"]) / (profile["floor"] - profile["lip"])
     height = bezier_profile(
-        u_norm, profile["topSpread"], profile["bottomSpread"]
+        sampled, profile["topSpread"], profile["bottomSpread"]
     )
     z = top - depth * height
 
@@ -887,6 +911,30 @@ def bake_decal(
     symbol_node.image = symbol_image
     symbol_node.interpolation = "Linear"
 
+    # Carve field: an explicit distance across the transition (0 at the lip, 1
+    # at the floor). The transition width is a real parameter now, so the
+    # curvature can be pushed as far into the flat bottom as wanted. The same
+    # field drives the paint boundary, which is why the paint edge moves.
+    carve = spec["decals"]["carve"]
+    raw_mask = load_rgba(symbol_texture)[..., 3]
+    sigma_px = carve["blurUnits"] * px_per_unit
+    alpha = blur2d(raw_mask, sigma_px)
+    distance_px = alpha_to_distance(alpha, sigma_px)
+    transition_px = carve["transitionUnits"] * px_per_unit
+    field = np.clip(distance_px / transition_px, 0.0, 1.0)
+    field_path = (
+        RENDER_DIR
+        / "build"
+        / "faces"
+        / f"{decal_spec['code']}-field-{texture_width}x{texture_height}.png"
+    )
+    save_rgba(
+        field_path,
+        np.stack([field, field, field, np.ones_like(field)], axis=-1),
+    )
+    field_image = bpy.data.images.load(str(field_path))
+    field_image.colorspace_settings.name = "Non-Color"
+
     paint_bsdf = nodes.new("ShaderNodeBsdfPrincipled")
     paint_base = nodes.new("ShaderNodeMixRGB")
     paint_base.blend_type = "MULTIPLY"
@@ -899,17 +947,22 @@ def bake_decal(
     paint_bsdf.inputs["Coat Weight"].default_value = paint_spec["coat"]
     paint_bsdf.inputs["Coat Roughness"].default_value = paint_spec["coatRoughness"]
 
-    # The paint boundary sits inside the lip, so a thin ring of bare melamine
-    # remains on the bevel. That ring is what catches the key and makes the
-    # carve read as a bevelled recess rather than a flat print.
-    threshold = spec["decals"]["carve"]["paintThreshold"]
+    # The paint boundary sits `paintEdge` into the transition, so a ring of bare
+    # melamine remains on the bevel. Because the gate reads the distance field
+    # rather than the hard symbol alpha, the control actually moves the edge.
     paint_gate = nodes.new("ShaderNodeMapRange")
-    paint_gate.inputs["From Min"].default_value = threshold - 0.03
-    paint_gate.inputs["From Max"].default_value = threshold + 0.03
+    paint_edge = carve["paintEdge"]
+    paint_gate.inputs["From Min"].default_value = paint_edge - 0.02
+    paint_gate.inputs["From Max"].default_value = paint_edge + 0.02
     paint_gate.inputs["To Min"].default_value = 0.0
     paint_gate.inputs["To Max"].default_value = 1.0
     paint_gate.clamp = True
-    links.new(symbol_node.outputs["Alpha"], paint_gate.inputs["Value"])
+    field_node = nodes.new("ShaderNodeTexImage")
+    field_node.image = field_image
+    field_node.interpolation = "Linear"
+    field_channel = nodes.new("ShaderNodeSeparateColor")
+    links.new(field_node.outputs["Color"], field_channel.inputs["Color"])
+    links.new(field_channel.outputs["Red"], paint_gate.inputs["Value"])
 
     paint_mix = nodes.new("ShaderNodeMixShader")
     links.new(paint_gate.outputs["Result"], paint_mix.inputs["Fac"])
@@ -926,8 +979,7 @@ def bake_decal(
     v1 = 1.0 - v0
     top = tile_spec["thickness"]
 
-    carve_mask = load_rgba(symbol_texture)[..., 3]
-    carve_mask = blur2d(carve_mask, spec["decals"]["carve"]["blurPixels"])
+    carve_mask = field
     decal_plane = build_carved_face(
         spec,
         decal_material,
@@ -1135,9 +1187,10 @@ def main() -> None:
                 "depthFractionOfThickness": spec["decals"]["carve"][
                     "depthFractionOfThickness"
                 ],
-                "blurPixels": spec["decals"]["carve"]["blurPixels"],
+                "blurUnits": spec["decals"]["carve"]["blurUnits"],
+                "transitionUnits": spec["decals"]["carve"]["transitionUnits"],
                 "profile": spec["decals"]["carve"]["profile"],
-                "paintThreshold": spec["decals"]["carve"]["paintThreshold"],
+                "paintEdge": spec["decals"]["carve"]["paintEdge"],
                 "occlusionDistance": spec["decals"]["carve"]["occlusionDistance"],
                 "occlusionStrength": spec["decals"]["carve"]["occlusionStrength"],
                 "grid": [

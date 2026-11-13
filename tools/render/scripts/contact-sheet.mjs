@@ -124,7 +124,7 @@ const stats = [
   `edge   ${manifest.measurements.topEdgeProjectedPx} px top edge / ${manifest.measurements.faceHeightPx} px face`,
   `decal  ${manifest.decals.pixels[0]}x${manifest.decals.pixels[1]} px, ${manifest.decals.paddingPixels} px gutter`,
   `carve  ${manifest.decals.carve.depthUnits} units deep (${Math.round(manifest.decals.carve.depthFractionOfThickness * 1000) / 10}% of thickness), ${manifest.decals.carve.grid.join('x')} grid`,
-  `       paint edge ${Math.round(manifest.decals.carve.paintThreshold * 100)}% of lip, occlusion ${manifest.decals.carve.occlusionDistance} / ${manifest.decals.carve.occlusionStrength}`,
+  `       paint edge ${Math.round(manifest.decals.carve.paintEdge * 100)}% of transition, occlusion ${manifest.decals.carve.occlusionDistance} / ${manifest.decals.carve.occlusionStrength}`,
   `orientation ${slot.orientation}   drawOrder ${slot.drawOrder}   gutter ${slot.shadowGutterPx} px`,
   `back   ${backFile} ${backSize.width}x${backSize.height} px (diagnostic only)`,
 ];

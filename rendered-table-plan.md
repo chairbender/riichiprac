@@ -398,11 +398,12 @@ for Tasks 2–3:
   material (`materials.paint`, roughness 0.16, coat 0.35); its specular line on
   the bottom fillet is the cue that sells the engraving.
 - **The symbol is carved, not printed.** A symbol-only SVG supplies the carve
-  mask and the paint. A cubic-Bézier groove profile with independent top and
-  bottom fillet controls (`topSpread` / `bottomSpread`) recesses a subdivided
-  face plate by 0.5% of the thickness (≈ 0.08 mm at jansou scale); the paint
-  boundary sits slightly inside the lip, so a thin bare melamine bevel catches
-  the key. The paint red is a spec override.
+  mask and the paint. A distance field across an explicit `transitionUnits`
+  (from the lip to the flat floor), shaped by a cubic Bézier with independent
+  top/bottom fillet controls (`topSpread` / `bottomSpread`), recesses a
+  subdivided face plate by 0.5% of the thickness (≈ 0.08 mm at jansou scale).
+  The paint boundary is a fraction of that transition (`paintEdge`), so it can
+  sit inside the lip and leave a bare melamine bevel. The paint red is a spec override.
 - **Parameter tuner.** `node tools/render/tune.mjs` serves a local UI at
   `localhost:7457` with the red, depth, both Bézier spreads, blur and paint
   edge; it draws the exact cross-section and renders a decal-only preview in

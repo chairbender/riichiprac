@@ -59,7 +59,7 @@
         "roughness": 0.16,
         "coat": 0.35,
         "coatRoughness": 0.1,
-        "red": "#b93c3c",
+        "red": "#a60c0c",
         "redBase": "#b93c3c"
       }
     }
@@ -163,19 +163,18 @@
     "renderScale": 3,
     "paddingPixels": 1,
     "carve": {
-      "depthFractionOfThickness": 0.005,
-      "blurPixels": 5,
+      "depthFractionOfThickness": 0.004,
       "profile": {
-        "lip": 0.5,
-        "floor": 0.9,
-        "topSpread": 0.42,
-        "bottomSpread": 0.42
+        "topSpread": 0.89,
+        "bottomSpread": 0.39
       },
-      "paintThreshold": 0.62,
       "gridScale": 1,
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75,
-      "occlusionSamples": 16
+      "occlusionSamples": 16,
+      "blurUnits": 0.006944,
+      "transitionUnits": 0.008889,
+      "paintEdge": 0.3
     },
     "rigs": {
       "upright": {

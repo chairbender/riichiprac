@@ -7,12 +7,12 @@
   "pixelRatio": 2,
   "tile": {
     "proportionsMm": {
-      "height": 28.0,
-      "width": 21.0,
+      "height": 28,
+      "width": 21,
       "thickness": 16.5
     },
     "units": {
-      "height": 1.0,
+      "height": 1,
       "width": 0.75,
       "thickness": 0.58929
     },
@@ -43,16 +43,15 @@
     ],
     "renderedAtScale": 3,
     "carve": {
-      "depthUnits": 0.00295,
-      "depthFractionOfThickness": 0.005,
-      "blurPixels": 5.0,
+      "depthUnits": 0.00236,
+      "depthFractionOfThickness": 0.004,
+      "blurUnits": 0.006944,
+      "transitionUnits": 0.008889,
       "profile": {
-        "lip": 0.5,
-        "floor": 0.9,
-        "topSpread": 0.42,
-        "bottomSpread": 0.42
+        "topSpread": 0.89,
+        "bottomSpread": 0.39
       },
-      "paintThreshold": 0.62,
+      "paintEdge": 0.3,
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75,
       "grid": [
