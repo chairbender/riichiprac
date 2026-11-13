@@ -23,9 +23,8 @@
     }
   },
   "tile": {
-    "width": 0.75,
-    "height": 1.0,
-    "thickness": 0.45,
+    "proportionsMm": { "height": 28.0, "width": 21.0, "thickness": 16.5 },
+    "heightUnits": 1.0,
     "bevel": {
       "width": 0.035,
       "segments": 4,

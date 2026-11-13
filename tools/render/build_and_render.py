@@ -61,6 +61,28 @@ def check_blender_version(spec: dict) -> str:
     return actual
 
 
+def resolve_tile_dimensions(spec: dict) -> dict:
+    """Derive the tile box from the jansou proportions.
+
+    The spec owns the real-world ratio (28 x 21 x 16.5 mm, height x width x
+    thickness) and one world height; width and thickness are computed so no
+    hand-copied number can drift from the ratio.
+    """
+    tile = spec["tile"]
+    proportions = tile["proportionsMm"]
+    height = tile["heightUnits"]
+    tile["height"] = height
+    tile["width"] = height * proportions["width"] / proportions["height"]
+    tile["thickness"] = height * proportions["thickness"] / proportions["height"]
+    log(
+        "tile: "
+        f"{tile['height']:.5f} h x {tile['width']:.5f} w x {tile['thickness']:.5f} t units "
+        f"(ratio {proportions['height']:g} x {proportions['width']:g} x "
+        f"{proportions['thickness']:g} mm)"
+    )
+    return tile
+
+
 def srgb_to_linear(value: float) -> float:
     return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
 
@@ -649,6 +671,7 @@ def main() -> None:
     spec = json.loads(spec_path.read_text())
 
     blender_version = check_blender_version(spec)
+    resolve_tile_dimensions(spec)
     scene = reset_scene()
     configure_render(scene, spec)
     render_width = scene.render.resolution_x
@@ -819,6 +842,15 @@ def main() -> None:
         "blender": blender_version,
         "units": "device px, origin top-left, y down; divide by pixelRatio for CSS",
         "pixelRatio": spec["scene"]["pixelRatio"],
+        "tile": {
+            "proportionsMm": tile_spec["proportionsMm"],
+            "units": {
+                "height": round(tile_spec["height"], 5),
+                "width": round(tile_spec["width"], 5),
+                "thickness": round(tile_spec["thickness"], 5),
+            },
+            "backEdgeFraction": tile_spec["backEdgeFraction"],
+        },
         "scene": {
             "width": spec["scene"]["widthCss"],
             "height": spec["scene"]["heightCss"],

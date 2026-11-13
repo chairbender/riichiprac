@@ -5,6 +5,19 @@
   "blender": "4.5.9 LTS",
   "units": "device px, origin top-left, y down; divide by pixelRatio for CSS",
   "pixelRatio": 2,
+  "tile": {
+    "proportionsMm": {
+      "height": 28.0,
+      "width": 21.0,
+      "thickness": 16.5
+    },
+    "units": {
+      "height": 1.0,
+      "width": 0.75,
+      "thickness": 0.58929
+    },
+    "backEdgeFraction": 0.3
+  },
   "scene": {
     "width": 1440,
     "height": 900,
@@ -36,9 +49,9 @@
       "pose": "hand-upright",
       "body": "hand-0.body.png",
       "x": 139,
-      "y": 1492,
-      "width": 266,
-      "height": 305,
+      "y": 1482,
+      "width": 271,
+      "height": 315,
       "faceQuad": [
         [
           180.172,
@@ -89,8 +102,8 @@
   },
   "measurements": {
     "faceHeightPx": 191.92,
-    "topEdgeProjectedPx": 33.59,
-    "blueSliverExpectedPx": 10.08,
-    "blueSliverMeasuredPx": 8
+    "topEdgeProjectedPx": 43.75,
+    "blueSliverExpectedPx": 13.12,
+    "blueSliverMeasuredPx": 11
   }
 }

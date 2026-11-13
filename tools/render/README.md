@@ -52,7 +52,7 @@ That command:
 4. assembles the labelled contact sheet with resvg
    (`scripts/contact-sheet.mjs`).
 
-It takes roughly 30 seconds on this machine at 256 samples. There is no manual
+It takes about 50 seconds on this machine at 256 samples. There is no manual
 Blender interaction and no UI. The render is deterministic: the seed is fixed,
 the samples are fixed, and repeated runs produce identical pixels (Blender's PNG
 container bytes can differ, so compare decoded pixels, not file hashes).
@@ -80,10 +80,14 @@ shipped assets under `frontend/public/table/`).
 
 ## Scene and coordinate conventions
 
-World units are tile units: face 0.75 × 1.0, thickness 0.45, bevel width 0.035
-(= `faceInset`). Tiles are modelled flat (face up +Z, symbol top +Y). The
-`hand-upright` pose rotates the tile 90° about X so the face points at the
-player (−Y) and the tile stands on the table.
+World units are tile units, and the tile follows the **jansou proportions**:
+28 × 21 × 16.5 mm (height × width × thickness), including the backing. The spec
+owns that ratio plus one world height (`heightUnits`), and the script derives
+width and thickness, so the box can never drift from the ratio. At height 1.0 the
+face is 0.75 × 1.0 and the thickness 0.58929. Bevel width 0.035 (= `faceInset`).
+Tiles are modelled flat (face up +Z, symbol top +Y). The `hand-upright` pose
+rotates the tile 90° about X so the face points at the player (−Y) and the tile
+stands on the table.
 
 The scene is one fixed perspective camera (65 mm on a 36 mm sensor, 2880 × 1800
 device pixels = 1440 × 900 CSS at `pixelRatio: 2`), a 3-light area rig, a
@@ -111,7 +115,7 @@ shading position-dependent: the near (left) bevel catches the key light, the
 right bevel falls into the fill, and the right side of the body is visible at all
 (the face quad is a true trapezoid: top edge 151.1 px, bottom edge 149.3 px,
 centre sheared 14 px). A slot at the row centre would lose the side face and
-flatten the bevel contrast. The crop is 266 × 305 device px including the 32 px
+flatten the bevel contrast. The crop is 271 × 315 device px including the 32 px
 shadow gutter. On the visible side the ivory front band meets the blue rear
 band at the backing line, which is what makes the wrap read as a physical
 backing rather than a painted stripe.
@@ -128,14 +132,14 @@ are blue (`backEdgeFraction: 0.3`), so the colour wraps the whole body. On a
 standing hand tile that gives a blue line along the top and a blue band down the
 visible side, and from behind the tile is solid blue (see the back diagnostic).
 
-At the hand slot the raised camera projects the 0.45-unit top edge to **33.59
-device px**, of which the blue run measures **8 device px** (expected 10.08; the
-top bevel arc eats the difference) on a **191.92 device px** face. That is ~4
-CSS px of blue above a ~96 CSS px face — a visible line, not a stripe, and it
-survives at the shipped 2× size.
+At the hand slot the raised camera projects the 0.58929-unit top edge to
+**43.75 device px**, of which the blue run measures **11 device px** (expected
+13.12; the top bevel arc eats the difference) on a **191.92 device px** face.
+That is ~5.5 CSS px of blue above a ~96 CSS px face — a visible line, not a
+stripe, and it survives at the shipped 2× size.
 
 Colour: base `#132986` at roughness 0.34, which reads as a deep royal blue after
-AgX — ≈ RGB(4, 68, 166) on the back face and ≈ RGB(71, 109, 196) on the
+AgX — ≈ RGB(4, 69, 166) on the back face and ≈ RGB(71, 109, 196) on the
 key-lit top edge. A brighter royal base (e.g. `#4169e1`) renders as a pastel
 periwinkle under this key and AgX; keep the base dark to keep the blue deep.
 
@@ -191,7 +195,7 @@ Each body render is two passes:
 
 The two are combined in `numpy` (tile over shadow) and written as one RGBA PNG,
 with the crop grown by the 32 px gutter. The measured crop is
-`266 × 305` device px with the whole shadow inside it (`clipped: false`).
+`271 × 315` device px with the whole shadow inside it (`clipped: false`).
 The shadow is neutral black alpha, i.e. a multiply-like darkening; over the green
 felt this reads correctly, and it is the same approximation §12.7 specifies
 (no runtime shadow layer, no CSS shadow).
@@ -219,7 +223,7 @@ bevel and alpha can be inspected; Task 2/3 ship 2× lossy WebP under
 
 | File | What it is |
 | --- | --- |
-| `hand-0.body.png` | 266 × 305 device px body sprite for the leftmost hand slot, alpha + baked shadow |
+| `hand-0.body.png` | 271 × 315 device px body sprite for the leftmost hand slot, alpha + baked shadow |
 | `1m-upright.decal.png` | 492 × 672 px lit 1-man face decal (inset + 1 px gutter), rendered at 3× CSS |
 | `1m-upright.composite.png` | body sprite with the decal homography-warped onto its face quad — the 2D composite the runtime will do |
 | `hand-0.back.png` | face-down diagnostic of the same slot (blue backing toward the camera); proves the wrap, not a shipped pose |

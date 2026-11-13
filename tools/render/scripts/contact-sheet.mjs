@@ -113,7 +113,10 @@ const panelSvg = (panel) => `
     <rect x="0.5" y="0.5" width="${panel.width - 1}" height="${panelHeight - 1}" fill="none" stroke="#24382f"/>
   </g>`;
 
+const tile = manifest.tile;
 const stats = [
+  `tile   ${tile.proportionsMm.height} x ${tile.proportionsMm.width} x ${tile.proportionsMm.thickness} mm (h x w x t)`,
+  `       = ${tile.units.height.toFixed(2)} x ${tile.units.width.toFixed(2)} x ${tile.units.thickness.toFixed(4)} units, backing ${Math.round(tile.backEdgeFraction * 100)}%`,
   `body   x=${slot.x} y=${slot.y} w=${slot.width} h=${slot.height} px (device, ${manifest.pixelRatio}x)`,
   `face   TL ${slot.faceQuad[0].join(', ')}  TR ${slot.faceQuad[1].join(', ')}`,
   `       BR ${slot.faceQuad[2].join(', ')}  BL ${slot.faceQuad[3].join(', ')}`,

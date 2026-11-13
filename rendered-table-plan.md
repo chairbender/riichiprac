@@ -180,8 +180,10 @@ These are the starting scene values for Task 1. Section 12 fixes the architectur
 and output rules; Task 1 may tune the numeric material/camera values against its
 first renders, but it does not reopen the section 12 decisions.
 
-- Tile face 0.75 × 1.0 units, body thickness 0.45 units (Task 1 tuned it down from
-  0.5 to slim the visible edge).
+- Tile proportions follow jansou tiles: 28 × 21 × 16.5 mm (height × width ×
+  thickness), including the backing. The spec stores that ratio plus one world
+  height, so at height 1.0 the face is 0.75 × 1.0 and the thickness 0.58929.
+  The backing is the rear 30% of the thickness.
 - Small bevel, 3–4 segments; ivory body with a soft specular response; blue back.
 - Fixed perspective camera with a long lens (subtle convergence and peripheral side faces,
   close to Tenhou).
@@ -375,11 +377,11 @@ for Tasks 2–3:
   distant rig (key ≈ 66 units away) so illumination varies only a few percent
   across the hand row. Do not move the lights closer without re-checking the
   decal/body seam.
-- Measured at `hand-0`: the 0.45-unit top edge projects to 33.59 device px, of
-  which the rear 30% blue is an 8 px run above a 191.92 px face (≈ 4 CSS px of
-  blue at 2×). The backing reads as a sliver; no lean or extra sprite. The same
-  30% band wraps the visible side, and the blue is a deep royal base
-  (`#132986`) that renders as ≈ RGB(4, 68, 166) on the back face and
+- Measured at `hand-0`: the 0.58929-unit top edge projects to 43.75 device px,
+  of which the rear 30% blue is an 11 px run above a 191.92 px face (≈ 5.5 CSS
+  px of blue at 2×). The backing reads as a sliver; no lean or extra sprite. The
+  same 30% band wraps the visible side, and the blue is a deep royal base
+  (`#132986`) that renders as ≈ RGB(4, 69, 166) on the back face and
   ≈ RGB(71, 109, 196) on the key-lit top edge.
 - The decal is 492 × 672 px at 3× CSS (inset 0.68 × 0.93 plus a 1 px gutter).
   Its ivory lands within 1/255 of the body face at the seam, so no runtime mask
