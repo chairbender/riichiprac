@@ -154,8 +154,9 @@ The mask is blurred and remapped with a **smootherstep** into a groove profile:
 - the quintic ease gives zero curvature at both ends, so the surface leaves the
   face and bottoms out through a **rounded lip** and a **rounded floor shoulder**
   rather than a knife edge,
-- depth is `depthFractionOfThickness = 0.025` of the tile thickness — 0.0147
-  units, about 0.41 mm at jansou scale.
+- depth is `depthFractionOfThickness = 0.005` of the tile thickness — 0.00295
+  units, about 0.08 mm at jansou scale. That is a deliberately shallow engrave:
+  the carve reads through the bevel ring and wall shading, not a deep shadow.
 
 The paint boundary sits slightly inside the lip (`paintThreshold = 0.72`), so a
 thin ring of bare melamine remains on the bevel. That ring catches the key and is
@@ -164,15 +165,17 @@ what makes the carve read as a bevelled recess rather than a flat print.
 A groove floor has the same normal as the face, so its diffuse response is
 identical and a wide stroke would still look flat. The decal material therefore
 adds **cavity occlusion** (Cycles AO, distance 0.2 units, strength 0.75), which
-darkens the inside of the engraving; measured, the red floor sits at
-≈ RGB(151, 66, 58) against the ≈ RGB(215, 214, 213) face. The key catches the
-lower wall of each stroke and shadows the upper wall, completing the carved
-read.
+darkens the inside of the engraving. At 0.08 mm depth the cavity is shallow, so
+the measured darkening is small — the red floor sits at ≈ RGB(214, 137, 130)
+against the ≈ RGB(215, 214, 213) face — and the carved read comes mostly from
+the bare bevel ring and the wall shading. If the carve needs to read stronger
+without more depth, raise `occlusionStrength` or widen the bevel; both are decal
+shading, not geometry.
 
 The carve is baked into the **lit face decal**, so it is orientation-lit and
 position-independent like the rest of the decal. At spike resolution the grid is
 492 × 672 (about 330k vertices, `gridScale: 1.0`) and the decal render alone
-takes ~90 s at 256 samples with AO; Task 3 should reduce `gridScale`, AO
+takes ~82 s at 256 samples with AO; Task 3 should reduce `gridScale`, AO
 samples, or bake the occlusion into a texture for the 190-decal set. The body
 sprite is unaffected: its face underlay is flat and the carve lives entirely
 inside the inset decal.

@@ -397,13 +397,13 @@ for Tasks 2–3:
   plus a clear coat, not matte plastic.
 - **The symbol is carved, not printed.** A symbol-only SVG supplies the carve
   mask and the paint. A smootherstep groove profile (rounded lip and rounded
-  floor shoulder) recesses a subdivided face plate by 2.5% of the thickness
-  (≈ 0.41 mm at jansou scale); the paint boundary sits slightly inside the lip,
-  so a thin bare melamine bevel catches the key. Satin paint plus cavity
-  occlusion make the wide red strokes read as sunk rather than flat. The carve
+  floor shoulder) recesses a subdivided face plate by 0.5% of the thickness
+  (≈ 0.08 mm at jansou scale); the paint boundary sits slightly inside the lip,
+  so a thin bare melamine bevel catches the key. Satin paint plus a little
+  cavity occlusion keep the red from reading as a flat print. The carve
   is baked into the lit decal, so it is orientation-lit like the rest of the
   face. Consequence for Task 3: each code needs its symbol-only SVG and a
-  ~330k-vertex face at `gridScale: 1.0`; expect ~90 s per decal render with AO
+  ~330k-vertex face at `gridScale: 1.0`; expect ~80 s per decal render with AO
   and cut `gridScale`/AO samples for the 190-decal set.
 - **Lighting is top-heavy.** The key sits almost overhead, so the up-facing edge
   is the brightest surface (Tenhou's read); the fill is low and frontal, and the

@@ -43,8 +43,8 @@
     ],
     "renderedAtScale": 3,
     "carve": {
-      "depthUnits": 0.01473,
-      "depthFractionOfThickness": 0.025,
+      "depthUnits": 0.00295,
+      "depthFractionOfThickness": 0.005,
       "blurPixels": 2.5,
       "profile": {
         "lip": 0.5,
