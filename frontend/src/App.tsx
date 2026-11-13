@@ -6,6 +6,7 @@ import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import { ActionBar } from './components/ActionBar';
 import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
+import { IsometricTable } from './components/IsometricTable';
 import { NextScenarioButton } from './components/NextScenarioButton';
 import { PhysicalTable } from './components/PhysicalTable';
 import { PlayerRow } from './components/PlayerRow';
@@ -28,6 +29,7 @@ import {
 import type { ScenarioSnapshot } from './scenarioHistory';
 import { stackOrder } from './seatOrder';
 import { useGameStore } from './store/useGameStore';
+import { isTableView, useSettingsStore } from './store/useSettingsStore';
 import { ensureWasmReady } from './wasm';
 import './App.css';
 
@@ -46,7 +48,10 @@ const DEFAULT_REQUIRE_AGREEMENT = true;
  *
  * The choice is not persisted (there is no localStorage/sessionStorage entry),
  * so every fresh page load starts from the stacked default. The tables are the
- * same puzzle either way: switching only changes how the state is drawn.
+ * same puzzle either way: switching only changes how the state is drawn. Which
+ * renderer the plan view mounts is a separate, persisted setting: `topdown` is
+ * the flat `PhysicalTable` above, `isometric` the experimental view. See
+ * `store/useSettingsStore.ts`.
  */
 type TableLayout = 'stacked' | 'physical';
 
@@ -114,6 +119,13 @@ export const App = () => {
    */
   const [tableLayout, setTableLayout] =
     useState<TableLayout>(DEFAULT_TABLE_LAYOUT);
+  /**
+   * Which renderer the plan view mounts, persisted across reloads. It comes
+   * from the settings store rather than component state so the header control
+   * and the table mount point cannot disagree after a reload.
+   */
+  const tableView = useSettingsStore((state) => state.view);
+  const setTableView = useSettingsStore((state) => state.setView);
   const [exportDescription, setExportDescription] = useState('');
   const manifestRef = useRef<ScenarioOption[] | null>(null);
   const loadRequestId = useRef(0);
@@ -405,6 +417,14 @@ export const App = () => {
     setTableLayout(event.target.checked ? 'physical' : 'stacked');
   };
 
+  const handleViewChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    // Redraw only, like the layout switch: the persisted setting changes which
+    // table component mounts, nothing about the hand or its grade.
+    if (isTableView(event.target.value)) {
+      setTableView(event.target.value);
+    }
+  };
+
   const showVerdict = useCallback(() => {
     const panel = document.getElementById('verdict-panel');
     if (!panel) return;
@@ -484,6 +504,11 @@ export const App = () => {
         ? 'Mortal is unavailable, so this filter cannot run.'
         : 'Waiting for the Mortal model to load…';
 
+  const viewHint =
+    tableLayout === 'physical'
+      ? 'Which table the plan view draws. Isometric is experimental and currently shows a placeholder.'
+      : 'Turn on the top-down table to choose which table it draws. Isometric is experimental and currently shows a placeholder.';
+
   const statusMessage = agreementLoading
     ? 'Finding a hand Mortal agrees with…'
     : aiLoading
@@ -527,6 +552,19 @@ export const App = () => {
               onChange={handleLayoutChange}
             />
             <span>Top-down table</span>
+          </label>
+
+          <label className="app-toggle app-view-picker" title={viewHint}>
+            <span>Table view</span>
+            <select
+              className="app-view-select"
+              value={tableView}
+              disabled={tableLayout !== 'physical'}
+              onChange={handleViewChange}
+            >
+              <option value="topdown">Top-down</option>
+              <option value="isometric">Isometric (experimental)</option>
+            </select>
           </label>
 
           <NextScenarioButton onClick={handleNextScenario} disabled={isLoading} />
@@ -600,7 +638,16 @@ export const App = () => {
         )}
 
         {gameState && tableLayout === 'physical' ? (
-          <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
+          // The view setting picks the renderer; nothing else about the hand
+          // changes when it switches, so the answer and grade stay put.
+          tableView === 'isometric' ? (
+            <IsometricTable />
+          ) : (
+            <PhysicalTable
+              state={gameState}
+              highlightLastDiscard={claimedFrom}
+            />
+          )
         ) : (
           orderedPlayers.map((player) => (
             <PlayerRow

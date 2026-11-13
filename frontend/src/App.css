@@ -398,6 +398,37 @@
   cursor: default;
 }
 
+/*
+ * Table view picker: a compact two-option select beside the top-down toggle.
+ * It is disabled while the stacked layout is showing, because the choice only
+ * applies to the plan view; the stored value is kept either way.
+ */
+.app-view-picker {
+  cursor: default;
+}
+
+.app-view-select {
+  padding: 5px 6px;
+  border: 1px solid #34506e;
+  border-radius: 7px;
+  background-color: #1a2a3c;
+  color: #a5d8ff;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-view-select:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.app-view-select:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
 .new-hand-button {
   padding: 8px 14px;
   border: 1px solid #34506e;
@@ -1331,6 +1362,58 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
+}
+
+/* Isometric table view (experimental placeholder) ------------------------- */
+
+/*
+ * Part 0 of the isometric chain: the view can be selected, but the table is not
+ * built yet, so this panel stands in where the plan would be. It is deliberately
+ * plain and flat: no perspective, no pretend table furniture.
+ */
+.isometric-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 16px;
+  border: 1px dashed #34506e;
+  border-radius: 12px;
+  background-color: #14181f;
+  text-align: center;
+}
+
+.isometric-placeholder-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  color: #a5d8ff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.isometric-placeholder-badge {
+  padding: 2px 7px;
+  border: 1px solid #7a5c2c;
+  border-radius: 999px;
+  background-color: #1f1a12;
+  color: #ffd43b;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.isometric-placeholder-text {
+  max-width: 34em;
+  margin: 0;
+  color: #8b94a7;
+  font-size: 0.78rem;
+  line-height: 1.5;
 }
 
 /* Pinned human hand ------------------------------------------------------- */
