@@ -6,8 +6,8 @@ import { create } from 'zustand';
  * `stacked` is the mobile-first four-row layout and the default, so a browser
  * that has never saved a setting sees exactly what it saw before. `topdown` is
  * the flat plan view (`PhysicalTable`), with the human anchored at the bottom
- * edge. `isometric` is the Tenhou-style table still being built; for now it
- * mounts a labelled placeholder.
+ * edge. `isometric` is the angled table view (`IsometricTable`), which is still
+ * being built part by part and currently shows the empty table plane.
  */
 export type TableView = 'stacked' | 'topdown' | 'isometric';
 
