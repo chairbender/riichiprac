@@ -6,6 +6,7 @@ import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import { ActionBar } from './components/ActionBar';
 import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
+import { IsometricTable } from './components/IsometricTable';
 import { NextScenarioButton } from './components/NextScenarioButton';
 import { PhysicalTable } from './components/PhysicalTable';
 import { PlayerRow } from './components/PlayerRow';
@@ -28,6 +29,7 @@ import {
 import type { ScenarioSnapshot } from './scenarioHistory';
 import { stackOrder } from './seatOrder';
 import { useGameStore } from './store/useGameStore';
+import { isTableView, useSettingsStore } from './store/useSettingsStore';
 import { ensureWasmReady } from './wasm';
 import './App.css';
 
@@ -37,21 +39,6 @@ import './App.css';
  * checkbox state, so the two cannot drift.
  */
 const DEFAULT_REQUIRE_AGREEMENT = true;
-
-/**
- * How the table is drawn. `stacked` is the mobile-first default: four rows in
- * turn order with the hand docked at the bottom. `physical` is the opt-in plan
- * view (top-down only, never perspective) that arranges the seats around the
- * table with the human at the bottom edge.
- *
- * The choice is not persisted (there is no localStorage/sessionStorage entry),
- * so every fresh page load starts from the stacked default. The tables are the
- * same puzzle either way: switching only changes how the state is drawn.
- */
-type TableLayout = 'stacked' | 'physical';
-
-/** The table starts stacked, so the first hand matches the documented layout. */
-const DEFAULT_TABLE_LAYOUT: TableLayout = 'stacked';
 
 export const App = () => {
   const gameState = useGameStore((state) => state.gameState);
@@ -108,12 +95,14 @@ export const App = () => {
     DEFAULT_REQUIRE_AGREEMENT,
   );
   /**
-   * Per-session table view, stacked by default. Switching it re-draws the same
-   * hand; nothing is regenerated, so the answer and any submitted grade stay
-   * put.
+   * How the table is drawn, persisted across reloads. Switching it re-draws the
+   * same hand; nothing is regenerated, so the answer and any submitted grade
+   * stay put. It comes from the settings store rather than component state so
+   * the header control and the table mount point cannot disagree after a
+   * reload.
    */
-  const [tableLayout, setTableLayout] =
-    useState<TableLayout>(DEFAULT_TABLE_LAYOUT);
+  const tableView = useSettingsStore((state) => state.view);
+  const setTableView = useSettingsStore((state) => state.setView);
   const [exportDescription, setExportDescription] = useState('');
   const manifestRef = useRef<ScenarioOption[] | null>(null);
   const loadRequestId = useRef(0);
@@ -400,9 +389,12 @@ export const App = () => {
     void loadPuzzle(selection, next);
   };
 
-  const handleLayoutChange = (event: ChangeEvent<HTMLInputElement>) => {
-    // Redraw only: the puzzle, the answer, and the grade are untouched.
-    setTableLayout(event.target.checked ? 'physical' : 'stacked');
+  const handleViewChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    // Redraw only: the persisted setting changes how the same hand is drawn,
+    // nothing about the hand or its grade.
+    if (isTableView(event.target.value)) {
+      setTableView(event.target.value);
+    }
   };
 
   const showVerdict = useCallback(() => {
@@ -484,6 +476,9 @@ export const App = () => {
         ? 'Mortal is unavailable, so this filter cannot run.'
         : 'Waiting for the Mortal model to load…';
 
+  const viewHint =
+    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view, and isometric is experimental (it currently shows a placeholder). Stays 2D: no 3D or camera tilt.';
+
   const statusMessage = agreementLoading
     ? 'Finding a hand Mortal agrees with…'
     : aiLoading
@@ -517,16 +512,17 @@ export const App = () => {
             <span>Mortal must agree</span>
           </label>
 
-          <label
-            className="app-toggle"
-            title="Draw the table from above, with your seat at the bottom edge and the tiles turned to face each player. Stays flat: no 3D or camera tilt."
-          >
-            <input
-              type="checkbox"
-              checked={tableLayout === 'physical'}
-              onChange={handleLayoutChange}
-            />
-            <span>Top-down table</span>
+          <label className="app-toggle app-view-picker" title={viewHint}>
+            <span>View</span>
+            <select
+              className="app-view-select"
+              value={tableView}
+              onChange={handleViewChange}
+            >
+              <option value="stacked">Stacked</option>
+              <option value="topdown">Top-down</option>
+              <option value="isometric">Isometric (experimental)</option>
+            </select>
           </label>
 
           <NextScenarioButton onClick={handleNextScenario} disabled={isLoading} />
@@ -590,7 +586,7 @@ export const App = () => {
       )}
 
       <main
-        className={tableLayout === 'physical' ? 'table-physical' : 'table-stack'}
+        className={tableView === 'stacked' ? 'table-stack' : 'table-physical'}
       >
         {statusMessage && <div className="status-msg">{statusMessage}</div>}
         {error && (
@@ -599,7 +595,13 @@ export const App = () => {
           </div>
         )}
 
-        {gameState && tableLayout === 'physical' ? (
+        {/*
+         * The persisted view picks the renderer. Nothing else about the hand
+         * changes when it switches, so the answer and grade stay put.
+         */}
+        {tableView === 'isometric' ? (
+          <IsometricTable />
+        ) : tableView === 'topdown' && gameState ? (
           <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
         ) : (
           orderedPlayers.map((player) => (
