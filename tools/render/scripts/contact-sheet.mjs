@@ -20,7 +20,6 @@ const packageJson = JSON.parse(readFileSync(join(renderDir, 'package.json'), 'ut
 const resvgVersion = packageJson.dependencies['@resvg/resvg-js'];
 const manifest = JSON.parse(readFileSync(join(outDir, spec.outputs.manifest), 'utf8'));
 const slot = manifest.slots[0];
-const slotIndex = slot.id.split('-').pop();
 const decalCode = spec.spike.decal.code;
 const orientation = spec.spike.decal.orientation;
 
@@ -34,15 +33,17 @@ const pngSize = (file) => {
 };
 
 const bodyFile = slot.body;
-const backFile = spec.outputs.back.replace('{index}', slotIndex);
+const backFile = slot.back.body;
 const decalFile = manifest.faces[decalCode][orientation];
-const compositeFile = spec.outputs.composite.replace('{code}', decalCode).replace('{orientation}', orientation);
+const compositeFile = spec.spike.outputs.composite
+  .replace('{code}', decalCode)
+  .replace('{orientation}', orientation);
 
 const bodyHref = png(bodyFile);
 const backHref = png(backFile);
 const decalHref = png(decalFile);
 const compositeHref = png(compositeFile);
-const zoomHref = png(spec.outputs.zoom);
+const zoomHref = png(spec.spike.outputs.zoom);
 
 const escape = (text) =>
   String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -82,21 +83,13 @@ const panels = [
     background: felt(bodyWidth),
   },
   {
-    caption: 'Composite at shipped 2x (1:1 device px)',
-    href: compositeHref,
-    width: slot.width,
-    height: slot.height,
-    natural: true,
-    background: felt(slot.width),
-  },
-  {
     caption: 'Face decal: carved, painted, lit (1 px gutter)',
     href: decalHref,
     width: decalWidth,
     background: checker(decalWidth),
   },
   {
-    caption: 'Back pose (diagnostic): blue backing wraps every edge',
+    caption: 'Concealed-hand pose: blue backing wraps every edge',
     href: backHref,
     width: backWidth,
     background: felt(backWidth),
@@ -151,7 +144,7 @@ const stats = [
   `peak   body ${manifest.measurements.bodyMaxChannel}/255 (${manifest.measurements.bodyClippedPixels} clipped) · decal ${manifest.measurements.decalMaxChannel}/255 (${manifest.measurements.decalClippedPixels} clipped)`,
   `bake   decal ${manifest.measurements.decalBakeSeconds}s`,
   `orientation ${slot.orientation}   drawOrder ${slot.drawOrder}   gutter ${slot.shadowGutterPx} px`,
-  `back   ${backFile} ${backSize.width}x${backSize.height} px (diagnostic only)`,
+  `back   ${backFile} ${backSize.width}x${backSize.height} px (concealed-hand pose)`,
 ];
 
 const matrixLines = slot.faceMatrix.match(/.{1,78}/g) ?? [];
@@ -189,7 +182,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sheetWidth}" heigh
 </svg>
 `;
 
-const sheetPath = join(outDir, spec.outputs.contactSheet);
+const sheetPath = join(outDir, spec.spike.outputs.contactSheet);
 const resvg = new Resvg(svg, {
   font: { loadSystemFonts: true },
   fitTo: { mode: 'width', value: sheetWidth },

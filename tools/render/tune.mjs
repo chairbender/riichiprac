@@ -33,10 +33,10 @@ let base = JSON.parse(readFileSync(baseSpecPath, 'utf8'));
 const reloadBase = () => {
   base = JSON.parse(readFileSync(baseSpecPath, 'utf8'));
 };
-const decalFile = base.outputs.decal
+const decalFile = base.spike.outputs.decal
   .replace('{code}', base.spike.decal.code)
   .replace('{orientation}', base.spike.decal.orientation);
-const compositeFile = base.outputs.composite
+const compositeFile = base.spike.outputs.composite
   .replace('{code}', base.spike.decal.code)
   .replace('{orientation}', base.spike.decal.orientation);
 

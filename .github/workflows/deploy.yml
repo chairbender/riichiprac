@@ -83,6 +83,12 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      # The rendered table's baked assets are committed. CI never runs Blender
+      # (§12.13): it re-derives the manifest, sprite dimensions, quad bounds, and
+      # the asset budget from the committed files instead.
+      - name: Verify rendered table assets
+        run: node tools/render/scripts/check-assets.mjs frontend/public/table
+
       - name: Configure Pages
         uses: actions/configure-pages@v6
 

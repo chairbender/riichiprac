@@ -160,8 +160,11 @@ Illustrative command:
 
 ```bash
 blender --background --python tools/render/build_and_render.py -- \
-  tools/render/scene-spec.json out/table/
+  tools/render/scene-spec.json backend/table table
 ```
+
+`render.sh` wraps that call, adds the batch's own manifest/asset validation, and
+is the command to use (`bash tools/render/render.sh`).
 
 No manual Blender interaction is required. Parameters are edited in the spec/script and the
 batch is rerun.
@@ -203,29 +206,44 @@ first renders, but it does not reopen the section 12 decisions.
 
 ## 8. Manifest shape
 
-The schema is versioned. Coordinates are CSS scene pixels at the manifest's
-`pixelRatio`; `faceMatrix` maps the decal image's local pixel rectangle onto the
-slot's `faceQuad`, so the runtime never projects or inverts a quad.
+The schema is versioned. **Task 2 shipped version 2** (the shape below, plus the
+Task 2 fields documented in §12's "Task 2 results"). Coordinates are rendered
+device pixels at the manifest's `pixelRatio`; `faceMatrix` maps the decal image's
+local pixel rectangle onto the slot's `decalQuad`, so the runtime never projects
+or inverts a quad.
 
 ```json
 {
-  "version": 1,
-  "scene": { "width": 1440, "height": 900, "camera": "fixed" },
+  "version": 2,
+  "scene": { "width": 1440, "height": 900, "widthDevicePx": 2880,
+             "heightDevicePx": 1800, "camera": "fixed" },
+  "camera": { "position": [0, -47.8, 32.2], "target": [0, 0, 0.35],
+              "lensMm": 65, "elevationDeg": 33.68, "distanceUnits": 57.439 },
   "pixelRatio": 2,
   "facePixels": [360, 480],
   "background": "background.webp",
+  "backgroundPixels": [1440, 900],
+  "table": { "plan": { "feltHalfExtent": 12.9, "railWidth": 0.9, … },
+             "seats": ["bottom", "right", "top", "left"],
+             "handRow": { "seat": "bottom", "y": -11.7,
+                          "slotIds": ["hand-0", …, "hand-draw"] } },
   "slots": [
     {
       "id": "hand-0",
-      "body": "bodies/hand-0.webp",
-      "x": 120,
-      "y": 640,
-      "width": 180,
-      "height": 240,
-      "faceQuad": [[x, y], [x, y], [x, y], [x, y]],
-      "faceMatrix": "matrix3d(…16 values…)",
+      "seat": "bottom",
+      "role": "concealed",
+      "pose": "hand-upright",
       "orientation": "upright",
-      "drawOrder": 10
+      "body": "bodies/hand-0.webp",
+      "x": 751, "y": 1478, "width": 159, "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [[x, y], [x, y], [x, y], [x, y]],
+      "decalQuad": [[x, y], [x, y], [x, y], [x, y]],
+      "faceMatrix": "matrix3d(…16 values…)",
+      "drawOrder": 40,
+      "back": { "pose": "hand-upright-back", "body": "bodies/hand-0-back.webp",
+                "x": 751, "y": 1478, "width": 159, "height": 190 },
+      "measurements": { "faceWidthPx": 74.26, "faceHeightPx": 76.99 }
     }
   ],
   "faces": {
@@ -236,15 +254,26 @@ slot's `faceQuad`, so the runtime never projects or inverts a quad.
       "right": "faces/1m-right.webp",
       "opposite": "faces/1m-opposite.webp"
     }
-  }
+  },
+  "assets": { "bodyFormat": "WEBP", "bodyQuality": 90, "bodyBytes": 147752,
+              "backgroundBytes": 20398, "totalBytes": 168098,
+              "budgetBytes": { "total": 8388608, "bodies": 1048576,
+                               "background": 157286, "manifest": 51200 } },
+  "checks": { "slotRectsInsideScene": true, "faceQuadsInsideBodies": true,
+              "uniqueDrawOrders": true, "alignment": { "shiftedPixels": 0, … } }
 }
 ```
 
 Slots carry geometry; faces carry only the tile code × orientation mapping. The
 runtime pairs a slot with the selected tile code's face decal, applies the
-slot's `faceMatrix`, and never reads `faceQuad` (it exists for the pipeline's
-own consistency tests). All paths are relative to the manifest's directory.
-`drawOrder` is an integer; lower numbers are painted first.
+slot's `faceMatrix`, and never reads `faceQuad` or `decalQuad` (they exist for
+the pipeline's own consistency tests). All paths are relative to the manifest's
+directory. `drawOrder` is an integer; lower numbers are painted first, and the
+shipped bands are 0–39 wall/river/meld, 40–53 the hand row, 60+ overlays. A
+slot's `back` is the concealed-pose sprite for the *same* footprint (no face
+quad, no decal). `checks` and `assets` are the bake's own audit trail: the
+validator in `tools/render/scripts/check-assets.mjs` re-derives them from the
+committed files.
 
 ## 9. Asset budget
 
@@ -363,8 +392,16 @@ headless browser).
     and inset, draw orders are unique per stack, and total asset bytes stay
     under budget. Regeneration is a manual developer step documented in
     `tools/render/README.md`:
-    `blender --background --python tools/render/build_and_render.py -- tools/render/scene-spec.json frontend/public/table`.
+    `bash tools/render/render.sh`, which runs
+    `blender --background --python tools/render/build_and_render.py -- tools/render/scene-spec.json frontend/public/table table`
+    and then the manifest/asset validator.
     A regeneration commits the script/spec, manifest, and sprites together.
+    **Task 2 amendment:** the *background* pass uses
+    `assets.background.samples` (64) rather than the scene's 256. It is a full
+    2880 × 1800 frame of broad, low-frequency lighting, so 64 + OIDN is
+    indistinguishable and costs a fraction of a 256-sample frame; the 256 setting
+    still governs every sprite (bevel highlights need it). The manifest records
+    the count it used as `assets.backgroundSamples`.
 14. **SVG rasteriser and source.** `@resvg/resvg-js` 2.6.2, pinned, run from the
     offline `tools/render` package. No `sharp`, no system `rsvg`, and no headless
     browser. Raw symbol-only SVGs are vendored from the public-domain
@@ -389,7 +426,9 @@ for Tasks 2–3:
   px of blue at 2×). The backing reads as a sliver; no lean or extra sprite. The
   same 30% band wraps the visible side, and the blue is a deep royal base
   (`#132986`) that renders as ≈ RGB(4, 69, 166) on the back face and
-  ≈ RGB(71, 109, 196) on the key-lit top edge.
+  ≈ RGB(71, 109, 196) on the key-lit top edge. (Task 2's framing is lower
+  resolution and a higher camera angle, so the same geometry measures 42.22 px
+  top edge / 10 px blue / 76.99 px face there; see the Task 2 results below.)
 - The decal is 492 × 672 px at 3× CSS (inset 0.68 × 0.93 plus a 1 px gutter).
   Its face colour matches the body face within ~1.4% at the seam (canonical rig
   vs an off-centre hand slot), which is invisible at 2×; treat ~2% as the
@@ -434,7 +473,7 @@ for Tasks 2–3:
 | 0 | 261113-0703 | Remove the experimental view; finalise architecture and pipeline | — |
 | 1 | 261113-070303 | Blender spike: one body sprite and one lit face decal | 0 |
 | 1.5 | 261113-1238 | Parlor strip-light rig and carve re-tune | 1 |
-| 2 | 261113-070305 | Bake hand slots, table background, and manifest | 1.5 |
+| 2 | 261113-070305 | Bake hand slots, table background, and manifest **(done)** | 1.5 |
 | 3 | 261113-070307 | Bake lit face decals for every code × orientation | 1.5 |
 | 4 | 261113-070308 | Runtime compositor and human hand | 2, 3 |
 | 5 | 261113-070309 | Opponent concealed hands | 2, 4 |
@@ -458,6 +497,74 @@ preset switch, and retuned the carve. The studio rig is kept verbatim in the
 spec for comparison. Plan and outcome:
 [`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md),
 [`tools/render/README.md`](tools/render/README.md).
+
+### Task 2 results (done, 261113-070305): table, hand row, manifest, checks
+
+Task 2 turned the one-tile spike into the shipped batch. The decisions it adds to
+the chain (all recorded in `scene-spec.json` and the manifest so later tasks read
+them rather than guessing):
+
+1. **Table plan.** New `table.plan` block, in tile units (1 unit = 28 mm), built
+   as a real jansou read back from its tiles: felt half-extent 12.9 (25.8 across),
+   a wall-ring track from 6.3 to 7.3 half-extents (12.6 inner side = 17 × 21 mm
+   stacks, 1.0 deep = one tile), a compass plate 4.7 square and 0.06 high, one
+   hand apron per seat at radial 10.6…12.55, and a 0.9 × 0.35 wooden rail with a
+   1.4 skirt. Outer square 27.6 units (773 mm). Track and aprons are flat bands
+   0.002 above the felt — the felt is the shadow catcher, so the surface a tile's
+   contact shadow is baked against must not step.
+2. **Camera re-frame.** The Task 1 camera framed one slot at ~100 px/unit and
+   cannot show a table. v1 is now `(0, −47.8, 32.2)` looking at `(0, 0, 0.35)`,
+   65 mm, **elevation 33.7°**, 57.4 units out, one 1440 × 900 landscape framing
+   (§12.9 unchanged). The near rail's corners sit just outside the frame, the far
+   rail at ~18% height, the side rails converge, and a tile face is 74 × 77
+   device px (37 × 38.5 CSS) with the hand row 640 CSS px wide. The 33.7°
+   elevation shows a real top surface and a ~10 px blue backing band above each
+   face, which is the physical read for a 16.5 mm tile.
+3. **Slot inventory.** The human's row is 13 concealed slots at 0.82 spacing plus
+   the **separated draw** 0.55 units further out; ids `hand-0`…`hand-12` and
+   `hand-draw`, `role` `concealed`/`draw`, `drawOrder` 40…53. Every slot is baked
+   face-up *and* face-down (`hand-upright-back`) with a nested `back` record, so
+   Tasks 5 and 11 reuse the concealed pose at their own seat transforms. Bands:
+   0–39 wall/river/meld, 40–53 hands, 60+ overlays.
+4. **Background.** One Cycles render from the same camera with opaque film and the
+   felt no longer a shadow catcher (felt, track, aprons, compass plate, rail, room
+   floor), rendered at 2880 × 1800 and box-filtered to **1440 × 900 WebP q90**.
+   The felt palette had to be re-tuned for camera-visible rendering (AgX lifts
+   dark albedos, so the table is much darker than it looks): `#093021` felt,
+   `#0a3323` apron, `#052316` track, `#2a1a10` rail, `#08090a` compass plate.
+5. **Alignment is checked, not assumed.** After the sprites are baked, the script
+   renders one reference frame with every slot's tile present and compares it with
+   the sprites pasted at their manifest rects, with a one-pixel dilation to absorb
+   anti-aliasing. Any whole-pixel disagreement fails the bake; the shipped batch
+   reports **0 shifted pixels**. Gitignored review composites
+   (`tools/render/build/review/`) show the row on the real background in both
+   poses.
+6. **Manifest v2 + validator.** Version 2 (§8) adds `backgroundPixels`, `camera`,
+   `table`, per-slot `seat`/`role`/`back`/`measurements`, `assets` (format, byte
+   counts, budget) and `checks` (bounds, unique draw orders, alignment). The
+   dependency-free `tools/render/scripts/check-assets.mjs` re-derives all of it
+   from the committed files, verifies real image dimensions from the file
+   headers, re-applies each `faceMatrix`, and enforces the budget — it is the
+   §12.13 CI gate, and `render.sh` runs it after every batch.
+7. **Regeneration and weight.** `bash tools/render/render.sh` rebuilds and
+   validates the shipped batch into `frontend/public/table/`; `--spike` rebuilds
+   the Task 1 review batch. The committed batch is 186 KB: 28 body sprites
+   (141,804 B), the background (19,018 B) and the manifest (24,620 B), against
+   the 8 MB / 1 MB / 150 KB budgets the bake and the validator both enforce.
+8. **Task 3 consequence.** At this framing a face is 74 × 77 device px while the
+   canonical decal frame still renders at 492 × 672, an ~8.7× minification that
+   would erase a 1 px fillet highlight. Task 3 must size the shipped decals
+   against this framing (~175 × 180 px at 2×) instead of the spike's 3× render.
+9. **Lighting uniformity was measured, not assumed.** The face underlay of a
+   standing tile reads RGB(228, 226, 224) at the left end of the hand row and
+   RGB(229, 228, 226) at the right — under 1% variation across the `upright`
+   class, well inside the seam tolerance. The side seats' *faces* sit at
+   RGB(204, 208, 215) / RGB(207, 210, 215) because of their grazing angle; that
+   is a per-class difference, which is what the five orientation classes exist
+   for. Tasks 3 and 6 must re-check flat classes across the whole table: the rig
+   is distant (56-unit throw, 40-unit tubes) but its targets are near the
+   human's side, so a flat tile at the far wall sees a different exposure than
+   one in the human's river.
 
 ## 14. Risks
 
