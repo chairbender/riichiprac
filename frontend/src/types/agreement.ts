@@ -32,6 +32,9 @@ export interface MortalAgreementReport {
   /**
    * The situation parameters drawn once for this request, when the lesson has
    * a parameter concept. Every candidate was filled under this same set.
+   *
+   * The app withholds the clause that shows it until the player has answered,
+   * because the situation is the question the drill asks.
    */
   situation?: string;
   /** Always true on the accepted path. */

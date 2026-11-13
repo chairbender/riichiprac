@@ -112,20 +112,37 @@ function plural(count: number, one: string, many: string): string {
  * When the generated state carries a pinned situation, its parameter list is
  * appended so the player can see which condition the hand was deliberately
  * built to isolate — the whole point of drawing the situation before the tiles.
+ * That clause states the hand's facts, so on its own it gives the drill away:
+ * recognizing the situation *is* the exercise. It is therefore held back until
+ * `revealSituation`, which the app sets once the player has answered or asked to
+ * see Mortal's choice. Until then the notice reports only what generation cost.
  */
 export function formatAgreementNotice(
   report: MortalAgreementReport,
   multipleBookAnswers = false,
+  revealSituation = false,
 ): string {
-  return withSituation(describeAgreement(report, multipleBookAnswers), report);
+  return withSituation(
+    describeAgreement(report, multipleBookAnswers),
+    report,
+    revealSituation,
+  );
 }
 
-/** Appends the pinned parameter set when the report carries one. */
+/**
+ * Appends the pinned parameter set once the answer is on screen.
+ *
+ * The string names the situation (`extra han, bad wait, non-dealer`, `one or
+ * two live simple winning tiles`), which is the question the drill asks, so it
+ * cannot be printed while the player is still deciding.
+ */
 function withSituation(
   notice: string,
   report: MortalAgreementReport,
+  revealSituation: boolean,
 ): string {
-  return report.situation ? `${notice} Situation: ${report.situation}.` : notice;
+  if (!revealSituation || !report.situation) return notice;
+  return `${notice} Situation: ${report.situation}.`;
 }
 
 function describeAgreement(

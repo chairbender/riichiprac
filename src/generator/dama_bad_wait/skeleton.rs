@@ -52,12 +52,14 @@ impl Target {
     /// The parameter named for the agreement report.
     ///
     /// Each target already isolates one cell of the box, so the wording names
-    /// the cell rather than a list of conditions.
+    /// the cell rather than a list of conditions. It names only the live-tile
+    /// count, never the action the box picks for it: the note is shown before
+    /// the player answers.
     pub(crate) fn label(self) -> &'static str {
         match self {
-            Self::DamaFewSimples => "dama: one or two live simple winning tiles",
-            Self::RiichiManyLive => "riichi: three or more live winning tiles",
-            Self::RiichiHonorTerminal => "riichi: one or two live honor/terminal winning tiles",
+            Self::DamaFewSimples => "one or two live simple winning tiles",
+            Self::RiichiManyLive => "three or more live winning tiles",
+            Self::RiichiHonorTerminal => "one or two live honor/terminal winning tiles",
         }
     }
 }

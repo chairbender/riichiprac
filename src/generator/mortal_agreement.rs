@@ -167,7 +167,9 @@ pub struct MortalAgreementReport {
     /// Drawn once before the first candidate; every attempt below is filled
     /// under this same set. `None` means the lesson has no parameter concept
     /// and each candidate was an independent full draw. The wording names the
-    /// isolated condition, e.g. `riichi: good wait only`.
+    /// isolated condition, e.g. `extra han, bad wait, non-dealer`, and never the
+    /// answer. The frontend shows it under a resolved scenario, after the
+    /// player has answered or asked for Mortal's choice.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub situation: Option<String>,
     /// True when a candidate was accepted. `false` only appears on the error
@@ -830,26 +832,129 @@ mod tests {
             assert!(!label.is_empty(), "{category}");
             match category {
                 "riichi_judgement" => assert!(
-                    label.starts_with("riichi: ") || label.starts_with("dama: "),
+                    label.ends_with("dealer") || label.ends_with("non-dealer"),
                     "{label}"
                 ),
-                "dama_bad_wait" => assert!(
-                    label.starts_with("dama: ") || label.starts_with("riichi: "),
-                    "{label}"
-                ),
-                "dama_expensive_hand" => assert!(
-                    label.starts_with("dama: 7700") || label.starts_with("dama: haneman"),
-                    "{label}"
-                ),
-                "push_or_fold" => assert!(
-                    label.starts_with("push: ") || label.starts_with("fold: "),
-                    "{label}"
-                ),
-                _ => assert!(
-                    label.starts_with("dama: ") || label.starts_with("riichi: "),
-                    "{label}"
-                ),
+                "dama_bad_wait" => assert!(label.contains("live "), "{label}"),
+                "dama_expensive_hand" => assert!(label.starts_with("hand worth "), "{label}"),
+                "push_or_fold" => assert!(label.starts_with("1-away, "), "{label}"),
+                _ => assert!(label.starts_with("seven pairs"), "{label}"),
             }
+        }
+    }
+
+    /// Every player-facing situation label, for the six parameterised lessons.
+    ///
+    /// Enumerated rather than sampled: the guard below is about wording, so it
+    /// must see all of them, and drawing from the shared PRNG would leave other
+    /// tests' unseeded draws at the mercy of this one.
+    fn all_situation_labels() -> Vec<(&'static str, String)> {
+        use crate::generator::chiitoitsu_riichi_vs_dama::{RiichiTriggerSet, Target as Chiitoitsu};
+        use crate::generator::dama_bad_wait::Target as BadWait;
+        use crate::generator::dama_expensive_hand::Target as Expensive;
+        use crate::generator::honitsu_decision::Variant as Honitsu;
+        use crate::generator::push_or_fold::Target as PushFold;
+        use crate::generator::riichi_judgement::judgement::Conditions;
+
+        let mut labels: Vec<(&'static str, String)> = Vec::new();
+
+        for extra_han in [false, true] {
+            for good_wait in [false, true] {
+                for dealer in [false, true] {
+                    labels.push((
+                        "riichi_judgement",
+                        Situation::RiichiJudgement(Conditions {
+                            extra_han,
+                            good_wait,
+                            dealer,
+                        })
+                        .label(),
+                    ));
+                }
+            }
+        }
+        for target in [
+            BadWait::DamaFewSimples,
+            BadWait::RiichiManyLive,
+            BadWait::RiichiHonorTerminal,
+        ] {
+            labels.push(("dama_bad_wait", Situation::DamaBadWait(target).label()));
+        }
+        for target in [Expensive::Dama7700, Expensive::DamaHaneman] {
+            labels.push((
+                "dama_expensive_hand",
+                Situation::DamaExpensiveHand(target).label(),
+            ));
+        }
+        labels.push((
+            "chiitoitsu_riichi_vs_dama",
+            Situation::Chiitoitsu(Chiitoitsu::Dama).label(),
+        ));
+        labels.push((
+            "chiitoitsu_riichi_vs_dama",
+            Situation::Chiitoitsu(Chiitoitsu::Riichi(RiichiTriggerSet {
+                red_five_wait: true,
+                ..RiichiTriggerSet::default()
+            }))
+            .label(),
+        ));
+        // Every non-empty subset of the five triggers the red-five wait cannot
+        // be combined with (ch7's red-five lesson stands alone).
+        for mask in 1u8..32 {
+            labels.push((
+                "chiitoitsu_riichi_vs_dama",
+                Situation::Chiitoitsu(Chiitoitsu::Riichi(RiichiTriggerSet {
+                    dealer: mask & 1 != 0,
+                    tanyao: mask & 2 != 0,
+                    red_five_wait: false,
+                    suji_trap: mask & 4 != 0,
+                    wait_outside_456: mask & 8 != 0,
+                    score_below_mangan: mask & 16 != 0,
+                }))
+                .label(),
+            ));
+        }
+        for target in [PushFold::Push, PushFold::Fold] {
+            labels.push(("push_or_fold", Situation::PushOrFold(target).label()));
+        }
+        for target in [Honitsu::Commit, Honitsu::AlreadyHigh, Honitsu::HonitsuOnly] {
+            labels.push((
+                "honitsu_decision",
+                Situation::HonitsuDecision(target).label(),
+            ));
+        }
+
+        labels
+    }
+
+    /// The situation note is only revealed once the answer is on screen, but a
+    /// label that names the play is the drill's answer in textbook form, so it
+    /// must stay impossible to put on screen early by accident.
+    ///
+    /// A label such as `riichi: good wait only` or `dama: 7700 without riichi`
+    /// says what to do; every family label states table facts only.
+    #[test]
+    fn the_situation_label_never_names_the_answer() {
+        let labels = all_situation_labels();
+        assert!(
+            labels.len() >= 51,
+            "every parameterised cell must be covered, saw {}",
+            labels.len()
+        );
+
+        for (category, label) in labels {
+            assert!(!label.is_empty(), "{category}");
+            let lower = label.to_lowercase();
+            for action in ["riichi", "dama", "push", "fold", "commit", "efficiency"] {
+                assert!(
+                    !lower.contains(action),
+                    "{category} situation names the answer: {label}"
+                );
+            }
+            assert!(
+                !label.ends_with(':') && !label.contains(": "),
+                "{category} situation reads as an action prefix: {label}"
+            );
         }
     }
 
@@ -951,7 +1056,7 @@ mod tests {
 
         assert!(err.contains("unachievable"), "{err}");
         assert!(
-            err.contains("riichi: dealer + red-five wait"),
+            err.contains("seven pairs, dealer + red-five wait"),
             "the error must name the drawn set: {err}"
         );
         assert!(err.contains("chiitoitsu_riichi_vs_dama"), "{err}");
