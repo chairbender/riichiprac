@@ -85,13 +85,13 @@ describe('parseAgreementPayload', () => {
 });
 
 describe('formatAgreementNotice', () => {
-  it('reports the first candidate', () => {
+  it('reports a scenario that matched on the first attempt', () => {
     expect(formatAgreementNotice(report())).toBe(
-      'Mortal agrees with the book answer — first candidate.',
+      'Took 1 attempt to generate a scenario where Mortal agrees with the book answer.',
     );
   });
 
-  it('lists why earlier candidates were rejected', () => {
+  it('lists why earlier scenarios were rejected', () => {
     const notice = formatAgreementNotice(
       report({
         attempts: 5,
@@ -101,8 +101,8 @@ describe('formatAgreementNotice', () => {
     );
 
     expect(notice).toBe(
-      'Mortal agrees with the book answer — accepted on 5 candidates ' +
-        '(4 rejected: 3 tile mismatches, 1 incomparable answer).',
+      'Took 5 attempts to generate a scenario where Mortal agrees with the book answer ' +
+        '(4 scenarios rejected: 3 tile mismatches, 1 incomparable answer).',
     );
   });
 
@@ -112,7 +112,7 @@ describe('formatAgreementNotice', () => {
     );
 
     expect(notice).toBe(
-      'Mortal agrees with the book answer — accepted on 3 candidates ' +
+      'Took 3 attempts to generate a scenario where Mortal agrees with the book answer ' +
         '(2 generation failures).',
     );
   });
@@ -123,8 +123,34 @@ describe('formatAgreementNotice', () => {
         report({ attempts: 5, evaluations: 5, situation: 'riichi: good wait only' }),
       ),
     ).toBe(
-      'Mortal agrees with the book answer — accepted on 5 candidates. ' +
+      'Took 5 attempts to generate a scenario where Mortal agrees with the book answer. ' +
         'Situation: riichi: good wait only.',
+    );
+  });
+
+  it('says "at least one" when the scenario accepts several book answers', () => {
+    expect(formatAgreementNotice(report(), true)).toBe(
+      'Took 1 attempt to generate a scenario where Mortal agrees with at least one of the book answers.',
+    );
+
+    expect(
+      formatAgreementNotice(
+        report({
+          attempts: 4,
+          evaluations: 4,
+          rejected: { action: 2, tile: 1, incomparable: 0, evaluation_failed: 0 },
+        }),
+        true,
+      ),
+    ).toBe(
+      'Took 4 attempts to generate a scenario where Mortal agrees with at least one of the book answers ' +
+        '(3 scenarios rejected: 2 action mismatches, 1 tile mismatch).',
+    );
+  });
+
+  it('never shows the generator\'s word for a rejected roll', () => {
+    expect(formatAgreementNotice(report({ attempts: 2, evaluations: 2 }))).not.toContain(
+      'candidate',
     );
   });
 });

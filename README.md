@@ -498,8 +498,9 @@ isolated condition while keeping every combination reachable.
 In the app it is the **Mortal must agree** checkbox beside the scenario picker.
 It is per-session and checked by default, including for the first hand; it stays
 disabled until the model is ready. Turning it off re-deals the hand on screen
-without the filter, and a short note under the table says how many candidates
-were rejected and why (for example "accepted on 5 candidates (4 rejected: 3 tile
+without the filter, and a short note under the table says how many generated
+scenarios were rejected and why (for example "Took 5 attempts to generate a
+scenario where Mortal agrees with the book answer (4 scenarios rejected: 3 tile
 mismatches, 1 incomparable answer)"), followed by the pinned situation when the
 lesson has one. The filter only applies to book-graded lessons: a Mortal drill has
 no book answer for Mortal to agree with, so it is dealt as usual and graded by

@@ -99,14 +99,25 @@ function plural(count: number, one: string, many: string): string {
 /**
  * One sentence describing what the filter did, shown under the table.
  *
- * The accepted hand is the point of the setting, so the sentence leads with
- * that and keeps the rejection breakdown short. When the generated state
- * carries a pinned situation, its parameter list is appended so the player can
- * see which condition the hand was deliberately built to isolate — the whole
- * point of drawing the situation before the tiles.
+ * The sentence is written for a player, never for the generator: "candidate"
+ * is the sampling loop's word for one generated roll, and there is no reason
+ * for it to reach the screen. The cost is instead reported as attempts taken
+ * to generate a scenario, which is what actually happened.
+ *
+ * `multipleBookAnswers` marks a scenario whose accepted set holds more than the
+ * canonical answer (`GameState.equivalent_tiles` is non-empty). Mortal then
+ * only has to match one of them, so the notice must not claim it matched "the"
+ * book answer.
+ *
+ * When the generated state carries a pinned situation, its parameter list is
+ * appended so the player can see which condition the hand was deliberately
+ * built to isolate — the whole point of drawing the situation before the tiles.
  */
-export function formatAgreementNotice(report: MortalAgreementReport): string {
-  return withSituation(describeAgreement(report), report);
+export function formatAgreementNotice(
+  report: MortalAgreementReport,
+  multipleBookAnswers = false,
+): string {
+  return withSituation(describeAgreement(report, multipleBookAnswers), report);
 }
 
 /** Appends the pinned parameter set when the report carries one. */
@@ -117,9 +128,21 @@ function withSituation(
   return report.situation ? `${notice} Situation: ${report.situation}.` : notice;
 }
 
-function describeAgreement(report: MortalAgreementReport): string {
+function describeAgreement(
+  report: MortalAgreementReport,
+  multipleBookAnswers: boolean,
+): string {
+  const book = multipleBookAnswers
+    ? 'at least one of the book answers'
+    : 'the book answer';
+  const head = `Took ${plural(
+    report.attempts,
+    'attempt',
+    'attempts',
+  )} to generate a scenario where Mortal agrees with ${book}`;
+
   if (report.attempts <= 1) {
-    return 'Mortal agrees with the book answer — first candidate.';
+    return `${head}.`;
   }
 
   const { rejected } = report;
@@ -149,7 +172,9 @@ function describeAgreement(report: MortalAgreementReport): string {
 
   const notes: string[] = [];
   if (totalRejected > 0) {
-    notes.push(`${totalRejected} rejected: ${reasons.join(', ')}`);
+    notes.push(
+      `${plural(totalRejected, 'scenario', 'scenarios')} rejected: ${reasons.join(', ')}`,
+    );
   }
   if (report.generation_failures > 0) {
     notes.push(
@@ -158,5 +183,5 @@ function describeAgreement(report: MortalAgreementReport): string {
   }
   const detail = notes.length > 0 ? ` (${notes.join('; ')})` : '';
 
-  return `Mortal agrees with the book answer — accepted on ${plural(report.attempts, 'candidate', 'candidates')}${detail}.`;
+  return `${head}${detail}.`;
 }
