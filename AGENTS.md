@@ -43,18 +43,27 @@ The app is a **Constraint Satisfaction Generator**:
 * **Frontend (Vite + React + Zustand + TypeScript):**
   * **Extremely thin logic layer.** Do NOT put game rules or evaluation logic in React.
   * Takes JSON from WASM and renders it. Captures user clicks and compares them to the `correct_action` in the JSON payload.
-  * Uses `riichi-mahjong-tiles` (SVG) for tile rendering.
+  * Uses `riichi-mahjong-tiles` (SVG) for tile rendering in the stacked and top-down views.
+* **Offline table renderer (asset pipeline, not shipped code):**
+  * The opt-in rendered table view uses sprites baked offline from a 3D scene. Blender builds the scene, camera, lights, and materials from a committed Python/JSON spec; an offline SVG rasteriser (resvg/sharp) produces tile-face textures. No headless browser is part of the pipeline.
+  * The generator, spec, generated sprites, and manifest are committed. The design and regeneration steps live in `rendered-table-plan.md`; read it before touching rendered-table assets or layout.
+  * The runtime is 2D composition only: images plus DOM. **Do NOT add a 3D/WebGL library to the frontend, and do not rasterise tile art in the browser.**
 
 ## 4. UI / UX Design Constraints (React)
 * **Mobile-First, Stacked Layout:** The UI must be optimized for portrait mode on mobile devices.
   The stacked layout is the default view.
-* **NO SKEUOMORPHISM:** Do NOT build a physically rich, square Mahjong table as the default
-  view. The one opt-in exception is the **Top-down table** checkbox in the header: a flat,
-  top-down **plan** view (human's seat at the bottom edge, one seat per table edge) that can
-  be switched on per session. Even there, stay 2D: no perspective, camera tilt, isometric
-  projection, 3D rendering, or textured table furniture. In that view the table edges hold
-  only tiles: winds, scores, and Riichi sticks live on the compass in the middle, one corner
-  facing each player.
+* **View modes:** The header's View control switches the same hand between the stacked layout,
+  the flat top-down **plan** view, and the opt-in **rendered** table. Switching never re-deals.
+* **No skeuomorphism by default:** Do NOT make a physically rich, square Mahjong table the
+  default view.
+* **Rendered table view:** a Tenhou-style, fixed-camera 2.5D table composed at runtime from
+  offline-rendered sprites. The perspective and lighting are baked into the assets; the
+  frontend remains 2D. Runtime camera controls, orbit/tilt/zoom, browser 3D, and per-frame
+  lighting are out of scope. The view must provide the same information and interactions as
+  the top-down view.
+* **Top-down plan view:** a flat 2D plan (human at the bottom edge, one seat per table edge)
+  with no perspective or camera tilt. Its table edges hold only tiles: winds, scores, and
+  Riichi sticks live on the compass in the middle, one corner facing each player.
 * **Layout Structure:**
   * 4 strictly vertical flex/grid rows (one for each player).
   * Each opponent row displays their Wind, Points, Melds, and Discard River.
@@ -65,3 +74,5 @@ The app is a **Constraint Satisfaction Generator**:
 * Always write WASM-compatible Rust tests (`#[wasm_bindgen_test]`) to verify generator logic before attempting to render the state in React.
 * Keep pull requests and file modifications strictly bounded to the current task. Do not jump ahead to frontend styling if asked to write backend generators.
 * Rely on the `agari` crate's documentation for all mathematical hand evaluations.
+* Run the offline render pipeline when changing a rendered-table asset. Commit the generator/spec and the regenerated sprites + manifest together; never hand-edit a generated sprite.
+* Keep the rendered view's interaction and ARIA behaviour equivalent to the top-down view. The stacked and top-down views remain the accessible fallback.
