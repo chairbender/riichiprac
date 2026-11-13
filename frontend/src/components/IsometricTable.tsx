@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { SIDE_ROTATION, TABLE_SIDES, tablePlacements } from '../seatOrder';
 import type { TableSide } from '../seatOrder';
 import type { GameState, PlayerState } from '../types/game';
@@ -9,40 +10,93 @@ import {
   SIDE_TANGENT,
   TABLE_HALF_SIZE,
   centreCorners,
+  fitProjection,
+  handApronCorners,
   project,
   seatBands,
   seatEdgeMidpoint,
+  tableFootprintBounds,
   tablePlaneCorners,
+  wallRingCorners,
 } from '../iso';
-import type { ScreenPoint, TablePoint } from '../iso';
-
-/** SVG user units per table unit (one tile width). */
-const TILE = 60;
-
-/** The fixed drawing area. Every position below is in these user units. */
-const VIEW_WIDTH = 960;
-const VIEW_HEIGHT = 700;
+import type { ScreenPoint, TablePoint, Viewport } from '../iso';
 
 /**
- * Where the table's centre sits in the view.
+ * The quiet border around the fitted table, in CSS pixels.
  *
- * The plane takes the middle band of the view: the compacted 12-by-12 surface
- * is 720 by 360 units, leaving room below for the human's hand and room around
- * it for the opponents' hands in the later parts of the isometric chain.
+ * The table fills nearly the whole stage; this only keeps the outer wall and
+ * the apron from touching the viewport edge, and gives the floating toolbar a
+ * place to overlap felt instead of the table's own outline.
  */
-const TABLE_ORIGIN = { x: VIEW_WIDTH / 2, y: 320 };
+const STAGE_PADDING = 28;
 
-/** Convert a table point to an SVG user-space point. */
-function toScreen(point: TablePoint): ScreenPoint {
-  const projected = project(point);
+/**
+ * A sensible first frame before the element has been measured.
+ *
+ * The real size comes from the stage's `ResizeObserver` on the first layout
+ * pass; starting from the window's size avoids a visible shrink from a small
+ * default on a large desktop.
+ */
+const DEFAULT_STAGE: Viewport = { width: 1280, height: 800 };
+
+/** The initial stage size: the window when there is one, a 1280x800 fallback. */
+function initialStageSize(): Viewport {
+  if (typeof window === 'undefined') return DEFAULT_STAGE;
   return {
-    x: TABLE_ORIGIN.x + projected.x * TILE,
-    y: TABLE_ORIGIN.y + projected.y * TILE,
+    width: Math.max(1, window.innerWidth),
+    height: Math.max(1, window.innerHeight),
   };
 }
 
+/**
+ * Track the rendered size of the stage.
+ *
+ * The isometric view is a full-screen SVG whose viewBox is the stage's size in
+ * CSS pixels, so the projection has to be refitted whenever the window or the
+ * surrounding layout changes. `ResizeObserver` also catches changes the window
+ * event does not, such as the stage being laid out inside a resized panel.
+ */
+function useStageViewport(ref: RefObject<HTMLDivElement>): Viewport {
+  const [viewport, setViewport] = useState<Viewport>(initialStageSize);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const measure = () => {
+      const width = element.clientWidth;
+      const height = element.clientHeight;
+      if (width <= 0 || height <= 0) return;
+      setViewport((current) =>
+        current.width === width && current.height === height
+          ? current
+          : { width, height },
+      );
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return viewport;
+}
+
+/** Convert a table point to an SVG user-space point. */
+type ToScreen = (point: TablePoint) => ScreenPoint;
+
 /** The `points` attribute value for a projected table polygon. */
-function polygonPoints(points: readonly TablePoint[]): string {
+function polygonPoints(
+  points: readonly TablePoint[],
+  toScreen: ToScreen,
+): string {
   return points
     .map((point) => {
       const screen = toScreen(point);
@@ -97,7 +151,7 @@ function seatBandCentre(side: TableSide): TablePoint {
  * can be checked against the grid rather than eyeballed. The seat rows show
  * which way each seat reads and the rotation later tile components must use.
  */
-function DebugOverlay() {
+function DebugOverlay({ toScreen }: { toScreen: ToScreen }) {
   const gridLines: ReactNode[] = [];
   for (let unit = -TABLE_HALF_SIZE; unit <= TABLE_HALF_SIZE; unit += 1) {
     // A line of constant x, then a line of constant y.
@@ -164,18 +218,17 @@ function DebugOverlay() {
       })}
 
       <g className="iso-debug-centre">
-        <circle
-          cx={TABLE_ORIGIN.x}
-          cy={TABLE_ORIGIN.y}
-          r={10}
-        />
-        <text
-          x={TABLE_ORIGIN.x}
-          y={TABLE_ORIGIN.y + 28}
-          textAnchor="middle"
-        >
-          compass
-        </text>
+        {(() => {
+          const centre = toScreen({ x: 0, y: 0, z: 0 });
+          return (
+            <>
+              <circle cx={centre.x} cy={centre.y} r={10} />
+              <text x={centre.x} y={centre.y + 28} textAnchor="middle">
+                compass
+              </text>
+            </>
+          );
+        })()}
       </g>
     </g>
   );
@@ -200,9 +253,9 @@ function playersBySide(
 
 interface IsometricTableProps {
   /**
-   * The table to draw. The geometry and seat bands render without it, which is
-   * what the app shows while a hand is loading; the player names enrich the
-   * accessible labels when it is present.
+   * The table to draw. The geometry, reserved wall ring, and seat bands render
+   * without it, which is what the app shows while a hand is loading; the
+   * player names enrich the accessible labels when it is present.
    */
   state?: GameState;
 }
@@ -210,12 +263,17 @@ interface IsometricTableProps {
 /**
  * The isometric (Tenhou-style) table view.
  *
- * This is the geometry layer: one SVG with a fixed viewBox, the playing
- * surface, and the four seat bands, with the centre reserved for the compass.
- * There are no tiles yet. Later parts of the chain fill each band in, using the
- * projection in `iso.ts` and the same seat order and rotations as the top-down
- * table (`tablePlacements`, `SIDE_ROTATION`), so this view cannot drift into a
- * second notion of where the seats are.
+ * The table is fitted to the stage rather than drawn at a fixed size: `iso.ts`
+ * projects table units, `fitProjection` turns them into CSS pixels for the
+ * measured viewport, and the SVG's viewBox is the stage in pixels. That way one
+ * SVG user unit is one CSS pixel and the table fills the screen without a
+ * second scaling system in CSS.
+ *
+ * The fitted content is the full footprint: the 12-by-12 playing surface, the
+ * wall ring outside it, and the human's hand apron below that. The wall and
+ * apron are drawn as empty reserved rails now; later parts fill them in, and
+ * because they are already inside the fitted bounds the play area never moves
+ * when they arrive.
  *
  * The camera is fixed at a 30° pitch with no perspective, so the plane is a 2:1
  * rectangle: the human's edge runs along the bottom, shimocha is on the right,
@@ -228,16 +286,34 @@ interface IsometricTableProps {
  * fixed shadow direction once tiles arrive.
  */
 export function IsometricTable({ state }: IsometricTableProps) {
-  const plane = polygonPoints(tablePlaneCorners());
-  const centre = polygonPoints(centreCorners());
-  const bands = seatBands();
+  const stageRef = useRef<HTMLDivElement>(null);
+  const viewport = useStageViewport(stageRef);
+  const fit = useMemo(
+    () => fitProjection(viewport, tableFootprintBounds(), STAGE_PADDING),
+    [viewport],
+  );
+
+  const toScreen = useMemo<ToScreen>(
+    () => (point) => {
+      const projected = project(point);
+      return {
+        x: fit.origin.x + projected.x * fit.scale,
+        y: fit.origin.y + projected.y * fit.scale,
+      };
+    },
+    [fit],
+  );
+
   const seated = playersBySide(state);
+  const railHalfSize = TABLE_HALF_SIZE + 0.55;
+  const bands = seatBands();
 
   return (
-    <div className="isometric-table">
+    <div className="isometric-table" ref={stageRef}>
       <svg
         className="isometric-svg"
-        viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+        viewBox={`0 0 ${viewport.width} ${viewport.height}`}
+        preserveAspectRatio="xMidYMid meet"
         role="group"
         aria-label="Table, isometric view"
       >
@@ -251,8 +327,9 @@ export function IsometricTable({ state }: IsometricTableProps) {
 
           {/*
            * One soft shadow for the table itself, and the filter shape later
-           * parts reuse for tile contact shadows. User-space units keep the
-           * blur proportional when the SVG scales to a phone.
+           * parts reuse for tile contact shadows. The blur is in CSS pixels
+           * (the viewBox is the stage), so it follows the fitted scale instead
+           * of becoming a different weight on a large monitor.
            */}
           <filter
             id="iso-table-shadow"
@@ -262,22 +339,45 @@ export function IsometricTable({ state }: IsometricTableProps) {
             height="150%"
           >
             <feDropShadow
-              dx={ISO_LIGHT.shadowOffsetX * TILE}
-              dy={ISO_LIGHT.shadowOffsetY * TILE}
-              stdDeviation={ISO_LIGHT.shadowBlur * TILE}
+              dx={ISO_LIGHT.shadowOffsetX * fit.scale}
+              dy={ISO_LIGHT.shadowOffsetY * fit.scale}
+              stdDeviation={ISO_LIGHT.shadowBlur * fit.scale}
               floodColor="#05080b"
               floodOpacity={ISO_LIGHT.shadowOpacity + 0.2}
             />
           </filter>
         </defs>
 
-        {/* The rail, then the felt surface. */}
+        {/*
+         * Reserved footprint, drawn but empty. The apron is the human's rail
+         * and the wall ring is the four-sided wall; both are fitted into the
+         * stage now so later parts cannot move the play area.
+         */}
+        <g aria-hidden="true">
+          <polygon
+            className="iso-apron"
+            points={polygonPoints(handApronCorners(), toScreen)}
+          />
+          <polygon
+            className="iso-wall-ring"
+            points={polygonPoints(wallRingCorners(), toScreen)}
+            filter="url(#iso-table-shadow)"
+          />
+        </g>
+
+        {/* The rail lip, then the felt surface. */}
         <polygon
           className="iso-rail"
-          points={polygonPoints(tablePlaneCorners(TABLE_HALF_SIZE + 0.55))}
-          filter="url(#iso-table-shadow)"
+          points={polygonPoints(
+            tablePlaneCorners(railHalfSize),
+            toScreen,
+          )}
         />
-        <polygon className="iso-felt" points={plane} fill="url(#iso-felt)" />
+        <polygon
+          className="iso-felt"
+          points={polygonPoints(tablePlaneCorners(), toScreen)}
+          fill="url(#iso-felt)"
+        />
 
         {/* One band per seat, in turn order from the human's. */}
         {TABLE_SIDES.map((side) => {
@@ -295,17 +395,22 @@ export function IsometricTable({ state }: IsometricTableProps) {
                 side === 'bottom' ? ' iso-seat--human' : ''
               }`}
             >
-              <polygon points={polygonPoints(bands[side])} />
+              <polygon
+                points={polygonPoints(bands[side], toScreen)}
+              />
             </g>
           );
         })}
 
         {/* The centre is reserved for the compass in a later part. */}
         <g role="group" aria-label="Compass">
-          <polygon className="iso-centre" points={centre} />
+          <polygon
+            className="iso-centre"
+            points={polygonPoints(centreCorners(), toScreen)}
+          />
         </g>
 
-        {SHOW_DEBUG_OVERLAY && <DebugOverlay />}
+        {SHOW_DEBUG_OVERLAY && <DebugOverlay toScreen={toScreen} />}
       </svg>
     </div>
   );

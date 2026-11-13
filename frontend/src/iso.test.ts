@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CENTRE_HALF_SIZE,
+  HAND_APRON_DEPTH,
   ISO_DEPTH_SCALE,
   ISO_HEIGHT_SCALE,
   ISO_PITCH_DEGREES,
@@ -8,15 +9,21 @@ import {
   SIDE_TANGENT,
   TABLE_HALF_SIZE,
   TABLE_SIZE,
+  WALL_RING_DEPTH,
   centreCorners,
+  fitProjection,
+  handApronCorners,
   project,
+  projectBounds,
   seatBandCorners,
   seatBands,
   seatEdgeMidpoint,
+  tableFootprintBounds,
   tablePlaneCorners,
   unproject,
+  wallRingCorners,
 } from './iso';
-import type { TablePoint } from './iso';
+import type { ProjectedBounds, TablePoint } from './iso';
 import { SIDE_ROTATION, TABLE_SIDES } from './seatOrder';
 
 /** Screen direction of a table-plane vector, normalised so lengths compare. */
@@ -200,5 +207,169 @@ describe('table geometry', () => {
       expect(tangent.x).toBeCloseTo(rotated.x, 10);
       expect(tangent.y).toBeCloseTo(rotated.y, 10);
     }
+  });
+});
+
+describe('table footprint', () => {
+  it('measures a projected point set into one bounding box', () => {
+    const bounds = projectBounds([
+      { x: -2, y: -2, z: 0 },
+      { x: 2, y: -2, z: 0 },
+      { x: 2, y: 2, z: 0 },
+      { x: -2, y: 2, z: 0 },
+    ]);
+
+    expect(bounds.minX).toBe(-2);
+    expect(bounds.maxX).toBe(2);
+    // y = 2 is away from the human, i.e. up the screen (negative SVG y).
+    expect(bounds.minY).toBeCloseTo(-2 * ISO_DEPTH_SCALE, 10);
+    expect(bounds.maxY).toBeCloseTo(2 * ISO_DEPTH_SCALE, 10);
+  });
+
+  it('reserves a wall ring outside the play area on every side', () => {
+    const play = projectBounds(tablePlaneCorners());
+    const wall = projectBounds(wallRingCorners());
+
+    expect(wall.minX).toBeCloseTo(-(TABLE_HALF_SIZE + WALL_RING_DEPTH), 10);
+    expect(wall.maxX).toBeCloseTo(TABLE_HALF_SIZE + WALL_RING_DEPTH, 10);
+    expect(wall.minY).toBeCloseTo(
+      -(TABLE_HALF_SIZE + WALL_RING_DEPTH) * ISO_DEPTH_SCALE,
+      10,
+    );
+    expect(wall.maxY).toBeCloseTo(
+      (TABLE_HALF_SIZE + WALL_RING_DEPTH) * ISO_DEPTH_SCALE,
+      10,
+    );
+
+    // Room on all four sides, not just the two the camera compresses.
+    expect(wall.minX).toBeLessThan(play.minX);
+    expect(wall.maxX).toBeGreaterThan(play.maxX);
+    expect(wall.minY).toBeLessThan(play.minY);
+    expect(wall.maxY).toBeGreaterThan(play.maxY);
+  });
+
+  it('reserves the hand apron only in front of the human', () => {
+    const apron = projectBounds(handApronCorners());
+    const wall = projectBounds(wallRingCorners());
+    const outer = TABLE_HALF_SIZE + WALL_RING_DEPTH;
+
+    // The apron starts at the wall's near edge and reaches the apron depth
+    // towards the human (down the screen).
+    expect(apron.minY).toBeCloseTo(wall.maxY, 10);
+    expect(apron.maxY).toBeCloseTo(
+      (outer + HAND_APRON_DEPTH) * ISO_DEPTH_SCALE,
+      10,
+    );
+    expect(apron.minX).toBeCloseTo(wall.minX, 10);
+    expect(apron.maxX).toBeCloseTo(wall.maxX, 10);
+  });
+
+  it('bounds the whole footprint, play area and reserved rails together', () => {
+    const footprint = tableFootprintBounds();
+    const outer = TABLE_HALF_SIZE + WALL_RING_DEPTH;
+
+    expect(footprint.minX).toBeCloseTo(-outer, 10);
+    expect(footprint.maxX).toBeCloseTo(outer, 10);
+    expect(footprint.minY).toBeCloseTo(-outer * ISO_DEPTH_SCALE, 10);
+    expect(footprint.maxY).toBeCloseTo(
+      (outer + HAND_APRON_DEPTH) * ISO_DEPTH_SCALE,
+      10,
+    );
+
+    // The apron makes the footprint reach further below the table than above
+    // it, which is what keeps the table above the stage's centre line.
+    expect(footprint.maxY + footprint.minY).toBeGreaterThan(0);
+  });
+});
+
+describe('projection fitting', () => {
+  const square: ProjectedBounds = {
+    minX: -1,
+    maxX: 1,
+    minY: -1,
+    maxY: 1,
+  };
+
+  it('centres the content in the viewport', () => {
+    const fit = fitProjection({ width: 1000, height: 600 }, square, 0);
+    const contentCentre = { x: 0, y: 0 };
+    const onScreen = {
+      x: fit.origin.x + contentCentre.x * fit.scale,
+      y: fit.origin.y + contentCentre.y * fit.scale,
+    };
+
+    expect(onScreen.x).toBe(500);
+    expect(onScreen.y).toBe(300);
+  });
+
+  it('scales to the tighter axis and leaves the other one letterboxed', () => {
+    const fit = fitProjection({ width: 1000, height: 600 }, square, 0);
+
+    // 600 is the shorter side, so the 2-by-2 square becomes 600 by 600.
+    expect(fit.scale).toBe(300);
+    expect(2 * fit.scale).toBe(600);
+    expect(fit.origin.x).toBe(500);
+    expect(fit.origin.y).toBe(300);
+  });
+
+  it('fits a wide, short viewport by height instead of width', () => {
+    const fit = fitProjection({ width: 2000, height: 400 }, square, 20);
+
+    expect(fit.scale).toBe(180); // (400 - 2 * 20) / 2
+    expect(fit.origin.x).toBe(1000);
+    expect(fit.origin.y).toBe(200);
+  });
+
+  it('keeps the whole content inside the padding on both axes', () => {
+    const padding = 24;
+    const viewport = { width: 1440, height: 900 };
+    const bounds = tableFootprintBounds();
+    const fit = fitProjection(viewport, bounds, padding);
+
+    const corners = [
+      { x: bounds.minX, y: bounds.minY },
+      { x: bounds.maxX, y: bounds.minY },
+      { x: bounds.maxX, y: bounds.maxY },
+      { x: bounds.minX, y: bounds.maxY },
+    ].map((point) => ({
+      x: fit.origin.x + point.x * fit.scale,
+      y: fit.origin.y + point.y * fit.scale,
+    }));
+
+    for (const corner of corners) {
+      expect(corner.x).toBeGreaterThanOrEqual(padding - 1e-9);
+      expect(corner.x).toBeLessThanOrEqual(viewport.width - padding + 1e-9);
+      expect(corner.y).toBeGreaterThanOrEqual(padding - 1e-9);
+      expect(corner.y).toBeLessThanOrEqual(viewport.height - padding + 1e-9);
+    }
+  });
+
+  it('fits the reserved footprint rather than only the play area', () => {
+    const viewport = { width: 1200, height: 800 };
+    const padding = 20;
+    const footprintFit = fitProjection(
+      viewport,
+      tableFootprintBounds(),
+      padding,
+    );
+    const playFit = fitProjection(
+      viewport,
+      projectBounds(tablePlaneCorners()),
+      padding,
+    );
+
+    expect(footprintFit.scale).toBeLessThan(playFit.scale);
+
+    // The table centre sits above the stage's centre line to make room for the
+    // apron, so a later hand never pushes the plane up.
+    const tableCentreY = footprintFit.origin.y;
+    expect(tableCentreY).toBeLessThan(viewport.height / 2);
+  });
+
+  it('never returns a negative scale for an empty or hidden stage', () => {
+    const fit = fitProjection({ width: 0, height: 0 }, tableFootprintBounds());
+    expect(fit.scale).toBe(0);
+    expect(Number.isFinite(fit.origin.x)).toBe(true);
+    expect(Number.isFinite(fit.origin.y)).toBe(true);
   });
 });

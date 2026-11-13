@@ -4,14 +4,15 @@ import { generate_puzzle, list_scenarios } from 'riichiprac';
 import { callOfferActions, canDeclareRiichi, isCallDecision } from './actions';
 import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import { ActionBar } from './components/ActionBar';
+import { AppControls } from './components/AppControls';
+import { DecisionPopup } from './components/DecisionPopup';
 import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
+import { IsometricShell } from './components/IsometricShell';
 import { IsometricTable } from './components/IsometricTable';
-import { NextScenarioButton } from './components/NextScenarioButton';
 import { PhysicalTable } from './components/PhysicalTable';
 import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
-import { ScenarioPicker } from './components/ScenarioPicker';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
 import { downloadJson, readStateFile, serializeState } from './stateFile';
@@ -487,6 +488,127 @@ export const App = () => {
         ? 'Loading table…'
         : null;
 
+  // The same elements feed the stacked shell's header/body and the isometric
+  // shell's menu drawer, so the drawer cannot fall behind the header.
+  const controls = (
+    <AppControls
+      scenarios={scenarios}
+      selection={selection}
+      onSelectionChange={handleSelectionChange}
+      requireAgreement={requireAgreement}
+      aiStatus={aiStatus}
+      agreementHint={agreementHint}
+      onAgreementChange={handleAgreementChange}
+      tableView={tableView}
+      viewHint={viewHint}
+      onViewChange={handleViewChange}
+      onNextScenario={handleNextScenario}
+      nextDisabled={isLoading}
+    />
+  );
+
+  const exportImportControls = (
+    <ExportImportControls
+      canExport={Boolean(gameState)}
+      description={exportDescription}
+      onDescriptionChange={updateExportDescription}
+      fileError={fileError}
+      fileNotice={fileNotice}
+      onExport={handleExport}
+      onImportFile={handleImportFile}
+      onDismissNotice={clearFileNotice}
+    />
+  );
+
+  const positionDescriptionCard = positionDescription ? (
+    <PositionDescriptionCard
+      description={positionDescription}
+      onDismiss={clearPositionDescription}
+    />
+  ) : null;
+
+  const tableInformation = gameState ? <TableInfo state={gameState} /> : null;
+
+  const agreementNotice =
+    gameState && mortalAgreement ? (
+      <p className="agreement-note" role="status">
+        {formatAgreementNotice(
+          mortalAgreement,
+          // A non-empty `equivalent_tiles` means the lesson accepts more
+          // than the canonical answer, so Mortal only has to match one.
+          (gameState.equivalent_tiles?.length ?? 0) > 0,
+          // The pinned situation names the condition the hand was built to
+          // isolate, which is the question the drill asks. It stays hidden
+          // until the answer is on screen, exactly like Mortal's own choice.
+          dualGrade !== null || peekedBeforeAnswer,
+        )}
+      </p>
+    ) : null;
+
+  const scenarioNote = gameState?.scenario_note ? (
+    <p className="scenario-note">{gameState.scenario_note}</p>
+  ) : null;
+
+  const verdictPanel = gameState ? (
+    <VerdictPanel
+      state={gameState}
+      grade={dualGrade}
+      evaluation={evaluation}
+      aiStatus={aiStatus}
+      aiError={aiError}
+      isEvaluating={isEvaluating}
+      peeked={peekedBeforeAnswer}
+      redFives={humanPlayer?.red_fives ?? []}
+      onPeek={peekMortal}
+      onRetry={() => {
+        void initializeAi().then(() => evaluateWithAi());
+      }}
+    />
+  ) : null;
+
+  /*
+   * The isometric view owns the whole viewport. Its controls, table details,
+   * verdict, and notes all live in a drawer so only the menu button floats over
+   * the table; the action strip and hand dock belong to the stacked shell and
+   * stay out of this view (the hand arrives in a later part, and non-discard
+   * answers use the floating popup).
+   */
+  if (tableView === 'isometric') {
+    const answered = dualGrade !== null;
+
+    return (
+      <IsometricShell
+        state={gameState}
+        statusMessage={statusMessage}
+        error={error}
+        answered={answered}
+        nextDisabled={isLoading}
+        onNextScenario={handleNextScenario}
+        table={<IsometricTable state={gameState ?? undefined} />}
+        popup={
+          isCallLesson && !answered ? (
+            <DecisionPopup
+              actions={callActions}
+              title="Call or pass?"
+              onAction={submitAction}
+            />
+          ) : null
+        }
+        menu={
+          <>
+            <div className="app-controls app-controls--menu">{controls}</div>
+            {tableInformation}
+            {exportImportControls}
+            {positionDescriptionCard}
+            {agreementNotice}
+            {scenarioNote}
+            {verdictPanel}
+          </>
+        }
+      />
+    );
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -495,95 +617,20 @@ export const App = () => {
           <h1 className="app-title">riichiprac</h1>
         </div>
 
-        <div className="app-controls">
-          <ScenarioPicker
-            scenarios={scenarios}
-            selection={selection}
-            onChange={handleSelectionChange}
-          />
-
-          <label className="app-toggle" title={agreementHint}>
-            <input
-              type="checkbox"
-              checked={requireAgreement}
-              disabled={aiStatus !== 'ready'}
-              onChange={handleAgreementChange}
-            />
-            <span>Mortal must agree</span>
-          </label>
-
-          <label className="app-toggle app-view-picker" title={viewHint}>
-            <span>View</span>
-            <select
-              className="app-view-select"
-              value={tableView}
-              onChange={handleViewChange}
-            >
-              <option value="stacked">Stacked</option>
-              <option value="topdown">Top-down</option>
-              <option value="isometric">Isometric (experimental)</option>
-            </select>
-          </label>
-
-          <NextScenarioButton onClick={handleNextScenario} disabled={isLoading} />
-        </div>
+        <div className="app-controls">{controls}</div>
       </header>
 
-      <ExportImportControls
-        canExport={Boolean(gameState)}
-        description={exportDescription}
-        onDescriptionChange={updateExportDescription}
-        fileError={fileError}
-        fileNotice={fileNotice}
-        onExport={handleExport}
-        onImportFile={handleImportFile}
-        onDismissNotice={clearFileNotice}
-      />
+      {exportImportControls}
 
-      {positionDescription && (
-        <PositionDescriptionCard
-          description={positionDescription}
-          onDismiss={clearPositionDescription}
-        />
-      )}
+      {positionDescriptionCard}
 
-      {gameState && <TableInfo state={gameState} />}
+      {tableInformation}
 
-      {gameState && mortalAgreement && (
-        <p className="agreement-note" role="status">
-          {formatAgreementNotice(
-            mortalAgreement,
-            // A non-empty `equivalent_tiles` means the lesson accepts more
-            // than the canonical answer, so Mortal only has to match one.
-            (gameState.equivalent_tiles?.length ?? 0) > 0,
-            // The pinned situation names the condition the hand was built to
-            // isolate, which is the question the drill asks. It stays hidden
-            // until the answer is on screen, exactly like Mortal's own choice.
-            dualGrade !== null || peekedBeforeAnswer,
-          )}
-        </p>
-      )}
+      {agreementNotice}
 
-      {gameState?.scenario_note && (
-        <p className="scenario-note">{gameState.scenario_note}</p>
-      )}
+      {scenarioNote}
 
-      {gameState && (
-        <VerdictPanel
-          state={gameState}
-          grade={dualGrade}
-          evaluation={evaluation}
-          aiStatus={aiStatus}
-          aiError={aiError}
-          isEvaluating={isEvaluating}
-          peeked={peekedBeforeAnswer}
-          redFives={humanPlayer?.red_fives ?? []}
-          onPeek={peekMortal}
-          onRetry={() => {
-            void initializeAi().then(() => evaluateWithAi());
-          }}
-        />
-      )}
+      {verdictPanel}
 
       <main
         className={tableView === 'stacked' ? 'table-stack' : 'table-physical'}
@@ -596,12 +643,11 @@ export const App = () => {
         )}
 
         {/*
-         * The persisted view picks the renderer. Nothing else about the hand
-         * changes when it switches, so the answer and grade stay put.
+         * The isometric view returned above. Here the persisted view picks
+         * between the stacked rows and the top-down plan; nothing else about
+         * the hand changes when it switches, so the answer and grade stay put.
          */}
-        {tableView === 'isometric' ? (
-          <IsometricTable state={gameState ?? undefined} />
-        ) : tableView === 'topdown' && gameState ? (
+        {tableView === 'topdown' && gameState ? (
           <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
         ) : (
           orderedPlayers.map((player) => (

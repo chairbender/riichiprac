@@ -40,6 +40,38 @@ export interface ScreenPoint {
   y: number;
 }
 
+/** The size of the area the table has to fit inside, in CSS pixels. */
+export interface Viewport {
+  width: number;
+  height: number;
+}
+
+/**
+ * An axis-aligned rectangle in projected space, in tile widths.
+ *
+ * This is what {@link fitProjection} scales and centres: the bounding box of
+ * the whole table footprint, not just the playing surface.
+ */
+export interface ProjectedBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
+/**
+ * How projected table units map onto the screen.
+ *
+ * `scale` is CSS pixels per tile width, and `origin` is where the projected
+ * table centre (table point `0, 0, 0`) lands in CSS pixels. A projected point
+ * `p` becomes `origin + p * scale`, which keeps the projection itself unitless
+ * and testable while the viewport decides how large it is drawn.
+ */
+export interface Projection {
+  scale: number;
+  origin: ScreenPoint;
+}
+
 /** Four table points in drawing order: a rectangle or trapezoid on the plane. */
 export type TableQuad = readonly [
   TablePoint,
@@ -86,6 +118,27 @@ export const SEAT_BAND_DEPTH = 3;
 export const CENTRE_HALF_SIZE = TABLE_HALF_SIZE - SEAT_BAND_DEPTH;
 
 /**
+ * How far the wall ring reaches outside the playing surface, in tile widths.
+ *
+ * The ring is reserved now and drawn as an empty rail: a real wall is two rows
+ * deep, and the two stacked tiles plus their slant need about this much plane
+ * before the play area starts. Without it, later parts would have to shrink the
+ * table to make room, shifting everything already laid out.
+ */
+export const WALL_RING_DEPTH = 1.5;
+
+/**
+ * How far the human's hand apron reaches in front of the wall ring, in tile
+ * widths.
+ *
+ * The apron is the empty rail reserved for the bottom hand in a later part. It
+ * is measured on the table plane, so it only ever adds to the footprint at the
+ * human's edge; every other seat's hand sits inside the play area for now.
+ */
+export const HAND_APRON_DEPTH = 3;
+
+
+/**
  * Project a table point onto the screen.
  *
  * A step away from the human moves up the screen by {@link ISO_DEPTH_SCALE},
@@ -112,6 +165,50 @@ export function unproject(screen: ScreenPoint, z = 0): TablePoint {
     x: screen.x,
     y: (-screen.y - z * ISO_HEIGHT_SCALE) / ISO_DEPTH_SCALE,
     z,
+  };
+}
+
+/**
+ * Fit projected content into a viewport.
+ *
+ * The content is scaled by the tighter of the horizontal and vertical ratios,
+ * so nothing is ever cropped, and it is centred in the viewport in both axes.
+ * `padding` is a uniform inset in CSS pixels; the returned scale never lets the
+ * content cross it, and the extra room on the looser axis stays symmetrical.
+ *
+ * A degenerate input cannot produce `NaN` or a negative scale: a viewport with
+ * no room, or content with no size, resolves to scale 0 and a centred origin.
+ */
+export function fitProjection(
+  viewport: Viewport,
+  contentBounds: ProjectedBounds,
+  padding = 0,
+): Projection {
+  const contentWidth = Math.max(0, contentBounds.maxX - contentBounds.minX);
+  const contentHeight = Math.max(0, contentBounds.maxY - contentBounds.minY);
+  const availableWidth = Math.max(0, viewport.width - padding * 2);
+  const availableHeight = Math.max(0, viewport.height - padding * 2);
+
+  // An axis with no size cannot constrain the scale; use the other one.
+  const scaleByWidth =
+    contentWidth > 0 ? availableWidth / contentWidth : Infinity;
+  const scaleByHeight =
+    contentHeight > 0 ? availableHeight / contentHeight : Infinity;
+  const unconstrained = Math.min(scaleByWidth, scaleByHeight);
+  const scale = Number.isFinite(unconstrained) ? unconstrained : 0;
+
+  // Map the content's centre onto the viewport's centre. This is what keeps the
+  // reserved apron included: the table itself sits above centre because the
+  // footprint reaches further below it than above it.
+  const centreX = (contentBounds.minX + contentBounds.maxX) / 2;
+  const centreY = (contentBounds.minY + contentBounds.maxY) / 2;
+
+  return {
+    scale,
+    origin: {
+      x: viewport.width / 2 - centreX * scale,
+      y: viewport.height / 2 - centreY * scale,
+    },
   };
 }
 
@@ -153,6 +250,89 @@ export function tablePlaneCorners(
     { x: halfSize, y: halfSize, z: 0 },
     { x: -halfSize, y: halfSize, z: 0 },
   ];
+}
+
+/**
+ * The outer rectangle of the wall ring: the play area plus room on every side.
+ *
+ * The wall is drawn on the same plane as the felt, so this is a rectangle
+ * rather than an offset band. The felt is painted on top of it, which leaves
+ * exactly the ring visible around the play area.
+ */
+export function wallRingCorners(
+  halfSize = TABLE_HALF_SIZE,
+  depth = WALL_RING_DEPTH,
+): TableQuad {
+  return tablePlaneCorners(halfSize + depth);
+}
+
+/**
+ * The empty rail in front of the human's edge, reserved for their hand.
+ *
+ * It starts where the wall ring ends and extends towards the human by
+ * {@link HAND_APRON_DEPTH}. Corners run left to right along the far edge, then
+ * back along the near edge, so the projected quad reads in the same order as
+ * the rest of the table geometry.
+ */
+export function handApronCorners(
+  halfSize = TABLE_HALF_SIZE,
+  wallDepth = WALL_RING_DEPTH,
+  apronDepth = HAND_APRON_DEPTH,
+): TableQuad {
+  const outer = halfSize + wallDepth;
+  const far = -outer;
+  const near = -outer - apronDepth;
+
+  return [
+    { x: -outer, y: far, z: 0 },
+    { x: outer, y: far, z: 0 },
+    { x: outer, y: near, z: 0 },
+    { x: -outer, y: near, z: 0 },
+  ];
+}
+
+/** The projected bounding box of a set of table points, in tile widths. */
+export function projectBounds(points: readonly TablePoint[]): ProjectedBounds {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const point of points) {
+    const screen = project(point);
+    minX = Math.min(minX, screen.x);
+    maxX = Math.max(maxX, screen.x);
+    minY = Math.min(minY, screen.y);
+    maxY = Math.max(maxY, screen.y);
+  }
+
+  // An empty set has no extent, so it collapses onto the projected origin
+  // instead of returning infinities.
+  if (minX === Infinity) {
+    return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  }
+
+  return { minX, maxX, minY, maxY };
+}
+
+/**
+ * The projected bounds of everything the isometric view reserves room for:
+ * the playing surface, the wall ring around it, and the human's hand apron.
+ *
+ * This is the content {@link fitProjection} must fit, not the 12-by-12 play
+ * area. Fitting the smaller rectangle would let later wall and hand parts spill
+ * off the stage, and reserving the footprint now means adding them can never
+ * move the play area.
+ */
+export function tableFootprintBounds(
+  halfSize = TABLE_HALF_SIZE,
+  wallDepth = WALL_RING_DEPTH,
+  apronDepth = HAND_APRON_DEPTH,
+): ProjectedBounds {
+  return projectBounds([
+    ...wallRingCorners(halfSize, wallDepth),
+    ...handApronCorners(halfSize, wallDepth, apronDepth),
+  ]);
 }
 
 /**
