@@ -836,13 +836,10 @@
    * column width gives the lane width, so the top-down tiles come out as large
    * as the hand's instead of smaller.
    *
-   * The second half of the min() is the case where the compass is wider than a
-   * six-lane row: then the middle column is the compass, not the river, and
-   * only the side lanes divide the rest of the width.
+   * The compass is a square of exactly one six-lane row, so it never widens
+   * the middle column beyond what the top and bottom rivers already need.
    */
   --physical-gap: clamp(2px, 0.6vw, 4px);
-  /* Widest measured compass footprint, including its 4px margins. */
-  --physical-centre-min: 192px;
   --physical-middle-lanes: 6;
   --physical-left-river-lanes: 1;
   --physical-right-river-lanes: 1;
@@ -877,17 +874,9 @@
    */
   --physical-fit: clamp(
     18px,
-    min(
-      calc(
-        (100cqw - 25px - 7 * var(--physical-gap) - var(--physical-side-gaps)) /
-          var(--physical-divisor)
-      ),
-      calc(
-        (
-            100cqw - 25px - 2 * var(--physical-gap) - var(--physical-side-gaps) -
-              var(--physical-centre-min)
-          ) / (2 * var(--physical-side-lanes))
-      )
+    calc(
+      (100cqw - 25px - 7 * var(--physical-gap) - var(--physical-side-gaps)) /
+        var(--physical-divisor)
     ),
     52px
   );
@@ -1218,31 +1207,28 @@
  * player's wind, score, and Riichi stick facing them, with the round and the
  * remaining tile count in the middle. Nothing else on the table is labelled.
  *
- * A side corner turns its stack sideways, so its painted box is wider than
- * its layout box. The generous column gap and padding keep that turn inside
- * the panel instead of letting it run into the wall.
+ * It is a square as wide as a six-lane river row (the space between the four
+ * discard piles) and every part inside is sized in `em` from one font size that
+ * follows the table's lane width, so the whole display grows and shrinks with
+ * the plan instead of staying a fixed stamp in a growing middle.
  */
 .physical-center {
   grid-area: 2 / 2 / 3 / 3;
   align-self: center;
   justify-self: center;
-  /*
-   * The centre display is the biggest fixed-size piece of the plan, and its
-   * width drives the tile size when a river has wrapped. Keep only a small
-   * gap around it so the lanes get the rest of the phone's width; the tiles
-   * themselves keep the seats off the panel edges.
-   */
-  margin: 4px;
+  width: calc(6 * var(--physical-fit) + 5 * var(--physical-gap));
+  aspect-ratio: 1;
 
   display: grid;
-  grid-template-columns: auto auto auto;
-  grid-template-rows: auto auto auto;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: 1fr auto 1fr;
   align-items: center;
   justify-items: center;
-  gap: 6px 8px;
-  padding: 10px;
+  font-size: calc(var(--physical-fit) * 0.33);
+  gap: 0.6em 0.7em;
+  padding: 0.9em;
   border: 1px solid #232a36;
-  border-radius: 10px;
+  border-radius: 0.8em;
   background-color: #171c24;
   color: #8b94a7;
   white-space: nowrap;
@@ -1282,7 +1268,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 0.35em;
 }
 
 /*
@@ -1291,8 +1277,8 @@
  */
 .compass-wind {
   display: block;
-  width: 26px;
-  height: 26px;
+  width: 3.1em;
+  height: 3.1em;
   filter: brightness(0) invert(1);
 }
 
@@ -1304,7 +1290,7 @@
 
 .compass-score {
   color: #e7ecf3;
-  font-size: 0.6rem;
+  font-size: 1.15em;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
@@ -1313,12 +1299,12 @@
 
 /*
  * The bar is horizontal in its own frame; the seat's turn makes it lengthways.
- * The compass is the only place the stick is read, so it gets twice the old
- * size and stays legible against the wind and score.
+ * The compass is the only place the stick is read, so it is the widest part of
+ * each corner and sets the corner's share of the square.
  */
 .compass-stick {
   display: block;
-  width: 47px;
+  width: 5.2em;
   height: auto;
 }
 
@@ -1328,12 +1314,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  gap: 0.12em;
 }
 
 .compass-round {
   color: #a5d8ff;
-  font-size: 0.7rem;
+  font-size: 1.05em;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1341,7 +1327,7 @@
 
 .compass-wall-count {
   color: #e7ecf3;
-  font-size: 0.95rem;
+  font-size: 1.55em;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
