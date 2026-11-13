@@ -259,21 +259,21 @@ with the selected tile code's face decal.
 
 ## 13. Task chain
 
-| # | Task | Depends on |
-| --- | --- | --- |
-| 0 | Remove the experimental view; finalise architecture and pipeline | — |
-| 1 | Blender spike: one body sprite and one lit face decal | 0 |
-| 2 | Bake hand slots, table background, and manifest | 1 |
-| 3 | Bake lit face decals for every code × orientation | 1 |
-| 4 | Runtime compositor and human hand | 2, 3 |
-| 5 | Opponent concealed hands | 2, 4 |
-| 6 | Discard rivers | 2, 4 |
-| 7 | Open melds and kans | 2, 4 |
-| 8 | Centre compass | 2, 4 |
-| 9 | Interaction and accessibility parity | 4, incrementally with 5–8 |
-| 10 | Phone framing, asset loading, performance | 4 |
-| 11 | Wall tiles and dora/ura indicators | 2, 4 |
-| 12 | Polish and cutover | all |
+| # | ID | Task | Depends on |
+| --- | --- | --- | --- |
+| 0 | 261113-0703 | Remove the experimental view; finalise architecture and pipeline | — |
+| 1 | 261113-070303 | Blender spike: one body sprite and one lit face decal | 0 |
+| 2 | 261113-070305 | Bake hand slots, table background, and manifest | 1 |
+| 3 | 261113-070307 | Bake lit face decals for every code × orientation | 1 |
+| 4 | 261113-070308 | Runtime compositor and human hand | 2, 3 |
+| 5 | 261113-070309 | Opponent concealed hands | 2, 4 |
+| 6 | 261113-070311 | Discard rivers | 2, 4 |
+| 7 | 261113-070312 | Open melds and kans | 2, 4 |
+| 8 | 261113-070313 | Centre compass | 2, 4 |
+| 9 | 261113-070314 | Interaction and accessibility parity | 4, incrementally with 5–8 |
+| 10 | 261113-070316 | Phone framing, asset loading, performance | 4 |
+| 11 | 261113-070317 | Wall tiles and dora/ura indicators | 2, 4 |
+| 12 | 261113-070318 | Polish and cutover | all |
 
 Tasks 2 and 3 can run in parallel after Task 1. Tasks 5–8 can run in parallel after Task 4.
 
