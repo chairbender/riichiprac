@@ -552,6 +552,10 @@ export const App = () => {
             // A non-empty `equivalent_tiles` means the lesson accepts more
             // than the canonical answer, so Mortal only has to match one.
             (gameState.equivalent_tiles?.length ?? 0) > 0,
+            // The pinned situation names the condition the hand was built to
+            // isolate, which is the question the drill asks. It stays hidden
+            // until the answer is on screen, exactly like Mortal's own choice.
+            dualGrade !== null || peekedBeforeAnswer,
           )}
         </p>
       )}

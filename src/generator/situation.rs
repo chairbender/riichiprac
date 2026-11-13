@@ -94,10 +94,12 @@ impl Situation {
     /// a player (or a bug report) can see which cell of the lesson's box the
     /// hand was deliberately built for.
     ///
-    /// It must never name the recommended action. The note is drawn under the
-    /// table *before* the player answers, so a label such as `riichi: good wait
-    /// only` or `dama: 7700 without riichi` is the answer itself. Every family
-    /// label therefore states table facts only; see
+    /// It still never names the recommended action: recognizing the situation
+    /// is the whole drill, and a label such as `riichi: good wait only` or
+    /// `dama: 7700 without riichi` is the answer in textbook form. The frontend
+    /// withholds the clause until the player has answered, so a label that
+    /// smuggled the verdict in would leak the moment any screen showed it
+    /// earlier. Every family label therefore states table facts only; see
     /// `mortal_agreement::the_situation_label_never_names_the_answer`.
     pub(crate) fn label(self) -> String {
         match self {

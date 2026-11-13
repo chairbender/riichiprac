@@ -117,10 +117,12 @@ describe('formatAgreementNotice', () => {
     );
   });
 
-  it('names the pinned situation when the report carries one', () => {
+  it('names the pinned situation once the answer is on screen', () => {
     expect(
       formatAgreementNotice(
         report({ attempts: 5, evaluations: 5, situation: 'no extra han, good wait, non-dealer' }),
+        false,
+        true,
       ),
     ).toBe(
       'Took 5 attempts to generate a scenario where Mortal agrees with the book answer. ' +
@@ -128,13 +130,35 @@ describe('formatAgreementNotice', () => {
     );
   });
 
-  it('keeps the notice free of any action the player has not picked yet', () => {
+  it('hides the pinned situation while the player is still deciding', () => {
+    // Recognizing the situation is the drill: printing it before the player
+    // picks would hand over the question. Only the generation cost is shown.
+    expect(
+      formatAgreementNotice(
+        report({ attempts: 5, evaluations: 5, situation: 'no extra han, good wait, non-dealer' }),
+      ),
+    ).toBe(
+      'Took 5 attempts to generate a scenario where Mortal agrees with the book answer.',
+    );
+
+    expect(
+      formatAgreementNotice(
+        report({ attempts: 5, evaluations: 5, situation: 'no extra han, good wait, non-dealer' }),
+        false,
+        false,
+      ),
+    ).not.toContain('Situation');
+  });
+
+  it('keeps the revealed situation free of any action', () => {
     // The engine owns the situation wording; this guards the sentence frame
     // around it, which must not introduce an action either.
     const notice = formatAgreementNotice(
       report({ attempts: 3, evaluations: 3, situation: 'extra han, bad wait, dealer' }),
       true,
+      true,
     );
+    expect(notice).toContain('Situation: extra han, bad wait, dealer.');
 
     for (const action of ['riichi', 'dama', 'push', 'fold', 'commit']) {
       expect(notice.toLowerCase()).not.toContain(action);
