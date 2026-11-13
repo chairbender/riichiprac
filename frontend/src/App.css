@@ -399,9 +399,8 @@
 }
 
 /*
- * Table view picker: a compact two-option select beside the top-down toggle.
- * It is disabled while the stacked layout is showing, because the choice only
- * applies to the plan view; the stored value is kept either way.
+ * View picker: one compact select that chooses between the stacked rows, the
+ * top-down plan, and the experimental isometric table.
  */
 .app-view-picker {
   cursor: default;
@@ -417,11 +416,6 @@
   font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
-}
-
-.app-view-select:disabled {
-  opacity: 0.55;
-  cursor: default;
 }
 
 .app-view-select:focus-visible {

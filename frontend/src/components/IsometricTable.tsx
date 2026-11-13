@@ -20,7 +20,8 @@ export function IsometricTable() {
       <p className="isometric-placeholder-text">
         The Tenhou-style isometric table is still being built. Your view choice
         is saved across reloads; this panel stands in for the table until it
-        lands. Switch the table view back to Top-down to see the current table.
+        lands. Switch View back to Stacked or Top-down to see the current
+        table.
       </p>
     </section>
   );

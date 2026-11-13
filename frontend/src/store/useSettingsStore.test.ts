@@ -44,17 +44,17 @@ afterEach(() => {
 });
 
 describe('useSettingsStore', () => {
-  it('defaults to the top-down view when nothing is stored', async () => {
+  it('defaults to the stacked view when nothing is stored', async () => {
     setLocalStorage(memoryStorage());
 
     const { useSettingsStore, SETTINGS_STORAGE_KEY } =
       await loadSettingsStore();
 
     expect(SETTINGS_STORAGE_KEY).toBe('riichiprac.settings');
-    expect(useSettingsStore.getState().view).toBe('topdown');
+    expect(useSettingsStore.getState().view).toBe('stacked');
   });
 
-  it('persists the isometric view under the settings key', async () => {
+  it('persists the experimental isometric view under the settings key', async () => {
     const storage = memoryStorage();
     setLocalStorage(storage);
 
@@ -71,27 +71,25 @@ describe('useSettingsStore', () => {
     expect(reloaded.useSettingsStore.getState().view).toBe('isometric');
   });
 
-  it('persists switching back to the top-down view', async () => {
+  it('persists every view and keeps it across a reload', async () => {
     const storage = memoryStorage();
-    storage.setItem(
-      'riichiprac.settings',
-      JSON.stringify({ version: 1, view: 'isometric' }),
-    );
     setLocalStorage(storage);
 
-    const { useSettingsStore } = await loadSettingsStore();
-    expect(useSettingsStore.getState().view).toBe('isometric');
+    const { useSettingsStore, SETTINGS_STORAGE_KEY } =
+      await loadSettingsStore();
 
-    useSettingsStore.getState().setView('topdown');
-    expect(JSON.parse(storage.getItem('riichiprac.settings') ?? 'null')).toEqual(
-      { version: 1, view: 'topdown' },
-    );
+    for (const view of ['topdown', 'stacked', 'isometric'] as const) {
+      useSettingsStore.getState().setView(view);
+      expect(
+        JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null'),
+      ).toEqual({ version: 1, view });
 
-    const reloaded = await loadSettingsStore();
-    expect(reloaded.useSettingsStore.getState().view).toBe('topdown');
+      const reloaded = await loadSettingsStore();
+      expect(reloaded.useSettingsStore.getState().view).toBe(view);
+    }
   });
 
-  it('falls back to top-down for malformed or unknown stored values', async () => {
+  it('falls back to stacked for malformed or unknown stored values', async () => {
     const storage = memoryStorage();
     setLocalStorage(storage);
 
@@ -99,12 +97,13 @@ describe('useSettingsStore', () => {
       'not json',
       'null',
       '[]',
+      JSON.stringify({ version: 1, view: 'physical' }),
       JSON.stringify({ version: 1, view: 'sideways' }),
       JSON.stringify({ version: 1 }),
     ]) {
       storage.setItem('riichiprac.settings', raw);
       const { useSettingsStore } = await loadSettingsStore();
-      expect(useSettingsStore.getState().view).toBe('topdown');
+      expect(useSettingsStore.getState().view).toBe('stacked');
     }
   });
 
@@ -112,9 +111,9 @@ describe('useSettingsStore', () => {
     setLocalStorage(null);
 
     const { useSettingsStore } = await loadSettingsStore();
-    expect(useSettingsStore.getState().view).toBe('topdown');
+    expect(useSettingsStore.getState().view).toBe('stacked');
 
-    expect(() => useSettingsStore.getState().setView('isometric')).not.toThrow();
-    expect(useSettingsStore.getState().view).toBe('isometric');
+    expect(() => useSettingsStore.getState().setView('topdown')).not.toThrow();
+    expect(useSettingsStore.getState().view).toBe('topdown');
   });
 });

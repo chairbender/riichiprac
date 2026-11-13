@@ -1,17 +1,18 @@
 import { create } from 'zustand';
 
 /**
- * Which renderer the opt-in table view mounts.
+ * How the main area draws the table.
  *
- * `topdown` is the flat plan view (`PhysicalTable`) the app has always drawn,
- * and is the default so a browser that has never saved a setting sees exactly
- * what it saw before. `isometric` is the Tenhou-style table still being built;
- * for now it mounts a labelled placeholder.
+ * `stacked` is the mobile-first four-row layout and the default, so a browser
+ * that has never saved a setting sees exactly what it saw before. `topdown` is
+ * the flat plan view (`PhysicalTable`), with the human anchored at the bottom
+ * edge. `isometric` is the Tenhou-style table still being built; for now it
+ * mounts a labelled placeholder.
  */
-export type TableView = 'topdown' | 'isometric';
+export type TableView = 'stacked' | 'topdown' | 'isometric';
 
-/** The table view a browser with no stored choice gets. */
-export const DEFAULT_TABLE_VIEW: TableView = 'topdown';
+/** The view a browser with no stored choice gets. */
+export const DEFAULT_TABLE_VIEW: TableView = 'stacked';
 
 /** `localStorage` key holding every persisted frontend setting. */
 export const SETTINGS_STORAGE_KEY = 'riichiprac.settings';
@@ -35,7 +36,7 @@ export interface FrontendSettings {
 
 /** Narrow an arbitrary value (select value, stored blob) to a {@link TableView}. */
 export function isTableView(value: unknown): value is TableView {
-  return value === 'topdown' || value === 'isometric';
+  return value === 'stacked' || value === 'topdown' || value === 'isometric';
 }
 
 /**
@@ -115,7 +116,7 @@ export function writeSettings(settings: FrontendSettings): void {
 }
 
 interface SettingsStore extends FrontendSettings {
-  /** Choose which table renderer the plan view mounts, and persist it. */
+  /** Choose how the main area draws the table, and persist it. */
   setView: (view: TableView) => void;
 }
 
