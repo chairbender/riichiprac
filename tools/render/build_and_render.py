@@ -696,37 +696,68 @@ def over(dst: np.ndarray, src: np.ndarray) -> np.ndarray:
     return np.concatenate([out_rgb, out_alpha], axis=-1)
 
 
+def composite_supersample(matrix: np.ndarray, override: int | None = None) -> int:
+    """Sub-pixel samples per axis when warping the decal onto the body.
+
+    Derived from the homography: the decal is ~3.75x denser than the face it
+    lands on in the spike, so a point sample per pixel aliases a 1 px specular
+    line into dashes. 1.25x the texel ratio keeps the box filter past Nyquist.
+    """
+    if override:
+        return int(max(1, override))
+    forward = math.sqrt(abs(float(np.linalg.det(matrix[:2, :2]))))
+    texels_per_pixel = 1.0 / max(forward, 1e-6)
+    return int(min(6, max(2, math.ceil(texels_per_pixel * 1.25))))
+
+
 def warp_onto(
     canvas: np.ndarray,
     decal: np.ndarray,
     matrix: np.ndarray,
     origin: tuple[int, int],
+    supersample: int | None = None,
 ) -> np.ndarray:
-    """Warp the decal onto the canvas with a homography and composite it."""
+    """Warp the decal onto the canvas with a homography and composite it.
+
+    The decal is rendered at 3x CSS while the face it lands on is under 100 CSS
+    px, so this is a heavy *minification* (~3.75x in the spike). A single
+    bilinear sample per output pixel skips most texels, and a 1 px specular line
+    inside a fillet then flips on and off from pixel to pixel: the fillet reads
+    as dashes or "zebra stripes". Every output pixel is therefore box-filtered
+    with an N x N grid of sub-pixel samples, N derived from the decal pixels per
+    canvas pixel, so the streak resolves as a continuous (if dimmer) line. That
+    is also what the browser's own image filtering does at runtime.
+    """
     inverse = np.linalg.inv(matrix)
     height, width = canvas.shape[:2]
-    decal_height, decal_width = decal.shape[:2]
+    supersample = composite_supersample(matrix, supersample)
 
+    decal_height, decal_width = decal.shape[:2]
     decal_premultiplied = np.concatenate(
         [decal[..., :3] * decal[..., 3:4], decal[..., 3:4]], axis=-1
     )
 
-    xs, ys = np.meshgrid(
-        np.arange(width) + 0.5, np.arange(height) + 0.5
-    )
-    abs_x = xs + origin[0]
-    abs_y = ys + origin[1]
-    src_x, src_y = apply_homography(inverse, abs_x, abs_y)
-    inside = (
-        (src_x >= 0.0)
-        & (src_x <= decal_width)
-        & (src_y >= 0.0)
-        & (src_y <= decal_height)
-    )
-    sampled = sample_bilinear(decal_premultiplied, src_x, src_y)
-    sampled[~inside] = 0.0
-    alpha = sampled[..., 3:4]
-    straight = np.where(alpha > 0.0, sampled[..., :3] / np.maximum(alpha, 1e-8), 0.0)
+    accumulated = np.zeros((height, width, 4), dtype=np.float64)
+    for offset_y in range(supersample):
+        for offset_x in range(supersample):
+            xs, ys = np.meshgrid(
+                np.arange(width) + (offset_x + 0.5) / supersample,
+                np.arange(height) + (offset_y + 0.5) / supersample,
+            )
+            src_x, src_y = apply_homography(inverse, xs + origin[0], ys + origin[1])
+            inside = (
+                (src_x >= 0.0)
+                & (src_x <= decal_width)
+                & (src_y >= 0.0)
+                & (src_y <= decal_height)
+            )
+            sampled = sample_bilinear(decal_premultiplied, src_x, src_y)
+            sampled[~inside] = 0.0
+            accumulated += sampled
+    accumulated /= supersample * supersample
+
+    alpha = accumulated[..., 3:4]
+    straight = np.where(alpha > 0.0, accumulated[..., :3] / np.maximum(alpha, 1e-8), 0.0)
     return over(canvas, np.concatenate([straight, alpha], axis=-1))
 
 
@@ -1229,7 +1260,9 @@ def main() -> None:
         die("face homography does not map the decal rect onto the face quad")
 
     # ---- composite panel ------------------------------------------------- #
-    composite = warp_onto(body_with_shadow, decal, matrix, (x0, y0))
+    supersample = composite_supersample(matrix)
+    log(f"composite supersample: {supersample}x{supersample} (decal minification)")
+    composite = warp_onto(body_with_shadow, decal, matrix, (x0, y0), supersample)
     composite_path = out_dir / spec["outputs"]["composite"].format(
         code=decal_spec["code"], orientation=decal_spec["orientation"]
     )
