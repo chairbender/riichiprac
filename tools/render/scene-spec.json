@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "name": "rendered-table-v1",
+  "blender": {
+    "requiredVersion": "4.5.9"
+  },
+  "scene": {
+    "widthCss": 1440,
+    "heightCss": 900,
+    "pixelRatio": 2,
+    "engine": "CYCLES",
+    "device": "CPU",
+    "samples": 256,
+    "useAdaptiveSampling": true,
+    "adaptiveThreshold": 0.01,
+    "denoise": true,
+    "denoiser": "OPENIMAGEDENOISE",
+    "filmTransparent": true,
+    "colorManagement": {
+      "displayDevice": "sRGB",
+      "viewTransform": "AgX",
+      "look": "AgX - Medium High Contrast",
+      "exposure": 0,
+      "gamma": 1
+    }
+  },
+  "tile": {
+    "width": 0.75,
+    "height": 1.0,
+    "thickness": 0.5,
+    "bevel": {
+      "width": 0.035,
+      "segments": 4,
+      "angleLimitDegrees": 30,
+      "hardenNormals": true
+    },
+    "faceInset": 0.035,
+    "backTopEdgeFraction": 0.4,
+    "materials": {
+      "ivory": {
+        "hex": "#f5f0eb",
+        "roughness": 0.35
+      },
+      "blue": {
+        "hex": "#2a5fa6",
+        "roughness": 0.38
+      }
+    }
+  },
+  "table": {
+    "size": 80,
+    "surface": {
+      "hex": "#12533a",
+      "roughness": 0.92
+    },
+    "shadowCatcher": true
+  },
+  "world": {
+    "hex": "#b9c6d6",
+    "strength": 0.3
+  },
+  "camera": {
+    "position": [
+      0,
+      -26.4,
+      9.0
+    ],
+    "target": [
+      0,
+      1.0,
+      0.2
+    ],
+    "lensMm": 65,
+    "sensorWidthMm": 36,
+    "sensorFit": "HORIZONTAL",
+    "shiftX": 0,
+    "shiftY": 0.16,
+    "clipStart": 1,
+    "clipEnd": 200
+  },
+  "lights": [
+    {
+      "id": "key",
+      "location": [
+        -27,
+        -42,
+        48
+      ],
+      "target": [
+        0,
+        0.5,
+        0
+      ],
+      "size": 27,
+      "sizeY": 21,
+      "energyW": 97200,
+      "hex": "#fff1dc"
+    },
+    {
+      "id": "fill",
+      "location": [
+        30,
+        -30,
+        27
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "size": 42,
+      "sizeY": 27,
+      "energyW": 26700,
+      "hex": "#dfe9ff"
+    },
+    {
+      "id": "rim",
+      "location": [
+        6,
+        30,
+        36
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "size": 30,
+      "sizeY": 21,
+      "energyW": 31600,
+      "hex": "#ffffff"
+    }
+  ],
+  "hand": {
+    "count": 14,
+    "spacing": 0.82,
+    "centerX": 0,
+    "y": -4.4,
+    "pose": "hand-upright"
+  },
+  "decals": {
+    "cssFace": [
+      180,
+      240
+    ],
+    "renderScale": 3,
+    "paddingPixels": 1,
+    "rigs": {
+      "upright": {
+        "slotY": -4.4,
+        "cameraDistance": 5.0,
+        "symbolRotationDeg": 0
+      }
+    }
+  },
+  "spike": {
+    "slotIndex": 0,
+    "shadowGutterDevicePx": 32,
+    "zoom": { "x": 24, "y": 24, "width": 180, "height": 80, "scale": 4 },
+    "decal": {
+      "code": "1m",
+      "orientation": "upright",
+      "svg": "faces/Regular-Man1-m.svg"
+    }
+  },
+  "outputs": {
+    "body": "hand-{index}.body.png",
+    "decal": "{code}-{orientation}.decal.png",
+    "composite": "{code}-{orientation}.composite.png",
+    "zoom": "contact-zoom.png",
+    "manifest": "manifest.json",
+    "contactSheet": "contact-sheet.png"
+  }
+}

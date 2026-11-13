@@ -1,0 +1,14 @@
+{
+  "name": "riichiprac-render",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Offline rendered-table asset pipeline (Blender + resvg). Never bundled or shipped to the frontend.",
+  "type": "module",
+  "scripts": {
+    "render": "bash render.sh",
+    "rasterize": "node scripts/rasterize-face.mjs"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "2.6.2"
+  }
+}

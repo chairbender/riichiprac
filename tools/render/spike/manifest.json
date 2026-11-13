@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "generatedBy": "tools/render/build_and_render.py",
+  "spec": "scene-spec.json",
+  "blender": "4.5.9 LTS",
+  "units": "device px, origin top-left, y down; divide by pixelRatio for CSS",
+  "pixelRatio": 2,
+  "scene": {
+    "width": 1440,
+    "height": 900,
+    "widthDevicePx": 2880,
+    "heightDevicePx": 1800,
+    "camera": "fixed"
+  },
+  "facePixels": [
+    360,
+    480
+  ],
+  "background": null,
+  "decals": {
+    "pixels": [
+      492,
+      672
+    ],
+    "paddingPixels": 1,
+    "frameUnits": [
+      0.6833333333333333,
+      0.9333333333333333
+    ],
+    "renderedAtScale": 3,
+    "note": "faceMatrix maps the decal image's full pixel rect (top-left origin, y down) onto decalQuad."
+  },
+  "slots": [
+    {
+      "id": "hand-0",
+      "pose": "hand-upright",
+      "body": "hand-0.body.png",
+      "x": 139,
+      "y": 1489,
+      "width": 268,
+      "height": 308,
+      "faceQuad": [
+        [
+          180.172,
+          1565.856
+        ],
+        [
+          331.263,
+          1565.856
+        ],
+        [
+          344.573,
+          1757.773
+        ],
+        [
+          195.297,
+          1757.773
+        ]
+      ],
+      "decalQuad": [
+        [
+          179.774,
+          1565.508
+        ],
+        [
+          331.609,
+          1565.508
+        ],
+        [
+          344.963,
+          1758.113
+        ],
+        [
+          194.958,
+          1758.113
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.308606596, -1.49369623e-10, 0, -8.22020359e-14, 0.0261323809, 0.318519712, 0, 1.81475055e-05, 0, 0, 1, 0, 179.774222, 1565.50831, 0, 1)",
+      "orientation": "upright",
+      "drawOrder": 10,
+      "shadowGutterPx": 32,
+      "clipped": false
+    }
+  ],
+  "faces": {
+    "1m": {
+      "upright": "1m-upright.decal.png"
+    }
+  },
+  "measurements": {
+    "faceHeightPx": 191.92,
+    "topEdgeProjectedPx": 37.25,
+    "blueSliverExpectedPx": 14.9,
+    "blueSliverMeasuredPx": 13
+  }
+}

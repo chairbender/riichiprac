@@ -169,6 +169,9 @@ batch is rerun.
   run the app.
 - Pin the Blender version and record render settings (engine, samples, denoise, colour
   management) so assets can be reproduced.
+- The Cycles *pixels* are deterministic (fixed seed, fixed samples, CPU). Blender's PNG
+  container bytes can still differ between runs, so compare decoded pixels when checking
+  reproducibility, not file hashes.
 - Never hand-edit a generated sprite.
 
 ## 7. Initial scene spec
@@ -353,6 +356,26 @@ headless browser).
     browser. Raw full-face SVGs are vendored from the public-domain
     `riichi-mahjong-tiles` upstream at a pinned commit under
     `tools/render/faces/` (the npm package only ships React components).
+
+### Task 1 spike results
+
+The Task 1 spike ([`tools/render/README.md`](tools/render/README.md)) proves the
+body/decal split and confirms items 2, 3, 6, and 7 above. One constraint it adds
+for Tasks 2–3:
+
+- **The light rig must be distant.** Decals are lit once per orientation but
+  composite onto bodies at many positions. A close area rig made the ivory
+  24–30% brighter at one hand slot than at the canonical upright rig, which
+  showed as a visible rectangle around the decal. The spec now uses a large,
+  distant rig (key ≈ 66 units away) so illumination varies only a few percent
+  across the hand row. Do not move the lights closer without re-checking the
+  decal/body seam.
+- Measured at `hand-0`: the 0.5-unit top edge projects to 37.25 device px, of
+  which the rear 40% blue is a 13 px run above a 191.92 px face (≈ 6.5 CSS px of
+  blue at 2×). The top-strip method reads as a sliver; no lean or extra sprite.
+- The decal is 492 × 672 px at 3× CSS (inset 0.68 × 0.93 plus a 1 px gutter).
+  Its ivory lands within 1/255 of the body face at the seam, so no runtime mask
+  or blend mode is needed.
 
 ## 13. Task chain
 
