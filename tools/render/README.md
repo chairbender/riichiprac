@@ -87,9 +87,10 @@ It serves a browser UI (no build step, local only) with:
 - **mask blur** (mm), **paint edge** (fraction + mm inset) and **preview
   samples**;
 - **lighting**: key azimuth/elevation/power/softness, fill azimuth/elevation/
-  power, rim power and ambient strength, with a live top-view compass of the
-  rig. The preview shows the effect on the decal; the body sprites need the full
-  render.
+  power, rim power and ambient strength, with a live top-view compass of the rig;
+- a **preview image** switch: **full tile** (body + decal, shows the top-edge and
+  side lighting) or **decal only** (fast). Full tile is roughly 3× slower but is
+  what you want when tuning lights.
 
 "Render preview" writes a throwaway spec, rasterises the recoloured symbol and
 renders **only the decal** at 2×, 48 samples, a 0.6 carve grid and 4 AO samples —
@@ -297,18 +298,34 @@ light's target (`azimuthDeg`, `elevationDeg`, `distance`; azimuth 0 is front,
 90 right, 180 behind, 270 left), which is what the tuner's direction sliders
 edit. `build_lights` turns those into positions; do not hand-place xyz.
 
-- **key**: azimuth 0, elevation 74, 56 units out. Centred over the hand row, so
-  the up-facing top edge takes ~95% of its irradiance and the vertical face
-  ~28%; nothing is biased to the left any more.
-- **fill**: azimuth 46, elevation 12, 34 units. Lights the face and the right
-  side.
-- **rim**: azimuth 170, elevation 45, 40 units, behind.
-- **ambient** world strength 0.35.
+- **key**: azimuth 0, elevation 70, 56 units out, 110 kW. Centred over the hand
+  row, so the up-facing top edge takes ~95% of its irradiance; nothing is biased
+  left or right. It is the dominant light: on the top edge it is ~25× the fill,
+  and on the vertical face ~3×.
+- **fill**: azimuth 46, elevation 12, 34 units out, 7 kW. A soft, dim fill that
+  lifts the face; it is deliberately not allowed to become a second key.
+- **rim**: azimuth 170, elevation 45, 40 units, 22 kW, behind.
+- **ambient** world strength 0.5, lifting the face without adding highlights.
 
-Watch the fill azimuth: at 25° it sits close to the face's specular mirror and
-the glossy paint picks up a broad white sheen (measured red floor went from
-RGB(204, 18, 1) at 46° to RGB(214, 163, 168) at 25°). Keep it around 45° or drop
-its power; the tuner exposes it so you can see this directly. The effect comes
+Measured on the spike: top edge RGB(239, 237, 234), face RGB(213, 211, 209),
+left bevel RGB(166, 167, 168) — the up-facing edge is the brightest surface and
+there is no left-edge highlight.
+
+**Key/fill practice.** The key is the main light (typically 2–4× the fill): it
+sets the form and the primary highlight and is placed off-axis. The fill is
+soft, dim and near the camera axis; its job is to lift shadows, not to make its
+own highlight. In a top-lit table the key's specular highlight lands on the
+up-facing edges, which is the Tenhou read. A bright or frontal fill breaks that:
+it is much closer to the face's specular mirror, so it owns the flat face's
+sheen and its highlight moves as you change the fill. Our first pass had the
+fill contributing ~1.8× the key to the face, which is why the fill seemed to
+control where the highlights appeared.
+
+Watch the fill direction: at azimuth 0 / elevation 32 (or 25° / 12°) the fill
+sits near the face's specular mirror and the glossy paint picks up a broad white
+sheen that desaturates the red — measured on the paint floor, RGB(192, 16, 3)
+with the fill at 46°/12° versus RGB(194, 123, 121) with a bright frontal fill.
+Keep it around 45°/12° and dim, or raise the paint roughness. The effect comes
 from the light *angle*, not from moving the light closer — see the
 position-independence constraint below.
 

@@ -1088,9 +1088,11 @@ def main() -> None:
         # Diagnostic only: the same slot face-down, to prove the blue backing
         # wraps the whole body. Real face-down/concealed body poses are baked
         # with the slot inventory (Task 2) and consumed by Tasks 5 and 11.
-        back_slot = dict(slot, pose="hand-upright-back")
-        back_path = out_dir / spec["outputs"]["back"].format(index=slot["index"])
-        bake_body(spec, scene, camera, tile, table, back_slot, out_dir, back_path, gutter)
+        # The tuner's full-tile preview skips it.
+        if not spec.get("preview", {}).get("skipBack"):
+            back_slot = dict(slot, pose="hand-upright-back")
+            back_path = out_dir / spec["outputs"]["back"].format(index=slot["index"])
+            bake_body(spec, scene, camera, tile, table, back_slot, out_dir, back_path, gutter)
 
     # ---- face decal ------------------------------------------------------ #
     tile_spec = spec["tile"]

@@ -69,6 +69,16 @@
       }
       .hint { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
       input[type="range"] { width: 100%; accent-color: var(--accent); }
+      select {
+        width: 100%;
+        padding: 7px 9px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: #0f1c16;
+        color: var(--text);
+        font: inherit;
+        font-size: 13px;
+      }
       input[type="color"] {
         width: 100%;
         height: 34px;
@@ -187,6 +197,15 @@
           <div class="hint">Render cost only; denoised either way.</div>
         </div>
 
+        <div class="control">
+          <div class="row"><label for="mode">Preview image</label><output id="modeOut"></output></div>
+          <select id="mode">
+            <option value="tile">Full tile (body + decal)</option>
+            <option value="decal">Decal only (fast)</option>
+          </select>
+          <div class="hint">The full tile shows the body's top-edge and side lighting; it takes ~3× longer.</div>
+        </div>
+
         <details open>
           <summary>Lighting</summary>
           <div class="hint" style="margin-bottom: 12px">
@@ -295,6 +314,7 @@
           fillPower: Number(el("fillPower").value),
           rimPower: Number(el("rimPower").value),
           worldStrength: Number(el("worldStrength").value),
+          mode: el("mode").value,
           samples: Number(el("samples").value),
         };
       }
@@ -319,6 +339,7 @@
         set("fillPower", params.fillPower);
         set("rimPower", params.rimPower);
         set("worldStrength", params.worldStrength);
+        if (params.mode) el("mode").value = params.mode;
         set("samples", params.samples ?? 48);
       }
 
@@ -440,7 +461,18 @@
         el("paintRedOut").textContent = params.paintRed;
         el("profileNote").textContent =
           "The curve is the exact Bézier the mesh uses; the horizontal scale is physical, the depth is exaggerated.";
-        el("decalDims").textContent = "preview 2× · final 3×";
+        el("modeOut").textContent = params.mode === "decal" ? "decal only" : "full tile";
+      }
+
+      const images = { tile: null, decal: null };
+
+      function showPreview() {
+        const mode = el("mode").value;
+        const src = images[mode] ?? images[mode === "tile" ? "decal" : "tile"];
+        if (src) el("decal").src = src;
+        el("decalDims").textContent =
+          mode === "tile" ? "body + decal · preview 2× · final 3×" : "decal · preview 2× · final 3×";
+        el("modeOut").textContent = mode === "decal" ? "decal only" : "full tile";
       }
 
       function drawAll() {
@@ -462,8 +494,10 @@
         state.faceHeightMm = data.params.faceHeightMm;
         writeParams(data.params);
         drawAll();
-        if (data.decalExists) {
-          el("decal").src = data.decal;
+        images.decal = data.decalExists ? data.decal : null;
+        images.tile = data.compositeExists ? data.composite : null;
+        if (images.decal || images.tile) {
+          showPreview();
           el("decalTime").textContent = "last preview loaded";
         } else {
           setStatus("No preview yet — press Render preview.");
@@ -488,7 +522,9 @@
           });
           const data = await response.json();
           if (!data.ok) throw new Error(data.error || "render failed");
-          el("decal").src = data.decal;
+          images.decal = data.decal;
+          if (data.composite) images.tile = data.composite;
+          showPreview();
           setStatus(`Preview ready in ${data.elapsed}s.`);
         } catch (error) {
           setStatus(`Render failed: ${error.message}`, true);
@@ -516,6 +552,10 @@
       for (const id of ids) {
         el(id).addEventListener("input", drawAll);
       }
+      el("mode").addEventListener("change", () => {
+        drawAll();
+        showPreview();
+      });
       el("render").addEventListener("click", renderPreview);
       el("apply").addEventListener("click", applyParams);
       el("reset").addEventListener("click", () => {

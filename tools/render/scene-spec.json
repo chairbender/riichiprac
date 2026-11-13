@@ -74,7 +74,7 @@
   },
   "world": {
     "hex": "#b9c6d6",
-    "strength": 0.35
+    "strength": 0.5
   },
   "camera": {
     "position": [
@@ -104,11 +104,11 @@
         0
       ],
       "azimuthDeg": 0,
-      "elevationDeg": 74,
+      "elevationDeg": 70,
       "distance": 56,
       "size": 26,
       "sizeY": 20,
-      "energyW": 97200,
+      "energyW": 110000,
       "hex": "#fff4e4"
     },
     {
@@ -123,7 +123,7 @@
       "distance": 34,
       "size": 42,
       "sizeY": 27,
-      "energyW": 26700,
+      "energyW": 7000,
       "hex": "#dfe9ff"
     },
     {

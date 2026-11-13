@@ -31,6 +31,9 @@ const base = JSON.parse(readFileSync(baseSpecPath, 'utf8'));
 const decalFile = base.outputs.decal
   .replace('{code}', base.spike.decal.code)
   .replace('{orientation}', base.spike.decal.orientation);
+const compositeFile = base.outputs.composite
+  .replace('{code}', base.spike.decal.code)
+  .replace('{orientation}', base.spike.decal.orientation);
 
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 const num = (value, fallback) => {
@@ -63,6 +66,7 @@ function currentParams() {
     fillPower: fill.energyW,
     rimPower: rim.energyW,
     worldStrength: base.world.strength,
+    mode: "tile",
     samples: 48,
     tileThicknessMm: base.tile.proportionsMm.thickness,
     faceHeightMm: mmPerUnit,
@@ -121,7 +125,8 @@ function buildPreviewSpec(params) {
     spec.tile.materials.paint.red = params.paintRed;
   }
   applyLighting(spec, params);
-  spec.preview = { decalOnly: true };
+  spec.preview =
+    params.mode === "decal" ? { decalOnly: true } : { skipBack: true };
   return spec;
 }
 
@@ -227,6 +232,8 @@ const server = http.createServer(async (request, response) => {
         blenderFound: existsSync(blender),
         decal: `/decal.png?v=${Date.now()}`,
         decalExists: existsSync(join(previewOut, decalFile)),
+        composite: `/composite.png?v=${Date.now()}`,
+        compositeExists: existsSync(join(previewOut, compositeFile)),
       });
       return;
     }
@@ -247,7 +254,9 @@ const server = http.createServer(async (request, response) => {
         sendJson(response, 200, {
           ok: true,
           elapsed,
+          mode: params.mode === "decal" ? "decal" : "tile",
           decal: `/decal.png?v=${Date.now()}`,
+          composite: `/composite.png?v=${Date.now()}`,
           log: output.split('\n').filter((line) => line.includes('[render]')).slice(-6),
         });
       } catch (error) {
@@ -275,6 +284,18 @@ const server = http.createServer(async (request, response) => {
       if (!existsSync(file)) {
         response.writeHead(404);
         response.end('render a preview first');
+        return;
+      }
+      response.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-store' });
+      createReadStream(file).pipe(response);
+      return;
+    }
+
+    if (request.method === 'GET' && url.pathname === '/composite.png') {
+      const file = join(previewOut, compositeFile);
+      if (!existsSync(file)) {
+        response.writeHead(404);
+        response.end('render a full-tile preview first');
         return;
       }
       response.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-store' });
