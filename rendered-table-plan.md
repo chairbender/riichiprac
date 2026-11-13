@@ -191,7 +191,9 @@ first renders, but it does not reopen the section 12 decisions.
 - Small bevel, 3–4 segments; white melamine body with a glossy specular response; blue melamine backing.
 - Fixed perspective camera with a long lens (subtle convergence and peripheral side faces,
   close to Tenhou).
-- Key/fill/rim area lights from above/front-left; a soft contact shadow.
+- Key/fill/rim area lights from above/front-left; a soft contact shadow. Task 1.5
+  ([`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md))
+  replaces the single key with parlor strip lights before the bulk asset bakes.
 - AgX colour management; denoised Cycles render.
 - Hand tiles stay vertical; the blue backing (the back face plus the rear 30% of
   every side edge) gives the blue rim on the top and side edges (section 12,
@@ -443,6 +445,15 @@ for Tasks 2–3:
 | 12 | 261113-070318 | Polish and cutover | all |
 
 Tasks 2 and 3 can run in parallel after Task 1. Tasks 5–8 can run in parallel after Task 4.
+
+**Task 1.5 (proposed, no command-center ID yet): parlor strip-light rig.** Task 1
+ships a single large studio key; the target look is a mahjong parlor with
+linear fluorescents, whose reflections read as long white streaks on the bevels
+and inside the engraving. Task 1.5 replaces the key with 2–4 elongated strip
+lights, exposes their length/width/roll in the tuner, and rolls the carve back
+toward a physical depth. It must run **before Tasks 2 and 3**, because the rig is
+baked into every body sprite and decal. Plan:
+[`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md).
 
 ## 14. Risks
 

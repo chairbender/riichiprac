@@ -409,6 +409,11 @@ diagnostic from `spike/` once the real back poses exist.
 
 ## Next tasks
 
+- Task 1.5 (proposed): replace the single studio key with parlor strip lights so
+  the ceiling fluorescents read as long streaks on the bevels and inside the
+  engraving. Plan:
+  [`rendered-table-strip-lights-plan.md`](../rendered-table-strip-lights-plan.md).
+  Do this before Tasks 2 and 3, because the rig is baked into every sprite.
 - Task 2: add the rest of the hand slots, rivers, melds, wall, and the table
   background to the spec; render the background from the same camera and write
   the full slot inventory and draw order.
