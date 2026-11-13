@@ -185,24 +185,31 @@ def configure_render(scene: bpy.types.Scene, spec: dict) -> None:
 def build_materials(spec: dict) -> dict[str, bpy.types.Material]:
     tile = spec["tile"]["materials"]
 
-    ivory = new_material("tile-ivory")
-    bsdf = principled(ivory)
-    bsdf.inputs["Base Color"].default_value = hex_linear(tile["ivory"]["hex"])
-    bsdf.inputs["Roughness"].default_value = tile["ivory"]["roughness"]
+    # Jansou tiles are white melamine with a coloured melamine backing: an
+    # opaque, hard thermoset with a glossy surface and a painted, engraved
+    # symbol. The face colour is an off-white/ivory tone, not actual ivory.
+    face = new_material("tile-face-melamine")
+    bsdf = principled(face)
+    bsdf.inputs["Base Color"].default_value = hex_linear(tile["face"]["hex"])
+    bsdf.inputs["Roughness"].default_value = tile["face"]["roughness"]
     bsdf.inputs["Specular IOR Level"].default_value = 0.5
+    bsdf.inputs["Coat Weight"].default_value = tile["face"]["coat"]
+    bsdf.inputs["Coat Roughness"].default_value = tile["face"]["coatRoughness"]
 
-    blue = new_material("tile-blue")
-    bsdf = principled(blue)
-    bsdf.inputs["Base Color"].default_value = hex_linear(tile["blue"]["hex"])
-    bsdf.inputs["Roughness"].default_value = tile["blue"]["roughness"]
+    backing = new_material("tile-backing-melamine")
+    bsdf = principled(backing)
+    bsdf.inputs["Base Color"].default_value = hex_linear(tile["backing"]["hex"])
+    bsdf.inputs["Roughness"].default_value = tile["backing"]["roughness"]
     bsdf.inputs["Specular IOR Level"].default_value = 0.45
+    bsdf.inputs["Coat Weight"].default_value = tile["backing"]["coat"]
+    bsdf.inputs["Coat Roughness"].default_value = tile["backing"]["coatRoughness"]
 
     felt = new_material("table-felt")
     bsdf = principled(felt)
     bsdf.inputs["Base Color"].default_value = hex_linear(spec["table"]["surface"]["hex"])
     bsdf.inputs["Roughness"].default_value = spec["table"]["surface"]["roughness"]
 
-    return {"ivory": ivory, "blue": blue, "felt": felt}
+    return {"face": face, "backing": backing, "felt": felt}
 
 
 def build_world(scene: bpy.types.Scene, spec: dict) -> None:
@@ -253,7 +260,7 @@ def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types
         )
 
     # Split the body on the plane the blue backing wraps to: the rear band of
-    # every side edge becomes blue, and the front band stays ivory.
+    # every side edge becomes blue, and the front band stays white melamine.
     cut_z = back_frac * thickness
     bmesh.ops.bisect_plane(
         bm,
@@ -264,9 +271,9 @@ def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types
     )
     bm.normal_update()
 
-    # The tile is an ivory face plate on a solid blue backing: the back face and
-    # the rear band of *every* side edge are blue, so the colour wraps the whole
-    # perimeter, not just the top edge.
+    # The tile is a white melamine face plate on a solid blue melamine backing:
+    # the back face and the rear band of *every* side edge are blue, so the
+    # colour wraps the whole perimeter, not just the top edge.
     for face in bm.faces:
         centre = face.calc_center_median()
         is_side = abs(face.normal.z) < 0.5
@@ -278,8 +285,8 @@ def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types
     bm.free()
     for polygon in mesh.polygons:
         polygon.use_smooth = True
-    mesh.materials.append(materials["ivory"])
-    mesh.materials.append(materials["blue"])
+    mesh.materials.append(materials["face"])
+    mesh.materials.append(materials["backing"])
 
     obj = new_object("tile", mesh)
     modifier = obj.modifiers.new("Bevel", "BEVEL")
@@ -638,7 +645,7 @@ def warp_onto(
 
 
 def measure_blue_sliver(sprite: np.ndarray, column: int) -> dict:
-    """Measure the blue back sliver along the top edge of a standing tile."""
+    """Measure the blue backing along the top edge of a standing tile."""
     height, width = sprite.shape[:2]
     column = max(0, min(width - 1, column))
     alpha = sprite[:, column, 3]
@@ -655,6 +662,119 @@ def measure_blue_sliver(sprite: np.ndarray, column: int) -> dict:
             break
         run += 1
     return {"bluePx": run, "topRow": top}
+
+
+# --------------------------------------------------------------------------- #
+# Carved face plate
+# --------------------------------------------------------------------------- #
+
+
+def blur2d(array: np.ndarray, sigma: float) -> np.ndarray:
+    """Separable Gaussian blur; the carve wall is a smooth ramp of the mask."""
+    radius = max(1, int(round(sigma * 3)))
+    offsets = np.arange(-radius, radius + 1, dtype=np.float32)
+    kernel = np.exp(-(offsets**2) / (2.0 * sigma * sigma))
+    kernel /= kernel.sum()
+    result = array.astype(np.float32)
+    for axis in (0, 1):
+        padding = [(0, 0), (0, 0)]
+        padding[axis] = (radius, radius)
+        padded = np.pad(result, padding)
+        accumulated = np.zeros_like(result)
+        count = result.shape[axis]
+        for index, weight in enumerate(kernel):
+            window = [slice(None), slice(None)]
+            window[axis] = slice(index, index + count)
+            accumulated += weight * padded[tuple(window)]
+        result = accumulated
+    return result
+
+
+def bilinear2d(array: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
+    height, width = array.shape
+    xs = np.clip(xs, 0.0, width - 1.001)
+    ys = np.clip(ys, 0.0, height - 1.001)
+    x0 = np.floor(xs).astype(np.int32)
+    y0 = np.floor(ys).astype(np.int32)
+    x1 = np.minimum(x0 + 1, width - 1)
+    y1 = np.minimum(y0 + 1, height - 1)
+    fx = xs - x0
+    fy = ys - y0
+    return (
+        array[y0, x0] * (1 - fx) * (1 - fy)
+        + array[y0, x1] * fx * (1 - fy)
+        + array[y1, x0] * (1 - fx) * fy
+        + array[y1, x1] * fx * fy
+    )
+
+
+def build_carved_face(
+    spec: dict,
+    material: bpy.types.Material,
+    mask: np.ndarray,
+    half_w: float,
+    half_h: float,
+    top: float,
+    uv_rect: tuple[float, float, float, float],
+    decal_pixels: tuple[int, int],
+) -> bpy.types.Object:
+    """Subdivided face plate with the painted symbol physically recessed.
+
+    The symbol mask's alpha is blurred into a smooth groove profile, sampled per
+    grid vertex, and pushed into the tile by `depthFractionOfThickness`. UVs stay
+    a planar top-down projection, so the merged face texture paints the groove
+    exactly where the carve is.
+    """
+    carve = spec["decals"]["carve"]
+    depth = carve["depthFractionOfThickness"] * spec["tile"]["thickness"]
+    columns = max(2, round(decal_pixels[0] * carve["gridScale"]))
+    rows = max(2, round(decal_pixels[1] * carve["gridScale"]))
+    u0, v0, u1, v1 = uv_rect
+
+    grid_x = np.linspace(-half_w, half_w, columns, dtype=np.float64)
+    grid_y = np.linspace(half_h, -half_h, rows, dtype=np.float64)
+    u = np.linspace(u0, u1, columns)
+    v = np.linspace(v1, v0, rows)  # row 0 is the top of the face (v = v1)
+    uu, vv = np.meshgrid(u, v)
+
+    mask_height, mask_width = mask.shape
+    heights = bilinear2d(
+        mask, uu * (mask_width - 1), (1.0 - vv) * (mask_height - 1)
+    )
+    z = top - depth * heights
+
+    xx, yy = np.meshgrid(grid_x, grid_y)
+    verts = np.stack([xx.ravel(), yy.ravel(), z.ravel()], axis=1)
+
+    indices = np.arange(rows * columns).reshape(rows, columns)
+    faces = np.stack(
+        [
+            indices[:-1, :-1].ravel(),
+            indices[1:, :-1].ravel(),
+            indices[1:, 1:].ravel(),
+            indices[:-1, 1:].ravel(),
+        ],
+        axis=1,
+    )
+
+    mesh = bpy.data.meshes.new("face-plane")
+    mesh.from_pydata(verts.tolist(), [], faces.tolist())
+    mesh.update()
+    for polygon in mesh.polygons:
+        polygon.use_smooth = True
+    mesh.materials.append(material)
+
+    uv_layer = mesh.uv_layers.new(name="UVMap")
+    uv_top_left = np.stack([uu[:-1, :-1].ravel(), vv[:-1, :-1].ravel()], axis=1)
+    uv_bottom_left = np.stack([uu[1:, :-1].ravel(), vv[1:, :-1].ravel()], axis=1)
+    uv_bottom_right = np.stack([uu[1:, 1:].ravel(), vv[1:, 1:].ravel()], axis=1)
+    uv_top_right = np.stack([uu[:-1, 1:].ravel(), vv[:-1, 1:].ravel()], axis=1)
+    uvs = np.concatenate(
+        [uv_top_left, uv_bottom_left, uv_bottom_right, uv_top_right], axis=1
+    )
+    uv_layer.data.foreach_set("uv", uvs.ravel().tolist())
+
+    return new_object("face-plane", mesh)
 
 
 # --------------------------------------------------------------------------- #
@@ -716,9 +836,20 @@ def main() -> None:
     frame_w = decal_width / px_per_unit
     frame_h = decal_height / px_per_unit
 
-    face_texture = RENDER_DIR / "build" / "faces" / f"{decal_spec['code']}-{round(spec['decals']['cssFace'][0] * spec['decals']['renderScale'])}x{round(spec['decals']['cssFace'][1] * spec['decals']['renderScale'])}.png"
-    if not face_texture.exists():
-        die(f"face texture {face_texture} is missing; run scripts/rasterize-face.mjs first")
+    texture_width = round(spec["decals"]["cssFace"][0] * spec["decals"]["renderScale"])
+    texture_height = round(spec["decals"]["cssFace"][1] * spec["decals"]["renderScale"])
+    face_texture = (
+        RENDER_DIR / "build" / "faces" / f"{decal_spec['code']}-{texture_width}x{texture_height}.png"
+    )
+    symbol_texture = (
+        RENDER_DIR
+        / "build"
+        / "faces"
+        / f"{decal_spec['code']}-symbol-{texture_width}x{texture_height}.png"
+    )
+    for path in (face_texture, symbol_texture):
+        if not path.exists():
+            die(f"{path} is missing; run scripts/rasterize-face.mjs first")
 
     tile.hide_render = True
     table.hide_render = True
@@ -733,7 +864,10 @@ def main() -> None:
     texture.interpolation = "Linear"
     links.new(texture.outputs["Color"], bsdf.inputs["Base Color"])
     links.new(texture.outputs["Alpha"], bsdf.inputs["Alpha"])
-    bsdf.inputs["Roughness"].default_value = tile_spec["materials"]["ivory"]["roughness"]
+    face_spec = tile_spec["materials"]["face"]
+    bsdf.inputs["Roughness"].default_value = face_spec["roughness"]
+    bsdf.inputs["Coat Weight"].default_value = face_spec["coat"]
+    bsdf.inputs["Coat Roughness"].default_value = face_spec["coatRoughness"]
 
     half_w = tile_spec["width"] / 2.0 - tile_spec["faceInset"]
     half_h = tile_spec["height"] / 2.0 - tile_spec["faceInset"]
@@ -742,15 +876,19 @@ def main() -> None:
     v0 = tile_spec["faceInset"] / tile_spec["height"]
     v1 = 1.0 - v0
     top = tile_spec["thickness"]
-    verts = [(-half_w, -half_h, top), (half_w, -half_h, top), (half_w, half_h, top), (-half_w, half_h, top)]
-    mesh = bpy.data.meshes.new("face-plane")
-    mesh.from_pydata(verts, [], [(0, 1, 2, 3)])
-    mesh.update()
-    mesh.materials.append(decal_material)
-    uv_layer = mesh.uv_layers.new(name="UVMap")
-    for loop, uv in zip(mesh.loops, [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]):
-        uv_layer.data[loop.index].uv = uv
-    decal_plane = new_object("face-plane", mesh)
+
+    carve_mask = load_rgba(symbol_texture)[..., 3]
+    carve_mask = blur2d(carve_mask, spec["decals"]["carve"]["blurPixels"])
+    decal_plane = build_carved_face(
+        spec,
+        decal_material,
+        carve_mask,
+        half_w,
+        half_h,
+        top,
+        (u0, v0, u1, v1),
+        (decal_width, decal_height),
+    )
 
     rig_slot = {"x": 0.0, "y": rig["slotY"]}
     decal_plane.matrix_world = pose_matrix("hand-upright", rig_slot, spec)
@@ -849,6 +987,7 @@ def main() -> None:
                 "width": round(tile_spec["width"], 5),
                 "thickness": round(tile_spec["thickness"], 5),
             },
+            "material": tile_spec["materials"]["face"]["material"],
             "backEdgeFraction": tile_spec["backEdgeFraction"],
         },
         "scene": {
@@ -868,6 +1007,21 @@ def main() -> None:
             "paddingPixels": padding,
             "frameUnits": [frame_w, frame_h],
             "renderedAtScale": spec["decals"]["renderScale"],
+            "carve": {
+                "depthUnits": round(
+                    spec["decals"]["carve"]["depthFractionOfThickness"]
+                    * tile_spec["thickness"],
+                    5,
+                ),
+                "depthFractionOfThickness": spec["decals"]["carve"][
+                    "depthFractionOfThickness"
+                ],
+                "blurPixels": spec["decals"]["carve"]["blurPixels"],
+                "grid": [
+                    max(2, round(decal_width * spec["decals"]["carve"]["gridScale"])),
+                    max(2, round(decal_height * spec["decals"]["carve"]["gridScale"])),
+                ],
+            },
             "note": "faceMatrix maps the decal image's full pixel rect (top-left origin, y down) onto decalQuad.",
         },
         "slots": [

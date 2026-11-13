@@ -15,7 +15,7 @@ the app a fully client-side, thin React client:
 
 - fixed camera, real perspective, visible tile sides and position-dependent highlights;
 - lit tile faces, including the symbol, baked per orientation;
-- smooth, soft shadows and an ivory/blue tile material that reads as physical;
+- smooth, soft shadows and a white melamine/blue melamine tile material that reads as physical;
 - no runtime 3D, WebGL, or 3D library;
 - the stacked layout stays the default and the flat top-down plan view stays available;
 - keyboard and screen-reader parity with the existing table views.
@@ -28,7 +28,7 @@ that depends only on its orientation, not its position. We follow that split:
 
 - **Body sprites are per slot.** The bevel highlights, sides, top edge, shadow, and blue
   back change with the camera angle at that position.
-- **Face decals are per tile code × orientation.** The ivory face and symbol are lit once
+- **Face decals are per tile code × orientation.** The white melamine face and symbol are lit once
   for each orientation class and reused at every position.
 
 Alternatives considered:
@@ -64,14 +64,17 @@ No 3D math, no WebGL, no canvas rendering, and no runtime SVG rasterisation are 
 
 ### Body sprite (one per slot and pose)
 
-- Beveled tile box: ivory front/sides, blue back.
+- Beveled tile box: white melamine front/sides, blue melamine backing.
 - Position-dependent lighting: bevel highlights, side faces, top edge, contact shadow.
 - Face-up and face-down variants as needed.
 - Rendered at the tile's actual slot, cropped to the slot's scene-pixel bounds.
 
 ### Face decal (one per tile code × orientation)
 
-- The full tile face: ivory background, symbol, and face shading, rendered lit.
+- The full tile face: the white melamine background, the engraved painted
+  symbol, and face shading, rendered lit. The symbol is real geometry: a
+  symbol-only SVG mask recesses the face plate before the paint texture is
+  applied, so the carve catches the light.
 - Orientation-dependent, **not** position-dependent.
 - Composited over the body's flat face and clipped to the inner face, so the body's bevel
   ring and position lighting remain visible.
@@ -141,13 +144,14 @@ The Blender script constructs everything procedurally:
 1. Reset the scene and build the table: felt plane, rail, wall ring, hand apron, compass
    base as needed.
 2. Build the tile body: a cube scaled to the tile dimensions, a bevel modifier with 3–4
-   segments, weighted normals, ivory and blue materials.
+   segments, weighted normals, white and blue melamine materials.
 3. Add the camera and area-light rig, tone mapping, denoise, and transparent film.
 4. For each body slot, place the tile at its slot transform, set the render crop, render a
    transparent body sprite, and record its scene-pixel rect and draw order.
 5. For each tile code × orientation class, place the tile on a canonical face-on rig
-   (section 12), apply the rasterised full-face texture, render the lit face
-   orthographically, crop it to the inner face, and record the face quad.
+   (section 12), apply the rasterised full-face texture to the inset face plate with the
+   symbol-only mask carving the recess, render the lit face orthographically, crop it to
+   the inner face, and record the face quad.
 6. Render the static table background from the same camera.
 7. Compute, for every slot and orientation, the CSS `matrix3d` that maps the decal's
    local pixel rectangle onto that slot's face quad, and write it into the manifest.
@@ -184,7 +188,7 @@ first renders, but it does not reopen the section 12 decisions.
   thickness), including the backing. The spec stores that ratio plus one world
   height, so at height 1.0 the face is 0.75 × 1.0 and the thickness 0.58929.
   The backing is the rear 30% of the thickness.
-- Small bevel, 3–4 segments; ivory body with a soft specular response; blue back.
+- Small bevel, 3–4 segments; white melamine body with a glossy specular response; blue melamine backing.
 - Fixed perspective camera with a long lens (subtle convergence and peripheral side faces,
   close to Tenhou).
 - Key/fill/rim area lights from above/front-left; a soft contact shadow.
@@ -298,13 +302,13 @@ headless browser).
    `faceInset = 0.035` tile-width units (about 4.7% of the 0.75-wide face, equal
    to the bevel radius) on every edge. It is cropped to that rectangle plus a
    1 px transparent gutter so resampling cannot show a seam. The body's face
-   underlay uses the same ivory base colour, so the decal edge blends without a
+   underlay uses the same face base colour, so the decal edge blends without a
    runtime mask, feather, or blend mode.
 3. **Canonical slots and face projection.** Every face is rendered on a
    canonical face-on orthographic rig, never from the scene camera, so a decal
    is position-independent. `upright` stands the tile vertically facing the
    camera; the four flat classes lay it horizontally with the symbol at
-   0/90/180/270°. The scene light rig and ivory material are reused, so vertical
+   0/90/180/270°. The scene light rig and melamine material are reused, so vertical
    and horizontal lighting still differ. Ortho scale is one tile width and the
    render is transparent outside the face.
 4. **Decal placement.** The pipeline computes a per-slot CSS `matrix3d`
@@ -315,11 +319,11 @@ headless browser).
    underlay. Paint order is background → bodies by ascending `drawOrder` → face
    decals → runtime overlays. Decals stay inside the bevel and never cover it.
 6. **Blue backing and sliver.** No forward lean and no separate sliver sprite.
-   The tile is an ivory face plate on a solid blue backing: the back face and
+   The tile is a white melamine face plate on a solid blue melamine backing: the back face and
    the rear 30% of **every** side edge are blue (`backEdgeFraction = 0.3`), so
-   the fixed raised camera sees a thin blue line above the ivory face of a
+   the fixed raised camera sees a thin blue line above the white face of a
    vertical hand tile *and* a blue band down the visible side. Task 1 corrected
-   this from "top edge only": the first render had an all-ivory side, which is
+   this from "top edge only": the first render had an all-white side, which is
    wrong for a backed tile, and then tuned the backing from 40% to 30%. Task 1
    checks the visible width at final resolution.
 7. **Shadows.** Contact shadows and felt ambient occlusion are baked into the
@@ -371,7 +375,7 @@ body/decal split and confirms items 2, 3, 6, and 7 above. One constraint it adds
 for Tasks 2–3:
 
 - **The light rig must be distant.** Decals are lit once per orientation but
-  composite onto bodies at many positions. A close area rig made the ivory
+  composite onto bodies at many positions. A close area rig made the face
   24–30% brighter at one hand slot than at the canonical upright rig, which
   showed as a visible rectangle around the decal. The spec now uses a large,
   distant rig (key ≈ 66 units away) so illumination varies only a few percent
@@ -384,8 +388,23 @@ for Tasks 2–3:
   (`#132986`) that renders as ≈ RGB(4, 69, 166) on the back face and
   ≈ RGB(71, 109, 196) on the key-lit top edge.
 - The decal is 492 × 672 px at 3× CSS (inset 0.68 × 0.93 plus a 1 px gutter).
-  Its ivory lands within 1/255 of the body face at the seam, so no runtime mask
-  or blend mode is needed.
+  Its face colour matches the body face within ~1.4% at the seam (canonical rig
+  vs an off-centre hand slot), which is invisible at 2×; treat ~2% as the
+  tolerance. No runtime mask or blend mode is needed.
+- **Material:** jansou tiles are white **melamine** with a coloured melamine
+  backing, not ivory. The spec keys are `materials.face` / `materials.backing`
+  (both tagged `melamine`), tuned as a glossy thermoset: roughness 0.16 / 0.18
+  plus a clear coat, not matte plastic.
+- **The symbol is carved, not printed.** A symbol-only SVG mask (same viewBox as
+  the merged face, so it aligns pixel-for-pixel) recesses a subdivided face
+  plate by 2% of the thickness (≈ 0.33 mm at jansou scale) before the paint
+  texture is applied. The carve is baked into the lit decal, so it is
+  orientation-lit like the rest of the face. Consequence for Task 3: each code
+  needs its symbol-only SVG and a ~330k-vertex face at `gridScale: 1.0`; expect
+  ~42 s per decal render and consider `gridScale` 0.75 for the 190-decal set.
+- **Lighting is top-heavy.** The key sits almost overhead, so the up-facing edge
+  is the brightest surface (Tenhou's read); the fill is low and frontal, and the
+  rim is behind. The angles do the work; the rig stays distant for decals.
 
 ## 13. Task chain
 

@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 /**
- * Rasterise the spike tile face SVG to a PNG texture for the Blender scene.
+ * Rasterise the spike tile face SVGs to PNG textures for the Blender scene.
  *
- * The face source is a full-face SVG (300 x 400 viewBox, ivory plate + symbol)
- * vendored under tools/render/faces. The output is the full face at
- * `cssFace * renderScale` pixels, i.e. the resolution the decal plane samples
- * 1:1 across the inset face.
+ * Two rasters come from the same 300 x 400 viewBox, so they align exactly:
+ *   <code>-<w>x<h>.png        the full face (white plate + symbol) = albedo
+ *   <code>-symbol-<w>x<h>.png the symbol alone on transparent = carve mask
  *
  * Uses @resvg/resvg-js (the pinned offline SVG rasteriser). No headless browser,
  * no sharp, no system rsvg.
@@ -25,24 +24,33 @@ const width = Math.round(cssWidth * scale);
 const height = Math.round(cssHeight * scale);
 
 const decal = spec.spike.decal;
-const svgPath = resolve(dirname(specPath), decal.svg);
-const outPath = join(renderDir, 'build', 'faces', `${decal.code}-${width}x${height}.png`);
+const faceDir = join(renderDir, 'build', 'faces');
 
-const svg = readFileSync(svgPath, 'utf8');
-const resvg = new Resvg(svg, {
-  fitTo: { mode: 'width', value: width },
-  background: 'rgba(0, 0, 0, 0)',
-  shapeRendering: 2,
-  imageRendering: 0,
-});
-
-const rendered = resvg.render();
-if (rendered.width !== width || rendered.height !== height) {
-  throw new Error(
-    `face rasterised at ${rendered.width}x${rendered.height}, expected ${width}x${height}`,
-  );
+function rasterise(sourcePath, outPath, label) {
+  const svg = readFileSync(sourcePath, 'utf8');
+  const rendered = new Resvg(svg, {
+    fitTo: { mode: 'width', value: width },
+    background: 'rgba(0, 0, 0, 0)',
+    shapeRendering: 2,
+    imageRendering: 0,
+  }).render();
+  if (rendered.width !== width || rendered.height !== height) {
+    throw new Error(
+      `${label} rasterised at ${rendered.width}x${rendered.height}, expected ${width}x${height}`,
+    );
+  }
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, rendered.asPng());
+  console.log(`[render] ${label} ${decal.code}: ${sourcePath} -> ${outPath} (${width}x${height})`);
 }
 
-mkdirSync(dirname(outPath), { recursive: true });
-writeFileSync(outPath, rendered.asPng());
-console.log(`[render] face ${decal.code}: ${svgPath} -> ${outPath} (${width}x${height})`);
+rasterise(
+  resolve(dirname(specPath), decal.svg),
+  join(faceDir, `${decal.code}-${width}x${height}.png`),
+  'face',
+);
+rasterise(
+  resolve(dirname(specPath), decal.symbolSvg),
+  join(faceDir, `${decal.code}-symbol-${width}x${height}.png`),
+  'carve mask',
+);

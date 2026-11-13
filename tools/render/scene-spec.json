@@ -34,8 +34,8 @@
     "faceInset": 0.035,
     "backEdgeFraction": 0.3,
     "materials": {
-      "ivory": { "hex": "#f5f0eb", "roughness": 0.35 },
-      "blue": { "hex": "#132986", "roughness": 0.34 }
+      "face": { "material": "melamine", "hex": "#f5f0eb", "roughness": 0.16, "coat": 0.4, "coatRoughness": 0.1 },
+      "backing": { "material": "melamine", "hex": "#132986", "roughness": 0.18, "coat": 0.35, "coatRoughness": 0.1 }
     }
   },
   "table": {
@@ -43,7 +43,7 @@
     "surface": { "hex": "#12533a", "roughness": 0.92 },
     "shadowCatcher": true
   },
-  "world": { "hex": "#b9c6d6", "strength": 0.3 },
+  "world": { "hex": "#b9c6d6", "strength": 0.35 },
   "camera": {
     "position": [0, -26.4, 9.0],
     "target": [0, 1.0, 0.2],
@@ -58,29 +58,29 @@
   "lights": [
     {
       "id": "key",
-      "location": [-27, -42, 48],
-      "target": [0, 0.5, 0],
-      "size": 27,
-      "sizeY": 21,
-      "energyW": 97200,
-      "hex": "#fff1dc"
+      "location": [-8, -20, 52],
+      "target": [0, 0.6, 0],
+      "size": 26,
+      "sizeY": 20,
+      "energyW": 90000,
+      "hex": "#fff4e4"
     },
     {
       "id": "fill",
-      "location": [30, -30, 27],
-      "target": [0, 0, 0],
-      "size": 42,
-      "sizeY": 27,
-      "energyW": 26700,
+      "location": [24, -24, 7],
+      "target": [0, -1, 0.3],
+      "size": 38,
+      "sizeY": 24,
+      "energyW": 16000,
       "hex": "#dfe9ff"
     },
     {
       "id": "rim",
-      "location": [6, 30, 36],
+      "location": [4, 26, 30],
       "target": [0, 0, 0],
-      "size": 30,
-      "sizeY": 21,
-      "energyW": 31600,
+      "size": 28,
+      "sizeY": 20,
+      "energyW": 22000,
       "hex": "#ffffff"
     }
   ],
@@ -95,6 +95,11 @@
     "cssFace": [180, 240],
     "renderScale": 3,
     "paddingPixels": 1,
+    "carve": {
+      "depthFractionOfThickness": 0.02,
+      "blurPixels": 1.0,
+      "gridScale": 1.0
+    },
     "rigs": {
       "upright": {
         "slotY": -4.4,
@@ -110,7 +115,8 @@
     "decal": {
       "code": "1m",
       "orientation": "upright",
-      "svg": "faces/Regular-Man1-m.svg"
+      "svg": "faces/Regular-Man1-m.svg",
+      "symbolSvg": "faces/Regular-Man1-symbol.svg"
     }
   },
   "outputs": {

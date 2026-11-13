@@ -66,11 +66,11 @@ BLENDER=/path/to/blender bash tools/render/render.sh [spec.json] [out-dir]
 
 | Path | Committed | Purpose |
 | --- | --- | --- |
-| `scene-spec.json` | yes | the single source of truth: tile box, bevel, materials, camera, lights, colour management, hand layout, decal rig, output names |
-| `build_and_render.py` | yes | builds the whole scene from the spec with `bpy`, renders, projects, warps the decal, measures, writes the manifest |
-| `scripts/rasterize-face.mjs` | yes | vendored SVG → face texture PNG (resvg) |
+| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine materials, camera, lights, colour management, hand layout, carve, decal rig, output names |
+| `build_and_render.py` | yes | builds the whole scene from the spec with `bpy`, renders, carves the symbol, projects, warps the decal, measures, writes the manifest |
+| `scripts/rasterize-face.mjs` | yes | vendored face + symbol-only SVGs → face texture and carve mask PNGs (resvg) |
 | `scripts/contact-sheet.mjs` | yes | renders the review sheet SVG → PNG (resvg) |
-| `faces/` | yes | vendored public-domain full-face SVGs + provenance (`faces/SOURCE.md`) |
+| `faces/` | yes | vendored public-domain full-face and symbol-only SVGs + provenance (`faces/SOURCE.md`) |
 | `spike/` | yes | Task 1 spike outputs: body sprite, back diagnostic, decal, composite, zoom, contact sheet, starter manifest |
 | `node_modules/`, `build/` | no | installed dependencies and intermediate face textures |
 
@@ -116,7 +116,7 @@ right bevel falls into the fill, and the right side of the body is visible at al
 (the face quad is a true trapezoid: top edge 151.1 px, bottom edge 149.3 px,
 centre sheared 14 px). A slot at the row centre would lose the side face and
 flatten the bevel contrast. The crop is 271 × 315 device px including the 32 px
-shadow gutter. On the visible side the ivory front band meets the blue rear
+shadow gutter. On the visible side the white front band meets the blue rear
 band at the backing line, which is what makes the wrap read as a physical
 backing rather than a painted stripe.
 
@@ -124,9 +124,41 @@ Bevel: width 0.035, 4 segments, miter arc, `harden_normals`, weighted normals,
 shade smooth. Four segments is enough to hold a clean highlight at 2× without
 looking faceted.
 
+### Material: white melamine, not ivory
+
+Jansou tiles are white **melamine** with a coloured melamine backing, not ivory.
+The spec's material keys are `materials.face` and `materials.backing`, both
+tagged `melamine`; the face is an off-white `#f5f0eb` and the backing royal blue
+`#132986`. Melamine is an opaque, hard thermoset with a glossy surface, so the
+Principled material uses low roughness (0.16 face, 0.18 backing) plus a clear
+coat (0.40 / 0.35, coat roughness 0.10) rather than the matte plastic of the
+earlier passes. The engraved symbol is filled with the same glossy finish: the
+decal's albedo texture carries the paint, so the paint and the plate share one
+material.
+
+### Carved symbol, not a decal print
+
+The symbol is physically recessed and painted, not printed flat. The pipeline
+rasterises the **symbol-only** upstream SVG (`Regular-Man1-symbol.svg`, the same
+300 × 400 viewBox as the merged face, so it aligns pixel-for-pixel) to a mask,
+blurs the mask into a groove profile, and displaces a subdivided face plate
+inward by `depthFractionOfThickness = 0.02` of the tile thickness — 0.0118
+units, about 0.33 mm at jansou scale. UVs stay a planar top-down projection, so
+the merged face texture paints the groove floor and walls exactly where the
+carve is; the bare face colour shows through the unpainted holes in a stroke.
+
+The carve is baked into the **lit face decal**, so it is orientation-lit and
+position-independent like the rest of the decal: the key catches the lower wall
+of each stroke and shadows the upper wall, which is what makes it read as
+engraved rather than painted. At spike resolution the grid is 492 × 672 (about
+330k vertices, `gridScale: 1.0`) and the decal render alone takes ~42 s at 256
+samples; Task 3 should consider `gridScale` 0.75 or a cheaper displacement for
+the 190-decal set. The body sprite is unaffected: its face underlay is flat and
+the carve lives entirely inside the inset decal.
+
 ### Blue backing: wraps every edge, no forward lean (§12.6, corrected)
 
-The tile is an ivory face plate on a **solid blue backing**. The blue is not a
+The tile is a **white melamine face plate** on a **solid blue melamine backing**. The blue is not a
 single stripe on the top: the back face and the **rear 30% of every side edge**
 are blue (`backEdgeFraction: 0.3`), so the colour wraps the whole body. On a
 standing hand tile that gives a blue line along the top and a blue band down the
@@ -145,7 +177,7 @@ periwinkle under this key and AgX; keep the base dark to keep the blue deep.
 
 No forward lean and no separate sliver sprite are needed: the blue rim is the
 same geometry as the body, so it moves with the tile and its contact shading.
-The ivory front band reads as the face plate's edge and blends into the face; do
+The white front band reads as the face plate's edge and blends into the face; do
 not add a third material for it. If a fully blue side is wanted instead of a
 backed plate, set `backEdgeFraction` to 1.0 — no script change.
 
@@ -156,23 +188,35 @@ to that rectangle plus a **1 px transparent gutter**. The Blender decal plane
 takes the inset sub-rect of the full-face texture as its UVs, so the symbol is
 not stretched.
 
-The body's face underlay uses the same ivory base colour as the decal texture's
-plate. Measured at the seam, the body face is
-`rgb(214, 210, 207) = 0.839, 0.824, 0.812` sRGB and the decal's ivory is
-`0.835–0.839, 0.823–0.827, 0.816` — within 1/255. The decal edge therefore needs
-**no runtime mask, feather, or blend mode**: it composites straight over the
-body's ivory, and the body's bevel ring and position lighting stay visible
-outside the inset.
+The body's face underlay uses the same face base colour as the decal texture's
+plate (`#f5f0eb`). Measured at the seam, the body face is
+`rgb(215, 214, 213)` sRGB and the decal's flat face is `rgb(218, 216, 216)`,
+about 1.4% brighter. That is the canonical rig sitting at the hand-row centre
+while `hand-0` sits 5.3 units to its left, not a base-colour mismatch. It is
+invisible at 2×; treat ~2% as the tolerance and re-check the seam zoom before
+adding any runtime blend. The decal edge needs **no runtime mask, feather, or
+blend mode**: it composites straight over the body's face, and the body's bevel
+ring and position lighting stay visible outside the inset.
 
 A double-premultiply bug in the first composite looked like a dashed seam at the
 decal edge. The fix (unpremultiply the bilinearly sampled decal before the
 straight-alpha `over`) is in `warp_onto`; if a seam ever returns, check alpha
 handling there before touching the inset.
 
+### Lighting: top-heavy key
+
+Tenhou reads as a table lit from above: the edge of a tile facing up is the
+brightest surface. The key is a large area light almost overhead (~52 units up,
+20 units in front of the hand row), so the top edge (normal +Z) takes ~95% of
+its irradiance while the vertical face takes ~29%. A lower front-right fill and
+a rear rim keep the face readable and give the side and bevel shapes their
+distinction. The effect comes from the light *angle*, not from moving the light
+closer — see the position-independence constraint below.
+
 ### Lighting must be position-independent for decals (§5/§12.3 consequence)
 
 The decal is lit once per orientation, but it is composited onto body sprites at
-many positions. A close area rig made the ivory 24–30% brighter at `hand-0` than
+many positions. A close area rig made the face 24–30% brighter at `hand-0` than
 at the hand-row centre (where the canonical upright rig sits), which showed as a
 visible rectangle around the decal.
 
@@ -202,7 +246,7 @@ felt this reads correctly, and it is the same approximation §12.7 specifies
 
 The body sprite has no felt underlay, so it composites over the baked background
 without a mask. Bounce light from the felt is not included (the felt is invisible
-in pass 1); the green bounce is negligible on ivory at this exposure and keeps
+in pass 1); the green bounce is negligible on white melamine at this exposure and keeps
 body and decal lighting consistent.
 
 ### Orientation-lit decal
@@ -210,8 +254,8 @@ body and decal lighting consistent.
 The decal is rendered on the canonical face-on **orthographic** rig (§12.3):
 `upright` stands the tile at the hand-row centre facing the ortho camera, with
 the orthographic frame exactly the inset + gutter (492 × 672 px at 3× CSS). The
-scene light rig and ivory material are reused, so the face is genuinely lit: the
-key leaves a soft top-left gradient and the AgX transform keeps the ivory warm.
+scene light rig and melamine material are reused, so the face is genuinely lit: the
+key leaves a soft top-left gradient and the AgX transform keeps the white warm.
 Flat classes will differ in brightness because they face the key more directly;
 Task 3 bakes them the same way with the symbol rotated 0/90/180/270°.
 
