@@ -708,15 +708,30 @@ def bilinear2d(array: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
     )
 
 
-def smootherstep(edge0: float, edge1: float, x: np.ndarray) -> np.ndarray:
-    """Quintic ease with zero first and second derivatives at both ends.
+def bezier_profile(
+    u: np.ndarray, top_spread: float, bottom_spread: float
+) -> np.ndarray:
+    """Groove height profile as a cubic Bézier, with an edge control at each end.
 
-    Zero curvature at the ends is what gives the carve a rounded lip where it
-    leaves the face and a rounded shoulder where it bottoms out, instead of a
-    knife-edge wall.
+    The curve runs from the lip (0, 0) to the floor (1, 1) with control points
+    (top_spread, 0) and (1 - bottom_spread, 1). The x tangents at the two ends
+    are what spread the fillets: larger `top_spread` keeps the surface flat
+    longer before it drops into the well, larger `bottom_spread` keeps it flat
+    longer before it bottoms out. The two params are independent, so the lip and
+    the wall-to-floor shoulder can be shaped separately. 0 gives a straight
+    diagonal (no fillet), 1 gives the widest ease.
     """
-    t = np.clip((x - edge0) / (edge1 - edge0), 0.0, 1.0)
-    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+    ts = np.linspace(0.0, 1.0, 1025)
+    one_minus = 1.0 - ts
+    xs = (
+        3.0 * one_minus * one_minus * ts * top_spread
+        + 3.0 * one_minus * ts * ts * (1.0 - bottom_spread)
+        + ts * ts * ts
+    )
+    ys = ts * ts * (3.0 - 2.0 * ts)
+    # Guard the interpolation against a flat spot (x' can touch 0 at t = 0.5).
+    xs = np.maximum.accumulate(xs) + np.arange(ts.size) * 1e-12
+    return np.interp(np.clip(u, 0.0, 1.0), xs, ys)
 
 
 def build_carved_face(
@@ -731,13 +746,11 @@ def build_carved_face(
 ) -> bpy.types.Object:
     """Subdivided face plate with the painted symbol physically recessed.
 
-    The symbol mask's alpha is blurred into a groove profile, then remapped with
-    a smootherstep so the groove leaves the face and bottoms out with rounded
-    shoulders. The lip is pinned at the mask's 0.5 contour, which is exactly the
-    paint edge in the face texture, so the whole wall is inside the painted
-    symbol instead of half of it showing bare face colour. UVs stay a planar
-    top-down projection, so the paint reaches up the wall as it would on a
-    filled engraving.
+    The symbol mask's alpha is blurred into a groove profile, then remapped
+    through a cubic Bézier so the groove leaves the face and bottoms out with
+    independently shaped fillets. The lip is pinned at the mask's `lip` contour
+    and the floor at `floor`; UVs stay a planar top-down projection, so the paint
+    reaches up the wall as it would on a filled engraving.
     """
     carve = spec["decals"]["carve"]
     depth = carve["depthFractionOfThickness"] * spec["tile"]["thickness"]
@@ -755,10 +768,12 @@ def build_carved_face(
     sampled = bilinear2d(
         mask, uu * (mask_width - 1), (1.0 - vv) * (mask_height - 1)
     )
-    profile = smootherstep(
-        carve["profile"]["lip"], carve["profile"]["floor"], sampled
+    profile = carve["profile"]
+    u_norm = (sampled - profile["lip"]) / (profile["floor"] - profile["lip"])
+    height = bezier_profile(
+        u_norm, profile["topSpread"], profile["bottomSpread"]
     )
-    z = top - depth * profile
+    z = top - depth * height
 
     xx, yy = np.meshgrid(grid_x, grid_y)
     verts = np.stack([xx.ravel(), yy.ravel(), z.ravel()], axis=1)
@@ -794,57 +809,21 @@ def build_carved_face(
     return new_object("face-plane", mesh)
 
 
-# --------------------------------------------------------------------------- #
-# Main
-# --------------------------------------------------------------------------- #
-
-
-def main() -> None:
-    argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
-    if len(argv) != 2:
-        die("usage: build_and_render.py -- <scene-spec.json> <out-dir>")
-    spec_path = Path(argv[0]).resolve()
-    out_dir = Path(argv[1]).resolve()
-    spec = json.loads(spec_path.read_text())
-
-    blender_version = check_blender_version(spec)
-    resolve_tile_dimensions(spec)
-    scene = reset_scene()
-    configure_render(scene, spec)
-    render_width = scene.render.resolution_x
-    render_height = scene.render.resolution_y
-    materials = build_materials(spec)
-    build_world(scene, spec)
-    camera = build_camera(scene, spec)
-    build_lights(scene, spec)
-    table = build_table(scene, spec, materials)
-    tile = build_tile(scene, spec, materials)
-
-    # ---- body sprite ----------------------------------------------------- #
-    slots = hand_slots(spec)
-    spike_index = spec["spike"]["slotIndex"]
-    if not 0 <= spike_index < len(slots):
-        die(f"spike.slotIndex {spike_index} is outside the {len(slots)} hand slots")
-    slot = slots[spike_index]
-    gutter = spec["spike"]["shadowGutterDevicePx"]
-    body_path = out_dir / spec["outputs"]["body"].format(index=slot["index"])
-    body_with_shadow, tile_rect, clipped = bake_body(
-        spec, scene, camera, tile, table, slot, out_dir, body_path, gutter
-    )
-    x0, y0, x1, y1 = tile_rect
-
-    # Diagnostic only: the same slot face-down, to prove the blue backing wraps
-    # the whole body. Real face-down/concealed body poses are baked with the
-    # slot inventory (Task 2) and consumed by Tasks 5 and 11.
-    back_slot = dict(slot, pose="hand-upright-back")
-    back_path = out_dir / spec["outputs"]["back"].format(index=slot["index"])
-    bake_body(spec, scene, camera, tile, table, back_slot, out_dir, back_path, gutter)
-
-    # ---- face decal ------------------------------------------------------ #
+def bake_decal(
+    spec: dict,
+    scene: bpy.types.Scene,
+    camera: bpy.types.Object,
+    tile: bpy.types.Object,
+    table: bpy.types.Object,
+    out_dir: Path,
+) -> tuple[Path, int, int, float, float]:
+    """Render the carved, painted, lit face decal for the spike orientation."""
     tile_spec = spec["tile"]
     decal_spec = spec["spike"]["decal"]
     rig = spec["decals"]["rigs"][decal_spec["orientation"]]
-    px_per_unit = spec["decals"]["renderScale"] * spec["decals"]["cssFace"][1] / tile_spec["height"]
+    px_per_unit = (
+        spec["decals"]["renderScale"] * spec["decals"]["cssFace"][1] / tile_spec["height"]
+    )
     inset_w = tile_spec["width"] - 2 * tile_spec["faceInset"]
     inset_h = tile_spec["height"] - 2 * tile_spec["faceInset"]
     padding = spec["decals"]["paddingPixels"]
@@ -884,11 +863,11 @@ def main() -> None:
     # Cavity occlusion. A groove floor has the same normal as the face, so its
     # diffuse response is identical and a wide stroke would read as flat paint.
     # The AO node darkens the inside of the carve where the walls block the
-    # environment, which is what makes the wide red areas look sunk in.
+    # environment, which is what makes the wide areas look sunk in.
     ambient = nodes.new("ShaderNodeAmbientOcclusion")
     ambient.inputs["Distance"].default_value = spec["decals"]["carve"]["occlusionDistance"]
     occlusion_strength = spec["decals"]["carve"]["occlusionStrength"]
-    ambient.samples = 16
+    ambient.samples = spec["decals"]["carve"]["occlusionSamples"]
     ambient.only_local = True
 
     face_colour = nodes.new("ShaderNodeRGB")
@@ -901,8 +880,7 @@ def main() -> None:
     links.new(face_ao.outputs["Color"], face_bsdf.inputs["Base Color"])
 
     # Engraved paint: the symbol-only SVG supplies both the colour and the mask.
-    # It is a satin finish, not the high-gloss melamine, so the groove shading
-    # reads instead of looking like a domed inlay.
+    # Glossy, so the bottom fillet catches a specular line.
     symbol_image = bpy.data.images.load(str(symbol_texture))
     symbol_image.colorspace_settings.name = "sRGB"
     symbol_node = nodes.new("ShaderNodeTexImage")
@@ -971,7 +949,11 @@ def main() -> None:
     ortho.clip_start = 0.1
     ortho.clip_end = 100.0
     ortho_obj = new_object("decal-camera", ortho)
-    ortho_obj.location = (0.0, rig["slotY"] - rig["cameraDistance"], tile_spec["height"] / 2.0)
+    ortho_obj.location = (
+        0.0,
+        rig["slotY"] - rig["cameraDistance"],
+        tile_spec["height"] / 2.0,
+    )
     aim(ortho_obj, (0.0, rig["slotY"], tile_spec["height"] / 2.0))
     scene.camera = ortho_obj
     sync_view_layer()
@@ -985,8 +967,74 @@ def main() -> None:
     render_png(scene, decal_path)
     decal = load_rgba(decal_path)
     if decal.shape[:2] != (decal_height, decal_width):
-        die(f"decal render is {decal.shape[1]}x{decal.shape[0]}, expected {decal_width}x{decal_height}")
+        die(
+            f"decal render is {decal.shape[1]}x{decal.shape[0]}, "
+            f"expected {decal_width}x{decal_height}"
+        )
     log(f"face decal: {decal_path} ({decal_width}x{decal_height})")
+    return decal_path, decal_width, decal_height, frame_w, frame_h
+
+
+# --------------------------------------------------------------------------- #
+# Main
+# --------------------------------------------------------------------------- #
+
+
+def main() -> None:
+    argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
+    if len(argv) != 2:
+        die("usage: build_and_render.py -- <scene-spec.json> <out-dir>")
+    spec_path = Path(argv[0]).resolve()
+    out_dir = Path(argv[1]).resolve()
+    spec = json.loads(spec_path.read_text())
+
+    blender_version = check_blender_version(spec)
+    resolve_tile_dimensions(spec)
+    scene = reset_scene()
+    configure_render(scene, spec)
+    render_width = scene.render.resolution_x
+    render_height = scene.render.resolution_y
+    materials = build_materials(spec)
+    build_world(scene, spec)
+    camera = build_camera(scene, spec)
+    build_lights(scene, spec)
+    table = build_table(scene, spec, materials)
+    tile = build_tile(scene, spec, materials)
+
+    # ---- body sprite ----------------------------------------------------- #
+    preview_only = bool(spec.get("preview", {}).get("decalOnly"))
+    slots = hand_slots(spec)
+    spike_index = spec["spike"]["slotIndex"]
+    if not 0 <= spike_index < len(slots):
+        die(f"spike.slotIndex {spike_index} is outside the {len(slots)} hand slots")
+    slot = slots[spike_index]
+    gutter = spec["spike"]["shadowGutterDevicePx"]
+    if not preview_only:
+        body_path = out_dir / spec["outputs"]["body"].format(index=slot["index"])
+        body_with_shadow, tile_rect, clipped = bake_body(
+            spec, scene, camera, tile, table, slot, out_dir, body_path, gutter
+        )
+        x0, y0, x1, y1 = tile_rect
+
+        # Diagnostic only: the same slot face-down, to prove the blue backing
+        # wraps the whole body. Real face-down/concealed body poses are baked
+        # with the slot inventory (Task 2) and consumed by Tasks 5 and 11.
+        back_slot = dict(slot, pose="hand-upright-back")
+        back_path = out_dir / spec["outputs"]["back"].format(index=slot["index"])
+        bake_body(spec, scene, camera, tile, table, back_slot, out_dir, back_path, gutter)
+
+    # ---- face decal ------------------------------------------------------ #
+    tile_spec = spec["tile"]
+    decal_spec = spec["spike"]["decal"]
+    padding = spec["decals"]["paddingPixels"]
+    top = tile_spec["thickness"]
+    decal_path, decal_width, decal_height, frame_w, frame_h = bake_decal(
+        spec, scene, camera, tile, table, out_dir
+    )
+    if preview_only:
+        log("preview: decal only, skipping body/composite/manifest")
+        return
+    decal = load_rgba(decal_path)
 
     # ---- projection records --------------------------------------------- #
     scene.camera = camera

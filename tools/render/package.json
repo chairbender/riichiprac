@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "render": "bash render.sh",
-    "rasterize": "node scripts/rasterize-face.mjs"
+    "rasterize": "node scripts/rasterize-face.mjs",
+    "tune": "node tune.mjs"
   },
   "dependencies": {
     "@resvg/resvg-js": "2.6.2"

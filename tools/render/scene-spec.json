@@ -26,11 +26,11 @@
   },
   "tile": {
     "proportionsMm": {
-      "height": 28.0,
-      "width": 21.0,
+      "height": 28,
+      "width": 21,
       "thickness": 16.5
     },
-    "heightUnits": 1.0,
+    "heightUnits": 1,
     "bevel": {
       "width": 0.035,
       "segments": 4,
@@ -58,7 +58,9 @@
         "material": "engraving paint",
         "roughness": 0.16,
         "coat": 0.35,
-        "coatRoughness": 0.1
+        "coatRoughness": 0.1,
+        "red": "#b93c3c",
+        "redBase": "#b93c3c"
       }
     }
   },
@@ -78,11 +80,11 @@
     "position": [
       0,
       -26.4,
-      9.0
+      9
     ],
     "target": [
       0,
-      1.0,
+      1,
       0.2
     ],
     "lensMm": 65,
@@ -162,20 +164,23 @@
     "paddingPixels": 1,
     "carve": {
       "depthFractionOfThickness": 0.005,
-      "blurPixels": 5.0,
+      "blurPixels": 5,
       "profile": {
         "lip": 0.5,
-        "floor": 0.9
+        "floor": 0.9,
+        "topSpread": 0.42,
+        "bottomSpread": 0.42
       },
       "paintThreshold": 0.62,
-      "gridScale": 1.0,
+      "gridScale": 1,
       "occlusionDistance": 0.2,
-      "occlusionStrength": 0.75
+      "occlusionStrength": 0.75,
+      "occlusionSamples": 16
     },
     "rigs": {
       "upright": {
         "slotY": -4.4,
-        "cameraDistance": 5.0,
+        "cameraDistance": 5,
         "symbolRotationDeg": 0
       }
     }

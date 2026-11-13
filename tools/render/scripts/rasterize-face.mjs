@@ -30,8 +30,46 @@ const decal = spec.spike.decal;
 const sourcePath = resolve(dirname(specPath), decal.symbolSvg);
 const outPath = join(renderDir, 'build', 'faces', `${decal.code}-symbol-${width}x${height}.png`);
 
+const hexToRgb = (hex) => {
+  const value = hex.replace('#', '');
+  return [0, 2, 4].map((offset) => parseInt(value.slice(offset, offset + 2), 16));
+};
+const luma = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+const toHex = (rgb) =>
+  '#' +
+  rgb
+    .map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0'))
+    .join('');
+
+/**
+ * Recolour the symbol's red fills to `targetHex` while preserving their
+ * relative brightness, so the paint's internal shading survives the change.
+ * Black fills (the manzu bar) are untouched because they are not red.
+ */
+function recolourReds(svg, baseHex, targetHex) {
+  if (!baseHex || !targetHex) return svg;
+  const baseLuma = luma(hexToRgb(baseHex));
+  if (!baseLuma) return svg;
+  const target = hexToRgb(targetHex);
+  let count = 0;
+  const replaced = svg.replace(/#([0-9a-fA-F]{6})\b/g, (match, hex) => {
+    const rgb = hexToRgb(hex);
+    if (!(rgb[0] > rgb[1] + 24 && rgb[0] > rgb[2] + 24)) return match;
+    count += 1;
+    const factor = luma(rgb) / baseLuma;
+    return toHex(target.map((v) => v * factor));
+  });
+  if (count === 0) {
+    console.warn(`[render] no red fills found in ${sourcePath}; paint colour unchanged`);
+  }
+  return replaced;
+}
+
+
 const svg = readFileSync(sourcePath, 'utf8');
-const rendered = new Resvg(svg, {
+const paint = spec.tile?.materials?.paint ?? {};
+const recoloured = recolourReds(svg, paint.redBase, paint.red);
+const rendered = new Resvg(recoloured, {
   fitTo: { mode: 'width', value: width },
   background: 'rgba(0, 0, 0, 0)',
   shapeRendering: 2,

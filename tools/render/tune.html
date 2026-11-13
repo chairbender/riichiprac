@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Carved face tuner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1713;
+        --panel: #12211a;
+        --line: #24382f;
+        --text: #e8f1ec;
+        --muted: #8fb2a4;
+        --accent: #57b98b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.5 "Fira Sans", "DejaVu Sans", system-ui, sans-serif;
+      }
+      header {
+        padding: 18px 24px 12px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      header h1 { margin: 0; font-size: 20px; letter-spacing: 0.2px; }
+      header p { margin: 0; color: var(--muted); font-size: 13px; }
+      main {
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) minmax(360px, 1fr);
+        gap: 20px;
+        padding: 20px 24px 40px;
+        align-items: start;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px;
+      }
+      h2 {
+        margin: 0 0 14px;
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      .control { margin-bottom: 16px; }
+      .control > .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+      .control label { font-size: 13px; }
+      .control output {
+        font-family: "Fira Mono", "DejaVu Sans Mono", monospace;
+        font-size: 12px;
+        color: var(--accent);
+      }
+      .hint { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+      input[type="range"] { width: 100%; accent-color: var(--accent); }
+      input[type="color"] {
+        width: 100%;
+        height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: none;
+        padding: 2px;
+      }
+      .buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+      button {
+        font: inherit;
+        font-size: 13px;
+        padding: 9px 14px;
+        border-radius: 7px;
+        border: 1px solid var(--line);
+        background: #1a2f25;
+        color: var(--text);
+        cursor: pointer;
+      }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #06130c; font-weight: 600; }
+      button:disabled { opacity: 0.45; cursor: default; }
+      #status { margin-top: 14px; font-size: 12.5px; color: var(--muted); min-height: 20px; }
+      #status.error { color: #ff9b8a; }
+      #profile { width: 100%; height: auto; display: block; }
+      #decalWrap {
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: #0a120e;
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #decal { display: block; width: 100%; max-width: 430px; height: auto; }
+      #decalMeta { margin-top: 10px; color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; gap: 10px; }
+      code { font-family: "Fira Mono", "DejaVu Sans Mono", monospace; font-size: 12px; color: var(--accent); }
+      @media (max-width: 900px) {
+        main { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Carved face tuner</h1>
+      <p>
+        Preview renders only the upright 1m decal at 2×, fast samples and a coarse carve grid.
+        Apply writes into <code>scene-spec.json</code>; run <code>bash tools/render/render.sh</code> for the full set.
+      </p>
+    </header>
+    <main>
+      <section>
+        <h2>Parameters</h2>
+
+        <div class="control">
+          <div class="row"><label for="paintRed">Manzu red</label><output id="paintRedOut"></output></div>
+          <input id="paintRed" type="color" />
+          <div class="hint">Recolours the red fills only; the black bar and the internal shading are preserved.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="depth">Carve depth</label><output id="depthOut"></output></div>
+          <input id="depth" type="range" min="0" max="0.12" step="0.001" />
+          <div class="hint">Fraction of the 16.5 mm tile thickness. The 0.08 mm look is ~0.005.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="topSpread">Top fillet spread</label><output id="topSpreadOut"></output></div>
+          <input id="topSpread" type="range" min="0" max="1" step="0.01" />
+          <div class="hint">Bézier control where the face rolls into the well. 0 = none, 1 = widest/softest.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="bottomSpread">Bottom fillet spread</label><output id="bottomSpreadOut"></output></div>
+          <input id="bottomSpread" type="range" min="0" max="1" step="0.01" />
+          <div class="hint">Bézier control where the wall curves into the floor. Drives the glossy highlight.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="blur">Edge blur</label><output id="blurOut"></output></div>
+          <input id="blur" type="range" min="0.5" max="14" step="0.1" />
+          <div class="hint">Blur of the symbol mask before the profile; widens the groove overall.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="paintThreshold">Paint edge</label><output id="paintThresholdOut"></output></div>
+          <input id="paintThreshold" type="range" min="0.45" max="0.9" step="0.01" />
+          <div class="hint">0.5 puts paint at the lip; higher leaves a wider bare melamine bevel.</div>
+        </div>
+
+        <div class="control">
+          <div class="row"><label for="samples">Preview samples</label><output id="samplesOut"></output></div>
+          <input id="samples" type="range" min="8" max="64" step="8" />
+          <div class="hint">Render cost only; denoised either way.</div>
+        </div>
+
+        <div class="buttons">
+          <button id="render" class="primary">Render preview</button>
+          <button id="apply">Apply to spec</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div id="status"></div>
+      </section>
+
+      <section>
+        <h2>Cross-section</h2>
+        <svg id="profile" viewBox="0 0 420 180" aria-label="groove cross-section"></svg>
+        <div class="hint" id="profileNote"></div>
+
+        <h2 style="margin-top: 18px">Preview decal</h2>
+        <div id="decalWrap"><img id="decal" alt="rendered decal preview" /></div>
+        <div id="decalMeta"><span id="decalTime"></span><span id="decalDims"></span></div>
+      </section>
+    </main>
+
+    <script>
+      const ids = [
+        "paintRed",
+        "depth",
+        "topSpread",
+        "bottomSpread",
+        "blur",
+        "paintThreshold",
+        "samples",
+      ];
+      const el = (id) => document.getElementById(id);
+      const state = { params: null, thicknessMm: 16.5, lip: 0.5, floor: 0.9 };
+
+      function readParams() {
+        return {
+          paintRed: el("paintRed").value,
+          depth: Number(el("depth").value),
+          topSpread: Number(el("topSpread").value),
+          bottomSpread: Number(el("bottomSpread").value),
+          blur: Number(el("blur").value),
+          paintThreshold: Number(el("paintThreshold").value),
+          samples: Number(el("samples").value),
+        };
+      }
+
+      function writeParams(params) {
+        el("paintRed").value = params.paintRed;
+        el("depth").value = params.depth;
+        el("topSpread").value = params.topSpread;
+        el("bottomSpread").value = params.bottomSpread;
+        el("blur").value = params.blur;
+        el("paintThreshold").value = params.paintThreshold;
+        el("samples").value = params.samples ?? 32;
+      }
+
+      // Same cubic Bézier as build_and_render.py: P0=(0,0), P1=(top,0),
+      // P2=(1-bottom,1), P3=(1,1).
+      function profilePoint(t, top, bottom) {
+        const one = 1 - t;
+        return {
+          x:
+            3 * one * one * t * top +
+            3 * one * t * t * (1 - bottom) +
+            t * t * t,
+          y: t * t * (3 - 2 * t),
+        };
+      }
+
+      function drawProfile() {
+        const params = readParams();
+        const svg = el("profile");
+        const x0 = 40;
+        const x1 = 380;
+        const faceY = 34;
+        const floorY = 140;
+        const samples = 90;
+        const topPath = [];
+        const bottomPath = [];
+        for (let i = 0; i <= samples; i += 1) {
+          const t = i / samples;
+          const p = profilePoint(t, params.topSpread, params.bottomSpread);
+          const px = x0 + p.x * (x1 - x0);
+          const py = faceY + p.y * (floorY - faceY);
+          (t <= 0.5 ? topPath : bottomPath).push(`${px.toFixed(1)},${py.toFixed(1)}`);
+        }
+        const curveStart = topPath[0];
+        const curveEnd = bottomPath[bottomPath.length - 1];
+        const join = topPath[topPath.length - 1];
+
+        const lip = state.lip;
+        const floor = state.floor;
+        const uPaint = Math.min(
+          1,
+          Math.max(0, (params.paintThreshold - lip) / (floor - lip)),
+        );
+        // Invert x(t) numerically for the paint edge marker.
+        let paintT = 0;
+        for (let i = 0; i <= 400; i += 1) {
+          const t = i / 400;
+          if (profilePoint(t, params.topSpread, params.bottomSpread).x >= uPaint) {
+            paintT = t;
+            break;
+          }
+        }
+        const paintPoint = profilePoint(paintT, params.topSpread, params.bottomSpread);
+        const paintX = x0 + paintPoint.x * (x1 - x0);
+        const paintY = faceY + paintPoint.y * (floorY - faceY);
+
+        svg.innerHTML = `
+          <rect x="0" y="0" width="420" height="180" fill="none"></rect>
+          <line x1="10" y1="${faceY}" x2="${x0}" y2="${faceY}" stroke="#7fa18f" stroke-width="2"></line>
+          <line x1="${x0}" y1="${faceY}" x2="${curveStart.split(",")[0]}" y2="${faceY}" stroke="#7fa18f" stroke-width="2"></line>
+          <polyline points="${topPath.join(" ")}" fill="none" stroke="#7ec8ff" stroke-width="2.5" stroke-linecap="round"></polyline>
+          <polyline points="${bottomPath.join(" ")}" fill="none" stroke="#ffb86b" stroke-width="2.5" stroke-linecap="round"></polyline>
+          <line x1="${curveEnd.split(",")[0]}" y1="${floorY}" x2="410" y2="${floorY}" stroke="#7fa18f" stroke-width="2"></line>
+          <line x1="${paintX}" y1="${faceY}" x2="${paintX}" y2="${paintY}" stroke="#ff7a6b" stroke-width="1" stroke-dasharray="3 3"></line>
+          <circle cx="${paintX}" cy="${paintY}" r="3.5" fill="#ff7a6b"></circle>
+          <text x="10" y="${faceY - 8}" fill="#8fb2a4" font-size="11">face</text>
+          <text x="410" y="${floorY + 18}" fill="#8fb2a4" font-size="11" text-anchor="end">floor</text>
+          <text x="${x0 + 4}" y="${faceY + 18}" fill="#7ec8ff" font-size="11">top fillet</text>
+          <text x="${x1 - 4}" y="${floorY - 8}" fill="#ffb86b" font-size="11" text-anchor="end">bottom fillet</text>
+          <text x="${paintX + 5}" y="${paintY - 10}" fill="#ff7a6b" font-size="10">paint edge</text>
+          <text x="${x0}" y="172" fill="#5f7d6e" font-size="10">distance across the groove (normalised)</text>
+        `;
+
+        const mm = (params.depth * state.thicknessMm).toFixed(3);
+        el("depthOut").textContent = `${(params.depth * 100).toFixed(2)}% · ${mm} mm`;
+        el("topSpreadOut").textContent = params.topSpread.toFixed(2);
+        el("bottomSpreadOut").textContent = params.bottomSpread.toFixed(2);
+        el("blurOut").textContent = params.blur.toFixed(1);
+        el("paintThresholdOut").textContent = params.paintThreshold.toFixed(2);
+        el("samplesOut").textContent = `${params.samples}`;
+        el("paintRedOut").textContent = params.paintRed;
+        el("profileNote").textContent =
+          "Depth is exaggerated vertically; the curve is the exact Bézier the mesh uses.";
+        el("decalDims").textContent = "preview 2× · final 3×";
+      }
+
+      function setStatus(message, isError = false) {
+        const status = el("status");
+        status.textContent = message;
+        status.classList.toggle("error", isError);
+      }
+
+      async function loadState() {
+        const response = await fetch("/api/state");
+        const data = await response.json();
+        state.params = data.params;
+        state.thicknessMm = data.params.tileThicknessMm;
+        state.lip = data.params.lip;
+        state.floor = data.params.floor;
+        writeParams(data.params);
+        drawProfile();
+        if (data.decalExists) {
+          el("decal").src = data.decal;
+          el("decalTime").textContent = "last preview loaded";
+        } else {
+          setStatus("No preview yet — press Render preview.");
+        }
+        if (!data.blenderFound) {
+          setStatus(`Blender not found at ${data.blender}`, true);
+        }
+        el("decal").addEventListener("load", () => {
+          el("decalTime").textContent = `rendered ${new Date().toLocaleTimeString()}`;
+        });
+      }
+
+      async function renderPreview() {
+        const button = el("render");
+        button.disabled = true;
+        setStatus("Rendering preview…");
+        try {
+          const response = await fetch("/api/render", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(readParams()),
+          });
+          const data = await response.json();
+          if (!data.ok) throw new Error(data.error || "render failed");
+          el("decal").src = data.decal;
+          setStatus(`Preview ready in ${data.elapsed}s.`);
+        } catch (error) {
+          setStatus(`Render failed: ${error.message}`, true);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function applyParams() {
+        setStatus("Writing parameters into scene-spec.json…");
+        try {
+          const response = await fetch("/api/apply", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(readParams()),
+          });
+          const data = await response.json();
+          if (!data.ok) throw new Error(data.error || "apply failed");
+          setStatus("Applied. Run: bash tools/render/render.sh");
+        } catch (error) {
+          setStatus(`Apply failed: ${error.message}`, true);
+        }
+      }
+
+      for (const id of ids) {
+        el(id).addEventListener("input", drawProfile);
+      }
+      el("paintRed").addEventListener("input", drawProfile);
+      el("render").addEventListener("click", renderPreview);
+      el("apply").addEventListener("click", applyParams);
+      el("reset").addEventListener("click", () => {
+        writeParams(state.params);
+        drawProfile();
+        setStatus("Reset to the values in scene-spec.json.");
+      });
+
+      loadState().catch((error) => setStatus(`Failed to load state: ${error.message}`, true));
+    </script>
+  </body>
+</html>

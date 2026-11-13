@@ -52,7 +52,8 @@ That command:
 4. assembles the labelled contact sheet with resvg
    (`scripts/contact-sheet.mjs`).
 
-It takes about 50 seconds on this machine at 256 samples. There is no manual
+It takes about 2 minutes on this machine at 256 samples (the carved decal is
+~80 s of that). There is no manual
 Blender interaction and no UI. The render is deterministic: the seed is fixed,
 the samples are fixed, and repeated runs produce identical pixels (Blender's PNG
 container bytes can differ, so compare decoded pixels, not file hashes).
@@ -62,6 +63,35 @@ Override the paths only for experiments:
 BLENDER=/path/to/blender bash tools/render/render.sh [spec.json] [out-dir]
 ```
 
+## Parameter tuner (local UI)
+
+The carve and the paint red are the two things most worth fiddling with, so
+there is a small local tuner:
+
+```bash
+node tools/render/tune.mjs     # or: npm run tune
+# open http://localhost:7457
+```
+
+It serves a browser UI (no build step, local only) with:
+
+- **Manzu red** — recolours the red fills only; the rasteriser preserves each
+  fill's relative brightness, so the paint's internal shading and the black bar
+  survive;
+- **carve depth** as a fraction of the 16.5 mm tile thickness (mm shown);
+- **top fillet spread** and **bottom fillet spread** — the two independent
+  Bézier controls, drawn live as the exact cross-section the mesh uses;
+- **edge blur**, **paint edge** and **preview samples**.
+
+"Render preview" writes a throwaway spec, rasterises the recoloured symbol and
+renders **only the decal** at 2×, 48 samples, a 0.6 carve grid and 4 AO samples —
+about 4 seconds on this machine — then shows it. It does not touch the committed
+assets. "Apply to spec" writes the values into `scene-spec.json`; run
+`bash tools/render/render.sh` afterwards for the full-quality set.
+
+Preview intermediates go to `tune-spec.json` and `build/tune-out/`, both
+gitignored.
+
 ## Files
 
 | Path | Committed | Purpose |
@@ -70,9 +100,10 @@ BLENDER=/path/to/blender bash tools/render/render.sh [spec.json] [out-dir]
 | `build_and_render.py` | yes | builds the whole scene from the spec with `bpy`, renders, carves the symbol, projects, warps the decal, measures, writes the manifest |
 | `scripts/rasterize-face.mjs` | yes | vendored symbol-only SVG → paint colour + carve mask PNG (resvg) |
 | `scripts/contact-sheet.mjs` | yes | renders the review sheet SVG → PNG (resvg) |
+| `tune.mjs`, `tune.html` | yes | local parameter tuner (dev only, never shipped) |
 | `faces/` | yes | vendored public-domain symbol-only SVGs + provenance (`faces/SOURCE.md`) |
 | `spike/` | yes | Task 1 spike outputs: body sprite, back diagnostic, decal, composite, zoom, contact sheet, starter manifest |
-| `node_modules/`, `build/` | no | installed dependencies and intermediate face textures |
+| `node_modules/`, `build/`, `tune-spec.json` | no | installed dependencies and intermediate preview files |
 
 Generated sprites are never hand-edited. A regeneration commits the spec/script
 change together with the regenerated `spike/` files (or, from Task 2 on, the
@@ -152,14 +183,18 @@ pixel-for-pixel) and uses it twice: its alpha is the **carve mask**, its colour
 is the **paint**. The face itself is the flat melamine material colour, which
 also matches the body's face underlay exactly.
 
-The mask is blurred and remapped with a **smootherstep** into a groove profile:
+The mask is blurred and remapped through a **cubic Bézier** into a groove
+profile. The curve runs from the lip `(0, 0)` to the floor `(1, 1)` with control
+points `(topSpread, 0)` and `(1 - bottomSpread, 1)`:
 
-- the lip is pinned at the mask's 0.5 contour (the paint's natural edge),
-- the quintic ease gives zero curvature at both ends, so the surface leaves the
-  face and bottoms out through a **rounded lip** and a **rounded floor shoulder**
-  rather than a knife edge; `blurPixels: 5.0` (at 540 px face width) makes both
-  fillets deliberately wide, so the transitions are visibly smooth at 2×, with
-  enough swept normal range for the gloss to catch on the bottom curve,
+- `topSpread` and `bottomSpread` are **independent** controls for the two edges.
+  0 gives a straight diagonal (no fillet); 1 gives the widest, softest ease. The
+  tangent at each end is what spreads that fillet, so the lip and the
+  wall-to-floor shoulder can be shaped separately.
+- the lip is pinned at the mask's `profile.lip` contour (the paint's natural
+  edge) and the floor at `profile.floor`,
+- `blurPixels: 5.0` (at 540 px face width) widens the mask ramp so both fillets
+  have enough swept normal range for the gloss to catch on the bottom curve,
 - depth is `depthFractionOfThickness = 0.005` of the tile thickness — 0.00295
   units, about 0.08 mm at jansou scale. That is a deliberately shallow engrave:
   the carve reads through the bevel ring and wall shading, not a deep shadow.
@@ -167,6 +202,11 @@ The mask is blurred and remapped with a **smootherstep** into a groove profile:
 The paint boundary sits slightly inside the lip (`paintThreshold = 0.62`), so a
 thin ring of bare melamine remains on the bevel. That ring catches the key and is
 what makes the carve read as a bevelled recess rather than a flat print.
+
+`materials.paint.red` recolours the symbol's red fills at raster time (the
+rasteriser keeps each fill's relative brightness, so the paint's internal
+shading and the black bar are preserved). `materials.paint.redBase` is the main
+upstream red; the two are equal at the committed defaults.
 
 A groove floor has the same normal as the face, so its diffuse response is
 identical and a wide stroke would still look flat. The decal material therefore

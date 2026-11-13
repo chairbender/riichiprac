@@ -398,10 +398,15 @@ for Tasks 2–3:
   material (`materials.paint`, roughness 0.16, coat 0.35); its specular line on
   the bottom fillet is the cue that sells the engraving.
 - **The symbol is carved, not printed.** A symbol-only SVG supplies the carve
-  mask and the paint. A smootherstep groove profile (rounded lip and rounded
-  floor shoulder) recesses a subdivided face plate by 0.5% of the thickness
-  (≈ 0.08 mm at jansou scale); the paint boundary sits slightly inside the lip,
-  so a thin bare melamine bevel catches the key. Glossy paint catches a bright
+  mask and the paint. A cubic-Bézier groove profile with independent top and
+  bottom fillet controls (`topSpread` / `bottomSpread`) recesses a subdivided
+  face plate by 0.5% of the thickness (≈ 0.08 mm at jansou scale); the paint
+  boundary sits slightly inside the lip, so a thin bare melamine bevel catches
+  the key. The paint red is a spec override.
+- **Parameter tuner.** `node tools/render/tune.mjs` serves a local UI at
+  `localhost:7457` with the red, depth, both Bézier spreads, blur and paint
+  edge; it draws the exact cross-section and renders a decal-only preview in
+  ~4–6 s. "Apply to spec" writes back to `scene-spec.json`. Dev-only, not shipped. Glossy paint catches a bright
   specular line on each bottom fillet (where the well wall curves into the
   floor), and a little cavity occlusion keeps the red from reading flat. The carve
   is baked into the lit decal, so it is orientation-lit like the rest of the

@@ -48,7 +48,9 @@
       "blurPixels": 5.0,
       "profile": {
         "lip": 0.5,
-        "floor": 0.9
+        "floor": 0.9,
+        "topSpread": 0.42,
+        "bottomSpread": 0.42
       },
       "paintThreshold": 0.62,
       "occlusionDistance": 0.2,
