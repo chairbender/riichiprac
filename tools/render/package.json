@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "render": "bash render.sh",
+    "spike": "bash render.sh --spike",
     "rasterize": "node scripts/rasterize-face.mjs",
+    "check": "node scripts/check-assets.mjs ../../frontend/public/table",
     "tune": "node tune.mjs"
   },
   "dependencies": {

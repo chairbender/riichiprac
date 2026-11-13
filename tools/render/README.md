@@ -6,10 +6,19 @@ developer-only asset pipeline: nothing here is bundled, imported, or shipped by
 the frontend. The runtime is a 2D sprite compositor, so all perspective,
 lighting, bevel highlights, and shadows are baked here.
 
-Task 1 (spike) proves the pipeline end to end on one tile: one hand-slot body
-sprite and one lit face decal. Task 1.5 replaces its single studio key with a
-parlor strip rig (see the lighting section below). Tasks 2 and 3 extend it to the
-whole table and the full 38-code × 5-orientation decal set.
+The pipeline builds two batches from one scene, spec, and script:
+
+- **shipped batch** (default) — the table background, one body sprite per hand
+  slot in both poses, and the manifest, written to `frontend/public/table/`.
+  Task 2 delivered this batch; Tasks 5–11 add their own slots to the same scene.
+- **spike batch** (`--spike`) — the Task 1/1.5 review artifact: one hand-slot
+  body, its concealed pose, the carved face decal, the homography composite, and
+  the contact sheet, written to `tools/render/spike/`. Never shipped.
+
+Task 1 proved the pipeline end to end on one tile and one decal; Task 1.5
+replaced its single studio key with a parlor strip rig; Task 2 added the table
+and the whole hand row. Task 3 extends the decal batch to the full 38-code ×
+5-orientation set.
 
 ## Toolchain (pinned, outside the repo)
 
@@ -34,27 +43,46 @@ mv ~/.local/opt/blender-4.5.9-linux-x64 ~/.local/opt/blender-4.5.9
 The render script prints `bpy.app.version_string` and aborts on anything that
 is not 4.5.9, so a stray Blender on `PATH` cannot silently produce new assets.
 
+The scene is pinned to **CPU** Cycles (`scene.device`): the plan's determinism
+rule assumes CPU sampling. A GPU device is much faster but samples differently,
+so a GPU regeneration produces slightly different pixels and should be committed
+as its own regeneration, not mixed with CPU output.
+
 There is **no headless browser, no `sharp`, and no system `rsvg`** in the
 pipeline. resvg-js is the only SVG rasteriser, matching §12.14 of the plan.
 
 ## Regenerate (one command)
 
 ```bash
-bash tools/render/render.sh
+bash tools/render/render.sh            # shipped batch -> frontend/public/table/
+bash tools/render/render.sh --spike    # Task 1 review batch -> tools/render/spike/
 ```
 
-That command:
+The shipped batch:
 
-1. installs `tools/render`'s Node dependencies with `npm ci` on the first run
-   (the directory is gitignored, forever offline after that);
-2. rasterises the vendored face SVG with resvg (`scripts/rasterize-face.mjs`);
-3. builds the scene and renders with headless Blender
-   (`build_and_render.py`, `--python-exit-code 1` so failures are loud);
-4. assembles the labelled contact sheet with resvg
-   (`scripts/contact-sheet.mjs`).
+1. builds the scene and renders with headless Blender (`build_and_render.py`,
+   `--python-exit-code 1` so failures are loud): the background, then every body
+   sprite, then the alignment reference frame;
+2. verifies the result with `scripts/check-assets.mjs` (dependency-free, so the
+   same command runs in CI): every referenced file exists at the size the
+   manifest publishes, every slot rect sits inside the scene, every face and
+   decal quad sits inside its body sprite, every `faceMatrix` reproduces its
+   `decalQuad`, and the batch is inside the asset budget.
 
-It takes about 1 m 40 s on this machine at 256 samples (the carved decal is
-~67 s of that). There is no manual
+The spike batch additionally installs `tools/render`'s Node dependencies with
+`npm ci` on the first run (the directory is gitignored, forever offline after
+that), rasterises the vendored face SVG with resvg
+(`scripts/rasterize-face.mjs`), and assembles the labelled contact sheet with
+resvg (`scripts/contact-sheet.mjs`).
+
+One shipped batch is a few minutes on a CPU-only machine: the 28 body sprites are
+small border renders (a couple of seconds each) and the background is the bulk of
+it. The scene's 256-sample setting applies to the sprites; the background is a
+full frame of broad, low-frequency lighting, so `assets.background.samples` (64)
+plus OIDN renders it in ~2 minutes with no visible difference — that is a
+deliberate, recorded deviation from the scene's 256, because a full 2880 × 1800
+frame at 256 is several times the cost of every sprite in the batch. The spike's
+carved decal is ~90 s. There is no manual
 Blender interaction and no UI. The render is deterministic: the seed is fixed,
 the samples are fixed, and repeated runs produce identical pixels (Blender's PNG
 container bytes can differ, so compare decoded pixels, not file hashes).
@@ -126,18 +154,20 @@ gitignored.
 
 | Path | Committed | Purpose |
 | --- | --- | --- |
-| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine/paint materials, camera, `lightRig` + `lightPresets` (studio and parlor), colour management, hand layout, carve, decal rig, composite sampling, output names |
-| `build_and_render.py` | yes | builds the whole scene from the spec with `bpy`, renders, carves the symbol, projects, warps the decal, measures, writes the manifest |
+| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine/paint/table materials, table plan dimensions, camera, `lightRig` + `lightPresets` (studio and parlor), colour management, hand layout, carve, decal rig, composite sampling, asset format/budget, checks, output names |
+| `build_and_render.py` | yes | builds the whole scene from the spec with `bpy`, renders the table background and every body sprite, carves the symbol, projects, warps the decal, checks alignment, measures, writes the manifest |
+| `scripts/check-assets.mjs` | yes | dependency-free manifest/asset/budget validator (also the CI gate) |
 | `scripts/rasterize-face.mjs` | yes | vendored symbol-only SVG → paint colour + carve mask PNG (resvg) |
-| `scripts/contact-sheet.mjs` | yes | renders the review sheet SVG → PNG (resvg) |
+| `scripts/contact-sheet.mjs` | yes | renders the spike review sheet SVG → PNG (resvg) |
 | `tune.mjs`, `tune.html` | yes | local parameter tuner (dev only, never shipped) |
 | `faces/` | yes | vendored public-domain symbol-only SVGs + provenance (`faces/SOURCE.md`) |
-| `spike/` | yes | Task 1 spike outputs: body sprite, back diagnostic, decal, composite, zoom, contact sheet, starter manifest |
-| `node_modules/`, `build/`, `tune-spec.json` | no | installed dependencies and intermediate preview files |
+| `spike/` | yes | Task 1/1.5 review outputs: body sprite, concealed pose, decal, composite, zoom, contact sheet, review manifest |
+| `../../frontend/public/table/` | yes | the shipped batch: `background.webp`, `bodies/*.webp`, `manifest.json` |
+| `node_modules/`, `build/`, `tune-spec.json` | no | installed dependencies, intermediate renders, and the review composites (`build/review/hand-face-up.png`, `hand-face-down.png`) |
 
 Generated sprites are never hand-edited. A regeneration commits the spec/script
-change together with the regenerated `spike/` files (or, from Task 2 on, the
-shipped assets under `frontend/public/table/`).
+change together with the regenerated assets under `frontend/public/table/` (or
+`spike/` for the review batch).
 
 ## Scene and coordinate conventions
 
@@ -148,12 +178,14 @@ width and thickness, so the box can never drift from the ratio. At height 1.0 th
 face is 0.75 × 1.0 and the thickness 0.58929. Bevel width 0.035 (= `faceInset`).
 Tiles are modelled flat (face up +Z, symbol top +Y). The `hand-upright` pose
 rotates the tile 90° about X so the face points at the player (−Y) and the tile
-stands on the table.
+stands on the table; `hand-upright-back` turns the same slab 180° about Z so the
+blue backing faces the camera (the concealed-hand pose). Both poses stand on the
+same felt footprint.
 
 The scene is one fixed perspective camera (65 mm on a 36 mm sensor, 2880 × 1800
 device pixels = 1440 × 900 CSS at `pixelRatio: 2`), a preset area rig
-(`parlor`: 2 tubes + bounce + rim), a
-shadow-catcher felt plane, and AgX colour management with denoised Cycles.
+(`parlor`: 2 tubes + bounce + rim), a shadow-catcher felt plane, and AgX colour
+management with denoised Cycles.
 
 **Manifest coordinates are rendered device pixels** (top-left origin, y down,
 sprite-intrinsic). Divide by `pixelRatio` for CSS. A slot rect is exactly the
@@ -164,23 +196,132 @@ anchor. `faceQuad` and `decalQuad` are in the same absolute space.
 (top-left origin, y down) onto `decalQuad`; the runtime applies it verbatim and
 never projects a quad itself.
 
+## Task 2 results: the table, the hand row, and the alignment check
+
+### Table plan (tile units, 1 unit = the 28 mm tile height)
+
+| Part | Extent | Notes |
+| --- | --- | --- |
+| felt | half-extent 12.9 (25.8 across = 722 mm) | the playing surface and the shadow catcher |
+| wall-ring track | half-extents 6.3 … 7.3 (1.0 deep) | three flush bands: dark edge, track, dark edge |
+| compass base | 4.7 square, 0.06 high, 0.07 bevel | static plate; winds/scores are DOM (Task 8) |
+| hand apron | radial 10.6 … 12.55, 12.3 long | one flat, barely-lighter felt pad per seat |
+| rail | 0.9 wide, 0.35 high, 1.4 skirt | closed wooden ring, bevel 0.09 |
+
+The dimensions are a real jansou read back into tile units: the wall is 17
+stacks of 21 mm tiles, so its ring is 12.6 units on the inside (357 mm) and one
+tile deep (1.0) on the outside; a 3-unit river band sits outside it (Task 6
+fills it); the standing hand row sits outside that; the rail is the table's edge.
+The whole outer square is 27.6 units (773 mm).
+
+The track and the aprons are flat bands 0.002 units above the felt, not modelled
+recesses: the felt is the shadow catcher every body sprite is baked against, so
+keeping those surfaces coplanar keeps every tile's contact shadow exactly on the
+surface the sprite was baked against. There is no depth to get out of step.
+
+Lighting the felt was new work. The old felt colour was only ever a shadow
+catcher and rendered far too bright (`#12533a` read as pale mint), so the table
+palette was tuned against a render: felt `#093021`, apron `#0a3323` (a ~5%
+difference, just enough to read as a bed), track `#052316`, rail `#2a1a10`,
+compass plate `#08090a` at roughness 0.7. Felt is matte cloth (specular 0.12);
+only the rail and the compass plate are glossy. AgX lifts dark albedos a lot, so
+the palette is deliberately much darker than the target screen colour.
+
+### Camera framing
+
+The Task 1 camera framed one hand slot at ~100 CSS px per unit. The rendered
+view has to show the whole table, so Task 2 re-framed it: position
+`(0, −47.8, 32.2)`, target `(0, 0, 0.35)`, 65 mm, elevation **33.7°**, 57.4
+units (1.6 m) from the table centre. The near rail's corners land just outside
+the frame (±110 device px) so the near edge reads as the screen edge, the far
+rail sits at ~18% height, and the converging side rails are both visible. The
+hand row is 1280 device px (640 CSS) wide; a face is 74.3 × 77.0 device px
+(37 × 38.5 CSS), and the projected top edge is 42.2 device px, of which the rear
+30% blue backing is ~10 device px.
+
+At this elevation a standing tile shows a real top surface and a visible blue
+band along it, which is the physical truth for a 16.5 mm tile seen from 34°, and
+it is what makes the hand row read as physical tiles rather than cards. The plan
+keeps one framing (§12.9); Task 10 revisits it only if the phone check fails.
+
+### Hand slots
+
+The human's row is 13 concealed slots at 0.82 spacing plus **the separated
+draw**: `hand-draw` sits 0.55 units past the last concealed slot, which is the
+gap the app's dock already shows between `player.hand` and `player.draw`. The
+row *including* the draw is centred on `hand.centerX`, so the runtime can append
+the drawn tile by index without re-centring anything. Ids are `hand-0` …
+`hand-12` and `hand-draw`; `role` is `concealed` or `draw`.
+
+Every slot is baked in both poses (`hand-upright` and `hand-upright-back`), so a
+concealed row can be drawn at these slots today and Tasks 5/11 reuse the same
+pose at their own seat transforms. The back pose is a separate file (`<id>-back`)
+and a nested `back` record with its own rect; it has no face quad. Draw order is
+`40 + index` (13 concealed + draw = 40…53), which reserves 0–39 for the wall,
+rivers, and melds and leaves 54+ for later overlay bands. Nothing overlaps inside
+the row itself, but a per-slot order keeps the manifest's "unique draw order"
+check meaningful.
+
+### Background bake
+
+The background is one Cycles render from the same camera with the film made
+opaque and the felt's shadow catcher turned off, so the felt, track, aprons,
+compass plate, rail, and the room floor outside the rail are all lit normally.
+It renders at the scene resolution (2880 × 1800) and is box-filtered ×2 down to
+**1440 × 900 WebP q90** (§9's background size), which is also `backgroundPixels`
+in the manifest. Body sprites stay at 2× device pixels.
+
+### Alignment check: sprites really do land on the background
+
+The batch is checked, not just eyeballed. After all 28 sprites are baked, the
+script renders one 8-sample reference frame with **every** slot's tile in the
+scene at once, and pastes every sprite's tile-only alpha at its manifest rect
+(draw order applied). The two are compared with a one-pixel dilation so
+anti-aliasing and denoiser softness are ignored: any disagreement left is a real
+shift. The shipped batch reports **0 shifted pixels** out of ~143k tile pixels,
+which is what "sprites align with the background" means here — a crop or a rect
+off by one pixel fails the bake.
+
+A second, human-readable artifact proves the same thing over the real
+background: `build/review/hand-face-up.png` and `hand-face-down.png` composite
+the whole row exactly as the runtime will (device pixels, then box-filtered for
+viewing). They are gitignored review images, not assets.
+
+### Format, budget, and what the batch weighs
+
+| Asset | Format | Size |
+| --- | --- | --- |
+| background | WebP q90, 1440 × 900, 64 samples | 19,018 B |
+| body sprites | WebP q90 with alpha, 2× device px | 141,804 B (28 files, ~5 KB each) |
+| manifest | JSON (v2) | 24,620 B |
+
+The batch is 186 KB against the plan's 8 MB total / 1 MB body budgets, and the
+`table` and `manifest` byte budgets are enforced by both the bake and
+`scripts/check-assets.mjs` (the manifest budget is set to 50 KB, with the
+manifest currently ~24 KB of that). The manifest is deliberately verbose —
+per-slot measurements, the full rig, and the check results — because it is the
+pipeline's audit trail; Task 4 can strip a runtime projection of it if the load
+weight ever matters.
+
 ## Findings and decisions (Task 1, updated by Task 1.5)
 
 Measured from `spike/` and the `measurements` block of `spike/manifest.json`.
 
 ### Body sprite: real slot, position-dependent shading
 
-`hand-0` is the leftmost of the spec's 14 hand slots (spacing 0.82, row at
-y = −4.4), so the sprite is baked where that tile will actually sit, not on a
-neutral stage. The slot is left of the camera axis, which is what makes the
+`hand-0` is the leftmost of the hand row (13 concealed slots at 0.82 spacing,
+row at y = −11.7), so the sprite is baked where that tile will actually sit, not
+on a neutral stage. The slot is left of the camera axis, which is what makes the
 shading position-dependent: the near (left) bevel catches the key light, the
 right bevel falls into the fill, and the right side of the body is visible at all
-(the face quad is a true trapezoid: top edge 151.1 px, bottom edge 149.3 px,
-centre sheared 14 px). A slot at the row centre would lose the side face and
-flatten the bevel contrast. The crop is 271 × 315 device px including the 32 px
-shadow gutter. On the visible side the white front band meets the blue rear
-band at the backing line, which is what makes the wrap read as a physical
-backing rather than a painted stripe.
+(the face quad is a true trapezoid: top edge 74.66 px, bottom edge 73.86 px,
+centre sheared ~6.9 px). A slot at the row centre would lose the side face and
+flatten the bevel contrast. The crop is 159 × 190 device px including the 32 px
+shadow gutter. On the visible side the white front band meets the blue rear band
+at the backing line, which is what makes the wrap read as a physical backing
+rather than a painted stripe. (The Task 1 numbers in this section were measured
+on the 100 px/unit spike camera; the geometry and the material behaviour are
+unchanged, the tile is simply smaller on screen now.)
 
 Bevel: width 0.035, 4 segments, miter arc, `harden_normals`, weighted normals,
 shade smooth. Four segments is enough to hold a clean highlight at 2× without
@@ -280,13 +421,17 @@ The tile is a **white melamine face plate** on a **solid blue melamine backing**
 single stripe on the top: the back face and the **rear 30% of every side edge**
 are blue (`backEdgeFraction: 0.3`), so the colour wraps the whole body. On a
 standing hand tile that gives a blue line along the top and a blue band down the
-visible side, and from behind the tile is solid blue (see the back diagnostic).
+visible side, and from behind the tile is solid blue (see the concealed-hand
+pose on the spike's contact sheet).
 
 At the hand slot the raised camera projects the 0.58929-unit top edge to
-**43.75 device px**, of which the blue run measures **11 device px** (expected
-13.12; the top bevel arc eats the difference) on a **191.92 device px** face.
-That is ~5.5 CSS px of blue above a ~96 CSS px face — a visible line, not a
-stripe, and it survives at the shipped 2× size.
+**42.22 device px**, of which the blue run measures **10 device px** (expected
+12.67; the top bevel arc eats the difference) on a **76.99 device px** face.
+That is ~5 device px of blue above a ~38.5 CSS px face — a visible band, not a
+stripe, and it survives at the shipped 2× size. The band is proportionally wider
+than in the Task 1 spike (≈13% of the face height rather than 5.5%) because the
+camera now looks down at 33.7° instead of 17.8°, so more of the tile's top
+surface is visible; the backing fraction itself is unchanged.
 
 Colour: base `#132986` at roughness 0.34, which reads as a deep royal blue after
 AgX — ≈ RGB(4, 69, 166) on the back face and ≈ RGB(71, 109, 196) on the
@@ -310,7 +455,7 @@ The decal's face is the same flat melamine base colour as the body's face
 underlay (`#f5f0eb`). Measured at the seam under the Task 1 rig, the body face is
 `rgb(221, 220, 220)` sRGB and the decal's flat face is `rgb(224, 224, 224)`,
 about 1.3% brighter. That is the canonical rig sitting at the hand-row centre
-while `hand-0` sits 5.3 units to its left, not a base-colour mismatch. It is
+while `hand-0` sits 5.6 units to its left, not a base-colour mismatch. It is
 invisible at 2×; treat ~2% as the tolerance and re-check the seam zoom before
 adding any runtime blend. The decal edge needs **no runtime mask, feather, or
 blend mode**: it composites straight over the body's face, and the body's bevel
@@ -324,8 +469,8 @@ handling there before touching the inset.
 
 ### Composite sampling: the "sparkle" is an aliasing choice
 
-The decal is baked at 3× CSS and lands on a ~192 device px face, so the review
-composite is a **~3.75× minification**. `warp_onto` takes one bilinear sample
+The decal is baked at 3× CSS and lands on a ~77 device px face at the Task 2
+framing, so the review composite is a **~8.7× minification**. `warp_onto` takes one bilinear sample
 per output pixel by default (`decals.compositeSupersample: 1`). A fillet
 highlight is barely one texel wide, so the sample hits or misses it along the
 stroke and the line breaks into bright dashes — the "sparkle" in the 1:1
@@ -341,23 +486,37 @@ the highlight should be re-judged once that is settled rather than fixed against
 a 2× review artifact. The manifest records the factor as
 `decals.compositeSupersample` so a sheet is self-describing.
 
-The real lesson for Task 3: a 1 px highlight cannot survive a 3.75×
+The real lesson for Task 3: a 1 px highlight cannot survive an 8.7×
 minification whatever the filter, so the streak has to be resolved by shipping a
 decal closer to its display size (or a display-sized companion), not by relying
-on filtering.
+on filtering. Task 3 should therefore re-size the decal batch against the Task 2
+framing: the canonical frame is 0.68 × 0.93 units and a face is 74 × 77 device
+px, so a 2× decal is ~175 × 180 px, not the 492 × 672 px spike render.
 
-### Seam tolerance after the rig change (Task 1.5)
+### Seam tolerance after the rig change (Task 1.5, re-checked by Task 2)
 
-Re-checked at the shipped 2× size on the regenerated spike: sampling the
-composite either side of the decal's left edge at mid-face, the body's face
-reads ≈ RGB(221, 221, 219) and the decal's flat face ≈ RGB(225, 223, 220) — about
-1.7% brighter, the same difference as Task 1 (the canonical rig sits at the hand
-row's centre while `hand-0` sits 5.3 units left of it), and it remains invisible
-in the contact-sheet zoom.
+Re-checked on the Task 2 spike, whose decal rig now stands at the hand row's real
+y (−11.7): sampling the composite either side of the decal's left edge at
+mid-face, the body's face reads ≈ RGB(221, 219, 217) and the decal's flat face
+≈ RGB(225, 223, 221) — about 1.8% brighter, the same difference as Task 1 (the
+canonical rig sits at the hand row's centre while `hand-0` sits 5.6 units left of
+it), and it remains invisible at the shipped size.
 
 The parlor rig is still distant and large (56-unit throw, 40-unit tubes), so the
 position-independence constraint above holds unchanged; the tube targets span
-0.6…3 units along Y, which is small against that throw.
+0.6…3 units along Y, which is small against that throw. The Task 2 camera looks
+down at 33.7° rather than 18°, so a tube's bevel streak sits at
+`θn = (θL + 33.7°) / 2` on the body and `θL / 2` on the face-on decal rig; both
+still land on the up-facing fillets and the seam stays clean.
+
+Measured across the whole Task 2 hand row, the upright face underlay reads
+RGB(228, 226, 224) at the left end and RGB(229, 228, 226) at the right: under 1%
+variation, so the once-lit `upright` decal sits flush at every hand slot. The
+side seats' faces read RGB(204, 208, 215) / RGB(207, 210, 215) — a real
+per-class difference, which is why flat tiles get their own orientation-class
+rigs in Task 3. Re-check that the flat classes are as even across the table as
+the hand row is: the rig's targets are near the human's edge, and a far-wall
+flat tile sees a different exposure than one in the human's river.
 
 ### Lighting: parlor strip rig (Task 1.5), studio rig kept for comparison
 
@@ -427,9 +586,9 @@ corners (a straight run is uniformly lit whatever the tube length). Azimuth and
 roll decide which walls catch it: roll rotates the rectangle about its aim axis,
 so 0 lies along X and 90 along Y.
 
-Measured on the regenerated spike: body peak **250/255**, decal peak
-**242/255**, zero clipped pixels in either; the decal bake is **~67 s** at 256
-samples (Task 1: ~82 s), so adding fixtures did not cost bake time. At the
+Measured on the regenerated spike: body peak **246/255**, decal peak
+**244/255**, zero clipped pixels in either; the decal bake is **~87 s** at 256
+samples, so adding fixtures did not cost bake time. At the
 shipped 2× size the parlor read holds: a bright streak runs the whole top bevel
 of the body (see the contact-sheet zoom), and every stroke fillet carries its own
 streak on the decal (see the 1:1 composite panel — where the sub-pixel highlight
@@ -471,9 +630,12 @@ Each body render is two passes:
    occludes the lights. This pass returns the contact shadow as a black colour
    with **alpha = shadow coverage** (not an opaque grey patch).
 
-The two are combined in `numpy` (tile over shadow) and written as one RGBA PNG,
-with the crop grown by the 32 px gutter. The measured crop is
-`271 × 315` device px with the whole shadow inside it (`clipped: false`).
+The two are combined in `numpy` (tile over shadow) and written as one RGBA
+sprite, with the crop grown by the 32 px gutter. Every other table part (rail,
+track, aprons, compass plate, room floor) is hidden in both passes: the
+background already carries their shading, and their shadows must not be counted
+twice. The measured `hand-0` crop is `159 × 190` device px with the whole shadow
+inside it, and a crop that touches the frame edge fails the bake.
 The shadow is neutral black alpha, i.e. a multiply-like darkening; over the green
 felt this reads correctly, and it is the same approximation §12.7 specifies
 (no runtime shadow layer, no CSS shadow).
@@ -498,45 +660,46 @@ with the symbol rotated 0/90/180/270°.
 ## Spike assets
 
 `spike/` is a review artifact, not a shipped asset. It is lossless PNG so the
-bevel and alpha can be inspected; Task 2/3 ship 2× lossy WebP under
-`frontend/public/table/` per the asset budget (§9).
+bevel and alpha can be inspected; the shipped batch is 2× lossy WebP under
+`frontend/public/table/` per the asset budget (§9). Both are regenerated by
+`render.sh` (the shipped batch by default, this one with `--spike`).
 
 | File | What it is |
 | --- | --- |
-| `hand-0.body.png` | 271 × 315 device px body sprite for the leftmost hand slot, alpha + baked shadow |
+| `bodies/hand-0.png` | 159 × 190 device px body sprite for the leftmost hand slot, alpha + baked shadow |
+| `bodies/hand-0-back.png` | the same slot in the concealed pose (blue backing toward the camera) |
 | `1m-upright.decal.png` | 492 × 672 px lit 1-man face decal (inset + 1 px gutter), rendered at 3× CSS |
 | `1m-upright.composite.png` | body sprite with the decal homography-warped onto its face quad — the 2D composite the runtime will do |
-| `hand-0.back.png` | face-down diagnostic of the same slot (blue backing toward the camera); proves the wrap, not a shipped pose |
 | `contact-zoom.png` | 4× nearest zoom of the composite's top-left corner (blue rim, bevel streak, decal edge) |
-| `contact-sheet.png` | body, composite, composite at shipped 2× (1:1), decal, back diagnostic, the 4× zoom, the rig, the peak/clipping numbers and the manifest figures |
-| `manifest.json` | starter manifest (version 1) with the rig, slot rect, face quad, `faceMatrix`, orientation, draw order, decal size and carve, and the measurements (blue sliver, peaks, clipping, bake time) |
+| `contact-sheet.png` | body, composite, decal, concealed pose, the 4× zoom, the rig, the peak/clipping numbers and the manifest figures |
+| `bodies/` | the spike batch's two body sprites (PNG, lossless review) |
+| `manifest.json` | review manifest (version 2) for the one slot: rect, face quad, `faceMatrix`, orientation, draw order, the rig, decal size and carve, measurements (blue sliver, peaks, clipping, bake time) |
 
 ## Scope: back / face-down poses
 
-Task 1's acceptance is one face-up hand-slot body sprite and one lit decal, so
-only the `hand-0` face-up body is a real deliverable here (Task 1.5 re-baked the
-same slot with the parlor rig). The `hand-0.back.png`
-render is a **diagnostic**: it exists to prove the blue backing wraps the whole
-body, and it is not referenced by the manifest.
-
-Real face-down bodies belong with the full body-pose bake in Task 2 (the slot
-inventory, including concealed hands) and are consumed by Task 5 (opponent
-concealed hands) and Task 11 (wall/dora tiles). They use the same
-`hand-upright-back` pose and `bake_body` call; there is nothing new to design,
-just more slots and the draw order of a stacked back row. Task 2 should drop this
-diagnostic from `spike/` once the real back poses exist.
+Task 1 shipped only the face-up `hand-0` body plus a face-down diagnostic. Task 2
+replaced that diagnostic with a real deliverable: **every** hand slot is baked in
+both poses, and the shipped manifest gives each slot a nested `back` record with
+its own sprite and rect. The concealed pose uses the same `hand-upright-back`
+pose and `bake_body` call; Tasks 5 and 11 bake their own slots at their own seat
+transforms, so nothing about the pose has to be invented there.
 
 ## Next tasks
 
-- Task 2: add the rest of the hand slots, rivers, melds, wall, and the table
-  background to the spec; render the background from the same camera and write
-  the full slot inventory and draw order. Keep the shipped `parlor` rig: it is
-  baked into every body sprite and decal, so changing it re-bakes everything.
-  Re-read `manifest.rig` rather than assuming light positions.
 - Task 3: vendor all 38 symbol-only SVGs at the pinned commit, rasterise each, and
-  render all five orientation classes per code; downsample 3× → 2× WebP. Decide
-  the shipped decal resolution here: a 1 px fillet highlight is lost at the
-  current ~3.75× minification, and `compositeSupersample` only changes the review
-  composite, not the runtime texture.
+  render all five orientation classes per code; ship 2× WebP. Decide the decal
+  resolution against this framing: a face is 74 × 77 device px, so the spike's
+  492 × 672 render is an ~8.7× minification and a 1 px fillet highlight cannot
+  survive it. `compositeSupersample` only changes the review composite, not the
+  runtime texture. Fill the manifest's `faces` map.
+- Tasks 5–8, 11: add their slots to the same spec/scene and bake with the same
+  `bake_body`/`build_table` helpers. Re-read `manifest.rig`, `manifest.table.plan`
+  and `manifest.camera` rather than assuming light or table positions, and pick
+  draw-order bands (0–39 wall/river/meld, 40–53 the hand row as shipped, 60+
+  overlays) so a stacked row can never overdraw the wrong tile. Keep the shipped `parlor` rig and the
+  Task 2 camera: both are baked into every sprite.
+- Task 4: the runtime reads `background`, `backgroundPixels`, `pixelRatio`, and
+  each slot's `body`/rect/`faceMatrix`; it never projects a quad. Fall back to the
+  top-down view if the assets fail to load.
 - Keep `node_modules/` and `build/` out of git; keep the spec as the only place
   numbers live.

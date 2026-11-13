@@ -1,0 +1,1206 @@
+{
+  "version": 2,
+  "generatedBy": "tools/render/build_and_render.py",
+  "spec": "scene-spec.json",
+  "blender": "4.5.9 LTS",
+  "units": "device px, origin top-left, y down; divide by pixelRatio for CSS",
+  "pixelRatio": 2,
+  "tile": {
+    "proportionsMm": {
+      "height": 28,
+      "width": 21,
+      "thickness": 16.5
+    },
+    "units": {
+      "height": 1,
+      "width": 0.75,
+      "thickness": 0.58929
+    },
+    "material": "melamine",
+    "backEdgeFraction": 0.3,
+    "faceInset": 0.035
+  },
+  "scene": {
+    "width": 1440,
+    "height": 900,
+    "widthDevicePx": 2880,
+    "heightDevicePx": 1800,
+    "camera": "fixed"
+  },
+  "camera": {
+    "position": [
+      0,
+      -47.8,
+      32.2
+    ],
+    "target": [
+      0,
+      0,
+      0.35
+    ],
+    "lensMm": 65,
+    "sensorWidthMm": 36,
+    "shiftY": 0,
+    "elevationDeg": 33.68,
+    "distanceUnits": 57.439
+  },
+  "table": {
+    "plan": {
+      "feltHalfExtent": 12.9,
+      "railInnerHalfExtent": 12.9,
+      "railOuterHalfExtent": 13.8,
+      "railWidth": 0.9,
+      "railHeight": 0.35,
+      "railDrop": 1.4,
+      "wallRing": {
+        "innerHalfExtent": 6.3,
+        "outerHalfExtent": 7.3,
+        "edgeWidth": 0.05
+      },
+      "compass": {
+        "halfExtent": 2.35,
+        "height": 0.06,
+        "bevel": 0.07
+      },
+      "handApron": {
+        "inner": 10.6,
+        "outer": 12.55,
+        "halfLength": 6.15
+      },
+      "bandHeight": 0.002
+    },
+    "seats": [
+      "bottom",
+      "right",
+      "top",
+      "left"
+    ],
+    "handRow": {
+      "seat": "bottom",
+      "y": -11.7,
+      "slotIds": [
+        "hand-0",
+        "hand-1",
+        "hand-2",
+        "hand-3",
+        "hand-4",
+        "hand-5",
+        "hand-6",
+        "hand-7",
+        "hand-8",
+        "hand-9",
+        "hand-10",
+        "hand-11",
+        "hand-12",
+        "hand-draw"
+      ]
+    }
+  },
+  "facePixels": [
+    360,
+    480
+  ],
+  "background": "background.webp",
+  "backgroundPixels": [
+    1440,
+    900
+  ],
+  "rig": {
+    "preset": "parlor",
+    "convention": "azimuth 0 front (-Y), 90 +X, 180 behind, 270 -X; elevation above horizontal; roll about the light's aim axis in degrees",
+    "lights": [
+      {
+        "id": "tube-0",
+        "group": "tube",
+        "target": [
+          0,
+          -8.5,
+          0
+        ],
+        "azimuthDeg": 0,
+        "elevationDeg": 50,
+        "distance": 56,
+        "size": 40,
+        "sizeY": 2.5,
+        "rollDeg": 0,
+        "energyW": 85000,
+        "hex": "#fdf9f1"
+      },
+      {
+        "id": "tube-1",
+        "group": "tube",
+        "target": [
+          -2,
+          3,
+          0
+        ],
+        "azimuthDeg": 90,
+        "elevationDeg": 58,
+        "distance": 56,
+        "size": 40,
+        "sizeY": 2.5,
+        "rollDeg": 0,
+        "energyW": 65000,
+        "hex": "#fdf9f1"
+      },
+      {
+        "id": "bounce",
+        "group": "bounce",
+        "target": [
+          0,
+          -1,
+          0.3
+        ],
+        "azimuthDeg": 30,
+        "elevationDeg": 10,
+        "distance": 34,
+        "size": 42,
+        "sizeY": 27,
+        "rollDeg": 0.0,
+        "energyW": 2500,
+        "hex": "#cfe4d3"
+      },
+      {
+        "id": "rim",
+        "group": "rim",
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "azimuthDeg": 170,
+        "elevationDeg": 45,
+        "distance": 40,
+        "size": 28,
+        "sizeY": 20,
+        "rollDeg": 0.0,
+        "energyW": 6000,
+        "hex": "#ffffff"
+      }
+    ],
+    "world": {
+      "hex": "#b9c6d6",
+      "strength": 0.4
+    }
+  },
+  "decals": {
+    "pixels": [
+      492,
+      672
+    ],
+    "frameUnits": [
+      0.6833333333333333,
+      0.9333333333333333
+    ],
+    "paddingPixels": 1,
+    "renderedAtScale": 3,
+    "compositeSupersample": 1,
+    "carve": {
+      "depthUnits": 0.00713,
+      "depthFractionOfThickness": 0.0121,
+      "blurUnits": 0.004285714285714286,
+      "transitionUnits": 0.010714285714285714,
+      "profile": {
+        "topSpread": 0.6,
+        "bottomSpread": 0.8
+      },
+      "paintEdge": 0.18,
+      "occlusionDistance": 0.2,
+      "occlusionStrength": 0.75,
+      "grid": [
+        492,
+        672
+      ]
+    },
+    "note": "faceMatrix maps the decal image's full pixel rect (top-left origin, y down) onto decalQuad."
+  },
+  "slots": [
+    {
+      "id": "hand-0",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 0,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 40,
+      "body": "bodies/hand-0.webp",
+      "x": 751,
+      "y": 1478,
+      "width": 159,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          787.278,
+          1556.109
+        ],
+        [
+          861.937,
+          1556.109
+        ],
+        [
+          868.164,
+          1633.1
+        ],
+        [
+          794.308,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          787.082,
+          1555.97
+        ],
+        [
+          862.109,
+          1555.97
+        ],
+        [
+          868.356,
+          1633.236
+        ],
+        [
+          794.14,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152493919, 5.09243906e-10, 0, 3.43256943e-13, 0.0234149313, 0.141535789, 0, 1.62598007e-05, 0, 0, 1, 0, 787.081919, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-0-back.webp",
+        "x": 751,
+        "y": 1478,
+        "width": 159,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-1",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 1,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 41,
+      "body": "bodies/hand-1.webp",
+      "x": 841,
+      "y": 1478,
+      "width": 158,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          877.308,
+          1556.109
+        ],
+        [
+          951.968,
+          1556.109
+        ],
+        [
+          957.225,
+          1633.1
+        ],
+        [
+          883.369,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          877.114,
+          1555.97
+        ],
+        [
+          952.141,
+          1555.97
+        ],
+        [
+          957.415,
+          1633.236
+        ],
+        [
+          883.199,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152493919, 8.25455587e-10, 0, 4.61273484e-13, 0.0234164149, 0.141538627, 0, 1.62615384e-05, 0, 0, 1, 0, 877.114363, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-1-back.webp",
+        "x": 841,
+        "y": 1478,
+        "width": 158,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-2",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 2,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 42,
+      "body": "bodies/hand-2.webp",
+      "x": 931,
+      "y": 1478,
+      "width": 156,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          967.339,
+          1556.109
+        ],
+        [
+          1041.999,
+          1556.109
+        ],
+        [
+          1046.285,
+          1633.1
+        ],
+        [
+          972.43,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          967.147,
+          1555.97
+        ],
+        [
+          1042.174,
+          1555.97
+        ],
+        [
+          1046.474,
+          1633.236
+        ],
+        [
+          972.258,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152493921, 2.4063304e-09, 0, 1.46094412e-12, 0.023416392, 0.141538631, 0, 1.62615409e-05, 0, 0, 1, 0, 967.146807, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-2-back.webp",
+        "x": 931,
+        "y": 1478,
+        "width": 156,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-3",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 3,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 43,
+      "body": "bodies/hand-3.webp",
+      "x": 1021,
+      "y": 1478,
+      "width": 154,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          1057.37,
+          1556.109
+        ],
+        [
+          1132.029,
+          1556.109
+        ],
+        [
+          1135.346,
+          1633.1
+        ],
+        [
+          1061.491,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          1057.179,
+          1555.97
+        ],
+        [
+          1132.206,
+          1555.97
+        ],
+        [
+          1135.533,
+          1633.236
+        ],
+        [
+          1061.317,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152494098, 7.46805888e-09, 0, 4.52574204e-12, 0.0234164701, 0.141538593, 0, 1.62615178e-05, 0, 0, 1, 0, 1057.17916, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-3-back.webp",
+        "x": 1021,
+        "y": 1478,
+        "width": 154,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-4",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 4,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 44,
+      "body": "bodies/hand-4.webp",
+      "x": 1111,
+      "y": 1478,
+      "width": 152,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          1147.4,
+          1556.109
+        ],
+        [
+          1222.06,
+          1556.109
+        ],
+        [
+          1224.407,
+          1633.1
+        ],
+        [
+          1150.552,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          1147.212,
+          1555.97
+        ],
+        [
+          1222.239,
+          1555.97
+        ],
+        [
+          1224.593,
+          1633.236
+        ],
+        [
+          1150.376,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.15249392, 2.06900467e-09, 0, 1.07133229e-12, 0.0234144656, 0.141535786, 0, 1.62597991e-05, 0, 0, 1, 0, 1147.21161, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-4-back.webp",
+        "x": 1111,
+        "y": 1478,
+        "width": 152,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-5",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 5,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 45,
+      "body": "bodies/hand-5.webp",
+      "x": 1201,
+      "y": 1478,
+      "width": 150,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          1237.431,
+          1556.109
+        ],
+        [
+          1312.091,
+          1556.109
+        ],
+        [
+          1313.468,
+          1633.1
+        ],
+        [
+          1239.613,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          1237.244,
+          1555.97
+        ],
+        [
+          1312.271,
+          1555.97
+        ],
+        [
+          1313.652,
+          1633.236
+        ],
+        [
+          1239.436,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152493921, 2.28959805e-09, 0, 1.42512939e-12, 0.0234165734, 0.141538631, 0, 1.62615409e-05, 0, 0, 1, 0, 1237.24405, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-5-back.webp",
+        "x": 1201,
+        "y": 1478,
+        "width": 150,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-6",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 6,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 46,
+      "body": "bodies/hand-6.webp",
+      "x": 1291,
+      "y": 1478,
+      "width": 148,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          1327.462,
+          1556.109
+        ],
+        [
+          1402.121,
+          1556.109
+        ],
+        [
+          1402.529,
+          1633.1
+        ],
+        [
+          1328.674,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          1327.276,
+          1555.97
+        ],
+        [
+          1402.304,
+          1555.97
+        ],
+        [
+          1402.711,
+          1633.236
+        ],
+        [
+          1328.495,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.15249392, 1.25379959e-09, 0, 7.92059827e-13, 0.0234165482, 0.141538631, 0, 1.6261541e-05, 0, 0, 1, 0, 1327.2765, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-6-back.webp",
+        "x": 1291,
+        "y": 1478,
+        "width": 148,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-7",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 7,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 47,
+      "body": "bodies/hand-7.webp",
+      "x": 1381,
+      "y": 1478,
+      "width": 148,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          1417.492,
+          1556.109
+        ],
+        [
+          1492.152,
+          1556.109
+        ],
+        [
+          1491.59,
+          1633.1
+        ],
+        [
+          1417.735,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          1417.309,
+          1555.97
+        ],
+        [
+          1492.336,
+          1555.97
+        ],
+        [
+          1491.77,
+          1633.236
+        ],
+        [
+          1417.554,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152493911, -8.57683471e-09, 0, -5.34890041e-12, 0.0234165255, 0.141538634, 0, 1.62615428e-05, 0, 0, 1, 0, 1417.30894, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-7-back.webp",
+        "x": 1381,
+        "y": 1478,
+        "width": 148,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-8",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 8,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 48,
+      "body": "bodies/hand-8.webp",
+      "x": 1470,
+      "y": 1478,
+      "width": 149,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          1507.523,
+          1556.109
+        ],
+        [
+          1582.183,
+          1556.109
+        ],
+        [
+          1580.651,
+          1633.1
+        ],
+        [
+          1506.796,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          1507.341,
+          1555.97
+        ],
+        [
+          1582.368,
+          1555.97
+        ],
+        [
+          1580.829,
+          1633.236
+        ],
+        [
+          1506.613,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152493923, 4.6493735e-09, 0, 2.62299472e-12, 0.0234138734, 0.141535786, 0, 1.6259799e-05, 0, 0, 1, 0, 1507.34138, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-8-back.webp",
+        "x": 1470,
+        "y": 1478,
+        "width": 149,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-9",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 9,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 49,
+      "body": "bodies/hand-9.webp",
+      "x": 1558,
+      "y": 1478,
+      "width": 151,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          1597.554,
+          1556.109
+        ],
+        [
+          1672.213,
+          1556.109
+        ],
+        [
+          1669.712,
+          1633.1
+        ],
+        [
+          1595.857,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          1597.374,
+          1555.97
+        ],
+        [
+          1672.401,
+          1555.97
+        ],
+        [
+          1669.889,
+          1633.236
+        ],
+        [
+          1595.673,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152493911, -7.8087243e-09, 0, -4.895759e-12, 0.0234193793, 0.141541474, 0, 1.62632815e-05, 0, 0, 1, 0, 1597.37383, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-9-back.webp",
+        "x": 1558,
+        "y": 1478,
+        "width": 151,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-10",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 10,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 50,
+      "body": "bodies/hand-10.webp",
+      "x": 1646,
+      "y": 1478,
+      "width": 153,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          1687.584,
+          1556.109
+        ],
+        [
+          1762.244,
+          1556.109
+        ],
+        [
+          1758.773,
+          1633.1
+        ],
+        [
+          1684.918,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          1687.406,
+          1555.97
+        ],
+        [
+          1762.433,
+          1555.97
+        ],
+        [
+          1758.948,
+          1633.236
+        ],
+        [
+          1684.732,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152494262, -4.67729591e-09, 0, -2.98643304e-12, 0.0234256757, 0.141547079, 0, 1.62667133e-05, 0, 0, 1, 0, 1687.4061, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-10-back.webp",
+        "x": 1646,
+        "y": 1478,
+        "width": 153,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-11",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 11,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 51,
+      "body": "bodies/hand-11.webp",
+      "x": 1734,
+      "y": 1478,
+      "width": 155,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          1777.615,
+          1556.109
+        ],
+        [
+          1852.275,
+          1556.109
+        ],
+        [
+          1847.834,
+          1633.1
+        ],
+        [
+          1773.979,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          1777.439,
+          1555.97
+        ],
+        [
+          1852.466,
+          1555.97
+        ],
+        [
+          1848.007,
+          1633.236
+        ],
+        [
+          1773.791,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.15249392, 1.52357476e-09, 0, 5.98902126e-13, 0.0234137277, 0.141535796, 0, 1.62598049e-05, 0, 0, 1, 0, 1777.43855, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-11-back.webp",
+        "x": 1734,
+        "y": 1478,
+        "width": 155,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-12",
+      "seat": "bottom",
+      "role": "concealed",
+      "index": 12,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 52,
+      "body": "bodies/hand-12.webp",
+      "x": 1822,
+      "y": 1478,
+      "width": 157,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          1867.646,
+          1556.109
+        ],
+        [
+          1942.305,
+          1556.109
+        ],
+        [
+          1936.895,
+          1633.1
+        ],
+        [
+          1863.04,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          1867.471,
+          1555.97
+        ],
+        [
+          1942.498,
+          1555.97
+        ],
+        [
+          1937.066,
+          1633.236
+        ],
+        [
+          1862.85,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152493933, 1.22346961e-08, 0, 7.18556677e-12, 0.0234136697, 0.14153579, 0, 1.62598011e-05, 0, 0, 1, 0, 1867.47099, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-12-back.webp",
+        "x": 1822,
+        "y": 1478,
+        "width": 157,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    },
+    {
+      "id": "hand-draw",
+      "seat": "bottom",
+      "role": "draw",
+      "index": 13,
+      "pose": "hand-upright",
+      "orientation": "upright",
+      "drawOrder": 53,
+      "body": "bodies/hand-draw.webp",
+      "x": 1970,
+      "y": 1478,
+      "width": 159,
+      "height": 190,
+      "shadowGutterPx": 32,
+      "faceQuad": [
+        [
+          2018.063,
+          1556.109
+        ],
+        [
+          2092.722,
+          1556.109
+        ],
+        [
+          2085.692,
+          1633.1
+        ],
+        [
+          2011.836,
+          1633.1
+        ]
+      ],
+      "decalQuad": [
+        [
+          2017.891,
+          1555.97
+        ],
+        [
+          2092.918,
+          1555.97
+        ],
+        [
+          2085.86,
+          1633.236
+        ],
+        [
+          2011.644,
+          1633.236
+        ]
+      ],
+      "faceMatrix": "matrix3d(0.152494271, 2.61752235e-09, 0, 1.71985012e-12, 0.0234203407, 0.141541406, 0, 1.62632397e-05, 0, 0, 1, 0, 2017.89099, 1555.96978, 0, 1)",
+      "back": {
+        "pose": "hand-upright-back",
+        "body": "bodies/hand-draw-back.webp",
+        "x": 1970,
+        "y": 1478,
+        "width": 159,
+        "height": 190
+      },
+      "measurements": {
+        "faceHeightPx": 76.99,
+        "faceWidthPx": 74.26
+      }
+    }
+  ],
+  "faces": {},
+  "assets": {
+    "bodyFormat": "WEBP",
+    "bodyQuality": 90,
+    "bodyBytes": 141804,
+    "backgroundFormat": "WEBP",
+    "backgroundQuality": 90,
+    "backgroundSamples": 64,
+    "backgroundBytes": 19018,
+    "totalBytes": 160822,
+    "budgetBytes": {
+      "total": 8388608,
+      "background": 157286,
+      "bodies": 1048576,
+      "manifest": 51200
+    }
+  },
+  "checks": {
+    "slotCount": 14,
+    "slotRectsInsideScene": true,
+    "faceQuadsInsideBodies": true,
+    "uniqueDrawOrders": true,
+    "faceQuadCount": 14,
+    "alignment": {
+      "method": "every slot's sprite alpha pasted at its manifest rect against one frame rendered with all tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
+      "slots": [
+        {
+          "id": "hand-0",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-1",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-2",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-3",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-4",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-5",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-6",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-7",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-8",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-9",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-10",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-11",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-12",
+          "shiftedPixels": 0
+        },
+        {
+          "id": "hand-draw",
+          "shiftedPixels": 0
+        }
+      ],
+      "tilePixels": 143294,
+      "shiftedPixels": 0,
+      "softPixels": 0,
+      "softPixelFraction": 0.0,
+      "softTolerance": 0.5
+    }
+  },
+  "measurements": {}
+}

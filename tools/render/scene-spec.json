@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "name": "rendered-table-v1",
   "blender": {
     "requiredVersion": "4.5.9"
@@ -65,10 +65,56 @@
     }
   },
   "table": {
-    "size": 80,
+    "plan": {
+      "feltHalfExtent": 12.9,
+      "railWidth": 0.9,
+      "railHeight": 0.35,
+      "railBevel": 0.09,
+      "railDrop": 1.4,
+      "wallRing": {
+        "innerHalfExtent": 6.3,
+        "outerHalfExtent": 7.3,
+        "edgeWidth": 0.05
+      },
+      "compass": {
+        "halfExtent": 2.35,
+        "height": 0.06,
+        "bevel": 0.07
+      },
+      "handApron": {
+        "inner": 10.6,
+        "outer": 12.55,
+        "halfLength": 6.15
+      },
+      "bandHeight": 0.002
+    },
     "surface": {
-      "hex": "#12533a",
-      "roughness": 0.92
+      "hex": "#093021",
+      "roughness": 0.95
+    },
+    "apron": {
+      "hex": "#0a3323",
+      "roughness": 0.97
+    },
+    "track": {
+      "hex": "#052316",
+      "roughness": 0.97
+    },
+    "trackEdge": {
+      "hex": "#031409",
+      "roughness": 0.9
+    },
+    "rail": {
+      "hex": "#2a1a10",
+      "roughness": 0.45
+    },
+    "compassPlate": {
+      "hex": "#08090a",
+      "roughness": 0.7
+    },
+    "room": {
+      "hex": "#0a0807",
+      "roughness": 0.85
     },
     "shadowCatcher": true
   },
@@ -247,28 +293,32 @@
   "camera": {
     "position": [
       0,
-      -26.4,
-      9
+      -47.8,
+      32.2
     ],
     "target": [
       0,
-      1,
-      0.2
+      0,
+      0.35
     ],
     "lensMm": 65,
     "sensorWidthMm": 36,
     "sensorFit": "HORIZONTAL",
     "shiftX": 0,
-    "shiftY": 0.16,
+    "shiftY": 0,
     "clipStart": 1,
     "clipEnd": 200
   },
   "hand": {
-    "count": 14,
+    "seat": "bottom",
+    "concealedCount": 13,
     "spacing": 0.82,
+    "drawGap": 0.55,
     "centerX": 0,
-    "y": -4.4,
-    "pose": "hand-upright"
+    "y": -11.7,
+    "pose": "hand-upright",
+    "backPose": "hand-upright-back",
+    "drawOrderBase": 40
   },
   "decals": {
     "cssFace": [
@@ -294,15 +344,43 @@
     },
     "rigs": {
       "upright": {
-        "slotY": -4.4,
+        "slotY": -11.7,
         "cameraDistance": 5,
         "symbolRotationDeg": 0
       }
     }
   },
-  "spike": {
-    "slotIndex": 0,
+  "assets": {
     "shadowGutterDevicePx": 32,
+    "body": {
+      "fileFormat": "WEBP",
+      "quality": 90,
+      "pixelRatio": 2
+    },
+    "background": {
+      "fileFormat": "WEBP",
+      "quality": 90,
+      "downscale": 2,
+      "samples": 64
+    },
+    "budgetBytes": {
+      "total": 8388608,
+      "background": 157286,
+      "bodies": 1048576,
+      "manifest": 51200
+    }
+  },
+  "checks": {
+    "referenceSamples": 8,
+    "maxMaskMismatchFraction": 0.01
+  },
+  "outputs": {
+    "background": "background.{ext}",
+    "body": "bodies/{id}.{ext}",
+    "manifest": "manifest.json"
+  },
+  "spike": {
+    "slotId": "hand-0",
     "zoom": {
       "x": 24,
       "y": 24,
@@ -314,15 +392,12 @@
       "code": "1m",
       "orientation": "upright",
       "symbolSvg": "faces/Regular-Man1-symbol.svg"
+    },
+    "outputs": {
+      "decal": "{code}-{orientation}.decal.png",
+      "composite": "{code}-{orientation}.composite.png",
+      "zoom": "contact-zoom.png",
+      "contactSheet": "contact-sheet.png"
     }
-  },
-  "outputs": {
-    "body": "hand-{index}.body.png",
-    "back": "hand-{index}.back.png",
-    "decal": "{code}-{orientation}.decal.png",
-    "composite": "{code}-{orientation}.composite.png",
-    "zoom": "contact-zoom.png",
-    "manifest": "manifest.json",
-    "contactSheet": "contact-sheet.png"
   }
 }

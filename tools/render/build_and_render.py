@@ -1,26 +1,38 @@
 #!/usr/bin/env python3
-"""Build the rendered-table Blender scene from a JSON spec and bake the Task 1
-spike assets: one hand-slot body sprite and one lit face decal.
+"""Build the rendered-table Blender scene from a JSON spec and bake its assets.
 
 Everything is constructed procedurally here. There is no hand-modelled or
-hand-edited .blend file, and no manual Blender interaction: render.sh rasterises
-the face SVG, then runs this script with the pinned Blender build, then
-assembles the contact sheet.
+hand-edited .blend file, and no manual Blender interaction: render.sh runs this
+script with the pinned Blender build, then validates the batch.
 
     blender --background --python tools/render/build_and_render.py -- \\
-        tools/render/scene-spec.json tools/render/spike
+        tools/render/scene-spec.json frontend/public/table table
 
-Outputs (paths relative to the output directory):
-    hand-<i>.body.png        hand-slot body sprite, scene device pixels + shadow
-    <code>-<orient>.decal.png lit face decal, inset face + 1 px transparent gutter
-    <code>-<orient>.composite.png   body sprite with the decal homography-warped on
-    contact-zoom.png         nearest zoom of the composite (review only)
-    manifest.json            starter manifest (slot rect, face quad, faceMatrix)
+Two batches share one scene builder:
+
+``table`` (the shipped batch, the default)
+    Table background (felt, wall-ring track, hand aprons, compass base, rail),
+    one body sprite per hand slot in both poses (face-up and the concealed
+    face-down pose), the manifest, and the alignment/geometry checks.
+
+``spike`` (the Task 1 review batch, ``render.sh --spike``)
+    The Task 1/1.5 artifacts: one hand-slot body in both poses, the carved face
+    decal, the homography composite, and the pixel zoom. No background: it is a
+    single-tile study, and its PNGs are lossless so they can be inspected.
+
+Outputs (paths relative to the output directory) in ``table`` mode:
+
+    background.webp          opaque table background, scene CSS pixels
+    bodies/<id>.webp         face-up body sprite of a hand slot, device px
+    bodies/<id>-back.webp    the same slot face-down (concealed hand)
+    manifest.json            scene, background, every slot, checks, budget
 
 Coordinate conventions: world units are tile units (see the spec); scene pixels
 in the manifest are rendered device pixels (CSS size x pixelRatio), origin
 top-left, y down. Body sprites are cropped to the slot's projected bounds plus
 the shadow gutter, so a slot rect is exactly where the runtime draws the file.
+World axes: +X is screen right, -Y is toward the human's edge (the camera
+stands at -Y looking across the table), +Z is up off the felt.
 """
 
 from __future__ import annotations
@@ -178,6 +190,13 @@ def configure_render(scene: bpy.types.Scene, spec: dict) -> None:
     )
 
 
+def set_samples(scene: bpy.types.Scene, samples: int, denoise: bool) -> tuple[int, bool]:
+    previous = (scene.cycles.samples, scene.cycles.use_denoising)
+    scene.cycles.samples = samples
+    scene.cycles.use_denoising = denoise
+    return previous
+
+
 # --------------------------------------------------------------------------- #
 # Materials
 # --------------------------------------------------------------------------- #
@@ -185,6 +204,7 @@ def configure_render(scene: bpy.types.Scene, spec: dict) -> None:
 
 def build_materials(spec: dict) -> dict[str, bpy.types.Material]:
     tile = spec["tile"]["materials"]
+    table = spec["table"]
 
     # Jansou tiles are white melamine with a coloured melamine backing: an
     # opaque, hard thermoset with a glossy surface and a painted, engraved
@@ -205,12 +225,27 @@ def build_materials(spec: dict) -> dict[str, bpy.types.Material]:
     bsdf.inputs["Coat Weight"].default_value = tile["backing"]["coat"]
     bsdf.inputs["Coat Roughness"].default_value = tile["backing"]["coatRoughness"]
 
-    felt = new_material("table-felt")
-    bsdf = principled(felt)
-    bsdf.inputs["Base Color"].default_value = hex_linear(spec["table"]["surface"]["hex"])
-    bsdf.inputs["Roughness"].default_value = spec["table"]["surface"]["roughness"]
+    def plain(name: str, colour: dict, specular: float = 0.5) -> bpy.types.Material:
+        material = new_material(name)
+        node = principled(material)
+        node.inputs["Base Color"].default_value = hex_linear(colour["hex"])
+        node.inputs["Roughness"].default_value = colour["roughness"]
+        node.inputs["Specular IOR Level"].default_value = specular
+        return material
 
-    return {"face": face, "backing": backing, "felt": felt}
+    # Felt is a matte wool cloth: almost no specular. The rail and the compass
+    # plate are the only glossy table surfaces.
+    return {
+        "face": face,
+        "backing": backing,
+        "felt": plain("table-felt", table["surface"], 0.12),
+        "apron": plain("table-hand-apron", table["apron"], 0.12),
+        "track": plain("table-wall-ring", table["track"], 0.12),
+        "trackEdge": plain("table-wall-ring-edge", table["trackEdge"], 0.1),
+        "rail": plain("table-rail", table["rail"], 0.45),
+        "compassPlate": plain("table-compass-plate", table["compassPlate"], 0.35),
+        "room": plain("room-floor", table["room"], 0.1),
+    }
 
 
 def build_world(scene: bpy.types.Scene, spec: dict) -> None:
@@ -223,24 +258,223 @@ def build_world(scene: bpy.types.Scene, spec: dict) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Scene objects
+# Table geometry
 # --------------------------------------------------------------------------- #
 
 
-def build_table(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types.Object:
-    size = spec["table"]["size"] / 2.0
-    mesh = bpy.data.meshes.new("table")
-    mesh.from_pydata(
-        [(-size, -size, 0), (size, -size, 0), (size, size, 0), (-size, size, 0)],
-        [],
-        [(0, 1, 2, 3)],
-    )
+def table_plan(spec: dict) -> dict:
+    """Derived table dimensions in tile units, recorded in the manifest.
+
+    All numbers come from `table.plan`; the derived extents are computed here so
+    the rail, the wall-ring track, the aprons, and the manifest can never drift
+    apart. Values are tile units (1 unit = the 28 mm tile height), so the table
+    reads as a real jansou: a 12.6-unit wall ring (17 stacks of 21 mm tiles) with
+    a 3-unit river band and a standing hand row outside it.
+    """
+    plan = spec["table"]["plan"]
+    felt = plan["feltHalfExtent"]
+    outer = felt + plan["railWidth"]
+    return {
+        "feltHalfExtent": felt,
+        "railInnerHalfExtent": felt,
+        "railOuterHalfExtent": outer,
+        "railWidth": plan["railWidth"],
+        "railHeight": plan["railHeight"],
+        "railDrop": plan["railDrop"],
+        "wallRing": dict(plan["wallRing"]),
+        "compass": dict(plan["compass"]),
+        "handApron": dict(plan["handApron"]),
+        "bandHeight": plan.get("bandHeight", 0.002),
+    }
+
+
+def mesh_from_parts(name: str, verts: list, faces: list, material, closed: bool = False):
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
     mesh.update()
-    mesh.materials.append(materials["felt"])
-    # The felt is only an occluder for the shadow pass; the sprite keeps its alpha.
-    obj = new_object("table", mesh)
-    obj.is_shadow_catcher = spec["table"]["shadowCatcher"]
-    return obj
+    if closed:
+        import bmesh
+
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        bm.to_mesh(mesh)
+        bm.free()
+    mesh.materials.append(material)
+    return new_object(name, mesh)
+
+
+def quad(name: str, corners: list, z: float, material) -> bpy.types.Object:
+    """A flat, upward-facing quad from four (x, y) corners."""
+    verts = [(x, y, z) for x, y in corners]
+    return mesh_from_parts(name, verts, [(0, 1, 2, 3)], material)
+
+
+def rect_corners(x0: float, y0: float, x1: float, y1: float) -> list:
+    """Counter-clockwise from above, so the quad's normal is +Z."""
+    return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+
+
+def ring_bands(inner: float, outer: float) -> list:
+    """Four non-overlapping rects forming a square ring between two extents."""
+    return [
+        (-outer, inner, outer, outer),
+        (-outer, -outer, outer, -inner),
+        (inner, -inner, outer, inner),
+        (-outer, -inner, -inner, inner),
+    ]
+
+
+def rotated_corners(corners: list, angle_deg: float) -> list:
+    angle = math.radians(angle_deg)
+    cos_a, sin_a = math.cos(angle), math.sin(angle)
+    return [(x * cos_a - y * sin_a, x * sin_a + y * cos_a) for x, y in corners]
+
+
+def build_table(spec: dict, materials: dict) -> dict:
+    """Felt, wall-ring track, hand aprons, compass base, rail, and room floor.
+
+    These are the static table surfaces the background is rendered from. They
+    are also hidden for every body-sprite pass, so a sprite carries only the
+    tile and its own contact shadow and composites cleanly over the background.
+    """
+    plan = table_plan(spec)
+    felt_extent = plan["feltHalfExtent"]
+    band_z = plan["bandHeight"] + 0.001
+
+    # The felt is both the visible surface and the Cycles shadow catcher used by
+    # the body passes; the background pass turns the catcher off.
+    felt = quad(
+        "felt",
+        rect_corners(-felt_extent, -felt_extent, felt_extent, felt_extent),
+        0.0,
+        materials["felt"],
+    )
+    felt.is_shadow_catcher = spec["table"]["shadowCatcher"]
+
+    parts = [felt]
+
+    # Wall ring: the track the wall stacks are pushed up through, as three
+    # concentric bands (dark edge, track, dark edge) flush on the felt.
+    ring = plan["wallRing"]
+    inner = ring["innerHalfExtent"]
+    outer = ring["outerHalfExtent"]
+    edge = ring["edgeWidth"]
+    levels = [
+        (inner, inner + edge, materials["trackEdge"]),
+        (inner + edge, outer - edge, materials["track"]),
+        (outer - edge, outer, materials["trackEdge"]),
+    ]
+    for index, (a, b, material) in enumerate(levels):
+        verts: list = []
+        faces: list = []
+        for rect in ring_bands(a, b):
+            start = len(verts)
+            verts.extend([(x, y, band_z) for x, y in rect_corners(*rect)])
+            faces.append((start, start + 1, start + 2, start + 3))
+        parts.append(
+            mesh_from_parts(f"wall-ring-{index}", verts, faces, material)
+        )
+
+    # Hand aprons: one flat felt pad per seat, just outside the river band, so
+    # the standing hand row has a bed and a readable edge on the felt.
+    apron = plan["handApron"]
+    apron_corners = rect_corners(
+        -apron["halfLength"], -apron["outer"], apron["halfLength"], -apron["inner"]
+    )
+    for seat, angle in (("bottom", 0), ("right", 90), ("top", 180), ("left", 270)):
+        parts.append(
+            quad(
+                f"hand-apron-{seat}",
+                rotated_corners(apron_corners, angle),
+                band_z,
+                materials["apron"],
+            )
+        )
+
+    # Compass base: the static plate the runtime draws wind, score, and Riichi
+    # markers on (the dynamic text is a DOM overlay, never baked).
+    compass = plan["compass"]
+    half = compass["halfExtent"]
+    height = compass["height"]
+    plate = mesh_from_parts(
+        "compass-base",
+        [
+            (-half, -half, 0.0),
+            (half, -half, 0.0),
+            (half, half, 0.0),
+            (-half, half, 0.0),
+            (-half, -half, height),
+            (half, -half, height),
+            (half, half, height),
+            (-half, half, height),
+        ],
+        [
+            (0, 3, 2, 1),
+            (4, 5, 6, 7),
+            (0, 1, 5, 4),
+            (1, 2, 6, 5),
+            (2, 3, 7, 6),
+            (3, 0, 4, 7),
+        ],
+        materials["compassPlate"],
+        closed=True,
+    )
+    bevel = plate.modifiers.new("Bevel", "BEVEL")
+    bevel.width = compass["bevel"]
+    bevel.segments = 3
+    bevel.limit_method = "ANGLE"
+    bevel.angle_limit = math.radians(30)
+    bevel.harden_normals = True
+    parts.append(plate)
+
+    # Rail: a closed wooden ring with a rounded top edge. The near (human-side)
+    # outer wall is in frame, which is what frames the table at the bottom.
+    rail_inner = plan["railInnerHalfExtent"]
+    rail_outer = plan["railOuterHalfExtent"]
+    rail_top = plan["railHeight"]
+    rail_bottom = -plan["railDrop"]
+    i, o = rail_inner, rail_outer
+    verts = [
+        (-i, -i, rail_top), (i, -i, rail_top), (i, i, rail_top), (-i, i, rail_top),
+        (-o, -o, rail_top), (o, -o, rail_top), (o, o, rail_top), (-o, o, rail_top),
+        (-i, -i, 0.0), (i, -i, 0.0), (i, i, 0.0), (-i, i, 0.0),
+        (-o, -o, rail_bottom), (o, -o, rail_bottom), (o, o, rail_bottom), (-o, o, rail_bottom),
+    ]
+    faces = []
+    for side in range(4):
+        nxt = (side + 1) % 4
+        faces.append((4 + side, 4 + nxt, nxt, side))            # top ring
+        faces.append((side, nxt, 8 + nxt, 8 + side))            # inner wall
+        faces.append((12 + side, 12 + nxt, 4 + nxt, 4 + side))  # outer wall
+        faces.append((8 + side, 8 + nxt, 12 + nxt, 12 + side))  # bottom ring
+    rail = mesh_from_parts("rail", verts, faces, materials["rail"], closed=True)
+    rail_bevel = rail.modifiers.new("Bevel", "BEVEL")
+    rail_bevel.width = spec["table"]["plan"]["railBevel"]
+    rail_bevel.segments = 3
+    rail_bevel.limit_method = "ANGLE"
+    rail_bevel.angle_limit = math.radians(30)
+    rail_bevel.harden_normals = True
+    parts.append(rail)
+
+    # Room floor below the rail, so the frame corners outside the table are the
+    # dark room rather than the world colour.
+    room_extent = rail_outer * 8.0
+    room = quad(
+        "room-floor",
+        rect_corners(-room_extent, -room_extent, room_extent, room_extent),
+        rail_bottom,
+        materials["room"],
+    )
+    parts.append(room)
+
+    log(
+        f"table: {2 * rail_outer:.2f} units across (rail {plan['railWidth']:g}, "
+        f"felt {2 * felt_extent:.2f}), wall ring {2 * outer:.2f} x "
+        f"{outer - inner:.2f}, compass {2 * half:.2f}, "
+        f"apron {apron['inner']:g}..{apron['outer']:g}"
+    )
+    return {"felt": felt, "parts": parts, "rail": rail}
 
 
 def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types.Object:
@@ -352,6 +586,10 @@ def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
     long thin tube can lie along X (0) or stand along Y (90) without moving the
     aim or the target. That is the whole strip-light trick: length shapes the
     streak, width shapes its cross-section, roll picks which strokes catch it.
+
+    The rig is deliberately distant (see rendered-table-plan.md §12 and the
+    Task 1 findings): a decal is lit once per orientation and composited onto
+    bodies at every slot, so illumination must not vary much across the table.
     """
     lights = active_lights(spec)
     if not lights:
@@ -396,7 +634,7 @@ def rig_record(spec: dict) -> dict:
     """The active rig as it was built, for the manifest.
 
     Recorded from the same resolved list `build_lights` consumes, so the
-    manifest can never describe a rig the sprites were not baked with. Task 2/3
+    manifest can never describe a rig the sprites were not baked with. Tasks 3+
     read this instead of assuming light positions.
     """
     return {
@@ -425,29 +663,76 @@ def rig_record(spec: dict) -> dict:
     }
 
 
+def camera_record(spec: dict) -> dict:
+    camera = spec["camera"]
+    position = Vector(camera["position"])
+    target = Vector(camera["target"])
+    delta = position - target
+    horizontal = math.hypot(delta.x, delta.y)
+    return {
+        "position": camera["position"],
+        "target": camera["target"],
+        "lensMm": camera["lensMm"],
+        "sensorWidthMm": camera["sensorWidthMm"],
+        "shiftY": camera["shiftY"],
+        "elevationDeg": round(math.degrees(math.atan2(delta.z, horizontal)), 2),
+        "distanceUnits": round(delta.length, 3),
+    }
+
+
 # --------------------------------------------------------------------------- #
-# Poses and projection
+# Hand slot inventory
 # --------------------------------------------------------------------------- #
 
 
 def hand_slots(spec: dict) -> list[dict]:
+    """The human's hand row: 13 concealed slots plus the separated draw.
+
+    The row (including the draw) is centred on `hand.centerX`, and the draw sits
+    `drawGap` beyond the last concealed slot, so the runtime can append the
+    drawn tile the way `HandDock` already does. Slot ids are stable: `hand-0` …
+    `hand-12` for the concealed tiles, `hand-draw` for the drawn one.
+    """
     hand = spec["hand"]
-    count = hand["count"]
+    count = hand["concealedCount"]
     spacing = hand["spacing"]
+    gap = hand["drawGap"]
+    tile_width = spec["tile"]["width"]
+    concealed_span = (count - 1) * spacing
+    total_width = concealed_span + spacing + gap + tile_width
+    first_x = hand["centerX"] - total_width / 2.0 + tile_width / 2.0
+    order_base = hand.get("drawOrderBase", 40)
+
     slots = []
     for index in range(count):
-        x = hand["centerX"] + (index - (count - 1) / 2.0) * spacing
         slots.append(
             {
                 "id": f"hand-{index}",
+                "seat": hand["seat"],
+                "role": "concealed",
                 "index": index,
                 "pose": hand["pose"],
-                "x": x,
+                "backPose": hand["backPose"],
+                "x": first_x + index * spacing,
                 "y": hand["y"],
                 "orientation": "upright",
-                "drawOrder": 10,
+                "drawOrder": order_base + index,
             }
         )
+    slots.append(
+        {
+            "id": "hand-draw",
+            "seat": hand["seat"],
+            "role": "draw",
+            "index": count,
+            "pose": hand["pose"],
+            "backPose": hand["backPose"],
+            "x": first_x + concealed_span + spacing + gap,
+            "y": hand["y"],
+            "orientation": "upright",
+            "drawOrder": order_base + count,
+        }
+    )
     return slots
 
 
@@ -456,7 +741,9 @@ def pose_matrix(pose: str, slot: dict, spec: dict) -> Matrix:
 
     Tiles are modelled flat, face up (+Z), symbol top toward +Y. The hand pose
     stands a tile vertically with its face toward the player (-Y) and its foot
-    on the table (local +Y becomes world +Z).
+    on the table (local +Y becomes world +Z). The back pose turns the same
+    standing tile 180° about the vertical axis, so the blue back faces the
+    camera: the concealed-hand pose. Both poses occupy the same felt footprint.
     """
     tile = spec["tile"]
     if pose == "hand-upright":
@@ -464,8 +751,6 @@ def pose_matrix(pose: str, slot: dict, spec: dict) -> Matrix:
         location = Vector((slot["x"], slot["y"] + tile["thickness"], tile["height"] / 2.0))
         return Matrix.Translation(location) @ rotation
     if pose == "hand-upright-back":
-        # Same standing tile turned 180 degrees about the vertical axis, so the
-        # blue back faces the player's camera (concealed hand pose).
         rotation = Matrix.Rotation(math.radians(180.0), 4, "Z") @ Matrix.Rotation(
             math.radians(90.0), 4, "X"
         )
@@ -474,8 +759,8 @@ def pose_matrix(pose: str, slot: dict, spec: dict) -> Matrix:
     raise ValueError(f"unknown pose {pose!r}")
 
 
-def apply_pose(obj: bpy.types.Object, slot: dict, spec: dict) -> None:
-    obj.matrix_world = pose_matrix(slot["pose"], slot, spec)
+def apply_pose(obj: bpy.types.Object, slot: dict, spec: dict, pose: str | None = None) -> None:
+    obj.matrix_world = pose_matrix(pose or slot["pose"], slot, spec)
 
 
 def project(scene: bpy.types.Scene, camera: bpy.types.Object, point) -> tuple[float, float]:
@@ -521,7 +806,7 @@ def face_corners(spec: dict, half_extent: tuple[float, float] | None = None) -> 
 
 
 # --------------------------------------------------------------------------- #
-# Rendering
+# Rendering and image IO
 # --------------------------------------------------------------------------- #
 
 
@@ -547,6 +832,49 @@ def save_rgba(path: Path, pixels: np.ndarray) -> None:
     image.file_format = "PNG"
     image.save()
     bpy.data.images.remove(image)
+
+
+def save_raster(
+    scene: bpy.types.Scene,
+    path: Path,
+    pixels: np.ndarray,
+    file_format: str,
+    quality: int,
+    colour_mode: str = "RGBA",
+) -> int:
+    """Write display-referred pixels as PNG/WEBP through the scene's settings.
+
+    The numpy arrays in this pipeline hold final 8-bit display values (they came
+    out of a render, or were composited from renders), so this never applies a
+    view transform to them: it is the same save path for the review PNGs and the
+    shipped WebP sprites.
+    """
+    height, width = pixels.shape[:2]
+    image = bpy.data.images.new(path.stem, width=width, height=height, alpha=True)
+    image.pixels = np.flipud(pixels[..., :4]).ravel().tolist()
+    settings = scene.render.image_settings
+    previous = (settings.file_format, settings.color_mode, settings.quality)
+    settings.file_format = file_format
+    settings.color_mode = colour_mode
+    settings.quality = quality
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save_render(str(path), scene=scene)
+    settings.file_format, settings.color_mode, settings.quality = previous
+    bpy.data.images.remove(image)
+    size = path.stat().st_size
+    log(f"wrote {path.name} ({width}x{height}, {size} bytes)")
+    return size
+
+
+def downsample_box(pixels: np.ndarray, factor: int) -> np.ndarray:
+    """Box-filter an image down by an integer factor (area average)."""
+    if factor <= 1:
+        return pixels
+    height, width = pixels.shape[:2]
+    if height % factor or width % factor:
+        die(f"cannot downsample {width}x{height} by {factor}")
+    shape = (height // factor, factor, width // factor, factor, pixels.shape[2])
+    return pixels.reshape(shape).mean(axis=(1, 3))
 
 
 def crop_border(scene: bpy.types.Scene, rect: tuple[int, int, int, int]) -> None:
@@ -581,61 +909,6 @@ def render_region(
 def clear_border(scene: bpy.types.Scene) -> None:
     scene.render.use_border = False
     scene.render.use_crop_to_border = False
-
-
-def bake_body(
-    spec: dict,
-    scene: bpy.types.Scene,
-    camera: bpy.types.Object,
-    tile: bpy.types.Object,
-    table: bpy.types.Object,
-    slot: dict,
-    out_dir: Path,
-    path: Path,
-    gutter: int,
-) -> tuple[np.ndarray, tuple[int, int, int, int], bool]:
-    """Bake one body sprite: the posed tile over its shadow-catcher contact shadow.
-
-    Returns the sprite, its device-pixel crop rect, and whether the crop hit the
-    frame edge (which would clip the shadow).
-    """
-    apply_pose(tile, slot, spec)
-    sync_view_layer()
-
-    projected = [
-        project(scene, camera, tile.matrix_world @ corner) for corner in tile_corners(spec)
-    ]
-    xs = [point[0] for point in projected]
-    ys = [point[1] for point in projected]
-    render_width = scene.render.resolution_x
-    render_height = scene.render.resolution_y
-    x0 = max(0, math.floor(min(xs) - gutter))
-    y0 = max(0, math.floor(min(ys) - gutter))
-    x1 = min(render_width, math.ceil(max(xs) + gutter))
-    y1 = min(render_height, math.ceil(max(ys) + gutter))
-    rect = (x0, y0, x1, y1)
-    clipped = x0 == 0 or y0 == 0 or x1 == render_width or y1 == render_height
-
-    # Pass 1: the tile alone with transparent film.
-    table.hide_render = True
-    body = render_region(scene, out_dir / "_body-pass.png", rect)
-    if body.shape[:2] != (y1 - y0, x1 - x0):
-        die(f"body render is {body.shape[1]}x{body.shape[0]}, expected {x1 - x0}x{y1 - y0}")
-
-    # Pass 2: the contact shadow. The tile is invisible to the camera but still
-    # occludes the key lights, so the shadow catcher returns shadow as alpha.
-    table.hide_render = False
-    tile.visible_camera = False
-    shadow = render_region(scene, out_dir / "_shadow-pass.png", rect)
-    tile.visible_camera = True
-    clear_border(scene)
-    (out_dir / "_body-pass.png").unlink()
-    (out_dir / "_shadow-pass.png").unlink()
-
-    sprite = over(shadow, body)  # tile over its contact shadow
-    save_rgba(path, sprite)
-    log(f"body sprite: {path} ({x1 - x0}x{y1 - y0}), clipped={clipped}")
-    return sprite, rect, clipped
 
 
 # --------------------------------------------------------------------------- #
@@ -722,13 +995,12 @@ def warp_onto(
     """Warp the decal onto the canvas with a homography and composite it.
 
     The decal is rendered at 3x CSS while the face it lands on is under 100 CSS
-    px, so this is a heavy *minification* (~3.75x in the spike). One bilinear
-    sample per output pixel skips most texels, and a 1 px specular line inside a
-    fillet then flips on and off from pixel to pixel: the fillet reads as dashes
-    or "zebra stripes". At `supersample > 1` every output pixel is box-filtered
-    with an N x N grid of sub-pixel samples, so the streak resolves as a
-    continuous (if dimmer) line, which is what the browser's own image filtering
-    does at runtime.
+    px, so this is a heavy *minification*. One bilinear sample per output pixel
+    skips most texels, and a 1 px specular line inside a fillet then flips on
+    and off from pixel to pixel: the fillet reads as dashes or "zebra stripes".
+    At `supersample > 1` every output pixel is box-filtered with an N x N grid of
+    sub-pixel samples, so the streak resolves as a continuous (if dimmer) line,
+    which is what the browser's own image filtering does at runtime.
     """
     inverse = np.linalg.inv(matrix)
     height, width = canvas.shape[:2]
@@ -809,8 +1081,365 @@ def channel_stats(sprite: np.ndarray, alpha_floor: float = 0.5) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# Carved face plate
+# Body sprites and the table background
 # --------------------------------------------------------------------------- #
+
+
+def hide_parts(parts: list, hidden: bool) -> None:
+    for part in parts:
+        part.hide_render = hidden
+
+
+def bake_body(
+    spec: dict,
+    scene: bpy.types.Scene,
+    camera: bpy.types.Object,
+    tile: bpy.types.Object,
+    table: dict,
+    slot: dict,
+    pose: str,
+    out_dir: Path,
+    path: Path,
+    gutter: int,
+) -> dict:
+    """Bake one body sprite: the posed tile over its shadow-catcher contact shadow.
+
+    Pass 1 renders the tile alone with transparent film (straight alpha). Pass 2
+    renders the felt as a Cycles shadow catcher with the tile invisible to the
+    camera but still occluding the lights, which returns the contact shadow as a
+    black colour with alpha = shadow coverage. The two are combined here, so a
+    sprite composites over the baked background with no runtime shadow layer.
+
+    Every other table part is hidden in both passes: the background already
+    carries the rail, track, and apron shading, and a part's shadow must not be
+    counted twice.
+
+    Returns the sprite, its device-pixel crop rect, whether the crop hit the
+    frame edge, and the tile-only alpha (used by the alignment check).
+    """
+    apply_pose(tile, slot, spec, pose)
+    sync_view_layer()
+
+    projected = [
+        project(scene, camera, tile.matrix_world @ corner) for corner in tile_corners(spec)
+    ]
+    xs = [point[0] for point in projected]
+    ys = [point[1] for point in projected]
+    render_width = scene.render.resolution_x
+    render_height = scene.render.resolution_y
+    x0 = max(0, math.floor(min(xs) - gutter))
+    y0 = max(0, math.floor(min(ys) - gutter))
+    x1 = min(render_width, math.ceil(max(xs) + gutter))
+    y1 = min(render_height, math.ceil(max(ys) + gutter))
+    rect = (x0, y0, x1, y1)
+    clipped = x0 == 0 or y0 == 0 or x1 == render_width or y1 == render_height
+    if clipped:
+        die(f"slot {slot['id']} body crop {rect} touches the frame edge")
+
+    # Pass 1: the tile alone with transparent film; every table part hidden.
+    hide_parts(table["parts"], True)
+    body = render_region(scene, out_dir / "_body-pass.png", rect)
+    if body.shape[:2] != (y1 - y0, x1 - x0):
+        die(f"body render is {body.shape[1]}x{body.shape[0]}, expected {x1 - x0}x{y1 - y0}")
+
+    # Pass 2: only the shadow catcher plus the tile as an occluder. Parts stay
+    # hidden so their shadows are not baked into the sprite as well.
+    table["felt"].hide_render = False
+    tile.visible_camera = False
+    shadow = render_region(scene, out_dir / "_shadow-pass.png", rect)
+    tile.visible_camera = True
+    table["felt"].hide_render = True
+    clear_border(scene)
+    (out_dir / "_body-pass.png").unlink()
+    (out_dir / "_shadow-pass.png").unlink()
+
+    sprite = over(shadow, body)  # tile over its contact shadow
+    assets = spec["assets"]
+    save_raster(
+        scene,
+        path,
+        sprite,
+        assets["body"]["fileFormat"],
+        assets["body"]["quality"],
+    )
+    log(f"body sprite: {path.name} ({x1 - x0}x{y1 - y0})")
+    return {
+        "sprite": sprite,
+        "rect": rect,
+        "clipped": clipped,
+        "alpha": body[..., 3].copy(),
+        "path": path,
+    }
+
+
+def asset_samples(spec: dict) -> int:
+    """Samples for the background pass (defaults to the scene's own count)."""
+    return int(spec["assets"]["background"].get("samples", spec["scene"]["samples"]))
+
+
+def bake_background(
+    spec: dict,
+    scene: bpy.types.Scene,
+    tile: bpy.types.Object,
+    table: dict,
+    out_dir: Path,
+    path: Path,
+) -> dict:
+    """Render the static table from the same fixed camera as the body sprites.
+
+    The felt stops being a shadow catcher and the film becomes opaque, so the
+    render is a normal lit table: felt, wall-ring track, hand aprons, compass
+    base, rail, and the room floor outside the rail. It is rendered at the scene
+    resolution (2x) and box-filtered down to the shipped background size.
+
+    Because body sprites are cropped regions of this same camera, a sprite drawn
+    at its manifest rect lands exactly on the background; the alignment check
+    verifies that with a rendered tile mask.
+    """
+    hide_parts(table["parts"], False)
+    tile.hide_render = True
+    table["felt"].is_shadow_catcher = False
+    scene.render.film_transparent = False
+    clear_border(scene)
+
+    # The background is a full frame of broad, low-frequency lighting, so it
+    # needs far fewer samples than a 160-px body crop with a bevel highlight on
+    # it: 64 + OIDN is indistinguishable from the scene's 256 at this exposure
+    # and keeps the batch to minutes rather than half an hour.
+    samples = asset_samples(spec)
+    previous = set_samples(scene, samples, True)
+
+    render_path = out_dir / "_background-render.png"
+    started = time.perf_counter()
+    render_png(scene, render_path)
+    seconds = time.perf_counter() - started
+    scene.cycles.samples, scene.cycles.use_denoising = previous
+    log(f"background render: {seconds:.1f}s at {samples} samples")
+
+    full = load_rgba(render_path)
+    render_path.unlink()
+    scene.render.film_transparent = spec["scene"]["filmTransparent"]
+    table["felt"].is_shadow_catcher = spec["table"]["shadowCatcher"]
+    hide_parts(table["parts"], True)
+
+    asset = spec["assets"]["background"]
+    shipped = downsample_box(full, asset.get("downscale", 1))
+    size = save_raster(
+        scene,
+        path,
+        shipped,
+        asset["fileFormat"],
+        asset["quality"],
+        colour_mode="RGB",
+    )
+    return {
+        "path": path,
+        "pixels": [int(shipped.shape[1]), int(shipped.shape[0])],
+        "bytes": size,
+        "renderPixels": [int(full.shape[1]), int(full.shape[0])],
+        "renderSeconds": round(seconds, 1),
+        "renderSamples": samples,
+        "stats": channel_stats(shipped),
+        "image": shipped,
+        "render": full,
+    }
+
+
+def paste(canvas: np.ndarray, sprite: np.ndarray, x: int, y: int) -> np.ndarray:
+    """Composite a straight-alpha sprite onto a canvas at a device-pixel origin."""
+    height, width = canvas.shape[:2]
+    sprite_height, sprite_width = sprite.shape[:2]
+    x0 = max(0, x)
+    y0 = max(0, y)
+    x1 = min(width, x + sprite_width)
+    y1 = min(height, y + sprite_height)
+    if x1 <= x0 or y1 <= y0:
+        return canvas
+    source = sprite[y0 - y : y1 - y, x0 - x : x1 - x]
+    target = canvas[y0:y1, x0:x1]
+    canvas[y0:y1, x0:x1] = over(target, source)
+    return canvas
+
+
+def render_review_composite(
+    spec: dict,
+    scene: bpy.types.Scene,
+    background: np.ndarray,
+    records: list,
+    pose_key: str,
+    path: Path,
+) -> Path:
+    """Composite the batch over the background exactly as the runtime will.
+
+    This is a review artifact, not a shipped asset: it is the proof that every
+    sprite lands where the manifest says, and the picture a human should check
+    after a regeneration. It is assembled in device pixels (the manifest's own
+    space, so nothing is scaled) and then box-filtered down to the shipped
+    background size for viewing.
+    """
+    canvas = background.copy()
+    for record, face, _ in sorted(records, key=lambda item: item[0]["drawOrder"]):
+        sprite = face["sprite"] if pose_key == "face" else face["back_sprite"]
+        if sprite is None:
+            continue
+        source = record if pose_key == "face" else record["back"]
+        canvas = paste(canvas, sprite, source["x"], source["y"])
+    canvas[..., 3] = 1.0
+    review = downsample_box(canvas, spec["assets"]["background"].get("downscale", 1))
+    save_raster(scene, path, review, "PNG", 100, colour_mode="RGB")
+    return path
+
+
+def render_tile_mask(
+    spec: dict,
+    scene: bpy.types.Scene,
+    tile: bpy.types.Object,
+    table: dict,
+    slots: list[dict],
+    out_dir: Path,
+) -> np.ndarray:
+    """Render the alpha coverage of every slot's tile in a single frame.
+
+    The sprites are baked one slot at a time, so this is the independent
+    reference the per-slot crops are checked against: same camera, same
+    resolution, all tiles present at once, one sample with denoising off (alpha
+    is geometric coverage, so extra samples buy nothing).
+    """
+    hide_parts(table["parts"], True)
+    scene.render.film_transparent = True
+    tile.hide_render = True
+    references = []
+    for slot in slots:
+        # Object copy, not a new object on the same mesh: the bevel and weighted
+        # normal modifiers live on the object, and the reference must be the
+        # same bevelled silhouette the sprites were baked from.
+        holder = tile.copy()
+        holder.name = f"ref-{slot['id']}"
+        holder.hide_render = False
+        holder.visible_camera = True
+        bpy.context.scene.collection.objects.link(holder)
+        holder.matrix_world = pose_matrix(slot["pose"], slot, spec)
+        references.append(holder)
+    sync_view_layer()
+
+    previous = set_samples(scene, spec["checks"].get("referenceSamples", 8), False)
+    path = out_dir / "_mask-reference.png"
+    render_png(scene, path)
+    scene.cycles.samples, scene.cycles.use_denoising = previous
+    mask = load_rgba(path)[..., 3]
+    path.unlink()
+
+    for holder in references:
+        bpy.data.objects.remove(holder, do_unlink=True)
+    scene.render.film_transparent = spec["scene"]["filmTransparent"]
+    return mask
+
+
+def dilate(mask: np.ndarray, radius: int = 1) -> np.ndarray:
+    """Binary dilation with a (2r+1)^2 window, edge-clamped."""
+    out = mask.copy()
+    for _ in range(radius):
+        padded = np.pad(out, 1, mode="edge")
+        out = (
+            padded[1:-1, 1:-1]
+            | padded[:-2, 1:-1]
+            | padded[2:, 1:-1]
+            | padded[1:-1, :-2]
+            | padded[1:-1, 2:]
+        )
+    return out
+
+
+def compare_alignment(
+    reference: np.ndarray, baked: np.ndarray, records: list, tolerance: float = 0.5
+) -> dict:
+    """Check the batch against a single render with every slot's tile present.
+
+    `baked` is the per-slot pass-1 alpha of each sprite pasted at its manifest
+    rect, i.e. exactly what the runtime will draw. The reference is one frame
+    rendered with all the tiles in the scene at once. If a crop or a rect is a
+    pixel off, the two silhouettes disagree by a whole pixel; a one-pixel
+    dilation on each side absorbs anti-aliasing and denoiser softness, so only a
+    real shift fails the check. Adjacent hand tiles overlap slightly in
+    projection, which is why the comparison is whole-frame: the baked canvas
+    carries the neighbour too, exactly as the scene does.
+
+    Disagreeing pixels are attributed to the slot whose rect contains them, so a
+    failure names the sprite to look at.
+    """
+    reference_solid = reference > 0.5
+    baked_solid = baked > 0.5
+    missing = baked_solid & ~dilate(reference_solid)
+    extra = reference_solid & ~dilate(baked_solid)
+    shifted = missing | extra
+
+    union = int((reference_solid | baked_solid).sum())
+    soft = int((np.abs(reference - baked) > tolerance).sum())
+
+    rows = []
+    total_shifted = 0
+    for record, _, slot in records:
+        x0, y0 = record["x"], record["y"]
+        x1 = x0 + record["width"]
+        y1 = y0 + record["height"]
+        band = (
+            slice(max(0, y0), min(shifted.shape[0], y1)),
+            slice(max(0, x0), min(shifted.shape[1], x1)),
+        )
+        count = int(shifted[band].sum())
+        total_shifted += count
+        rows.append({"id": slot["id"], "shiftedPixels": count})
+
+    return {
+        "method": (
+            "every slot's sprite alpha pasted at its manifest rect against one "
+            "frame rendered with all tiles present; a one-pixel dilation absorbs "
+            "anti-aliasing, so any shifted pixel is a real misalignment"
+        ),
+        "slots": rows,
+        "tilePixels": union,
+        "shiftedPixels": total_shifted,
+        "softPixels": soft,
+        "softPixelFraction": round(soft / max(union, 1), 6),
+        "softTolerance": tolerance,
+    }
+
+
+def alpha_centroid(alpha: np.ndarray) -> np.ndarray:
+    """Coverage-weighted centre of a tile mask, in pixels."""
+    weights = np.clip(alpha.astype(np.float64), 0.0, 1.0)
+    total = weights.sum()
+    if total <= 0.0:
+        return np.array([0.0, 0.0])
+    ys, xs = np.indices(weights.shape)
+    return np.array([(weights * xs).sum() / total, (weights * ys).sum() / total])
+
+
+# --------------------------------------------------------------------------- #
+# Carved face plate (spike batch)
+# --------------------------------------------------------------------------- #
+
+
+def decal_geometry(spec: dict) -> dict:
+    """Decal pixel size and frame size for the canonical face-on rig.
+
+    Known from the spec alone, so the manifest can carry every slot's face quad
+    and `faceMatrix` without rendering a decal (Task 3 fills `faces`).
+    """
+    tile = spec["tile"]
+    decals = spec["decals"]
+    px_per_unit = decals["renderScale"] * decals["cssFace"][1] / tile["height"]
+    inset_w = tile["width"] - 2 * tile["faceInset"]
+    inset_h = tile["height"] - 2 * tile["faceInset"]
+    padding = decals["paddingPixels"]
+    width = round(inset_w * px_per_unit) + 2 * padding
+    height = round(inset_h * px_per_unit) + 2 * padding
+    return {
+        "pixels": [width, height],
+        "frameUnits": [width / px_per_unit, height / px_per_unit],
+        "pxPerUnit": px_per_unit,
+        "paddingPixels": padding,
+    }
 
 
 def blur2d(array: np.ndarray, sigma: float) -> np.ndarray:
@@ -982,23 +1611,17 @@ def bake_decal(
     scene: bpy.types.Scene,
     camera: bpy.types.Object,
     tile: bpy.types.Object,
-    table: bpy.types.Object,
+    table: dict,
     out_dir: Path,
 ) -> tuple[Path, int, int, float, float]:
-    """Render the carved, painted, lit face decal for the spike orientation."""
+    """Render the carved, painted, lit face decal (spike batch)."""
     tile_spec = spec["tile"]
     decal_spec = spec["spike"]["decal"]
     rig = spec["decals"]["rigs"][decal_spec["orientation"]]
-    px_per_unit = (
-        spec["decals"]["renderScale"] * spec["decals"]["cssFace"][1] / tile_spec["height"]
-    )
-    inset_w = tile_spec["width"] - 2 * tile_spec["faceInset"]
-    inset_h = tile_spec["height"] - 2 * tile_spec["faceInset"]
-    padding = spec["decals"]["paddingPixels"]
-    decal_width = round(inset_w * px_per_unit) + 2 * padding
-    decal_height = round(inset_h * px_per_unit) + 2 * padding
-    frame_w = decal_width / px_per_unit
-    frame_h = decal_height / px_per_unit
+    geometry = decal_geometry(spec)
+    decal_width, decal_height = geometry["pixels"]
+    frame_w, frame_h = geometry["frameUnits"]
+    px_per_unit = geometry["pxPerUnit"]
 
     texture_width = round(spec["decals"]["cssFace"][0] * spec["decals"]["renderScale"])
     texture_height = round(spec["decals"]["cssFace"][1] * spec["decals"]["renderScale"])
@@ -1012,7 +1635,7 @@ def bake_decal(
         die(f"{symbol_texture} is missing; run scripts/rasterize-face.mjs first")
 
     tile.hide_render = True
-    table.hide_render = True
+    hide_parts(table["parts"], True)
 
     decal_material = new_material("face-decal")
     nodes = decal_material.node_tree.nodes
@@ -1157,7 +1780,7 @@ def bake_decal(
     scene.render.resolution_y = decal_height
     clear_border(scene)
 
-    decal_path = out_dir / spec["outputs"]["decal"].format(
+    decal_path = out_dir / spec["spike"]["outputs"]["decal"].format(
         code=decal_spec["code"], orientation=decal_spec["orientation"]
     )
     render_png(scene, decal_path)
@@ -1167,8 +1790,72 @@ def bake_decal(
             f"decal render is {decal.shape[1]}x{decal.shape[0]}, "
             f"expected {decal_width}x{decal_height}"
         )
-    log(f"face decal: {decal_path} ({decal_width}x{decal_height})")
+    log(f"face decal: {decal_path.name} ({decal_width}x{decal_height})")
+
+    # Restore the scene camera and resolution for the composite.
+    scene.camera = camera
+    scene.render.resolution_x = round(spec["scene"]["widthCss"] * spec["scene"]["pixelRatio"])
+    scene.render.resolution_y = round(spec["scene"]["heightCss"] * spec["scene"]["pixelRatio"])
     return decal_path, decal_width, decal_height, frame_w, frame_h
+
+
+# --------------------------------------------------------------------------- #
+# Manifest checks
+# --------------------------------------------------------------------------- #
+
+
+def check_slots(manifest: dict) -> dict:
+    """Fail the batch if a slot rect or a face quad is out of bounds.
+
+    - every body rect must sit fully inside the scene's device-pixel space;
+    - every face/decal quad corner must sit inside its own body sprite rect (so
+      a decal can never be drawn outside the body it composites onto);
+    - every slot must carry an orientation class and a draw order.
+
+    Returns the numbers the manifest records, so the shipped file proves the
+    checks ran.
+    """
+    scene = manifest["scene"]
+    width = scene["widthDevicePx"]
+    height = scene["heightDevicePx"]
+    orientations = {"upright", "flat-upright", "left", "right", "opposite"}
+    orders = set()
+    face_checks = 0
+    for slot in manifest["slots"]:
+        bodies = [("body", slot)]
+        if slot.get("back"):
+            bodies.append(("back", slot["back"]))
+        if slot.get("orientation") not in orientations:
+            die(f"slot {slot['id']} has unknown orientation {slot.get('orientation')!r}")
+        if slot["drawOrder"] in orders:
+            die(f"slot {slot['id']} reuses draw order {slot['drawOrder']}")
+        orders.add(slot["drawOrder"])
+        for label, record in bodies:
+            x, y = record["x"], record["y"]
+            w, h = record["width"], record["height"]
+            if x < 0 or y < 0 or x + w > width or y + h > height:
+                die(
+                    f"slot {slot['id']} {label} rect "
+                    f"({x}, {y}, {w}x{h}) is outside the "
+                    f"{width}x{height} scene"
+                )
+        for corner_x, corner_y in slot.get("faceQuad", []) + slot.get("decalQuad", []):
+            if not (
+                slot["x"] <= corner_x <= slot["x"] + slot["width"]
+                and slot["y"] <= corner_y <= slot["y"] + slot["height"]
+            ):
+                die(
+                    f"slot {slot['id']} face corner ({corner_x}, {corner_y}) is "
+                    "outside its body sprite"
+                )
+        face_checks += 1
+    return {
+        "slotCount": len(manifest["slots"]),
+        "slotRectsInsideScene": True,
+        "faceQuadsInsideBodies": True,
+        "uniqueDrawOrders": True,
+        "faceQuadCount": face_checks,
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -1176,13 +1863,25 @@ def bake_decal(
 # --------------------------------------------------------------------------- #
 
 
-def main() -> None:
+def parse_args() -> tuple[Path, Path, str]:
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
-    if len(argv) != 2:
-        die("usage: build_and_render.py -- <scene-spec.json> <out-dir>")
+    if len(argv) not in (2, 3):
+        die("usage: build_and_render.py -- <scene-spec.json> <out-dir> [table|spike]")
     spec_path = Path(argv[0]).resolve()
     out_dir = Path(argv[1]).resolve()
+    mode = argv[2] if len(argv) == 3 else "table"
+    if mode not in ("table", "spike"):
+        die(f"unknown batch {mode!r}; expected table or spike")
+    return spec_path, out_dir, mode
+
+
+def main() -> None:
+    spec_path, out_dir, mode = parse_args()
     spec = json.loads(spec_path.read_text())
+    # The parameter tuner writes a preview spec and expects the spike batch.
+    if spec.get("preview"):
+        mode = "spike"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     blender_version = check_blender_version(spec)
     resolve_tile_dimensions(spec)
@@ -1194,130 +1893,321 @@ def main() -> None:
     build_world(scene, spec)
     camera = build_camera(scene, spec)
     build_lights(scene, spec)
-    table = build_table(scene, spec, materials)
+    table = build_table(spec, materials)
     tile = build_tile(scene, spec, materials)
+    hide_parts(table["parts"], True)
 
-    # ---- body sprite ----------------------------------------------------- #
-    preview_only = bool(spec.get("preview", {}).get("decalOnly"))
+    assets = spec["assets"]
+    gutter = assets["shadowGutterDevicePx"]
+    if mode == "spike":
+        # The review batch keeps its lossless PNGs so bevel, alpha, and the decal
+        # seam can be inspected; only the shipped batch is lossy WebP.
+        assets["body"]["fileFormat"] = "PNG"
+        assets["body"]["quality"] = 100
+    body_format = assets["body"]["fileFormat"]
+    body_ext = "webp" if body_format == "WEBP" else body_format.lower()
     slots = hand_slots(spec)
-    spike_index = spec["spike"]["slotIndex"]
-    if not 0 <= spike_index < len(slots):
-        die(f"spike.slotIndex {spike_index} is outside the {len(slots)} hand slots")
-    slot = slots[spike_index]
-    gutter = spec["spike"]["shadowGutterDevicePx"]
-    if not preview_only:
-        body_path = out_dir / spec["outputs"]["body"].format(index=slot["index"])
-        body_with_shadow, tile_rect, clipped = bake_body(
-            spec, scene, camera, tile, table, slot, out_dir, body_path, gutter
+    preview = spec.get("preview", {})
+    if mode == "spike":
+        spike_slot_id = spec["spike"]["slotId"]
+        slots = [slot for slot in slots if slot["id"] == spike_slot_id]
+        if not slots:
+            die(f"spike.slotId {spike_slot_id!r} is not a hand slot")
+
+    log(f"batch {mode}: {len(slots)} hand slot(s) -> {out_dir}")
+
+    # ---- body sprites ---------------------------------------------------- #
+    records = []
+    first_matrix = None
+    # The tuner's decal-only preview needs nothing but the decal itself.
+    bake_slots = [] if preview.get("decalOnly") else slots
+    for slot in bake_slots:
+        face_path = out_dir / spec["outputs"]["body"].format(id=slot["id"], ext=body_ext)
+        face = bake_body(
+            spec, scene, camera, tile, table, slot, slot["pose"], out_dir, face_path, gutter
         )
-        x0, y0, x1, y1 = tile_rect
+        x0, y0, x1, y1 = face["rect"]
+        record = {
+            "id": slot["id"],
+            "seat": slot["seat"],
+            "role": slot["role"],
+            "index": slot["index"],
+            "pose": slot["pose"],
+            "orientation": slot["orientation"],
+            "drawOrder": slot["drawOrder"],
+            "body": str(face_path.relative_to(out_dir)),
+            "x": x0,
+            "y": y0,
+            "width": x1 - x0,
+            "height": y1 - y0,
+            "shadowGutterPx": gutter,
+        }
 
-        # Diagnostic only: the same slot face-down, to prove the blue backing
-        # wraps the whole body. Real face-down/concealed body poses are baked
-        # with the slot inventory (Task 2) and consumed by Tasks 5 and 11.
-        # The tuner's full-tile preview skips it.
-        if not spec.get("preview", {}).get("skipBack"):
-            back_slot = dict(slot, pose="hand-upright-back")
-            back_path = out_dir / spec["outputs"]["back"].format(index=slot["index"])
-            bake_body(spec, scene, camera, tile, table, back_slot, out_dir, back_path, gutter)
+        back_record = None
+        face["back_sprite"] = None
+        if not preview.get("decalOnly") and not preview.get("skipBack"):
+            back_path = out_dir / spec["outputs"]["body"].format(
+                id=f"{slot['id']}-back", ext=body_ext
+            )
+            back = bake_body(
+                spec,
+                scene,
+                camera,
+                tile,
+                table,
+                slot,
+                slot["backPose"],
+                out_dir,
+                back_path,
+                gutter,
+            )
+            bx0, by0, bx1, by1 = back["rect"]
+            face["back_sprite"] = back["sprite"]
+            back_record = {
+                "pose": slot["backPose"],
+                "body": str(back_path.relative_to(out_dir)),
+                "x": bx0,
+                "y": by0,
+                "width": bx1 - bx0,
+                "height": by1 - by0,
+            }
 
-    # ---- face decal ------------------------------------------------------ #
-    tile_spec = spec["tile"]
-    decal_spec = spec["spike"]["decal"]
-    padding = spec["decals"]["paddingPixels"]
-    top = tile_spec["thickness"]
-    decal_started = time.perf_counter()
-    decal_path, decal_width, decal_height, frame_w, frame_h = bake_decal(
-        spec, scene, camera, tile, table, out_dir
+        # ---- face projection --------------------------------------------- #
+        decal = decal_geometry(spec)
+        frame_w, frame_h = decal["frameUnits"]
+        apply_pose(tile, slot, spec)
+        sync_view_layer()
+        face_quad = [
+            project(scene, camera, tile.matrix_world @ corner) for corner in face_corners(spec)
+        ]
+        decal_quad = [
+            project(scene, camera, tile.matrix_world @ corner)
+            for corner in face_corners(spec, (frame_w / 2.0, frame_h / 2.0))
+        ]
+        src = np.array(
+            [
+                [0, 0],
+                [decal["pixels"][0], 0],
+                [decal["pixels"][0], decal["pixels"][1]],
+                [0, decal["pixels"][1]],
+            ],
+            dtype=np.float64,
+        )
+        dst = np.array(decal_quad, dtype=np.float64)
+        matrix = quad_homography(src, dst)
+        check_x, check_y = apply_homography(matrix, src[:, 0], src[:, 1])
+        if not np.allclose(np.stack([check_x, check_y], axis=1), dst, atol=1e-6):
+            die(f"slot {slot['id']}: face homography misses the decal quad")
+
+        record.update(
+            {
+                "faceQuad": [[round(px, 3), round(py, 3)] for px, py in face_quad],
+                "decalQuad": [[round(px, 3), round(py, 3)] for px, py in decal_quad],
+                "faceMatrix": css_matrix3d(matrix),
+                "back": back_record,
+                "measurements": {
+                    "faceHeightPx": round(abs(face_quad[3][1] - face_quad[0][1]), 2),
+                    "faceWidthPx": round(
+                        (abs(face_quad[1][0] - face_quad[0][0])
+                         + abs(face_quad[2][0] - face_quad[3][0])) / 2.0,
+                        2,
+                    ),
+                },
+            }
+        )
+        if first_matrix is None:
+            first_matrix = matrix
+        records.append((record, face, slot))
+
+    # ---- alignment check ------------------------------------------------- #
+    mask_check = None
+    if not preview.get("decalOnly"):
+        # Paste every sprite's tile alpha at its manifest rect, exactly as the
+        # runtime will, then compare the whole frame against a render of all the
+        # tiles at once.
+        baked_alpha = np.zeros((render_height, render_width), dtype=np.float32)
+        for record, face, _ in sorted(records, key=lambda item: item[0]["drawOrder"]):
+            x0, y0 = record["x"], record["y"]
+            x1 = x0 + record["width"]
+            y1 = y0 + record["height"]
+            baked_alpha[y0:y1, x0:x1] = np.maximum(
+                baked_alpha[y0:y1, x0:x1], face["alpha"]
+            )
+        reference = render_tile_mask(
+            spec, scene, tile, table, [slot for _, _, slot in records], out_dir
+        )
+        mask_check = compare_alignment(reference, baked_alpha, records)
+        if spec["checks"].get("dumpAlignment"):
+            dump = RENDER_DIR / "build" / "align"
+            dump.mkdir(parents=True, exist_ok=True)
+            stack = np.concatenate([reference, baked_alpha], axis=1)
+            save_rgba(
+                dump / "mask.png",
+                np.stack([stack, stack, stack, np.ones_like(stack)], axis=-1),
+            )
+        log(
+            "tile alignment: "
+            f"{mask_check['shiftedPixels']} shifted px of "
+            f"{mask_check['tilePixels']} tile px, "
+            f"soft-edge {mask_check['softPixelFraction']:.4%}"
+        )
+        if mask_check["shiftedPixels"] > 0:
+            worst = sorted(
+                mask_check["slots"], key=lambda row: -row["shiftedPixels"]
+            )[:3]
+            die(
+                "baked body sprites do not line up with the rendered scene: "
+                f"{mask_check['shiftedPixels']} pixels disagree by a full pixel "
+                f"(worst slots: {worst})"
+            )
+        if mask_check["softPixelFraction"] > spec["checks"]["maxMaskMismatchFraction"]:
+            die(
+                "baked body sprites differ from the rendered scene: "
+                f"{mask_check['softPixelFraction']:.4%} of tile pixels"
+            )
+
+    # ---- background ------------------------------------------------------ #
+    background = None
+    if mode == "table":
+        background = bake_background(
+            spec,
+            scene,
+            tile,
+            table,
+            out_dir,
+            out_dir / spec["outputs"]["background"].format(ext=assets["background"]["fileFormat"].lower()),
+        )
+        review_dir = RENDER_DIR / "build" / "review"
+        render_review_composite(
+            spec, scene, background["render"], records, "face", review_dir / "hand-face-up.png"
+        )
+        render_review_composite(
+            spec, scene, background["render"], records, "back", review_dir / "hand-face-down.png"
+        )
+        log(f"review composite: {review_dir}")
+
+    # ---- decal and composite (spike batch) ------------------------------- #
+    face_entries: dict = {}
+    measurements: dict = {}
+    if mode == "spike":
+        decal_spec = spec["spike"]["decal"]
+        top = spec["tile"]["thickness"]
+        decal_started = time.perf_counter()
+        decal_path, decal_width, decal_height, frame_w, frame_h = bake_decal(
+            spec, scene, camera, tile, table, out_dir
+        )
+        decal_seconds = time.perf_counter() - decal_started
+        log(f"decal bake: {decal_seconds:.1f}s")
+        if preview.get("decalOnly"):
+            log("preview: decal only, skipping composite/manifest")
+            return
+        decal = load_rgba(decal_path)
+        face_entries = {decal_spec["code"]: {decal_spec["orientation"]: decal_path.name}}
+
+        record, face, slot = records[0]
+        matrix = quad_homography(
+            np.array(
+                [
+                    [0, 0],
+                    [decal_width, 0],
+                    [decal_width, decal_height],
+                    [0, decal_height],
+                ],
+                dtype=np.float64,
+            ),
+            np.array(record["decalQuad"], dtype=np.float64),
+        )
+        first_matrix = matrix
+        supersample = composite_supersample(matrix, spec["decals"].get("compositeSupersample"))
+        log(
+            f"composite: {supersample}x{supersample} samples per pixel"
+            + (" (point-sampled: sub-pixel highlights sparkle)" if supersample == 1 else "")
+        )
+        composite = warp_onto(
+            face["sprite"], decal, matrix, (record["x"], record["y"]), supersample
+        )
+        composite_path = out_dir / spec["spike"]["outputs"]["composite"].format(
+            code=decal_spec["code"], orientation=decal_spec["orientation"]
+        )
+        save_rgba(composite_path, composite)
+        log(f"composite: {composite_path.name}")
+
+        # Pixel-perfect (nearest) review zoom, generated here so the sheet does
+        # not rely on the SVG rasteriser honouring image-rendering="pixelated".
+        zoom = spec["spike"]["zoom"]
+        zoom_crop = composite[
+            zoom["y"] : zoom["y"] + zoom["height"], zoom["x"] : zoom["x"] + zoom["width"]
+        ]
+        zoom_image = np.repeat(np.repeat(zoom_crop, zoom["scale"], axis=0), zoom["scale"], axis=1)
+        zoom_path = out_dir / spec["spike"]["outputs"]["zoom"]
+        save_rgba(zoom_path, zoom_image)
+        log(f"zoom: {zoom_path.name} ({zoom_image.shape[1]}x{zoom_image.shape[0]})")
+
+        # ---- measurements ------------------------------------------------ #
+        sprite = face["sprite"]
+        face_centre_x = (record["faceQuad"][0][0] + record["faceQuad"][1][0]) / 2.0 - record["x"]
+        sliver = measure_blue_sliver(sprite, round(face_centre_x))
+        top_front = project(
+            scene, camera, tile.matrix_world @ Vector((0.0, spec["tile"]["height"] / 2.0, top))
+        )
+        top_back = project(
+            scene,
+            camera,
+            tile.matrix_world @ Vector((0.0, spec["tile"]["height"] / 2.0, 0.0)),
+        )
+        edge_px = abs(top_front[1] - top_back[1])
+        face_height_px = record["measurements"]["faceHeightPx"]
+        body_stats = channel_stats(sprite)
+        decal_stats = channel_stats(decal)
+        measurements = {
+            "faceHeightPx": face_height_px,
+            "topEdgeProjectedPx": round(edge_px, 2),
+            "blueSliverExpectedPx": round(edge_px * spec["tile"]["backEdgeFraction"], 2),
+            "blueSliverMeasuredPx": sliver["bluePx"],
+            "bodyMaxChannel": body_stats["maxChannel"],
+            "bodyClippedPixels": body_stats["clippedPixels"],
+            "decalMaxChannel": decal_stats["maxChannel"],
+            "decalClippedPixels": decal_stats["clippedPixels"],
+            "decalBakeSeconds": round(decal_seconds, 1),
+        }
+        log(
+            "blue sliver: "
+            f"{sliver['bluePx']} device px measured, "
+            f"{measurements['blueSliverExpectedPx']} px expected "
+            f"of a {round(edge_px, 2)} px top edge, on a {face_height_px} px face"
+        )
+        log(
+            f"rig: {spec.get('lightRig')} · "
+            f"body peak {body_stats['maxChannel']}/255 ({body_stats['clippedPixels']} clipped) · "
+            f"decal peak {decal_stats['maxChannel']}/255 ({decal_stats['clippedPixels']} clipped)"
+        )
+
+    # ---- manifest -------------------------------------------------------- #
+    decal = decal_geometry(spec)
+    body_bytes = sum(
+        (out_dir / record["body"]).stat().st_size for record, _, _ in records
+    ) + sum(
+        (out_dir / record["back"]["body"]).stat().st_size
+        for record, _, _ in records
+        if record.get("back")
     )
-    decal_seconds = time.perf_counter() - decal_started
-    log(f"decal bake: {decal_seconds:.1f}s")
-    if preview_only:
-        log("preview: decal only, skipping body/composite/manifest")
-        return
-    decal = load_rgba(decal_path)
-
-    # ---- projection records --------------------------------------------- #
-    scene.camera = camera
-    scene.render.resolution_x = render_width
-    scene.render.resolution_y = render_height
-    apply_pose(tile, slot, spec)  # the diagnostic back bake left the tile flipped
-    sync_view_layer()
-    face_quad = [
-        project(scene, camera, tile.matrix_world @ corner) for corner in face_corners(spec)
-    ]
-    decal_quad = [
-        project(scene, camera, tile.matrix_world @ corner)
-        for corner in face_corners(spec, (frame_w / 2.0, frame_h / 2.0))
-    ]
-
-    src = np.array(
-        [[0, 0], [decal_width, 0], [decal_width, decal_height], [0, decal_height]],
-        dtype=np.float64,
-    )
-    dst = np.array(decal_quad, dtype=np.float64)
-    matrix = quad_homography(src, dst)
-    check_x, check_y = apply_homography(matrix, src[:, 0], src[:, 1])
-    if not np.allclose(np.stack([check_x, check_y], axis=1), dst, atol=1e-6):
-        die("face homography does not map the decal rect onto the face quad")
-
-    # ---- composite panel ------------------------------------------------- #
-    supersample = composite_supersample(
-        matrix, spec["decals"].get("compositeSupersample")
-    )
-    log(
-        f"composite: {supersample}x{supersample} samples per pixel"
-        + (" (point-sampled: sub-pixel highlights sparkle)" if supersample == 1 else "")
-    )
-    composite = warp_onto(body_with_shadow, decal, matrix, (x0, y0), supersample)
-    composite_path = out_dir / spec["outputs"]["composite"].format(
-        code=decal_spec["code"], orientation=decal_spec["orientation"]
-    )
-    save_rgba(composite_path, composite)
-    log(f"composite: {composite_path}")
-
-    # Pixel-perfect (nearest) review zoom, generated here so the sheet does not
-    # rely on the SVG rasteriser honouring image-rendering="pixelated".
-    zoom = spec["spike"]["zoom"]
-    zoom_crop = composite[zoom["y"] : zoom["y"] + zoom["height"], zoom["x"] : zoom["x"] + zoom["width"]]
-    zoom_image = np.repeat(np.repeat(zoom_crop, zoom["scale"], axis=0), zoom["scale"], axis=1)
-    zoom_path = out_dir / spec["outputs"]["zoom"]
-    save_rgba(zoom_path, zoom_image)
-    log(f"zoom: {zoom_path} ({zoom_image.shape[1]}x{zoom_image.shape[0]})")
-
-    # ---- measurements and manifest -------------------------------------- #
-    face_centre_x = (face_quad[0][0] + face_quad[1][0]) / 2.0 - x0
-    sliver = measure_blue_sliver(body_with_shadow, round(face_centre_x))
-    top_front = project(
-        scene, camera, tile.matrix_world @ Vector((0.0, tile_spec["height"] / 2.0, top))
-    )
-    top_back = project(
-        scene,
-        camera,
-        tile.matrix_world
-        @ Vector((0.0, tile_spec["height"] / 2.0, 0.0)),
-    )
-    edge_px = abs(top_front[1] - top_back[1])
-    face_height_px = abs(face_quad[3][1] - face_quad[0][1])
-    body_stats = channel_stats(body_with_shadow)
-    decal_stats = channel_stats(decal)
-
     manifest = {
-        "version": 1,
+        "version": 2,
         "generatedBy": "tools/render/build_and_render.py",
         "spec": spec_path.name,
         "blender": blender_version,
         "units": "device px, origin top-left, y down; divide by pixelRatio for CSS",
         "pixelRatio": spec["scene"]["pixelRatio"],
         "tile": {
-            "proportionsMm": tile_spec["proportionsMm"],
+            "proportionsMm": spec["tile"]["proportionsMm"],
             "units": {
-                "height": round(tile_spec["height"], 5),
-                "width": round(tile_spec["width"], 5),
-                "thickness": round(tile_spec["thickness"], 5),
+                "height": round(spec["tile"]["height"], 5),
+                "width": round(spec["tile"]["width"], 5),
+                "thickness": round(spec["tile"]["thickness"], 5),
             },
-            "material": tile_spec["materials"]["face"]["material"],
-            "backEdgeFraction": tile_spec["backEdgeFraction"],
+            "material": spec["tile"]["materials"]["face"]["material"],
+            "backEdgeFraction": spec["tile"]["backEdgeFraction"],
+            "faceInset": spec["tile"]["faceInset"],
         },
         "scene": {
             "width": spec["scene"]["widthCss"],
@@ -1326,27 +2216,43 @@ def main() -> None:
             "heightDevicePx": render_height,
             "camera": "fixed",
         },
+        "camera": camera_record(spec),
+        "table": {
+            "plan": table_plan(spec),
+            "seats": ["bottom", "right", "top", "left"],
+            "handRow": {
+                "seat": spec["hand"]["seat"],
+                "y": spec["hand"]["y"],
+                "slotIds": [slot["id"] for slot in hand_slots(spec)],
+            },
+        },
         "facePixels": [
             round(spec["decals"]["cssFace"][0] * 2),
             round(spec["decals"]["cssFace"][1] * 2),
         ],
-        "background": None,
+        "background": (
+            spec["outputs"]["background"].format(ext=assets["background"]["fileFormat"].lower())
+            if background
+            else None
+        ),
+        "backgroundPixels": background["pixels"] if background else None,
         "rig": rig_record(spec),
         "decals": {
-            "pixels": [decal_width, decal_height],
-            "paddingPixels": padding,
-            "frameUnits": [frame_w, frame_h],
+            "pixels": decal["pixels"],
+            "frameUnits": decal["frameUnits"],
+            "paddingPixels": decal["paddingPixels"],
             "renderedAtScale": spec["decals"]["renderScale"],
-            "compositeSupersample": supersample,
+            "compositeSupersample": composite_supersample(
+                first_matrix if first_matrix is not None else np.eye(3),
+                spec["decals"].get("compositeSupersample"),
+            ),
             "carve": {
                 "depthUnits": round(
                     spec["decals"]["carve"]["depthFractionOfThickness"]
-                    * tile_spec["thickness"],
+                    * spec["tile"]["thickness"],
                     5,
                 ),
-                "depthFractionOfThickness": spec["decals"]["carve"][
-                    "depthFractionOfThickness"
-                ],
+                "depthFractionOfThickness": spec["decals"]["carve"]["depthFractionOfThickness"],
                 "blurUnits": spec["decals"]["carve"]["blurUnits"],
                 "transitionUnits": spec["decals"]["carve"]["transitionUnits"],
                 "profile": spec["decals"]["carve"]["profile"],
@@ -1354,58 +2260,60 @@ def main() -> None:
                 "occlusionDistance": spec["decals"]["carve"]["occlusionDistance"],
                 "occlusionStrength": spec["decals"]["carve"]["occlusionStrength"],
                 "grid": [
-                    max(2, round(decal_width * spec["decals"]["carve"]["gridScale"])),
-                    max(2, round(decal_height * spec["decals"]["carve"]["gridScale"])),
+                    max(2, round(decal["pixels"][0] * spec["decals"]["carve"]["gridScale"])),
+                    max(2, round(decal["pixels"][1] * spec["decals"]["carve"]["gridScale"])),
                 ],
             },
-            "note": "faceMatrix maps the decal image's full pixel rect (top-left origin, y down) onto decalQuad.",
+            "note": (
+                "faceMatrix maps the decal image's full pixel rect (top-left "
+                "origin, y down) onto decalQuad."
+            ),
         },
-        "slots": [
-            {
-                "id": slot["id"],
-                "pose": slot["pose"],
-                "body": body_path.name,
-                "x": x0,
-                "y": y0,
-                "width": x1 - x0,
-                "height": y1 - y0,
-                "faceQuad": [[round(px, 3), round(py, 3)] for px, py in face_quad],
-                "decalQuad": [[round(px, 3), round(py, 3)] for px, py in decal_quad],
-                "faceMatrix": css_matrix3d(matrix),
-                "orientation": slot["orientation"],
-                "drawOrder": slot["drawOrder"],
-                "shadowGutterPx": gutter,
-                "clipped": clipped,
-            }
-        ],
-        "faces": {
-            decal_spec["code"]: {decal_spec["orientation"]: decal_path.name},
+        "slots": [record for record, _, _ in records],
+        "faces": face_entries,
+        "assets": {
+            "bodyFormat": body_format,
+            "bodyQuality": assets["body"]["quality"] if mode == "table" else 100,
+            "bodyBytes": body_bytes,
+            "backgroundFormat": assets["background"]["fileFormat"] if background else None,
+            "backgroundQuality": assets["background"]["quality"] if background else None,
+            "backgroundSamples": background["renderSamples"] if background else None,
+            "backgroundBytes": background["bytes"] if background else None,
+            "totalBytes": body_bytes + (background["bytes"] if background else 0),
+            "budgetBytes": assets["budgetBytes"],
         },
-        "measurements": {
-            "faceHeightPx": round(face_height_px, 2),
-            "topEdgeProjectedPx": round(edge_px, 2),
-            "blueSliverExpectedPx": round(edge_px * tile_spec["backEdgeFraction"], 2),
-            "blueSliverMeasuredPx": sliver["bluePx"],
-            "bodyMaxChannel": body_stats["maxChannel"],
-            "bodyClippedPixels": body_stats["clippedPixels"],
-            "decalMaxChannel": decal_stats["maxChannel"],
-            "decalClippedPixels": decal_stats["clippedPixels"],
-            "decalBakeSeconds": round(decal_seconds, 1),
-        },
+        "checks": {},
+        "measurements": measurements,
     }
+    manifest["checks"] = check_slots(manifest)
+    if mask_check:
+        manifest["checks"]["alignment"] = mask_check
+
+    budget = assets["budgetBytes"]
+    if manifest["assets"]["totalBytes"] > budget["total"]:
+        die(
+            f"assets are {manifest['assets']['totalBytes']} bytes, "
+            f"over the {budget['total']} byte budget"
+        )
+    if manifest["assets"]["bodyBytes"] > budget["bodies"]:
+        die(
+            f"body sprites are {manifest['assets']['bodyBytes']} bytes, "
+            f"over the {budget['bodies']} byte budget"
+        )
+    if background and background["bytes"] > budget["background"]:
+        die(
+            f"background is {background['bytes']} bytes, "
+            f"over the {budget['background']} byte budget"
+        )
+
     manifest_path = out_dir / spec["outputs"]["manifest"]
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-    log(f"manifest: {manifest_path}")
+    log(f"manifest: {manifest_path.name}")
     log(
-        "blue sliver: "
-        f"{sliver['bluePx']} device px measured, "
-        f"{round(edge_px * tile_spec['backEdgeFraction'], 2)} px expected "
-        f"of a {round(edge_px, 2)} px top edge, on a {round(face_height_px, 2)} px face"
-    )
-    log(
-        f"rig: {manifest['rig']['preset']} · "
-        f"body peak {body_stats['maxChannel']}/255 ({body_stats['clippedPixels']} clipped) · "
-        f"decal peak {decal_stats['maxChannel']}/255 ({decal_stats['clippedPixels']} clipped)"
+        f"assets: bodies {body_bytes} B, background "
+        f"{background['bytes'] if background else 0} B, "
+        f"total {manifest['assets']['totalBytes']} B "
+        f"(budget {budget['total']} B)"
     )
 
 
