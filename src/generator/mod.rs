@@ -34,7 +34,11 @@
 //! - `defense`: pure-defense "safest discard" lessons from the ch. 8 chart.
 //!   `suji_kabe_safety` is the ranking mode of the fold board: the safest tile
 //!   is a suji or no-chance tile, never the free genbutsu, and the runner-up is
-//!   exactly one row down `tbl:safety`.
+//!   exactly one row down `tbl:safety`. The four blockade lessons isolate ch.
+//!   8.2's kabe theory: `kabe_no_chance` (a complete blockade from `tbl:kabe`),
+//!   `kabe_one_chance` (one incomplete blockade in the early turns),
+//!   `kabe_double_one_chance` (two last copies needed on one wait), and
+//!   `kabe_suji_defense` (one blockade plus one genbutsu, `tbl:kabesuji`).
 //! - `push_or_fold`: ch. 8.1's push/fold box, isolated on the 1-away cell:
 //!   push a guaranteed mangan with a perfect wait, fold a cheap bad-wait hand.
 //! - `open_hand_defense`: ch. 8.4's open-hand read: an opponent's chii followed
@@ -697,6 +701,73 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         book: Some(BOOK_CH8_BASICS),
     },
     ScenarioMeta {
+        id: ScenarioId::KabeNoChance,
+        label: "Defense: No-Chance Tile",
+        description: "A complete blockade hides the only safe tile: every side wait needs one of \
+                      the four visible copies, so the neighbour is no chance.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &[
+            "defense",
+            "betaori",
+            "kabe",
+            "blockade",
+            "no_chance",
+            "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_BASICS),
+    },
+    ScenarioMeta {
+        id: ScenarioId::KabeOneChance,
+        label: "Defense: One-Chance Tile",
+        description: "An incomplete blockade leaves one last copy: in the early turns the chart \
+                      ranks the neighbour above every non-suji tile.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &[
+            "defense",
+            "betaori",
+            "kabe",
+            "blockade",
+            "one_chance",
+            "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_BASICS),
+    },
+    ScenarioMeta {
+        id: ScenarioId::KabeDoubleOneChance,
+        label: "Defense: Double One-Chance Tile",
+        description: "Two incomplete blockades on the same wait: the opponent needs the last copy \
+                      of both protorun tiles, which is safer than a single one chance.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &[
+            "defense",
+            "betaori",
+            "kabe",
+            "blockade",
+            "double_one_chance",
+            "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_BASICS),
+    },
+    ScenarioMeta {
+        id: ScenarioId::KabeSujiDefense,
+        label: "Defense: Blockade + Suji",
+        description: "Neither theory is enough alone: a complete blockade denies one side wait and \
+                      a genbutsu denies the other, so the middle tile is safe.",
+        category: ScenarioCategory::DefenseDecision,
+        tags: &[
+            "defense", "betaori", "kabe", "suji", "blockade", "combined", "discard",
+        ],
+        requires_ai: false,
+        grading: ScenarioGrading::BookAndMortal,
+        book: Some(BOOK_CH8_BASICS),
+    },
+    ScenarioMeta {
         id: ScenarioId::DefenseStuckHeuristic,
         label: "Defense: Nothing Is Safe",
         description: "No tile is identified as safe: apply the book's fallback and break up the pair.",
@@ -833,6 +904,10 @@ pub enum ScenarioId {
     PushOrFold,
     DefenseSafetyChart,
     SujiKabeSafety,
+    KabeNoChance,
+    KabeOneChance,
+    KabeDoubleOneChance,
+    KabeSujiDefense,
     DefenseStuckHeuristic,
     OpenHandDefense,
     PinfuHead,
@@ -871,6 +946,10 @@ impl ScenarioId {
         ScenarioId::PushOrFold,
         ScenarioId::DefenseSafetyChart,
         ScenarioId::SujiKabeSafety,
+        ScenarioId::KabeNoChance,
+        ScenarioId::KabeOneChance,
+        ScenarioId::KabeDoubleOneChance,
+        ScenarioId::KabeSujiDefense,
         ScenarioId::DefenseStuckHeuristic,
         ScenarioId::OpenHandDefense,
         ScenarioId::PinfuHead,
@@ -909,6 +988,10 @@ impl ScenarioId {
             ScenarioId::PushOrFold => "push_or_fold",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
             ScenarioId::SujiKabeSafety => "suji_kabe_safety",
+            ScenarioId::KabeNoChance => "kabe_no_chance",
+            ScenarioId::KabeOneChance => "kabe_one_chance",
+            ScenarioId::KabeDoubleOneChance => "kabe_double_one_chance",
+            ScenarioId::KabeSujiDefense => "kabe_suji_defense",
             ScenarioId::DefenseStuckHeuristic => "defense_stuck_heuristic",
             ScenarioId::OpenHandDefense => "open_hand_defense",
             ScenarioId::PinfuHead => "pinfu_head",
@@ -948,6 +1031,10 @@ impl ScenarioId {
             "push_or_fold" => Some(ScenarioId::PushOrFold),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
             "suji_kabe_safety" => Some(ScenarioId::SujiKabeSafety),
+            "kabe_no_chance" => Some(ScenarioId::KabeNoChance),
+            "kabe_one_chance" => Some(ScenarioId::KabeOneChance),
+            "kabe_double_one_chance" => Some(ScenarioId::KabeDoubleOneChance),
+            "kabe_suji_defense" => Some(ScenarioId::KabeSujiDefense),
             "defense_stuck_heuristic" => Some(ScenarioId::DefenseStuckHeuristic),
             "open_hand_defense" => Some(ScenarioId::OpenHandDefense),
             "pinfu_head" => Some(ScenarioId::PinfuHead),
@@ -992,6 +1079,10 @@ impl ScenarioId {
             ScenarioId::PushOrFold => push_or_fold::generate(category),
             ScenarioId::DefenseSafetyChart => defense::generate_safety_chart(category),
             ScenarioId::SujiKabeSafety => defense::generate_suji_kabe(category),
+            ScenarioId::KabeNoChance => defense::generate_kabe_no_chance(category),
+            ScenarioId::KabeOneChance => defense::generate_kabe_one_chance(category),
+            ScenarioId::KabeDoubleOneChance => defense::generate_kabe_double_one_chance(category),
+            ScenarioId::KabeSujiDefense => defense::generate_kabe_suji(category),
             ScenarioId::DefenseStuckHeuristic => defense::generate_stuck(category),
             ScenarioId::OpenHandDefense => open_hand_defense::generate(category),
             ScenarioId::PinfuHead => pinfu_head::generate(category),

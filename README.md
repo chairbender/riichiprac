@@ -227,6 +227,29 @@ a set, or a protorun, so the fold visibly breaks the hand up; the variants cover
 the suji-terminal rows (`A+`, `AA-`, `AA`), `BBB` (suji 4-5-6 or no chance),
 `BB+`, and `BB-`.
 
+The four **blockade (kabe)** lessons isolate the blockade subsection of ch. 8.2
+so a random banking hand cannot hide it behind a genbutsu or an honor count.
+Each board plants the exact visible copies the read needs and keeps the answer
+and its suji deniers out of every river, dora indicator, and filler tile:
+
+- **Defense: No-Chance Tile** plants a complete blockade from `tbl:kabe`
+  (four copies of one number tile), making the neighbour the only no-chance
+  tile in the hand. The book's table gives the safe neighbours for each
+  blockade; the lesson uses the ones it lists and no others.
+- **Defense: One-Chance Tile** plants three copies of one protorun tile. The
+  river is kept to six or fewer discards so the chart's `BB-` (earlier turns)
+  row applies, matching the chapter's warning that a late incomplete blockade
+  is almost as dangerous as a non-suji tile.
+- **Defense: Double One-Chance Tile** plants three copies of *both* protorun
+  tiles, the book's own example: "if three of 2m and three of 3m are both
+  visible, an opponent has to have the fourth 2m *and* the fourth 3m to have a
+  1-4 suji wait" (ch8:259). It sits on the trainer's `BBB-` row, between `BBB`
+  (no chance) and `BB+`.
+- **Defense: Blockade + Suji** takes a row from `tbl:kabesuji`: a complete
+  blockade denies one side wait and a genbutsu in the threat's early river
+  denies the other, so the middle tile is safe although neither theory alone
+  covers it.
+
 **Defense: Nothing Is Safe** is the chapter's fallback, "What to discard when
 you get stuck". Nothing in the hand is Rank B or safer, so the chart identifies
 nothing; the learner applies the book's fallback list — break up a pair or
@@ -245,7 +268,9 @@ outside it. The generated threat is genuinely tenpai on the block it kept, so
 the read is true on the hidden hand as well as the visible table.
 
 The safety chart itself is `src/safety.rs`: the fifteen rows of `tbl:safety`
-plus the suji and blockade arithmetic they are derived from, and the
+plus the trainer's `BBB-` row for the book's double one chance (a class the
+fifteen-row table does not list but the blockade ranking does), the suji and
+blockade arithmetic they are derived from, and the
 `in_open_hand_neighbourhood` helper the ch. 8.4 lesson shares with its
 rationale. `SafetyFacts::is_absolutely_safe` encodes the chapter's three 100%
 kinds (genbutsu, a fourth honor, a no-chance tile), which is how the fold lesson

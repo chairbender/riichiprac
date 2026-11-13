@@ -20,7 +20,10 @@ use crate::generator::support::table::{
     self_turn_river_plan,
 };
 use crate::rng::{choose, gen_range, shuffle};
-use crate::safety::{SafetyFacts, SafetyMechanism, SafetyRank, is_near_dora, post_riichi_discards};
+use crate::safety::{
+    EARLY_TURN_LIMIT, SafetyFacts, SafetyMechanism, SafetyRank, TileRead, is_near_dora,
+    post_riichi_discards,
+};
 use crate::state::{CorrectAction, DecisionContext, GameState, PlayerState, TargetAction, Wind};
 
 /// Which defense question the board is asking.
@@ -48,6 +51,29 @@ pub(super) fn build_suji_kabe(category: &str, plan: ThemePlan) -> Result<GameSta
 /// Builds a validated fallback-heuristic board.
 pub(super) fn build_stuck(category: &str, plan: ThemePlan) -> Result<GameState, String> {
     build(category, plan, Lesson::StuckHeuristic)
+}
+
+/// Builds a board whose answer is a complete blockade's no-chance tile.
+pub(super) fn build_kabe_no_chance(category: &str, plan: ThemePlan) -> Result<GameState, String> {
+    build(category, plan, Lesson::SafetyChart)
+}
+
+/// Builds a board whose answer is an early one-chance tile.
+pub(super) fn build_kabe_one_chance(category: &str, plan: ThemePlan) -> Result<GameState, String> {
+    build(category, plan, Lesson::SafetyChart)
+}
+
+/// Builds a board whose answer is a double-one-chance tile.
+pub(super) fn build_kabe_double_one_chance(
+    category: &str,
+    plan: ThemePlan,
+) -> Result<GameState, String> {
+    build(category, plan, Lesson::SafetyChart)
+}
+
+/// Builds a board whose answer needs a blockade and a genbutsu together.
+pub(super) fn build_kabe_suji(category: &str, plan: ThemePlan) -> Result<GameState, String> {
+    build(category, plan, Lesson::SafetyChart)
 }
 
 /// The learner's hand must not be ready. The book's advice against Rank D
@@ -97,7 +123,11 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
     // The threat's river: the theme's pattern in the early turns, then filler.
     // Every river comes from one legal timeline ending on Kamicha's discard,
     // so the seat counts line up no matter which seat the human holds.
-    let river_plan = self_turn_river_plan(human_wind, &[], gen_range(8, 15));
+    let river_plan = self_turn_river_plan(
+        human_wind,
+        &[],
+        gen_range(plan.river_discards.0, plan.river_discards.1),
+    );
     let discard_count = river_plan.counts[threat_seat];
     let mut threat_river = Vec::with_capacity(discard_count);
     for &tile in &plan.threat_discards {
@@ -114,6 +144,16 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
             .ok_or_else(|| "Deck exhausted drawing the threat river".to_string())?;
         increment(&mut visible, tile);
         threat_river.push(tile);
+    }
+
+    // The one-chance theme is the chart's BB- (earlier turns) row. The book's
+    // cut is a trainer constant, so a timeline that overshot it is rejected
+    // before the hand is filled.
+    if plan.theme == SafetyTheme::KabeOneChance && threat_river.len() > EARLY_TURN_LIMIT {
+        return Err(format!(
+            "The one-chance board needs the threat's river inside the early turns, got {} discards",
+            threat_river.len()
+        ));
     }
 
     // Theme copies that must be visible somewhere other than the threat river.
@@ -224,15 +264,15 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
         &post_riichi,
         &visible,
     );
-    let answer_rank = table_facts.rank(plan.answer);
+    let answer_read = table_facts.read(plan.answer);
+    let answer_rank = answer_read.rank;
     let answer_order = answer_rank.order();
     if lesson == Lesson::SujiKabe {
-        let read = table_facts.read(plan.answer);
-        if !accepts_suji_kabe(&read) {
+        if !accepts_suji_kabe(&answer_read) {
             return Err(format!(
                 "The ranking answer is Rank {} ({}), not a suji or no-chance tile",
-                read.rank.code(),
-                read.rank.label()
+                answer_read.rank.code(),
+                answer_read.rank.label()
             ));
         }
         if let Some(runner_up) = plan.runner_up {
@@ -241,15 +281,16 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
                 return Err(format!(
                     "The runner-up is Rank {}, not one row below Rank {}",
                     table_facts.rank(runner_up.tile).code(),
-                    read.rank.code()
+                    answer_read.rank.code()
                 ));
             }
         }
-    } else if !accepts_answer(lesson, plan.theme, answer_rank) {
+    } else if !accepts_answer(lesson, plan.theme, &answer_read) {
         return Err(format!(
-            "Theme {} cannot be built: the answer is Rank {}",
+            "Theme {} cannot be built: the answer is Rank {} ({:?})",
             plan.theme.as_str(),
-            answer_rank.code()
+            answer_rank.code(),
+            answer_read.mechanism
         ));
     }
     // A number tile with all four copies visible cannot be waited on at all, so
@@ -293,6 +334,7 @@ fn build(category: &str, plan: ThemePlan, lesson: Lesson) -> Result<GameState, S
             .iter()
             .copied()
             .filter(|&tile| tile != plan.answer && Some(tile) != runner_up_tile)
+            .filter(|&tile| !plan.all_avoid.contains(&tile))
             .filter(|&tile| deck.count(tile) > 0)
             .filter(|&tile| rank_is_legal(current.rank(tile), floor))
             .filter(|&tile| current.visible_of(tile) < 4)
@@ -544,7 +586,8 @@ fn suji_kabe_filler_is_legal(
 }
 
 /// True when the answer's chart row is the one the theme is teaching.
-fn accepts_answer(lesson: Lesson, theme: SafetyTheme, rank: SafetyRank) -> bool {
+fn accepts_answer(lesson: Lesson, theme: SafetyTheme, read: &TileRead) -> bool {
+    let rank = read.rank;
     match lesson {
         // The fallback lesson needs nothing identified as safe. A terminal is
         // either a non-suji terminal (CC) or, once its protorun shows three
@@ -569,6 +612,21 @@ fn accepts_answer(lesson: Lesson, theme: SafetyTheme, rank: SafetyRank) -> bool 
                 SafetyRank::APlus | SafetyRank::A | SafetyRank::Aa | SafetyRank::Aaa
             ),
             SafetyTheme::NonSuji => rank == SafetyRank::Cc,
+            // The blockade lessons are accepted by mechanism: the chart row
+            // alone cannot tell no chance from a mixed blockade-and-suji read,
+            // or a double one chance from a single one.
+            SafetyTheme::KabeNoChance => {
+                read.mechanism == SafetyMechanism::NoChance && rank == SafetyRank::Bbb
+            }
+            SafetyTheme::KabeOneChance => {
+                read.mechanism == SafetyMechanism::OneChance && rank == SafetyRank::BbMinus
+            }
+            SafetyTheme::KabeDoubleOneChance => {
+                read.mechanism == SafetyMechanism::DoubleOneChance && rank == SafetyRank::BbbMinus
+            }
+            SafetyTheme::KabeSuji => {
+                read.mechanism == SafetyMechanism::BlockadeSuji && rank == SafetyRank::Bbb
+            }
         },
         // The ranking mode is accepted by mechanism, not by theme row.
         Lesson::SujiKabe => false,
@@ -684,11 +742,13 @@ fn validate(
             .ok_or_else(|| "The fold answer must name a tile".to_string())?,
     )
     .map_err(|err| err.to_string())?;
-    let answer_rank = facts.rank(answer);
-    if !accepts_answer(lesson, theme, answer_rank) {
+    let answer_read = facts.read(answer);
+    let answer_rank = answer_read.rank;
+    if !accepts_answer(lesson, theme, &answer_read) {
         return Err(format!(
-            "The answer is Rank {} but the theme needs a safer row",
-            answer_rank.code()
+            "The answer is Rank {} ({:?}) but the theme needs a different read",
+            answer_rank.code(),
+            answer_read.mechanism
         ));
     }
 
@@ -938,6 +998,17 @@ mod tests {
             .expect("answer tile must parse")
     }
 
+    /// The two-tile protorun the one-chance planners build around.
+    fn one_chance_protorun(value: u8) -> [u8; 2] {
+        match value {
+            1 => [2, 3],
+            2 => [3, 4],
+            8 => [6, 7],
+            9 => [7, 8],
+            other => panic!("the one-chance plans only use 1, 2, 8, 9, got {other}"),
+        }
+    }
+
     #[test]
     fn chart_lesson_names_the_safest_discard() {
         for run in 0..40 {
@@ -1078,41 +1149,246 @@ mod tests {
 
     #[test]
     fn theme_acceptance_matches_the_chart_families() {
+        fn read(rank: SafetyRank, mechanism: SafetyMechanism) -> TileRead {
+            TileRead {
+                rank,
+                mechanism,
+                reason: String::new(),
+            }
+        }
+
         assert!(accepts_answer(
             Lesson::SafetyChart,
             SafetyTheme::Genbutsu,
-            SafetyRank::Genbutsu
+            &read(SafetyRank::Genbutsu, SafetyMechanism::Genbutsu)
         ));
         assert!(!accepts_answer(
             Lesson::SafetyChart,
             SafetyTheme::Genbutsu,
-            SafetyRank::Aaa
+            &read(SafetyRank::Aaa, SafetyMechanism::Honor)
         ));
         assert!(accepts_answer(
             Lesson::SafetyChart,
             SafetyTheme::SujiTerminal,
-            SafetyRank::AaMinus
+            &read(SafetyRank::AaMinus, SafetyMechanism::Suji)
         ));
         assert!(accepts_answer(
             Lesson::SafetyChart,
             SafetyTheme::NoChance,
-            SafetyRank::Bbb
+            &read(SafetyRank::Bbb, SafetyMechanism::NoChance)
+        ));
+        assert!(!accepts_answer(
+            Lesson::SafetyChart,
+            SafetyTheme::KabeNoChance,
+            &read(SafetyRank::Bbb, SafetyMechanism::BlockadeSuji)
+        ));
+        assert!(accepts_answer(
+            Lesson::SafetyChart,
+            SafetyTheme::KabeOneChance,
+            &read(SafetyRank::BbMinus, SafetyMechanism::OneChance)
+        ));
+        assert!(!accepts_answer(
+            Lesson::SafetyChart,
+            SafetyTheme::KabeOneChance,
+            &read(SafetyRank::C, SafetyMechanism::OneChance)
+        ));
+        assert!(accepts_answer(
+            Lesson::SafetyChart,
+            SafetyTheme::KabeDoubleOneChance,
+            &read(SafetyRank::BbbMinus, SafetyMechanism::DoubleOneChance)
+        ));
+        assert!(accepts_answer(
+            Lesson::SafetyChart,
+            SafetyTheme::KabeSuji,
+            &read(SafetyRank::Bbb, SafetyMechanism::BlockadeSuji)
         ));
         assert!(!accepts_answer(
             Lesson::SafetyChart,
             SafetyTheme::NonSuji,
-            SafetyRank::Dd
+            &read(SafetyRank::Dd, SafetyMechanism::NonSuji)
         ));
         assert!(accepts_answer(
             Lesson::StuckHeuristic,
             SafetyTheme::NonSuji,
-            SafetyRank::Cc
+            &read(SafetyRank::Cc, SafetyMechanism::NonSuji)
         ));
         assert!(!accepts_answer(
             Lesson::StuckHeuristic,
             SafetyTheme::NonSuji,
-            SafetyRank::B
+            &read(SafetyRank::B, SafetyMechanism::Honor)
         ));
+    }
+
+    /// The common invariants of the four blockade lessons: the answer's read is
+    /// the one the plan promised, nothing else in the hand is as safe, and the
+    /// table is reachable.
+    fn check_kabe_board(
+        state: &GameState,
+        mechanism: SafetyMechanism,
+        rank: SafetyRank,
+    ) -> SafetyFacts {
+        assert_eq!(state.target_action, TargetAction::Defend);
+        assert!(matches!(state.correct_action, CorrectAction::Fold { .. }));
+        assert!(state.equivalent_tiles.is_empty());
+        assert!(state.shanten >= MIN_SHANTEN);
+
+        let threat = threat(state);
+        assert!(threat.riichi_discard_index.is_some());
+        assert!(threat.melds.is_empty());
+        let human = human(state);
+        assert_eq!(human.hand.len() + usize::from(human.draw.is_some()), 14);
+        assert_eq!(human.draw.as_deref(), state.correct_action.tile());
+        assert!(human.melds.is_empty());
+        assert!(!human.is_riichi);
+
+        let facts = SafetyFacts::from_state(state, threat.seat).expect("facts");
+        let answer = answer_tile(state);
+        let read = facts.read(answer);
+        assert_eq!(read.mechanism, mechanism, "{}", read.reason);
+        assert_eq!(read.rank, rank, "{}", read.reason);
+        assert!(!facts.is_genbutsu(answer));
+
+        for code in &state.tiles {
+            let tile = Tile::try_from(code.as_str()).expect("tile code");
+            if tile == answer {
+                continue;
+            }
+            assert!(
+                facts.rank(tile).order() > rank.order(),
+                "{tile} is Rank {} beside the Rank {} answer",
+                facts.rank(tile).code(),
+                rank.code()
+            );
+        }
+
+        crate::generator::support::state_validation::validate_reachable_state(state)
+            .expect("reachable table");
+        facts
+    }
+
+    #[test]
+    fn kabe_no_chance_lesson_uses_a_complete_blockade() {
+        for run in 0..30 {
+            let state = super::super::generate_kabe_no_chance("kabe_no_chance")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+            assert_eq!(state.category, "kabe_no_chance");
+
+            let facts = check_kabe_board(&state, SafetyMechanism::NoChance, SafetyRank::Bbb);
+            let answer = answer_tile(&state);
+            let (suit, value) = (
+                answer.suit().expect("suited"),
+                answer.value().expect("value"),
+            );
+            let blockades: Vec<Tile> = (1..=9u8)
+                .filter(|candidate| *candidate != value)
+                .map(|candidate| Tile::suited(suit, candidate))
+                .filter(|tile| facts.visible_of(*tile) == 4)
+                .collect();
+            assert!(
+                !blockades.is_empty(),
+                "run {run}: no complete blockade in the answer's suit"
+            );
+        }
+    }
+
+    #[test]
+    fn kabe_one_chance_lesson_is_early_and_incomplete() {
+        for run in 0..30 {
+            let state = super::super::generate_kabe_one_chance("kabe_one_chance")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+            assert_eq!(state.category, "kabe_one_chance");
+
+            let facts = check_kabe_board(&state, SafetyMechanism::OneChance, SafetyRank::BbMinus);
+            assert!(
+                facts.is_early_hand(),
+                "run {run}: the one-chance row is the BB- early row"
+            );
+            let answer = answer_tile(&state);
+            let (suit, value) = (
+                answer.suit().expect("suited"),
+                answer.value().expect("value"),
+            );
+            let protorun = one_chance_protorun(value);
+            let visible: Vec<u8> = protorun
+                .iter()
+                .map(|candidate| facts.visible_of(Tile::suited(suit, *candidate)))
+                .collect();
+            assert_eq!(
+                visible.iter().filter(|&&count| count == 3).count(),
+                1,
+                "run {run}: exactly one incomplete blockade makes the single one chance: {visible:?}"
+            );
+            assert!(
+                visible.contains(&0),
+                "run {run}: the other protorun tile must stay invisible: {visible:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn kabe_double_one_chance_lesson_needs_two_last_copies() {
+        for run in 0..30 {
+            let state = super::super::generate_kabe_double_one_chance("kabe_double_one_chance")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+            assert_eq!(state.category, "kabe_double_one_chance");
+
+            let facts = check_kabe_board(
+                &state,
+                SafetyMechanism::DoubleOneChance,
+                SafetyRank::BbbMinus,
+            );
+            let answer = answer_tile(&state);
+            let (suit, value) = (
+                answer.suit().expect("suited"),
+                answer.value().expect("value"),
+            );
+            let protorun = one_chance_protorun(value);
+            let visible: Vec<u8> = protorun
+                .iter()
+                .map(|candidate| facts.visible_of(Tile::suited(suit, *candidate)))
+                .collect();
+            assert_eq!(
+                visible,
+                vec![3, 3],
+                "run {run}: a double one chance needs both protorun tiles at three visible"
+            );
+            assert!(
+                facts.rank(answer).order() < SafetyRank::BbMinus.order(),
+                "run {run}: a double one chance beats a single one chance"
+            );
+        }
+    }
+
+    #[test]
+    fn kabe_suji_lesson_combines_one_blockade_with_one_genbutsu() {
+        for run in 0..30 {
+            let state = super::super::generate_kabe_suji("kabe_suji_defense")
+                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+            assert_eq!(state.category, "kabe_suji_defense");
+
+            let facts = check_kabe_board(&state, SafetyMechanism::BlockadeSuji, SafetyRank::Bbb);
+            let answer = answer_tile(&state);
+            let (suit, value) = (
+                answer.suit().expect("suited"),
+                answer.value().expect("value"),
+            );
+            let blockades: Vec<Tile> = (1..=9u8)
+                .filter(|candidate| *candidate != value)
+                .map(|candidate| Tile::suited(suit, candidate))
+                .filter(|tile| facts.visible_of(*tile) == 4)
+                .collect();
+            assert!(
+                !blockades.is_empty(),
+                "run {run}: the answer needs a complete blockade"
+            );
+            assert!(
+                facts
+                    .genbutsu
+                    .iter()
+                    .any(|tile| tile.suit() == answer.suit() && *tile != answer),
+                "run {run}: the answer needs a genbutsu denier in the threat's river"
+            );
+        }
     }
 
     #[test]

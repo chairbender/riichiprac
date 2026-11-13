@@ -21,6 +21,13 @@
 //!   fourth copy to 100%.
 //! - The book gives no turn number for the one-chance split between "earlier"
 //!   (BB-) and "later" (C) turns; [`EARLY_TURN_LIMIT`] is the trainer's cut.
+//!
+//! Ch. 8's blockade ranking ("No chance > Double one chance > One chance
+//! (earlier turns) > One chance (later turns) ≈ Non-suji") adds one class the
+//! fifteen-row table does not list: a *double one chance* tile, whose every
+//! remaining wait needs the last copy of two different protorun tiles. It is
+//! ranked as `BBB-`, the trainer's row between `BBB` (no chance) and `BB+`, so
+//! the chart stays an ordering rather than a fixed fifteen-row list.
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -73,6 +80,7 @@ pub enum SafetyRank {
     APlus,
     A,
     Bbb,
+    BbbMinus,
     BbPlus,
     BbMinus,
     B,
@@ -85,7 +93,7 @@ pub enum SafetyRank {
 
 impl SafetyRank {
     /// Every rank, safest first.
-    pub const ALL: [SafetyRank; 15] = [
+    pub const ALL: [SafetyRank; 16] = [
         SafetyRank::Genbutsu,
         SafetyRank::Aaa,
         SafetyRank::Aa,
@@ -93,6 +101,7 @@ impl SafetyRank {
         SafetyRank::APlus,
         SafetyRank::A,
         SafetyRank::Bbb,
+        SafetyRank::BbbMinus,
         SafetyRank::BbPlus,
         SafetyRank::BbMinus,
         SafetyRank::B,
@@ -113,14 +122,15 @@ impl SafetyRank {
             SafetyRank::APlus => 4,
             SafetyRank::A => 5,
             SafetyRank::Bbb => 6,
-            SafetyRank::BbPlus => 7,
-            SafetyRank::BbMinus => 8,
-            SafetyRank::B => 9,
-            SafetyRank::Cc => 10,
-            SafetyRank::C => 11,
-            SafetyRank::Ddd => 12,
-            SafetyRank::Dd => 13,
-            SafetyRank::D => 14,
+            SafetyRank::BbbMinus => 7,
+            SafetyRank::BbPlus => 8,
+            SafetyRank::BbMinus => 9,
+            SafetyRank::B => 10,
+            SafetyRank::Cc => 11,
+            SafetyRank::C => 12,
+            SafetyRank::Ddd => 13,
+            SafetyRank::Dd => 14,
+            SafetyRank::D => 15,
         }
     }
 
@@ -134,6 +144,7 @@ impl SafetyRank {
             SafetyRank::APlus => "A+",
             SafetyRank::A => "A",
             SafetyRank::Bbb => "BBB",
+            SafetyRank::BbbMinus => "BBB-",
             SafetyRank::BbPlus => "BB+",
             SafetyRank::BbMinus => "BB-",
             SafetyRank::B => "B",
@@ -155,6 +166,7 @@ impl SafetyRank {
             SafetyRank::APlus => "Second valueless wind / first suji terminal",
             SafetyRank::A => "Second honor tile",
             SafetyRank::Bbb => "Suji 4-5-6 / no-chance tile",
+            SafetyRank::BbbMinus => "Double one-chance tile",
             SafetyRank::BbPlus => "Suji 2-8",
             SafetyRank::BbMinus => "Suji 3-7 / one-chance tile (early)",
             SafetyRank::B => "First honor tile",
@@ -184,10 +196,16 @@ pub enum SafetyMechanism {
     Honor,
     /// A side wait denied because the middle tile is genbutsu.
     Suji,
-    /// Every side wait denied by a full blockade (or the combined table).
+    /// Every side wait denied by a full blockade (`tbl:kabe`).
     NoChance,
-    /// Every side wait needs the last copy of a protorun tile.
+    /// One side wait denied by a full blockade and the other by a genbutsu
+    /// (`tbl:kabesuji`).
+    BlockadeSuji,
+    /// Every side wait needs the last copy of one protorun tile.
     OneChance,
+    /// Every side wait needs the last copy of two different protorun tiles
+    /// (ch. 8's "double one chance").
+    DoubleOneChance,
     /// Nothing above applies; the tile is ranked by its versatility.
     NonSuji,
 }
@@ -403,7 +421,10 @@ impl SafetyFacts {
         let read = self.read(tile);
         read.rank == SafetyRank::Genbutsu
             || read.rank == SafetyRank::Aaa
-            || read.mechanism == SafetyMechanism::NoChance
+            || matches!(
+                read.mechanism,
+                SafetyMechanism::NoChance | SafetyMechanism::BlockadeSuji
+            )
             || self.visible_of(tile) >= 4
     }
 
@@ -486,38 +507,98 @@ impl SafetyFacts {
             .enumerate()
             .all(|(index, _)| by_suji[index] || by_blockade[index])
         {
-            let blocker = intervals
+            let blockers: Vec<Tile> = intervals
                 .iter()
                 .zip(&by_blockade)
+                .filter(|(_, denied)| **denied)
                 .flat_map(|((_, protorun), _)| protorun.iter().copied())
-                .find(|&tile_value| self.suited_visible(suit, tile_value) >= 4);
+                .filter(|&tile_value| self.suited_visible(suit, tile_value) >= 4)
+                .map(|tile_value| Tile::suited(suit, tile_value))
+                .collect();
+            let suji_deniers: Vec<Tile> = intervals
+                .iter()
+                .zip(&by_suji)
+                .filter(|(_, denied)| **denied)
+                .map(|((denier, _), _)| Tile::suited(suit, *denier))
+                .collect();
 
-            let reason = match blocker {
-                Some(blocker) => format!(
-                    "no chance: all four {} are visible",
-                    format_tile_for_display(&Tile::suited(suit, blocker).to_string(), false)
+            // A mixed table (ch. 8's `tbl:kabesuji`): one side wait is denied
+            // by a full blockade, the other by a genbutsu. Both leave the same
+            // "no chance" outcome, but the learner has to combine two theories
+            // to see it, so the mechanism keeps them apart. A suji denial that
+            // merely doubles up on a blockaded wait does not need the suji
+            // theory, so it stays a plain blockade.
+            let combined = intervals
+                .iter()
+                .enumerate()
+                .any(|(index, _)| by_suji[index] && !by_blockade[index]);
+            let reason = match (combined, blockers.first()) {
+                (true, Some(blocker)) => format!(
+                    "blockade and suji: all four {} are visible, and {} is genbutsu",
+                    format_tile_for_display(&blocker.to_string(), false),
+                    join_tiles(&suji_deniers)
                 ),
-                None => "no chance: the riichi player's discards deny every side wait".to_string(),
+                (false, Some(blocker)) => format!(
+                    "no chance: all four {} are visible",
+                    format_tile_for_display(&blocker.to_string(), false)
+                ),
+                (_, None) => {
+                    "no chance: the riichi player's discards deny every side wait".to_string()
+                }
             };
 
             return TileRead {
                 rank: SafetyRank::Bbb,
-                mechanism: SafetyMechanism::NoChance,
+                mechanism: if combined {
+                    SafetyMechanism::BlockadeSuji
+                } else {
+                    SafetyMechanism::NoChance
+                },
                 reason,
             };
         }
 
         // One chance: every side wait is denied or needs the last copy of a
-        // protorun tile (ch. 8, "One chance").
+        // protorun tile (ch. 8, "One chance"). A wait whose protorun tiles are
+        // *all* incomplete blockades needs two last copies, the book's "double
+        // one chance", which is safer than a single one chance.
         let one_chance = intervals.iter().enumerate().all(|(index, (_, protorun))| {
             by_suji[index] || by_blockade[index] || self.interval_one_chance(suit, *protorun)
         });
         if one_chance {
-            let blocker = intervals
+            let double = intervals.iter().enumerate().all(|(index, (_, protorun))| {
+                by_suji[index]
+                    || by_blockade[index]
+                    || protorun
+                        .iter()
+                        .all(|&tile_value| self.suited_visible(suit, tile_value) == 3)
+            });
+
+            let last_copies: Vec<Tile> = intervals
                 .iter()
-                .flat_map(|(_, protorun)| protorun.iter().copied())
-                .find(|&tile_value| self.suited_visible(suit, tile_value) == 3)
-                .unwrap_or(value);
+                .enumerate()
+                .filter(|(index, _)| !by_suji[*index] && !by_blockade[*index])
+                .flat_map(|(_, (_, protorun))| protorun.iter().copied())
+                .filter(|&tile_value| self.suited_visible(suit, tile_value) == 3)
+                .map(|tile_value| Tile::suited(suit, tile_value))
+                .collect();
+            let blocker = last_copies
+                .first()
+                .copied()
+                .unwrap_or_else(|| Tile::suited(suit, value));
+
+            if double {
+                return TileRead {
+                    rank: SafetyRank::BbbMinus,
+                    mechanism: SafetyMechanism::DoubleOneChance,
+                    reason: format!(
+                        "double one chance: three {} are visible, so every wait needs two last \
+                         copies",
+                        join_tiles(&last_copies)
+                    ),
+                };
+            }
+
             let rank = if self.is_early_hand() {
                 SafetyRank::BbMinus
             } else {
@@ -529,7 +610,7 @@ impl SafetyFacts {
                 mechanism: SafetyMechanism::OneChance,
                 reason: format!(
                     "one chance: three {} are visible",
-                    format_tile_for_display(&Tile::suited(suit, blocker).to_string(), false)
+                    format_tile_for_display(&blocker.to_string(), false)
                 ),
             };
         }
@@ -1007,13 +1088,13 @@ mod tests {
 
     #[test]
     fn chart_orders_runs_from_genbutsu_to_non_suji_middle() {
-        assert_eq!(SafetyRank::ALL.len(), 15);
+        assert_eq!(SafetyRank::ALL.len(), 16);
         for pair in SafetyRank::ALL.windows(2) {
             assert_eq!(pair[1].order(), pair[0].order() + 1);
             assert!(pair[0] < pair[1], "{:?} must beat {:?}", pair[0], pair[1]);
         }
         assert_eq!(SafetyRank::ALL[0].code(), "100%");
-        assert_eq!(SafetyRank::ALL[14].code(), "D");
+        assert_eq!(SafetyRank::ALL[15].code(), "D");
     }
 
     #[test]
@@ -1105,6 +1186,88 @@ mod tests {
         let facts = with_visibility(&["7m"], &["2m", "2m", "2m", "2m"], Wind::South, Wind::East);
 
         assert_eq!(facts.read(tile("4m")).rank, SafetyRank::Bbb);
+    }
+
+    #[test]
+    fn double_one_chance_needs_two_last_copies() {
+        // The book's example: three 2m and three 3m visible, so a 1-4 wait on
+        // 1m needs the fourth 2m *and* the fourth 3m.
+        let facts = with_visibility(
+            &[],
+            &["2m", "2m", "2m", "3m", "3m", "3m"],
+            Wind::South,
+            Wind::East,
+        );
+        let read = facts.read(tile("1m"));
+
+        assert_eq!(read.rank, SafetyRank::BbbMinus);
+        assert_eq!(read.mechanism, SafetyMechanism::DoubleOneChance);
+        assert!(read.reason.contains("2m") && read.reason.contains("3m"));
+        assert!(
+            read.rank.order() < SafetyRank::BbMinus.order(),
+            "double one chance must beat a single one chance"
+        );
+        assert!(
+            read.rank.order() > SafetyRank::Bbb.order(),
+            "double one chance must sit below a no-chance tile"
+        );
+
+        // Only one incomplete blockade is a single one chance.
+        let facts = with_visibility(&[], &["2m", "2m", "2m"], Wind::South, Wind::East);
+        let read = facts.read(tile("1m"));
+        assert_eq!(read.rank, SafetyRank::BbMinus);
+        assert_eq!(read.mechanism, SafetyMechanism::OneChance);
+
+        // One incomplete blockade beside a genbutsu-denied wait is not double:
+        // the other wait still needs only one last copy.
+        let facts = with_visibility(&["7m"], &["2m", "2m", "2m"], Wind::South, Wind::East);
+        let read = facts.read(tile("4m"));
+        assert_eq!(read.mechanism, SafetyMechanism::OneChance);
+
+        // Both side waits double-blocked is double one chance.
+        let facts = with_visibility(
+            &[],
+            &[
+                "2m", "2m", "2m", "3m", "3m", "3m", "5m", "5m", "5m", "6m", "6m", "6m",
+            ],
+            Wind::South,
+            Wind::East,
+        );
+        assert_eq!(
+            facts.read(tile("4m")).mechanism,
+            SafetyMechanism::DoubleOneChance
+        );
+    }
+
+    #[test]
+    fn mixed_blockade_and_suji_is_its_own_mechanism() {
+        // tbl:kabesuji: a 2m blockade denies the 1-4 wait and a 7m genbutsu
+        // denies the 4-7 wait, so 4m is safe although neither theory alone
+        // covers it.
+        let facts = with_visibility(&["7m"], &["2m", "2m", "2m", "2m"], Wind::South, Wind::East);
+        let read = facts.read(tile("4m"));
+
+        assert_eq!(read.rank, SafetyRank::Bbb);
+        assert_eq!(read.mechanism, SafetyMechanism::BlockadeSuji);
+        assert!(read.reason.contains("2m") && read.reason.contains("7m"));
+
+        // Pure blockade is still NoChance, not the combined mechanism.
+        let facts = with_visibility(&[], &["2m", "2m", "2m", "2m"], Wind::South, Wind::East);
+        assert_eq!(facts.read(tile("1m")).mechanism, SafetyMechanism::NoChance);
+
+        // Pure suji (both deniers genbutsu) is still Suji.
+        let facts = no_visibility(&["1m", "7m"], Wind::South);
+        assert_eq!(facts.read(tile("4m")).mechanism, SafetyMechanism::Suji);
+
+        // A suji denial that doubles up on an already blockaded wait does not
+        // need the suji theory, so 4m stays a plain no-chance tile.
+        let facts = with_visibility(
+            &["7m"],
+            &["2m", "2m", "2m", "2m", "5m", "5m", "5m", "5m"],
+            Wind::South,
+            Wind::East,
+        );
+        assert_eq!(facts.read(tile("4m")).mechanism, SafetyMechanism::NoChance);
     }
 
     #[test]

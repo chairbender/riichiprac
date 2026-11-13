@@ -236,6 +236,23 @@ fn test_list_scenarios_payload() {
         }),
         "the suji/no-chance ranking lesson must be listed as a book lesson"
     );
+    for id in [
+        "kabe_no_chance",
+        "kabe_one_chance",
+        "kabe_double_one_chance",
+        "kabe_suji_defense",
+    ] {
+        assert!(
+            scenarios.iter().any(|scenario| {
+                scenario["id"] == id
+                    && scenario["category"] == "defense_decision"
+                    && scenario["grading"] == "book_and_mortal"
+                    && scenario["requires_ai"] == false
+                    && scenario["book"]["key"] == "ch8.2"
+            }),
+            "{id} must be listed as a ch8.2 blockade lesson"
+        );
+    }
     assert!(
         scenarios.iter().any(|scenario| {
             scenario["id"] == "open_hand_defense"
@@ -3631,7 +3648,14 @@ fn test_nakabukure_rejection_sampling_constraints() {
 
 #[wasm_bindgen_test]
 fn test_defense_scenarios_payload() {
-    for category in ["defense_safety_chart", "defense_stuck_heuristic"] {
+    for category in [
+        "defense_safety_chart",
+        "defense_stuck_heuristic",
+        "kabe_no_chance",
+        "kabe_one_chance",
+        "kabe_double_one_chance",
+        "kabe_suji_defense",
+    ] {
         for run in 0..10 {
             let json_output = generate_puzzle(category.to_string());
             let val: serde_json::Value = serde_json::from_str(&json_output)
@@ -3890,6 +3914,84 @@ fn test_suji_kabe_safety_payload() {
         assert!(
             rule_ids.contains(&"runner_up_row"),
             "run {run}: the rationale must name the one-row runner-up: {rule_ids:?}"
+        );
+    }
+}
+
+#[wasm_bindgen_test]
+fn test_kabe_lessons_payload() {
+    // Each blockade lesson names its mechanism and its table row in the book
+    // panel, and the answer is the only tile on that row.
+    for (category, mechanism_rule, table_rule) in [
+        ("kabe_no_chance", "no_chance", "kabe_table"),
+        ("kabe_one_chance", "one_chance", "kabe_early_turn"),
+        (
+            "kabe_double_one_chance",
+            "double_one_chance",
+            "kabe_two_last_copies",
+        ),
+        ("kabe_suji_defense", "blockade_suji", "kabe_suji_table"),
+    ] {
+        for run in 0..15 {
+            let json_output = generate_puzzle(category.to_string());
+            let val: serde_json::Value = serde_json::from_str(&json_output)
+                .unwrap_or_else(|err| panic!("{category} run {run}: invalid JSON: {err}"));
+
+            assert_eq!(val["category"], category);
+            assert_eq!(val["target_action"], "Defend");
+            assert_eq!(val["correct_action"]["type"], "fold");
+            assert_eq!(val["decision"]["kind"], "self_turn");
+            assert_eq!(val["can_riichi"], false);
+            assert!(val["shanten"].as_i64().unwrap() >= 1);
+
+            let answer = val["correct_action"]["discard"]
+                .as_str()
+                .expect("a fold answer names the discard");
+            let hand = val["players"][0]["hand"].as_array().expect("hand");
+            assert_eq!(hand.len(), 13);
+            assert_eq!(val["players"][0]["draw"], answer);
+            assert!(val["players"][0]["melds"].as_array().unwrap().is_empty());
+            assert!(
+                val["equivalent_tiles"]
+                    .as_array()
+                    .is_none_or(|ties| ties.is_empty()),
+                "{category} run {run}: a blockade read has no 100% tie"
+            );
+
+            let rule_ids: Vec<&str> = val["book_rationale"]["rules"]
+                .as_array()
+                .expect("rules")
+                .iter()
+                .filter_map(|rule| rule["id"].as_str())
+                .collect();
+            assert!(
+                rule_ids.contains(&mechanism_rule),
+                "{category} run {run}: missing {mechanism_rule}: {rule_ids:?}"
+            );
+            assert!(
+                rule_ids.contains(&table_rule),
+                "{category} run {run}: missing {table_rule}: {rule_ids:?}"
+            );
+            assert_eq!(val["book_rationale"]["source"]["chapter"], 8);
+        }
+    }
+
+    // The one-chance board is an early-hand read: the book only gives BB- to
+    // the earlier turns.
+    for run in 0..10 {
+        let val: serde_json::Value =
+            serde_json::from_str(&generate_puzzle("kabe_one_chance".to_string()))
+                .expect("one-chance JSON");
+        let threat = val["players"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|player| player["is_riichi"] == true)
+            .expect("a riichi threat");
+        let discards = threat["discards"].as_array().unwrap().len();
+        assert!(
+            discards <= 6,
+            "run {run}: the early-turn row needs <= 6 discards"
         );
     }
 }

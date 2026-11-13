@@ -14,6 +14,12 @@
 //!   you get stuck": nothing is identified as safe, so the learner breaks up a
 //!   terminal pair that also sits outside the threat's early discards.
 //!
+//! The four blockade lessons isolate ch. 8.2's tile blockade (`kabe`):
+//! `kabe_no_chance` is a complete blockade from `tbl:kabe`, `kabe_one_chance`
+//! is one incomplete blockade in the early turns, `kabe_double_one_chance`
+//! needs the last copy of two protorun tiles, and `kabe_suji_defense` combines
+//! one blockade with one genbutsu exactly as `tbl:kabesuji` does.
+//!
 //! None of the lessons asks about hand value: the hand is at least 1-away, so
 //! the question is purely which tile is safest to let go.
 
@@ -42,5 +48,36 @@ pub fn generate_suji_kabe(category: &str) -> Result<GameState, String> {
 pub fn generate_stuck(category: &str) -> Result<GameState, String> {
     generate_with_retries("defense_stuck_heuristic", 1_000, || {
         board::build_stuck(category, theme::plan_stuck()?)
+    })
+}
+
+/// Generates a board whose only safe tile is a complete blockade's no-chance
+/// tile (`tbl:kabe`).
+pub fn generate_kabe_no_chance(category: &str) -> Result<GameState, String> {
+    generate_with_retries("kabe_no_chance", 2_000, || {
+        board::build_kabe_no_chance(category, theme::plan_kabe_no_chance()?)
+    })
+}
+
+/// Generates a board whose only safe tile is a one-chance tile in the early
+/// turns.
+pub fn generate_kabe_one_chance(category: &str) -> Result<GameState, String> {
+    generate_with_retries("kabe_one_chance", 2_000, || {
+        board::build_kabe_one_chance(category, theme::plan_kabe_one_chance()?)
+    })
+}
+
+/// Generates a board whose only safe tile is a double-one-chance tile.
+pub fn generate_kabe_double_one_chance(category: &str) -> Result<GameState, String> {
+    generate_with_retries("kabe_double_one_chance", 2_000, || {
+        board::build_kabe_double_one_chance(category, theme::plan_kabe_double_one_chance()?)
+    })
+}
+
+/// Generates a board where a blockade and a genbutsu together make the answer
+/// safe (`tbl:kabesuji`).
+pub fn generate_kabe_suji(category: &str) -> Result<GameState, String> {
+    generate_with_retries("kabe_suji_defense", 2_000, || {
+        board::build_kabe_suji(category, theme::plan_kabe_suji()?)
     })
 }

@@ -1189,6 +1189,14 @@ pub(crate) fn scenario_source(category: &str) -> Option<Citation> {
             "If you cannot satisfy the above criteria",
         )),
         "suji_kabe_safety" => Some(ch8(CH8_RANKING, 292, "Safety ranking")),
+        "kabe_no_chance" => Some(ch8(CH8_KABE, 206, "no chance'' situation")),
+        "kabe_one_chance" => Some(ch8(
+            CH8_KABE,
+            248,
+            "One-chance tiles are generally safer than non-",
+        )),
+        "kabe_double_one_chance" => Some(ch8(CH8_KABE, 259, "double one chance'' situation")),
+        "kabe_suji_defense" => Some(ch8(CH8_KABE, 288, "we can deny not only")),
         "defense_stuck_heuristic" => {
             Some(ch8(CH8_STUCK, 344, "What to discard when you get stuck"))
         }
@@ -4046,13 +4054,17 @@ fn hand_holds_a_dora(state: &GameState) -> bool {
         .any(|tile| dora.contains(&tile))
 }
 
-/// The pure-defense lessons: the ch. 8 safety chart, its ranking mode and its
-/// fallback list.
+/// The pure-defense lessons: the ch. 8 safety chart, its ranking mode, the
+/// four blockade lessons, and the fallback list.
 fn defense_rationale(state: &GameState) -> Option<BookRationale> {
     let is_chart = state.category == "defense_safety_chart";
     let is_ranking = state.category == "suji_kabe_safety";
     let is_stuck = state.category == "defense_stuck_heuristic";
-    if !is_chart && !is_ranking && !is_stuck {
+    let is_kabe = matches!(
+        state.category.as_str(),
+        "kabe_no_chance" | "kabe_one_chance" | "kabe_double_one_chance" | "kabe_suji_defense"
+    );
+    if !is_chart && !is_ranking && !is_stuck && !is_kabe {
         return None;
     }
 
@@ -4087,20 +4099,31 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
             read.rank.code(),
             read.rank.label()
         )
-    } else if is_chart {
+    } else if is_chart || is_kabe {
         rules.extend(mechanism_rules(&read, &answer_text));
+        if is_kabe {
+            rules.push(kabe_table_rule(
+                &read,
+                &answer_text,
+                state.category.as_str(),
+            ));
+        }
         rules.push(chart_row_rule(&read, &answer_text, &state.equivalent_tiles));
         rules.push(push_fold_rule(state, &read, &answer_text));
-        caveats.push(
-            "The chart's AAA row is dangerous only against Thirteen Orphans; the trainer keeps \
-             the table's conservative rank instead of promoting a fourth copy to 100%."
-                .to_string(),
-        );
-        caveats.push(
-            "The book gives no turn number for the one-chance split between BB- (earlier turns) \
-             and C (later turns); the trainer cuts at six discards."
-                .to_string(),
-        );
+        if is_kabe {
+            caveats.push(kabe_caveat(state.category.as_str()));
+        } else {
+            caveats.push(
+                "The chart's AAA row is dangerous only against Thirteen Orphans; the trainer \
+                 keeps the table's conservative rank instead of promoting a fourth copy to 100%."
+                    .to_string(),
+            );
+            caveats.push(
+                "The book gives no turn number for the one-chance split between BB- (earlier \
+                 turns) and C (later turns); the trainer cuts at six discards."
+                    .to_string(),
+            );
+        }
         if read.rank.order() > push_threshold(state.shanten).order() {
             format!(
                 "Fold: {answer_text} is Rank {} ({}); nothing reaches Rank {}.",
@@ -4127,10 +4150,17 @@ fn defense_rationale(state: &GameState) -> Option<BookRationale> {
         )
     };
 
-    let source = if is_chart || is_ranking {
-        ch8(CH8_RANKING, 292, "Safety ranking")
-    } else {
-        ch8(CH8_STUCK, 344, "What to discard when you get stuck")
+    let source = match state.category.as_str() {
+        "kabe_no_chance" => ch8(CH8_KABE, 206, "no chance'' situation"),
+        "kabe_one_chance" => ch8(
+            CH8_KABE,
+            248,
+            "One-chance tiles are generally safer than non-",
+        ),
+        "kabe_double_one_chance" => ch8(CH8_KABE, 259, "double one chance'' situation"),
+        "kabe_suji_defense" => ch8(CH8_KABE, 288, "we can deny not only"),
+        "defense_stuck_heuristic" => ch8(CH8_STUCK, 344, "What to discard when you get stuck"),
+        _ => ch8(CH8_RANKING, 292, "Safety ranking"),
     };
 
     Some(BookRationale {
@@ -4952,6 +4982,13 @@ fn mechanism_rules(read: &crate::safety::TileRead, answer_text: &str) -> Vec<Boo
             "we say we have a ``no chance'' situation",
             ch8(CH8_KABE, 206, "no chance'' situation"),
         )],
+        SafetyMechanism::BlockadeSuji => vec![rule(
+            "blockade_suji",
+            "A full blockade denies one side wait and a genbutsu denies the other; together they \
+             leave no side wait that can catch the tile.",
+            "we can deny not only 1-4 suji wait but also 4-7 suji wait",
+            ch8(CH8_KABE, 288, "we can deny not only"),
+        )],
         SafetyMechanism::OneChance => vec![rule(
             "one_chance",
             "An incomplete blockade leaves the opponent only the last invisible copy, which is \
@@ -4962,6 +4999,14 @@ fn mechanism_rules(read: &crate::safety::TileRead, answer_text: &str) -> Vec<Boo
                 248,
                 "One-chance tiles are generally safer than non-",
             ),
+        )],
+        SafetyMechanism::DoubleOneChance => vec![rule(
+            "double_one_chance",
+            "Two incomplete blockades on the same wait force the opponent to hold the last copy \
+             of both protorun tiles, which is safer than a single one chance.",
+            "When we have two incomplete blockades of consecutive number tiles, we say they form \
+             a ``double one chance'' situation",
+            ch8(CH8_KABE, 259, "double one chance'' situation"),
         )],
         SafetyMechanism::Honor => vec![rule(
             "honor_count",
@@ -4985,6 +5030,75 @@ fn mechanism_rules(read: &crate::safety::TileRead, answer_text: &str) -> Vec<Boo
                 "terminals cannot be caught by either an edge wait or closed wait",
             ),
         )],
+    }
+}
+
+/// The `tbl:kabe` / `tbl:kabesuji` row the blockade lesson is teaching.
+fn kabe_table_rule(read: &crate::safety::TileRead, answer_text: &str, category: &str) -> BookRule {
+    let applies = format!("{answer_text}: {}.", read.reason);
+
+    match category {
+        "kabe_no_chance" => BookRule {
+            id: "kabe_table".to_string(),
+            rule: "A complete blockade removes every protorun that contains the blocked tile, \
+                   so the neighbours `tbl:kabe` lists cannot be part of a side wait."
+                .to_string(),
+            quote: "a blockade of 2 makes 1 safer, and that a blockade of 3 makes 1 and 2 safer"
+                .to_string(),
+            citation: ch8(CH8_KABE, 236, "makes 1 and 2 safer"),
+            applies,
+        },
+        "kabe_one_chance" => BookRule {
+            id: "kabe_early_turn".to_string(),
+            rule: "An incomplete blockade is reliable in the early turns and much weaker later, \
+                   when the riichi player is likely to be holding the last copy."
+                .to_string(),
+            quote: "relying on an incomplete blockade is effective in earlier turns but not as \
+                    much in later turns"
+                .to_string(),
+            citation: ch8(CH8_KABE, 252, "effective in earlier turns"),
+            applies,
+        },
+        "kabe_double_one_chance" => BookRule {
+            id: "kabe_two_last_copies".to_string(),
+            rule: "When the same wait has two incomplete blockades, the opponent needs the last \
+                   copy of both protorun tiles, so the wait is far less likely."
+                .to_string(),
+            quote: "an opponent has to have the fourth 2m *and* the fourth 3m to have a 1-4 \
+                    suji wait, which is highly unlikely"
+                .to_string(),
+            citation: ch8(CH8_KABE, 259, "which is highly unlikely"),
+            applies,
+        },
+        _ => BookRule {
+            id: "kabe_suji_table".to_string(),
+            rule: "`tbl:kabesuji` pairs one complete blockade with one genbutsu: each theory \
+                   removes a different side wait."
+                .to_string(),
+            quote: "we can deny not only 1-4 suji wait but also 4-7 suji wait".to_string(),
+            citation: ch8(CH8_KABE, 288, "we can deny not only"),
+            applies,
+        },
+    }
+}
+
+/// The blockade lesson's own limit, repeated in the verdict panel.
+fn kabe_caveat(category: &str) -> String {
+    match category {
+        "kabe_no_chance" => "A blockade only rules out side waits: a dual pon wait or a single \
+                             wait can still win on a no-chance tile."
+            .to_string(),
+        "kabe_one_chance" => "The board is kept in the early turns (six or fewer discards) \
+                              because the book warns that a late incomplete blockade is close \
+                              to a non-suji tile."
+            .to_string(),
+        "kabe_double_one_chance" => "`tbl:safety` has no row for a double one chance; the \
+                                     trainer's BBB- row is the book's blockade ranking between \
+                                     no chance and one chance."
+            .to_string(),
+        _ => "Neither theory alone covers the answer: the complete blockade denies one side wait \
+              and the genbutsu the other, exactly as `tbl:kabesuji` lists."
+            .to_string(),
     }
 }
 
@@ -6271,6 +6385,10 @@ mod tests {
             "push_or_fold",
             "defense_safety_chart",
             "suji_kabe_safety",
+            "kabe_no_chance",
+            "kabe_one_chance",
+            "kabe_double_one_chance",
+            "kabe_suji_defense",
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
@@ -6311,6 +6429,10 @@ mod tests {
             "push_or_fold",
             "defense_safety_chart",
             "suji_kabe_safety",
+            "kabe_no_chance",
+            "kabe_one_chance",
+            "kabe_double_one_chance",
+            "kabe_suji_defense",
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
@@ -6762,6 +6884,10 @@ mod tests {
             "push_or_fold",
             "defense_safety_chart",
             "suji_kabe_safety",
+            "kabe_no_chance",
+            "kabe_one_chance",
+            "kabe_double_one_chance",
+            "kabe_suji_defense",
             "defense_stuck_heuristic",
             "open_hand_defense",
             "suji_trap_riichi",
@@ -7406,6 +7532,61 @@ mod tests {
                 runner_up.applies
             );
             assert_eq!(runner_up.citation.source_line, 263);
+        }
+    }
+
+    #[test]
+    fn kabe_lessons_name_their_blockade_read() {
+        for (category, mechanism_rule, table_rule, source_line) in [
+            ("kabe_no_chance", "no_chance", "kabe_table", 206),
+            ("kabe_one_chance", "one_chance", "kabe_early_turn", 248),
+            (
+                "kabe_double_one_chance",
+                "double_one_chance",
+                "kabe_two_last_copies",
+                259,
+            ),
+            ("kabe_suji_defense", "blockade_suji", "kabe_suji_table", 288),
+        ] {
+            for run in 0..15 {
+                let state = generate_puzzle(category).expect("kabe lesson must generate");
+                let rationale = rationale_for(&state).expect("kabe needs a rationale");
+
+                assert_eq!(rationale.source.chapter, 8, "{category} run {run}");
+                assert_eq!(
+                    rationale.source.source_line, source_line,
+                    "{category} run {run}: the source must be the blockade subsection"
+                );
+                let ids: Vec<&str> = rationale
+                    .rules
+                    .iter()
+                    .map(|rule| rule.id.as_str())
+                    .collect();
+                assert!(
+                    ids.contains(&mechanism_rule),
+                    "{category} run {run}: missing {mechanism_rule}: {ids:?}"
+                );
+                assert!(
+                    ids.contains(&table_rule),
+                    "{category} run {run}: missing {table_rule}: {ids:?}"
+                );
+                assert!(
+                    ids.contains(&"safety_ranking"),
+                    "{category} run {run}: the chart row must still be explained"
+                );
+                assert!(
+                    !rationale.absent.is_empty(),
+                    "{category} run {run}: the alternatives must be ranked"
+                );
+                assert!(
+                    !rationale.caveats.is_empty(),
+                    "{category} run {run}: the blockade lesson needs its caveat"
+                );
+                assert!(
+                    rationale.summary.contains("Rank"),
+                    "{category} run {run}: the summary must name the chart row"
+                );
+            }
         }
     }
 

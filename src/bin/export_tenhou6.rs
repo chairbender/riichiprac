@@ -43,6 +43,10 @@ const EXPORTABLE: &[ScenarioId] = &[
     ScenarioId::PinfuHead,
     ScenarioId::DefenseSafetyChart,
     ScenarioId::SujiKabeSafety,
+    ScenarioId::KabeNoChance,
+    ScenarioId::KabeOneChance,
+    ScenarioId::KabeDoubleOneChance,
+    ScenarioId::KabeSujiDefense,
     ScenarioId::DefenseStuckHeuristic,
     ScenarioId::FoldToRiichi,
 ];
