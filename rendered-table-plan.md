@@ -255,8 +255,9 @@ or inverts a quad.
       "opposite": "faces/1m-opposite.webp"
     }
   },
-  "assets": { "bodyFormat": "WEBP", "bodyQuality": 90, "bodyBytes": 147752,
-              "backgroundBytes": 20398, "totalBytes": 168098,
+  "assets": { "bodyFormat": "WEBP", "bodyQuality": 90, "bodyBytes": 141804,
+              "backgroundSamples": 64, "backgroundBytes": 19018,
+              "totalBytes": 160822,
               "budgetBytes": { "total": 8388608, "bodies": 1048576,
                                "background": 157286, "manifest": 51200 } },
   "checks": { "slotRectsInsideScene": true, "faceQuadsInsideBodies": true,
