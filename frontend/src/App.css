@@ -817,18 +817,82 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px;
+  /* The plan's tile size is a fraction of this box's width. */
+  container-type: inline-size;
   /* A table full of melds can outgrow a phone; scroll it rather than clip it. */
   overflow-x: auto;
 }
 
 .physical-table {
   /*
-   * Four rivers and the compass have to fit across the width, so the top-down
-   * view draws its tiles smaller than the stacked rows do.
+   * The plan fills the app column and sizes its tiles from that width, so it
+   * grows with the screen instead of sitting as a small block in the middle.
+   *
+   * The ring is counted in river lanes: a side column is as wide as the
+   * sideways river's columns (or its row of melds, whichever is wider), and the
+   * middle is one six-tile river row plus any meld lane hanging off the top or
+   * bottom seat. A river that has wrapped past six discards adds a lane to its
+   * side, and each side meld costs a lane. The lane count divided into the
+   * column width gives the lane width, so the top-down tiles come out as large
+   * as the hand's instead of smaller.
+   *
+   * The second half of the min() is the case where the compass is wider than a
+   * six-lane row: then the middle column is the compass, not the river, and
+   * only the side lanes divide the rest of the width.
    */
-  --river-tile-size: clamp(15px, 4.6vw, 30px);
-  --river-tile-height: calc(var(--river-tile-size) * 4 / 3);
   --physical-gap: clamp(2px, 0.6vw, 4px);
+  /* Widest measured compass footprint, including its 4px margins. */
+  --physical-centre-min: 192px;
+  --physical-middle-lanes: 6;
+  --physical-left-river-lanes: 1;
+  --physical-right-river-lanes: 1;
+  --physical-left-meld-lanes: 0;
+  --physical-right-meld-lanes: 0;
+  /*
+   * A side seat stacks its river and its melds, so its width is the wider of
+   * the two, not their sum. The two side columns are equal, so the wider side
+   * sets both.
+   */
+  --physical-left-lanes: max(
+    var(--physical-left-river-lanes), var(--physical-left-meld-lanes)
+  );
+  --physical-right-lanes: max(
+    var(--physical-right-river-lanes), var(--physical-right-meld-lanes)
+  );
+  --physical-side-lanes: max(
+    var(--physical-left-lanes), var(--physical-right-lanes)
+  );
+  --physical-divisor: calc(
+    var(--physical-middle-lanes) + 2 * var(--physical-side-lanes)
+  );
+  /* Wrapped side rivers carry their own column gaps, inside the side lanes. */
+  --physical-side-gaps: calc(
+    2 * (var(--physical-side-lanes) - 1) * var(--physical-gap)
+  );
+  /*
+   * Lane width for the whole plan. 25px is the table's padding and border plus
+   * a small allowance, the 7 gaps are two grid gaps and the middle river's
+   * five, and 52px caps a lane so a desktop plan stays hand-sized rather than
+   * filling a 680px column with 60px tiles.
+   */
+  --physical-fit: clamp(
+    18px,
+    min(
+      calc(
+        (100cqw - 25px - 7 * var(--physical-gap) - var(--physical-side-gaps)) /
+          var(--physical-divisor)
+      ),
+      calc(
+        (
+            100cqw - 25px - 2 * var(--physical-gap) - var(--physical-side-gaps) -
+              var(--physical-centre-min)
+          ) / (2 * var(--physical-side-lanes))
+      )
+    ),
+    52px
+  );
+  --river-tile-size: calc(var(--physical-fit) * 3 / 4);
+  --river-tile-height: var(--physical-fit);
 
   display: grid;
   /*
@@ -838,13 +902,76 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: var(--physical-gap);
-  width: fit-content;
-  max-width: 100%;
+  /*
+   * Fill the column on a phone; the 52px cap above keeps a wide screen's plan
+   * at roughly the hand's tile size instead of turning it into a wall. A very
+   * crowded table can still be wider than the phone, and then the panel itself
+   * scrolls rather than spilling tiles outside its border.
+   */
+  width: max-content;
   margin: 0 auto;
   padding: 10px;
   border: 1px solid #26303d;
   border-radius: 16px;
   background-color: #14181f;
+}
+
+/* A call on the top or bottom seat hangs a meld lane off the middle column. */
+.physical-table:has(.table-seat--top .meld, .table-seat--bottom .meld) {
+  --physical-middle-lanes: 9;
+}
+
+/* Each wrapped side river adds a column of discards to that side. */
+.physical-table:has(.table-seat--left .river-slot:nth-child(7)) {
+  --physical-left-river-lanes: 2;
+}
+
+.physical-table:has(.table-seat--left .river-slot:nth-child(13)) {
+  --physical-left-river-lanes: 3;
+}
+
+.physical-table:has(.table-seat--right .river-slot:nth-child(7)) {
+  --physical-right-river-lanes: 2;
+}
+
+.physical-table:has(.table-seat--right .river-slot:nth-child(13)) {
+  --physical-right-river-lanes: 3;
+}
+
+/*
+ * Side melds read as a row of sideways calls in the player's frame, so each
+ * one costs a lane. The lanes are the wider of river and melds, above.
+ */
+.physical-table:has(.table-seat--left .meld) {
+  --physical-left-meld-lanes: 1.5;
+}
+
+.physical-table:has(.table-seat--left .melds .meld:nth-child(2)) {
+  --physical-left-meld-lanes: 3.0;
+}
+
+.physical-table:has(.table-seat--left .melds .meld:nth-child(3)) {
+  --physical-left-meld-lanes: 4.5;
+}
+
+.physical-table:has(.table-seat--left .melds .meld:nth-child(4)) {
+  --physical-left-meld-lanes: 6.0;
+}
+
+.physical-table:has(.table-seat--right .meld) {
+  --physical-right-meld-lanes: 1.5;
+}
+
+.physical-table:has(.table-seat--right .melds .meld:nth-child(2)) {
+  --physical-right-meld-lanes: 3.0;
+}
+
+.physical-table:has(.table-seat--right .melds .meld:nth-child(3)) {
+  --physical-right-meld-lanes: 4.5;
+}
+
+.physical-table:has(.table-seat--right .melds .meld:nth-child(4)) {
+  --physical-right-meld-lanes: 6.0;
 }
 
 /* Seat panels ------------------------------------------------------------- */
@@ -1100,19 +1227,20 @@
   align-self: center;
   justify-self: center;
   /*
-   * The centre display is the biggest fixed-size piece of the plan, so keep a
-   * little clear air around it: on a phone the rivers would otherwise touch
-   * the panel once the Riichi sticks are drawn at full size.
+   * The centre display is the biggest fixed-size piece of the plan, and its
+   * width drives the tile size when a river has wrapped. Keep only a small
+   * gap around it so the lanes get the rest of the phone's width; the tiles
+   * themselves keep the seats off the panel edges.
    */
-  margin: 8px;
+  margin: 4px;
 
   display: grid;
   grid-template-columns: auto auto auto;
   grid-template-rows: auto auto auto;
   align-items: center;
   justify-items: center;
-  gap: 6px 12px;
-  padding: 10px 12px;
+  gap: 6px 8px;
+  padding: 10px;
   border: 1px solid #232a36;
   border-radius: 10px;
   background-color: #171c24;
