@@ -394,13 +394,16 @@ for Tasks 2–3:
 - **Material:** jansou tiles are white **melamine** with a coloured melamine
   backing, not ivory. The spec keys are `materials.face` / `materials.backing`
   (both tagged `melamine`), tuned as a glossy thermoset: roughness 0.16 / 0.18
-  plus a clear coat, not matte plastic.
+  plus a clear coat, not matte plastic. The engraved paint has its own glossy
+  material (`materials.paint`, roughness 0.16, coat 0.35); its specular line on
+  the bottom fillet is the cue that sells the engraving.
 - **The symbol is carved, not printed.** A symbol-only SVG supplies the carve
   mask and the paint. A smootherstep groove profile (rounded lip and rounded
   floor shoulder) recesses a subdivided face plate by 0.5% of the thickness
   (≈ 0.08 mm at jansou scale); the paint boundary sits slightly inside the lip,
-  so a thin bare melamine bevel catches the key. Satin paint plus a little
-  cavity occlusion keep the red from reading as a flat print. The carve
+  so a thin bare melamine bevel catches the key. Glossy paint catches a bright
+  specular line on each bottom fillet (where the well wall curves into the
+  floor), and a little cavity occlusion keeps the red from reading flat. The carve
   is baked into the lit decal, so it is orientation-lit like the rest of the
   face. Consequence for Task 3: each code needs its symbol-only SVG and a
   ~330k-vertex face at `gridScale: 1.0`; expect ~80 s per decal render with AO

@@ -56,9 +56,9 @@
       },
       "paint": {
         "material": "engraving paint",
-        "roughness": 0.42,
-        "coat": 0.08,
-        "coatRoughness": 0.3
+        "roughness": 0.16,
+        "coat": 0.35,
+        "coatRoughness": 0.1
       }
     }
   },
@@ -162,12 +162,12 @@
     "paddingPixels": 1,
     "carve": {
       "depthFractionOfThickness": 0.005,
-      "blurPixels": 2.5,
+      "blurPixels": 5.0,
       "profile": {
         "lip": 0.5,
         "floor": 0.9
       },
-      "paintThreshold": 0.72,
+      "paintThreshold": 0.62,
       "gridScale": 1.0,
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75

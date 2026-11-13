@@ -917,7 +917,7 @@ def main() -> None:
     links.new(ambient.outputs["Color"], paint_base.inputs[2])
     links.new(paint_base.outputs["Color"], paint_bsdf.inputs["Base Color"])
     paint_bsdf.inputs["Roughness"].default_value = paint_spec["roughness"]
-    paint_bsdf.inputs["Specular IOR Level"].default_value = 0.4
+    paint_bsdf.inputs["Specular IOR Level"].default_value = 0.5
     paint_bsdf.inputs["Coat Weight"].default_value = paint_spec["coat"]
     paint_bsdf.inputs["Coat Roughness"].default_value = paint_spec["coatRoughness"]
 

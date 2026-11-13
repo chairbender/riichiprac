@@ -45,12 +45,12 @@
     "carve": {
       "depthUnits": 0.00295,
       "depthFractionOfThickness": 0.005,
-      "blurPixels": 2.5,
+      "blurPixels": 5.0,
       "profile": {
         "lip": 0.5,
         "floor": 0.9
       },
-      "paintThreshold": 0.72,
+      "paintThreshold": 0.62,
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75,
       "grid": [

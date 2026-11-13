@@ -134,10 +134,14 @@ Principled material uses low roughness (0.16 face, 0.18 backing) plus a clear
 coat (0.40 / 0.35, coat roughness 0.10) rather than the matte plastic of the
 earlier passes.
 
-The engraved paint is its **own material** (`materials.paint`: roughness 0.42,
-coat 0.08). A high-gloss paint made the red look like a domed inlay; satin paint
-lets the groove shading read. The symbol-only SVG supplies the paint colour and
-the mask, so the paint boundary and the carve can be placed independently.
+The engraved paint is its **own material** (`materials.paint`: roughness 0.16,
+coat 0.35, specular 0.5), glossier than the melamine around it. Gloss is what
+puts a bright specular line along the bottom fillet of every groove, i.e. where
+the well wall curves into the floor; that highlight is the main "glossy carved
+paint" cue. (A satin paint hid it and made the carve read flat. The shallow
+depth plus wide, smooth fillets keep the gloss from looking like a domed inlay.)
+The symbol-only SVG supplies the paint colour and the mask, so the paint
+boundary and the carve can be placed independently.
 
 ### Carved symbol, not a decal print
 
@@ -153,12 +157,14 @@ The mask is blurred and remapped with a **smootherstep** into a groove profile:
 - the lip is pinned at the mask's 0.5 contour (the paint's natural edge),
 - the quintic ease gives zero curvature at both ends, so the surface leaves the
   face and bottoms out through a **rounded lip** and a **rounded floor shoulder**
-  rather than a knife edge,
+  rather than a knife edge; `blurPixels: 5.0` (at 540 px face width) makes both
+  fillets deliberately wide, so the transitions are visibly smooth at 2×, with
+  enough swept normal range for the gloss to catch on the bottom curve,
 - depth is `depthFractionOfThickness = 0.005` of the tile thickness — 0.00295
   units, about 0.08 mm at jansou scale. That is a deliberately shallow engrave:
   the carve reads through the bevel ring and wall shading, not a deep shadow.
 
-The paint boundary sits slightly inside the lip (`paintThreshold = 0.72`), so a
+The paint boundary sits slightly inside the lip (`paintThreshold = 0.62`), so a
 thin ring of bare melamine remains on the bevel. That ring catches the key and is
 what makes the carve read as a bevelled recess rather than a flat print.
 
@@ -166,11 +172,11 @@ A groove floor has the same normal as the face, so its diffuse response is
 identical and a wide stroke would still look flat. The decal material therefore
 adds **cavity occlusion** (Cycles AO, distance 0.2 units, strength 0.75), which
 darkens the inside of the engraving. At 0.08 mm depth the cavity is shallow, so
-the measured darkening is small — the red floor sits at ≈ RGB(214, 137, 130)
-against the ≈ RGB(215, 214, 213) face — and the carved read comes mostly from
-the bare bevel ring and the wall shading. If the carve needs to read stronger
-without more depth, raise `occlusionStrength` or widen the bevel; both are decal
-shading, not geometry.
+the diffuse darkening is small (the face measures ≈ RGB(215, 214, 213); the
+floor is within a few levels); the read comes from the bare bevel ring, the wall
+shading, and the gloss highlight on the bottom fillet. If the carve needs to
+read stronger without more depth, raise `occlusionStrength`, widen the bevel, or
+raise the paint gloss; all are decal shading, not geometry.
 
 The carve is baked into the **lit face decal**, so it is orientation-lit and
 position-independent like the rest of the decal. At spike resolution the grid is
