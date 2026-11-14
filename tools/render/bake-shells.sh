@@ -3,17 +3,17 @@
 #
 #   bash tools/render/bake-shells.sh            # dry run: build the tile in Blender, print the plan
 #   bash tools/render/bake-shells.sh --check    # integrity check; needs no Blender
-#   bash tools/render/bake-shells.sh --audition # render the front/back wall fan calibration + sheets
+#   bash tools/render/bake-shells.sh --audition # render the standing-hand fan calibration + sheets
 #   bash tools/render/bake-shells.sh --check-audition  # validate the candidate matrix; needs no Blender
 #   bash tools/render/bake-shells.sh --bake     # bake 1x + 2x, build review sheets, then check
 #
-# --bake renders the 77 shells (nine base + 68 front/back wall slots) with the
-# pinned Blender at the current base scale, writes
+# --bake renders the 90 shells (eight base + 14 hand slots + 68 wall slots) with
+# the pinned Blender at the current base scale, writes
 # frontend/public/table/shells/ (+ 2x/) and shells.json, regenerates the
 # throwaway review sheets under tools/render/build/review/, then runs the
 # dependency-free integrity check.
 #
-# --audition is the front/back wall fan calibration path: it renders every candidate in
+# --audition is the standing-hand fan calibration path: it renders every candidate in
 # shell-spec.json's `audition` block at the new base scale into
 # build/review/candidates/ (+ the candidate manifest at
 # build/review/shell-candidates.json), then validates those outputs and writes

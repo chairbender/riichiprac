@@ -47,7 +47,6 @@ const shellSpecPath = join(renderDir, 'shell-spec.json');
 const feltSpecPath = join(renderDir, 'felt-spec.json');
 
 const BASE_SHELL_IDS = [
-  'shell_hand_standing',
   'shell_flat_upright',
   'shell_flat_sideways',
   'shell_wall_horizontal',
@@ -58,9 +57,33 @@ const BASE_SHELL_IDS = [
   'shell_wall_side_right_faceup',
 ];
 
-// The front/back walls are a fan of per-slot shells generated from
-// wallSlots (the spec stores the block, not 68 hand-written entries). Keep the
-// id derivation in lockstep with bake_shells.py.
+// The standing hand and the front/back walls are fans of per-slot shells
+// generated from handSlots / wallSlots (the spec stores the blocks, not the
+// hand-written entries). Keep the id derivations in lockstep with
+// bake_shells.py.
+function handSlotShells(spec) {
+  const block = spec.handSlots;
+  if (!block) return [];
+  const shells = [];
+  for (let index = 0; index < block.rowCount; index += 1) {
+    shells.push({
+      id: `shell_hand_slot_${String(index).padStart(2, '0')}`,
+      kind: 'row',
+      index,
+      offsetUnits: (index - block.centreIndex) * block.stepUnits,
+      faceUp: true,
+    });
+  }
+  shells.push({
+    id: 'shell_hand_slot_draw',
+    kind: 'draw',
+    index: null,
+    offsetUnits: block.drawOffsetUnits,
+    faceUp: true,
+  });
+  return shells;
+}
+
 function wallSlotShells(spec) {
   const block = spec.wallSlots;
   if (!block) return [];
@@ -82,12 +105,18 @@ function wallSlotShells(spec) {
 }
 
 function canonicalShellIds(spec) {
-  return [...BASE_SHELL_IDS, ...wallSlotShells(spec).map((shell) => shell.id)];
+  return [
+    ...BASE_SHELL_IDS,
+    ...handSlotShells(spec).map((shell) => shell.id),
+    ...wallSlotShells(spec).map((shell) => shell.id),
+  ];
 }
 
 const isWall = (id) => id.startsWith('shell_wall_');
 const isFaceUp = (id) => !isWall(id) || id.endsWith('_faceup');
 const isFaceDown = (id) => isWall(id) && !id.endsWith('_faceup');
+const isHandSlot = (id) => id.startsWith('shell_hand_slot_');
+const isVerticalFace = (shell) => shell?.pose?.rotateXDeg === 90;
 // Phase 1c shadow contract, in @1x px / alpha. The committed bake and every
 // audition candidate must satisfy it.
 const SHADOW_EXTENT = { right: [10, 16], bottom: [10, 16], left: [1, 2], top: [1, 2] };
@@ -277,9 +306,11 @@ function downsample2x(image) {
  * The off-axis perspective face is a trapezoid. The edge pair perpendicular to
  * the view stays horizontal (the side-wall long edges, or the front/back wall's
  * top/bottom edges); the depth-direction pair converges toward the vanishing
- * point. The near edge (lower on screen) must be the longer one.
+ * point. The near edge must be the longer one: lower on screen for a horizontal
+ * face (a wall), higher on screen for a vertical face (the standing hand, seen
+ * from above).
  */
-function checkPerspectiveQuad(label, quad) {
+function checkPerspectiveQuad(label, quad, verticalFace = false) {
   const edgeLength = ([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]);
   const edgeDy = ([a, b]) => Math.abs(b[1] - a[1]);
   const midpointY = ([a, b]) => (a[1] + b[1]) / 2;
@@ -295,7 +326,12 @@ function checkPerspectiveQuad(label, quad) {
   );
   if (horizontal.length === 1) {
     const pair = horizontal[0];
-    const near = midpointY(pair.first) > midpointY(pair.second) ? pair.first : pair.second;
+    // A horizontal face (a wall tile) has its near edge lower on screen. A
+    // vertical face (the standing hand) is seen from above, so its top edge is
+    // closer to the camera and is the longer one.
+    const near = verticalFace
+      ? (midpointY(pair.first) < midpointY(pair.second) ? pair.first : pair.second)
+      : (midpointY(pair.first) > midpointY(pair.second) ? pair.first : pair.second);
     const far = near === pair.first ? pair.second : pair.first;
     check(
       edgeLength(near) > edgeLength(far) + 0.25,
@@ -323,6 +359,55 @@ function checkShellSpec(spec) {
   );
   for (const id of BASE_SHELL_IDS) {
     check(authored.includes(id), `shell-spec.json authors ${id}`);
+  }
+  const handSlots = handSlotShells(spec);
+  check(
+    handSlots.length === 0 || handSlots.length === spec.handSlots.rowCount + 1,
+    `handSlots expands to ${handSlots.length} slot shells ` +
+      `(${spec.handSlots?.rowCount ?? 0} row + 1 draw)`,
+  );
+  if (handSlots.length) {
+    check(
+      new Set(handSlots.map((shell) => shell.id)).size === handSlots.length,
+      'hand slot ids are unique',
+    );
+    check(
+      handSlots.filter((shell) => shell.kind === 'row').length === spec.handSlots.rowCount,
+      `hand row slots cover ${spec.handSlots.rowCount} tiles`,
+    );
+    check(
+      handSlots.filter((shell) => shell.kind === 'draw').length === 1,
+      'the hand has exactly one drawn-tile slot',
+    );
+    check(
+      handSlots.some((shell) => shell.kind === 'row' && Math.abs(shell.offsetUnits) <= 1e-9),
+      'the hand has a straight-on centre row slot',
+    );
+  }
+  const topHand = spec.topHand;
+  check(Boolean(topHand), 'the spec records the top-hand fan reuse');
+  if (topHand) {
+    check(
+      topHand.slots.length === topHand.count && topHand.count === 13,
+      `the top hand maps ${topHand.slots.length} slots (a 13-tile row)`,
+    );
+    check(
+      topHand.slots[0] >= 0 &&
+        topHand.slots[topHand.slots.length - 1] < (spec.wallSlots?.count ?? 0),
+      'the top-hand slots are inside the back-wall range',
+    );
+  }
+  const straightOn = spec.straightOn;
+  check(Boolean(straightOn), 'the spec records the straight-on pond/meld decision');
+  if (straightOn) {
+    for (const id of straightOn.shells ?? []) {
+      const shell = spec.shells.find((entry) => entry.id === id);
+      check(Boolean(shell), `straight-on shell ${id} is authored`);
+      check(
+        shell?.camera?.azimuthDeg === 0,
+        `${id} stays straight-on (azimuth ${shell?.camera?.azimuthDeg})`,
+      );
+    }
   }
   const wallSlots = wallSlotShells(spec);
   check(
@@ -555,7 +640,10 @@ function checkShellsManifest(spec) {
     `shells.json has ${ids.length} shells (${canonical.length})`,
   );
   const specRotation = new Map(
-    [...spec.shells, ...wallSlotShells(spec)].map((shell) => [shell.id, shell.faceRotationDeg]),
+    [...spec.shells, ...handSlotShells(spec), ...wallSlotShells(spec)].map((shell) => [
+      shell.id,
+      shell.faceRotationDeg ?? 0,
+    ]),
   );
   const pads = spec.bake.padding1x;
   let totalBytes = 0;
@@ -676,7 +764,7 @@ function checkShellsManifest(spec) {
       }
       check(Math.abs(area) / 2 > 100, `${id} faceQuad has a real area (${(Math.abs(area) / 2).toFixed(1)} px²)`);
       if (perspective) {
-        checkPerspectiveQuad(id, quad);
+        checkPerspectiveQuad(id, quad, isVerticalFace(shell));
       } else {
         // A projected rectangle is a parallelogram: both diagonals share a midpoint.
         const first = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2];
@@ -802,8 +890,49 @@ function checkShellsManifest(spec) {
         shell.faceRotationDeg === (slot.faceUp ? (wall?.faceRotationDeg ?? 0) : 0),
         `${id} faceRotationDeg follows the wall (${shell.faceRotationDeg})`,
       );
-    } else if (id.includes('_slot_')) {
-      check(false, `${id} is a slot shell but records no wallSlot`);
+    } else if (isWall(id) && id.includes('_slot_')) {
+      check(false, `${id} is a wall slot shell but records no wallSlot`);
+    }
+
+    // The standing hand records its slot and camera so the fan cannot drift
+    // from handSlots without this failing.
+    if (shell.handSlot) {
+      const slot = shell.handSlot;
+      const block = spec.handSlots;
+      const expectedOffset = block
+        ? slot.kind === 'draw'
+          ? block.drawOffsetUnits
+          : (slot.index - block.centreIndex) * block.stepUnits
+        : Number.NaN;
+      check(slot.kind === 'row' || slot.kind === 'draw', `${id} handSlot kind is row/draw (${slot.kind})`);
+      check(slot.faceUp === true, `${id} handSlot is face up`);
+      check(
+        Math.abs(slot.offsetUnits - expectedOffset) <= 1e-6,
+        `${id} handSlot offset ${slot.offsetUnits} follows from handSlots (${expectedOffset})`,
+      );
+      check(
+        Math.abs(shell.camera.lateralOffsetUnits + expectedOffset) <= 1e-6,
+        `${id} camera sits at the player's x (lateral ${shell.camera.lateralOffsetUnits} = -offset)`,
+      );
+      check(
+        block && Math.abs(shell.camera.distanceUnits - block.distanceUnits) <= 1e-6,
+        `${id} camera distance ${shell.camera.distanceUnits} is the hand distance (${block?.distanceUnits})`,
+      );
+      check(
+        block && Math.abs(shell.camera.elevationDeg - block.elevationDeg) <= 1e-6,
+        `${id} camera elevation ${shell.camera.elevationDeg} is the hand elevation (${block?.elevationDeg})`,
+      );
+      check(
+        shell.camera.projection === 'perspective' && shell.projection === 'hand-slot-perspective',
+        `${id} is a hand-slot perspective shell`,
+      );
+      check(
+        shell.pose?.rotateXDeg === 90 && shell.pose?.rotateZDeg === 0,
+        `${id} stands the tile up without rotating the row`,
+      );
+      check(shell.faceRotationDeg === 0, `${id} hand glyph stays upright (${shell.faceRotationDeg})`);
+    } else if (isHandSlot(id)) {
+      check(false, `${id} is a hand slot but records no handSlot`);
     }
 
     const profile = alphaProfile(image, body);
@@ -893,7 +1022,7 @@ function checkShellsManifest(spec) {
         `${id} face is blue resin (${face.join(',')})`,
       );
     }
-    if (id === 'shell_hand_standing' && edges.top) {
+    if (isHandSlot(id) && edges.top) {
       check(
         edges.top[2] - edges.top[0] >= 60 && edges.top[2] - edges.top[1] >= 40,
         `${id} top edge carries the blue resin sliver (${edges.top.join(',')})`,
@@ -1086,7 +1215,7 @@ function checkCandidateRecord(context) {
     }
     check(Math.abs(area) / 2 > 400, `${label} faceQuad has a real area (${(Math.abs(area) / 2).toFixed(1)} px²)`);
     if (perspective) {
-      checkPerspectiveQuad(label, quad);
+      checkPerspectiveQuad(label, quad, isVerticalFace(record));
     } else {
       const first = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2];
       const second = [(quad[1][0] + quad[3][0]) / 2, (quad[1][1] + quad[3][1]) / 2];
@@ -1231,7 +1360,7 @@ function checkCandidateRecord(context) {
     );
   }
   note(`${label} face luma ${luma(...face).toFixed(1)} (${face.join(',')})`);
-  if (baseId === 'shell_hand_standing' && edges.top) {
+  if (isHandSlot(baseId) && edges.top) {
     note(
       `${label} standing top edge rgb ${edges.top.join(',')} (blue resin sliver; perspective-dependent)`,
     );
@@ -1301,6 +1430,28 @@ function checkCommittedReviewSheets(feltSpec) {
       labelColour: LABEL,
       minLabel: 400,
       what: 'exploded front/back fan with every slot number',
+    },
+    {
+      name: 'hand-stack-1x.png',
+      minWidth: 900,
+      minHeight: 350,
+      minTiles: 50000,
+      titleColour: TITLE,
+      minTitle: 300,
+      labelColour: LABEL,
+      minLabel: 0,
+      what: 'packed hand row + drawn tile and the top hand',
+    },
+    {
+      name: 'hand-fan-1x.png',
+      minWidth: 760,
+      minHeight: 550,
+      minTiles: 50000,
+      titleColour: TITLE,
+      minTitle: 300,
+      labelColour: LABEL,
+      minLabel: 400,
+      what: 'exploded hand fan + top hand with every slot number',
     },
   ];
   for (const sheet of sheets) {
@@ -1401,6 +1552,49 @@ function checkAudition(spec) {
         check(
           typeof family.faceVariantPattern === 'string' && family.faceVariantPattern.includes('{index:02d}'),
           `${wall} dora family names the slot in the face variant`,
+        );
+      }
+    }
+    const handFamily = faceVariants.handSlots;
+    check(Boolean(handFamily), 'the face-variant plan records the per-slot hand family');
+    if (handFamily) {
+      check(
+        handFamily.count === spec.handSlots.rowCount + 1,
+        `the hand family covers ${handFamily.count} slots (handSlots ${spec.handSlots.rowCount} + draw)`,
+      );
+      check(
+        handFamily.slots.length === handFamily.count && handFamily.slots.includes('draw'),
+        'the hand family names every row slot and the drawn slot',
+      );
+      check(
+        typeof handFamily.shellPattern === 'string' && handFamily.shellPattern.includes('{slot}'),
+        'the hand family names the slot in the shell id',
+      );
+      check(
+        typeof handFamily.faceVariantPattern === 'string' && handFamily.faceVariantPattern.includes('{slot}'),
+        'the hand family names the slot in the face variant',
+      );
+    }
+    check(
+      typeof faceVariants.topHand === 'string' && faceVariants.topHand.includes('back-wall'),
+      'the face-variant plan records the top-hand back-wall reuse',
+    );
+    check(
+      typeof faceVariants.straightOn === 'string' && faceVariants.straightOn.includes('Ponds'),
+      'the face-variant plan records the straight-on ponds/melds',
+    );
+    const topHand = spec.topHand;
+    check(Boolean(topHand), 'the spec maps the top hand onto the back-wall fan');
+    if (topHand) {
+      check(
+        topHand.slots.length === topHand.count && topHand.count === 13,
+        `the top hand maps ${topHand.slots.length} back-wall slots`,
+      );
+      for (const index of topHand.slots) {
+        const id = `shell_wall_back_slot_${String(index).padStart(2, '0')}`;
+        check(
+          canonicalShellIds(spec).includes(id) && isFaceDown(id),
+          `top-hand slot ${id} is a face-down back-wall shell`,
         );
       }
     }

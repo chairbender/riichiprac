@@ -2,11 +2,12 @@
 """Shell baker for the 2.5D rendered view.
 
 The active architecture is ``2_5d_mahjong_tile_rendering_architecture.md``.
-Seventy-seven blank tile **shells** are baked offline (nine base shells plus the
-17-slot front/back wall fan on each wall, face-down and face-up); 2D face glyphs
-are composited into each shell's ``faceQuad`` at runtime. There is no table
-model and no single perspective scene camera: the grid shells are orthographic,
-and the walls use an off-axis perspective camera.
+Ninety blank tile **shells** are baked offline (eight base shells, the 14-slot
+standing-hand fan, and the 17-slot front/back wall fan on each wall, face-down
+and face-up); 2D face glyphs are composited into each shell's ``faceQuad`` at
+runtime. There is no table model and no single perspective scene camera: the
+grid shells are orthographic, and the walls and the standing hand use an
+off-axis perspective camera.
 
 The baker owns:
 
@@ -18,9 +19,9 @@ The baker owns:
   re-expressed in each shell camera's basis so every projection gets its
   highlights top/left and its shadow bottom/right;
 * one camera per shell: orthographic for the grid shells, and an off-axis
-  perspective for the side walls and every front/back wall slot (no yaw/roll;
-  the lateral offset reveals the near face). The front/back slot offset comes
-  from the slot's x on the wall and the human's eye distance;
+  perspective for the side walls, every front/back wall slot and every hand slot
+  (no yaw/roll; the lateral offset reveals the near face). The slot offset comes
+  from the slot's x and the wall/hand eye distance;
 * a Cycles shadow-catcher pass under the mesh whose alpha is clamped to the
   declared 10-16 px right/bottom margin and normalised to the spec's diffuse
   shadow strength, plus a 1-2 px top/left ambient-occlusion fringe;
@@ -44,9 +45,9 @@ Usage (normally through ``bake-shells.sh``, which resolves the pinned Blender):
         --python tools/render/bake_shells.py -- --audition --verify-determinism
 
 A dry run builds the tile, material and lights, prints the shell plan, and
-writes nothing. ``--bake`` renders the 77 shells, writes both scales and the
-manifest. ``--audition`` renders the front/back wall fan calibration described
-by the spec's ``audition`` block at the current base scale into
+writes nothing. ``--bake`` renders the 90 shells, writes both scales and the
+manifest. ``--audition`` renders the standing-hand fan calibration described by
+the spec's ``audition`` block at the current base scale into
 ``tools/render/build/review/`` (textures plus ``shell-candidates.json``) and
 never touches the committed shells or ``shells.json``. ``--verify-determinism``
 renders everything twice and compares the decoded RGBA, which is the re-render
@@ -77,7 +78,6 @@ SPEC_DIR = RENDER_DIR
 DEFAULT_SPEC = SPEC_DIR / "shell-spec.json"
 
 BASE_SHELL_IDS = (
-    "shell_hand_standing",
     "shell_flat_upright",
     "shell_flat_sideways",
     "shell_wall_horizontal",
@@ -443,6 +443,89 @@ def wall_slot_shell_id(wall: str, index: int, face_up: bool) -> str:
     return f"shell_wall_{wall}_slot_{index:02d}{suffix}"
 
 
+def hand_slot_shell_id(index: int | None) -> str:
+    return "shell_hand_slot_draw" if index is None else f"shell_hand_slot_{index:02d}"
+
+
+def expand_hand_slots(spec: dict) -> None:
+    """Append the per-slot standing-hand shells derived from ``handSlots``.
+
+    The 13 concealed tiles are centred on the player (slot 6 is straight on);
+    the drawn tile gets its own slot because it sits past the +0.35 advance gap.
+    The camera is the player's eye, so the outer hand tiles show their inner side
+    and their vertical face skews, exactly like the wall fan. The tile is never
+    rotated: ``rotX 90`` stands it up and ``rotZ 0`` keeps the row upright.
+    """
+    block = spec.get("handSlots")
+    if not block:
+        return
+    row_count = int(block["rowCount"])
+    centre = int(block["centreIndex"])
+    step = float(block["stepUnits"])
+    elevation = float(block["elevationDeg"])
+    distance = float(block["distanceUnits"])
+    if row_count < 3 or row_count % 2 == 0:
+        die("handSlots.rowCount must be an odd number >= 3")
+    if centre != row_count // 2:
+        die("handSlots.centreIndex must be the middle row slot")
+    slots = [(index, (index - centre) * step, "row") for index in range(row_count)]
+    slots.append((None, float(block["drawOffsetUnits"]), "draw"))
+    for index, offset, kind in slots:
+        angle = math.degrees(math.atan2(abs(offset), distance))
+        shell_id = hand_slot_shell_id(index)
+        hand_slot = {
+            "kind": kind,
+            "index": index,
+            "offsetUnits": round(offset, 6),
+            "lateralOffsetUnits": round(-offset, 6),
+            "distanceUnits": distance,
+            "angleDeg": round(angle, 3),
+            "faceUp": True,
+        }
+        label = (
+            "the drawn tile, after the +0.35 advance gap"
+            if kind == "draw"
+            else f"slot {index} of {row_count - 1} in the concealed 13-tile row"
+        )
+        spec["shells"].append(
+            {
+                "id": shell_id,
+                "projection": "hand-slot-perspective",
+                "faceRotationDeg": 0,
+                "role": (
+                    f"standing hand tile, {label}; the camera sits at the player's x, "
+                    f"{angle:.1f} deg off the tile's normal"
+                ),
+                "pose": {
+                    "rotateXDeg": 90,
+                    "rotateYDeg": 0,
+                    "rotateZDeg": 0,
+                },
+                "camera": {
+                    "azimuthDeg": 0,
+                    "elevationDeg": elevation,
+                    "faceLocalZ": "top",
+                    "projection": "perspective",
+                    "perspective": {
+                        "lateralOffsetUnits": round(-offset, 6),
+                        "distanceUnits": distance,
+                    },
+                },
+                "expectProjection": "portrait",
+                "handSlot": hand_slot,
+            }
+        )
+
+
+def expected_hand_slot_ids(spec: dict) -> list[str]:
+    block = spec.get("handSlots")
+    if not block:
+        return []
+    return [hand_slot_shell_id(index) for index in range(int(block["rowCount"]))] + [
+        hand_slot_shell_id(None)
+    ]
+
+
 def expand_wall_slots(spec: dict) -> None:
     """Append the per-slot front/back wall shells derived from ``wallSlots``.
 
@@ -534,7 +617,7 @@ def validate_shell_catalogue(spec: dict) -> None:
     ids = [shell["id"] for shell in spec["shells"]]
     if len(ids) != len(set(ids)):
         die("the shell catalogue has duplicate ids")
-    expected = list(BASE_SHELL_IDS) + expected_wall_slot_ids(spec)
+    expected = list(BASE_SHELL_IDS) + expected_hand_slot_ids(spec) + expected_wall_slot_ids(spec)
     missing = [shell_id for shell_id in expected if shell_id not in ids]
     extra = [shell_id for shell_id in ids if shell_id not in expected]
     if missing or extra or ids != expected:
@@ -1355,6 +1438,11 @@ def bake_shell(
             if "wallSlot" in shell
             else {}
         ),
+        **(
+            {"handSlot": dict(shell["handSlot"])}
+            if "handSlot" in shell
+            else {}
+        ),
         "pose": dict(shell["pose"]),
         "camera": {
             "azimuthDeg": shell["camera"]["azimuthDeg"],
@@ -1795,6 +1883,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(blender_args(argv))
 
     spec = load_spec(args.spec)
+    expand_hand_slots(spec)
     expand_wall_slots(spec)
     check_blender_version(spec)
     validate_shell_catalogue(spec)

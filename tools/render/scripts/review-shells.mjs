@@ -34,7 +34,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { drawSprite, encodePng, readPng, zoomNearest } from './png.mjs';
-import { drawText, wrapText } from './label-font.mjs';
+import { drawText, textWidth, wrapText } from './label-font.mjs';
 
 const renderDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -456,6 +456,164 @@ if (!auditionMode) {
       `wall-fan-${row.wall}-right-zoom3x.png`,
     );
   }
+}
+
+// --------------------------------------------------------------------------- //
+// 3b. The standing hand: the 13-tile row + drawn tile, and the top hand's
+//     reuse of the back-wall fan.
+// --------------------------------------------------------------------------- //
+if (!auditionMode) {
+  const block = shellSpec.handSlots;
+  const topHand = shellSpec.topHand;
+  const pad = 24;
+  const labelH = 24;
+  const rowIds = Array.from({ length: block.rowCount }, (_, index) =>
+    `shell_hand_slot_${String(index).padStart(2, '0')}`,
+  );
+  const drawId = 'shell_hand_slot_draw';
+  const centreEntry = manifest.shells[`shell_hand_slot_${String(block.centreIndex).padStart(2, '0')}`];
+  const handStepX = centreEntry.gridStepPx.x[0];
+  const rowOffset = (index) => (index - block.centreIndex) * block.stepUnits;
+  const handX = (offset) => pad + ((offset - rowOffset(0)) / block.stepUnits) * handStepX;
+  const drawX = handX(block.drawOffsetUnits);
+  const topIds = topHand.slots.map(
+    (index) => `shell_wall_back_slot_${String(index).padStart(2, '0')}`,
+  );
+  const topCentre = manifest.shells[`shell_wall_back_slot_${String(shellSpec.wallSlots.centreIndex).padStart(2, '0')}`];
+  const topStepX = topCentre.gridStepPx.x[0];
+
+  // ----- Packed: the actual hand row, drawn tile gap, and the top hand. -----
+  const packedWidth = Math.ceil(pad + handX(block.drawOffsetUnits) + centreEntry.advanceWidth + pad);
+  const packedHeight = Math.ceil(2 * (labelH + 120) + 3 * 18 + 2 * pad);
+  const packed = canvas(packedWidth, packedHeight);
+  const packedAssert = (id, gridX, gridY, what) => {
+    const entry = manifest.shells[id];
+    const sprite = texture(id);
+    const left = Math.round(gridX - entry.anchorX);
+    const top = Math.round(gridY - entry.anchorY);
+    if (left < 0 || top < 0 || left + sprite.width > packed.width || top + sprite.height > packed.height) {
+      throw new Error(
+        `hand-stack layout overflow: ${what} ${id} ${left},${top} ` +
+          `${sprite.width}x${sprite.height} leaves ${packed.width}x${packed.height}`,
+      );
+    }
+  };
+  drawText(packed, 'HUMAN HAND  13-TILE ROW + DRAWN TILE  PACKED', pad, pad, {
+    scale: 2,
+    rgb: [244, 238, 220],
+  });
+  const handTop = pad + labelH;
+  // Right-to-left so each tile's right shadow lands on its neighbour.
+  for (let index = block.rowCount - 1; index >= 0; index -= 1) {
+    const id = rowIds[index];
+    const x = handX(rowOffset(index));
+    packedAssert(id, x, handTop, `hand slot ${index}`);
+    draw(id, packed, x, handTop);
+  }
+  packedAssert(drawId, drawX, handTop, 'drawn tile');
+  draw(drawId, packed, drawX, handTop);
+  console.log(
+    `INFO hand row: step ${handStepX.toFixed(2)} px, outer ${manifest.shells[rowIds[0]].handSlot.angleDeg} deg, ` +
+      `drawn ${manifest.shells[drawId].handSlot.angleDeg} deg, gap ${(drawX - handX(rowOffset(block.rowCount - 1))).toFixed(2)} px centre-to-centre`,
+  );
+
+  const topTop = handTop + 120 + 12 + labelH;
+  drawText(packed, 'TOP HAND  13 TILES  REUSING THE BACK-WALL FAN (SLOTS 2..14)', pad, topTop - labelH, {
+    scale: 2,
+    rgb: [244, 238, 220],
+  });
+  for (let step = topIds.length - 1; step >= 0; step -= 1) {
+    const id = topIds[step];
+    const x = pad + step * topStepX;
+    packedAssert(id, x, topTop, `top hand ${step}`);
+    draw(id, packed, x, topTop);
+  }
+  console.log(
+    `INFO top hand: ${topIds.length} tiles, step ${topStepX.toFixed(2)} px, ` +
+      `outer ${manifest.shells[topIds[0]].wallSlot.angleDeg} deg`,
+  );
+  write('hand-stack-1x.png', packed);
+  zoomOf(
+    packed,
+    drawX - 2 * handStepX - 8,
+    handTop - 6,
+    3 * handStepX + 16,
+    labelH + 120 + 8,
+    3,
+    'hand-right-zoom3x.png',
+  );
+
+  // ----- Exploded: the fan itself, both halves, every slot numbered. -----
+  const gap = 24;
+  const fanPad = 24;
+  const fanLabelH = 24;
+  const handFanStep = handStepX + gap;
+  const topFanStep = topStepX + gap;
+  const half = block.centreIndex + 1;
+  const handRightIndices = [...rowIds.slice(block.centreIndex), drawId];
+  const handLeftIndices = rowIds.slice(0, block.centreIndex + 1);
+  const topRightIndices = topIds.slice(topHand.count - half);
+  const topLeftIndices = topIds.slice(0, half);
+  const fanRows = [
+    { ids: handRightIndices, step: handFanStep, title: `HAND RIGHT HALF  SLOTS ${block.centreIndex}..12 + DRAWN  OUTER ${manifest.shells[drawId].handSlot.angleDeg} DEG` },
+    { ids: handLeftIndices, step: handFanStep, title: `HAND LEFT HALF  SLOTS 0..${block.centreIndex}  OUTER ${manifest.shells[rowIds[0]].handSlot.angleDeg} DEG` },
+    { ids: topRightIndices, step: topFanStep, title: `TOP HAND RIGHT HALF  SLOTS ${topHand.slots[6]}..${topHand.slots[topHand.slots.length - 1]}  OUTER ${manifest.shells[topIds[topIds.length - 1]].wallSlot.angleDeg} DEG` },
+    { ids: topLeftIndices, step: topFanStep, title: `TOP HAND LEFT HALF  SLOTS ${topHand.slots[0]}..${topHand.slots[6]}  SAME FAN` },
+  ];
+  const fanRowHeight = fanLabelH + 120 + 40;
+  let fanWidth = 0;
+  for (const row of fanRows) {
+    let right = -Infinity;
+    for (let step = 0; step < row.ids.length; step += 1) {
+      const entry = manifest.shells[row.ids[step]];
+      right = Math.max(right, fanPad + step * row.step - entry.anchorX + entry.texWidth);
+    }
+    fanWidth = Math.max(fanWidth, right);
+  }
+  const longestTitle = Math.max(...fanRows.map((row) => textWidth(row.title, 2)));
+  fanWidth = Math.ceil(Math.max(fanWidth + fanPad, longestTitle + 2 * fanPad));
+  const fanImage = canvas(fanWidth, Math.ceil(fanRows.length * fanRowHeight + 2 * fanPad + 3 * 16));
+  const fanAssert = (id, gridX, gridY, what) => {
+    const entry = manifest.shells[id];
+    const sprite = texture(id);
+    const left = Math.round(gridX - entry.anchorX);
+    const top = Math.round(gridY - entry.anchorY);
+    if (left < 0 || top < 0 || left + sprite.width > fanImage.width || top + sprite.height > fanImage.height) {
+      throw new Error(
+        `hand-fan layout overflow: ${what} ${id} ${left},${top} ` +
+          `${sprite.width}x${sprite.height} leaves ${fanImage.width}x${fanImage.height}`,
+      );
+    }
+  };
+  fanRows.forEach((row, rowIndex) => {
+    const top = fanPad + rowIndex * (fanRowHeight + 16);
+    drawText(fanImage, row.title, fanPad, top, { scale: 2, rgb: [244, 238, 220] });
+    const bodyTop = top + fanLabelH;
+    for (let step = row.ids.length - 1; step >= 0; step -= 1) {
+      const id = row.ids[step];
+      const x = fanPad + step * row.step;
+      fanAssert(id, x, bodyTop, `fan row ${rowIndex} step ${step}`);
+      draw(id, fanImage, x, bodyTop);
+    }
+    for (let step = 0; step < row.ids.length; step += 1) {
+      const id = row.ids[step];
+      const label = id === drawId ? 'D' : id.replace('shell_hand_slot_', '').replace('shell_wall_back_slot_', '');
+      drawText(fanImage, label, fanPad + step * row.step + 30, bodyTop + 124, {
+        scale: 2,
+        rgb: [204, 214, 200],
+      });
+    }
+  });
+  write('hand-fan-1x.png', fanImage);
+  zoomOf(
+    fanImage,
+    fanPad + (handRightIndices.length - 3) * handFanStep - 8,
+    fanPad - 4,
+    3 * handFanStep + 16,
+    fanLabelH + 120 + 16,
+    3,
+    'hand-fan-right-zoom3x.png',
+  );
 }
 
 // --------------------------------------------------------------------------- //

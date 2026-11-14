@@ -99,20 +99,6 @@
     },
     "determinism": "CPU Cycles, fixed seed 0, fixed adaptive threshold and OIDN. Each texture records the sha256 of its decoded RGBA; re-baking the same spec must reproduce it (bake_shells.py --bake --verify-determinism renders each shell twice; --audition --verify-determinism does the same for every candidate).",
     "shellRigs": {
-      "shell_hand_standing": {
-        "projectionWidthUnits": 0.75,
-        "projectionHeightUnits": 1.1596,
-        "pixelsPerUnit2x": 179.372121,
-        "orthoScale": 1.694801,
-        "resolution2x": [
-          232,
-          304
-        ],
-        "resolution1x": [
-          116,
-          152
-        ]
-      },
       "shell_flat_upright": {
         "projectionWidthUnits": 0.75,
         "projectionHeightUnits": 1.123795,
@@ -235,6 +221,244 @@
         "resolution1x": [
           152,
           135
+        ]
+      },
+      "shell_hand_slot_00": {
+        "projection": "perspective",
+        "lensMm": 658.0646,
+        "shiftX": -3.088177,
+        "shiftY": 0.207269,
+        "lateralOffsetUnits": 4.5,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.22806,
+        "resolution2x": [
+          262,
+          304
+        ],
+        "resolution1x": [
+          131,
+          152
+        ]
+      },
+      "shell_hand_slot_01": {
+        "projection": "perspective",
+        "lensMm": 673.4882,
+        "shiftX": -2.63461,
+        "shiftY": 0.212127,
+        "lateralOffsetUnits": 3.75,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228038,
+        "resolution2x": [
+          256,
+          304
+        ],
+        "resolution1x": [
+          128,
+          152
+        ]
+      },
+      "shell_hand_slot_02": {
+        "projection": "perspective",
+        "lensMm": 684.1782,
+        "shiftX": -2.142133,
+        "shiftY": 0.215494,
+        "lateralOffsetUnits": 3.0,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.22804,
+        "resolution2x": [
+          252,
+          304
+        ],
+        "resolution1x": [
+          126,
+          152
+        ]
+      },
+      "shell_hand_slot_03": {
+        "projection": "perspective",
+        "lensMm": 700.8656,
+        "shiftX": -1.647055,
+        "shiftY": 0.22075,
+        "lateralOffsetUnits": 2.25,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228048,
+        "resolution2x": [
+          246,
+          304
+        ],
+        "resolution1x": [
+          123,
+          152
+        ]
+      },
+      "shell_hand_slot_04": {
+        "projection": "perspective",
+        "lensMm": 712.4498,
+        "shiftX": -1.117905,
+        "shiftY": 0.224399,
+        "lateralOffsetUnits": 1.5,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.227967,
+        "resolution2x": [
+          242,
+          304
+        ],
+        "resolution1x": [
+          121,
+          152
+        ]
+      },
+      "shell_hand_slot_05": {
+        "projection": "perspective",
+        "lensMm": 730.5631,
+        "shiftX": -0.575808,
+        "shiftY": 0.230104,
+        "lateralOffsetUnits": 0.75,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228017,
+        "resolution2x": [
+          236,
+          304
+        ],
+        "resolution1x": [
+          118,
+          152
+        ]
+      },
+      "shell_hand_slot_06": {
+        "projection": "perspective",
+        "lensMm": 736.8073,
+        "shiftX": 0.0,
+        "shiftY": 0.232071,
+        "lateralOffsetUnits": -0.0,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228028,
+        "resolution2x": [
+          234,
+          304
+        ],
+        "resolution1x": [
+          117,
+          152
+        ]
+      },
+      "shell_hand_slot_07": {
+        "projection": "perspective",
+        "lensMm": 730.5631,
+        "shiftX": 0.575808,
+        "shiftY": 0.230104,
+        "lateralOffsetUnits": -0.75,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228017,
+        "resolution2x": [
+          236,
+          304
+        ],
+        "resolution1x": [
+          118,
+          152
+        ]
+      },
+      "shell_hand_slot_08": {
+        "projection": "perspective",
+        "lensMm": 712.4498,
+        "shiftX": 1.117905,
+        "shiftY": 0.224399,
+        "lateralOffsetUnits": -1.5,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.227996,
+        "resolution2x": [
+          242,
+          304
+        ],
+        "resolution1x": [
+          121,
+          152
+        ]
+      },
+      "shell_hand_slot_09": {
+        "projection": "perspective",
+        "lensMm": 700.8656,
+        "shiftX": 1.647055,
+        "shiftY": 0.22075,
+        "lateralOffsetUnits": -2.25,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228038,
+        "resolution2x": [
+          246,
+          304
+        ],
+        "resolution1x": [
+          123,
+          152
+        ]
+      },
+      "shell_hand_slot_10": {
+        "projection": "perspective",
+        "lensMm": 684.1782,
+        "shiftX": 2.142133,
+        "shiftY": 0.215494,
+        "lateralOffsetUnits": -3.0,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.22804,
+        "resolution2x": [
+          252,
+          304
+        ],
+        "resolution1x": [
+          126,
+          152
+        ]
+      },
+      "shell_hand_slot_11": {
+        "projection": "perspective",
+        "lensMm": 673.4882,
+        "shiftX": 2.63461,
+        "shiftY": 0.212127,
+        "lateralOffsetUnits": -3.75,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228048,
+        "resolution2x": [
+          256,
+          304
+        ],
+        "resolution1x": [
+          128,
+          152
+        ]
+      },
+      "shell_hand_slot_12": {
+        "projection": "perspective",
+        "lensMm": 658.0646,
+        "shiftX": 3.088177,
+        "shiftY": 0.207269,
+        "lateralOffsetUnits": -4.5,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.22804,
+        "resolution2x": [
+          262,
+          304
+        ],
+        "resolution1x": [
+          131,
+          152
+        ]
+      },
+      "shell_hand_slot_draw": {
+        "projection": "perspective",
+        "lensMm": 643.3314,
+        "shiftX": 3.697272,
+        "shiftY": 0.202629,
+        "lateralOffsetUnits": -5.5125,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.227924,
+        "resolution2x": [
+          268,
+          304
+        ],
+        "resolution1x": [
+          134,
+          152
         ]
       },
       "shell_wall_front_slot_00": {
@@ -1396,123 +1620,6 @@
     }
   },
   "shells": {
-    "shell_hand_standing": {
-      "textureFile": "shells/shell_hand_standing.png",
-      "textureFile2x": "shells/2x/shell_hand_standing.png",
-      "texWidth": 88,
-      "texHeight": 120,
-      "anchorX": 2,
-      "anchorY": 2,
-      "advanceWidth": 70,
-      "advanceHeight": 102,
-      "padding": {
-        "top": 2,
-        "right": 16,
-        "bottom": 16,
-        "left": 2
-      },
-      "faceRotationDeg": 0,
-      "faceQuad": [
-        [
-          8.3,
-          30.17
-        ],
-        [
-          65.7,
-          30.17
-        ],
-        [
-          65.7,
-          100.64
-        ],
-        [
-          8.3,
-          100.64
-        ]
-      ],
-      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
-      "gridStepPx": {
-        "x": [
-          67.26,
-          0.0
-        ],
-        "y": [
-          0.0,
-          79.19
-        ]
-      },
-      "projection": "front-elevation",
-      "pose": {
-        "rotateXDeg": 90,
-        "rotateYDeg": 0,
-        "rotateZDeg": 0
-      },
-      "camera": {
-        "azimuthDeg": 0,
-        "elevationDeg": 28,
-        "projection": "orthographic",
-        "orthoScale": 1.694801,
-        "pixelsPerUnit2x": 179.372121,
-        "resolution1x": [
-          116,
-          152
-        ],
-        "resolution2x": [
-          232,
-          304
-        ]
-      },
-      "measured": {
-        "alphaExtent1x": {
-          "left": 1,
-          "top": 1,
-          "right": 12,
-          "bottom": 10
-        },
-        "alphaPeak1x": {
-          "left": 0.2,
-          "top": 0.2078,
-          "right": 0.1216,
-          "bottom": 0.1176
-        },
-        "alphaMass1x": {
-          "left": 19.2,
-          "top": 13.227,
-          "right": 38.69,
-          "bottom": 26.608
-        },
-        "shadowCatcherPeak": 0.3733,
-        "solidInset1x": [
-          1,
-          1,
-          1,
-          1
-        ],
-        "faceSampleRgb": [
-          94,
-          100,
-          107
-        ],
-        "edgeSamplesRgb": {
-          "top": [
-            3,
-            70,
-            166
-          ],
-          "bottom": [
-            81,
-            89,
-            98
-          ]
-        },
-        "bytes1x": 9025,
-        "bytes2x": 25479
-      },
-      "sha256": {
-        "decodedRgba1x": "191c5b9264a8aff701b33ee33c984a447a0d2b08e9dfb70cbc4cd3506a14b296",
-        "decodedRgba2x": "43ef122c94e03c63ec3df6f9d74b16f090e927a2bbf83e00647e9051cdd99f76"
-      }
-    },
     "shell_flat_upright": {
       "textureFile": "shells/shell_flat_upright.png",
       "textureFile2x": "shells/2x/shell_flat_upright.png",
@@ -2499,6 +2606,1826 @@
       "sha256": {
         "decodedRgba1x": "7bcd0e33d4062d31aa28c2bf97a7368096be63bfdd6487558570e0c0f672db29",
         "decodedRgba2x": "3c0e350f4fe12d48bdb08d5036840bdd1054ff9723db6965f9dc4ac28d300b25"
+      }
+    },
+    "shell_hand_slot_00": {
+      "textureFile": "shells/shell_hand_slot_00.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_00.png",
+      "texWidth": 100,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 82,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          6.81,
+          29.21
+        ],
+        [
+          65.27,
+          29.21
+        ],
+        [
+          71.26,
+          100.66
+        ],
+        [
+          13.72,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          7.37,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 0,
+        "offsetUnits": -4.5,
+        "lateralOffsetUnits": 4.5,
+        "distanceUnits": 24.0,
+        "angleDeg": 10.62,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 658.0646,
+        "shiftX": -3.088177,
+        "shiftY": 0.207269,
+        "lateralOffsetUnits": 4.5,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.22806,
+        "resolution1x": [
+          131,
+          152
+        ],
+        "resolution2x": [
+          262,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2039,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 3.404,
+          "top": 13.435,
+          "right": 38.878,
+          "bottom": 31.71
+        },
+        "shadowCatcherPeak": 0.3659,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          95,
+          101,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            69,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            98
+          ]
+        },
+        "bytes1x": 10569,
+        "bytes2x": 30941
+      },
+      "sha256": {
+        "decodedRgba1x": "d815ad6820fd8602f5360313437bda220d5060627abb7938c350f064315f6af4",
+        "decodedRgba2x": "c26704a5b5a041e23bd5a810a5fbaff75cae6570707ac68b75ce2fceaa899f7e"
+      }
+    },
+    "shell_hand_slot_01": {
+      "textureFile": "shells/shell_hand_slot_01.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_01.png",
+      "texWidth": 98,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 80,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          7.49,
+          29.21
+        ],
+        [
+          65.95,
+          29.21
+        ],
+        [
+          70.86,
+          100.66
+        ],
+        [
+          13.32,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          6.15,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 1,
+        "offsetUnits": -3.75,
+        "lateralOffsetUnits": 3.75,
+        "distanceUnits": 24.0,
+        "angleDeg": 8.881,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 673.4882,
+        "shiftX": -2.63461,
+        "shiftY": 0.212127,
+        "lateralOffsetUnits": 3.75,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228038,
+        "resolution1x": [
+          128,
+          152
+        ],
+        "resolution2x": [
+          256,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 2.2,
+          "top": 13.435,
+          "right": 38.914,
+          "bottom": 30.765
+        },
+        "shadowCatcherPeak": 0.3665,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          95,
+          101,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            69,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 10346,
+        "bytes2x": 30413
+      },
+      "sha256": {
+        "decodedRgba1x": "3dd465cec3f88a2fcbe8b05a590da6da9a6b1974752817100bc9684782310378",
+        "decodedRgba2x": "e922c8a53af18ff6fdc3c298896a29504769a746fe61dbccf39527585c8adde3"
+      }
+    },
+    "shell_hand_slot_02": {
+      "textureFile": "shells/shell_hand_slot_02.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_02.png",
+      "texWidth": 96,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 78,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          7.67,
+          29.21
+        ],
+        [
+          66.13,
+          29.21
+        ],
+        [
+          69.97,
+          100.66
+        ],
+        [
+          12.43,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          4.92,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 2,
+        "offsetUnits": -3.0,
+        "lateralOffsetUnits": 3.0,
+        "distanceUnits": 24.0,
+        "angleDeg": 7.125,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 684.1782,
+        "shiftX": -2.142133,
+        "shiftY": 0.215494,
+        "lateralOffsetUnits": 3.0,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.22804,
+        "resolution1x": [
+          126,
+          152
+        ],
+        "resolution2x": [
+          252,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 2.0,
+          "top": 13.435,
+          "right": 38.922,
+          "bottom": 29.914
+        },
+        "shadowCatcherPeak": 0.367,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          95,
+          101,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            70,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 10216,
+        "bytes2x": 30112
+      },
+      "sha256": {
+        "decodedRgba1x": "a5c054bd0ea499a78e7346bce76bdd5619f9aa28ac51547eaf6c82800647dfdd",
+        "decodedRgba2x": "90d543754971a58dab66303a8035cc1f5a6ce33dd48d08235f66d55afccb1ff8"
+      }
+    },
+    "shell_hand_slot_03": {
+      "textureFile": "shells/shell_hand_slot_03.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_03.png",
+      "texWidth": 93,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 75,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          7.35,
+          29.21
+        ],
+        [
+          65.81,
+          29.21
+        ],
+        [
+          68.57,
+          100.66
+        ],
+        [
+          11.04,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          3.69,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 3,
+        "offsetUnits": -2.25,
+        "lateralOffsetUnits": 2.25,
+        "distanceUnits": 24.0,
+        "angleDeg": 5.356,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 700.8656,
+        "shiftX": -1.647055,
+        "shiftY": 0.22075,
+        "lateralOffsetUnits": 2.25,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228048,
+        "resolution1x": [
+          123,
+          152
+        ],
+        "resolution2x": [
+          246,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2039,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 4.404,
+          "top": 13.439,
+          "right": 38.847,
+          "bottom": 28.608
+        },
+        "shadowCatcherPeak": 0.3708,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          95,
+          101,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            70,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 9861,
+        "bytes2x": 29468
+      },
+      "sha256": {
+        "decodedRgba1x": "d6bcd7bdef7455dee619139400d41ed78f935b5e8778e55dd7e039a6296312fe",
+        "decodedRgba2x": "786b73a10589af4b95ba81202527293c4aa8d3e447b4bb8042452a3aab53a02c"
+      }
+    },
+    "shell_hand_slot_04": {
+      "textureFile": "shells/shell_hand_slot_04.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_04.png",
+      "texWidth": 91,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 73,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          7.53,
+          29.21
+        ],
+        [
+          65.99,
+          29.21
+        ],
+        [
+          67.68,
+          100.66
+        ],
+        [
+          10.14,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          2.46,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 4,
+        "offsetUnits": -1.5,
+        "lateralOffsetUnits": 1.5,
+        "distanceUnits": 24.0,
+        "angleDeg": 3.576,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 712.4498,
+        "shiftX": -1.117905,
+        "shiftY": 0.224399,
+        "lateralOffsetUnits": 1.5,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.227967,
+        "resolution1x": [
+          121,
+          152
+        ],
+        "resolution2x": [
+          242,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2039,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 5.404,
+          "top": 13.431,
+          "right": 38.839,
+          "bottom": 27.776
+        },
+        "shadowCatcherPeak": 0.372,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          95,
+          100,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            70,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 9620,
+        "bytes2x": 28758
+      },
+      "sha256": {
+        "decodedRgba1x": "490546b6d0109d7bf640a61328d0ae4d3c9dbcc34d63a9b466fb8f718209fafa",
+        "decodedRgba2x": "8c78b320bcc13fee315caf8891a147bfb6bc4b9c7da3263b9d350fa838259f0a"
+      }
+    },
+    "shell_hand_slot_05": {
+      "textureFile": "shells/shell_hand_slot_05.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_05.png",
+      "texWidth": 90,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 72,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          8.22,
+          29.21
+        ],
+        [
+          66.67,
+          29.21
+        ],
+        [
+          67.29,
+          100.66
+        ],
+        [
+          9.75,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          1.23,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 5,
+        "offsetUnits": -0.75,
+        "lateralOffsetUnits": 0.75,
+        "distanceUnits": 24.0,
+        "angleDeg": 1.79,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 730.5631,
+        "shiftX": -0.575808,
+        "shiftY": 0.230104,
+        "lateralOffsetUnits": 0.75,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228017,
+        "resolution1x": [
+          118,
+          152
+        ],
+        "resolution2x": [
+          236,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2,
+          "top": 0.2078,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 2.0,
+          "top": 13.439,
+          "right": 38.745,
+          "bottom": 27.345
+        },
+        "shadowCatcherPeak": 0.3729,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          94,
+          100,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            70,
+            166
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 9288,
+        "bytes2x": 27618
+      },
+      "sha256": {
+        "decodedRgba1x": "b0c4b19968b98461b212f3b5d646db9510e20719722aa093982277b77c92b25d",
+        "decodedRgba2x": "21524b18787c1fba0a27a4f685a442eabb75ad68e263bfb3dd5e257ac01743a4"
+      }
+    },
+    "shell_hand_slot_06": {
+      "textureFile": "shells/shell_hand_slot_06.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_06.png",
+      "texWidth": 89,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 71,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          8.27,
+          29.21
+        ],
+        [
+          66.73,
+          29.21
+        ],
+        [
+          66.27,
+          100.66
+        ],
+        [
+          8.73,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          0.0,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 6,
+        "offsetUnits": 0.0,
+        "lateralOffsetUnits": -0.0,
+        "distanceUnits": 24.0,
+        "angleDeg": 0.0,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 736.8073,
+        "shiftX": 0.0,
+        "shiftY": 0.232071,
+        "lateralOffsetUnits": -0.0,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228028,
+        "resolution1x": [
+          117,
+          152
+        ],
+        "resolution2x": [
+          234,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2,
+          "top": 0.2078,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 7.2,
+          "top": 13.443,
+          "right": 38.651,
+          "bottom": 27.09
+        },
+        "shadowCatcherPeak": 0.372,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          94,
+          100,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            70,
+            166
+          ],
+          "bottom": [
+            81,
+            89,
+            98
+          ]
+        },
+        "bytes1x": 9043,
+        "bytes2x": 26629
+      },
+      "sha256": {
+        "decodedRgba1x": "98743eeebb4f03d5f3136e2b8f7f8c8c904a561c20de0ed11f5fb21fe5983cb6",
+        "decodedRgba2x": "9e82321606dd8f26883d6e76702a04463d39aacea66bca86695d0f098e7730a3"
+      }
+    },
+    "shell_hand_slot_07": {
+      "textureFile": "shells/shell_hand_slot_07.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_07.png",
+      "texWidth": 90,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 72,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          9.33,
+          29.21
+        ],
+        [
+          67.78,
+          29.21
+        ],
+        [
+          66.25,
+          100.66
+        ],
+        [
+          8.71,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          -1.23,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 7,
+        "offsetUnits": 0.75,
+        "lateralOffsetUnits": -0.75,
+        "distanceUnits": 24.0,
+        "angleDeg": 1.79,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 730.5631,
+        "shiftX": 0.575808,
+        "shiftY": 0.230104,
+        "lateralOffsetUnits": -0.75,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228017,
+        "resolution1x": [
+          118,
+          152
+        ],
+        "resolution2x": [
+          236,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2,
+          "top": 0.2078,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 11.8,
+          "top": 13.443,
+          "right": 38.494,
+          "bottom": 27.624
+        },
+        "shadowCatcherPeak": 0.3694,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          94,
+          100,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            69,
+            166
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 9458,
+        "bytes2x": 28214
+      },
+      "sha256": {
+        "decodedRgba1x": "d7c5609f6907efb3bc1ebcfb4abc338f7d6ac7cdf0d9b8ed478cb6ed423bc4f3",
+        "decodedRgba2x": "ca4347ef61d94dc70cfa6229644e73175152a62149ebe2c6a11bde09504c1f0d"
+      }
+    },
+    "shell_hand_slot_08": {
+      "textureFile": "shells/shell_hand_slot_08.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_08.png",
+      "texWidth": 91,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 73,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          11.01,
+          29.21
+        ],
+        [
+          69.47,
+          29.21
+        ],
+        [
+          66.86,
+          100.66
+        ],
+        [
+          9.32,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          -2.46,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 8,
+        "offsetUnits": 1.5,
+        "lateralOffsetUnits": -1.5,
+        "distanceUnits": 24.0,
+        "angleDeg": 3.576,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 712.4498,
+        "shiftX": 1.117905,
+        "shiftY": 0.224399,
+        "lateralOffsetUnits": -1.5,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.227996,
+        "resolution1x": [
+          121,
+          152
+        ],
+        "resolution2x": [
+          242,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2039,
+          "top": 0.2078,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 11.008,
+          "top": 13.439,
+          "right": 38.376,
+          "bottom": 27.969
+        },
+        "shadowCatcherPeak": 0.3685,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          95,
+          101,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            69,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            98
+          ]
+        },
+        "bytes1x": 9804,
+        "bytes2x": 29121
+      },
+      "sha256": {
+        "decodedRgba1x": "6aeeb15b5ac7232c44015fee6422ae83008ca5e29afc80812f20b759db00be2a",
+        "decodedRgba2x": "58289ed1c803b9f1260e16339076a12875ac307fe696348ea3dd02a799dd68e7"
+      }
+    },
+    "shell_hand_slot_09": {
+      "textureFile": "shells/shell_hand_slot_09.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_09.png",
+      "texWidth": 93,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 75,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          13.19,
+          29.21
+        ],
+        [
+          71.65,
+          29.21
+        ],
+        [
+          67.96,
+          100.66
+        ],
+        [
+          10.43,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          -3.69,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 9,
+        "offsetUnits": 2.25,
+        "lateralOffsetUnits": -2.25,
+        "distanceUnits": 24.0,
+        "angleDeg": 5.356,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 700.8656,
+        "shiftX": 1.647055,
+        "shiftY": 0.22075,
+        "lateralOffsetUnits": -2.25,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228038,
+        "resolution1x": [
+          123,
+          152
+        ],
+        "resolution2x": [
+          246,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2078,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 7.608,
+          "top": 13.435,
+          "right": 38.271,
+          "bottom": 28.725
+        },
+        "shadowCatcherPeak": 0.3666,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          95,
+          101,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            70,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 10159,
+        "bytes2x": 29955
+      },
+      "sha256": {
+        "decodedRgba1x": "da4491dbc7c175646285f15fc6798192feb1adb21f390cc3ba04a167a389d82d",
+        "decodedRgba2x": "23d4e302e23d4563a7dd5fa14b9caec66f2436e240c9d2f3ececb847bfd96432"
+      }
+    },
+    "shell_hand_slot_10": {
+      "textureFile": "shells/shell_hand_slot_10.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_10.png",
+      "texWidth": 96,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 78,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          15.87,
+          29.21
+        ],
+        [
+          74.33,
+          29.21
+        ],
+        [
+          69.57,
+          100.66
+        ],
+        [
+          12.03,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          -4.92,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 10,
+        "offsetUnits": 3.0,
+        "lateralOffsetUnits": -3.0,
+        "distanceUnits": 24.0,
+        "angleDeg": 7.125,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 684.1782,
+        "shiftX": 2.142133,
+        "shiftY": 0.215494,
+        "lateralOffsetUnits": -3.0,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.22804,
+        "resolution1x": [
+          126,
+          152
+        ],
+        "resolution2x": [
+          252,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 3.6,
+          "top": 13.439,
+          "right": 38.137,
+          "bottom": 29.906
+        },
+        "shadowCatcherPeak": 0.3638,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          95,
+          101,
+          108
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            69,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 10390,
+        "bytes2x": 30852
+      },
+      "sha256": {
+        "decodedRgba1x": "e89134637c111c06bcfdab4ada0d1665d9dbab0b1074b1db7753f3f72bcb2f58",
+        "decodedRgba2x": "ea2c85519b56984f62c8de34e859e58d714e0df925ca6ab0e9e56cf5161b3f36"
+      }
+    },
+    "shell_hand_slot_11": {
+      "textureFile": "shells/shell_hand_slot_11.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_11.png",
+      "texWidth": 98,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 80,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          18.05,
+          29.21
+        ],
+        [
+          76.51,
+          29.21
+        ],
+        [
+          70.68,
+          100.66
+        ],
+        [
+          13.14,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          -6.15,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 11,
+        "offsetUnits": 3.75,
+        "lateralOffsetUnits": -3.75,
+        "distanceUnits": 24.0,
+        "angleDeg": 8.881,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 673.4882,
+        "shiftX": 2.63461,
+        "shiftY": 0.212127,
+        "lateralOffsetUnits": -3.75,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.228048,
+        "resolution1x": [
+          128,
+          152
+        ],
+        "resolution2x": [
+          256,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 3.2,
+          "top": 13.439,
+          "right": 38.031,
+          "bottom": 30.729
+        },
+        "shadowCatcherPeak": 0.3615,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          94,
+          100,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            69,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 10740,
+        "bytes2x": 31037
+      },
+      "sha256": {
+        "decodedRgba1x": "fd5449669a3523ee6efe342dca467e51cc3e71013d72df94c56e586af957b456",
+        "decodedRgba2x": "1320f32e6550a72a65236e8cf07c879014b7c81b7fcf9733add1b376420d588b"
+      }
+    },
+    "shell_hand_slot_12": {
+      "textureFile": "shells/shell_hand_slot_12.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_12.png",
+      "texWidth": 100,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 82,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          20.73,
+          29.21
+        ],
+        [
+          79.19,
+          29.21
+        ],
+        [
+          72.28,
+          100.66
+        ],
+        [
+          14.74,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          -7.37,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "row",
+        "index": 12,
+        "offsetUnits": 4.5,
+        "lateralOffsetUnits": -4.5,
+        "distanceUnits": 24.0,
+        "angleDeg": 10.62,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 658.0646,
+        "shiftX": 3.088177,
+        "shiftY": 0.207269,
+        "lateralOffsetUnits": -4.5,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.22804,
+        "resolution1x": [
+          131,
+          152
+        ],
+        "resolution2x": [
+          262,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 10
+        },
+        "alphaPeak1x": {
+          "left": 0.2,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 1.4,
+          "top": 13.435,
+          "right": 37.839,
+          "bottom": 31.373
+        },
+        "shadowCatcherPeak": 0.3602,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          94,
+          100,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            69,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 10801,
+        "bytes2x": 32013
+      },
+      "sha256": {
+        "decodedRgba1x": "faf0b19374f3ddac3069f96cc7428645ab8a65c98463812eeb7087800fbf99b0",
+        "decodedRgba2x": "d6f9a2441012481ae840ab0b5a2e043d8c5e476858ada80965c0f0acc0c81de5"
+      }
+    },
+    "shell_hand_slot_draw": {
+      "textureFile": "shells/shell_hand_slot_draw.png",
+      "textureFile2x": "shells/2x/shell_hand_slot_draw.png",
+      "texWidth": 103,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 85,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          23.83,
+          29.21
+        ],
+        [
+          82.28,
+          29.21
+        ],
+        [
+          73.93,
+          100.66
+        ],
+        [
+          16.39,
+          100.66
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          67.96,
+          0.0
+        ],
+        "y": [
+          -9.03,
+          81.72
+        ]
+      },
+      "projection": "hand-slot-perspective",
+      "handSlot": {
+        "kind": "draw",
+        "index": null,
+        "offsetUnits": 5.5125,
+        "lateralOffsetUnits": -5.5125,
+        "distanceUnits": 24.0,
+        "angleDeg": 12.936,
+        "faceUp": true
+      },
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 28.0,
+        "projection": "perspective",
+        "lensMm": 643.3314,
+        "shiftX": 3.697272,
+        "shiftY": 0.202629,
+        "lateralOffsetUnits": -5.5125,
+        "distanceUnits": 24.0,
+        "pixelsPerUnit2x": 181.227924,
+        "resolution1x": [
+          134,
+          152
+        ],
+        "resolution2x": [
+          268,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 11
+        },
+        "alphaPeak1x": {
+          "left": 0.2,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1176
+        },
+        "alphaMass1x": {
+          "left": 1.4,
+          "top": 13.435,
+          "right": 37.463,
+          "bottom": 32.506
+        },
+        "shadowCatcherPeak": 0.3578,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          94,
+          100,
+          107
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            3,
+            69,
+            165
+          ],
+          "bottom": [
+            81,
+            89,
+            99
+          ]
+        },
+        "bytes1x": 11015,
+        "bytes2x": 32125
+      },
+      "sha256": {
+        "decodedRgba1x": "862c1be73dd7bb3e0b0bed84115a98e96db1b664fb795ba1e846a61acc5c4787",
+        "decodedRgba2x": "0c847fd0b2d6010599ac1cfacc0e2060433c67bd31036c530da07a72766e8ba1"
       }
     },
     "shell_wall_front_slot_00": {

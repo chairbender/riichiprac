@@ -35,7 +35,7 @@ starting point for Phase 1, with **no table model**:
 
 ```bash
 bash tools/render/bake-shells.sh --bake    # bake 1x + 2x, build sheets, validate
-bash tools/render/bake-shells.sh --audition # front/back wall fan calibration + sheets
+bash tools/render/bake-shells.sh --audition # standing-hand fan calibration + sheets
 bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
@@ -43,7 +43,7 @@ bash tools/render/bake-felt.sh             # regenerate frontend/public/table/fe
 ```
 
 `--bake` is the one command that regenerates the committed assets: it renders
-all 77 shells (nine base + 68 front/back slot shells) at @1x and @2x with the
+all 90 shells (eight base + 14 hand slots + 68 front/back wall slots) at @1x and @2x with the
 pinned Blender at the current base scale, measures each render, writes
 `frontend/public/table/shells/*.png`, `shells/2x/*.png` and
 `frontend/public/table/shells.json`, regenerates the review sheets under
@@ -51,7 +51,7 @@ pinned Blender at the current base scale, measures each render, writes
 `--bake --verify-determinism` additionally renders every shell a second time and
 compares the decoded RGBA.
 
-`--audition` is the front/back wall fan calibration path. It renders every candidate in
+`--audition` is the standing-hand fan calibration path. It renders every candidate in
 `shell-spec.json`'s `audition` block into `build/review/candidates/{1x,2x}/`,
 writes the candidate manifest `build/review/shell-candidates.json`, writes one
 labelled sheet per auditioned shell
@@ -189,20 +189,19 @@ isotropic and low-frequency, so the non-uniform stretch does not read as a
 stretched pattern. This decision is recorded in `felt-spec.json` under
 `runtime`.
 
-## The committed bake (Phase 1c + the wall fan)
+## The committed bake (Phase 1c + the hand/wall fans)
 
-Seventy-seven shells are baked, measured and committed at the Phase 1b base (the
-Phase 1 `@2x` size): the nine-shell base below plus the 68 front/back wall slot
-shells (17 slots × 2 walls × face-down/face-up). `shell-spec.json` carries each
-base shell's pose (Euler degrees), camera (azimuth/elevation + which local face
-is visible) and expected aspect, plus the compact `wallSlots` block the baker
-expands into the slot catalogue. `bake_shells.py` renders each, measures the
-alpha silhouette, projects the `faceQuad`, and writes both texture scales. The
-felt is unchanged.
+Ninety shells are baked, measured and committed at the Phase 1b base (the Phase 1
+`@2x` size): the eight-shell base below, the 14-slot standing-hand fan, and the
+68 front/back wall slot shells (17 slots × 2 walls × face-down/face-up).
+`shell-spec.json` carries each base shell's pose (Euler degrees), camera
+(azimuth/elevation + which local face is visible) and expected aspect, plus the
+compact `handSlots` and `wallSlots` blocks the baker expands into the slot
+catalogue. `bake_shells.py` renders each, measures the alpha silhouette, projects
+the `faceQuad`, and writes both texture scales. The felt is unchanged.
 
 | Id | Projection | Pose | Camera | Body (@1x) | Texture @1x / @2x | gridStepPx x / y | stackStepPx |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `shell_hand_standing` | front elevation | rotX 90° | az 0 / el 28 | 70 × 102 | 88 × 120 / 176 × 240 | (67.27, 0) / (0, 79.18) | — |
 | `shell_flat_upright` | low-angle top-down | — | az 0 / el 45 | 72 × 102 | 90 × 120 / 180 × 240 | (69.4, 0) / (0, 65.44) | — |
 | `shell_flat_sideways` | low-angle top-down | rotZ 90° | az 0 / el 45 | 106 × 95 | 124 × 113 / 248 × 226 | (0, 55.15) / (104, 0) | — |
 | `shell_wall_horizontal` | low-angle top-down | rotX 180° | az 0 / el 45 | 72 × 102 | 90 × 120 / 180 × 240 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
@@ -212,25 +211,27 @@ felt is unchanged.
 | `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
-The nine base PNGs are **332,068 B** (84,465 @1x + 247,603 @2x). The 68 slot
-shells add **2,539,608 B**, so all 77 are **2,871,676 B** (725,973 @1x +
-2,145,703 @2x; budget 4,194,304 B); the largest single shell is 43,721 B
-(@1x + @2x, ceiling 262,144 B). `shells.json` is **268,242 B** (budget
-524,288 B). The standing hand lands on the asked-for 88 × 120 / 176 × 240
-texture; the body long axis is 102 px (the 104 px target minus the anti-aliased
-crop). The budgets were raised for the fan; a board loads only the slots it
-draws, so the initial load stays well under the 4 MiB limit.
+The eight base PNGs are **297,564 B** (75,440 @1x + 222,124 @2x). The 14 hand
+slots add **558,566 B** and the 68 wall slots add **2,539,608 B**, so all 90 are
+**3,395,738 B** (858,258 @1x + 2,537,480 @2x; budget 4,194,304 B); the largest
+single shell is 43,721 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
+**310,249 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
+(102 px measured); the centre is 89 × 120 @1x and the drawn slot 103 × 120. The
+budgets were raised for the fans; a board loads only the slots it draws, so the
+initial load stays well under the 4 MiB limit.
 
 **Why the projections are what they are.**
 
-- The ponds and the hand are *axis-aligned rectangles*: azimuth 0. A yaw of even
-  6° made the tile a parallelogram whose bounding box left felt gaps between
-  neighbours, so the "slightly right" extrusion is carried by the baked shadow
-  and AO instead of a sheared silhouette.
-- The hand is a front elevation at 28°: enough lift to see the top bevel and the
-  blue resin sliver without the face becoming too grazing. The measured face
-  luma is 61 (blue sliver on the top edge) against a 94–107 grey face, and the
-  diffuse shadow stays out of the glyph area.
+- The ponds and melds are *axis-aligned rectangles*: azimuth 0, no per-slot
+  camera. A yaw of even 6° made the tile a parallelogram whose bounding box left
+  felt gaps between neighbours, so the "slightly right" extrusion is carried by
+  the baked shadow and AO instead of a sheared silhouette. The four seats are
+  glyph orientations, not camera variants.
+- The hand is a **per-slot fan** at 28°: the centre tile is straight on, the
+  outer tiles and the drawn tile are seen from the player's eye, and the face
+  stays a vertical front elevation with the top bevel and blue sliver. The
+  measured face luma is still 94–107 (dim against the pond's ~220); brightening
+  it is a deferred lighting decision.
 - The ponds and the generic wall shell are at 45°: the face is foreshortened and
   the near thickness face is clearly visible. This was the "all shells are too
   top-down" fix.
@@ -262,6 +263,83 @@ draws, so the initial load stays well under the 4 MiB limit.
 - **The contact shadow is diffuse and subtle**: 11–12 px right/bottom at peak
   alpha 0.12 with an 8 px blur and a 16 px falloff, plus a 1 px / 0.20 AO
   fringe. Phase 1/1b's 3–4 px band at 0.33 was the "too tight" review note.
+
+### The standing-hand fan
+
+The human's hand is a **13-tile row plus a separate drawn tile**, and each slot
+has its own camera offset from the player's eye. The row is centred on the
+player, so slot 06 is straight on; slots 00/12 are the outer ends. The drawn
+tile sits after the +0.35 advance gap and gets its own slot.
+
+The spec's `handSlots` block is the source of truth:
+
+```json
+"handSlots": {
+  "elevationDeg": 28, "distanceUnits": 24.0, "stepUnits": 0.75,
+  "rowCount": 13, "centreIndex": 6, "drawOffsetUnits": 5.5125
+}
+```
+
+For each row slot:
+
+```text
+offsetUnits        = (index - 6) * 0.75
+lateralOffsetUnits = -offsetUnits          # the camera sits at the player's x
+angleDeg           = atan(|offsetUnits| / 24.0)
+```
+
+The drawn tile uses +5.5125 units (the 13th tile's right edge at +4.875 plus the
++0.35 × 0.75 gap). The camera is the same off-axis perspective as the walls:
+azimuth 0, elevation 28, no yaw or roll; the tile is never rotated (`rotX 90`
+stands it up, `rotZ 0` keeps the row upright). The 24-unit distance is a
+**stylised** eye distance, not the physical seat distance: the physical distance
+would make the outer face skew much stronger than the hand should read.
+
+| Slot | Offset | Angle at d24 | Body | Texture @1x / @2x | Bytes @1x + @2x |
+| --- | --- | --- | --- | --- | --- |
+| 06 (centre) | 0 | 0.00° | 71 × 102 | 89 × 120 / 178 × 240 | 9,043 + 26,629 |
+| 00 / 12 | ∓4.50 | 10.62° | 82 × 102 | 100 × 120 / 200 × 240 | 10,569 + 30,941 / 10,801 + 32,013 |
+| drawn | +5.5125 | 12.94° | 85 × 102 | 103 × 120 / 206 × 240 | 11,015 + 32,125 |
+
+Measured on the committed bake:
+
+- The hand row advances by `gridStepPx.x` = **67.96**, not the advance width, so
+  the outer bodies overlap their inner neighbour and the visible inner side is
+  hidden in a packed hand (same as the wall). The isolated/exploded sheet shows
+  the fan; the packed sheet shows the real row.
+- The drawn tile is **91.75 px** centre-to-centre from the 12th tile (1.35
+  steps); its inner side face fills part of the gap.
+- The face is **vertical**, so the perspective trapezoid is the other way round
+  from the wall: the top edge is closer to the elevated camera and is the longer
+  one (58.5 px top vs 57.5 px bottom at the centre), and the left/right edges
+  converge. The checker takes a `verticalFace` flag for this.
+- The blue resin sliver stays on the top edge for every slot (`[3, 69, 165]` on
+  the drawn slot), and the face is still the el-28 dim read (`94, 100, 107`,
+  luma 99). Brightening it is a deferred lighting decision.
+- Each record carries `handSlot` (`kind`, `index`, `offsetUnits`,
+  `lateralOffsetUnits`, `distanceUnits`, `angleDeg`, `faceUp`). The hand is
+  face-up, so the 14 slots are 14 face-variant atlas keys, i.e. 14 × 37 = 518
+  sprites in Phase 2.
+
+**The top hand** reuses the **back-wall fan's middle 13 slots, 2..14**, one tier
+high. It sits just outside the back wall and shares that perspective; it adds no
+face-down shells and no face-up atlas keys. The row step is 69.64 px and the
+outer slot is 4.69°.
+
+**Open calibration.** `--audition` moves the outer row slot and the drawn slot
+to 14 / 18 / 40 units, with the committed 24 as REF, so the amount of side
+reveal and face skew can be picked without rotating a tile. The centre stays
+straight on.
+
+### Straight-on ponds and melds
+
+The ponds and called melds are **not** per-slot. They stay straight-on (azimuth
+0) with one shell per body orientation (`shell_flat_upright`,
+`shell_flat_sideways`), and the four seats are glyph orientations handled by the
+face variants, not camera variants. The 6 × 3 pond is the most-read face; a
+per-slot pond would multiply 18 positions across up to four ponds and lose the
+uniform grid read. The calls/melds follow the same rule for now; a future meld
+perspective is a separate task, not a pond change.
 
 ### The front/back wall slot fan
 
@@ -408,7 +486,9 @@ Fields the runtime and the checker rely on:
   column step, so it is `gridStepPx.x`, not `.y`; always pick the axis whose
   published vector points down the screen. For the front/back wall row, step by
   `gridStepPx.x` (the 69.7 px width axis), **not** `advanceWidth`: the outer
-  slots' bodies are wider because they include the visible inner side.
+  slots' bodies are wider because they include the visible inner side. The hand
+  row is the same: step by `gridStepPx.x` (67.96 px), not the 71–85 px advance
+  width, and add the drawn tile at its own +5.5125-unit offset.
 - `stackCount` / `stackStepPx` — wall shells only. A wall column is two tiles;
   `stackCount` is 2 and `stackStepPx` is the vector from the lower tier's body
   top-left to the upper tier's, i.e. the projected tile **thickness** (straight
@@ -420,25 +500,31 @@ Fields the runtime and the checker rely on:
   bottom-left). The runtime rotates the glyph by `faceRotationDeg` (90 for
   `shell_flat_sideways`, 180 for the back-wall dora slots) and maps the glyph's
   corners onto these. Orthographic quads are parallelograms; perspective quads
-  are trapezoids, so the compositor maps the glyph projectively.
+  are trapezoids, so the compositor maps the glyph projectively. A horizontal
+  wall face has its lower edge longer; the vertical standing-hand face has its
+  top edge longer.
 - `measured` — the numbers the checker re-derives from the committed PNG:
   nonzero-alpha extent/peak/mass per padded side, the three structural colour
   samples, the body inset, and the byte counts.
 - `sha256.decodedRgba1x/2x` — the sha256 of the *decoded* RGBA buffer, not the
   PNG container bytes. Re-baking the same spec must reproduce them; a
   hand-edited PNG fails the check.
-- `camera.projection` — `"orthographic"` for the seven grid shells, or
-  `"perspective"` for the four side-wall shells and the 68 front/back slot
-  shells. A perspective record also carries `lensMm`, `shiftX`, `shiftY`,
-  `lateralOffsetUnits` and `distanceUnits`; an orthographic one carries
+- `camera.projection` — `"orthographic"` for the grid shells, or
+  `"perspective"` for the four side-wall shells, the 68 front/back wall slots and
+  the 14 hand slots. A perspective record also carries `lensMm`, `shiftX`,
+  `shiftY`, `lateralOffsetUnits` and `distanceUnits`; an orthographic one carries
   `orthoScale`. The tile is never yawed: the camera sits inside the wall (or at
-  the human's x for a front/back slot), so the projected face is a trapezoid.
-  The table-parallel edge pair stays horizontal and the near edge is longer; the
-  depth-direction pair converges.
+  the human's x for a wall/hand slot), so the projected face is a trapezoid.
+  The table-parallel edge pair stays horizontal and the near edge is longer (the
+  lower edge for a horizontal wall face, the upper edge for the vertical hand
+  face); the depth-direction pair converges.
 - `wallSlot` — present only on the front/back slot shells. It records `wall`
   (`front`/`back`), the 0–16 `index`, `offsetUnits`, `lateralOffsetUnits`,
   `distanceUnits`, `angleDeg` and `faceUp`. It is the audit trail for the fan and
   lets the checker prove the slot and camera cannot drift from `wallSlots`.
+- `handSlot` — present only on the 14 hand slots. It records `kind`
+  (`row`/`draw`), `index`, `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`,
+  `angleDeg` and `faceUp`; it does the same for `handSlots`.
 - `rig` — Blender version, engine/device/samples/seed, colour management, the
   key's screen-space direction, the shadow/AO contract, the 2-tile stack, the
   target long-axis size, and each shell's framing. It is the audit trail for a
@@ -502,13 +588,18 @@ and no roll. Measured on the committed shell the near long edge is 84.0 px
 against the far 81.3 px, and the far edge sits 7.5 px toward the centre. The
 user approved keeping the side walls as they are.
 
-The remaining visual is the **front/back wall fan**: the user asked for the
-perspective to change per slot, as with the hand. The tile straight in front of
-the human is straight on; the outer slots show their inner side as the human's
-eye sees them. The committed fan uses the physical eye distances (front 40.8,
-back 54.8 units; outer angles 8.37° / 6.25°). `--audition` moves the **outer
-slot's eye** to 24 / 32 / 56 units (front) and 36 / 46 / 72 (back), keeping the
-lateral offset, so the fan strength can be picked without rotating a tile:
+The **front/back wall fan is approved**: the tile straight in front of the human
+is straight on; the outer slots show their inner side as the human's eye sees
+them. The committed fan uses the physical eye distances (front 40.8, back 54.8
+units; outer angles 8.37° / 6.25°). The ponds and melds are confirmed
+straight-on.
+
+The remaining visual is the **standing-hand fan**: the 13-tile row plus the
+drawn tile, each with its own camera offset from the player's eye. The centre
+slot is straight on; the outer row is 10.62° and the drawn tile 12.94° at the
+committed stylised 24-unit eye distance. `--audition` moves the **outer row slot
+and the drawn slot** to 14 / 18 / 40 units, keeping the lateral offset, so the
+fan strength can be picked without rotating a tile:
 
 ```bash
 bash tools/render/bake-shells.sh --audition                    # + sheets + validation
@@ -516,10 +607,10 @@ bash tools/render/bake-shells.sh --audition --verify-determinism  # + re-render
 bash tools/render/bake-shells.sh --check-audition              # no Blender
 ```
 
-Each candidate is the outer slot with its lateral offset fixed and the eye
-distance varied; the sheet shows a packed six-tile row plus an isolated tile
-(the isolated tile shows the full side reveal). The committed reference is the
-physical distance. The output is gitignored:
+Each candidate is the outer row slot or drawn slot with its lateral offset fixed
+and the eye distance varied; the sheet shows a packed six-tile row plus an
+isolated tile (the isolated tile shows the full side reveal and face skew). The
+committed reference is 24 units. The output is gitignored:
 
 | Path | Contents |
 | --- | --- |
@@ -527,16 +618,22 @@ physical distance. The output is gitignored:
 | `build/review/shell-candidates.json` | candidate records (same shape as `shells.json`, plus `candidate`) |
 | `build/review/shell-candidates-shell_wall_front_slot_16.png` | 3 eye distances + REF, front outer slot |
 | `build/review/shell-candidates-shell_wall_back_slot_16.png` | 3 eye distances + REF, back outer slot |
+| `build/review/shell-candidates-shell_hand_slot_12.png` | 3 hand eye distances + REF, outer row slot |
+| `build/review/shell-candidates-shell_hand_slot_draw.png` | 3 hand eye distances + REF, drawn slot |
 | `build/review/wall-stack-1x.png` | packed front/back 17-stack runs + side-wall columns |
 | `build/review/wall-fan-1x.png` | exploded front/back fans, both halves, every slot numbered |
+| `build/review/hand-stack-1x.png` | packed 13-tile hand + drawn tile + top hand |
+| `build/review/hand-fan-1x.png` | exploded hand fan + top hand, every slot numbered |
+| `build/review/hand-right-zoom3x.png` | 3x zoom of the hand right end |
+| `build/review/hand-fan-right-zoom3x.png` | 3x zoom of the exploded right end |
 | `build/review/wall-fan-front-right-zoom3x.png` | 3x zoom of the front right end |
 | `build/review/wall-fan-back-right-zoom3x.png` | 3x zoom of the back right end |
 
 `check-shells.mjs --audition` keeps the committed checks and adds the candidate
 ones (both scales, the base long axis, the shadow/AO contract, the perspective
 trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
-printed-text and composited-tile pixel checks; the full run reports **4,642
-checks**. The committed bake alone reports **4,316** (including the review-sheet
+printed-text and composited-tile pixel checks; the full run reports **5,415
+checks**. The committed bake alone reports **5,079** (including the review-sheet
 pixels when the sheets are present).
 
 ## The Blender shell rules
@@ -544,11 +641,12 @@ pixels when the sheets are present).
 The shell scene follows the architecture, not the retired pipeline:
 
 - **Orthographic cameras for the grid shells**, so parallel edges stay parallel.
-  The walls are the exception: the side walls and every front/back slot use an
-  off-axis **perspective** camera with no yaw and no roll. The side-wall camera
-  sits inside the wall (§10.4); the front/back slots sit at the human's x for
-  that slot (§10.8). The tile stays square to the table while the near face
-  shows.
+  The walls and the standing hand are the exception: the side walls, every
+  front/back slot and every hand slot use an off-axis **perspective** camera
+  with no yaw and no roll. The side-wall camera sits inside the wall (§10.4); the
+  wall/hand slots sit at the human's x for that slot (§10.8, §10.9). The tile
+  stays square to the table while the near face shows; the hand's vertical face
+  has its top edge longer, the wall's horizontal face its lower edge.
 - **One locked key at top-left-front plus a weak ambient fill.** The key's
   authored azimuth/elevation (315° / 55°) is decomposed once in a
   front-elevation camera's basis; every shell then re-expresses the same
@@ -585,18 +683,19 @@ INFO felt edges L/R 35.61/35.52 T/B 41.66/40.44
 PASS felt is 559465 B (budget 1572864 B)
 PASS vignette centre/corner luma ratio is 2.831 (>= 1.5)
 PASS left/right edge symmetry is 0.272% (<= 6%)
-PASS shell_wall_front_slot_16 perspective keystone has the near edge longer (59.8 > 59.2 px)
+PASS shell_hand_slot_12 perspective keystone has the near edge longer (58.5 > 57.5 px)
+PASS shell_hand_slot_12 handSlot offset 4.5 follows from handSlots (4.5)
+PASS shell_hand_slot_draw handSlot kind is row/draw (draw)
+PASS shell_hand_slot_draw top edge carries the blue resin sliver (3,69,165)
 PASS shell_wall_front_slot_16 camera sits at the human's x (lateral -6.0 = -offset)
-PASS shell_wall_back_slot_16_faceup faceRotationDeg follows the wall (180)
-PASS shell_wall_front_slot_16 stackStepPx is the projected thickness (-39.02 vs -38.55 px)
-PASS wall-fan-1x.png composites its tiles (234460 px)
-INFO shell textures total 2871676 B across 77 shells and 2 scales
-OK 4316 checks passed
+PASS hand-fan-1x.png composites its tiles (271951 px)
+INFO shell textures total 3395738 B across 90 shells and 2 scales
+OK 5079 checks passed
 ```
 
-`--audition` additionally validates the fan calibration and its sheets; on the
-current output it reports `OK 4,642 checks passed` (the committed checks plus the
-candidate and sheet checks). The committed-only run stays at 4,316.
+`--audition` additionally validates the hand fan calibration and its sheets; on
+the current output it reports `OK 5,415 checks passed` (the committed checks plus
+the candidate and sheet checks). The committed-only run stays at 5,079.
 
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
@@ -621,10 +720,13 @@ To review the shells, bake (or just regenerate the sheets) and open them:
 
 ```bash
 node tools/render/scripts/review-shells.mjs
-xdg-open tools/render/build/review/shells-row-1x.png      # the nine base shells, catalogue order
+xdg-open tools/render/build/review/shells-row-1x.png      # the eight base shells, catalogue order
 xdg-open tools/render/build/review/discard-row-1x.png     # 6-tile row + isolated + riichi
+xdg-open tools/render/build/review/hand-stack-1x.png      # packed hand row + drawn tile + top hand
+xdg-open tools/render/build/review/hand-fan-1x.png        # exploded hand fan + top hand, numbered
+xdg-open tools/render/build/review/hand-fan-right-zoom3x.png
 xdg-open tools/render/build/review/wall-stack-1x.png      # packed 17-stack front/back walls + side walls
-xdg-open tools/render/build/review/wall-fan-1x.png        # exploded fan, every slot numbered
+xdg-open tools/render/build/review/wall-fan-1x.png        # exploded front/back fans, every slot numbered
 xdg-open tools/render/build/review/wall-fan-front-right-zoom3x.png  # front right-end reveal
 xdg-open tools/render/build/review/wall-fan-back-right-zoom3x.png   # back right-end reveal
 xdg-open tools/render/build/review/shell-candidates-shell_wall_front_slot_16.png
@@ -642,28 +744,27 @@ previous tile's shadow lands on it, and the isolated tile's shadow reads 61.1
 against bare felt 66.8. The diffuse band is deliberately subtle in these
 numbers; the strength is a visual call for the user.
 
-To review the open side-wall camera offset, run `--audition` (above) and open
-the two sheets:
+To review the open hand fan strength, run `--audition` (above) and open the
+two sheets:
 
 ```bash
-xdg-open tools/render/build/review/shell-candidates-shell_wall_side_left.png
-xdg-open tools/render/build/review/shell-candidates-shell_wall_side_right.png
+xdg-open tools/render/build/review/shell-candidates-shell_hand_slot_12.png
+xdg-open tools/render/build/review/shell-candidates-shell_hand_slot_draw.png
 ```
 
 Each sheet has a header with the shell id, the base size and the question it
-asks, then one column per candidate (offsets 1, 3 and 4 units) plus a
-`REF COMMITTED` column with the committed 2-unit shell. Every column is a 2-high
-stack built from that candidate's own `gridStepPx` and `stackStepPx`, and the
-labels print the camera, texture, body, projected face, stack rise and byte
-numbers. The sheet is a review artefact: it is not the layout engine.
+asks, then one row per candidate (14 / 18 / 40 units) plus a `REF COMMITTED`
+row at 24 units. Every row is a packed six-tile run plus an isolated tile, so
+the isolated tile shows the full side reveal and face skew; the labels print the
+camera, texture, body, projected face, eye distance and byte numbers. The sheet
+is a review artefact: it is not the layout engine.
 
 State the numbers the check already verified, then ask the user the questions
-only they can answer: is the diffuse shadow the right strength and softness;
-does the 2-tile stack read as a wall; does the dora face-up top tile sit
-correctly on its stack; does the 2-unit camera offset show the right amount of
-near end face (or 1/3/4 units); is the standing hand's dimmer face acceptable
-next to the pond? Compare decoded pixels, not PNG container bytes:
-zlib can change the container while the image is identical.
+only they can answer: does the hand fan read at 24 units, or does it need the
+14/18/40 alternatives; is the drawn tile still the same tile type; is the
+standing hand's dimmer face acceptable next to the pond; is the packed hand row
+with the drawn gap the right read? Compare decoded pixels, not PNG container
+bytes: zlib can change the container while the image is identical.
 
 ## Legacy
 
