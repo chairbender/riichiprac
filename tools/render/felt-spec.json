@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "full-screen felt raster",
+  "output": "../../frontend/public/table/felt.png",
+  "width": 2048,
+  "height": 1280,
+  "colorType": "rgb8",
+  "seed": 20261113,
+  "baseColor": [26, 80, 56],
+  "noise": [
+    { "cell": 320, "amplitude": 2.8 },
+    { "cell": 120, "amplitude": 1.8 },
+    { "cell": 40, "amplitude": 1.8 },
+    { "cell": 14, "amplitude": 0.8 }
+  ],
+  "vignette": {
+    "radiusX": 0.94,
+    "radiusY": 0.86,
+    "innerRadius": 0.3,
+    "outerRadius": 1.22,
+    "strength": 0.64,
+    "centerLift": 0.035
+  },
+  "dither": {
+    "matrix": 8,
+    "amplitude": 0.7
+  },
+  "runtime": {
+    "fit": "100% 100%",
+    "note": "Stretch the raster to the viewport instead of using cover: the baked vignette must hug the actual screen edges on both a 16:10 desktop and a 9:19.5 phone. cover would scale by the long axis and crop the left/right vignette away in portrait. The noise is isotropic and low-frequency, so the non-uniform stretch does not read as a stretched pattern."
+  },
+  "budgets": {
+    "bytes": 1572864
+  }
+}

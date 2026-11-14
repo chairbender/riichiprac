@@ -24,8 +24,9 @@
 > | 4 | 261113-2202 | painter's-algorithm board renderer |
 > | 5 | 261113-220215 | hover lift, hitboxes, overlays, accessibility |
 >
-> `tools/render/README.md` documents the retired pipeline and is also marked
-> legacy until Phase 0 replaces it.
+> The retired pipeline files were removed in Phase 0; `tools/render/` now holds
+> the shell baker and felt pipeline (see its README). Nothing below is a
+> runnable instruction.
 
 Status (historical): design finalised by Task 0. Tasks 1–12 were the old chain;
 the experimental SVG isometric view had already been removed.
@@ -178,15 +179,15 @@ The Blender script constructs everything procedurally:
 7. Compute, for every slot and orientation, the CSS `matrix3d` that maps the decal's
    local pixel rectangle onto that slot's face quad, and write it into the manifest.
 
-Illustrative command:
+Illustrative command (**historical; these files were removed in Phase 0**):
 
 ```bash
 blender --background --python tools/render/build_and_render.py -- \
   tools/render/scene-spec.json backend/table table
 ```
 
-`render.sh` wraps that call, adds the batch's own manifest/asset validation, and
-is the command to use (`bash tools/render/render.sh`).
+`render.sh` wrapped that call, added the batch's own manifest/asset validation,
+and was the command to use. It no longer exists.
 
 No manual Blender interaction is required. Parameters are edited in the spec/script and the
 batch is rerun.
@@ -295,7 +296,7 @@ directory. `drawOrder` is an integer; lower numbers are painted first, and the
 shipped bands are 0–39 wall/river/meld, 40–53 the hand row, 60+ overlays. A
 slot's `back` is the concealed-pose sprite for the *same* footprint (no face
 quad, no decal). `checks` and `assets` are the bake's own audit trail: the
-validator in `tools/render/scripts/check-assets.mjs` re-derives them from the
+validator in `tools/render/scripts/check-assets.mjs` (removed in Phase 0) re-derives them from the
 committed files.
 
 ## 9. Asset budget
@@ -405,7 +406,7 @@ headless browser).
     stored value, including the removed `isometric`, falls back to `stacked`.
 12. **Blender path and version.** Blender 4.5.9 LTS at
     `/home/kylehipke/.local/opt/blender-4.5.9/blender`, outside task worktrees.
-    `tools/render/README.md` records the path, and the render script checks
+    `tools/render/README.md` records the path, and the shell baker checks
     `bpy.app.version_string` and fails on anything but 4.5.9. Render settings:
     Cycles, 256 samples, OpenImageDenoise, AgX, transparent film. Assets are
     generated only by the script and are never hand-edited.
@@ -413,12 +414,12 @@ headless browser).
     a manifest/asset integrity test instead: every referenced path exists, every
     tile code has all five orientations, every face quad lies inside its body
     and inset, draw orders are unique per stack, and total asset bytes stay
-    under budget. Regeneration is a manual developer step documented in
-    `tools/render/README.md`:
-    `bash tools/render/render.sh`, which runs
+    under budget. Regeneration *was* a manual developer step documented in the
+    (retired) README: `bash tools/render/render.sh`, which ran
     `blender --background --python tools/render/build_and_render.py -- tools/render/scene-spec.json frontend/public/table table`
-    and then the manifest/asset validator.
-    A regeneration commits the script/spec, manifest, and sprites together.
+    and then the manifest/asset validator. Those files were removed in Phase 0;
+    the active pipeline is `tools/render/README.md`.
+    A regeneration committed the script/spec, manifest, and sprites together.
     **Task 2 amendment:** the *background* pass uses
     `assets.background.samples` (64) rather than the scene's 256. It is a full
     2880 × 1800 frame of broad, low-frequency lighting, so 64 + OIDN is
@@ -433,9 +434,9 @@ headless browser).
 
 ### Task 1 spike results
 
-The Task 1 spike ([`tools/render/README.md`](tools/render/README.md)) proves the
-body/decal split and confirms items 2, 3, 6, and 7 above. One constraint it adds
-for Tasks 2–3:
+The Task 1 spike (in git history; its README and assets were removed in Phase 0)
+proves the body/decal split and confirms items 2, 3, 6, and 7 above. One
+constraint it adds for Tasks 2–3:
 
 - **The light rig must be distant.** Decals are lit once per orientation but
   composite onto bodies at many positions. A close area rig made the face
@@ -469,10 +470,10 @@ for Tasks 2–3:
   subdivided face plate by 0.5% of the thickness (≈ 0.08 mm at jansou scale).
   The paint boundary is a fraction of that transition (`paintEdge`), so it can
   sit inside the lip and leave a bare melamine bevel. The paint red is a spec override.
-- **Parameter tuner.** `node tools/render/tune.mjs` serves a local UI at
+- **Parameter tuner (removed in Phase 0).** `node tools/render/tune.mjs` served a local UI at
   `localhost:7457` with the red, depth, both Bézier spreads, blur and paint
-  edge; it draws the exact cross-section and renders a decal-only preview in
-  ~4–6 s. "Apply to spec" writes back to `scene-spec.json`. Dev-only, not shipped. Glossy paint catches a bright
+  edge; it drew the exact cross-section and rendered a decal-only preview in
+  ~4–6 s. "Apply to spec" wrote back to `scene-spec.json`. Dev-only, not shipped. Glossy paint catches a bright
   specular line on each bottom fillet (where the well wall curves into the
   floor), and a little cavity occlusion keeps the red from reading flat. The carve
   is baked into the lit decal, so it is orientation-lit like the rest of the
@@ -486,7 +487,7 @@ for Tasks 2–3:
   so the edge is the brightest surface with no left/right bias. A bright or
   frontal fill sits near the face's specular mirror, owns the flat face's sheen
   and desaturates the glossy paint, so the fill stays off-axis. Exact powers are
-  tuned in `tools/render/scene-spec.json`; the angles do the work and the rig
+  tuned in `tools/render/scene-spec.json` (removed in Phase 0); the angles do the work and the rig
   stays distant for decals.
 
 ## 13. Task chain
@@ -522,13 +523,13 @@ tubes plus a dim green bounce and a rim, exposed the rig (count, length, width,
 elevation, azimuth, roll, power) in the tuner behind a `studio` / `parlor`
 preset switch, and retuned the carve. The studio rig is kept verbatim in the
 spec for comparison. Plan and outcome:
-[`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md),
-[`tools/render/README.md`](tools/render/README.md).
+[`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md).
 
 ### Task 2 results (done, 261113-070305): table, hand row, manifest, checks
 
 Task 2 turned the one-tile spike into the shipped batch. The decisions it adds to
-the chain (all recorded in `scene-spec.json` and the manifest so later tasks read
+the chain (all recorded in `scene-spec.json`, removed in Phase 0, and the
+historical manifest so later tasks read
 them rather than guessing):
 
 1. **Table plan.** New `table.plan` block, in tile units (1 unit = 28 mm), built
@@ -564,17 +565,18 @@ them rather than guessing):
    the sprites pasted at their manifest rects, with a one-pixel dilation to absorb
    anti-aliasing. Any whole-pixel disagreement fails the bake; the shipped batch
    reports **0 shifted pixels**. Gitignored review composites
-   (`tools/render/build/review/`) show the row on the real background in both
+   (`tools/render/build/review/`, removed in Phase 0) show the row on the real background in both
    poses.
 6. **Manifest v2 + validator.** Version 2 (§8) adds `backgroundPixels`, `camera`,
    `table`, per-slot `seat`/`role`/`back`/`measurements`, `assets` (format, byte
    counts, budget) and `checks` (bounds, unique draw orders, alignment). The
-   dependency-free `tools/render/scripts/check-assets.mjs` re-derives all of it
-   from the committed files, verifies real image dimensions from the file
-   headers, re-applies each `faceMatrix`, and enforces the budget — it is the
-   §12.13 CI gate, and `render.sh` runs it after every batch.
-7. **Regeneration and weight.** `bash tools/render/render.sh` rebuilds and
-   validates the shipped batch into `frontend/public/table/`; `--spike` rebuilds
+   dependency-free `tools/render/scripts/check-assets.mjs` (removed in Phase 0)
+   re-derived all of it
+   from the committed files, verified real image dimensions from the file
+   headers, re-applied each `faceMatrix`, and enforced the budget — it was the
+   §12.13 CI gate, and `render.sh` ran it after every batch.
+7. **Regeneration and weight.** `bash tools/render/render.sh` (removed in Phase 0)
+   rebuilt and validated the shipped batch into `frontend/public/table/`; `--spike` rebuilt
    the Task 1 review batch. The committed batch is 186 KB: 28 body sprites
    (141,804 B), the background (19,018 B) and the manifest (24,620 B), against
    the 8 MB / 1 MB / 150 KB budgets the bake and the validator both enforce.

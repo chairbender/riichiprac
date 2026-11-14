@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "name": "riichiprac 2.5D shell baker",
+  "status": "Phase 0 skeleton: the tile mesh, the one-material white/blue split, the lighting convention and the six-shell catalogue are declared here. Phase 1 fills each shell's canvas/camera and flips bakeImplemented.",
+  "bakeImplemented": false,
+  "blender": {
+    "requiredVersion": "4.5.9"
+  },
+  "scene": {
+    "engine": "CYCLES",
+    "device": "CPU",
+    "samples": 256,
+    "useAdaptiveSampling": true,
+    "adaptiveThreshold": 0.01,
+    "denoise": true,
+    "denoiser": "OPENIMAGEDENOISE",
+    "filmTransparent": true,
+    "colorManagement": {
+      "displayDevice": "sRGB",
+      "viewTransform": "AgX",
+      "look": "AgX - Medium High Contrast",
+      "exposure": 0,
+      "gamma": 1
+    }
+  },
+  "tile": {
+    "proportionsMm": {
+      "height": 28,
+      "width": 21,
+      "thickness": 16.5
+    },
+    "heightUnits": 1,
+    "bevel": {
+      "width": 0.055,
+      "segments": 6,
+      "angleLimitDegrees": 30,
+      "hardenNormals": true
+    },
+    "faceInset": 0.055,
+    "backEdgeFraction": 0.3,
+    "materials": {
+      "face": {
+        "material": "white melamine",
+        "hex": "#f5f0eb",
+        "roughness": 0.16,
+        "coat": 0.4,
+        "coatRoughness": 0.1
+      },
+      "backing": {
+        "material": "blue melamine",
+        "hex": "#132986",
+        "roughness": 0.18,
+        "coat": 0.35,
+        "coatRoughness": 0.1
+      },
+      "paint": {
+        "material": "engraving paint (runtime face glyphs)",
+        "red": "#a60c0c",
+        "redBase": "#b93c3c"
+      }
+    }
+  },
+  "lighting": {
+    "convention": "World axes: +X is screen right, -Y is toward the viewer/human edge, +Z is up off the felt. The key is one virtual light locked to screen-space top-left-front: for each shell it is placed relative to that shell's camera basis, so highlights land on the top/left edges and shadows on the bottom/right in every projection. The azimuth/elevation below are the front-elevation reference; Phase 1 rotates them with each shell's camera. Azimuth 0 fronts -Y, 90 is +X, 180 is +Y, 270 is -X; elevation is above horizontal.",
+    "status": "Starting point for Phase 1. The architecture fixes the rule (one locked key at top-left-front plus a weak ambient fill); the numbers are not a verified bake.",
+    "key": {
+      "id": "key",
+      "type": "AREA",
+      "azimuthDeg": 315,
+      "elevationDeg": 55,
+      "distance": 12,
+      "size": 7,
+      "sizeY": 5,
+      "rollDeg": 0,
+      "energyW": 350,
+      "hex": "#fff7ea"
+    },
+    "world": {
+      "hex": "#20262b",
+      "strength": 0.35
+    }
+  },
+  "shells": [
+    {
+      "id": "shell_hand_standing",
+      "projection": "front-elevation",
+      "faceRotationDeg": 0,
+      "role": "bottom player's standing hand: upright front elevation with a top bevel and a white/blue resin edge"
+    },
+    {
+      "id": "shell_flat_upright",
+      "projection": "top-down",
+      "faceRotationDeg": 0,
+      "role": "face-up discards, unrotated meld tiles, and any flat upright tile"
+    },
+    {
+      "id": "shell_flat_sideways",
+      "projection": "top-down",
+      "faceRotationDeg": 90,
+      "role": "face-up sideways riichi discards and called-tile melds; only the 2D glyph rotates"
+    },
+    {
+      "id": "shell_wall_horizontal",
+      "projection": "top-down",
+      "faceRotationDeg": 0,
+      "role": "face-down wall tile for the top/bottom walls and the top player's concealed hand"
+    },
+    {
+      "id": "shell_wall_side_left",
+      "projection": "fixed-oblique",
+      "faceRotationDeg": 0,
+      "role": "face-down left side-wall tile, sheared/angled inward toward the board centre"
+    },
+    {
+      "id": "shell_wall_side_right",
+      "projection": "fixed-oblique",
+      "faceRotationDeg": 0,
+      "role": "face-down right side-wall tile, sheared/angled inward toward the board centre"
+    }
+  ],
+  "outputs": {
+    "format": "png",
+    "shellDir": "../../frontend/public/table/shells",
+    "manifest": "../../frontend/public/table/shells.json"
+  },
+  "budgets": {
+    "manifestBytes": 65536,
+    "shellBytes": 262144,
+    "totalShellBytes": 2097152
+  }
+}

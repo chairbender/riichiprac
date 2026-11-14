@@ -2,14 +2,14 @@
   "name": "riichiprac-render",
   "private": true,
   "version": "1.0.0",
-  "description": "Offline rendered-table asset pipeline (Blender + resvg). Never bundled or shipped to the frontend.",
+  "description": "Offline 2.5D tile-shell and felt asset pipeline (Blender + resvg). Never bundled or shipped to the frontend.",
   "type": "module",
   "scripts": {
-    "render": "bash render.sh",
-    "spike": "bash render.sh --spike",
-    "rasterize": "node scripts/rasterize-face.mjs",
-    "check": "node scripts/check-assets.mjs ../../frontend/public/table",
-    "tune": "node tune.mjs"
+    "shells": "bash bake-shells.sh",
+    "shells:dry": "bash bake-shells.sh --dry-run",
+    "check": "node scripts/check-shells.mjs",
+    "felt": "bash bake-felt.sh",
+    "rasterize": "node scripts/rasterize-face.mjs"
   },
   "dependencies": {
     "@resvg/resvg-js": "2.6.2"
