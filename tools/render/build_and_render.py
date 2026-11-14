@@ -23,19 +23,21 @@ Two batches share one scene builder:
 Outputs (paths relative to the output directory) in ``table`` mode:
 
     background.webp          opaque table background, scene CSS pixels
-    bodies/hand-row-<n>.webp the concealed row of n tiles as one group body
-    bodies/hand-row-<n>-back.webp  the same row in the concealed (blue) pose
-    bodies/hand-draw-<n>.webp      the drawn tile of an n-tile row
-    bodies/hand-draw-<n>-back.webp its concealed pose
+    bodies/hand-<n>.webp     an n-tile concealed row as one body sprite
+    bodies/hand-<n>-back.webp      the same row in the concealed (blue) pose
+    bodies/hand-<n>-draw.webp      the row plus the separated drawn tile
+    bodies/hand-<n>-draw-back.webp its concealed pose
     manifest.json            scene, background, every layout, checks, budget
 
-Bodies are *groups*: the human's concealed row is baked as one sprite and the
+Bodies are *groups*: every tile of a layout is baked as one sprite and the
 per-slot face decals composite on top of it, so the row's cast shadow, the
 inter-tile occlusion, and the shadow each tile throws on its neighbour are all
-in one render and the sprite can never clip an individual tile's shadow. The
-separated draw tile keeps its own single-tile body per row length. Sprites are
-cropped to their measured shadow contour (alpha > the configured threshold plus
-one pixel), never to a fixed gutter.
+in one render and the sprite can never clip an individual tile's shadow. Because
+the draw is in the same bake as the row, no two sprites ever represent the same
+shadow: the drawn tile's tail and the row's tail meet in the gap exactly as the
+renderer makes them. Sprites are cropped to their measured shadow contour plus a
+transparent taper (alpha > the configured threshold + the taper width), never to
+a fixed gutter.
 
 Coordinate conventions: world units are tile units (see the spec); scene pixels
 in the manifest are rendered device pixels (CSS size x pixelRatio), origin
@@ -1259,11 +1261,14 @@ def bake_group(
 ) -> dict:
     """Bake one group body: posed tiles over their shared shadow.
 
-    The group is a row of tiles baked *together*, so the pass carries
-    inter-tile occlusion, the shadow each tile throws on its neighbour, and one
-    continuous cast shadow for the whole block — none of which a per-tile body
-    can carry. Faces are flat decals composited at runtime and cast or receive
-    nothing, so leaving them out changes neither pass.
+    The group is every tile of a layout baked *together* — the concealed row and,
+    when the layout has one, the drawn tile — so the pass carries inter-tile
+    occlusion, the shadow each tile throws on its neighbour, and one continuous
+    cast shadow for the whole block, none of which a per-tile body can carry. A
+    separate draw body would have to overlay its shadow tail on the row's in the
+    gap; one bake per layout means no two sprites ever represent the same shadow.
+    Faces are flat decals composited at runtime and cast or receive nothing, so
+    leaving them out changes neither pass.
 
     Pass 1 renders the tiles alone with transparent film (straight alpha). Pass 2
     renders the whole table as different Cycles shadow catchers with the tiles
@@ -1272,11 +1277,14 @@ def bake_group(
     it.
 
     The sprite is cropped from the **measured shadow contour**: the region where
-    the composited alpha passes `hand.shadow.alphaThreshold`, +1 px. A region
-    with a generous search pad is rendered and, if the contour reaches any edge
-    of that search area that is not the scene's own edge, the bake fails: a crop
-    that ends inside the scene must end on transparent felt, never on a shadow
-    boundary.
+    the composited alpha passes `hand.shadow.alphaThreshold`, plus
+    `hand.shadow.cropMarginDevicePx`. The outer `hand.shadow.taperDevicePx` of
+    that margin is faded to zero on shadow-only pixels, because the shadow's
+    alpha only asymptotes to zero and a bare contour crop would end on a visible
+    ~2 % step where the shadow is longest. A region with a generous search pad is
+    rendered and, if the contour reaches any edge of that search area that is not
+    the scene's own edge, the bake fails: a crop that ends inside the scene must
+    end on transparent felt, never on a shadow boundary.
 
     Returns the sprite, its device-pixel crop rect, the rendered search region,
     the tile-only alpha (for the alignment check), and the measured shadow
@@ -1287,6 +1295,7 @@ def bake_group(
     guard = int(shadow_spec["guardDevicePx"])
     threshold = float(shadow_spec["alphaThreshold"])
     crop_margin = int(shadow_spec["cropMarginDevicePx"])
+    taper = int(shadow_spec.get("taperDevicePx", 0))
     alpha_scale = float(shadow_spec.get("alphaScale", 1.0))
     render_width = scene.render.resolution_x
     render_height = scene.render.resolution_y
@@ -1308,20 +1317,22 @@ def bake_group(
     sync_view_layer()
 
     bx0, by0, bx1, by1 = projected_bounds(scene, camera, spec, slots, pose)
+    # The search area is where the shadow contour is measured; the render region
+    # adds room for the crop margin (the contour plus the transparent taper) and
+    # the guard band, so a border render's stray edge value can never sit inside
+    # the measured or cropped area.
+    reach = pad + crop_margin + guard
     search = (
         max(0, math.floor(bx0 - pad)),
         max(0, math.floor(by0 - pad)),
         min(render_width, math.ceil(bx1 + pad)),
         min(render_height, math.ceil(by1 + pad)),
     )
-    # The render region is the search area plus a guard band, because a border
-    # render's outermost row/column can carry a stray value that is not part of
-    # the image. The contour is measured inside the search area only.
     region = (
-        max(0, search[0] - guard),
-        max(0, search[1] - guard),
-        min(render_width, search[2] + guard),
-        min(render_height, search[3] + guard),
+        max(0, math.floor(bx0 - reach)),
+        max(0, math.floor(by0 - reach)),
+        min(render_width, math.ceil(bx1 + reach)),
+        min(render_height, math.ceil(by1 + reach)),
     )
     scene_edges = {
         "left": search[0] == 0,
@@ -1392,6 +1403,26 @@ def bake_group(
         crop[1] - region[1] : crop[3] - region[1], crop[0] - region[0] : crop[2] - region[0]
     ].copy()
 
+    # Taper the shadow to exactly zero at the sprite boundary. The shadow's alpha
+    # only asymptotes to zero, so a crop taken a few pixels past the contour still
+    # ends on a ~2 % alpha edge, which shows as a straight cut where the shadow is
+    # longest. The taper is applied to shadow-only pixels; the tiles themselves
+    # stay fully opaque, so no tile edge is ever faded.
+    if taper > 0:
+        height, width = sprite.shape[:2]
+        ramp_x = np.minimum(np.arange(width), width - 1 - np.arange(width))
+        ramp_y = np.minimum(np.arange(height), height - 1 - np.arange(height))
+        ramp = np.minimum(ramp_x[None, :], ramp_y[:, None])
+        fade = np.clip(ramp / float(taper + 1), 0.0, 1.0)
+        body_crop = body[
+            crop[1] - region[1] : crop[3] - region[1],
+            crop[0] - region[0] : crop[2] - region[0],
+            3,
+        ]
+        solid = body_crop > 0.002
+        sprite[..., 3] = sprite[..., 3] * np.where(solid, 1.0, fade)
+    sprite_edge = edge_ring_max(sprite[..., 3], (0, 0, sprite.shape[1], sprite.shape[0]), (0, 0, 0, 0))
+
     assets = spec["assets"]
     size = save_raster(
         scene,
@@ -1403,7 +1434,8 @@ def bake_group(
     crop_edge, crop_edge_side, crop_edge_px = edge_ring_max(alpha, crop, region)
     log(
         f"group body: {path.name} ({crop[2] - crop[0]}x{crop[3] - crop[1]}, "
-        f"{len(slots)} tile(s), contour {contour}, {size} B"
+        f"{len(slots)} tile(s), contour {contour}, taper {taper} px, "
+        f"edge alpha {sprite_edge[0]:.4f}, {size} B"
         + (f", scene-edge clip {scene_edge_clips}" if scene_edge_clips else "")
         + ")"
     )
@@ -1421,6 +1453,7 @@ def bake_group(
         "shadow": {
             "alphaThreshold": threshold,
             "cropMarginPx": crop_margin,
+            "taperPx": taper,
             "contour": list(contour),
             "reach": {
                 "left": round(bx0 - contour[0], 1) + 0.0,
@@ -1431,6 +1464,7 @@ def bake_group(
             "maxAlphaAtCropEdge": round(crop_edge, 4),
             "maxAlphaAtCropEdgeSide": crop_edge_side,
             "maxAlphaAtCropEdgePx": crop_edge_px,
+            "visibleAlphaAtSpriteEdge": round(sprite_edge[0], 4),
             "sceneEdgeClips": scene_edge_clips,
         },
         "tileBounds": [round(value, 2) for value in (bx0, by0, bx1, by1)],
@@ -2263,12 +2297,11 @@ def inside_bounds(bounds: tuple, x: float, y: float, tolerance: float = 0.5) -> 
 def check_layouts(manifest: dict) -> dict:
     """Fail the batch if a layout's rects or decal quads are out of bounds.
 
-    - every body rect (each layout's group, its draw, and both back poses) sits
-      inside the scene's device-pixel space;
-    - every slot's face and decal quad sits inside the body that renders it: the
-      group rect for a concealed slot, the draw body rect for the draw slot (so
-      a decal can never be drawn outside the sprite it composites onto);
-    - every slot's own tile rect sits inside that same body;
+    - every body rect (each layout's body and its back pose) sits inside the
+      scene's device-pixel space;
+    - every slot's face and decal quad sits inside the body that renders it, and
+      so does the slot's own tile rect (so a decal can never be drawn outside the
+      sprite it composites onto, and the sprite always contains its tiles);
     - every slot carries a known orientation class, and draw orders are unique
       within a layout.
 
@@ -2282,13 +2315,9 @@ def check_layouts(manifest: dict) -> dict:
     slot_count = 0
     for layout in manifest["layouts"]:
         orders = set()
-        bodies = [("group", layout["group"])]
-        if layout["group"].get("back"):
-            bodies.append(("group-back", layout["group"]["back"]))
-        if layout.get("draw"):
-            bodies.append(("draw", layout["draw"]))
-            if layout["draw"].get("back"):
-                bodies.append(("draw-back", layout["draw"]["back"]))
+        bodies = [("body", layout["body"])]
+        if layout["body"].get("back"):
+            bodies.append(("body-back", layout["body"]["back"]))
         scene_rect = (0, 0, width, height)
         for label, record in bodies:
             if not inside_bounds(scene_rect, record["x"], record["y"]) or not (
@@ -2299,8 +2328,7 @@ def check_layouts(manifest: dict) -> dict:
                     f"({record['x']}, {record['y']}, {record['width']}x{record['height']}) "
                     f"is outside the {width}x{height} scene"
                 )
-        group_bounds = rect_bounds(layout["group"])
-        draw_bounds = rect_bounds(layout["draw"]) if layout.get("draw") else None
+        body_bounds = rect_bounds(layout["body"])
         for slot in layout["slots"]:
             slot_count += 1
             if slot["orientation"] not in ORIENTATIONS:
@@ -2314,24 +2342,21 @@ def check_layouts(manifest: dict) -> dict:
                     f"{slot['drawOrder']}"
                 )
             orders.add(slot["drawOrder"])
-            target = group_bounds if slot["role"] == "concealed" else draw_bounds
-            if target is None:
-                die(f"layout {layout['id']} slot {slot['id']} has no body to draw into")
             for corner_x, corner_y in slot["faceQuad"] + slot["decalQuad"]:
-                if not inside_bounds(target, corner_x, corner_y):
+                if not inside_bounds(body_bounds, corner_x, corner_y):
                     die(
                         f"layout {layout['id']} slot {slot['id']} face corner "
-                        f"({corner_x}, {corner_y}) is outside its body rect {target}"
+                        f"({corner_x}, {corner_y}) is outside its body rect {body_bounds}"
                     )
             for corner in (
                 (slot["x"], slot["y"]),
                 (slot["x"] + slot["width"], slot["y"] + slot["height"]),
             ):
-                if not inside_bounds(target, corner[0], corner[1]):
+                if not inside_bounds(body_bounds, corner[0], corner[1]):
                     die(
                         f"layout {layout['id']} slot {slot['id']} tile rect "
                         f"({slot['x']}, {slot['y']}, {slot['width']}x{slot['height']}) "
-                        f"is outside its body rect {target}"
+                        f"is outside its body rect {body_bounds}"
                     )
             quads += 1
     return {
@@ -2676,48 +2701,22 @@ def main() -> None:
             f"and without the draw) -> {out_dir}"
         )
         baked: dict = {}
-        for count in counts:
-            source = next(
-                layout
-                for layout in layouts
-                if layout["count"] == count and not layout["hasDraw"]
+        for layout in layouts:
+            body_face = bake_group(
+                spec, scene, camera, tile, table, layout["slots"], hand["pose"],
+                out_dir,
+                body_path(spec, out_dir, layout["id"], body_ext),
+                label=layout["id"],
             )
-            concealed, _ = layout_groups(source)
-            draw_source = next(
-                layout
-                for layout in layouts
-                if layout["count"] == count and layout["hasDraw"]
+            body_back = bake_group(
+                spec, scene, camera, tile, table, layout["slots"], hand["backPose"],
+                out_dir,
+                body_path(spec, out_dir, f"{layout['id']}-back", body_ext),
+                label=f"{layout['id']}-back",
             )
-            _, draw = layout_groups(draw_source)
-            group_face = bake_group(
-                spec, scene, camera, tile, table, concealed, hand["pose"], out_dir,
-                body_path(spec, out_dir, f"hand-row-{count}", body_ext),
-                label=f"hand-row-{count}",
-            )
-            group_back = bake_group(
-                spec, scene, camera, tile, table, concealed, hand["backPose"], out_dir,
-                body_path(spec, out_dir, f"hand-row-{count}-back", body_ext),
-                label=f"hand-row-{count}-back",
-            )
-            draw_face = bake_group(
-                spec, scene, camera, tile, table, [draw], hand["pose"], out_dir,
-                body_path(spec, out_dir, f"hand-draw-{count}", body_ext),
-                label=f"hand-draw-{count}",
-            )
-            draw_back = bake_group(
-                spec, scene, camera, tile, table, [draw], hand["backPose"], out_dir,
-                body_path(spec, out_dir, f"hand-draw-{count}-back", body_ext),
-                label=f"hand-draw-{count}-back",
-            )
-            baked[count] = {
-                "group": group_face,
-                "groupBack": group_back,
-                "draw": draw_face,
-                "drawBack": draw_back,
-            }
-            for record in (group_face, group_back, draw_face, draw_back):
-                written_bodies.add(record["path"])
-                body_bytes += record["bytes"]
+            baked[layout["id"]] = {"body": body_face, "back": body_back}
+            body_bytes += body_face["bytes"] + body_back["bytes"]
+            written_bodies.update({body_face["path"], body_back["path"]})
 
         # ---- background and review composites ---------------------------- #
         background = bake_background(
@@ -2736,33 +2735,31 @@ def main() -> None:
             stale.unlink()
 
         # ---- per-layout manifest records, reviews, alignment ------------- #
+        order_base = hand.get("drawOrderBase", 40)
         for layout in layouts:
-            count = layout["count"]
-            parts = baked[count]
+            parts = baked[layout["id"]]
             concealed, _ = layout_groups(layout)
-            order_base = hand.get("drawOrderBase", 40)
             layout_record = {
                 "id": layout["id"],
                 "seat": layout["seat"],
-                "count": count,
+                "count": layout["count"],
                 "hasDraw": layout["hasDraw"],
                 "orientation": layout["orientation"],
-                "group": body_entry(
+                "body": body_entry(
                     out_dir,
-                    parts["group"],
-                    parts["groupBack"],
+                    parts["body"],
+                    parts["back"],
                     hand["pose"],
                     hand["backPose"],
                     order_base,
                 ),
-                "draw": None,
                 "slots": [
                     slot_record(spec, scene, camera, slot) for slot in layout["slots"]
                 ],
                 "measurements": {
                     "seamContrast": seam_contrast(
-                        parts["group"]["sprite"],
-                        parts["group"]["rect"],
+                        parts["body"]["sprite"],
+                        parts["body"]["rect"],
                         spec,
                         scene,
                         camera,
@@ -2770,50 +2767,15 @@ def main() -> None:
                     ),
                 },
             }
+            layouts_records.append(layout_record)
             review_parts = [
                 {
-                    "sprite": parts["group"]["sprite"],
-                    "rect": parts["group"]["rect"],
-                    "back_sprite": parts["groupBack"]["sprite"],
-                    "back_rect": parts["groupBack"]["rect"],
+                    "sprite": parts["body"]["sprite"],
+                    "rect": parts["body"]["rect"],
+                    "back_sprite": parts["back"]["sprite"],
+                    "back_rect": parts["back"]["rect"],
                 }
             ]
-            aligned_parts = [
-                {
-                    "label": f"{layout['id']}-group",
-                    "region": parts["group"]["region"],
-                    "alpha": parts["group"]["alpha"],
-                }
-            ]
-            if layout["hasDraw"]:
-                layout_record["draw"] = {
-                    "slotId": "hand-draw",
-                    **body_entry(
-                        out_dir,
-                        parts["draw"],
-                        parts["drawBack"],
-                        hand["pose"],
-                        hand["backPose"],
-                        order_base + 1,
-                    ),
-                }
-                review_parts.append(
-                    {
-                        "sprite": parts["draw"]["sprite"],
-                        "rect": parts["draw"]["rect"],
-                        "back_sprite": parts["drawBack"]["sprite"],
-                        "back_rect": parts["drawBack"]["rect"],
-                    }
-                )
-                aligned_parts.append(
-                    {
-                        "label": f"{layout['id']}-draw",
-                        "region": parts["draw"]["region"],
-                        "alpha": parts["draw"]["alpha"],
-                    }
-                )
-            layouts_records.append(layout_record)
-
             render_review_composite(
                 spec, scene, background["render"], review_parts, "face",
                 review_dir / f"{layout['id']}-face-up.png",
@@ -2824,7 +2786,20 @@ def main() -> None:
             )
             alignments.append(
                 layout_alignment(
-                    spec, scene, camera, tile, table, layout, aligned_parts, out_dir
+                    spec,
+                    scene,
+                    camera,
+                    tile,
+                    table,
+                    layout,
+                    [
+                        {
+                            "label": layout["id"],
+                            "region": parts["body"]["region"],
+                            "alpha": parts["body"]["alpha"],
+                        }
+                    ],
+                    out_dir,
                 )
             )
 
@@ -2898,7 +2873,9 @@ def main() -> None:
                     **hand["shadow"],
                     "note": (
                         "Bodies are cropped to the measured shadow contour: the "
-                        "composited alpha above alphaThreshold, plus cropMarginPx. "
+                        "composited alpha above alphaThreshold, plus "
+                        "cropMarginDevicePx, with the outer taperDevicePx of the "
+                        "margin faded to zero on shadow-only pixels. "
                         "sceneEdgeClips lists the sides where the shadow is cut by "
                         "the scene frame itself, which is allowed."
                     ),

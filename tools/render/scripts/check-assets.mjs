@@ -161,10 +161,17 @@ const checkBody = (label, record, width, height) => {
     if (!Array.isArray(shadow.contour) || shadow.contour.length !== 4) {
       fail(`${label}: shadow.contour must be four numbers`);
     }
-    // Self-consistency: the crop boundary must sit below the contour
-    // threshold, otherwise the sprite would cut a visible shadow edge. A side
-    // cut by the scene frame itself is allowed (`sceneEdgeClips`).
+    // Self-consistency: the shadow's *fade* must reach zero at the crop edge,
+    // and the raw contour at the crop must sit below the measurement threshold,
+    // otherwise the sprite would cut a visible shadow edge. A side cut by the
+    // scene frame itself is allowed (`sceneEdgeClips`).
     const clipped = Array.isArray(shadow.sceneEdgeClips) && shadow.sceneEdgeClips.length > 0;
+    if (!(shadow.visibleAlphaAtSpriteEdge <= 1 / 255)) {
+      fail(
+        `${label}: visibleAlphaAtSpriteEdge ${shadow.visibleAlphaAtSpriteEdge} is not ` +
+          'transparent (a visible shadow cut at the sprite edge)',
+      );
+    }
     if (!clipped && !(shadow.maxAlphaAtCropEdge <= shadow.alphaThreshold)) {
       fail(
         `${label}: maxAlphaAtCropEdge ${shadow.maxAlphaAtCropEdge} is above the ` +
@@ -173,6 +180,9 @@ const checkBody = (label, record, width, height) => {
     }
     if (!Array.isArray(shadow.sceneEdgeClips)) {
       fail(`${label}: shadow.sceneEdgeClips must be a list`);
+    }
+    if (!(shadow.taperPx > 0)) {
+      fail(`${label}: shadow.taperPx must be positive (the crop needs a fade)`);
     }
   } else {
     fail(`${label}: missing shadow measurement block`);
@@ -306,29 +316,19 @@ if (manifest) {
     if (!(layout.count > 0)) fail(`${label}: invalid concealed count`);
     if (typeof layout.hasDraw !== 'boolean') fail(`${label}: hasDraw must be a boolean`);
 
-    const groupBytes = checkBody(`${label} group`, layout.group, width, height);
-    bodyBytes += groupBytes;
-    bodyBytes += checkBody(`${label} group back`, layout.group?.back, width, height);
+    bodyBytes += checkBody(`${label} body`, layout.body, width, height);
+    bodyBytes += checkBody(`${label} body back`, layout.body?.back, width, height);
 
-    const groupRect = rectOf(layout.group);
-    let drawRect = null;
-    if (layout.hasDraw) {
-      if (!layout.draw) {
-        fail(`${label}: hasDraw but no draw body`);
-      } else {
-        bodyBytes += checkBody(`${label} draw`, layout.draw, width, height);
-        bodyBytes += checkBody(`${label} draw back`, layout.draw.back, width, height);
-        drawRect = rectOf(layout.draw);
-      }
-    } else if (layout.draw) {
-      fail(`${label}: draw body present but hasDraw is false`);
-    }
-
+    const bodyRect = rectOf(layout.body);
     const orders = new Set();
     const ids = new Set();
     const concealed = (layout.slots ?? []).filter((item) => item.role === 'concealed');
     if (concealed.length !== layout.count) {
       fail(`${label}: ${concealed.length} concealed slots for count ${layout.count}`);
+    }
+    const drawSlots = (layout.slots ?? []).filter((item) => item.role === 'draw');
+    if (layout.hasDraw !== (drawSlots.length === 1)) {
+      fail(`${label}: hasDraw ${layout.hasDraw} but ${drawSlots.length} draw slots`);
     }
     for (const slot of layout.slots ?? []) {
       slotCount += 1;
@@ -339,12 +339,7 @@ if (manifest) {
         fail(`${slotLabel}: duplicate drawOrder ${slot.drawOrder}`);
       }
       orders.add(slot.drawOrder);
-      const target = slot.role === 'concealed' ? groupRect : drawRect;
-      if (!target) {
-        fail(`${slotLabel}: no body to draw into`);
-        continue;
-      }
-      checkSlot(slotLabel, slot, target, decalPixels);
+      checkSlot(slotLabel, slot, bodyRect, decalPixels);
     }
   }
   if (layouts.length > 0) {

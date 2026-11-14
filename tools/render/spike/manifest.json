@@ -19,7 +19,7 @@
     },
     "material": "melamine",
     "backEdgeFraction": 0.3,
-    "faceInset": 0.035
+    "faceInset": 0.055
   },
   "scene": {
     "width": 1440,
@@ -106,9 +106,10 @@
         "searchPadDevicePx": 160,
         "guardDevicePx": 4,
         "alphaThreshold": 0.02,
-        "cropMarginDevicePx": 1,
+        "cropMarginDevicePx": 32,
+        "taperDevicePx": 32,
         "alphaScale": 1.0,
-        "note": "Bodies are cropped to the measured shadow contour: the composited alpha above alphaThreshold, plus cropMarginPx. sceneEdgeClips lists the sides where the shadow is cut by the scene frame itself, which is allowed."
+        "note": "Bodies are cropped to the measured shadow contour: the composited alpha above alphaThreshold, plus cropMarginDevicePx, with the outer taperDevicePx of the margin faded to zero on shadow-only pixels. sceneEdgeClips lists the sides where the shadow is cut by the scene frame itself, which is allowed."
       }
     }
   },
@@ -198,12 +199,12 @@
   },
   "decals": {
     "pixels": [
-      492,
-      672
+      463,
+      643
     ],
     "frameUnits": [
-      0.6833333333333333,
-      0.9333333333333333
+      0.6430555555555556,
+      0.8930555555555556
     ],
     "paddingPixels": 1,
     "renderedAtScale": 3,
@@ -221,8 +222,8 @@
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75,
       "grid": [
-        492,
-        672
+        463,
+        643
       ]
     },
     "note": "faceMatrix maps the decal image's full pixel rect (top-left origin, y down) onto decalQuad."
@@ -236,12 +237,12 @@
     "bodyFormat": "PNG",
     "bodyQuality": 100,
     "spriteCount": 2,
-    "bodyBytes": 49338,
+    "bodyBytes": 54422,
     "backgroundFormat": null,
     "backgroundQuality": null,
     "backgroundSamples": null,
     "backgroundBytes": null,
-    "totalBytes": 49338,
+    "totalBytes": 54422,
     "budgetBytes": {
       "total": 8388608,
       "background": 157286,
@@ -256,15 +257,15 @@
     "uniqueDrawOrders": true
   },
   "measurements": {
-    "faceHeightPx": 76.99,
+    "faceHeightPx": 73.68,
     "topEdgeProjectedPx": 42.22,
     "blueSliverExpectedPx": 12.67,
     "blueSliverMeasuredPx": 10,
-    "bodyMaxChannel": 246.0,
+    "bodyMaxChannel": 249.0,
     "bodyClippedPixels": 0,
-    "decalMaxChannel": 244.0,
+    "decalMaxChannel": 241.0,
     "decalClippedPixels": 0,
-    "decalBakeSeconds": 86.2
+    "decalBakeSeconds": 78.9
   },
   "slots": [
     {
@@ -273,103 +274,107 @@
       "role": "concealed",
       "orientation": "upright",
       "drawOrder": 40,
-      "x": 830,
-      "y": 1509,
-      "width": 207,
-      "height": 192,
+      "x": 800,
+      "y": 1478,
+      "width": 268,
+      "height": 254,
       "faceQuad": [
         [
-          908.599,
-          1556.109
+          910.919,
+          1557.783
         ],
         [
-          983.259,
-          1556.109
+          981.171,
+          1557.783
         ],
         [
-          988.179,
-          1633.1
+          985.901,
+          1631.461
         ],
         [
-          914.323,
-          1633.1
+          916.374,
+          1631.461
         ]
       ],
       "decalQuad": [
         [
-          908.406,
-          1555.97
+          910.742,
+          1557.655
         ],
         [
-          983.433,
-          1555.97
+          981.33,
+          1557.655
         ],
         [
-          988.368,
-          1633.236
+          986.075,
+          1631.587
         ],
         [
-          914.152,
-          1633.236
+          916.217,
+          1631.587
         ]
       ],
-      "faceMatrix": "matrix3d(0.152493919, -4.45788879e-11, 0, -4.54267223e-14, 0.0234148154, 0.141535788, 0, 1.62597998e-05, 0, 0, 1, 0, 908.406086, 1555.96978, 0, 1)",
+      "faceMatrix": "matrix3d(0.152458105, 9.47763489e-10, 0, 6.32260464e-13, 0.0234104548, 0.141504267, 0, 1.62571276e-05, 0, 0, 1, 0, 910.741968, 1557.65485, 0, 1)",
       "measurements": {
-        "faceHeightPx": 76.99,
-        "faceWidthPx": 74.26
+        "faceHeightPx": 73.68,
+        "faceWidthPx": 69.89
       },
       "body": "bodies/hand-0.png",
       "shadow": {
         "alphaThreshold": 0.02,
-        "cropMarginPx": 1,
+        "cropMarginPx": 32,
+        "taperPx": 32,
         "contour": [
-          831,
-          1512,
+          832,
+          1513,
           1036,
           1700
         ],
         "reach": {
-          "left": 73.5,
-          "top": -1.0,
+          "left": 72.5,
+          "top": -2.0,
           "right": 39.3,
           "bottom": 64.0
         },
-        "maxAlphaAtCropEdge": 0.0196,
-        "maxAlphaAtCropEdgeSide": "right",
+        "maxAlphaAtCropEdge": 0.0039,
+        "maxAlphaAtCropEdgeSide": "left",
         "maxAlphaAtCropEdgePx": [
-          1036,
-          1541
+          800,
+          1478
         ],
+        "visibleAlphaAtSpriteEdge": 0.0,
         "sceneEdgeClips": []
       },
       "back": {
         "pose": "hand-upright-back",
         "body": "bodies/hand-0-back.png",
-        "x": 829,
-        "y": 1509,
-        "width": 207,
-        "height": 198,
+        "x": 799,
+        "y": 1478,
+        "width": 267,
+        "height": 260,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            830,
-            1512,
-            1035,
+            831,
+            1513,
+            1034,
             1706
           ],
           "reach": {
-            "left": 74.5,
-            "top": -1.0,
-            "right": 38.3,
+            "left": 73.5,
+            "top": -2.0,
+            "right": 37.3,
             "bottom": 70.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "bottom",
+          "maxAlphaAtCropEdge": 0.0039,
+          "maxAlphaAtCropEdgeSide": "left",
           "maxAlphaAtCropEdgePx": [
-            909,
-            1706
+            799,
+            1493
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         }
       },

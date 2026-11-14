@@ -19,7 +19,7 @@
     },
     "material": "melamine",
     "backEdgeFraction": 0.3,
-    "faceInset": 0.035
+    "faceInset": 0.055
   },
   "scene": {
     "width": 1440,
@@ -106,9 +106,10 @@
         "searchPadDevicePx": 160,
         "guardDevicePx": 4,
         "alphaThreshold": 0.02,
-        "cropMarginDevicePx": 1,
+        "cropMarginDevicePx": 32,
+        "taperDevicePx": 32,
         "alphaScale": 1.0,
-        "note": "Bodies are cropped to the measured shadow contour: the composited alpha above alphaThreshold, plus cropMarginPx. sceneEdgeClips lists the sides where the shadow is cut by the scene frame itself, which is allowed."
+        "note": "Bodies are cropped to the measured shadow contour: the composited alpha above alphaThreshold, plus cropMarginDevicePx, with the outer taperDevicePx of the margin faded to zero on shadow-only pixels. sceneEdgeClips lists the sides where the shadow is cut by the scene frame itself, which is allowed."
       }
     }
   },
@@ -201,12 +202,12 @@
   },
   "decals": {
     "pixels": [
-      492,
-      672
+      463,
+      643
     ],
     "frameUnits": [
-      0.6833333333333333,
-      0.9333333333333333
+      0.6430555555555556,
+      0.8930555555555556
     ],
     "paddingPixels": 1,
     "renderedAtScale": 3,
@@ -224,8 +225,8 @@
       "occlusionDistance": 0.2,
       "occlusionStrength": 0.75,
       "grid": [
-        492,
-        672
+        463,
+        643
       ]
     },
     "note": "faceMatrix maps the decal image's full pixel rect (top-left origin, y down) onto decalQuad."
@@ -235,12 +236,12 @@
     "bodyFormat": "WEBP",
     "bodyQuality": 90,
     "spriteCount": 20,
-    "bodyBytes": 225814,
+    "bodyBytes": 419334,
     "backgroundFormat": "WEBP",
     "backgroundQuality": 90,
     "backgroundSamples": 64,
     "backgroundBytes": 19018,
-    "totalBytes": 244832,
+    "totalBytes": 438352,
     "budgetBytes": {
       "total": 8388608,
       "background": 157286,
@@ -264,20 +265,20 @@
           "method": "each body sprite's tile alpha pasted at its manifest rect against one frame rendered with all of that layout's tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
           "bodies": [
             {
-              "body": "hand-13-group",
+              "body": "hand-13",
               "shiftedPixels": 0
             }
           ],
-          "tilePixels": 129050,
+          "tilePixels": 127586,
           "shiftedPixels": 0,
           "softPixels": 0,
           "softPixelFraction": 0.0,
           "softTolerance": 0.5,
           "layout": "hand-13",
           "region": [
-            740,
-            1346,
-            2140,
+            708,
+            1314,
+            2172,
             1800
           ]
         },
@@ -285,24 +286,20 @@
           "method": "each body sprite's tile alpha pasted at its manifest rect against one frame rendered with all of that layout's tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
           "bodies": [
             {
-              "body": "hand-13-draw-group",
-              "shiftedPixels": 0
-            },
-            {
-              "body": "hand-13-draw-draw",
+              "body": "hand-13-draw",
               "shiftedPixels": 0
             }
           ],
-          "tilePixels": 139627,
+          "tilePixels": 137989,
           "shiftedPixels": 0,
           "softPixels": 0,
           "softPixelFraction": 0.0,
           "softTolerance": 0.5,
           "layout": "hand-13-draw",
           "region": [
-            740,
-            1346,
-            2283,
+            708,
+            1314,
+            2315,
             1800
           ]
         },
@@ -310,20 +307,20 @@
           "method": "each body sprite's tile alpha pasted at its manifest rect against one frame rendered with all of that layout's tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
           "bodies": [
             {
-              "body": "hand-10-group",
+              "body": "hand-10",
               "shiftedPixels": 0
             }
           ],
-          "tilePixels": 99264,
+          "tilePixels": 98145,
           "shiftedPixels": 0,
           "softPixels": 0,
           "softPixelFraction": 0.0,
           "softTolerance": 0.5,
           "layout": "hand-10",
           "region": [
-            864,
-            1346,
-            2016,
+            832,
+            1314,
+            2048,
             1800
           ]
         },
@@ -331,24 +328,20 @@
           "method": "each body sprite's tile alpha pasted at its manifest rect against one frame rendered with all of that layout's tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
           "bodies": [
             {
-              "body": "hand-10-draw-group",
-              "shiftedPixels": 0
-            },
-            {
-              "body": "hand-10-draw-draw",
+              "body": "hand-10-draw",
               "shiftedPixels": 0
             }
           ],
-          "tilePixels": 109711,
+          "tilePixels": 108422,
           "shiftedPixels": 0,
           "softPixels": 0,
           "softPixelFraction": 0.0,
           "softTolerance": 0.5,
           "layout": "hand-10-draw",
           "region": [
-            864,
-            1346,
-            2159,
+            832,
+            1314,
+            2191,
             1800
           ]
         },
@@ -356,20 +349,20 @@
           "method": "each body sprite's tile alpha pasted at its manifest rect against one frame rendered with all of that layout's tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
           "bodies": [
             {
-              "body": "hand-7-group",
+              "body": "hand-7",
               "shiftedPixels": 0
             }
           ],
-          "tilePixels": 69497,
+          "tilePixels": 68699,
           "shiftedPixels": 0,
           "softPixels": 0,
           "softPixelFraction": 0.0,
           "softTolerance": 0.5,
           "layout": "hand-7",
           "region": [
-            987,
-            1346,
-            1893,
+            955,
+            1314,
+            1925,
             1800
           ]
         },
@@ -377,24 +370,20 @@
           "method": "each body sprite's tile alpha pasted at its manifest rect against one frame rendered with all of that layout's tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
           "bodies": [
             {
-              "body": "hand-7-draw-group",
-              "shiftedPixels": 0
-            },
-            {
-              "body": "hand-7-draw-draw",
+              "body": "hand-7-draw",
               "shiftedPixels": 0
             }
           ],
-          "tilePixels": 79811,
+          "tilePixels": 78851,
           "shiftedPixels": 0,
           "softPixels": 0,
           "softPixelFraction": 0.0,
           "softTolerance": 0.5,
           "layout": "hand-7-draw",
           "region": [
-            987,
-            1346,
-            2036,
+            955,
+            1314,
+            2068,
             1800
           ]
         },
@@ -402,20 +391,20 @@
           "method": "each body sprite's tile alpha pasted at its manifest rect against one frame rendered with all of that layout's tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
           "bodies": [
             {
-              "body": "hand-4-group",
+              "body": "hand-4",
               "shiftedPixels": 0
             }
           ],
-          "tilePixels": 39715,
+          "tilePixels": 39245,
           "shiftedPixels": 0,
           "softPixels": 0,
           "softPixelFraction": 0.0,
           "softTolerance": 0.5,
           "layout": "hand-4",
           "region": [
-            1111,
-            1346,
-            1769,
+            1079,
+            1314,
+            1801,
             1800
           ]
         },
@@ -423,24 +412,20 @@
           "method": "each body sprite's tile alpha pasted at its manifest rect against one frame rendered with all of that layout's tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
           "bodies": [
             {
-              "body": "hand-4-draw-group",
-              "shiftedPixels": 0
-            },
-            {
-              "body": "hand-4-draw-draw",
+              "body": "hand-4-draw",
               "shiftedPixels": 0
             }
           ],
-          "tilePixels": 49885,
+          "tilePixels": 49280,
           "shiftedPixels": 0,
           "softPixels": 0,
           "softPixelFraction": 0.0,
           "softTolerance": 0.5,
           "layout": "hand-4-draw",
           "region": [
-            1111,
-            1346,
-            1912,
+            1079,
+            1314,
+            1944,
             1800
           ]
         },
@@ -448,20 +433,20 @@
           "method": "each body sprite's tile alpha pasted at its manifest rect against one frame rendered with all of that layout's tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
           "bodies": [
             {
-              "body": "hand-1-group",
+              "body": "hand-1",
               "shiftedPixels": 0
             }
           ],
-          "tilePixels": 9942,
+          "tilePixels": 9826,
           "shiftedPixels": 0,
           "softPixels": 0,
           "softPixelFraction": 0.0,
           "softTolerance": 0.5,
           "layout": "hand-1",
           "region": [
-            1234,
-            1346,
-            1646,
+            1202,
+            1314,
+            1678,
             1800
           ]
         },
@@ -469,24 +454,20 @@
           "method": "each body sprite's tile alpha pasted at its manifest rect against one frame rendered with all of that layout's tiles present; a one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a real misalignment",
           "bodies": [
             {
-              "body": "hand-1-draw-group",
-              "shiftedPixels": 0
-            },
-            {
-              "body": "hand-1-draw-draw",
+              "body": "hand-1-draw",
               "shiftedPixels": 0
             }
           ],
-          "tilePixels": 19989,
+          "tilePixels": 19743,
           "shiftedPixels": 0,
           "softPixels": 0,
           "softPixelFraction": 0.0,
           "softTolerance": 0.5,
           "layout": "hand-1-draw",
           "region": [
-            1234,
-            1346,
-            1788,
+            1202,
+            1314,
+            1820,
             1800
           ]
         }
@@ -501,70 +482,73 @@
       "count": 13,
       "hasDraw": false,
       "orientation": "upright",
-      "group": {
+      "body": {
         "pose": "hand-upright",
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            831,
-            1511,
-            2017,
+            832,
+            1512,
+            2016,
             1682
           ],
           "reach": {
-            "left": 73.5,
-            "top": 0.0,
-            "right": 41.5,
+            "left": 72.5,
+            "top": -1.0,
+            "right": 40.5,
             "bottom": 46.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "right",
+          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            2017,
-            1573
+            886,
+            1478
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
-        "body": "bodies/hand-row-13.webp",
-        "x": 830,
-        "y": 1509,
-        "width": 1188,
-        "height": 174,
+        "body": "bodies/hand-13.webp",
+        "x": 800,
+        "y": 1478,
+        "width": 1248,
+        "height": 236,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
+            "cropMarginPx": 32,
+            "taperPx": 32,
             "contour": [
-              830,
-              1512,
+              831,
+              1513,
               2014,
               1708
             ],
             "reach": {
-              "left": 74.5,
-              "top": -1.0,
+              "left": 73.5,
+              "top": -2.0,
               "right": 38.5,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0196,
-            "maxAlphaAtCropEdgeSide": "right",
+            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              2014,
-              1571
+              799,
+              1490
             ],
+            "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
-          "body": "bodies/hand-row-13-back.webp",
-          "x": 829,
-          "y": 1509,
-          "width": 1186,
-          "height": 200
+          "body": "bodies/hand-13-back.webp",
+          "x": 799,
+          "y": 1478,
+          "width": 1247,
+          "height": 262
         }
       },
-      "draw": null,
       "slots": [
         {
           "id": "hand-0",
@@ -578,44 +562,44 @@
           "height": 126,
           "faceQuad": [
             [
-              908.599,
-              1556.109
+              910.919,
+              1557.783
             ],
             [
-              983.259,
-              1556.109
+              981.171,
+              1557.783
             ],
             [
-              988.179,
-              1633.1
+              985.901,
+              1631.461
             ],
             [
-              914.323,
-              1633.1
+              916.374,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              908.406,
-              1555.97
+              910.742,
+              1557.655
             ],
             [
-              983.433,
-              1555.97
+              981.33,
+              1557.655
             ],
             [
-              988.368,
-              1633.236
+              986.075,
+              1631.587
             ],
             [
-              914.152,
-              1633.236
+              916.217,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493919, -4.45788879e-11, 0, -4.54267223e-14, 0.0234148154, 0.141535788, 0, 1.62597998e-05, 0, 0, 1, 0, 908.406086, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458105, 9.47763489e-10, 0, 6.32260464e-13, 0.0234104548, 0.141504267, 0, 1.62571276e-05, 0, 0, 1, 0, 910.741968, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -630,44 +614,44 @@
           "height": 126,
           "faceQuad": [
             [
-              990.945,
-              1556.109
+              993.245,
+              1557.783
             ],
             [
-              1065.604,
-              1556.109
+              1063.496,
+              1557.783
             ],
             [
-              1069.637,
-              1633.1
+              1067.378,
+              1631.461
             ],
             [
-              995.781,
-              1633.1
+              997.851,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              990.753,
-              1555.97
+              993.069,
+              1557.655
             ],
             [
-              1065.78,
-              1555.97
+              1063.657,
+              1557.655
             ],
             [
-              1069.825,
-              1633.236
+              1067.551,
+              1631.587
             ],
             [
-              995.609,
-              1633.236
+              997.693,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.15249392, 1.63404888e-09, 0, 7.40090328e-13, 0.0234146548, 0.141535787, 0, 1.62597997e-05, 0, 0, 1, 0, 990.752821, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458105, 1.22740026e-09, 0, 8.76191654e-13, 0.0234123707, 0.141507415, 0, 1.62590572e-05, 0, 0, 1, 0, 993.069305, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -682,44 +666,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1073.29,
-              1556.109
+              1075.571,
+              1557.783
             ],
             [
-              1147.949,
-              1556.109
+              1145.822,
+              1557.783
             ],
             [
-              1151.095,
-              1633.1
+              1148.855,
+              1631.461
             ],
             [
-              1077.24,
-              1633.1
+              1079.328,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1073.1,
-              1555.97
+              1075.397,
+              1557.655
             ],
             [
-              1148.127,
-              1555.97
+              1145.985,
+              1557.655
             ],
             [
-              1151.282,
-              1633.236
+              1149.026,
+              1631.587
             ],
             [
-              1077.066,
-              1633.236
+              1079.169,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493913, -8.24339656e-09, 0, -5.07098205e-12, 0.0234164993, 0.141538631, 0, 1.62615409e-05, 0, 0, 1, 0, 1073.09956, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458103, -2.21042473e-09, 0, -1.44831901e-12, 0.0234125202, 0.141507417, 0, 1.62590588e-05, 0, 0, 1, 0, 1075.39664, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -734,44 +718,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1155.635,
-              1556.109
+              1157.897,
+              1557.783
             ],
             [
-              1230.294,
-              1556.109
+              1228.148,
+              1557.783
             ],
             [
-              1232.553,
-              1633.1
+              1230.332,
+              1631.461
             ],
             [
-              1158.698,
-              1633.1
+              1160.805,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1155.446,
-              1555.97
+              1157.724,
+              1557.655
             ],
             [
-              1230.473,
-              1555.97
+              1228.312,
+              1557.655
             ],
             [
-              1232.738,
-              1633.236
+              1230.502,
+              1631.587
             ],
             [
-              1158.522,
-              1633.236
+              1160.644,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493921, 3.23828331e-09, 0, 1.86893023e-12, 0.0234144602, 0.141535783, 0, 1.62597969e-05, 0, 0, 1, 0, 1155.44629, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458109, 6.27438973e-09, 0, 3.94114295e-12, 0.023412664, 0.141507411, 0, 1.62590549e-05, 0, 0, 1, 0, 1157.72398, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -786,44 +770,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1237.98,
-              1556.109
+              1240.223,
+              1557.783
             ],
             [
-              1312.64,
-              1556.109
+              1310.474,
+              1557.783
             ],
             [
-              1314.011,
-              1633.1
+              1311.809,
+              1631.461
             ],
             [
-              1240.156,
-              1633.1
+              1242.282,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1237.793,
-              1555.97
+              1240.051,
+              1557.655
             ],
             [
-              1312.82,
-              1555.97
+              1310.639,
+              1557.655
             ],
             [
-              1314.195,
-              1633.236
+              1311.978,
+              1631.587
             ],
             [
-              1239.979,
-              1633.236
+              1242.12,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493917, -2.36796779e-09, 0, -1.50018302e-12, 0.0234165898, 0.141538629, 0, 1.62615398e-05, 0, 0, 1, 0, 1237.79303, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245793, 1.36016988e-08, 0, 8.50512508e-12, 0.0234079081, 0.141501147, 0, 1.62552157e-05, 0, 0, 1, 0, 1240.05132, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -838,44 +822,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1320.325,
-              1556.109
+              1322.548,
+              1557.783
             ],
             [
-              1394.985,
-              1556.109
+              1392.8,
+              1557.783
             ],
             [
-              1395.469,
-              1633.1
+              1393.286,
+              1631.461
             ],
             [
-              1321.614,
-              1633.1
+              1323.759,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1320.14,
-              1555.97
+              1322.379,
+              1557.655
             ],
             [
-              1395.167,
-              1555.97
+              1392.967,
+              1557.655
             ],
             [
-              1395.651,
-              1633.236
+              1393.453,
+              1631.587
             ],
             [
-              1321.435,
-              1633.236
+              1323.595,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493931, 1.35420517e-08, 0, 8.57856133e-12, 0.0234165656, 0.141538622, 0, 1.62615355e-05, 0, 0, 1, 0, 1320.13976, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245792, 1.42663942e-09, 0, 6.39150337e-13, 0.0234102954, 0.141504293, 0, 1.62571441e-05, 0, 0, 1, 0, 1322.37865, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -890,44 +874,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1402.67,
-              1556.109
+              1404.874,
+              1557.783
             ],
             [
-              1477.33,
-              1556.109
+              1475.126,
+              1557.783
             ],
             [
-              1476.928,
-              1633.1
+              1474.763,
+              1631.461
             ],
             [
-              1403.072,
-              1633.1
+              1405.236,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1402.486,
-              1555.97
+              1404.706,
+              1557.655
             ],
             [
-              1477.514,
-              1555.97
+              1475.294,
+              1557.655
             ],
             [
-              1477.108,
-              1633.236
+              1474.929,
+              1631.587
             ],
             [
-              1402.892,
-              1633.236
+              1405.071,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493915, -4.10078578e-09, 0, -2.73302396e-12, 0.0234141084, 0.141535784, 0, 1.62597975e-05, 0, 0, 1, 0, 1402.4865, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458102, -2.85752276e-09, 0, -1.88662789e-12, 0.0234102624, 0.141504264, 0, 1.62571263e-05, 0, 0, 1, 0, 1404.70599, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -942,44 +926,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1485.015,
-              1556.109
+              1487.2,
+              1557.783
             ],
             [
-              1559.675,
-              1556.109
+              1557.452,
+              1557.783
             ],
             [
-              1558.386,
-              1633.1
+              1556.241,
+              1631.461
             ],
             [
-              1484.531,
-              1633.1
+              1486.714,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1484.833,
-              1555.97
+              1487.033,
+              1557.655
             ],
             [
-              1559.86,
-              1555.97
+              1557.621,
+              1557.655
             ],
             [
-              1558.565,
-              1633.236
+              1556.404,
+              1631.587
             ],
             [
-              1484.349,
-              1633.236
+              1486.547,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494269, 1.27607286e-09, 0, 6.7424993e-13, 0.0234191872, 0.141541408, 0, 1.62632411e-05, 0, 0, 1, 0, 1484.83315, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245792, 9.52030714e-10, 0, 4.40073173e-13, 0.0234101551, 0.141504304, 0, 1.6257151e-05, 0, 0, 1, 0, 1487.03333, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -994,44 +978,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1567.36,
-              1556.109
+              1569.526,
+              1557.783
             ],
             [
-              1642.02,
-              1556.109
+              1639.777,
+              1557.783
             ],
             [
-              1639.844,
-              1633.1
+              1637.718,
+              1631.461
             ],
             [
-              1565.989,
-              1633.1
+              1568.191,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1567.18,
-              1555.97
+              1569.361,
+              1557.655
             ],
             [
-              1642.207,
-              1555.97
+              1639.949,
+              1557.655
             ],
             [
-              1640.021,
-              1633.236
+              1637.88,
+              1631.587
             ],
             [
-              1565.805,
-              1633.236
+              1568.022,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493923, 4.40571762e-09, 0, 2.67035649e-12, 0.0234137825, 0.141535779, 0, 1.62597942e-05, 0, 0, 1, 0, 1567.17997, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457913, -5.61192706e-09, 0, -3.5384581e-12, 0.0234102782, 0.141504301, 0, 1.6257149e-05, 0, 0, 1, 0, 1569.36058, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1046,44 +1030,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1649.706,
-              1556.109
+              1651.852,
+              1557.783
             ],
             [
-              1724.365,
-              1556.109
+              1722.103,
+              1557.783
             ],
             [
-              1721.302,
-              1633.1
+              1719.195,
+              1631.461
             ],
             [
-              1647.447,
-              1633.1
+              1649.668,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1649.527,
-              1555.97
+              1651.688,
+              1557.655
             ],
             [
-              1724.554,
-              1555.97
+              1722.276,
+              1557.655
             ],
             [
-              1721.478,
-              1633.236
+              1719.356,
+              1631.587
             ],
             [
-              1647.262,
-              1633.236
+              1649.498,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494276, 7.74490467e-09, 0, 4.67766637e-12, 0.0234254111, 0.141547085, 0, 1.62667171e-05, 0, 0, 1, 0, 1649.52662, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457905, -1.24253809e-08, 0, -7.85587636e-12, 0.0234101402, 0.141504304, 0, 1.62571508e-05, 0, 0, 1, 0, 1651.688, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1098,44 +1082,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1732.051,
-              1556.109
+              1734.178,
+              1557.783
             ],
             [
-              1806.71,
-              1556.109
+              1804.429,
+              1557.783
             ],
             [
-              1802.76,
-              1633.1
+              1800.672,
+              1631.461
             ],
             [
-              1728.905,
-              1633.1
+              1731.145,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1731.873,
-              1555.97
+              1734.015,
+              1557.655
             ],
             [
-              1806.9,
-              1555.97
+              1804.603,
+              1557.655
             ],
             [
-              1802.935,
-              1633.236
+              1800.831,
+              1631.587
             ],
             [
-              1728.718,
-              1633.236
+              1730.974,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493907, -1.05909436e-08, 0, -6.46420622e-12, 0.0234137391, 0.141535797, 0, 1.62598057e-05, 0, 0, 1, 0, 1731.87344, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457922, 2.2827898e-09, 0, 1.47054903e-12, 0.0234102659, 0.141504304, 0, 1.62571507e-05, 0, 0, 1, 0, 1734.01525, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1150,44 +1134,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1814.396,
-              1556.109
+              1816.504,
+              1557.783
             ],
             [
-              1889.056,
-              1556.109
+              1886.755,
+              1557.783
             ],
             [
-              1884.219,
-              1633.1
+              1882.149,
+              1631.461
             ],
             [
-              1810.363,
-              1633.1
+              1812.622,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1814.22,
-              1555.97
+              1816.343,
+              1557.655
             ],
             [
-              1889.247,
-              1555.97
+              1886.931,
+              1557.655
             ],
             [
-              1884.391,
-              1633.236
+              1882.307,
+              1631.587
             ],
             [
-              1810.175,
-              1633.236
+              1812.449,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.15249427, 1.99292595e-09, 0, 1.29627126e-12, 0.0234199381, 0.141541419, 0, 1.62632481e-05, 0, 0, 1, 0, 1814.22009, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457927, 7.40319545e-09, 0, 4.38527761e-12, 0.0234101098, 0.14150429, 0, 1.62571422e-05, 0, 0, 1, 0, 1816.34268, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1202,53 +1186,53 @@
           "height": 126,
           "faceQuad": [
             [
-              1896.741,
-              1556.109
+              1898.829,
+              1557.783
             ],
             [
-              1971.401,
-              1556.109
+              1969.081,
+              1557.783
             ],
             [
-              1965.677,
-              1633.1
+              1963.626,
+              1631.461
             ],
             [
-              1891.821,
-              1633.1
+              1894.099,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1896.567,
-              1555.97
+              1898.67,
+              1557.655
             ],
             [
-              1971.594,
-              1555.97
+              1969.258,
+              1557.655
             ],
             [
-              1965.848,
-              1633.236
+              1963.783,
+              1631.587
             ],
             [
-              1891.632,
-              1633.236
+              1893.925,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493904, -1.21855073e-08, 0, -7.64806546e-12, 0.0234134035, 0.141535783, 0, 1.62597974e-05, 0, 0, 1, 0, 1896.56691, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457921, 1.40389797e-09, 0, 1.14222325e-12, 0.0234102556, 0.141504307, 0, 1.62571528e-05, 0, 0, 1, 0, 1898.66993, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         }
       ],
       "measurements": {
         "seamContrast": {
           "seams": 12,
-          "dipMedian": 0.0413,
-          "dipMin": 0.0254,
-          "dipMax": 0.051,
+          "dipMedian": 0.0525,
+          "dipMin": 0.039,
+          "dipMax": 0.0735,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -1259,131 +1243,71 @@
       "count": 13,
       "hasDraw": true,
       "orientation": "upright",
-      "group": {
+      "body": {
         "pose": "hand-upright",
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            831,
-            1511,
-            2017,
+            832,
+            1512,
+            2157,
             1682
           ],
           "reach": {
-            "left": 73.5,
-            "top": 0.0,
-            "right": 41.5,
+            "left": 72.5,
+            "top": -1.0,
+            "right": 38.7,
             "bottom": 46.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "right",
+          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            2017,
-            1573
+            886,
+            1478
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
-        "body": "bodies/hand-row-13.webp",
-        "x": 830,
-        "y": 1509,
-        "width": 1188,
-        "height": 174,
+        "body": "bodies/hand-13-draw.webp",
+        "x": 800,
+        "y": 1478,
+        "width": 1389,
+        "height": 236,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
+            "cropMarginPx": 32,
+            "taperPx": 32,
             "contour": [
-              830,
-              1512,
-              2014,
+              831,
+              1513,
+              2155,
               1708
             ],
             "reach": {
-              "left": 74.5,
-              "top": -1.0,
-              "right": 38.5,
+              "left": 73.5,
+              "top": -2.0,
+              "right": 36.7,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0196,
-            "maxAlphaAtCropEdgeSide": "right",
+            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              2014,
-              1571
+              799,
+              1490
             ],
+            "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
-          "body": "bodies/hand-row-13-back.webp",
-          "x": 829,
-          "y": 1509,
-          "width": 1186,
-          "height": 200
-        }
-      },
-      "draw": {
-        "slotId": "hand-draw",
-        "pose": "hand-upright",
-        "drawOrder": 41,
-        "shadow": {
-          "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
-          "contour": [
-            1972,
-            1512,
-            2158,
-            1700
-          ],
-          "reach": {
-            "left": 51.0,
-            "top": -1.0,
-            "right": 39.7,
-            "bottom": 64.0
-          },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "right",
-          "maxAlphaAtCropEdgePx": [
-            2158,
-            1569
-          ],
-          "sceneEdgeClips": []
-        },
-        "body": "bodies/hand-draw-13.webp",
-        "x": 1971,
-        "y": 1509,
-        "width": 188,
-        "height": 192,
-        "back": {
-          "pose": "hand-upright-back",
-          "shadow": {
-            "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
-            "contour": [
-              1972,
-              1512,
-              2156,
-              1704
-            ],
-            "reach": {
-              "left": 51.0,
-              "top": -1.0,
-              "right": 37.7,
-              "bottom": 68.0
-            },
-            "maxAlphaAtCropEdge": 0.0196,
-            "maxAlphaAtCropEdgeSide": "right",
-            "maxAlphaAtCropEdgePx": [
-              2156,
-              1570
-            ],
-            "sceneEdgeClips": []
-          },
-          "body": "bodies/hand-draw-13-back.webp",
-          "x": 1971,
-          "y": 1509,
-          "width": 186,
-          "height": 196
+          "body": "bodies/hand-13-draw-back.webp",
+          "x": 799,
+          "y": 1478,
+          "width": 1388,
+          "height": 262
         }
       },
       "slots": [
@@ -1399,44 +1323,44 @@
           "height": 126,
           "faceQuad": [
             [
-              908.599,
-              1556.109
+              910.919,
+              1557.783
             ],
             [
-              983.259,
-              1556.109
+              981.171,
+              1557.783
             ],
             [
-              988.179,
-              1633.1
+              985.901,
+              1631.461
             ],
             [
-              914.323,
-              1633.1
+              916.374,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              908.406,
-              1555.97
+              910.742,
+              1557.655
             ],
             [
-              983.433,
-              1555.97
+              981.33,
+              1557.655
             ],
             [
-              988.368,
-              1633.236
+              986.075,
+              1631.587
             ],
             [
-              914.152,
-              1633.236
+              916.217,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493919, -4.45788879e-11, 0, -4.54267223e-14, 0.0234148154, 0.141535788, 0, 1.62597998e-05, 0, 0, 1, 0, 908.406086, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458105, 9.47763489e-10, 0, 6.32260464e-13, 0.0234104548, 0.141504267, 0, 1.62571276e-05, 0, 0, 1, 0, 910.741968, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1451,44 +1375,44 @@
           "height": 126,
           "faceQuad": [
             [
-              990.945,
-              1556.109
+              993.245,
+              1557.783
             ],
             [
-              1065.604,
-              1556.109
+              1063.496,
+              1557.783
             ],
             [
-              1069.637,
-              1633.1
+              1067.378,
+              1631.461
             ],
             [
-              995.781,
-              1633.1
+              997.851,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              990.753,
-              1555.97
+              993.069,
+              1557.655
             ],
             [
-              1065.78,
-              1555.97
+              1063.657,
+              1557.655
             ],
             [
-              1069.825,
-              1633.236
+              1067.551,
+              1631.587
             ],
             [
-              995.609,
-              1633.236
+              997.693,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.15249392, 1.63404888e-09, 0, 7.40090328e-13, 0.0234146548, 0.141535787, 0, 1.62597997e-05, 0, 0, 1, 0, 990.752821, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458105, 1.22740026e-09, 0, 8.76191654e-13, 0.0234123707, 0.141507415, 0, 1.62590572e-05, 0, 0, 1, 0, 993.069305, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1503,44 +1427,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1073.29,
-              1556.109
+              1075.571,
+              1557.783
             ],
             [
-              1147.949,
-              1556.109
+              1145.822,
+              1557.783
             ],
             [
-              1151.095,
-              1633.1
+              1148.855,
+              1631.461
             ],
             [
-              1077.24,
-              1633.1
+              1079.328,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1073.1,
-              1555.97
+              1075.397,
+              1557.655
             ],
             [
-              1148.127,
-              1555.97
+              1145.985,
+              1557.655
             ],
             [
-              1151.282,
-              1633.236
+              1149.026,
+              1631.587
             ],
             [
-              1077.066,
-              1633.236
+              1079.169,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493913, -8.24339656e-09, 0, -5.07098205e-12, 0.0234164993, 0.141538631, 0, 1.62615409e-05, 0, 0, 1, 0, 1073.09956, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458103, -2.21042473e-09, 0, -1.44831901e-12, 0.0234125202, 0.141507417, 0, 1.62590588e-05, 0, 0, 1, 0, 1075.39664, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1555,44 +1479,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1155.635,
-              1556.109
+              1157.897,
+              1557.783
             ],
             [
-              1230.294,
-              1556.109
+              1228.148,
+              1557.783
             ],
             [
-              1232.553,
-              1633.1
+              1230.332,
+              1631.461
             ],
             [
-              1158.698,
-              1633.1
+              1160.805,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1155.446,
-              1555.97
+              1157.724,
+              1557.655
             ],
             [
-              1230.473,
-              1555.97
+              1228.312,
+              1557.655
             ],
             [
-              1232.738,
-              1633.236
+              1230.502,
+              1631.587
             ],
             [
-              1158.522,
-              1633.236
+              1160.644,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493921, 3.23828331e-09, 0, 1.86893023e-12, 0.0234144602, 0.141535783, 0, 1.62597969e-05, 0, 0, 1, 0, 1155.44629, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458109, 6.27438973e-09, 0, 3.94114295e-12, 0.023412664, 0.141507411, 0, 1.62590549e-05, 0, 0, 1, 0, 1157.72398, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1607,44 +1531,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1237.98,
-              1556.109
+              1240.223,
+              1557.783
             ],
             [
-              1312.64,
-              1556.109
+              1310.474,
+              1557.783
             ],
             [
-              1314.011,
-              1633.1
+              1311.809,
+              1631.461
             ],
             [
-              1240.156,
-              1633.1
+              1242.282,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1237.793,
-              1555.97
+              1240.051,
+              1557.655
             ],
             [
-              1312.82,
-              1555.97
+              1310.639,
+              1557.655
             ],
             [
-              1314.195,
-              1633.236
+              1311.978,
+              1631.587
             ],
             [
-              1239.979,
-              1633.236
+              1242.12,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493917, -2.36796779e-09, 0, -1.50018302e-12, 0.0234165898, 0.141538629, 0, 1.62615398e-05, 0, 0, 1, 0, 1237.79303, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245793, 1.36016988e-08, 0, 8.50512508e-12, 0.0234079081, 0.141501147, 0, 1.62552157e-05, 0, 0, 1, 0, 1240.05132, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1659,44 +1583,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1320.325,
-              1556.109
+              1322.548,
+              1557.783
             ],
             [
-              1394.985,
-              1556.109
+              1392.8,
+              1557.783
             ],
             [
-              1395.469,
-              1633.1
+              1393.286,
+              1631.461
             ],
             [
-              1321.614,
-              1633.1
+              1323.759,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1320.14,
-              1555.97
+              1322.379,
+              1557.655
             ],
             [
-              1395.167,
-              1555.97
+              1392.967,
+              1557.655
             ],
             [
-              1395.651,
-              1633.236
+              1393.453,
+              1631.587
             ],
             [
-              1321.435,
-              1633.236
+              1323.595,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493931, 1.35420517e-08, 0, 8.57856133e-12, 0.0234165656, 0.141538622, 0, 1.62615355e-05, 0, 0, 1, 0, 1320.13976, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245792, 1.42663942e-09, 0, 6.39150337e-13, 0.0234102954, 0.141504293, 0, 1.62571441e-05, 0, 0, 1, 0, 1322.37865, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1711,44 +1635,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1402.67,
-              1556.109
+              1404.874,
+              1557.783
             ],
             [
-              1477.33,
-              1556.109
+              1475.126,
+              1557.783
             ],
             [
-              1476.928,
-              1633.1
+              1474.763,
+              1631.461
             ],
             [
-              1403.072,
-              1633.1
+              1405.236,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1402.486,
-              1555.97
+              1404.706,
+              1557.655
             ],
             [
-              1477.514,
-              1555.97
+              1475.294,
+              1557.655
             ],
             [
-              1477.108,
-              1633.236
+              1474.929,
+              1631.587
             ],
             [
-              1402.892,
-              1633.236
+              1405.071,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493915, -4.10078578e-09, 0, -2.73302396e-12, 0.0234141084, 0.141535784, 0, 1.62597975e-05, 0, 0, 1, 0, 1402.4865, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458102, -2.85752276e-09, 0, -1.88662789e-12, 0.0234102624, 0.141504264, 0, 1.62571263e-05, 0, 0, 1, 0, 1404.70599, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1763,44 +1687,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1485.015,
-              1556.109
+              1487.2,
+              1557.783
             ],
             [
-              1559.675,
-              1556.109
+              1557.452,
+              1557.783
             ],
             [
-              1558.386,
-              1633.1
+              1556.241,
+              1631.461
             ],
             [
-              1484.531,
-              1633.1
+              1486.714,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1484.833,
-              1555.97
+              1487.033,
+              1557.655
             ],
             [
-              1559.86,
-              1555.97
+              1557.621,
+              1557.655
             ],
             [
-              1558.565,
-              1633.236
+              1556.404,
+              1631.587
             ],
             [
-              1484.349,
-              1633.236
+              1486.547,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494269, 1.27607286e-09, 0, 6.7424993e-13, 0.0234191872, 0.141541408, 0, 1.62632411e-05, 0, 0, 1, 0, 1484.83315, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245792, 9.52030714e-10, 0, 4.40073173e-13, 0.0234101551, 0.141504304, 0, 1.6257151e-05, 0, 0, 1, 0, 1487.03333, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1815,44 +1739,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1567.36,
-              1556.109
+              1569.526,
+              1557.783
             ],
             [
-              1642.02,
-              1556.109
+              1639.777,
+              1557.783
             ],
             [
-              1639.844,
-              1633.1
+              1637.718,
+              1631.461
             ],
             [
-              1565.989,
-              1633.1
+              1568.191,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1567.18,
-              1555.97
+              1569.361,
+              1557.655
             ],
             [
-              1642.207,
-              1555.97
+              1639.949,
+              1557.655
             ],
             [
-              1640.021,
-              1633.236
+              1637.88,
+              1631.587
             ],
             [
-              1565.805,
-              1633.236
+              1568.022,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493923, 4.40571762e-09, 0, 2.67035649e-12, 0.0234137825, 0.141535779, 0, 1.62597942e-05, 0, 0, 1, 0, 1567.17997, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457913, -5.61192706e-09, 0, -3.5384581e-12, 0.0234102782, 0.141504301, 0, 1.6257149e-05, 0, 0, 1, 0, 1569.36058, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1867,44 +1791,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1649.706,
-              1556.109
+              1651.852,
+              1557.783
             ],
             [
-              1724.365,
-              1556.109
+              1722.103,
+              1557.783
             ],
             [
-              1721.302,
-              1633.1
+              1719.195,
+              1631.461
             ],
             [
-              1647.447,
-              1633.1
+              1649.668,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1649.527,
-              1555.97
+              1651.688,
+              1557.655
             ],
             [
-              1724.554,
-              1555.97
+              1722.276,
+              1557.655
             ],
             [
-              1721.478,
-              1633.236
+              1719.356,
+              1631.587
             ],
             [
-              1647.262,
-              1633.236
+              1649.498,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494276, 7.74490467e-09, 0, 4.67766637e-12, 0.0234254111, 0.141547085, 0, 1.62667171e-05, 0, 0, 1, 0, 1649.52662, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457905, -1.24253809e-08, 0, -7.85587636e-12, 0.0234101402, 0.141504304, 0, 1.62571508e-05, 0, 0, 1, 0, 1651.688, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1919,44 +1843,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1732.051,
-              1556.109
+              1734.178,
+              1557.783
             ],
             [
-              1806.71,
-              1556.109
+              1804.429,
+              1557.783
             ],
             [
-              1802.76,
-              1633.1
+              1800.672,
+              1631.461
             ],
             [
-              1728.905,
-              1633.1
+              1731.145,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1731.873,
-              1555.97
+              1734.015,
+              1557.655
             ],
             [
-              1806.9,
-              1555.97
+              1804.603,
+              1557.655
             ],
             [
-              1802.935,
-              1633.236
+              1800.831,
+              1631.587
             ],
             [
-              1728.718,
-              1633.236
+              1730.974,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493907, -1.05909436e-08, 0, -6.46420622e-12, 0.0234137391, 0.141535797, 0, 1.62598057e-05, 0, 0, 1, 0, 1731.87344, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457922, 2.2827898e-09, 0, 1.47054903e-12, 0.0234102659, 0.141504304, 0, 1.62571507e-05, 0, 0, 1, 0, 1734.01525, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -1971,44 +1895,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1814.396,
-              1556.109
+              1816.504,
+              1557.783
             ],
             [
-              1889.056,
-              1556.109
+              1886.755,
+              1557.783
             ],
             [
-              1884.219,
-              1633.1
+              1882.149,
+              1631.461
             ],
             [
-              1810.363,
-              1633.1
+              1812.622,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1814.22,
-              1555.97
+              1816.343,
+              1557.655
             ],
             [
-              1889.247,
-              1555.97
+              1886.931,
+              1557.655
             ],
             [
-              1884.391,
-              1633.236
+              1882.307,
+              1631.587
             ],
             [
-              1810.175,
-              1633.236
+              1812.449,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.15249427, 1.99292595e-09, 0, 1.29627126e-12, 0.0234199381, 0.141541419, 0, 1.62632481e-05, 0, 0, 1, 0, 1814.22009, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457927, 7.40319545e-09, 0, 4.38527761e-12, 0.0234101098, 0.14150429, 0, 1.62571422e-05, 0, 0, 1, 0, 1816.34268, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2023,44 +1947,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1896.741,
-              1556.109
+              1898.829,
+              1557.783
             ],
             [
-              1971.401,
-              1556.109
+              1969.081,
+              1557.783
             ],
             [
-              1965.677,
-              1633.1
+              1963.626,
+              1631.461
             ],
             [
-              1891.821,
-              1633.1
+              1894.099,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1896.567,
-              1555.97
+              1898.67,
+              1557.655
             ],
             [
-              1971.594,
-              1555.97
+              1969.258,
+              1557.655
             ],
             [
-              1965.848,
-              1633.236
+              1963.783,
+              1631.587
             ],
             [
-              1891.632,
-              1633.236
+              1893.925,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493904, -1.21855073e-08, 0, -7.64806546e-12, 0.0234134035, 0.141535783, 0, 1.62597974e-05, 0, 0, 1, 0, 1896.56691, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457921, 1.40389797e-09, 0, 1.14222325e-12, 0.0234102556, 0.141504307, 0, 1.62571528e-05, 0, 0, 1, 0, 1898.66993, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2075,53 +1999,53 @@
           "height": 126,
           "faceQuad": [
             [
-              2039.473,
-              1556.109
+              2041.528,
+              1557.783
             ],
             [
-              2114.132,
-              1556.109
+              2111.779,
+              1557.783
             ],
             [
-              2106.871,
-              1633.1
+              2104.853,
+              1631.461
             ],
             [
-              2033.016,
-              1633.1
+              2035.326,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              2039.301,
-              1555.97
+              2041.371,
+              1557.655
             ],
             [
-              2114.328,
-              1555.97
+              2111.959,
+              1557.655
             ],
             [
-              2107.039,
-              1633.236
+              2105.007,
+              1631.587
             ],
             [
-              2032.823,
-              1633.236
+              2035.149,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493909, -6.42234427e-09, 0, -3.90107301e-12, 0.0234131723, 0.141535779, 0, 1.62597944e-05, 0, 0, 1, 0, 2039.30128, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457929, 8.04657098e-09, 0, 4.88930064e-12, 0.0234102181, 0.141504302, 0, 1.62571493e-05, 0, 0, 1, 0, 2041.37066, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         }
       ],
       "measurements": {
         "seamContrast": {
           "seams": 12,
-          "dipMedian": 0.0413,
-          "dipMin": 0.0254,
-          "dipMax": 0.051,
+          "dipMedian": 0.0525,
+          "dipMin": 0.039,
+          "dipMax": 0.0735,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -2132,70 +2056,73 @@
       "count": 10,
       "hasDraw": false,
       "orientation": "upright",
-      "group": {
+      "body": {
         "pose": "hand-upright",
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            957,
-            1511,
-            1893,
-            1682
+            958,
+            1512,
+            1892,
+            1681
           ],
           "reach": {
-            "left": 71.1,
-            "top": 0.0,
-            "right": 41.1,
-            "bottom": 46.0
+            "left": 70.1,
+            "top": -1.0,
+            "right": 40.1,
+            "bottom": 45.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "left",
+          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            956,
-            1657
+            1011,
+            1478
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
-        "body": "bodies/hand-row-10.webp",
-        "x": 956,
-        "y": 1509,
-        "width": 938,
-        "height": 174,
+        "body": "bodies/hand-10.webp",
+        "x": 926,
+        "y": 1478,
+        "width": 998,
+        "height": 235,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
+            "cropMarginPx": 32,
+            "taperPx": 32,
             "contour": [
-              956,
-              1512,
+              957,
+              1513,
               1890,
               1708
             ],
             "reach": {
-              "left": 72.1,
-              "top": -1.0,
+              "left": 71.1,
+              "top": -2.0,
               "right": 38.1,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0196,
+            "maxAlphaAtCropEdge": 0.0039,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              955,
-              1671
+              925,
+              1493
             ],
+            "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
-          "body": "bodies/hand-row-10-back.webp",
-          "x": 955,
-          "y": 1509,
-          "width": 936,
-          "height": 200
+          "body": "bodies/hand-10-back.webp",
+          "x": 925,
+          "y": 1478,
+          "width": 997,
+          "height": 262
         }
       },
-      "draw": null,
       "slots": [
         {
           "id": "hand-0",
@@ -2209,44 +2136,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1032.117,
-              1556.109
+              1034.408,
+              1557.783
             ],
             [
-              1106.777,
-              1556.109
+              1104.659,
+              1557.783
             ],
             [
-              1110.366,
-              1633.1
+              1108.117,
+              1631.461
             ],
             [
-              1036.51,
-              1633.1
+              1038.59,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1031.926,
-              1555.97
+              1034.233,
+              1557.655
             ],
             [
-              1106.953,
-              1555.97
+              1104.821,
+              1557.655
             ],
             [
-              1110.553,
-              1633.236
+              1108.289,
+              1631.587
             ],
             [
-              1036.337,
-              1633.236
+              1038.431,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.15249409, -5.23142339e-09, 0, -3.13226198e-12, 0.0234183535, 0.141541438, 0, 1.62632596e-05, 0, 0, 1, 0, 1031.92615, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457914, -6.87081963e-09, 0, -4.24756437e-12, 0.0234103961, 0.141504301, 0, 1.62571488e-05, 0, 0, 1, 0, 1034.23302, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2261,44 +2188,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1114.462,
-              1556.109
+              1116.734,
+              1557.783
             ],
             [
-              1189.122,
-              1556.109
+              1186.985,
+              1557.783
             ],
             [
-              1191.824,
-              1633.1
+              1189.594,
+              1631.461
             ],
             [
-              1117.969,
-              1633.1
+              1120.067,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1114.273,
-              1555.97
+              1116.56,
+              1557.655
             ],
             [
-              1189.3,
-              1555.97
+              1187.148,
+              1557.655
             ],
             [
-              1192.01,
-              1633.236
+              1189.764,
+              1631.587
             ],
             [
-              1117.794,
-              1633.236
+              1119.906,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494088, -7.42924491e-09, 0, -4.71167837e-12, 0.0234184754, 0.141541438, 0, 1.626326e-05, 0, 0, 1, 0, 1114.27288, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457924, 6.8284979e-09, 0, 4.20480686e-12, 0.0234103879, 0.1415043, 0, 1.62571481e-05, 0, 0, 1, 0, 1116.56035, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2313,44 +2240,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1196.807,
-              1556.109
+              1199.06,
+              1557.783
             ],
             [
-              1271.467,
-              1556.109
+              1269.311,
+              1557.783
             ],
             [
-              1273.282,
-              1633.1
+              1271.071,
+              1631.461
             ],
             [
-              1199.427,
-              1633.1
+              1201.544,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1196.62,
-              1555.97
+              1198.888,
+              1557.655
             ],
             [
-              1271.647,
-              1555.97
+              1269.476,
+              1557.655
             ],
             [
-              1273.466,
-              1633.236
+              1271.24,
+              1631.587
             ],
             [
-              1199.25,
-              1633.236
+              1201.382,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494092, -1.77953196e-09, 0, -1.1556832e-12, 0.0234165107, 0.141538598, 0, 1.62615204e-05, 0, 0, 1, 0, 1196.61962, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457917, -2.4546061e-09, 0, -1.54121974e-12, 0.0234079274, 0.141501152, 0, 1.62552186e-05, 0, 0, 1, 0, 1198.88769, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2365,44 +2292,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1279.153,
-              1556.109
+              1281.386,
+              1557.783
             ],
             [
-              1353.812,
-              1556.109
+              1351.637,
+              1557.783
             ],
             [
-              1354.74,
-              1633.1
+              1352.548,
+              1631.461
             ],
             [
-              1280.885,
-              1633.1
+              1283.021,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1278.966,
-              1555.97
+              1281.215,
+              1557.655
             ],
             [
-              1353.993,
-              1555.97
+              1351.803,
+              1557.655
             ],
             [
-              1354.923,
-              1633.236
+              1352.716,
+              1631.587
             ],
             [
-              1280.707,
-              1633.236
+              1282.858,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494093, -2.87749571e-10, 0, 5.08573782e-15, 0.0234188513, 0.141541443, 0, 1.6263263e-05, 0, 0, 1, 0, 1278.96635, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457923, 5.51191043e-09, 0, 3.2735039e-12, 0.0234077579, 0.141501146, 0, 1.62552149e-05, 0, 0, 1, 0, 1281.21503, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2417,44 +2344,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1361.498,
-              1556.109
+              1363.711,
+              1557.783
             ],
             [
-              1436.157,
-              1556.109
+              1433.963,
+              1557.783
             ],
             [
-              1436.199,
-              1633.1
+              1434.025,
+              1631.461
             ],
             [
-              1362.343,
-              1633.1
+              1364.498,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1361.313,
-              1555.97
+              1363.542,
+              1557.655
             ],
             [
-              1436.34,
-              1555.97
+              1434.13,
+              1557.655
             ],
             [
-              1436.38,
-              1633.236
+              1434.191,
+              1631.587
             ],
             [
-              1362.164,
-              1633.236
+              1364.333,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494088, -5.654819e-09, 0, -3.52441022e-12, 0.0234165966, 0.141538594, 0, 1.62615182e-05, 0, 0, 1, 0, 1361.31309, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458104, -2.20990242e-10, 0, -3.93368859e-13, 0.0234129696, 0.141507416, 0, 1.62590581e-05, 0, 0, 1, 0, 1363.54228, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2469,44 +2396,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1443.843,
-              1556.109
+              1446.037,
+              1557.783
             ],
             [
-              1518.502,
-              1556.109
+              1516.289,
+              1557.783
             ],
             [
-              1517.657,
-              1633.1
+              1515.502,
+              1631.461
             ],
             [
-              1443.801,
-              1633.1
+              1445.975,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1443.66,
-              1555.97
+              1445.87,
+              1557.655
             ],
             [
-              1518.687,
-              1555.97
+              1516.458,
+              1557.655
             ],
             [
-              1517.836,
-              1633.236
+              1515.667,
+              1631.587
             ],
             [
-              1443.62,
-              1633.236
+              1445.809,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493916, -2.76524993e-09, 0, -1.74296221e-12, 0.0234192422, 0.141541465, 0, 1.62632755e-05, 0, 0, 1, 0, 1443.65982, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457919, -5.41147374e-10, 0, -1.79467632e-13, 0.0234046361, 0.141497997, 0, 1.6253285e-05, 0, 0, 1, 0, 1445.86962, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2521,44 +2448,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1526.188,
-              1556.109
+              1528.363,
+              1557.783
             ],
             [
-              1600.848,
-              1556.109
+              1598.614,
+              1557.783
             ],
             [
-              1599.115,
-              1633.1
+              1596.979,
+              1631.461
             ],
             [
-              1525.26,
-              1633.1
+              1527.452,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1526.007,
-              1555.97
+              1528.197,
+              1557.655
             ],
             [
-              1601.034,
-              1555.97
+              1598.785,
+              1557.655
             ],
             [
-              1599.293,
-              1633.236
+              1597.142,
+              1631.587
             ],
             [
-              1525.077,
-              1633.236
+              1527.284,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493915, -3.92409674e-09, 0, -2.39395451e-12, 0.0234139357, 0.141535786, 0, 1.62597993e-05, 0, 0, 1, 0, 1526.00664, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457922, 2.11271436e-09, 0, 1.59382494e-12, 0.0234100926, 0.141504313, 0, 1.6257156e-05, 0, 0, 1, 0, 1528.19704, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2573,44 +2500,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1608.533,
-              1556.109
+              1610.689,
+              1557.783
             ],
             [
-              1683.193,
-              1556.109
+              1680.94,
+              1557.783
             ],
             [
-              1680.573,
-              1633.1
+              1678.456,
+              1631.461
             ],
             [
-              1606.718,
-              1633.1
+              1608.929,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1608.353,
-              1555.97
+              1610.524,
+              1557.655
             ],
             [
-              1683.38,
-              1555.97
+              1681.112,
+              1557.655
             ],
             [
-              1680.75,
-              1633.236
+              1678.618,
+              1631.587
             ],
             [
-              1606.534,
-              1633.236
+              1608.76,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493913, -5.31236216e-09, 0, -3.43762734e-12, 0.0234139046, 0.141535788, 0, 1.62598003e-05, 0, 0, 1, 0, 1608.35329, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457912, -6.50328616e-09, 0, -4.15898836e-12, 0.0234102015, 0.141504295, 0, 1.6257145e-05, 0, 0, 1, 0, 1610.52429, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2625,44 +2552,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1690.878,
-              1556.109
+              1693.015,
+              1557.783
             ],
             [
-              1765.538,
-              1556.109
+              1763.266,
+              1557.783
             ],
             [
-              1762.031,
-              1633.1
+              1759.933,
+              1631.461
             ],
             [
-              1688.176,
-              1633.1
+              1690.406,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1690.7,
-              1555.97
+              1692.852,
+              1557.655
             ],
             [
-              1765.727,
-              1555.97
+              1763.44,
+              1557.655
             ],
             [
-              1762.206,
-              1633.236
+              1760.094,
+              1631.587
             ],
             [
-              1687.99,
-              1633.236
+              1690.236,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493918, -2.58175417e-10, 0, -3.58447394e-13, 0.0234136133, 0.141535785, 0, 1.62597984e-05, 0, 0, 1, 0, 1690.70011, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458295, 4.66927355e-09, 0, 2.87698048e-12, 0.0234167909, 0.141510535, 0, 1.62609694e-05, 0, 0, 1, 0, 1692.85154, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2677,53 +2604,53 @@
           "height": 126,
           "faceQuad": [
             [
-              1773.223,
-              1556.109
+              1775.341,
+              1557.783
             ],
             [
-              1847.883,
-              1556.109
+              1845.592,
+              1557.783
             ],
             [
-              1843.49,
-              1633.1
+              1841.41,
+              1631.461
             ],
             [
-              1769.634,
-              1633.1
+              1771.883,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1773.047,
-              1555.97
+              1775.179,
+              1557.655
             ],
             [
-              1848.074,
-              1555.97
+              1845.767,
+              1557.655
             ],
             [
-              1843.663,
-              1633.236
+              1841.569,
+              1631.587
             ],
             [
-              1769.447,
-              1633.236
+              1771.711,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493917, -1.23554386e-09, 0, -9.8710373e-13, 0.0234135872, 0.141535791, 0, 1.6259802e-05, 0, 0, 1, 0, 1773.04676, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457929, 8.52649478e-09, 0, 5.26974077e-12, 0.0234101992, 0.141504307, 0, 1.62571528e-05, 0, 0, 1, 0, 1775.17897, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         }
       ],
       "measurements": {
         "seamContrast": {
           "seams": 9,
-          "dipMedian": 0.0405,
-          "dipMin": 0.0315,
-          "dipMax": 0.0525,
+          "dipMedian": 0.054,
+          "dipMin": 0.039,
+          "dipMax": 0.0705,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -2734,131 +2661,71 @@
       "count": 10,
       "hasDraw": true,
       "orientation": "upright",
-      "group": {
+      "body": {
         "pose": "hand-upright",
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            957,
-            1511,
-            1893,
-            1682
+            958,
+            1512,
+            2034,
+            1681
           ],
           "reach": {
-            "left": 71.1,
-            "top": 0.0,
-            "right": 41.1,
-            "bottom": 46.0
+            "left": 70.1,
+            "top": -1.0,
+            "right": 39.3,
+            "bottom": 45.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "left",
+          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            956,
-            1657
+            1011,
+            1478
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
-        "body": "bodies/hand-row-10.webp",
-        "x": 956,
-        "y": 1509,
-        "width": 938,
-        "height": 174,
+        "body": "bodies/hand-10-draw.webp",
+        "x": 926,
+        "y": 1478,
+        "width": 1140,
+        "height": 235,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
+            "cropMarginPx": 32,
+            "taperPx": 32,
             "contour": [
-              956,
-              1512,
-              1890,
+              957,
+              1513,
+              2032,
               1708
             ],
             "reach": {
-              "left": 72.1,
-              "top": -1.0,
-              "right": 38.1,
+              "left": 71.1,
+              "top": -2.0,
+              "right": 37.3,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0196,
+            "maxAlphaAtCropEdge": 0.0039,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              955,
-              1671
+              925,
+              1486
             ],
+            "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
-          "body": "bodies/hand-row-10-back.webp",
-          "x": 955,
-          "y": 1509,
-          "width": 936,
-          "height": 200
-        }
-      },
-      "draw": {
-        "slotId": "hand-draw",
-        "pose": "hand-upright",
-        "drawOrder": 41,
-        "shadow": {
-          "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
-          "contour": [
-            1848,
-            1512,
-            2035,
-            1700
-          ],
-          "reach": {
-            "left": 54.1,
-            "top": -1.0,
-            "right": 40.3,
-            "bottom": 64.0
-          },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "right",
-          "maxAlphaAtCropEdgePx": [
-            2035,
-            1566
-          ],
-          "sceneEdgeClips": []
-        },
-        "body": "bodies/hand-draw-10.webp",
-        "x": 1847,
-        "y": 1509,
-        "width": 189,
-        "height": 192,
-        "back": {
-          "pose": "hand-upright-back",
-          "shadow": {
-            "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
-            "contour": [
-              1848,
-              1512,
-              2033,
-              1705
-            ],
-            "reach": {
-              "left": 54.1,
-              "top": -1.0,
-              "right": 38.3,
-              "bottom": 69.0
-            },
-            "maxAlphaAtCropEdge": 0.0196,
-            "maxAlphaAtCropEdgeSide": "right",
-            "maxAlphaAtCropEdgePx": [
-              2033,
-              1569
-            ],
-            "sceneEdgeClips": []
-          },
-          "body": "bodies/hand-draw-10-back.webp",
-          "x": 1847,
-          "y": 1509,
-          "width": 187,
-          "height": 197
+          "body": "bodies/hand-10-draw-back.webp",
+          "x": 925,
+          "y": 1478,
+          "width": 1139,
+          "height": 262
         }
       },
       "slots": [
@@ -2874,44 +2741,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1032.117,
-              1556.109
+              1034.408,
+              1557.783
             ],
             [
-              1106.777,
-              1556.109
+              1104.659,
+              1557.783
             ],
             [
-              1110.366,
-              1633.1
+              1108.117,
+              1631.461
             ],
             [
-              1036.51,
-              1633.1
+              1038.59,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1031.926,
-              1555.97
+              1034.233,
+              1557.655
             ],
             [
-              1106.953,
-              1555.97
+              1104.821,
+              1557.655
             ],
             [
-              1110.553,
-              1633.236
+              1108.289,
+              1631.587
             ],
             [
-              1036.337,
-              1633.236
+              1038.431,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.15249409, -5.23142339e-09, 0, -3.13226198e-12, 0.0234183535, 0.141541438, 0, 1.62632596e-05, 0, 0, 1, 0, 1031.92615, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457914, -6.87081963e-09, 0, -4.24756437e-12, 0.0234103961, 0.141504301, 0, 1.62571488e-05, 0, 0, 1, 0, 1034.23302, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2926,44 +2793,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1114.462,
-              1556.109
+              1116.734,
+              1557.783
             ],
             [
-              1189.122,
-              1556.109
+              1186.985,
+              1557.783
             ],
             [
-              1191.824,
-              1633.1
+              1189.594,
+              1631.461
             ],
             [
-              1117.969,
-              1633.1
+              1120.067,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1114.273,
-              1555.97
+              1116.56,
+              1557.655
             ],
             [
-              1189.3,
-              1555.97
+              1187.148,
+              1557.655
             ],
             [
-              1192.01,
-              1633.236
+              1189.764,
+              1631.587
             ],
             [
-              1117.794,
-              1633.236
+              1119.906,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494088, -7.42924491e-09, 0, -4.71167837e-12, 0.0234184754, 0.141541438, 0, 1.626326e-05, 0, 0, 1, 0, 1114.27288, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457924, 6.8284979e-09, 0, 4.20480686e-12, 0.0234103879, 0.1415043, 0, 1.62571481e-05, 0, 0, 1, 0, 1116.56035, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -2978,44 +2845,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1196.807,
-              1556.109
+              1199.06,
+              1557.783
             ],
             [
-              1271.467,
-              1556.109
+              1269.311,
+              1557.783
             ],
             [
-              1273.282,
-              1633.1
+              1271.071,
+              1631.461
             ],
             [
-              1199.427,
-              1633.1
+              1201.544,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1196.62,
-              1555.97
+              1198.888,
+              1557.655
             ],
             [
-              1271.647,
-              1555.97
+              1269.476,
+              1557.655
             ],
             [
-              1273.466,
-              1633.236
+              1271.24,
+              1631.587
             ],
             [
-              1199.25,
-              1633.236
+              1201.382,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494092, -1.77953196e-09, 0, -1.1556832e-12, 0.0234165107, 0.141538598, 0, 1.62615204e-05, 0, 0, 1, 0, 1196.61962, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457917, -2.4546061e-09, 0, -1.54121974e-12, 0.0234079274, 0.141501152, 0, 1.62552186e-05, 0, 0, 1, 0, 1198.88769, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3030,44 +2897,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1279.153,
-              1556.109
+              1281.386,
+              1557.783
             ],
             [
-              1353.812,
-              1556.109
+              1351.637,
+              1557.783
             ],
             [
-              1354.74,
-              1633.1
+              1352.548,
+              1631.461
             ],
             [
-              1280.885,
-              1633.1
+              1283.021,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1278.966,
-              1555.97
+              1281.215,
+              1557.655
             ],
             [
-              1353.993,
-              1555.97
+              1351.803,
+              1557.655
             ],
             [
-              1354.923,
-              1633.236
+              1352.716,
+              1631.587
             ],
             [
-              1280.707,
-              1633.236
+              1282.858,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494093, -2.87749571e-10, 0, 5.08573782e-15, 0.0234188513, 0.141541443, 0, 1.6263263e-05, 0, 0, 1, 0, 1278.96635, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457923, 5.51191043e-09, 0, 3.2735039e-12, 0.0234077579, 0.141501146, 0, 1.62552149e-05, 0, 0, 1, 0, 1281.21503, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3082,44 +2949,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1361.498,
-              1556.109
+              1363.711,
+              1557.783
             ],
             [
-              1436.157,
-              1556.109
+              1433.963,
+              1557.783
             ],
             [
-              1436.199,
-              1633.1
+              1434.025,
+              1631.461
             ],
             [
-              1362.343,
-              1633.1
+              1364.498,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1361.313,
-              1555.97
+              1363.542,
+              1557.655
             ],
             [
-              1436.34,
-              1555.97
+              1434.13,
+              1557.655
             ],
             [
-              1436.38,
-              1633.236
+              1434.191,
+              1631.587
             ],
             [
-              1362.164,
-              1633.236
+              1364.333,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494088, -5.654819e-09, 0, -3.52441022e-12, 0.0234165966, 0.141538594, 0, 1.62615182e-05, 0, 0, 1, 0, 1361.31309, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458104, -2.20990242e-10, 0, -3.93368859e-13, 0.0234129696, 0.141507416, 0, 1.62590581e-05, 0, 0, 1, 0, 1363.54228, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3134,44 +3001,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1443.843,
-              1556.109
+              1446.037,
+              1557.783
             ],
             [
-              1518.502,
-              1556.109
+              1516.289,
+              1557.783
             ],
             [
-              1517.657,
-              1633.1
+              1515.502,
+              1631.461
             ],
             [
-              1443.801,
-              1633.1
+              1445.975,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1443.66,
-              1555.97
+              1445.87,
+              1557.655
             ],
             [
-              1518.687,
-              1555.97
+              1516.458,
+              1557.655
             ],
             [
-              1517.836,
-              1633.236
+              1515.667,
+              1631.587
             ],
             [
-              1443.62,
-              1633.236
+              1445.809,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493916, -2.76524993e-09, 0, -1.74296221e-12, 0.0234192422, 0.141541465, 0, 1.62632755e-05, 0, 0, 1, 0, 1443.65982, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457919, -5.41147374e-10, 0, -1.79467632e-13, 0.0234046361, 0.141497997, 0, 1.6253285e-05, 0, 0, 1, 0, 1445.86962, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3186,44 +3053,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1526.188,
-              1556.109
+              1528.363,
+              1557.783
             ],
             [
-              1600.848,
-              1556.109
+              1598.614,
+              1557.783
             ],
             [
-              1599.115,
-              1633.1
+              1596.979,
+              1631.461
             ],
             [
-              1525.26,
-              1633.1
+              1527.452,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1526.007,
-              1555.97
+              1528.197,
+              1557.655
             ],
             [
-              1601.034,
-              1555.97
+              1598.785,
+              1557.655
             ],
             [
-              1599.293,
-              1633.236
+              1597.142,
+              1631.587
             ],
             [
-              1525.077,
-              1633.236
+              1527.284,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493915, -3.92409674e-09, 0, -2.39395451e-12, 0.0234139357, 0.141535786, 0, 1.62597993e-05, 0, 0, 1, 0, 1526.00664, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457922, 2.11271436e-09, 0, 1.59382494e-12, 0.0234100926, 0.141504313, 0, 1.6257156e-05, 0, 0, 1, 0, 1528.19704, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3238,44 +3105,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1608.533,
-              1556.109
+              1610.689,
+              1557.783
             ],
             [
-              1683.193,
-              1556.109
+              1680.94,
+              1557.783
             ],
             [
-              1680.573,
-              1633.1
+              1678.456,
+              1631.461
             ],
             [
-              1606.718,
-              1633.1
+              1608.929,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1608.353,
-              1555.97
+              1610.524,
+              1557.655
             ],
             [
-              1683.38,
-              1555.97
+              1681.112,
+              1557.655
             ],
             [
-              1680.75,
-              1633.236
+              1678.618,
+              1631.587
             ],
             [
-              1606.534,
-              1633.236
+              1608.76,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493913, -5.31236216e-09, 0, -3.43762734e-12, 0.0234139046, 0.141535788, 0, 1.62598003e-05, 0, 0, 1, 0, 1608.35329, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457912, -6.50328616e-09, 0, -4.15898836e-12, 0.0234102015, 0.141504295, 0, 1.6257145e-05, 0, 0, 1, 0, 1610.52429, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3290,44 +3157,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1690.878,
-              1556.109
+              1693.015,
+              1557.783
             ],
             [
-              1765.538,
-              1556.109
+              1763.266,
+              1557.783
             ],
             [
-              1762.031,
-              1633.1
+              1759.933,
+              1631.461
             ],
             [
-              1688.176,
-              1633.1
+              1690.406,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1690.7,
-              1555.97
+              1692.852,
+              1557.655
             ],
             [
-              1765.727,
-              1555.97
+              1763.44,
+              1557.655
             ],
             [
-              1762.206,
-              1633.236
+              1760.094,
+              1631.587
             ],
             [
-              1687.99,
-              1633.236
+              1690.236,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493918, -2.58175417e-10, 0, -3.58447394e-13, 0.0234136133, 0.141535785, 0, 1.62597984e-05, 0, 0, 1, 0, 1690.70011, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458295, 4.66927355e-09, 0, 2.87698048e-12, 0.0234167909, 0.141510535, 0, 1.62609694e-05, 0, 0, 1, 0, 1692.85154, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3342,44 +3209,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1773.223,
-              1556.109
+              1775.341,
+              1557.783
             ],
             [
-              1847.883,
-              1556.109
+              1845.592,
+              1557.783
             ],
             [
-              1843.49,
-              1633.1
+              1841.41,
+              1631.461
             ],
             [
-              1769.634,
-              1633.1
+              1771.883,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1773.047,
-              1555.97
+              1775.179,
+              1557.655
             ],
             [
-              1848.074,
-              1555.97
+              1845.767,
+              1557.655
             ],
             [
-              1843.663,
-              1633.236
+              1841.569,
+              1631.587
             ],
             [
-              1769.447,
-              1633.236
+              1771.711,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493917, -1.23554386e-09, 0, -9.8710373e-13, 0.0234135872, 0.141535791, 0, 1.6259802e-05, 0, 0, 1, 0, 1773.04676, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457929, 8.52649478e-09, 0, 5.26974077e-12, 0.0234101992, 0.141504307, 0, 1.62571528e-05, 0, 0, 1, 0, 1775.17897, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3394,53 +3261,53 @@
           "height": 126,
           "faceQuad": [
             [
-              1915.955,
-              1556.109
+              1918.039,
+              1557.783
             ],
             [
-              1990.615,
-              1556.109
+              1988.29,
+              1557.783
             ],
             [
-              1984.684,
-              1633.1
+              1982.637,
+              1631.461
             ],
             [
-              1910.828,
-              1633.1
+              1913.11,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1915.781,
-              1555.97
+              1917.88,
+              1557.655
             ],
             [
-              1990.808,
-              1555.97
+              1988.468,
+              1557.655
             ],
             [
-              1984.854,
-              1633.236
+              1982.794,
+              1631.587
             ],
             [
-              1910.638,
-              1633.236
+              1912.936,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493908, -8.65466875e-09, 0, -5.23092727e-12, 0.0234133589, 0.141535788, 0, 1.62598003e-05, 0, 0, 1, 0, 1915.78114, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457907, -9.13580011e-09, 0, -5.614892e-12, 0.0234101505, 0.141504291, 0, 1.62571429e-05, 0, 0, 1, 0, 1917.8797, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         }
       ],
       "measurements": {
         "seamContrast": {
           "seams": 9,
-          "dipMedian": 0.0405,
-          "dipMin": 0.0315,
-          "dipMax": 0.0525,
+          "dipMedian": 0.054,
+          "dipMin": 0.0375,
+          "dipMax": 0.0705,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -3451,70 +3318,73 @@
       "count": 7,
       "hasDraw": false,
       "orientation": "upright",
-      "group": {
+      "body": {
         "pose": "hand-upright",
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            1082,
+            1083,
             1512,
-            1770,
-            1682
+            1769,
+            1681
           ],
           "reach": {
-            "left": 69.7,
+            "left": 68.7,
             "top": -1.0,
-            "right": 41.7,
-            "bottom": 46.0
+            "right": 40.7,
+            "bottom": 45.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "right",
+          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1770,
-            1552
+            1126,
+            1478
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
-        "body": "bodies/hand-row-7.webp",
-        "x": 1081,
-        "y": 1509,
-        "width": 690,
-        "height": 174,
+        "body": "bodies/hand-7.webp",
+        "x": 1051,
+        "y": 1478,
+        "width": 750,
+        "height": 235,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
+            "cropMarginPx": 32,
+            "taperPx": 32,
             "contour": [
-              1082,
-              1512,
-              1768,
+              1083,
+              1513,
+              1767,
               1708
             ],
             "reach": {
-              "left": 69.7,
-              "top": -1.0,
-              "right": 39.7,
+              "left": 68.7,
+              "top": -2.0,
+              "right": 38.7,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0196,
+            "maxAlphaAtCropEdge": 0.0039,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1081,
-              1659
+              1051,
+              1502
             ],
+            "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
-          "body": "bodies/hand-row-7-back.webp",
-          "x": 1081,
-          "y": 1509,
-          "width": 688,
-          "height": 200
+          "body": "bodies/hand-7-back.webp",
+          "x": 1051,
+          "y": 1478,
+          "width": 748,
+          "height": 262
         }
       },
-      "draw": null,
       "slots": [
         {
           "id": "hand-0",
@@ -3528,44 +3398,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1155.635,
-              1556.109
+              1157.897,
+              1557.783
             ],
             [
-              1230.294,
-              1556.109
+              1228.148,
+              1557.783
             ],
             [
-              1232.553,
-              1633.1
+              1230.332,
+              1631.461
             ],
             [
-              1158.698,
-              1633.1
+              1160.805,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1155.446,
-              1555.97
+              1157.724,
+              1557.655
             ],
             [
-              1230.473,
-              1555.97
+              1228.312,
+              1557.655
             ],
             [
-              1232.738,
-              1633.236
+              1230.502,
+              1631.587
             ],
             [
-              1158.522,
-              1633.236
+              1160.644,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493921, 3.23828331e-09, 0, 1.86893023e-12, 0.0234144602, 0.141535783, 0, 1.62597969e-05, 0, 0, 1, 0, 1155.44629, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458109, 6.27438973e-09, 0, 3.94114295e-12, 0.023412664, 0.141507411, 0, 1.62590549e-05, 0, 0, 1, 0, 1157.72398, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3580,44 +3450,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1237.98,
-              1556.109
+              1240.223,
+              1557.783
             ],
             [
-              1312.64,
-              1556.109
+              1310.474,
+              1557.783
             ],
             [
-              1314.011,
-              1633.1
+              1311.809,
+              1631.461
             ],
             [
-              1240.156,
-              1633.1
+              1242.282,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1237.793,
-              1555.97
+              1240.051,
+              1557.655
             ],
             [
-              1312.82,
-              1555.97
+              1310.639,
+              1557.655
             ],
             [
-              1314.195,
-              1633.236
+              1311.978,
+              1631.587
             ],
             [
-              1239.979,
-              1633.236
+              1242.12,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493917, -2.36796779e-09, 0, -1.50018302e-12, 0.0234165898, 0.141538629, 0, 1.62615398e-05, 0, 0, 1, 0, 1237.79303, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245793, 1.36016988e-08, 0, 8.50512508e-12, 0.0234079081, 0.141501147, 0, 1.62552157e-05, 0, 0, 1, 0, 1240.05132, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3632,44 +3502,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1320.325,
-              1556.109
+              1322.548,
+              1557.783
             ],
             [
-              1394.985,
-              1556.109
+              1392.8,
+              1557.783
             ],
             [
-              1395.469,
-              1633.1
+              1393.286,
+              1631.461
             ],
             [
-              1321.614,
-              1633.1
+              1323.759,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1320.14,
-              1555.97
+              1322.379,
+              1557.655
             ],
             [
-              1395.167,
-              1555.97
+              1392.967,
+              1557.655
             ],
             [
-              1395.651,
-              1633.236
+              1393.453,
+              1631.587
             ],
             [
-              1321.435,
-              1633.236
+              1323.595,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493931, 1.35420517e-08, 0, 8.57856133e-12, 0.0234165656, 0.141538622, 0, 1.62615355e-05, 0, 0, 1, 0, 1320.13976, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245792, 1.42663942e-09, 0, 6.39150337e-13, 0.0234102954, 0.141504293, 0, 1.62571441e-05, 0, 0, 1, 0, 1322.37865, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3684,44 +3554,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1402.67,
-              1556.109
+              1404.874,
+              1557.783
             ],
             [
-              1477.33,
-              1556.109
+              1475.126,
+              1557.783
             ],
             [
-              1476.928,
-              1633.1
+              1474.763,
+              1631.461
             ],
             [
-              1403.072,
-              1633.1
+              1405.236,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1402.486,
-              1555.97
+              1404.706,
+              1557.655
             ],
             [
-              1477.514,
-              1555.97
+              1475.294,
+              1557.655
             ],
             [
-              1477.108,
-              1633.236
+              1474.929,
+              1631.587
             ],
             [
-              1402.892,
-              1633.236
+              1405.071,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493915, -4.10078578e-09, 0, -2.73302396e-12, 0.0234141084, 0.141535784, 0, 1.62597975e-05, 0, 0, 1, 0, 1402.4865, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458102, -2.85752276e-09, 0, -1.88662789e-12, 0.0234102624, 0.141504264, 0, 1.62571263e-05, 0, 0, 1, 0, 1404.70599, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3736,44 +3606,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1485.015,
-              1556.109
+              1487.2,
+              1557.783
             ],
             [
-              1559.675,
-              1556.109
+              1557.452,
+              1557.783
             ],
             [
-              1558.386,
-              1633.1
+              1556.241,
+              1631.461
             ],
             [
-              1484.531,
-              1633.1
+              1486.714,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1484.833,
-              1555.97
+              1487.033,
+              1557.655
             ],
             [
-              1559.86,
-              1555.97
+              1557.621,
+              1557.655
             ],
             [
-              1558.565,
-              1633.236
+              1556.404,
+              1631.587
             ],
             [
-              1484.349,
-              1633.236
+              1486.547,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494269, 1.27607286e-09, 0, 6.7424993e-13, 0.0234191872, 0.141541408, 0, 1.62632411e-05, 0, 0, 1, 0, 1484.83315, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245792, 9.52030714e-10, 0, 4.40073173e-13, 0.0234101551, 0.141504304, 0, 1.6257151e-05, 0, 0, 1, 0, 1487.03333, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3788,44 +3658,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1567.36,
-              1556.109
+              1569.526,
+              1557.783
             ],
             [
-              1642.02,
-              1556.109
+              1639.777,
+              1557.783
             ],
             [
-              1639.844,
-              1633.1
+              1637.718,
+              1631.461
             ],
             [
-              1565.989,
-              1633.1
+              1568.191,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1567.18,
-              1555.97
+              1569.361,
+              1557.655
             ],
             [
-              1642.207,
-              1555.97
+              1639.949,
+              1557.655
             ],
             [
-              1640.021,
-              1633.236
+              1637.88,
+              1631.587
             ],
             [
-              1565.805,
-              1633.236
+              1568.022,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493923, 4.40571762e-09, 0, 2.67035649e-12, 0.0234137825, 0.141535779, 0, 1.62597942e-05, 0, 0, 1, 0, 1567.17997, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457913, -5.61192706e-09, 0, -3.5384581e-12, 0.0234102782, 0.141504301, 0, 1.6257149e-05, 0, 0, 1, 0, 1569.36058, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -3840,53 +3710,53 @@
           "height": 126,
           "faceQuad": [
             [
-              1649.706,
-              1556.109
+              1651.852,
+              1557.783
             ],
             [
-              1724.365,
-              1556.109
+              1722.103,
+              1557.783
             ],
             [
-              1721.302,
-              1633.1
+              1719.195,
+              1631.461
             ],
             [
-              1647.447,
-              1633.1
+              1649.668,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1649.527,
-              1555.97
+              1651.688,
+              1557.655
             ],
             [
-              1724.554,
-              1555.97
+              1722.276,
+              1557.655
             ],
             [
-              1721.478,
-              1633.236
+              1719.356,
+              1631.587
             ],
             [
-              1647.262,
-              1633.236
+              1649.498,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494276, 7.74490467e-09, 0, 4.67766637e-12, 0.0234254111, 0.141547085, 0, 1.62667171e-05, 0, 0, 1, 0, 1649.52662, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457905, -1.24253809e-08, 0, -7.85587636e-12, 0.0234101402, 0.141504304, 0, 1.62571508e-05, 0, 0, 1, 0, 1651.688, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         }
       ],
       "measurements": {
         "seamContrast": {
           "seams": 6,
-          "dipMedian": 0.0435,
-          "dipMin": 0.0345,
-          "dipMax": 0.048,
+          "dipMedian": 0.0562,
+          "dipMin": 0.042,
+          "dipMax": 0.0735,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -3897,131 +3767,71 @@
       "count": 7,
       "hasDraw": true,
       "orientation": "upright",
-      "group": {
+      "body": {
         "pose": "hand-upright",
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            1082,
+            1083,
             1512,
-            1770,
-            1682
+            1911,
+            1681
           ],
           "reach": {
-            "left": 69.7,
+            "left": 68.7,
             "top": -1.0,
-            "right": 41.7,
-            "bottom": 46.0
+            "right": 39.9,
+            "bottom": 45.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "right",
+          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1770,
-            1552
+            1126,
+            1478
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
-        "body": "bodies/hand-row-7.webp",
-        "x": 1081,
-        "y": 1509,
-        "width": 690,
-        "height": 174,
+        "body": "bodies/hand-7-draw.webp",
+        "x": 1051,
+        "y": 1478,
+        "width": 892,
+        "height": 235,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
+            "cropMarginPx": 32,
+            "taperPx": 32,
             "contour": [
-              1082,
-              1512,
-              1768,
+              1083,
+              1513,
+              1909,
               1708
             ],
             "reach": {
-              "left": 69.7,
-              "top": -1.0,
-              "right": 39.7,
+              "left": 68.7,
+              "top": -2.0,
+              "right": 37.9,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0196,
+            "maxAlphaAtCropEdge": 0.0039,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1081,
-              1659
+              1051,
+              1502
             ],
+            "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
-          "body": "bodies/hand-row-7-back.webp",
-          "x": 1081,
-          "y": 1509,
-          "width": 688,
-          "height": 200
-        }
-      },
-      "draw": {
-        "slotId": "hand-draw",
-        "pose": "hand-upright",
-        "drawOrder": 41,
-        "shadow": {
-          "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
-          "contour": [
-            1725,
-            1512,
-            1912,
-            1700
-          ],
-          "reach": {
-            "left": 56.2,
-            "top": -1.0,
-            "right": 40.9,
-            "bottom": 64.0
-          },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "right",
-          "maxAlphaAtCropEdgePx": [
-            1912,
-            1559
-          ],
-          "sceneEdgeClips": []
-        },
-        "body": "bodies/hand-draw-7.webp",
-        "x": 1724,
-        "y": 1509,
-        "width": 189,
-        "height": 192,
-        "back": {
-          "pose": "hand-upright-back",
-          "shadow": {
-            "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
-            "contour": [
-              1725,
-              1512,
-              1910,
-              1706
-            ],
-            "reach": {
-              "left": 56.2,
-              "top": -1.0,
-              "right": 38.9,
-              "bottom": 70.0
-            },
-            "maxAlphaAtCropEdge": 0.0196,
-            "maxAlphaAtCropEdgeSide": "right",
-            "maxAlphaAtCropEdgePx": [
-              1910,
-              1564
-            ],
-            "sceneEdgeClips": []
-          },
-          "body": "bodies/hand-draw-7-back.webp",
-          "x": 1724,
-          "y": 1509,
-          "width": 187,
-          "height": 198
+          "body": "bodies/hand-7-draw-back.webp",
+          "x": 1051,
+          "y": 1478,
+          "width": 890,
+          "height": 262
         }
       },
       "slots": [
@@ -4037,44 +3847,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1155.635,
-              1556.109
+              1157.897,
+              1557.783
             ],
             [
-              1230.294,
-              1556.109
+              1228.148,
+              1557.783
             ],
             [
-              1232.553,
-              1633.1
+              1230.332,
+              1631.461
             ],
             [
-              1158.698,
-              1633.1
+              1160.805,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1155.446,
-              1555.97
+              1157.724,
+              1557.655
             ],
             [
-              1230.473,
-              1555.97
+              1228.312,
+              1557.655
             ],
             [
-              1232.738,
-              1633.236
+              1230.502,
+              1631.587
             ],
             [
-              1158.522,
-              1633.236
+              1160.644,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493921, 3.23828331e-09, 0, 1.86893023e-12, 0.0234144602, 0.141535783, 0, 1.62597969e-05, 0, 0, 1, 0, 1155.44629, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458109, 6.27438973e-09, 0, 3.94114295e-12, 0.023412664, 0.141507411, 0, 1.62590549e-05, 0, 0, 1, 0, 1157.72398, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4089,44 +3899,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1237.98,
-              1556.109
+              1240.223,
+              1557.783
             ],
             [
-              1312.64,
-              1556.109
+              1310.474,
+              1557.783
             ],
             [
-              1314.011,
-              1633.1
+              1311.809,
+              1631.461
             ],
             [
-              1240.156,
-              1633.1
+              1242.282,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1237.793,
-              1555.97
+              1240.051,
+              1557.655
             ],
             [
-              1312.82,
-              1555.97
+              1310.639,
+              1557.655
             ],
             [
-              1314.195,
-              1633.236
+              1311.978,
+              1631.587
             ],
             [
-              1239.979,
-              1633.236
+              1242.12,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493917, -2.36796779e-09, 0, -1.50018302e-12, 0.0234165898, 0.141538629, 0, 1.62615398e-05, 0, 0, 1, 0, 1237.79303, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245793, 1.36016988e-08, 0, 8.50512508e-12, 0.0234079081, 0.141501147, 0, 1.62552157e-05, 0, 0, 1, 0, 1240.05132, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4141,44 +3951,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1320.325,
-              1556.109
+              1322.548,
+              1557.783
             ],
             [
-              1394.985,
-              1556.109
+              1392.8,
+              1557.783
             ],
             [
-              1395.469,
-              1633.1
+              1393.286,
+              1631.461
             ],
             [
-              1321.614,
-              1633.1
+              1323.759,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1320.14,
-              1555.97
+              1322.379,
+              1557.655
             ],
             [
-              1395.167,
-              1555.97
+              1392.967,
+              1557.655
             ],
             [
-              1395.651,
-              1633.236
+              1393.453,
+              1631.587
             ],
             [
-              1321.435,
-              1633.236
+              1323.595,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493931, 1.35420517e-08, 0, 8.57856133e-12, 0.0234165656, 0.141538622, 0, 1.62615355e-05, 0, 0, 1, 0, 1320.13976, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245792, 1.42663942e-09, 0, 6.39150337e-13, 0.0234102954, 0.141504293, 0, 1.62571441e-05, 0, 0, 1, 0, 1322.37865, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4193,44 +4003,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1402.67,
-              1556.109
+              1404.874,
+              1557.783
             ],
             [
-              1477.33,
-              1556.109
+              1475.126,
+              1557.783
             ],
             [
-              1476.928,
-              1633.1
+              1474.763,
+              1631.461
             ],
             [
-              1403.072,
-              1633.1
+              1405.236,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1402.486,
-              1555.97
+              1404.706,
+              1557.655
             ],
             [
-              1477.514,
-              1555.97
+              1475.294,
+              1557.655
             ],
             [
-              1477.108,
-              1633.236
+              1474.929,
+              1631.587
             ],
             [
-              1402.892,
-              1633.236
+              1405.071,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493915, -4.10078578e-09, 0, -2.73302396e-12, 0.0234141084, 0.141535784, 0, 1.62597975e-05, 0, 0, 1, 0, 1402.4865, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458102, -2.85752276e-09, 0, -1.88662789e-12, 0.0234102624, 0.141504264, 0, 1.62571263e-05, 0, 0, 1, 0, 1404.70599, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4245,44 +4055,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1485.015,
-              1556.109
+              1487.2,
+              1557.783
             ],
             [
-              1559.675,
-              1556.109
+              1557.452,
+              1557.783
             ],
             [
-              1558.386,
-              1633.1
+              1556.241,
+              1631.461
             ],
             [
-              1484.531,
-              1633.1
+              1486.714,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1484.833,
-              1555.97
+              1487.033,
+              1557.655
             ],
             [
-              1559.86,
-              1555.97
+              1557.621,
+              1557.655
             ],
             [
-              1558.565,
-              1633.236
+              1556.404,
+              1631.587
             ],
             [
-              1484.349,
-              1633.236
+              1486.547,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494269, 1.27607286e-09, 0, 6.7424993e-13, 0.0234191872, 0.141541408, 0, 1.62632411e-05, 0, 0, 1, 0, 1484.83315, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.15245792, 9.52030714e-10, 0, 4.40073173e-13, 0.0234101551, 0.141504304, 0, 1.6257151e-05, 0, 0, 1, 0, 1487.03333, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4297,44 +4107,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1567.36,
-              1556.109
+              1569.526,
+              1557.783
             ],
             [
-              1642.02,
-              1556.109
+              1639.777,
+              1557.783
             ],
             [
-              1639.844,
-              1633.1
+              1637.718,
+              1631.461
             ],
             [
-              1565.989,
-              1633.1
+              1568.191,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1567.18,
-              1555.97
+              1569.361,
+              1557.655
             ],
             [
-              1642.207,
-              1555.97
+              1639.949,
+              1557.655
             ],
             [
-              1640.021,
-              1633.236
+              1637.88,
+              1631.587
             ],
             [
-              1565.805,
-              1633.236
+              1568.022,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493923, 4.40571762e-09, 0, 2.67035649e-12, 0.0234137825, 0.141535779, 0, 1.62597942e-05, 0, 0, 1, 0, 1567.17997, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457913, -5.61192706e-09, 0, -3.5384581e-12, 0.0234102782, 0.141504301, 0, 1.6257149e-05, 0, 0, 1, 0, 1569.36058, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4349,44 +4159,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1649.706,
-              1556.109
+              1651.852,
+              1557.783
             ],
             [
-              1724.365,
-              1556.109
+              1722.103,
+              1557.783
             ],
             [
-              1721.302,
-              1633.1
+              1719.195,
+              1631.461
             ],
             [
-              1647.447,
-              1633.1
+              1649.668,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1649.527,
-              1555.97
+              1651.688,
+              1557.655
             ],
             [
-              1724.554,
-              1555.97
+              1722.276,
+              1557.655
             ],
             [
-              1721.478,
-              1633.236
+              1719.356,
+              1631.587
             ],
             [
-              1647.262,
-              1633.236
+              1649.498,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494276, 7.74490467e-09, 0, 4.67766637e-12, 0.0234254111, 0.141547085, 0, 1.62667171e-05, 0, 0, 1, 0, 1649.52662, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457905, -1.24253809e-08, 0, -7.85587636e-12, 0.0234101402, 0.141504304, 0, 1.62571508e-05, 0, 0, 1, 0, 1651.688, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4401,53 +4211,53 @@
           "height": 126,
           "faceQuad": [
             [
-              1792.437,
-              1556.109
+              1794.55,
+              1557.783
             ],
             [
-              1867.097,
-              1556.109
+              1864.801,
+              1557.783
             ],
             [
-              1862.496,
-              1633.1
+              1860.422,
+              1631.461
             ],
             [
-              1788.641,
-              1633.1
+              1790.895,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1792.261,
-              1555.97
+              1794.389,
+              1557.655
             ],
             [
-              1867.288,
-              1555.97
+              1864.977,
+              1557.655
             ],
             [
-              1862.669,
-              1633.236
+              1860.58,
+              1631.587
             ],
             [
-              1788.453,
-              1633.236
+              1790.722,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493921, 1.85279493e-09, 0, 1.32633832e-12, 0.0234200202, 0.141541475, 0, 1.62632826e-05, 0, 0, 1, 0, 1792.26099, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458299, 8.45205762e-09, 0, 5.32232455e-12, 0.0234172081, 0.141510529, 0, 1.62609656e-05, 0, 0, 1, 0, 1794.38856, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         }
       ],
       "measurements": {
         "seamContrast": {
           "seams": 6,
-          "dipMedian": 0.0435,
-          "dipMin": 0.0345,
-          "dipMax": 0.048,
+          "dipMedian": 0.0562,
+          "dipMin": 0.042,
+          "dipMax": 0.0735,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -4458,70 +4268,73 @@
       "count": 4,
       "hasDraw": false,
       "orientation": "upright",
-      "group": {
+      "body": {
         "pose": "hand-upright",
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            1207,
+            1209,
             1512,
-            1648,
-            1682
+            1647,
+            1681
           ],
           "reach": {
-            "left": 68.2,
+            "left": 66.2,
             "top": -1.0,
-            "right": 43.2,
-            "bottom": 46.0
+            "right": 42.2,
+            "bottom": 45.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "bottom",
+          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1217,
-            1682
+            1265,
+            1478
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
-        "body": "bodies/hand-row-4.webp",
-        "x": 1206,
-        "y": 1509,
-        "width": 443,
-        "height": 174,
+        "body": "bodies/hand-4.webp",
+        "x": 1177,
+        "y": 1478,
+        "width": 502,
+        "height": 235,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
+            "cropMarginPx": 32,
+            "taperPx": 32,
             "contour": [
-              1207,
-              1512,
-              1646,
+              1208,
+              1513,
+              1645,
               1708
             ],
             "reach": {
-              "left": 68.2,
-              "top": -1.0,
-              "right": 41.2,
+              "left": 67.2,
+              "top": -2.0,
+              "right": 40.2,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0196,
-            "maxAlphaAtCropEdgeSide": "bottom",
+            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1289,
-              1708
+              1176,
+              1488
             ],
+            "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
-          "body": "bodies/hand-row-4-back.webp",
-          "x": 1206,
-          "y": 1509,
-          "width": 441,
-          "height": 200
+          "body": "bodies/hand-4-back.webp",
+          "x": 1176,
+          "y": 1478,
+          "width": 501,
+          "height": 262
         }
       },
-      "draw": null,
       "slots": [
         {
           "id": "hand-0",
@@ -4535,44 +4348,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1279.153,
-              1556.109
+              1281.386,
+              1557.783
             ],
             [
-              1353.812,
-              1556.109
+              1351.637,
+              1557.783
             ],
             [
-              1354.74,
-              1633.1
+              1352.548,
+              1631.461
             ],
             [
-              1280.885,
-              1633.1
+              1283.021,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1278.966,
-              1555.97
+              1281.215,
+              1557.655
             ],
             [
-              1353.993,
-              1555.97
+              1351.803,
+              1557.655
             ],
             [
-              1354.923,
-              1633.236
+              1352.716,
+              1631.587
             ],
             [
-              1280.707,
-              1633.236
+              1282.858,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494093, -2.87749571e-10, 0, 5.08573782e-15, 0.0234188513, 0.141541443, 0, 1.6263263e-05, 0, 0, 1, 0, 1278.96635, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457923, 5.51191043e-09, 0, 3.2735039e-12, 0.0234077579, 0.141501146, 0, 1.62552149e-05, 0, 0, 1, 0, 1281.21503, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4587,44 +4400,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1361.498,
-              1556.109
+              1363.711,
+              1557.783
             ],
             [
-              1436.157,
-              1556.109
+              1433.963,
+              1557.783
             ],
             [
-              1436.199,
-              1633.1
+              1434.025,
+              1631.461
             ],
             [
-              1362.343,
-              1633.1
+              1364.498,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1361.313,
-              1555.97
+              1363.542,
+              1557.655
             ],
             [
-              1436.34,
-              1555.97
+              1434.13,
+              1557.655
             ],
             [
-              1436.38,
-              1633.236
+              1434.191,
+              1631.587
             ],
             [
-              1362.164,
-              1633.236
+              1364.333,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494088, -5.654819e-09, 0, -3.52441022e-12, 0.0234165966, 0.141538594, 0, 1.62615182e-05, 0, 0, 1, 0, 1361.31309, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458104, -2.20990242e-10, 0, -3.93368859e-13, 0.0234129696, 0.141507416, 0, 1.62590581e-05, 0, 0, 1, 0, 1363.54228, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4639,44 +4452,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1443.843,
-              1556.109
+              1446.037,
+              1557.783
             ],
             [
-              1518.502,
-              1556.109
+              1516.289,
+              1557.783
             ],
             [
-              1517.657,
-              1633.1
+              1515.502,
+              1631.461
             ],
             [
-              1443.801,
-              1633.1
+              1445.975,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1443.66,
-              1555.97
+              1445.87,
+              1557.655
             ],
             [
-              1518.687,
-              1555.97
+              1516.458,
+              1557.655
             ],
             [
-              1517.836,
-              1633.236
+              1515.667,
+              1631.587
             ],
             [
-              1443.62,
-              1633.236
+              1445.809,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493916, -2.76524993e-09, 0, -1.74296221e-12, 0.0234192422, 0.141541465, 0, 1.62632755e-05, 0, 0, 1, 0, 1443.65982, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457919, -5.41147374e-10, 0, -1.79467632e-13, 0.0234046361, 0.141497997, 0, 1.6253285e-05, 0, 0, 1, 0, 1445.86962, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4691,53 +4504,53 @@
           "height": 126,
           "faceQuad": [
             [
-              1526.188,
-              1556.109
+              1528.363,
+              1557.783
             ],
             [
-              1600.848,
-              1556.109
+              1598.614,
+              1557.783
             ],
             [
-              1599.115,
-              1633.1
+              1596.979,
+              1631.461
             ],
             [
-              1525.26,
-              1633.1
+              1527.452,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1526.007,
-              1555.97
+              1528.197,
+              1557.655
             ],
             [
-              1601.034,
-              1555.97
+              1598.785,
+              1557.655
             ],
             [
-              1599.293,
-              1633.236
+              1597.142,
+              1631.587
             ],
             [
-              1525.077,
-              1633.236
+              1527.284,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493915, -3.92409674e-09, 0, -2.39395451e-12, 0.0234139357, 0.141535786, 0, 1.62597993e-05, 0, 0, 1, 0, 1526.00664, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457922, 2.11271436e-09, 0, 1.59382494e-12, 0.0234100926, 0.141504313, 0, 1.6257156e-05, 0, 0, 1, 0, 1528.19704, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         }
       ],
       "measurements": {
         "seamContrast": {
           "seams": 3,
-          "dipMedian": 0.0345,
-          "dipMin": 0.0315,
-          "dipMax": 0.042,
+          "dipMedian": 0.0495,
+          "dipMin": 0.039,
+          "dipMax": 0.057,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -4748,131 +4561,71 @@
       "count": 4,
       "hasDraw": true,
       "orientation": "upright",
-      "group": {
+      "body": {
         "pose": "hand-upright",
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            1207,
+            1209,
             1512,
-            1648,
-            1682
+            1788,
+            1681
           ],
           "reach": {
-            "left": 68.2,
+            "left": 66.2,
             "top": -1.0,
-            "right": 43.2,
-            "bottom": 46.0
+            "right": 40.5,
+            "bottom": 45.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "bottom",
+          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1217,
-            1682
+            1257,
+            1478
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
-        "body": "bodies/hand-row-4.webp",
-        "x": 1206,
-        "y": 1509,
-        "width": 443,
-        "height": 174,
+        "body": "bodies/hand-4-draw.webp",
+        "x": 1177,
+        "y": 1478,
+        "width": 643,
+        "height": 235,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
+            "cropMarginPx": 32,
+            "taperPx": 32,
             "contour": [
-              1207,
-              1512,
-              1646,
+              1208,
+              1513,
+              1786,
               1708
             ],
             "reach": {
-              "left": 68.2,
-              "top": -1.0,
-              "right": 41.2,
+              "left": 67.2,
+              "top": -2.0,
+              "right": 38.5,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0196,
-            "maxAlphaAtCropEdgeSide": "bottom",
+            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1289,
-              1708
+              1176,
+              1492
             ],
+            "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
-          "body": "bodies/hand-row-4-back.webp",
-          "x": 1206,
-          "y": 1509,
-          "width": 441,
-          "height": 200
-        }
-      },
-      "draw": {
-        "slotId": "hand-draw",
-        "pose": "hand-upright",
-        "drawOrder": 41,
-        "shadow": {
-          "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
-          "contour": [
-            1601,
-            1512,
-            1789,
-            1682
-          ],
-          "reach": {
-            "left": 59.3,
-            "top": -1.0,
-            "right": 41.5,
-            "bottom": 46.0
-          },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "right",
-          "maxAlphaAtCropEdgePx": [
-            1789,
-            1548
-          ],
-          "sceneEdgeClips": []
-        },
-        "body": "bodies/hand-draw-4.webp",
-        "x": 1600,
-        "y": 1509,
-        "width": 190,
-        "height": 174,
-        "back": {
-          "pose": "hand-upright-back",
-          "shadow": {
-            "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
-            "contour": [
-              1601,
-              1512,
-              1787,
-              1707
-            ],
-            "reach": {
-              "left": 59.3,
-              "top": -1.0,
-              "right": 39.5,
-              "bottom": 71.0
-            },
-            "maxAlphaAtCropEdge": 0.0196,
-            "maxAlphaAtCropEdgeSide": "right",
-            "maxAlphaAtCropEdgePx": [
-              1787,
-              1546
-            ],
-            "sceneEdgeClips": []
-          },
-          "body": "bodies/hand-draw-4-back.webp",
-          "x": 1600,
-          "y": 1509,
-          "width": 188,
-          "height": 199
+          "body": "bodies/hand-4-draw-back.webp",
+          "x": 1176,
+          "y": 1478,
+          "width": 642,
+          "height": 262
         }
       },
       "slots": [
@@ -4888,44 +4641,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1279.153,
-              1556.109
+              1281.386,
+              1557.783
             ],
             [
-              1353.812,
-              1556.109
+              1351.637,
+              1557.783
             ],
             [
-              1354.74,
-              1633.1
+              1352.548,
+              1631.461
             ],
             [
-              1280.885,
-              1633.1
+              1283.021,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1278.966,
-              1555.97
+              1281.215,
+              1557.655
             ],
             [
-              1353.993,
-              1555.97
+              1351.803,
+              1557.655
             ],
             [
-              1354.923,
-              1633.236
+              1352.716,
+              1631.587
             ],
             [
-              1280.707,
-              1633.236
+              1282.858,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494093, -2.87749571e-10, 0, 5.08573782e-15, 0.0234188513, 0.141541443, 0, 1.6263263e-05, 0, 0, 1, 0, 1278.96635, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457923, 5.51191043e-09, 0, 3.2735039e-12, 0.0234077579, 0.141501146, 0, 1.62552149e-05, 0, 0, 1, 0, 1281.21503, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4940,44 +4693,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1361.498,
-              1556.109
+              1363.711,
+              1557.783
             ],
             [
-              1436.157,
-              1556.109
+              1433.963,
+              1557.783
             ],
             [
-              1436.199,
-              1633.1
+              1434.025,
+              1631.461
             ],
             [
-              1362.343,
-              1633.1
+              1364.498,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1361.313,
-              1555.97
+              1363.542,
+              1557.655
             ],
             [
-              1436.34,
-              1555.97
+              1434.13,
+              1557.655
             ],
             [
-              1436.38,
-              1633.236
+              1434.191,
+              1631.587
             ],
             [
-              1362.164,
-              1633.236
+              1364.333,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494088, -5.654819e-09, 0, -3.52441022e-12, 0.0234165966, 0.141538594, 0, 1.62615182e-05, 0, 0, 1, 0, 1361.31309, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458104, -2.20990242e-10, 0, -3.93368859e-13, 0.0234129696, 0.141507416, 0, 1.62590581e-05, 0, 0, 1, 0, 1363.54228, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -4992,44 +4745,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1443.843,
-              1556.109
+              1446.037,
+              1557.783
             ],
             [
-              1518.502,
-              1556.109
+              1516.289,
+              1557.783
             ],
             [
-              1517.657,
-              1633.1
+              1515.502,
+              1631.461
             ],
             [
-              1443.801,
-              1633.1
+              1445.975,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1443.66,
-              1555.97
+              1445.87,
+              1557.655
             ],
             [
-              1518.687,
-              1555.97
+              1516.458,
+              1557.655
             ],
             [
-              1517.836,
-              1633.236
+              1515.667,
+              1631.587
             ],
             [
-              1443.62,
-              1633.236
+              1445.809,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493916, -2.76524993e-09, 0, -1.74296221e-12, 0.0234192422, 0.141541465, 0, 1.62632755e-05, 0, 0, 1, 0, 1443.65982, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457919, -5.41147374e-10, 0, -1.79467632e-13, 0.0234046361, 0.141497997, 0, 1.6253285e-05, 0, 0, 1, 0, 1445.86962, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -5044,44 +4797,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1526.188,
-              1556.109
+              1528.363,
+              1557.783
             ],
             [
-              1600.848,
-              1556.109
+              1598.614,
+              1557.783
             ],
             [
-              1599.115,
-              1633.1
+              1596.979,
+              1631.461
             ],
             [
-              1525.26,
-              1633.1
+              1527.452,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1526.007,
-              1555.97
+              1528.197,
+              1557.655
             ],
             [
-              1601.034,
-              1555.97
+              1598.785,
+              1557.655
             ],
             [
-              1599.293,
-              1633.236
+              1597.142,
+              1631.587
             ],
             [
-              1525.077,
-              1633.236
+              1527.284,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493915, -3.92409674e-09, 0, -2.39395451e-12, 0.0234139357, 0.141535786, 0, 1.62597993e-05, 0, 0, 1, 0, 1526.00664, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457922, 2.11271436e-09, 0, 1.59382494e-12, 0.0234100926, 0.141504313, 0, 1.6257156e-05, 0, 0, 1, 0, 1528.19704, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -5096,53 +4849,53 @@
           "height": 126,
           "faceQuad": [
             [
-              1668.92,
-              1556.109
+              1671.061,
+              1557.783
             ],
             [
-              1743.579,
-              1556.109
+              1741.313,
+              1557.783
             ],
             [
-              1740.309,
-              1633.1
+              1738.206,
+              1631.461
             ],
             [
-              1666.454,
-              1633.1
+              1668.679,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1668.741,
-              1555.97
+              1670.898,
+              1557.655
             ],
             [
-              1743.768,
-              1555.97
+              1741.486,
+              1557.655
             ],
             [
-              1740.484,
-              1633.236
+              1738.367,
+              1631.587
             ],
             [
-              1666.268,
-              1633.236
+              1668.509,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152494263, -4.77933887e-09, 0, -3.11812686e-12, 0.023419702, 0.14154141, 0, 1.62632422e-05, 0, 0, 1, 0, 1668.74084, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458295, 4.4620316e-09, 0, 2.86057289e-12, 0.0234166889, 0.141510531, 0, 1.62609672e-05, 0, 0, 1, 0, 1670.8976, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         }
       ],
       "measurements": {
         "seamContrast": {
           "seams": 3,
-          "dipMedian": 0.0345,
-          "dipMin": 0.0315,
-          "dipMax": 0.042,
+          "dipMedian": 0.0495,
+          "dipMin": 0.0375,
+          "dipMax": 0.057,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -5153,70 +4906,73 @@
       "count": 1,
       "hasDraw": false,
       "orientation": "upright",
-      "group": {
+      "body": {
         "pose": "hand-upright",
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            1333,
+            1334,
             1512,
-            1525,
+            1524,
             1700
           ],
           "reach": {
-            "left": 65.8,
+            "left": 64.8,
             "top": -1.0,
-            "right": 43.8,
+            "right": 42.8,
             "bottom": 64.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "right",
+          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdgeSide": "left",
           "maxAlphaAtCropEdgePx": [
-            1525,
-            1545
+            1302,
+            1568
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
-        "body": "bodies/hand-row-1.webp",
-        "x": 1332,
-        "y": 1509,
-        "width": 194,
-        "height": 192,
+        "body": "bodies/hand-1.webp",
+        "x": 1302,
+        "y": 1478,
+        "width": 254,
+        "height": 254,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
+            "cropMarginPx": 32,
+            "taperPx": 32,
             "contour": [
-              1333,
-              1512,
+              1334,
+              1513,
               1523,
-              1708
+              1707
             ],
             "reach": {
-              "left": 65.8,
-              "top": -1.0,
+              "left": 64.8,
+              "top": -2.0,
               "right": 41.8,
-              "bottom": 72.0
+              "bottom": 71.0
             },
-            "maxAlphaAtCropEdge": 0.0196,
+            "maxAlphaAtCropEdge": 0.0039,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1332,
-              1649
+              1302,
+              1481
             ],
+            "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
-          "body": "bodies/hand-row-1-back.webp",
-          "x": 1332,
-          "y": 1509,
-          "width": 192,
-          "height": 200
+          "body": "bodies/hand-1-back.webp",
+          "x": 1302,
+          "y": 1478,
+          "width": 253,
+          "height": 261
         }
       },
-      "draw": null,
       "slots": [
         {
           "id": "hand-0",
@@ -5230,44 +4986,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1402.67,
-              1556.109
+              1404.874,
+              1557.783
             ],
             [
-              1477.33,
-              1556.109
+              1475.126,
+              1557.783
             ],
             [
-              1476.928,
-              1633.1
+              1474.763,
+              1631.461
             ],
             [
-              1403.072,
-              1633.1
+              1405.236,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1402.486,
-              1555.97
+              1404.706,
+              1557.655
             ],
             [
-              1477.514,
-              1555.97
+              1475.294,
+              1557.655
             ],
             [
-              1477.108,
-              1633.236
+              1474.929,
+              1631.587
             ],
             [
-              1402.892,
-              1633.236
+              1405.071,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493915, -4.10078578e-09, 0, -2.73302396e-12, 0.0234141084, 0.141535784, 0, 1.62597975e-05, 0, 0, 1, 0, 1402.4865, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458102, -2.85752276e-09, 0, -1.88662789e-12, 0.0234102624, 0.141504264, 0, 1.62571263e-05, 0, 0, 1, 0, 1404.70599, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         }
       ],
@@ -5283,131 +5039,71 @@
       "count": 1,
       "hasDraw": true,
       "orientation": "upright",
-      "group": {
+      "body": {
         "pose": "hand-upright",
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
+          "cropMarginPx": 32,
+          "taperPx": 32,
           "contour": [
-            1333,
+            1334,
             1512,
-            1525,
-            1700
+            1666,
+            1682
           ],
           "reach": {
-            "left": 65.8,
+            "left": 64.8,
             "top": -1.0,
-            "right": 43.8,
-            "bottom": 64.0
+            "right": 42.0,
+            "bottom": 46.0
           },
-          "maxAlphaAtCropEdge": 0.0196,
-          "maxAlphaAtCropEdgeSide": "right",
-          "maxAlphaAtCropEdgePx": [
-            1525,
-            1545
-          ],
-          "sceneEdgeClips": []
-        },
-        "body": "bodies/hand-row-1.webp",
-        "x": 1332,
-        "y": 1509,
-        "width": 194,
-        "height": 192,
-        "back": {
-          "pose": "hand-upright-back",
-          "shadow": {
-            "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
-            "contour": [
-              1333,
-              1512,
-              1523,
-              1708
-            ],
-            "reach": {
-              "left": 65.8,
-              "top": -1.0,
-              "right": 41.8,
-              "bottom": 72.0
-            },
-            "maxAlphaAtCropEdge": 0.0196,
-            "maxAlphaAtCropEdgeSide": "left",
-            "maxAlphaAtCropEdgePx": [
-              1332,
-              1649
-            ],
-            "sceneEdgeClips": []
-          },
-          "body": "bodies/hand-row-1-back.webp",
-          "x": 1332,
-          "y": 1509,
-          "width": 192,
-          "height": 200
-        }
-      },
-      "draw": {
-        "slotId": "hand-draw",
-        "pose": "hand-upright",
-        "drawOrder": 41,
-        "shadow": {
-          "alphaThreshold": 0.02,
-          "cropMarginPx": 1,
-          "contour": [
-            1477,
-            1512,
-            1667,
-            1700
-          ],
-          "reach": {
-            "left": 62.4,
-            "top": -1.0,
-            "right": 43.0,
-            "bottom": 64.0
-          },
-          "maxAlphaAtCropEdge": 0.0157,
+          "maxAlphaAtCropEdge": 0.0078,
           "maxAlphaAtCropEdgeSide": "left",
           "maxAlphaAtCropEdgePx": [
-            1476,
-            1610
+            1302,
+            1543
           ],
+          "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
-        "body": "bodies/hand-draw-1.webp",
-        "x": 1476,
-        "y": 1509,
-        "width": 192,
-        "height": 192,
+        "body": "bodies/hand-1-draw.webp",
+        "x": 1302,
+        "y": 1478,
+        "width": 396,
+        "height": 236,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 1,
+            "cropMarginPx": 32,
+            "taperPx": 32,
             "contour": [
-              1477,
-              1512,
-              1665,
-              1707
+              1334,
+              1513,
+              1664,
+              1706
             ],
             "reach": {
-              "left": 62.4,
-              "top": -1.0,
-              "right": 41.0,
-              "bottom": 71.0
+              "left": 64.8,
+              "top": -2.0,
+              "right": 40.0,
+              "bottom": 70.0
             },
-            "maxAlphaAtCropEdge": 0.0196,
-            "maxAlphaAtCropEdgeSide": "right",
+            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1665,
-              1541
+              1302,
+              1481
             ],
+            "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
-          "body": "bodies/hand-draw-1-back.webp",
-          "x": 1476,
-          "y": 1509,
-          "width": 190,
-          "height": 199
+          "body": "bodies/hand-1-draw-back.webp",
+          "x": 1302,
+          "y": 1478,
+          "width": 394,
+          "height": 260
         }
       },
       "slots": [
@@ -5423,44 +5119,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1402.67,
-              1556.109
+              1404.874,
+              1557.783
             ],
             [
-              1477.33,
-              1556.109
+              1475.126,
+              1557.783
             ],
             [
-              1476.928,
-              1633.1
+              1474.763,
+              1631.461
             ],
             [
-              1403.072,
-              1633.1
+              1405.236,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1402.486,
-              1555.97
+              1404.706,
+              1557.655
             ],
             [
-              1477.514,
-              1555.97
+              1475.294,
+              1557.655
             ],
             [
-              1477.108,
-              1633.236
+              1474.929,
+              1631.587
             ],
             [
-              1402.892,
-              1633.236
+              1405.071,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493915, -4.10078578e-09, 0, -2.73302396e-12, 0.0234141084, 0.141535784, 0, 1.62597975e-05, 0, 0, 1, 0, 1402.4865, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152458102, -2.85752276e-09, 0, -1.88662789e-12, 0.0234102624, 0.141504264, 0, 1.62571263e-05, 0, 0, 1, 0, 1404.70599, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         },
         {
@@ -5475,44 +5171,44 @@
           "height": 126,
           "faceQuad": [
             [
-              1545.402,
-              1556.109
+              1547.572,
+              1557.783
             ],
             [
-              1620.061,
-              1556.109
+              1617.824,
+              1557.783
             ],
             [
-              1618.122,
-              1633.1
+              1615.991,
+              1631.461
             ],
             [
-              1544.266,
-              1633.1
+              1546.463,
+              1631.461
             ]
           ],
           "decalQuad": [
             [
-              1545.221,
-              1555.97
+              1547.407,
+              1557.655
             ],
             [
-              1620.248,
-              1555.97
+              1617.995,
+              1557.655
             ],
             [
-              1618.3,
-              1633.236
+              1616.153,
+              1631.587
             ],
             [
-              1544.083,
-              1633.236
+              1546.295,
+              1631.587
             ]
           ],
-          "faceMatrix": "matrix3d(0.152493913, -5.36650751e-09, 0, -3.55700355e-12, 0.0234138886, 0.14153579, 0, 1.62598015e-05, 0, 0, 1, 0, 1545.22087, 1555.96978, 0, 1)",
+          "faceMatrix": "matrix3d(0.152457924, 4.62881322e-09, 0, 2.94929245e-12, 0.0234102641, 0.141504303, 0, 1.62571501e-05, 0, 0, 1, 0, 1547.40664, 1557.65485, 0, 1)",
           "measurements": {
-            "faceHeightPx": 76.99,
-            "faceWidthPx": 74.26
+            "faceHeightPx": 73.68,
+            "faceWidthPx": 69.89
           }
         }
       ],

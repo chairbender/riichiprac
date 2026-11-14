@@ -32,12 +32,12 @@
     },
     "heightUnits": 1,
     "bevel": {
-      "width": 0.035,
-      "segments": 4,
+      "width": 0.055,
+      "segments": 6,
       "angleLimitDegrees": 30,
       "hardenNormals": true
     },
-    "faceInset": 0.035,
+    "faceInset": 0.055,
     "backEdgeFraction": 0.3,
     "materials": {
       "face": {
@@ -311,7 +311,13 @@
   },
   "hand": {
     "seat": "bottom",
-    "concealedCounts": [13, 10, 7, 4, 1],
+    "concealedCounts": [
+      13,
+      10,
+      7,
+      4,
+      1
+    ],
     "spacing": "touch",
     "drawGap": 0.55,
     "centerX": 0,
@@ -323,7 +329,8 @@
       "searchPadDevicePx": 160,
       "guardDevicePx": 4,
       "alphaThreshold": 0.02,
-      "cropMarginDevicePx": 1,
+      "cropMarginDevicePx": 32,
+      "taperDevicePx": 32,
       "alphaScale": 1.0
     }
   },
