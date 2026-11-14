@@ -214,27 +214,13 @@ def set_samples(scene: bpy.types.Scene, samples: int, denoise: bool) -> tuple[in
 
 
 def build_materials(spec: dict) -> dict[str, bpy.types.Material]:
-    tile = spec["tile"]["materials"]
+    """The table and room materials.
+
+    The tile body is not here: it is one material with an internal white/blue
+    split (`build_tile_material`), because the split has to cut through the
+    bevel rather than follow whole faces.
+    """
     table = spec["table"]
-
-    # Jansou tiles are white melamine with a coloured melamine backing: an
-    # opaque, hard thermoset with a glossy surface and a painted, engraved
-    # symbol. The face colour is an off-white/ivory tone, not actual ivory.
-    face = new_material("tile-face-melamine")
-    bsdf = principled(face)
-    bsdf.inputs["Base Color"].default_value = hex_linear(tile["face"]["hex"])
-    bsdf.inputs["Roughness"].default_value = tile["face"]["roughness"]
-    bsdf.inputs["Specular IOR Level"].default_value = 0.5
-    bsdf.inputs["Coat Weight"].default_value = tile["face"]["coat"]
-    bsdf.inputs["Coat Roughness"].default_value = tile["face"]["coatRoughness"]
-
-    backing = new_material("tile-backing-melamine")
-    bsdf = principled(backing)
-    bsdf.inputs["Base Color"].default_value = hex_linear(tile["backing"]["hex"])
-    bsdf.inputs["Roughness"].default_value = tile["backing"]["roughness"]
-    bsdf.inputs["Specular IOR Level"].default_value = 0.45
-    bsdf.inputs["Coat Weight"].default_value = tile["backing"]["coat"]
-    bsdf.inputs["Coat Roughness"].default_value = tile["backing"]["coatRoughness"]
 
     def plain(name: str, colour: dict, specular: float = 0.5) -> bpy.types.Material:
         material = new_material(name)
@@ -247,8 +233,6 @@ def build_materials(spec: dict) -> dict[str, bpy.types.Material]:
     # Felt is a matte wool cloth: almost no specular. The rail and the compass
     # plate are the only glossy table surfaces.
     return {
-        "face": face,
-        "backing": backing,
         "felt": plain("table-felt", table["surface"], 0.12),
         "apron": plain("table-hand-apron", table["apron"], 0.12),
         "track": plain("table-wall-ring", table["track"], 0.12),
@@ -498,6 +482,54 @@ def build_table(spec: dict, materials: dict) -> dict:
     }
 
 
+def build_melamine(node: bpy.types.ShaderNode, spec: dict, specular: float) -> None:
+    """Apply one melamine material description to a Principled BSDF."""
+    node.inputs["Base Color"].default_value = hex_linear(spec["hex"])
+    node.inputs["Roughness"].default_value = spec["roughness"]
+    node.inputs["Specular IOR Level"].default_value = specular
+    node.inputs["Coat Weight"].default_value = spec["coat"]
+    node.inputs["Coat Roughness"].default_value = spec["coatRoughness"]
+
+
+def build_tile_material(spec: dict) -> bpy.types.Material:
+    """The whole tile body in one material: white face plate, blue backing.
+
+    The colour split is a **shader gate on the object's local Z** at
+    `backEdgeFraction` of the thickness, not a per-face material assignment.
+    That matters at the corners: the bevel rounds the vertical edges with new
+    geometry, and a per-face assignment gives each rounded corner face a single
+    material, so the blue side bands stop at the corner instead of wrapping it.
+    A shader gate cuts through the bevel geometry at the same depth as the flat
+    side faces, so the blue is flush with the white at every point around the
+    tile, and `backEdgeFraction` stays a single number in the spec.
+    """
+    tile = spec["tile"]
+    cut_z = tile["backEdgeFraction"] * tile["thickness"]
+    material = new_material("tile-body")
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+
+    white = nodes["Principled BSDF"]
+    build_melamine(white, tile["materials"]["face"], 0.5)
+    blue = nodes.new("ShaderNodeBsdfPrincipled")
+    build_melamine(blue, tile["materials"]["backing"], 0.45)
+
+    coordinates = nodes.new("ShaderNodeTexCoord")
+    separate = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(coordinates.outputs["Object"], separate.inputs["Vector"])
+    gate = nodes.new("ShaderNodeMath")
+    gate.operation = "GREATER_THAN"
+    gate.inputs[1].default_value = cut_z
+    links.new(separate.outputs["Z"], gate.inputs[0])
+
+    mix = nodes.new("ShaderNodeMixShader")
+    links.new(gate.outputs[0], mix.inputs["Fac"])
+    links.new(blue.outputs["BSDF"], mix.inputs[1])
+    links.new(white.outputs["BSDF"], mix.inputs[2])
+    links.new(mix.outputs["Shader"], nodes["Material Output"].inputs["Surface"])
+    return material
+
+
 def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types.Object:
     import bmesh
 
@@ -506,7 +538,6 @@ def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types
     height = tile["height"]
     thickness = tile["thickness"]
     bevel = tile["bevel"]
-    back_frac = tile["backEdgeFraction"]
 
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=1.0)
@@ -514,35 +545,14 @@ def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types
         vert.co = Vector(
             (vert.co.x * width, vert.co.y * height, (vert.co.z + 0.5) * thickness)
         )
-
-    # Split the body on the plane the blue backing wraps to: the rear band of
-    # every side edge becomes blue, and the front band stays white melamine.
-    cut_z = back_frac * thickness
-    bmesh.ops.bisect_plane(
-        bm,
-        geom=list(bm.verts) + list(bm.edges) + list(bm.faces),
-        dist=1e-6,
-        plane_co=(0.0, 0.0, cut_z),
-        plane_no=(0.0, 0.0, 1.0),
-    )
     bm.normal_update()
-
-    # The tile is a white melamine face plate on a solid blue melamine backing:
-    # the back face and the rear band of *every* side edge are blue, so the
-    # colour wraps the whole perimeter, not just the top edge.
-    for face in bm.faces:
-        centre = face.calc_center_median()
-        is_side = abs(face.normal.z) < 0.5
-        is_blue = face.normal.z < -0.5 or (is_side and centre.z < cut_z - 1e-5)
-        face.material_index = 1 if is_blue else 0
 
     mesh = bpy.data.meshes.new("tile-body")
     bm.to_mesh(mesh)
     bm.free()
     for polygon in mesh.polygons:
         polygon.use_smooth = True
-    mesh.materials.append(materials["face"])
-    mesh.materials.append(materials["backing"])
+    mesh.materials.append(build_tile_material(spec))
 
     obj = new_object("tile", mesh)
     modifier = obj.modifiers.new("Bevel", "BEVEL")
@@ -577,25 +587,31 @@ def build_camera(scene: bpy.types.Scene, spec: dict) -> bpy.types.Object:
     return obj
 
 
-def active_lights(spec: dict) -> list[dict]:
-    """The lights actually built: the selected preset's enabled entries.
+def active_lights(spec: dict, preset: str | None = None) -> list[dict]:
+    """The lights actually built for one rig: the preset's enabled entries.
 
-    The spec carries both rigs so the tuner can compare them without editing
-    anything: `studio` is Task 1's single softbox key, `parlor` is the strip
-    rig. `lightRig` names the active preset; `enabled: false` parks a tube
-    without deleting its numbers. A spec with a plain `lights` list (Task 1
-    format) still works.
+    The spec carries both rigs so either can be selected without editing
+    numbers: `studio` is the traditional key + fill + rim, `parlor` is the strip
+    rig. `preset` selects one; without it, `lightRig` is the scene's own rig.
+    `enabled: false` parks an entry without deleting its numbers. A spec with a
+    plain `lights` list (Task 1 format) still works.
     """
     presets = spec.get("lightPresets")
     if not presets:
         return [entry for entry in spec["lights"] if entry.get("enabled", True)]
-    name = spec.get("lightRig")
+    name = preset or spec.get("lightRig")
     if name not in presets:
-        die(f"lightRig {name!r} is not one of {sorted(presets)}")
+        die(f"light rig {name!r} is not one of {sorted(presets)}")
     return [entry for entry in presets[name]["lights"] if entry.get("enabled", True)]
 
 
-def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
+def clear_lights(scene: bpy.types.Scene) -> None:
+    for obj in list(scene.objects):
+        if obj.type == "LIGHT":
+            bpy.data.objects.remove(obj, do_unlink=True)
+
+
+def build_lights(scene: bpy.types.Scene, spec: dict, preset: str | None = None) -> None:
     """Place the area rig from spherical coordinates around each target.
 
     azimuth 0 points at the player (front, -Y), 90 is +X (right), 180 is +Y
@@ -612,11 +628,11 @@ def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
     Task 1 findings): a decal is lit once per orientation and composited onto
     bodies at every slot, so illumination must not vary much across the table.
     """
-    lights = active_lights(spec)
+    lights = active_lights(spec, preset)
     if not lights:
         die("the active light rig is empty")
     log(
-        f"rig {spec.get('lightRig', 'lights')}: "
+        f"rig {preset or spec.get('lightRig', 'lights')}: "
         + ", ".join(
             f"{entry['id']} ({entry['size']:g}x{entry['sizeY']:g}, "
             f"{entry['elevationDeg']:g}°, roll {entry.get('rollDeg', 0):g}°, "
@@ -651,15 +667,16 @@ def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
         obj["group"] = entry.get("group", "key")
 
 
-def rig_record(spec: dict) -> dict:
-    """The active rig as it was built, for the manifest.
+def rig_record(spec: dict, preset: str | None = None) -> dict:
+    """One rig as it was built, for the manifest.
 
     Recorded from the same resolved list `build_lights` consumes, so the
     manifest can never describe a rig the sprites were not baked with. Tasks 3+
-    read this instead of assuming light positions.
+    read this instead of assuming light positions. `preset` names the rig; the
+    scene's own rig is the default.
     """
     return {
-        "preset": spec.get("lightRig"),
+        "preset": preset or spec.get("lightRig"),
         "convention": (
             "azimuth 0 front (-Y), 90 +X, 180 behind, 270 -X; elevation above "
             "horizontal; roll about the light's aim axis in degrees"
@@ -678,7 +695,7 @@ def rig_record(spec: dict) -> dict:
                 "energyW": entry["energyW"],
                 "hex": entry["hex"],
             }
-            for entry in active_lights(spec)
+            for entry in active_lights(spec, preset)
         ],
         "world": {"hex": spec["world"]["hex"], "strength": spec["world"]["strength"]},
     }
@@ -1125,6 +1142,84 @@ def measure_blue_sliver(sprite: np.ndarray, column: int) -> dict:
     return {"bluePx": run, "topRow": top}
 
 
+def measure_blue_backing(sprite: np.ndarray) -> dict:
+    """Whether the blue backing is one connected band around the tile.
+
+    The blue is the rear `backEdgeFraction` of the thickness, so on a standing
+    tile it shows as a band along the top edge and a band down the visible side,
+    and the two must meet at the corner. A per-face material split left each
+    rounded corner with a single material, which cut the band into two; a shader
+    split on the thickness axis keeps it one surface. This measures that: the
+    blue pixels of the opaque sprite, 4-connected, ignoring specks.
+    """
+    rgb = sprite[..., :3]
+    opaque = sprite[..., 3] > 0.5
+    blue = opaque & (rgb[..., 2] > rgb[..., 0] + 0.02) & (rgb[..., 2] > rgb[..., 1] + 0.01)
+    height, width = blue.shape
+    seen = np.zeros_like(blue)
+    components = []
+    for y in range(height):
+        row = blue[y]
+        for x in np.nonzero(row & ~seen[y])[0]:
+            if seen[y, x]:
+                continue
+            stack = [(int(y), int(x))]
+            seen[y, x] = True
+            size = 0
+            px: list[int] = []
+            py: list[int] = []
+            while stack:
+                cy, cx = stack.pop()
+                size += 1
+                px.append(cx)
+                py.append(cy)
+                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                    if 0 <= ny < height and 0 <= nx < width and blue[ny, nx] and not seen[ny, nx]:
+                        seen[ny, nx] = True
+                        stack.append((ny, nx))
+            if size >= 40:
+                components.append((size, (min(px), min(py), max(px), max(py))))
+    components.sort(reverse=True)
+    return {
+        "bluePixels": int(blue.sum()),
+        "blueComponents": len(components),
+        "components": [
+            {"pixels": size, "bbox": list(box)} for size, box in components[:4]
+        ],
+        "note": (
+            "4-connected blue regions of the opaque sprite, specks under 40 px "
+            "ignored; the backing must be one band wrapping the top edge into "
+            "the side"
+        ),
+    }
+
+
+def measure_side_band(sprite: np.ndarray) -> dict:
+    """Width of the blue band down the visible side edge, in device px.
+
+    The backing is the rear `backEdgeFraction` of the thickness, so the side
+    band's width is a physical quantity (~0.18 units, ~18 px) and it must reach
+    the silhouette edge rather than stopping at a bevel.
+    """
+    rgb = sprite[..., :3]
+    opaque = sprite[..., 3] > 0.5
+    blue = opaque & (rgb[..., 2] > rgb[..., 0] + 0.02) & (rgb[..., 2] > rgb[..., 1] + 0.01)
+    rows = np.nonzero(opaque.any(axis=1))[0]
+    if not len(rows):
+        return {"sideBandPx": 0}
+    row = int((rows[0] + rows[-1]) / 2)
+    columns = np.nonzero(opaque[row])[0]
+    if not len(columns):
+        return {"sideBandPx": 0}
+    run = 0
+    for x in range(columns[-1], columns[0] - 1, -1):
+        if blue[row, x]:
+            run += 1
+        elif run:
+            break
+    return {"sideBandPx": run, "row": row, "rightEdge": int(columns[-1])}
+
+
 def channel_stats(sprite: np.ndarray, alpha_floor: float = 0.5) -> dict:
     """Peak stored value and clipped-pixel count over an opaque sprite.
 
@@ -1499,6 +1594,7 @@ def bake_background(
     table: dict,
     out_dir: Path,
     path: Path,
+    samples: int | None = None,
 ) -> dict:
     """Render the static table from the same fixed camera as the body sprites.
 
@@ -1521,7 +1617,7 @@ def bake_background(
     # needs far fewer samples than a 160-px body crop with a bevel highlight on
     # it: 64 + OIDN is indistinguishable from the scene's 256 at this exposure
     # and keeps the batch to minutes rather than half an hour.
-    samples = asset_samples(spec)
+    samples = samples if samples is not None else asset_samples(spec)
     previous = set_samples(scene, samples, True)
 
     render_path = out_dir / "_background-render.png"
@@ -2096,7 +2192,13 @@ def bake_decal(
     table: dict,
     out_dir: Path,
 ) -> tuple[Path, int, int, float, float]:
-    """Render the carved, painted, lit face decal (spike batch)."""
+    """Render the carved, painted, lit face decal (spike batch).
+
+    The symbol is lit by the **decal rig** (`decals.lightRig`, the parlor
+    strips), not the scene's key + fill: the streaks inside the engraving are a
+    look the decal needs, while the table's own shadow wants a broad soft key.
+    The scene lights are rebuilt around the decal pass and restored afterwards.
+    """
     tile_spec = spec["tile"]
     decal_spec = spec["spike"]["decal"]
     rig = spec["decals"]["rigs"][decal_spec["orientation"]]
@@ -2118,6 +2220,11 @@ def bake_decal(
 
     tile.hide_render = True
     hide_parts(table["parts"], True)
+
+    decal_rig = spec["decals"].get("lightRig")
+    if decal_rig:
+        clear_lights(scene)
+        build_lights(scene, spec, decal_rig)
 
     decal_material = new_material("face-decal")
     nodes = decal_material.node_tree.nodes
@@ -2274,10 +2381,13 @@ def bake_decal(
         )
     log(f"face decal: {decal_path.name} ({decal_width}x{decal_height})")
 
-    # Restore the scene camera and resolution for the composite.
+    # Restore the scene camera, resolution, and the scene's own light rig.
     scene.camera = camera
     scene.render.resolution_x = round(spec["scene"]["widthCss"] * spec["scene"]["pixelRatio"])
     scene.render.resolution_y = round(spec["scene"]["heightCss"] * spec["scene"]["pixelRatio"])
+    if decal_rig:
+        clear_lights(scene)
+        build_lights(scene, spec)
     return decal_path, decal_width, decal_height, frame_w, frame_h
 
 
@@ -2452,12 +2562,12 @@ def prune_bodies(out_dir: Path, keep: set[Path]) -> list[str]:
 def parse_args() -> tuple[Path, Path, str]:
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     if len(argv) not in (2, 3):
-        die("usage: build_and_render.py -- <scene-spec.json> <out-dir> [table|spike]")
+        die("usage: build_and_render.py -- <scene-spec.json> <out-dir> [full|single|spike]")
     spec_path = Path(argv[0]).resolve()
     out_dir = Path(argv[1]).resolve()
-    mode = argv[2] if len(argv) == 3 else "table"
-    if mode not in ("table", "spike"):
-        die(f"unknown batch {mode!r}; expected table or spike")
+    mode = argv[2] if len(argv) == 3 else "full"
+    if mode not in ("full", "single", "spike"):
+        die(f"unknown batch {mode!r}; expected full, single, or spike")
     return spec_path, out_dir, mode
 
 
@@ -2539,7 +2649,132 @@ def main() -> None:
     body_bytes = 0
     written_bodies: set[Path] = set()
 
-    if mode == "spike":
+    if mode == "single":
+        # ---- single-tile debug batch -------------------------------------- #
+        # One tile on the felt with its shadow, in both poses, plus the table.
+        # This is the fast iteration loop while the tile's geometry and the
+        # table's light rig are being reviewed; it writes to a gitignored build
+        # directory and never touches the shipped batch.
+        # The left end of the longest row, so the camera sees the tile's right
+        # side and both top corners: that is where the blue backing meets the
+        # white plate across the bevel.
+        slot = hand_row_slots(spec, counts[0])[0]
+        log(
+            f"batch single: one tile at x={slot['x']:g}, y={slot['y']:g} -> {out_dir} "
+            f"({spec['scene']['samples']} samples, background "
+            f"{spec.get('single', {}).get('backgroundSamples', asset_samples(spec))})"
+        )
+        face = bake_group(
+            spec, scene, camera, tile, table, [slot], slot["pose"], out_dir,
+            body_path(spec, out_dir, "tile", body_ext), label="tile",
+        )
+        back = bake_group(
+            spec, scene, camera, tile, table, [slot], slot["backPose"], out_dir,
+            body_path(spec, out_dir, "tile-back", body_ext), label="tile-back",
+        )
+        body_bytes += face["bytes"] + back["bytes"]
+        written_bodies.update({face["path"], back["path"]})
+
+        record = slot_record(spec, scene, camera, slot)
+        record["body"] = str(face["path"].relative_to(out_dir))
+        record["shadow"] = face["shadow"]
+        record["back"] = {
+            "pose": slot["backPose"],
+            "body": str(back["path"].relative_to(out_dir)),
+            "x": back["rect"][0],
+            "y": back["rect"][1],
+            "width": back["rect"][2] - back["rect"][0],
+            "height": back["rect"][3] - back["rect"][1],
+            "shadow": back["shadow"],
+        }
+        # Measure the *encoded* sprites, i.e. what ships, not the float buffer.
+        decoded_face = load_rgba(face["path"])
+        decoded_back = load_rgba(back["path"])
+        face_centre_x = int(
+            (record["decalQuad"][0][0] + record["decalQuad"][1][0]) / 2.0 - face["rect"][0]
+        )
+        record["tileBounds"] = face["tileBounds"]
+        record["x"] = face["rect"][0]
+        record["y"] = face["rect"][1]
+        record["width"] = face["rect"][2] - face["rect"][0]
+        record["height"] = face["rect"][3] - face["rect"][1]
+        measurements = {
+            "bodyPeak": channel_stats(face["sprite"])["maxChannel"],
+            "bodyClipped": channel_stats(face["sprite"])["clippedPixels"],
+            "backPeak": channel_stats(back["sprite"])["maxChannel"],
+            "backClipped": channel_stats(back["sprite"])["clippedPixels"],
+            "faceHeightPx": record["measurements"]["faceHeightPx"],
+            "faceWidthPx": record["measurements"]["faceWidthPx"],
+            "blueBackingFaceUp": measure_blue_backing(decoded_face),
+            "blueBackingConcealed": measure_blue_backing(decoded_back),
+            "blueTopBandPx": measure_blue_sliver(decoded_face, face_centre_x)["bluePx"],
+            "blueSideBandPx": measure_side_band(decoded_face)["sideBandPx"],
+        }
+        log(
+            "blue backing (face-up, from the shipped file): "
+            f"{measurements['blueBackingFaceUp']['blueComponents']} connected band(s) "
+            f"{measurements['blueBackingFaceUp']['components']}, "
+            f"top band {measurements['blueTopBandPx']} px, "
+            f"side band {measurements['blueSideBandPx']} px"
+        )
+
+        background = bake_background(
+            spec, scene, tile, table, out_dir,
+            out_dir / spec["outputs"]["background"].format(
+                ext=assets["background"]["fileFormat"].lower()
+            ),
+            samples=int(spec.get("single", {}).get("backgroundSamples", asset_samples(spec))),
+        )
+        review_dir = RENDER_DIR / "build" / "single"
+        # 3x nearest zoom of the tile's top-right corner, where the blue top band
+        # has to wrap into the blue side band across the bevel.
+        tile_bounds = face["tileBounds"]
+        right = int(tile_bounds[2]) - face["rect"][0]
+        top = int(tile_bounds[1]) - face["rect"][1]
+        corner = (
+            max(0, right - 150),
+            max(0, top - 40),
+            min(face["sprite"].shape[1], right + 50),
+            min(face["sprite"].shape[0], top + 120),
+        )
+        corner_crop = face["sprite"][corner[1]:corner[3], corner[0]:corner[2]]
+        if corner_crop.size:
+            zoom = np.repeat(np.repeat(corner_crop, 3, axis=0), 3, axis=1)
+            save_raster(
+                scene, review_dir / "corner-top-right-3x.png", zoom, "PNG", 100,
+            )
+
+        for name, sprite, rect in (
+            ("tile-face", face["sprite"], face["rect"]),
+            ("tile-back", back["sprite"], back["rect"]),
+        ):
+            # Whole scene at CSS resolution, plus a 1:1 device-pixel crop so the
+            # bevel, the blue/white boundary, and the shadow edge can be judged.
+            canvas = background["render"].copy()
+            canvas = paste(canvas, sprite, rect[0], rect[1])
+            canvas[..., 3] = 1.0
+            margin = 60
+            crop = (
+                max(0, rect[0] - margin),
+                max(0, rect[1] - margin),
+                min(canvas.shape[1], rect[2] + margin),
+                min(canvas.shape[0], rect[3] + margin),
+            )
+            save_raster(
+                scene, review_dir / f"{name}-device.png",
+                canvas[crop[1]:crop[3], crop[0]:crop[2]], "PNG", 100, colour_mode="RGB",
+            )
+            scene_view = downsample_box(
+                canvas, spec["assets"]["background"].get("downscale", 1)
+            )
+            save_raster(
+                scene, review_dir / f"{name}-scene.png", scene_view, "PNG", 100,
+                colour_mode="RGB",
+            )
+        log(f"single-tile review: {review_dir}")
+        layouts_records = None
+
+    elif mode == "spike":
         # ---- review batch: one slot from the longest row ------------------ #
         source = next(
             layout
@@ -2712,7 +2947,7 @@ def main() -> None:
     else:
         # ---- shipped batch: every layout, both poses --------------------- #
         log(
-            f"batch table: {len(layouts)} layouts "
+            f"batch full: {len(layouts)} layouts "
             f"({', '.join(str(count) for count in counts)} concealed, each with "
             f"and without the draw) -> {out_dir}"
         )
@@ -2945,7 +3180,7 @@ def main() -> None:
         "faces": face_entries,
         "assets": {
             "bodyFormat": body_format,
-            "bodyQuality": assets["body"]["quality"] if mode == "table" else 100,
+            "bodyQuality": assets["body"]["quality"] if mode != "spike" else 100,
             "spriteCount": len(written_bodies),
             "bodyBytes": body_bytes,
             "backgroundFormat": assets["background"]["fileFormat"] if background else None,
@@ -2958,7 +3193,7 @@ def main() -> None:
         "checks": {},
         "measurements": measurements,
     }
-    if mode == "table":
+    if mode == "full":
         manifest["layouts"] = layouts_records
         manifest["checks"] = check_layouts(manifest)
         manifest["checks"]["alignment"] = {
@@ -2995,7 +3230,7 @@ def main() -> None:
             f"manifest is {manifest_bytes} bytes, over the "
             f"{budget['manifest']} byte budget"
         )
-    removed = prune_bodies(out_dir, written_bodies) if mode == "table" else []
+    removed = prune_bodies(out_dir, written_bodies) if mode == "full" else []
     if removed:
         log(f"pruned {len(removed)} stale sprite(s): {', '.join(removed)}")
     log(f"manifest: {manifest_path.name} ({manifest_bytes} B)")

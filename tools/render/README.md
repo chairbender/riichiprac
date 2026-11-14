@@ -6,22 +6,35 @@ developer-only asset pipeline: nothing here is bundled, imported, or shipped by
 the frontend. The runtime is a 2D sprite compositor, so all perspective,
 lighting, bevel highlights, and shadows are baked here.
 
-The pipeline builds two batches from one scene, spec, and script:
+> **Current state (Task 2.5, look under review).** The default batch is **one
+> tile on the table**, so a look iteration is ~3 minutes instead of half an hour;
+> `--full` is the shipped batch. The hand model is also provisional: baking a
+> whole hand as one image cannot lift a single tile when it is hovered, so the
+> hand goes back to **per-slot bodies** (with the shadow overlap masked off) once
+> the tile itself is signed off. What is settled on the tile is the **0.055
+> bevel** and the **shader split between the white plate and the blue backing**
+> (see "Tile body" below); the table's light rig is *not* tuned yet.
 
-- **shipped batch** (default) — the table background, one **body** sprite per
-  hand layout in both poses (the concealed row and, when the layout has one, the
-  drawn tile baked together), and the manifest, written to
+The pipeline builds these batches from one scene, spec, and script:
+
+- **single-tile batch** (default) — one tile at the left end of the hand row in
+  both poses, the table background, a 1:1 device crop and a full-scene composite
+  per pose, and a manifest, in `tools/render/build/single/` (gitignored). This is
+  the review loop for the tile's geometry, material, and the table's lighting.
+- **shipped batch** (`--full`) — the table background, one **body** sprite per
+  hand layout in both poses, and the manifest, written to
   `frontend/public/table/`. Task 2 delivered the first batch of per-slot sprites;
-  Task 2.5 replaced them with group bodies and the ten hand layouts; Tasks 5–11
-  add their own groups to the same scene.
+  Task 2.5 replaced them with group bodies; the per-slot model is coming back for
+  the hover lift.
 - **spike batch** (`--spike`) — the Task 1/1.5 review artifact: one hand-slot
   body, its concealed pose, the carved face decal, the homography composite, and
   the contact sheet, written to `tools/render/spike/`. Never shipped.
 
 Task 1 proved the pipeline end to end on one tile and one decal; Task 1.5
 replaced its single studio key with a parlor strip rig; Task 2 added the table
-and the hand row; Task 2.5 made the row a group body with a measured shadow
-crop; Task 3 extends the decal batch to the full 38-code × 5-orientation set.
+and the hand row; Task 2.5 made the row a group body with a measured shadow crop,
+then split the lighting into a table rig and a symbol rig; Task 3 extends the
+decal batch to the full 38-code × 5-orientation set.
 
 ## Toolchain (pinned, outside the repo)
 
@@ -57,9 +70,18 @@ pipeline. resvg-js is the only SVG rasteriser, matching §12.14 of the plan.
 ## Regenerate (one command)
 
 ```bash
-bash tools/render/render.sh            # shipped batch -> frontend/public/table/
+bash tools/render/render.sh            # ONE tile -> tools/render/build/single/
+bash tools/render/render.sh --full     # shipped batch -> frontend/public/table/
 bash tools/render/render.sh --spike    # Task 1 review batch -> tools/render/spike/
 ```
+
+The single-tile batch renders one tile at `hand-0`'s position (the left end of
+the row, so the camera sees a side and both top corners) in the face-up and
+concealed poses, plus the table at `single.backgroundSamples` (32), and writes
+`tile-face-device.png` / `tile-back-device.png` (1:1 device px over the real
+background), `tile-face-scene.png` / `tile-back-scene.png` (the whole table at
+CSS resolution), and a 3× nearest zoom of the top-right corner
+(`corner-top-right-3x.png`) where the blue band has to wrap into the side.
 
 The shipped batch:
 
@@ -507,6 +529,43 @@ CSS resolution for viewing. A 1:1 device-pixel crop of the 13-tile row
 tail at full resolution. `bash tools/render/render.sh` is the only command
 needed to rebuild and re-validate the whole batch (~27 minutes on this machine,
 dominated by the shadow passes and the background).
+
+## Tile body: bevel and the white/blue split (Task 2.5)
+
+The tile is one mesh with one material; two things about it are settled.
+
+**Bevel.** `tile.bevel.width` is **0.055** units (≈1.5 mm) with 6 segments, and
+`tile.faceInset` matches it so the (Task 3) decal still sits on the flat face.
+The earlier 0.035 bevel left the abutting-row groove too shallow to read; at
+0.055 the seam dip between faces measures 7.5–8.8 % instead of ~4 %, and the
+bare-bevel band between decals is ~11 px.
+
+**White plate / blue backing.** The body used to be bisected at
+`backEdgeFraction` of the thickness and the faces were assigned to a white or a
+blue material by their centre's height. That put a hard edge loop through the
+vertical corner bevels and left each rounded corner face with a single material,
+so the blue band could stop at a corner instead of wrapping it. The body is now
+built with **no bisect and one material** whose shader gates the two melamine
+BSDFs on the object's **local Z** at `backEdgeFraction * thickness`
+(`build_tile_material`). The cut is a plane, so it runs at the same depth through
+the flat faces *and* the bevel: the blue is flush with the white at every point
+around the tile, and the corner bevel is one continuous arc rather than two
+strips meeting at an edge loop.
+
+Measured on the shipped single-tile sprite (face-up, from the encoded WebP): the
+top blue band is 12 device px, the visible side band 6 px, and the blue region is
+**one** 4-connected band (the top band joins the side band through the corner);
+the A/B against the old per-face build differs only on the top band's boundary
+rows and the corner columns (531 of 10,620 opaque px, max channel delta 14/255)
+— i.e. exactly where the edge loop used to be.
+
+**Two rigs.** The table is lit by `lightPresets.keyfill` (traditional key + fill
++ rim: the studio geometry at table power) and the carved **symbol** is lit by
+`lightPresets.parlor` via `decals.lightRig`, because the 200 kW studio key exists
+only to give the engraving its extreme streaks. `bake_decal` swaps the rig around
+its pass and restores it. **The table rig's power is not tuned yet** — the
+current numbers make the felt much darker than the parlor rig did, and that will
+be revisited once the tile geometry is signed off.
 
 ## Findings and decisions (Task 1, updated by Tasks 1.5, 2, and 2.5)
 

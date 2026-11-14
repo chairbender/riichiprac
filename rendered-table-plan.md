@@ -730,6 +730,32 @@ makes the layout the body unit. All of this is recorded in `scene-spec.json`,
    and per-tile bodies plus one group shadow layer — and where two sprites'
    shadows can meet, prefer one bake.
 
+### Task 2.5 state (in progress, look under review)
+
+The chain is mid-review, so the pipeline's default output and the hand model are
+deliberately provisional:
+
+- **Single-tile loop.** `bash tools/render/render.sh` renders **one tile** on the
+  table (both poses, the background, a 1:1 device crop and the full scene) into
+  gitignored `tools/render/build/single/` in ~3 minutes. `--full` is the shipped
+  batch; it is not run again until the tile is signed off.
+- **Two rigs.** The table uses `lightPresets.keyfill` (traditional key + fill +
+  rim at table power) and the carved symbol uses `lightPresets.parlor` via
+  `decals.lightRig`; `bake_decal` swaps the rig around its pass. The 200 kW
+  studio key exists only for the engraving and is not a table rig. **The table
+  rig's power is not tuned yet.**
+- **Tile body.** No bisect: one material, with the white plate / blue backing
+  split gated on the object's local Z at `backEdgeFraction` of the thickness, so
+  the blue is flush with the white through the 0.055 bevel and wraps the corners.
+  See the README's "Tile body".
+- **The hand-as-one-body model is provisional.** A hand tile has to lift out of
+  the row on hover, which one baked image cannot do, so the hand returns to
+  **per-slot bodies** with the overlapping shadow tails masked off (the owner
+  will guide that). The group bake stays for static groups — an opponent's
+  concealed row, wall segments, static melds — and `bake_group` is the shared
+  helper. Manifest v3's `layouts` will then describe per-slot slots again; the
+  per-slot quads, `faceMatrix`, and shadow measurements are unchanged.
+
 ## 14. Risks
 
 - Blender becomes an external build prerequisite; pin it and document regeneration.

@@ -20,7 +20,7 @@
       "displayDevice": "sRGB",
       "viewTransform": "AgX",
       "look": "AgX - Medium High Contrast",
-      "exposure": -1.0,
+      "exposure": 0.0,
       "gamma": 1
     }
   },
@@ -122,7 +122,7 @@
     "hex": "#b9c6d6",
     "strength": 0.4
   },
-  "lightRig": "parlor",
+  "lightRig": "keyfill",
   "lightPresets": {
     "studio": {
       "label": "Task 1 studio (one softbox key + fill + rim)",
@@ -288,6 +288,62 @@
           "hex": "#ffffff"
         }
       ]
+    },
+    "keyfill": {
+      "label": "Traditional key + fill for the table: the studio geometry at table power, because the 200 kW studio key exists only to give the engraved symbol its extreme streaks",
+      "lights": [
+        {
+          "id": "key",
+          "target": [
+            0,
+            0.6,
+            0
+          ],
+          "azimuthDeg": 0,
+          "elevationDeg": 77,
+          "distance": 56,
+          "size": 26,
+          "sizeY": 20,
+          "energyW": 36000,
+          "hex": "#fff4e4",
+          "group": "key",
+          "rollDeg": 0
+        },
+        {
+          "id": "fill",
+          "target": [
+            0,
+            -1,
+            0.3
+          ],
+          "azimuthDeg": 45,
+          "elevationDeg": 11,
+          "distance": 34,
+          "size": 42,
+          "sizeY": 27,
+          "energyW": 4100,
+          "hex": "#dfe9ff",
+          "group": "fill",
+          "rollDeg": 0
+        },
+        {
+          "id": "rim",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "azimuthDeg": 170,
+          "elevationDeg": 45,
+          "distance": 40,
+          "size": 28,
+          "sizeY": 20,
+          "energyW": 4000,
+          "hex": "#ffffff",
+          "group": "rim",
+          "rollDeg": 0
+        }
+      ]
     }
   },
   "camera": {
@@ -363,7 +419,8 @@
         "cameraDistance": 5,
         "symbolRotationDeg": 0
       }
-    }
+    },
+    "lightRig": "parlor"
   },
   "assets": {
     "body": {
@@ -415,5 +472,8 @@
       "zoom": "contact-zoom.png",
       "contactSheet": "contact-sheet.png"
     }
+  },
+  "single": {
+    "backgroundSamples": 32
   }
 }
