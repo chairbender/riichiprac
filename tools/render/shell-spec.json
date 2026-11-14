@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "riichiprac 2.5D shell baker",
-  "status": "Phase 1c refinement: per-slot front/back walls and per-slot standing hand. The base scale, the eight-shell base catalogue, the 2-tile wall stack, the face-up dora shells, the diffuse contact shadow and the side-wall lateral perspective are unchanged. The human hand is a 13-tile row plus a separate drawn-tile slot, each with its own camera offset from the player's eye; the top hand reuses the back-wall fan. Ponds and melds stay straight-on (azimuth 0) with four glyph orientations. Faces, atlas, layout and renderer are still later phases.",
+  "status": "Phase 1c refinement: per-slot front/back walls and per-slot standing hand. The base scale, the eight-shell base catalogue, the 2-tile wall stack, the face-up dora shells, the diffuse contact shadow and the side-wall lateral perspective are unchanged. The human hand is a 13-tile row plus a separate drawn-tile slot, each with its own camera offset from the player's eye; the top hand is a dedicated 13-slot standing blue-back fan (the human hand turned around). Ponds and melds stay straight-on (azimuth 0) with four glyph orientations. Faces, atlas, layout and renderer are still later phases.",
   "bakeImplemented": true,
   "blender": {
     "requiredVersion": "4.5.9"
@@ -525,7 +525,12 @@
       ],
       "count": 14
     },
-    "topHand": "The top hand reuses the back-wall face-down shells (bare), so it adds no face-up atlas keys.",
+    "topHand": {
+      "note": "The 13 top-hand slots are standing blue-back shells, bare: no glyph and no face-up atlas keys. They are the human hand's pose turned around, not the flat back-wall shells.",
+      "shellPattern": "shell_hand_top_slot_{index:02d}",
+      "count": 13,
+      "faceVariant": "bare"
+    },
     "straightOn": "Ponds and melds keep the existing flat-topdown / flat-rot90 face variants; the four seats are glyph rotations, not camera slots."
   },
   "outputs": {
@@ -571,24 +576,13 @@
     "drawNote": "The drawn tile's centre is +5.5125 units from the hand centre: the 13th tile's right edge at +4.875 plus the +0.35 x 0.75 advance gap. The runtime maps a 13-tile hand to the row slots and a 14-tile hand to the row slots plus the draw slot; a shorter hand uses the middle slots and the nearest offset."
   },
   "topHand": {
-    "note": "The top player's concealed hand is a 13-tile row of face-down tiles. It reuses the back-wall fan's middle 13 slots (2..14) rather than adding a second face-down fan: the row is just outside the back wall and should share that perspective. The hand is one tile high, so it uses only the lower tier of each slot shell; stackStepPx is not used.",
-    "wall": "back",
-    "shellPattern": "shell_wall_back_slot_{index:02d}",
-    "slots": [
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14
-    ],
+    "note": "The top player's concealed hand is a 13-tile row of standing tiles showing their blue backs, like the human hand turned around. Each slot has its own camera offset from the human's eye at the top-hand distance. The tiles are never laid down: rotX 90 stands them up and rotZ 180 turns the face away, so the camera sees the blue back. The shells are bare (no glyph) and face-down.",
+    "elevationDeg": 28,
+    "distanceUnits": 60.0,
+    "stepUnits": 0.75,
+    "rowCount": 13,
+    "centreIndex": 6,
+    "idPattern": "shell_hand_top_slot_{index:02d}",
     "count": 13
   },
   "straightOn": {

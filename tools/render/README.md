@@ -35,6 +35,7 @@ starting point for Phase 1, with **no table model**:
 
 ```bash
 bash tools/render/bake-shells.sh --bake    # bake 1x + 2x, build sheets, validate
+bash tools/render/bake-shells.sh --preview --only <id> [--only <id>...]  # fast partial bake
 bash tools/render/bake-shells.sh --audition # standing-hand fan calibration + sheets
 bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
@@ -42,8 +43,16 @@ bash tools/render/bake-shells.sh           # dry run: build the tile, print the 
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
 ```
 
+`--preview` is the fast loop. It renders only the `--only` shells under
+`tools/render/build/preview/` (never the committed paths), writes a partial
+preview manifest, and draws `preview-1x.png` plus a 4x zoom per shell. It skips
+the full 103-shell check, so a one- or two-shell change takes seconds instead of
+the full bake. Use it while tuning a shell, then do a full `--bake` for the
+committed manifest and the full review sheets.
+
 `--bake` is the one command that regenerates the committed assets: it renders
-all 90 shells (eight base + 14 hand slots + 68 front/back wall slots) at @1x and @2x with the
+all 103 shells (eight base + 14 human-hand slots + 13 top-hand slots + 68
+front/back wall slots) at @1x and @2x with the
 pinned Blender at the current base scale, measures each render, writes
 `frontend/public/table/shells/*.png`, `shells/2x/*.png` and
 `frontend/public/table/shells.json`, regenerates the review sheets under
@@ -212,10 +221,11 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
 The eight base PNGs are **297,564 B** (75,440 @1x + 222,124 @2x). The 14 hand
-slots add **558,566 B** and the 68 wall slots add **2,539,608 B**, so all 90 are
-**3,395,738 B** (858,258 @1x + 2,537,480 @2x; budget 4,194,304 B); the largest
+slots add **558,566 B**, the 13 top-hand slots **454,687 B** and the 68 wall
+slots **2,539,608 B**, so all 103 are **3,850,425 B** (972,893 @1x +
+2,877,532 @2x; budget 4,194,304 B); the largest
 single shell is 43,721 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
-**310,249 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
+**357,606 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
 (102 px measured); the centre is 89 × 120 @1x and the drawn slot 103 × 120. The
 budgets were raised for the fans; a board loads only the slots it draws, so the
 initial load stays well under the 4 MiB limit.
@@ -321,10 +331,14 @@ Measured on the committed bake:
   face-up, so the 14 slots are 14 face-variant atlas keys, i.e. 14 × 37 = 518
   sprites in Phase 2.
 
-**The top hand** reuses the **back-wall fan's middle 13 slots, 2..14**, one tier
-high. It sits just outside the back wall and shares that perspective; it adds no
-face-down shells and no face-up atlas keys. The row step is 69.64 px and the
-outer slot is 4.69°.
+**The top hand** is a dedicated **13-slot standing blue-back fan**, not the flat
+back-wall shells. The pose is the human hand turned around: `rotX 90`,
+`rotZ 180`, `faceLocalZ: bottom`, bare. The camera is the human's eye at
+**60 units**, el 28, so the outer slot is **4.29°**; the row step is 67.55 px
+and the centre is 70 × 102 (88 × 120 texture). The back is a shadowed blue
+(`[0, 13, 44]` at the face centre) because the vertical back is turned away from
+the key's strongest axis; it is still blue, not the bright face-down blue. It
+adds no face-up atlas keys.
 
 **Open calibration.** `--audition` moves the outer row slot and the drawn slot
 to 14 / 18 / 40 units, with the committed 24 as REF, so the amount of side
@@ -510,8 +524,8 @@ Fields the runtime and the checker rely on:
   PNG container bytes. Re-baking the same spec must reproduce them; a
   hand-edited PNG fails the check.
 - `camera.projection` — `"orthographic"` for the grid shells, or
-  `"perspective"` for the four side-wall shells, the 68 front/back wall slots and
-  the 14 hand slots. A perspective record also carries `lensMm`, `shiftX`,
+  `"perspective"` for the four side-wall shells, the 68 front/back wall slots,
+  the 14 human-hand slots and the 13 top-hand slots. A perspective record also carries `lensMm`, `shiftX`,
   `shiftY`, `lateralOffsetUnits` and `distanceUnits`; an orthographic one carries
   `orthoScale`. The tile is never yawed: the camera sits inside the wall (or at
   the human's x for a wall/hand slot), so the projected face is a trapezoid.
@@ -522,9 +536,15 @@ Fields the runtime and the checker rely on:
   (`front`/`back`), the 0–16 `index`, `offsetUnits`, `lateralOffsetUnits`,
   `distanceUnits`, `angleDeg` and `faceUp`. It is the audit trail for the fan and
   lets the checker prove the slot and camera cannot drift from `wallSlots`.
-- `handSlot` — present only on the 14 hand slots. It records `kind`
+- `handSlot` — present only on the 14 human-hand slots. It records `kind`
   (`row`/`draw`), `index`, `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`,
   `angleDeg` and `faceUp`; it does the same for `handSlots`.
+- `topHandSlot` — present only on the 13 top-hand slots. It records the same
+  fields with `kind: "top"` and `faceUp: false`; the shells are standing blue
+  backs (`rotX 90`, `rotZ 180`, `faceLocalZ: bottom`) and bare.
+- `faceUp` — a boolean on every record (`camera.faceLocalZ === "top"`). It is
+  the authoritative glyph/blue-back switch; the top-hand and wall slot records
+  are face down.
 - `rig` — Blender version, engine/device/samples/seed, colour management, the
   key's screen-space direction, the shadow/AO contract, the 2-tile stack, the
   target long-axis size, and each shell's framing. It is the audit trail for a
@@ -632,8 +652,8 @@ committed reference is 24 units. The output is gitignored:
 `check-shells.mjs --audition` keeps the committed checks and adds the candidate
 ones (both scales, the base long axis, the shadow/AO contract, the perspective
 trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
-printed-text and composited-tile pixel checks; the full run reports **5,415
-checks**. The committed bake alone reports **5,079** (including the review-sheet
+printed-text and composited-tile pixel checks; the full run reports **6,147
+checks**. The committed bake alone reports **5,822** (including the review-sheet
 pixels when the sheets are present).
 
 ## The Blender shell rules
@@ -689,13 +709,13 @@ PASS shell_hand_slot_draw handSlot kind is row/draw (draw)
 PASS shell_hand_slot_draw top edge carries the blue resin sliver (3,69,165)
 PASS shell_wall_front_slot_16 camera sits at the human's x (lateral -6.0 = -offset)
 PASS hand-fan-1x.png composites its tiles (271951 px)
-INFO shell textures total 3395738 B across 90 shells and 2 scales
-OK 5079 checks passed
+INFO shell textures total 3850425 B across 103 shells and 2 scales
+OK 5822 checks passed
 ```
 
 `--audition` additionally validates the hand fan calibration and its sheets; on
-the current output it reports `OK 5,415 checks passed` (the committed checks plus
-the candidate and sheet checks). The committed-only run stays at 5,079.
+the current output it reports `OK 6,147 checks passed` (the committed checks plus
+the candidate and sheet checks). The committed-only run stays at 5,822.
 
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
@@ -737,7 +757,8 @@ ls tools/render/build/review/each-4x-*.png                # the nine base shells
 
 The review sheets are throwaway: `build/` is gitignored. They are drawn on the
 felt's base colour (`#1a5038`) so shadow contrast is easy to see, with the
-manifest's own `gridStepPx` and draw order (rows right-to-left, wall bottom tier
+manifest's own `gridStepPx` and draw order (uniform pond rows right-to-left;
+per-slot hand/wall fans outermost-to-innermost, centre last; wall bottom tier
 before the top tier). The script prints the seam numbers too: on the committed
 bake the neighbour's face edge darkens from luma 218.3 to 210.1 where the
 previous tile's shadow lands on it, and the isolated tile's shadow reads 61.1

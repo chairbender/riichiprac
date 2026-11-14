@@ -40,14 +40,17 @@ Usage (normally through ``bake-shells.sh``, which resolves the pinned Blender):
     blender --background --python-exit-code 1 \\
         --python tools/render/bake_shells.py -- --bake --verify-determinism
     blender --background --python-exit-code 1 \\
+        --python tools/render/bake_shells.py -- --bake --preview --only shell_hand_top_slot_06
+    blender --background --python-exit-code 1 \\
         --python tools/render/bake_shells.py -- --audition
     blender --background --python-exit-code 1 \\
         --python tools/render/bake_shells.py -- --audition --verify-determinism
 
 A dry run builds the tile, material and lights, prints the shell plan, and
-writes nothing. ``--bake`` renders the 90 shells, writes both scales and the
-manifest. ``--audition`` renders the standing-hand fan calibration described by
-the spec's ``audition`` block at the current base scale into
+writes nothing. ``--bake`` renders the 103 shells, writes both scales and the
+manifest. ``--preview`` with ``--only`` renders just those shells under
+``build/preview/``. ``--audition`` renders the standing-hand fan calibration
+described by the spec's ``audition`` block at the current base scale into
 ``tools/render/build/review/`` (textures plus ``shell-candidates.json``) and
 never touches the committed shells or ``shells.json``. ``--verify-determinism``
 renders everything twice and compares the decoded RGBA, which is the re-render
@@ -526,6 +529,81 @@ def expected_hand_slot_ids(spec: dict) -> list[str]:
     ]
 
 
+def top_hand_slot_shell_id(index: int) -> str:
+    return f"shell_hand_top_slot_{index:02d}"
+
+
+def expand_top_hand_slots(spec: dict) -> None:
+    """Append the top player's standing face-down hand shells.
+
+    The top hand is the human hand turned around: the tiles stand upright
+    (rotX 90) with the face away (rotZ 180), so the human sees the blue back.
+    The camera is the human's eye at the top-hand distance; the row is a 13-slot
+    fan with the centre straight on. The shells are bare.
+    """
+    block = spec.get("topHand")
+    if not block:
+        return
+    row_count = int(block["rowCount"])
+    centre = int(block["centreIndex"])
+    step = float(block["stepUnits"])
+    elevation = float(block["elevationDeg"])
+    distance = float(block["distanceUnits"])
+    if row_count < 3 or row_count % 2 == 0:
+        die("topHand.rowCount must be an odd number >= 3")
+    if centre != row_count // 2:
+        die("topHand.centreIndex must be the middle row slot")
+    for index in range(row_count):
+        offset = (index - centre) * step
+        angle = math.degrees(math.atan2(abs(offset), distance))
+        shell_id = top_hand_slot_shell_id(index)
+        top_slot = {
+            "kind": "top",
+            "index": index,
+            "offsetUnits": round(offset, 6),
+            "lateralOffsetUnits": round(-offset, 6),
+            "distanceUnits": distance,
+            "angleDeg": round(angle, 3),
+            "faceUp": False,
+        }
+        spec["shells"].append(
+            {
+                "id": shell_id,
+                "projection": "top-hand-slot-perspective",
+                "faceRotationDeg": 0,
+                "role": (
+                    f"top player's concealed hand tile, slot {index} of {row_count - 1}; "
+                    f"standing upright with the blue back to the human, {angle:.1f} deg off "
+                    "the tile's normal"
+                ),
+                "pose": {
+                    "rotateXDeg": 90,
+                    "rotateYDeg": 0,
+                    "rotateZDeg": 180,
+                },
+                "camera": {
+                    "azimuthDeg": 0,
+                    "elevationDeg": elevation,
+                    "faceLocalZ": "bottom",
+                    "projection": "perspective",
+                    "perspective": {
+                        "lateralOffsetUnits": round(-offset, 6),
+                        "distanceUnits": distance,
+                    },
+                },
+                "expectProjection": "portrait",
+                "topHandSlot": top_slot,
+            }
+        )
+
+
+def expected_top_hand_slot_ids(spec: dict) -> list[str]:
+    block = spec.get("topHand")
+    if not block:
+        return []
+    return [top_hand_slot_shell_id(index) for index in range(int(block["rowCount"]))]
+
+
 def expand_wall_slots(spec: dict) -> None:
     """Append the per-slot front/back wall shells derived from ``wallSlots``.
 
@@ -617,7 +695,12 @@ def validate_shell_catalogue(spec: dict) -> None:
     ids = [shell["id"] for shell in spec["shells"]]
     if len(ids) != len(set(ids)):
         die("the shell catalogue has duplicate ids")
-    expected = list(BASE_SHELL_IDS) + expected_hand_slot_ids(spec) + expected_wall_slot_ids(spec)
+    expected = (
+        list(BASE_SHELL_IDS)
+        + expected_hand_slot_ids(spec)
+        + expected_top_hand_slot_ids(spec)
+        + expected_wall_slot_ids(spec)
+    )
     missing = [shell_id for shell_id in expected if shell_id not in ids]
     extra = [shell_id for shell_id in ids if shell_id not in expected]
     if missing or extra or ids != expected:
@@ -1433,6 +1516,7 @@ def bake_shell(
             else {}
         ),
         "projection": shell["projection"],
+        "faceUp": shell["camera"]["faceLocalZ"] == "top",
         **(
             {"wallSlot": dict(shell["wallSlot"])}
             if "wallSlot" in shell
@@ -1443,10 +1527,16 @@ def bake_shell(
             if "handSlot" in shell
             else {}
         ),
+        **(
+            {"topHandSlot": dict(shell["topHandSlot"])}
+            if "topHandSlot" in shell
+            else {}
+        ),
         "pose": dict(shell["pose"]),
         "camera": {
             "azimuthDeg": shell["camera"]["azimuthDeg"],
             "elevationDeg": shell["camera"]["elevationDeg"],
+            "faceLocalZ": shell["camera"]["faceLocalZ"],
             "projection": framing.get("projection", "orthographic"),
             **(
                 {
@@ -1869,6 +1959,11 @@ def main(argv: list[str]) -> int:
         help="build the tile/material/lights, print the plan, write nothing",
     )
     parser.add_argument(
+        "--preview",
+        action="store_true",
+        help="with --bake, write under build/preview/ instead of the committed assets",
+    )
+    parser.add_argument(
         "--verify-determinism",
         action="store_true",
         help="with --bake/--audition, render everything a second time and compare decoded RGBA",
@@ -1884,6 +1979,7 @@ def main(argv: list[str]) -> int:
 
     spec = load_spec(args.spec)
     expand_hand_slots(spec)
+    expand_top_hand_slots(spec)
     expand_wall_slots(spec)
     check_blender_version(spec)
     validate_shell_catalogue(spec)
@@ -1898,6 +1994,14 @@ def main(argv: list[str]) -> int:
     lights = build_lights(scene, spec)
     catcher = build_shadow_catcher(scene, spec)
     outputs = resolve_outputs(args.spec, spec)
+    if args.preview:
+        preview = RENDER_DIR / "build" / "preview"
+        outputs = {
+            "shellDir": preview / "shells",
+            "shell2xDir": preview / "shells" / "2x",
+            "manifest": preview / "shells.json",
+            "intermediateDir": preview / "intermediate",
+        }
 
     log(
         f"tile body built: {len(tile.data.polygons)} polygons, "

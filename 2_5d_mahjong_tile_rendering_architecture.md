@@ -27,7 +27,7 @@ Rather than forcing one camera onto the whole board, each table zone uses the 2D
 | **Discard Ponds (`kawa`) & Open Melds** | Straight-on low-angle top-down at 45° | One face-up shell per body orientation, azimuth 0, no per-slot camera. The face plate is foreshortened and the near thickness face is clearly visible. The four seats are four glyph orientations, not four camera variants. Phase 1's 80° was rejected as too top-down. | Uniform tile size across all 4 seats; instant pattern scanning with a seated-player read. |
 | **Side Walls (`yama`)** | Off-axis perspective at 45° | Face-down stacks of two tiles, long edge parallel to the table edge. The camera sits slightly inside the wall, so the near end face is revealed and the far long edge converges toward the table centre. The tile itself is never rotated; one shell perspective is reused down the column (Tenhou-style). §10 has the geometry. | Frames the board with strong 3D depth without wasting horizontal screen width. |
 | **Top/Bottom Walls (`yama`)** | Per-slot off-axis perspective at 45° | Seventeen slots per wall, each baked with its own camera offset: the tile straight in front of the human is straight on, and the outer slots reveal their inner side as the human's eye sees them. Each column is two tiles; a revealed dora indicator is the face-up top tile at its own slot. §10.8 has the geometry and the slot table. | The wall reads as a real ring around the table instead of a repeated flat stamp, without a shared scene camera. |
-| **Top Hand** | Reuses the back-wall fan | The top player's 13 face-down tiles use the back-wall slots 2..14, one tier high, so the hand shares the back wall's perspective instead of adding a second face-down fan. | Preserves consistent back-to-front vertical layering with no duplicate asset family. |
+| **Top Hand** | Per-slot standing back fan | The top player's 13 concealed tiles are **standing upright with their blue backs to the human**, the human hand turned around (`rotX 90`, `rotZ 180`, face away). Each slot has its own camera offset at the top-hand distance; the shells are bare. | The opponent's hand reads as a hand, not as a row of flat wall tiles. |
 
 Phase 1b (2026-11-14) also doubles the base sprite resolution: the Phase 1
 `@2x` output is the new `@1x` base (long axis 104 CSS px, was 52; the new `@2x`
@@ -48,7 +48,8 @@ rather than a contact line. That is the contract `shells.json` and the checker
 measure; it is not a percentage of the tile.
 
 **How this handles both touching and isolated tiles automatically:**
-1. **Horizontal Rows (Drawn Right-to-Left):** Because the light source is at top-left, drawing tiles **right-to-left** places the left tile *on top of* its right neighbor. The left tile's $+4\text{ px}$ right shadow overhang bleeds directly onto the right neighbor's rounded left bevel—creating a realistic cast shadow between touching tiles. On the rightmost tile (or an isolated *tsumo* tile), that same overhang blends onto the table felt as a normal drop shadow.
+1. **Uniform Horizontal Rows (Drawn Right-to-Left):** Because the light source is at top-left, drawing tiles **right-to-left** places the left tile *on top of* its right neighbor. The left tile's $+4\text{ px}$ right shadow overhang bleeds directly onto the right neighbor's rounded left bevel—creating a realistic cast shadow between touching tiles. On the rightmost tile (or an isolated *tsumo* tile), that same overhang blends onto the table felt as a normal drop shadow. This is the rule for the uniform pond/discard rows.
+2. **Per-Slot Fan Rows (Drawn Outermost-to-Innermost):** The standing hand, the top hand and the front/back walls are baked as a camera fan whose centre is straight on, so the **inner** tile is nearer the camera than the outer tile. A uniform right-to-left order is wrong on the left half: it puts the outer left tile on top of the inner right tile, but the inner tile should overlap the outer tile's visible inner side. Draw the **outermost slots first on both halves**, then inward, with the centre slot last. The two sides are symmetric: the left half and the right half both converge on the centre. The shadow still points down-right; the overlap is now the camera-distance order, not the light order.
 2. **Vertical Discard Rows (Drawn Top-to-Bottom):** Row 2 sits below Row 1 and is drawn *after* Row 1. Row 2's $1\text{--}2\text{ px}$ dark top AO rim sits directly on top of Row 1's bright bottom white extrusion, preventing two bright white surfaces from merging into a flat white blob.
 
 ```text
@@ -76,9 +77,10 @@ Configure an automated Blender script to render the canonical blank tile shells 
 1. `shell_hand_slot_00..12` + `shell_hand_slot_draw`: the standing-hand fan. Thirteen concealed slots are centred on the player (slot 06 is straight on); the drawn tile has its own slot after the +0.35 advance gap. Each slot has its own camera offset from the player's eye at el 28 (§10.9).
 2. `shell_flat_upright`: straight-on face-up tile for the ponds and unrotated melds (45°, azimuth 0). The four seats are glyph orientations, not camera variants.
 3. `shell_flat_sideways`: straight-on face-up tile whose body is horizontal, for *riichi* declarations and sideways meld calls (45°, azimuth 0).
-4. `shell_wall_horizontal` / `shell_wall_horizontal_faceup`: the generic face-down / face-up wall tile at 45°, kept as the straight-on fallback. The top player's concealed hand now reuses the back-wall slots 2..14.
-5. `shell_wall_front_slot_00..16` / `shell_wall_back_slot_00..16`: the front (bottom) and back (top) wall fans, one face-down shell per slot, each with its own lateral camera offset from the human's eye; `_faceup` counterparts carry the dora-indicator face plate at the same slot (§10.8). The back dora shells rotate the 2D glyph 180° so it reads for the far player.
-6. `shell_wall_side_left` & `shell_wall_side_right`: off-axis perspective face-down tiles for the left and right walls, long edge parallel to the table edge, plus `shell_wall_side_left_faceup` / `shell_wall_side_right_faceup` dora counterparts (§10.4).
+4. `shell_wall_horizontal` / `shell_wall_horizontal_faceup`: the generic face-down / face-up wall tile at 45°, kept as the straight-on fallback.
+5. `shell_hand_top_slot_00..12`: the top player's concealed hand, a 13-slot standing fan with the blue back toward the human (`rotX 90`, `rotZ 180`, `faceLocalZ: bottom`). It is the human hand turned around, not the flat back-wall shells; the shells are bare and face-down.
+6. `shell_wall_front_slot_00..16` / `shell_wall_back_slot_00..16`: the front (bottom) and back (top) wall fans, one face-down shell per slot, each with its own lateral camera offset from the human's eye; `_faceup` counterparts carry the dora-indicator face plate at the same slot (§10.8). The back dora shells rotate the 2D glyph 180° so it reads for the far player.
+7. `shell_wall_side_left` & `shell_wall_side_right`: off-axis perspective face-down tiles for the left and right walls, long edge parallel to the table edge, plus `shell_wall_side_left_faceup` / `shell_wall_side_right_faceup` dora counterparts (§10.4).
 
 ### Blender Scene & Shader Rules
 * **Camera:** Use an **Orthographic Camera** (`type = 'ORTHO'`) for the grid shells so parallel edges stay strictly parallel and scale identically across the board. The walls and the standing hand are the exception: the side walls (§10.4), every front/back wall slot (§10.8) and every hand slot (§10.9) use an **off-axis perspective camera** with no yaw and no roll. Only a lateral perspective reveals the near face while keeping the tile square to the table; yawing the tile or the camera slopes the edges instead. The wall and hand slots reuse the same solver, with the camera placed at the human's x for that slot. The hand's face is vertical, so its top edge (closer to the elevated camera) is the longer one; the wall's horizontal face has the lower edge longer.
@@ -140,7 +142,8 @@ Because there is no Z-buffer, enforce a deterministic back-to-front draw order a
   6. Left and Right player open melds & concealed hands.
   7. Bottom player's open melds & standing hand (always drawn last so lifted/hovered tiles never clip behind the bottom wall).
 - [ ] **Task 4.2 — Intra-Zone Draw Order:**
-  - **Horizontal rows (hands, discard rows, top/bottom walls):** Iterate **Right-to-Left** (`index = length - 1` down to `0`) so each tile's right shadow overhang casts onto its right neighbor's left bevel.
+  - **Uniform horizontal rows (ponds, discards):** Iterate **Right-to-Left** (`index = length - 1` down to `0`) so each tile's right shadow overhang casts onto its right neighbor's left bevel.
+  - **Per-slot fan rows (standing hand, top hand, front/back walls):** Draw **outermost-to-innermost on both halves, centre last** (slots 0 and N, then 1 and N-1, …, then the centre), because the camera is at the row centre and the inner tile is nearer. Do not use the uniform right-to-left order here; it puts the left half's outer tile on top of its inner neighbour, which is the wrong overlap.
   - **Multi-row grids (discard rows):** Iterate **Top-to-Bottom** (`row = 0` to `2`), drawing each row Right-to-Left.
   - **Stacked walls:** Draw the **bottom tier** completely before drawing the **top tier** at its upward `dy` offset.
 
@@ -484,12 +487,11 @@ base/angle numbers in §8 and the Phase 1b review in §9.
 | `shell_wall_horizontal` | el 80° | **el 45°** (candidate C) |
 | `shell_wall_side_left/right` | el 75°, rotY ∓35° | **el 45°**, face down, off-axis perspective with the camera 2 units inside the wall (§10.4) |
 
-The six original shells are now **90**: the three wall shells each gained a
+The six original shells are now **103**: the three wall shells each gained a
 face-up counterpart for revealed dora indicators; the front/back walls split
-into a 68-shell per-slot fan (§10.8); and the standing hand split into a
-14-slot fan (§10.9). The ponds/melds stay straight-on and the side walls are
-approved. The top hand reuses the back-wall fan instead of adding another
-face-down family.
+into a 68-shell per-slot fan (§10.8); the human hand split into a 14-slot fan
+(§10.9); and the top hand is a dedicated 13-slot standing blue-back fan. The
+ponds/melds stay straight-on and the side walls are approved.
 
 ### 10.2 The committed bake, measured
 
@@ -509,12 +511,21 @@ All numbers are measured from the render and live in
 | `shell_wall_side_right_faceup` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 9,729 + 28,528 |
 
 The eight base shells above total **297,564 B** (75,440 @1x + 222,124 @2x).
-The 14 hand slots add **558,566 B** and the 68 front/back wall slots add
-**2,539,608 B**, for **3,395,738 B** (858,258 @1x + 2,537,480 @2x) against the
-raised 4,194,304 B budget. `shells.json` is **310,249 B** against the raised
-524,288 B budget. The felt is unchanged (559,465 B). The hand slots keep the
-104 px body long axis (102 px measured, minus the anti-aliased crop); the centre
-slot is 89 × 120 @1x, the drawn slot 103 × 120.
+The 14 human-hand slots add **558,566 B**, the 13 top-hand slots **454,687 B**
+and the 68 front/back wall slots **2,539,608 B**, for **3,850,425 B**
+(972,893 @1x + 2,877,532 @2x) against the raised 4,194,304 B budget.
+`shells.json` is **357,606 B** against the raised 524,288 B budget. The felt is
+unchanged (559,465 B). The hand slots keep the 104 px body long axis (102 px
+measured, minus the anti-aliased crop); the human-hand centre is 89 × 120 @1x,
+the drawn slot 103 × 120, and the top-hand centre 88 × 120.
+
+Representative top-hand slots (all 13 are in `shells.json`):
+
+| Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | Bytes @1x + @2x |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `shell_hand_top_slot_06` | 0° / d60 | 88 × 120 / 176 × 240 | 70 × 102 | (67.55, 0) / (0, 80.35) | 8,279 + 24,413 |
+| `shell_hand_top_slot_00` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (2.83, 80.35) | 9,309 + 27,419 |
+| `shell_hand_top_slot_12` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (−2.83, 80.35) | 9,287 + 27,323 |
 
 Representative hand slots (all 14 are in `shells.json`):
 
@@ -587,8 +598,8 @@ units are auditioned against the committed 2 (§10.7). The tile never rotates.
 
 Face-up shells are the **14 hand slots**, the upright pond shell, the sideways
 shell, the three base face-up dora shells and the **34 per-slot front/back dora
-shells** (§10.8). The top hand reuses the bare back-wall face-down shells, and
-the ponds/melds stay straight-on with four glyph orientations. The atlas plan in
+shells** (§10.8). The top hand is a dedicated 13-slot standing blue-back family
+(bare), and the ponds/melds stay straight-on with four glyph orientations. The atlas plan in
 §4 and `shell-spec.json` (`faceVariants`) therefore defines:
 
 | Face-up shell | faceVariant id |
@@ -620,7 +631,7 @@ against the committed-asset budget before the atlas is built. If the packed
 atlas cannot hold it, the dora blank and the hand are the places to trade slots
 (for example, bake only the dead-wall dora slots the layout actually uses, or a
 subset of hand slots with nearest-slot reuse), not the wall/hand bodies. The
-top hand adds no face-up keys because it reuses the bare back-wall shells.
+top hand adds no face-up keys: its 13 shells are bare blue backs.
 
 ### 10.6 The diffuse contact shadow
 
@@ -641,9 +652,10 @@ coordinates are unchanged.
 
 ### 10.7 Validation and the open calibration
 
-`bash tools/render/bake-shells.sh --bake --verify-determinism` renders the 90
+`bash tools/render/bake-shells.sh --bake --verify-determinism` renders the 103
 shells, writes both scales and `shells.json`, regenerates the review sheets and
-runs **5,079 checks**: catalogue and the 14+68 slot fans, the top-hand mapping,
+runs **5,822 checks**: catalogue and the 14 human-hand + 13 top-hand + 68 wall
+slot fans, the top-hand standing mapping,
 the straight-on ponds, felt, both texture scales, the 1 px AA ledge, the diffuse
 shadow/AO contract, the faceQuad and `gridStepPx`, the 2-tile `stackStepPx`
 (within 1.5 px of the projected thickness on the orthographic shells, 2.5 px on
@@ -653,12 +665,12 @@ the vertical hand face — and the depth edges converging), the slot metadata
 (`handSlot` / `wallSlot`, camera offset, distance, face rotation), the
 review-sheet pixel budgets, ivory/blue face sides, the decoded RGBA hashes and
 the budgets. `--verify-determinism` re-renders every shell and compares decoded
-RGBA; all 90 were identical.
+RGBA; all 103 were identical.
 
 `bash tools/render/bake-shells.sh --audition --verify-determinism` now renders
 the **hand fan-strength calibration**: the outer row slot and the drawn-tile slot
 at 14, 18 and 40 units, with the committed 24 units as the REF. It validates
-**5,415 checks** in total. The sheets are
+**6,147 checks** in total. The sheets are
 `build/review/shell-candidates-shell_hand_slot_12.png` and
 `build/review/shell-candidates-shell_hand_slot_draw.png`.
 
@@ -752,8 +764,8 @@ entry per wall); the baker and checker expand it to the 68 ids, so the catalogue
 cannot drift. Each manifest record carries `wallSlot` with `wall`, `index`,
 `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`, `angleDeg` and `faceUp`.
 
-**Budgets.** The 68 wall slots are **2,539,608 B** of the 90-shell
-**3,395,738 B** total; `shells.json` is **310,249 B**. The self-imposed Phase 1
+**Budgets.** The 68 wall slots are **2,539,608 B** of the 103-shell
+**3,850,425 B** total; `shells.json` is **357,606 B**. The self-imposed Phase 1
 budgets are **4,194,304 B** (textures) and **524,288 B** (manifest); the standing
 AGENTS limits (total assets ≤ 8 MiB, initial hand + board load < 4 MiB) still
 hold, because a board loads only the slots it draws. A board with the 14 hand
@@ -832,11 +844,17 @@ Each manifest record carries `handSlot` with `kind`, `index`, `offsetUnits`,
 face-up, so the 14 slots are 14 face-variant atlas keys (`standing-front-{slot}`,
 14 × 37 = 518 sprites) and the glyph stays upright (`faceRotationDeg 0`).
 
-**The top hand.** The top player's concealed hand is a 13-tile row of face-down
-tiles. It reuses the **back-wall fan's middle 13 slots, 2..14**, one tier high:
-it sits just outside the back wall and should share that perspective. That adds
-no face-down shells and no face-up atlas keys. The row step is the back wall's
-69.64 px; the outer slot is 4.69°.
+**The top hand.** The top player's concealed hand is a **13-slot standing fan
+with the blue backs to the human**, not the flat back-wall shells. The pose is
+the human hand turned around: `rotX 90`, `rotZ 180`, `faceLocalZ: bottom` (the
+blue backing), no glyph. The camera is the human's eye at **60 units**, el 28,
+so the outer slot is **4.29°**; the row step is 67.55 px and the centre is
+70 × 102 (88 × 120 texture). Each record carries `topHandSlot` (`kind: top`,
+`index`, offsets, distance, angle, `faceUp: false`); the manifest also carries
+the generic `faceUp` boolean. The back is a shadowed blue (`[0, 13, 44]` at the
+face centre) because the vertical back is turned away from the key's strongest
+axis; it is still blue, not the bright face-down blue. The 13 shells are
+face-down and bare, so they add no face-up atlas keys.
 
 **Open calibration.** The hand fan strength: the audition moves the outer row
 slot and the drawn slot to 14 / 18 / 40 units, with the committed 24 as REF, so

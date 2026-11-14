@@ -84,6 +84,17 @@ function handSlotShells(spec) {
   return shells;
 }
 
+function topHandSlotShells(spec) {
+  const block = spec.topHand;
+  if (!block) return [];
+  return Array.from({ length: block.rowCount }, (_, index) => ({
+    id: `shell_hand_top_slot_${String(index).padStart(2, '0')}`,
+    index,
+    offsetUnits: (index - block.centreIndex) * block.stepUnits,
+    faceUp: false,
+  }));
+}
+
 function wallSlotShells(spec) {
   const block = spec.wallSlots;
   if (!block) return [];
@@ -108,13 +119,15 @@ function canonicalShellIds(spec) {
   return [
     ...BASE_SHELL_IDS,
     ...handSlotShells(spec).map((shell) => shell.id),
+    ...topHandSlotShells(spec).map((shell) => shell.id),
     ...wallSlotShells(spec).map((shell) => shell.id),
   ];
 }
 
 const isWall = (id) => id.startsWith('shell_wall_');
-const isFaceUp = (id) => !isWall(id) || id.endsWith('_faceup');
-const isFaceDown = (id) => isWall(id) && !id.endsWith('_faceup');
+const isTopHandSlot = (id) => id.startsWith('shell_hand_top_slot_');
+const isFaceUp = (id) => !isTopHandSlot(id) && (!isWall(id) || id.endsWith('_faceup'));
+const isFaceDown = (id) => isTopHandSlot(id) || (isWall(id) && !id.endsWith('_faceup'));
 const isHandSlot = (id) => id.startsWith('shell_hand_slot_');
 const isVerticalFace = (shell) => shell?.pose?.rotateXDeg === 90;
 // Phase 1c shadow contract, in @1x px / alpha. The committed bake and every
@@ -385,16 +398,24 @@ function checkShellSpec(spec) {
     );
   }
   const topHand = spec.topHand;
-  check(Boolean(topHand), 'the spec records the top-hand fan reuse');
+  check(Boolean(topHand), 'the spec records the standing top-hand fan');
   if (topHand) {
     check(
-      topHand.slots.length === topHand.count && topHand.count === 13,
-      `the top hand maps ${topHand.slots.length} slots (a 13-tile row)`,
+      topHand.count === topHand.rowCount && topHand.count === 13,
+      `the top hand maps ${topHand.count} slots (a 13-tile row)`,
     );
     check(
-      topHand.slots[0] >= 0 &&
-        topHand.slots[topHand.slots.length - 1] < (spec.wallSlots?.count ?? 0),
-      'the top-hand slots are inside the back-wall range',
+      typeof topHand.idPattern === 'string' && topHand.idPattern.includes('{index:02d}'),
+      'the top-hand family names the slot in the id',
+    );
+    const topHandShells = topHandSlotShells(spec);
+    check(
+      topHandShells.length === topHand.rowCount,
+      `topHandSlotShells expands to ${topHandShells.length} shells`,
+    );
+    check(
+      topHandShells.some((shell) => Math.abs(shell.offsetUnits) <= 1e-9),
+      'the top hand has a straight-on centre slot',
     );
   }
   const straightOn = spec.straightOn;
@@ -640,10 +661,9 @@ function checkShellsManifest(spec) {
     `shells.json has ${ids.length} shells (${canonical.length})`,
   );
   const specRotation = new Map(
-    [...spec.shells, ...handSlotShells(spec), ...wallSlotShells(spec)].map((shell) => [
-      shell.id,
-      shell.faceRotationDeg ?? 0,
-    ]),
+    [...spec.shells, ...handSlotShells(spec), ...topHandSlotShells(spec), ...wallSlotShells(spec)].map(
+      (shell) => [shell.id, shell.faceRotationDeg ?? 0],
+    ),
   );
   const pads = spec.bake.padding1x;
   let totalBytes = 0;
@@ -935,6 +955,46 @@ function checkShellsManifest(spec) {
       check(false, `${id} is a hand slot but records no handSlot`);
     }
 
+    // The top hand is the human hand turned around: standing, blue back, bare.
+    if (shell.topHandSlot) {
+      const slot = shell.topHandSlot;
+      const block = spec.topHand;
+      const expectedOffset = block
+        ? (slot.index - block.centreIndex) * block.stepUnits
+        : Number.NaN;
+      check(slot.kind === 'top', `${id} topHandSlot kind is top (${slot.kind})`);
+      check(slot.faceUp === false, `${id} topHandSlot is face down`);
+      check(
+        Math.abs(slot.offsetUnits - expectedOffset) <= 1e-6,
+        `${id} topHandSlot offset ${slot.offsetUnits} follows from topHand (${expectedOffset})`,
+      );
+      check(
+        Math.abs(shell.camera.lateralOffsetUnits + expectedOffset) <= 1e-6,
+        `${id} camera sits at the human's x (lateral ${shell.camera.lateralOffsetUnits} = -offset)`,
+      );
+      check(
+        block && Math.abs(shell.camera.distanceUnits - block.distanceUnits) <= 1e-6,
+        `${id} camera distance ${shell.camera.distanceUnits} is the top-hand distance (${block?.distanceUnits})`,
+      );
+      check(
+        block && Math.abs(shell.camera.elevationDeg - block.elevationDeg) <= 1e-6,
+        `${id} camera elevation ${shell.camera.elevationDeg} is the top-hand elevation (${block?.elevationDeg})`,
+      );
+      check(
+        shell.camera.projection === 'perspective' && shell.projection === 'top-hand-slot-perspective',
+        `${id} is a top-hand-slot perspective shell`,
+      );
+      check(
+        shell.pose?.rotateXDeg === 90 && shell.pose?.rotateZDeg === 180,
+        `${id} stands upright with the face turned away (rotZ 180)`,
+      );
+      check(shell.camera.faceLocalZ === 'bottom', `${id} shows the blue back (${shell.camera.faceLocalZ})`);
+      check(shell.faceUp === false, `${id} is recorded face down`);
+      check(shell.faceRotationDeg === 0, `${id} top-hand glyph is bare (${shell.faceRotationDeg})`);
+    } else if (isTopHandSlot(id)) {
+      check(false, `${id} is a top-hand slot but records no topHandSlot`);
+    }
+
     const profile = alphaProfile(image, body);
     const floor = 2 / 255 + 5 / 255;
     const border = nearestBorderAlpha(image);
@@ -1016,7 +1076,14 @@ function checkShellsManifest(spec) {
         `${id} face is ivory, not blue resin (${face.join(',')}, luma ${luma(...face).toFixed(1)})`,
       );
     }
-    if (isFaceDown(id)) {
+    if (isTopHandSlot(id)) {
+      // The top hand's blue back is a vertical face turned away from the key's
+      // strongest axis, so it is a shadowed blue, not the bright face-down blue.
+      check(
+        face[2] >= face[0] + 20 && face[2] >= face[1] + 10,
+        `${id} face is shadowed blue resin (${face.join(',')})`,
+      );
+    } else if (isFaceDown(id)) {
       check(
         face[2] - face[0] >= 80 && face[2] - face[1] >= 50,
         `${id} face is blue resin (${face.join(',')})`,
@@ -1576,27 +1643,31 @@ function checkAudition(spec) {
       );
     }
     check(
-      typeof faceVariants.topHand === 'string' && faceVariants.topHand.includes('back-wall'),
-      'the face-variant plan records the top-hand back-wall reuse',
+      Boolean(faceVariants.topHand) &&
+        typeof faceVariants.topHand === 'object' &&
+        faceVariants.topHand.faceVariant === 'bare',
+      'the face-variant plan records the bare standing top-hand family',
     );
     check(
       typeof faceVariants.straightOn === 'string' && faceVariants.straightOn.includes('Ponds'),
       'the face-variant plan records the straight-on ponds/melds',
     );
     const topHand = spec.topHand;
-    check(Boolean(topHand), 'the spec maps the top hand onto the back-wall fan');
+    check(Boolean(topHand), 'the spec maps the top hand onto a standing fan');
     if (topHand) {
+      const topIds = topHandSlotShells(spec).map((shell) => shell.id);
       check(
-        topHand.slots.length === topHand.count && topHand.count === 13,
-        `the top hand maps ${topHand.slots.length} back-wall slots`,
+        topIds.length === topHand.count && topHand.count === 13,
+        `the top hand maps ${topIds.length} shells`,
       );
-      for (const index of topHand.slots) {
-        const id = `shell_wall_back_slot_${String(index).padStart(2, '0')}`;
-        check(
-          canonicalShellIds(spec).includes(id) && isFaceDown(id),
-          `top-hand slot ${id} is a face-down back-wall shell`,
-        );
-      }
+      check(
+        topIds.every((id) => canonicalShellIds(spec).includes(id) && isFaceDown(id)),
+        'every top-hand slot is a face-down standing shell',
+      );
+      check(
+        faceVariants.topHand?.count === topHand.count && faceVariants.topHand?.faceVariant === 'bare',
+        'the top-hand face-variant family is bare',
+      );
     }
   }
 
