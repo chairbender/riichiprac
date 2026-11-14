@@ -20,7 +20,7 @@
       "displayDevice": "sRGB",
       "viewTransform": "AgX",
       "look": "AgX - Medium High Contrast",
-      "exposure": 0,
+      "exposure": -1.0,
       "gamma": 1
     }
   },
@@ -329,8 +329,9 @@
       "searchPadDevicePx": 160,
       "guardDevicePx": 4,
       "alphaThreshold": 0.02,
-      "cropMarginDevicePx": 32,
-      "taperDevicePx": 32,
+      "cropMarginDevicePx": 64,
+      "taperDevicePx": 64,
+      "softenDevicePx": 6,
       "alphaScale": 1.0
     }
   },

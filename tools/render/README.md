@@ -380,17 +380,21 @@ removes three concealed tiles like a meld) with and without the drawn tile:
    but still occluding the lights. The catchers do not cast: the rail's own
    shadow on the felt is already in the background and must not be baked twice.
 3. **Crop** — the measured shadow contour: the composited alpha above
-   `hand.shadow.alphaThreshold` (2 %), plus `cropMarginDevicePx` (32 px), united
+   `hand.shadow.alphaThreshold` (2 %), plus `cropMarginDevicePx` (64 px), united
    with the tiles' own integer bounds so a tile's sub-2 % anti-aliased top edge
    can never be shaved.
-4. **Taper** — the outer `taperDevicePx` (32 px) of that margin is faded to
-   zero, on shadow-only pixels. The shadow's alpha only *asymptotes* to zero, so
-   a bare contour crop still ends on a ~2 % step: that was the straight cut the
-   first bake showed along the bottom-left, where the shadow is longest. After
-   the taper the sprite boundary is exactly transparent
-   (`shadow.visibleAlphaAtSpriteEdge` = 0 on every body) and the fade is over a
-   region whose true alpha is under 2 %, so nothing visible is lost.
-5. The render region is `searchPadDevicePx` (160) plus the crop margin and guard
+4. **Taper** — the outer `taperDevicePx` (64 px) of that margin is faded to
+   zero, on shadow-only pixels, so the sprite boundary is exactly transparent
+   (`shadow.visibleAlphaAtSpriteEdge` = 0 on every body).
+5. **Soften** — `hand.shadow.softenDevicePx` (6 px) blurs the shadow *outside*
+   the tiles. Extending the capture fixed the sprite edge but not the shadow's
+   own boundary: a strip light 56 units away has a ~2.6° angular size, so its
+   penumbra is narrow and the cast shadow's outer edge was a **10 px ramp at up
+   to 19 % depth** — a hard line where the shadow is longest. The blur is masked
+   by a dilated, blurred copy of the tile silhouette, so the contact shadow at a
+   tile's foot keeps its crisp edge and the row stays grounded; the outer
+   boundary now fades over ~30 px.
+6. The render region is `searchPadDevicePx` (160) plus the crop margin and guard
    around the tiles, and the bake **fails** if the contour reaches the search
    pad's edge while that edge is inside the scene. Only the scene frame may cut a
    shadow (`shadow.sceneEdgeClips` — empty in the shipped batch).
@@ -402,37 +406,42 @@ contour extends past the tiles' own bounds:
 
 | Layout | Body crop (device px) | Reach L / T / R / B (px) | Bytes face-up / back |
 | --- | --- | --- | --- |
-| `hand-13` | 1248 × 236 | 72.5 / −1 / 40.5 / 46 | 23,986 / 34,992 |
-| `hand-13-draw` | 1389 × 236 | 72.5 / −1 / 38.7 / 46 | 28,864 / 41,470 |
-| `hand-10` | 998 × 235 | 70.1 / −1 / 40.1 / 45 | 19,498 / 28,488 |
-| `hand-7` | 750 × 235 | 68.7 / −1 / 40.7 / 45 | 14,920 / 21,916 |
-| `hand-4` | 502 × 235 | 66.2 / −1 / 42.2 / 45 | 10,842 / 15,028 |
-| `hand-1` | 254 × 254 | 64.8 / −1 / 42.8 / 64 | 5,798 / 7,588 |
+| `hand-13` | 1316 × 301 | 76.5 / −1 / 40.5 / 47 | 20,526 / 23,256 |
+| `hand-13-draw` | 1458 × 301 | 76.5 / −1 / 39.7 / 47 | 25,172 / 29,122 |
+| `hand-10` | 1068 × 301 | 75.1 / −1 / 41.1 / 47 | 16,958 / 19,106 |
+| `hand-7` | 820 × 300 | 73.7 / −1 / 41.7 / 46 | 13,522 / 15,008 |
+| `hand-4` | 573 × 300 | 72.2 / −1 / 43.2 / 46 | 9,488 / 10,490 |
+| `hand-1` | 325 × 301 | 70.8 / −1 / 43.8 / 47 | 5,448 / 6,000 |
 
-Each `-draw` body is the same row plus the drawn tile: about 141 px wider and
-4–6.5 KB heavier.
+Each `-draw` body is the same row plus the drawn tile: about 142 px wider and
+4–6 KB heavier.
 
-Four things are worth recording:
+Five things are worth recording:
 
-- `visibleAlphaAtSpriteEdge` is **0** on every body (after the taper) and
-  `maxAlphaAtCropEdge` is at most **0.0078** (2/255) before it: no sprite edge
-  ends on a shadow boundary, at any zoom, and the crop's own raw alpha is well
-  under the 2 % threshold. That is the numeric form of "the shadow is uncut".
-- The crop now reaches 32 px past the 2 % contour and fades the last 32 px, so
-  the shadow's whole visible tail is in the sprite. The earlier 2 % + 1 px crop
-  is what made the cut visible on the bottom-left.
+- `visibleAlphaAtSpriteEdge` is **0** on every body and `maxAlphaAtCropEdge` is
+  at most **0.0056** before it: no sprite edge ends on a shadow boundary, at any
+  zoom. That is the numeric form of "the shadow is uncut".
+- The capture reaches 64 px past the 2 % contour and fades the last 64 px, so
+  the whole visible tail is inside the sprite. The first bake's 2 % + 1 px crop
+  was what made the left/bottom end look cut.
+- Extending the capture alone did **not** fix the look: the shadow's *own* outer
+  boundary was the hard part (a 10 px ramp at up to 19 % alpha, because the
+  parlor strips subtend only ~2.6° from 56 units away). `softenDevicePx` blurs
+  the shadow outside a dilated tile mask, which takes that boundary to a ~30 px
+  fade while leaving the contact shadow at the tile foot crisp.
 - A one-tile row's 2 % contour reaches **64 px** below the tile foot, while a
-  multi-tile row reaches **45–46 px**. That is not a bug: the shadow catcher's
+  multi-tile row reaches **46–47 px**. That is not a bug: the shadow catcher's
   alpha is the *relative* darkening, and a row of white melamine tiles bounces
   more light onto the felt than one tile does, which cancels part of the faint
-  tail. The blue `-back` pose keeps a longer tail (72 px) for the same reason:
-  it reflects less light.
+  tail. The blue `-back` pose keeps a longer tail (72 px) for the same reason.
 - The seam is measured, not eyeballed. `seamContrast` on each layout's body takes
   a horizontal scan through the face centres and records the deepest luminance
   dip within ±4 px of each interior seam against the face luminance 20 px inside
-  the tile: **dip median 5.25–5.62 %**, 12 seams on the 13-tile row. That is up
-  from 4.1 % with the old 0.035 bevel — the wider roundover is what does it, and
-  the decals (Task 3) add a ~11 px band of bare bevel between faces on top.
+  the tile: **dip median 7.5–8.8 % at the shipped exposure**, 12 seams on the
+  13-tile row. (It was 5.25–5.62 % at exposure 0; the dip is a display-space
+  ratio, so it moves with the tone curve.) The wider 0.055 bevel is what makes
+  it read, and the decals (Task 3) add a ~11 px band of bare bevel between faces
+  on top.
 
 ### Alignment per layout
 
@@ -447,16 +456,26 @@ ten layouts** over 737,786 tile pixels, with a soft-edge fraction of **0.0000 %*
 
 | Asset | Format | Size |
 | --- | --- | --- |
-| background | WebP q90, 1440 × 900, 64 samples | 19,018 B |
-| body sprites | WebP q90 with alpha, 2× device px | 419,334 B (20 files, 5,798–41,470 B) |
-| manifest | JSON (v3), ten layouts, 75 slots | 124,155 B |
+| background | WebP q90, 1440 × 900, 64 samples | 10,436 B |
+| body sprites | WebP q90 with alpha, 2× device px | 328,854 B (20 files, 5,448–29,122 B) |
+| manifest | JSON (v3), ten layouts, 75 slots | 124,713 B |
 
-The batch is **438 KB**, 20 sprites, against the re-baselined 8 MB total / 2 MB
+The batch is **339 KB**, 20 sprites, against the re-baselined 8 MB total / 2 MB
 body / 150 KB manifest budgets. Group sprites are several times a per-tile body
-because each carries a layout's shadow plus the 32 px transparent taper, but
-WebP's alpha compression keeps even the 13-tile concealed pose at 41,470 B.
+because each carries a layout's shadow plus the 64 px transparent taper, but
+WebP's alpha compression keeps even the 13-tile concealed pose at 29,122 B.
 `render.sh` prunes any `bodies/` file the new manifest does not reference, so a
 regeneration cannot leave a stale per-slot sprite behind to be counted or served.
+
+### Exposure
+
+The first bakes were made at `exposure: 0`. The review called the scene too
+bright, so the shipped batch uses `scene.colorManagement.exposure: -1.0`; the
+manifest records it as `scene.exposure` and the validator does not care. Because
+exposure is applied by the render, changing it needs a full re-bake (~27 min), so
+`build/review/exposure/` holds a brightness ladder of the previous exposure-0
+look at 0, −0.25, −0.5 and −0.75 EV (`hand-13-scene-ev*.png`, `hand-13-row-ev*.png`)
+next to the current −1 EV bake. Pick a rung there and the bake follows.
 
 ### What Tasks 4–7 and 11 consume
 
@@ -486,7 +505,7 @@ assembled exactly as the runtime will, at device pixels, then box-filtered to
 CSS resolution for viewing. A 1:1 device-pixel crop of the 13-tile row
 (`hand-13-row-device.png`) is there too for judging the seam and the shadow
 tail at full resolution. `bash tools/render/render.sh` is the only command
-needed to rebuild and re-validate the whole batch (~25 minutes on this machine,
+needed to rebuild and re-validate the whole batch (~27 minutes on this machine,
 dominated by the shadow passes and the background).
 
 ## Findings and decisions (Task 1, updated by Tasks 1.5, 2, and 2.5)

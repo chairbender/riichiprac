@@ -106,8 +106,9 @@
         "searchPadDevicePx": 160,
         "guardDevicePx": 4,
         "alphaThreshold": 0.02,
-        "cropMarginDevicePx": 32,
-        "taperDevicePx": 32,
+        "cropMarginDevicePx": 64,
+        "taperDevicePx": 64,
+        "softenDevicePx": 6,
         "alphaScale": 1.0,
         "note": "Bodies are cropped to the measured shadow contour: the composited alpha above alphaThreshold, plus cropMarginDevicePx, with the outer taperDevicePx of the margin faded to zero on shadow-only pixels. sceneEdgeClips lists the sides where the shadow is cut by the scene frame itself, which is allowed."
       }
@@ -236,12 +237,12 @@
     "bodyFormat": "WEBP",
     "bodyQuality": 90,
     "spriteCount": 20,
-    "bodyBytes": 419334,
+    "bodyBytes": 328854,
     "backgroundFormat": "WEBP",
     "backgroundQuality": 90,
     "backgroundSamples": 64,
-    "backgroundBytes": 19018,
-    "totalBytes": 438352,
+    "backgroundBytes": 10436,
+    "totalBytes": 339290,
     "budgetBytes": {
       "total": 8388608,
       "background": 157286,
@@ -276,9 +277,9 @@
           "softTolerance": 0.5,
           "layout": "hand-13",
           "region": [
-            708,
-            1314,
-            2172,
+            676,
+            1282,
+            2204,
             1800
           ]
         },
@@ -297,9 +298,9 @@
           "softTolerance": 0.5,
           "layout": "hand-13-draw",
           "region": [
-            708,
-            1314,
-            2315,
+            676,
+            1282,
+            2347,
             1800
           ]
         },
@@ -318,9 +319,9 @@
           "softTolerance": 0.5,
           "layout": "hand-10",
           "region": [
-            832,
-            1314,
-            2048,
+            800,
+            1282,
+            2080,
             1800
           ]
         },
@@ -339,9 +340,9 @@
           "softTolerance": 0.5,
           "layout": "hand-10-draw",
           "region": [
-            832,
-            1314,
-            2191,
+            800,
+            1282,
+            2223,
             1800
           ]
         },
@@ -360,9 +361,9 @@
           "softTolerance": 0.5,
           "layout": "hand-7",
           "region": [
-            955,
-            1314,
-            1925,
+            923,
+            1282,
+            1957,
             1800
           ]
         },
@@ -381,9 +382,9 @@
           "softTolerance": 0.5,
           "layout": "hand-7-draw",
           "region": [
-            955,
-            1314,
-            2068,
+            923,
+            1282,
+            2100,
             1800
           ]
         },
@@ -402,9 +403,9 @@
           "softTolerance": 0.5,
           "layout": "hand-4",
           "region": [
-            1079,
-            1314,
-            1801,
+            1047,
+            1282,
+            1833,
             1800
           ]
         },
@@ -423,9 +424,9 @@
           "softTolerance": 0.5,
           "layout": "hand-4-draw",
           "region": [
-            1079,
-            1314,
-            1944,
+            1047,
+            1282,
+            1976,
             1800
           ]
         },
@@ -444,9 +445,9 @@
           "softTolerance": 0.5,
           "layout": "hand-1",
           "region": [
-            1202,
-            1314,
-            1678,
+            1170,
+            1282,
+            1710,
             1800
           ]
         },
@@ -465,9 +466,9 @@
           "softTolerance": 0.5,
           "layout": "hand-1-draw",
           "region": [
-            1202,
-            1314,
-            1820,
+            1170,
+            1282,
+            1852,
             1800
           ]
         }
@@ -487,66 +488,68 @@
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            832,
+            828,
             1512,
             2016,
-            1682
+            1683
           ],
           "reach": {
-            "left": 72.5,
+            "left": 76.5,
             "top": -1.0,
             "right": 40.5,
-            "bottom": 46.0
+            "bottom": 47.0
           },
-          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdge": 0.0052,
           "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            886,
-            1478
+            1616,
+            1446
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
         "body": "bodies/hand-13.webp",
-        "x": 800,
-        "y": 1478,
-        "width": 1248,
-        "height": 236,
+        "x": 764,
+        "y": 1446,
+        "width": 1316,
+        "height": 301,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 32,
-            "taperPx": 32,
+            "cropMarginPx": 64,
+            "taperPx": 64,
+            "softenPx": 6,
             "contour": [
-              831,
+              828,
               1513,
               2014,
               1708
             ],
             "reach": {
-              "left": 73.5,
+              "left": 76.5,
               "top": -2.0,
               "right": 38.5,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdge": 0.0033,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              799,
-              1490
+              764,
+              1559
             ],
             "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
           "body": "bodies/hand-13-back.webp",
-          "x": 799,
-          "y": 1478,
-          "width": 1247,
-          "height": 262
+          "x": 764,
+          "y": 1446,
+          "width": 1314,
+          "height": 326
         }
       },
       "slots": [
@@ -1230,9 +1233,9 @@
       "measurements": {
         "seamContrast": {
           "seams": 12,
-          "dipMedian": 0.0525,
-          "dipMin": 0.039,
-          "dipMax": 0.0735,
+          "dipMedian": 0.0818,
+          "dipMin": 0.0612,
+          "dipMax": 0.1124,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -1248,66 +1251,68 @@
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            832,
+            828,
             1512,
-            2157,
-            1682
+            2158,
+            1683
           ],
           "reach": {
-            "left": 72.5,
+            "left": 76.5,
             "top": -1.0,
-            "right": 38.7,
-            "bottom": 46.0
+            "right": 39.7,
+            "bottom": 47.0
           },
-          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdge": 0.0056,
           "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            886,
-            1478
+            1615,
+            1446
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
         "body": "bodies/hand-13-draw.webp",
-        "x": 800,
-        "y": 1478,
-        "width": 1389,
-        "height": 236,
+        "x": 764,
+        "y": 1446,
+        "width": 1458,
+        "height": 301,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 32,
-            "taperPx": 32,
+            "cropMarginPx": 64,
+            "taperPx": 64,
+            "softenPx": 6,
             "contour": [
-              831,
+              828,
               1513,
-              2155,
+              2156,
               1708
             ],
             "reach": {
-              "left": 73.5,
+              "left": 76.5,
               "top": -2.0,
-              "right": 36.7,
+              "right": 37.7,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdge": 0.0033,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              799,
-              1490
+              764,
+              1559
             ],
             "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
           "body": "bodies/hand-13-draw-back.webp",
-          "x": 799,
-          "y": 1478,
-          "width": 1388,
-          "height": 262
+          "x": 764,
+          "y": 1446,
+          "width": 1456,
+          "height": 326
         }
       },
       "slots": [
@@ -2043,9 +2048,9 @@
       "measurements": {
         "seamContrast": {
           "seams": 12,
-          "dipMedian": 0.0525,
-          "dipMin": 0.039,
-          "dipMax": 0.0735,
+          "dipMedian": 0.0818,
+          "dipMin": 0.0612,
+          "dipMax": 0.1124,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -2061,66 +2066,68 @@
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            958,
+            953,
             1512,
-            1892,
-            1681
+            1893,
+            1683
           ],
           "reach": {
-            "left": 70.1,
+            "left": 75.1,
             "top": -1.0,
-            "right": 40.1,
-            "bottom": 45.0
+            "right": 41.1,
+            "bottom": 47.0
           },
-          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdge": 0.0045,
           "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1011,
-            1478
+            1440,
+            1446
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
         "body": "bodies/hand-10.webp",
-        "x": 926,
-        "y": 1478,
-        "width": 998,
-        "height": 235,
+        "x": 889,
+        "y": 1446,
+        "width": 1068,
+        "height": 301,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 32,
-            "taperPx": 32,
+            "cropMarginPx": 64,
+            "taperPx": 64,
+            "softenPx": 6,
             "contour": [
-              957,
+              953,
               1513,
-              1890,
+              1891,
               1708
             ],
             "reach": {
-              "left": 71.1,
+              "left": 75.1,
               "top": -2.0,
-              "right": 38.1,
+              "right": 39.1,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdge": 0.0035,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              925,
-              1493
+              889,
+              1562
             ],
             "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
           "body": "bodies/hand-10-back.webp",
-          "x": 925,
-          "y": 1478,
-          "width": 997,
-          "height": 262
+          "x": 889,
+          "y": 1446,
+          "width": 1066,
+          "height": 326
         }
       },
       "slots": [
@@ -2648,9 +2655,9 @@
       "measurements": {
         "seamContrast": {
           "seams": 9,
-          "dipMedian": 0.054,
-          "dipMin": 0.039,
-          "dipMax": 0.0705,
+          "dipMedian": 0.083,
+          "dipMin": 0.0587,
+          "dipMax": 0.1074,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -2666,66 +2673,68 @@
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            958,
+            953,
             1512,
-            2034,
-            1681
+            2035,
+            1683
           ],
           "reach": {
-            "left": 70.1,
+            "left": 75.1,
             "top": -1.0,
-            "right": 39.3,
-            "bottom": 45.0
+            "right": 40.3,
+            "bottom": 47.0
           },
-          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdge": 0.0052,
           "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1011,
-            1478
+            1443,
+            1446
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
         "body": "bodies/hand-10-draw.webp",
-        "x": 926,
-        "y": 1478,
-        "width": 1140,
-        "height": 235,
+        "x": 889,
+        "y": 1446,
+        "width": 1210,
+        "height": 301,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 32,
-            "taperPx": 32,
+            "cropMarginPx": 64,
+            "taperPx": 64,
+            "softenPx": 6,
             "contour": [
-              957,
+              953,
               1513,
-              2032,
+              2033,
               1708
             ],
             "reach": {
-              "left": 71.1,
+              "left": 75.1,
               "top": -2.0,
-              "right": 37.3,
+              "right": 38.3,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdge": 0.0035,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              925,
-              1486
+              889,
+              1562
             ],
             "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
           "body": "bodies/hand-10-draw-back.webp",
-          "x": 925,
-          "y": 1478,
-          "width": 1139,
-          "height": 262
+          "x": 889,
+          "y": 1446,
+          "width": 1208,
+          "height": 326
         }
       },
       "slots": [
@@ -3305,9 +3314,9 @@
       "measurements": {
         "seamContrast": {
           "seams": 9,
-          "dipMedian": 0.054,
-          "dipMin": 0.0375,
-          "dipMax": 0.0705,
+          "dipMedian": 0.083,
+          "dipMin": 0.0587,
+          "dipMax": 0.1074,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -3323,66 +3332,68 @@
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            1083,
+            1078,
             1512,
-            1769,
-            1681
+            1770,
+            1682
           ],
           "reach": {
-            "left": 68.7,
+            "left": 73.7,
             "top": -1.0,
-            "right": 40.7,
-            "bottom": 45.0
+            "right": 41.7,
+            "bottom": 46.0
           },
-          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdge": 0.0041,
           "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1126,
-            1478
+            1439,
+            1446
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
         "body": "bodies/hand-7.webp",
-        "x": 1051,
-        "y": 1478,
-        "width": 750,
-        "height": 235,
+        "x": 1014,
+        "y": 1446,
+        "width": 820,
+        "height": 300,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 32,
-            "taperPx": 32,
+            "cropMarginPx": 64,
+            "taperPx": 64,
+            "softenPx": 6,
             "contour": [
-              1083,
+              1078,
               1513,
-              1767,
+              1768,
               1708
             ],
             "reach": {
-              "left": 68.7,
+              "left": 73.7,
               "top": -2.0,
-              "right": 38.7,
+              "right": 39.7,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdge": 0.0034,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1051,
-              1502
+              1014,
+              1563
             ],
             "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
           "body": "bodies/hand-7-back.webp",
-          "x": 1051,
-          "y": 1478,
-          "width": 748,
-          "height": 262
+          "x": 1014,
+          "y": 1446,
+          "width": 818,
+          "height": 326
         }
       },
       "slots": [
@@ -3754,9 +3765,9 @@
       "measurements": {
         "seamContrast": {
           "seams": 6,
-          "dipMedian": 0.0562,
-          "dipMin": 0.042,
-          "dipMax": 0.0735,
+          "dipMedian": 0.088,
+          "dipMin": 0.0654,
+          "dipMax": 0.1124,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -3772,66 +3783,68 @@
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            1083,
+            1078,
             1512,
-            1911,
-            1681
+            1912,
+            1682
           ],
           "reach": {
-            "left": 68.7,
+            "left": 73.7,
             "top": -1.0,
-            "right": 39.9,
-            "bottom": 45.0
+            "right": 40.9,
+            "bottom": 46.0
           },
-          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdge": 0.0044,
           "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1126,
-            1478
+            1481,
+            1446
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
         "body": "bodies/hand-7-draw.webp",
-        "x": 1051,
-        "y": 1478,
-        "width": 892,
-        "height": 235,
+        "x": 1014,
+        "y": 1446,
+        "width": 962,
+        "height": 300,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 32,
-            "taperPx": 32,
+            "cropMarginPx": 64,
+            "taperPx": 64,
+            "softenPx": 6,
             "contour": [
-              1083,
+              1078,
               1513,
               1909,
               1708
             ],
             "reach": {
-              "left": 68.7,
+              "left": 73.7,
               "top": -2.0,
               "right": 37.9,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdge": 0.0034,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1051,
-              1502
+              1014,
+              1562
             ],
             "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
           "body": "bodies/hand-7-draw-back.webp",
-          "x": 1051,
-          "y": 1478,
-          "width": 890,
-          "height": 262
+          "x": 1014,
+          "y": 1446,
+          "width": 959,
+          "height": 326
         }
       },
       "slots": [
@@ -4255,9 +4268,9 @@
       "measurements": {
         "seamContrast": {
           "seams": 6,
-          "dipMedian": 0.0562,
-          "dipMin": 0.042,
-          "dipMax": 0.0735,
+          "dipMedian": 0.088,
+          "dipMin": 0.0654,
+          "dipMax": 0.1124,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -4273,66 +4286,68 @@
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            1209,
+            1203,
             1512,
-            1647,
-            1681
+            1648,
+            1682
           ],
           "reach": {
-            "left": 66.2,
+            "left": 72.2,
             "top": -1.0,
-            "right": 42.2,
-            "bottom": 45.0
+            "right": 43.2,
+            "bottom": 46.0
           },
-          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdge": 0.0039,
           "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1265,
-            1478
+            1428,
+            1446
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
         "body": "bodies/hand-4.webp",
-        "x": 1177,
-        "y": 1478,
-        "width": 502,
-        "height": 235,
+        "x": 1139,
+        "y": 1446,
+        "width": 573,
+        "height": 300,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 32,
-            "taperPx": 32,
+            "cropMarginPx": 64,
+            "taperPx": 64,
+            "softenPx": 6,
             "contour": [
-              1208,
+              1203,
               1513,
               1645,
               1708
             ],
             "reach": {
-              "left": 67.2,
+              "left": 72.2,
               "top": -2.0,
               "right": 40.2,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdge": 0.0028,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1176,
-              1488
+              1139,
+              1573
             ],
             "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
           "body": "bodies/hand-4-back.webp",
-          "x": 1176,
-          "y": 1478,
-          "width": 501,
-          "height": 262
+          "x": 1139,
+          "y": 1446,
+          "width": 570,
+          "height": 326
         }
       },
       "slots": [
@@ -4548,9 +4563,9 @@
       "measurements": {
         "seamContrast": {
           "seams": 3,
-          "dipMedian": 0.0495,
-          "dipMin": 0.039,
-          "dipMax": 0.057,
+          "dipMedian": 0.0755,
+          "dipMin": 0.0604,
+          "dipMax": 0.0856,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -4566,66 +4581,68 @@
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            1209,
+            1203,
             1512,
-            1788,
-            1681
+            1789,
+            1682
           ],
           "reach": {
-            "left": 66.2,
+            "left": 72.2,
             "top": -1.0,
-            "right": 40.5,
-            "bottom": 45.0
+            "right": 41.5,
+            "bottom": 46.0
           },
-          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdge": 0.0039,
           "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1257,
-            1478
+            1430,
+            1446
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
         "body": "bodies/hand-4-draw.webp",
-        "x": 1177,
-        "y": 1478,
-        "width": 643,
-        "height": 235,
+        "x": 1139,
+        "y": 1446,
+        "width": 714,
+        "height": 300,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 32,
-            "taperPx": 32,
+            "cropMarginPx": 64,
+            "taperPx": 64,
+            "softenPx": 6,
             "contour": [
-              1208,
+              1203,
               1513,
-              1786,
+              1787,
               1708
             ],
             "reach": {
-              "left": 67.2,
+              "left": 72.2,
               "top": -2.0,
-              "right": 38.5,
+              "right": 39.5,
               "bottom": 72.0
             },
-            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdge": 0.0028,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1176,
-              1492
+              1139,
+              1572
             ],
             "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
           "body": "bodies/hand-4-draw-back.webp",
-          "x": 1176,
-          "y": 1478,
-          "width": 642,
-          "height": 262
+          "x": 1139,
+          "y": 1446,
+          "width": 712,
+          "height": 326
         }
       },
       "slots": [
@@ -4893,9 +4910,9 @@
       "measurements": {
         "seamContrast": {
           "seams": 3,
-          "dipMedian": 0.0495,
-          "dipMin": 0.0375,
-          "dipMax": 0.057,
+          "dipMedian": 0.0755,
+          "dipMin": 0.0604,
+          "dipMax": 0.0856,
           "note": "1 - groove luminance / face luminance on a face-centre scan"
         }
       }
@@ -4911,66 +4928,68 @@
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            1334,
+            1328,
             1512,
-            1524,
-            1700
+            1525,
+            1683
           ],
           "reach": {
-            "left": 64.8,
+            "left": 70.8,
             "top": -1.0,
-            "right": 42.8,
-            "bottom": 64.0
+            "right": 43.8,
+            "bottom": 47.0
           },
-          "maxAlphaAtCropEdge": 0.0078,
+          "maxAlphaAtCropEdge": 0.0038,
           "maxAlphaAtCropEdgeSide": "left",
           "maxAlphaAtCropEdgePx": [
-            1302,
-            1568
+            1264,
+            1550
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
         "body": "bodies/hand-1.webp",
-        "x": 1302,
-        "y": 1478,
-        "width": 254,
-        "height": 254,
+        "x": 1264,
+        "y": 1446,
+        "width": 325,
+        "height": 301,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 32,
-            "taperPx": 32,
+            "cropMarginPx": 64,
+            "taperPx": 64,
+            "softenPx": 6,
             "contour": [
-              1334,
+              1328,
               1513,
               1523,
               1707
             ],
             "reach": {
-              "left": 64.8,
+              "left": 70.8,
               "top": -2.0,
               "right": 41.8,
               "bottom": 71.0
             },
-            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdge": 0.0031,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1302,
-              1481
+              1264,
+              1567
             ],
             "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
           "body": "bodies/hand-1-back.webp",
-          "x": 1302,
-          "y": 1478,
-          "width": 253,
-          "height": 261
+          "x": 1264,
+          "y": 1446,
+          "width": 323,
+          "height": 325
         }
       },
       "slots": [
@@ -5044,66 +5063,68 @@
         "drawOrder": 40,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            1334,
+            1328,
             1512,
-            1666,
-            1682
+            1667,
+            1683
           ],
           "reach": {
-            "left": 64.8,
+            "left": 70.8,
             "top": -1.0,
-            "right": 42.0,
-            "bottom": 46.0
+            "right": 43.0,
+            "bottom": 47.0
           },
-          "maxAlphaAtCropEdge": 0.0078,
-          "maxAlphaAtCropEdgeSide": "left",
+          "maxAlphaAtCropEdge": 0.0039,
+          "maxAlphaAtCropEdgeSide": "top",
           "maxAlphaAtCropEdgePx": [
-            1302,
-            1543
+            1449,
+            1446
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []
         },
         "body": "bodies/hand-1-draw.webp",
-        "x": 1302,
-        "y": 1478,
-        "width": 396,
-        "height": 236,
+        "x": 1264,
+        "y": 1446,
+        "width": 467,
+        "height": 301,
         "back": {
           "pose": "hand-upright-back",
           "shadow": {
             "alphaThreshold": 0.02,
-            "cropMarginPx": 32,
-            "taperPx": 32,
+            "cropMarginPx": 64,
+            "taperPx": 64,
+            "softenPx": 6,
             "contour": [
-              1334,
+              1328,
               1513,
-              1664,
-              1706
+              1665,
+              1707
             ],
             "reach": {
-              "left": 64.8,
+              "left": 70.8,
               "top": -2.0,
-              "right": 40.0,
-              "bottom": 70.0
+              "right": 41.0,
+              "bottom": 71.0
             },
-            "maxAlphaAtCropEdge": 0.0039,
+            "maxAlphaAtCropEdge": 0.0035,
             "maxAlphaAtCropEdgeSide": "left",
             "maxAlphaAtCropEdgePx": [
-              1302,
-              1481
+              1264,
+              1567
             ],
             "visibleAlphaAtSpriteEdge": 0.0,
             "sceneEdgeClips": []
           },
           "body": "bodies/hand-1-draw-back.webp",
-          "x": 1302,
-          "y": 1478,
-          "width": 394,
-          "height": 260
+          "x": 1264,
+          "y": 1446,
+          "width": 465,
+          "height": 325
         }
       },
       "slots": [

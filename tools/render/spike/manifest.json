@@ -26,7 +26,9 @@
     "height": 900,
     "widthDevicePx": 2880,
     "heightDevicePx": 1800,
-    "camera": "fixed"
+    "camera": "fixed",
+    "exposure": -1.0,
+    "viewTransform": "AgX"
   },
   "camera": {
     "position": [
@@ -106,8 +108,9 @@
         "searchPadDevicePx": 160,
         "guardDevicePx": 4,
         "alphaThreshold": 0.02,
-        "cropMarginDevicePx": 32,
-        "taperDevicePx": 32,
+        "cropMarginDevicePx": 64,
+        "taperDevicePx": 64,
+        "softenDevicePx": 6,
         "alphaScale": 1.0,
         "note": "Bodies are cropped to the measured shadow contour: the composited alpha above alphaThreshold, plus cropMarginDevicePx, with the outer taperDevicePx of the margin faded to zero on shadow-only pixels. sceneEdgeClips lists the sides where the shadow is cut by the scene frame itself, which is allowed."
       }
@@ -237,12 +240,12 @@
     "bodyFormat": "PNG",
     "bodyQuality": 100,
     "spriteCount": 2,
-    "bodyBytes": 54422,
+    "bodyBytes": 52796,
     "backgroundFormat": null,
     "backgroundQuality": null,
     "backgroundSamples": null,
     "backgroundBytes": null,
-    "totalBytes": 54422,
+    "totalBytes": 52796,
     "budgetBytes": {
       "total": 8388608,
       "background": 157286,
@@ -261,11 +264,11 @@
     "topEdgeProjectedPx": 42.22,
     "blueSliverExpectedPx": 12.67,
     "blueSliverMeasuredPx": 10,
-    "bodyMaxChannel": 249.0,
+    "bodyMaxChannel": 235.0,
     "bodyClippedPixels": 0,
-    "decalMaxChannel": 241.0,
+    "decalMaxChannel": 225.0,
     "decalClippedPixels": 0,
-    "decalBakeSeconds": 78.9
+    "decalBakeSeconds": 79.7
   },
   "slots": [
     {
@@ -274,10 +277,10 @@
       "role": "concealed",
       "orientation": "upright",
       "drawOrder": 40,
-      "x": 800,
-      "y": 1478,
-      "width": 268,
-      "height": 254,
+      "x": 764,
+      "y": 1446,
+      "width": 337,
+      "height": 302,
       "faceQuad": [
         [
           910.919,
@@ -322,25 +325,26 @@
       "body": "bodies/hand-0.png",
       "shadow": {
         "alphaThreshold": 0.02,
-        "cropMarginPx": 32,
-        "taperPx": 32,
+        "cropMarginPx": 64,
+        "taperPx": 64,
+        "softenPx": 6,
         "contour": [
-          832,
+          828,
           1513,
-          1036,
-          1700
+          1037,
+          1684
         ],
         "reach": {
-          "left": 72.5,
+          "left": 76.5,
           "top": -2.0,
-          "right": 39.3,
-          "bottom": 64.0
+          "right": 40.3,
+          "bottom": 48.0
         },
-        "maxAlphaAtCropEdge": 0.0039,
+        "maxAlphaAtCropEdge": 0.0037,
         "maxAlphaAtCropEdgeSide": "left",
         "maxAlphaAtCropEdgePx": [
-          800,
-          1478
+          764,
+          1552
         ],
         "visibleAlphaAtSpriteEdge": 0.0,
         "sceneEdgeClips": []
@@ -348,31 +352,32 @@
       "back": {
         "pose": "hand-upright-back",
         "body": "bodies/hand-0-back.png",
-        "x": 799,
-        "y": 1478,
-        "width": 267,
-        "height": 260,
+        "x": 764,
+        "y": 1446,
+        "width": 335,
+        "height": 325,
         "shadow": {
           "alphaThreshold": 0.02,
-          "cropMarginPx": 32,
-          "taperPx": 32,
+          "cropMarginPx": 64,
+          "taperPx": 64,
+          "softenPx": 6,
           "contour": [
-            831,
+            828,
             1513,
-            1034,
-            1706
+            1035,
+            1707
           ],
           "reach": {
-            "left": 73.5,
+            "left": 76.5,
             "top": -2.0,
-            "right": 37.3,
-            "bottom": 70.0
+            "right": 38.3,
+            "bottom": 71.0
           },
-          "maxAlphaAtCropEdge": 0.0039,
+          "maxAlphaAtCropEdge": 0.003,
           "maxAlphaAtCropEdgeSide": "left",
           "maxAlphaAtCropEdgePx": [
-            799,
-            1493
+            764,
+            1561
           ],
           "visibleAlphaAtSpriteEdge": 0.0,
           "sceneEdgeClips": []

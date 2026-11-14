@@ -327,7 +327,7 @@ files.
   sprite) in both poses = 20 sprites at 2×, lossy WebP with alpha, quality 90.
   Task 2.5 re-baselined the sub-budget to **2 MB** (the shipped batch is
   ~0.3 MB); the group sprites are larger than per-tile ones because each carries
-  a whole row's shadow plus a 32 px transparent taper, but WebP's alpha
+  a layout's shadow plus a 64 px transparent taper, but WebP's alpha
   compression keeps them at 7–35 KB each.
 - Background: 1440 × 900 WebP quality 90, ≈ 150 KB.
 - Manifest: **150 KB** (Task 2.5 re-baseline; version 3 carries ten layouts and
@@ -411,21 +411,25 @@ headless browser).
 7. **Shadows.** Contact shadows and felt ambient occlusion are baked into the
    body sprites and the background. Each body is cropped from its **measured
    shadow contour** (the composited alpha above `hand.shadow.alphaThreshold`,
-   2 %), plus a `cropMarginDevicePx` margin whose outer `taperDevicePx` is faded
-   to zero on shadow-only pixels, so the sprite boundary is exactly transparent.
-   The bake fails if the contour reaches the search pad's edge inside the scene;
-   only the scene frame's own edge may cut a shadow. There is no runtime shadow
-   layer and no CSS shadow on tiles. **Task 2.5 amendments:** this item replaces
-   Task 2's "32 px shadow gutter per slot", because a standing tile's cast shadow
-   reaches ~75 px and the fixed gutter cut it on all four edges; it adds the
-   taper, because the contour alone still ended on a ~2 % step where the shadow
-   is longest; and it makes a hand layout **one** body, because two sprites (row
-   + draw) each carry a tail that ends inside the gap and whichever is painted
-   second darkens the other's. The whole table (felt, apron, wall-ring track,
-   compass plate, rail) is the Cycles shadow catcher in the shadow pass, with the
-   catchers' own `visible_shadow` off so the rail's shadow on the felt is not
-   baked twice. Kans and overlapping melds still get dedicated stacked body
-   poses, so their overlap shadow is baked in the same render.
+   2 %), plus a `cropMarginDevicePx` (64) margin whose outer `taperDevicePx` (64)
+   is faded to zero on shadow-only pixels, so the sprite boundary is exactly
+   transparent. `softenDevicePx` (6) then blurs the shadow *outside* a dilated
+   copy of the tile mask: the strip lights subtend only ~2.6°, so the shadow's
+   own outer edge is a hard ~10 px ramp, and the blur takes it to a ~30 px fade
+   without softening the contact shadow at a tile's foot. The bake fails if the
+   contour reaches the search pad's edge inside the scene; only the scene
+   frame's own edge may cut a shadow. There is no runtime shadow layer and no CSS
+   shadow on tiles. **Task 2.5 amendments:** this item replaces Task 2's "32 px
+   shadow gutter per slot", because a standing tile's cast shadow reaches ~75 px
+   and the fixed gutter cut it on all four edges; it adds the taper and the
+   soften, because the contour alone still ended on a ~2 % step and the shadow's
+   own edge read as a cut; and it makes a hand layout **one** body, because two
+   sprites (row + draw) each carry a tail that ends inside the gap and whichever
+   is painted second darkens the other's. The whole table (felt, apron,
+   wall-ring track, compass plate, rail) is the Cycles shadow catcher in the
+   shadow pass, with the catchers' own `visible_shadow` off so the rail's shadow
+   on the felt is not baked twice. Kans and overlapping melds still get dedicated
+   stacked body poses, so their overlap shadow is baked in the same render.
 8. **Formats, resolution, budget.** 2× lossy WebP with alpha, quality 90, one
    file per sprite, no atlas. Total committed assets ≤ 8 MB and the initial
    hand + board load ≤ 4 MB, with face decals loaded per hand. Section 9 has the
@@ -469,7 +473,11 @@ headless browser).
     2880 × 1800 frame of broad, low-frequency lighting, so 64 + OIDN is
     indistinguishable and costs a fraction of a 256-sample frame; the 256 setting
     still governs every sprite (bevel highlights need it). The manifest records
-    the count it used as `assets.backgroundSamples`.
+    the count it used as `assets.backgroundSamples`. **Task 2.5 amendment:** the
+    shipped exposure is `scene.colorManagement.exposure = -1.0` (the first
+    group-bake review called the scene too bright), recorded in the manifest as
+    `scene.exposure`; changing it re-bakes the whole batch, so the review keeps a
+    brightness ladder in `build/review/exposure/`.
 14. **SVG rasteriser and source.** `@resvg/resvg-js` 2.6.2, pinned, run from the
     offline `tools/render` package. No `sharp`, no system `rsvg`, and no headless
     browser. Raw symbol-only SVGs are vendored from the public-domain
@@ -662,7 +670,7 @@ makes the layout the body unit. All of this is recorded in `scene-spec.json`,
    never touches the row". The measured 2 % contours disagree: the draw's tail
    reaches 51 px into a 47 px gap, and the row's reaches 40 px back, so both tails
    end inside the gap and whichever sprite is painted second darkens the other's.
-   The same applies to a 32 px capture margin, which would reach onto the
+   The same applies to any capture margin, which would reach onto the
    neighbour's tile face. Task 2.5 therefore bakes the whole layout — row *and*
    drawn tile — as one body, so no two sprites ever represent the same shadow and
    no compositing order can matter. This supersedes Task 2.5's own earlier
@@ -685,15 +693,19 @@ makes the layout the body unit. All of this is recorded in `scene-spec.json`,
    the posed tile copies on transparent film, pass 2 makes the **whole table**
    the Cycles shadow catcher while the catchers themselves stop casting (the
    rail's shadow on the felt is already in the background). The crop is the
-   measured shadow contour — composited alpha above 2 %, plus a 32 px margin whose
-   outer 32 px is **faded to zero on shadow-only pixels** — united with the
+   measured shadow contour — composited alpha above 2 %, plus a 64 px margin whose
+   outer 64 px is **faded to zero on shadow-only pixels** — united with the
    tiles' own integer bounds so a tile's sub-2 % anti-aliased edge cannot be
-   shaved. The taper is there because the shadow's alpha only asymptotes to zero:
-   the first bake's 2 % + 1 px crop still ended on a ~2 % step, which showed as a
-   straight cut along the bottom-left where the shadow is longest. Every body now
-   reports `visibleAlphaAtSpriteEdge` 0 and `maxAlphaAtCropEdge` ≤ 0.0078. The
-   bake fails if the contour reaches the search pad's edge inside the scene; only
-   the scene frame may cut a shadow (`sceneEdgeClips` is empty).
+   shaved. Every body reports `visibleAlphaAtSpriteEdge` 0 and
+   `maxAlphaAtCropEdge` ≤ 0.0056. Extending the capture did not, on its own, fix
+   the "shadow ends suddenly" review note: the shadow's **own** outer boundary
+   was a 10 px ramp at up to 19 % alpha (a parlor strip 56 units away subtends
+   only ~2.6°, so the penumbra is narrow). `hand.shadow.softenDevicePx` (6 px)
+   blurs the shadow outside a dilated, blurred copy of the tile silhouette,
+   which takes that boundary to a ~30 px fade and leaves the contact shadow at
+   the tile foot crisp. The bake fails if the contour reaches the search pad's
+   edge inside the scene; only the scene frame may cut a shadow
+   (`sceneEdgeClips` is empty).
 6. **Checks and numbers.** Alignment is per layout against a reference frame
    containing exactly that layout's tiles: **0 shifted pixels for all ten
    layouts** over 737,786 tile pixels, soft-edge fraction 0.0000 %. The row's 2 %
@@ -702,13 +714,13 @@ makes the layout the body unit. All of this is recorded in `scene-spec.json`,
    and cancels part of the faint tail).
 7. **Budget.** With the model change the sub-budgets moved: bodies 1 MB → **2 MB**
    and manifest 50 KB → **150 KB**; the 8 MB total and 4 MB initial load stand.
-   The shipped batch is 438 KB — 20 body sprites (419,334 B, 5,798–41,470 B each),
-   the background (19,018 B), and a 124,155 B manifest. `render.sh` prunes every
+   The shipped batch is 339 KB — 20 body sprites (328,854 B, 5,448–29,122 B each),
+   the background (10,436 B), and a 124,713 B manifest. `render.sh` prunes every
    `bodies/` file the new manifest does not reference, so a regeneration cannot
    leave a stale per-slot sprite behind.
 8. **One command.** `bash tools/render/render.sh` bakes the ten layouts in both
    poses, the background, and a review composite per layout into gitignored
-   `tools/render/build/review/`, then runs the validator. ~25 minutes on a
+   `tools/render/build/review/`, then runs the validator. ~27 minutes on a
    CPU-only machine.
 9. **What later tasks consume.** Task 4 picks a layout by `(count, hasDraw)` and
    draws its one body, then the slot decals by `faceMatrix`; there is no

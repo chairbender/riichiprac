@@ -1368,6 +1368,21 @@ def bake_group(
         # decision, so it is an explicit spec knob rather than a light tweak.
         shadow = shadow.copy()
         shadow[..., 3] = np.clip(shadow[..., 3] * alpha_scale, 0.0, 1.0)
+    soften = int(shadow_spec.get("softenDevicePx", 0))
+    if soften > 0:
+        # A strip light 56 units away throws a narrow penumbra, so the cast
+        # shadow's outer boundary is a ~10 px ramp at up to 20 % depth and reads
+        # as a cut where it is longest. Soften the shadow *outside* the tiles
+        # only: the contact shadow at the tile's foot keeps its crisp edge, so
+        # the row stays grounded, while the outer boundary fades over ~2 sigma.
+        shadow_alpha = shadow[..., 3]
+        blurred = blur2d(shadow_alpha, float(soften))
+        contact = blur2d(
+            dilate(body[..., 3] > 0.01, radius=max(2, 3 * soften)).astype(np.float32),
+            float(soften),
+        )
+        contact = np.clip(contact, 0.0, 1.0)
+        shadow[..., 3] = shadow_alpha * contact + blurred * (1.0 - contact)
     sprite_full = over(shadow, body)  # tiles over their shared shadow
     alpha = sprite_full[..., 3]
 
@@ -1435,7 +1450,7 @@ def bake_group(
     log(
         f"group body: {path.name} ({crop[2] - crop[0]}x{crop[3] - crop[1]}, "
         f"{len(slots)} tile(s), contour {contour}, taper {taper} px, "
-        f"edge alpha {sprite_edge[0]:.4f}, {size} B"
+        f"soften {soften} px, edge alpha {sprite_edge[0]:.4f}, {size} B"
         + (f", scene-edge clip {scene_edge_clips}" if scene_edge_clips else "")
         + ")"
     )
@@ -1454,6 +1469,7 @@ def bake_group(
             "alphaThreshold": threshold,
             "cropMarginPx": crop_margin,
             "taperPx": taper,
+            "softenPx": soften,
             "contour": list(contour),
             "reach": {
                 "left": round(bx0 - contour[0], 1) + 0.0,
@@ -2853,6 +2869,8 @@ def main() -> None:
             "widthDevicePx": render_width,
             "heightDevicePx": render_height,
             "camera": "fixed",
+            "exposure": spec["scene"]["colorManagement"]["exposure"],
+            "viewTransform": spec["scene"]["colorManagement"]["viewTransform"],
         },
         "camera": camera_record(spec),
         "table": {
