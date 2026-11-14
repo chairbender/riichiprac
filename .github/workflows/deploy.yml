@@ -83,9 +83,10 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      # The rendered view's felt raster (and, from Phase 1, the tile shells and
-      # shells.json) is committed. CI never runs Blender: the dependency-free
-      # checker validates the spec, the felt PNG and any published shells.
+      # The rendered view's felt raster, the six tile shells (1x + 2x) and
+      # shells.json are committed. CI never runs Blender: the dependency-free
+      # checker validates the specs, the felt PNG, both texture scales and the
+      # manifest, including the decoded-RGBA hashes of the committed bake.
       - name: Verify rendered-view assets
         run: node tools/render/scripts/check-shells.mjs
 
