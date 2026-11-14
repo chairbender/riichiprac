@@ -24,7 +24,6 @@ export type MortalCommand =
   | { op: 'init'; weights: ArrayBuffer; modelName: string }
   | { op: 'evaluate'; stateJson: string }
   | { op: 'generateAgreement'; category: string; optionsJson: string }
-  | { op: 'generateAi'; category: string }
   | { op: 'generateHotseat'; optionsJson: string };
 
 /** A request carrying the id its response will echo. */

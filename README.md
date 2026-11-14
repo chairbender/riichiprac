@@ -112,8 +112,8 @@ touching the rest of the selection.
 The grouping is not a frontend list: `SCENARIO_MANIFEST` in
 `src/generator/mod.rs` carries each lesson's `BookSection`, `list_scenarios()`
 serialises it, and a Rust test pins every group's chapter to the citation the
-verdict panel shows. Lessons with no book rule (the Mortal drills) land in
-"Other".
+verdict panel shows. Lessons with no book rule (the Mortal drills) are shown
+first, under "Other".
 
 Edits are staged: ticking boxes changes the draft pool shown in the panel footer
 ("Pool: 5 scenarios · 3 sections"), and **Deal from pool** generates one hand
@@ -134,32 +134,12 @@ and the entries are gone when the tab closes. To keep or send a hand, use
 **Export** (see "Exporting and importing a position"). The deep-linking options
 and why neither shipped are in `scenario-history-plan.md`.
 
-## AI Best Action scenario
-
-`AI Best Action` generates a random, deck-consistent table and presents whatever
-decision the loaded Mortal v4 model can answer: discard, Riichi, tsumo/ron, chi,
-pon, kan, or pass. The correct answer is the model's highest-probability legal
-action at generation time; it is not a hand-written lesson. It is a declared
-**Mortal drill**: the book column says there is no book rule, and the drill is
-graded by the model alone.
-
-The scenario requires the model weights. Until the model is ready it stays out
-of the "All scenarios" pool so a first launch does not block on the download.
-After that it is drawn like any other lesson: the verdict panel renders the
-single Mortal perspective, with no book column and no agreement sampling.
-Select it by name to drill it directly.
-
-The AI scenario is generated entirely in Rust/WASM: the state is built from the
-shared deck, validated, encoded, evaluated once (plus a second pass when the
-model chooses Riichi), and returned to React with `correct_action`, the legal
-action list, and the evaluation. React only renders and grades.
-
 ## AI Hotseat scenario
 
 `AI Hotseat` does not hand-build a position at all. Mortal plays every seat of
 a full round, and the player is dropped into one of their own seat's decisions
 that actually occurred during that round. The answer is whatever Mortal chose in
-that seat at that moment, graded exactly like the AI drill (Mortal only, no book
+that seat at that moment, graded Mortal-only like the other AI drills (no book
 column).
 
 Choosing the scenario opens a **generation card** before anything is generated.
@@ -612,9 +592,10 @@ nearly every hand — so raise `max_candidates` for the low-agreement families.
 When the bound runs out the call returns an error naming the rejection counts
 instead of a hand the model would not play.
 
-`ai_best_action` is not sampled here (its answer is Mortal's own argmax; use
-`generate_ai_puzzle`), but it still takes part in the app's random rotation. The
-`mock_table` UI fixture is returned unchanged with no report.
+The Mortal-only drills (`ai_hotseat`) are not sampled here: their answer is
+Mortal's own argmax and they are generated through the evaluator. They still
+take part in the app's random rotation once the model is ready. The `mock_table`
+UI fixture is returned unchanged with no report.
 
 ## Fuzzing for generator / Mortal disagreements
 

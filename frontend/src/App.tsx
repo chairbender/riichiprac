@@ -283,7 +283,9 @@ export const App = () => {
                 },
               );
             } else {
-              generated = await mortal.generateAiPuzzle(category);
+              throw new Error(
+                `No evaluator-backed generator is registered for ${category}.`,
+              );
             }
             if (requestId !== loadRequestId.current) return;
             finish(() => loadFromJson(generated));

@@ -146,7 +146,7 @@ describe('AI Hotseat options', () => {
     expect(
       isHotseatOnly({
         kind: 'selected',
-        ids: [HOTSEAT_SCENARIO_ID, 'ai_best_action'],
+        ids: [HOTSEAT_SCENARIO_ID, 'ryanmen_protorun'],
       }),
     ).toBe(false);
     expect(isHotseatOnly({ kind: 'all' })).toBe(false);

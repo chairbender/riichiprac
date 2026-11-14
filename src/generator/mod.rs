@@ -69,7 +69,6 @@
 //! The Phase 2 `mock_table` fixture lives in `crate::fixtures`, outside the
 //! lesson registry.
 
-pub mod ai_best_action;
 mod ankan_decision;
 mod block_theory;
 mod chiitoi_vs_toitoi;
@@ -637,16 +636,6 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         book: Some(BOOK_CH9_KAN),
     },
     ScenarioMeta {
-        id: ScenarioId::AiBestAction,
-        label: "AI Best Action",
-        description: "Any decision: discard, call, or win — the answer is Mortal v4's top action.",
-        category: ScenarioCategory::AiDecision,
-        tags: &["ai", "mortal", "discard", "call", "any_decision"],
-        requires_ai: true,
-        grading: ScenarioGrading::MortalOnly,
-        book: None,
-    },
-    ScenarioMeta {
         id: ScenarioId::AiHotseat,
         label: "AI Hotseat",
         description: "Mortal plays all four seats of a round; you take over one seat at a \
@@ -914,7 +903,6 @@ pub enum ScenarioId {
     MeldOrNot,
     DaiminkanDecision,
     WindDiscardOrder,
-    AiBestAction,
     AiHotseat,
     FoldToRiichi,
     PushOrFold,
@@ -957,7 +945,6 @@ impl ScenarioId {
         ScenarioId::WindDiscardOrder,
         ScenarioId::MeldOrNot,
         ScenarioId::DaiminkanDecision,
-        ScenarioId::AiBestAction,
         ScenarioId::AiHotseat,
         ScenarioId::FoldToRiichi,
         ScenarioId::PushOrFold,
@@ -1000,7 +987,6 @@ impl ScenarioId {
             ScenarioId::WindDiscardOrder => "wind_discard_order",
             ScenarioId::MeldOrNot => "meld_or_not",
             ScenarioId::DaiminkanDecision => "daiminkan_decision",
-            ScenarioId::AiBestAction => "ai_best_action",
             ScenarioId::AiHotseat => "ai_hotseat",
             ScenarioId::FoldToRiichi => "fold_to_riichi",
             ScenarioId::PushOrFold => "push_or_fold",
@@ -1044,7 +1030,6 @@ impl ScenarioId {
             "wind_discard_order" => Some(ScenarioId::WindDiscardOrder),
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
             "daiminkan_decision" => Some(ScenarioId::DaiminkanDecision),
-            "ai_best_action" => Some(ScenarioId::AiBestAction),
             "ai_hotseat" => Some(ScenarioId::AiHotseat),
             "fold_to_riichi" => Some(ScenarioId::FoldToRiichi),
             "push_or_fold" => Some(ScenarioId::PushOrFold),
@@ -1089,11 +1074,6 @@ impl ScenarioId {
             ScenarioId::WindDiscardOrder => wind_discard_order::generate(category),
             ScenarioId::MeldOrNot => meld_or_not::generate(category),
             ScenarioId::DaiminkanDecision => daiminkan_decision::generate(category),
-            ScenarioId::AiBestAction => Err(
-                "ai_best_action requires the loaded Mortal model; use the evaluator's \
-                 generate_ai_puzzle"
-                    .to_string(),
-            ),
             ScenarioId::AiHotseat => Err(
                 "ai_hotseat requires the loaded Mortal model; use the evaluator's \
                  generate_hotseat_puzzle"
@@ -1279,10 +1259,10 @@ pub(crate) fn generate_reachable_candidate_for(
 /// `equivalent_tiles`, compared on the full action including the discard tile).
 /// See [`mortal_agreement`] for the rule and the cost model.
 ///
-/// `ai_best_action` is not accepted here: its answer *is* Mortal's argmax and it
-/// is generated through the evaluator (`generate_ai_puzzle`), so the filter
-/// would be vacuous. The `mock_table` fixture is returned unchanged with no
-/// report, because it is a UI mock rather than a sampled position.
+/// The Mortal-only drills (`ai_hotseat`) are not accepted here: their answer
+/// *is* Mortal's argmax and they are generated through the evaluator, so the
+/// filter would be vacuous. The `mock_table` fixture is returned unchanged with
+/// no report, because it is a UI mock rather than a sampled position.
 pub fn generate_puzzle_with_agreement(
     category: &str,
     model: &MortalV4Model,
@@ -1333,7 +1313,7 @@ mod tests {
     fn every_scenario_id_generates_its_own_category() {
         for &id in ScenarioId::ALL {
             assert_eq!(ScenarioId::from_id(id.as_str()), Some(id));
-            if matches!(id, ScenarioId::AiBestAction | ScenarioId::AiHotseat) {
+            if id == ScenarioId::AiHotseat {
                 assert!(id.generate(id.as_str()).is_err());
                 continue;
             }
@@ -1362,11 +1342,7 @@ mod tests {
             match meta.book {
                 // The Mortal drills have no book rule to cite, so the picker
                 // files them under "Other" instead of inventing a group.
-                None => assert!(
-                    matches!(meta.id, ScenarioId::AiBestAction | ScenarioId::AiHotseat),
-                    "{} has no book section",
-                    meta.id.as_str()
-                ),
+                None => assert_eq!(meta.id, ScenarioId::AiHotseat),
                 Some(book) => {
                     assert!(
                         (1..=10).contains(&book.chapter),
@@ -1436,7 +1412,7 @@ mod tests {
         assert!(
             scenarios
                 .iter()
-                .any(|scenario| scenario["id"] == "ai_best_action"
+                .any(|scenario| scenario["id"] == "ai_hotseat"
                     && scenario["requires_ai"] == true
                     && scenario["book"].is_null())
         );
@@ -1474,7 +1450,7 @@ mod tests {
         use crate::generator::support::state_validation::validate_reachable_state;
 
         for &id in ScenarioId::ALL {
-            if matches!(id, ScenarioId::AiBestAction | ScenarioId::AiHotseat) {
+            if id == ScenarioId::AiHotseat {
                 continue;
             }
             for run in 0..30 {
@@ -1499,7 +1475,7 @@ mod tests {
     #[test]
     fn non_kan_lessons_never_deal_a_concealed_quad() {
         for &id in ScenarioId::ALL {
-            if matches!(id, ScenarioId::AiBestAction | ScenarioId::AiHotseat) {
+            if id == ScenarioId::AiHotseat {
                 continue;
             }
             for run in 0..15 {

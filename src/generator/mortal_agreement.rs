@@ -675,7 +675,7 @@ mod tests {
         for &id in ScenarioId::ALL {
             // The Mortal-only drills generate through the evaluator, not
             // through the book-candidate sampler.
-            if matches!(id, ScenarioId::AiBestAction | ScenarioId::AiHotseat) {
+            if id == ScenarioId::AiHotseat {
                 continue;
             }
             let puzzle = generate(id.as_str(), MortalAgreementOptions::default(), |state| {
@@ -785,7 +785,7 @@ mod tests {
     fn the_ai_drill_is_not_sampled() {
         // Its answer *is* Mortal's argmax, and `generate_puzzle` cannot build
         // it without the evaluator, so every attempt is a generation failure.
-        let err = match generate("ai_best_action", MortalAgreementOptions::new(2), |_| {
+        let err = match generate("ai_hotseat", MortalAgreementOptions::new(2), |_| {
             unreachable!("the drill is never evaluated through this path")
         }) {
             Ok(_) => panic!("the drill path must not generate"),

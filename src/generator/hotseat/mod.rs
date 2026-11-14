@@ -9,8 +9,8 @@
 //!    [`sim`](self)).
 //! 3. Pick one of the inserted seat's recorded decisions with an inverse
 //!    survival weight (late turns are rarer, so they are up-weighted) and grade
-//!    it exactly like [`crate::generator::ai_best_action`]: the correct answer
-//!    is the model's top legal action at that position.
+//!    it exactly like the other Mortal-only drills: the correct answer is the
+//!    model's top legal action at that position.
 //!
 //! Insertion points are real decisions only: forced Riichi tsumogiri turns and
 //! round-ending wins (tsumo/ron) are excluded.
@@ -370,8 +370,8 @@ mod tests {
     fn the_recorded_position_is_still_a_reachable_table() {
         let policy = FastPolicy::default();
         let state = generate_with_policy(&policy, "{}").expect("hotseat generates");
-        // The serialized state keeps the real concealed hands, exactly like the
-        // AI Best Action drill, so the same reachability guard applies.
+        // The serialized state keeps the real concealed hands, as the other AI
+        // drills do, so the same reachability guard applies.
         validate_reachable_state(&state).unwrap_or_else(|err| panic!("unreachable: {err}"));
     }
 

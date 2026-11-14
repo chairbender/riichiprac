@@ -38,17 +38,17 @@ describe('createMortalClient', () => {
     const client = createMortalClient(worker);
 
     const evaluation = client.evaluate('{"players":[]}');
-    const generated = client.generateAiPuzzle('ai_best_action');
+    const generated = client.generateHotseatPuzzle('{}');
     expect(worker.messages.map((message) => message.op)).toEqual([
       'evaluate',
-      'generateAi',
+      'generateHotseat',
     ]);
 
     const [evaluateMessage, generateMessage] = worker.messages;
     worker.respond({
       id: generateMessage.id,
       ok: true,
-      value: '{"category":"ai_best_action"}',
+      value: '{"category":"ai_hotseat"}',
     });
     worker.respond({
       id: evaluateMessage.id,
@@ -56,7 +56,7 @@ describe('createMortalClient', () => {
       value: { recommended_action: 'Discard_3m' },
     });
 
-    await expect(generated).resolves.toBe('{"category":"ai_best_action"}');
+    await expect(generated).resolves.toBe('{"category":"ai_hotseat"}');
     await expect(evaluation).resolves.toEqual({
       recommended_action: 'Discard_3m',
     });
@@ -147,7 +147,7 @@ describe('createMortalClient', () => {
     const client = createMortalClient(worker);
 
     const first = client.evaluate('{}');
-    const second = client.generateAiPuzzle('ai_best_action');
+    const second = client.generateHotseatPuzzle('{}');
     worker.fail('the model could not be loaded');
 
     await expect(first).rejects.toThrow('the model could not be loaded');

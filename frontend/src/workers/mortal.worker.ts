@@ -74,14 +74,6 @@ scope.onmessage = async (event) => {
         });
         return;
       }
-      case 'generateAi': {
-        scope.postMessage({
-          id: request.id,
-          ok: true,
-          value: requireEvaluator().generate_ai_puzzle(request.category),
-        });
-        return;
-      }
       case 'generateHotseat': {
         const value = requireEvaluator().generate_hotseat_puzzle_with_progress(
           request.optionsJson,

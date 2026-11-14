@@ -48,7 +48,7 @@ export const ALL_SCENARIOS: ScenarioSelection = { kind: 'all' };
 export interface ScenarioGroup {
   key: string;
   label: string;
-  /** Sort order: chapter then section. `Infinity` for the ungrouped bucket. */
+  /** Sort order: chapter then section. `-1` sorts the ungrouped bucket first. */
   chapter: number;
   section: number;
   scenarios: ScenarioOption[];
@@ -143,7 +143,7 @@ export function scenarioLabel(
 
 /**
  * Group the catalogue by book chapter/section, in book order, with the lessons
- * that have no book tie last under "Other".
+ * that have no book tie first under "Other".
  */
 export function groupScenarios(
   scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
@@ -178,10 +178,10 @@ export function groupScenarios(
   );
 
   if (ungrouped.length > 0) {
-    ordered.push({
+    ordered.unshift({
       key: UNGROUPED_GROUP_KEY,
       label: UNGROUPED_GROUP_LABEL,
-      chapter: Number.POSITIVE_INFINITY,
+      chapter: -1,
       section: 0,
       scenarios: ungrouped,
     });

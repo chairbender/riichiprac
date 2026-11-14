@@ -188,14 +188,6 @@ fn test_list_scenarios_payload() {
     assert!(
         scenarios
             .iter()
-            .any(|scenario| scenario["id"] == "ai_best_action"
-                && scenario["requires_ai"] == true
-                && scenario["grading"] == "mortal_only"),
-        "AI scenario must be listed, marked requires_ai, and graded by Mortal alone"
-    );
-    assert!(
-        scenarios
-            .iter()
             .any(|scenario| scenario["id"] == "ai_hotseat"
                 && scenario["requires_ai"] == true
                 && scenario["grading"] == "mortal_only"
@@ -329,7 +321,7 @@ fn test_list_scenarios_payload() {
 
 #[wasm_bindgen_test]
 fn test_ai_scenario_requires_the_evaluator() {
-    let json = generate_puzzle("ai_best_action".to_string());
+    let json = generate_puzzle("ai_hotseat".to_string());
     let parsed: serde_json::Value =
         serde_json::from_str(&json).expect("error payload must be valid JSON");
     assert!(

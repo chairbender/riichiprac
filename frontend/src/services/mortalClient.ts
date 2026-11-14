@@ -35,8 +35,6 @@ export interface MortalClient {
   init(weights: ArrayBuffer, modelName: string): Promise<void>;
   /** Evaluate a serialized `GameState`, resolving to Mortal's ranking. */
   evaluate(stateJson: string): Promise<AiEvaluation>;
-  /** Generate and finalize the AI Best Action drill. */
-  generateAiPuzzle(category: string): Promise<string>;
   /** Run a full Mortal self-play round and return one of its decisions. */
   generateHotseatPuzzle(
     optionsJson: string,
@@ -127,9 +125,6 @@ export function createMortalClient(
 
     evaluate: (stateJson) =>
       send({ op: 'evaluate', stateJson }) as Promise<AiEvaluation>,
-
-    generateAiPuzzle: (category) =>
-      send({ op: 'generateAi', category }) as Promise<string>,
 
     generateHotseatPuzzle: (optionsJson, onProgress) =>
       send(

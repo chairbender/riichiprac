@@ -94,17 +94,6 @@ impl WasmMortalEvaluator {
         })
     }
 
-    /// Generate and finalize the AI Best Action scenario.
-    pub fn generate_ai_puzzle(&self, category: &str) -> Result<String, JsValue> {
-        let state =
-            crate::generator::ai_best_action::generate(&self.model, &self.model_name, category)
-                .map_err(|err| js_error(&format!("failed to generate AI scenario: {err}")))?;
-        let state = crate::generator::finalize_state(state);
-
-        serde_json::to_string(&state)
-            .map_err(|err| js_error(&format!("failed to serialize AI scenario: {err}")))
-    }
-
     /// Generate the AI Hotseat scenario: a full round self-played by Mortal,
     /// presented at one of the inserted seat's real decisions.
     ///
@@ -176,8 +165,9 @@ impl WasmMortalEvaluator {
     /// report.
     ///
     /// Returns `{"state": GameState, "agreement": MortalAgreementReport}` as a
-    /// JSON string. Use [`Self::generate_ai_puzzle`] for `ai_best_action`, whose
-    /// answer is Mortal's own argmax and is therefore not sampled.
+    /// JSON string. Mortal-only drills such as `ai_hotseat` are generated
+    /// through their own evaluator methods instead, because their answer is the
+    /// model's own argmax and is therefore not sampled.
     pub fn generate_puzzle_with_agreement(
         &self,
         category: &str,
