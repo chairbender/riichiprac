@@ -100,16 +100,17 @@ Configure an automated Blender script to render the canonical blank tile shells 
 - [x] **Task 2.3:** Store UV rects and layout metrics in a fast lookup map (`Map<TileRenderKey, BakedTileSprite>`) so runtime frame rendering requires zero dynamic shadows, blurs, or multi-pass shaders. Landed: `frontend/src/table/`, see §9.
 
 ### Phase 3: Coordinate System & Zone Layout Engine
-- [ ] **Task 3.1:** Implement the table layout engine strictly using `advanceWidth` and `advanceHeight` from `shells.json` (never `texWidth`/`texHeight`).
-- [ ] **Task 3.2:** When positioning a tile at logical board coordinate `(gridX, gridY)`, compute its actual draw position as:
+- [x] **Task 3.1:** Implement the table layout engine strictly using `advanceWidth` and `advanceHeight` from `shells.json` (never `texWidth`/`texHeight`). Landed as `frontend/src/table/boardLayout.ts`; see §10. Tight rows and wall runs use the Phase 1 `gridStepPx` instead, with `advanceWidth/Height` for hit-testing and the hand/spacing rules.
+- [x] **Task 3.2:** When positioning a tile at logical board coordinate `(gridX, gridY)`, compute its actual draw position as:
   ```text
   drawX = gridX - shell.anchorX
   drawY = gridY - shell.anchorY
   ```
-- [ ] **Task 3.3:** Implement zone-specific spacing rules:
+- [x] **Task 3.3:** Implement zone-specific spacing rules:
   - **Player Hand:** Sequential `advanceWidth` steps, plus a $+\text{0.35} \times \text{advanceWidth}$ gap before the newly drawn *tsumo* tile.
   - **Discard Ponds:** 6 columns per row; advance X by `advanceWidth` and Y by `advanceHeight` (the lower tile's top AO rim will sit flush against the upper tile's bottom extrusion). When a *riichi* tile appears, advance X by the sideways shell's `advanceWidth` so subsequent tiles shift right cleanly.
   - **Two-Tier Walls (`yama`):** Position the upper stack tile at `dx = 0` (or `-1px`), `dy = -wallStepY` relative to the bottom stack tile.
+  - **Landed deltas:** ponds use `gridStepPx` for both axes, a sideways tile advances by 52 px (its long axis) / 38.41 px on a vertical row, and `wallStepY` is 0.1 × the projected long axis. See §10.
 
 ### Phase 4: Painter's Algorithm Renderer (Strict Draw Order)
 Because there is no Z-buffer, enforce a deterministic back-to-front draw order across and within every table zone:
@@ -334,3 +335,120 @@ by `frontend/scripts/review-atlas.ts` under `tools/render/build/review/`.
    the only runtime work per tile is `drawImage` from the page. The tests scan
    the atlas modules for WebGL/3D imports and assert draw order (all shells
    before any glyph, clip then transform then glyph) on a recording context.
+
+## 10. Phase 3 baseline (landed 2026-11-14)
+
+Phase 3 is the pure zone layout engine in
+[`frontend/src/table/boardLayout.ts`](frontend/src/table/boardLayout.ts), with
+the `GameState` adapter in
+[`frontend/src/table/boardFromState.ts`](frontend/src/table/boardFromState.ts).
+It draws nothing: Phase 4 consumes `TilePlacement[]` (shell, grid, draw, advance
+rect, body rect, `drawOrder`). The dump gate is
+`cd frontend && npm run layout:dump`; the artifacts are written under
+`tools/render/build/review/` (gitignored).
+
+**Board space and the viewport.** Layout is one fixed 2D board, CSS px at the
+manifest's @1x scale, top-left origin, x right, y down. The current bake derives
+a **612 × 642 board** from the shell metrics (not a hand-authored constant).
+There is no table model, shared camera or perspective. Fitting is a contain +
+centre transform:
+
+```text
+scale   = min(viewportW / 612, viewportH / 642)
+offsetX = (viewportW - 612 * scale) / 2
+offsetY = (viewportH - 642 * scale) / 2
+cssX    = offsetX + boardX * scale
+cssY    = offsetY + boardY * scale
+```
+
+The felt is **not** affected by that transform. It is a separate full-screen
+raster with `background-size: 100% 100%` (not `cover`), so its baked vignette
+hugs the real screen edges at every aspect ratio; the board layer above it is
+transparent and has no border, rail or apron. `cover` would crop the left/right
+vignette in portrait.
+
+**Zones (board px).** Every zone includes the maximum extent of a full pond
+(18 discards, one of them sideways) and of a ten-stack wall with both tiers.
+
+| Zone | x | y | w × h | Projection / shell |
+| :--- | ---: | ---: | ---: | :--- |
+| human hand | 8 | 579.11 | 596 × 54 | front elevation, `shell_hand_standing` |
+| compass reserve | 194 | 231.91 | 224 × 120 | reserved, nothing drawn |
+| bottom pond | 189.24 | 361.91 | 233.52 × 147.2 | top-down, `shell_flat_upright` |
+| top pond | 189.24 | 74.71 | 233.52 × 147.2 | top-down, `shell_flat_upright` |
+| left pond | 58.24 | 147.66 | 125.76 × 288.5 | top-down, `shell_flat_upright` |
+| right pond | 428 | 147.66 | 125.76 × 288.5 | top-down, `shell_flat_upright` |
+| top/bottom walls | 125.54 | 8 / 512.4 | 360.92 × 58.71 | `shell_wall_horizontal` |
+| side walls | 8.24 / 562 | 73.72 | 42 × 432.2 | `shell_wall_side_left` / `_right` |
+
+The zones are pairwise disjoint for the worst case and every tile body stays
+inside its zone; the tests and the dump both assert this.
+
+**Per-seat pond frames.** Each pond is laid out in its seat's frame: six tiles
+run `along` (parallel to the player's edge) and up to three rows step `away`
+toward the compass. Top/bottom rows are horizontal; left/right rows are
+vertical. Row 0 is the seat's nearest row. Every pond uses the same upright
+shell and advance box, so a tile is exactly 38 × 53 px in all four ponds; only
+its position changes. Within a row every pond advances on screen left→right
+(horizontal) or top→bottom (vertical): the sprites are never rotated, because
+rotating a pre-shaded shell would move its baked light and extrusion.
+
+**Spacing rules.**
+
+* Hand: 38 px steps (the standing shell's `advanceWidth`), centred; the drawn
+  tile sits after a 13.3 px (0.35 × 38) tsumo gap. `advanceRect`/`bodyRect` is
+  the logical hit box the Phase 5 lift will move.
+* Pond rows: 35.88 px along a horizontal row, 47.10 px to the next row; on a
+  vertical row, 47.10 px along and 35.88 px across. These are the Phase 1
+  `gridStepPx` tight axes, not the advance box.
+* Riichi: the dedicated sideways shell, horizontal on screen in every pond. It
+  advances along the row by 52 px (horizontal) or 38.41 px (vertical); the rest
+  of the row shifts by the difference. On a vertical row the 54 px-wide body
+  overhangs its 35.88 px row slot by 18.12 px, of which 16.12 px is beyond the
+  neighbour's body; the pond zone is widened by that overhang and the sideways
+  tile paints last so its face stays visible. The visual review is the user's.
+* Walls: ten two-tile stacks a side (the live wall after a deal is ≤ 69 tiles,
+  i.e. ≤ 9 stack layers; the dead wall is not drawn). The upper tile is at
+  `dx = 0`, `dy = -0.1 × projected long axis` — 4.71 px for the horizontal
+  wall, 4.18 px for the side walls, from the 0.589-unit tile thickness at the
+  75–80° bake elevation. Horizontal runs paint right-to-left, side runs
+  top-to-bottom; the whole lower tier paints before the upper tier.
+
+**Draw order.** Placements come back sorted with a contiguous `drawOrder`:
+top wall → left/right side walls → all four ponds → bottom wall → human hand.
+Within a pond, rows paint in increasing screen y (horizontal ponds) or x
+(vertical ponds), and each row paints against the shadow direction. A sideways
+Riichi tile paints after its neighbours: its 54 px body is wider than a vertical
+row is deep, so otherwise the next row would cover its face. The hand paints the
+drawn tile first, then the concealed tiles right-to-left.
+
+**Decisions that narrow the architecture above.**
+
+1. **The Phase 3 wording "advance X by advanceWidth" for Riichi is superseded
+   by the Phase 1 contract.** `advanceWidth` is 54 px while the sideways plate
+   advances 52 px, so using it would open a 2 px felt gap in a tight row. The
+   engine uses `gridStepPx` (52 / 38.41) and keeps `advanceWidth/Height` for
+   the hit box. This is recorded in `layout-dump.json`.
+2. **The human hand is the only hand in Phase 3.** Opponent concealed hands and
+   open melds are Phase 4; the board reserves no empty band for them, so the
+   layout can be extended without a visual placeholder. The compass region is
+   reserved but empty, as instructed.
+3. **Wall count is an input.** `wallPairsPerSide` defaults to and is clamped at
+   10; the adapter derives `ceil(tiles_remaining / 8)`. The board is sized for
+   that worst case so a live wall never leaves the board.
+4. **The board size is derived, not hand-tuned.** `boardMetrics(shells)`
+   computes the zones from the manifest's anchors, advances and tight steps, so
+   a re-bake moves the board with it. Tests pin the current 612 × 642 numbers
+   to catch a drift.
+
+**Verification.** `frontend/src/table/boardLayout.test.ts` has 31 tests: anchor
+mapping, hand pitch/tsumo gap/centring, 6-column wrap on all four seats,
+Riichi advance in both row orientations, wall tiers and clamp, zone
+containment/disjointness, paint order, viewport fit at six aspect ratios,
+texture-size independence (a mutated `texWidth`/`texHeight` leaves placements
+unchanged, and the source is scanned for texture reads), and the `GameState`
+adapter. `npm run layout:dump` lays out a 166-placement worst-case board and
+runs 1379 geometry checks, writing `layout-dump.json` and
+`layout-preview.svg`. Per AGENTS.md §6 the SVG is a labelled geometry diagram
+for the user to open (`xdg-open tools/render/build/review/layout-preview.svg`),
+not agent visual evidence.

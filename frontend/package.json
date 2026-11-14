@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview",
-    "atlas:review": "vite-node scripts/review-atlas.ts"
+    "atlas:review": "vite-node scripts/review-atlas.ts",
+    "layout:dump": "vite-node scripts/dump-layout.ts"
   },
   "dependencies": {
     "react": "^18.3.1",
