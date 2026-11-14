@@ -8,14 +8,14 @@
 > reports remain traceable.
 
 Status: **done** (command-center task 261113-1238). Kept as the design record
-for the shipped rig; numbers and measured results are in
-[`tools/render/README.md`](tools/render/README.md).
+for the retired rig; numbers and measured results are in this document and git
+history (the retired README and assets were removed in Phase 0).
 
 It ran before Tasks 2 and 3, because the rig is baked into every body sprite and
 face decal and re-baking the full set later is expensive.
 
 Parent design: [`rendered-table-plan.md`](rendered-table-plan.md). Task 1 assets
-and the tuner live in [`tools/render/`](tools/render/README.md).
+and the tuner lived in `tools/render/` (removed in Phase 0).
 
 ## 1. Why
 
@@ -98,7 +98,7 @@ elongated `RECTANGLE` area light, so the schema only needs:
   tube[i] generically and the manifest can record the rig without positional
   assumptions.
 
-Recommended shape in `scene-spec.json`:
+Recommended shape in `scene-spec.json` (historical; removed in Phase 0):
 
 ```json
 "lights": [
@@ -115,7 +115,7 @@ Recommended shape in `scene-spec.json`:
 ]
 ```
 
-`build_and_render.py` changes are small: read `rollDeg` and rotate after aiming,
+`build_and_render.py` changes were small (historical; removed in Phase 0): read `rollDeg` and rotate after aiming,
 keep everything else. No new render pass, no compositor work. Render cost rises
 only because there are more lights (a few percent).
 
@@ -164,7 +164,7 @@ plausible engraving.
 - No channel clipping on the top edge or the paint; the decal/body seam stays
   invisible (re-check the seam zoom).
 - The full spike regenerates in one command; the render stays deterministic.
-- `tools/render/README.md` records the rig, the `θn = θL / 2` reasoning, the
+- This document records the rig, the `θn = θL / 2` reasoning, the
   strip numbers and the "parlor vs studio" presets.
 - Decal bake time within ~10% of Task 1 at the same quality settings.
 
@@ -183,8 +183,8 @@ No new command-center ID yet; create one when this is scheduled.
 
 ## 9. Outcome (what shipped)
 
-Recorded after the bake so the plan matches the assets; full detail is in
-[`tools/render/README.md`](tools/render/README.md).
+Recorded after the bake so the plan matches the assets; full detail is in this
+document and git history (the retired README and assets were removed in Phase 0).
 
 - **Rig**: `parlor` = `tube-0` (az 0 / elev 50 / 85 kW), `tube-1` (az 90 /
   elev 58 / 65 kW), `bounce` (az 30 / elev 10 / 2.5 kW, `#cfe4d3`), `rim`

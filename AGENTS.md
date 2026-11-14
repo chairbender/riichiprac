@@ -48,8 +48,8 @@ The app is a **Constraint Satisfaction Generator**:
   * Visual sign-off on baked assets is the **user's**, not the agent's; see §6 before judging a render.
   * The opt-in rendered view composes blank tile **shells** baked offline. Blender 4.5.9 LTS builds the tile mesh, an orthographic camera, a locked top-left key plus a weak ambient fill, and the tight contact shadow/AO from a committed Python/JSON spec; `@resvg/resvg-js` rasterises the 2D face glyphs. No headless browser is part of the pipeline.
   * `shells.json` publishes each shell's texture size, anchor, advance width/height, and `faceQuad`. The runtime composites each tile face into its shell's `faceQuad` in a startup atlas and draws the board with a strict painter's algorithm; it never projects a 3D quad.
-  * The active architecture is `2_5d_mahjong_tile_rendering_architecture.md`; read it before touching shells, layouts, or the compositor. `rendered-table-plan.md` and `tools/render/README.md` describe the **retired** full-scene pipeline and carry legacy banners: do not regenerate or extend it.
-  * There is **no table model**. The background is a full-screen felt raster with a vignette; walls, ponds, hands, melds and (later) the compass are overlaid in screen space. Each zone uses the projection that reads best, so there is no shared perspective camera.
+  * The active architecture is `2_5d_mahjong_tile_rendering_architecture.md`; read it before touching shells, layouts, or the compositor. `tools/render/README.md` is the active shell-baker/felt pipeline doc. `rendered-table-plan.md` and `rendered-table-strip-lights-plan.md` are **retired** design records with banners: do not regenerate or extend them.
+  * There is **no table model**. The background is a full-screen felt raster with a vignette (`frontend/public/table/felt.png`); walls, ponds, hands, melds and (later) the compass are overlaid in screen space. Each zone uses the projection that reads best, so there is no shared perspective camera.
   * The runtime is 2D composition only: images plus DOM. **Do NOT add a 3D/WebGL library to the frontend, and do not rasterise tile art in the browser.**
 
 ## 4. UI / UX Design Constraints (React)
@@ -83,7 +83,10 @@ The app is a **Constraint Satisfaction Generator**:
 * Always write WASM-compatible Rust tests (`#[wasm_bindgen_test]`) to verify generator logic before attempting to render the state in React.
 * Keep pull requests and file modifications strictly bounded to the current task. Do not jump ahead to frontend styling if asked to write backend generators.
 * Rely on the `agari` crate's documentation for all mathematical hand evaluations.
-* Run the **shell baker** and its integrity check when changing a rendered-view asset. Commit the baker/spec and the regenerated shells, felt raster, and `shells.json` together; never hand-edit a generated shell or the felt.
+* Run the **shell baker** and its integrity check when changing a rendered-view asset:
+  `bash tools/render/bake-shells.sh --check` (no Blender) and, for the felt,
+  `bash tools/render/bake-felt.sh`. Commit the baker/spec and the regenerated felt,
+  shells, and `shells.json` together; never hand-edit a generated shell or the felt.
 * Keep the rendered view's interaction and ARIA behaviour equivalent to the top-down view. The stacked and top-down views remain the accessible fallback.
 * Visual work follows §6: verify visuals with scripted checks or hand the artifact to the user. Never sign off a render, screenshot, or layout from your own inspection.
 
@@ -103,10 +106,9 @@ A check is legitimate when a script prints pass/fail or numbers, so the result d
 the agent's eyes:
 
 * **Pixel / colour assertions** over a decoded image: read the RGBA buffer and assert on specific
-  pixels, rows, channel ranges, or a count of clipped pixels. `channel_stats()` in
-  `tools/render/build_and_render.py` is the model (Phase 0 carries that helper into the shell
-  baker) — it turns "is this clipping?" into `maxChannel` / `clippedPixels` numbers instead of an
-  eyeball call.
+  pixels, rows, channel ranges, or a count of clipped pixels. `scripts/check-shells.mjs` in
+  `tools/render/` is the model — its PNG decoder turns "is this clipping?" and "does the vignette
+  actually darken the edges?" into numbers instead of an eyeball call.
 * **Rect / geometry assertions**: every shell's `faceQuad` lies inside its opaque body, `anchorX/Y`
   plus `advanceWidth/Height` plus the declared padding equals `texWidth/texHeight`, the sideways
   glyph rotation maps the glyph rect onto its `faceQuad`, and every shell's declared size matches
@@ -132,12 +134,11 @@ work done, the work is not verified.
 ### What to do instead
 
 1. **Save the artifact to a path the user can open.** Keep task output inside the worktree (or
-   `/tmp/opencode` for throwaways): the shell-baker output dir and its contact sheet, or a
-   screenshot saved to a named file.
+   `/tmp/opencode` for throwaways): the committed felt (`frontend/public/table/felt.png`), the
+   shell output dir (`frontend/public/table/shells/`) and `shells.json`, or a named screenshot.
 2. **Tell the user the path and the command to view it**, e.g. `xdg-open <path>`,
-   `code <path>`, the shell baker's one command then its `contact-sheet.png`,
-   `cd frontend && npm run dev` → `http://localhost:5173`, or the pipeline's local tuner page if it
-   has one.
+   `code <path>`, `bash tools/render/bake-shells.sh --check` for the numbers,
+   `cd frontend && npm run dev` → `http://localhost:5173`, or another artifact path.
 3. **Say exactly what to look at and what question needs an answer**, and what to compare it
    against ("compare this shell to the one at `HEAD~1`", "is the resin seam visible on the top
    bevel at final resolution?", "does the sideways shadow still point down-right?").
@@ -148,11 +149,11 @@ work done, the work is not verified.
 ### Where this rule bites
 
 * **Shell pipeline (`tools/render/`).** All asset judgement is numeric or the user's. When you need
-  a new check, add it to the shell baker, its validator, or its contact sheet so it **prints
-  numbers**, rather than narrating what the image looks like. Use the pipeline's tuner/knob UI if
-  it has one — do not simulate it by editing the spec and squinting at the output. After a
-  regeneration, give the user the out-dir, the contact sheet, and the manifest diff, and ask
-  whether the bake is acceptable.
+  a new check, add it to `scripts/check-shells.mjs` or the bakers so it **prints numbers**, rather
+  than narrating what the image looks like. After a regeneration, give the user the relevant
+  asset path (`frontend/public/table/felt.png`, `frontend/public/table/shells/`), the
+  `bash tools/render/bake-shells.sh --check` output, and the `shells.json` diff, then ask whether
+  the bake is acceptable. There is no tuner in the active pipeline.
 * **Frontend visual diffs.** Assert structure and behaviour in `vitest` (roles, labels, classes,
   ordering, ARIA, click effects, computed geometry where jsdom allows) and keep the views'
   accessibility equivalent. For anything purely visual — spacing, colour, the felt/vignette,

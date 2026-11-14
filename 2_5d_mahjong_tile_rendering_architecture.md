@@ -169,3 +169,45 @@ this repository. They override any implication in sections 1–5.
    starting point for the shell baker. The retired full-scene pipeline's table
    model, fixed perspective camera, hand/body sprites, baked decals, and
    scene manifest are not reused.
+
+## 7. Phase 0 Baseline (landed 2026-11-13)
+
+Phase 0 reset `tools/render/` to this document and left a runnable starting
+point for Phase 1. The authoritative pipeline doc is
+[`tools/render/README.md`](tools/render/README.md).
+
+| Path | State after Phase 0 |
+| :--- | :--- |
+| `tools/render/shell-spec.json` | active: Blender 4.5.9 pin, CPU-Cycles/AgX settings, jansou proportions, bevel `0.055 / 6`, one-material white/blue split, top-left key + ambient fill, the six-shell catalogue, output paths, budgets |
+| `tools/render/bake_shells.py` | active skeleton: version check, tile mesh/material, lights, catalogue validation, dry-run plan; `build_shell_camera` / `bake_shell` are the Phase 1 extension points |
+| `tools/render/bake-shells.sh` | active entry point; `--check` needs no Blender, the default run is a dry run |
+| `tools/render/felt-spec.json`, `bake_felt.py`, `bake-felt.sh` | active procedural felt generator (stdlib Python) |
+| `tools/render/scripts/check-shells.mjs` | active dependency-free integrity check; the CI gate |
+| `files under tools/render/faces/`, `scripts/rasterize-face.mjs` | kept: vendored face SVGs + provenance and the resvg glyph rasteriser |
+| `frontend/public/table/felt.png` | committed full-screen felt + vignette |
+| `frontend/public/table/shells/`, `shells.json` | Phase 1 output, not baked yet |
+
+**Felt decisions.** The raster is 2048 × 1280, 8-bit RGB PNG, 559,465 B, with a
+baked elliptical vignette (centre luma 68.79, corner mean 24.29, ratio 2.83 on
+the committed bake, measured by `check-shells.mjs`). It has no table edge, rail,
+apron, wall ring, compass plate or room floor. The runtime stretches it with
+`background-size: 100% 100%` rather than `cover`, so the vignette hugs the actual
+screen edges at every aspect ratio; `cover` would crop the left/right vignette
+away in portrait. The noise is isotropic and low-frequency, so the non-uniform
+stretch does not read as a stretched pattern. This is recorded in
+`felt-spec.json` under `runtime`.
+
+**Removed.** The retired full-scene table model, fixed perspective camera, body
+sprites, 32 px shadow gutter, baked face decals, `scene-spec.json` hand/table/
+decals sections, old batch budgets, `scripts/check-assets.mjs` in its old shape,
+the contact sheet, the tuner, `frontend/public/table/bodies/`, the old
+`background.webp` and the old `manifest.json`. Their history is in git;
+`rendered-table-plan.md` and `rendered-table-strip-lights-plan.md` are retired
+design records, not instructions.
+
+**Phase 1 handoff.** Implement `build_shell_camera` and `bake_shell`, flip
+`bakeImplemented` in `shell-spec.json`, and write
+`frontend/public/table/shells/*.png` plus `shells.json`. The manifest contract
+(texture size, anchor, advance, padding, `faceQuad`, per-shell and total byte
+budgets) is documented in `tools/render/README.md` and enforced by
+`scripts/check-shells.mjs`.
