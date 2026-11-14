@@ -1,8 +1,8 @@
 {
   "version": 1,
   "name": "riichiprac 2.5D shell baker",
-  "status": "Phase 0 skeleton: the tile mesh, the one-material white/blue split, the lighting convention and the six-shell catalogue are declared here. Phase 1 fills each shell's canvas/camera and flips bakeImplemented.",
-  "bakeImplemented": false,
+  "status": "Phase 1: six blank shells baked with orthographic cameras, a screen-locked top-left key, a baked contact shadow/AO margin, and frontend/public/table/shells.json. Faces, atlas, layout and renderer are Phases 2-5.",
+  "bakeImplemented": true,
   "blender": {
     "requiredVersion": "4.5.9"
   },
@@ -15,6 +15,7 @@
     "denoise": true,
     "denoiser": "OPENIMAGEDENOISE",
     "filmTransparent": true,
+    "resolutionPercentage": 100,
     "colorManagement": {
       "displayDevice": "sRGB",
       "viewTransform": "AgX",
@@ -61,8 +62,8 @@
     }
   },
   "lighting": {
-    "convention": "World axes: +X is screen right, -Y is toward the viewer/human edge, +Z is up off the felt. The key is one virtual light locked to screen-space top-left-front: for each shell it is placed relative to that shell's camera basis, so highlights land on the top/left edges and shadows on the bottom/right in every projection. The azimuth/elevation below are the front-elevation reference; Phase 1 rotates them with each shell's camera. Azimuth 0 fronts -Y, 90 is +X, 180 is +Y, 270 is -X; elevation is above horizontal.",
-    "status": "Starting point for Phase 1. The architecture fixes the rule (one locked key at top-left-front plus a weak ambient fill); the numbers are not a verified bake.",
+    "convention": "World axes: +X is screen right, -Y is toward the viewer/human edge, +Z is up off the felt. The key is one virtual light locked to screen-space top-left-front: its reference vector is authored for a front-elevation camera (azimuth 0 fronts -Y, 90 is +X, 180 is +Y, 270 is -X; elevation is above horizontal) and is then re-expressed in each shell camera's own basis (screen right, screen up, toward viewer) every time the camera moves. Highlights therefore land on the top/left of the sprite and shadows on the bottom/right in every projection, including the top-down and oblique ones.",
+    "status": "Phase 1 bake. The screen-space remap is what makes one key work for six different cameras.",
     "key": {
       "id": "key",
       "type": "AREA",
@@ -72,56 +73,148 @@
       "size": 7,
       "sizeY": 5,
       "rollDeg": 0,
-      "energyW": 350,
+      "energyW": 3200,
       "hex": "#fff7ea"
     },
     "world": {
-      "hex": "#20262b",
-      "strength": 0.35
+      "hex": "#3b4a5c",
+      "strength": 1.0
     }
+  },
+  "bake": {
+    "pixelRatio": 2,
+    "targetLongAxisPx1x": 52,
+    "frameMarginPx2x": 24,
+    "padding1x": {
+      "top": 2,
+      "right": 4,
+      "bottom": 4,
+      "left": 2
+    },
+    "edgeLedgePx": 1,
+    "shadowCatcher": true,
+    "shadow": {
+      "peakAlpha": 0.33,
+      "colorHex": "#0b1418",
+      "contactFloor": 0.55,
+      "blurPx2x": 1
+    },
+    "ambientOcclusion": {
+      "peakAlpha": 0.28,
+      "colorHex": "#0d151a"
+    },
+    "note": "One render of the tile on transparent film plus one render of the Cycles shadow catcher under it, per scale. The catcher alpha gives the physical shadow shape; it is clamped to the declared padding (3-4 px right/bottom) and normalised so the overhang peaks at shadow.peakAlpha. The top/left ambient-occlusion fringe is analytic and bounded by the 1-2 px padding."
   },
   "shells": [
     {
       "id": "shell_hand_standing",
       "projection": "front-elevation",
       "faceRotationDeg": 0,
-      "role": "bottom player's standing hand: upright front elevation with a top bevel and a white/blue resin edge"
+      "role": "bottom player's standing hand: upright front elevation with a top bevel and a white/blue resin edge",
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 12,
+        "faceLocalZ": "top"
+      },
+      "expectProjection": "portrait"
     },
     {
       "id": "shell_flat_upright",
       "projection": "top-down",
       "faceRotationDeg": 0,
-      "role": "face-up discards, unrotated meld tiles, and any flat upright tile"
+      "role": "face-up discards, unrotated meld tiles, and any flat upright tile",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 80,
+        "faceLocalZ": "top"
+      },
+      "expectProjection": "portrait"
     },
     {
       "id": "shell_flat_sideways",
       "projection": "top-down",
       "faceRotationDeg": 90,
-      "role": "face-up sideways riichi discards and called-tile melds; only the 2D glyph rotates"
+      "role": "face-up sideways riichi discards and called-tile melds; only the 2D glyph rotates",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 90
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 80,
+        "faceLocalZ": "top"
+      },
+      "expectProjection": "landscape"
     },
     {
       "id": "shell_wall_horizontal",
       "projection": "top-down",
       "faceRotationDeg": 0,
-      "role": "face-down wall tile for the top/bottom walls and the top player's concealed hand"
+      "role": "face-down wall tile for the top/bottom walls and the top player's concealed hand",
+      "pose": {
+        "rotateXDeg": 180,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 80,
+        "faceLocalZ": "bottom"
+      },
+      "expectProjection": "portrait"
     },
     {
       "id": "shell_wall_side_left",
       "projection": "fixed-oblique",
       "faceRotationDeg": 0,
-      "role": "face-down left side-wall tile, sheared/angled inward toward the board centre"
+      "role": "face-down left side-wall tile, sheared/angled inward toward the board centre",
+      "pose": {
+        "rotateXDeg": 180,
+        "rotateYDeg": -35,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 75,
+        "faceLocalZ": "bottom"
+      },
+      "expectProjection": "portrait"
     },
     {
       "id": "shell_wall_side_right",
       "projection": "fixed-oblique",
       "faceRotationDeg": 0,
-      "role": "face-down right side-wall tile, sheared/angled inward toward the board centre"
+      "role": "face-down right side-wall tile, sheared/angled inward toward the board centre",
+      "pose": {
+        "rotateXDeg": 180,
+        "rotateYDeg": 35,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 75,
+        "faceLocalZ": "bottom"
+      },
+      "expectProjection": "portrait"
     }
   ],
   "outputs": {
     "format": "png",
     "shellDir": "../../frontend/public/table/shells",
-    "manifest": "../../frontend/public/table/shells.json"
+    "shell2xDir": "../../frontend/public/table/shells/2x",
+    "manifest": "../../frontend/public/table/shells.json",
+    "intermediateDir": "build/shells"
   },
   "budgets": {
     "manifestBytes": 65536,

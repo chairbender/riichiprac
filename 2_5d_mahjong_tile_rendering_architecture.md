@@ -88,9 +88,9 @@ Configure an automated Blender script to render the canonical blank tile shells 
 ## 4. Implementation Breakdown (Step-by-Step)
 
 ### Phase 1: Blender Shell Baker & Manifest Exporter
-- [ ] **Task 1.1:** Create a headless Blender Python script (`bake_shells.py`) that loads the existing 3D R-tile mesh, applies the two-tone resin/ivory materials, and sets up the orthographic camera and top-left key light.
-- [ ] **Task 1.2:** Configure the shadow catcher plane and Blender Compositor node tree to produce a tight $+3\text{--}4\text{ px}$ bottom-right drop shadow and $1\text{--}2\text{ px}$ top-left AO border on a transparent background.
-- [ ] **Task 1.3:** Render all 6 canonical blank shells at target DPI (plus `@2x` retina scale) and auto-generate `shells.json` containing `anchorX`, `anchorY`, `advanceWidth`, `advanceHeight`, and `faceQuad` coordinates.
+- [x] **Task 1.1:** Create a headless Blender Python script (`bake_shells.py`) that loads the existing 3D R-tile mesh, applies the two-tone resin/ivory materials, and sets up the orthographic camera and top-left key light. Landed in section 8.
+- [x] **Task 1.2:** Configure the shadow catcher plane and Blender Compositor node tree to produce a tight $+3\text{--}4\text{ px}$ bottom-right drop shadow and $1\text{--}2\text{ px}$ top-left AO border on a transparent background. Done in Python over the Cycles shadow-catcher alpha rather than a compositor mask, so the clamp is exact and measurable; see section 8.
+- [x] **Task 1.3:** Render all 6 canonical blank shells at target DPI (plus `@2x` retina scale) and auto-generate `shells.json` containing `anchorX`, `anchorY`, `advanceWidth`, `advanceHeight`, and `faceQuad` coordinates. All numbers are measured from the render; see section 8.
 
 ### Phase 2: Runtime Texture Atlas & Face Glyph Compositor
 - [ ] **Task 2.1:** Prepare high-contrast, crisp 2D vector/SVG or high-DPI PNG assets for all 34 tile faces (plus red fives *akadora*). Avoid thin hairlines that blur at small discard sizes.
@@ -211,3 +211,69 @@ design records, not instructions.
 (texture size, anchor, advance, padding, `faceQuad`, per-shell and total byte
 budgets) is documented in `tools/render/README.md` and enforced by
 `scripts/check-shells.mjs`.
+
+## 8. Phase 1 baseline (landed 2026-11-13)
+
+Phase 1 baked the six canonical blank shells, both texture scales and the
+manifest. The authoritative numbers and the field-by-field contract are in
+[`tools/render/README.md`](tools/render/README.md); this section records the
+decisions that narrow the architecture above.
+
+**One command.** `bash tools/render/bake-shells.sh --bake` renders, measures and
+writes everything, then runs `scripts/check-shells.mjs` (323 checks, no Blender)
+and regenerates the review sheets under `tools/render/build/review/`.
+`--bake --verify-determinism` re-renders every shell and compares decoded RGBA;
+all six were byte-identical across two renders.
+
+**Six shells, measured.**
+
+| Id | Projection | Advance @1x | Texture @1x / @2x | Bytes @1x + @2x |
+| :--- | :--- | :--- | :--- | :--- |
+| `shell_hand_standing` | front elevation, el 12° | 38 × 54 | 44 × 60 / 88 × 120 | 3,315 + 8,790 |
+| `shell_flat_upright` | near-top-down, el 80° | 38 × 53 | 44 × 59 / 88 × 118 | 2,966 + 8,543 |
+| `shell_flat_sideways` | near-top-down, rotated 90° | 54 × 44 | 60 × 50 / 120 × 100 | 3,269 + 9,594 |
+| `shell_wall_horizontal` | near-top-down, face-down | 38 × 54 | 44 × 60 / 88 × 120 | 3,217 + 8,723 |
+| `shell_wall_side_left` | fixed oblique, roll −35° | 42 × 52 | 48 × 58 / 96 × 116 | 3,893 + 10,147 |
+| `shell_wall_side_right` | fixed oblique, roll +35° | 42 × 52 | 48 × 58 / 96 × 116 | 3,803 + 10,100 |
+
+Total 76,360 B against a 2,097,152 B budget. The felt is unchanged
+(559,465 B).
+
+**Decisions that narrow the architecture above.**
+
+1. **The screen-space key is derived from the camera basis, not the world.**
+   The authored azimuth/elevation is decomposed once in a front-elevation
+   camera's frame into `(−0.406, +0.819, +0.406)` = (screen left, screen up,
+   toward viewer) and re-expressed in each shell's own basis. Without that, a
+   top-down shell would be lit from the horizon and its top bevel would go dark.
+2. **Axis-aligned faces for every grid shell.** A yaw of even 6° turns the tile
+   into a parallelogram whose bbox leaves felt gaps between neighbours. The
+   ponds, hands and top/bottom walls therefore use azimuth 0, and the "slightly
+   right" extrusion that §2.A describes is carried by the baked shadow instead.
+3. **Side walls get their cabinet lean by rolling the tile about its own long
+   axis (±35°), not by yawing the camera.** Yawing rotates the tile diagonally
+   (≈47° on screen) and stops reading as a wall; the roll keeps the long axis
+   vertical so a wall column steps straight down while the thickness face leans
+   inward.
+4. **`advanceWidth/Height` is the sprite's opaque box, not the grid step.** The
+   box contains a one-pixel anti-aliased edge ledge (`solidInset1x` is
+   `[1,1,1,1]`), so `anchor + advance + padding = texture` stays exact and the
+   3–4 px / 1–2 px margin contract can be measured from the PNG without a
+   0.4-alpha silhouette pixel masquerading as a shadow. Phase 3 must use the
+   published `gridStepPx.x/y` (the projected tile axes) for tight rows and wall
+   runs; `advanceWidth` is for hit-testing and spacing.
+5. **The clamp is arithmetic, not a compositor mask.** The Cycles
+   shadow-catcher alpha supplies the physical shape; Python clamps it to the
+   padding, normalises each side to `shadow.peakAlpha` 0.33, adds the analytic
+   1–2 px AO fringe at 0.28, and ramps the outer texture ring to zero. Every
+   number the check reports is therefore a property of the committed PNG, not
+   of a Blender node graph.
+6. **Rig tuning changed two numbers.** The Phase 0 key was 350 W and the world
+   0.35 of `#20262b`, which rendered the shadow side near black; the bake uses
+   3200 W and a `#3b4a5c` world at 1.0. The face samples are ivory
+   (`207, 204, 199` flat, `169, 166, 163` standing — the standing face is more
+   grazing, which is inherent to one screen-locked key).
+
+Phase 2 owns the atlas and the glyph compositor: it maps each glyph's corners
+onto `faceQuad` after rotating it by `faceRotationDeg`, and never rotates a
+shell sprite.

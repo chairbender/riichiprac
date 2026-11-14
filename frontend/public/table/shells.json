@@ -1,0 +1,838 @@
+{
+  "version": 1,
+  "generatedBy": "tools/render/bake_shells.py",
+  "pixelRatio": 2,
+  "coordinateSpace": "anchorX/anchorY, advanceWidth/advanceHeight, padding and faceQuad are CSS px of the @1x texture, with a top-left origin. textureFile2x is the same shell at pixelRatio times the resolution; divide its pixels by pixelRatio to get the same coordinates.",
+  "rig": {
+    "blender": "4.5.9 LTS",
+    "engine": "CYCLES",
+    "device": "CPU",
+    "samples": 256,
+    "adaptiveThreshold": 0.01,
+    "denoiser": "OPENIMAGEDENOISE",
+    "seed": 0,
+    "colorManagement": {
+      "displayDevice": "sRGB",
+      "viewTransform": "AgX",
+      "look": "AgX - Medium High Contrast",
+      "exposure": 0,
+      "gamma": 1
+    },
+    "key": {
+      "type": "AREA",
+      "referenceAzimuthDeg": 315,
+      "referenceElevationDeg": 55,
+      "screenDirection": [
+        -0.4056,
+        0.8192,
+        0.4056
+      ],
+      "distance": 12,
+      "size": 7,
+      "sizeY": 5,
+      "energyW": 3200,
+      "hex": "#fff7ea"
+    },
+    "world": {
+      "hex": "#3b4a5c",
+      "strength": 1.0
+    },
+    "targetLongAxisPx1x": 52,
+    "shadow": {
+      "peakAlpha": 0.33,
+      "colorHex": "#0b1418",
+      "contactFloor": 0.55,
+      "source": "Cycles shadow-catcher alpha, clamped to padding.right/bottom"
+    },
+    "ambientOcclusion": {
+      "peakAlpha": 0.28,
+      "colorHex": "#0d151a",
+      "source": "analytic fringe bounded by padding.top/left"
+    },
+    "determinism": "CPU Cycles, fixed seed 0, fixed adaptive threshold and OIDN. Each texture records the sha256 of its decoded RGBA; re-baking the same spec must reproduce it (bake_shells.py --bake --verify-determinism renders each shell twice).",
+    "shellRigs": {
+      "shell_hand_standing": {
+        "projectionWidthUnits": 0.75,
+        "projectionHeightUnits": 1.100667,
+        "pixelsPerUnit2x": 94.488165,
+        "orthoScale": 1.608667,
+        "resolution2x": [
+          120,
+          152
+        ],
+        "resolution1x": [
+          60,
+          76
+        ]
+      },
+      "shell_flat_upright": {
+        "projectionWidthUnits": 0.75,
+        "projectionHeightUnits": 1.087136,
+        "pixelsPerUnit2x": 95.664201,
+        "orthoScale": 1.609798,
+        "resolution2x": [
+          120,
+          154
+        ],
+        "resolution1x": [
+          60,
+          77
+        ]
+      },
+      "shell_flat_sideways": {
+        "projectionWidthUnits": 1.0,
+        "projectionHeightUnits": 0.840934,
+        "pixelsPerUnit2x": 104.0,
+        "orthoScale": 1.461538,
+        "resolution2x": [
+          152,
+          136
+        ],
+        "resolution1x": [
+          76,
+          68
+        ]
+      },
+      "shell_wall_horizontal": {
+        "projectionWidthUnits": 0.75,
+        "projectionHeightUnits": 1.087136,
+        "pixelsPerUnit2x": 95.664207,
+        "orthoScale": 1.588891,
+        "resolution2x": [
+          120,
+          152
+        ],
+        "resolution1x": [
+          60,
+          76
+        ]
+      },
+      "shell_wall_side_left": {
+        "projectionWidthUnits": 0.952364,
+        "projectionHeightUnits": 1.202201,
+        "pixelsPerUnit2x": 86.508005,
+        "orthoScale": 1.757063,
+        "resolution2x": [
+          132,
+          152
+        ],
+        "resolution1x": [
+          66,
+          76
+        ]
+      },
+      "shell_wall_side_right": {
+        "projectionWidthUnits": 0.952364,
+        "projectionHeightUnits": 1.202201,
+        "pixelsPerUnit2x": 86.508005,
+        "orthoScale": 1.757063,
+        "resolution2x": [
+          132,
+          152
+        ],
+        "resolution1x": [
+          66,
+          76
+        ]
+      }
+    }
+  },
+  "shells": {
+    "shell_hand_standing": {
+      "textureFile": "shells/shell_hand_standing.png",
+      "textureFile2x": "shells/2x/shell_hand_standing.png",
+      "texWidth": 44,
+      "texHeight": 60,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 38,
+      "advanceHeight": 54,
+      "padding": {
+        "top": 2,
+        "right": 4,
+        "bottom": 4,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          5.88,
+          11.33
+        ],
+        [
+          36.12,
+          11.33
+        ],
+        [
+          36.12,
+          52.46
+        ],
+        [
+          5.88,
+          52.46
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          35.44,
+          0.0
+        ],
+        "y": [
+          0.0,
+          46.21
+        ]
+      },
+      "projection": "front-elevation",
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 12,
+        "orthoScale": 1.608667,
+        "pixelsPerUnit2x": 94.488165,
+        "resolution1x": [
+          60,
+          76
+        ],
+        "resolution2x": [
+          120,
+          152
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 3,
+          "bottom": 3
+        },
+        "alphaPeak1x": {
+          "left": 0.2784,
+          "top": 0.2784,
+          "right": 0.3294,
+          "bottom": 0.3294
+        },
+        "alphaMass1x": {
+          "left": 14.478,
+          "top": 9.467,
+          "right": 16.388,
+          "bottom": 22.353
+        },
+        "shadowCatcherPeak": 0.3566,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          169,
+          166,
+          163
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            13,
+            65,
+            138
+          ],
+          "bottom": [
+            25,
+            39,
+            51
+          ]
+        },
+        "bytes1x": 3315,
+        "bytes2x": 8790
+      },
+      "sha256": {
+        "decodedRgba1x": "b19cd9e48b1f23d962100a3707163cc3a83a42d7c0820a8aebcdb52a9ce759d4",
+        "decodedRgba2x": "3045a48de7e9694903f223bbe27cc517ca78616399b1b79f472d5ab9e898ae2b"
+      }
+    },
+    "shell_flat_upright": {
+      "textureFile": "shells/shell_flat_upright.png",
+      "textureFile2x": "shells/2x/shell_flat_upright.png",
+      "texWidth": 44,
+      "texHeight": 59,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 38,
+      "advanceHeight": 53,
+      "padding": {
+        "top": 2,
+        "right": 4,
+        "bottom": 4,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          5.69,
+          5.09
+        ],
+        [
+          36.31,
+          5.09
+        ],
+        [
+          36.31,
+          47.01
+        ],
+        [
+          5.69,
+          47.01
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          35.88,
+          0.0
+        ],
+        "y": [
+          0.0,
+          47.1
+        ]
+      },
+      "projection": "top-down",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 80,
+        "orthoScale": 1.609798,
+        "pixelsPerUnit2x": 95.664201,
+        "resolution1x": [
+          60,
+          77
+        ],
+        "resolution2x": [
+          120,
+          154
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 3,
+          "bottom": 3
+        },
+        "alphaPeak1x": {
+          "left": 0.2784,
+          "top": 0.2784,
+          "right": 0.3216,
+          "bottom": 0.3216
+        },
+        "alphaMass1x": {
+          "left": 14.757,
+          "top": 10.58,
+          "right": 22.329,
+          "bottom": 17.216
+        },
+        "shadowCatcherPeak": 0.4403,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          207,
+          204,
+          200
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            220,
+            217,
+            213
+          ],
+          "bottom": [
+            24,
+            40,
+            59
+          ]
+        },
+        "bytes1x": 2966,
+        "bytes2x": 8543
+      },
+      "sha256": {
+        "decodedRgba1x": "018383e834df6e55ca5ae16703b5e319375d741a93f2fff20d4df0e0c43ed4cf",
+        "decodedRgba2x": "35a36c3271337ec03fb85b00747a2f3afae03f214931ea57b41761e24f873bcc"
+      }
+    },
+    "shell_flat_sideways": {
+      "textureFile": "shells/shell_flat_sideways.png",
+      "textureFile2x": "shells/2x/shell_flat_sideways.png",
+      "texWidth": 60,
+      "texHeight": 50,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 54,
+      "advanceHeight": 44,
+      "padding": {
+        "top": 2,
+        "right": 4,
+        "bottom": 4,
+        "left": 2
+      },
+      "faceRotationDeg": 90,
+      "faceQuad": [
+        [
+          5.86,
+          37.73
+        ],
+        [
+          5.86,
+          4.95
+        ],
+        [
+          52.14,
+          4.95
+        ],
+        [
+          52.14,
+          37.73
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          0.0,
+          38.41
+        ],
+        "y": [
+          52.0,
+          0.0
+        ]
+      },
+      "projection": "top-down",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 90
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 80,
+        "orthoScale": 1.461538,
+        "pixelsPerUnit2x": 104.0,
+        "resolution1x": [
+          76,
+          68
+        ],
+        "resolution2x": [
+          152,
+          136
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 3,
+          "bottom": 3
+        },
+        "alphaPeak1x": {
+          "left": 0.2784,
+          "top": 0.2824,
+          "right": 0.3216,
+          "bottom": 0.3216
+        },
+        "alphaMass1x": {
+          "left": 12.251,
+          "top": 15.161,
+          "right": 18.09,
+          "bottom": 24.941
+        },
+        "shadowCatcherPeak": 0.4407,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          207,
+          204,
+          199
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            220,
+            217,
+            213
+          ],
+          "bottom": [
+            26,
+            41,
+            61
+          ]
+        },
+        "bytes1x": 3269,
+        "bytes2x": 9594
+      },
+      "sha256": {
+        "decodedRgba1x": "14d50c64ed979d7f400722a394d717ed8b91925cef87db786bdb1532739596d3",
+        "decodedRgba2x": "4fa6ed5cc7e7f7ccb41a0cf486c21998ddb19f207e08923cbdcaf4b7cd80df37"
+      }
+    },
+    "shell_wall_horizontal": {
+      "textureFile": "shells/shell_wall_horizontal.png",
+      "textureFile2x": "shells/2x/shell_wall_horizontal.png",
+      "texWidth": 44,
+      "texHeight": 60,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 38,
+      "advanceHeight": 54,
+      "padding": {
+        "top": 2,
+        "right": 4,
+        "bottom": 4,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          5.69,
+          47.51
+        ],
+        [
+          36.31,
+          47.51
+        ],
+        [
+          36.31,
+          5.59
+        ],
+        [
+          5.69,
+          5.59
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          35.88,
+          0.0
+        ],
+        "y": [
+          0.0,
+          47.1
+        ]
+      },
+      "projection": "top-down",
+      "pose": {
+        "rotateXDeg": 180,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 80,
+        "orthoScale": 1.588891,
+        "pixelsPerUnit2x": 95.664207,
+        "resolution1x": [
+          60,
+          76
+        ],
+        "resolution2x": [
+          120,
+          152
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 3,
+          "bottom": 3
+        },
+        "alphaPeak1x": {
+          "left": 0.2784,
+          "top": 0.2784,
+          "right": 0.3176,
+          "bottom": 0.3216
+        },
+        "alphaMass1x": {
+          "left": 14.478,
+          "top": 10.024,
+          "right": 22.2,
+          "bottom": 16.941
+        },
+        "shadowCatcherPeak": 0.4335,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          0,
+          50,
+          130
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            5,
+            68,
+            158
+          ],
+          "bottom": [
+            31,
+            46,
+            60
+          ]
+        },
+        "bytes1x": 3217,
+        "bytes2x": 8723
+      },
+      "sha256": {
+        "decodedRgba1x": "2c0ff89a98849c6ab1a2e7b691d23cb606a2b8b70c65fb5d467d2cc0af830845",
+        "decodedRgba2x": "54a47c02382a40b48e9369399360ae29ce61d3faa29d9d88066f7d0540d62c8d"
+      }
+    },
+    "shell_wall_side_left": {
+      "textureFile": "shells/shell_wall_side_left.png",
+      "textureFile2x": "shells/2x/shell_wall_side_left.png",
+      "texWidth": 48,
+      "texHeight": 58,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 42,
+      "advanceHeight": 52,
+      "padding": {
+        "top": 2,
+        "right": 4,
+        "bottom": 4,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          4.35,
+          45.94
+        ],
+        [
+          27.03,
+          41.84
+        ],
+        [
+          27.03,
+          4.65
+        ],
+        [
+          4.35,
+          8.76
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          26.58,
+          -4.8
+        ],
+        "y": [
+          0.0,
+          41.78
+        ]
+      },
+      "projection": "fixed-oblique",
+      "pose": {
+        "rotateXDeg": 180,
+        "rotateYDeg": -35,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 75,
+        "orthoScale": 1.757063,
+        "pixelsPerUnit2x": 86.508005,
+        "resolution1x": [
+          66,
+          76
+        ],
+        "resolution2x": [
+          132,
+          152
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 3,
+          "bottom": 3
+        },
+        "alphaPeak1x": {
+          "left": 0.2784,
+          "top": 0.2784,
+          "right": 0.3176,
+          "bottom": 0.3176
+        },
+        "alphaMass1x": {
+          "left": 11.694,
+          "top": 3.063,
+          "right": 18.133,
+          "bottom": 16.773
+        },
+        "shadowCatcherPeak": 0.4211,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          1,
+          60,
+          152
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            10,
+            42,
+            91
+          ],
+          "bottom": [
+            28,
+            42,
+            54
+          ]
+        },
+        "bytes1x": 3893,
+        "bytes2x": 10147
+      },
+      "sha256": {
+        "decodedRgba1x": "a2f3a5df12975e1f3d5025e8254e3ab1f8ec2b43c62d429b57bed01d28e84bf8",
+        "decodedRgba2x": "679552c50c21d5f83c810c7c3fe0901d04c0df9e12c9a19505433c7e80f4d8d1"
+      }
+    },
+    "shell_wall_side_right": {
+      "textureFile": "shells/shell_wall_side_right.png",
+      "textureFile2x": "shells/2x/shell_wall_side_right.png",
+      "texWidth": 48,
+      "texHeight": 58,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 42,
+      "advanceHeight": 52,
+      "padding": {
+        "top": 2,
+        "right": 4,
+        "bottom": 4,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          18.97,
+          41.84
+        ],
+        [
+          41.65,
+          45.94
+        ],
+        [
+          41.65,
+          8.76
+        ],
+        [
+          18.97,
+          4.65
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          26.58,
+          4.8
+        ],
+        "y": [
+          0.0,
+          41.79
+        ]
+      },
+      "projection": "fixed-oblique",
+      "pose": {
+        "rotateXDeg": 180,
+        "rotateYDeg": 35,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 75,
+        "orthoScale": 1.757063,
+        "pixelsPerUnit2x": 86.508005,
+        "resolution1x": [
+          66,
+          76
+        ],
+        "resolution2x": [
+          132,
+          152
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 3,
+          "bottom": 3
+        },
+        "alphaPeak1x": {
+          "left": 0.2784,
+          "top": 0.2784,
+          "right": 0.3176,
+          "bottom": 0.3176
+        },
+        "alphaMass1x": {
+          "left": 11.694,
+          "top": 3.063,
+          "right": 18.627,
+          "bottom": 15.988
+        },
+        "shadowCatcherPeak": 0.4305,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          0,
+          31,
+          87
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            9,
+            46,
+            101
+          ],
+          "bottom": [
+            20,
+            30,
+            39
+          ]
+        },
+        "bytes1x": 3803,
+        "bytes2x": 10100
+      },
+      "sha256": {
+        "decodedRgba1x": "d3547d65afc24b874aeb472d6130fab576a1bfc222ec062137b458e06fdb3498",
+        "decodedRgba2x": "a5dd6ccd632380287501bc02f2fe1f3a1623a7aa0a1c04342ac064ce30ff9104"
+      }
+    }
+  }
+}

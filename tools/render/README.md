@@ -24,8 +24,8 @@ starting point for Phase 1, with **no table model**:
 - The full-screen **felt raster** is baked and committed; it is the only
   background the rendered view has.
 - The six canonical shells, their projections, and the `shells.json` contract
-  are declared, but **Phase 1 owns the shell bake**. Phase 0 does not write a
-  shell texture.
+  were declared in Phase 0; **Phase 1 (below) bakes them**. This section records
+  the starting point, not the current state.
 - The retired table model, fixed perspective camera, body sprites, baked face
   decals, 32 px shadow gutter, scene spec, batch budgets, contact sheet, tuner,
   and their shipped assets are gone. See [Legacy](#legacy) for the removed
@@ -34,19 +34,27 @@ starting point for Phase 1, with **no table model**:
 ## Commands
 
 ```bash
+bash tools/render/bake-shells.sh --bake    # bake 1x + 2x, validate, build review sheets
 bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
 ```
 
+`--bake` is the one command that regenerates everything: it renders the six
+shells at @1x and @2x with the pinned Blender, measures each render, writes
+`frontend/public/table/shells/*.png`, `shells/2x/*.png` and
+`frontend/public/table/shells.json`, then runs the dependency-free integrity
+check and regenerates the review sheets under `tools/render/build/review/`.
+`--bake --verify-determinism` additionally renders every shell a second time and
+compares the decoded RGBA.
+
 `--check` is the CI gate (`node tools/render/scripts/check-shells.mjs`). It
-validates the specs, the felt PNG, and — once Phase 1 publishes it —
-`shells.json` plus every shell texture. It never invokes Blender.
+validates the specs, the felt PNG, `shells.json` and both texture scales. It
+never invokes Blender.
 
 The default `bake-shells.sh` run is a **dry run**: it starts the pinned Blender,
 builds the tile, material and lights, prints the six-shell plan, and exits
-without writing an image. `--bake` is Phase 1 work and fails until
-`bakeImplemented` is true in `shell-spec.json`.
+without writing an image.
 
 The felt bake uses system `python3` only (stdlib; no NumPy, no Blender):
 
@@ -103,11 +111,14 @@ its own regeneration, not mixed with CPU output.
 | `bake_felt.py` | yes | deterministic stdlib PNG generator for the felt + vignette |
 | `bake-felt.sh` | yes | one-command felt regeneration |
 | `scripts/check-shells.mjs` | yes | dependency-free spec + PNG + `shells.json` integrity check (CI gate) |
+| `scripts/png.mjs` | yes | dependency-free PNG decode/encode + sprite compositor shared by the checker and the review sheets |
+| `scripts/review-shells.mjs` | yes | lays the baked shells out with the manifest's own steps into review sheets |
 | `scripts/rasterize-face.mjs` | yes | vendored face SVG → PNG glyph (resvg) |
 | `faces/` | yes | vendored public-domain symbol-only SVG + provenance (`faces/SOURCE.md`) |
 | `../../frontend/public/table/felt.png` | yes | the committed full-screen felt raster |
-| `../../frontend/public/table/shells/` | Phase 1 | shell textures (`shell_*.png`) |
-| `../../frontend/public/table/shells.json` | Phase 1 | the published shell contract |
+| `../../frontend/public/table/shells/` | yes | shell textures at @1x (`shell_*.png`) |
+| `../../frontend/public/table/shells/2x/` | yes | the same six shells at @2x |
+| `../../frontend/public/table/shells.json` | yes | the published shell contract |
 | `node_modules/`, `build/` | no | installed dependencies and throwaway review output |
 
 Generated assets are never hand-edited. A regeneration commits the spec/script
@@ -163,92 +174,190 @@ stretched pattern. This decision is recorded in `felt-spec.json` under
 
 ## Phase 1: the six shells
 
-`shell-spec.json` catalogs the canonical shells and the output paths; it does
-**not** contain baked textures yet. Phase 1 implements `build_shell_camera` and
-`bake_shell` in `bake_shells.py` and flips `bakeImplemented`.
+All six shells are baked, measured and committed. `shell-spec.json` carries each
+shell's pose (Euler degrees), camera (azimuth/elevation + which local face is
+visible) and expected aspect; `bake_shells.py` renders it, measures the alpha
+silhouette, projects the `faceQuad`, and writes both texture scales.
 
-The six shells are:
+| Id | Projection | Pose | Camera | Advance (@1x) | Texture @1x / @2x | gridStepPx.x / .y |
+| --- | --- | --- | --- | --- | --- | --- |
+| `shell_hand_standing` | front elevation | rotX +90° | az 0° / el 12° | 38 × 54 | 44 × 60 / 88 × 120 | (35.44, 0) / (0, 46.21) |
+| `shell_flat_upright` | near-top-down | — | az 0° / el 80° | 38 × 53 | 44 × 59 / 88 × 118 | (35.88, 0) / (0, 47.10) |
+| `shell_flat_sideways` | near-top-down | rotZ 90° | az 0° / el 80° | 54 × 44 | 60 × 50 / 120 × 100 | (0, 38.41) / (52, 0) |
+| `shell_wall_horizontal` | near-top-down | rotX 180° | az 0° / el 80° | 38 × 54 | 44 × 60 / 88 × 120 | (35.88, 0) / (0, 47.10) |
+| `shell_wall_side_left` | fixed oblique | rotX 180°, rotY −35° | az 0° / el 75° | 42 × 52 | 48 × 58 / 96 × 116 | (26.58, −4.80) / (0, 41.78) |
+| `shell_wall_side_right` | fixed oblique | rotX 180°, rotY +35° | az 0° / el 75° | 42 × 52 | 48 × 58 / 96 × 116 | (26.58, 4.80) / (0, 41.79) |
 
-| Id | Projection | Face rotation | Use |
-| --- | --- | --- | --- |
-| `shell_hand_standing` | front elevation + top bevel | 0° | bottom player's standing hand |
-| `shell_flat_upright` | top-down + downward extrusion | 0° | face-up discards and unrotated melds |
-| `shell_flat_sideways` | top-down | 90° | sideways riichi discards / called tiles |
-| `shell_wall_horizontal` | top-down | 0° | face-down top/bottom wall and top hand |
-| `shell_wall_side_left` | fixed oblique | 0° | face-down left side wall |
-| `shell_wall_side_right` | fixed oblique | 0° | face-down right side wall |
+All six PNGs together are **76,360 B** (budget 2,097,152 B); the largest single
+shell is 10,147 B (ceiling 262,144 B). `shells.json` is ~18 KB
+(budget 65,536 B).
+
+**Why the projections are what they are.**
+
+- The ponds and hands are *axis-aligned rectangles*: azimuth 0, elevation 80°.
+  A yaw of even 6° made the tile a parallelogram whose bounding box left felt
+  gaps between neighbours, so the "slightly right" extrusion is carried by the
+  baked shadow and AO margin instead of a sheared silhouette. The face is a
+  rectangle and adjacent tiles abut exactly.
+- The side walls are the only oblique shells. They keep their long axis
+  **vertical on screen** (so a wall column steps straight down) and get their
+  cabinet lean by rolling the tile about its own long axis (rotY ∓35°), not by
+  yawing the camera; yawing would rotate the tile diagonally and no longer read
+  as a wall. The lean shows up as the small horizontal component of
+  `gridStepPx.x`.
+- `shell_wall_side_right` is the mirror of the left: same pose mirrored, same
+  camera basis, so the screen-space key still lands top-left on both.
 
 ### `shells.json` contract
 
-Phase 1 writes `frontend/public/table/shells.json` next to the textures. One
-record per shell id:
+`frontend/public/table/shells.json` holds one record per shell id. This is a
+real record (values from the committed bake):
 
 ```json
 {
   "version": 1,
   "generatedBy": "tools/render/bake_shells.py",
   "pixelRatio": 2,
+  "coordinateSpace": "anchorX/anchorY, advanceWidth/advanceHeight, padding and faceQuad are CSS px of the @1x texture, with a top-left origin. textureFile2x is the same shell at pixelRatio times the resolution; divide its pixels by pixelRatio to get the same coordinates.",
+  "rig": { "blender": "4.5.9 LTS", "engine": "CYCLES", "device": "CPU", "samples": 256, "seed": 0, "...": "..." },
   "shells": {
     "shell_flat_upright": {
       "textureFile": "shells/shell_flat_upright.png",
-      "texWidth": 120,
-      "texHeight": 138,
+      "textureFile2x": "shells/2x/shell_flat_upright.png",
+      "texWidth": 44,
+      "texHeight": 59,
       "anchorX": 2,
       "anchorY": 2,
-      "advanceWidth": 114,
-      "advanceHeight": 132,
+      "advanceWidth": 38,
+      "advanceHeight": 53,
       "padding": { "top": 2, "right": 4, "bottom": 4, "left": 2 },
       "faceRotationDeg": 0,
-      "faceQuad": [[6, 6], [110, 6], [110, 126], [6, 126]]
+      "faceQuad": [[5.69, 5.09], [36.31, 5.09], [36.31, 47.01], [5.69, 47.01]],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": { "x": [35.88, 0], "y": [0, 47.1] },
+      "projection": "top-down",
+      "pose": { "rotateXDeg": 0, "rotateYDeg": 0, "rotateZDeg": 0 },
+      "camera": { "azimuthDeg": 0, "elevationDeg": 80, "orthoScale": 1.609798, "pixelsPerUnit2x": 95.664201, "resolution1x": [60, 77], "resolution2x": [120, 154] },
+      "measured": {
+        "alphaExtent1x": { "left": 1, "top": 1, "right": 3, "bottom": 3 },
+        "alphaPeak1x": { "left": 0.2784, "top": 0.2784, "right": 0.3216, "bottom": 0.3216 },
+        "alphaMass1x": { "left": 14.757, "top": 10.58, "right": 22.329, "bottom": 17.216 },
+        "shadowCatcherPeak": 0.4403,
+        "solidInset1x": [1, 1, 1, 1],
+        "faceSampleRgb": [207, 204, 200],
+        "edgeSamplesRgb": { "top": [220, 217, 213], "bottom": [24, 40, 59] },
+        "bytes1x": 2966,
+        "bytes2x": 8543
+      },
+      "sha256": { "decodedRgba1x": "…", "decodedRgba2x": "…" }
     }
   }
 }
 ```
 
-(The numbers above are illustrative shape only; Phase 1 measures the real ones
-from the renders.) `anchorX/Y` is the top-left of the opaque body in the PNG,
-`advanceWidth/Height` is the body size the layout engine steps by, and the
-padding is the transparent shadow/AO margin. The check enforces:
+Fields the runtime and the checker rely on:
 
-- every path exists, is a PNG under `shells/`, and decodes as an 8-bit RGBA
-  image;
-- the PNG size equals `texWidth × texHeight`;
-- the declared `faceRotationDeg` matches the shell catalogue (90 for
-  `shell_flat_sideways`, 0 elsewhere);
-- `anchorX === padding.left`, `anchorY === padding.top`,
-  `anchorX + advanceWidth + padding.right === texWidth`, and the same for the
-  vertical axis;
-- every `faceQuad` corner lies inside the opaque body and the quad has non-zero
-  area;
-- per-shell and total byte budgets.
+- `textureFile` / `textureFile2x` — the @1x and @2x PNGs, both under `shells/`.
+- `texWidth`/`texHeight` — the @1x PNG size. The @2x PNG is exactly twice that.
+- `anchorX`/`anchorY` — the top-left of the opaque body box in @1x px. They are
+  equal to `padding.left`/`padding.top`, and `anchor + advance + padding` equals
+  the texture size on both axes.
+- `advanceWidth`/`advanceHeight` — the opaque body box used for spacing and
+  hit-testing. It *includes a one-pixel anti-aliased edge ledge* on each side;
+  `measured.solidInset1x` is `[1,1,1,1]`, i.e. the alpha ≥ 0.5 silhouette is
+  exactly 1 px inside the declared box. Without that ledge a 0.4-alpha
+  silhouette pixel would be indistinguishable from a 0.33-alpha shadow pixel and
+  the shadow/AO contract could not be measured from the exported PNG.
+- `gridStepPx.x` / `gridStepPx.y` — **use these for a tight grid**, not the
+  advance box. They are the projected tile width/height axes in @1x px, oriented
+  so a vector points right (horizontal axes) or down (vertical axes). A pond row
+  steps by `gridStepPx.x`; a pond row of rows, a hand, or a wall run of the
+  *same* shell steps by `gridStepPx.y`. The two differ because the sprite box
+  also contains the AA ledge and the baked thickness extrusion. A sideways tile
+  advances *horizontally* by its `gridStepPx.y` (its long axis is horizontal).
+- `faceQuad` — the visible face plate inset by `faceInset`, four corners in
+  `faceQuadOrder` (the tile face's own top-left, top-right, bottom-right,
+  bottom-left). The runtime rotates the glyph by `faceRotationDeg` (90 for
+  `shell_flat_sideways`, 0 elsewhere) and maps the glyph's corners onto these.
+  The quad is a projected rectangle, so the compositor can treat it as a
+  parallelogram.
+- `measured` — the numbers the checker re-derives from the committed PNG:
+  nonzero-alpha extent/peak/mass per padded side, the three structural colour
+  samples, the body inset, and the byte counts.
+- `sha256.decodedRgba1x/2x` — the sha256 of the *decoded* RGBA buffer, not the
+  PNG container bytes. Re-baking the same spec must reproduce them; a
+  hand-edited PNG fails the check.
+- `rig` — Blender version, engine/device/samples/seed, colour management, the
+  key's screen-space direction, the shadow/AO contract, the target long-axis
+  size, and each shell's framing. It is the audit trail for a bake.
 
-`shell_flat_sideways` carries `faceRotationDeg: 90`: only the **2D glyph**
-rotates, never the pre-shaded shell sprite. See the architecture doc, §2.C.
+The check enforces: every path exists and decodes as 8-bit RGBA; the PNG sizes
+match (with the @2x exactly twice the @1x); the declared padding matches the
+spec and the anchor; the opaque body is inset exactly 1 px; the faceQuad is a
+convex projected rectangle inside the body with a plausible aspect;
+`gridStepPx` follows from the faceQuad; the shadow/AO extents and peaks stay in
+the 3-4 px / 1-2 px contract; the shadow points down-right; the outer texture
+ring is transparent; the light reads top-left (top edge brighter and bottom
+thickness cool/dark); face-up shells are ivory and face-down shells are blue; the
+@1x and @2x agree within a mean channel delta of 8; the decoded-RGBA hashes and
+byte counts match the manifest; and the per-shell/total byte budgets hold.
+
+### The two-tone resin seam and the light
+
+The tile body is one material whose white/blue split is gated on local Z at
+`backEdgeFraction` (0.3 of the thickness), so the seam wraps the bevel instead
+of stopping at a face boundary. What that produces per shell:
+
+- standing hand: white face plate, white top bevel, a **blue resin sliver at the
+  very top** (`edgeSamplesRgb.top` = `[13, 65, 138]`);
+- face-up flat: white plate, white top bevel `[220, 217, 213]`, the unlit cool
+  thickness strip at the bottom `[24, 40, 59]`;
+- face-down wall: **blue plate** (`faceSampleRgb` `[0, 50, 130]`) with the cool
+  band below it.
+
+The measured face samples are ivory (`207, 204, 200`) on the flat shells and
+`169, 166, 163` on the standing hand. The two side walls differ in brightness
+because one leans toward the key and the other away from it (`[1, 60, 152]` vs
+`[0, 31, 87]`), which is what a single top-left key does to mirrored geometry. The standing face is dimmer because the
+screen-locked key is more grazing on a vertical face — that is what one light
+locked in screen space means. If the user wants the hand as bright as the pond,
+the lever is `lighting.key` (or two lighting variants), not a per-shell hack.
 
 ## The Blender shell rules
 
 The shell scene follows the architecture, not the retired pipeline:
 
-- **Orthographic cameras only**, so parallel edges stay parallel. The side
-  walls use a fixed oblique/cabinet angle.
-- **One locked key at top-left-front plus a weak ambient fill.** The key is
-  locked in *screen* space, so it is placed relative to each shell's camera
-  basis: every projection gets highlights on its top/left edges and shadows on
-  the bottom/right. The starting numbers are in `shell-spec.json`; they are a
-  Phase 1 tuning starting point, not a verified bake.
-- **Tight contact shadow/AO baked into the transparent margin**, roughly 3–4 px
-  on the right/bottom and 1–2 px on the top/left. There is no 32 px gutter and
-  no scene-wide shadow catcher.
+- **Orthographic cameras only**, so parallel edges stay parallel. The side walls
+  use a fixed cabinet lean (tile rolled ±35° about its own long axis).
+- **One locked key at top-left-front plus a weak ambient fill.** The key's
+  authored azimuth/elevation (315° / 55°) is decomposed once in a
+  front-elevation camera's basis; every shell then re-expresses the same
+  `(−0.406, +0.819, +0.406)` screen-space direction in its own camera basis. That
+  is why a top-down shell and a front-elevation shell both get their highlights
+  top-left and their shadow bottom-right. The tuned values are 3200 W for the
+  key and a `#3b4a5c` world at strength 1.0 (the Phase 0 numbers were a starting
+  point that produced a near-black shadow side).
+- **Tight contact shadow/AO baked into the transparent margin**: two renders per
+  shell per scale — the tile on transparent film, and a Cycles **shadow-catcher**
+  plane under it. The catcher alpha is blurred, clamped to the declared padding
+  (3–4 px right/bottom), divided by its own peak and pinned to
+  `shadow.peakAlpha` 0.33 per side. The top/left ambient-occlusion fringe
+  (1–2 px, peak 0.28) is analytic and bounded by `padding.top/left`. A 1 px
+  frame ramp guarantees nothing clips at the texture border.
 - **Two-tone resin seam** visible along the top and side bevels: a white
   melamine face plate on a blue melamine backing, one material, split on local
   Z. This is what reads as a physical tile rather than a flat card.
 - **Blank faces.** Shells carry no symbol. The runtime composites the 2D face
   glyph into `faceQuad`.
+- **Determinism**: CPU Cycles, fixed seed 0, fixed adaptive threshold, OIDN.
+  `--bake --verify-determinism` renders each shell twice and compares the
+  decoded RGBA; the committed manifest records the sha256 of each texture's
+  decoded RGBA.
 
 ## What the check prints
 
 `scripts/check-shells.mjs` is the scripted verification. It prints per-fact
-`PASS`/`FAIL` lines and numeric `INFO` lines, for example:
+`PASS`/`FAIL` lines and numeric `INFO` lines. On the committed bake:
 
 ```text
 INFO felt luma centre 68.79, corners 24.29, ratio 2.831, stdDev 0.49
@@ -256,8 +365,16 @@ INFO felt edges L/R 35.61/35.52 T/B 41.66/40.44
 PASS felt is 559465 B (budget 1572864 B)
 PASS vignette centre/corner luma ratio is 2.831 (>= 1.5)
 PASS left/right edge symmetry is 0.272% (<= 6%)
-INFO shells.json not present yet; Phase 1 owns the six-shell bake
-OK 31 checks passed
+PASS shell_flat_upright shadow reaches 3 px right (contract 3-4)
+PASS shell_flat_upright AO reaches 1 px left (contract 1-2)
+PASS shell_flat_upright right shadow peaks at alpha 0.322 (0.24-0.36)
+PASS shell_flat_upright bottom thickness strip is cool and dark (24,40,59, luma 38.2)
+PASS shell_flat_upright face is ivory (luma 203.6 >= 150)
+PASS shell_wall_horizontal face is blue resin (0,50,130)
+INFO shell_flat_upright margin mass L14.76 T10.58 R22.33 B17.22
+PASS shell_flat_upright decoded-RGBA sha256 matches the committed PNGs
+INFO shell textures total 76360 B across 6 shells and 2 scales
+OK 323 checks passed
 ```
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
@@ -278,15 +395,32 @@ bash tools/render/bake-felt.sh
 git diff --stat -- frontend/public/table/felt.png
 ```
 
-State the numbers the check already verified, then ask the user the question
-only they can answer: is the green/contrast/weave right, and does the vignette
-read as screen-edge darkening rather than a table border? Compare decoded
-pixels, not PNG container bytes: zlib can change the container while the image
-is identical.
+To review the shells, bake (or just regenerate the sheets) and open them:
 
-Phase 1 artifacts will be the shell PNGs under
-`frontend/public/table/shells/` and `shells.json`. Any review sheet or contact
-image is a throwaway under the gitignored `build/`, not a committed asset.
+```bash
+node tools/render/scripts/review-shells.mjs
+xdg-open tools/render/build/review/shells-row-1x.png      # all six, catalogue order
+xdg-open tools/render/build/review/discard-row-1x.png     # 6-tile row + isolated + riichi
+xdg-open tools/render/build/review/discard-row-zoom4x.png # nearest 4x of the seams
+xdg-open tools/render/build/review/wall-stack-1x.png      # two-tier stack + side walls
+xdg-open tools/render/build/review/each-4x-shell_flat_upright.png
+```
+
+The review sheets are throwaway: `build/` is gitignored. They are drawn on the
+felt's base colour (`#1a5038`) so shadow contrast is easy to see, with the
+manifest's own `gridStepPx` and draw order (rows right-to-left, wall bottom tier
+before the top tier). The script prints the seam numbers too: on the committed
+bake the neighbour's face edge darkens from luma 204.3 to 159.1 where the
+previous tile's shadow lands on it, and the isolated tile's shadow reads 57.8
+against bare felt 66.8.
+
+State the numbers the check already verified, then ask the user the questions
+only they can answer: are the tile proportions and bevel right; does the resin
+seam read as a physical tile on the standing hand and the discards; is the
+shadow band the right strength; do the side walls read as angled inward without
+looking like a separate art style; is the standing hand's dimmer face acceptable
+(next to the pond)? Compare decoded pixels, not PNG container bytes: zlib can
+change the container while the image is identical.
 
 ## Legacy
 
