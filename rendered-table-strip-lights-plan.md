@@ -1,5 +1,12 @@
 # Rendered Table Task 1.5: Parlor Strip-Light Rig
 
+> **RETIRED 2026-11-13 — historical design record.**
+> The full-scene pipeline this rig belonged to is superseded by
+> [`2_5d_mahjong_tile_rendering_architecture.md`](2_5d_mahjong_tile_rendering_architecture.md).
+> The new shell baker uses a locked top-left key plus a weak ambient fill, not
+> this parlor rig. The numbers below are kept only so the old spike assets and
+> reports remain traceable.
+
 Status: **done** (command-center task 261113-1238). Kept as the design record
 for the shipped rig; numbers and measured results are in
 [`tools/render/README.md`](tools/render/README.md).

@@ -1,5 +1,20 @@
 # Offline rendered-table asset pipeline
 
+> **LEGACY 2026-11-13 — this README documents the retired full-scene pipeline.**
+>
+> The active architecture is
+> [`2_5d_mahjong_tile_rendering_architecture.md`](../../2_5d_mahjong_tile_rendering_architecture.md):
+> six blank orthographic tile **shells** plus a full-screen felt raster, with 2D
+> face glyphs composited into the shells at runtime under a strict painter's
+> algorithm. The table model, fixed perspective camera, body/decal batches,
+> 32 px shadow gutter, scene-wide parlor/keyfill rigs, and `scene-spec.json`
+> workflow described below are **not** the plan.
+>
+> Phase 0 removes or quarantines the retired code and assets. Reusable pieces:
+> the tile mesh proportions/bevel/melamine and two-tone resin material, the
+> pinned Blender toolchain, and the vendored `faces/` SVGs plus `resvg`
+> rasteriser. Do not regenerate the batches below; they are historical.
+
 This directory builds the baked sprites for the opt-in **rendered** table view
 (see [`rendered-table-plan.md`](../../rendered-table-plan.md)). It is a
 developer-only asset pipeline: nothing here is bundled, imported, or shipped by

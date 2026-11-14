@@ -1,12 +1,23 @@
 # Rendered Table View: Design and Offline Asset Pipeline
 
-Status: design finalised by Task 0 (architecture, asset split, and section 12
-decisions). Tasks 1–12 are open; the experimental SVG isometric view has been
-removed.
+> **RETIRED 2026-11-13 — do not start work from this document.**
+>
+> The full-scene perspective pipeline described here (one 3D table camera, a
+> modelled jansou, baked body sprites, baked face decals, scene-wide lighting)
+> is superseded. The active architecture is
+> [`2_5d_mahjong_tile_rendering_architecture.md`](2_5d_mahjong_tile_rendering_architecture.md):
+> blank tile **shells** baked offline under an orthographic camera with locked
+> top-left lighting and tight baked shadows, 2D face glyphs composited at
+> runtime, multiple per-zone projections, and a full-screen felt raster
+> background with no table model.
+>
+> The Task 0–12 chain below is kept for history only. Its open command-center
+> tasks were retired and replaced by Phase 0–5 tasks taken from the new
+> document. `tools/render/README.md` documents the retired pipeline and is also
+> marked legacy until Phase 0 replaces it.
 
-This document is the reference for the offline-rendered table view. It supersedes the
-deleted SVG isometric chain (the old `IsometricTable` / `iso.ts` / `Iso…` tasks). Any
-session working on the rendered table should read this first, then its own `TASK.md`.
+Status (historical): design finalised by Task 0. Tasks 1–12 were the old chain;
+the experimental SVG isometric view had already been removed.
 
 ## 1. Goal
 
@@ -468,6 +479,10 @@ for Tasks 2–3:
   stays distant for decals.
 
 ## 13. Task chain
+
+> **Historical.** These tasks implemented the retired full-scene pipeline. They
+> are not the plan; the replacement chain is Phase 0–5 in the new architecture
+> document. Kept only so old commits and reports still make sense.
 
 | # | ID | Task | Depends on |
 | --- | --- | --- | --- |
