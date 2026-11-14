@@ -1,5 +1,5 @@
 /**
- * Pure zone layout engine for the 2.5D rendered table (architecture Phase 3).
+ * Pure zone layout engine for the 2.5D rendered table (architecture Phases 3–4).
  *
  * ## Board space
  *
@@ -45,9 +45,15 @@
  * There is one shell per projection, and the same shell is used for a zone on
  * every seat:
  *
- *  - the human hand is front elevation (`shell_hand_standing`);
- *  - every discard pond is top-down (`shell_flat_upright`) with the glyph
- *    upright, so a tile has exactly the same size in all four ponds;
+ *  - the seat's concealed hand is face-up front elevation for the human
+ *    (`shell_hand_standing`) and face-down for the opponents: the top player
+ *    shows the top-down back (`shell_wall_horizontal`), the side players the
+ *    fixed-oblique backs (`shell_wall_side_left`/`_right`), so an opponent's
+ *    hand reads as a row of backs from that seat's own projection;
+ *  - every open meld is top-down (`shell_flat_upright`) with the glyph upright,
+ *    exactly like a discard, so a called set has the same tile size in all four
+ *    seats;
+ *  - every discard pond is top-down (`shell_flat_upright`);
  *  - top/bottom walls are `shell_wall_horizontal`, side walls are the fixed
  *    oblique `shell_wall_side_left`/`_right`;
  *  - a Riichi discard is the dedicated `shell_flat_sideways`, horizontal on
@@ -60,16 +66,50 @@
  * geometry" of §2.A: readable glyphs and uniform tile size everywhere, with no
  * shared camera to constrain the layout.
  *
+ * ## Hands, melds and the hand bands
+ *
+ * A seat's hand sits on the **outer** side of its wall, so the board reads
+ * outward-in as hand → wall → pond → compass on every edge:
+ *
+ *  - top and bottom hands are horizontal bands above/below their walls;
+ *  - left and right hands are vertical columns outside their walls.
+ *
+ * Calls sit at the seat's own right-hand end of its row (`meldSign`): screen
+ * right for the human, screen left for the top player, screen bottom for the
+ * left player and screen top for the right player. The concealed run and the
+ * draw fill the rest, so a row stays roughly 13 tiles wide whichever calls it
+ * holds. Each meld is separated by {@link HAND_MELD_GAP_PX}, and the human's
+ * drawn tile keeps its {@link TSUMO_GAP_RATIO} gap (a draw comes before the
+ * calls, as it does in a real hand).
+ *
+ * The bands are sized for the shell metrics, not for one hand. A seat that
+ * somehow asks for a run longer than its band (for example four kans on a side
+ * seat) is compressed uniformly — steps and gaps only, never the body — so
+ * every body still lands inside its band. No trainer generates such a hand; the
+ * clamp is there so the layout is total and never escapes its zone.
+ *
  * ## Compass
  *
- * {@link BoardMetrics.reserve} is the empty centre region reserved for the
- * compass. Phase 3 draws nothing in it.
+ * {@link BoardZones.reserve} is the empty centre region reserved for the
+ * compass. Phases 3–4 draw nothing in it.
  *
  * ## Draw order
  *
  * Placements are returned already sorted back-to-front, with a unique,
- * contiguous `drawOrder`, ready for Phase 4's painter's algorithm (see
- * {@link layoutBoard} for the zone order and the intra-zone rules).
+ * contiguous `drawOrder`, ready for Phase 4's painter's algorithm. The global
+ * zone order is fixed by architecture §4.1:
+ *
+ * ```text
+ * felt (not a placement) → top hand/melds → top wall →
+ * left wall → right wall (each top of screen to bottom) →
+ * centre reserve + four ponds → bottom wall →
+ * left hand/melds → right hand/melds → bottom hand/melds
+ * ```
+ *
+ * Within a zone (§4.2): horizontal rows paint right-to-left, ponds paint rows
+ * top-to-bottom (left-to-right on the vertical ones) with each row against the
+ * shadow direction, a sideways Riichi tile paints after its row, and a stacked
+ * wall paints the whole lower tier before the upper tier.
  */
 import type { ShellsManifest, ShellStats } from './shellManifest';
 import type { ShellId, TileFaceId } from './tiles';
@@ -98,6 +138,9 @@ export const MAX_WALL_PAIRS_PER_SIDE = 10;
 /** Gap before the drawn tile, as a fraction of the standing shell's advance. */
 export const TSUMO_GAP_RATIO = 0.35;
 
+/** Gap between a hand and its calls, and between one call and the next. */
+export const HAND_MELD_GAP_PX = 6;
+
 /**
  * Height of one tier of a two-high wall, as a fraction of the tile's projected
  * long axis. The tile is 16.5 / 28 = 0.589 units thick and the wall cameras
@@ -114,6 +157,8 @@ const ZONE_GAP = 8;
 const RESERVE_GAP = 10;
 const RESERVE_WIDTH = 224;
 const RESERVE_HEIGHT = 120;
+/** Lower bound on a compressed hand run's step factor; see the file header. */
+const MIN_HAND_STEP_FACTOR = 0.2;
 
 /** The felt raster is stretched, never covered, so the vignette stays at the edges. */
 export const FELT_RUNTIME = {
@@ -146,6 +191,25 @@ export interface PondDiscardInput {
   readonly riichi?: boolean;
 }
 
+/** A called meld's type; purely informational for the layout. */
+export type MeldKind = 'chi' | 'pon' | 'kan' | 'ankan';
+
+/** One open (or concealed) call: 2 faces for a chi, 3 for a pon, 4 for a kan. */
+export interface MeldInput {
+  readonly tiles: readonly TileFaceId[];
+  readonly kind?: MeldKind;
+}
+
+/** One seat's concealed hand, drawn tile and calls. */
+export interface SeatHandInput {
+  /** Concealed tiles, oldest first. */
+  readonly hand?: readonly TileFaceId[];
+  /** The freshly drawn tile, if this seat has one. */
+  readonly draw?: TileFaceId | null;
+  /** Called melds, in call order. */
+  readonly melds?: readonly MeldInput[];
+}
+
 /** Everything the engine needs to place a board. All of it is plain data. */
 export interface BoardLayoutInput {
   /**
@@ -155,6 +219,18 @@ export interface BoardLayoutInput {
   readonly hand?: readonly TileFaceId[];
   /** The freshly drawn tile, if this hand has one; placed after the tsumo gap. */
   readonly draw?: TileFaceId | null;
+  /** The human's calls. They sit at the right-hand end of the hand row. */
+  readonly melds?: readonly MeldInput[];
+  /**
+   * Every seat's hand, including the human's. A seat present here overrides the
+   * bottom shorthand above; a missing seat simply has no hand.
+   *
+   * An opponent's hand is drawn with that seat's face-down shell, so its faces
+   * are never visible: the atlas resolves every face key to the same bare back.
+   * Keeping the real faces in the placement means a review dump can say which
+   * hand a row stands for without the renderer ever painting it.
+   */
+  readonly hands?: Readonly<Partial<Record<SeatSide, SeatHandInput>>>;
   /**
    * Each seat's discards, oldest first. Missing seats simply have no pond. Only
    * the first {@link POND_COLUMNS} × {@link POND_ROWS} (18) are placed.
@@ -168,7 +244,13 @@ export interface BoardLayoutInput {
 export type PlacementZone = 'hand' | 'pond' | 'wall';
 
 /** What a placement represents within its zone. */
-export type PlacementKind = 'hand' | 'draw' | 'discard' | 'wall-lower' | 'wall-upper';
+export type PlacementKind =
+  | 'hand'
+  | 'draw'
+  | 'meld'
+  | 'discard'
+  | 'wall-lower'
+  | 'wall-upper';
 
 /** One tile to draw, in board space. */
 export interface TilePlacement {
@@ -217,8 +299,19 @@ export interface PondFrame {
   readonly sidewaysAlongAdvancePx: number;
 }
 
+/** One seat's hand/meld band and the run rules that fill it. */
+export interface HandBand {
+  readonly axis: 'horizontal' | 'vertical';
+  /** Concealed-hand shell for this seat: face-up for the human, backs otherwise. */
+  readonly shell: ShellId;
+  /** Tight pitch of the concealed run along the band, in board px. */
+  readonly pitchPx: number;
+  /** Which end of the band the calls sit on: -1 = start, +1 = end. */
+  readonly meldSign: -1 | 1;
+}
+
 export interface BoardZones {
-  readonly hand: BoardRect;
+  readonly hand: Readonly<Record<SeatSide, BoardRect>>;
   readonly reserve: BoardRect;
   readonly ponds: Readonly<Record<SeatSide, BoardRect>>;
   /** Wall runs at {@link MAX_WALL_PAIRS_PER_SIDE}, including both tiers. */
@@ -230,11 +323,13 @@ export interface BoardMetrics {
   readonly board: BoardSize;
   readonly zones: BoardZones;
   readonly ponds: Readonly<Record<SeatSide, PondFrame>>;
+  readonly hands: Readonly<Record<SeatSide, HandBand>>;
   readonly wallTierStepPx: Readonly<Record<SeatSide, number>>;
   readonly hand: {
-    readonly shell: ShellId;
-    readonly pitchPx: number;
     readonly tsumoGapPx: number;
+    readonly meldGapPx: number;
+    readonly meldShell: ShellId;
+    readonly meldPitchPx: Readonly<Record<'horizontal' | 'vertical', number>>;
   };
   readonly wall: {
     readonly shell: Readonly<Record<SeatSide, ShellId>>;
@@ -249,6 +344,7 @@ export interface BoardLayout {
   readonly counts: {
     readonly hand: number;
     readonly draw: number;
+    readonly melds: number;
     readonly ponds: number;
     readonly walls: number;
   };
@@ -310,6 +406,21 @@ export function wallTierStepPx(shell: ShellStats): number {
   return absStep(shell.gridStepPx.y, 1) * WALL_TIER_STEP_RATIO;
 }
 
+/**
+ * The seat's own right-hand end of its hand row, as a direction along the
+ * band: calls sit there, the concealed hand fills the rest.
+ *
+ * A player's right is the screen direction their seat faces, turned
+ * clockwise: +x for the human at the bottom, −x for the top player, +y (down)
+ * for the left player and −y (up) for the right player.
+ */
+const MELD_END_SIGN: Readonly<Record<SeatSide, -1 | 1>> = {
+  bottom: 1,
+  top: -1,
+  left: 1,
+  right: -1,
+};
+
 /** Derive the board, its zones and every pitch from the shell manifest. */
 export function boardMetrics(shells: ShellsManifest): BoardMetrics {
   const flat = shells.shells.shell_flat_upright;
@@ -364,11 +475,17 @@ export function boardMetrics(shells: ShellsManifest): BoardMetrics {
 
   const wallTierStep = wallTierStepPx(wallHorizontal);
   const sideWidth = Math.max(sideLeft.advanceWidth, sideRight.advanceWidth);
+  // A side hand column is as wide as a side-wall tile, which also fits an
+  // upright meld; the top/bottom hand band is one horizontal-wall tile tall,
+  // which fits both a face-down back and an upright meld body.
+  const handColumnWidth = sideWidth;
+  const handBandHeight = wallHorizontal.advanceHeight;
 
-  // Vertical stack, top to bottom: wall, pond, compass reserve, pond, wall,
-  // hand. The felt is a separate full-screen layer, so the board may be taller
-  // or wider than the board layer and is simply centred in the viewport.
-  const topWallLowerY = BOARD_MARGIN + wallTierStep;
+  // Vertical stack, top to bottom: top hand, top wall, top pond, compass
+  // reserve, bottom pond, bottom wall, bottom hand. The felt is a separate
+  // full-screen layer, so the board is simply centred in the viewport.
+  const topHandY = BOARD_MARGIN;
+  const topWallLowerY = topHandY + handBandHeight + ZONE_GAP + wallTierStep;
   const topWallBottom = topWallLowerY + wallHorizontal.advanceHeight;
   const topPondY = topWallBottom + ZONE_GAP;
   const reserveY = topPondY + horizontalPond.height + RESERVE_GAP;
@@ -376,9 +493,18 @@ export function boardMetrics(shells: ShellsManifest): BoardMetrics {
   const bottomWallLowerY = bottomPondY + horizontalPond.height + ZONE_GAP;
   const handY = bottomWallLowerY + wallHorizontal.advanceHeight + ZONE_GAP;
 
-  const boardHeight = Math.ceil(handY + standing.advanceHeight + BOARD_MARGIN);
+  const boardHeight = Math.ceil(handY + handBandHeight + BOARD_MARGIN);
+  // Horizontal: margin, hand column, wall, pond, reserve (both sides). The hand
+  // columns are outside the walls so every edge reads hand → wall → pond.
   const boardWidth = Math.ceil(
-    2 * (BOARD_MARGIN + sideWidth + ZONE_GAP + verticalPond.width + RESERVE_GAP) +
+    2 *
+      (BOARD_MARGIN +
+        handColumnWidth +
+        ZONE_GAP +
+        sideWidth +
+        ZONE_GAP +
+        verticalPond.width +
+        RESERVE_GAP) +
       RESERVE_WIDTH,
   );
 
@@ -387,7 +513,9 @@ export function boardMetrics(shells: ShellsManifest): BoardMetrics {
   const leftPondX = reserve.x - RESERVE_GAP - verticalPond.width;
   const rightPondX = reserve.x + reserve.width + RESERVE_GAP;
   const leftWallX = leftPondX - ZONE_GAP - sideWidth;
-  const rightWallX = boardWidth - BOARD_MARGIN - sideWidth;
+  const rightWallX = boardWidth - BOARD_MARGIN - handColumnWidth - ZONE_GAP - sideWidth;
+  const leftHandX = leftWallX - ZONE_GAP - handColumnWidth;
+  const rightHandX = boardWidth - BOARD_MARGIN - handColumnWidth;
   const horizontalPondX = centreX - horizontalPond.width / 2;
   const playfieldCentreY = reserve.y + reserve.height / 2;
 
@@ -492,15 +620,58 @@ export function boardMetrics(shells: ShellsManifest): BoardMetrics {
     ),
   };
 
+  // The top/bottom bands are inset between the side hand columns: the columns
+  // are full height, so the corners stay free for them.
+  const handBandX = leftHandX + handColumnWidth + ZONE_GAP;
+  const handBandWidth = rightHandX - ZONE_GAP - handBandX;
+  const sideHandHeight = boardHeight - 2 * BOARD_MARGIN;
+  const handZones: Record<SeatSide, BoardRect> = {
+    bottom: rect(handBandX, handY, handBandWidth, handBandHeight),
+    top: rect(handBandX, topHandY, handBandWidth, handBandHeight),
+    left: rect(leftHandX, BOARD_MARGIN, handColumnWidth, sideHandHeight),
+    right: rect(rightHandX, BOARD_MARGIN, handColumnWidth, sideHandHeight),
+  };
+
+  // Concealed-hand shells and their tight along-band pitch. The human's
+  // standing hand steps by its advance box (Phase 3's hand pitch), never the
+  // projected grid step: standing tiles are drawn at their full 38 px body.
+  const hands: Record<SeatSide, HandBand> = {
+    bottom: {
+      axis: 'horizontal',
+      shell: 'shell_hand_standing',
+      pitchPx: standing.advanceWidth,
+      meldSign: MELD_END_SIGN.bottom,
+    },
+    top: {
+      axis: 'horizontal',
+      shell: 'shell_wall_horizontal',
+      pitchPx: absStep(wallHorizontal.gridStepPx.x, 0),
+      meldSign: MELD_END_SIGN.top,
+    },
+    left: {
+      axis: 'vertical',
+      shell: 'shell_wall_side_left',
+      pitchPx: absStep(sideLeft.gridStepPx.y, 1),
+      meldSign: MELD_END_SIGN.left,
+    },
+    right: {
+      axis: 'vertical',
+      shell: 'shell_wall_side_right',
+      pitchPx: absStep(sideRight.gridStepPx.y, 1),
+      meldSign: MELD_END_SIGN.right,
+    },
+  };
+
   return {
     board: { width: boardWidth, height: boardHeight },
     zones: {
-      hand: rect(BOARD_MARGIN, handY, boardWidth - 2 * BOARD_MARGIN, standing.advanceHeight),
+      hand: handZones,
       reserve,
       ponds: pondZones,
       walls: wallZones,
     },
     ponds,
+    hands,
     wallTierStepPx: {
       top: wallTierStep,
       bottom: wallTierStep,
@@ -508,9 +679,10 @@ export function boardMetrics(shells: ShellsManifest): BoardMetrics {
       right: wallTierStepPx(sideRight),
     },
     hand: {
-      shell: 'shell_hand_standing',
-      pitchPx: standing.advanceWidth,
       tsumoGapPx: standing.advanceWidth * TSUMO_GAP_RATIO,
+      meldGapPx: HAND_MELD_GAP_PX,
+      meldShell: 'shell_flat_upright',
+      meldPitchPx: { horizontal: pondStepX, vertical: pondStepY },
     },
     wall: {
       shell: {
@@ -549,18 +721,25 @@ function place(
   return { ...placement, advanceRect: box, bodyRect: box };
 }
 
+/** The hand input for one seat: `hands[seat]` wins, the bottom shorthands fill in. */
+function seatHand(input: BoardLayoutInput, seat: SeatSide): SeatHandInput {
+  const explicit = input.hands?.[seat];
+  if (explicit) return explicit;
+  if (seat !== 'bottom') return {};
+  return { hand: input.hand ?? [], draw: input.draw ?? null, melds: input.melds ?? [] };
+}
+
 /**
  * Lay out a whole board.
  *
- * Zone paint order follows architecture §4.1: top wall, left and right side
- * walls, ponds, bottom wall, then the hand (which must never be clipped by the
- * wall). Within a zone: ponds paint rows from the top of the screen downward
- * (or left to right for the vertical side ponds) and each row right-to-left (or
- * bottom-to-top), so a tile's top-left light never paints under the neighbour
- * it shades. A sideways Riichi tile paints after its neighbours so no upright
- * tile can clip its face. Walls paint the whole lower tier before the upper
- * tier, horizontal runs right-to-left, side runs top-to-bottom. The hand paints
- * the drawn tile first, then the concealed tiles right-to-left.
+ * Zone paint order follows architecture §4.1: the top hand and top wall, the
+ * left and right side walls (top of screen to bottom), the ponds, the bottom
+ * wall, the side hands, and finally the human's calls and hand (which must
+ * never be clipped by the wall). Within a zone: horizontal hand rows paint
+ * right-to-left, side hand columns top-to-bottom, ponds paint rows from the top
+ * of the screen downward (or left to right for the vertical side ponds) and
+ * each row against the shadow direction, a sideways Riichi tile paints after
+ * its neighbours, and walls paint the whole lower tier before the upper tier.
  */
 export function layoutBoard(shells: ShellsManifest, input: BoardLayoutInput = {}): BoardLayout {
   const metrics = boardMetrics(shells);
@@ -571,8 +750,12 @@ export function layoutBoard(shells: ShellsManifest, input: BoardLayoutInput = {}
 
   const placements: MutablePlacement[] = [];
 
-  // ---- walls, top then sides ------------------------------------------------
-  for (const side of ['top', 'left', 'right'] as const) {
+  // ---- top hand, then the top wall -----------------------------------------
+  placements.push(...handPlacements(shells, metrics, 'top', seatHand(input, 'top')));
+  placements.push(...wallPlacements(shells, metrics, 'top', wallPairsPerSide));
+
+  // ---- side walls, left then right, top of screen to bottom -----------------
+  for (const side of ['left', 'right'] as const) {
     placements.push(...wallPlacements(shells, metrics, side, wallPairsPerSide));
   }
 
@@ -582,9 +765,12 @@ export function layoutBoard(shells: ShellsManifest, input: BoardLayoutInput = {}
     placements.push(...pondPlacements(shells, metrics.ponds[side], side, discards));
   }
 
-  // ---- bottom wall, then the hand ------------------------------------------
+  // ---- bottom wall, then the side hands, then the human's hand -------------
   placements.push(...wallPlacements(shells, metrics, 'bottom', wallPairsPerSide));
-  placements.push(...handPlacements(shells, metrics, input.hand ?? [], input.draw ?? null));
+  for (const side of ['left', 'right'] as const) {
+    placements.push(...handPlacements(shells, metrics, side, seatHand(input, side)));
+  }
+  placements.push(...handPlacements(shells, metrics, 'bottom', seatHand(input, 'bottom')));
 
   const drawOrder = placements.map((placement, index) => ({
     ...placement,
@@ -596,6 +782,7 @@ export function layoutBoard(shells: ShellsManifest, input: BoardLayoutInput = {}
   const counts = {
     hand: drawOrder.filter((placement) => placement.kind === 'hand').length,
     draw: drawOrder.filter((placement) => placement.kind === 'draw').length,
+    melds: drawOrder.filter((placement) => placement.kind === 'meld').length,
     ponds: drawOrder.filter((placement) => placement.zone === 'pond').length,
     walls: drawOrder.filter((placement) => placement.zone === 'wall').length,
   };
@@ -720,54 +907,135 @@ function pondPlacements(
   return cells.map((cell) => cell.placement);
 }
 
+/** One segment of a hand row: a run of backs, a draw, or one call. */
+interface HandSegment {
+  readonly kind: 'hand' | 'draw' | 'meld';
+  readonly shell: ShellId;
+  readonly faces: readonly TileFaceId[];
+  readonly gapBeforePx: number;
+  /** Only for a meld segment: its index in the input's `melds` array. */
+  readonly meldIndex?: number;
+}
+
 function handPlacements(
   shells: ShellsManifest,
   metrics: BoardMetrics,
-  hand: readonly TileFaceId[],
-  draw: TileFaceId | null,
+  seat: SeatSide,
+  input: SeatHandInput,
 ): MutablePlacement[] {
-  const shellId = metrics.hand.shell;
-  const shell = shells.shells[shellId];
-  const pitch = metrics.hand.pitchPx;
-  const gap = metrics.hand.tsumoGapPx;
-  const concealCount = hand.length;
-  const width = concealCount * pitch + (draw ? gap + shell.advanceWidth : 0);
-  const zone = metrics.zones.hand;
-  const startX = zone.x + (zone.width - width) / 2;
-  const y = zone.y;
+  const band = metrics.zones.hand[seat];
+  const shape = metrics.hands[seat];
+  const horizontal = shape.axis === 'horizontal';
+  const meldShell = metrics.hand.meldShell;
+  const meldPitch = horizontal
+    ? metrics.hand.meldPitchPx.horizontal
+    : metrics.hand.meldPitchPx.vertical;
+  const gap = metrics.hand.meldGapPx;
 
+  const concealed = input.hand ?? [];
+  const draw = input.draw ?? null;
+  const melds = (input.melds ?? [])
+    .map((meld, index) => ({ meld, index }))
+    .filter((entry) => entry.meld.tiles.length > 0);
+
+  const concealedSegment: HandSegment = {
+    kind: 'hand',
+    shell: shape.shell,
+    faces: concealed,
+    gapBeforePx: 0,
+  };
+  const drawSegment: HandSegment | null = draw
+    ? { kind: 'draw', shell: shape.shell, faces: [draw], gapBeforePx: metrics.hand.tsumoGapPx }
+    : null;
+  const meldSegments: HandSegment[] = melds.map(({ meld, index }) => ({
+    kind: 'meld',
+    shell: meldShell,
+    faces: meld.tiles,
+    gapBeforePx: gap,
+    meldIndex: index,
+  }));
+
+  // The calls sit at the seat's own right-hand end; the concealed run and its
+  // draw fill the rest, with the draw next to the concealed tiles.
+  const segments: HandSegment[] = [];
+  if (shape.meldSign > 0) {
+    segments.push(concealedSegment);
+    if (drawSegment) segments.push(drawSegment);
+    segments.push(...meldSegments);
+  } else {
+    segments.push(...meldSegments);
+    segments.push(concealedSegment);
+    if (drawSegment) segments.push(drawSegment);
+  }
+  const groups = segments.filter((segment) => segment.faces.length > 0);
+  if (groups.length === 0) return [];
+  // Re-anchor the first real segment: it has nothing before it to gap from.
+  groups[0] = { ...groups[0], gapBeforePx: 0 };
+
+  const pitchOf = (segment: HandSegment): number =>
+    segment.shell === meldShell ? meldPitch : shape.pitchPx;
+  const advanceOf = (segment: HandSegment): number => {
+    const shell = shells.shells[segment.shell];
+    return horizontal ? shell.advanceWidth : shell.advanceHeight;
+  };
+  const stepExtent = (segment: HandSegment): number =>
+    segment.gapBeforePx + (segment.faces.length - 1) * pitchOf(segment);
+
+  const available = horizontal ? band.width : band.height;
+  const steps = groups.reduce((total, segment) => total + stepExtent(segment), 0);
+  const bodies = groups.reduce((total, segment) => total + advanceOf(segment), 0);
+  // The band is sized from the shell metrics, so this only engages for a hand
+  // no trainer generates (see the file header). Bodies are never scaled.
+  const factor =
+    steps > 0 && steps + bodies > available
+      ? Math.max(MIN_HAND_STEP_FACTOR, (available - bodies) / steps)
+      : 1;
+  const extent = groups.reduce(
+    (total, segment) => total + stepExtent(segment) * factor + advanceOf(segment),
+    0,
+  );
+
+  let cursor = (horizontal ? band.x : band.y) + (available - extent) / 2;
   const out: MutablePlacement[] = [];
+  for (const segment of groups) {
+    cursor += segment.gapBeforePx * factor;
+    const advance = advanceOf(segment);
+    segment.faces.forEach((face, index) => {
+      const along = cursor + index * pitchOf(segment) * factor;
+      const shell = shells.shells[segment.shell];
+      // Horizontal rows bottom-align in the band (a meld is one px shorter than
+      // a back); vertical columns centre in the column.
+      const gridX = horizontal ? along : band.x + (band.width - shell.advanceWidth) / 2;
+      const gridY = horizontal
+        ? band.y + band.height - shell.advanceHeight
+        : along;
+      const id =
+        segment.kind === 'meld'
+          ? `${seat}-meld:${segment.meldIndex}:${index}`
+          : segment.kind === 'draw'
+            ? `${seat}-hand:draw`
+            : `${seat}-hand:${index}`;
+      out.push(
+        place(shells, {
+          id,
+          zone: 'hand',
+          kind: segment.kind,
+          seat,
+          shell: segment.shell,
+          face,
+          gridX,
+          gridY,
+        }),
+      );
+    });
+    cursor += (segment.faces.length - 1) * pitchOf(segment) * factor + advance;
+  }
 
-  // The drawn tile is rightmost and isolated by the tsumo gap. Paint it first
-  // so the hand's right-to-left shadows land on the felt/neighbours correctly.
-  if (draw) {
-    out.push(
-      place(shells, {
-        id: 'hand:draw',
-        zone: 'hand',
-        kind: 'draw',
-        seat: 'bottom',
-        shell: shellId,
-        face: draw,
-        gridX: startX + concealCount * pitch + gap,
-        gridY: y,
-      }),
-    );
-  }
-  for (let index = concealCount - 1; index >= 0; index -= 1) {
-    out.push(
-      place(shells, {
-        id: `hand:${index}`,
-        zone: 'hand',
-        kind: 'hand',
-        seat: 'bottom',
-        shell: shellId,
-        face: hand[index],
-        gridX: startX + index * pitch,
-        gridY: y,
-      }),
-    );
-  }
+  // Painter's order (§4.2): a horizontal row paints right-to-left, a vertical
+  // column top-to-bottom. The drawn tile is rightmost, so it paints first.
+  out.sort((left, right) =>
+    horizontal ? right.gridX - left.gridX : left.gridY - right.gridY,
+  );
   return out;
 }
 
