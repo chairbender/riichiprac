@@ -6,16 +6,13 @@ import { create } from 'zustand';
  * `stacked` is the mobile-first four-row layout and the default, so a browser
  * that has never saved a setting sees exactly what it saw before. `topdown` is
  * the flat plan view (`PhysicalTable`), with the human anchored at the bottom
- * edge. `rendered` is the opt-in 2.5D stage: the baked shell/felt board on a
- * canvas, with the same hand buttons and ARIA trees as the plan. It never
- * re-deals; switching only redraws the hand already on screen, and a failed
- * asset load falls back to `topdown`.
+ * edge.
  *
  * A stored `isometric` value is intentionally not a member any more: the
  * experimental angled view was removed, and an old blob that still names it
  * falls back to the default through {@link isTableView}.
  */
-export type TableView = 'stacked' | 'topdown' | 'rendered';
+export type TableView = 'stacked' | 'topdown';
 
 /** The view a browser with no stored choice gets. */
 export const DEFAULT_TABLE_VIEW: TableView = 'stacked';
@@ -42,7 +39,7 @@ export interface FrontendSettings {
 
 /** Narrow an arbitrary value (select value, stored blob) to a {@link TableView}. */
 export function isTableView(value: unknown): value is TableView {
-  return value === 'stacked' || value === 'topdown' || value === 'rendered';
+  return value === 'stacked' || value === 'topdown';
 }
 
 /**

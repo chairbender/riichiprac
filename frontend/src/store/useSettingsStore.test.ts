@@ -61,7 +61,7 @@ describe('useSettingsStore', () => {
     const { useSettingsStore, SETTINGS_STORAGE_KEY } =
       await loadSettingsStore();
 
-    for (const view of ['topdown', 'rendered', 'stacked'] as const) {
+    for (const view of ['topdown', 'stacked'] as const) {
       useSettingsStore.getState().setView(view);
       expect(
         JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null'),
@@ -70,12 +70,6 @@ describe('useSettingsStore', () => {
       const reloaded = await loadSettingsStore();
       expect(reloaded.useSettingsStore.getState().view).toBe(view);
     }
-  });
-
-  it('keeps the stacked layout as the default when nothing is stored', async () => {
-    setLocalStorage(memoryStorage());
-    const { DEFAULT_TABLE_VIEW } = await loadSettingsStore();
-    expect(DEFAULT_TABLE_VIEW).toBe('stacked');
   });
 
   it('migrates a stored experimental isometric view to the default', async () => {

@@ -69,7 +69,6 @@ export function AppControls({
         >
           <option value="stacked">Stacked</option>
           <option value="topdown">Top-down</option>
-          <option value="rendered">Rendered 2.5D</option>
         </select>
       </label>
 

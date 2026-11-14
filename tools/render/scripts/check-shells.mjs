@@ -24,11 +24,7 @@
  *     face-up shells are ivory while the face-down shells are blue, and the
  *     decoded RGBA hashes in the manifest match the committed PNGs (a
  *     hand-edited or drifted bake fails here);
- *   - the 38 face glyphs: every source SVG exists, every PNG is 192 x 256
- *     RGBA, its decoded-RGBA hash and measured ink match `faces.json`, red
- *     fives really have red ink, blank and haku are glyphless, and the glyph
- *     byte budget holds;
- *   - per-shell, face-glyph and total byte budgets.
+ *   - per-shell and total byte budgets.
  *
  * Visual quality is the user's call (AGENTS.md §6). This script only prints
  * numbers and pass/fail.
@@ -42,7 +38,6 @@ import { readPng } from './png.mjs';
 const renderDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const shellSpecPath = join(renderDir, 'shell-spec.json');
 const feltSpecPath = join(renderDir, 'felt-spec.json');
-const facesSpecPath = join(renderDir, 'faces-spec.json');
 
 const CANONICAL_SHELL_IDS = [
   'shell_hand_standing',
@@ -746,193 +741,14 @@ function checkShellsManifest(spec) {
 }
 
 // --------------------------------------------------------------------------- //
-// Phase 2: the 38 face glyphs and their manifest.
-
-const CATALOG_FACE_IDS = [
-  '1m', '2m', '3m', '4m', '5m', '6m', '7m', '8m', '9m',
-  '1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p',
-  '1s', '2s', '3s', '4s', '5s', '6s', '7s', '8s', '9s',
-  '5mr', '5pr', '5sr',
-  '1z', '2z', '3z', '4z', '5z', '6z', '7z',
-  'blank',
-];
-
-function faceInkStats(image) {
-  let inkPixels = 0;
-  let redPixels = 0;
-  let minX = image.width;
-  let minY = image.height;
-  let maxX = -1;
-  let maxY = -1;
-  for (let y = 0; y < image.height; y += 1) {
-    for (let x = 0; x < image.width; x += 1) {
-      const [r, g, b, a] = pixel(image, x, y);
-      if (a <= 8) continue;
-      inkPixels += 1;
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-      if (r > g + 40 && r > b + 40) redPixels += 1;
-    }
-  }
-  return {
-    inkPixels,
-    redPixels,
-    inkBBox: maxX < 0 ? null : { left: minX, top: minY, right: maxX, bottom: maxY },
-  };
-}
-
-function checkFacesSpec(spec) {
-  const faceDir = resolve(renderDir, spec.output.dir);
-  const manifestPath = resolve(renderDir, spec.output.manifest);
-  check(spec.version === 1, `faces-spec.json version is 1`);
-  check(
-    typeof spec.source?.commit === 'string' && /^[0-9a-f]{40}$/.test(spec.source.commit),
-    `faces-spec.json pins the upstream SVG commit (${spec.source?.commit})`,
-  );
-  check(
-    typeof spec.source?.license === 'string' && /CC0|public domain/i.test(spec.source.license),
-    `faces-spec.json records the public-domain licence`,
-  );
-  const ids = spec.faces.map((face) => face.id);
-  check(ids.length === 38, `faces-spec.json lists 38 faces (${ids.length})`);
-  check(new Set(ids).size === 38, `faces-spec.json face ids are unique`);
-  check(
-    CATALOG_FACE_IDS.every((id) => ids.includes(id)),
-    `faces-spec.json covers all 38 catalogue ids`,
-  );
-  for (const face of spec.faces) {
-    if (!face.source) {
-      check(face.id === 'blank', `${face.id} is the only assetless face`);
-      continue;
-    }
-    check(
-      existsSync(resolve(renderDir, face.source)),
-      `${face.id} source SVG exists (${face.source})`,
-    );
-  }
-  check(
-    existsSync(manifestPath),
-    `faces.json exists at ${spec.output.manifest}`,
-  );
-  if (!existsSync(manifestPath)) return;
-
-  const manifest = readJson(manifestPath);
-  check(manifest.version === 1, `faces.json version is 1`);
-  check(
-    manifest.source?.commit === spec.source.commit && manifest.source?.repo === spec.source.repo,
-    `faces.json provenance matches the spec`,
-  );
-  const raster = spec.raster;
-  check(
-    manifest.raster?.width === raster.width && manifest.raster?.height === raster.height,
-    `faces.json raster is ${raster.width}x${raster.height}`,
-  );
-  const entries = manifest.faces ?? {};
-  const entryIds = Object.keys(entries);
-  check(entryIds.length === 38, `faces.json lists 38 faces (${entryIds.length})`);
-  check(
-    CATALOG_FACE_IDS.every((id) => entryIds.includes(id)),
-    `faces.json covers all 38 catalogue ids`,
-  );
-
-  let totalBytes = 0;
-  for (const id of CATALOG_FACE_IDS) {
-    const entry = entries[id];
-    const specFace = spec.faces.find((face) => face.id === id);
-    check(Boolean(entry), `faces.json has ${id}`);
-    if (!entry) continue;
-    check(
-      entry.sourceSvg === (specFace?.source ?? null),
-      `${id} provenance points at its vendored SVG (${entry.sourceSvg ?? 'no asset'})`,
-    );
-    if (id === 'blank') {
-      check(entry.textureFile === null, `blank has no glyph asset (bare shell)`);
-      check(entry.measured === null, `blank has no measured raster`);
-      continue;
-    }
-    check(typeof entry.textureFile === 'string', `${id} has a textureFile`);
-    if (typeof entry.textureFile !== 'string') continue;
-    const file = join(faceDir, entry.textureFile.replace(/^faces\//, ''));
-    check(existsSync(file), `${id} PNG exists (${entry.textureFile})`);
-    if (!existsSync(file)) continue;
-    const image = readPng(file);
-    check(
-      image.width === raster.width && image.height === raster.height && image.channels === 4,
-      `${id} is ${raster.width}x${raster.height} RGBA (got ${image.width}x${image.height}/${image.channels}ch)`,
-    );
-    totalBytes += image.bytes;
-    check(
-      entry.bytes === image.bytes,
-      `${id} manifest byte count matches (${image.bytes} B)`,
-    );
-    check(
-      entry.sha256?.decodedRgba === sha256(image.data),
-      `${id} decoded-RGBA sha256 matches the committed PNG`,
-    );
-    const stats = faceInkStats(image);
-    check(
-      entry.measured?.inkPixels === stats.inkPixels &&
-        entry.measured?.redPixels === stats.redPixels &&
-        JSON.stringify(entry.measured?.inkBBox) === JSON.stringify(stats.inkBBox),
-      `${id} measured ink matches the PNG (${stats.inkPixels} px, ${stats.redPixels} red)`,
-    );
-    if (id === '5z') {
-      check(stats.inkPixels === 0, `5z (haku) is a blank white face (${stats.inkPixels} ink px)`);
-    } else {
-      check(
-        stats.inkPixels > 1000,
-        `${id} has visible ink (${stats.inkPixels} px)`,
-      );
-      check(
-        stats.inkBBox.left >= 0 &&
-          stats.inkBBox.top >= 0 &&
-          stats.inkBBox.right <= image.width - 1 &&
-          stats.inkBBox.bottom <= image.height - 1,
-        `${id} ink is inside the glyph canvas (${JSON.stringify(stats.inkBBox)})`,
-      );
-      const inkFraction = stats.inkPixels / (image.width * image.height);
-      check(
-        inkFraction >= 0.02 && inkFraction <= 0.85,
-        `${id} ink covers ${(inkFraction * 100).toFixed(1)}% (2-85%)`,
-      );
-    }
-    if (entry.red === true) {
-      check(
-        stats.redPixels > 1000,
-        `${id} red five really is red (${stats.redPixels} red px)`,
-      );
-    }
-    // The four glyph corners must be translucent/empty, so the atlas can clip
-    // and downsample without touching the shell's bevel.
-    for (const [x, y] of [
-      [0, 0],
-      [image.width - 1, 0],
-      [0, image.height - 1],
-      [image.width - 1, image.height - 1],
-    ]) {
-      check(pixel(image, x, y)[3] === 0, `${id} corner ${x},${y} is transparent`);
-    }
-  }
-  check(
-    totalBytes <= spec.output.bytesBudget,
-    `face glyphs total ${totalBytes} B (budget ${spec.output.bytesBudget} B)`,
-  );
-  note(`face glyphs total ${totalBytes} B across ${entryIds.length - 1} PNGs`);
-}
-
-// --------------------------------------------------------------------------- //
 
 try {
   const shellSpec = readJson(shellSpecPath);
   const feltSpec = readJson(feltSpecPath);
-  const facesSpec = readJson(facesSpecPath);
   checkShellSpec(shellSpec);
   checkFeltSpec(feltSpec);
   checkFelt(feltSpec);
   checkShellsManifest(shellSpec);
-  checkFacesSpec(facesSpec);
 } catch (error) {
   failures.push(error instanceof Error ? error.message : String(error));
 }

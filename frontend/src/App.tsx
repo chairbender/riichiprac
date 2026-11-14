@@ -10,9 +10,7 @@ import { HandDock } from './components/HandDock';
 import { PhysicalTable } from './components/PhysicalTable';
 import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
-import { RenderedTable } from './components/RenderedTable';
 import { TableInfo } from './components/TableInfo';
-import { TableStage } from './components/TableStage';
 import { VerdictPanel } from './components/VerdictPanel';
 import { downloadJson, readStateFile, serializeState } from './stateFile';
 import {
@@ -397,21 +395,6 @@ export const App = () => {
     }
   };
 
-  /**
-   * The rendered view's one-way fallback. An asset, atlas or canvas failure
-   * switches to the top-down plan (the accessible default) and leaves a notice;
-   * it never changes the hand, the answer or the grade.
-   */
-  const handleRenderedFallback = useCallback(
-    (reason: string) => {
-      setTableView('topdown');
-      setFileNotice(
-        `Rendered view unavailable (${reason}). Showing the top-down plan.`,
-      );
-    },
-    [setFileNotice, setTableView],
-  );
-
   const showVerdict = useCallback(() => {
     const panel = document.getElementById('verdict-panel');
     if (!panel) return;
@@ -483,9 +466,6 @@ export const App = () => {
   const decision = gameState?.decision;
   const claimedFrom =
     decision?.kind === 'react_to_discard' ? decision.from : null;
-  const answerCorrect = dualGrade
-    ? (dualGrade.book?.is_tile_correct ?? dualGrade.mortal?.matches_tile ?? null)
-    : null;
 
   const agreementHint =
     aiStatus === 'ready'
@@ -495,7 +475,7 @@ export const App = () => {
         : 'Waiting for the Mortal model to load…';
 
   const viewHint =
-    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view, and rendered is the opt-in 2.5D shell/felt board. All stay 2D: no 3D, perspective or runtime camera, and switching never re-deals the hand.';
+    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view. Stays 2D: no 3D or perspective.';
 
   const statusMessage = agreementLoading
     ? 'Finding a hand Mortal agrees with…'
@@ -583,102 +563,6 @@ export const App = () => {
     />
   ) : null;
 
-  const actionBar =
-    gameState && !dualGrade && actionBarActions.length > 0 ? (
-      <ActionBar
-        actions={actionBarActions}
-        disabled={false}
-        riichiArmed={callRiichi}
-        evaluation={evaluation}
-        revealMortal={dualGrade !== null || peekedBeforeAnswer}
-        onToggleRiichi={toggleRiichi}
-        onAction={submitAction}
-      />
-    ) : null;
-
-  /**
-   * The hand dock. The rendered stage sets `compact`: the hand itself is on the
-   * canvas with its own buttons, so the dock keeps the call toggles, hint and
-   * answer summary but does not draw a second tile row or a duplicate Next.
-   */
-  const handDock = (compact: boolean) =>
-    humanPlayer ? (
-      <HandDock
-        player={humanPlayer}
-        grade={dualGrade}
-        answer={submittedAnswer}
-        callRiichi={callRiichi}
-        callKan={callKan}
-        aiEvaluation={evaluation}
-        availableActions={isDrill ? availableActions : undefined}
-        canDiscard={canDiscard}
-        canRiichi={canRiichi}
-        revealMortal={dualGrade !== null || peekedBeforeAnswer}
-        targetAction={gameState?.target_action}
-        nextDisabled={isLoading}
-        showTiles={!compact}
-        showNext={!compact}
-        onNextScenario={handleNextScenario}
-        onShowVerdict={showVerdict}
-        onToggleRiichi={toggleRiichi}
-        onToggleKan={toggleKan}
-        onSelectTile={selectTile}
-      />
-    ) : null;
-
-  /*
-   * The rendered stage is the opt-in full-screen view. It keeps every control
-   * reachable in the menu drawer and floats only the answer controls over the
-   * felt; the hand, answer and grade are the same objects the other views use,
-   * so switching here can never deal a new hand.
-   */
-  if (tableView === 'rendered') {
-    return (
-      <div className="app-shell app-shell--stage">
-        <TableStage
-          state={gameState}
-          statusMessage={statusMessage}
-          error={error}
-          answered={dualGrade !== null}
-          nextDisabled={isLoading}
-          onNextScenario={handleNextScenario}
-          menu={
-            <div className="table-stage-menu-stack">
-              <div className="app-controls app-controls--menu">
-                {controls}
-              </div>
-              {exportImportControls}
-              {positionDescriptionCard}
-              {tableInformation}
-              {agreementNotice}
-              {scenarioNote}
-              {verdictPanel}
-            </div>
-          }
-          table={
-            gameState ? (
-              <RenderedTable
-                state={gameState}
-                answered={dualGrade !== null}
-                canDiscard={canDiscard}
-                callRiichi={callRiichi}
-                callKan={callKan}
-                highlightLastDiscard={claimedFrom}
-                submittedAnswer={submittedAnswer}
-                answerCorrect={answerCorrect}
-                onSelectTile={selectTile}
-                onFallback={handleRenderedFallback}
-              >
-                {actionBar}
-                {handDock(true)}
-              </RenderedTable>
-            ) : null
-          }
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -730,9 +614,39 @@ export const App = () => {
         )}
       </main>
 
-      {actionBar}
+      {gameState && !dualGrade && actionBarActions.length > 0 && (
+        <ActionBar
+          actions={actionBarActions}
+          disabled={false}
+          riichiArmed={callRiichi}
+          evaluation={evaluation}
+          revealMortal={dualGrade !== null || peekedBeforeAnswer}
+          onToggleRiichi={toggleRiichi}
+          onAction={submitAction}
+        />
+      )}
 
-      {handDock(false)}
+      {humanPlayer && (
+        <HandDock
+          player={humanPlayer}
+          grade={dualGrade}
+          answer={submittedAnswer}
+          callRiichi={callRiichi}
+          callKan={callKan}
+          aiEvaluation={evaluation}
+          availableActions={isDrill ? availableActions : undefined}
+          canDiscard={canDiscard}
+          canRiichi={canRiichi}
+          revealMortal={dualGrade !== null || peekedBeforeAnswer}
+          targetAction={gameState?.target_action}
+          nextDisabled={isLoading}
+          onNextScenario={handleNextScenario}
+          onShowVerdict={showVerdict}
+          onToggleRiichi={toggleRiichi}
+          onToggleKan={toggleKan}
+          onSelectTile={selectTile}
+        />
+      )}
     </div>
   );
 };

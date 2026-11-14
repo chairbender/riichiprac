@@ -42,14 +42,6 @@ interface HandDockProps {
   targetAction?: TargetAction;
   /** Disables the post-answer Next Scenario control while a puzzle loads. */
   nextDisabled?: boolean;
-  /**
-   * Draw the tile row. The rendered redirect sets this false: its hand is on
-   * the canvas (and its buttons are on the board), so the dock contributes only
-   * the call toggles, the hint, and the answer summary.
-   */
-  showTiles?: boolean;
-  /** Draw the dock's own Next Scenario button (the stage toolbar has one). */
-  showNext?: boolean;
   /** Loads the next scenario; shown at the bottom once the hand is answered. */
   onNextScenario: () => void;
   /** Scroll to the full book-vs-Mortal comparison. */
@@ -79,8 +71,6 @@ export function HandDock({
   revealMortal = false,
   targetAction,
   nextDisabled = false,
-  showTiles = true,
-  showNext = true,
   onNextScenario,
   onShowVerdict,
   onToggleRiichi,
@@ -150,10 +140,7 @@ export function HandDock({
       : undefined;
 
   return (
-    <section
-      className={`hand-dock${showTiles ? '' : ' hand-dock--compact'}`}
-      aria-label={showTiles ? 'Your hand' : 'Hand controls'}
-    >
+    <section className="hand-dock" aria-label="Your hand">
       {isAnswered && grade ? (
         <AnswerSummary grade={grade} onDetails={onShowVerdict} />
       ) : (
@@ -212,12 +199,11 @@ export function HandDock({
         {hint}
       </div>
 
-      {showTiles && (
-        <div
-          className="hand"
-          style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
-        >
-          {tiles.map((tile, index) => {
+      <div
+        className="hand"
+        style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
+      >
+        {tiles.map((tile, index) => {
           const isSelected = answer?.tile === tile;
 
           let stateClass = '';
@@ -277,10 +263,9 @@ export function HandDock({
             </button>
           );
         })}
-        </div>
-      )}
+      </div>
 
-      {isAnswered && showNext && (
+      {isAnswered && (
         <NextScenarioButton
           variant="dock"
           onClick={onNextScenario}
