@@ -183,12 +183,26 @@ choice are filtered out, so the returned state is always a question.
 
 React still renders and grades only: the state arrives as an ordinary
 `ai_hotseat` payload with `correct_action`, the legal action list, and the full
-ranking. The scenario needs the model weights and stays out of the "All
-scenarios" pool until they load. A full round costs many forward passes, so the
-header shows "Playing a Mortal self-play round…" while the worker runs it. The
-card opens when the scenario is chosen by name (its picker row has a **Setup**
-button, and picking only it and dealing does the same); if a hotseat hand is
-drawn from a mixed pool, it uses the last card choice, which starts as
+ranking. The state's note ends with **Inserted on turn N.** so the position is
+anchored in the played round.
+
+A full round costs many forward passes. While the worker plays it, the header
+reports the round's progress ("Playing a Mortal self-play round… turn 7 · 25
+draws played"); a retry, which only happens if a round ends without a usable
+decision, is labelled as a new attempt.
+
+The insertion turn is **not** a uniform pick over recorded decisions. A round
+that ends at turn 12 simply has no decision at turn 16, so a uniform pick
+inherits the round-length survival curve and over-samples the opening. Instead,
+each full turn is weighted by the inverse of its empirical survival probability
+(`TURN_SURVIVAL` in `src/generator/hotseat/mod.rs`, measured with the shipped
+weights), and one decision at the chosen turn is picked uniformly. Turns 1-17
+therefore come out roughly evenly; the partial eighteenth turn (the dealer's
+69th draw) is outside the range.
+
+The card opens when the scenario is chosen by name (its picker row has a
+**Setup** button, and picking only it and dealing does the same); if a hotseat
+hand is drawn from a mixed pool, it uses the last card choice, which starts as
 everything random.
 
 The engine uses the 34 base tile codes, so a hotseat round never contains red

@@ -7,9 +7,10 @@
 //!    deal the table under them.
 //! 2. Play the round with the loaded Mortal model in every seat (see
 //!    [`sim`](self)).
-//! 3. Pick one of the inserted seat's recorded decisions uniformly and grade it
-//!    exactly like [`crate::generator::ai_best_action`]: the correct answer is
-//!    the model's top legal action at that position.
+//! 3. Pick one of the inserted seat's recorded decisions with an inverse
+//!    survival weight (late turns are rarer, so they are up-weighted) and grade
+//!    it exactly like [`crate::generator::ai_best_action`]: the correct answer
+//!    is the model's top legal action at that position.
 //!
 //! The whole engine is in Rust/WASM. React only renders the returned
 //! [`GameState`] and grades clicks against `correct_action`, so this scenario
@@ -27,17 +28,45 @@ use crate::ai::model::MortalV4Model;
 use crate::ai::wasm_bridge::Evaluation;
 use crate::decision::ActionKind;
 use crate::generator::finalize_state;
-use crate::rng::gen_range;
+use crate::rng::{gen_range, random_f64};
 use crate::state::{GameState, TargetAction};
 
 pub use options::{Disparity, HotseatOptions, HotseatRound, HotseatSeat, StartingConditions};
+pub(crate) use sim::TurnProgress;
 
-use sim::{ModelPolicy, Policy, SimTable};
+use sim::{DecisionRecord, ModelPolicy, Policy, SimTable};
 
 /// How many full self-played rounds to try before giving up. A retry only
 /// happens when the round ended before the inserted seat ever faced a
 /// recordable decision.
 const MAX_SIMULATED_ROUNDS: usize = 4;
+
+/// The last full turn of a round dealt from the 69-tile live wall.
+///
+/// Turn `t` covers live-wall draws `4t - 3 ..= 4t`. Turn 17 is draws 65..=68,
+/// when all four seats act; draw 69 is a partial eighteenth turn that only the
+/// dealer reaches, so it is outside the uniform range.
+pub(crate) const MAX_FULL_TURN: usize = 17;
+
+/// Empirical probability that a real-weight round has a recordable decision for
+/// the inserted seat at each full turn.
+///
+/// Measured over 30 rounds of `mortal_298k.safetensors` (East 1, level scores,
+/// East seat): turns 1-3 were recordable in 30/30 rounds, turns 14-17 in only
+/// 5-6/30. Selecting uniformly over decisions therefore over-samples the early
+/// game, because a decision can only exist at a turn the round actually
+/// reached. The ratio `1 / TURN_SURVIVAL[t]` is the importance weight that
+/// flattens the result back to an even turn distribution.
+///
+/// Index 0 is unused. The values are the raw measured fractions
+/// (`30,30,30,28,28,27,27,22,22,21,13,10,9,5,5,6,6` out of 30) rather than a
+/// smoothed curve: multiplying each turn's count by its inverse survival then
+/// gives the same expected weight at every turn. Re-measure this table if the
+/// checkpoint or the seat-condition mix changes materially.
+const TURN_SURVIVAL: [f32; MAX_FULL_TURN + 1] = [
+    0.0, 1.0, 1.0, 1.0, 0.933, 0.933, 0.9, 0.9, 0.733, 0.733, 0.7, 0.433, 0.333, 0.3, 0.167, 0.167,
+    0.2, 0.2,
+];
 
 /// Generate the AI hotseat scenario under the card's options.
 ///
@@ -50,26 +79,47 @@ pub fn generate(
     model_name: &str,
     options_json: &str,
 ) -> Result<GameState, String> {
+    generate_model_with_progress(model, model_name, options_json, &mut |_| {})
+}
+
+/// Production path with a progress sink, shared by the WASM bridge.
+pub(crate) fn generate_model_with_progress(
+    model: &MortalV4Model,
+    model_name: &str,
+    options_json: &str,
+    progress: &mut dyn FnMut(TurnProgress),
+) -> Result<GameState, String> {
     let policy = ModelPolicy {
         model,
         name: model_name,
     };
-    generate_with_policy(&policy, options_json)
+    generate_with_progress(&policy, options_json, progress)
 }
 
 /// The same generation path with an injectable policy, so the rules engine can
 /// be tested without running dozens of debug-build forward passes.
+#[cfg(test)]
 pub(crate) fn generate_with_policy(
     policy: &dyn Policy,
     options_json: &str,
+) -> Result<GameState, String> {
+    generate_with_progress(policy, options_json, &mut |_| {})
+}
+
+/// Full generation path: play a round, choose one of its real decisions, and
+/// report each new full turn while the round is being played.
+pub(crate) fn generate_with_progress(
+    policy: &dyn Policy,
+    options_json: &str,
+    progress: &mut dyn FnMut(TurnProgress),
 ) -> Result<GameState, String> {
     let options = HotseatOptions::from_json(options_json)?;
     let conditions = options.resolve();
 
     let mut last_error = String::new();
-    for _ in 0..MAX_SIMULATED_ROUNDS {
+    for attempt in 1..=MAX_SIMULATED_ROUNDS {
         let mut table = SimTable::deal(conditions);
-        match table.play(policy) {
+        match table.play_with_progress(policy, attempt, progress) {
             Ok(_) => {}
             Err(err) => {
                 last_error = err;
@@ -81,10 +131,26 @@ pub(crate) fn generate_with_policy(
             continue;
         }
 
-        let index = gen_range(0, table.records.len());
+        let index = match select_record(&table.records) {
+            Ok(index) => index,
+            Err(err) => {
+                last_error = err;
+                continue;
+            }
+        };
         let record = table.records.swap_remove(index);
         let mut state = record.state;
         state.category = "ai_hotseat".to_string();
+        // The turn is part of the position, not a hint at the answer: it tells
+        // the player how far into the round the insertion happened.
+        let base_note = state
+            .scenario_note
+            .as_deref()
+            .map(str::trim_end)
+            .filter(|note| !note.is_empty())
+            .map(str::to_string)
+            .unwrap_or_else(|| conditions.note());
+        state.scenario_note = Some(format!("{base_note} Inserted on turn {}.", record.turn));
         apply_top_action(&mut state, &record.evaluation)?;
         state = finalize_state(state);
         return Ok(state);
@@ -94,6 +160,51 @@ pub(crate) fn generate_with_policy(
         "could not produce a hotseat position after {MAX_SIMULATED_ROUNDS} simulated \
          round(s): {last_error}"
     ))
+}
+
+/// Choose a recorded decision with an inverse-survival weight.
+///
+/// A turn is weighted by `1 / TURN_SURVIVAL[turn]`, then one record at that
+/// turn is picked uniformly. This makes every full turn 1..=[`MAX_FULL_TURN`]
+/// equally likely instead of inheriting the round-length survival curve.
+fn select_record(records: &[DecisionRecord]) -> Result<usize, String> {
+    select_record_with_survival(records, &TURN_SURVIVAL)
+}
+
+/// The weighted selector, with the survival table injectable for tests.
+fn select_record_with_survival(
+    records: &[DecisionRecord],
+    survival: &[f32; MAX_FULL_TURN + 1],
+) -> Result<usize, String> {
+    let mut by_turn: Vec<Vec<usize>> = vec![Vec::new(); MAX_FULL_TURN + 1];
+    for (index, record) in records.iter().enumerate() {
+        let turn = record.turn as usize;
+        if (1..=MAX_FULL_TURN).contains(&turn) {
+            by_turn[turn].push(index);
+        }
+    }
+
+    let weights: Vec<(usize, f64)> = (1..=MAX_FULL_TURN)
+        .filter(|turn| !by_turn[*turn].is_empty())
+        .map(|turn| (turn, 1.0 / survival[turn].max(0.01) as f64))
+        .collect();
+    if weights.is_empty() {
+        return Err("the round recorded no decision in the full-turn range".to_string());
+    }
+
+    let total: f64 = weights.iter().map(|(_, weight)| weight).sum();
+    let mut roll = random_f64() * total;
+    let mut chosen = weights[weights.len() - 1].0;
+    for (turn, weight) in &weights {
+        if roll < *weight {
+            chosen = *turn;
+            break;
+        }
+        roll -= weight;
+    }
+
+    let group = &by_turn[chosen];
+    Ok(group[gen_range(0, group.len())])
 }
 
 /// Stamp the model's top action as the trainer's answer.
@@ -155,6 +266,76 @@ mod tests {
         assert!(note.contains("level with one other"));
         assert!(!note.contains("Discard"));
         assert!(!note.contains("Riichi"));
+    }
+
+    #[test]
+    fn measured_turn_counts_are_flattened_by_the_survival_weights() {
+        // The calibration sample behind TURN_SURVIVAL. Each turn's expected
+        // selection weight is count / survival; the whole point of the table is
+        // that those weights are the same for every full turn.
+        let measured = [
+            0usize, 30, 30, 30, 28, 28, 27, 27, 22, 22, 21, 13, 10, 9, 5, 5, 6, 6,
+        ];
+        let weights: Vec<f64> = (1..=MAX_FULL_TURN)
+            .map(|turn| measured[turn] as f64 / TURN_SURVIVAL[turn] as f64)
+            .collect();
+        let min = weights.iter().copied().fold(f64::INFINITY, f64::min);
+        let max = weights.iter().copied().fold(0.0, f64::max);
+        assert!(
+            max / min < 1.01,
+            "the calibration must flatten to equal turn weights: {weights:?}"
+        );
+        assert!(
+            measured.iter().skip(1).max().unwrap() / measured[1..].iter().min().unwrap() >= 4,
+            "the raw counts must actually be biased for this test to mean anything"
+        );
+    }
+
+    #[test]
+    fn the_note_reports_the_inserted_turn() {
+        let policy = FastPolicy::default();
+        let state = generate_with_policy(&policy, "{}").expect("hotseat generates");
+        let note = state.scenario_note.as_deref().unwrap_or_default();
+        assert!(note.contains("Inserted on turn "), "{note}");
+        let turn: u8 = note
+            .rsplit("Inserted on turn ")
+            .next()
+            .and_then(|rest| rest.trim_end_matches('.').parse().ok())
+            .expect("the note must end with a turn number");
+        assert!((1..=MAX_FULL_TURN as u8).contains(&turn), "{turn}");
+    }
+
+    #[test]
+    fn weighted_selection_flattens_the_turn_distribution() {
+        // One no-win round records a decision at every full turn. With a flat
+        // survival table the selector must give each present turn the same
+        // share; this is the mechanism the real survival weights invert.
+        let policy = FastPolicy::default();
+        let mut table = crate::generator::hotseat::sim::SimTable::deal(StartingConditions {
+            round: HotseatRound::East1,
+            disparity: Disparity::AboutEqualAll,
+            seat: HotseatSeat::East,
+        });
+        table.play(&policy).expect("round plays");
+        let records = table.records;
+        let uniform = [1.0f32; MAX_FULL_TURN + 1];
+
+        let mut counts = [0usize; MAX_FULL_TURN + 1];
+        for _ in 0..2_000 {
+            let index = select_record_with_survival(&records, &uniform).expect("a record");
+            counts[records[index].turn as usize] += 1;
+        }
+        let present: Vec<usize> = (1..=MAX_FULL_TURN)
+            .filter(|turn| records.iter().any(|record| record.turn as usize == *turn))
+            .collect();
+        let expected = 2_000 / present.len();
+        for turn in &present {
+            assert!(
+                counts[*turn] > expected / 2 && counts[*turn] < expected * 2,
+                "turn {turn} selected {} times, expected about {expected}: {counts:?}",
+                counts[*turn]
+            );
+        }
     }
 
     #[test]
@@ -288,12 +469,29 @@ mod tests {
         .unwrap();
         let model = MortalV4Model::new(vb).unwrap();
 
-        let state = generate(
+        let mut turns = Vec::new();
+        let state = generate_model_with_progress(
             &model,
             "mortal_298k.safetensors",
             r#"{"round":"east_1","disparity":"about_equal_all","seat":"east"}"#,
+            &mut |progress| turns.push(progress),
         )
         .expect("real weights must generate a hotseat position");
+
+        assert!(!turns.is_empty(), "the real round must report progress");
+        assert_eq!(turns[0].turn, 1);
+        assert!(
+            turns.windows(2).all(|pair| pair[1].turn >= pair[0].turn),
+            "progress must advance: {turns:?}"
+        );
+        let note = state.scenario_note.as_deref().unwrap_or_default();
+        let inserted: u8 = note
+            .rsplit("Inserted on turn ")
+            .next()
+            .and_then(|rest| rest.trim_end_matches('.').parse().ok())
+            .expect("the real position must name its turn");
+        assert!((1..=MAX_FULL_TURN as u8).contains(&inserted), "{inserted}");
+
         let ai = state.ai_decision.expect("ai decision");
         assert_eq!(ai.model, "mortal_298k.safetensors");
         assert!(

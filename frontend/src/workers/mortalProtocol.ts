@@ -11,6 +11,14 @@
  * UI thread.
  */
 
+/** One progress tick from a running hotseat generation. */
+export interface HotseatProgressPayload {
+  attempt: number;
+  turn: number;
+  drawn: number;
+  wall_left: number;
+}
+
 /** Requests, before the client assigns a correlation id. */
 export type MortalCommand =
   | { op: 'init'; weights: ArrayBuffer; modelName: string }
@@ -29,4 +37,5 @@ export type MortalRequest = MortalCommand & { id: number };
  */
 export type MortalResponse =
   | { id: number; ok: true; value?: unknown }
-  | { id: number; ok: false; error: string };
+  | { id: number; ok: false; error: string }
+  | { id: number; progress: HotseatProgressPayload };

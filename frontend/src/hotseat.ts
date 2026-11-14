@@ -38,6 +38,38 @@ export interface HotseatOptions {
   seat: HotseatSeat | null;
 }
 
+/**
+ * One progress tick from the worker while it plays a hotseat round.
+ *
+ * `turn` is one-based and counts full turns (four live-wall draws); `drawn` is
+ * the number of live-wall draws made and `wall_left` the tiles left. `attempt`
+ * is one-based and only grows if the engine has to retry a round.
+ */
+export interface HotseatProgress {
+  attempt: number;
+  turn: number;
+  drawn: number;
+  wall_left: number;
+}
+
+/** The final state's note includes this sentence, e.g. `Inserted on turn 12.` */
+export function hotseatTurnFromNote(note: string | null | undefined): number | null {
+  if (!note) return null;
+  const match = /Inserted on turn (\d+)\./.exec(note);
+  return match ? Number(match[1]) : null;
+}
+
+/** The header status line while a hotseat round is being played. */
+export function hotseatProgressLabel(
+  progress: HotseatProgress | null,
+): string {
+  if (!progress) return 'Playing a Mortal self-play round…';
+  const attempt =
+    progress.attempt > 1 ? ` · attempt ${progress.attempt}` : '';
+  const draws = `${progress.drawn} ${progress.drawn === 1 ? 'draw' : 'draws'}`;
+  return `Playing a Mortal self-play round… turn ${progress.turn} · ${draws} played${attempt}`;
+}
+
 export const DEFAULT_HOTSEAT_OPTIONS: HotseatOptions = {
   round: null,
   disparity: null,

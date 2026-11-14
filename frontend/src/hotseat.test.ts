@@ -9,6 +9,8 @@ import {
   hotseatDraftSummary,
   hotseatOptionsFromDraft,
   hotseatOptionsJson,
+  hotseatProgressLabel,
+  hotseatTurnFromNote,
   isHotseatOnly,
 } from './hotseat';
 
@@ -97,6 +99,44 @@ describe('AI Hotseat options', () => {
         }),
       ),
     ).toContain('2 pinned');
+  });
+
+  it('labels play progress with the current turn and draw count', () => {
+    expect(hotseatProgressLabel(null)).toBe(
+      'Playing a Mortal self-play round…',
+    );
+    expect(
+      hotseatProgressLabel({
+        attempt: 1,
+        turn: 7,
+        drawn: 25,
+        wall_left: 44,
+      }),
+    ).toBe('Playing a Mortal self-play round… turn 7 · 25 draws played');
+    expect(
+      hotseatProgressLabel({
+        attempt: 1,
+        turn: 1,
+        drawn: 1,
+        wall_left: 68,
+      }),
+    ).toBe('Playing a Mortal self-play round… turn 1 · 1 draw played');
+    expect(
+      hotseatProgressLabel({
+        attempt: 3,
+        turn: 12,
+        drawn: 45,
+        wall_left: 24,
+      }),
+    ).toContain('attempt 3');
+  });
+
+  it('reads the inserted turn from the scenario note', () => {
+    expect(hotseatTurnFromNote('Mortal self-play. Inserted on turn 12.')).toBe(
+      12,
+    );
+    expect(hotseatTurnFromNote('no turn here')).toBeNull();
+    expect(hotseatTurnFromNote(null)).toBeNull();
   });
 
   it('recognises the hotseat-only pool', () => {

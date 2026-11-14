@@ -83,13 +83,16 @@ scope.onmessage = async (event) => {
         return;
       }
       case 'generateHotseat': {
-        scope.postMessage({
-          id: request.id,
-          ok: true,
-          value: requireEvaluator().generate_hotseat_puzzle(
-            request.optionsJson,
-          ),
-        });
+        const value = requireEvaluator().generate_hotseat_puzzle_with_progress(
+          request.optionsJson,
+          (progressJson: string) => {
+            scope.postMessage({
+              id: request.id,
+              progress: JSON.parse(progressJson),
+            });
+          },
+        );
+        scope.postMessage({ id: request.id, ok: true, value });
         return;
       }
     }

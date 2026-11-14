@@ -17,9 +17,10 @@ import {
   DEFAULT_HOTSEAT_OPTIONS,
   HOTSEAT_SCENARIO_ID,
   hotseatOptionsJson,
+  hotseatProgressLabel,
   isHotseatOnly,
 } from './hotseat';
-import type { HotseatOptions } from './hotseat';
+import type { HotseatOptions, HotseatProgress } from './hotseat';
 import { downloadJson, readStateFile, serializeState } from './stateFile';
 import {
   ALL_SCENARIOS,
@@ -91,6 +92,9 @@ export const App = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [agreementLoading, setAgreementLoading] = useState(false);
   const [hotseatLoading, setHotseatLoading] = useState(false);
+  const [hotseatProgress, setHotseatProgress] = useState<HotseatProgress | null>(
+    null,
+  );
   /**
    * The last AI Hotseat card choice. Kept in a ref as well as state: the
    * generator reads it without making `loadPuzzle` depend on it, so changing
@@ -194,6 +198,7 @@ export const App = () => {
     ) => {
       const requestId = ++loadRequestId.current;
       reset();
+      setHotseatProgress(null);
       // A description belongs to the position it was written for.
       updateExportDescription('');
 
@@ -271,6 +276,11 @@ export const App = () => {
                 forced?.hotseat ?? hotseatOptionsRef.current;
               generated = await mortal.generateHotseatPuzzle(
                 hotseatOptionsJson(hotseat),
+                (progress) => {
+                  if (requestId === loadRequestId.current) {
+                    setHotseatProgress(progress);
+                  }
+                },
               );
             } else {
               generated = await mortal.generateAiPuzzle(category);
@@ -280,6 +290,7 @@ export const App = () => {
           } finally {
             setAiLoading(false);
             setHotseatLoading(false);
+            setHotseatProgress(null);
           }
         } else if (wantsAgreement) {
           setAgreementLoading(true);
@@ -366,6 +377,7 @@ export const App = () => {
       setAiLoading(false);
       setAgreementLoading(false);
       setHotseatLoading(false);
+      setHotseatProgress(null);
       restoreHistoryRef.current(snapshot);
     };
 
@@ -544,7 +556,7 @@ export const App = () => {
     'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view. Stays 2D: no 3D or perspective.';
 
   const statusMessage = hotseatLoading
-    ? 'Playing a Mortal self-play round…'
+    ? hotseatProgressLabel(hotseatProgress)
     : agreementLoading
       ? 'Finding a hand Mortal agrees with…'
       : aiLoading

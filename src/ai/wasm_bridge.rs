@@ -120,6 +120,34 @@ impl WasmMortalEvaluator {
             .map_err(|err| js_error(&format!("failed to serialize hotseat scenario: {err}")))
     }
 
+    /// The same hotseat generation, reporting each new full turn.
+    ///
+    /// `on_progress` receives one JSON string per turn:
+    /// `{"attempt":1,"turn":7,"drawn":25,"wall_left":44}`. The worker forwards
+    /// that to the main thread so the header can show how far the self-play has
+    /// got while the WASM call is still running.
+    pub fn generate_hotseat_puzzle_with_progress(
+        &self,
+        options_json: &str,
+        on_progress: &js_sys::Function,
+    ) -> Result<String, JsValue> {
+        let mut report = |progress: crate::generator::hotseat::TurnProgress| {
+            if let Ok(json) = serde_json::to_string(&progress) {
+                let _ = on_progress.call1(&JsValue::NULL, &JsValue::from_str(&json));
+            }
+        };
+        let state = crate::generator::hotseat::generate_model_with_progress(
+            &self.model,
+            &self.model_name,
+            options_json,
+            &mut report,
+        )
+        .map_err(|err| js_error(&format!("failed to generate hotseat scenario: {err}")))?;
+
+        serde_json::to_string(&state)
+            .map_err(|err| js_error(&format!("failed to serialize hotseat scenario: {err}")))
+    }
+
     /// Evaluate a serialized [`GameState`].
     pub fn evaluate(&self, game_state_json: &str) -> Result<JsValue, JsValue> {
         let state: GameState = serde_json::from_str(game_state_json)

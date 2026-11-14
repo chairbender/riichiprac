@@ -86,6 +86,34 @@ describe('createMortalClient', () => {
     await expect(generated).resolves.toBe('{"category":"ai_hotseat"}');
   });
 
+  it('routes hotseat progress without resolving the promise', async () => {
+    const worker = new FakeWorker();
+    const client = createMortalClient(worker);
+    const seen: Array<{ attempt: number; turn: number; drawn: number }> = [];
+
+    const generated = client.generateHotseatPuzzle('{}', (progress) => {
+      seen.push(progress);
+    });
+    const message = worker.messages[0];
+
+    worker.respond({
+      id: message.id,
+      progress: { attempt: 1, turn: 3, drawn: 9, wall_left: 60 },
+    });
+    worker.respond({
+      id: message.id,
+      progress: { attempt: 1, turn: 4, drawn: 13, wall_left: 56 },
+    });
+    expect(seen.map((progress) => progress.turn)).toEqual([3, 4]);
+
+    worker.respond({
+      id: message.id,
+      ok: true,
+      value: '{"category":"ai_hotseat"}',
+    });
+    await expect(generated).resolves.toBe('{"category":"ai_hotseat"}');
+  });
+
   it('rejects with the error the worker reported', async () => {    const worker = new FakeWorker();
     const client = createMortalClient(worker);
 

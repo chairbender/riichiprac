@@ -44,6 +44,26 @@ const MAX_STEPS: usize = 4096;
 pub struct DecisionRecord {
     pub state: GameState,
     pub evaluation: Evaluation,
+    /// One-based full-turn index (four live-wall draws per turn) at the
+    /// decision.
+    pub turn: u8,
+}
+
+/// Progress reported while a round is being played.
+///
+/// `turn` is one-based and counts **full turns** (four live-wall draws). A
+/// round dealt from a 69-tile live wall has 17 full turns; the 69th draw is a
+/// partial eighteenth turn that only the dealer reaches, so the uniform target
+/// range is 1..=17.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub struct TurnProgress {
+    /// One-based simulated-round number; retries increment it.
+    pub attempt: usize,
+    pub turn: u8,
+    /// Live-wall draws made so far.
+    pub drawn: u8,
+    /// Tiles left in the live wall.
+    pub wall_left: u8,
 }
 
 /// How one simulated round ended.
@@ -183,8 +203,26 @@ impl SimTable {
         }
     }
 
-    /// Play the round to its end, recording the inserted seat's decisions.
+    /// The current full-turn index: one-based, four live-wall draws per turn.
+    pub(crate) fn turn(&self) -> u8 {
+        let drawn = 69u16.saturating_sub(self.wall.len() as u16) as u8;
+        drawn.div_ceil(4)
+    }
+
+    /// Play the round without reporting progress.
+    #[cfg(test)]
     pub(crate) fn play(&mut self, policy: &dyn Policy) -> Result<Outcome, String> {
+        self.play_with_progress(policy, 1, &mut |_| {})
+    }
+
+    /// Play the round to its end, recording the inserted seat's decisions and
+    /// reporting each new full turn through `progress`.
+    pub(crate) fn play_with_progress(
+        &mut self,
+        policy: &dyn Policy,
+        attempt: usize,
+        progress: &mut dyn FnMut(TurnProgress),
+    ) -> Result<Outcome, String> {
         let mut seat = self.dealer;
         let mut needs_draw = true;
         // True when the seat reached this discard by calling, not by drawing.
@@ -192,6 +230,7 @@ impl SimTable {
         // the draw followed kamicha, so it is not a valid insertion point.
         let mut post_call = false;
         let mut steps = 0usize;
+        let mut last_turn = 0u8;
 
         loop {
             steps += 1;
@@ -207,6 +246,17 @@ impl SimTable {
                 };
                 self.wall.remove(0);
                 self.players[seat].draw = Some(tile);
+            }
+
+            let turn = self.turn();
+            if turn != last_turn {
+                last_turn = turn;
+                progress(TurnProgress {
+                    attempt,
+                    turn,
+                    drawn: 69u16.saturating_sub(self.wall.len() as u16) as u8,
+                    wall_left: self.wall.len() as u8,
+                });
             }
 
             let riichi = self.players[seat].is_riichi;
@@ -228,6 +278,7 @@ impl SimTable {
                     self.records.push(DecisionRecord {
                         state: state.clone(),
                         evaluation: evaluation.clone(),
+                        turn: self.turn(),
                     });
                 }
                 let top = evaluation
@@ -371,6 +422,7 @@ impl SimTable {
                 self.records.push(DecisionRecord {
                     state: state.clone(),
                     evaluation: evaluation.clone(),
+                    turn: self.turn(),
                 });
             }
             decisions.push((seat, top.info));
@@ -543,6 +595,7 @@ impl SimTable {
                 self.records.push(DecisionRecord {
                     state: state.clone(),
                     evaluation: evaluation.clone(),
+                    turn: self.turn(),
                 });
             }
             if top.info.kind == ActionKind::Agari {
@@ -780,6 +833,34 @@ mod tests {
                     .any(|scored| scored.info.action == info.action)
             }));
         }
+    }
+
+    #[test]
+    fn progress_reports_each_full_turn() {
+        use crate::generator::hotseat::test_support::FastPolicy;
+
+        let policy = FastPolicy::default();
+        let mut table = SimTable::deal(conditions());
+        let mut events = Vec::new();
+        table
+            .play_with_progress(&policy, 2, &mut |progress| events.push(progress))
+            .expect("round plays");
+
+        assert!(!events.is_empty());
+        assert_eq!(events[0].attempt, 2);
+        assert_eq!(events[0].turn, 1);
+        assert!(
+            events
+                .windows(2)
+                .all(|pair| { pair[1].turn >= pair[0].turn && pair[1].drawn > pair[0].drawn }),
+            "progress must advance: {events:?}"
+        );
+        let last = events.last().expect("a last progress event");
+        assert!(
+            last.turn >= 17,
+            "a no-win round reaches the late game: {last:?}"
+        );
+        assert_eq!(last.drawn + last.wall_left, 69);
     }
 
     #[test]
