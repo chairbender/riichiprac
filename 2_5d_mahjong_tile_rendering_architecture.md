@@ -25,7 +25,7 @@ Rather than forcing one camera onto the whole board, each table zone uses the 2D
 | :--- | :--- | :--- | :--- |
 | **Bottom Player Hand** | Front elevation at 28° | Upright front-on rectangle with a white top bevel, the blue resin edge, and a little more of the tile's top than a flat-on view (Phase 1 was 12°). | Zero glyph distortion; maximum reading speed. |
 | **Discard Ponds (`kawa`) & Open Melds** | Low-angle top-down at 45° | Face-up rectangle seen from a low camera, so the face plate is foreshortened and the near thickness face is clearly visible above the extrusion. Phase 1's 80° was rejected as too top-down. | Uniform tile size across all 4 seats; instant pattern scanning with a seated-player read. |
-| **Side Walls (`yama`)** | Fixed-angle oblique at 45° | Face-down stacks of two tiles, long edge across the view, the column leaning inward at the far end (committed 10°; the lean direction/amount is the one open calibration). §10 has the geometry. | Frames the board with strong 3D depth without wasting horizontal screen width. |
+| **Side Walls (`yama`)** | Off-axis perspective at 45° | Face-down stacks of two tiles, long edge parallel to the table edge. The camera sits slightly inside the wall, so the near end face is revealed and the far long edge converges toward the table centre. The tile itself is never rotated; one shell perspective is reused down the column (Tenhou-style). §10 has the geometry. | Frames the board with strong 3D depth without wasting horizontal screen width. |
 | **Top Hand & Top/Bottom Walls** | Low-angle top-down at 45° | Colored resin top face stacked above a white front thickness strip and a diffuse contact shadow, at the same low angle as the ponds. Each column is two tiles; a revealed dora indicator is the face-up top tile. | Preserves consistent back-to-front vertical layering. |
 
 Phase 1b (2026-11-14) also doubles the base sprite resolution: the Phase 1
@@ -79,7 +79,7 @@ Configure an automated Blender script to render the canonical blank tile shells 
 5. `shell_wall_side_left` & `shell_wall_side_right`: Oblique face-down tiles for the left and right walls, long edge across the view, column leaning inward at the far end (§10), plus `shell_wall_side_left_faceup` / `shell_wall_side_right_faceup` dora counterparts.
 
 ### Blender Scene & Shader Rules
-* **Camera:** Use an **Orthographic Camera** (`type = 'ORTHO'`) for all shells so parallel edges stay strictly parallel and scale identically across the board. (For side walls, angle/shear the tile mesh or orthographic camera along a fixed cabinet projection angle).
+* **Camera:** Use an **Orthographic Camera** (`type = 'ORTHO'`) for the grid shells so parallel edges stay strictly parallel and scale identically across the board. The side walls are the one exception: they use an **off-axis perspective camera** with no yaw and no roll, laterally offset inside the wall (§10.4). Only a lateral perspective reveals the near end face while keeping the tile's long edge parallel to the table edge; yawing the tile or the camera slopes that edge instead.
 * **Lighting:** Place a primary soft area light at **Top-Left-Front** (`-X, +Y, +Z`) and a weak ambient fill light so bevels show crisp highlights on top/left edges and cool grey-blue shading on bottom/right thickness faces.
 * **Two-Tone Resin Seam:** Ensure the sharp boundary between the colored tile back (*senaka*) and white front body is clearly visible along the top and side bevels—this is the primary visual cue distinguishing a mahjong tile from a flat card.
 * **Shadow Catcher & Cropping:**
@@ -479,7 +479,7 @@ base/angle numbers in §8 and the Phase 1b review in §9.
 | `shell_flat_upright` | el 80° | **el 45°** (candidate C) |
 | `shell_flat_sideways` | el 80° | **el 45°** (candidate C) |
 | `shell_wall_horizontal` | el 80° | **el 45°** (candidate C) |
-| `shell_wall_side_left/right` | el 75°, rotY ∓35° | **el 45°**, face down, rotZ ±80° (candidate D + an inward lean; §10.4) |
+| `shell_wall_side_left/right` | el 75°, rotY ∓35° | **el 45°**, face down, off-axis perspective with the camera 2 units inside the wall (§10.4) |
 
 The six original shells are now nine: the three wall shells each gained a
 face-up counterpart for revealed dora indicators (they are the top tile of the
@@ -498,13 +498,13 @@ All numbers are measured from the render and live in
 | `shell_flat_sideways` | el 45° | 124 × 113 / 248 × 226 | 106 × 95 | (0, 55.15) / (104, 0) | — | 9,543 + 29,353 |
 | `shell_wall_horizontal` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 8,917 + 26,215 |
 | `shell_wall_horizontal_faceup` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 7,990 + 23,580 |
-| `shell_wall_side_left` | el 45°, rotZ 80° | 122 × 114 / 244 × 228 | 104 × 96 | (−12.15, 48.71) / (91.85, 11.45) | (0, −38.86) | 11,644 + 33,548 |
-| `shell_wall_side_left_faceup` | el 45°, rotZ 80° | 122 × 114 / 244 × 228 | 104 × 96 | (−12.15, 48.71) / (91.85, 11.45) | (0, −38.86) | 10,915 + 30,733 |
-| `shell_wall_side_right` | el 45°, rotZ −80° | 122 × 114 / 244 × 228 | 104 × 96 | (12.15, 48.71) / (91.85, −11.45) | (0, −38.86) | 11,424 + 33,400 |
-| `shell_wall_side_right_faceup` | el 45°, rotZ −80° | 122 × 114 / 244 × 228 | 104 × 96 | (12.15, 48.71) / (91.85, −11.45) | (0, −38.86) | 10,855 + 31,317 |
+| `shell_wall_side_left` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 11,216 + 32,505 |
+| `shell_wall_side_left_faceup` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 9,724 + 28,261 |
+| `shell_wall_side_right` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 10,331 + 30,102 |
+| `shell_wall_side_right_faceup` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 9,729 + 28,528 |
 
-Total **345,508 B** (88,303 @1x + 257,205 @2x) against the 2,097,152 B budget;
-`shells.json` is 29,965 B against 65,536 B. The felt is unchanged
+Total **332,068 B** (84,465 @1x + 247,603 @2x) against the 2,097,152 B budget;
+`shells.json` is 31,151 B against 65,536 B. The felt is unchanged
 (559,465 B). The standing hand lands exactly on the asked-for 88 × 120 / 176 ×
 240 texture; the body long axis is 102 px (the 104 px target minus the
 anti-aliased crop).
@@ -519,23 +519,40 @@ lower tier first, then the upper tier at `+stackStepPx`; a revealed dora
 indicator is the **face-up** counterpart shell in the upper tier. `gridStepPx`
 still steps between stacks.
 
-### 10.4 The side-wall lean and the visible edge
+### 10.4 The side-wall perspective
 
-The side-wall tile lies face down (blue back up) with its long edge across the
-view, at el 45°, and the column leans inward at the far end. The committed lean
-is 10°, done with a pose yaw: `rotZ 80` for the left wall and `rotZ −80` for the
-right. The measured column step is `(−12.15, 48.71)` on the left and
-`(12.15, 48.71)` on the right: stepping *down* the column moves inward-to-outward,
-so the far end is toward the board centre. The left and right sprites are true
-mirrors.
+The side-wall tile lies face down with its long edge **parallel to the table
+edge**. The tile is **not rotated**: the whole shell is square to the table
+(`rotZ 90`, i.e. the long axis across the view). What reveals the end face is
+the camera, not the tile. It sits `lateralOffsetUnits` (2 units) inside the wall
+at distance 10, with **no yaw and no roll**, looking along the wall's inward
+normal at el 45. A perspective camera looking along the normal keeps lines of
+constant depth horizontal, so the tile's long edges stay parallel to the table
+edge on screen; the lateral offset makes the near end face visible.
 
-**The geometric trade-off, recorded for the open pick.** A rigid projection
-cannot both lean the far end inward *and* turn the outer end face toward the
-viewer: the end that becomes visible is the one on the leaning side. With the
-committed inward lean the **inner** end sliver shows; the **outer** end (the
-edge the player sitting on that side would see) shows only when the wall leans
-outward. §10.7 keeps both variants in the audition, with 6° and 14° in each
-direction, so the user can choose the read rather than accept this one.
+Measured on the committed bake (left wall):
+
+- near (viewer-side) long edge **84.0 px**, far long edge **81.3 px**: a 3.3%
+  keystone, and the far edge is **7.5 px toward the table centre**.
+- the two long edges stay horizontal to within 0.01 px.
+- the tile is exactly the same on the right wall with the camera offset
+  mirrored (−2 units), so the two sprites are mirror images of each other.
+
+The camera framing is solved, not hand-placed: the lens is adjusted until the
+projected long axis is the 104 px target (lens ≈ 301.8 mm at this framing), and
+`shift_x`/`shift_y` centre the tile in the frame. Because the camera is off-axis,
+the projected thickness is not exactly vertical: `stackStepPx` is
+`(∓5.64, −39.87)` rather than `(0, −38.9)`. That 5.6 px horizontal drift is the
+perspective, and the stack sheet uses it.
+
+**One perspective, reused down the column.** The projection would physically
+change as the stack recedes; the build deliberately does not recompute it. The
+wall column is a stack of the same shell sprite, exactly as Tenhou does. The
+per-tile column step is still the published `gridStepPx` (the centre-line depth
+step), so the column converges slightly toward the centre.
+
+The open calibration is how far inside the wall the camera sits: 1, 3 and 4
+units are auditioned against the committed 2 (§10.7). The tile never rotates.
 
 ### 10.5 Face variants (updated plan, still not built)
 
@@ -583,14 +600,17 @@ coordinates are unchanged.
 scales and `shells.json`, and runs **485 checks**: catalogue, felt, both texture
 scales, the 1 px AA ledge, the diffuse shadow/AO contract, the faceQuad and
 `gridStepPx`, the 2-tile `stackStepPx` (within 1.5 px of the projected
-thickness), ivory/blue face sides, the cool near thickness, the decoded-RGBA
-hashes and the budgets. `--bake --verify-determinism` re-renders every shell and
+thickness on the orthographic shells, 2.5 px on the perspective ones, whose
+thickness drifts sideways), the perspective trapezoid (long edges horizontal and
+the near edge longer), ivory/blue face sides, the cool near thickness, the
+decoded-RGBA hashes and the budgets. `--bake --verify-determinism` re-renders every shell and
 compares decoded RGBA.
 
-`bash tools/render/bake-shells.sh --audition` renders the **wall-lean
-calibration** — IN 6°, IN 14°, OUT 6°, OUT 14° per side wall at el 45°, composed
-as 2-high stacks with the committed IN 10° as the REF — and validates it with
-**858 checks** in total. That is the one remaining visual pick: see the two
+`bash tools/render/bake-shells.sh --audition` renders the **side-wall
+perspective calibration** — camera offsets 1, 3 and 4 units inside the wall per
+side, composed as 2-high stacks with the committed 2-unit offset as the REF —
+and validates it with **790 checks** in total (489 committed + 301 candidate and
+sheet). That is the one remaining visual pick: see the two
 `build/review/shell-candidates-shell_wall_side_*.png` sheets.
 
 Nothing downstream starts here: no atlas, layout engine, board renderer or app

@@ -575,6 +575,7 @@ function checkShellsManifest(spec) {
       shell.faceQuadOrder === 'face-local [top-left, top-right, bottom-right, bottom-left]',
       `${id} faceQuad declares its corner order`,
     );
+    const perspective = shell.camera?.projection === 'perspective';
     if (Array.isArray(quad) && quad.length === 4) {
       const inside = quad.every(
         ([x, y]) =>
@@ -602,14 +603,36 @@ function checkShellsManifest(spec) {
         area += x0 * y1 - x1 * y0;
       }
       check(Math.abs(area) / 2 > 100, `${id} faceQuad has a real area (${(Math.abs(area) / 2).toFixed(1)} px²)`);
-      // A projected rectangle is a parallelogram: both diagonals share a midpoint.
-      const first = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2];
-      const second = [(quad[1][0] + quad[3][0]) / 2, (quad[1][1] + quad[3][1]) / 2];
-      const diagonalError = Math.hypot(first[0] - second[0], first[1] - second[1]);
-      check(
-        diagonalError <= 1,
-        `${id} faceQuad is a projected rectangle (diagonal midpoint error ${diagonalError.toFixed(2)} px)`,
-      );
+      if (perspective) {
+        // An off-axis perspective camera makes the face a trapezoid: the long
+        // edges must stay horizontal (parallel to the table edge) and the near
+        // edge must be the longer one. The diagonals no longer share a midpoint.
+        const longEdgeDy = Math.abs(quad[0][1] - quad[3][1]) + Math.abs(quad[1][1] - quad[2][1]);
+        check(
+          longEdgeDy <= 2,
+          `${id} perspective long edges stay parallel to the table edge (|dy| ${longEdgeDy.toFixed(2)} px)`,
+        );
+        const edgeLength = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+        const leftLength = edgeLength(quad[0], quad[3]);
+        const rightLength = edgeLength(quad[1], quad[2]);
+        const leftY = (quad[0][1] + quad[3][1]) / 2;
+        const rightY = (quad[1][1] + quad[2][1]) / 2;
+        const near = leftY > rightY ? leftLength : rightLength;
+        const far = leftY > rightY ? rightLength : leftLength;
+        check(
+          near > far + 0.5,
+          `${id} perspective keystone has the near edge longer (${near.toFixed(1)} > ${far.toFixed(1)} px)`,
+        );
+      } else {
+        // A projected rectangle is a parallelogram: both diagonals share a midpoint.
+        const first = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2];
+        const second = [(quad[1][0] + quad[3][0]) / 2, (quad[1][1] + quad[3][1]) / 2];
+        const diagonalError = Math.hypot(first[0] - second[0], first[1] - second[1]);
+        check(
+          diagonalError <= 1,
+          `${id} faceQuad is a projected rectangle (diagonal midpoint error ${diagonalError.toFixed(2)} px)`,
+        );
+      }
       const width = Math.hypot(quad[1][0] - quad[0][0], quad[1][1] - quad[0][1]);
       const height = Math.hypot(quad[2][0] - quad[1][0], quad[2][1] - quad[1][1]);
       const ratio = width / height;
@@ -621,13 +644,25 @@ function checkShellsManifest(spec) {
       );
 
       // gridStepPx is the physical per-tile step: the inset face edges grown
-      // back to the full tile width/height. It must follow from faceQuad.
+      // back to the full tile width/height. The published step is the centre
+      // line, so it is the average of the two opposite face edges (they coincide
+      // for the orthographic shells and are the midline of the trapezoid for the
+      // perspective ones).
       const inset = spec.tile.faceInset;
       const scaleX = spec.tile.width / (spec.tile.width - 2 * inset);
       const scaleY = spec.tile.height / (spec.tile.height - 2 * inset);
+      const average = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const widthAxis = average(
+        [quad[1][0] - quad[0][0], quad[1][1] - quad[0][1]],
+        [quad[2][0] - quad[3][0], quad[2][1] - quad[3][1]],
+      );
+      const heightAxis = average(
+        [quad[0][0] - quad[3][0], quad[0][1] - quad[3][1]],
+        [quad[1][0] - quad[2][0], quad[1][1] - quad[2][1]],
+      );
       const expected = {
-        x: [ (quad[1][0] - quad[0][0]) * scaleX, (quad[1][1] - quad[0][1]) * scaleX ],
-        y: [ (quad[0][0] - quad[3][0]) * scaleY, (quad[0][1] - quad[3][1]) * scaleY ],
+        x: [widthAxis[0] * scaleX, widthAxis[1] * scaleX],
+        y: [heightAxis[0] * scaleY, heightAxis[1] * scaleY],
       };
       const orient = (axis) => {
         const vertical = Math.abs(axis[1]) >= Math.abs(axis[0]);
@@ -637,10 +672,13 @@ function checkShellsManifest(spec) {
       expected.x = orient(expected.x);
       expected.y = orient(expected.y);
       const step = shell.gridStepPx ?? {};
-      const close = (a, b) => Math.abs((a ?? 1e9) - b) <= 0.25;
+      const close = (a, b, axis) =>
+        perspective
+          ? Math.abs((a ?? 1e9) - b) <= 0.08 * Math.hypot(...axis)
+          : Math.abs((a ?? 1e9) - b) <= 0.25;
       check(
-        close(step.x?.[0], expected.x[0]) && close(step.x?.[1], expected.x[1]) &&
-          close(step.y?.[0], expected.y[0]) && close(step.y?.[1], expected.y[1]),
+        close(step.x?.[0], expected.x[0], expected.x) && close(step.x?.[1], expected.x[1], expected.x) &&
+          close(step.y?.[0], expected.y[0], expected.y) && close(step.y?.[1], expected.y[1], expected.y),
         `${id} gridStepPx follows from faceQuad ` +
           `(x ${step.x?.join(',')}, y ${step.y?.join(',')})`,
       );
@@ -657,13 +695,14 @@ function checkShellsManifest(spec) {
       const step = shell.stackStepPx;
       check(shell.stackCount === 2, `${id} declares a 2-tile stack (${shell.stackCount})`);
       check(
-        Array.isArray(step) && step.length === 2 && Math.abs(step[0]) <= 1.5 && step[1] < 0,
-        `${id} stackStepPx points straight up (${JSON.stringify(step)})`,
+        Array.isArray(step) && step.length === 2 &&
+          Math.abs(step[0]) <= (perspective ? 12 : 1.5) && step[1] < 0,
+        `${id} stackStepPx points up (${JSON.stringify(step)})`,
       );
       const ppu1x = (shell.camera.pixelsPerUnit2x ?? 0) / manifest.pixelRatio;
       const rise = spec.tile.thickness * Math.cos((shell.camera.elevationDeg * Math.PI) / 180) * ppu1x;
       check(
-        Math.abs((step?.[1] ?? 0) + rise) <= 1.5,
+        Math.abs((step?.[1] ?? 0) + rise) <= (perspective ? 2.5 : 1.5),
         `${id} stackStepPx is the projected thickness ` +
           `(${step?.[1]} vs ${(-rise).toFixed(2)} px)`,
       );
@@ -926,6 +965,7 @@ function checkCandidateRecord(context) {
   );
 
   const quad = record.faceQuad;
+  const perspective = record.camera?.projection === 'perspective';
   check(Array.isArray(quad) && quad.length === 4, `${label} faceQuad has four corners`);
   if (Array.isArray(quad) && quad.length === 4) {
     const inside = quad.every(
@@ -951,13 +991,29 @@ function checkCandidateRecord(context) {
       area += x0 * y1 - x1 * y0;
     }
     check(Math.abs(area) / 2 > 400, `${label} faceQuad has a real area (${(Math.abs(area) / 2).toFixed(1)} px²)`);
-    const first = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2];
-    const second = [(quad[1][0] + quad[3][0]) / 2, (quad[1][1] + quad[3][1]) / 2];
-    const diagonalError = Math.hypot(first[0] - second[0], first[1] - second[1]);
-    check(
-      diagonalError <= 1,
-      `${label} faceQuad is a projected rectangle (diagonal midpoint error ${diagonalError.toFixed(2)} px)`,
-    );
+    if (perspective) {
+      const longEdgeDy = Math.abs(quad[0][1] - quad[3][1]) + Math.abs(quad[1][1] - quad[2][1]);
+      check(
+        longEdgeDy <= 2,
+        `${label} perspective long edges stay parallel to the table edge (|dy| ${longEdgeDy.toFixed(2)} px)`,
+      );
+      const edgeLength = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+      const leftLength = edgeLength(quad[0], quad[3]);
+      const rightLength = edgeLength(quad[1], quad[2]);
+      const leftY = (quad[0][1] + quad[3][1]) / 2;
+      const rightY = (quad[1][1] + quad[2][1]) / 2;
+      const near = leftY > rightY ? leftLength : rightLength;
+      const far = leftY > rightY ? rightLength : leftLength;
+      check(near > far + 0.5, `${label} perspective keystone near edge is longer (${near.toFixed(1)} > ${far.toFixed(1)})`);
+    } else {
+      const first = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2];
+      const second = [(quad[1][0] + quad[3][0]) / 2, (quad[1][1] + quad[3][1]) / 2];
+      const diagonalError = Math.hypot(first[0] - second[0], first[1] - second[1]);
+      check(
+        diagonalError <= 1,
+        `${label} faceQuad is a projected rectangle (diagonal midpoint error ${diagonalError.toFixed(2)} px)`,
+      );
+    }
     // A low camera foreshortens the face: a candidate can legitimately be
     // wider than tall on screen, so this is a plausibility bound, not the
     // near-top-down 0.5-1.1 shape check the committed bake uses.
@@ -979,9 +1035,18 @@ function checkCandidateRecord(context) {
     const insetPx = spec.tile.faceInset;
     const scaleX = spec.tile.width / (spec.tile.width - 2 * insetPx);
     const scaleY = spec.tile.height / (spec.tile.height - 2 * insetPx);
+    const average = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const widthAxis = average(
+      [quad[1][0] - quad[0][0], quad[1][1] - quad[0][1]],
+      [quad[2][0] - quad[3][0], quad[2][1] - quad[3][1]],
+    );
+    const heightAxis = average(
+      [quad[0][0] - quad[3][0], quad[0][1] - quad[3][1]],
+      [quad[1][0] - quad[2][0], quad[1][1] - quad[2][1]],
+    );
     const expected = {
-      x: [(quad[1][0] - quad[0][0]) * scaleX, (quad[1][1] - quad[0][1]) * scaleX],
-      y: [(quad[0][0] - quad[3][0]) * scaleY, (quad[0][1] - quad[3][1]) * scaleY],
+      x: [widthAxis[0] * scaleX, widthAxis[1] * scaleX],
+      y: [heightAxis[0] * scaleY, heightAxis[1] * scaleY],
     };
     const orient = (axis) => {
       const vertical = Math.abs(axis[1]) >= Math.abs(axis[0]);
@@ -991,12 +1056,15 @@ function checkCandidateRecord(context) {
     expected.x = orient(expected.x);
     expected.y = orient(expected.y);
     const step = record.gridStepPx ?? {};
-    const close = (a, b) => Math.abs((a ?? 1e9) - b) <= 0.25;
+    const close = (a, b, axis) =>
+      perspective
+        ? Math.abs((a ?? 1e9) - b) <= 0.08 * Math.hypot(...axis)
+        : Math.abs((a ?? 1e9) - b) <= 0.25;
     check(
-      close(step.x?.[0], expected.x[0]) &&
-        close(step.x?.[1], expected.x[1]) &&
-        close(step.y?.[0], expected.y[0]) &&
-        close(step.y?.[1], expected.y[1]),
+      close(step.x?.[0], expected.x[0], expected.x) &&
+        close(step.x?.[1], expected.x[1], expected.x) &&
+        close(step.y?.[0], expected.y[0], expected.y) &&
+        close(step.y?.[1], expected.y[1], expected.y),
       `${label} gridStepPx follows from faceQuad (x ${step.x?.join(',')}, y ${step.y?.join(',')})`,
     );
   }
@@ -1004,7 +1072,8 @@ function checkCandidateRecord(context) {
   if (WALL.has(baseId)) {
     const step = record.stackStepPx;
     check(
-      record.stackCount === 2 && Array.isArray(step) && step[1] < 0 && Math.abs(step[0]) <= 1.5,
+      record.stackCount === 2 && Array.isArray(step) && step[1] < 0 &&
+        Math.abs(step[0]) <= (perspective ? 12 : 1.5),
       `${label} publishes an upward 2-tile stackStepPx (${JSON.stringify(step)})`,
     );
   } else {

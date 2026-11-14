@@ -35,7 +35,7 @@ starting point for Phase 1, with **no table model**:
 
 ```bash
 bash tools/render/bake-shells.sh --bake    # bake 1x + 2x, validate, build review sheets
-bash tools/render/bake-shells.sh --audition # wall-lean calibration + sheets under build/review
+bash tools/render/bake-shells.sh --audition # side-wall perspective calibration + sheets
 bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
@@ -50,7 +50,7 @@ dependency-free integrity check and regenerates the review sheets under
 `tools/render/build/review/`. `--bake --verify-determinism` additionally renders
 every shell a second time and compares the decoded RGBA.
 
-`--audition` is the wall-lean calibration path. It renders every candidate in
+`--audition` is the side-wall perspective calibration path. It renders every candidate in
 `shell-spec.json`'s `audition` block into `build/review/candidates/{1x,2x}/`,
 writes the candidate manifest `build/review/shell-candidates.json`, writes one
 labelled sheet per auditioned shell
@@ -203,17 +203,16 @@ Nine shells are baked, measured and committed at the Phase 1b base (the Phase 1
 | `shell_flat_sideways` | low-angle top-down | rotZ 90° | az 0 / el 45 | 106 × 95 | 124 × 113 / 248 × 226 | (0, 55.15) / (104, 0) | — |
 | `shell_wall_horizontal` | low-angle top-down | rotX 180° | az 0 / el 45 | 72 × 102 | 90 × 120 / 180 × 240 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
 | `shell_wall_horizontal_faceup` | low-angle top-down | — | az 0 / el 45 | 72 × 102 | 90 × 120 / 180 × 240 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
-| `shell_wall_side_left` | fixed oblique | rotX 180°, rotZ 80° | az 0 / el 45 | 104 × 96 | 122 × 114 / 244 × 228 | (−12.15, 48.71) / (91.85, 11.45) | (0, −38.86) |
-| `shell_wall_side_left_faceup` | fixed oblique | rotZ 80° | az 0 / el 45 | 104 × 96 | 122 × 114 / 244 × 228 | (−12.15, 48.71) / (91.85, 11.45) | (0, −38.86) |
-| `shell_wall_side_right` | fixed oblique | rotX 180°, rotZ −80° | az 0 / el 45 | 104 × 96 | 122 × 114 / 244 × 228 | (12.15, 48.71) / (91.85, −11.45) | (0, −38.86) |
-| `shell_wall_side_right_faceup` | fixed oblique | rotZ −80° | az 0 / el 45 | 104 × 96 | 122 × 114 / 244 × 228 | (12.15, 48.71) / (91.85, −11.45) | (0, −38.86) |
+| `shell_wall_side_left` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
+| `shell_wall_side_left_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
+| `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
+| `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
-All nine PNGs together are **345,508 B** (88,303 @1x + 257,205 @2x; budget
-2,097,152 B); the largest single shell is 45,192 B (@1x + @2x, ceiling
-262,144 B).
-`shells.json` is 29,965 B (budget 65,536 B). The standing hand lands on the
-asked-for 88 × 120 / 176 × 240 texture; the body long axis is 102 px (the 104 px
-target minus the anti-aliased crop).
+All nine PNGs together are **332,068 B** (84,465 @1x + 247,603 @2x; budget
+2,097,152 B); the largest single shell is 43,721 B (@1x + @2x, ceiling
+262,144 B). `shells.json` is 31,151 B (budget 65,536 B). The standing hand lands
+on the asked-for 88 × 120 / 176 × 240 texture; the body long axis is 102 px (the
+104 px target minus the anti-aliased crop).
 
 **Why the projections are what they are.**
 
@@ -228,14 +227,20 @@ target minus the anti-aliased crop).
 - The ponds and top/bottom walls are at 45°: the face is foreshortened and the
   near thickness face is clearly visible. This was the "all shells are too
   top-down" fix.
-- The side walls are the only oblique shells: face down, long edge across the
-  view, the column leaning inward at the far end (committed 10°). The lean is a
-  pose yaw (`rotZ ±80°`), not a roll: it shows as the horizontal component of
-  the column's `gridStepPx.x`. The left and right are true mirrors.
-- **The geometric trade-off is open.** Leaning the far end inward exposes the
-  *inner* end face; the *outer* end (the edge the player sitting on that side
-  would see) needs the wall to lean outward. The committed bake uses IN 10; the
-  audition keeps IN/OUT at 6° and 14° for the user's pick.
+- The side walls are the only non-orthographic shells. The tile is **square to
+  the table**, not yawed: the camera sits 2 units inside the wall at distance 10
+  with no yaw and no roll, looking along the wall's inward normal at el 45. That
+  keeps the long edges parallel to the table edge (horizontal to 0.01 px) while
+  the lateral offset reveals the near end face. Measured: near long edge
+  84.0 px, far 81.3 px (3.3% keystone), and the far edge is 7.5 px toward the
+  centre. The left and right are true mirrors (camera offset ±2).
+- **One perspective is reused down the column**, even though the projection
+  would physically change with depth; that is the Tenhou approach. The camera
+  framing (lens and lens shift) is solved to hit the 104 px target and centre
+  the tile. The off-axis camera makes the projected thickness drift 5.6 px
+  sideways, so `stackStepPx` is `(∓5.64, −39.87)`, not straight up.
+- **The open pick is the offset amount**, not a tile angle: 1, 3 and 4 units are
+  auditioned against the committed 2.
 - **A wall is two tiles.** `stackStepPx` is the projected thickness (straight up,
   −38.6 px at 45°), not the face grid step; the layout draws the lower tier
   first, then the upper tier at `+stackStepPx`. `gridStepPx` steps between
@@ -274,7 +279,7 @@ real record (values from the committed bake):
       "gridStepPx": { "x": [69.4, 0], "y": [0, 65.44] },
       "projection": "low-angle-top-down",
       "pose": { "rotateXDeg": 0, "rotateYDeg": 0, "rotateZDeg": 0 },
-      "camera": { "azimuthDeg": 0, "elevationDeg": 45, "orthoScale": 1.642469, "pixelsPerUnit2x": 185.087201, "resolution1x": [118, 152], "resolution2x": [236, 304] },
+      "camera": { "azimuthDeg": 0, "elevationDeg": 45, "projection": "orthographic", "orthoScale": 1.642469, "pixelsPerUnit2x": 185.087201, "resolution1x": [118, 152], "resolution2x": [236, 304] },
       "measured": {
         "alphaExtent1x": { "left": 1, "top": 1, "right": 11, "bottom": 11 },
         "alphaPeak1x": { "left": 0.2, "top": 0.2, "right": 0.1216, "bottom": 0.1216 },
@@ -331,6 +336,13 @@ Fields the runtime and the checker rely on:
 - `sha256.decodedRgba1x/2x` — the sha256 of the *decoded* RGBA buffer, not the
   PNG container bytes. Re-baking the same spec must reproduce them; a
   hand-edited PNG fails the check.
+- `camera.projection` — `"orthographic"` for the seven grid shells, or
+  `"perspective"` for the four side-wall shells. A perspective record also
+  carries `lensMm`, `shiftX`, `shiftY`, `lateralOffsetUnits` and
+  `distanceUnits`; an orthographic one carries `orthoScale`. The tile is never
+  yawed for the perspective shells: the camera sits inside the wall, so the
+  projected face is a trapezoid whose long edges stay horizontal and whose near
+  edge is longer.
 - `rig` — Blender version, engine/device/samples/seed, colour management, the
   key's screen-space direction, the shadow/AO contract, the 2-tile stack, the
   target long-axis size, and each shell's framing. It is the audit trail for a
@@ -374,22 +386,26 @@ and keeps the brightness assertion for the flat faces (`223, 220, 216`). If the
 hand should be as bright as the pond, the lever is `lighting.key` (or two
 lighting variants), not a per-shell hack.
 
-## Review history and the wall-lean calibration
+## Review history and the side-wall perspective calibration
 
-The Phase 1b review did two things. It doubled the base scale — the Phase 1
-`@2x` output is the new `@1x` base, `bake.targetLongAxisPx1x` is **104** (was
-52) and the new `@2x` is **208**, so the board coordinate space doubles and every
-consumer reads the new `shells.json`. And it picked the cameras: the hand at
-28°, the upright pond and the top/bottom wall at 45°, the sideways shell at 45°,
-and the side walls at 45° with an inward lean. The pick also added the 2-tile
-stack, the face-up dora shells and the diffuse contact shadow; all of that is in
-the committed bake above and in §10 of the architecture doc.
+The Phase 1b review doubled the base scale — the Phase 1 `@2x` output is the new
+`@1x` base, `bake.targetLongAxisPx1x` is **104** (was 52) and the new `@2x` is
+**208**, so the board coordinate space doubles and every consumer reads the new
+`shells.json`. It also picked the cameras: the hand at 28°, the upright pond and
+the top/bottom wall at 45°, the sideways shell at 45°, and the side walls at 45°
+with the camera slightly inside the wall. The pick added the 2-tile stack, the
+face-up dora shells and the diffuse contact shadow; all of that is in the
+committed bake above and in §10 of the architecture doc.
 
-The one visual still open is the **side-wall lean and visible edge**. A rigid
-projection cannot both lean the far end inward and show the outer end face: the
-leaning side is the end that becomes visible. The committed shell leans IN 10°
-and therefore shows the inner end. `--audition` renders the calibration at the
-current base:
+The one visual still open is how far inside the wall the **side-wall camera**
+sits. The tile is never rotated: it stays parallel to the table edge. The
+camera is placed laterally inside the wall and looks along the wall's normal,
+so a perspective camera keeps the long edges horizontal while the offset reveals
+the near end face and pulls the far edge toward the centre. The committed offset
+is 2 units at distance 10 (11.3°); measured on the committed shell the near long
+edge is 84.0 px against the far 81.3 px, and the far edge sits 7.5 px toward the
+centre. `--audition` renders offsets **1, 3 and 4 units** with the committed 2
+as the `REF` column:
 
 ```bash
 bash tools/render/bake-shells.sh --audition                    # + sheets + validation
@@ -397,31 +413,33 @@ bash tools/render/bake-shells.sh --audition --verify-determinism  # + re-render
 bash tools/render/bake-shells.sh --check-audition              # no Blender
 ```
 
-Four candidates per side wall at el 45: **IN 6°**, **IN 14°**, **OUT 6°**,
-**OUT 14°**, with the committed **IN 10°** as the `REF` column. Each candidate
-is composed as a 2-high stack (bottom tier, then the top tier at its published
-`stackStepPx`), so the sheet shows the actual wall read, not a single tile. The
-output is gitignored:
+Each candidate is posed exactly like the committed shell and composed as a
+2-high stack (bottom tier, then the top tier at its published `stackStepPx`), so
+the sheet shows the actual wall read and the amount of near end face. One
+perspective is reused down the column, as Tenhou does; the projection is
+deliberately not recomputed with depth. The output is gitignored:
 
 | Path | Contents |
 | --- | --- |
 | `build/review/candidates/{1x,2x}/` | candidate textures |
 | `build/review/shell-candidates.json` | candidate records (same shape as `shells.json`, plus `candidate`) |
-| `build/review/shell-candidates-shell_wall_side_left.png` | 4 candidates + REF, left wall |
-| `build/review/shell-candidates-shell_wall_side_right.png` | 4 candidates + REF, right wall |
+| `build/review/shell-candidates-shell_wall_side_left.png` | 3 offsets + REF, left wall |
+| `build/review/shell-candidates-shell_wall_side_right.png` | 3 offsets + REF, right wall |
 
 `check-shells.mjs --audition` keeps the committed checks and adds the candidate
-ones (both scales, the base long axis, the shadow/AO contract, `faceQuad` and
-`gridStepPx`, `stackStepPx`, hashes) plus the sheets' printed-text and
-composited-tile pixel checks; the full run reports **858 checks**. The committed
-bake alone reports **485**.
+ones (both scales, the base long axis, the shadow/AO contract, the perspective
+trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
+printed-text and composited-tile pixel checks; the full run reports **790
+checks**. The committed bake alone reports **489**.
 
 ## The Blender shell rules
 
 The shell scene follows the architecture, not the retired pipeline:
 
-- **Orthographic cameras only**, so parallel edges stay parallel. The side walls
-  use a fixed cabinet lean (tile rolled ±35° about its own long axis).
+- **Orthographic cameras for the grid shells**, so parallel edges stay parallel.
+  The side walls are the one exception: an off-axis **perspective** camera with
+  no yaw and no roll, laterally offset inside the wall, so the tile stays square
+  to the table while the near end face shows (§10.4).
 - **One locked key at top-left-front plus a weak ambient fill.** The key's
   authored azimuth/elevation (315° / 55°) is decomposed once in a
   front-elevation camera's basis; every shell then re-expresses the same
@@ -467,14 +485,16 @@ PASS shell_wall_horizontal face is blue resin (3,68,165)
 PASS shell_wall_horizontal declares a 2-tile stack (2)
 PASS shell_wall_horizontal stackStepPx is the projected thickness (-38.56 vs -38.56 px)
 INFO shell_flat_upright margin mass L19.20 T13.40 R49.03 B41.04
+PASS shell_wall_side_left perspective long edges stay parallel to the table edge (|dy| 0.00 px)
+PASS shell_wall_side_left perspective keystone has the near edge longer (84.0 > 81.3 px)
 PASS shell_flat_upright decoded-RGBA sha256 matches the committed PNGs
-INFO shell textures total 345508 B across 9 shells and 2 scales
-OK 485 checks passed
+INFO shell textures total 332068 B across 9 shells and 2 scales
+OK 489 checks passed
 ```
 
-`--audition` additionally validates the wall-lean calibration and its sheets; on
-the current output it reports `OK 858 checks passed` (373 of them candidate and
-sheet checks). The committed-only run stays at 485.
+`--audition` additionally validates the perspective calibration and its sheets;
+on the current output it reports `OK 790 checks passed` (301 of them candidate
+and sheet checks). The committed-only run stays at 489.
 
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
@@ -517,8 +537,8 @@ previous tile's shadow lands on it, and the isolated tile's shadow reads 61.1
 against bare felt 66.8. The diffuse band is deliberately subtle in these
 numbers; the strength is a visual call for the user.
 
-To review the open side-wall lean, run `--audition` (above) and open the two
-sheets:
+To review the open side-wall camera offset, run `--audition` (above) and open
+the two sheets:
 
 ```bash
 xdg-open tools/render/build/review/shell-candidates-shell_wall_side_left.png
@@ -526,8 +546,8 @@ xdg-open tools/render/build/review/shell-candidates-shell_wall_side_right.png
 ```
 
 Each sheet has a header with the shell id, the base size and the question it
-asks, then one column per candidate (IN 6°, IN 14°, OUT 6°, OUT 14°) plus a
-`REF COMMITTED` column with the committed IN 10° shell. Every column is a 2-high
+asks, then one column per candidate (offsets 1, 3 and 4 units) plus a
+`REF COMMITTED` column with the committed 2-unit shell. Every column is a 2-high
 stack built from that candidate's own `gridStepPx` and `stackStepPx`, and the
 labels print the camera, texture, body, projected face, stack rise and byte
 numbers. The sheet is a review artefact: it is not the layout engine.
@@ -535,9 +555,9 @@ numbers. The sheet is a review artefact: it is not the layout engine.
 State the numbers the check already verified, then ask the user the questions
 only they can answer: is the diffuse shadow the right strength and softness;
 does the 2-tile stack read as a wall; does the dora face-up top tile sit
-correctly on its stack; is the inward lean the right read, or should the wall
-lean outward so the outer end face shows; is the standing hand's dimmer face
-acceptable next to the pond? Compare decoded pixels, not PNG container bytes:
+correctly on its stack; does the 2-unit camera offset show the right amount of
+near end face (or 1/3/4 units); is the standing hand's dimmer face acceptable
+next to the pond? Compare decoded pixels, not PNG container bytes:
 zlib can change the container while the image is identical.
 
 ## Legacy

@@ -62,7 +62,7 @@
     },
     "stack": {
       "count": 2,
-      "note": "A wall column is a stack of two tiles. The bottom tier is a face-down wall shell; the top tier is the same face-down shell offset by the published stackStepPx, or the face-up dora shell for a revealed dora indicator. The stack step is the projected thickness (straight up on screen), not the face grid step."
+      "note": "A wall column is a stack of two tiles built from the same single shell perspective (Tenhou-style: the perspective does not change down the column even though it physically would). The bottom tier is a face-down wall shell; the top tier is the same shell offset by the published stackStepPx, or the face-up dora shell for a revealed indicator. The stack step is the projected thickness (straight up), not the face grid step."
     }
   },
   "lighting": {
@@ -244,16 +244,21 @@
       "id": "shell_wall_side_left",
       "projection": "fixed-oblique",
       "faceRotationDeg": 0,
-      "role": "face-down left side-wall tile, long edge across the view and the column leaning inward at the far end",
+      "role": "face-down left side-wall tile; square to the table, camera offset 2 units inside the wall reveals the near (inner) end face",
       "pose": {
         "rotateXDeg": 180,
         "rotateYDeg": 0,
-        "rotateZDeg": 80
+        "rotateZDeg": 90
       },
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
-        "faceLocalZ": "bottom"
+        "faceLocalZ": "bottom",
+        "projection": "perspective",
+        "perspective": {
+          "lateralOffsetUnits": 2.0,
+          "distanceUnits": 10.0
+        }
       },
       "expectProjection": "landscape"
     },
@@ -261,16 +266,21 @@
       "id": "shell_wall_side_left_faceup",
       "projection": "fixed-oblique",
       "faceRotationDeg": 0,
-      "role": "face-up dora-indicator tile on top of a left side-wall stack",
+      "role": "face-up dora-indicator tile on top of a left side-wall stack; same perspective as the left wall",
       "pose": {
         "rotateXDeg": 0,
         "rotateYDeg": 0,
-        "rotateZDeg": 80
+        "rotateZDeg": 90
       },
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
-        "faceLocalZ": "top"
+        "faceLocalZ": "top",
+        "projection": "perspective",
+        "perspective": {
+          "lateralOffsetUnits": 2.0,
+          "distanceUnits": 10.0
+        }
       },
       "expectProjection": "landscape"
     },
@@ -278,16 +288,21 @@
       "id": "shell_wall_side_right",
       "projection": "fixed-oblique",
       "faceRotationDeg": 0,
-      "role": "face-down right side-wall tile, the mirror of the left with the column leaning inward",
+      "role": "face-down right side-wall tile; square to the table, camera offset 2 units inside the wall reveals the near (inner) end face",
       "pose": {
         "rotateXDeg": 180,
         "rotateYDeg": 0,
-        "rotateZDeg": -80
+        "rotateZDeg": 90
       },
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
-        "faceLocalZ": "bottom"
+        "faceLocalZ": "bottom",
+        "projection": "perspective",
+        "perspective": {
+          "lateralOffsetUnits": -2.0,
+          "distanceUnits": 10.0
+        }
       },
       "expectProjection": "landscape"
     },
@@ -295,161 +310,164 @@
       "id": "shell_wall_side_right_faceup",
       "projection": "fixed-oblique",
       "faceRotationDeg": 0,
-      "role": "face-up dora-indicator tile on top of a right side-wall stack",
+      "role": "face-up dora-indicator tile on top of a right side-wall stack; same perspective as the right wall",
       "pose": {
         "rotateXDeg": 0,
         "rotateYDeg": 0,
-        "rotateZDeg": -80
+        "rotateZDeg": 90
       },
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
-        "faceLocalZ": "top"
+        "faceLocalZ": "top",
+        "projection": "perspective",
+        "perspective": {
+          "lateralOffsetUnits": -2.0,
+          "distanceUnits": 10.0
+        }
       },
       "expectProjection": "landscape"
     }
   ],
   "audition": {
-    "status": "Proposals only: Phase 1c wall-lean calibration. Every candidate is a real render at the current base scale, written under build/ (gitignored). The committed side-wall shells use the IN 10 lean until the user picks a direction and amount.",
+    "status": "Proposals only: side-wall perspective calibration. The tile is never rotated; the camera sits inside the wall and the lateral offset sets how much of the near end face shows and how strong the keystone is. Written under build/ (gitignored); the committed shells use a 2.0-unit offset.",
     "outputDir": "build/review/candidates",
     "sheetDir": "build/review",
     "manifest": "build/review/shell-candidates.json",
-    "deliverable": "Four lean variants per side wall at el 45, composed as 2-high wall stacks at the new base, with camera, pose and measured numbers printed, so the lean direction and amount can be picked against the committed IN 10 reference.",
-    "references": "Each sheet shows the committed IN 10 shell as a REF column, composed at its own numbers. The candidate columns use a two-tier stack built from the candidate's published stackStepPx.",
+    "deliverable": "Three camera offsets per side wall at el 45, posed exactly like the committed shell, composed as 2-high stacks from that one perspective, with the camera and measured numbers printed, so the amount of visible end face can be picked against the 2.0-unit reference.",
+    "references": "Each sheet shows the committed 2.0-unit shell as a REF column. A wall stack reuses the one shell perspective for both tiers, as Tenhou does; the projection would in reality change with depth and is deliberately not recomputed.",
     "shells": {
       "shell_wall_side_left": {
-        "question": "Left wall: leaning the far end inward (IN) turns the inner end toward the player; the outer end the left player sees only shows when the wall leans outward (OUT). Which edge should the sprite show, and how much? The committed shell is IN 10.",
+        "question": "Left wall: how far inside the wall should the camera sit? The tile is square to the table; a larger offset shows more of the near (inner) end face and a stronger keystone. The committed shell is 2.0 units.",
         "candidates": [
           {
             "candidateId": "A",
-            "label": "IN 6",
-            "note": "far end inward, gentle; the inner end sliver is visible",
+            "label": "OFF 1",
+            "note": "camera 1 units inside the wall, distance 10; the tile is not rotated",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": 84
+              "rotateZDeg": 90
             },
             "camera": {
               "azimuthDeg": 0,
               "elevationDeg": 45,
-              "faceLocalZ": "bottom"
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": 1.0,
+                "distanceUnits": 10.0
+              }
             },
             "expectProjection": "landscape"
           },
           {
             "candidateId": "B",
-            "label": "IN 14",
-            "note": "far end inward, stronger; more inner end visible",
+            "label": "OFF 3",
+            "note": "camera 3 units inside the wall, distance 10; the tile is not rotated",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": 76
+              "rotateZDeg": 90
             },
             "camera": {
               "azimuthDeg": 0,
               "elevationDeg": 45,
-              "faceLocalZ": "bottom"
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": 3.0,
+                "distanceUnits": 10.0
+              }
             },
             "expectProjection": "landscape"
           },
           {
             "candidateId": "C",
-            "label": "OUT 6",
-            "note": "far end outward, gentle; the outer (left) end sliver is visible",
+            "label": "OFF 4",
+            "note": "camera 4 units inside the wall, distance 10; the tile is not rotated",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": 96
+              "rotateZDeg": 90
             },
             "camera": {
               "azimuthDeg": 0,
               "elevationDeg": 45,
-              "faceLocalZ": "bottom"
-            },
-            "expectProjection": "landscape"
-          },
-          {
-            "candidateId": "D",
-            "label": "OUT 14",
-            "note": "far end outward, stronger; more outer (left) end visible",
-            "pose": {
-              "rotateXDeg": 180,
-              "rotateYDeg": 0,
-              "rotateZDeg": 104
-            },
-            "camera": {
-              "azimuthDeg": 0,
-              "elevationDeg": 45,
-              "faceLocalZ": "bottom"
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": 4.0,
+                "distanceUnits": 10.0
+              }
             },
             "expectProjection": "landscape"
           }
         ]
       },
       "shell_wall_side_right": {
-        "question": "Right wall: the mirror. IN leans the far end inward and shows the inner end; OUT shows the outer (right) end. The committed shell is IN 10.",
+        "question": "Right wall: the mirror. The camera sits inside the wall at a negative offset, so the near end face is the left end. The committed shell is -2.0 units.",
         "candidates": [
           {
             "candidateId": "A",
-            "label": "IN 6",
-            "note": "far end inward, gentle; the inner end sliver is visible",
+            "label": "OFF 1",
+            "note": "camera 1 units inside the wall, distance 10; the tile is not rotated",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": -84
+              "rotateZDeg": 90
             },
             "camera": {
               "azimuthDeg": 0,
               "elevationDeg": 45,
-              "faceLocalZ": "bottom"
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": -1.0,
+                "distanceUnits": 10.0
+              }
             },
             "expectProjection": "landscape"
           },
           {
             "candidateId": "B",
-            "label": "IN 14",
-            "note": "far end inward, stronger; more inner end visible",
+            "label": "OFF 3",
+            "note": "camera 3 units inside the wall, distance 10; the tile is not rotated",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": -76
+              "rotateZDeg": 90
             },
             "camera": {
               "azimuthDeg": 0,
               "elevationDeg": 45,
-              "faceLocalZ": "bottom"
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": -3.0,
+                "distanceUnits": 10.0
+              }
             },
             "expectProjection": "landscape"
           },
           {
             "candidateId": "C",
-            "label": "OUT 6",
-            "note": "far end outward, gentle; the outer (right) end sliver is visible",
+            "label": "OFF 4",
+            "note": "camera 4 units inside the wall, distance 10; the tile is not rotated",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": -96
+              "rotateZDeg": 90
             },
             "camera": {
               "azimuthDeg": 0,
               "elevationDeg": 45,
-              "faceLocalZ": "bottom"
-            },
-            "expectProjection": "landscape"
-          },
-          {
-            "candidateId": "D",
-            "label": "OUT 14",
-            "note": "far end outward, stronger; more outer (right) end visible",
-            "pose": {
-              "rotateXDeg": 180,
-              "rotateYDeg": 0,
-              "rotateZDeg": -104
-            },
-            "camera": {
-              "azimuthDeg": 0,
-              "elevationDeg": 45,
-              "faceLocalZ": "bottom"
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": -4.0,
+                "distanceUnits": 10.0
+              }
             },
             "expectProjection": "landscape"
           }

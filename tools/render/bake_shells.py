@@ -15,8 +15,9 @@ The baker owns:
 * one area key locked to **screen-space** top-left-front plus a weak world fill,
   re-expressed in each shell camera's basis so every projection gets its
   highlights top/left and its shadow bottom/right;
-* one orthographic camera per shell (front elevation, near-top-down, fixed
-  oblique cabinet for the side walls);
+* one camera per shell: orthographic for the grid shells and an off-axis
+  perspective for the side walls (no yaw/roll; the lateral offset reveals the
+  near end face);
 * a Cycles shadow-catcher pass under the mesh whose alpha is clamped to the
   declared 3-4 px right/bottom margin and normalised to the spec's shadow
   strength, plus a 1-2 px top/left ambient-occlusion fringe;
@@ -523,6 +524,163 @@ def project_pixels(scene: bpy.types.Scene, camera: bpy.types.Object, points: lis
     return result
 
 
+def projected_bbox(scene: bpy.types.Scene, camera: bpy.types.Object, tile: bpy.types.Object) -> tuple[float, float, float, float]:
+    points = project_pixels(scene, camera, tile_world_corners(tile))
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def tile_axes_px(
+    scene: bpy.types.Scene,
+    camera: bpy.types.Object,
+    tile: bpy.types.Object,
+    shell: dict,
+    spec: dict,
+) -> tuple[list[float], list[float]]:
+    """Projected full-tile width/height axes through the face centre.
+
+    For an orthographic camera this equals the old inset-face derivation grown
+    back to the full tile. For the perspective side walls the two long edges have
+    different lengths, so the *centre line* is the representative layout step.
+    """
+    tile_spec = spec["tile"]
+    z = tile_spec["thickness"] if shell["camera"]["faceLocalZ"] == "top" else 0.0
+    matrix = tile.matrix_world
+    centre = matrix @ Vector((0.0, 0.0, z))
+    width_world = matrix.to_3x3() @ Vector((tile_spec["width"], 0.0, 0.0))
+    height_world = matrix.to_3x3() @ Vector((0.0, tile_spec["height"], 0.0))
+    p0, px, py = project_pixels(scene, camera, [centre, centre + width_world, centre + height_world])
+    return (
+        [px[0] - p0[0], px[1] - p0[1]],
+        [py[0] - p0[0], py[1] - p0[1]],
+    )
+
+
+def build_perspective_camera(
+    scene: bpy.types.Scene,
+    tile: bpy.types.Object,
+    shell: dict,
+    spec: dict,
+) -> tuple[bpy.types.Object, dict]:
+    """An off-axis perspective camera for a wall shell.
+
+    The camera has no yaw and no roll: it sits ``lateralOffsetUnits`` to the side
+    of the tile and looks along the wall's inward normal, pitched down by the
+    shell elevation. That keeps the tile's long edges parallel to the table edge
+    on screen (a perspective camera looking along the normal preserves lines of
+    constant depth) while the lateral offset reveals the near end face. The lens
+    and the lens shift are solved so the projected body long axis is the spec's
+    target and the tile is centred in the frame.
+    """
+    camera_values = shell["camera"]
+    perspective = camera_values["perspective"]
+    elevation = math.radians(camera_values["elevationDeg"])
+    lateral = float(perspective["lateralOffsetUnits"])
+    distance = float(perspective["distanceUnits"])
+
+    data = bpy.data.cameras.new(f"camera-{shell['id']}")
+    data.type = "PERSP"
+    data.sensor_fit = "HORIZONTAL"
+    data.sensor_width = 36.0
+    data.lens = 50.0
+    data.shift_x = 0.0
+    data.shift_y = 0.0
+    camera = new_object(f"camera-{shell['id']}", data)
+    scene.camera = camera
+    camera.rotation_euler = Euler((math.radians(90.0) - elevation, 0.0, 0.0), "XYZ")
+    camera.location = Vector((lateral, -distance, distance * math.tan(elevation)))
+    bpy.context.view_layer.update()
+
+    bake = spec["bake"]
+    margin = int(bake["frameMarginPx2x"])
+    target = float(bake["targetLongAxisPx1x"]) * bake["pixelRatio"]
+
+    set_resolution(scene, 512, 512)
+    probe = projected_bbox(scene, camera, tile)
+    probe_width = probe[2] - probe[0]
+    probe_height = probe[3] - probe[1]
+    aspect = probe_width / max(1e-9, probe_height)
+    if aspect >= 1.0:
+        width_2x = int(math.ceil(target)) + 2 * margin
+        height_2x = int(math.ceil(target / aspect)) + 2 * margin
+    else:
+        height_2x = int(math.ceil(target)) + 2 * margin
+        width_2x = int(math.ceil(target * aspect)) + 2 * margin
+    width_2x += width_2x % 2
+    height_2x += height_2x % 2
+    set_resolution(scene, width_2x, height_2x)
+
+    # 1. Solve the lens so the projected long axis is the target size.
+    for _ in range(6):
+        bbox = projected_bbox(scene, camera, tile)
+        long_px = max(bbox[2] - bbox[0], bbox[3] - bbox[1])
+        if long_px <= 0:
+            die(f"{shell['id']}: the perspective camera sees no tile")
+        scale = target / long_px
+        if abs(scale - 1.0) < 0.002:
+            break
+        data.lens *= scale
+        bpy.context.view_layer.update()
+
+    # 2. Solve the lens shift so the bbox is centred (shift_x moves the image
+    #    left, shift_y moves it down; measured rather than assumed).
+    for _ in range(4):
+        bbox = projected_bbox(scene, camera, tile)
+        centre_x = (bbox[0] + bbox[2]) * 0.5 / width_2x
+        centre_y = (bbox[1] + bbox[3]) * 0.5 / height_2x
+        data.shift_x += 0.05
+        bpy.context.view_layer.update()
+        moved = projected_bbox(scene, camera, tile)
+        moved_x = (moved[0] + moved[2]) * 0.5 / width_2x
+        data.shift_x -= 0.05
+        data.shift_y += 0.05
+        bpy.context.view_layer.update()
+        moved = projected_bbox(scene, camera, tile)
+        moved_y = (moved[1] + moved[3]) * 0.5 / height_2x
+        data.shift_y -= 0.05
+        bpy.context.view_layer.update()
+        derivative_x = (moved_x - centre_x) / 0.05
+        derivative_y = (moved_y - centre_y) / 0.05
+        if abs(derivative_x) < 1e-6 or abs(derivative_y) < 1e-6:
+            die(f"{shell['id']}: could not solve the perspective lens shift")
+        data.shift_x += (0.5 - centre_x) / derivative_x
+        data.shift_y += (0.5 - centre_y) / derivative_y
+        bpy.context.view_layer.update()
+
+    # 3. Verify the framed tile: the long axis is the target and the body (plus
+    #    the shadow margin) is inside the frame.
+    bbox = projected_bbox(scene, camera, tile)
+    long_px = max(bbox[2] - bbox[0], bbox[3] - bbox[1])
+    if abs(long_px - target) > 1.5:
+        die(
+            f"{shell['id']}: perspective framing long axis {long_px:.2f} px "
+            f"is not the {target:.0f} px target"
+        )
+    if bbox[0] < 2 or bbox[1] < 2 or bbox[2] > width_2x - 2 or bbox[3] > height_2x - 2:
+        die(f"{shell['id']}: perspective framing leaves the render frame: {bbox}")
+
+    # Equivalent scale for the manifest (the tile-axis scale at the centre).
+    set_resolution(scene, width_2x // 2, height_2x // 2)
+    width_axis, height_axis = tile_axes_px(scene, camera, tile, shell, spec)
+    tile_spec = spec["tile"]
+    ppu_1x = max(
+        math.hypot(*width_axis) / tile_spec["width"],
+        math.hypot(*height_axis) / tile_spec["height"],
+    )
+    return camera, {
+        "projection": "perspective",
+        "lensMm": round(float(data.lens), 4),
+        "shiftX": round(float(data.shift_x), 6),
+        "shiftY": round(float(data.shift_y), 6),
+        "lateralOffsetUnits": lateral,
+        "distanceUnits": distance,
+        "pixelsPerUnit2x": round(ppu_1x * bake["pixelRatio"], 6),
+        "resolution2x": [width_2x, height_2x],
+        "resolution1x": [width_2x // 2, height_2x // 2],
+    }
+
+
 def build_shell_camera(
     scene: bpy.types.Scene,
     tile: bpy.types.Object,
@@ -535,6 +693,9 @@ def build_shell_camera(
     long axis measures ``targetLongAxisPx1x`` CSS px at @1x (twice that at @2x),
     which keeps apparent scale identical across projections.
     """
+    if shell["camera"].get("projection") == "perspective" and "perspective" in shell["camera"]:
+        return build_perspective_camera(scene, tile, shell, spec)
+
     camera_data = bpy.data.cameras.new(f"camera-{shell['id']}")
     camera_data.type = "ORTHO"
     camera_data.sensor_fit = "AUTO"
@@ -1030,6 +1191,8 @@ def bake_shell(
     # higher, so its body top-left is the lower tier's plus this projected
     # thickness vector (straight up on screen). It is published per shell so the
     # layout never has to re-derive it from the camera.
+    width_axis, height_axis = tile_axes_px(scene, camera, tile, shell, spec)
+
     stack_step = None
     if "wall" in shell["id"]:
         centre = world_bbox_center(tile)
@@ -1077,7 +1240,7 @@ def bake_shell(
         "faceRotationDeg": shell["faceRotationDeg"],
         "faceQuad": quad,
         "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
-        "gridStepPx": grid_steps(quad, spec),
+        "gridStepPx": grid_steps_from_axes(width_axis, height_axis),
         **(
             {
                 "stackCount": int(spec["tile"]["stack"]["count"]),
@@ -1095,7 +1258,18 @@ def bake_shell(
         "camera": {
             "azimuthDeg": shell["camera"]["azimuthDeg"],
             "elevationDeg": shell["camera"]["elevationDeg"],
-            "orthoScale": framing["orthoScale"],
+            "projection": framing.get("projection", "orthographic"),
+            **(
+                {
+                    "lensMm": framing["lensMm"],
+                    "shiftX": framing["shiftX"],
+                    "shiftY": framing["shiftY"],
+                    "lateralOffsetUnits": framing["lateralOffsetUnits"],
+                    "distanceUnits": framing["distanceUnits"],
+                }
+                if framing.get("projection") == "perspective"
+                else {"orthoScale": framing["orthoScale"]}
+            ),
             "pixelsPerUnit2x": framing["pixelsPerUnit2x"],
             "resolution1x": framing["resolution1x"],
             "resolution2x": framing["resolution2x"],
@@ -1135,22 +1309,15 @@ def bake_shell(
     return record
 
 
-def grid_steps(quad: list[list[float]], spec: dict) -> dict:
+def grid_steps_from_axes(width_axis: list[float], height_axis: list[float]) -> dict:
     """Per-tile step along the tile's own width/height axes, in @1x px.
 
     ``advanceWidth/Height`` is the sprite's opaque *box* (it includes the 1 px
     anti-aliased ledge and the baked thickness extrusion). A tight pond row or
-    wall run must step by the physical tile axis instead, so this projects the
-    full tile width/height from the inset ``faceQuad``.
+    wall run must step by the physical tile axis instead. The axes are projected
+    through the face centre, so the perspective wall shells publish the centre
+    line (the midline of the near/far edges) rather than one edge.
     """
-    tile_spec = spec["tile"]
-    inset = tile_spec["faceInset"]
-    face_width = tile_spec["width"] - 2 * inset
-    face_height = tile_spec["height"] - 2 * inset
-    width_axis = [quad[1][0] - quad[0][0], quad[1][1] - quad[0][1]]
-    height_axis = [quad[0][0] - quad[3][0], quad[0][1] - quad[3][1]]
-    width_axis = [value * tile_spec["width"] / face_width for value in width_axis]
-    height_axis = [value * tile_spec["height"] / face_height for value in height_axis]
 
     def orient(axis: list[float]) -> list[float]:
         # A screen-space layout wants one tile to the right and one tile down.
@@ -1162,8 +1329,8 @@ def grid_steps(quad: list[list[float]], spec: dict) -> dict:
             return [-axis[0], -axis[1]] if axis[1] < 0 else axis
         return [-axis[0], -axis[1]] if axis[0] < 0 else axis
 
-    width_axis = orient(width_axis)
-    height_axis = orient(height_axis)
+    width_axis = orient(list(width_axis))
+    height_axis = orient(list(height_axis))
 
     def nice(value: float) -> float:
         return 0.0 if abs(value) < 5e-9 else round(value, 2)
