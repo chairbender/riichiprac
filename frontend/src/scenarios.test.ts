@@ -49,7 +49,7 @@ function book(
 }
 
 const bookLesson = scenario('ryanmen_protorun', false, 'book_and_mortal');
-const drill = scenario('ai_best_action', true, 'mortal_only');
+const drill = scenario('ai_hotseat', true, 'mortal_only');
 
 const chapter8 = scenario(
   'push_or_fold',
@@ -89,7 +89,7 @@ function pickLast(): void {
 describe('pickRandomScenario', () => {
   it('draws a Mortal-only drill once the model is ready', () => {
     pickLast();
-    expect(pickRandomScenario([bookLesson, drill], true)).toBe('ai_best_action');
+    expect(pickRandomScenario([bookLesson, drill], true)).toBe('ai_hotseat');
   });
 
   it('draws the drill even with the agreement filter on', () => {
@@ -114,16 +114,16 @@ describe('pickRandomScenario', () => {
     const draws = rolls.map(() => pickRandomScenario([bookLesson, drill], true));
     expect(draws).toEqual([
       'ryanmen_protorun',
-      'ai_best_action',
+      'ai_hotseat',
       'ryanmen_protorun',
-      'ai_best_action',
+      'ai_hotseat',
     ]);
   });
 
   it('returns the drill when it is the only candidate', () => {
     // No retry loop looking for a book lesson: the single candidate is dealt.
     pickLast();
-    expect(pickRandomScenario([drill], true)).toBe('ai_best_action');
+    expect(pickRandomScenario([drill], true)).toBe('ai_hotseat');
   });
 
   it('falls back to the built-in lesson when every candidate needs the model', () => {
@@ -152,15 +152,15 @@ describe('selectionPool', () => {
   it('takes a selected AI drill literally, even before the model is ready', () => {
     const pool = selectionPool(
       catalogue,
-      { kind: 'selected', ids: ['ai_best_action'] },
+      { kind: 'selected', ids: ['ai_hotseat'] },
       false,
     );
-    expect(pool.map((option) => option.id)).toEqual(['ai_best_action']);
+    expect(pool.map((option) => option.id)).toEqual(['ai_hotseat']);
   });
 
   it('keeps AI drills out of the all pool until the model is ready', () => {
     const pool = selectionPool(catalogue, ALL_SCENARIOS, false);
-    expect(pool.map((option) => option.id)).not.toContain('ai_best_action');
+    expect(pool.map((option) => option.id)).not.toContain('ai_hotseat');
   });
 
   it('falls back to the catalogue when the subset matches nothing', () => {
@@ -190,18 +190,16 @@ describe('pickRandomScenarioFrom', () => {
 });
 
 describe('groupScenarios', () => {
-  it('orders groups by chapter and section, with Other last', () => {
+  it('puts Other first, then orders groups by chapter and section', () => {
     const groups = groupScenarios(catalogue);
     expect(groups.map((group) => group.key)).toEqual([
+      'ungrouped',
       'ch3.2',
       'ch8.1',
       'ch8.4',
-      'ungrouped',
     ]);
-    expect(groups[groups.length - 1].label).toBe('Other');
-    expect(groups[groups.length - 1].scenarios.map((s) => s.id)).toEqual([
-      'ai_best_action',
-    ]);
+    expect(groups[0].label).toBe('Other');
+    expect(groups[0].scenarios.map((s) => s.id)).toEqual(['ai_hotseat']);
   });
 
   it('keeps the manifest order inside a group', () => {
@@ -218,7 +216,7 @@ describe('selection helpers', () => {
   it('expands the all selection to the full catalogue', () => {
     expect(selectedScenarioIds(ALL_SCENARIOS, catalogue)).toEqual([
       'open_hand_defense',
-      'ai_best_action',
+      'ai_hotseat',
       'proturun_priority',
       'push_or_fold',
     ]);
@@ -246,7 +244,7 @@ describe('selection helpers', () => {
     const next = toggleScenario(catalogue, ALL_SCENARIOS, 'push_or_fold');
     expect(next).toEqual({
       kind: 'selected',
-      ids: ['open_hand_defense', 'ai_best_action', 'proturun_priority'],
+      ids: ['open_hand_defense', 'ai_hotseat', 'proturun_priority'],
     });
   });
 
@@ -271,7 +269,7 @@ describe('selection helpers', () => {
     );
     expect(cleared).toEqual({
       kind: 'selected',
-      ids: ['ai_best_action', 'proturun_priority', 'push_or_fold'],
+      ids: ['ai_hotseat', 'proturun_priority', 'push_or_fold'],
     });
 
     const reselected = setScenariosSelected(
@@ -319,7 +317,7 @@ describe('parseScenarioManifest', () => {
     const parsed = parseScenarioManifest(
       JSON.stringify([
         {
-          id: 'ai_best_action',
+          id: 'ai_hotseat',
           label: 'AI',
           description: 'desc',
           category: 'ai_decision',

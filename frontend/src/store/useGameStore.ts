@@ -37,8 +37,14 @@ export interface PlayerChoice {
   action: string;
   /** Clicked or claimed tile code, when the action has one. */
   tile?: string;
-  /** Index of the clicked copy in the hand dock (`[...hand, draw]`). */
+  /** Index of the clicked copy in the dock's sorted display list. */
   tileIndex?: number;
+  /**
+   * Explicit tsumogiri flag from the dock. The dock sorts the hand, so the
+   * drawn tile is not necessarily last; the click itself knows which copy it
+   * was.
+   */
+  isTsumogiri?: boolean;
   /** Additional tiles consumed by a call (chi). */
   tiles?: string[];
   /** Optional label override; normally taken from the payload. */
@@ -112,7 +118,7 @@ interface GameStore {
   /** Arm or disarm the Added Kan before choosing the fourth tile. */
   toggleKan: () => void;
   /** Submit the armed call state and clicked hand tile as one answer. */
-  selectTile: (tile: string, tileIndex?: number) => void;
+  selectTile: (tile: string, tileIndex?: number, isDraw?: boolean) => void;
   /** Submit a generic AI-scenario choice. */
   submitChoice: (choice: PlayerChoice) => void;
   /** Submit a non-discard action from the generic action bar. */
@@ -227,9 +233,9 @@ function submitsTheDraw(game: GameState, answer: SubmittedAnswer): boolean {
   const human = game.players.find((player) => player.is_human);
   if (!human?.draw) return false;
 
-  // The dock renders `[...hand, draw]`, so the draw's index is the hand length.
-  // Prefer the clicked copy when the caller provides it; a hand copy with the
-  // same code is tedashi, not tsumogiri.
+  // Fallback for callers that only know the tile code. The hand dock supplies
+  // the clicked copy's `isDraw` flag instead, because it sorts the hand and the
+  // draw is no longer always last.
   const clickedTheDraw =
     answer.tile_index !== undefined
       ? answer.tile_index === human.hand.length
@@ -497,7 +503,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         return { callKan: !state.callKan, callRiichi: false };
       }),
 
-    selectTile: (tile, tileIndex) => {
+    selectTile: (tile, tileIndex, isDraw) => {
       const state = get();
       const game = state.gameState;
       if (!game || state.dualGrade) return;
@@ -512,6 +518,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           action: info?.action ?? action,
           tile,
           tileIndex,
+          isTsumogiri: isDraw,
           tiles: info?.tiles,
           label: info?.label,
         });
@@ -537,7 +544,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (tileIndex !== undefined) {
         answer.tile_index = tileIndex;
       }
-      if (submitsTheDraw(game, answer)) {
+      if (isDraw !== undefined) {
+        answer.is_tsumogiri = isDraw;
+      } else if (submitsTheDraw(game, answer)) {
         answer.is_tsumogiri = true;
       }
       get().submitAnswer(answer);
@@ -557,7 +566,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (choice.tileIndex !== undefined) {
         answer.tile_index = choice.tileIndex;
       }
-      if (submitsTheDraw(game, answer)) {
+      if (choice.isTsumogiri !== undefined) {
+        answer.is_tsumogiri = choice.isTsumogiri;
+      } else if (submitsTheDraw(game, answer)) {
         answer.is_tsumogiri = true;
       }
       get().submitAnswer(answer);

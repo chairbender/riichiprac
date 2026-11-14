@@ -38,17 +38,17 @@ describe('createMortalClient', () => {
     const client = createMortalClient(worker);
 
     const evaluation = client.evaluate('{"players":[]}');
-    const generated = client.generateAiPuzzle('ai_best_action');
+    const generated = client.generateHotseatPuzzle('{}');
     expect(worker.messages.map((message) => message.op)).toEqual([
       'evaluate',
-      'generateAi',
+      'generateHotseat',
     ]);
 
     const [evaluateMessage, generateMessage] = worker.messages;
     worker.respond({
       id: generateMessage.id,
       ok: true,
-      value: '{"category":"ai_best_action"}',
+      value: '{"category":"ai_hotseat"}',
     });
     worker.respond({
       id: evaluateMessage.id,
@@ -56,14 +56,65 @@ describe('createMortalClient', () => {
       value: { recommended_action: 'Discard_3m' },
     });
 
-    await expect(generated).resolves.toBe('{"category":"ai_best_action"}');
+    await expect(generated).resolves.toBe('{"category":"ai_hotseat"}');
     await expect(evaluation).resolves.toEqual({
       recommended_action: 'Discard_3m',
     });
   });
 
-  it('rejects with the error the worker reported', async () => {
+  it('sends the AI Hotseat options to the worker', async () => {
     const worker = new FakeWorker();
+    const client = createMortalClient(worker);
+    const options = JSON.stringify({
+      round: 'south_3',
+      disparity: null,
+      seat: 'west',
+    });
+
+    const generated = client.generateHotseatPuzzle(options);
+    expect(worker.messages.map((message) => message.op)).toEqual([
+      'generateHotseat',
+    ]);
+    const message = worker.messages[0];
+    expect(message).toMatchObject({ op: 'generateHotseat', optionsJson: options });
+
+    worker.respond({
+      id: message.id,
+      ok: true,
+      value: '{"category":"ai_hotseat"}',
+    });
+    await expect(generated).resolves.toBe('{"category":"ai_hotseat"}');
+  });
+
+  it('routes hotseat progress without resolving the promise', async () => {
+    const worker = new FakeWorker();
+    const client = createMortalClient(worker);
+    const seen: Array<{ attempt: number; turn: number; drawn: number }> = [];
+
+    const generated = client.generateHotseatPuzzle('{}', (progress) => {
+      seen.push(progress);
+    });
+    const message = worker.messages[0];
+
+    worker.respond({
+      id: message.id,
+      progress: { attempt: 1, turn: 3, drawn: 9, wall_left: 60 },
+    });
+    worker.respond({
+      id: message.id,
+      progress: { attempt: 1, turn: 4, drawn: 13, wall_left: 56 },
+    });
+    expect(seen.map((progress) => progress.turn)).toEqual([3, 4]);
+
+    worker.respond({
+      id: message.id,
+      ok: true,
+      value: '{"category":"ai_hotseat"}',
+    });
+    await expect(generated).resolves.toBe('{"category":"ai_hotseat"}');
+  });
+
+  it('rejects with the error the worker reported', async () => {    const worker = new FakeWorker();
     const client = createMortalClient(worker);
 
     const agreement = client.generatePuzzleWithAgreement(
@@ -96,7 +147,7 @@ describe('createMortalClient', () => {
     const client = createMortalClient(worker);
 
     const first = client.evaluate('{}');
-    const second = client.generateAiPuzzle('ai_best_action');
+    const second = client.generateHotseatPuzzle('{}');
     worker.fail('the model could not be loaded');
 
     await expect(first).rejects.toThrow('the model could not be loaded');

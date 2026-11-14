@@ -1,3 +1,7 @@
+> **Retired.** The AI Best Action scenario has been removed from the app; the
+> AI Hotseat scenario supersedes it. This document is kept as the design record
+> for the Mortal evaluator and observation plumbing.
+
 # AI Best Action Scenario Plan
 
 Status: implemented (v1). Chankan and the nine-terminals draw are included;

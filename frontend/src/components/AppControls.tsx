@@ -9,6 +9,8 @@ interface AppControlsProps {
   scenarios: ScenarioOption[];
   selection: ScenarioSelection;
   onSelectionChange: (selection: ScenarioSelection) => void;
+  /** Opens the AI Hotseat generation card without dealing a hand. */
+  onConfigureHotseat: () => void;
   requireAgreement: boolean;
   aiStatus: AiStatus;
   /** Tooltip explaining whether the Mortal-agreement filter can run. */
@@ -32,6 +34,7 @@ export function AppControls({
   scenarios,
   selection,
   onSelectionChange,
+  onConfigureHotseat,
   requireAgreement,
   aiStatus,
   agreementHint,
@@ -48,6 +51,7 @@ export function AppControls({
         scenarios={scenarios}
         selection={selection}
         onChange={onSelectionChange}
+        onConfigureHotseat={onConfigureHotseat}
       />
 
       <label className="app-toggle" title={agreementHint}>

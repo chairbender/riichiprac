@@ -74,12 +74,17 @@ scope.onmessage = async (event) => {
         });
         return;
       }
-      case 'generateAi': {
-        scope.postMessage({
-          id: request.id,
-          ok: true,
-          value: requireEvaluator().generate_ai_puzzle(request.category),
-        });
+      case 'generateHotseat': {
+        const value = requireEvaluator().generate_hotseat_puzzle_with_progress(
+          request.optionsJson,
+          (progressJson: string) => {
+            scope.postMessage({
+              id: request.id,
+              progress: JSON.parse(progressJson),
+            });
+          },
+        );
+        scope.postMessage({ id: request.id, ok: true, value });
         return;
       }
     }

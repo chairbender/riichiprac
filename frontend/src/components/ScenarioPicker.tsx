@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { HOTSEAT_SCENARIO_ID, isHotseatOnly } from '../hotseat';
 import {
   ALL_SCENARIOS,
   groupScenarios,
@@ -13,6 +14,8 @@ interface ScenarioPickerProps {
   scenarios: ScenarioOption[];
   selection: ScenarioSelection;
   onChange: (selection: ScenarioSelection) => void;
+  /** Opens the AI Hotseat card; its options are chosen before generation. */
+  onConfigureHotseat: () => void;
 }
 
 const PANEL_ID = 'scenario-pool-panel';
@@ -33,6 +36,7 @@ export const ScenarioPicker = ({
   scenarios,
   selection,
   onChange,
+  onConfigureHotseat,
 }: ScenarioPickerProps) => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<ScenarioSelection>(selection);
@@ -87,6 +91,12 @@ export const ScenarioPicker = ({
   const deal = (next: ScenarioSelection) => {
     setDraft(next);
     setOpen(false);
+    // AI Hotseat is not generated from defaults: its card chooses the starting
+    // conditions before the round is played.
+    if (isHotseatOnly(next)) {
+      onConfigureHotseat();
+      return;
+    }
     onChange(next);
   };
 
@@ -215,9 +225,15 @@ export const ScenarioPicker = ({
                           onClick={() =>
                             deal({ kind: 'selected', ids: [scenario.id] })
                           }
-                          title={`Deal only ${scenario.label}`}
+                          title={
+                            scenario.id === HOTSEAT_SCENARIO_ID
+                              ? 'Choose the AI Hotseat starting conditions'
+                              : `Deal only ${scenario.label}`
+                          }
                         >
-                          Only
+                          {scenario.id === HOTSEAT_SCENARIO_ID
+                            ? 'Setup'
+                            : 'Only'}
                         </button>
                       </li>
                     ))}

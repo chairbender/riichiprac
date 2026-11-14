@@ -38,3 +38,76 @@ export function formatMortalTileForDisplay(tile: string): string {
     ? formatTileForDisplay(tile.slice(0, -1), true)
     : formatTileForDisplay(tile);
 }
+
+
+/**
+ * One tile as the player sees it in the hand dock.
+ *
+ * The engine's hand is deliberately left in its own order; this is a
+ * presentation-only view. `isDraw` and `isRed` travel with the copy so sorting
+ * cannot lose which tile was drawn (tsumogiri) or which copy is the red five.
+ */
+export interface DisplayTile {
+  code: string;
+  isDraw: boolean;
+  isRed: boolean;
+  /** Stable position in the source `hand` + `draw` list, used as a key. */
+  sourceIndex: number;
+}
+
+/**
+ * Sort value for a tile code: manzu, pinzu, souzu, then honors, 1-9/1-7.
+ *
+ * Kinds the encoder does not recognise sort last so a malformed hand cannot
+ * scramble the rest.
+ */
+export function tileSortValue(code: string): number {
+  const value = Number(code[0]);
+  const suit = code[1];
+  if (!Number.isInteger(value) || value < 1 || suit === undefined) return 99;
+  const suitIndex = suit === 'm' ? 0 : suit === 'p' ? 1 : suit === 's' ? 2 : suit === 'z' ? 3 : -1;
+  if (suitIndex < 0 || (suitIndex === 3 ? value > 7 : value > 9)) return 99;
+  return suitIndex * 9 + value - 1;
+}
+
+/**
+ * The hand `[...hand, draw]` sorted for display, keeping the draw and red-five
+ * flags attached to their copies.
+ */
+export function sortHandForDisplay(
+  hand: readonly string[],
+  draw: string | null | undefined,
+  redFives: readonly string[] = [],
+): DisplayTile[] {
+  const remainingRed = new Map<string, number>();
+  for (const code of redFives) {
+    remainingRed.set(code, (remainingRed.get(code) ?? 0) + 1);
+  }
+  const takeRed = (code: string) => {
+    const remaining = remainingRed.get(code) ?? 0;
+    if (remaining === 0) return false;
+    remainingRed.set(code, remaining - 1);
+    return true;
+  };
+
+  const tiles: DisplayTile[] = hand.map((code, index) => ({
+    code,
+    isDraw: false,
+    isRed: takeRed(code),
+    sourceIndex: index,
+  }));
+  if (draw) {
+    tiles.push({
+      code: draw,
+      isDraw: true,
+      isRed: takeRed(draw),
+      sourceIndex: hand.length,
+    });
+  }
+
+  return tiles.sort(
+    (left, right) =>
+      tileSortValue(left.code) - tileSortValue(right.code) ||
+      left.sourceIndex - right.sourceIndex,
+  );
+}

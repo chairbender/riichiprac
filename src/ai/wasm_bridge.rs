@@ -94,15 +94,47 @@ impl WasmMortalEvaluator {
         })
     }
 
-    /// Generate and finalize the AI Best Action scenario.
-    pub fn generate_ai_puzzle(&self, category: &str) -> Result<String, JsValue> {
+    /// Generate the AI Hotseat scenario: a full round self-played by Mortal,
+    /// presented at one of the inserted seat's real decisions.
+    ///
+    /// `options_json` is the generation card's shape, with `null` for each
+    /// option the player left random:
+    /// `{"round":"east_1","disparity":"about_equal_all","seat":"west"}`.
+    pub fn generate_hotseat_puzzle(&self, options_json: &str) -> Result<String, JsValue> {
         let state =
-            crate::generator::ai_best_action::generate(&self.model, &self.model_name, category)
-                .map_err(|err| js_error(&format!("failed to generate AI scenario: {err}")))?;
-        let state = crate::generator::finalize_state(state);
+            crate::generator::hotseat::generate(&self.model, &self.model_name, options_json)
+                .map_err(|err| js_error(&format!("failed to generate hotseat scenario: {err}")))?;
 
         serde_json::to_string(&state)
-            .map_err(|err| js_error(&format!("failed to serialize AI scenario: {err}")))
+            .map_err(|err| js_error(&format!("failed to serialize hotseat scenario: {err}")))
+    }
+
+    /// The same hotseat generation, reporting each new full turn.
+    ///
+    /// `on_progress` receives one JSON string per turn:
+    /// `{"attempt":1,"turn":7,"drawn":25,"wall_left":44}`. The worker forwards
+    /// that to the main thread so the header can show how far the self-play has
+    /// got while the WASM call is still running.
+    pub fn generate_hotseat_puzzle_with_progress(
+        &self,
+        options_json: &str,
+        on_progress: &js_sys::Function,
+    ) -> Result<String, JsValue> {
+        let mut report = |progress: crate::generator::hotseat::TurnProgress| {
+            if let Ok(json) = serde_json::to_string(&progress) {
+                let _ = on_progress.call1(&JsValue::NULL, &JsValue::from_str(&json));
+            }
+        };
+        let state = crate::generator::hotseat::generate_model_with_progress(
+            &self.model,
+            &self.model_name,
+            options_json,
+            &mut report,
+        )
+        .map_err(|err| js_error(&format!("failed to generate hotseat scenario: {err}")))?;
+
+        serde_json::to_string(&state)
+            .map_err(|err| js_error(&format!("failed to serialize hotseat scenario: {err}")))
     }
 
     /// Evaluate a serialized [`GameState`].
@@ -133,8 +165,9 @@ impl WasmMortalEvaluator {
     /// report.
     ///
     /// Returns `{"state": GameState, "agreement": MortalAgreementReport}` as a
-    /// JSON string. Use [`Self::generate_ai_puzzle`] for `ai_best_action`, whose
-    /// answer is Mortal's own argmax and is therefore not sampled.
+    /// JSON string. Mortal-only drills such as `ai_hotseat` are generated
+    /// through their own evaluator methods instead, because their answer is the
+    /// model's own argmax and is therefore not sampled.
     pub fn generate_puzzle_with_agreement(
         &self,
         category: &str,

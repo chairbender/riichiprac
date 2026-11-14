@@ -7,7 +7,7 @@
 use agari::context::{GameContext, WinType};
 use agari::hand::{KanType, Meld, decompose_hand, decompose_hand_with_melds};
 use agari::parse::{parse_hand, to_counts};
-use agari::shanten::{calculate_shanten, calculate_ukeire};
+use agari::shanten::{calculate_shanten_with_melds, calculate_ukeire_with_melds};
 use agari::tile::Tile;
 use agari::yaku::detect_yaku_with_context;
 
@@ -234,8 +234,17 @@ fn self_turn_actions(state: &GameState, out: &mut Vec<ActionInfo>) {
 
 fn reaction_actions(state: &GameState, from: usize, tile: &str, out: &mut Vec<ActionInfo>) {
     let player = &state.players[0];
+    // A tile thrown by a declared Riichi hand can only be ronned: chi, pon and
+    // daiminkan are all forbidden on it, so no call is offered.
+    let discarder_in_riichi = state
+        .players
+        .get(from)
+        .is_some_and(|source| source.is_riichi);
+    // The last discard of a hand can be ronned but not called: there is no
+    // replacement draw and no next turn to make the call legal.
+    let wall_is_empty = state.tiles_remaining == 0;
 
-    if !player.is_riichi {
+    if !player.is_riichi && !discarder_in_riichi && !wall_is_empty {
         for (action, consumed, chi_label) in chi_options(state, from, tile, player) {
             out.push(ActionInfo {
                 action: action.to_string(),
@@ -496,33 +505,58 @@ fn chi_options(
 
 /// Whether the human can ron the claimed tile.
 fn can_ron(state: &GameState, player: &PlayerState, tile: &str) -> bool {
-    if player.is_riichi {
-        // A Riichi player may still ron.
+    if !winning_hand(
+        state.round_wind,
+        player.wind,
+        &player.hand,
+        &player.melds,
+        tile,
+        WinType::Ron,
+        player.is_riichi,
+    ) {
+        return false;
     }
-    let Some(claimed) = parse_tile_code(tile) else {
+
+    // A Riichi player may still ron; only furiten forbids it. The winning
+    // tiles are the hand's waits, and furiten looks at every tile discarded by
+    // the player, including before this turn.
+    let waits = waits_for(&player.hand, player.melds.len());
+    let furiten = waits
+        .iter()
+        .any(|wait| player.discards.iter().any(|discard| discard.tile == *wait));
+    !furiten
+}
+
+/// Whether adding `winning_tile` to a concealed hand makes a legal win.
+///
+/// This is the single rule shared by the trainer's ron check and the hotseat
+/// simulator's tsumo check: the complete hand must decompose, must carry at
+/// least one yaku in the supplied win context, and must include every called
+/// meld. Furiten is a ron-only condition and stays in [`can_ron`].
+pub(crate) fn winning_hand(
+    round_wind: crate::state::Wind,
+    player_wind: crate::state::Wind,
+    hand: &[String],
+    player_melds: &[CalledMeld],
+    winning_tile: &str,
+    win_type: WinType,
+    is_riichi: bool,
+) -> bool {
+    let Some(claimed) = parse_tile_code(winning_tile) else {
         return false;
     };
-    let mut tiles: Vec<Tile> = player
-        .hand
+    let mut tiles: Vec<Tile> = hand
         .iter()
         .filter_map(|tile| parse_tile_code(tile))
         .collect();
     tiles.push(claimed);
 
     let condensed = to_counts(&tiles);
-    if calculate_shanten(&condensed).shanten != -1 {
+    if calculate_shanten_with_melds(&condensed, player_melds.len() as u8).shanten != -1 {
         return false;
     }
 
-    let waits = waits_for(&player.hand);
-    if waits
-        .iter()
-        .any(|wait| player.discards.iter().any(|discard| discard.tile == *wait))
-    {
-        return false;
-    }
-
-    let melds = agari_melds(&player.melds);
+    let melds = agari_melds(player_melds);
     let structures = if melds.is_empty() {
         decompose_hand(&condensed)
     } else {
@@ -533,18 +567,19 @@ fn can_ron(state: &GameState, player: &PlayerState, tile: &str) -> bool {
     }
 
     // Yaku detection needs every tile in the hand, including called melds.
-    let mut full_tiles: Vec<Tile> = tiles.clone();
-    for meld in &player.melds {
+    let mut full_tiles: Vec<Tile> = tiles;
+    for meld in player_melds {
         full_tiles.extend(meld.tiles.iter().filter_map(|tile| parse_tile_code(tile)));
     }
     let full_counts = to_counts(&full_tiles);
 
     let context = GameContext::new(
-        WinType::Ron,
-        wind_to_honor(state.round_wind),
-        wind_to_honor(player.wind),
+        win_type,
+        wind_to_honor(round_wind),
+        wind_to_honor(player_wind),
     )
     .with_winning_tile(claimed);
+    let context = if is_riichi { context.riichi() } else { context };
     let context = if melds.iter().any(|meld| meld.is_open()) {
         context.open()
     } else {
@@ -558,13 +593,13 @@ fn can_ron(state: &GameState, player: &PlayerState, tile: &str) -> bool {
     })
 }
 
-fn waits_for(hand: &[String]) -> Vec<String> {
+fn waits_for(hand: &[String], melds: usize) -> Vec<String> {
     let tiles: Vec<Tile> = hand
         .iter()
         .filter_map(|tile| parse_tile_code(tile))
         .collect();
     let counts = to_counts(&tiles);
-    calculate_ukeire(&counts)
+    calculate_ukeire_with_melds(&counts, melds as u8)
         .tiles
         .iter()
         .map(|ukeire| ukeire.tile.to_string())
@@ -815,6 +850,31 @@ mod tests {
     }
 
     #[test]
+    fn riichi_discards_and_the_last_tile_cannot_be_called() {
+        let mut state = base_state(&[
+            "5p", "5p", "5p", "1m", "2m", "3m", "7s", "8s", "9s", "2z", "2z", "3z", "4z",
+        ]);
+        state.decision = DecisionContext::ReactToDiscard {
+            from: 1,
+            tile: "5p".to_string(),
+        };
+        // A normal discard offers the pon/kan.
+        assert!(legal_actions(&state).iter().any(|a| a.action == "Pon"));
+
+        // A tile thrown by a Riichi hand can only be ronned.
+        state.players[1].is_riichi = true;
+        let actions = legal_actions(&state);
+        assert!(!actions.iter().any(|a| a.action == "Pon"), "{actions:?}");
+        assert!(!actions.iter().any(|a| a.action == "Kan"), "{actions:?}");
+        state.players[1].is_riichi = false;
+
+        // The final discard of the hand has no next turn to call into.
+        state.tiles_remaining = 0;
+        let actions = legal_actions(&state);
+        assert!(!actions.iter().any(|a| a.action == "Pon"), "{actions:?}");
+    }
+
+    #[test]
     fn pon_and_daiminkan_require_matching_copies() {
         let mut state = base_state(&[
             "5p", "5p", "5p", "1m", "2m", "3m", "7s", "8s", "9s", "2z", "2z", "3z", "4z",
@@ -840,6 +900,46 @@ mod tests {
         };
         // 4z (north) has no yaku in this hand.
         assert!(!legal_actions(&state).iter().any(|a| a.action == "Agari"));
+    }
+
+    #[test]
+    fn ron_sees_the_riichi_yaku_when_the_hand_has_no_other() {
+        let mut state = base_state(&[
+            "1m", "2m", "3m", "4p", "5p", "6p", "7s", "8s", "9s", "2s", "3s", "4s", "1z",
+        ]);
+        state.players[0].discards.clear();
+        state.players[0].is_riichi = true;
+        state.decision = DecisionContext::ReactToDiscard {
+            from: 1,
+            tile: "1z".to_string(),
+        };
+        let actions = legal_actions(&state);
+        assert!(
+            actions.iter().any(|a| a.action == "Agari"),
+            "a closed Riichi hand wins even with no other yaku: {actions:?}"
+        );
+    }
+
+    #[test]
+    fn ron_sees_a_complete_open_hand() {
+        // One open dragon pon is the yaku; the concealed ten tiles wait on the
+        // pair. Shanten must be calculated with the called meld counted, not on
+        // the eleven physical tiles alone.
+        let mut state = base_state(&["1m", "2m", "3m", "4p", "5p", "6p", "7s", "8s", "9s", "2z"]);
+        state.players[0].melds = vec![CalledMeld {
+            meld_type: MeldType::Pon,
+            tiles: vec!["5z".to_string(); 3],
+            called_from: Some(1),
+        }];
+        state.decision = DecisionContext::ReactToDiscard {
+            from: 1,
+            tile: "2z".to_string(),
+        };
+        let actions = legal_actions(&state);
+        assert!(
+            actions.iter().any(|a| a.action == "Agari"),
+            "an open hand that completes with a yaku must offer ron: {actions:?}"
+        );
     }
 
     #[test]

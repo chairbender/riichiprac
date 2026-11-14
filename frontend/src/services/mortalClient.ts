@@ -10,6 +10,7 @@
  * forward pass), but callers can ignore a stale result — the store already
  * guards with its own request ids and the current-table check.
  */
+import type { HotseatProgress } from '../hotseat';
 import type { AiEvaluation } from '../types/ai';
 import type {
   MortalCommand,
@@ -34,8 +35,11 @@ export interface MortalClient {
   init(weights: ArrayBuffer, modelName: string): Promise<void>;
   /** Evaluate a serialized `GameState`, resolving to Mortal's ranking. */
   evaluate(stateJson: string): Promise<AiEvaluation>;
-  /** Generate and finalize the AI Best Action drill. */
-  generateAiPuzzle(category: string): Promise<string>;
+  /** Run a full Mortal self-play round and return one of its decisions. */
+  generateHotseatPuzzle(
+    optionsJson: string,
+    onProgress?: (progress: HotseatProgress) => void,
+  ): Promise<string>;
   /** Generate a lesson hand that Mortal also plays, with its sampling report. */
   generatePuzzleWithAgreement(
     category: string,
@@ -48,6 +52,7 @@ export interface MortalClient {
 interface PendingCall {
   resolve(value: unknown): void;
   reject(error: Error): void;
+  onProgress?: (progress: HotseatProgress) => void;
 }
 
 /**
@@ -85,6 +90,10 @@ export function createMortalClient(
     const call = pending.get(response.id);
     // A response can outlive its request when a caller gave up waiting.
     if (!call) return;
+    if (!('ok' in response)) {
+      call.onProgress?.(response.progress);
+      return;
+    }
     pending.delete(response.id);
     if (response.ok) call.resolve(response.value);
     else call.reject(new Error(response.error));
@@ -98,13 +107,14 @@ export function createMortalClient(
   const send = (
     command: MortalCommand,
     transfer?: Transferable[],
+    onProgress?: (progress: HotseatProgress) => void,
   ): Promise<unknown> => {
     if (terminated) {
       return Promise.reject(new Error('the Mortal worker was terminated'));
     }
     const id = nextId++;
     return new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject });
+      pending.set(id, { resolve, reject, onProgress });
       worker.postMessage({ ...command, id } as MortalRequest, transfer);
     });
   };
@@ -116,8 +126,12 @@ export function createMortalClient(
     evaluate: (stateJson) =>
       send({ op: 'evaluate', stateJson }) as Promise<AiEvaluation>,
 
-    generateAiPuzzle: (category) =>
-      send({ op: 'generateAi', category }) as Promise<string>,
+    generateHotseatPuzzle: (optionsJson, onProgress) =>
+      send(
+        { op: 'generateHotseat', optionsJson },
+        undefined,
+        onProgress,
+      ) as Promise<string>,
 
     generatePuzzleWithAgreement: (category, optionsJson) =>
       send({ op: 'generateAgreement', category, optionsJson }) as Promise<string>,

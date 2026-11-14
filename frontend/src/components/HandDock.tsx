@@ -1,5 +1,5 @@
 import { findKanCandidateTile } from '../actions';
-import { formatTileForDisplay } from '../display';
+import { formatTileForDisplay, sortHandForDisplay } from '../display';
 import { handHint } from '../handHint';
 import type { SubmittedAnswer } from '../store/useGameStore';
 import type { AiActionInfo, AiEvaluation } from '../types/ai';
@@ -48,7 +48,7 @@ interface HandDockProps {
   onShowVerdict: () => void;
   onToggleRiichi: () => void;
   onToggleKan: () => void;
-  onSelectTile: (tile: string, index?: number) => void;
+  onSelectTile: (tile: string, index?: number, isDraw?: boolean) => void;
 }
 
 /**
@@ -77,7 +77,9 @@ export function HandDock({
   onToggleKan,
   onSelectTile,
 }: HandDockProps) {
-  const tiles = player.draw ? [...player.hand, player.draw] : player.hand;
+  // Presentation-only order: the engine's hand order is untouched, and the
+  // draw/red-five flags travel with their copies so tsumogiri survives sorting.
+  const tiles = sortHandForDisplay(player.hand, player.draw, player.red_fives);
   const isAnswered = grade !== null;
   const isAiScenario = availableActions !== undefined;
   // Only a Kan lesson offers the call: any hand can hold four copies, but only
@@ -102,18 +104,6 @@ export function HandDock({
     callKan,
     callRiichi,
     kanTileLabel: kanTile && formatTileForDisplay(kanTile),
-  });
-
-  // Mark specific copies as red fives; a tile code can appear more than once.
-  const redFiveCounts = new Map<string, number>();
-  for (const code of player.red_fives) {
-    redFiveCounts.set(code, (redFiveCounts.get(code) ?? 0) + 1);
-  }
-  const redFiveFlags = tiles.map((tile) => {
-    const remaining = redFiveCounts.get(tile) ?? 0;
-    if (remaining === 0) return false;
-    redFiveCounts.set(tile, remaining - 1);
-    return true;
   });
 
   // Mortal's per-tile probabilities are a spoiler until the answer exists (or
@@ -203,8 +193,9 @@ export function HandDock({
         className="hand"
         style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
       >
-        {tiles.map((tile, index) => {
-          const isSelected = answer?.tile === tile;
+        {tiles.map((display, index) => {
+          const { code, isDraw, isRed, sourceIndex } = display;
+          const isSelected = answer?.tile === code;
 
           let stateClass = '';
           if (grade) {
@@ -212,19 +203,19 @@ export function HandDock({
               stateClass = ' hand-tile-button--correct';
             } else if (isSelected) {
               stateClass = ' hand-tile-button--incorrect';
-            } else if (bookTiles.includes(tile)) {
+            } else if (bookTiles.includes(code)) {
               stateClass = ' hand-tile-button--answer';
             }
           }
 
           let aiClass = '';
-          if (grade && mortalTile === tile) {
+          if (grade && mortalTile === code) {
             aiClass = ' hand-tile-button--mortal';
           } else {
-            const aiProbability = aiProbabilities.get(tile);
+            const aiProbability = aiProbabilities.get(code);
             if (aiProbability !== undefined && aiProbability >= 0.01) {
               aiClass = ' hand-tile-button--ai';
-              if (tile === topAiTile) {
+              if (code === topAiTile) {
                 aiClass += ' hand-tile-button--ai-top';
               }
             }
@@ -232,33 +223,27 @@ export function HandDock({
 
           return (
             <button
-              key={`${tile}-${index}`}
+              key={`${code}-${sourceIndex}`}
               type="button"
               className={`hand-tile-button${stateClass}${aiClass}`}
-              onClick={() => onSelectTile(tile, index)}
+              onClick={() => onSelectTile(code, index, isDraw)}
               disabled={isAnswered || !canDiscard}
               aria-label={`${
                 callKan
-                  ? `Declare Kan on ${formatTileForDisplay(
-                      tile,
-                      redFiveFlags[index],
-                    )}`
-                  : `Discard ${formatTileForDisplay(
-                      tile,
-                      redFiveFlags[index],
-                    )}`
+                  ? `Declare Kan on ${formatTileForDisplay(code, isRed)}`
+                  : `Discard ${formatTileForDisplay(code, isRed)}`
               }${callRiichi ? ', with Riichi' : ''}`}
             >
-              {aiProbabilities.get(tile) !== undefined &&
-                (aiProbabilities.get(tile) ?? 0) >= 0.01 && (
+              {aiProbabilities.get(code) !== undefined &&
+                (aiProbabilities.get(code) ?? 0) >= 0.01 && (
                   <span className="ai-tile-badge" aria-hidden="true">
-                    {formatProbability(aiProbabilities.get(tile) ?? 0)}
+                    {formatProbability(aiProbabilities.get(code) ?? 0)}
                   </span>
                 )}
               <Tile
-                code={tile}
+                code={code}
                 className="tile hand-tile"
-                isRedFive={redFiveFlags[index]}
+                isRedFive={isRed}
               />
             </button>
           );

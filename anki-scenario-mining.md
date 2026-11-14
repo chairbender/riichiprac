@@ -50,7 +50,7 @@ Two clusters dominate and neither is covered today: **8.2 (31 cards)** and
 | `ryanmen_protorun` | ch4 "redundant tile" on an XXY/XYY shape; ch3 side-wait protorun value | 1463190904723, 1463191027124, 1463191128195 |
 | `chiitoitsu_riichi_vs_dama` | ch7 chiitoitsu riichi/dama boxes | 1463250985834, 1463251061277, 1464147205450 |
 | `shouminkan_decision` / `_decline` | ch9 kakan conditions | 1463256791280 |
-| `ai_best_action` | Mortal drill, no book rule | — |
+| `ai_hotseat` | Mortal self-play drill, no book rule | — |
 | `skipping_block` | ch3.3 skipping shape: keep the float two ranks from a run over an isolated float of the same rank | 1463194258219, 1463194377641 |
 
 So **4 of 126 cards** are covered outright, plus 3 more that `ryanmen_protorun`

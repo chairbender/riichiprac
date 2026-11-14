@@ -112,8 +112,8 @@ touching the rest of the selection.
 The grouping is not a frontend list: `SCENARIO_MANIFEST` in
 `src/generator/mod.rs` carries each lesson's `BookSection`, `list_scenarios()`
 serialises it, and a Rust test pins every group's chapter to the citation the
-verdict panel shows. Lessons with no book rule (the Mortal drill) land in
-"Other".
+verdict panel shows. Lessons with no book rule (the Mortal drills) are shown
+first, under "Other".
 
 Edits are staged: ticking boxes changes the draft pool shown in the panel footer
 ("Pool: 5 scenarios · 3 sections"), and **Deal from pool** generates one hand
@@ -134,25 +134,65 @@ and the entries are gone when the tab closes. To keep or send a hand, use
 **Export** (see "Exporting and importing a position"). The deep-linking options
 and why neither shipped are in `scenario-history-plan.md`.
 
-## AI Best Action scenario
+## AI Hotseat scenario
 
-`AI Best Action` generates a random, deck-consistent table and presents whatever
-decision the loaded Mortal v4 model can answer: discard, Riichi, tsumo/ron, chi,
-pon, kan, or pass. The correct answer is the model's highest-probability legal
-action at generation time; it is not a hand-written lesson. It is a declared
-**Mortal drill**: the book column says there is no book rule, and the drill is
-graded by the model alone.
+`AI Hotseat` does not hand-build a position at all. Mortal plays every seat of
+a full round, and the player is dropped into one of their own seat's decisions
+that actually occurred during that round. The answer is whatever Mortal chose in
+that seat at that moment, graded Mortal-only like the other AI drills (no book
+column).
 
-The scenario requires the model weights. Until the model is ready it stays out
-of the "All scenarios" pool so a first launch does not block on the download.
-After that it is drawn like any other lesson: the verdict panel renders the
-single Mortal perspective, with no book column and no agreement sampling.
-Select it by name to drill it directly.
+Choosing the scenario opens a **generation card** before anything is generated.
+Each option is either pinned or left to the engine:
 
-The AI scenario is generated entirely in Rust/WASM: the state is built from the
-shared deck, validated, encoded, evaluated once (plus a second pass when the
-model chooses Riichi), and returned to React with `correct_action`, the legal
-action list, and the evaluation. React only renders and grades.
+- **Round** — East 1-4 or South 1-4.
+- **Point disparity** — the nine starting-score shapes from "losing badly
+  alone" through "level with all four" to "first by a large gap". Each shape is
+  a fixed 100,000-point pattern; the inserted seat takes the position the label
+  names and the other three ranks are dealt around them.
+- **Your seat** — East, South, West, or North.
+
+The card's choice becomes the round's starting table. The Rust engine deals one
+136-tile wall, keeps the dead wall, and plays the round with the loaded Mortal
+model in every seat: draws, discards, Riichi declarations, calls, kans,
+replacement draws, dora reveals, tsumo and ron. Every time the inserted seat
+faces a real decision it records the position and the model's evaluation; when
+the round ends, one recorded position is chosen at random and returned. Forced
+turns (a Riichi hand throwing what it draws) and positions with only one legal
+choice are filtered out, so the returned state is always a question.
+
+React still renders and grades only: the state arrives as an ordinary
+`ai_hotseat` payload with `correct_action`, the legal action list, and the full
+ranking. The state's note ends with **Inserted on turn N.** so the position is
+anchored in the played round.
+
+A full round costs many forward passes. While the worker plays it, the header
+reports the round's progress ("Playing a Mortal self-play round… turn 7 · 25
+draws played"); a retry, which only happens if a round ends without a usable
+decision, is labelled as a new attempt.
+
+Only real decisions are insertion points: a forced Riichi tsumogiri is skipped,
+and a tsumo or ron is never offered because a win ends the round rather than
+posing a choice.
+
+The insertion turn is **not** a uniform pick over recorded decisions. A round
+that ends at turn 12 simply has no decision at turn 16, so a uniform pick
+inherits the round-length survival curve and over-samples the opening. Instead,
+each full turn is weighted by the inverse of its empirical survival probability
+(`TURN_SURVIVAL` in `src/generator/hotseat/mod.rs`, measured with the shipped
+weights), and one decision at the chosen turn is picked uniformly. Turns 1-17
+therefore come out roughly evenly; the partial eighteenth turn (the dealer's
+69th draw) is outside the range.
+
+The card opens when the scenario is chosen by name (its picker row has a
+**Setup** button, and picking only it and dealing does the same); if a hotseat
+hand is drawn from a mixed pool, it uses the last card choice, which starts as
+everything random.
+
+The engine uses the 34 base tile codes, so a hotseat round never contains red
+fives. Everything else the observation encoder needs (scores, round, rivers,
+melds, dora, riichi sticks, furiten) comes from the simulated table.
+
 
 ## Defense scenarios
 
@@ -552,9 +592,10 @@ nearly every hand — so raise `max_candidates` for the low-agreement families.
 When the bound runs out the call returns an error naming the rejection counts
 instead of a hand the model would not play.
 
-`ai_best_action` is not sampled here (its answer is Mortal's own argmax; use
-`generate_ai_puzzle`), but it still takes part in the app's random rotation. The
-`mock_table` UI fixture is returned unchanged with no report.
+The Mortal-only drills (`ai_hotseat`) are not sampled here: their answer is
+Mortal's own argmax and they are generated through the evaluator. They still
+take part in the app's random rotation once the model is ready. The `mock_table`
+UI fixture is returned unchanged with no report.
 
 ## Fuzzing for generator / Mortal disagreements
 
