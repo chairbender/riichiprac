@@ -311,14 +311,21 @@
   },
   "hand": {
     "seat": "bottom",
-    "concealedCount": 13,
-    "spacing": 0.82,
+    "concealedCounts": [13, 10, 7, 4, 1],
+    "spacing": "touch",
     "drawGap": 0.55,
     "centerX": 0,
     "y": -11.7,
     "pose": "hand-upright",
     "backPose": "hand-upright-back",
-    "drawOrderBase": 40
+    "drawOrderBase": 40,
+    "shadow": {
+      "searchPadDevicePx": 160,
+      "guardDevicePx": 4,
+      "alphaThreshold": 0.02,
+      "cropMarginDevicePx": 1,
+      "alphaScale": 1.0
+    }
   },
   "decals": {
     "cssFace": [
@@ -351,7 +358,6 @@
     }
   },
   "assets": {
-    "shadowGutterDevicePx": 32,
     "body": {
       "fileFormat": "WEBP",
       "quality": 90,
@@ -366,8 +372,8 @@
     "budgetBytes": {
       "total": 8388608,
       "background": 157286,
-      "bodies": 1048576,
-      "manifest": 51200
+      "bodies": 2097152,
+      "manifest": 153600
     }
   },
   "checks": {
@@ -382,8 +388,10 @@
   "spike": {
     "slotId": "hand-0",
     "zoom": {
-      "x": 24,
-      "y": 24,
+      "tileInset": [
+        24,
+        24
+      ],
       "width": 180,
       "height": 80,
       "scale": 4

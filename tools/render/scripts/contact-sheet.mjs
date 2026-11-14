@@ -143,7 +143,8 @@ const stats = [
   `       paint edge ${Math.round(manifest.decals.carve.paintEdge * 100)}% of transition, occlusion ${manifest.decals.carve.occlusionDistance} / ${manifest.decals.carve.occlusionStrength}`,
   `peak   body ${manifest.measurements.bodyMaxChannel}/255 (${manifest.measurements.bodyClippedPixels} clipped) · decal ${manifest.measurements.decalMaxChannel}/255 (${manifest.measurements.decalClippedPixels} clipped)`,
   `bake   decal ${manifest.measurements.decalBakeSeconds}s`,
-  `orientation ${slot.orientation}   drawOrder ${slot.drawOrder}   gutter ${slot.shadowGutterPx} px`,
+  `orientation ${slot.orientation}   drawOrder ${slot.drawOrder}   crop ${slot.width}x${slot.height} px from the measured shadow contour`,
+  `shadow  contour ${slot.shadow.contour.join(', ')} threshold ${slot.shadow.alphaThreshold} + ${slot.shadow.cropMarginPx} px · reach L${slot.shadow.reach.left} R${slot.shadow.reach.right} T${slot.shadow.reach.top} B${slot.shadow.reach.bottom} px · edge alpha ${slot.shadow.maxAlphaAtCropEdge}`,
   `back   ${backFile} ${backSize.width}x${backSize.height} px (concealed-hand pose)`,
 ];
 

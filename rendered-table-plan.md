@@ -26,8 +26,11 @@ Tenhou's client is effectively a fixed-camera 2.5D scene: the tile bodies are pr
 sprites whose lighting reflects where they sit, while the tile face/symbol is a lit raster
 that depends only on its orientation, not its position. We follow that split:
 
-- **Body sprites are per slot.** The bevel highlights, sides, top edge, shadow, and blue
-  back change with the camera angle at that position.
+- **Body sprites are per group.** A hand row is baked as one body, not one sprite per tile
+  (Task 2.5): the bevel highlights, sides, top edge, cast shadow, and the blue back change
+  with the camera angle at those positions, and inter-tile occlusion and shadow-on-neighbour
+  only exist in a render that contains the whole group. The separated draw tile, whose gap
+  keeps its shadow off the row, keeps its own single-tile body.
 - **Face decals are per tile code × orientation.** The white melamine face and symbol are lit once
   for each orientation class and reused at every position.
 
@@ -62,12 +65,15 @@ No 3D math, no WebGL, no canvas rendering, and no runtime SVG rasterisation are 
 
 ## 4. Asset split
 
-### Body sprite (one per slot and pose)
+### Body sprite (one per group and pose)
 
 - Beveled tile box: white melamine front/sides, blue melamine backing.
 - Position-dependent lighting: bevel highlights, side faces, top edge, contact shadow.
 - Face-up and face-down variants as needed.
-- Rendered at the tile's actual slot, cropped to the slot's scene-pixel bounds.
+- Baked at the group's actual slots, cropped to the **measured shadow contour**.
+- A hand row is a group: tiles in the concealed row abut, so one render carries the
+  inter-tile occlusion, the shadow each tile throws on its neighbour, and one continuous
+  cast shadow. The draw tile is its own single-tile body per row length.
 
 ### Face decal (one per tile code × orientation)
 
@@ -147,8 +153,9 @@ The Blender script constructs everything procedurally:
 2. Build the tile body: a cube scaled to the tile dimensions, a bevel modifier with 3–4
    segments, weighted normals, white and blue melamine materials.
 3. Add the camera and area-light rig, tone mapping, denoise, and transparent film.
-4. For each body slot, place the tile at its slot transform, set the render crop, render a
-   transparent body sprite, and record its scene-pixel rect and draw order.
+4. For each body group, place its tiles at their slots, render a transparent body sprite
+   over the whole table as a shadow catcher, crop it to the measured shadow contour, and
+   record its scene-pixel rect and draw order.
 5. For each tile code × orientation class, place the tile on a canonical face-on rig
    (section 12), carve the inset face plate from the symbol-only mask and paint it, render
    the lit face orthographically, crop it to the inner face, and record the face quad.
@@ -206,15 +213,15 @@ first renders, but it does not reopen the section 12 decisions.
 
 ## 8. Manifest shape
 
-The schema is versioned. **Task 2 shipped version 2** (the shape below, plus the
-Task 2 fields documented in §12's "Task 2 results"). Coordinates are rendered
-device pixels at the manifest's `pixelRatio`; `faceMatrix` maps the decal image's
-local pixel rectangle onto the slot's `decalQuad`, so the runtime never projects
-or inverts a quad.
+The schema is versioned. **Task 2 shipped version 2** (per-slot bodies) and
+**Task 2.5 shipped version 3** (group bodies and hand layouts). Coordinates are
+rendered device pixels at the manifest's `pixelRatio`; `faceMatrix` maps the
+decal image's local pixel rectangle onto the slot's `decalQuad`, so the runtime
+never projects or inverts a quad.
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "scene": { "width": 1440, "height": 900, "widthDevicePx": 2880,
              "heightDevicePx": 1800, "camera": "fixed" },
   "camera": { "position": [0, -47.8, 32.2], "target": [0, 0, 0.35],
@@ -225,25 +232,55 @@ or inverts a quad.
   "backgroundPixels": [1440, 900],
   "table": { "plan": { "feltHalfExtent": 12.9, "railWidth": 0.9, … },
              "seats": ["bottom", "right", "top", "left"],
-             "handRow": { "seat": "bottom", "y": -11.7,
-                          "slotIds": ["hand-0", …, "hand-draw"] } },
-  "slots": [
+             "handRow": { "seat": "bottom", "y": -11.7, "centerX": 0,
+                          "concealedCounts": [13, 10, 7, 4, 1],
+                          "spacingUnits": 0.75, "spacingMode": "touch",
+                          "drawGapUnits": 0.55,
+                          "layoutIds": ["hand-13", "hand-13-draw", …],
+                          "shadow": { "searchPadDevicePx": 160, …
+                                      "alphaThreshold": 0.02 } } },
+  "layouts": [
     {
-      "id": "hand-0",
-      "seat": "bottom",
-      "role": "concealed",
-      "pose": "hand-upright",
+      "id": "hand-13",
+      "seat": "bottom", "count": 13, "hasDraw": false,
       "orientation": "upright",
-      "body": "bodies/hand-0.webp",
-      "x": 751, "y": 1478, "width": 159, "height": 190,
-      "shadowGutterPx": 32,
-      "faceQuad": [[x, y], [x, y], [x, y], [x, y]],
-      "decalQuad": [[x, y], [x, y], [x, y], [x, y]],
-      "faceMatrix": "matrix3d(…16 values…)",
-      "drawOrder": 40,
-      "back": { "pose": "hand-upright-back", "body": "bodies/hand-0-back.webp",
-                "x": 751, "y": 1478, "width": 159, "height": 190 },
-      "measurements": { "faceWidthPx": 74.26, "faceHeightPx": 76.99 }
+      "group": {
+        "pose": "hand-upright", "drawOrder": 40,
+        "body": "bodies/hand-row-13.webp",
+        "x": 830, "y": 1509, "width": 1188, "height": 174,
+        "shadow": { "alphaThreshold": 0.02, "cropMarginPx": 1,
+                    "contour": [831, 1511, 2017, 1682],
+                    "reach": { "left": 73.5, "top": 0, "right": 41.5,
+                               "bottom": 46 },
+                    "maxAlphaAtCropEdge": 0.0196,
+                    "maxAlphaAtCropEdgeSide": "right",
+                    "maxAlphaAtCropEdgePx": [2016, 1602],
+                    "sceneEdgeClips": [] },
+        "back": { "pose": "hand-upright-back",
+                  "body": "bodies/hand-row-13-back.webp",
+                  "x": 829, "y": 1509, "width": 1186, "height": 200, … }
+      },
+      "draw": null,
+      "slots": [
+        {
+          "id": "hand-0", "index": 0, "role": "concealed",
+          "orientation": "upright", "drawOrder": 40,
+          "x": 904, "y": 1510, "width": 93, "height": 126,
+          "faceQuad": [[x, y], [x, y], [x, y], [x, y]],
+          "decalQuad": [[x, y], [x, y], [x, y], [x, y]],
+          "faceMatrix": "matrix3d(…16 values…)",
+          "measurements": { "faceWidthPx": 74.26, "faceHeightPx": 76.99 }
+        }
+      ],
+      "measurements": { "seamContrast": { "seams": 12, "dipMedian": 0.0413 } }
+    },
+    {
+      "id": "hand-13-draw", "count": 13, "hasDraw": true,
+      "group": { "body": "bodies/hand-row-13.webp", … },
+      "draw": { "slotId": "hand-draw", "pose": "hand-upright", "drawOrder": 41,
+                "body": "bodies/hand-draw-13.webp",
+                "x": 1971, "y": 1509, "width": 188, "height": 192 },
+      "slots": [ … 13 concealed slots and "hand-draw" … ]
     }
   ],
   "faces": {
@@ -255,36 +292,44 @@ or inverts a quad.
       "opposite": "faces/1m-opposite.webp"
     }
   },
-  "assets": { "bodyFormat": "WEBP", "bodyQuality": 90, "bodyBytes": 141804,
-              "backgroundSamples": 64, "backgroundBytes": 19018,
-              "totalBytes": 160822,
-              "budgetBytes": { "total": 8388608, "bodies": 1048576,
-                               "background": 157286, "manifest": 51200 } },
-  "checks": { "slotRectsInsideScene": true, "faceQuadsInsideBodies": true,
-              "uniqueDrawOrders": true, "alignment": { "shiftedPixels": 0, … } }
+  "assets": { "bodyFormat": "WEBP", "bodyQuality": 90, "spriteCount": 20,
+              "bodyBytes": 225814, "backgroundSamples": 64,
+              "backgroundBytes": 19018, "totalBytes": 244832,
+              "budgetBytes": { "total": 8388608, "bodies": 2097152,
+                               "background": 157286, "manifest": 153600 } },
+  "checks": { "layoutBodiesInsideScene": true, "slotQuadsInsideGroup": true,
+              "uniqueDrawOrders": true,
+              "alignment": { "shiftedPixels": 0, "layouts": [ … ] } }
 }
 ```
 
-Slots carry geometry; faces carry only the tile code × orientation mapping. The
-runtime pairs a slot with the selected tile code's face decal, applies the
-slot's `faceMatrix`, and never reads `faceQuad` or `decalQuad` (they exist for
-the pipeline's own consistency tests). All paths are relative to the manifest's
-directory. `drawOrder` is an integer; lower numbers are painted first, and the
-shipped bands are 0–39 wall/river/meld, 40–53 the hand row, 60+ overlays. A
-slot's `back` is the concealed-pose sprite for the *same* footprint (no face
-quad, no decal). `checks` and `assets` are the bake's own audit trail: the
-validator in `tools/render/scripts/check-assets.mjs` re-derives them from the
-committed files.
+Layouts carry geometry; faces carry only the tile code × orientation mapping. The
+runtime picks a layout by `(count, hasDraw)`, draws its `group` body (and, when
+present, its `draw` body) at their published rects, then composites each slot's
+chosen tile code decal with that slot's `faceMatrix`; it never reads `faceQuad`
+or `decalQuad` (they exist for the pipeline's own consistency tests). All paths
+are relative to the manifest's directory. `drawOrder` orders the bodies of a
+layout (40 group, 41 draw) and the layout's decals (40 + index); lower numbers
+are painted first. A body's `back` is the concealed-pose sprite for the *same
+group* (no face quad, no decal). `checks` and `assets` are the bake's own audit
+trail: the validator in `tools/render/scripts/check-assets.mjs` re-derives them
+from the committed files.
 
 ## 9. Asset budget
 
 - Tile codes: 34 standard + 3 red fives + 1 blank = 38.
 - Face decals: 38 codes × 5 orientation classes = 190 files. Render at 3× and
   ship 2× lossy WebP with alpha at 360 × 480, quality 90. Budget ≈ 6 MB.
-- Body sprites: about 30 slot poses at 2× (including kans/stacked melds), lossy
-  WebP with alpha, quality 90; budget ≈ 1 MB.
+- Body sprites: the human's five concealed row lengths (13/10/7/4/1) plus the five
+  per-length draw tiles, each in both poses = 20 group sprites at 2×, lossy WebP
+  with alpha, quality 90. Task 2.5 re-baselined the sub-budget to **2 MB** (the
+  shipped batch is ~0.19 MB); the group sprites are larger than per-tile ones
+  because each carries a whole row's shadow, but WebP's alpha compression keeps
+  them at 5–21 KB each.
 - Background: 1440 × 900 WebP quality 90, ≈ 150 KB.
-- Manifest and masks: ≈ 50 KB.
+- Manifest: **150 KB** (Task 2.5 re-baseline; version 3 duplicates the group
+  record for the with-draw and without-draw layouts and carries 75 slot records,
+  so the shipped file is ~120 KB).
 - **Total committed asset budget: 8 MB**; **initial network for one hand and the
   board: 4 MB**. Ship 2× only (the runtime scales down with CSS); keep the 3×
   renders out of the repo.
@@ -360,14 +405,27 @@ headless browser).
    wrong for a backed tile, and then tuned the backing from 40% to 30%. Task 1
    checks the visible width at final resolution.
 7. **Shadows.** Contact shadows and felt ambient occlusion are baked into the
-   body sprites and the background; each body crop includes a 32 px (2×) shadow
-   gutter. There is no runtime shadow layer and no CSS shadow on tiles. Kans
-   and overlapping melds get dedicated stacked body poses, so their overlap
-   shadow is baked in the same render.
+   body sprites and the background. Each body crop is grown from its **measured
+   shadow contour** (the composited alpha above `hand.shadow.alphaThreshold`,
+   2 %, plus 1 px), not from a fixed gutter; a crop that would end inside the
+   scene fails the bake unless the search pad was the problem, and only the
+   scene frame's own edge may cut a shadow. There is no runtime shadow layer and
+   no CSS shadow on tiles. **Task 2.5 amendment:** this item replaces Task 2's
+   "32 px shadow gutter per slot" and "each body crop includes a 32 px gutter",
+   because a standing tile's cast shadow reaches ~75 px and the fixed gutter cut
+   it on all four edges. Task 2.5 also bakes a hand row as one **group** body and
+   uses the **whole table** (felt, apron, wall-ring track, compass plate, rail)
+   as the Cycles shadow catcher in the shadow pass, with the catchers' own
+   `visible_shadow` off so the rail's shadow on the felt is not baked twice.
+   Kans and overlapping melds still get dedicated stacked body poses, so their
+   overlap shadow is baked in the same render.
 8. **Formats, resolution, budget.** 2× lossy WebP with alpha, quality 90, one
    file per sprite, no atlas. Total committed assets ≤ 8 MB and the initial
    hand + board load ≤ 4 MB, with face decals loaded per hand. Section 9 has the
-   breakdown.
+   breakdown. **Task 2.5 amendment:** the body sub-budget is 2 MB (was 1 MB) and
+   the manifest sub-budget 150 KB (was 50 KB), because group bodies carry a whole
+   row's shadow and manifest v3 carries ten layouts; the 8 MB total and 4 MB
+   initial load are unchanged.
 9. **Camera framing.** v1 ships one fixed perspective camera and one 1440 × 900
    scene, uniformly `contain`-fitted and centred; there is no portrait bake.
    Task 10 adds a second framing only if the phone screenshot check fails, and
@@ -389,8 +447,10 @@ headless browser).
     generated only by the script and are never hand-edited.
 13. **CI and regeneration.** CI never runs Blender or the offline tools. It runs
     a manifest/asset integrity test instead: every referenced path exists, every
-    tile code has all five orientations, every face quad lies inside its body
-    and inset, draw orders are unique per stack, and total asset bytes stay
+    tile code has all five orientations, every slot's face/decal quad and tile
+    rect lies inside the body that renders it, every body crop edge sits below
+    its shadow-contour threshold, draw orders are unique per layout, every
+    `faceMatrix` reproduces its `decalQuad`, and total asset bytes stay
     under budget. Regeneration is a manual developer step documented in
     `tools/render/README.md`:
     `bash tools/render/render.sh`, which runs
@@ -475,6 +535,7 @@ for Tasks 2–3:
 | 1 | 261113-070303 | Blender spike: one body sprite and one lit face decal | 0 |
 | 1.5 | 261113-1238 | Parlor strip-light rig and carve re-tune | 1 |
 | 2 | 261113-070305 | Bake hand slots, table background, and manifest **(done)** | 1.5 |
+| 2.5 | 261113-1543 | Bake hand rows as whole-group bodies **(done)** | 2 |
 | 3 | 261113-070307 | Bake lit face decals for every code × orientation | 1.5 |
 | 4 | 261113-070308 | Runtime compositor and human hand | 2, 3 |
 | 5 | 261113-070309 | Opponent concealed hands | 2, 4 |
@@ -504,6 +565,11 @@ spec for comparison. Plan and outcome:
 Task 2 turned the one-tile spike into the shipped batch. The decisions it adds to
 the chain (all recorded in `scene-spec.json` and the manifest so later tasks read
 them rather than guessing):
+
+> **Superseded in part by Task 2.5.** The per-slot body model, the 0.82 row
+> spacing, and the 32 px shadow gutter below were replaced by group bodies, a
+> touching row, and a measured shadow-contour crop. The table plan, camera
+> framing, background, and alignment-in-numbers method are unchanged.
 
 1. **Table plan.** New `table.plan` block, in tile units (1 unit = 28 mm), built
    as a real jansou read back from its tiles: felt half-extent 12.9 (25.8 across),
@@ -566,6 +632,65 @@ them rather than guessing):
    is distant (56-unit throw, 40-unit tubes) but its targets are near the
    human's side, so a flat tile at the far wall sees a different exposure than
    one in the human's river.
+
+### Task 2.5 results (done, 261113-1543): hand rows as whole-group bodies
+
+Task 2's per-slot bodies each carried a fixed 32 px shadow gutter, which a
+standing tile's cast shadow overran by a wide margin: the alpha was still ~20 %
+at the crop edge, every tile's shadow was cut by its own rectangle, and a row of
+sprites clipped each other's copies. A per-tile body also cannot bake inter-tile
+occlusion or shadow-on-neighbour, so the row read as separate tiles. Task 2.5
+makes the row the body unit. All of this is recorded in `scene-spec.json`,
+`manifest.json`, and `tools/render/README.md`'s "Task 2.5 results".
+
+1. **The layout model.** The human's hand is ten layouts: concealed counts
+   13 / 10 / 7 / 4 / 1 (a kan removes three concealed tiles like a meld) ×
+   {no draw, draw}. `manifest.layouts[]` carries each one's `group` body + rect
+   (plus its `back`), its `draw` body + rect when present (plus its `back`), and
+   its slots' tile rect / `faceQuad` / `decalQuad` / `faceMatrix`.
+2. **The row abuts.** `hand.spacing` is now `"touch"` (the tile width, 0.75
+   units) instead of an 0.82 pitch, so the concealed row closes into the
+   Tenhou-style solid block. The 13-tile row spans 1072 device px (536 CSS),
+   centred on the scene's x = 1440. The draw keeps its 0.55-unit (47 px) gap and
+   its own single-tile body, one per row length.
+3. **The row is centred without the draw.** `hand-13` and `hand-13-draw` share
+   one group body, its rect, and every slot quad, and drawing a tile never
+   shifts the row. This is a change from Task 2, which centred the row *and* the
+   draw; sharing the group body is what keeps "one draw body per row length"
+   true.
+4. **Group bake and measured crop.** `bake_body` became `bake_group`: pass 1 is
+   the posed tile copies on transparent film, pass 2 makes the **whole table**
+   the Cycles shadow catcher while the catchers themselves stop casting (the
+   rail's shadow on the felt is already in the background). The crop is the
+   measured shadow contour — composited alpha above 2 % plus 1 px, united with
+   the tiles' own integer bounds so a tile's sub-2 % anti-aliased edge cannot be
+   shaved — and the bake fails if the contour reaches the search pad's edge
+   inside the scene. Only the scene frame may cut a shadow.
+5. **Checks and numbers.** Alignment is per layout against a reference frame
+   containing exactly that layout's tiles: **0 shifted pixels for all ten
+   layouts** over 746,491 tile pixels, soft-edge fraction 0.0000 %. Every body's
+   `maxAlphaAtCropEdge` is 0.0196 (below the 2 % threshold), which is the numeric
+   proof that no sprite edge shows a shadow boundary. The row's 2 % contour
+   reaches ~70 px left / 42 px right / 46 px below the tiles (a one-tile row
+   reaches 64 px below: a row of white tiles bounces more light onto the felt and
+   cancels part of the faint tail). The bevel grooves measure a 3.5–4.4 %
+   luminance dip between faces, recorded per layout as `measurements.seamContrast`.
+6. **Budget.** With the model change the sub-budgets moved: bodies 1 MB → **2 MB**
+   and manifest 50 KB → **150 KB**; the 8 MB total and 4 MB initial load stand.
+   The shipped batch is 245 KB — 20 body sprites (225,814 B, 5,402–30,828 B each),
+   the background (19,018 B), and a 130,780 B manifest. `render.sh` prunes every
+   `bodies/` file the new manifest does not reference, so a regeneration cannot
+   leave a stale per-slot sprite behind.
+7. **One command.** `bash tools/render/render.sh` bakes the ten layouts in both
+   poses, the five draw bodies in both poses, the background, and a review
+   composite per layout into gitignored `tools/render/build/review/`, then runs
+   the validator. ~16 minutes on a CPU-only machine.
+8. **What later tasks consume.** Task 4 picks a layout by `(count, hasDraw)` and
+   draws `group`, `draw`, then the slot decals by `faceMatrix`; there is no
+   per-slot body. Task 5 calls `bake_group` with the seat's slots and the
+   `hand-upright-back` pose. Tasks 6/7/11 reuse the group bake for static groups
+   and must decide per *growing* group between a re-bake and per-tile bodies plus
+   one group shadow layer.
 
 ## 14. Risks
 

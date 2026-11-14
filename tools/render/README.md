@@ -8,17 +8,20 @@ lighting, bevel highlights, and shadows are baked here.
 
 The pipeline builds two batches from one scene, spec, and script:
 
-- **shipped batch** (default) — the table background, one body sprite per hand
-  slot in both poses, and the manifest, written to `frontend/public/table/`.
-  Task 2 delivered this batch; Tasks 5–11 add their own slots to the same scene.
+- **shipped batch** (default) — the table background, one **group** body sprite
+  per hand row length in both poses plus one single-tile body per row length for
+  the separated draw, and the manifest, written to `frontend/public/table/`.
+  Task 2 delivered the first batch of per-slot sprites; Task 2.5 replaced them
+  with group bodies and the ten hand layouts; Tasks 5–11 add their own groups to
+  the same scene.
 - **spike batch** (`--spike`) — the Task 1/1.5 review artifact: one hand-slot
   body, its concealed pose, the carved face decal, the homography composite, and
   the contact sheet, written to `tools/render/spike/`. Never shipped.
 
 Task 1 proved the pipeline end to end on one tile and one decal; Task 1.5
 replaced its single studio key with a parlor strip rig; Task 2 added the table
-and the whole hand row. Task 3 extends the decal batch to the full 38-code ×
-5-orientation set.
+and the hand row; Task 2.5 made the row a group body with a measured shadow
+crop; Task 3 extends the decal batch to the full 38-code × 5-orientation set.
 
 ## Toolchain (pinned, outside the repo)
 
@@ -61,13 +64,16 @@ bash tools/render/render.sh --spike    # Task 1 review batch -> tools/render/spi
 The shipped batch:
 
 1. builds the scene and renders with headless Blender (`build_and_render.py`,
-   `--python-exit-code 1` so failures are loud): the background, then every body
-   sprite, then the alignment reference frame;
+   `--python-exit-code 1` so failures are loud): the background, then the group
+   body of every hand layout in both poses (the concealed row as one sprite, the
+   draw tile as its own), each cropped from its measured shadow contour, then a
+   per-layout alignment reference frame;
 2. verifies the result with `scripts/check-assets.mjs` (dependency-free, so the
    same command runs in CI): every referenced file exists at the size the
-   manifest publishes, every slot rect sits inside the scene, every face and
-   decal quad sits inside its body sprite, every `faceMatrix` reproduces its
-   `decalQuad`, and the batch is inside the asset budget.
+   manifest publishes, every body rect sits inside the scene, every slot's face
+   and decal quad and tile rect sit inside the body that renders it, every body
+   crop edge sits below its shadow-contour threshold, every `faceMatrix`
+   reproduces its `decalQuad`, and the batch is inside the asset budget.
 
 The spike batch additionally installs `tools/render`'s Node dependencies with
 `npm ci` on the first run (the directory is gitignored, forever offline after
@@ -75,14 +81,14 @@ that), rasterises the vendored face SVG with resvg
 (`scripts/rasterize-face.mjs`), and assembles the labelled contact sheet with
 resvg (`scripts/contact-sheet.mjs`).
 
-One shipped batch is a few minutes on a CPU-only machine: the 28 body sprites are
-small border renders (a couple of seconds each) and the background is the bulk of
-it. The scene's 256-sample setting applies to the sprites; the background is a
-full frame of broad, low-frequency lighting, so `assets.background.samples` (64)
-plus OIDN renders it in ~2 minutes with no visible difference — that is a
-deliberate, recorded deviation from the scene's 256, because a full 2880 × 1800
-frame at 256 is several times the cost of every sprite in the batch. The spike's
-carved decal is ~90 s. There is no manual
+One shipped batch is a few minutes on a CPU-only machine: the 20 body sprites
+are group border renders (the 13-tile row is the largest, a couple of minutes
+per pass) and the background is the bulk of it. The scene's 256-sample setting
+applies to the sprites; the background is a full frame of broad, low-frequency
+lighting, so `assets.background.samples` (64) plus OIDN renders it in ~2 minutes
+with no visible difference — that is a deliberate, recorded deviation from the
+scene's 256, because a full 2880 × 1800 frame at 256 is several times the cost of
+every sprite in the batch. The spike's carved decal is ~90 s. There is no manual
 Blender interaction and no UI. The render is deterministic: the seed is fixed,
 the samples are fixed, and repeated runs produce identical pixels (Blender's PNG
 container bytes can differ, so compare decoded pixels, not file hashes).
@@ -154,16 +160,16 @@ gitignored.
 
 | Path | Committed | Purpose |
 | --- | --- | --- |
-| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine/paint/table materials, table plan dimensions, camera, `lightRig` + `lightPresets` (studio and parlor), colour management, hand layout, carve, decal rig, composite sampling, asset format/budget, checks, output names |
-| `build_and_render.py` | yes | builds the whole scene from the spec with `bpy`, renders the table background and every body sprite, carves the symbol, projects, warps the decal, checks alignment, measures, writes the manifest |
+| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine/paint/table materials, table plan dimensions, camera, `lightRig` + `lightPresets` (studio and parlor), colour management, hand layout and shadow-crop config, carve, decal rig, composite sampling, asset format/budget, checks, output names |
+| `build_and_render.py` | yes | builds the whole scene from the spec with `bpy`, renders the table background and every group body sprite, carves the symbol, projects, warps the decal, checks alignment, measures, writes the manifest |
 | `scripts/check-assets.mjs` | yes | dependency-free manifest/asset/budget validator (also the CI gate) |
 | `scripts/rasterize-face.mjs` | yes | vendored symbol-only SVG → paint colour + carve mask PNG (resvg) |
 | `scripts/contact-sheet.mjs` | yes | renders the spike review sheet SVG → PNG (resvg) |
 | `tune.mjs`, `tune.html` | yes | local parameter tuner (dev only, never shipped) |
 | `faces/` | yes | vendored public-domain symbol-only SVGs + provenance (`faces/SOURCE.md`) |
 | `spike/` | yes | Task 1/1.5 review outputs: body sprite, concealed pose, decal, composite, zoom, contact sheet, review manifest |
-| `../../frontend/public/table/` | yes | the shipped batch: `background.webp`, `bodies/*.webp`, `manifest.json` |
-| `node_modules/`, `build/`, `tune-spec.json` | no | installed dependencies, intermediate renders, and the review composites (`build/review/hand-face-up.png`, `hand-face-down.png`) |
+| `../../frontend/public/table/` | yes | the shipped batch: `background.webp`, `bodies/hand-row-*.webp`, `bodies/hand-draw-*.webp`, `manifest.json` |
+| `node_modules/`, `build/`, `tune-spec.json` | no | installed dependencies, intermediate renders, and the review composites (`build/review/<layout>-face-up.png`, `-face-down.png`) |
 
 Generated sprites are never hand-edited. A regeneration commits the spec/script
 change together with the regenerated assets under `frontend/public/table/` (or
@@ -188,15 +194,37 @@ device pixels = 1440 × 900 CSS at `pixelRatio: 2`), a preset area rig
 management with denoised Cycles.
 
 **Manifest coordinates are rendered device pixels** (top-left origin, y down,
-sprite-intrinsic). Divide by `pixelRatio` for CSS. A slot rect is exactly the
+sprite-intrinsic). Divide by `pixelRatio` for CSS. A body's rect is exactly the
 body sprite's destination: `x, y, width, height` are the crop's device-pixel
-bounds, *including* the 32 px shadow gutter, so the runtime never guesses an
-anchor. `faceQuad` and `decalQuad` are in the same absolute space.
+bounds, cropped from the **measured shadow contour**, so the runtime never
+guesses an anchor. A layout's slots carry their own projected tile rect plus
+`faceQuad`, `decalQuad` and `faceMatrix` in the same absolute space.
 `faceMatrix` is a CSS `matrix3d` that maps the decal image's own pixel rect
 (top-left origin, y down) onto `decalQuad`; the runtime applies it verbatim and
 never projects a quad itself.
 
+**Hand layouts.** A hand is a sealed unit, not 14 independent tiles:
+
+- the human's concealed row is **centred on `hand.centerX`** and pitched at
+  `hand.spacing`; the rest of this batch uses `"spacing": "touch"`, i.e. the tile
+  width, so the row closes up into the Tenhou-style solid block and the bevel
+  grooves are all that separates two tiles;
+- the row's position does **not** depend on the draw, so the layouts `hand-13`
+  and `hand-13-draw` share one group body and every slot quad, and a drawn tile
+  never shifts the row;
+- the draw sits `hand.drawGap` past the row's right end and keeps its own
+  single-tile body, one per row length, because its gap keeps its cast shadow
+  off the row;
+- concealed counts are 13 / 10 / 7 / 4 / 1 (a kan removes three concealed tiles
+  like a meld), each shipped with and without the draw: layouts `hand-13`,
+  `hand-13-draw`, `hand-10`, `hand-10-draw`, … `hand-1`, `hand-1-draw`.
+
 ## Task 2 results: the table, the hand row, and the alignment check
+
+> **Partly superseded by Task 2.5** (the next section): the 0.82 row spacing, the
+> per-slot bodies, the 32 px shadow gutter, and manifest v2 were replaced by a
+> touching group row and a measured shadow-contour crop. The table plan, camera
+> framing, background bake, and the alignment-in-numbers method below are current.
 
 ### Table plan (tile units, 1 unit = the 28 mm tile height)
 
@@ -244,23 +272,14 @@ band along it, which is the physical truth for a 16.5 mm tile seen from 34°, an
 it is what makes the hand row read as physical tiles rather than cards. The plan
 keeps one framing (§12.9); Task 10 revisits it only if the phone check fails.
 
-### Hand slots
+### Hand slots (Task 2 model, superseded by group layouts)
 
-The human's row is 13 concealed slots at 0.82 spacing plus **the separated
-draw**: `hand-draw` sits 0.55 units past the last concealed slot, which is the
+The human's row was 13 concealed slots at 0.82 spacing plus **the separated
+draw**: `hand-draw` sat 0.55 units past the last concealed slot, which is the
 gap the app's dock already shows between `player.hand` and `player.draw`. The
-row *including* the draw is centred on `hand.centerX`, so the runtime can append
-the drawn tile by index without re-centring anything. Ids are `hand-0` …
-`hand-12` and `hand-draw`; `role` is `concealed` or `draw`.
-
-Every slot is baked in both poses (`hand-upright` and `hand-upright-back`), so a
-concealed row can be drawn at these slots today and Tasks 5/11 reuse the same
-pose at their own seat transforms. The back pose is a separate file (`<id>-back`)
-and a nested `back` record with its own rect; it has no face quad. Draw order is
-`40 + index` (13 concealed + draw = 40…53), which reserves 0–39 for the wall,
-rivers, and melds and leaves 54+ for later overlay bands. Nothing overlaps inside
-the row itself, but a per-slot order keeps the manifest's "unique draw order"
-check meaningful.
+row *including* the draw was centred on `hand.centerX`. Every slot was baked in
+both poses. Task 2.5 replaced this with the layout model above: the row abuts,
+is centred on its own, and is baked as one group body.
 
 ### Background bake
 
@@ -271,23 +290,23 @@ It renders at the scene resolution (2880 × 1800) and is box-filtered ×2 down t
 **1440 × 900 WebP q90** (§9's background size), which is also `backgroundPixels`
 in the manifest. Body sprites stay at 2× device pixels.
 
-### Alignment check: sprites really do land on the background
+### Alignment check: sprites really do land on the background (method; numbers re-baselined in Task 2.5)
 
-The batch is checked, not just eyeballed. After all 28 sprites are baked, the
-script renders one 8-sample reference frame with **every** slot's tile in the
-scene at once, and pastes every sprite's tile-only alpha at its manifest rect
-(draw order applied). The two are compared with a one-pixel dilation so
-anti-aliasing and denoiser softness are ignored: any disagreement left is a real
-shift. The shipped batch reports **0 shifted pixels** out of ~143k tile pixels,
-which is what "sprites align with the background" means here — a crop or a rect
-off by one pixel fails the bake.
+The batch is checked, not just eyeballed. After the bodies are baked, the script
+renders one 8-sample reference frame with **every tile of one layout** in the
+scene at once, and pastes the group's and the draw's tile-only alpha at their
+manifest rects. The two are compared with a one-pixel dilation so anti-aliasing
+and denoiser softness are ignored: any disagreement left is a real shift. Task 2
+reported **0 shifted pixels** for the per-slot row; Task 2.5 reports **0 shifted
+pixels for every one of the ten layouts** (see its section below) — a crop or a
+rect off by one pixel fails the bake.
 
 A second, human-readable artifact proves the same thing over the real
-background: `build/review/hand-face-up.png` and `hand-face-down.png` composite
-the whole row exactly as the runtime will (device pixels, then box-filtered for
+background: `build/review/<layout>-face-up.png` / `-face-down.png` composite each
+layout exactly as the runtime will (device pixels, then box-filtered for
 viewing). They are gitignored review images, not assets.
 
-### Format, budget, and what the batch weighs
+### Format, budget, and what the batch weighs (Task 2 batch; Task 2.5 below)
 
 | Asset | Format | Size |
 | --- | --- | --- |
@@ -295,29 +314,172 @@ viewing). They are gitignored review images, not assets.
 | body sprites | WebP q90 with alpha, 2× device px | 141,804 B (28 files, ~5 KB each) |
 | manifest | JSON (v2) | 24,620 B |
 
-The batch is 186 KB against the plan's 8 MB total / 1 MB body budgets, and the
-`table` and `manifest` byte budgets are enforced by both the bake and
-`scripts/check-assets.mjs` (the manifest budget is set to 50 KB, with the
-manifest currently ~24 KB of that). The manifest is deliberately verbose —
+The Task 2 batch was 186 KB against the plan's 8 MB total / 1 MB body budgets,
+and the `body`, `background` and `manifest` byte budgets are enforced by both the
+bake and `scripts/check-assets.mjs` (Task 2's manifest budget was 50 KB, with the
+manifest then ~24 KB of that). The manifest is deliberately verbose —
 per-slot measurements, the full rig, and the check results — because it is the
 pipeline's audit trail; Task 4 can strip a runtime projection of it if the load
-weight ever matters.
+weight ever matters. Task 2.5 re-baselined the body and manifest sub-budgets to
+2 MB and 150 KB (see its section).
 
-## Findings and decisions (Task 1, updated by Task 1.5)
+## Task 2.5 results: hand rows as whole-group bodies
+
+Task 2 baked **one body per slot**, each cropped to a fixed 32 px shadow gutter.
+A standing hand tile's cast shadow is several times that: the composited alpha
+was still ~20 % at the old crop edge, so every sprite cut its own shadow on all
+four edges, and a row of them clipped each other's copies. A per-tile body also
+cannot carry inter-tile occlusion or the shadow one tile throws on its
+neighbour, which is why the row read as loose isolated tiles. Task 2.5 makes the
+row the body unit.
+
+### The layout model
+
+A hand is ten layouts — the five concealed lengths a jansou hand can have (a kan
+removes three concealed tiles like a meld) with and without the drawn tile:
+
+| Layout | Concealed | Draw | Group body | Draw body |
+| --- | --- | --- | --- | --- |
+| `hand-13` | 13 | no | `bodies/hand-row-13.webp` | — |
+| `hand-13-draw` | 13 | yes | `bodies/hand-row-13.webp` (shared) | `bodies/hand-draw-13.webp` |
+| `hand-10`, `hand-10-draw` | 10 | no / yes | `bodies/hand-row-10.webp` | `bodies/hand-draw-10.webp` |
+| `hand-7`, `hand-7-draw` | 7 | no / yes | `bodies/hand-row-7.webp` | `bodies/hand-draw-7.webp` |
+| `hand-4`, `hand-4-draw` | 4 | no / yes | `bodies/hand-row-4.webp` | `bodies/hand-draw-4.webp` |
+| `hand-1`, `hand-1-draw` | 1 | no / yes | `bodies/hand-row-1.webp` | `bodies/hand-draw-1.webp` |
+
+- **The row abuts.** `hand.spacing` is `"touch"`, resolved to the tile width
+  (0.75 units), so the concealed row is the Tenhou-style solid block and the
+  bevel grooves are the only separation between tiles. The 13-tile row spans
+  1072 device px (536 CSS), x = 904…1976 with its centre at the scene's 1440.
+- **The draw keeps its gap and its own body.** It sits 0.55 units (47 device px)
+  past the row's right end, so its shadow tail stops just short of the row's and
+  it stays independently replaceable. Its body is per *row length* because its
+  position depends on the concealed count.
+- **The row is centred without the draw.** Drawing a tile never moves the row,
+  and `hand-13` / `hand-13-draw` share the group body, its rect, and every slot
+  quad. Only the draw body appears or disappears.
+- Both poses are still baked as before: each layout's `group` and `draw` records
+  carry a `back` sprite and rect in the concealed (`hand-upright-back`) pose.
+
+### The group bake
+
+`bake_group()` replaces `bake_body()`:
+
+1. **Pass 1** — the group's posed tile copies alone, transparent film.
+2. **Pass 2** — the **whole table** (felt, apron, wall-ring track, compass
+   plate, rail) as Cycles shadow catchers with the tiles invisible to the camera
+   but still occluding the lights. The catchers do not cast: the rail's own
+   shadow on the felt is already in the background and must not be baked twice.
+3. **Crop** — the measured shadow contour: the composited alpha above
+   `hand.shadow.alphaThreshold` (2 %) plus `cropMarginPx` (1 px), united with the
+   tiles' own integer bounds so a tile's sub-2 % anti-aliased top edge can never
+   be shaved. The render region is `searchPadDevicePx` (160) around the tiles plus
+   a 4 px guard band, and the bake **fails** if the contour reaches the search
+   pad's edge while that edge is inside the scene. Only the scene frame may cut
+   a shadow (`shadow.sceneEdgeClips` — empty in the shipped batch).
+4. The draw bodies are baked the same way, one tile at that layout's draw slot.
+
+### Measured results
+
+Every body's `shadow` block is the audit trail. Measured reach is how far the 2 %
+contour extends past the tiles' own bounds:
+
+| Layout | Group crop (device px) | Reach L / T / R / B (px) | Group bytes | Draw bytes |
+| --- | --- | --- | --- | --- |
+| `hand-13` | 1188 × 174 | 73.5 / 0 / 41.5 / 46 | 20,968 | 5,920 |
+| `hand-10` | 938 × 174 | 71.1 / 0 / 41.1 / 46 | 17,362 | 5,882 |
+| `hand-7` | 690 × 174 | 69.7 / −1 / 41.7 / 46 | 13,552 | 5,850 |
+| `hand-4` | 443 × 174 | 68.2 / −1 / 43.2 / 46 | 9,496 | 5,582 |
+| `hand-1` | 194 × 192 | 65.8 / −1 / 43.8 / 64 | 5,402 | 5,568 |
+
+Two things are worth recording:
+
+- `maxAlphaAtCropEdge` is **0.0196** (5/255) on every body: below the 2 %
+  threshold, so no sprite edge ends on a shadow boundary. That is the numeric
+  form of "the shadow is uncut".
+- A one-tile row's 2 % contour reaches **64 px** below the tile foot, while a
+  multi-tile row reaches **46 px**. That is not a bug: the shadow catcher's alpha
+  is the *relative* darkening, and a row of white melamine tiles bounces more
+  light onto the felt than one tile does, which cancels part of the faint tail.
+  The pose matters more than the count: the blue `-back` pose reaches **72 px**
+  below the same row, because the blue backing reflects less light onto the felt
+  than white melamine and so cancels less of the shadow.
+
+The seam is measured, not eyeballed. `seamContrast` on each layout's group
+sprite takes a horizontal scan through the face centres and records the deepest
+luminance dip within ±4 px of each interior seam against the face luminance
+20 px inside the tile: **dip median 3.5–4.4 %**, 12 seams on the 13-tile row.
+That is the bevel groove alone — the decals (Task 3) leave a ~7 px band of bare
+bevel between faces, which adds the visible line at runtime.
+
+### Alignment per layout
+
+Each layout is checked against its own reference: one 8-sample frame rendered
+with **all of that layout's tiles** present (a layout without the draw must not
+see one). The group's and the draw's tile-only alpha are pasted at their
+manifest rects and compared with a one-pixel dilation. The shipped batch reports
+**0 shifted pixels for all ten layouts** over 746,491 tile pixels, with a
+soft-edge fraction of **0.0000 %** (the 256-sample bake and the reference agree
+to the stored 8-bit alpha).
+
+### Weight and budgets
+
+| Asset | Format | Size |
+| --- | --- | --- |
+| background | WebP q90, 1440 × 900, 64 samples | 19,018 B |
+| body sprites | WebP q90 with alpha, 2× device px | 225,814 B (20 files, 5,402–30,828 B) |
+| manifest | JSON (v3), ten layouts, 75 slots | 130,780 B |
+
+The batch is **245 KB**, 20 sprites, against the re-baselined 8 MB total / 2 MB
+body / 150 KB manifest budgets. Group sprites are several times a per-tile body
+because each carries a row's shadow, but WebP's alpha compression keeps even the
+13-tile concealed pose at 30,828 B. `render.sh` prunes any `bodies/` file the new
+manifest does not reference, so a regeneration cannot leave a stale per-slot
+sprite behind to be counted or served.
+
+### What Tasks 4–7 and 11 consume
+
+- **Task 4 (runtime compositor):** pick a layout by `(count, hasDraw)`; draw
+  `layout.group` and, if present, `layout.draw` at their published rects, then
+  each slot's decal with that slot's `faceMatrix`. There is no per-slot body and
+  nothing to project.
+- **Task 5 (opponent hands):** call `bake_group()` with the seat's slot
+  positions and the `hand-upright-back` pose; it bakes one concealed row per
+  layout length, exactly as this batch does for the human.
+- **Tasks 6/7/11 (rivers, melds, wall):** reuse `bake_group()` where a group is
+  static. Where a group grows (a river that gains a tile, a draw that changes
+  the row), decide per group between a full re-bake and per-tile bodies plus one
+  group shadow layer; record the choice in the task's report. The measured
+  contour crop and the whole-table catcher are the pieces to keep.
+- Re-read `manifest.rig`, `manifest.table.plan`, and `manifest.camera`; the
+  parlor rig and the Task 2 camera are baked into every sprite.
+
+### Review artifacts
+
+`tools/render/build/review/` holds a gitignored composite for every layout over
+the real background, in both poses:
+`<layout>-face-up.png` and `<layout>-face-down.png` (ten of each). They are
+assembled exactly as the runtime will, at device pixels, then box-filtered to
+CSS resolution for viewing. `bash tools/render/render.sh` is the only command
+needed to rebuild and re-validate the whole batch (~16 minutes on this
+machine, dominated by the shadow passes and the background).
+
+## Findings and decisions (Task 1, updated by Tasks 1.5, 2, and 2.5)
 
 Measured from `spike/` and the `measurements` block of `spike/manifest.json`.
 
 ### Body sprite: real slot, position-dependent shading
 
-`hand-0` is the leftmost of the hand row (13 concealed slots at 0.82 spacing,
-row at y = −11.7), so the sprite is baked where that tile will actually sit, not
-on a neutral stage. The slot is left of the camera axis, which is what makes the
-shading position-dependent: the near (left) bevel catches the key light, the
-right bevel falls into the fill, and the right side of the body is visible at all
-(the face quad is a true trapezoid: top edge 74.66 px, bottom edge 73.86 px,
-centre sheared ~6.9 px). A slot at the row centre would lose the side face and
-flatten the bevel contrast. The crop is 159 × 190 device px including the 32 px
-shadow gutter. On the visible side the white front band meets the blue rear band
+`hand-0` is the leftmost of the hand row (13 concealed slots, row at y = −11.7),
+so the sprite is baked where that tile will actually sit, not on a neutral stage.
+The slot is left of the camera axis, which is what makes the shading
+position-dependent: the near (left) bevel catches the key light, the right bevel
+falls into the fill, and the right side of the body is visible at all (the face
+quad is a true trapezoid: top edge 74.66 px, bottom edge 73.86 px, centre sheared
+~6.9 px). A slot at the row centre would lose the side face and flatten the bevel
+contrast. (The Task 1 crop was 159 × 190 device px including a 32 px shadow
+gutter; Task 2.5 crops from the measured shadow contour, so the same tile's crop
+is ~207 × 192 px.) On the visible side the white front band meets the blue rear band
 at the backing line, which is what makes the wrap read as a physical backing
 rather than a painted stripe. (The Task 1 numbers in this section were measured
 on the 100 px/unit spike camera; the geometry and the material behaviour are
@@ -620,30 +782,48 @@ slightly brighter) and vertical-vs-flat lighting still differs strongly, which i
 what the orientation classes need. **Tasks 2 and 3 must keep the rig distances
 in this range** or decals will no longer sit flush on distant slots.
 
-### Shadows: two-pass shadow catcher, baked into the body sprite (§12.7 confirmed)
+### Shadows: two-pass shadow catcher, baked into the body sprite (§12.7, amended by Task 2.5)
 
 Each body render is two passes:
 
-1. the tile alone with transparent film (straight alpha);
-2. the felt as a Cycles **shadow catcher** with the tile set
-   `visible_camera = False`, so it is invisible to the camera but still
-   occludes the lights. This pass returns the contact shadow as a black colour
-   with **alpha = shadow coverage** (not an opaque grey patch).
+1. the tiles alone with transparent film (straight alpha);
+2. the **whole table** — felt, hand apron, wall-ring track, compass plate, rail
+   — as Cycles **shadow catchers** with the tiles set `visible_camera = False`,
+   so they are invisible to the camera but still occlude the lights. This pass
+   returns the cast shadow as a black colour with **alpha = shadow coverage**
+   (not an opaque grey patch).
 
-The two are combined in `numpy` (tile over shadow) and written as one RGBA
-sprite, with the crop grown by the 32 px gutter. Every other table part (rail,
-track, aprons, compass plate, room floor) is hidden in both passes: the
-background already carries their shading, and their shadows must not be counted
-twice. The measured `hand-0` crop is `159 × 190` device px with the whole shadow
-inside it, and a crop that touches the frame edge fails the bake.
-The shadow is neutral black alpha, i.e. a multiply-like darkening; over the green
-felt this reads correctly, and it is the same approximation §12.7 specifies
-(no runtime shadow layer, no CSS shadow).
+The catchers do **not cast** (`visible_shadow = False`): the rail's own shadow on
+the felt is already in the background, so a catcher that also cast would bake
+that shadow twice. Only the tiles cast, because only their shadow is new. The
+room floor is not a catcher at all (it is outside the rail and out of frame).
+
+The two passes are combined in `numpy` (tiles over shadow) and written as one
+RGBA sprite, cropped to the **measured shadow contour**: the composited alpha
+above `hand.shadow.alphaThreshold` (2 %) plus 1 px. The bake renders
+`hand.shadow.searchPadDevicePx` (160 px) around the tiles plus a small guard
+band, and fails outright if the contour reaches the search pad's edge while that
+edge is inside the scene: a crop that ends inside the scene must end on
+transparent felt, never on a shadow boundary. Only the scene frame's own edge
+may cut a shadow (`shadow.sceneEdgeClips`, empty in the shipped batch). The
+measured `maxAlphaAtCropEdge` is the largest alpha on the crop's boundary ring
+and it is below the threshold in every shipped body — the numeric proof that no
+sprite edge shows a shadow boundary.
+
+This replaces Task 2's fixed 32 px gutter, which cut the cast shadow on all four
+edges of every body. `hand.shadow.alphaScale` is the weight knob: 1.0 is the
+physical render, and it exists so the shadow can be lightened without touching
+the light rig. The shadow is neutral black alpha, i.e. a multiply-like
+darkening; over the green felt this reads correctly, and it is the same
+approximation §12.7 specifies (no runtime shadow layer, no CSS shadow).
 
 The body sprite has no felt underlay, so it composites over the baked background
 without a mask. Bounce light from the felt is not included (the felt is invisible
-in pass 1); the green bounce is negligible on white melamine at this exposure and keeps
-body and decal lighting consistent.
+in pass 1); the green bounce is negligible on white melamine at this exposure and
+keeps body and decal lighting consistent. The tiles' own *indirect* bounce does
+reach the catcher, which is why a row's concealed (blue) pose measures a
+slightly larger contour than its face-up pose: the blue backing reflects less
+light onto the felt than white melamine does.
 
 ### Orientation-lit decal
 
@@ -666,23 +846,25 @@ bevel and alpha can be inspected; the shipped batch is 2× lossy WebP under
 
 | File | What it is |
 | --- | --- |
-| `bodies/hand-0.png` | 159 × 190 device px body sprite for the leftmost hand slot, alpha + baked shadow |
+| `bodies/hand-0.png` | body sprite of the leftmost concealed hand slot, alpha + baked shadow, cropped from its measured shadow contour |
 | `bodies/hand-0-back.png` | the same slot in the concealed pose (blue backing toward the camera) |
 | `1m-upright.decal.png` | 492 × 672 px lit 1-man face decal (inset + 1 px gutter), rendered at 3× CSS |
 | `1m-upright.composite.png` | body sprite with the decal homography-warped onto its face quad — the 2D composite the runtime will do |
 | `contact-zoom.png` | 4× nearest zoom of the composite's top-left corner (blue rim, bevel streak, decal edge) |
 | `contact-sheet.png` | body, composite, decal, concealed pose, the 4× zoom, the rig, the peak/clipping numbers and the manifest figures |
 | `bodies/` | the spike batch's two body sprites (PNG, lossless review) |
-| `manifest.json` | review manifest (version 2) for the one slot: rect, face quad, `faceMatrix`, orientation, draw order, the rig, decal size and carve, measurements (blue sliver, peaks, clipping, bake time) |
+| `manifest.json` | review manifest (version 3) for the one slot: rect, shadow contour, face quad, `faceMatrix`, orientation, draw order, the rig, decal size and carve, measurements (blue sliver, peaks, clipping, bake time) |
 
 ## Scope: back / face-down poses
 
 Task 1 shipped only the face-up `hand-0` body plus a face-down diagnostic. Task 2
-replaced that diagnostic with a real deliverable: **every** hand slot is baked in
-both poses, and the shipped manifest gives each slot a nested `back` record with
-its own sprite and rect. The concealed pose uses the same `hand-upright-back`
-pose and `bake_body` call; Tasks 5 and 11 bake their own slots at their own seat
-transforms, so nothing about the pose has to be invented there.
+replaced that diagnostic with a real deliverable: every hand slot baked in both
+poses. Task 2.5 carries that into the group model: each layout's `group` and
+`draw` records have a nested `back` record, baked with the same
+`hand-upright-back` pose and the same `bake_group` call, so a whole concealed row
+is available at any seat transform. Tasks 5 and 11 call `bake_group` with their
+own slots and their own seat transform, so nothing about the pose has to be
+invented there.
 
 ## Next tasks
 
@@ -692,14 +874,20 @@ transforms, so nothing about the pose has to be invented there.
   492 × 672 render is an ~8.7× minification and a 1 px fillet highlight cannot
   survive it. `compositeSupersample` only changes the review composite, not the
   runtime texture. Fill the manifest's `faces` map.
-- Tasks 5–8, 11: add their slots to the same spec/scene and bake with the same
-  `bake_body`/`build_table` helpers. Re-read `manifest.rig`, `manifest.table.plan`
-  and `manifest.camera` rather than assuming light or table positions, and pick
-  draw-order bands (0–39 wall/river/meld, 40–53 the hand row as shipped, 60+
-  overlays) so a stacked row can never overdraw the wrong tile. Keep the shipped `parlor` rig and the
-  Task 2 camera: both are baked into every sprite.
-- Task 4: the runtime reads `background`, `backgroundPixels`, `pixelRatio`, and
-  each slot's `body`/rect/`faceMatrix`; it never projects a quad. Fall back to the
-  top-down view if the assets fail to load.
+- Task 4: the runtime reads `background`, `backgroundPixels`, `pixelRatio`, picks a
+  layout from `(count, hasDraw)`, draws `group` and `draw` at their published
+  rects, then composites each slot's decal with that slot's `faceMatrix`; it never
+  projects a quad and never draws a body per slot. Fall back to the top-down view
+  if the assets fail to load.
+- Tasks 5–8, 11: add their groups to the same spec/scene and bake with the same
+  `bake_group`/`build_table` helpers. A static group (an opponent's concealed row,
+  a wall segment) is one bake; a group that grows per call or per draw needs
+  per-tile bodies *plus* one group shadow layer — decide per group and record it.
+  Pass the seat transform as the slots' `x`/`y`, and reuse the `hand-upright-back`
+  pose for concealed rows. Re-read `manifest.rig`, `manifest.table.plan` and
+  `manifest.camera` rather than assuming light or table positions, and pick
+  draw-order bands (0–39 wall/river/meld, 40–53 the hand's bodies and decals,
+  60+ overlays) so a stacked row can never overdraw the wrong tile. Keep the
+  shipped `parlor` rig and the Task 2 camera: both are baked into every sprite.
 - Keep `node_modules/` and `build/` out of git; keep the spec as the only place
   numbers live.

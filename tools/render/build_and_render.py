@@ -23,14 +23,23 @@ Two batches share one scene builder:
 Outputs (paths relative to the output directory) in ``table`` mode:
 
     background.webp          opaque table background, scene CSS pixels
-    bodies/<id>.webp         face-up body sprite of a hand slot, device px
-    bodies/<id>-back.webp    the same slot face-down (concealed hand)
-    manifest.json            scene, background, every slot, checks, budget
+    bodies/hand-row-<n>.webp the concealed row of n tiles as one group body
+    bodies/hand-row-<n>-back.webp  the same row in the concealed (blue) pose
+    bodies/hand-draw-<n>.webp      the drawn tile of an n-tile row
+    bodies/hand-draw-<n>-back.webp its concealed pose
+    manifest.json            scene, background, every layout, checks, budget
+
+Bodies are *groups*: the human's concealed row is baked as one sprite and the
+per-slot face decals composite on top of it, so the row's cast shadow, the
+inter-tile occlusion, and the shadow each tile throws on its neighbour are all
+in one render and the sprite can never clip an individual tile's shadow. The
+separated draw tile keeps its own single-tile body per row length. Sprites are
+cropped to their measured shadow contour (alpha > the configured threshold plus
+one pixel), never to a fixed gutter.
 
 Coordinate conventions: world units are tile units (see the spec); scene pixels
 in the manifest are rendered device pixels (CSS size x pixelRatio), origin
-top-left, y down. Body sprites are cropped to the slot's projected bounds plus
-the shadow gutter, so a slot rect is exactly where the runtime draws the file.
+top-left, y down. A body's rect is exactly where the runtime draws the file.
 World axes: +X is screen right, -Y is toward the human's edge (the camera
 stands at -Y looking across the table), +Z is up off the felt.
 """
@@ -474,7 +483,17 @@ def build_table(spec: dict, materials: dict) -> dict:
         f"{outer - inner:.2f}, compass {2 * half:.2f}, "
         f"apron {apron['inner']:g}..{apron['outer']:g}"
     )
-    return {"felt": felt, "parts": parts, "rail": rail}
+    # Every surface a tile's cast shadow can land on is a shadow catcher during
+    # the body passes. The room floor is not: it is outside the rail, out of
+    # frame, and nothing baked ever lands on it.
+    catchers = [part for part in parts if part is not room]
+    return {
+        "felt": felt,
+        "parts": parts,
+        "catchers": catchers,
+        "rail": rail,
+        "room": room,
+    }
 
 
 def build_tile(scene: bpy.types.Scene, spec: dict, materials: dict) -> bpy.types.Object:
@@ -681,26 +700,41 @@ def camera_record(spec: dict) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# Hand slot inventory
+# Hand layout inventory
 # --------------------------------------------------------------------------- #
 
 
-def hand_slots(spec: dict) -> list[dict]:
-    """The human's hand row: 13 concealed slots plus the separated draw.
+def resolve_row_spacing(spec: dict) -> float:
+    """The concealed row's pitch in tile units.
 
-    The row (including the draw) is centred on `hand.centerX`, and the draw sits
-    `drawGap` beyond the last concealed slot, so the runtime can append the
-    drawn tile the way `HandDock` already does. Slot ids are stable: `hand-0` …
-    `hand-12` for the concealed tiles, `hand-draw` for the drawn one.
+    `hand.spacing` is either ``"touch"`` (the tile width, so the row closes up
+    into the Tenhou-style solid block and the bevel grooves are all that
+    separates the tiles) or an explicit pitch. Resolved once here so the row
+    model and the manifest can never disagree.
+    """
+    spacing = spec["hand"]["spacing"]
+    if spacing == "touch":
+        return float(spec["tile"]["width"])
+    return float(spacing)
+
+
+def hand_row_slots(spec: dict, count: int, include_draw: bool = False) -> list[dict]:
+    """The concealed slots of a row of `count` tiles, plus its draw slot.
+
+    The concealed row is centred on `hand.centerX` and pitched at the resolved
+    row spacing, so **the row occupies the same place for every layout and for
+    either draw state**: drawing a tile never shifts the row, and the layouts
+    with and without the draw share the group body and every slot quad. The draw
+    sits `hand.drawGap` past the row's right end, so its shadow never reaches
+    the row.
+
+    Ids are stable: `hand-0` … `hand-{count-1}` for the concealed tiles and
+    `hand-draw` for the drawn one.
     """
     hand = spec["hand"]
-    count = hand["concealedCount"]
-    spacing = hand["spacing"]
-    gap = hand["drawGap"]
-    tile_width = spec["tile"]["width"]
-    concealed_span = (count - 1) * spacing
-    total_width = concealed_span + spacing + gap + tile_width
-    first_x = hand["centerX"] - total_width / 2.0 + tile_width / 2.0
+    spacing = resolve_row_spacing(spec)
+    y = hand["y"]
+    first_x = hand["centerX"] - (count - 1) * spacing / 2.0
     order_base = hand.get("drawOrderBase", 40)
 
     slots = []
@@ -714,26 +748,59 @@ def hand_slots(spec: dict) -> list[dict]:
                 "pose": hand["pose"],
                 "backPose": hand["backPose"],
                 "x": first_x + index * spacing,
-                "y": hand["y"],
+                "y": y,
                 "orientation": "upright",
                 "drawOrder": order_base + index,
             }
         )
-    slots.append(
-        {
-            "id": "hand-draw",
-            "seat": hand["seat"],
-            "role": "draw",
-            "index": count,
-            "pose": hand["pose"],
-            "backPose": hand["backPose"],
-            "x": first_x + concealed_span + spacing + gap,
-            "y": hand["y"],
-            "orientation": "upright",
-            "drawOrder": order_base + count,
-        }
-    )
+    if include_draw:
+        slots.append(
+            {
+                "id": "hand-draw",
+                "seat": hand["seat"],
+                "role": "draw",
+                "index": count,
+                "pose": hand["pose"],
+                "backPose": hand["backPose"],
+                "x": first_x + count * spacing + hand["drawGap"],
+                "y": y,
+                "orientation": "upright",
+                "drawOrder": order_base + count,
+            }
+        )
     return slots
+
+
+def hand_layouts(spec: dict) -> list[dict]:
+    """Every shipped hand layout: each concealed count, with and without the draw.
+
+    A kan removes three concealed tiles like a meld, so the human's row is
+    13 / 10 / 7 / 4 / 1 tiles. Each length is shipped both ways, because the
+    runtime picks a layout from (concealed count, draw present) and never
+    re-deals or re-centres when a tile is drawn or discarded.
+    """
+    hand = spec["hand"]
+    layouts = []
+    for count in hand["concealedCounts"]:
+        for has_draw in (False, True):
+            layouts.append(
+                {
+                    "id": f"hand-{count}" + ("-draw" if has_draw else ""),
+                    "seat": hand["seat"],
+                    "count": count,
+                    "hasDraw": has_draw,
+                    "orientation": "upright",
+                    "slots": hand_row_slots(spec, count, has_draw),
+                }
+            )
+    return layouts
+
+
+def layout_groups(layout: dict) -> tuple[list[dict], dict | None]:
+    """Split a layout into its concealed group slots and its draw slot."""
+    concealed = [slot for slot in layout["slots"] if slot["role"] == "concealed"]
+    draw = next((slot for slot in layout["slots"] if slot["role"] == "draw"), None)
+    return concealed, draw
 
 
 def pose_matrix(pose: str, slot: dict, spec: dict) -> Matrix:
@@ -757,10 +824,6 @@ def pose_matrix(pose: str, slot: dict, spec: dict) -> Matrix:
         location = Vector((slot["x"], slot["y"], tile["height"] / 2.0))
         return Matrix.Translation(location) @ rotation
     raise ValueError(f"unknown pose {pose!r}")
-
-
-def apply_pose(obj: bpy.types.Object, slot: dict, spec: dict, pose: str | None = None) -> None:
-    obj.matrix_world = pose_matrix(pose or slot["pose"], slot, spec)
 
 
 def project(scene: bpy.types.Scene, camera: bpy.types.Object, point) -> tuple[float, float]:
@@ -1090,85 +1153,287 @@ def hide_parts(parts: list, hidden: bool) -> None:
         part.hide_render = hidden
 
 
-def bake_body(
+def set_shadow_catchers(spec: dict, table: dict, enabled: bool) -> None:
+    """Switch the whole table between 'static surface' and 'shadow catcher'.
+
+    During a body pass every table surface a tile's shadow can land on catches
+    that shadow: felt, apron, wall-ring track, compass plate, and rail. The rail
+    matters because a hand or river tile at a far seat throws its shadow onto
+    it, and a shadow is only correct in screen space if the surface it lands on
+    is the one being composited over.
+
+    The catchers do **not** cast (``visible_shadow = False``): the rail's own
+    shadow on the felt is already baked into the background, so letting the
+    static table cast during the catcher pass would darken it twice. Only the
+    tiles cast, because only their shadow is new.
+
+    When disabled, the parts go back to the static configuration: hidden for the
+    body passes (the background carries their shading) and only the felt a
+    shadow catcher, which is the state the old per-slot passes expect.
+    """
+    for part in table["catchers"]:
+        part.hide_render = not enabled
+        part.is_shadow_catcher = enabled
+        part.visible_shadow = not enabled
+    if not enabled:
+        table["felt"].is_shadow_catcher = spec["table"]["shadowCatcher"]
+
+
+def projected_bounds(
+    scene: bpy.types.Scene,
+    camera: bpy.types.Object,
+    spec: dict,
+    slots: list[dict],
+    pose: str,
+) -> tuple[float, float, float, float]:
+    """Device-pixel bounds of the posed tiles, without any shadow."""
+    points = []
+    for slot in slots:
+        matrix = pose_matrix(pose, slot, spec)
+        points.extend(project(scene, camera, matrix @ corner) for corner in tile_corners(spec))
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def shadow_contour(alpha: np.ndarray, threshold: float) -> tuple:
+    """Measured extent of the shadow in an alpha image, as a half-open bbox.
+
+    The contour is the region where the composited alpha exceeds `threshold`.
+    Nothing is smoothed or despeckled: the render region carries a guard band
+    around the search area, so a border render's stray corner value sits
+    outside the measured area and cannot drag the crop out to the sample edge,
+    while a real 3 % shadow pixel inside the pad still counts.
+    """
+    mask = alpha > threshold
+    if not mask.any():
+        die(f"shadow contour is empty at threshold {threshold}")
+    rows = np.nonzero(mask.any(axis=1))[0]
+    cols = np.nonzero(mask.any(axis=0))[0]
+    return (int(cols[0]), int(rows[0]), int(cols[-1]) + 1, int(rows[-1]) + 1)
+
+
+def edge_ring_max(alpha: np.ndarray, rect: tuple, region: tuple) -> tuple:
+    """Largest alpha on a rect's own boundary, and where it is.
+
+    The crop is the measured contour plus a transparent margin, so the largest
+    alpha on its edge is the proof that the sprite does not end on a visible
+    shadow boundary. Its position is reported so a failure can name the edge.
+    """
+    x0, y0, x1, y1 = rect
+    rx0, ry0, _, _ = region
+    rows = slice(y0 - ry0, y1 - ry0)
+    cols = slice(x0 - rx0, x1 - rx0)
+    edges = {
+        "left": alpha[rows, x0 - rx0],
+        "right": alpha[rows, x1 - 1 - rx0],
+        "top": alpha[y0 - ry0, cols],
+        "bottom": alpha[y1 - 1 - ry0, cols],
+    }
+    best_side = "left"
+    best_index = 0
+    best_value = -1.0
+    for side, values in edges.items():
+        index = int(np.argmax(values))
+        value = float(values[index])
+        if value > best_value:
+            best_side, best_index, best_value = side, index, value
+    if best_side in ("left", "right"):
+        position = [int(x0 if best_side == "left" else x1 - 1), int(y0 + best_index)]
+    else:
+        position = [int(x0 + best_index), int(y0 if best_side == "top" else y1 - 1)]
+    return best_value, best_side, position
+
+
+def bake_group(
     spec: dict,
     scene: bpy.types.Scene,
     camera: bpy.types.Object,
     tile: bpy.types.Object,
     table: dict,
-    slot: dict,
+    slots: list[dict],
     pose: str,
     out_dir: Path,
     path: Path,
-    gutter: int,
+    label: str,
 ) -> dict:
-    """Bake one body sprite: the posed tile over its shadow-catcher contact shadow.
+    """Bake one group body: posed tiles over their shared shadow.
 
-    Pass 1 renders the tile alone with transparent film (straight alpha). Pass 2
-    renders the felt as a Cycles shadow catcher with the tile invisible to the
-    camera but still occluding the lights, which returns the contact shadow as a
-    black colour with alpha = shadow coverage. The two are combined here, so a
-    sprite composites over the baked background with no runtime shadow layer.
+    The group is a row of tiles baked *together*, so the pass carries
+    inter-tile occlusion, the shadow each tile throws on its neighbour, and one
+    continuous cast shadow for the whole block — none of which a per-tile body
+    can carry. Faces are flat decals composited at runtime and cast or receive
+    nothing, so leaving them out changes neither pass.
 
-    Every other table part is hidden in both passes: the background already
-    carries the rail, track, and apron shading, and a part's shadow must not be
-    counted twice.
+    Pass 1 renders the tiles alone with transparent film (straight alpha). Pass 2
+    renders the whole table as different Cycles shadow catchers with the tiles
+    invisible to the camera but still occluding the lights, so a shadow that
+    lands on the apron, the track, or the rail is correct where the camera sees
+    it.
 
-    Returns the sprite, its device-pixel crop rect, whether the crop hit the
-    frame edge, and the tile-only alpha (used by the alignment check).
+    The sprite is cropped from the **measured shadow contour**: the region where
+    the composited alpha passes `hand.shadow.alphaThreshold`, +1 px. A region
+    with a generous search pad is rendered and, if the contour reaches any edge
+    of that search area that is not the scene's own edge, the bake fails: a crop
+    that ends inside the scene must end on transparent felt, never on a shadow
+    boundary.
+
+    Returns the sprite, its device-pixel crop rect, the rendered search region,
+    the tile-only alpha (for the alignment check), and the measured shadow
+    numbers the manifest records.
     """
-    apply_pose(tile, slot, spec, pose)
-    sync_view_layer()
-
-    projected = [
-        project(scene, camera, tile.matrix_world @ corner) for corner in tile_corners(spec)
-    ]
-    xs = [point[0] for point in projected]
-    ys = [point[1] for point in projected]
+    shadow_spec = spec["hand"]["shadow"]
+    pad = int(shadow_spec["searchPadDevicePx"])
+    guard = int(shadow_spec["guardDevicePx"])
+    threshold = float(shadow_spec["alphaThreshold"])
+    crop_margin = int(shadow_spec["cropMarginDevicePx"])
+    alpha_scale = float(shadow_spec.get("alphaScale", 1.0))
     render_width = scene.render.resolution_x
     render_height = scene.render.resolution_y
-    x0 = max(0, math.floor(min(xs) - gutter))
-    y0 = max(0, math.floor(min(ys) - gutter))
-    x1 = min(render_width, math.ceil(max(xs) + gutter))
-    y1 = min(render_height, math.ceil(max(ys) + gutter))
-    rect = (x0, y0, x1, y1)
-    clipped = x0 == 0 or y0 == 0 or x1 == render_width or y1 == render_height
-    if clipped:
-        die(f"slot {slot['id']} body crop {rect} touches the frame edge")
 
-    # Pass 1: the tile alone with transparent film; every table part hidden.
+    tile.hide_render = True
+    holders = []
+    for slot in slots:
+        # Object copy, not a second object on the same mesh: the bevel and
+        # weighted-normal modifiers live on the object, and every tile in the
+        # group must be the same bevelled body the single-tile bake used.
+        holder = tile.copy()
+        holder.name = f"group-{label}-{slot['id']}"
+        holder.hide_render = False
+        holder.visible_camera = True
+        holder.visible_shadow = True
+        bpy.context.scene.collection.objects.link(holder)
+        holder.matrix_world = pose_matrix(pose, slot, spec)
+        holders.append(holder)
+    sync_view_layer()
+
+    bx0, by0, bx1, by1 = projected_bounds(scene, camera, spec, slots, pose)
+    search = (
+        max(0, math.floor(bx0 - pad)),
+        max(0, math.floor(by0 - pad)),
+        min(render_width, math.ceil(bx1 + pad)),
+        min(render_height, math.ceil(by1 + pad)),
+    )
+    # The render region is the search area plus a guard band, because a border
+    # render's outermost row/column can carry a stray value that is not part of
+    # the image. The contour is measured inside the search area only.
+    region = (
+        max(0, search[0] - guard),
+        max(0, search[1] - guard),
+        min(render_width, search[2] + guard),
+        min(render_height, search[3] + guard),
+    )
+    scene_edges = {
+        "left": search[0] == 0,
+        "top": search[1] == 0,
+        "right": search[2] == render_width,
+        "bottom": search[3] == render_height,
+    }
+
+    # Pass 1: the tiles alone with transparent film; every table part hidden.
     hide_parts(table["parts"], True)
-    body = render_region(scene, out_dir / "_body-pass.png", rect)
-    if body.shape[:2] != (y1 - y0, x1 - x0):
-        die(f"body render is {body.shape[1]}x{body.shape[0]}, expected {x1 - x0}x{y1 - y0}")
+    body = render_region(scene, out_dir / "_body-pass.png", region)
+    if body.shape[:2] != (region[3] - region[1], region[2] - region[0]):
+        die(
+            f"{label} body render is {body.shape[1]}x{body.shape[0]}, expected "
+            f"{region[2] - region[0]}x{region[3] - region[1]}"
+        )
 
-    # Pass 2: only the shadow catcher plus the tile as an occluder. Parts stay
-    # hidden so their shadows are not baked into the sprite as well.
-    table["felt"].hide_render = False
-    tile.visible_camera = False
-    shadow = render_region(scene, out_dir / "_shadow-pass.png", rect)
-    tile.visible_camera = True
-    table["felt"].hide_render = True
+    # Pass 2: the table catches the tiles' shadow; the tiles themselves are
+    # invisible to the camera but still occlude the lights.
+    set_shadow_catchers(spec, table, True)
+    for holder in holders:
+        holder.visible_camera = False
+    shadow = render_region(scene, out_dir / "_shadow-pass.png", region)
+    for holder in holders:
+        holder.visible_camera = True
+    set_shadow_catchers(spec, table, False)
     clear_border(scene)
     (out_dir / "_body-pass.png").unlink()
     (out_dir / "_shadow-pass.png").unlink()
 
-    sprite = over(shadow, body)  # tile over its contact shadow
+    if alpha_scale != 1.0:
+        # The render is physically correct; a lighter weight is a look
+        # decision, so it is an explicit spec knob rather than a light tweak.
+        shadow = shadow.copy()
+        shadow[..., 3] = np.clip(shadow[..., 3] * alpha_scale, 0.0, 1.0)
+    sprite_full = over(shadow, body)  # tiles over their shared shadow
+    alpha = sprite_full[..., 3]
+
+    # Measured contour, measured inside the search area.
+    sx0, sy0, sx1, sy1 = search
+    local = alpha[sy0 - region[1] : sy1 - region[1], sx0 - region[0] : sx1 - region[0]]
+    cx0, cy0, cx1, cy1 = shadow_contour(local, threshold)
+    contour = (cx0 + sx0, cy0 + sy0, cx1 + sx0, cy1 + sy0)
+    touches = {
+        "left": contour[0] == sx0,
+        "top": contour[1] == sy0,
+        "right": contour[2] == sx1,
+        "bottom": contour[3] == sy1,
+    }
+    for side, touches_edge in touches.items():
+        if touches_edge and not scene_edges[side]:
+            die(
+                f"{label}: shadow contour reaches the {side} edge of the "
+                f"{pad} px search pad; raise hand.shadow.searchPadDevicePx"
+            )
+    scene_edge_clips = sorted(side for side, hit in touches.items() if hit)
+
+    # The crop must contain the measured shadow *and* the whole tile
+    # silhouette: a tile's anti-aliased top edge can carry less than the shadow
+    # threshold, so a contour-only crop would shave a pixel off the body itself.
+    crop = (
+        max(0, min(contour[0], math.floor(bx0)) - crop_margin),
+        max(0, min(contour[1], math.floor(by0)) - crop_margin),
+        min(render_width, max(contour[2], math.ceil(bx1)) + crop_margin),
+        min(render_height, max(contour[3], math.ceil(by1)) + crop_margin),
+    )
+    sprite = sprite_full[
+        crop[1] - region[1] : crop[3] - region[1], crop[0] - region[0] : crop[2] - region[0]
+    ].copy()
+
     assets = spec["assets"]
-    save_raster(
+    size = save_raster(
         scene,
         path,
         sprite,
         assets["body"]["fileFormat"],
         assets["body"]["quality"],
     )
-    log(f"body sprite: {path.name} ({x1 - x0}x{y1 - y0})")
+    crop_edge, crop_edge_side, crop_edge_px = edge_ring_max(alpha, crop, region)
+    log(
+        f"group body: {path.name} ({crop[2] - crop[0]}x{crop[3] - crop[1]}, "
+        f"{len(slots)} tile(s), contour {contour}, {size} B"
+        + (f", scene-edge clip {scene_edge_clips}" if scene_edge_clips else "")
+        + ")"
+    )
+
+    for holder in holders:
+        bpy.data.objects.remove(holder, do_unlink=True)
+
     return {
         "sprite": sprite,
-        "rect": rect,
-        "clipped": clipped,
+        "rect": crop,
+        "region": region,
         "alpha": body[..., 3].copy(),
+        "bytes": size,
         "path": path,
+        "shadow": {
+            "alphaThreshold": threshold,
+            "cropMarginPx": crop_margin,
+            "contour": list(contour),
+            "reach": {
+                "left": round(bx0 - contour[0], 1) + 0.0,
+                "top": round(by0 - contour[1], 1) + 0.0,
+                "right": round(contour[2] - bx1, 1) + 0.0,
+                "bottom": round(contour[3] - by1, 1) + 0.0,
+            },
+            "maxAlphaAtCropEdge": round(crop_edge, 4),
+            "maxAlphaAtCropEdgeSide": crop_edge_side,
+            "maxAlphaAtCropEdgePx": crop_edge_px,
+            "sceneEdgeClips": scene_edge_clips,
+        },
+        "tileBounds": [round(value, 2) for value in (bx0, by0, bx1, by1)],
     }
 
 
@@ -1265,56 +1530,59 @@ def render_review_composite(
     spec: dict,
     scene: bpy.types.Scene,
     background: np.ndarray,
-    records: list,
+    baked: list[dict],
     pose_key: str,
     path: Path,
 ) -> Path:
-    """Composite the batch over the background exactly as the runtime will.
+    """Composite one layout over the background exactly as the runtime will.
 
     This is a review artifact, not a shipped asset: it is the proof that every
-    sprite lands where the manifest says, and the picture a human should check
-    after a regeneration. It is assembled in device pixels (the manifest's own
-    space, so nothing is scaled) and then box-filtered down to the shipped
-    background size for viewing.
+    body lands where the manifest says, and the picture a human should check
+    after a regeneration. `baked` is the layout's body records in paint order
+    (the group first, then the draw). It is assembled in device pixels (the
+    manifest's own space, so nothing is scaled) and then box-filtered down to the
+    shipped background size for viewing.
     """
     canvas = background.copy()
-    for record, face, _ in sorted(records, key=lambda item: item[0]["drawOrder"]):
-        sprite = face["sprite"] if pose_key == "face" else face["back_sprite"]
+    for record in baked:
+        sprite = record["sprite"] if pose_key == "face" else record["back_sprite"]
         if sprite is None:
             continue
-        source = record if pose_key == "face" else record["back"]
-        canvas = paste(canvas, sprite, source["x"], source["y"])
+        rect = record["rect"] if pose_key == "face" else record["back_rect"]
+        canvas = paste(canvas, sprite, rect[0], rect[1])
     canvas[..., 3] = 1.0
     review = downsample_box(canvas, spec["assets"]["background"].get("downscale", 1))
     save_raster(scene, path, review, "PNG", 100, colour_mode="RGB")
     return path
 
 
-def render_tile_mask(
+def render_layout_mask(
     spec: dict,
     scene: bpy.types.Scene,
     tile: bpy.types.Object,
     table: dict,
-    slots: list[dict],
+    layout: dict,
+    region: tuple,
     out_dir: Path,
 ) -> np.ndarray:
-    """Render the alpha coverage of every slot's tile in a single frame.
+    """Render the alpha coverage of every tile of one layout in a single frame.
 
-    The sprites are baked one slot at a time, so this is the independent
-    reference the per-slot crops are checked against: same camera, same
-    resolution, all tiles present at once, one sample with denoising off (alpha
-    is geometric coverage, so extra samples buy nothing).
+    The group bodies are baked from several tiles at once, so this is the
+    independent reference the baked group and draw sprites are checked against:
+    same camera, same resolution, every slot of *that layout* present at once
+    (a layout without the draw must not see one), denoising off (alpha is
+    geometric coverage, so extra samples buy nothing).
     """
     hide_parts(table["parts"], True)
     scene.render.film_transparent = True
     tile.hide_render = True
     references = []
-    for slot in slots:
+    for slot in layout["slots"]:
         # Object copy, not a new object on the same mesh: the bevel and weighted
         # normal modifiers live on the object, and the reference must be the
         # same bevelled silhouette the sprites were baked from.
         holder = tile.copy()
-        holder.name = f"ref-{slot['id']}"
+        holder.name = f"ref-{layout['id']}-{slot['id']}"
         holder.hide_render = False
         holder.visible_camera = True
         bpy.context.scene.collection.objects.link(holder)
@@ -1323,16 +1591,15 @@ def render_tile_mask(
     sync_view_layer()
 
     previous = set_samples(scene, spec["checks"].get("referenceSamples", 8), False)
-    path = out_dir / "_mask-reference.png"
-    render_png(scene, path)
+    reference = render_region(scene, out_dir / "_mask-reference.png", region)
     scene.cycles.samples, scene.cycles.use_denoising = previous
-    mask = load_rgba(path)[..., 3]
-    path.unlink()
+    clear_border(scene)
+    (out_dir / "_mask-reference.png").unlink()
 
     for holder in references:
         bpy.data.objects.remove(holder, do_unlink=True)
     scene.render.film_transparent = spec["scene"]["filmTransparent"]
-    return mask
+    return reference[..., 3].copy()
 
 
 def dilate(mask: np.ndarray, radius: int = 1) -> np.ndarray:
@@ -1351,20 +1618,20 @@ def dilate(mask: np.ndarray, radius: int = 1) -> np.ndarray:
 
 
 def compare_alignment(
-    reference: np.ndarray, baked: np.ndarray, records: list, tolerance: float = 0.5
+    reference: np.ndarray, baked: np.ndarray, parts: list, tolerance: float = 0.5
 ) -> dict:
-    """Check the batch against a single render with every slot's tile present.
+    """Check one layout against a single render with every tile present.
 
-    `baked` is the per-slot pass-1 alpha of each sprite pasted at its manifest
-    rect, i.e. exactly what the runtime will draw. The reference is one frame
-    rendered with all the tiles in the scene at once. If a crop or a rect is a
-    pixel off, the two silhouettes disagree by a whole pixel; a one-pixel
-    dilation on each side absorbs anti-aliasing and denoiser softness, so only a
-    real shift fails the check. Adjacent hand tiles overlap slightly in
-    projection, which is why the comparison is whole-frame: the baked canvas
+    `baked` is the pass-1 alpha of the layout's body sprites pasted at their
+    manifest rects, i.e. exactly what the runtime will draw. The reference is one
+    frame rendered with all of that layout's tiles in the scene at once. If a
+    crop or a rect is a pixel off, the two silhouettes disagree by a whole pixel;
+    a one-pixel dilation on each side absorbs anti-aliasing and denoiser
+    softness, so only a real shift fails the check. Adjacent hand tiles abut in
+    projection, which is why the comparison is whole-layout: the baked canvas
     carries the neighbour too, exactly as the scene does.
 
-    Disagreeing pixels are attributed to the slot whose rect contains them, so a
+    Disagreeing pixels are attributed to the body whose rect contains them, so a
     failure names the sprite to look at.
     """
     reference_solid = reference > 0.5
@@ -1378,25 +1645,24 @@ def compare_alignment(
 
     rows = []
     total_shifted = 0
-    for record, _, slot in records:
-        x0, y0 = record["x"], record["y"]
-        x1 = x0 + record["width"]
-        y1 = y0 + record["height"]
+    for part in parts:
+        x0, y0, x1, y1 = part["rect"]
         band = (
             slice(max(0, y0), min(shifted.shape[0], y1)),
             slice(max(0, x0), min(shifted.shape[1], x1)),
         )
         count = int(shifted[band].sum())
         total_shifted += count
-        rows.append({"id": slot["id"], "shiftedPixels": count})
+        rows.append({"body": part["label"], "shiftedPixels": count})
 
     return {
         "method": (
-            "every slot's sprite alpha pasted at its manifest rect against one "
-            "frame rendered with all tiles present; a one-pixel dilation absorbs "
-            "anti-aliasing, so any shifted pixel is a real misalignment"
+            "each body sprite's tile alpha pasted at its manifest rect against "
+            "one frame rendered with all of that layout's tiles present; a "
+            "one-pixel dilation absorbs anti-aliasing, so any shifted pixel is a "
+            "real misalignment"
         ),
-        "slots": rows,
+        "bodies": rows,
         "tilePixels": union,
         "shiftedPixels": total_shifted,
         "softPixels": soft,
@@ -1405,14 +1671,180 @@ def compare_alignment(
     }
 
 
-def alpha_centroid(alpha: np.ndarray) -> np.ndarray:
-    """Coverage-weighted centre of a tile mask, in pixels."""
-    weights = np.clip(alpha.astype(np.float64), 0.0, 1.0)
-    total = weights.sum()
-    if total <= 0.0:
-        return np.array([0.0, 0.0])
-    ys, xs = np.indices(weights.shape)
-    return np.array([(weights * xs).sum() / total, (weights * ys).sum() / total])
+def layout_alignment(
+    spec: dict,
+    scene: bpy.types.Scene,
+    camera: bpy.types.Object,
+    tile: bpy.types.Object,
+    table: dict,
+    layout: dict,
+    baked: list[dict],
+    out_dir: Path,
+) -> dict:
+    """Bake-vs-reference alignment for one layout, over the union of its bodies."""
+    x0 = min(record["region"][0] for record in baked)
+    y0 = min(record["region"][1] for record in baked)
+    x1 = max(record["region"][2] for record in baked)
+    y1 = max(record["region"][3] for record in baked)
+    region = (x0, y0, x1, y1)
+
+    baked_alpha = np.zeros((y1 - y0, x1 - x0), dtype=np.float32)
+    parts = []
+    for record in baked:
+        rx0, ry0, rx1, ry1 = record["region"]
+        alpha = record["alpha"]
+        if alpha.shape[:2] != (ry1 - ry0, rx1 - rx0):
+            die(
+                f"{layout['id']}: {record['label']} alpha is "
+                f"{alpha.shape[1]}x{alpha.shape[0]}, expected {rx1 - rx0}x{ry1 - ry0}"
+            )
+        band = baked_alpha[ry0 - y0 : ry1 - y0, rx0 - x0 : rx1 - x0]
+        baked_alpha[ry0 - y0 : ry1 - y0, rx0 - x0 : rx1 - x0] = np.maximum(band, alpha)
+        parts.append({"label": record["label"], "rect": record["region"]})
+
+    reference = render_layout_mask(spec, scene, tile, table, layout, region, out_dir)
+    if reference.shape[:2] != baked_alpha.shape[:2]:
+        die(
+            f"{layout['id']}: reference is {reference.shape[1]}x{reference.shape[0]}, "
+            f"expected {baked_alpha.shape[1]}x{baked_alpha.shape[0]}"
+        )
+    result = compare_alignment(reference, baked_alpha, parts)
+    result["layout"] = layout["id"]
+    result["region"] = list(region)
+    return result
+
+
+# --------------------------------------------------------------------------- #
+# Slot geometry and seam measurement
+# --------------------------------------------------------------------------- #
+
+
+def slot_geometry(
+    spec: dict, scene: bpy.types.Scene, camera: bpy.types.Object, slot: dict
+) -> dict:
+    """Face quad, decal quad, homography, tile rect and measurements for a slot.
+
+    Geometry only: no render, no sprite. The quads and the `faceMatrix` are a
+    function of the spec and the camera, so every layout can publish them without
+    baking anything, and a decal is positioned exactly as it was per-slot.
+    """
+    decal = decal_geometry(spec)
+    frame_w, frame_h = decal["frameUnits"]
+    matrix_world = pose_matrix(slot["pose"], slot, spec)
+    face_quad = [
+        project(scene, camera, matrix_world @ corner) for corner in face_corners(spec)
+    ]
+    decal_quad = [
+        project(scene, camera, matrix_world @ corner)
+        for corner in face_corners(spec, (frame_w / 2.0, frame_h / 2.0))
+    ]
+    src = np.array(
+        [
+            [0, 0],
+            [decal["pixels"][0], 0],
+            [decal["pixels"][0], decal["pixels"][1]],
+            [0, decal["pixels"][1]],
+        ],
+        dtype=np.float64,
+    )
+    dst = np.array(decal_quad, dtype=np.float64)
+    matrix = quad_homography(src, dst)
+    check_x, check_y = apply_homography(matrix, src[:, 0], src[:, 1])
+    if not np.allclose(np.stack([check_x, check_y], axis=1), dst, atol=1e-6):
+        die(f"slot {slot['id']}: face homography misses the decal quad")
+
+    bounds = projected_bounds(scene, camera, spec, [slot], slot["pose"])
+    return {
+        "x": math.floor(bounds[0]),
+        "y": math.floor(bounds[1]),
+        "width": math.ceil(bounds[2]) - math.floor(bounds[0]),
+        "height": math.ceil(bounds[3]) - math.floor(bounds[1]),
+        "faceQuad": [[round(px, 3), round(py, 3)] for px, py in face_quad],
+        "decalQuad": [[round(px, 3), round(py, 3)] for px, py in decal_quad],
+        "faceMatrix": css_matrix3d(matrix),
+        "measurements": {
+            "faceHeightPx": round(abs(face_quad[3][1] - face_quad[0][1]), 2),
+            "faceWidthPx": round(
+                (abs(face_quad[1][0] - face_quad[0][0])
+                 + abs(face_quad[2][0] - face_quad[3][0])) / 2.0,
+                2,
+            ),
+        },
+    }
+
+
+def slot_record(
+    spec: dict, scene: bpy.types.Scene, camera: bpy.types.Object, slot: dict
+) -> dict:
+    """A manifest slot: identity, its tile rect, and its decal geometry."""
+    geometry = slot_geometry(spec, scene, camera, slot)
+    return {
+        "id": slot["id"],
+        "index": slot["index"],
+        "role": slot["role"],
+        "orientation": slot["orientation"],
+        "drawOrder": slot["drawOrder"],
+        "x": geometry["x"],
+        "y": geometry["y"],
+        "width": geometry["width"],
+        "height": geometry["height"],
+        "faceQuad": geometry["faceQuad"],
+        "decalQuad": geometry["decalQuad"],
+        "faceMatrix": geometry["faceMatrix"],
+        "measurements": geometry["measurements"],
+    }
+
+
+def seam_contrast(
+    sprite: np.ndarray,
+    rect: tuple,
+    spec: dict,
+    scene: bpy.types.Scene,
+    camera: bpy.types.Object,
+    slots: list[dict],
+) -> dict:
+    """Measure how strongly the bevel grooves separate the row's faces.
+
+    The concealed row abuts, so the only delineation between two tiles is the
+    bevel groove they form (there is no gap and so no inter-tile shadow). That
+    makes "the grooves still delineate the tiles" something to measure: take a
+    horizontal scan through the faces, and at every interior seam compare the
+    darkest pixel of the groove with the face luminance 20 px to its left.
+
+    Returns the per-seam dip as a fraction of the face luminance, so a flat
+    block (dip ~0) fails on a number rather than an opinion, and a readable
+    groove reports one.
+    """
+    if len(slots) < 2:
+        return {"seams": 0}
+    centres = []
+    for slot in slots:
+        matrix = pose_matrix(slot["pose"], slot, spec)
+        face_centre = matrix @ Vector((0.0, 0.0, spec["tile"]["thickness"]))
+        centres.append(project(scene, camera, face_centre))
+    row = int(round((centres[0][1] + centres[-1][1]) / 2.0)) - rect[1]
+    row = max(0, min(sprite.shape[0] - 1, row))
+    luminance = sprite[row, :, :3].mean(axis=1)
+    dips = []
+    for left, right in zip(centres, centres[1:]):
+        seam = int(round((left[0] + right[0]) / 2.0)) - rect[0]
+        reference_x = seam - 20
+        if seam < 6 or seam > sprite.shape[1] - 6 or reference_x < 0:
+            continue
+        face = float(np.median(luminance[reference_x - 6 : reference_x + 6]))
+        groove = float(luminance[seam - 4 : seam + 5].min())
+        if face <= 0.0:
+            continue
+        dips.append(1.0 - groove / face)
+    if not dips:
+        return {"seams": 0}
+    return {
+        "seams": len(dips),
+        "dipMedian": round(float(np.median(dips)), 4),
+        "dipMin": round(float(np.min(dips)), 4),
+        "dipMax": round(float(np.max(dips)), 4),
+        "note": "1 - groove luminance / face luminance on a face-centre scan",
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -1804,13 +2236,41 @@ def bake_decal(
 # --------------------------------------------------------------------------- #
 
 
-def check_slots(manifest: dict) -> dict:
-    """Fail the batch if a slot rect or a face quad is out of bounds.
+# --------------------------------------------------------------------------- #
+# Manifest checks
+# --------------------------------------------------------------------------- #
 
-    - every body rect must sit fully inside the scene's device-pixel space;
-    - every face/decal quad corner must sit inside its own body sprite rect (so
-      a decal can never be drawn outside the body it composites onto);
-    - every slot must carry an orientation class and a draw order.
+ORIENTATIONS = {"upright", "flat-upright", "left", "right", "opposite"}
+
+
+def rect_bounds(record: dict) -> tuple:
+    """(x0, y0, x1, y1) of a body/slot rect record."""
+    return (
+        record["x"],
+        record["y"],
+        record["x"] + record["width"],
+        record["y"] + record["height"],
+    )
+
+
+def inside_bounds(bounds: tuple, x: float, y: float, tolerance: float = 0.5) -> bool:
+    return (
+        bounds[0] - tolerance <= x <= bounds[2] + tolerance
+        and bounds[1] - tolerance <= y <= bounds[3] + tolerance
+    )
+
+
+def check_layouts(manifest: dict) -> dict:
+    """Fail the batch if a layout's rects or decal quads are out of bounds.
+
+    - every body rect (each layout's group, its draw, and both back poses) sits
+      inside the scene's device-pixel space;
+    - every slot's face and decal quad sits inside the body that renders it: the
+      group rect for a concealed slot, the draw body rect for the draw slot (so
+      a decal can never be drawn outside the sprite it composites onto);
+    - every slot's own tile rect sits inside that same body;
+    - every slot carries a known orientation class, and draw orders are unique
+      within a layout.
 
     Returns the numbers the manifest records, so the shipped file proves the
     checks ran.
@@ -1818,14 +2278,84 @@ def check_slots(manifest: dict) -> dict:
     scene = manifest["scene"]
     width = scene["widthDevicePx"]
     height = scene["heightDevicePx"]
-    orientations = {"upright", "flat-upright", "left", "right", "opposite"}
+    quads = 0
+    slot_count = 0
+    for layout in manifest["layouts"]:
+        orders = set()
+        bodies = [("group", layout["group"])]
+        if layout["group"].get("back"):
+            bodies.append(("group-back", layout["group"]["back"]))
+        if layout.get("draw"):
+            bodies.append(("draw", layout["draw"]))
+            if layout["draw"].get("back"):
+                bodies.append(("draw-back", layout["draw"]["back"]))
+        scene_rect = (0, 0, width, height)
+        for label, record in bodies:
+            if not inside_bounds(scene_rect, record["x"], record["y"]) or not (
+                inside_bounds(scene_rect, record["x"] + record["width"], record["y"] + record["height"])
+            ):
+                die(
+                    f"layout {layout['id']} {label} rect "
+                    f"({record['x']}, {record['y']}, {record['width']}x{record['height']}) "
+                    f"is outside the {width}x{height} scene"
+                )
+        group_bounds = rect_bounds(layout["group"])
+        draw_bounds = rect_bounds(layout["draw"]) if layout.get("draw") else None
+        for slot in layout["slots"]:
+            slot_count += 1
+            if slot["orientation"] not in ORIENTATIONS:
+                die(
+                    f"layout {layout['id']} slot {slot['id']} has unknown orientation "
+                    f"{slot['orientation']!r}"
+                )
+            if slot["drawOrder"] in orders:
+                die(
+                    f"layout {layout['id']} slot {slot['id']} reuses draw order "
+                    f"{slot['drawOrder']}"
+                )
+            orders.add(slot["drawOrder"])
+            target = group_bounds if slot["role"] == "concealed" else draw_bounds
+            if target is None:
+                die(f"layout {layout['id']} slot {slot['id']} has no body to draw into")
+            for corner_x, corner_y in slot["faceQuad"] + slot["decalQuad"]:
+                if not inside_bounds(target, corner_x, corner_y):
+                    die(
+                        f"layout {layout['id']} slot {slot['id']} face corner "
+                        f"({corner_x}, {corner_y}) is outside its body rect {target}"
+                    )
+            for corner in (
+                (slot["x"], slot["y"]),
+                (slot["x"] + slot["width"], slot["y"] + slot["height"]),
+            ):
+                if not inside_bounds(target, corner[0], corner[1]):
+                    die(
+                        f"layout {layout['id']} slot {slot['id']} tile rect "
+                        f"({slot['x']}, {slot['y']}, {slot['width']}x{slot['height']}) "
+                        f"is outside its body rect {target}"
+                    )
+            quads += 1
+    return {
+        "layoutCount": len(manifest["layouts"]),
+        "slotCount": slot_count,
+        "layoutBodiesInsideScene": True,
+        "slotQuadsInsideGroup": True,
+        "slotRectsInsideGroup": True,
+        "uniqueDrawOrders": True,
+        "quadCount": quads,
+    }
+
+
+def check_slots(manifest: dict) -> dict:
+    """Fail the review (spike) batch if a slot rect or a face quad is out of bounds."""
+    scene = manifest["scene"]
+    width = scene["widthDevicePx"]
+    height = scene["heightDevicePx"]
     orders = set()
-    face_checks = 0
     for slot in manifest["slots"]:
         bodies = [("body", slot)]
         if slot.get("back"):
             bodies.append(("back", slot["back"]))
-        if slot.get("orientation") not in orientations:
+        if slot.get("orientation") not in ORIENTATIONS:
             die(f"slot {slot['id']} has unknown orientation {slot.get('orientation')!r}")
         if slot["drawOrder"] in orders:
             die(f"slot {slot['id']} reuses draw order {slot['drawOrder']}")
@@ -1835,27 +2365,42 @@ def check_slots(manifest: dict) -> dict:
             w, h = record["width"], record["height"]
             if x < 0 or y < 0 or x + w > width or y + h > height:
                 die(
-                    f"slot {slot['id']} {label} rect "
-                    f"({x}, {y}, {w}x{h}) is outside the "
-                    f"{width}x{height} scene"
+                    f"slot {slot['id']} {label} rect ({x}, {y}, {w}x{h}) is outside "
+                    f"the {width}x{height} scene"
                 )
+        bounds = rect_bounds(slot)
         for corner_x, corner_y in slot.get("faceQuad", []) + slot.get("decalQuad", []):
-            if not (
-                slot["x"] <= corner_x <= slot["x"] + slot["width"]
-                and slot["y"] <= corner_y <= slot["y"] + slot["height"]
-            ):
+            if not inside_bounds(bounds, corner_x, corner_y):
                 die(
                     f"slot {slot['id']} face corner ({corner_x}, {corner_y}) is "
                     "outside its body sprite"
                 )
-        face_checks += 1
     return {
         "slotCount": len(manifest["slots"]),
         "slotRectsInsideScene": True,
         "faceQuadsInsideBodies": True,
         "uniqueDrawOrders": True,
-        "faceQuadCount": face_checks,
     }
+
+
+def prune_bodies(out_dir: Path, keep: set[Path]) -> list[str]:
+    """Delete body sprites this batch did not write.
+
+    A shipped batch must not leave stale sprites behind: the validator sums the
+    whole `bodies/` directory against the budget, and a leftover from an earlier
+    bake would be counted (and could be served) even though no layout references
+    it.
+    """
+    removed = []
+    bodies = out_dir / "bodies"
+    if not bodies.is_dir():
+        return removed
+    keep = {path.resolve() for path in keep}
+    for path in sorted(bodies.iterdir()):
+        if path.is_file() and path.resolve() not in keep:
+            removed.append(path.name)
+            path.unlink()
+    return removed
 
 
 # --------------------------------------------------------------------------- #
@@ -1873,6 +2418,33 @@ def parse_args() -> tuple[Path, Path, str]:
     if mode not in ("table", "spike"):
         die(f"unknown batch {mode!r}; expected table or spike")
     return spec_path, out_dir, mode
+
+
+def body_path(spec: dict, out_dir: Path, name: str, ext: str) -> Path:
+    return out_dir / spec["outputs"]["body"].format(id=name, ext=ext)
+
+
+def body_entry(
+    out_dir: Path, face: dict, back: dict, pose: str, back_pose: str, draw_order: int
+) -> dict:
+    """A manifest body: its sprite, where it is drawn, and its concealed pose."""
+    def rect(record: dict) -> dict:
+        return {
+            "body": str(record["path"].relative_to(out_dir)),
+            "x": record["rect"][0],
+            "y": record["rect"][1],
+            "width": record["rect"][2] - record["rect"][0],
+            "height": record["rect"][3] - record["rect"][1],
+        }
+
+    entry = {"pose": pose, "drawOrder": draw_order, "shadow": face["shadow"]}
+    entry.update(rect(face))
+    entry["back"] = {
+        "pose": back_pose,
+        "shadow": back["shadow"],
+        **rect(back),
+    }
+    return entry
 
 
 def main() -> None:
@@ -1895,10 +2467,10 @@ def main() -> None:
     build_lights(scene, spec)
     table = build_table(spec, materials)
     tile = build_tile(scene, spec, materials)
+    tile.hide_render = True
     hide_parts(table["parts"], True)
 
     assets = spec["assets"]
-    gutter = assets["shadowGutterDevicePx"]
     if mode == "spike":
         # The review batch keeps its lossless PNGs so bevel, alpha, and the decal
         # seam can be inspected; only the shipped batch is lossy WebP.
@@ -1906,190 +2478,96 @@ def main() -> None:
         assets["body"]["quality"] = 100
     body_format = assets["body"]["fileFormat"]
     body_ext = "webp" if body_format == "WEBP" else body_format.lower()
-    slots = hand_slots(spec)
     preview = spec.get("preview", {})
+    hand = spec["hand"]
+    counts = hand["concealedCounts"]
+    layouts = hand_layouts(spec)
+    log(
+        f"hand row: {', '.join(str(count) for count in counts)} concealed, spacing "
+        f"{resolve_row_spacing(spec):.5f} units "
+        f"({'touch' if isinstance(hand['spacing'], str) else 'explicit'}), draw gap "
+        f"{hand['drawGap']} units, shadow crop {hand['shadow']['alphaThreshold']:.1%} "
+        f"+{hand['shadow']['cropMarginDevicePx']} px"
+    )
+
+    layouts_records = []
+    alignments = []
+    measurements = {}
+    face_entries: dict = {}
+    background = None
+    body_bytes = 0
+    written_bodies: set[Path] = set()
+
     if mode == "spike":
-        spike_slot_id = spec["spike"]["slotId"]
-        slots = [slot for slot in slots if slot["id"] == spike_slot_id]
-        if not slots:
-            die(f"spike.slotId {spike_slot_id!r} is not a hand slot")
-
-    log(f"batch {mode}: {len(slots)} hand slot(s) -> {out_dir}")
-
-    # ---- body sprites ---------------------------------------------------- #
-    records = []
-    first_matrix = None
-    # The tuner's decal-only preview needs nothing but the decal itself.
-    bake_slots = [] if preview.get("decalOnly") else slots
-    for slot in bake_slots:
-        face_path = out_dir / spec["outputs"]["body"].format(id=slot["id"], ext=body_ext)
-        face = bake_body(
-            spec, scene, camera, tile, table, slot, slot["pose"], out_dir, face_path, gutter
+        # ---- review batch: one slot from the longest row ------------------ #
+        source = next(
+            layout
+            for layout in layouts
+            if layout["count"] == counts[0] and not layout["hasDraw"]
         )
-        x0, y0, x1, y1 = face["rect"]
-        record = {
-            "id": slot["id"],
-            "seat": slot["seat"],
-            "role": slot["role"],
-            "index": slot["index"],
-            "pose": slot["pose"],
-            "orientation": slot["orientation"],
-            "drawOrder": slot["drawOrder"],
-            "body": str(face_path.relative_to(out_dir)),
-            "x": x0,
-            "y": y0,
-            "width": x1 - x0,
-            "height": y1 - y0,
-            "shadowGutterPx": gutter,
-        }
+        slot = next(
+            (item for item in source["slots"] if item["id"] == spec["spike"]["slotId"]),
+            None,
+        )
+        if slot is None:
+            die(f"spike.slotId {spec['spike']['slotId']!r} is not a concealed hand slot")
+        log(f"batch spike: slot {slot['id']} -> {out_dir}")
 
-        back_record = None
-        face["back_sprite"] = None
-        if not preview.get("decalOnly") and not preview.get("skipBack"):
-            back_path = out_dir / spec["outputs"]["body"].format(
-                id=f"{slot['id']}-back", ext=body_ext
-            )
-            back = bake_body(
+        face = None
+        record = None
+        if not preview.get("decalOnly"):
+            face = bake_group(
                 spec,
                 scene,
                 camera,
                 tile,
                 table,
-                slot,
-                slot["backPose"],
+                [slot],
+                slot["pose"],
                 out_dir,
-                back_path,
-                gutter,
+                body_path(spec, out_dir, slot["id"], body_ext),
+                label=slot["id"],
             )
-            bx0, by0, bx1, by1 = back["rect"]
-            face["back_sprite"] = back["sprite"]
-            back_record = {
-                "pose": slot["backPose"],
-                "body": str(back_path.relative_to(out_dir)),
-                "x": bx0,
-                "y": by0,
-                "width": bx1 - bx0,
-                "height": by1 - by0,
-            }
+            written_bodies.add(face["path"])
+            body_bytes += face["bytes"]
+            record = slot_record(spec, scene, camera, slot)
+            record["body"] = str(face["path"].relative_to(out_dir))
+            record["shadow"] = face["shadow"]
+            record["back"] = None
+            if not preview.get("skipBack"):
+                back = bake_group(
+                    spec,
+                    scene,
+                    camera,
+                    tile,
+                    table,
+                    [slot],
+                    slot["backPose"],
+                    out_dir,
+                    body_path(spec, out_dir, f"{slot['id']}-back", body_ext),
+                    label=f"{slot['id']}-back",
+                )
+                written_bodies.add(back["path"])
+                body_bytes += back["bytes"]
+                record["back"] = {
+                    "pose": slot["backPose"],
+                    "body": str(back["path"].relative_to(out_dir)),
+                    "x": back["rect"][0],
+                    "y": back["rect"][1],
+                    "width": back["rect"][2] - back["rect"][0],
+                    "height": back["rect"][3] - back["rect"][1],
+                    "shadow": back["shadow"],
+                }
+            # The crop is the measured shadow contour, so the slot's own rect no
+            # longer describes where the file sits; `body`'s x/y/width/height
+            # plus `shadow.contour` do.
+            record["x"] = face["rect"][0]
+            record["y"] = face["rect"][1]
+            record["width"] = face["rect"][2] - face["rect"][0]
+            record["height"] = face["rect"][3] - face["rect"][1]
+            record["tileBounds"] = face["tileBounds"]
 
-        # ---- face projection --------------------------------------------- #
-        decal = decal_geometry(spec)
-        frame_w, frame_h = decal["frameUnits"]
-        apply_pose(tile, slot, spec)
-        sync_view_layer()
-        face_quad = [
-            project(scene, camera, tile.matrix_world @ corner) for corner in face_corners(spec)
-        ]
-        decal_quad = [
-            project(scene, camera, tile.matrix_world @ corner)
-            for corner in face_corners(spec, (frame_w / 2.0, frame_h / 2.0))
-        ]
-        src = np.array(
-            [
-                [0, 0],
-                [decal["pixels"][0], 0],
-                [decal["pixels"][0], decal["pixels"][1]],
-                [0, decal["pixels"][1]],
-            ],
-            dtype=np.float64,
-        )
-        dst = np.array(decal_quad, dtype=np.float64)
-        matrix = quad_homography(src, dst)
-        check_x, check_y = apply_homography(matrix, src[:, 0], src[:, 1])
-        if not np.allclose(np.stack([check_x, check_y], axis=1), dst, atol=1e-6):
-            die(f"slot {slot['id']}: face homography misses the decal quad")
-
-        record.update(
-            {
-                "faceQuad": [[round(px, 3), round(py, 3)] for px, py in face_quad],
-                "decalQuad": [[round(px, 3), round(py, 3)] for px, py in decal_quad],
-                "faceMatrix": css_matrix3d(matrix),
-                "back": back_record,
-                "measurements": {
-                    "faceHeightPx": round(abs(face_quad[3][1] - face_quad[0][1]), 2),
-                    "faceWidthPx": round(
-                        (abs(face_quad[1][0] - face_quad[0][0])
-                         + abs(face_quad[2][0] - face_quad[3][0])) / 2.0,
-                        2,
-                    ),
-                },
-            }
-        )
-        if first_matrix is None:
-            first_matrix = matrix
-        records.append((record, face, slot))
-
-    # ---- alignment check ------------------------------------------------- #
-    mask_check = None
-    if not preview.get("decalOnly"):
-        # Paste every sprite's tile alpha at its manifest rect, exactly as the
-        # runtime will, then compare the whole frame against a render of all the
-        # tiles at once.
-        baked_alpha = np.zeros((render_height, render_width), dtype=np.float32)
-        for record, face, _ in sorted(records, key=lambda item: item[0]["drawOrder"]):
-            x0, y0 = record["x"], record["y"]
-            x1 = x0 + record["width"]
-            y1 = y0 + record["height"]
-            baked_alpha[y0:y1, x0:x1] = np.maximum(
-                baked_alpha[y0:y1, x0:x1], face["alpha"]
-            )
-        reference = render_tile_mask(
-            spec, scene, tile, table, [slot for _, _, slot in records], out_dir
-        )
-        mask_check = compare_alignment(reference, baked_alpha, records)
-        if spec["checks"].get("dumpAlignment"):
-            dump = RENDER_DIR / "build" / "align"
-            dump.mkdir(parents=True, exist_ok=True)
-            stack = np.concatenate([reference, baked_alpha], axis=1)
-            save_rgba(
-                dump / "mask.png",
-                np.stack([stack, stack, stack, np.ones_like(stack)], axis=-1),
-            )
-        log(
-            "tile alignment: "
-            f"{mask_check['shiftedPixels']} shifted px of "
-            f"{mask_check['tilePixels']} tile px, "
-            f"soft-edge {mask_check['softPixelFraction']:.4%}"
-        )
-        if mask_check["shiftedPixels"] > 0:
-            worst = sorted(
-                mask_check["slots"], key=lambda row: -row["shiftedPixels"]
-            )[:3]
-            die(
-                "baked body sprites do not line up with the rendered scene: "
-                f"{mask_check['shiftedPixels']} pixels disagree by a full pixel "
-                f"(worst slots: {worst})"
-            )
-        if mask_check["softPixelFraction"] > spec["checks"]["maxMaskMismatchFraction"]:
-            die(
-                "baked body sprites differ from the rendered scene: "
-                f"{mask_check['softPixelFraction']:.4%} of tile pixels"
-            )
-
-    # ---- background ------------------------------------------------------ #
-    background = None
-    if mode == "table":
-        background = bake_background(
-            spec,
-            scene,
-            tile,
-            table,
-            out_dir,
-            out_dir / spec["outputs"]["background"].format(ext=assets["background"]["fileFormat"].lower()),
-        )
-        review_dir = RENDER_DIR / "build" / "review"
-        render_review_composite(
-            spec, scene, background["render"], records, "face", review_dir / "hand-face-up.png"
-        )
-        render_review_composite(
-            spec, scene, background["render"], records, "back", review_dir / "hand-face-down.png"
-        )
-        log(f"review composite: {review_dir}")
-
-    # ---- decal and composite (spike batch) ------------------------------- #
-    face_entries: dict = {}
-    measurements: dict = {}
-    if mode == "spike":
+        # ---- decal and composite ----------------------------------------- #
         decal_spec = spec["spike"]["decal"]
         top = spec["tile"]["thickness"]
         decal_started = time.perf_counter()
@@ -2104,7 +2582,6 @@ def main() -> None:
         decal = load_rgba(decal_path)
         face_entries = {decal_spec["code"]: {decal_spec["orientation"]: decal_path.name}}
 
-        record, face, slot = records[0]
         matrix = quad_homography(
             np.array(
                 [
@@ -2117,7 +2594,6 @@ def main() -> None:
             ),
             np.array(record["decalQuad"], dtype=np.float64),
         )
-        first_matrix = matrix
         supersample = composite_supersample(matrix, spec["decals"].get("compositeSupersample"))
         log(
             f"composite: {supersample}x{supersample} samples per pixel"
@@ -2132,28 +2608,38 @@ def main() -> None:
         save_rgba(composite_path, composite)
         log(f"composite: {composite_path.name}")
 
-        # Pixel-perfect (nearest) review zoom, generated here so the sheet does
-        # not rely on the SVG rasteriser honouring image-rendering="pixelated".
+        # Pixel-perfect (nearest) review zoom of the tile's top-left corner,
+        # positioned from the slot's own bounds so a contour crop cannot move it
+        # out of the panel.
         zoom = spec["spike"]["zoom"]
+        inset = zoom.get("tileInset", [24, 24])
+        tile_left = record["tileBounds"][0] - record["x"]
+        tile_top = record["tileBounds"][1] - record["y"]
+        zoom_x = max(0, min(composite.shape[1] - zoom["width"], int(tile_left - inset[0])))
+        zoom_y = max(0, min(composite.shape[0] - zoom["height"], int(tile_top - inset[1])))
         zoom_crop = composite[
-            zoom["y"] : zoom["y"] + zoom["height"], zoom["x"] : zoom["x"] + zoom["width"]
+            zoom_y : zoom_y + zoom["height"], zoom_x : zoom_x + zoom["width"]
         ]
-        zoom_image = np.repeat(np.repeat(zoom_crop, zoom["scale"], axis=0), zoom["scale"], axis=1)
+        zoom_image = np.repeat(
+            np.repeat(zoom_crop, zoom["scale"], axis=0), zoom["scale"], axis=1
+        )
         zoom_path = out_dir / spec["spike"]["outputs"]["zoom"]
         save_rgba(zoom_path, zoom_image)
-        log(f"zoom: {zoom_path.name} ({zoom_image.shape[1]}x{zoom_image.shape[0]})")
+        log(
+            f"zoom: {zoom_path.name} ({zoom_image.shape[1]}x{zoom_image.shape[0]}, "
+            f"from {zoom_x},{zoom_y})"
+        )
 
         # ---- measurements ------------------------------------------------ #
         sprite = face["sprite"]
-        face_centre_x = (record["faceQuad"][0][0] + record["faceQuad"][1][0]) / 2.0 - record["x"]
-        sliver = measure_blue_sliver(sprite, round(face_centre_x))
+        face_centre_x = (record["decalQuad"][0][0] + record["decalQuad"][1][0]) / 2.0
+        sliver = measure_blue_sliver(sprite, round(face_centre_x - record["x"]))
+        matrix_world = pose_matrix(slot["pose"], slot, spec)
         top_front = project(
-            scene, camera, tile.matrix_world @ Vector((0.0, spec["tile"]["height"] / 2.0, top))
+            scene, camera, matrix_world @ Vector((0.0, spec["tile"]["height"] / 2.0, top))
         )
         top_back = project(
-            scene,
-            camera,
-            tile.matrix_world @ Vector((0.0, spec["tile"]["height"] / 2.0, 0.0)),
+            scene, camera, matrix_world @ Vector((0.0, spec["tile"]["height"] / 2.0, 0.0))
         )
         edge_px = abs(top_front[1] - top_back[1])
         face_height_px = record["measurements"]["faceHeightPx"]
@@ -2182,17 +2668,194 @@ def main() -> None:
             f"decal peak {decal_stats['maxChannel']}/255 ({decal_stats['clippedPixels']} clipped)"
         )
 
+    else:
+        # ---- shipped batch: every layout, both poses --------------------- #
+        log(
+            f"batch table: {len(layouts)} layouts "
+            f"({', '.join(str(count) for count in counts)} concealed, each with "
+            f"and without the draw) -> {out_dir}"
+        )
+        baked: dict = {}
+        for count in counts:
+            source = next(
+                layout
+                for layout in layouts
+                if layout["count"] == count and not layout["hasDraw"]
+            )
+            concealed, _ = layout_groups(source)
+            draw_source = next(
+                layout
+                for layout in layouts
+                if layout["count"] == count and layout["hasDraw"]
+            )
+            _, draw = layout_groups(draw_source)
+            group_face = bake_group(
+                spec, scene, camera, tile, table, concealed, hand["pose"], out_dir,
+                body_path(spec, out_dir, f"hand-row-{count}", body_ext),
+                label=f"hand-row-{count}",
+            )
+            group_back = bake_group(
+                spec, scene, camera, tile, table, concealed, hand["backPose"], out_dir,
+                body_path(spec, out_dir, f"hand-row-{count}-back", body_ext),
+                label=f"hand-row-{count}-back",
+            )
+            draw_face = bake_group(
+                spec, scene, camera, tile, table, [draw], hand["pose"], out_dir,
+                body_path(spec, out_dir, f"hand-draw-{count}", body_ext),
+                label=f"hand-draw-{count}",
+            )
+            draw_back = bake_group(
+                spec, scene, camera, tile, table, [draw], hand["backPose"], out_dir,
+                body_path(spec, out_dir, f"hand-draw-{count}-back", body_ext),
+                label=f"hand-draw-{count}-back",
+            )
+            baked[count] = {
+                "group": group_face,
+                "groupBack": group_back,
+                "draw": draw_face,
+                "drawBack": draw_back,
+            }
+            for record in (group_face, group_back, draw_face, draw_back):
+                written_bodies.add(record["path"])
+                body_bytes += record["bytes"]
+
+        # ---- background and review composites ---------------------------- #
+        background = bake_background(
+            spec,
+            scene,
+            tile,
+            table,
+            out_dir,
+            out_dir / spec["outputs"]["background"].format(
+                ext=assets["background"]["fileFormat"].lower()
+            ),
+        )
+        review_dir = RENDER_DIR / "build" / "review"
+        review_dir.mkdir(parents=True, exist_ok=True)
+        for stale in review_dir.glob("*.png"):
+            stale.unlink()
+
+        # ---- per-layout manifest records, reviews, alignment ------------- #
+        for layout in layouts:
+            count = layout["count"]
+            parts = baked[count]
+            concealed, _ = layout_groups(layout)
+            order_base = hand.get("drawOrderBase", 40)
+            layout_record = {
+                "id": layout["id"],
+                "seat": layout["seat"],
+                "count": count,
+                "hasDraw": layout["hasDraw"],
+                "orientation": layout["orientation"],
+                "group": body_entry(
+                    out_dir,
+                    parts["group"],
+                    parts["groupBack"],
+                    hand["pose"],
+                    hand["backPose"],
+                    order_base,
+                ),
+                "draw": None,
+                "slots": [
+                    slot_record(spec, scene, camera, slot) for slot in layout["slots"]
+                ],
+                "measurements": {
+                    "seamContrast": seam_contrast(
+                        parts["group"]["sprite"],
+                        parts["group"]["rect"],
+                        spec,
+                        scene,
+                        camera,
+                        concealed,
+                    ),
+                },
+            }
+            review_parts = [
+                {
+                    "sprite": parts["group"]["sprite"],
+                    "rect": parts["group"]["rect"],
+                    "back_sprite": parts["groupBack"]["sprite"],
+                    "back_rect": parts["groupBack"]["rect"],
+                }
+            ]
+            aligned_parts = [
+                {
+                    "label": f"{layout['id']}-group",
+                    "region": parts["group"]["region"],
+                    "alpha": parts["group"]["alpha"],
+                }
+            ]
+            if layout["hasDraw"]:
+                layout_record["draw"] = {
+                    "slotId": "hand-draw",
+                    **body_entry(
+                        out_dir,
+                        parts["draw"],
+                        parts["drawBack"],
+                        hand["pose"],
+                        hand["backPose"],
+                        order_base + 1,
+                    ),
+                }
+                review_parts.append(
+                    {
+                        "sprite": parts["draw"]["sprite"],
+                        "rect": parts["draw"]["rect"],
+                        "back_sprite": parts["drawBack"]["sprite"],
+                        "back_rect": parts["drawBack"]["rect"],
+                    }
+                )
+                aligned_parts.append(
+                    {
+                        "label": f"{layout['id']}-draw",
+                        "region": parts["draw"]["region"],
+                        "alpha": parts["draw"]["alpha"],
+                    }
+                )
+            layouts_records.append(layout_record)
+
+            render_review_composite(
+                spec, scene, background["render"], review_parts, "face",
+                review_dir / f"{layout['id']}-face-up.png",
+            )
+            render_review_composite(
+                spec, scene, background["render"], review_parts, "back",
+                review_dir / f"{layout['id']}-face-down.png",
+            )
+            alignments.append(
+                layout_alignment(
+                    spec, scene, camera, tile, table, layout, aligned_parts, out_dir
+                )
+            )
+
+        log(f"review composites: {review_dir}")
+        for result in alignments:
+            log(
+                f"alignment {result['layout']}: {result['shiftedPixels']} shifted px of "
+                f"{result['tilePixels']} tile px, "
+                f"soft-edge {result['softPixelFraction']:.4%}"
+            )
+            if result["shiftedPixels"] > 0:
+                worst = sorted(
+                    result["bodies"], key=lambda row: -row["shiftedPixels"]
+                )[:3]
+                die(
+                    f"{result['layout']}: baked bodies do not line up with the "
+                    f"rendered scene: {result['shiftedPixels']} pixels disagree by a "
+                    f"full pixel (worst bodies: {worst})"
+                )
+            if result["softPixelFraction"] > spec["checks"]["maxMaskMismatchFraction"]:
+                die(
+                    f"{result['layout']}: baked bodies differ from the rendered "
+                    f"scene: {result['softPixelFraction']:.4%} of tile pixels"
+                )
+
     # ---- manifest -------------------------------------------------------- #
     decal = decal_geometry(spec)
-    body_bytes = sum(
-        (out_dir / record["body"]).stat().st_size for record, _, _ in records
-    ) + sum(
-        (out_dir / record["back"]["body"]).stat().st_size
-        for record, _, _ in records
-        if record.get("back")
-    )
+    spacing = resolve_row_spacing(spec)
     manifest = {
-        "version": 2,
+        "version": 3,
+        "batch": mode,
         "generatedBy": "tools/render/build_and_render.py",
         "spec": spec_path.name,
         "blender": blender_version,
@@ -2221,9 +2884,25 @@ def main() -> None:
             "plan": table_plan(spec),
             "seats": ["bottom", "right", "top", "left"],
             "handRow": {
-                "seat": spec["hand"]["seat"],
-                "y": spec["hand"]["y"],
-                "slotIds": [slot["id"] for slot in hand_slots(spec)],
+                "seat": hand["seat"],
+                "y": hand["y"],
+                "centerX": hand["centerX"],
+                "concealedCounts": counts,
+                "spacingUnits": round(spacing, 5),
+                "spacingMode": (
+                    "touch" if isinstance(hand["spacing"], str) else "explicit"
+                ),
+                "drawGapUnits": hand["drawGap"],
+                "layoutIds": [layout["id"] for layout in layouts],
+                "shadow": {
+                    **hand["shadow"],
+                    "note": (
+                        "Bodies are cropped to the measured shadow contour: the "
+                        "composited alpha above alphaThreshold, plus cropMarginPx. "
+                        "sceneEdgeClips lists the sides where the shadow is cut by "
+                        "the scene frame itself, which is allowed."
+                    ),
+                },
             },
         },
         "facePixels": [
@@ -2231,7 +2910,9 @@ def main() -> None:
             round(spec["decals"]["cssFace"][1] * 2),
         ],
         "background": (
-            spec["outputs"]["background"].format(ext=assets["background"]["fileFormat"].lower())
+            spec["outputs"]["background"].format(
+                ext=assets["background"]["fileFormat"].lower()
+            )
             if background
             else None
         ),
@@ -2242,10 +2923,7 @@ def main() -> None:
             "frameUnits": decal["frameUnits"],
             "paddingPixels": decal["paddingPixels"],
             "renderedAtScale": spec["decals"]["renderScale"],
-            "compositeSupersample": composite_supersample(
-                first_matrix if first_matrix is not None else np.eye(3),
-                spec["decals"].get("compositeSupersample"),
-            ),
+            "compositeSupersample": spec["decals"].get("compositeSupersample"),
             "carve": {
                 "depthUnits": round(
                     spec["decals"]["carve"]["depthFractionOfThickness"]
@@ -2269,11 +2947,11 @@ def main() -> None:
                 "origin, y down) onto decalQuad."
             ),
         },
-        "slots": [record for record, _, _ in records],
         "faces": face_entries,
         "assets": {
             "bodyFormat": body_format,
             "bodyQuality": assets["body"]["quality"] if mode == "table" else 100,
+            "spriteCount": len(written_bodies),
             "bodyBytes": body_bytes,
             "backgroundFormat": assets["background"]["fileFormat"] if background else None,
             "backgroundQuality": assets["background"]["quality"] if background else None,
@@ -2285,9 +2963,17 @@ def main() -> None:
         "checks": {},
         "measurements": measurements,
     }
-    manifest["checks"] = check_slots(manifest)
-    if mask_check:
-        manifest["checks"]["alignment"] = mask_check
+    if mode == "table":
+        manifest["layouts"] = layouts_records
+        manifest["checks"] = check_layouts(manifest)
+        manifest["checks"]["alignment"] = {
+            "maxSoftPixelFraction": spec["checks"]["maxMaskMismatchFraction"],
+            "shiftedPixels": sum(result["shiftedPixels"] for result in alignments),
+            "layouts": alignments,
+        }
+    else:
+        manifest["slots"] = [record]
+        manifest["checks"] = check_slots(manifest)
 
     budget = assets["budgetBytes"]
     if manifest["assets"]["totalBytes"] > budget["total"]:
@@ -2308,9 +2994,18 @@ def main() -> None:
 
     manifest_path = out_dir / spec["outputs"]["manifest"]
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-    log(f"manifest: {manifest_path.name}")
+    manifest_bytes = manifest_path.stat().st_size
+    if manifest_bytes > budget["manifest"]:
+        die(
+            f"manifest is {manifest_bytes} bytes, over the "
+            f"{budget['manifest']} byte budget"
+        )
+    removed = prune_bodies(out_dir, written_bodies) if mode == "table" else []
+    if removed:
+        log(f"pruned {len(removed)} stale sprite(s): {', '.join(removed)}")
+    log(f"manifest: {manifest_path.name} ({manifest_bytes} B)")
     log(
-        f"assets: bodies {body_bytes} B, background "
+        f"assets: bodies {body_bytes} B ({len(written_bodies)} sprites), background "
         f"{background['bytes'] if background else 0} B, "
         f"total {manifest['assets']['totalBytes']} B "
         f"(budget {budget['total']} B)"

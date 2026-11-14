@@ -5,9 +5,10 @@
  * This is the CI-friendly check from rendered-table-plan.md §12.13. It needs no
  * Blender, no network, and no dependencies: it reads the committed manifest,
  * confirms every referenced file exists, confirms each file's real pixel size
- * matches the rect the manifest publishes, checks that every slot rect sits
- * inside the scene and every face/decal quad inside its body sprite, re-applies
- * each `faceMatrix` to the decal rect, and enforces the asset budget.
+ * matches the rect the manifest publishes, checks that every body rect sits
+ * inside the scene and every slot's face/decal quad and tile rect inside the
+ * body that renders it, re-applies each `faceMatrix` to the decal rect, and
+ * enforces the asset budget.
  *
  *   node tools/render/scripts/check-assets.mjs [frontend/public/table]
  *
@@ -120,6 +121,136 @@ const inside = (rect, x, y, tolerance = 0.5) =>
   x <= rect.x + rect.width + tolerance &&
   y <= rect.y + rect.height + tolerance;
 
+const rectOf = (record) => ({
+  x: record.x,
+  y: record.y,
+  width: record.width,
+  height: record.height,
+});
+
+const insideScene = (rect, width, height) =>
+  rect.x >= 0 && rect.y >= 0 && rect.x + rect.width <= width && rect.y + rect.height <= height;
+
+const orientations = new Set(['upright', 'flat-upright', 'left', 'right', 'opposite']);
+let bodyBytes = 0;
+let faceChecks = 0;
+// A group body is referenced by both the with-draw and the without-draw layout,
+// so count files once: `assets.bodyBytes` is the batch's own file total.
+const countedBodies = new Set();
+
+/** Validate one body record (group, back pose, or draw) and return its bytes. */
+const checkBody = (label, record, width, height) => {
+  if (!record || typeof record !== 'object') {
+    fail(`${label}: missing body record`);
+    return 0;
+  }
+  if (
+    !Number.isFinite(record.x) ||
+    !Number.isFinite(record.y) ||
+    !(record.width > 0) ||
+    !(record.height > 0)
+  ) {
+    fail(`${label}: invalid rect ${JSON.stringify(rectOf(record))}`);
+    return 0;
+  }
+  if (!insideScene(rectOf(record), width, height)) {
+    fail(`${label}: rect (${record.x}, ${record.y}, ${record.width}x${record.height}) is outside the scene`);
+  }
+  if (record.shadow) {
+    const shadow = record.shadow;
+    if (!Array.isArray(shadow.contour) || shadow.contour.length !== 4) {
+      fail(`${label}: shadow.contour must be four numbers`);
+    }
+    // Self-consistency: the crop boundary must sit below the contour
+    // threshold, otherwise the sprite would cut a visible shadow edge. A side
+    // cut by the scene frame itself is allowed (`sceneEdgeClips`).
+    const clipped = Array.isArray(shadow.sceneEdgeClips) && shadow.sceneEdgeClips.length > 0;
+    if (!clipped && !(shadow.maxAlphaAtCropEdge <= shadow.alphaThreshold)) {
+      fail(
+        `${label}: maxAlphaAtCropEdge ${shadow.maxAlphaAtCropEdge} is above the ` +
+          `${shadow.alphaThreshold} contour threshold (a cut shadow)`,
+      );
+    }
+    if (!Array.isArray(shadow.sceneEdgeClips)) {
+      fail(`${label}: shadow.sceneEdgeClips must be a list`);
+    }
+  } else {
+    fail(`${label}: missing shadow measurement block`);
+  }
+  const file = join(dir, record.body ?? '');
+  const bytes =
+    checkImage(label, file, record.width, record.height) ?? 0;
+  if (countedBodies.has(file)) return 0;
+  countedBodies.add(file);
+  return bytes;
+};
+
+/** Validate one slot: identity, quads inside its body, and the matrix round-trip. */
+const checkSlot = (label, slot, target, decalPixels) => {
+  if (orientations.has(slot.orientation) === false) {
+    fail(`${label}: unknown orientation ${JSON.stringify(slot.orientation)}`);
+  }
+  const rect = rectOf(slot);
+  if (!(slot.width > 0) || !(slot.height > 0)) {
+    fail(`${label}: invalid slot rect`);
+  }
+  if (!inside(target, rect.x, rect.y) || !inside(target, rect.x + rect.width, rect.y + rect.height)) {
+    fail(`${label}: tile rect is outside the body that renders it`);
+  }
+
+  for (const [name, quad] of [
+    ['faceQuad', slot.faceQuad],
+    ['decalQuad', slot.decalQuad],
+  ]) {
+    if (!Array.isArray(quad) || quad.length !== 4) {
+      fail(`${label}: ${name} must have four corners`);
+      continue;
+    }
+    for (const corner of quad) {
+      if (!Array.isArray(corner) || corner.length !== 2) {
+        fail(`${label}: ${name} has a malformed corner`);
+        continue;
+      }
+      if (!inside(target, corner[0], corner[1])) {
+        fail(
+          `${label}: ${name} corner (${corner[0]}, ${corner[1]}) is outside ` +
+            `its body rect (${target.x}, ${target.y}, ${target.width}x${target.height})`,
+        );
+      }
+    }
+    faceChecks += 1;
+  }
+
+  // The matrix the runtime applies must reproduce the published quad from the
+  // decal's own pixel rect.
+  const matrix = parseMatrix3d(slot.faceMatrix);
+  if (!matrix) {
+    fail(`${label}: faceMatrix is not a 16-number matrix3d()`);
+    return;
+  }
+  if (Array.isArray(slot.decalQuad) && slot.decalQuad.length === 4 && decalPixels) {
+    const [decalWidth, decalHeight] = decalPixels;
+    const corners = [
+      [0, 0],
+      [decalWidth, 0],
+      [decalWidth, decalHeight],
+      [0, decalHeight],
+    ];
+    corners.forEach(([x, y], index) => {
+      const [mappedX, mappedY] = applyMatrix3d(matrix, x, y);
+      const expected = slot.decalQuad[index];
+      const drift = Math.max(Math.abs(mappedX - expected[0]), Math.abs(mappedY - expected[1]));
+      if (drift > 0.5) {
+        fail(
+          `${label}: faceMatrix maps decal corner ${index} to ` +
+            `(${mappedX.toFixed(2)}, ${mappedY.toFixed(2)}), ` +
+            `decalQuad says (${expected[0]}, ${expected[1]})`,
+        );
+      }
+    });
+  }
+};
+
 const manifest = readManifest();
 if (manifest) {
   const scene = manifest.scene ?? {};
@@ -127,8 +258,8 @@ if (manifest) {
   const height = scene.heightDevicePx;
   if (!(width > 0 && height > 0)) fail('scene has no valid device-pixel size');
 
-  if (manifest.version !== 2) {
-    fail(`manifest version ${manifest.version} is not 2`);
+  if (manifest.version !== 3) {
+    fail(`manifest version ${manifest.version} is not 3`);
   }
 
   const decalPixels = manifest.decals?.pixels;
@@ -159,113 +290,93 @@ if (manifest) {
     }
   }
 
-  // Slots ---------------------------------------------------------------- //
+  const layouts = Array.isArray(manifest.layouts) ? manifest.layouts : [];
   const slots = Array.isArray(manifest.slots) ? manifest.slots : [];
-  if (slots.length === 0) fail('manifest has no slots');
+  if (layouts.length === 0 && slots.length === 0) {
+    fail('manifest has neither layouts nor slots');
+  }
 
-  const orientations = new Set(['upright', 'flat-upright', 'left', 'right', 'opposite']);
-  const ids = new Set();
-  const orders = new Set();
-  let bodyBytes = 0;
-  let faceChecks = 0;
+  // Layouts (the shipped batch) ------------------------------------------ //
+  const layoutIds = new Set();
+  let slotCount = 0;
+  for (const layout of layouts) {
+    const label = `layout ${layout.id}`;
+    if (layoutIds.has(layout.id)) fail(`${label}: duplicate id`);
+    layoutIds.add(layout.id);
+    if (!(layout.count > 0)) fail(`${label}: invalid concealed count`);
+    if (typeof layout.hasDraw !== 'boolean') fail(`${label}: hasDraw must be a boolean`);
 
-  for (const slot of slots) {
-    const label = `slot ${slot.id}`;
-    if (ids.has(slot.id)) fail(`${label}: duplicate id`);
-    ids.add(slot.id);
-    if (orders.has(slot.drawOrder)) fail(`${label}: duplicate drawOrder ${slot.drawOrder}`);
-    orders.add(slot.drawOrder);
-    if (!orientations.has(slot.orientation)) {
-      fail(`${label}: unknown orientation ${JSON.stringify(slot.orientation)}`);
-    }
+    const groupBytes = checkBody(`${label} group`, layout.group, width, height);
+    bodyBytes += groupBytes;
+    bodyBytes += checkBody(`${label} group back`, layout.group?.back, width, height);
 
-    const rect = { x: slot.x, y: slot.y, width: slot.width, height: slot.height };
-    if (
-      !Number.isFinite(slot.x) ||
-      !Number.isFinite(slot.y) ||
-      !(slot.width > 0) ||
-      !(slot.height > 0)
-    ) {
-      fail(`${label}: invalid rect ${JSON.stringify(rect)}`);
-      continue;
-    }
-    if (slot.x < 0 || slot.y < 0 || slot.x + slot.width > width || slot.y + slot.height > height) {
-      fail(
-        `${label}: rect (${slot.x}, ${slot.y}, ${slot.width}x${slot.height}) ` +
-          `is outside the ${width}x${height} scene`,
-      );
-    }
-
-    bodyBytes +=
-      checkImage(`${label} body`, join(dir, slot.body ?? ''), slot.width, slot.height) ?? 0;
-
-    if (slot.back) {
-      const back = slot.back;
-      bodyBytes +=
-        checkImage(`${label} back`, join(dir, back.body ?? ''), back.width, back.height) ?? 0;
-      if (
-        back.x < 0 ||
-        back.y < 0 ||
-        back.x + back.width > width ||
-        back.y + back.height > height
-      ) {
-        fail(`${label}: back rect is outside the scene`);
+    const groupRect = rectOf(layout.group);
+    let drawRect = null;
+    if (layout.hasDraw) {
+      if (!layout.draw) {
+        fail(`${label}: hasDraw but no draw body`);
+      } else {
+        bodyBytes += checkBody(`${label} draw`, layout.draw, width, height);
+        bodyBytes += checkBody(`${label} draw back`, layout.draw.back, width, height);
+        drawRect = rectOf(layout.draw);
       }
+    } else if (layout.draw) {
+      fail(`${label}: draw body present but hasDraw is false`);
     }
 
-    // Face and decal quads must sit inside the body sprite they composite onto.
-    const quads = [
-      ['faceQuad', slot.faceQuad],
-      ['decalQuad', slot.decalQuad],
-    ];
-    for (const [name, quad] of quads) {
-      if (!Array.isArray(quad) || quad.length !== 4) {
-        fail(`${label}: ${name} must have four corners`);
+    const orders = new Set();
+    const ids = new Set();
+    const concealed = (layout.slots ?? []).filter((item) => item.role === 'concealed');
+    if (concealed.length !== layout.count) {
+      fail(`${label}: ${concealed.length} concealed slots for count ${layout.count}`);
+    }
+    for (const slot of layout.slots ?? []) {
+      slotCount += 1;
+      const slotLabel = `${label} slot ${slot.id}`;
+      if (ids.has(slot.id)) fail(`${slotLabel}: duplicate id`);
+      ids.add(slot.id);
+      if (orders.has(slot.drawOrder)) {
+        fail(`${slotLabel}: duplicate drawOrder ${slot.drawOrder}`);
+      }
+      orders.add(slot.drawOrder);
+      const target = slot.role === 'concealed' ? groupRect : drawRect;
+      if (!target) {
+        fail(`${slotLabel}: no body to draw into`);
         continue;
       }
-      for (const corner of quad) {
-        if (!Array.isArray(corner) || corner.length !== 2) {
-          fail(`${label}: ${name} has a malformed corner`);
-          continue;
-        }
-        if (!inside(rect, corner[0], corner[1])) {
-          fail(
-            `${label}: ${name} corner (${corner[0]}, ${corner[1]}) is outside ` +
-              `its body rect (${slot.x}, ${slot.y}, ${slot.width}x${slot.height})`,
-          );
-        }
+      checkSlot(slotLabel, slot, target, decalPixels);
+    }
+  }
+  if (layouts.length > 0) {
+    const declared = manifest.table?.handRow?.layoutIds;
+    if (!Array.isArray(declared)) {
+      fail('table.handRow.layoutIds is missing');
+    } else {
+      const declaredSet = new Set(declared);
+      for (const id of layoutIds) {
+        if (!declaredSet.has(id)) fail(`table.handRow.layoutIds is missing ${id}`);
       }
-      faceChecks += 1;
+      for (const id of declaredSet) {
+        if (!layoutIds.has(id)) fail(`table.handRow.layoutIds names unknown layout ${id}`);
+      }
     }
+  }
 
-    // The matrix the runtime applies must reproduce the published quad from the
-    // decal's own pixel rect.
-    const matrix = parseMatrix3d(slot.faceMatrix);
-    if (!matrix) {
-      fail(`${label}: faceMatrix is not a 16-number matrix3d()`);
-      continue;
+  // Slots (the review batch) --------------------------------------------- //
+  if (slots.length > 0) {
+    const ids = new Set();
+    const orders = new Set();
+    for (const slot of slots) {
+      const label = `slot ${slot.id}`;
+      if (ids.has(slot.id)) fail(`${label}: duplicate id`);
+      ids.add(slot.id);
+      if (orders.has(slot.drawOrder)) fail(`${label}: duplicate drawOrder ${slot.drawOrder}`);
+      orders.add(slot.drawOrder);
+      bodyBytes += checkBody(label, slot, width, height);
+      if (slot.back) bodyBytes += checkBody(`${label} back`, slot.back, width, height);
+      checkSlot(label, slot, rectOf(slot), decalPixels);
     }
-    if (Array.isArray(slot.decalQuad) && slot.decalQuad.length === 4 && decalPixels) {
-      const [decalWidth, decalHeight] = decalPixels;
-      const corners = [
-        [0, 0],
-        [decalWidth, 0],
-        [decalWidth, decalHeight],
-        [0, decalHeight],
-      ];
-      corners.forEach(([x, y], index) => {
-        const [mappedX, mappedY] = applyMatrix3d(matrix, x, y);
-        const expected = slot.decalQuad[index];
-        const drift = Math.max(Math.abs(mappedX - expected[0]), Math.abs(mappedY - expected[1]));
-        if (drift > 0.5) {
-          fail(
-            `${label}: faceMatrix maps decal corner ${index} to ` +
-              `(${mappedX.toFixed(2)}, ${mappedY.toFixed(2)}), ` +
-              `decalQuad says (${expected[0]}, ${expected[1]})`,
-          );
-        }
-      });
-    }
+    slotCount += slots.length;
   }
 
   // Budget --------------------------------------------------------------- //
@@ -296,7 +407,17 @@ if (manifest) {
     fail(`background is ${backgroundBytes} bytes, over the ${budget.background} byte budget`);
   }
 
-  notes.push(`${slots.length} slots, ${faceChecks} quads, ${compiled} bytes of body sprites`);
+  const declaredBodies = manifest.assets?.bodyBytes;
+  if (typeof declaredBodies === 'number' && declaredBodies !== bodyBytes) {
+    fail(
+      `manifest.assets.bodyBytes is ${declaredBodies}, the referenced files sum to ${bodyBytes}`,
+    );
+  }
+
+  notes.push(
+    `${layouts.length} layouts, ${slotCount} slots, ${faceChecks} quads, ` +
+      `${compiled} bytes of body sprites`,
+  );
   notes.push(
     `bytes: bodies ${compiled}, background ${backgroundBytes}, manifest ${manifestBytes}, ` +
       `sprites+background ${totalBytes} (budget ${budget.total ?? 'n/a'} for the lot)`,
