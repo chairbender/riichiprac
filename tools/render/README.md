@@ -3,7 +3,7 @@
 This directory is the **shell baker** for the opt-in rendered view. It is a
 developer-only asset pipeline: nothing here is bundled, imported, or shipped by
 the frontend. The runtime is 2D composition (images plus DOM), so every tile
-shell, its shadow/AO margin, and the felt background are baked offline.
+shell, its separate blob shadow, and the felt background are baked offline.
 
 The active architecture is
 [`2_5d_mahjong_tile_rendering_architecture.md`](../../2_5d_mahjong_tile_rendering_architecture.md),
@@ -48,7 +48,7 @@ bash tools/render/bake-felt.sh             # regenerate frontend/public/table/fe
 wall and hand shells under `build/review/shadows/`, writes
 `build/review/shadow-candidates.png` with the peak/floor/blur/padding and the
 seam/drop luma printed, and validates the variant records and the sheet
-(7,084 checks). It never touches the committed shells.
+(7,604 checks). It never touches the committed shells.
 
 `--preview` is the fast loop. It renders only the `--only` shells under
 `tools/render/build/preview/` (never the committed paths), writes a partial
@@ -216,24 +216,25 @@ compact `handSlots` and `wallSlots` blocks the baker expands into the slot
 catalogue. `bake_shells.py` renders each, measures the alpha silhouette, projects
 the `faceQuad`, and writes both texture scales. The felt is unchanged.
 
-| Id | Projection | Pose | Camera | Body (@1x) | Texture @1x / @2x | gridStepPx x / y | stackStepPx |
+| Id | Projection | Pose | Camera | Body (@1x) | Body tex / Shadow tex @1x | gridStepPx x / y | stackStepPx |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `shell_flat_upright` | low-angle top-down | — | az 0 / el 45 | 72 × 102 | 90 × 120 / 180 × 240 | (69.4, 0) / (0, 65.44) | — |
-| `shell_flat_sideways` | low-angle top-down | rotZ 90° | az 0 / el 45 | 106 × 95 | 124 × 113 / 248 × 226 | (0, 55.15) / (104, 0) | — |
-| `shell_wall_horizontal` | low-angle top-down | rotX 180° | az 0 / el 45 | 72 × 102 | 90 × 120 / 180 × 240 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
-| `shell_wall_horizontal_faceup` | low-angle top-down | — | az 0 / el 45 | 72 × 102 | 90 × 120 / 180 × 240 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
-| `shell_wall_side_left` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
-| `shell_wall_side_left_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
-| `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
-| `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
+| `shell_flat_upright` | low-angle top-down | — | az 0 / el 45 | 72 × 102 | 76 × 106 / 104 × 136 | (69.4, 0) / (0, 65.44) | — |
+| `shell_flat_sideways` | low-angle top-down | rotZ 90° | az 0 / el 45 | 106 × 95 | 110 × 99 / 138 × 129 | (0, 55.15) / (104, 0) | — |
+| `shell_wall_horizontal` | low-angle top-down | rotX 180° | az 0 / el 45 | 72 × 102 | 76 × 106 / 104 × 136 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
+| `shell_wall_horizontal_faceup` | low-angle top-down | — | az 0 / el 45 | 72 × 102 | 76 × 106 / 104 × 136 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
+| `shell_wall_side_left` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
+| `shell_wall_side_left_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
+| `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
+| `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
-The eight base PNGs are **349,752 B** (89,476 @1x + 260,276 @2x). The 14 hand
-slots add **643,830 B**, the 13 top-hand slots **535,009 B** and the 68 wall
-slots **2,980,642 B**, so all 103 **body + shadow** pairs are **4,509,233 B** (1,147,078 @1x +
-3,362,155 @2x; budget 5,242,880 B); the largest
-single shell is 50,341 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
-**412,797 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
-(102 px measured); the centre is 89 × 120 @1x and the drawn slot 103 × 120. The
+The eight base PNGs are **417,674 B** (108,978 @1x + 308,696 @2x). The 14 hand
+slots add **688,686 B**, the 13 top-hand slots **569,950 B** and the 68 wall
+slots **3,523,611 B**, so all 103 **body + shadow** pairs are **5,199,921 B** (1,365,185 @1x +
+3,834,736 @2x; budget 5,242,880 B); the largest
+single shell is 60,092 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
+**479,585 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
+(102 px measured); the human-hand centre body is 75 × 106 and its blob 103 × 136,
+the drawn body 89 × 106 and its blob 117 × 136. The
 budgets were raised for the fans; a board loads only the slots it draws, so the
 initial load stays well under the 4 MiB limit.
 
@@ -277,13 +278,15 @@ initial load stays well under the 4 MiB limit.
   first, then the upper tier at `+stackStepPx`. `gridStepPx` steps between
   stacks. A revealed dora indicator is the face-up counterpart shell in the
   upper tier.
-- **The contact shadow is darker but still diffuse**: 16 px right/bottom at
-  peak alpha 0.30 with a 10 px blur and a 20 px falloff, plus a 1 px / 0.20 AO
-  fringe. Phase 1/1b's 3–4 px band at 0.33 was the "too tight" note; the first
-  diffuse pass at 0.12 was too faint. The shadow window now follows the tile
-  silhouette inside the body box, so the beveled corners are not left as
-  unshadowed notches. `--shadow-audition` renders the REF plus A/B/C on the flat,
-  wall and hand shells to `build/review/shadow-candidates.png`.
+- **The shadow is a synthetic blob**: the tile's projected table-contact
+  footprint, offset 5 px right / 7 px down, filled at core alpha 0.60 and blurred
+  with a separable Gaussian (sigma 4 px @1x). A lying tile gets an ellipse that
+  covers the body box; a standing or tilted tile gets a capsule at its base. It
+  is a separate sprite with its own padding and is unioned before the bodies, so
+  there is no light moat at the contact and adjacent blobs do not double-darken.
+  Blender renders only the body; there is no catcher pass.
+  `--shadow-audition` renders the REF plus A/B/C on the flat, wall and hand
+  shells to `build/review/shadow-candidates.png`.
 
 ### The standing-hand fan
 
@@ -316,11 +319,11 @@ stands it up, `rotZ 0` keeps the row upright). The 24-unit distance is a
 **stylised** eye distance, not the physical seat distance: the physical distance
 would make the outer face skew much stronger than the hand should read.
 
-| Slot | Offset | Angle at d24 | Body | Texture @1x / @2x | Bytes @1x + @2x |
+| Slot | Offset | Angle at d24 | Body | Body tex / Shadow tex @1x | Bytes @1x + @2x |
 | --- | --- | --- | --- | --- | --- |
-| 06 (centre) | 0 | 0.00° | 71 × 102 | 89 × 120 / 178 × 240 | 10,666 + 31,255 |
-| 00 / 12 | ∓4.50 | 10.62° | 82 × 102 | 100 × 120 / 200 × 240 | 12,142 + 35,515 / 12,336 + 36,439 |
-| drawn | +5.5125 | 12.94° | 85 × 102 | 103 × 120 / 206 × 240 | 12,522 + 36,479 |
+| 06 (centre) | 0 | 0.00° | 71 × 102 | 75 × 106 / 103 × 136 | 11,570 + 33,058 |
+| 00 / 12 | ∓4.50 | 10.62° | 82 × 102 | 86 × 106 / 114 × 136 | 13,400 + 38,229 / 13,628 + 39,170 |
+| drawn | +5.5125 | 12.94° | 85 × 102 | 89 × 106 / 117 × 136 | 13,933 + 39,347 |
 
 Measured on the committed bake:
 
@@ -346,7 +349,7 @@ Measured on the committed bake:
 back-wall shells. The pose is the human hand turned around: `rotX 90`,
 `rotZ 180`, `faceLocalZ: bottom`, bare. The camera is the human's eye at
 **60 units**, el 28, so the outer slot is **4.29°**; the row step is 67.55 px
-and the centre is 70 × 102 (88 × 120 texture). The back is a shadowed blue
+and the centre is 70 × 102 (74 × 106 body + 102 × 136 blob). The back is a shadowed blue
 (`[0, 13, 44]` at the face centre) because the vertical back is turned away from
 the key's strongest axis; it is still blue, not the bright face-down blue. It
 adds no face-up atlas keys.
@@ -458,13 +461,22 @@ real record (values from the committed bake):
     "shell_flat_upright": {
       "textureFile": "shells/shell_flat_upright.png",
       "textureFile2x": "shells/2x/shell_flat_upright.png",
-      "texWidth": 90,
-      "texHeight": 120,
+      "shadowTextureFile": "shells/shell_flat_upright-shadow.png",
+      "shadowTextureFile2x": "shells/2x/shell_flat_upright-shadow.png",
+      "shadowTexWidth": 104,
+      "shadowTexHeight": 136,
+      "shadowAnchorX": 12,
+      "shadowAnchorY": 12,
+      "shadowOffsetPx": [0, 0],
+      "shadowPadding": { "top": 12, "right": 20, "bottom": 22, "left": 12 },
+      "texWidth": 76,
+      "texHeight": 106,
       "anchorX": 2,
       "anchorY": 2,
       "advanceWidth": 72,
       "advanceHeight": 102,
-      "padding": { "top": 2, "right": 16, "bottom": 16, "left": 2 },
+      "padding": { "top": 2, "right": 2, "bottom": 2, "left": 2 },
+      "shadowBlob": { "model": "blob", "shape": "ellipse", "sigmaPx1x": 4, "coreAlpha": 0.6, "offsetPx1x": [5, 7], "colorHex": "#0b1418", "lying": true },
       "faceRotationDeg": 0,
       "faceQuad": [[8.39, 4.6], [67.61, 4.6], [67.61, 62.84], [8.39, 62.84]],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
@@ -473,17 +485,19 @@ real record (values from the committed bake):
       "pose": { "rotateXDeg": 0, "rotateYDeg": 0, "rotateZDeg": 0 },
       "camera": { "azimuthDeg": 0, "elevationDeg": 45, "projection": "orthographic", "orthoScale": 1.642469, "pixelsPerUnit2x": 185.087201, "resolution1x": [118, 152], "resolution2x": [236, 304] },
       "measured": {
-        "alphaExtent1x": { "left": 1, "top": 1, "right": 11, "bottom": 11 },
-        "alphaPeak1x": { "left": 0.2, "top": 0.2, "right": 0.1216, "bottom": 0.1216 },
-        "alphaMass1x": { "left": 19.2, "top": 13.4, "right": 50.718, "bottom": 41.992 },
-        "shadowCatcherPeak": 0.4966,
+        "alphaExtent1x": { "left": 1, "top": 0, "right": 11, "bottom": 12 },
+        "alphaPeak1x": { "left": 0.0157, "top": 0.0, "right": 0.4392, "bottom": 0.4824 },
+        "alphaMass1x": { "left": 0.847, "top": 0.0, "right": 83.106, "bottom": 67.176 },
+        "shadowMaxAlpha": 0.6,
+        "contactQuadPx": [[13.3, 115.0], [13.3, 49.56], [82.7, 115.0], [82.7, 49.56]],
         "solidInset1x": [1, 1, 1, 1],
         "faceSampleRgb": [223, 220, 216],
         "edgeSamplesRgb": { "top": [223, 220, 217], "bottom": [0, 8, 31] },
-        "bytes1x": 7990,
-        "bytes2x": 23580
+        "bytes1x": 11208,
+        "bytes2x": 33278
       },
-      "sha256": { "decodedRgba1x": "…", "decodedRgba2x": "…" }
+      "sha256": { "decodedRgba1x": "…", "decodedRgba2x": "…" },
+      "shadowSha256": { "decodedRgba1x": "…", "decodedRgba2x": "…" }
     }
   }
 }
@@ -492,11 +506,14 @@ real record (values from the committed bake):
 Fields the runtime and the checker rely on:
 
 - `textureFile` / `textureFile2x` — the @1x and @2x **body** PNGs, both under `shells/`.
-- `shadowTextureFile` / `shadowTextureFile2x` — the separate **shadow/AO**
-  sprites, same dimensions and anchor as the body. Draw every shadow first, then
-  every body; a shadow is never baked into a body, so it cannot sit on top of a
-  neighbouring tile. `shadowOffsetPx` is `[0,0]` and `shadowAnchorX/Y` equals
-  the body anchor.
+- `shadowTextureFile` / `shadowTextureFile2x` — the separate **blob** sprites.
+  They have their own, larger box and anchor (`shadowTexWidth/Height`,
+  `shadowAnchorX/Y`, `shadowPadding`). Union every shadow into one transparent
+  layer (per-pixel max), draw it over the felt, then draw every body; a shadow is
+  never baked into a body, so it cannot sit on top of a neighbouring tile and
+  overlapping blobs do not double-darken. `shadowOffsetPx` is `[0,0]`;
+  `shadowBlob` records the model, sigma, core alpha, offset and whether the tile
+  is lying (ellipse covers the body) or standing (capsule at the base).
 - `texWidth`/`texHeight` — the @1x PNG size. The @2x PNG is exactly twice that.
 - `anchorX`/`anchorY` — the top-left of the opaque body box in @1x px. They are
   equal to `padding.left`/`padding.top`, and `anchor + advance + padding` equals
@@ -505,8 +522,8 @@ Fields the runtime and the checker rely on:
   hit-testing. It *includes a one-pixel anti-aliased edge ledge* on each side;
   `measured.solidInset1x` is `[1,1,1,1]`, i.e. the alpha ≥ 0.5 silhouette is
   exactly 1 px inside the declared box. Without that ledge an anti-aliased
-  0.4-alpha silhouette pixel would be indistinguishable from the 0.12-alpha
-  diffuse shadow and the shadow/AO contract could not be measured.
+  0.4-alpha silhouette pixel would be indistinguishable from the blob's soft
+  fringe and the body box could not be measured.
 - `gridStepPx.x` / `gridStepPx.y` — **use these for a tight grid**, not the
   advance box. They are the projected tile width/height axes (face-local X and
   Y) in @1x px, each oriented so a vector points right when that axis is more
@@ -561,11 +578,12 @@ Fields the runtime and the checker rely on:
 - `faceUp` — a boolean on every record (`camera.faceLocalZ === "top"`). It is
   the authoritative glyph/blue-back switch; the top-hand and wall slot records
   are face down.
-- The body + shadow pair is the draw contract: place both at the same
-  `gridX/gridY` (`grid - anchor`), shadow pass first, body pass second. The
-  atlas composites glyphs into the body only.
+- The body + shadow pair is the draw contract: place the shadow at
+  `grid - shadowAnchor` into the union layer, place the body at `grid - anchor`,
+  and draw the union layer before the bodies. The atlas composites glyphs into
+  the body only.
 - `rig` — Blender version, engine/device/samples/seed, colour management, the
-  key's screen-space direction, the shadow/AO contract, the 2-tile stack, the
+  key's screen-space direction, the blob contract, the 2-tile stack, the
   target long-axis size, and each shell's framing. It is the audit trail for a
   bake.
 
@@ -577,8 +595,9 @@ for the orthographic shells, a trapezoid for the perspective ones, with one
 table-parallel edge pair, a longer near edge and converging depth edges);
 `gridStepPx` follows from the faceQuad; `stackStepPx` is present on exactly the
 wall shells and matches the projected thickness within 1.5 px (2.5 px on the
-perspective shells); the slot metadata follows `wallSlots`; the shadow/AO
-extents and peaks stay in the 10–16 px / 1–2 px contract; the shadow points
+perspective shells); the slot metadata follows `wallSlots`; the blob extents and
+peaks stay in the contract, its outer shadow ring has no light moat at the
+contact, its maximum adjacent alpha step is <= 0.12, and the shadow points
 down-right; the outer texture ring is transparent; the light reads top-left (on
 the flat shells the top edge is brighter and the near thickness is cool/darker;
 the standing hand is checked by its blue top sliver); face-up shells are ivory
@@ -667,10 +686,10 @@ committed reference is 24 units. The output is gitignored:
 | `build/review/wall-fan-back-right-zoom3x.png` | 3x zoom of the back right end |
 
 `check-shells.mjs --audition` keeps the committed checks and adds the candidate
-ones (both scales, the base long axis, the shadow/AO contract, the perspective
+ones (both scales, the base long axis, the blob contract, the perspective
 trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
-printed-text and composited-tile pixel checks; the full run reports **7,328
-checks**. The committed bake alone reports **6,967** (including the review-sheet
+printed-text and composited-tile pixel checks; the full run reports **7,866
+checks**. The committed bake alone reports **7,487** (including the review-sheet
 pixels when the sheets are present).
 
 ## The Blender shell rules
@@ -692,13 +711,12 @@ The shell scene follows the architecture, not the retired pipeline:
   top-left and their shadow bottom-right. The tuned values are 3200 W for the
   key and a `#3b4a5c` world at strength 1.0 (the Phase 0 numbers were a starting
   point that produced a near-black shadow side).
-- **Tight contact shadow/AO baked into the transparent margin**: two renders per
-  shell per scale — the tile on transparent film, and a Cycles **shadow-catcher**
-  plane under it. The catcher alpha is blurred, clamped to the declared padding
-  (3–4 px right/bottom), divided by its own peak and pinned to
-  `shadow.peakAlpha` 0.33 per side. The top/left ambient-occlusion fringe
-  (1–2 px, peak 0.28) is analytic and bounded by `padding.top/left`. A 1 px
-  frame ramp guarantees nothing clips at the texture border.
+- **Blob shadow generated in Python, not Blender**: one render per shell per
+  scale (the tile on transparent film). The shadow is the projected
+  table-contact footprint, fitted to an ellipse (lying) or a capsule (standing),
+  offset down-right, Gaussian-blurred and written to its own sprite. A 1 px frame
+  ramp guarantees nothing clips at the texture border. There is no
+  shadow-catcher plane and no AO fringe.
 - **Two-tone resin seam** visible along the top and side bevels: a white
   melamine face plate on a blue melamine backing, one material, split on local
   Z. This is what reads as a physical tile rather than a flat card.
@@ -731,8 +749,8 @@ OK 6967 checks passed
 ```
 
 `--audition` additionally validates the hand fan calibration and its sheets; on
-the current output it reports `OK 7,328 checks passed` (the committed checks plus
-the candidate and sheet checks). The committed-only run stays at 6,967.
+the current output it reports `OK 7,866 checks passed` (the committed checks plus
+the candidate and sheet checks). The committed-only run stays at 7,487.
 
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
@@ -777,16 +795,18 @@ felt's base colour (`#1a5038`) so shadow contrast is easy to see, with the
 manifest's own `gridStepPx` and draw order (uniform pond rows right-to-left;
 per-slot hand/wall fans outermost-to-innermost, centre last; wall bottom tier
 before the top tier). The script prints the seam numbers too: on the committed
-bake the neighbour's face edge darkens from luma 218.3 to 210.1 where the
-previous tile's shadow lands on it, and the isolated tile's shadow reads 61.1
-against bare felt 66.8. The diffuse band is deliberately subtle in these
-numbers; the strength is a visual call for the user.
+bake the neighbour's face edge reads 210.1 against its interior 220.3 (that
+difference is the body's own bevel shading; the shadow union sits under the
+bodies and does not touch the neighbour's face), and the isolated tile's shadow
+reads 54.6 against bare felt 66.8. The blob strength is still a visual call for
+the user.
 
-To review the shadow strength/shape/falloff, run `--shadow-audition` (above)
-and open `build/review/shadow-candidates.png`. It shows the REF row plus A/B/C,
-each with a flat discard run and an isolated tile, a wall stack and a hand run;
-the labels print the peak/floor/blur/padding and the seam/drop luma. The
-committed REF is variant C: 0.30 / floor 0.08 / blur 10 / pad 20.
+To review the blob softness/opacity/offset, run `--shadow-audition` (above) and
+open `build/review/shadow-candidates.png`. It shows the REF row plus A/B/C, each
+with a flat discard run and an isolated tile, a wall stack and a hand run; the
+labels print sigma/core alpha/offset and the seam/drop luma, and every row unions
+its shadows under the bodies. The committed REF is sigma 4 px / core 0.60 /
+offset 5,7.
 
 To review the approved hand fan, run `--audition` (above) and open the two
 sheets:

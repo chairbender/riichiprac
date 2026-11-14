@@ -12,7 +12,7 @@ Attempting to render a full Riichi Mahjong table through a single 3D perspective
 ### The Solution: Blender-Baked 2.5D Shells + Runtime Glyph Compositing
 Instead of rendering whole scenes or wrestling with real-time 3D lighting, **repurpose your existing Blender pipeline as an offline sprite-shell baker**. 
 
-You will render **5–6 blank, face-less 3D tile shells** from Blender using orthographic/oblique cameras and locked top-left lighting, bake tight contact shadows directly into each shell's transparent margin, and composite crisp 2D orthographic face glyphs on top at runtime using a strict **Painter's Algorithm** draw order.
+You will render **5–6 blank, face-less 3D tile shells** from Blender using orthographic/oblique cameras and locked top-left lighting, bake a synthetic soft blob shadow as a separate per-shell sprite, and composite crisp 2D orthographic face glyphs on top at runtime using a strict **Painter's Algorithm** draw order.
 
 ---
 
@@ -34,23 +34,27 @@ Phase 1b (2026-11-14) also doubles the base sprite resolution: the Phase 1
 is 208 px). Every shell and every board coordinate is therefore twice the Phase
 1 size, and the perspective rework above is baked at that size. See §10.
 
-### B. Decoupled Layout Bounds vs. Sprite Texture Bounds (Single-Sprite Neighbor Shadows)
-You do **not** need separate sprites for isolated tiles vs. adjacent tiles, nor do you need neighbor-adjacency logic. Every tile orientation uses **one single shell sprite** whose texture dimensions are slightly larger than its opaque plastic body:
+### B. Decoupled Layout Bounds vs. Sprite Texture Bounds (Blob Shadows)
+You do **not** need separate sprites for isolated tiles vs. adjacent tiles, nor do you need neighbor-adjacency logic. Every tile orientation uses **one body shell sprite and one separate blob-shadow sprite**:
 
 * **Logical Advance Box (`advanceW`, `advanceH`):** The exact pixel width and height of the solid tile body used by the layout engine to position tiles on a grid.
-* **Sprite Texture Bounds (`texW`, `texH`):** Includes transparent padding around the solid body:
-  * **Right & Bottom Overhang ($+10\text{ to }+16\text{ px}$):** Contains a diffuse, semi-transparent directional drop shadow (`alpha` peak $\approx 0.12$, an 8 px blur and a 16 px falloff). Phase 1/1b used a tight 3–4 px band at alpha 0.33; the review rejected it as too tight, and this is the deliberate replacement (§10).
-  * **Top & Left Rim ($+1\text{ to }+2\text{ px}$):** Contains a subtle dark ambient-occlusion (AO) fringe (`alpha` peak $\approx 0.20$) hugging the outer edge.
+* **Body Texture Bounds (`texW`, `texH`):** The body plus a 1–3 px anti-aliased ledge. There are no shadow pixels in the body sprite.
+* **Shadow Texture Bounds (`shadowTexW`, `shadowTexH`):** A separate, larger transparent box holding the blob. It has its own `shadowAnchorX/Y`; draw it at `grid - shadowAnchor`. A lying tile's blob is an ellipse covering the body box, fading ~10–21 px past the right/bottom edges; a standing or tilted tile's blob is a capsule at its base. The blob is translucent black (`#0b1418`), a Gaussian-blurred shape (σ 4 px @1x) offset 5 px right / 7 px down.
 
-The shadow/AO margin is specified in **pixels at the @1x base**. The body is
-104 px long and the shadow reaches 11–12 px beyond it, so it is a soft band
-rather than a contact line. That is the contract `shells.json` and the checker
-measure; it is not a percentage of the tile.
+The shadow is specified in **pixels at the @1x base**, not as a percentage of
+the tile, and it is never baked into the body.
 
 **How this handles both touching and isolated tiles automatically:**
-1. **Uniform Horizontal Rows (Drawn Right-to-Left):** Because the light source is at top-left, drawing tiles **right-to-left** places the left tile *on top of* its right neighbor. The left tile's $+4\text{ px}$ right shadow overhang bleeds directly onto the right neighbor's rounded left bevel—creating a realistic cast shadow between touching tiles. On the rightmost tile (or an isolated *tsumo* tile), that same overhang blends onto the table felt as a normal drop shadow. This is the rule for the uniform pond/discard rows.
-2. **Per-Slot Fan Rows (Drawn Outermost-to-Innermost):** The standing hand, the top hand and the front/back walls are baked as a camera fan whose centre is straight on, so the **inner** tile is nearer the camera than the outer tile. A uniform right-to-left order is wrong on the left half: it puts the outer left tile on top of the inner right tile, but the inner tile should overlap the outer tile's visible inner side. Draw the **outermost slots first on both halves**, then inward, with the centre slot last. The two sides are symmetric: the left half and the right half both converge on the centre. The shadow still points down-right; the overlap is now the camera-distance order, not the light order.
-2. **Vertical Discard Rows (Drawn Top-to-Bottom):** Row 2 sits below Row 1 and is drawn *after* Row 1. Row 2's $1\text{--}2\text{ px}$ dark top AO rim sits directly on top of Row 1's bright bottom white extrusion, preventing two bright white surfaces from merging into a flat white blob.
+1. **Shadow union first, then bodies:** For each zone, draw every shadow sprite into one transparent layer with a per-pixel max (the union), draw that layer over the felt, then draw every body. Two adjacent blobs that overlap stay at the single-blob darkness instead of double-darkening, and a shadow can never darken a neighbouring tile's face.
+2. **Uniform Horizontal Rows (Drawn Right-to-Left):** Body painter order for the pond/discard rows, so the left tile's bevel sits over the right tile's where they touch. The shadows are already unioned below both bodies.
+3. **Per-Slot Fan Rows (Drawn Outermost-to-Innermost):** The standing hand, the top hand and the front/back walls are baked as a camera fan whose centre is straight on, so the **inner** tile is nearer the camera than the outer tile. A uniform right-to-left order is wrong on the left half: it puts the outer left tile on top of the inner right tile, but the inner tile should overlap the outer tile's visible inner side. Draw the **outermost slots first on both halves**, then inward, with the centre slot last.
+4. **Vertical Discard Rows (Drawn Top-to-Bottom):** Row 2 sits below Row 1 and is drawn *after* Row 1, so the bodies stack in depth order.
+
+**Deferred: tile-to-tile overlay shadows.** The blob pass deliberately cannot
+darken a neighbour's face. The next step is a separate per-shell overlay that is
+drawn onto the *next* tile before that tile's body, so a tile can cast contact
+shading onto the neighbour drawn above it; it has to be generated per shell
+variation. It is recorded in §10.11 and `TASK.md`, not part of Phase 1d.
 
 ```text
 Horizontal Row (Drawn Right-to-Left: Tile 2 -> Tile 1 -> Tile 0)
@@ -86,17 +90,17 @@ Configure an automated Blender script to render the canonical blank tile shells 
 * **Camera:** Use an **Orthographic Camera** (`type = 'ORTHO'`) for the grid shells so parallel edges stay strictly parallel and scale identically across the board. The walls and the standing hand are the exception: the side walls (§10.4), every front/back wall slot (§10.8) and every hand slot (§10.9) use an **off-axis perspective camera** with no yaw and no roll. Only a lateral perspective reveals the near face while keeping the tile square to the table; yawing the tile or the camera slopes the edges instead. The wall and hand slots reuse the same solver, with the camera placed at the human's x for that slot. The hand's face is vertical, so its top edge (closer to the elevated camera) is the longer one; the wall's horizontal face has the lower edge longer.
 * **Lighting:** Place a primary soft area light at **Top-Left-Front** (`-X, +Y, +Z`) and a weak ambient fill light so bevels show crisp highlights on top/left edges and cool grey-blue shading on bottom/right thickness faces.
 * **Two-Tone Resin Seam:** Ensure the sharp boundary between the colored tile back (*senaka*) and white front body is clearly visible along the top and side bevels—this is the primary visual cue distinguishing a mahjong tile from a flat card.
-* **Shadow Catcher & Cropping:**
-  * Enable `Film -> Transparent` in Blender Cycles/Eevee.
-  * Place a shadow-catcher plane directly underneath the tile mesh.
-  * Clamp/fade the shadow catcher alpha via a compositing mask or UV gradient so the cast shadow is **diffuse and subtle**: **$10\text{--}16\text{ px}$** past the bottom and right edges, and a **$1\text{--}2\text{ px}$** soft dark AO fringe on the top and left edges. §10.6 has the committed contract.
+* **Blob shadow (no catcher):**
+  * Enable `Film -> Transparent` in Blender Cycles/Eevee and render only the tile body.
+  * Generate the shadow in Python: project the tile's table-contact footprint, fit an ellipse (lying tile) or a capsule (standing tile), offset it down-right, and apply a separable Gaussian. There is no shadow-catcher pass; §10.11 has the committed contract.
 * **Output Manifest (`shells.json`):** Export a JSON metadata file alongside the PNGs recording for each shell:
   * `textureFile`: Path to PNG
   * `texWidth`, `texHeight`: Full PNG dimensions in pixels
   * `anchorX`, `anchorY`: Pixel offset from top-left of PNG to the top-left corner of the solid tile body
   * `advanceWidth`, `advanceHeight`: Opaque body dimensions used for grid layout
   * `gridStepPx`: the physical tile-axis step for a tight grid
-  * `shadowTextureFile` / `shadowTextureFile2x` + `shadowTexWidth/Height`, `shadowAnchorX/Y`, `shadowOffsetPx`: the separate drop-shadow/AO sprite. It shares the body's texture box and grid position; draw it first, then the body.
+  * `shadowTextureFile` / `shadowTextureFile2x` + `shadowTexWidth/Height`, `shadowAnchorX/Y`, `shadowOffsetPx`: the separate blob sprite. It has its own larger box and anchor; draw it at `grid - shadowAnchor` into the shadow-union layer, then draw the body.
+  * `shadowPadding` (the shadow box's padding) and `shadowBlob` (`model`, `shape`, `sigmaPx1x`, `coreAlpha`, `offsetPx1x`, `lying`).
   * `stackStepPx` + `stackCount` (wall shells): the projected thickness vector from the lower tier's body top-left to the upper tier's, plus the 2-tile stack count
   * `wallSlot` (front/back wall shells): `wall`, `index`, `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`, `angleDeg` and `faceUp`, so the per-slot fan is auditable
   * `faceQuad`: 4 corner coordinates (`[x, y]`) on the shell where the 2D face glyph should be mapped
@@ -107,7 +111,7 @@ Configure an automated Blender script to render the canonical blank tile shells 
 
 ### Phase 1: Blender Shell Baker & Manifest Exporter
 - [x] **Task 1.1:** Create a headless Blender Python script (`bake_shells.py`) that loads the existing 3D R-tile mesh, applies the two-tone resin/ivory materials, and sets up the orthographic camera and top-left key light. Landed in section 8.
-- [x] **Task 1.2:** Configure the shadow catcher plane and Blender Compositor node tree to produce a tight $+3\text{--}4\text{ px}$ bottom-right drop shadow and $1\text{--}2\text{ px}$ top-left AO border on a transparent background. Done in Python over the Cycles shadow-catcher alpha rather than a compositor mask, so the clamp is exact and measurable; see section 8.
+- [x] **Task 1.2:** Generate a synthetic blob shadow per shell (Phase 1d): a Gaussian-blurred ellipse/capsule under the tile's projected table-contact footprint, exported as a separate sprite. The Blender shadow-catcher pass was removed; see §10.11.
 - [x] **Task 1.3:** Render all 6 canonical blank shells at target DPI (plus `@2x` retina scale) and auto-generate `shells.json` containing `anchorX`, `anchorY`, `advanceWidth`, `advanceHeight`, and `faceQuad` coordinates. All numbers are measured from the render; see section 8.
 
 ### Phase 2: Runtime Texture Atlas & Face Glyph Compositor
@@ -143,8 +147,8 @@ Because there is no Z-buffer, enforce a deterministic back-to-front draw order a
   6. Left and Right player open melds & concealed hands.
   7. Bottom player's open melds & standing hand (always drawn last so lifted/hovered tiles never clip behind the bottom wall).
 - [ ] **Task 4.2 — Intra-Zone Draw Order:**
-  - **Shadows first, then bodies:** every shell has a separate shadow/AO sprite (same texture size and anchor as the body). For each zone, draw every shadow sprite first in the zone's back-to-front order, then every body sprite in the same order. A shadow is never baked into a body, so it cannot land on top of a neighbouring tile regardless of the painter's order.
-  - **Uniform horizontal rows (ponds, discards):** Iterate **Right-to-Left** (`index = length - 1` down to `0`) so each tile's right shadow overhang casts onto its right neighbor's left bevel.
+  - **Shadow union first, then bodies:** every shell has a separate blob sprite with its own larger box and anchor. For each zone, draw every shadow sprite into one transparent layer with a per-pixel max (the union), draw that layer over the felt, then draw every body in the zone's back-to-front order. A shadow is never baked into a body, so it cannot land on top of a neighbouring tile, and overlapping blobs do not double-darken.
+  - **Uniform horizontal rows (ponds, discards):** Iterate **Right-to-Left** (`index = length - 1` down to `0`) for the body painter order.
   - **Per-slot fan rows (standing hand, top hand, front/back walls):** Draw **outermost-to-innermost on both halves, centre last** (slots 0 and N, then 1 and N-1, …, then the centre), because the camera is at the row centre and the inner tile is nearer. Do not use the uniform right-to-left order here; it puts the left half's outer tile on top of its inner neighbour, which is the wrong overlap.
   - **Multi-row grids (discard rows):** Iterate **Top-to-Bottom** (`row = 0` to `2`), drawing each row Right-to-Left.
   - **Stacked walls:** Draw the **bottom tier** completely before drawing the **top tier** at its upward `dy` offset.
@@ -280,16 +284,15 @@ Total 76,360 B against a 2,097,152 B budget. The felt is unchanged
 4. **`advanceWidth/Height` is the sprite's opaque box, not the grid step.** The
    box contains a one-pixel anti-aliased edge ledge (`solidInset1x` is
    `[1,1,1,1]`), so `anchor + advance + padding = texture` stays exact and the
-   3–4 px / 1–2 px margin contract can be measured from the PNG without a
-   0.4-alpha silhouette pixel masquerading as a shadow. Phase 3 must use the
+   body box can be measured from the PNG without a
+   0.4-alpha edge pixel masquerading as opaque body. Phase 3 must use the
    published `gridStepPx.x/y` (the projected tile axes) for tight rows and wall
    runs; `advanceWidth` is for hit-testing and spacing.
-5. **The clamp is arithmetic, not a compositor mask.** The Cycles
-   shadow-catcher alpha supplies the physical shape; Python clamps it to the
-   padding, normalises each side to `shadow.peakAlpha` 0.33, adds the analytic
-   1–2 px AO fringe at 0.28, and ramps the outer texture ring to zero. Every
-   number the check reports is therefore a property of the committed PNG, not
-   of a Blender node graph.
+5. **The blob is arithmetic, not a compositor mask.** Python projects the
+   table-contact footprint, fits an ellipse (lying tile) or a capsule (standing
+   tile), offsets it down-right, Gaussian-blurs it and ramps the outer texture
+   ring to zero. Every number the check reports is a property of the committed
+   PNG, not of a Blender node graph. There is no catcher pass (§10.11).
 6. **Rig tuning changed two numbers.** The Phase 0 key was 350 W and the world
    0.35 of `#20262b`, which rendered the shadow side near black; the bake uses
    3200 W and a `#3b4a5c` world at 1.0. The face samples are ivory
@@ -501,55 +504,55 @@ ponds/melds stay straight-on and the side walls are approved.
 All numbers are measured from the render and live in
 `frontend/public/table/shells.json`.
 
-| Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | stackStepPx | Bytes @1x + @2x |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_flat_upright` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | — | 9,672 + 28,225 |
-| `shell_flat_sideways` | el 45° | 124 × 113 / 248 × 226 | 106 × 95 | (0, 55.15) / (104, 0) | — | 11,599 + 34,534 |
-| `shell_wall_horizontal` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 10,612 + 30,913 |
-| `shell_wall_horizontal_faceup` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 9,672 + 28,225 |
-| `shell_wall_side_left` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 13,021 + 37,320 |
-| `shell_wall_side_left_faceup` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 11,471 + 33,062 |
-| `shell_wall_side_right` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 12,023 + 34,805 |
-| `shell_wall_side_right_faceup` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 11,406 + 33,192 |
+| Shell | Camera | Body tex @1x / @2x | Shadow tex @1x / @2x | Body | gridStepPx x / y | stackStepPx | Bytes @1x + @2x |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `shell_flat_upright` | el 45° | 76 × 106 / 152 × 212 | 104 × 136 / 208 × 272 | 72 × 102 | (69.4, 0) / (0, 65.44) | — | 11,208 + 33,278 |
+| `shell_flat_sideways` | el 45° | 110 × 99 / 220 × 198 | 138 × 129 / 276 × 258 | 106 × 95 | (0, 55.15) / (104, 0) | — | 14,076 + 41,043 |
+| `shell_wall_horizontal` | el 45° | 76 × 106 / 152 × 212 | 104 × 136 / 208 × 272 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 12,129 + 35,948 |
+| `shell_wall_horizontal_faceup` | el 45° | 76 × 106 / 152 × 212 | 104 × 136 / 208 × 272 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 11,208 + 33,278 |
+| `shell_wall_side_left` | off-axis persp, +2 / d10 | 108 × 89 / 216 × 178 | 136 × 119 / 272 × 238 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 16,085 + 44,007 |
+| `shell_wall_side_left_faceup` | off-axis persp, +2 / d10 | 108 × 89 / 216 × 178 | 136 × 119 / 272 × 238 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 14,586 + 39,723 |
+| `shell_wall_side_right` | off-axis persp, −2 / d10 | 108 × 89 / 216 × 178 | 136 × 119 / 272 × 238 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 15,149 + 41,557 |
+| `shell_wall_side_right_faceup` | off-axis persp, −2 / d10 | 108 × 89 / 216 × 178 | 136 × 119 / 272 × 238 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 14,537 + 39,862 |
 
-The eight base shells above total **349,752 B** (89,476 @1x + 260,276 @2x).
-The 14 human-hand slots add **643,830 B**, the 13 top-hand slots **535,009 B**
-and the 68 front/back wall slots **2,980,642 B**, for **4,509,233 B**
-(1,147,078 @1x + 3,362,155 @2x) against the raised 5,242,880 B budget.
-`shells.json` is **412,797 B** against the raised 524,288 B budget. The felt is
-unchanged (559,465 B). The hand slots keep the 104 px body long axis (102 px
-measured, minus the anti-aliased crop); the human-hand centre is 89 × 120 @1x,
-the drawn slot 103 × 120, and the top-hand centre 88 × 120.
+The eight base shells above total **417,674 B** (108,978 @1x + 308,696 @2x).
+The 14 human-hand slots add **688,686 B**, the 13 top-hand slots **569,950 B**
+and the 68 front/back wall slots **3,523,611 B**, for **5,199,921 B**
+(1,365,185 @1x + 3,834,736 @2x) against the raised 5,242,880 B budget.
+`shells.json` is **479,585 B** against the raised 524,288 B budget. The felt is
+unchanged (559,465 B). The body keeps the 104 px projected long axis (102 px
+measured, minus the anti-aliased crop); the blob shadow adds its own box
+(human-hand centre 103 × 136, drawn 117 × 136, top-hand centre 102 × 136).
 
 Representative top-hand slots (all 13 are in `shells.json`):
 
-| Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | Bytes @1x + @2x |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_hand_top_slot_06` | 0° / d60 | 88 × 120 / 176 × 240 | 70 × 102 | (67.55, 0) / (0, 80.35) | 9,945 + 28,935 |
-| `shell_hand_top_slot_00` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (2.83, 80.35) | 10,902 + 31,998 |
-| `shell_hand_top_slot_12` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (−2.83, 80.35) | 10,845 + 31,890 |
+| Shell | Camera | Body tex @1x / @2x | Shadow tex @1x / @2x | Body | gridStepPx x / y | Bytes @1x + @2x |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `shell_hand_top_slot_06` | 0° / d60 | 74 × 106 / 148 × 212 | 102 × 136 / 204 × 272 | 70 × 102 | (67.55, 0) / (0, 80.35) | 10,884 + 30,718 |
+| `shell_hand_top_slot_00` | 4.29° / d60 | 78 × 106 / 156 × 212 | 106 × 136 / 212 × 272 | 74 × 102 | (67.55, 0) / (2.83, 80.35) | 12,032 + 33,865 |
+| `shell_hand_top_slot_12` | 4.29° / d60 | 78 × 106 / 156 × 212 | 106 × 136 / 212 × 272 | 74 × 102 | (67.55, 0) / (−2.83, 80.35) | 11,999 + 33,734 |
 
 Representative hand slots (all 14 are in `shells.json`):
 
-| Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | Bytes @1x + @2x |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_hand_slot_06` | 0° / d24 | 89 × 120 / 178 × 240 | 71 × 102 | (67.96, 0) / (0, 81.72) | 10,666 + 31,255 |
-| `shell_hand_slot_00` | 10.62° / d24 | 100 × 120 / 200 × 240 | 82 × 102 | (67.96, 0) / (7.37, 81.72) | 12,142 + 35,515 |
-| `shell_hand_slot_12` | 10.62° / d24 | 100 × 120 / 200 × 240 | 82 × 102 | (67.96, 0) / (−7.37, 81.72) | 12,336 + 36,439 |
-| `shell_hand_slot_draw` | 12.94° / d24 | 103 × 120 / 206 × 240 | 85 × 102 | (67.96, 0) / (−9.03, 81.72) | 12,522 + 36,479 |
+| Shell | Camera | Body tex @1x / @2x | Shadow tex @1x / @2x | Body | gridStepPx x / y | Bytes @1x + @2x |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `shell_hand_slot_06` | 0° / d24 | 75 × 106 / 150 × 212 | 103 × 136 / 206 × 272 | 71 × 102 | (67.96, 0) / (0, 81.72) | 11,570 + 33,058 |
+| `shell_hand_slot_00` | 10.62° / d24 | 86 × 106 / 172 × 212 | 114 × 136 / 228 × 272 | 82 × 102 | (67.96, 0) / (7.37, 81.72) | 13,400 + 38,229 |
+| `shell_hand_slot_12` | 10.62° / d24 | 86 × 106 / 172 × 212 | 114 × 136 / 228 × 272 | 82 × 102 | (67.96, 0) / (−7.37, 81.72) | 13,628 + 39,170 |
+| `shell_hand_slot_draw` | 12.94° / d24 | 89 × 106 / 178 × 212 | 117 × 136 / 234 × 272 | 85 × 102 | (67.96, 0) / (−9.03, 81.72) | 13,933 + 39,347 |
 
 Representative wall slots (all 17 per wall are in `shells.json`):
 
-| Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | stackStepPx | Bytes @1x + @2x |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_wall_front_slot_08` | 0° / d40.8 | 91 × 120 / 182 × 240 | 73 × 102 | (69.72, 0) / (0, 66.07) | (0, −39.02) | 10,507 + 31,481 |
-| `shell_wall_front_slot_04` | 4.21° / d40.8 | 95 × 120 / 190 × 240 | 77 × 102 | (69.72, 0) / (−3.49, 66.07) | (−2.03, −39.02) | 11,807 + 34,624 |
-| `shell_wall_front_slot_16` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.97, 66.07) | (4.06, −39.02) | 12,241 + 35,425 |
-| `shell_wall_back_slot_08` | 0° / d54.8 | 90 × 120 / 180 × 240 | 72 × 102 | (69.64, 0) / (0, 65.91) | (0, −38.9) | 10,644 + 31,353 |
-| `shell_wall_back_slot_04` | 3.13° / d54.8 | 93 × 120 / 186 × 240 | 75 × 102 | (69.64, 0) / (−2.58, 65.91) | (−1.51, −38.9) | 11,519 + 34,213 |
-| `shell_wall_back_slot_16` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.16, 65.91) | (3.01, −38.9) | 11,935 + 34,846 |
-| `shell_wall_front_slot_16_faceup` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.8, 64.46) | (4.06, −39.02) | 11,396 + 33,126 |
-| `shell_wall_back_slot_16_faceup` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.06, 64.71) | (3.01, −38.9) | 11,249 + 32,396 |
+| Shell | Camera | Body tex @1x / @2x | Shadow tex @1x / @2x | Body | gridStepPx x / y | stackStepPx | Bytes @1x + @2x |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `shell_wall_front_slot_08` | 0° / d40.8 | 77 × 106 / 154 × 212 | 105 × 136 / 210 × 272 | 73 × 102 | (69.72, 0) / (0, 66.07) | (0, −39.02) | 12,009 + 36,479 |
+| `shell_wall_front_slot_04` | 4.21° / d40.8 | 81 × 106 / 162 × 212 | 109 × 136 / 218 × 272 | 77 × 102 | (69.72, 0) / (−3.49, 66.07) | (−2.03, −39.02) | 14,527 + 40,049 |
+| `shell_wall_front_slot_16` | 8.37° / d40.8 | 85 × 106 / 170 × 212 | 113 × 136 / 226 × 272 | 81 × 102 | (69.72, 0) / (6.97, 66.07) | (4.06, −39.02) | 14,882 + 41,060 |
+| `shell_wall_back_slot_08` | 0° / d54.8 | 76 × 106 / 152 × 212 | 104 × 136 / 208 × 272 | 72 × 102 | (69.64, 0) / (0, 65.91) | (0, −38.9) | 12,170 + 36,452 |
+| `shell_wall_back_slot_04` | 3.13° / d54.8 | 79 × 106 / 158 × 212 | 107 × 136 / 214 × 272 | 75 × 102 | (69.64, 0) / (−2.58, 65.91) | (−1.51, −38.9) | 14,160 + 39,595 |
+| `shell_wall_back_slot_16` | 6.25° / d54.8 | 82 × 106 / 164 × 212 | 110 × 136 / 220 × 272 | 78 × 102 | (69.64, 0) / (5.16, 65.91) | (3.01, −38.9) | 14,447 + 40,651 |
+| `shell_wall_front_slot_16_faceup` | 8.37° / d40.8 | 85 × 106 / 170 × 212 | 113 × 136 / 226 × 272 | 81 × 102 | (69.72, 0) / (6.8, 64.46) | (4.06, −39.02) | 14,071 + 38,709 |
+| `shell_wall_back_slot_16_faceup` | 6.25° / d54.8 | 82 × 106 / 164 × 212 | 110 × 136 / 220 × 272 | 78 × 102 | (69.64, 0) / (5.06, 64.71) | (3.01, −38.9) | 13,718 + 38,234 |
 
 ### 10.3 The 2-tile wall stack
 
@@ -635,7 +638,11 @@ atlas cannot hold it, the dora blank and the hand are the places to trade slots
 subset of hand slots with nearest-slot reuse), not the wall/hand bodies. The
 top hand adds no face-up keys: its 13 shells are bare blue backs.
 
-### 10.6 The contact shadow: darker, still diffuse
+### 10.6 The contact shadow: darker, still diffuse (superseded by §10.11)
+
+> **Superseded.** Phase 1d replaced the Cycles catcher and the AO fringe with a
+> synthetic blob shadow and the shadow-union draw pass. The measurements below
+> are kept as the Phase 1c record; §10.11 is the active contract.
 
 The Phase 1/1b shadow was a 3–4 px band at alpha 0.33: the review called it too
 tight. The first Phase 1c pass went deliberately diffuse and subtle at 0.12.
@@ -688,10 +695,10 @@ committed shells.
 
 `bash tools/render/bake-shells.sh --bake --verify-determinism` renders the 103
 shells, writes both scales and `shells.json`, regenerates the review sheets and
-runs **6,967 checks**: catalogue and the 14 human-hand + 13 top-hand + 68 wall
+runs **7,487 checks**: catalogue and the 14 human-hand + 13 top-hand + 68 wall
 slot fans, the top-hand standing mapping,
-the straight-on ponds, felt, both texture scales, the 1 px AA ledge, the diffuse
-shadow/AO contract, the faceQuad and `gridStepPx`, the 2-tile `stackStepPx`
+the straight-on ponds, felt, both texture scales, the 1 px AA ledge, the blob
+contract (no moat, smooth Gaussian, extents and union), the faceQuad and `gridStepPx`, the 2-tile `stackStepPx`
 (within 1.5 px of the projected thickness on the orthographic shells, 2.5 px on
 the perspective ones), the perspective trapezoid (one table-parallel edge pair,
 the near edge longer — the lower edge for a horizontal face, the upper edge for
@@ -704,17 +711,18 @@ RGBA; all 103 were identical.
 `bash tools/render/bake-shells.sh --audition --verify-determinism` now renders
 the **hand fan-strength calibration**: the outer row slot and the drawn-tile slot
 at 14, 18 and 40 units, with the committed 24 units as the REF. It validates
-**7,328 checks** in total. The shadow audition validates **7,084 checks** (the committed checks plus the variant records and the `shadow-candidates.png` sheet). The hand sheets are
+**7,866 checks** in total. The shadow audition validates **7,604 checks** (the committed checks plus the variant records and the `shadow-candidates.png` sheet). The hand sheets are
 `build/review/shell-candidates-shell_hand_slot_12.png` and
 `build/review/shell-candidates-shell_hand_slot_draw.png`.
 
-The **shadow is settled at variant C**: peak 0.30 / contact floor 0.08 / 10 px
-blur / 20 px padding, and the audition sheet keeps REF (C) and A (0.18 / 16),
-B (0.24 / 12), C (0.30 / 20) on the flat, wall and hand shells. The hand fan and the standing top hand are approved; the wall fan and
-side walls are approved; the ponds/melds are confirmed straight-on. The deferred
-item is the hand face brightness (the el-28 hand face is still ~94–107 luma
-against the pond's ~220). Nothing downstream starts: no atlas, layout engine,
-board renderer or app view, and the felt raster is untouched.
+The **shadow is now a synthetic blob** (§10.11): σ 4 px, core 0.60, offset 5/7,
+with a separate shadow box and a union draw pass. The audition sheet keeps REF
+plus A (σ 3), B (σ 5) and C (σ 7). The hand fan and the standing top hand are
+approved; the wall fan and side walls are approved; the ponds/melds are confirmed
+straight-on. The deferred item is the hand face brightness (the el-28 hand face
+is still ~94–107 luma against the pond's ~220) and the tile-to-tile overlay
+shadow (§10.11). Nothing downstream starts: no atlas, layout engine, board
+renderer or app view, and the felt raster is untouched.
 
 ### 10.8 The front/back wall slot fan
 
@@ -798,8 +806,8 @@ entry per wall); the baker and checker expand it to the 68 ids, so the catalogue
 cannot drift. Each manifest record carries `wallSlot` with `wall`, `index`,
 `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`, `angleDeg` and `faceUp`.
 
-**Budgets.** The 68 wall slots are **2,980,642 B** of the 103-shell
-**4,509,233 B** total; `shells.json` is **412,797 B**. The self-imposed Phase 1
+**Budgets.** The 68 wall slots are **3,523,611 B** of the 103-shell
+**5,199,921 B** total; `shells.json` is **479,585 B**. The self-imposed Phase 1
 budgets are **5,242,880 B** (textures) and **524,288 B** (manifest); the standing
 AGENTS limits (total assets ≤ 8 MiB, initial hand + board load < 4 MiB) still
 hold, because a board loads only the slots it draws. A board with the 14 hand
@@ -910,3 +918,59 @@ The two shells are unchanged from the approved el-45 bake. Their face variants
 are `flat-topdown` and `flat-rot90`; the runtime rotates the glyph for the
 left/top/right seats into the same faceQuad. The four seat orientations do not
 add shells.
+
+### 10.11 Phase 1d: the synthetic blob shadow (landed 2026-11-14)
+
+The Phase 1c contact shadow was a Cycles shadow-catcher alpha. The review found a
+structural problem: a shadow baked into a tile's own margin cannot survive the
+painter's order, because the shadow of the tile drawn earlier lands on top of the
+neighbour. The separate shadow sprite fixed that overlap, but the catcher-derived
+field still left a light moat where the rectangular body-box window excluded the
+shadow. The user asked for a simpler blob: **a Gaussian-blurred translucent black
+shape under the tile's contact point**, with a correction for two adjacent blobs
+adding together.
+
+**Generation.** Blender now renders only the tile body; there is no catcher pass.
+For each shell the baker projects the mesh's lowest corners (the table-contact
+footprint) to pixels. A lying tile (the contact footprint is comparable to the
+body box: the flat ponds, the sideways shell, the front/back wall tiles) gets an
+ellipse covering the body box; a standing or tilted tile (the human hand, the top
+hand, the side walls) gets a capsule at its base. The shape is offset 5 px right
+/ 7 px down, filled at `coreAlpha` 0.60, and blurred with a separable Gaussian
+(sigma 4 px @1x, 3-sigma truncation). The visible fringe peaks near half the core
+alpha at the contact, so the tile edge is not a light moat. The body sprite is
+the tile only.
+
+**The contract.** `shells.json` publishes a separate `shadowTextureFile` /
+`shadowTextureFile2x` with its own `shadowTexWidth/Height`, `shadowAnchorX/Y`
+(12/20/22/12 padding), `shadowOffsetPx` `[0,0]`, `shadowPadding` and `shadowBlob`
+(`model: blob`, `shape: ellipse`, `sigmaPx1x: 4`, `coreAlpha: 0.60`,
+`offsetPx1x: [5,7]`, `lying`). A lying tile must have a real shadow 3–19 px to
+the right and 3–21 px below; a standing tile must have one at the bottom. Every
+sprite is smooth (max adjacent alpha step <= 0.12), its outer ring is transparent,
+and its maximum alpha is the core alpha.
+
+**The union pass.** The review sheets and the runtime contract draw every shadow
+into one transparent layer with a per-pixel max, then draw that layer over the
+felt, then every body. Two blobs that overlap stay at the single-blob value
+instead of the `1 - (1-a)^2` darkening of independent alpha blending. This is the
+correction for adjacent tiles, and it is a per-zone pass over whatever tiles are
+placed: **a wall that changes length needs no new assets**, because the runtime
+unions the slots it actually draws.
+
+**The audition.** `--shadow-audition` now calibrates the blob: REF (sigma 4, core
+0.60, offset 5/7) plus A (sigma 3, 0.55, 4/6), B (sigma 5, 0.60, 6/8) and C
+(sigma 7, 0.50, 8/10) on the flat, wall and hand shells.
+`build/review/shadow-candidates.png` shows each row with the union pass.
+
+**Validation.** The committed bake runs **7,487 checks**, the hand audition
+**7,866** and the shadow audition **7,604**; all 103 body and shadow sprites are
+deterministic. Textures are **5,199,921 B** (1,365,185 @1x + 3,834,736 @2x)
+against the 5,242,880 B budget; `shells.json` is **479,585 B** against 524,288 B.
+
+**Deferred: tile-to-tile overlay shadows.** The blob pass cannot darken a
+neighbour's face by design. The agreed next step is a separate per-shell overlay
+shadow, drawn onto the tile that will be above it before that tile's body: the
+next tile's body covers the overlap, so the shading sits on the neighbour's face
+rather than on the felt. It must be generated per shell variation (each slot's
+geometry differs), so it is a follow-up task, not part of Phase 1d.

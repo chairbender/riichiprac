@@ -34,7 +34,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { drawSprite, encodePng, readPng, zoomNearest } from './png.mjs';
+import { drawSprite, drawSpriteMax, encodePng, readPng, zoomNearest } from './png.mjs';
 import { drawText, textWidth, wrapText } from './label-font.mjs';
 
 const renderDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -91,24 +91,58 @@ function canvas(width, height) {
   return { width, height, data, channels: 4, stride: width * 4 };
 }
 
-// The drop shadow is a separate sprite. Queue every tile placement, then flush
-// all shadow sprites first and all body sprites second. A shadow can never land
-// on top of a neighbouring tile, regardless of the row/stack painter order.
+// The blob shadows are separate sprites. Queue every tile placement, then flush
+// every shadow into one transparent layer with a per-pixel max (the union), draw
+// that layer over the felt, and only then draw the bodies. A shadow can never
+// land on top of a neighbouring tile, and two adjacent blobs do not double-darken
+// where they overlap.
 const pendingDraws = [];
 function draw(id, target, gridX, gridY) {
+  const entry = manifest.shells[id];
+  const bodyLeft = Math.round(gridX - entry.anchorX);
+  const bodyTop = Math.round(gridY - entry.anchorY);
+  const shadowLeft = Math.round(gridX - (entry.shadowAnchorX ?? entry.anchorX));
+  const shadowTop = Math.round(gridY - (entry.shadowAnchorY ?? entry.anchorY));
+  const shadowWidth = entry.shadowTexWidth ?? entry.texWidth;
+  const shadowHeight = entry.shadowTexHeight ?? entry.texHeight;
+  const left = Math.min(bodyLeft, shadowLeft);
+  const top = Math.min(bodyTop, shadowTop);
+  const right = Math.max(bodyLeft + entry.texWidth, shadowLeft + shadowWidth);
+  const bottom = Math.max(bodyTop + entry.texHeight, shadowTop + shadowHeight);
+  if (left < 0 || top < 0 || right > target.width || bottom > target.height) {
+    throw new Error(
+      `sheet overflow: ${id} body/shadow ${left},${top}..${right},${bottom} ` +
+        `leaves ${target.width}x${target.height}`,
+    );
+  }
   pendingDraws.push({ id, target, gridX, gridY });
 }
 
+function transparentCanvas(width, height) {
+  return {
+    width,
+    height,
+    data: Buffer.alloc(width * height * 4),
+    channels: 4,
+    stride: width * 4,
+  };
+}
+
 function flushDraws() {
+  const layers = new Map();
   for (const item of pendingDraws) {
+    if (!layers.has(item.target)) {
+      layers.set(item.target, transparentCanvas(item.target.width, item.target.height));
+    }
     const entry = manifest.shells[item.id];
-    drawSprite(
-      item.target,
+    drawSpriteMax(
+      layers.get(item.target),
       shadowTexture(item.id),
       Math.round(item.gridX - (entry.shadowAnchorX ?? entry.anchorX)),
       Math.round(item.gridY - (entry.shadowAnchorY ?? entry.anchorY)),
     );
   }
+  for (const [target, layer] of layers) drawSprite(target, layer, 0, 0);
   for (const item of pendingDraws) {
     const entry = manifest.shells[item.id];
     drawSprite(
@@ -154,15 +188,19 @@ if (previewMode) {
     return pick[0] < 0 ? -pick[0] : pick[0];
   };
   const step = Math.max(8, rightStep(manifest.shells[ids[0]]));
-  const maxTextureHeight = Math.max(...ids.map((id) => manifest.shells[id].texHeight));
+  // The shadow box is larger than the body box, so a sheet must reserve the
+  // shadow's own right/bottom extent or the blob clips at the edge.
+  const rightExtent = (entry) =>
+    Math.max(entry.texWidth - entry.anchorX, entry.shadowTexWidth - entry.shadowAnchorX);
+  const bottomExtent = (entry) =>
+    Math.max(entry.texHeight - entry.anchorY, entry.shadowTexHeight - entry.shadowAnchorY);
+  const maxTextureHeight = Math.max(...ids.map((id) => bottomExtent(manifest.shells[id])));
   const packedRight = Math.max(
-    ...ids.map((id, index) => pad + index * step + manifest.shells[id].texWidth - manifest.shells[id].anchorX),
+    ...ids.map((id, index) => pad + index * step + rightExtent(manifest.shells[id])),
   );
   const explodedStep = step + rowGap;
   const explodedRight = Math.max(
-    ...ids.map((id, index) =>
-      pad + index * explodedStep + manifest.shells[id].texWidth - manifest.shells[id].anchorX,
-    ),
+    ...ids.map((id, index) => pad + index * explodedStep + rightExtent(manifest.shells[id])),
   );
   const width = Math.ceil(Math.max(packedRight, explodedRight) + pad + 160);
   const rowHeight = labelH + maxTextureHeight;
@@ -251,14 +289,19 @@ if (shadowAuditionMode) {
     pendingRecords.push({ record, target, gridX, gridY });
   };
   const flushRecordDraws = () => {
+    const layers = new Map();
     for (const item of pendingRecords) {
-      drawSprite(
-        item.target,
+      if (!layers.has(item.target)) {
+        layers.set(item.target, transparentCanvas(item.target.width, item.target.height));
+      }
+      drawSpriteMax(
+        layers.get(item.target),
         variantShadowTexture(item.record),
         Math.round(item.gridX - item.record.shadowAnchorX),
         Math.round(item.gridY - item.record.shadowAnchorY),
       );
     }
+    for (const [target, layer] of layers) drawSprite(target, layer, 0, 0);
     for (const item of pendingRecords) {
       drawSprite(
         item.target,
@@ -454,8 +497,9 @@ if (!auditionMode) {
     `INFO discard seam: neighbour face edge luma ${lumaAt(seamFaceX, rowY(0) + upright.advanceHeight * 0.5).toFixed(1)} ` +
       `vs its interior ${lumaAt(interiorFaceX, rowY(0) + upright.advanceHeight * 0.5).toFixed(1)}`,
   );
+  const isolatedX = pad + 6 * uprightStep + 15;
   console.log(
-    `INFO isolated tile shadow luma ${lumaAt(pad + 6 * uprightStep + 15 + uprightStep + 3, rowY(0) + upright.advanceHeight - 2).toFixed(1)} ` +
+    `INFO isolated tile shadow luma ${lumaAt(isolatedX + upright.advanceWidth * 0.5, rowY(0) + upright.advanceHeight + 4).toFixed(1)} ` +
       `vs bare felt ${lumaAt(feltX, rowY(0) + upright.advanceHeight - 2).toFixed(1)}`,
   );
 }
@@ -533,7 +577,18 @@ if (!auditionMode) {
   const width = Math.ceil(Math.max(runExtent.right + pad, pad + sideWidth));
   const runHeight = labelH + centreEntry.advanceHeight + 44;
   const sideHeight = labelH + (sideRun - 1) * Math.abs(columns[0].step[1]) + leftWall.advanceHeight + 24;
-  const height = Math.ceil(pad + 2 * runHeight + rowGap + sideHeight + pad);
+  // The upper tier of the wall stack sits one projected thickness above the
+  // lower tier, and its blob shadow needs its own top padding. The outer slots
+  // have the largest perspective rise, so size the margin for the whole run.
+  const maxStackRise = Math.max(
+    ...['front', 'back'].flatMap((wall) =>
+      Array.from({ length: count }, (_, index) =>
+        Math.abs(manifest.shells[wallSlotId(wall, index, false)].stackStepPx[1]),
+      ),
+    ),
+  );
+  const stackShadowPad = Math.ceil(maxStackRise + (centreEntry.shadowAnchorY ?? 0));
+  const height = Math.ceil(pad + 2 * runHeight + rowGap + sideHeight + pad + stackShadowPad);
   const image = canvas(width, height);
 
   const assertInside = (id, gridX, gridY, what) => {
@@ -580,8 +635,7 @@ if (!auditionMode) {
     return bodyTop + centreEntry.advanceHeight + 24;
   }
 
-  const frontBodyTop = pad + labelH;
-  const frontBottom = drawPackedWall('front', pad, frontDora);
+  const frontBottom = drawPackedWall('front', pad + stackShadowPad, frontDora);
   const backTop = frontBottom + rowGap;
   const backBottom = drawPackedWall('back', backTop, backDora);
 
@@ -660,7 +714,11 @@ if (!auditionMode) {
   }
   const fanWidth = Math.ceil(fanRight + fanPad);
   const fanRowHeight = fanLabelH + Math.abs(centreEntry.stackStepPx[1]) + centreEntry.advanceHeight + 44;
-  const fanImage = canvas(fanWidth, Math.ceil(4 * fanRowHeight + 2 * fanPad + 3 * 20));
+  const fanTopMargin = Math.ceil(maxStackRise + (centreEntry.shadowAnchorY ?? 0));
+  const fanImage = canvas(
+    fanWidth,
+    Math.ceil(4 * fanRowHeight + fanPad + fanTopMargin + 3 * 20),
+  );
   const fanAssertInside = (id, gridX, gridY, what) => {
     const entry = manifest.shells[id];
     const sprite = texture(id);
@@ -713,7 +771,7 @@ if (!auditionMode) {
       [rightIndices, `RIGHT HALF  SLOTS ${centre}..${count - 1}`],
       [leftIndices, `LEFT HALF  SLOTS 0..${centre}`],
     ]) {
-      const top = fanPad + fanRows.length * (fanRowHeight + 20);
+      const top = fanPad + fanTopMargin + fanRows.length * (fanRowHeight + 20);
       drawFanRow(
         wall,
         top,

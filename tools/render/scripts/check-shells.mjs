@@ -132,8 +132,7 @@ const isHandSlot = (id) => id.startsWith('shell_hand_slot_');
 const isVerticalFace = (shell) => shell?.pose?.rotateXDeg === 90;
 // Phase 1c shadow contract, in @1x px / alpha. The committed bake and every
 // audition candidate must satisfy it.
-const SHADOW_EXTENT = { right: [10, 16], bottom: [10, 16], left: [1, 2], top: [1, 2] };
-const SHADOW_PEAK = { right: [0.18, 0.34], bottom: [0.18, 0.34], left: [0.14, 0.26], top: [0.14, 0.26] };
+const SHADOW_MIN_CONTACT_ALPHA = 0.12;
 
 const failures = [];
 let checks = 0;
@@ -262,6 +261,106 @@ function nearestBorderAlpha(image) {
     max = Math.max(max, pixel(image, 0, y)[3], pixel(image, image.width - 1, y)[3]);
   }
   return max;
+}
+
+function maxAlphaOf(image) {
+  let max = 0;
+  for (let i = 3; i < image.data.length; i += image.channels) {
+    if (image.data[i] > max) max = image.data[i];
+  }
+  return max / 255;
+}
+
+/** Largest 4-neighbour alpha step, so a hard-edged sprite fails as "not a blob". */
+function maxAlphaStep(image) {
+  let max = 0;
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      const value = pixel(image, x, y)[3] / 255;
+      if (x + 1 < image.width) {
+        max = Math.max(max, Math.abs(value - pixel(image, x + 1, y)[3] / 255));
+      }
+      if (y + 1 < image.height) {
+        max = Math.max(max, Math.abs(value - pixel(image, x, y + 1)[3] / 255));
+      }
+    }
+  }
+  return max;
+}
+
+/**
+ * The blob-shadow contract: it wraps the body box, it is continuous at the
+ * right/bottom contact (no light moat), it tapers inside the declared padding,
+ * it never exceeds the spec core alpha, and it is a smooth Gaussian rather than
+ * a hard-edged shape. Returns the measured profile for the manifest cross-check.
+ */
+function checkBlobShadow({ label, image, record, spec }) {
+  const contract = spec.bake.shadowContract;
+  const blob = record.shadowBlob ?? {};
+  const body = {
+    x0: record.shadowAnchorX,
+    y0: record.shadowAnchorY,
+    x1: record.shadowAnchorX + record.advanceWidth - 1,
+    y1: record.shadowAnchorY + record.advanceHeight - 1,
+  };
+  const profile = alphaProfile(image, body);
+  const maxAlpha = maxAlphaOf(image);
+  check(
+    maxAlpha <= (blob.coreAlpha ?? 1) + 0.01,
+    `${label} blob core alpha ${maxAlpha.toFixed(3)} <= coreAlpha ${blob.coreAlpha}`,
+  );
+  // A lying tile gets a shadow under its whole body, so the right edge must be
+  // covered. A standing tile's shadow is the capsule at its base, so only the
+  // bottom contact has to be dark.
+  const rightContact = blob.lying ? profile.peak.right : Infinity;
+  check(
+    rightContact >= SHADOW_MIN_CONTACT_ALPHA &&
+      profile.peak.bottom >= SHADOW_MIN_CONTACT_ALPHA,
+    `${label} blob has no light moat at the contact ` +
+      `(R ${profile.peak.right.toFixed(3)}, B ${profile.peak.bottom.toFixed(3)} >= ${SHADOW_MIN_CONTACT_ALPHA})`,
+  );
+  for (const side of ['right', 'bottom', 'left', 'top']) {
+    const [min, max] = contract.extentPx1x[side];
+    const required = side === 'bottom' ? min : side === 'right' ? (blob.lying ? min : 0) : 0;
+    check(
+      profile.extent[side] >= required && profile.extent[side] <= max,
+      `${label} blob reaches ${profile.extent[side]} px ${side} (${required}-${max})`,
+    );
+    const [peakMin, peakMax] = contract.edgeAlpha[side];
+    const requiredPeak =
+      side === 'bottom' ? peakMin : side === 'right' ? (blob.lying ? peakMin : 0) : 0;
+    check(
+      profile.peak[side] >= requiredPeak && profile.peak[side] <= peakMax,
+      `${label} ${side} edge alpha ${profile.peak[side].toFixed(3)} (${requiredPeak}-${peakMax})`,
+    );
+  }
+  const step = maxAlphaStep(image);
+  check(
+    step <= contract.maxStepPerPixel,
+    `${label} blob is smooth (max adjacent alpha step ${step.toFixed(3)} <= ${contract.maxStepPerPixel})`,
+  );
+  const measured = record.measured ?? {};
+  const sameExtent = (side) => measured.alphaExtent1x?.[side] === profile.extent[side];
+  check(
+    ['left', 'top', 'right', 'bottom'].every(sameExtent),
+    `${label} manifest alpha extents match the texture ` +
+      `(${JSON.stringify(measured.alphaExtent1x)} vs ${JSON.stringify(profile.extent)})`,
+  );
+  const samePeak = (side) =>
+    Math.abs((measured.alphaPeak1x?.[side] ?? -1) - profile.peak[side]) <= 0.01;
+  check(
+    ['left', 'top', 'right', 'bottom'].every(samePeak),
+    `${label} manifest alpha peaks match the texture`,
+  );
+  check(
+    Math.abs((measured.shadowMaxAlpha ?? -1) - maxAlpha) <= 0.01,
+    `${label} manifest shadowMaxAlpha matches the texture (${measured.shadowMaxAlpha} vs ${maxAlpha.toFixed(4)})`,
+  );
+  note(
+    `${label} blob mass L${profile.mass.left.toFixed(2)} T${profile.mass.top.toFixed(2)} ` +
+      `R${profile.mass.right.toFixed(2)} B${profile.mass.bottom.toFixed(2)}`,
+  );
+  return profile;
 }
 
 function meanOpaqueRgb(image) {
@@ -447,14 +546,14 @@ function checkShellSpec(spec) {
         `shadow variant ${variant.id} has an id and label`,
       );
       check(
-        typeof variant.shadow?.peakAlpha === 'number' &&
-          typeof variant.shadow?.contactFloor === 'number' &&
-          typeof variant.shadow?.blurPx2x === 'number',
-        `shadow variant ${variant.id} sets peak/floor/blur`,
+        typeof variant.shadow?.sigmaPx1x === 'number' &&
+          typeof variant.shadow?.coreAlpha === 'number' &&
+          Array.isArray(variant.shadow?.offsetPx1x),
+        `shadow variant ${variant.id} sets sigma/core/offset`,
       );
       check(
-        variant.padding1x?.right >= 8 && variant.padding1x?.bottom >= 8,
-        `shadow variant ${variant.id} has a real right/bottom padding`,
+        variant.shadow?.sigmaPx1x >= 2 && variant.shadow?.sigmaPx1x <= 10,
+        `shadow variant ${variant.id} has a usable sigma (${variant.shadow?.sigmaPx1x})`,
       );
     }
   }
@@ -493,24 +592,54 @@ function checkShellSpec(spec) {
   check(spec.bakeImplemented === true, 'bakeImplemented is true (Phase 1 owns the bake)');
   const pads = spec.bake.padding1x;
   check(
-    pads.right >= 10 && pads.right <= 20 && pads.bottom >= 10 && pads.bottom <= 20,
-    `padding1x right/bottom hold the diffuse 10-16 px shadow (${pads.right}/${pads.bottom})`,
+    ['left', 'top', 'right', 'bottom'].every((side) => pads[side] >= 1 && pads[side] <= 3),
+    `body padding1x is the 1-3 px anti-alias ledge (${JSON.stringify(pads)})`,
+  );
+  const blob = spec.bake.shadow ?? {};
+  check(
+    blob.model === 'blob' && blob.shape === 'ellipse',
+    `shadow is a synthetic ellipse blob (${blob.model}/${blob.shape})`,
   );
   check(
-    pads.left >= 1 && pads.left <= 2 && pads.top >= 1 && pads.top <= 2,
-    `padding1x left/top are 1-2 px (${pads.left}/${pads.top})`,
+    blob.sigmaPx1x >= 2 && blob.sigmaPx1x <= 10,
+    `blob Gaussian sigma is ${blob.sigmaPx1x} px @1x (2-10)`,
   );
   check(
-    spec.bake.shadow.peakAlpha >= 0.18 && spec.bake.shadow.peakAlpha <= 0.34,
-    `shadow peak is darker but still diffuse (${spec.bake.shadow.peakAlpha})`,
+    blob.coreAlpha >= 0.3 && blob.coreAlpha <= 0.9,
+    `blob core alpha is ${blob.coreAlpha} (0.3-0.9)`,
   );
   check(
-    spec.bake.shadow.blurPx2x >= 4,
-    `shadow blur is at least 4 px @1x (${spec.bake.shadow.blurPx2x})`,
+    Array.isArray(blob.offsetPx1x) &&
+      blob.offsetPx1x.length === 2 &&
+      blob.offsetPx1x[0] >= 0 &&
+      blob.offsetPx1x[1] >= 0,
+    `blob is offset down-right (${JSON.stringify(blob.offsetPx1x)})`,
   );
   check(
-    typeof spec.bake.shadowContract?.note === 'string' && spec.bake.shadowContract.note.includes('diffuse'),
-    'the Phase 1c shadow decision is documented',
+    blob.minHalfWidthPx1x >= 1,
+    `blob keeps a ${blob.minHalfWidthPx1x} px minimum half-width for a standing tile`,
+  );
+  const shadowPads = blob.padding1x ?? {};
+  const blurTail = Math.ceil(3 * (blob.sigmaPx1x ?? 0));
+  check(
+    ['left', 'top', 'right', 'bottom'].every((side) => shadowPads[side] >= 6),
+    `shadow padding1x holds the blob (${JSON.stringify(shadowPads)})`,
+  );
+  check(
+    shadowPads.left + blob.offsetPx1x?.[0] >= blurTail &&
+      shadowPads.top + blob.offsetPx1x?.[1] >= blurTail &&
+      shadowPads.right - blob.offsetPx1x?.[0] >= blurTail &&
+      shadowPads.bottom - blob.offsetPx1x?.[1] >= blurTail,
+    `shadow padding covers the 3-sigma blur tail (${blurTail} px) on all sides`,
+  );
+  check(
+    typeof spec.bake.shadowContract?.note === 'string' &&
+      spec.bake.shadowContract.note.includes('blob'),
+    'the Phase 1d blob-shadow decision is documented',
+  );
+  check(
+    spec.bake.shadowContract?.phase === '1d-blob',
+    `shadow contract phase is 1d-blob (${spec.bake.shadowContract?.phase})`,
   );
   check(
     spec.tile.stack?.count === 2,
@@ -780,9 +909,22 @@ function checkShellsManifest(spec) {
       shell.shadowOffsetPx?.[0] === 0 && shell.shadowOffsetPx?.[1] === 0,
       `${id} shadow sprite uses the same grid position (${JSON.stringify(shell.shadowOffsetPx)})`,
     );
+    const shadowPadding = shell.shadowPadding ?? {};
+    const specShadowPadding = spec.bake.shadow.padding1x;
     check(
-      shell.shadowAnchorX === shell.anchorX && shell.shadowAnchorY === shell.anchorY,
-      `${id} shadow anchor matches the body anchor (${shell.shadowAnchorX},${shell.shadowAnchorY})`,
+      ['left', 'top', 'right', 'bottom'].every(
+        (side) => shadowPadding[side] === specShadowPadding[side],
+      ),
+      `${id} shadow padding matches the spec (${JSON.stringify(shadowPadding)})`,
+    );
+    check(
+      shell.shadowAnchorX === shadowPadding.left && shell.shadowAnchorY === shadowPadding.top,
+      `${id} shadow anchor is its own padding (${shell.shadowAnchorX},${shell.shadowAnchorY})`,
+    );
+    check(
+      shell.shadowAnchorX + shell.advanceWidth + shadowPadding.right === shell.shadowTexWidth &&
+        shell.shadowAnchorY + shell.advanceHeight + shadowPadding.bottom === shell.shadowTexHeight,
+      `${id} shadow texture wraps the body box (${shell.shadowTexWidth}x${shell.shadowTexHeight})`,
     );
 
     const padding = shell.padding ?? {};
@@ -1066,7 +1208,6 @@ function checkShellsManifest(spec) {
       check(false, `${id} is a top-hand slot but records no topHandSlot`);
     }
 
-    const profile = alphaProfile(shadowImage, body);
     const floor = 2 / 255 + 5 / 255;
     const bodyBorder = nearestBorderAlpha(image);
     const shadowBorder = nearestBorderAlpha(shadowImage);
@@ -1078,42 +1219,8 @@ function checkShellsManifest(spec) {
       shadowBorder <= floor * 255,
       `${id} shadow outer texture ring is transparent (max alpha ${shadowBorder}/255 <= ${Math.round(floor * 255)})`,
     );
-    for (const side of ['right', 'bottom', 'left', 'top']) {
-      const [min, max] = SHADOW_EXTENT[side];
-      check(
-        profile.extent[side] >= min && profile.extent[side] <= max,
-        `${id} ${side === 'right' || side === 'bottom' ? 'shadow' : 'AO'} reaches ` +
-          `${profile.extent[side]} px ${side} (contract ${min}-${max})`,
-      );
-      const [peakMin, peakMax] = SHADOW_PEAK[side];
-      check(
-        profile.peak[side] >= peakMin && profile.peak[side] <= peakMax,
-        `${id} ${side} ${side === 'right' || side === 'bottom' ? 'shadow' : 'AO'} peaks at alpha ` +
-          `${profile.peak[side].toFixed(3)} (${peakMin}-${peakMax})`,
-      );
-    }
-    check(
-      profile.extent.right > profile.extent.left && profile.extent.bottom > profile.extent.top,
-      `${id} shadow points down-right (extents R${profile.extent.right}/B${profile.extent.bottom} > ` +
-        `L${profile.extent.left}/T${profile.extent.top})`,
-    );
-    note(
-      `${id} margin mass L${profile.mass.left.toFixed(2)} T${profile.mass.top.toFixed(2)} ` +
-        `R${profile.mass.right.toFixed(2)} B${profile.mass.bottom.toFixed(2)}`,
-    );
-
+    checkBlobShadow({ label: id, image: shadowImage, record: shell, spec });
     const measured = shell.measured ?? {};
-    const sameExtent = (side) => measured.alphaExtent1x?.[side] === profile.extent[side];
-    check(
-      ['left', 'top', 'right', 'bottom'].every(sameExtent),
-      `${id} manifest alpha extents match the texture ` +
-        `(${JSON.stringify(measured.alphaExtent1x)} vs ${JSON.stringify(profile.extent)})`,
-    );
-    const samePeak = (side) => Math.abs((measured.alphaPeak1x?.[side] ?? -1) - profile.peak[side]) <= 0.01;
-    check(
-      ['left', 'top', 'right', 'bottom'].every(samePeak),
-      `${id} manifest alpha peaks match the texture`,
-    );
 
     // Light from the top-left. The flat tiles carry the two invariants: the far
     // top bevel is brighter than the near bottom edge, and the near thickness
@@ -1481,46 +1588,13 @@ function checkCandidateRecord(context) {
     check(record.stackStepPx === undefined, `${label} is not a wall shell and has no stackStepPx`);
   }
 
-  const profile = alphaProfile(shadowImage, body);
   const floor = 2 / 255 + 5 / 255;
   const bodyBorder = nearestBorderAlpha(image);
   const shadowBorder = nearestBorderAlpha(shadowImage);
-  check(
-    bodyBorder <= floor * 255,
-    `${label} body outer texture ring is transparent`,
-  );
-  check(
-    shadowBorder <= floor * 255,
-    `${label} shadow outer texture ring is transparent`,
-  );
-  for (const side of ['right', 'bottom', 'left', 'top']) {
-    const [min, max] = SHADOW_EXTENT[side];
-    check(
-      profile.extent[side] >= min && profile.extent[side] <= max,
-      `${label} ${side === 'right' || side === 'bottom' ? 'shadow' : 'AO'} reaches ` +
-        `${profile.extent[side]} px ${side} (contract ${min}-${max})`,
-    );
-    const [peakMin, peakMax] = SHADOW_PEAK[side];
-    check(
-      profile.peak[side] >= peakMin && profile.peak[side] <= peakMax,
-      `${label} ${side} ${side === 'right' || side === 'bottom' ? 'shadow' : 'AO'} peaks at alpha ` +
-        `${profile.peak[side].toFixed(3)} (${peakMin}-${peakMax})`,
-    );
-  }
-  check(
-    profile.extent.right > profile.extent.left && profile.extent.bottom > profile.extent.top,
-    `${label} shadow points down-right (R${profile.extent.right}/B${profile.extent.bottom} > ` +
-      `L${profile.extent.left}/T${profile.extent.top})`,
-  );
-
+  check(bodyBorder <= floor * 255, `${label} body outer texture ring is transparent`);
+  check(shadowBorder <= floor * 255, `${label} shadow outer texture ring is transparent`);
+  checkBlobShadow({ label, image: shadowImage, record, spec });
   const measured = record.measured ?? {};
-  const sameExtent = (side) => measured.alphaExtent1x?.[side] === profile.extent[side];
-  check(
-    ['left', 'top', 'right', 'bottom'].every(sameExtent),
-    `${label} manifest alpha extents match the texture`,
-  );
-  const samePeak = (side) => Math.abs((measured.alphaPeak1x?.[side] ?? -1) - profile.peak[side]) <= 0.01;
-  check(['left', 'top', 'right', 'bottom'].every(samePeak), `${label} manifest alpha peaks match the texture`);
 
   const edges = measured.edgeSamplesRgb ?? {};
   const flat = baseId.startsWith('shell_flat') || baseId === 'shell_wall_horizontal' || (isWall(baseId) && baseId.includes('_slot_'));
@@ -1725,9 +1799,9 @@ function checkShadowAudition(spec) {
         `${variant.id}/${shellId} records its variant`,
       );
       check(
-        record.padding?.right === variant.padding1x?.right &&
-          record.padding?.bottom === variant.padding1x?.bottom,
-        `${variant.id}/${shellId} uses the variant padding (${record.padding?.right})`,
+        record.shadowVariant?.shadow?.sigmaPx1x === variant.shadow?.sigmaPx1x &&
+          record.shadowVariant?.shadow?.coreAlpha === variant.shadow?.coreAlpha,
+        `${variant.id}/${shellId} records its blob variant`,
       );
       const texturePath = resolve(baseDir, record.textureFile ?? '');
       const texture2xPath = resolve(baseDir, record.textureFile2x ?? '');
@@ -1760,22 +1834,24 @@ function checkShadowAudition(spec) {
         shadowImage.width === record.shadowTexWidth && shadowImage.height === record.shadowTexHeight,
         `${variant.id}/${shellId} shadow is ${shadowImage.width}x${shadowImage.height}`,
       );
-      const bodyBox = {
-        x0: record.anchorX,
-        y0: record.anchorY,
-        x1: record.anchorX + record.advanceWidth - 1,
-        y1: record.anchorY + record.advanceHeight - 1,
-      };
-      const profile = alphaProfile(shadowImage, bodyBox);
-      const peak = profile.peak.right;
-      const extent = profile.extent.right;
+      const profile = alphaProfile(shadowImage, {
+        x0: record.shadowAnchorX,
+        y0: record.shadowAnchorY,
+        x1: record.shadowAnchorX + record.advanceWidth - 1,
+        y1: record.shadowAnchorY + record.advanceHeight - 1,
+      });
+      const lying = record.shadowBlob?.lying === true;
       check(
-        peak >= 0.14 && peak <= 0.34,
-        `${variant.id}/${shellId} decorated peak ${peak.toFixed(3)} is in the audition range`,
+        profile.peak.bottom >= SHADOW_MIN_CONTACT_ALPHA &&
+          (!lying || profile.peak.right >= SHADOW_MIN_CONTACT_ALPHA),
+        `${variant.id}/${shellId} blob has no light moat ` +
+          `(R ${profile.peak.right.toFixed(3)}, B ${profile.peak.bottom.toFixed(3)})`,
       );
       check(
-        extent >= 6 && extent <= (record.padding?.right ?? 0),
-        `${variant.id}/${shellId} shadow reaches ${extent} px (padding ${record.padding?.right})`,
+        profile.extent.bottom >= 3 &&
+          profile.extent.bottom <= (record.shadowPadding?.bottom ?? 0),
+        `${variant.id}/${shellId} blob reaches ${profile.extent.bottom} px below ` +
+          `(padding ${record.shadowPadding?.bottom})`,
       );
     }
   }

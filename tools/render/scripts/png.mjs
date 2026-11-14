@@ -178,6 +178,31 @@ export function drawSprite(canvas, sprite, dx, dy) {
   }
 }
 
+/**
+ * Per-pixel max-alpha merge, used for the shadow union pass. Two translucent
+ * blobs that overlap must stay at the single-blob darkness instead of
+ * double-darkening through straight alpha "over".
+ */
+export function drawSpriteMax(canvas, sprite, dx, dy) {
+  for (let y = 0; y < sprite.height; y += 1) {
+    const targetY = dy + y;
+    if (targetY < 0 || targetY >= canvas.height) continue;
+    for (let x = 0; x < sprite.width; x += 1) {
+      const targetX = dx + x;
+      if (targetX < 0 || targetX >= canvas.width) continue;
+      const source = (y * sprite.width + x) * 4;
+      const alpha = sprite.data[source + 3];
+      if (alpha === 0) continue;
+      const target = (targetY * canvas.width + targetX) * 4;
+      if (alpha <= canvas.data[target + 3]) continue;
+      canvas.data[target] = sprite.data[source];
+      canvas.data[target + 1] = sprite.data[source + 1];
+      canvas.data[target + 2] = sprite.data[source + 2];
+      canvas.data[target + 3] = alpha;
+    }
+  }
+}
+
 /** Nearest-neighbour zoom, so a review sheet shows real pixels, not a blur. */
 export function zoomNearest(rgba, x, y, width, height, factor) {
   const out = Buffer.alloc(width * factor * height * factor * 4);

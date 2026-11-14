@@ -91,67 +91,78 @@
     "baseScale": {
       "phase": "1b",
       "previousTargetLongAxisPx1x": 52,
-      "note": "Phase 1b decision: the Phase 1 @2x output is the new @1x base. The long axis of the projected tile body is now 104 CSS px at @1x (was 52) and 208 px at @2x, so the board coordinate space doubles in both axes and every consumer must read the new shells.json. Render real pixels at the new resolution; never upscale the Phase 1 textures. The 3-4 px right/bottom shadow and 1-2 px top/left AO contract is unchanged in pixels at the new @1x."
+      "note": "Phase 1b decision: the Phase 1 @2x output is the new @1x base. The long axis of the projected tile body is now 104 CSS px at @1x (was 52) and 208 px at @2x, so the board coordinate space doubles in both axes and every consumer must read the new shells.json. Render real pixels at the new resolution; never upscale the Phase 1 textures. The shadow is now a synthetic blob with its own padding and sprite, so the old right/bottom shadow and top/left AO pixel contract no longer applies."
     },
     "frameMarginPx2x": 48,
     "padding1x": {
       "top": 2,
-      "right": 20,
-      "bottom": 20,
+      "right": 2,
+      "bottom": 2,
       "left": 2
     },
     "edgeLedgePx": 1,
-    "shadowCatcher": true,
     "shadow": {
-      "peakAlpha": 0.3,
+      "model": "blob",
+      "shape": "ellipse",
+      "coreAlpha": 0.6,
       "colorHex": "#0b1418",
-      "contactFloor": 0.08,
-      "blurPx2x": 10
+      "sigmaPx1x": 4.0,
+      "offsetPx1x": [
+        5,
+        7
+      ],
+      "minHalfWidthPx1x": 2.0,
+      "padding1x": {
+        "top": 12,
+        "right": 20,
+        "bottom": 22,
+        "left": 12
+      },
+      "note": "A synthetic blob: the tile's projected table-contact footprint, offset down-right and blurred with a separable Gaussian. A lying tile (contact footprint comparable to the body) gets an ellipse that covers the body box; a standing/tilted tile gets a capsule at its base. The core is hidden under the body; the visible fringe peaks near 0.5 * coreAlpha at the contact edge. No catcher pass is rendered.",
+      "footprintScale": 0.95,
+      "spreadPx1x": 1.0
     },
-    "ambientOcclusion": {
-      "peakAlpha": 0.2,
-      "colorHex": "#0d151a"
-    },
-    "note": "One render of the tile on transparent film plus one render of the Cycles shadow catcher under it, per scale. The catcher alpha gives the physical shadow shape; it is clamped to the declared padding (3-4 px right/bottom) and normalised so the overhang peaks at shadow.peakAlpha. The top/left ambient-occlusion fringe is analytic and bounded by the 1-2 px padding.",
+    "note": "One render of the tile on transparent film per scale; there is no shadow-catcher pass. The shadow is a synthetic blob generated in Python from the tile's projected table-contact footprint. Body and shadow are separate sprites, and the runtime/review pass unions the shadows before drawing the bodies.",
     "shadowContract": {
-      "phase": "1c",
-      "note": "Phase 1c refinement, variant C: the shadow is darker and still diffuse; it is darkest at the tile and fades over a 20 px falloff. Peak alpha 0.30, contact floor 0.08, 10 px @1x blur, 20 px right/bottom padding, 10-16 px visible extent, 1-2 px top/left AO at 0.20. The shadow/AO are a separate sprite: the runtime draws every shadow first, then every tile body, so a shadow can never sit on top of a neighbouring tile. The window follows the silhouette inside the body box. The check enforces the ranges.",
+      "phase": "1d-blob",
+      "note": "Phase 1d: the shadow is a synthetic translucent-black blob, not a Cycles catcher. The tile's projected table-contact footprint is filled as an ellipse, offset down-right, blurred with a separable Gaussian (sigma 4 px @1x, core alpha 0.60) and exported as a separate sprite. It is continuous under the body, so there is no light moat at the contact edge. The review/runtime shadow pass unions overlapping blobs with a per-pixel max so two adjacent tiles do not double-darken. The body carries the tile only.",
       "extentPx1x": {
         "right": [
-          10,
-          16
+          3,
+          19
         ],
         "bottom": [
-          10,
-          16
+          3,
+          21
         ],
         "left": [
-          1,
-          2
+          0,
+          11
         ],
         "top": [
-          1,
-          2
+          0,
+          11
         ]
       },
-      "peakAlpha": {
+      "edgeAlpha": {
         "right": [
-          0.18,
-          0.34
+          0.12,
+          0.62
         ],
         "bottom": [
-          0.18,
-          0.34
+          0.12,
+          0.62
         ],
         "left": [
-          0.14,
-          0.26
+          0.0,
+          0.62
         ],
         "top": [
-          0.14,
-          0.26
+          0.0,
+          0.62
         ]
-      }
+      },
+      "maxStepPerPixel": 0.12
     }
   },
   "shells": [
@@ -544,7 +555,7 @@
     "manifestBytes": 524288,
     "shellBytes": 262144,
     "totalShellBytes": 5242880,
-    "note": "The per-slot front/back wall fan, the per-slot hand fan and the separate body/shadow sprites multiply the catalogue (103 shells, each with a body and a shadow PNG at both scales). The committed shell budget is 5 MiB and the manifest budget 512 KiB; a board loads only the slots it draws, and the total committed asset budget is still 8 MiB with an initial hand + board load under 4 MiB."
+    "note": "The per-slot front/back wall fan, the per-slot hand fan and the separate body/shadow sprites multiply the catalogue (103 shells, each with a body and a blob-shadow PNG at both scales). The committed shell budget is 5 MiB and the manifest budget 512 KiB; a board loads only the slots it draws, and the total committed asset budget is still 8 MiB with an initial hand + board load under 4 MiB."
   },
   "wallSlots": {
     "note": "The front/back walls are a fan of per-slot perspectives, not one shell. The tile directly in front of the human (slot 8 of 17) is straight on. Every other slot is seen from the human's eye, so the far-right tile shows its left side and the far-left tile shows its right side. The camera is the same off-axis perspective as the side walls; only its lateral offset and distance change. front = the bottom wall nearest the human; back = the top wall across the table. A slot's lateral offset is -(index - centreIndex) * stepUnits, i.e. the camera sits at the human's x on the centre line. The face-down and face-up dora shells share the slot's geometry; the back dora's glyph is rotated 180 so it reads for the far player.",
@@ -593,11 +604,11 @@
     ]
   },
   "shadowAudition": {
-    "status": "Proposals only: shadow strength, shape and falloff calibration. The committed shadow is variant C (peak 0.30, contact floor 0.08, 10 px @1x blur, 20 px falloff); the audition keeps REF + A/B/C for comparison. Written under build/ (gitignored); the committed assets are never touched.",
+    "status": "Calibration only: blob softness, opacity and offset. The committed shadow is REF (sigma 4 px, core 0.60, offset 5/7); A/B/C vary it. Written under build/ (gitignored); the committed assets are never touched.",
     "outputDir": "build/review/shadows",
     "sheetDir": "build/review",
     "manifest": "build/review/shadows.json",
-    "deliverable": "One labelled sheet with a REF row and three candidate rows. Each row shows a six-tile flat discard run plus an isolated tile, a two-tier wall stack, and a six-tile hand run plus an isolated tile, with the shadow parameters and the measured seam/isolated luma printed.",
+    "deliverable": "One labelled sheet with a REF row and three candidate rows. Each row shows a six-tile flat discard run plus an isolated tile, a two-tier wall stack, and a six-tile hand run plus an isolated tile, with the blob parameters and the measured seam/isolated luma printed. Every row unions its shadows before drawing the bodies.",
     "shells": [
       "shell_flat_upright",
       "shell_wall_front_slot_08",
@@ -606,50 +617,41 @@
     "variants": [
       {
         "id": "A",
-        "label": "A  PEAK 0.18  FLOOR 0.12  BLUR 8  PAD 16",
-        "note": "lighter than the committed peak; same shape and falloff",
+        "label": "A  SIGMA 3  CORE 0.55  OFFSET 4,6",
+        "note": "tighter and slightly lighter",
         "shadow": {
-          "peakAlpha": 0.18,
-          "contactFloor": 0.12,
-          "blurPx2x": 8
-        },
-        "padding1x": {
-          "top": 2,
-          "right": 16,
-          "bottom": 16,
-          "left": 2
+          "sigmaPx1x": 3.0,
+          "coreAlpha": 0.55,
+          "offsetPx1x": [
+            4,
+            6
+          ]
         }
       },
       {
         "id": "B",
-        "label": "B  PEAK 0.24  FLOOR 0.10  BLUR 6  PAD 12",
-        "note": "darker, tighter contact and a shorter falloff",
+        "label": "B  SIGMA 5  CORE 0.60  OFFSET 6,8",
+        "note": "wider and offset further down-right",
         "shadow": {
-          "peakAlpha": 0.24,
-          "contactFloor": 0.1,
-          "blurPx2x": 6
-        },
-        "padding1x": {
-          "top": 2,
-          "right": 12,
-          "bottom": 12,
-          "left": 2
+          "sigmaPx1x": 5.0,
+          "coreAlpha": 0.6,
+          "offsetPx1x": [
+            6,
+            8
+          ]
         }
       },
       {
         "id": "C",
-        "label": "C  PEAK 0.30  FLOOR 0.08  BLUR 10  PAD 20",
-        "note": "darkest, softer and a longer falloff",
+        "label": "C  SIGMA 7  CORE 0.50  OFFSET 8,10",
+        "note": "softest and furthest offset",
         "shadow": {
-          "peakAlpha": 0.3,
-          "contactFloor": 0.08,
-          "blurPx2x": 10
-        },
-        "padding1x": {
-          "top": 2,
-          "right": 20,
-          "bottom": 20,
-          "left": 2
+          "sigmaPx1x": 7.0,
+          "coreAlpha": 0.5,
+          "offsetPx1x": [
+            8,
+            10
+          ]
         }
       }
     ]

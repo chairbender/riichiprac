@@ -21,9 +21,10 @@
 # writes a preview manifest and a preview sheet, and skips the full 103-shell
 # check. Use it while tuning one shell; do a full --bake when the set is right.
 #
-# --shadow-audition renders the shadow strength/shape/falloff candidates on the flat,
+# --shadow-audition renders the blob sigma/core-alpha/offset candidates on the flat,
 # wall and hand shells under build/review/shadows/, then draws a labelled comparison
-# sheet. It never touches the committed shells.
+# sheet (each row unions its shadows before the bodies). It never touches the
+# committed shells.
 #
 # --audition is the standing-hand fan calibration path: it renders every candidate in
 # shell-spec.json's `audition` block at the new base scale into

@@ -22,13 +22,14 @@ The baker owns:
   perspective for the side walls, every front/back wall slot and every hand slot
   (no yaw/roll; the lateral offset reveals the near face). The slot offset comes
   from the slot's x and the wall/hand eye distance;
-* a Cycles shadow-catcher pass under the mesh whose alpha is clamped to the
-  declared 10-16 px right/bottom margin and normalised to the spec's diffuse
-  shadow strength, plus a 1-2 px top/left ambient-occlusion fringe;
-* a **separate body and shadow/AO sprite** per shell: ``<id>.png`` is the tile
-  body and ``<id>-shadow.png`` is the shadow layer. The runtime draws every
-  shadow first, then every body, so a shadow can never sit on top of a
-  neighbouring tile;
+* a **synthetic blob shadow** per shell: the tile's projected table-contact
+  footprint, offset slightly down-right and blurred with a separable Gaussian,
+  written as translucent black. Blender renders only the tile body; there is no
+  catcher pass;
+* a **separate body and shadow sprite** per shell: ``<id>.png`` is the tile body
+  and ``<id>-shadow.png`` is the blob. The runtime unions every shadow first,
+  then draws every body: a shadow can never sit on top of a neighbouring tile
+  and overlapping blobs do not double-darken;
 * ``frontend/public/table/shells/*.png`` (1x), ``shells/2x/*.png`` (2x) and
   ``frontend/public/table/shells.json``.
 
@@ -400,16 +401,6 @@ def aim_key(light: bpy.types.Object, camera: bpy.types.Object | None, target: Ve
         light.rotation_euler.rotate_axis("Z", math.radians(key["rollDeg"]))
 
 
-def build_shadow_catcher(scene: bpy.types.Scene, spec: dict) -> bpy.types.Object:
-    """The shadow-catcher plane directly under the mesh, per the architecture."""
-    bpy.ops.mesh.primitive_plane_add(size=12.0, location=(0.0, 0.0, 0.0))
-    plane = bpy.context.object
-    plane.name = "shadow-catcher"
-    plane.is_shadow_catcher = bool(spec["bake"]["shadowCatcher"])
-    plane.visible_shadow = True
-    return plane
-
-
 def configure_render(scene: bpy.types.Scene, spec: dict) -> None:
     """Pin the renderer to CPU Cycles and AgX, as the determinism rule requires."""
     render = scene.render
@@ -741,7 +732,7 @@ def world_bbox_center(tile: bpy.types.Object) -> Vector:
 
 
 def pose_tile(tile: bpy.types.Object, shell: dict) -> None:
-    """Rotate the tile into place and drop it onto the shadow-catcher plane."""
+    """Rotate the tile into place and drop it onto the table plane (z=0)."""
     pose = shell["pose"]
     rotation = Euler(
         (
@@ -1053,8 +1044,7 @@ def face_quad(
 # --------------------------------------------------------------------------- #
 
 
-def render_pass(scene: bpy.types.Scene, path: Path, catcher: bpy.types.Object, visible: bool) -> None:
-    catcher.hide_render = not visible
+def render_pass(scene: bpy.types.Scene, path: Path) -> None:
     scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
 
@@ -1109,218 +1099,119 @@ def alpha_bbox(alpha: np.ndarray, threshold: float = 0.5) -> tuple[int, int, int
     return int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())
 
 
-def smoothstep(value: np.ndarray) -> np.ndarray:
-    clipped = np.clip(value, 0.0, 1.0)
-    return clipped * clipped * (3.0 - 2.0 * clipped)
-
-
-def padded_falloff(beyond_x: np.ndarray, pad_x: int, beyond_y: np.ndarray, pad_y: int) -> np.ndarray:
-    """2D falloff over the padded margin: 1 at the body edge, 0 on the padded corner.
-
-    Both axes contribute, so the shadow tapers at the bottom-right corner of the
-    margin instead of running at full strength into the texture border.
-    """
-    distance_x = np.maximum(0, beyond_x)
-    distance_y = np.maximum(0, beyond_y)
-    t = np.maximum(distance_x / max(1, pad_x), distance_y / max(1, pad_y))
-    active = (distance_x > 0) | (distance_y > 0)
-    return np.where(active, 1.0 - smoothstep(t), 0.0)
-
-
-def box_blur(field: np.ndarray, radius: int) -> np.ndarray:
-    if radius <= 0:
+def gaussian_blur(field: np.ndarray, sigma: float) -> np.ndarray:
+    """Separable Gaussian blur of a float field, zero-padded at the border."""
+    if sigma <= 0:
         return field
-    total = np.zeros_like(field)
-    count = 0
-    for dy in range(-radius, radius + 1):
-        for dx in range(-radius, radius + 1):
-            total += np.roll(np.roll(field, dy, axis=0), dx, axis=1)
-            count += 1
-    return total / count
+    radius = max(1, int(math.ceil(3.0 * sigma)))
+    offsets = np.arange(-radius, radius + 1, dtype=np.float64)
+    kernel = np.exp(-0.5 * (offsets / sigma) ** 2)
+    kernel /= kernel.sum()
+    height, width = field.shape
+    padded = np.pad(field, ((radius, radius), (radius, radius)), mode="constant")
+    rows = np.zeros((height, width + 2 * radius), dtype=np.float64)
+    for index, weight in enumerate(kernel):
+        rows += weight * padded[index : index + height, :]
+    out = np.zeros((height, width), dtype=np.float64)
+    for index, weight in enumerate(kernel):
+        out += weight * rows[:, index : index + width]
+    return out
 
 
-def outside_distance(mask: np.ndarray, band: int) -> np.ndarray:
-    """8-neighbour distance in px from the outside of ``mask``, up to ``band``."""
-    distance = np.where(mask, 0.0, np.inf)
-    current = mask.copy()
-    for step in range(1, band + 1):
-        grown = current.copy()
-        grown[1:, :] |= current[:-1, :]
-        grown[:-1, :] |= current[1:, :]
-        grown[:, 1:] |= current[:, :-1]
-        grown[:, :-1] |= current[:, 1:]
-        grown[1:, 1:] |= current[:-1, :-1]
-        grown[1:, :-1] |= current[:-1, 1:]
-        grown[:-1, 1:] |= current[1:, :-1]
-        grown[:-1, :-1] |= current[1:, 1:]
-        distance[grown & ~current] = float(step)
-        current = grown
-    return distance
-
-
-def compose_shell(
-    tile: np.ndarray,
-    catcher: np.ndarray,
-    pads_1x: dict,
+def contact_footprint_px(
+    scene: bpy.types.Scene,
+    camera: bpy.types.Object,
+    tile: bpy.types.Object,
     spec: dict,
-    scale: int,
-) -> tuple[np.ndarray, tuple[int, int, int, int], dict]:
-    """Composite the tile over a clamped contact shadow and an AO fringe.
+) -> list[tuple[float, float]]:
+    """Project the tile's table-contact footprint to pixels.
 
-    The declared body box is the alpha >= 0.5 silhouette grown by
-    ``edgeLedgePx`` so the tile's own anti-aliased contact edge is body, not
-    margin. Without that ledge a 0.4-alpha silhouette pixel would be
-    indistinguishable from a 0.33-alpha shadow pixel and the 3-4 px / 1-2 px
-    padding contract could not be measured from the exported PNG.
+    ``pose_tile`` drops the tile onto z=0, so its local bottom face rests on the
+    table. Flattening those four corners back onto the table plane and projecting
+    them gives the area the shadow originates from: a full parallelogram for a
+    flat pond tile, and a thin bottom-edge capsule for a standing wall tile.
     """
-    bake = spec["bake"]
-    height, width = tile.shape[:2]
-    alpha = tile[..., 3]
-    solid = alpha_bbox(alpha)
-    ledge = int(bake.get("edgeLedgePx", 1)) * scale
-    x0, y0, x1, y1 = (
-        solid[0] - ledge,
-        solid[1] - ledge,
-        solid[2] + ledge,
-        solid[3] + ledge,
-    )
-    if x0 < 0 or y0 < 0 or x1 >= width or y1 >= height:
-        die("the tile silhouette touches the render frame; raise bake.frameMarginPx2x")
-    ys, xs = np.mgrid[0:height, 0:width]
+    # Use the actual lowest corners, not the local z=0 face: a standing tile
+    # rests on an edge (two corners), so its footprint is the base rectangle,
+    # while a flat tile rests on its whole back face (four corners).
+    corners = [tile.matrix_world @ Vector(corner) for corner in tile.bound_box]
+    lowest = min(point.z for point in corners)
+    on_table = [point for point in corners if abs(point.z - lowest) <= 1e-4]
+    return project_pixels(scene, camera, [Vector((p.x, p.y, 0.0)) for p in on_table])
 
-    outside = alpha < 0.5
-    right = pads_1x["right"] * scale
-    bottom = pads_1x["bottom"] * scale
-    left = pads_1x["left"] * scale
-    top = pads_1x["top"] * scale
 
-    beyond_right = np.maximum(0, xs - x1)
-    beyond_bottom = np.maximum(0, ys - y1)
-    beyond_left = np.maximum(0, x0 - xs)
-    beyond_top = np.maximum(0, y0 - ys)
+def blob_shadow(
+    width: int,
+    height: int,
+    contact_px: list[tuple[float, float]],
+    shadow: dict,
+    scale: int,
+    body_centre_px: tuple[float, float],
+    body_half_px: tuple[float, float],
+) -> tuple[np.ndarray, bool]:
+    """A soft translucent ellipse under the tile's table-contact footprint.
 
-    # The falloff must follow the tile silhouette, not its rectangular body box.
-    # The body box corners are outside a beveled tile; a rectangular window
-    # zeroes the shadow there and leaves the four corner notches unshadowed. Keep
-    # the full contact shadow for outside pixels inside the box, and use the
-    # directional padding falloff only once the point is outside the box.
-    inside_box = (xs >= x0) & (xs <= x1) & (ys >= y0) & (ys <= y1)
-    shadow_window = np.where(
-        inside_box,
+    A lying tile (the contact footprint is comparable to the body box) gets an
+    ellipse covering the body box, so the fringe surrounds the tile instead of
+    leaving a light gap where the projected thickness shifts the contact face.
+    A standing or tilted tile keeps a capsule at its base.
+    """
+    points = np.array(contact_px, dtype=np.float64) * scale
+    centre = points.mean(axis=0)
+    centred = points - centre
+    minimum = float(shadow["minHalfWidthPx1x"]) * scale
+    if np.allclose(centred, 0.0):
+        axes = np.eye(2)
+        major = minimum
+        minor = minimum
+    else:
+        # Principal axes of the projected footprint. A standing tile's footprint
+        # is a line, so the minor semi-axis is clamped to keep a capsule shape.
+        eigenvalues, eigenvectors = np.linalg.eigh(np.cov(centred.T))
+        axes = eigenvectors[:, np.argsort(eigenvalues)[::-1]]
+        major = float(np.max(np.abs(centred @ axes[:, 0])))
+        minor = float(np.max(np.abs(centred @ axes[:, 1])))
+    offset = np.array(shadow["offsetPx1x"], dtype=np.float64) * scale
+    body_half = np.array(body_half_px, dtype=np.float64) * scale
+    lying = minor >= 0.5 * float(np.min(body_half))
+    if lying:
+        centre = np.array(body_centre_px, dtype=np.float64) * scale + offset
+        half = body_half * float(shadow["footprintScale"])
+    else:
+        centre = centre + offset
+        spread = float(shadow["spreadPx1x"]) * scale
+        half = np.array([max(major + spread, minimum), max(minor + spread, minimum)])
+
+    ys, xs = np.mgrid[0:height, 0:width].astype(np.float64) + 0.5
+    dx = xs - centre[0]
+    dy = ys - centre[1]
+    u = dx * axes[0, 0] + dy * axes[1, 0]
+    v = dx * axes[0, 1] + dy * axes[1, 1]
+    mask = ((u / half[0]) ** 2 + (v / half[1]) ** 2 <= 1.0).astype(np.float64)
+    alpha = np.clip(
+        gaussian_blur(mask, float(shadow["sigmaPx1x"]) * scale)
+        * float(shadow["coreAlpha"]),
+        0.0,
         1.0,
-        padded_falloff(beyond_right, right, beyond_bottom, bottom),
     )
-    shadow_window = np.where(outside, shadow_window, 0.0)
-
-    physical = catcher[..., 3] * shadow_window
-    blur = int(bake["shadow"].get("blurPx2x", 0)) * scale
-    physical = box_blur(physical, blur) * shadow_window
-    physical = np.where(outside, physical, 0.0)
-    peak = float(physical.max())
-    if peak < 0.02:
-        die("the shadow catcher contributed no usable shadow (check the key and the catcher plane)")
-    physical /= peak
-    floor = float(bake["shadow"]["contactFloor"]) * shadow_window
-    shape = np.maximum(physical, floor)
-
-    # Normalise each padded side separately: the overhang must peak at
-    # shadow.peakAlpha on the right and on the bottom even when the catcher
-    # shadow is weaker below (a standing tile's felt shadow is nearly edge-on).
-    right_band = shape * (xs > x1)
-    bottom_band = shape * (ys > y1)
-    right_peak = float(right_band.max())
-    bottom_peak = float(bottom_band.max())
-    if right_peak <= 0.0 or bottom_peak <= 0.0:
-        die("the shadow has no support on the right/bottom padded side")
-    shadow_shape = np.maximum(right_band / right_peak, bottom_band / bottom_peak)
-    shadow_alpha = shadow_shape * float(bake["shadow"]["peakAlpha"])
-
-    ao_window = np.where(
-        inside_box,
-        1.0,
-        padded_falloff(beyond_left, left, beyond_top, top),
-    )
-    ao_window = np.where(outside, ao_window, 0.0)
-    band = max(left, top)
-    ring = 1.0 - smoothstep((outside_distance(~outside, band) - 1.0) / max(1.0, band))
-    ao = np.where(outside, ao_window * ring, 0.0)
-    left_band = ao * (xs < x0)
-    top_band = ao * (ys < y0)
-    # The top-left beveled corner is outside the tile but inside the body box;
-    # the directional left/top bands miss it, leaving a light notch in the AO.
-    corner_band = ao * inside_box * (xs <= x0 + band) * (ys <= y0 + band)
-    left_peak = float(left_band.max())
-    top_peak = float(top_band.max())
-    corner_peak = float(corner_band.max())
-    if left_peak <= 0.0 or top_peak <= 0.0:
-        die("the ambient-occlusion fringe has no support on the top/left padded side")
-    ao_shape = np.maximum.reduce(
-        [
-            left_band / left_peak,
-            top_band / top_peak,
-            corner_band / corner_peak if corner_peak > 0.0 else np.zeros_like(ao),
-        ]
-    )
-    ao_alpha = ao_shape * float(bake["ambientOcclusion"]["peakAlpha"])
-
-    tile_alpha = alpha
-    tile_rgb = tile[..., :3]
-    shadow_rgb = hex_srgb(bake["shadow"]["colorHex"])
-    ao_rgb = hex_srgb(bake["ambientOcclusion"]["colorHex"])
-
-    out_alpha = (
-        tile_alpha
-        + (1.0 - tile_alpha) * shadow_alpha
-        + (1.0 - tile_alpha) * (1.0 - shadow_alpha) * ao_alpha
-    )
-    premultiplied = (
-        tile_rgb * tile_alpha[..., None]
-        + shadow_rgb * (shadow_alpha * (1.0 - tile_alpha))[..., None]
-        + ao_rgb * (ao_alpha * (1.0 - tile_alpha) * (1.0 - shadow_alpha))[..., None]
-    )
-    rgb = premultiplied / np.maximum(out_alpha, 1e-6)[..., None]
-    composed = np.concatenate([rgb, out_alpha[..., None]], axis=2)
-
-    # The drop shadow and AO are a separate sprite so the runtime can draw every
-    # shadow first and every tile body second. A shadow baked into the body
-    # sprite would land on top of a neighbour whenever that neighbour is drawn
-    # earlier (the painter's order), which is the shadow-over-tile artefact.
-    body = np.concatenate([tile_rgb, tile_alpha[..., None]], axis=2)
-    shadow_layer_alpha = shadow_alpha + (1.0 - shadow_alpha) * ao_alpha
-    shadow_layer_premultiplied = (
-        shadow_rgb * shadow_alpha[..., None]
-        + ao_rgb * (ao_alpha * (1.0 - shadow_alpha))[..., None]
-    )
-    shadow_rgb_out = shadow_layer_premultiplied / np.maximum(shadow_layer_alpha, 1e-6)[..., None]
-    shadow_layer = np.concatenate(
-        [shadow_rgb_out, shadow_layer_alpha[..., None]],
-        axis=2,
-    )
-
-    stats = {
-        "bodyBBox1x": [x0, y0, x1 - x0 + 1, y1 - y0 + 1],
-        "solidInset1x": [solid[0] - x0, solid[1] - y0, x1 - solid[2], y1 - solid[3]],
-        "shadowCatcherPeak": round(peak, 4),
-        "shadowPeakAlpha": round(float(shadow_alpha.max()), 4),
-        "aoPeakAlpha": round(float(ao_alpha.max()), 4),
-    }
-    return composed, body, shadow_layer, (x0, y0, x1, y1), stats
+    rgb = np.broadcast_to(hex_srgb(shadow["colorHex"]), (height, width, 3))
+    return np.concatenate([rgb, alpha[..., None]], axis=2), bool(lying)
 
 
 def alpha_profile(rgba: np.ndarray, bbox: tuple[int, int, int, int], pads: dict) -> dict:
     """Measured nonzero-alpha extent, peak and mass per padded side (@1x px).
 
-    Extents are measured over each half-space (corners included, because a
-    directional shadow really does reach furthest diagonally). Peaks and mass
-    are measured over the non-corner band of each side so the top/left
-    ambient-occlusion fringe is not confused with the bottom/right drop shadow.
+    Extents are measured over each half-space (corners included, because a soft
+    blob really does reach furthest diagonally). Peaks and mass are measured over
+    the non-corner band of each side so a corner does not dominate the edge.
     """
     x0, y0, x1, y1 = bbox
     alpha = rgba[..., 3].astype(np.float64) / 255.0
     height, width = alpha.shape
     ys, xs = np.mgrid[0:height, 0:width]
-    outside = alpha < 0.5
-    visible = (alpha > 2.0 / 255.0) & outside
+    # The exported sprite is only the shadow, so no pixel is "inside a tile";
+    # the body box already restricts every band to the margin.
+    visible = alpha > 2.0 / 255.0
 
     bands = {
         "right": visible & (xs > x1),
@@ -1343,7 +1234,7 @@ def alpha_profile(rgba: np.ndarray, bbox: tuple[int, int, int, int], pads: dict)
     peak = {}
     mass = {}
     for side in ("left", "top", "right", "bottom"):
-        mask = cores[side] & outside
+        mask = cores[side]
         peak[side] = round(float(alpha[mask].max()), 4) if mask.any() else 0.0
         mass[side] = round(float(alpha[mask].sum()), 3)
     return {
@@ -1426,6 +1317,14 @@ def rgba_sha256(rgba: np.ndarray) -> str:
 # --------------------------------------------------------------------------- #
 
 
+def same_decoded_rgba(repeat: dict, record: dict) -> bool:
+    """Both the body and the shadow sprite must reproduce exactly."""
+    return (
+        repeat.get("sha256") == record.get("sha256")
+        and repeat.get("shadowSha256") == record.get("shadowSha256")
+    )
+
+
 def bake_shell(
     scene: bpy.types.Scene,
     tile: bpy.types.Object,
@@ -1433,7 +1332,6 @@ def bake_shell(
     spec: dict,
     camera: bpy.types.Object,
     framing: dict,
-    catcher: bpy.types.Object,
     output_dir: Path,
     output_dir_2x: Path,
     temp_dir: Path,
@@ -1442,7 +1340,15 @@ def bake_shell(
     """Pose/render one shell at @1x and @2x, measure it, write both textures."""
     bake = spec["bake"]
     scale_2x = int(bake["pixelRatio"])
-    pads = bake["padding1x"]
+    body_pads = bake["padding1x"]
+    shadow = bake["shadow"]
+    shadow_pads = shadow["padding1x"]
+    ledge = int(bake.get("edgeLedgePx", 1))
+
+    # The contact footprint is measured on the @1x frame; the @2x blob is the
+    # same footprint scaled by the pixel ratio.
+    set_resolution(scene, framing["resolution1x"][0], framing["resolution1x"][1])
+    contact_px = contact_footprint_px(scene, camera, tile, spec)
 
     renders = {}
     for scale in (1, scale_2x):
@@ -1451,69 +1357,93 @@ def bake_shell(
         set_resolution(scene, width, height)
         tag = f"{scale}x"
         tile_path = temp_dir / f"{shell['id']}_{tag}_tile.png"
-        catcher_path = temp_dir / f"{shell['id']}_{tag}_catcher.png"
-        render_pass(scene, tile_path, catcher, False)
-        render_pass(scene, catcher_path, catcher, True)
+        render_pass(scene, tile_path)
         tile_rgba = load_rgba(tile_path)
-        catcher_rgba = load_rgba(catcher_path)
-        composed, body, shadow_layer, bbox, stats = compose_shell(
-            tile_rgba, catcher_rgba, pads, spec, scale
+        solid = alpha_bbox(tile_rgba[..., 3])
+        bbox = (
+            solid[0] - ledge * scale,
+            solid[1] - ledge * scale,
+            solid[2] + ledge * scale,
+            solid[3] + ledge * scale,
         )
-        renders[scale] = {
-            "composed": composed,
-            "body": body,
-            "shadow": shadow_layer,
-            "bbox": bbox,
-            "stats": stats,
-            "size": (width, height),
-        }
+        if bbox[0] < 0 or bbox[1] < 0 or bbox[2] >= width or bbox[3] >= height:
+            die("the tile silhouette touches the render frame; raise bake.frameMarginPx2x")
+        renders[scale] = {"body": tile_rgba, "bbox": bbox, "size": (width, height)}
 
     base = renders[1]
     bx0, by0, bx1, by1 = base["bbox"]
     advance_width = bx1 - bx0 + 1
     advance_height = by1 - by0 + 1
-    crop_x = bx0 - pads["left"]
-    crop_y = by0 - pads["top"]
-    texture_width = advance_width + pads["left"] + pads["right"]
-    texture_height = advance_height + pads["top"] + pads["bottom"]
+
+    body_crop_x = bx0 - body_pads["left"]
+    body_crop_y = by0 - body_pads["top"]
+    body_width = advance_width + body_pads["left"] + body_pads["right"]
+    body_height = advance_height + body_pads["top"] + body_pads["bottom"]
+    if (
+        body_crop_x < 0
+        or body_crop_y < 0
+        or body_crop_x + body_width > base["size"][0]
+        or body_crop_y + body_height > base["size"][1]
+    ):
+        die("the body padding leaves the render frame; raise bake.frameMarginPx2x")
+
+    shadow_crop_x = bx0 - shadow_pads["left"]
+    shadow_crop_y = by0 - shadow_pads["top"]
+    shadow_width = advance_width + shadow_pads["left"] + shadow_pads["right"]
+    shadow_height = advance_height + shadow_pads["top"] + shadow_pads["bottom"]
+    contact_local = [(x - shadow_crop_x, y - shadow_crop_y) for x, y in contact_px]
+    body_centre = (
+        shadow_pads["left"] + advance_width * 0.5,
+        shadow_pads["top"] + advance_height * 0.5,
+    )
+    body_half = (advance_width * 0.5, advance_height * 0.5)
+
     body_1x = quantize(
-        frame_fade(crop(base["body"], crop_x, crop_y, texture_width, texture_height), 1.0)
+        frame_fade(
+            crop(base["body"], body_crop_x, body_crop_y, body_width, body_height),
+            1.0,
+        )
     )
-    shadow_1x = quantize(
-        frame_fade(crop(base["shadow"], crop_x, crop_y, texture_width, texture_height), 1.0)
+    shadow_1x_rgba, lying = blob_shadow(
+        shadow_width,
+        shadow_height,
+        contact_local,
+        shadow,
+        1,
+        body_centre,
+        body_half,
     )
+    shadow_1x = quantize(frame_fade(shadow_1x_rgba, 1.0))
 
     big = renders[scale_2x]
     body_2x = quantize(
         frame_fade(
             crop(
                 big["body"],
-                crop_x * scale_2x,
-                crop_y * scale_2x,
-                texture_width * scale_2x,
-                texture_height * scale_2x,
+                body_crop_x * scale_2x,
+                body_crop_y * scale_2x,
+                body_width * scale_2x,
+                body_height * scale_2x,
             ),
             float(scale_2x),
         )
     )
-    shadow_2x = quantize(
-        frame_fade(
-            crop(
-                big["shadow"],
-                crop_x * scale_2x,
-                crop_y * scale_2x,
-                texture_width * scale_2x,
-                texture_height * scale_2x,
-            ),
-            float(scale_2x),
-        )
+    shadow_2x_rgba, _ = blob_shadow(
+        shadow_width * scale_2x,
+        shadow_height * scale_2x,
+        contact_local,
+        shadow,
+        scale_2x,
+        body_centre,
+        body_half,
     )
+    shadow_2x = quantize(frame_fade(shadow_2x_rgba, float(scale_2x)))
 
     # faceQuad is measured on the @1x frame so it lands in the @1x texture's
     # coordinate space, which is the manifest's coordinate space.
     set_resolution(scene, framing["resolution1x"][0], framing["resolution1x"][1])
     quad = [
-        [round(x - crop_x, 2), round(y - crop_y, 2)]
+        [round(x - body_crop_x, 2), round(y - body_crop_y, 2)]
         for x, y in face_quad(scene, camera, tile, shell, spec)
     ]
 
@@ -1550,33 +1480,42 @@ def bake_shell(
     ]
     face_sample = [int(round(value)) for value in sample.reshape(-1, 3).mean(axis=0)]
 
-    profile = alpha_profile(
-        shadow_1x,
-        (
-            pads["left"],
-            pads["top"],
-            texture_width - pads["right"] - 1,
-            texture_height - pads["bottom"] - 1,
-        ),
-        pads,
+    solid_body = alpha_bbox(body_1x[..., 3], 128)
+    shadow_body_box = (
+        shadow_pads["left"],
+        shadow_pads["top"],
+        shadow_pads["left"] + advance_width - 1,
+        shadow_pads["top"] + advance_height - 1,
     )
+    profile = alpha_profile(shadow_1x, shadow_body_box, shadow_pads)
+
     record = {
         "textureFile": f"shells/{texture_name}",
         "textureFile2x": f"shells/2x/{texture_name}",
         "shadowTextureFile": f"shells/{shadow_name}",
         "shadowTextureFile2x": f"shells/2x/{shadow_name}",
-        "shadowTexWidth": int(texture_width),
-        "shadowTexHeight": int(texture_height),
-        "shadowAnchorX": int(pads["left"]),
-        "shadowAnchorY": int(pads["top"]),
+        "shadowTexWidth": int(shadow_width),
+        "shadowTexHeight": int(shadow_height),
+        "shadowAnchorX": int(shadow_pads["left"]),
+        "shadowAnchorY": int(shadow_pads["top"]),
         "shadowOffsetPx": [0, 0],
-        "texWidth": int(texture_width),
-        "texHeight": int(texture_height),
-        "anchorX": int(pads["left"]),
-        "anchorY": int(pads["top"]),
+        "shadowPadding": dict(shadow_pads),
+        "texWidth": int(body_width),
+        "texHeight": int(body_height),
+        "anchorX": int(body_pads["left"]),
+        "anchorY": int(body_pads["top"]),
         "advanceWidth": int(advance_width),
         "advanceHeight": int(advance_height),
-        "padding": dict(pads),
+        "padding": dict(body_pads),
+        "shadowBlob": {
+            "model": shadow["model"],
+            "shape": shadow["shape"],
+            "sigmaPx1x": shadow["sigmaPx1x"],
+            "coreAlpha": shadow["coreAlpha"],
+            "offsetPx1x": list(shadow["offsetPx1x"]),
+            "colorHex": shadow["colorHex"],
+            "lying": lying,
+        },
         "faceRotationDeg": shell["faceRotationDeg"],
         "faceQuad": quad,
         "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
@@ -1635,16 +1574,22 @@ def bake_shell(
             "alphaExtent1x": profile["extentPx"],
             "alphaPeak1x": profile["peakAlpha"],
             "alphaMass1x": profile["mass"],
-            "shadowCatcherPeak": base["stats"]["shadowCatcherPeak"],
-            "solidInset1x": base["stats"]["solidInset1x"],
+            "shadowMaxAlpha": round(float(shadow_1x[..., 3].max()) / 255.0, 4),
+            "contactQuadPx": [[round(x, 2), round(y, 2)] for x, y in contact_local],
+            "solidInset1x": [
+                solid_body[0] - body_pads["left"],
+                solid_body[1] - body_pads["top"],
+                body_pads["left"] + advance_width - 1 - solid_body[2],
+                body_pads["top"] + advance_height - 1 - solid_body[3],
+            ],
             "faceSampleRgb": face_sample,
             "edgeSamplesRgb": edge_samples(
                 body_1x,
                 (
-                    pads["left"],
-                    pads["top"],
-                    texture_width - pads["right"] - 1,
-                    texture_height - pads["bottom"] - 1,
+                    body_pads["left"],
+                    body_pads["top"],
+                    body_width - body_pads["right"] - 1,
+                    body_height - body_pads["bottom"] - 1,
                 ),
             ),
             "bytes1x": int((output_dir / texture_name).stat().st_size)
@@ -1663,9 +1608,10 @@ def bake_shell(
             "decodedRgba2x": rgba_sha256(shadow_2x),
         }
     log(
-        f"{shell['id']}: body {texture_width}x{texture_height} @1x + shadow, "
-        f"(advance {advance_width}x{advance_height}, anchor {pads['left']},{pads['top']}), "
-        f"extent L{profile['extentPx']['left']}/T{profile['extentPx']['top']}/"
+        f"{shell['id']}: body {body_width}x{body_height} + shadow "
+        f"{shadow_width}x{shadow_height} @1x, "
+        f"(advance {advance_width}x{advance_height}, anchor {body_pads['left']},{body_pads['top']}), "
+        f"blob extent L{profile['extentPx']['left']}/T{profile['extentPx']['top']}/"
         f"R{profile['extentPx']['right']}/B{profile['extentPx']['bottom']}, "
         f"quad {quad[0]}..{quad[2]}"
     )
@@ -1764,15 +1710,13 @@ def build_rig_metadata(spec: dict, rigs: dict) -> dict:
             "note": bake["baseScale"]["note"],
         },
         "shadow": {
-            "peakAlpha": bake["shadow"]["peakAlpha"],
+            "model": bake["shadow"]["model"],
+            "shape": bake["shadow"]["shape"],
+            "sigmaPx1x": bake["shadow"]["sigmaPx1x"],
+            "coreAlpha": bake["shadow"]["coreAlpha"],
+            "offsetPx1x": list(bake["shadow"]["offsetPx1x"]),
             "colorHex": bake["shadow"]["colorHex"],
-            "contactFloor": bake["shadow"]["contactFloor"],
-            "source": "Cycles shadow-catcher alpha, clamped to padding.right/bottom",
-        },
-        "ambientOcclusion": {
-            "peakAlpha": bake["ambientOcclusion"]["peakAlpha"],
-            "colorHex": bake["ambientOcclusion"]["colorHex"],
-            "source": "analytic fringe bounded by padding.top/left",
+            "source": "synthetic Gaussian blob from the projected table-contact footprint",
         },
         "determinism": (
             "CPU Cycles, fixed seed 0, fixed adaptive threshold and OIDN. Each texture records "
@@ -1854,7 +1798,6 @@ def bake_audition(
     scene: bpy.types.Scene,
     tile: bpy.types.Object,
     lights: list[bpy.types.Object],
-    catcher: bpy.types.Object,
     outputs: dict,
 ) -> int:
     """Render every candidate at the new base scale and write the review manifest."""
@@ -1902,7 +1845,6 @@ def bake_audition(
                 spec,
                 camera,
                 framing,
-                catcher,
                 texture_dir_1x,
                 texture_dir_2x,
                 temp_dir,
@@ -1954,12 +1896,11 @@ def bake_audition(
                     spec,
                     camera,
                     framing,
-                    catcher,
                     repeat_1x,
                     repeat_2x,
                     temp_dir,
                 )
-                same = repeat["sha256"] == record["sha256"]
+                same = same_decoded_rgba(repeat, record)
                 log(
                     f"determinism {shell['id']}: "
                     f"{'identical decoded RGBA' if same else 'DIFFERS'} "
@@ -2022,7 +1963,6 @@ def bake_shadow_audition(
     scene: bpy.types.Scene,
     tile: bpy.types.Object,
     lights: list[bpy.types.Object],
-    catcher: bpy.types.Object,
     outputs: dict,
 ) -> int:
     """Render the shadow strength/shape/falloff candidates on fixed shells."""
@@ -2044,24 +1984,19 @@ def bake_shadow_audition(
             "label": "REF COMMITTED",
             "note": "the committed shadow",
             "shadow": dict(spec["bake"]["shadow"]),
-            "padding1x": dict(spec["bake"]["padding1x"]),
         }
     ] + list(block["variants"])
     recorded = []
     for variant in variants:
         variant_id = variant["id"]
         v_shadow = {**spec["bake"]["shadow"], **variant.get("shadow", {})}
-        v_padding = variant.get("padding1x", spec["bake"]["padding1x"])
-        v_bake = {
-            **spec["bake"],
-            "shadow": v_shadow,
-            "padding1x": v_padding,
-        }
+        v_bake = {**spec["bake"], "shadow": v_shadow}
         v_spec = {**spec, "bake": v_bake}
         shells = {}
         log(
-            f"shadow {variant_id}: peak {v_shadow['peakAlpha']}, floor {v_shadow['contactFloor']}, "
-            f"blur {v_shadow['blurPx2x']}, pad {v_padding['right']}"
+            f"shadow {variant_id}: sigma {v_shadow['sigmaPx1x']} px, "
+            f"core {v_shadow['coreAlpha']}, offset {v_shadow['offsetPx1x']}, "
+            f"pad {v_shadow['padding1x']['right']}"
         )
         for shell_id in block["shells"]:
             shell = catalogue[shell_id]
@@ -2077,7 +2012,6 @@ def bake_shadow_audition(
                 v_spec,
                 camera,
                 framing,
-                catcher,
                 out_1x,
                 out_2x,
                 temp_dir,
@@ -2091,7 +2025,6 @@ def bake_shadow_audition(
                 "id": variant_id,
                 "label": variant["label"],
                 "shadow": dict(v_shadow),
-                "padding1x": dict(v_padding),
             }
             shells[shell_id] = record
             bpy.data.objects.remove(camera, do_unlink=True)
@@ -2101,7 +2034,6 @@ def bake_shadow_audition(
                 "label": variant["label"],
                 "note": variant.get("note"),
                 "shadow": dict(v_shadow),
-                "padding1x": dict(v_padding),
                 "shells": shells,
             }
         )
@@ -2151,7 +2083,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--shadow-audition",
         action="store_true",
-        help="render the shadow strength/shape/falloff candidates under build/review/shadows/",
+        help="render the blob sigma/core-alpha/offset candidates under build/review/shadows/",
     )
     parser.add_argument(
         "--dry-run",
@@ -2192,7 +2124,6 @@ def main(argv: list[str]) -> int:
     build_world(scene, spec)
     tile = build_tile(scene, spec)
     lights = build_lights(scene, spec)
-    catcher = build_shadow_catcher(scene, spec)
     outputs = resolve_outputs(args.spec, spec)
     if args.preview:
         preview = RENDER_DIR / "build" / "preview"
@@ -2228,9 +2159,9 @@ def main(argv: list[str]) -> int:
     outputs["intermediateDir"].mkdir(parents=True, exist_ok=True)
 
     if args.shadow_audition:
-        return bake_shadow_audition(spec, args, scene, tile, lights, catcher, outputs)
+        return bake_shadow_audition(spec, args, scene, tile, lights, outputs)
     if args.audition:
-        return bake_audition(spec, args, scene, tile, lights, catcher, outputs)
+        return bake_audition(spec, args, scene, tile, lights, outputs)
 
     records = {}
     rigs = {}
@@ -2248,7 +2179,6 @@ def main(argv: list[str]) -> int:
             spec,
             camera,
             framing,
-            catcher,
             outputs["shellDir"],
             outputs["shell2xDir"],
             outputs["intermediateDir"],
@@ -2275,13 +2205,12 @@ def main(argv: list[str]) -> int:
                 spec,
                 camera,
                 framing,
-                catcher,
                 repeat_dir,
                 repeat_2x,
                 outputs["intermediateDir"],
             )
             record = records[shell["id"]]
-            same = repeat["sha256"] == record["sha256"]
+            same = same_decoded_rgba(repeat, record)
             log(
                 f"determinism {shell['id']}: "
                 f"{'identical decoded RGBA' if same else 'DIFFERS'} "
