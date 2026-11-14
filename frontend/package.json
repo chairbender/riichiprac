@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "atlas:review": "vite-node scripts/review-atlas.ts"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
+    "@napi-rs/canvas": "^1.1.1",
     "@types/node": "^22.20.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

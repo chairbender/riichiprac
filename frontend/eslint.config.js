@@ -25,4 +25,11 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Node-only developer scripts: atlas review sheets, not app code.
+    files: ['scripts/**/*.ts'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
+    },
+  },
 )
