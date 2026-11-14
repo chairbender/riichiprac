@@ -1,47 +1,39 @@
 #!/usr/bin/env bash
 # Regenerate the rendered-table assets from scratch.
 #
-#   bash tools/render/render.sh            # ONE tile on the table (default, fast)
-#   bash tools/render/render.sh --full     # the shipped batch: all ten hand layouts
-#   bash tools/render/render.sh --spike    # the Task 1 review batch: one tile + face decal
+#   bash tools/render/render.sh            # the shipped batch (default)
+#   bash tools/render/render.sh --spike    # the Task 1 review batch
 #
-# While the tile geometry and the table's light rig are still being reviewed the
-# default batch is a **single tile**, so an iteration is a couple of minutes
-# instead of half an hour. It writes to tools/render/build/single/ (gitignored):
-# one body in both poses, the table background, a 1:1 device-pixel crop and a
-# full-scene composite for each pose, and a manifest. Nothing there is shipped.
+# Shipped batch: one command rebuilds the table background, every hand-slot
+# body sprite (face-up and concealed), the manifest, and validates the result.
+#   1. build the scene and render with headless Blender (pinned version)
+#   2. verify the manifest, sprite sizes, slot/quad bounds, and the budget
 #
-# `--full` is the shipped batch: it rebuilds the table background, one body per
-# hand layout in both poses, the manifest, and validates the result into
-# frontend/public/table/. Run it once the single-tile look is signed off.
-#
-# `--spike` is the Task 1/1.5 review artifact in tools/render/spike/ (never
-# shipped): it additionally rasterises the vendored face SVG with resvg, bakes
-# the carved face decal, and assembles the labelled contact sheet.
+# Spike batch (tools/render/spike/, a review artifact, never shipped): also
+# rasterises the vendored face SVG with resvg, bakes the carved face decal and
+# the homography composite, and assembles the labelled contact sheet.
 #
 # Optional overrides:
 #   BLENDER=/path/to/blender      use a different pinned build
-#   bash render.sh <spec> <out> [full|single|spike]
+#   bash render.sh <spec> <out> [table|spike]
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-mode="single"
+mode="table"
 args=()
 for arg in "$@"; do
   case "$arg" in
-    --full) mode="full" ;;
-    --single) mode="single" ;;
     --spike) mode="spike" ;;
     *) args+=("$arg") ;;
   esac
 done
 
 spec="${args[0]:-$here/scene-spec.json}"
-case "$mode" in
-  full) out="${args[1]:-$here/../../frontend/public/table}" ;;
-  spike) out="${args[1]:-$here/spike}" ;;
-  *) out="${args[1]:-$here/build/single}" ;;
-esac
+if [[ "$mode" == "spike" ]]; then
+  out="${args[1]:-$here/spike}"
+else
+  out="${args[1]:-$here/../../frontend/public/table}"
+fi
 blender="${BLENDER:-/home/kylehipke/.local/opt/blender-4.5.9/blender}"
 
 if [[ ! -x "$blender" ]]; then
@@ -64,7 +56,7 @@ if [[ "$mode" == "spike" ]]; then
   node "$here/scripts/contact-sheet.mjs" "$spec" "$out"
 fi
 
-# The integrity check is dependency-free, so it runs for every batch and in CI.
+# The integrity check is dependency-free, so it runs for both batches and in CI.
 node "$here/scripts/check-assets.mjs" "$out"
 
 echo "[render] done: $out"
