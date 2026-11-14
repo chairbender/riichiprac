@@ -2,9 +2,11 @@
 """Shell baker for the 2.5D rendered view.
 
 The active architecture is ``2_5d_mahjong_tile_rendering_architecture.md``.
-Nine blank tile **shells** are baked offline; 2D face glyphs are composited into
-each shell's ``faceQuad`` at runtime. There is no table model and no single
-perspective scene camera: every shell is its own orthographic projection.
+Seventy-seven blank tile **shells** are baked offline (nine base shells plus the
+17-slot front/back wall fan on each wall, face-down and face-up); 2D face glyphs
+are composited into each shell's ``faceQuad`` at runtime. There is no table
+model and no single perspective scene camera: the grid shells are orthographic,
+and the walls use an off-axis perspective camera.
 
 The baker owns:
 
@@ -15,12 +17,13 @@ The baker owns:
 * one area key locked to **screen-space** top-left-front plus a weak world fill,
   re-expressed in each shell camera's basis so every projection gets its
   highlights top/left and its shadow bottom/right;
-* one camera per shell: orthographic for the grid shells and an off-axis
-  perspective for the side walls (no yaw/roll; the lateral offset reveals the
-  near end face);
+* one camera per shell: orthographic for the grid shells, and an off-axis
+  perspective for the side walls and every front/back wall slot (no yaw/roll;
+  the lateral offset reveals the near face). The front/back slot offset comes
+  from the slot's x on the wall and the human's eye distance;
 * a Cycles shadow-catcher pass under the mesh whose alpha is clamped to the
-  declared 3-4 px right/bottom margin and normalised to the spec's shadow
-  strength, plus a 1-2 px top/left ambient-occlusion fringe;
+  declared 10-16 px right/bottom margin and normalised to the spec's diffuse
+  shadow strength, plus a 1-2 px top/left ambient-occlusion fringe;
 * ``frontend/public/table/shells/*.png`` (1x), ``shells/2x/*.png`` (2x) and
   ``frontend/public/table/shells.json``.
 
@@ -41,9 +44,9 @@ Usage (normally through ``bake-shells.sh``, which resolves the pinned Blender):
         --python tools/render/bake_shells.py -- --audition --verify-determinism
 
 A dry run builds the tile, material and lights, prints the shell plan, and
-writes nothing. ``--bake`` renders the six shells, writes both scales and the
-manifest. ``--audition`` renders the wall-lean calibration described by the
-spec's ``audition`` block at the current base scale into
+writes nothing. ``--bake`` renders the 77 shells, writes both scales and the
+manifest. ``--audition`` renders the front/back wall fan calibration described
+by the spec's ``audition`` block at the current base scale into
 ``tools/render/build/review/`` (textures plus ``shell-candidates.json``) and
 never touches the committed shells or ``shells.json``. ``--verify-determinism``
 renders everything twice and compares the decoded RGBA, which is the re-render
@@ -73,7 +76,7 @@ RENDER_DIR = Path(__file__).resolve().parent
 SPEC_DIR = RENDER_DIR
 DEFAULT_SPEC = SPEC_DIR / "shell-spec.json"
 
-CANONICAL_SHELL_IDS = (
+BASE_SHELL_IDS = (
     "shell_hand_standing",
     "shell_flat_upright",
     "shell_flat_sideways",
@@ -435,16 +438,109 @@ def configure_render(scene: bpy.types.Scene, spec: dict) -> None:
 # --------------------------------------------------------------------------- #
 
 
+def wall_slot_shell_id(wall: str, index: int, face_up: bool) -> str:
+    suffix = "_faceup" if face_up else ""
+    return f"shell_wall_{wall}_slot_{index:02d}{suffix}"
+
+
+def expand_wall_slots(spec: dict) -> None:
+    """Append the per-slot front/back wall shells derived from ``wallSlots``.
+
+    A front/back wall is not one shell: the tile straight in front of the human
+    is seen end-on, and the outer slots are seen from the human's eye, so each
+    slot carries its own lateral camera offset. The face-down and face-up dora
+    shells share the slot geometry. The block stays small and the ids are
+    deterministic, so the spec cannot drift from the manifest id list.
+    """
+    block = spec.get("wallSlots")
+    if not block:
+        return
+    count = int(block["count"])
+    centre = int(block["centreIndex"])
+    step = float(block["stepUnits"])
+    elevation = float(block["elevationDeg"])
+    if count < 3 or count % 2 == 0:
+        die("wallSlots.count must be an odd number >= 3")
+    if centre != count // 2:
+        die("wallSlots.centreIndex must be the middle slot")
+    for wall_name, wall in block["walls"].items():
+        distance = float(wall["distanceUnits"])
+        for face_up in (False, True):
+            for index in range(count):
+                offset = (index - centre) * step
+                angle = math.degrees(math.atan2(abs(offset), distance))
+                shell_id = wall_slot_shell_id(wall_name, index, face_up)
+                wall_slot = {
+                    "wall": wall_name,
+                    "index": index,
+                    "offsetUnits": round(offset, 6),
+                    "lateralOffsetUnits": round(-offset, 6),
+                    "distanceUnits": distance,
+                    "angleDeg": round(angle, 3),
+                    "faceUp": face_up,
+                }
+                wall_label = "front (bottom, human-side)" if wall_name == "front" else "back (top)"
+                role = (
+                    f"{'face-up dora-indicator' if face_up else 'face-down'} tile of the "
+                    f"{wall_label} wall, slot {index} of {count}; the camera sits at the "
+                    f"human's eye, {angle:.1f} deg off the tile's normal"
+                )
+                if face_up:
+                    role += (
+                        "; its glyph is rotated 180 deg on the back wall"
+                        if int(wall.get("faceRotationDeg", 0)) == 180
+                        else ""
+                    )
+                spec["shells"].append(
+                    {
+                        "id": shell_id,
+                        "projection": "slot-perspective",
+                        "faceRotationDeg": int(wall.get("faceRotationDeg", 0)) if face_up else 0,
+                        "role": role,
+                        "pose": {
+                            "rotateXDeg": 0 if face_up else 180,
+                            "rotateYDeg": 0,
+                            "rotateZDeg": 0,
+                        },
+                        "camera": {
+                            "azimuthDeg": 0,
+                            "elevationDeg": elevation,
+                            "faceLocalZ": "top" if face_up else "bottom",
+                            "projection": "perspective",
+                            "perspective": {
+                                "lateralOffsetUnits": round(-offset, 6),
+                                "distanceUnits": distance,
+                            },
+                        },
+                        "expectProjection": "portrait",
+                        "wallSlot": wall_slot,
+                    }
+                )
+
+
+def expected_wall_slot_ids(spec: dict) -> list[str]:
+    block = spec.get("wallSlots")
+    if not block:
+        return []
+    ids = []
+    for wall_name in block["walls"]:
+        for face_up in (False, True):
+            for index in range(int(block["count"])):
+                ids.append(wall_slot_shell_id(wall_name, index, face_up))
+    return ids
+
+
 def validate_shell_catalogue(spec: dict) -> None:
     ids = [shell["id"] for shell in spec["shells"]]
     if len(ids) != len(set(ids)):
         die("the shell catalogue has duplicate ids")
-    missing = [shell_id for shell_id in CANONICAL_SHELL_IDS if shell_id not in ids]
-    extra = [shell_id for shell_id in ids if shell_id not in CANONICAL_SHELL_IDS]
-    if missing or extra:
+    expected = list(BASE_SHELL_IDS) + expected_wall_slot_ids(spec)
+    missing = [shell_id for shell_id in expected if shell_id not in ids]
+    extra = [shell_id for shell_id in ids if shell_id not in expected]
+    if missing or extra or ids != expected:
         die(
-            "the shell catalogue must be exactly the canonical shells; "
-            f"missing {missing}, unexpected {extra}"
+            "the shell catalogue must be exactly the base shells followed by the generated "
+            f"wall slots; missing {missing}, unexpected {extra}"
         )
     for shell in spec["shells"]:
         for key in ("id", "projection", "faceRotationDeg", "role", "pose", "camera"):
@@ -1254,6 +1350,11 @@ def bake_shell(
             else {}
         ),
         "projection": shell["projection"],
+        **(
+            {"wallSlot": dict(shell["wallSlot"])}
+            if "wallSlot" in shell
+            else {}
+        ),
         "pose": dict(shell["pose"]),
         "camera": {
             "azimuthDeg": shell["camera"]["azimuthDeg"],
@@ -1432,7 +1533,8 @@ def validate_audition(spec: dict) -> None:
     ids = list(audition["shells"])
     if not ids:
         die("audition.shells is empty")
-    extra = [shell_id for shell_id in ids if shell_id not in CANONICAL_SHELL_IDS]
+    catalogue = {shell["id"] for shell in spec["shells"]}
+    extra = [shell_id for shell_id in ids if shell_id not in catalogue]
     if extra:
         die(f"audition names shells outside the catalogue: {extra}")
     for base_id, entry in audition["shells"].items():
@@ -1693,6 +1795,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(blender_args(argv))
 
     spec = load_spec(args.spec)
+    expand_wall_slots(spec)
     check_blender_version(spec)
     validate_shell_catalogue(spec)
     if args.audition:

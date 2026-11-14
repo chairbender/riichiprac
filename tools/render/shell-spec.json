@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "riichiprac 2.5D shell baker",
-  "status": "Phase 1c: the picked perspectives at the doubled base, nine shells (six wall/pond/hand shells plus three face-up dora counterparts), the 2-tile stack contract and a diffuse, subtle contact shadow. Faces, atlas, layout and renderer are Phases 2-5.",
+  "status": "Phase 1c refinement: per-slot front/back wall perspectives. The camera, base scale, nine-shell base catalogue, 2-tile stack, face-up dora shells, diffuse contact shadow and side-wall lateral perspective are unchanged. The front (bottom) and back (top) walls gain a fan of per-slot shells so the tile straight in front of the human is straight on and the outer slots reveal their side, from the human's eye. Faces, atlas, layout and renderer are still later phases.",
   "bakeImplemented": true,
   "blender": {
     "requiredVersion": "4.5.9"
@@ -330,24 +330,24 @@
     }
   ],
   "audition": {
-    "status": "Proposals only: side-wall perspective calibration. The tile is never rotated; the camera sits inside the wall and the lateral offset sets how much of the near end face shows and how strong the keystone is. Written under build/ (gitignored); the committed shells use a 2.0-unit offset.",
+    "status": "Proposals only: front/back wall fan-strength calibration. The committed fan is the physical eye distance (front 40.8, back 54.8 units). These candidates keep the outer slot's lateral offset (-6 units) and move the eye closer/further, so the amount of side reveal at the wall end can be picked. Written under build/ (gitignored); the committed shells are never touched.",
     "outputDir": "build/review/candidates",
     "sheetDir": "build/review",
     "manifest": "build/review/shell-candidates.json",
-    "deliverable": "Three camera offsets per side wall at el 45, posed exactly like the committed shell, composed as 2-high stacks from that one perspective, with the camera and measured numbers printed, so the amount of visible end face can be picked against the 2.0-unit reference.",
-    "references": "Each sheet shows the committed 2.0-unit shell as a REF column. A wall stack reuses the one shell perspective for both tiers, as Tenhou does; the projection would in reality change with depth and is deliberately not recomputed.",
+    "deliverable": "Three eye distances for the outer slot of the front and back walls, each rendered as a six-tile packed row plus an isolated tile (the isolated tile shows the full side reveal), with the camera, body, face ratio and bytes printed. Compare against the REF committed slot at the physical distance.",
+    "references": "Each sheet shows the committed outer slot as REF (front slot 16 at 8.37 deg, back slot 16 at 6.25 deg). The lateral offset is fixed at -6 units; only the eye distance changes, so the candidate is a pure fan-strength change. The per-slot shells interpolate between the centre (0 deg) and that outer value.",
     "shells": {
-      "shell_wall_side_left": {
-        "question": "Left wall: how far inside the wall should the camera sit? The tile is square to the table; a larger offset shows more of the near (inner) end face and a stronger keystone. The committed shell is 2.0 units.",
+      "shell_wall_front_slot_16": {
+        "question": "Front wall (bottom, human side): how strong should the fan be? The committed outer slot is 8.4 deg (eye 40.8 units). A closer eye (24 / 32 units) shows more side; a farther eye (56 units) shows less. The centre slot stays straight on in every candidate.",
         "candidates": [
           {
             "candidateId": "A",
-            "label": "OFF 1",
-            "note": "camera 1 units inside the wall, distance 10; the tile is not rotated",
+            "label": "DIST 24",
+            "note": "eye 24 units, outer angle about 14.0 deg",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": 90
+              "rotateZDeg": 0
             },
             "camera": {
               "azimuthDeg": 0,
@@ -355,20 +355,20 @@
               "faceLocalZ": "bottom",
               "projection": "perspective",
               "perspective": {
-                "lateralOffsetUnits": 1.0,
-                "distanceUnits": 10.0
+                "lateralOffsetUnits": -6.0,
+                "distanceUnits": 24.0
               }
             },
-            "expectProjection": "landscape"
+            "expectProjection": "portrait"
           },
           {
             "candidateId": "B",
-            "label": "OFF 3",
-            "note": "camera 3 units inside the wall, distance 10; the tile is not rotated",
+            "label": "DIST 32",
+            "note": "eye 32 units, outer angle about 10.6 deg",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": 90
+              "rotateZDeg": 0
             },
             "camera": {
               "azimuthDeg": 0,
@@ -376,20 +376,20 @@
               "faceLocalZ": "bottom",
               "projection": "perspective",
               "perspective": {
-                "lateralOffsetUnits": 3.0,
-                "distanceUnits": 10.0
+                "lateralOffsetUnits": -6.0,
+                "distanceUnits": 32.0
               }
             },
-            "expectProjection": "landscape"
+            "expectProjection": "portrait"
           },
           {
             "candidateId": "C",
-            "label": "OFF 4",
-            "note": "camera 4 units inside the wall, distance 10; the tile is not rotated",
+            "label": "DIST 56",
+            "note": "eye 56 units, outer angle about 6.1 deg",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": 90
+              "rotateZDeg": 0
             },
             "camera": {
               "azimuthDeg": 0,
@@ -397,25 +397,25 @@
               "faceLocalZ": "bottom",
               "projection": "perspective",
               "perspective": {
-                "lateralOffsetUnits": 4.0,
-                "distanceUnits": 10.0
+                "lateralOffsetUnits": -6.0,
+                "distanceUnits": 56.0
               }
             },
-            "expectProjection": "landscape"
+            "expectProjection": "portrait"
           }
         ]
       },
-      "shell_wall_side_right": {
-        "question": "Right wall: the mirror. The camera sits inside the wall at a negative offset, so the near end face is the left end. The committed shell is -2.0 units.",
+      "shell_wall_back_slot_16": {
+        "question": "Back wall (top): the same fan at the far wall. The committed outer slot is 6.25 deg (eye 54.8 units). A closer eye (36 / 46 units) strengthens the reveal; 72 units weakens it. Compare it with the front sheet: the back fan should read weaker than the front one at the same outer slot.",
         "candidates": [
           {
             "candidateId": "A",
-            "label": "OFF 1",
-            "note": "camera 1 units inside the wall, distance 10; the tile is not rotated",
+            "label": "DIST 36",
+            "note": "eye 36 units, outer angle about 9.5 deg",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": 90
+              "rotateZDeg": 0
             },
             "camera": {
               "azimuthDeg": 0,
@@ -423,20 +423,20 @@
               "faceLocalZ": "bottom",
               "projection": "perspective",
               "perspective": {
-                "lateralOffsetUnits": -1.0,
-                "distanceUnits": 10.0
+                "lateralOffsetUnits": -6.0,
+                "distanceUnits": 36.0
               }
             },
-            "expectProjection": "landscape"
+            "expectProjection": "portrait"
           },
           {
             "candidateId": "B",
-            "label": "OFF 3",
-            "note": "camera 3 units inside the wall, distance 10; the tile is not rotated",
+            "label": "DIST 46",
+            "note": "eye 46 units, outer angle about 7.4 deg",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": 90
+              "rotateZDeg": 0
             },
             "camera": {
               "azimuthDeg": 0,
@@ -444,20 +444,20 @@
               "faceLocalZ": "bottom",
               "projection": "perspective",
               "perspective": {
-                "lateralOffsetUnits": -3.0,
-                "distanceUnits": 10.0
+                "lateralOffsetUnits": -6.0,
+                "distanceUnits": 46.0
               }
             },
-            "expectProjection": "landscape"
+            "expectProjection": "portrait"
           },
           {
             "candidateId": "C",
-            "label": "OFF 4",
-            "note": "camera 4 units inside the wall, distance 10; the tile is not rotated",
+            "label": "DIST 72",
+            "note": "eye 72 units, outer angle about 4.8 deg",
             "pose": {
               "rotateXDeg": 180,
               "rotateYDeg": 0,
-              "rotateZDeg": 90
+              "rotateZDeg": 0
             },
             "camera": {
               "azimuthDeg": 0,
@@ -465,18 +465,18 @@
               "faceLocalZ": "bottom",
               "projection": "perspective",
               "perspective": {
-                "lateralOffsetUnits": -4.0,
-                "distanceUnits": 10.0
+                "lateralOffsetUnits": -6.0,
+                "distanceUnits": 72.0
               }
             },
-            "expectProjection": "landscape"
+            "expectProjection": "portrait"
           }
         ]
       }
     }
   },
   "faceVariants": {
-    "status": "Plan only for Phase 2 (updated 2026-11-14 after the Phase 1c catalogue change). Not implemented, not baked. The atlas is keyed by (shellType, faceVariant, tileFace), so a shell can host more than one pre-rasterised decal treatment.",
+    "status": "Plan only for Phase 2 (updated 2026-11-14 after the front/back wall fan). Not implemented, not baked. The atlas is keyed by (shellType, faceVariant, tileFace), so a shell can host more than one pre-rasterised decal treatment.",
     "atlasKey": "(shellType, faceVariant, tileFace)",
     "faceUpShells": {
       "shell_hand_standing": [
@@ -509,7 +509,20 @@
         "bare"
       ]
     },
-    "note": "A variant id names the decal's perspective slot, not a camera angle. The face-up dora shells are the top tier of a wall stack, so their decals are their own perspective slots even where the projection matches a pond shell. Face-down wall shells are bare and contribute no atlas entries."
+    "note": "A variant id names the decal's perspective slot, not a camera angle. The face-up dora shells are the top tier of a wall stack, so their decals are their own perspective slots even where the projection matches a pond shell. Face-down wall shells are bare and contribute no atlas entries. The per-slot front/back dora shells are 34 further perspective slots (slotDora).",
+    "slotDora": {
+      "note": "The 17 front + 17 back face-up slot shells are their own atlas keys: each slot is a different perspective, so the dora blank cannot reuse one decal. That is 34 face-up dora shells x 37 faces = 1,258 sprites in addition to the hand/pond/sideway variants; Phase 2 must measure the packed atlas against the committed-asset budget before building it.",
+      "front": {
+        "shellPattern": "shell_wall_front_slot_{index:02d}_faceup",
+        "faceVariantPattern": "wall-front-dora-slot-{index:02d}",
+        "count": 17
+      },
+      "back": {
+        "shellPattern": "shell_wall_back_slot_{index:02d}_faceup",
+        "faceVariantPattern": "wall-back-dora-slot-{index:02d}",
+        "count": 17
+      }
+    }
   },
   "outputs": {
     "format": "png",
@@ -519,8 +532,28 @@
     "intermediateDir": "build/shells"
   },
   "budgets": {
-    "manifestBytes": 65536,
+    "manifestBytes": 524288,
     "shellBytes": 262144,
-    "totalShellBytes": 2097152
+    "totalShellBytes": 4194304,
+    "note": "The per-slot front/back wall fan multiplies the wall shells (17 slots x 2 walls x face-down/face-up). The committed shell budget rises from 2 MiB to 4 MiB and the manifest budget from 64 KiB to 512 KiB; a board only loads the slots it draws, and the total committed asset budget is still 8 MiB with an initial hand + board load under 4 MiB."
+  },
+  "wallSlots": {
+    "note": "The front/back walls are a fan of per-slot perspectives, not one shell. The tile directly in front of the human (slot 8 of 17) is straight on. Every other slot is seen from the human's eye, so the far-right tile shows its left side and the far-left tile shows its right side. The camera is the same off-axis perspective as the side walls; only its lateral offset and distance change. front = the bottom wall nearest the human; back = the top wall across the table. A slot's lateral offset is -(index - centreIndex) * stepUnits, i.e. the camera sits at the human's x on the centre line. The face-down and face-up dora shells share the slot's geometry; the back dora's glyph is rotated 180 so it reads for the far player.",
+    "count": 17,
+    "centreIndex": 8,
+    "stepUnits": 0.75,
+    "elevationDeg": 45,
+    "walls": {
+      "front": {
+        "distanceUnits": 40.8,
+        "faceRotationDeg": 0,
+        "note": "The bottom wall, 40.8 units from the viewer's eye (eye at y -47.8, wall centre at y -7.0 on the 28 mm tile scale). The outer slot sees its tile at 8.4 deg, so the inner long side is visible."
+      },
+      "back": {
+        "distanceUnits": 54.8,
+        "faceRotationDeg": 180,
+        "note": "The top wall, 54.8 units from the viewer's eye (eye at y -47.8, wall centre at y +7.0). The same fan is weaker: the outer slot sees its tile at 6.3 deg."
+      }
+    }
   }
 }

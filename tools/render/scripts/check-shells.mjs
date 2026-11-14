@@ -46,7 +46,7 @@ const renderDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const shellSpecPath = join(renderDir, 'shell-spec.json');
 const feltSpecPath = join(renderDir, 'felt-spec.json');
 
-const CANONICAL_SHELL_IDS = [
+const BASE_SHELL_IDS = [
   'shell_hand_standing',
   'shell_flat_upright',
   'shell_flat_sideways',
@@ -58,27 +58,36 @@ const CANONICAL_SHELL_IDS = [
   'shell_wall_side_right_faceup',
 ];
 
-const FACE_UP = new Set([
-  'shell_hand_standing',
-  'shell_flat_upright',
-  'shell_flat_sideways',
-  'shell_wall_horizontal_faceup',
-  'shell_wall_side_left_faceup',
-  'shell_wall_side_right_faceup',
-]);
-const FACE_DOWN = new Set([
-  'shell_wall_horizontal',
-  'shell_wall_side_left',
-  'shell_wall_side_right',
-]);
-const WALL = new Set([
-  'shell_wall_horizontal',
-  'shell_wall_horizontal_faceup',
-  'shell_wall_side_left',
-  'shell_wall_side_left_faceup',
-  'shell_wall_side_right',
-  'shell_wall_side_right_faceup',
-]);
+// The front/back walls are a fan of per-slot shells generated from
+// wallSlots (the spec stores the block, not 68 hand-written entries). Keep the
+// id derivation in lockstep with bake_shells.py.
+function wallSlotShells(spec) {
+  const block = spec.wallSlots;
+  if (!block) return [];
+  const shells = [];
+  for (const wall of Object.keys(block.walls)) {
+    for (const faceUp of [false, true]) {
+      for (let index = 0; index < block.count; index += 1) {
+        shells.push({
+          id: `shell_wall_${wall}_slot_${String(index).padStart(2, '0')}${faceUp ? '_faceup' : ''}`,
+          wall,
+          index,
+          faceUp,
+          faceRotationDeg: faceUp ? (block.walls[wall].faceRotationDeg ?? 0) : 0,
+        });
+      }
+    }
+  }
+  return shells;
+}
+
+function canonicalShellIds(spec) {
+  return [...BASE_SHELL_IDS, ...wallSlotShells(spec).map((shell) => shell.id)];
+}
+
+const isWall = (id) => id.startsWith('shell_wall_');
+const isFaceUp = (id) => !isWall(id) || id.endsWith('_faceup');
+const isFaceDown = (id) => isWall(id) && !id.endsWith('_faceup');
 // Phase 1c shadow contract, in @1x px / alpha. The committed bake and every
 // audition candidate must satisfy it.
 const SHADOW_EXTENT = { right: [10, 16], bottom: [10, 16], left: [1, 2], top: [1, 2] };
@@ -263,14 +272,74 @@ function downsample2x(image) {
 // Spec checks
 // --------------------------------------------------------------------------- //
 
-function checkShellSpec(spec) {
-  check(spec.version === 1, 'shell-spec.json version is 1');  const ids = spec.shells.map((shell) => shell.id);
+
+/**
+ * The off-axis perspective face is a trapezoid. The edge pair perpendicular to
+ * the view stays horizontal (the side-wall long edges, or the front/back wall's
+ * top/bottom edges); the depth-direction pair converges toward the vanishing
+ * point. The near edge (lower on screen) must be the longer one.
+ */
+function checkPerspectiveQuad(label, quad) {
+  const edgeLength = ([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const edgeDy = ([a, b]) => Math.abs(b[1] - a[1]);
+  const midpointY = ([a, b]) => (a[1] + b[1]) / 2;
+  const pairs = [
+    { label: 'top/bottom', first: [quad[0], quad[1]], second: [quad[3], quad[2]] },
+    { label: 'left/right', first: [quad[1], quad[2]], second: [quad[0], quad[3]] },
+  ];
+  const horizontal = pairs.filter((pair) => edgeDy(pair.first) <= 2 && edgeDy(pair.second) <= 2);
   check(
-    ids.length === CANONICAL_SHELL_IDS.length && new Set(ids).size === ids.length,
-    `shell catalogue has ${ids.length} unique shells`,
+    horizontal.length === 1,
+    `${label} perspective has one table-parallel edge pair ` +
+      `(${horizontal.map((pair) => pair.label).join(', ') || 'none'})`,
   );
-  for (const id of CANONICAL_SHELL_IDS) {
-    check(ids.includes(id), `catalogue contains ${id}`);
+  if (horizontal.length === 1) {
+    const pair = horizontal[0];
+    const near = midpointY(pair.first) > midpointY(pair.second) ? pair.first : pair.second;
+    const far = near === pair.first ? pair.second : pair.first;
+    check(
+      edgeLength(near) > edgeLength(far) + 0.25,
+      `${label} perspective keystone has the near edge longer ` +
+        `(${edgeLength(near).toFixed(1)} > ${edgeLength(far).toFixed(1)} px)`,
+    );
+  }
+  const converging = pairs.find((pair) => !horizontal.includes(pair));
+  if (converging) {
+    const firstDx = converging.first[1][0] - converging.first[0][0];
+    const secondDx = converging.second[1][0] - converging.second[0][0];
+    check(
+      Math.abs(firstDx - secondDx) > 0.05,
+      `${label} perspective depth edges converge (dx ${firstDx.toFixed(2)} vs ${secondDx.toFixed(2)})`,
+    );
+  }
+}
+
+function checkShellSpec(spec) {
+  check(spec.version === 1, 'shell-spec.json version is 1');
+  const authored = spec.shells.map((shell) => shell.id);
+  check(
+    authored.length === BASE_SHELL_IDS.length && new Set(authored).size === authored.length,
+    `shell-spec.json authors the ${authored.length} base shells`,
+  );
+  for (const id of BASE_SHELL_IDS) {
+    check(authored.includes(id), `shell-spec.json authors ${id}`);
+  }
+  const wallSlots = wallSlotShells(spec);
+  check(
+    wallSlots.length === 0 || wallSlots.length === spec.wallSlots.count * 4,
+    `wallSlots expands to ${wallSlots.length} slot shells (${spec.wallSlots?.count ?? 0} slots x 2 walls x 2 faces)`,
+  );
+  if (wallSlots.length) {
+    check(
+      new Set(wallSlots.map((shell) => shell.id)).size === wallSlots.length,
+      'wall slot ids are unique',
+    );
+    check(
+      wallSlots.every((shell) =>
+        shell.id.includes(`shell_wall_${shell.wall}_slot_${String(shell.index).padStart(2, '0')}`),
+      ),
+      'wall slot ids name their wall and two-digit slot',
+    );
   }
   check(spec.tile.bevel.width === 0.055, `bevel width is 0.055 (${spec.tile.bevel.width})`);
   check(spec.tile.bevel.segments === 6, `bevel segments is 6 (${spec.tile.bevel.segments})`);
@@ -480,15 +549,18 @@ function checkShellsManifest(spec) {
   checkRig(manifest, spec);
 
   const ids = Object.keys(manifest.shells ?? {});
+  const canonical = canonicalShellIds(spec);
   check(
-    ids.length === CANONICAL_SHELL_IDS.length,
-    `shells.json has ${ids.length} shells (${CANONICAL_SHELL_IDS.length})`,
+    ids.length === canonical.length,
+    `shells.json has ${ids.length} shells (${canonical.length})`,
   );
-  const specRotation = new Map(spec.shells.map((shell) => [shell.id, shell.faceRotationDeg]));
+  const specRotation = new Map(
+    [...spec.shells, ...wallSlotShells(spec)].map((shell) => [shell.id, shell.faceRotationDeg]),
+  );
   const pads = spec.bake.padding1x;
   let totalBytes = 0;
 
-  for (const id of CANONICAL_SHELL_IDS) {
+  for (const id of canonical) {
     const shell = manifest.shells?.[id];
     check(Boolean(shell), `shells.json contains ${id}`);
     if (!shell) continue;
@@ -604,25 +676,7 @@ function checkShellsManifest(spec) {
       }
       check(Math.abs(area) / 2 > 100, `${id} faceQuad has a real area (${(Math.abs(area) / 2).toFixed(1)} px²)`);
       if (perspective) {
-        // An off-axis perspective camera makes the face a trapezoid: the long
-        // edges must stay horizontal (parallel to the table edge) and the near
-        // edge must be the longer one. The diagonals no longer share a midpoint.
-        const longEdgeDy = Math.abs(quad[0][1] - quad[3][1]) + Math.abs(quad[1][1] - quad[2][1]);
-        check(
-          longEdgeDy <= 2,
-          `${id} perspective long edges stay parallel to the table edge (|dy| ${longEdgeDy.toFixed(2)} px)`,
-        );
-        const edgeLength = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-        const leftLength = edgeLength(quad[0], quad[3]);
-        const rightLength = edgeLength(quad[1], quad[2]);
-        const leftY = (quad[0][1] + quad[3][1]) / 2;
-        const rightY = (quad[1][1] + quad[2][1]) / 2;
-        const near = leftY > rightY ? leftLength : rightLength;
-        const far = leftY > rightY ? rightLength : leftLength;
-        check(
-          near > far + 0.5,
-          `${id} perspective keystone has the near edge longer (${near.toFixed(1)} > ${far.toFixed(1)} px)`,
-        );
+        checkPerspectiveQuad(id, quad);
       } else {
         // A projected rectangle is a parallelogram: both diagonals share a midpoint.
         const first = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2];
@@ -691,7 +745,7 @@ function checkShellsManifest(spec) {
     }
 
     // Wall shells publish the projected thickness that separates the two tiers.
-    if (WALL.has(id)) {
+    if (isWall(id)) {
       const step = shell.stackStepPx;
       check(shell.stackCount === 2, `${id} declares a 2-tile stack (${shell.stackCount})`);
       check(
@@ -708,6 +762,48 @@ function checkShellsManifest(spec) {
       );
     } else {
       check(shell.stackStepPx === undefined, `${id} is not a wall shell and has no stackStepPx`);
+    }
+
+    // The per-slot front/back wall shell records its slot and camera, so the
+    // fan cannot drift from wallSlots without this failing.
+    if (shell.wallSlot) {
+      const slot = shell.wallSlot;
+      const block = spec.wallSlots;
+      const wall = block?.walls?.[slot.wall];
+      const expectedOffset = block
+        ? (slot.index - block.centreIndex) * block.stepUnits
+        : Number.NaN;
+      check(Boolean(wall), `${id} wallSlot names a known wall (${slot.wall})`);
+      check(
+        slot.index >= 0 && slot.index < (block?.count ?? 0),
+        `${id} wallSlot index ${slot.index} is inside 0..${(block?.count ?? 0) - 1}`,
+      );
+      check(
+        slot.faceUp === id.endsWith('_faceup'),
+        `${id} wallSlot faceUp matches the id suffix`,
+      );
+      check(
+        Math.abs(slot.offsetUnits - expectedOffset) <= 1e-6,
+        `${id} wallSlot offset ${slot.offsetUnits} follows from wallSlots (${expectedOffset})`,
+      );
+      check(
+        Math.abs(shell.camera.lateralOffsetUnits + expectedOffset) <= 1e-6,
+        `${id} camera sits at the human's x (lateral ${shell.camera.lateralOffsetUnits} = -offset)`,
+      );
+      check(
+        wall && Math.abs(shell.camera.distanceUnits - wall.distanceUnits) <= 1e-6,
+        `${id} camera distance ${shell.camera.distanceUnits} is the wall distance (${wall?.distanceUnits})`,
+      );
+      check(
+        shell.camera.projection === 'perspective' && shell.projection === 'slot-perspective',
+        `${id} is a slot-perspective wall shell`,
+      );
+      check(
+        shell.faceRotationDeg === (slot.faceUp ? (wall?.faceRotationDeg ?? 0) : 0),
+        `${id} faceRotationDeg follows the wall (${shell.faceRotationDeg})`,
+      );
+    } else if (id.includes('_slot_')) {
+      check(false, `${id} is a slot shell but records no wallSlot`);
     }
 
     const profile = alphaProfile(image, body);
@@ -761,13 +857,11 @@ function checkShellsManifest(spec) {
     // by its own sliver assertion instead; the oblique side walls' top edge is
     // a foreshortened far side, so they only carry the shadow-direction check.
     const edges = measured.edgeSamplesRgb ?? {};
-    const oblique = shell.projection === 'fixed-oblique';
-    const flat = [
-      'shell_flat_upright',
-      'shell_flat_sideways',
-      'shell_wall_horizontal',
-      'shell_wall_horizontal_faceup',
-    ].includes(id);
+    const oblique = shell.projection === 'fixed-oblique' || shell.projection === 'slot-perspective';
+    const flat = id.startsWith('shell_flat_') ||
+      id === 'shell_wall_horizontal' ||
+      id === 'shell_wall_horizontal_faceup' ||
+      (isWall(id) && id.includes('_slot_'));
     if (edges.top && edges.bottom && !oblique && flat) {
       check(
         luma(...edges.top) > luma(...edges.bottom),
@@ -784,7 +878,7 @@ function checkShellsManifest(spec) {
       );
     }
     const face = measured.faceSampleRgb ?? [0, 0, 0];
-    if (FACE_UP.has(id)) {
+    if (isFaceUp(id)) {
       // Ivory vs blue resin is a hue fact. The el-28 standing hand's vertical
       // face is more grazing under the single screen-locked key, so it is
       // dimmer than a pond face; that is the lighting trade-off recorded in §9.
@@ -793,7 +887,7 @@ function checkShellsManifest(spec) {
         `${id} face is ivory, not blue resin (${face.join(',')}, luma ${luma(...face).toFixed(1)})`,
       );
     }
-    if (FACE_DOWN.has(id)) {
+    if (isFaceDown(id)) {
       check(
         face[2] - face[0] >= 80 && face[2] - face[1] >= 50,
         `${id} face is blue resin (${face.join(',')})`,
@@ -992,19 +1086,7 @@ function checkCandidateRecord(context) {
     }
     check(Math.abs(area) / 2 > 400, `${label} faceQuad has a real area (${(Math.abs(area) / 2).toFixed(1)} px²)`);
     if (perspective) {
-      const longEdgeDy = Math.abs(quad[0][1] - quad[3][1]) + Math.abs(quad[1][1] - quad[2][1]);
-      check(
-        longEdgeDy <= 2,
-        `${label} perspective long edges stay parallel to the table edge (|dy| ${longEdgeDy.toFixed(2)} px)`,
-      );
-      const edgeLength = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-      const leftLength = edgeLength(quad[0], quad[3]);
-      const rightLength = edgeLength(quad[1], quad[2]);
-      const leftY = (quad[0][1] + quad[3][1]) / 2;
-      const rightY = (quad[1][1] + quad[2][1]) / 2;
-      const near = leftY > rightY ? leftLength : rightLength;
-      const far = leftY > rightY ? rightLength : leftLength;
-      check(near > far + 0.5, `${label} perspective keystone near edge is longer (${near.toFixed(1)} > ${far.toFixed(1)})`);
+      checkPerspectiveQuad(label, quad);
     } else {
       const first = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2];
       const second = [(quad[1][0] + quad[3][0]) / 2, (quad[1][1] + quad[3][1]) / 2];
@@ -1069,7 +1151,7 @@ function checkCandidateRecord(context) {
     );
   }
 
-  if (WALL.has(baseId)) {
+  if (isWall(baseId)) {
     const step = record.stackStepPx;
     check(
       record.stackCount === 2 && Array.isArray(step) && step[1] < 0 &&
@@ -1117,7 +1199,7 @@ function checkCandidateRecord(context) {
   check(['left', 'top', 'right', 'bottom'].every(samePeak), `${label} manifest alpha peaks match the texture`);
 
   const edges = measured.edgeSamplesRgb ?? {};
-  const flat = baseId.startsWith('shell_flat') || baseId === 'shell_wall_horizontal';
+  const flat = baseId.startsWith('shell_flat') || baseId === 'shell_wall_horizontal' || (isWall(baseId) && baseId.includes('_slot_'));
   if (edges.top && edges.bottom && flat) {
     check(
       luma(...edges.top) > luma(...edges.bottom),
@@ -1133,7 +1215,7 @@ function checkCandidateRecord(context) {
     );
   }
   const face = measured.faceSampleRgb ?? [0, 0, 0];
-  if (FACE_UP.has(baseId)) {
+  if (isFaceUp(baseId)) {
     // Ivory vs blue resin is a hue fact, not a brightness one: a higher camera
     // elevation makes the standing hand's vertical face more grazing under the
     // single screen-locked key, which is a lighting trade-off the user weighs.
@@ -1142,7 +1224,7 @@ function checkCandidateRecord(context) {
       `${label} face is ivory, not blue resin (${face.join(',')}, luma ${luma(...face).toFixed(1)})`,
     );
   }
-  if (FACE_DOWN.has(baseId)) {
+  if (isFaceDown(baseId)) {
     check(
       face[2] - face[0] >= 80 && face[2] - face[1] >= 50,
       `${label} face is blue resin (${face.join(',')})`,
@@ -1185,6 +1267,77 @@ function checkCandidateRecord(context) {
   return bytes;
 }
 
+/**
+ * The committed review sheets are gitignored developer artefacts (AGENTS.md
+ * §6), so CI skips them when they are absent. When the bake has just produced
+ * them, this turns the layout guard into pixel facts: the sheet decodes, its
+ * background is the felt base colour, the label font colours are present, and
+ * the tiles cover a real area. It never judges the look.
+ */
+function checkCommittedReviewSheets(feltSpec) {
+  const dir = join(renderDir, 'build', 'review');
+  const [baseR, baseG, baseB] = feltSpec.baseColor;
+  const TITLE = [244, 238, 220];
+  const LABEL = [204, 214, 200];
+  const sheets = [
+    {
+      name: 'wall-stack-1x.png',
+      minWidth: 1200,
+      minHeight: 600,
+      minTiles: 120000,
+      titleColour: TITLE,
+      minTitle: 300,
+      labelColour: LABEL,
+      minLabel: 0,
+      what: 'front/back wall runs, 2-tile stacks and side walls',
+    },
+    {
+      name: 'wall-fan-1x.png',
+      minWidth: 850,
+      minHeight: 450,
+      minTiles: 70000,
+      titleColour: TITLE,
+      minTitle: 300,
+      labelColour: LABEL,
+      minLabel: 400,
+      what: 'exploded front/back fan with every slot number',
+    },
+  ];
+  for (const sheet of sheets) {
+    const path = join(dir, sheet.name);
+    if (!existsSync(path)) {
+      note(`${sheet.name} not present (gitignored review sheet); run the review script`);
+      continue;
+    }
+    const image = readPng(path);
+    check(image.channels === 4, `${sheet.name} decodes as RGBA`);
+    check(
+      image.width >= sheet.minWidth && image.height >= sheet.minHeight,
+      `${sheet.name} is ${image.width}x${image.height} (readable ${sheet.what})`,
+    );
+    const corner = pixel(image, 2, 2);
+    check(
+      corner[0] === baseR && corner[1] === baseG && corner[2] === baseB && corner[3] === 255,
+      `${sheet.name} background is the felt base colour (${corner.slice(0, 3).join(',')})`,
+    );
+    let title = 0;
+    let label = 0;
+    let tile = 0;
+    for (let y = 0; y < image.height; y += 1) {
+      for (let x = 0; x < image.width; x += 1) {
+        const [r, g, b, a] = pixel(image, x, y);
+        if (r === sheet.titleColour[0] && g === sheet.titleColour[1] && b === sheet.titleColour[2]) title += 1;
+        else if (r === sheet.labelColour[0] && g === sheet.labelColour[1] && b === sheet.labelColour[2]) label += 1;
+        else if (a === 255 && !(r === baseR && g === baseG && b === baseB)) tile += 1;
+      }
+    }
+    check(title >= sheet.minTitle, `${sheet.name} renders its title text (${title} px)`);
+    check(label >= sheet.minLabel, `${sheet.name} renders its labels (${label} px)`);
+    check(tile >= sheet.minTiles, `${sheet.name} composites its tiles (${tile} px)`);
+    note(`${sheet.name}: ${image.width}x${image.height}, ${tile} tile px, ${title} title px, ${label} label px`);
+  }
+}
+
 function checkAudition(spec) {
   const audition = spec.audition;
   check(Boolean(audition), 'shell-spec.json declares the candidate matrix');
@@ -1197,7 +1350,7 @@ function checkAudition(spec) {
   const auditionIds = Object.keys(shells);
   check(auditionIds.length >= 1, `the audition block covers ${auditionIds.length} shell(s)`);
   check(
-    auditionIds.every((id) => CANONICAL_SHELL_IDS.includes(id)),
+    auditionIds.every((id) => canonicalShellIds(spec).includes(id)),
     `the audition block names only catalogue shells (${auditionIds.join(', ')})`,
   );
   for (const id of auditionIds) {
@@ -1222,14 +1375,35 @@ function checkAudition(spec) {
       faceVariants.atlasKey === '(shellType, faceVariant, tileFace)',
       `the atlas is keyed by (shellType, faceVariant, tileFace) (${faceVariants.atlasKey})`,
     );
+    const authoredFaceUp = canonicalShellIds(spec).filter((id) => isFaceUp(id) && !id.includes('_slot_'));
     check(
-      [...FACE_UP].every((id) => (faceVariants.faceUpShells?.[id] ?? []).length >= 1),
-      'every face-up shell has at least one face variant',
+      authoredFaceUp.every((id) => (faceVariants.faceUpShells?.[id] ?? []).length >= 1),
+      'every base face-up shell has at least one face variant',
     );
+    const authoredFaceDown = canonicalShellIds(spec).filter((id) => isFaceDown(id) && !id.includes('_slot_'));
     check(
-      [...FACE_DOWN].every((id) => (faceVariants.faceDownShells?.[id] ?? []).join(',') === 'bare'),
-      'every face-down wall shell is bare (no face glyph)',
+      authoredFaceDown.every((id) => (faceVariants.faceDownShells?.[id] ?? []).join(',') === 'bare'),
+      'every base face-down wall shell is bare (no face glyph)',
     );
+    const slotDora = faceVariants.slotDora;
+    check(Boolean(slotDora), 'the face-variant plan records the per-slot dora families');
+    if (slotDora) {
+      for (const wall of ['front', 'back']) {
+        const family = slotDora[wall] ?? {};
+        check(
+          family.count === spec.wallSlots?.count,
+          `${wall} dora family covers ${family.count} slots (wallSlots ${spec.wallSlots?.count})`,
+        );
+        check(
+          typeof family.shellPattern === 'string' && family.shellPattern.includes('{index:02d}'),
+          `${wall} dora family names the slot in the shell id`,
+        );
+        check(
+          typeof family.faceVariantPattern === 'string' && family.faceVariantPattern.includes('{index:02d}'),
+          `${wall} dora family names the slot in the face variant`,
+        );
+      }
+    }
   }
 
   const manifestPath = resolve(renderDir, audition.manifest);
@@ -1385,6 +1559,7 @@ try {
   checkFeltSpec(feltSpec);
   checkFelt(feltSpec);
   checkShellsManifest(shellSpec);
+  checkCommittedReviewSheets(feltSpec);
   if (auditionMode) checkAudition(shellSpec);
 } catch (error) {
   failures.push(error instanceof Error ? error.message : String(error));

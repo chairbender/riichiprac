@@ -189,18 +189,32 @@ if (!auditionMode) {
 }
 
 // --------------------------------------------------------------------------- //
-// 3. Wall stacks: two tiles per column, the upper tier at the published
-//    stackStepPx, plus face-up dora tiles on top of the revealed stacks.
+// 3. The wall rings: the per-slot front/back wall fan, the 2-tile stack and the
+//    approved side-wall columns.
 // --------------------------------------------------------------------------- //
+function wallSlotId(wall, index, faceUp) {
+  return `shell_wall_${wall}_slot_${String(index).padStart(2, '0')}${faceUp ? '_faceup' : ''}`;
+}
+
 if (!auditionMode) {
-  const wall = manifest.shells.shell_wall_horizontal;
+  const block = shellSpec.wallSlots;
+  const count = block.count;
+  const centre = block.centreIndex;
+  const pad = 24;
+  const labelH = 24;
+  const rowGap = 20;
   const leftWall = manifest.shells.shell_wall_side_left;
   const rightWall = manifest.shells.shell_wall_side_right;
-  const pad = 24;
-  const run = 6;
   const sideRun = 4;
-  const wallStepX = wall.gridStepPx.x[0];
-  const wallRise = Math.abs(wall.stackStepPx[1]);
+
+  // The packed row advances by the physical tile-width axis of the centre slot;
+  // each slot's own body is wider where its side face is revealed, exactly as
+  // the layout contract says (the side face tucks under the neighbour).
+  const centreEntry = manifest.shells[wallSlotId('front', centre, false)];
+  const wallStepX = centreEntry.gridStepPx.x[0];
+  const frontDora = 12;
+  const backDora = 4;
+
   // The column step is whichever published tile axis points down the screen
   // (the long axis for the horizontal wall, the short axis for the side walls).
   const downStep = (entry) => {
@@ -216,12 +230,37 @@ if (!auditionMode) {
     ...column,
     span: Math.abs((sideRun - 1) * column.step[0]) + column.entry.advanceWidth + 8,
   }));
-  const sideTop = pad + wallRise + wall.advanceHeight + pad;
-  const sideHeight = (sideRun - 1) * Math.abs(columns[0].step[1]) + leftWall.advanceHeight;
-  const width = Math.ceil(pad + run * wallStepX + pad + columns.reduce((sum, c) => sum + c.span + pad, 0));
-  const height = Math.ceil(sideTop + sideHeight + pad);
+
+  // The packed run's extents include the full sprite (shadow margin included)
+  // and the upper tier's lateral stackStepPx drift, not just the advance box.
+  const packedExtent = (wall) => {
+    let left = Infinity;
+    let right = -Infinity;
+    for (let index = 0; index < count; index += 1) {
+      const down = manifest.shells[wallSlotId(wall, index, false)];
+      const up = manifest.shells[wallSlotId(wall, index, true)];
+      const x = pad + index * wallStepX;
+      for (const [entry, shift] of [[down, 0], [up, down.stackStepPx[0]]]) {
+        left = Math.min(left, x + shift - entry.anchorX);
+        right = Math.max(right, x + shift - entry.anchorX + entry.texWidth);
+      }
+    }
+    return { left, right };
+  };
+  const runExtent = [packedExtent('front'), packedExtent('back')].reduce(
+    (extent, current) => ({
+      left: Math.min(extent.left, current.left),
+      right: Math.max(extent.right, current.right),
+    }),
+    { left: Infinity, right: -Infinity },
+  );
+  const sideWidth = columns.reduce((sum, column) => sum + column.span + pad, 0);
+  const width = Math.ceil(Math.max(runExtent.right + pad, pad + sideWidth));
+  const runHeight = labelH + centreEntry.advanceHeight + 44;
+  const sideHeight = labelH + (sideRun - 1) * Math.abs(columns[0].step[1]) + leftWall.advanceHeight + 24;
+  const height = Math.ceil(pad + 2 * runHeight + rowGap + sideHeight + pad);
   const image = canvas(width, height);
-  const wallTop = pad + wallRise;
+
   const assertInside = (id, gridX, gridY, what) => {
     const entry = manifest.shells[id];
     const sprite = texture(id);
@@ -235,52 +274,188 @@ if (!auditionMode) {
     }
   };
 
-  // Horizontal wall: right-to-left; bottom tier, then the top tier. The fourth
-  // stack from the left is a revealed dora indicator (face-up top tile).
-  for (let index = run - 1; index >= 0; index -= 1) {
-    const x = pad + index * wallStepX;
-    assertInside('shell_wall_horizontal', x, wallTop, `wall ${index} bottom`);
-    draw('shell_wall_horizontal', image, x, wallTop);
-    const topId = index === 3 ? 'shell_wall_horizontal_faceup' : 'shell_wall_horizontal';
-    assertInside(topId, x + wall.stackStepPx[0], wallTop + wall.stackStepPx[1], `wall ${index} top`);
-    draw(topId, image, x + wall.stackStepPx[0], wallTop + wall.stackStepPx[1]);
+  function drawPackedWall(wall, top, doraIndex) {
+    const label = wall === 'front' ? 'FRONT WALL (BOTTOM, HUMAN SIDE)' : 'BACK WALL (TOP)';
+    drawText(image, `${label}  ${count} STACKS  PACKED`, pad, top, {
+      scale: 2,
+      rgb: [244, 238, 220],
+    });
+    const bodyTop = top + labelH;
+    // Bottom tier completely, right-to-left.
+    for (let index = count - 1; index >= 0; index -= 1) {
+      const id = wallSlotId(wall, index, false);
+      const x = pad + index * wallStepX;
+      assertInside(id, x, bodyTop, `${wall} ${index} bottom`);
+      draw(id, image, x, bodyTop);
+    }
+    // Then the top tier, right-to-left, with the dora slot face up.
+    for (let index = count - 1; index >= 0; index -= 1) {
+      const down = manifest.shells[wallSlotId(wall, index, false)];
+      const id = wallSlotId(wall, index, index === doraIndex);
+      const x = pad + index * wallStepX + down.stackStepPx[0];
+      const y = bodyTop + down.stackStepPx[1];
+      assertInside(id, x, y, `${wall} ${index} top`);
+      draw(id, image, x, y);
+    }
+    return bodyTop + centreEntry.advanceHeight + 24;
   }
-  console.log(
-    `INFO wall stack: horizontal rise ${wall.stackStepPx[1]} px (projected thickness), 2 tiers`,
-  );
+
+  const frontBodyTop = pad + labelH;
+  const frontBottom = drawPackedWall('front', pad, frontDora);
+  const backTop = frontBottom + rowGap;
+  const backBottom = drawPackedWall('back', backTop, backDora);
 
   // Side-wall columns: top-of-screen first, bottom tier then top tier per
   // stack. The second stack in each column is a dora indicator.
-  let cursorX = pad + run * wallStepX + pad;
+  const sideTop = backBottom + rowGap;
+  drawText(image, 'SIDE WALLS (APPROVED PERSPECTIVE, 2-TILE STACKS)', pad, sideTop, {
+    scale: 2,
+    rgb: [244, 238, 220],
+  });
+  const sideBodyTop = sideTop + labelH;
+  let cursorX = pad;
   columns.forEach((column) => {
     const drift = Math.abs((sideRun - 1) * column.step[0]);
     const originX = cursorX + (column.step[0] < 0 ? drift : 0) + 4;
     for (let index = 0; index < sideRun; index += 1) {
       const x = originX + index * column.step[0];
-      const y = sideTop + index * column.step[1];
+      const y = sideBodyTop + index * column.step[1];
       assertInside(column.id, x, y, `${column.id} ${index} bottom`);
       draw(column.id, image, x, y);
-      const topId = index === 1 ? column.dora : column.id;
-      assertInside(topId, x + column.entry.stackStepPx[0], y + column.entry.stackStepPx[1], `${column.id} ${index} top`);
-      draw(topId, image, x + column.entry.stackStepPx[0], y + column.entry.stackStepPx[1]);
     }
-    console.log(
-      `INFO ${column.id}: column step ${column.step.map((value) => value.toFixed(2)).join(',')} px, ` +
-        `stack rise ${column.entry.stackStepPx[1]} px`,
-    );
+    for (let index = 0; index < sideRun; index += 1) {
+      const x = originX + index * column.step[0] + column.entry.stackStepPx[0];
+      const y = sideBodyTop + index * column.step[1] + column.entry.stackStepPx[1];
+      const topId = index === 1 ? column.dora : column.id;
+      assertInside(topId, x, y, `${column.id} ${index} top`);
+      draw(topId, image, x, y);
+    }
     cursorX += column.span + pad;
   });
+
+  const outerFront = manifest.shells[wallSlotId('front', count - 1, false)];
+  const outerBack = manifest.shells[wallSlotId('back', count - 1, false)];
+  console.log(
+    `INFO front wall: run step ${wallStepX.toFixed(2)} px, outer slot ` +
+      `${outerFront.wallSlot.angleDeg} deg, body ${outerFront.advanceWidth}x${outerFront.advanceHeight}, ` +
+      `stack rise ${outerFront.stackStepPx[1]} px`,
+  );
+  console.log(
+    `INFO back wall: outer slot ${outerBack.wallSlot.angleDeg} deg, body ` +
+      `${outerBack.advanceWidth}x${outerBack.advanceHeight}, stack rise ${outerBack.stackStepPx[1]} px`,
+  );
+  console.log(`INFO wall stack: ${count} stacks per front/back wall, 2 tiers per stack`);
 
   write('wall-stack-1x.png', image);
   zoomOf(
     image,
-    pad + 3 * wallStepX - 10,
-    wallTop - 6,
-    2 * wallStepX + 20,
-    wallRise + wall.advanceHeight + 12,
-    4,
-    'wall-stack-zoom4x.png',
+    pad + (count - 3) * wallStepX - 10,
+    backTop - 6,
+    3 * wallStepX + 20,
+    labelH + Math.abs(centreEntry.stackStepPx[1]) + centreEntry.advanceHeight + 12,
+    3,
+    'wall-stack-zoom3x.png',
   );
+
+  // ------------------------------------------------------------------------- //
+  // The fan itself: the same slots with a gap so each slot's side reveal is
+  // visible. The left half and the right half are separate rows so both mirror
+  // images fit on one readable sheet.
+  // ------------------------------------------------------------------------- //
+  const fanGap = 24;
+  const half = centre + 1;
+  const fanStep = wallStepX + fanGap;
+  const fanPad = 24;
+  const fanLabelH = 24;
+  let fanRight = -Infinity;
+  for (const wall of ['front', 'back']) {
+    for (let step = 0; step < half; step += 1) {
+      const index = centre + step;
+      const down = manifest.shells[wallSlotId(wall, index, false)];
+      const up = manifest.shells[wallSlotId(wall, index, true)];
+      const x = fanPad + step * fanStep;
+      fanRight = Math.max(fanRight, x - down.anchorX + down.texWidth);
+      fanRight = Math.max(fanRight, x + down.stackStepPx[0] - up.anchorX + up.texWidth);
+    }
+  }
+  const fanWidth = Math.ceil(fanRight + fanPad);
+  const fanRowHeight = fanLabelH + Math.abs(centreEntry.stackStepPx[1]) + centreEntry.advanceHeight + 44;
+  const fanImage = canvas(fanWidth, Math.ceil(4 * fanRowHeight + 2 * fanPad + 3 * 20));
+  const fanAssertInside = (id, gridX, gridY, what) => {
+    const entry = manifest.shells[id];
+    const sprite = texture(id);
+    const left = Math.round(gridX - entry.anchorX);
+    const top = Math.round(gridY - entry.anchorY);
+    if (left < 0 || top < 0 || left + sprite.width > fanImage.width || top + sprite.height > fanImage.height) {
+      throw new Error(
+        `wall-fan layout overflow: ${what} ${id} ${left},${top} ` +
+          `${sprite.width}x${sprite.height} leaves ${fanImage.width}x${fanImage.height}`,
+      );
+    }
+  };
+  function drawFanRow(wall, top, indices, label, doraIndex) {
+    drawText(fanImage, label, fanPad, top, { scale: 2, rgb: [244, 238, 220] });
+    const bodyTop = top + fanLabelH;
+    // Bottom tier, right-to-left.
+    for (let step = indices.length - 1; step >= 0; step -= 1) {
+      const index = indices[step];
+      const id = wallSlotId(wall, index, false);
+      const x = fanPad + step * fanStep;
+      fanAssertInside(id, x, bodyTop, `${wall} slot ${index} bottom`);
+      draw(id, fanImage, x, bodyTop);
+    }
+    // Top tier, right-to-left, with the dora slot face up.
+    for (let step = indices.length - 1; step >= 0; step -= 1) {
+      const index = indices[step];
+      const down = manifest.shells[wallSlotId(wall, index, false)];
+      const id = wallSlotId(wall, index, index === doraIndex);
+      const x = fanPad + step * fanStep + down.stackStepPx[0];
+      const y = bodyTop + down.stackStepPx[1];
+      fanAssertInside(id, x, y, `${wall} slot ${index} top`);
+      draw(id, fanImage, x, y);
+    }
+    // Slot number under each tile, so a note can name the slot directly.
+    for (let step = 0; step < indices.length; step += 1) {
+      const index = indices[step];
+      drawText(fanImage, String(index), fanPad + step * fanStep + 28, bodyTop + centreEntry.advanceHeight + 8, {
+        scale: 2,
+        rgb: [204, 214, 200],
+      });
+    }
+    return bodyTop + centreEntry.advanceHeight + 30;
+  }
+  const leftIndices = Array.from({ length: half }, (_, index) => index);
+  const rightIndices = Array.from({ length: half }, (_, index) => centre + index);
+  const fanRows = [];
+  for (const wall of ['front', 'back']) {
+    const outer = manifest.shells[wallSlotId(wall, count - 1, false)];
+    for (const [indices, halfLabel] of [
+      [rightIndices, `RIGHT HALF  SLOTS ${centre}..${count - 1}`],
+      [leftIndices, `LEFT HALF  SLOTS 0..${centre}`],
+    ]) {
+      const top = fanPad + fanRows.length * (fanRowHeight + 20);
+      drawFanRow(
+        wall,
+        top,
+        indices,
+        `${wall.toUpperCase()} WALL ${halfLabel}  OUTER ${outer.wallSlot.angleDeg} DEG`,
+        indices === rightIndices ? count - 1 : 1,
+      );
+      fanRows.push({ wall, indices, top });
+    }
+  }
+  write('wall-fan-1x.png', fanImage);
+  for (const row of fanRows.filter((entry) => entry.indices === rightIndices)) {
+    zoomOf(
+      fanImage,
+      fanPad + (half - 3) * fanStep - 8,
+      row.top - 4,
+      3 * fanStep + 16,
+      fanLabelH + Math.abs(centreEntry.stackStepPx[1]) + centreEntry.advanceHeight + 16,
+      3,
+      `wall-fan-${row.wall}-right-zoom3x.png`,
+    );
+  }
 }
 
 // --------------------------------------------------------------------------- //
@@ -361,6 +536,9 @@ if (auditionMode) {
       `BODY ${record.advanceWidth}×${record.advanceHeight}`,
       `FACE ${face.long.toFixed(0)}×${face.short.toFixed(0)}`,
       `SHORT/LONG ${face.ratio.toFixed(2)}`,
+      ...(record.camera.distanceUnits !== undefined
+        ? [`OFF ${record.camera.lateralOffsetUnits} D ${record.camera.distanceUnits}`]
+        : []),
       `1X ${bytes.toFixed(1)}K B`,
       ...(record.stackStepPx ? [`RISE ${record.stackStepPx[1]} PX`] : []),
     ];
@@ -368,7 +546,7 @@ if (auditionMode) {
 
   const LABEL_WIDTH = 220;
   const LABEL_LINE = 16;
-  const LABEL_HEIGHT = LABEL_LINE * 9;
+  const LABEL_HEIGHT = LABEL_LINE * 10 + 8;
   const MARGIN = 20;
   const PAD = 16;
   const ISOLATED_GAP = 24;

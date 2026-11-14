@@ -3,16 +3,17 @@
 #
 #   bash tools/render/bake-shells.sh            # dry run: build the tile in Blender, print the plan
 #   bash tools/render/bake-shells.sh --check    # integrity check; needs no Blender
-#   bash tools/render/bake-shells.sh --audition # render the wall-lean calibration, validate, build sheets
+#   bash tools/render/bake-shells.sh --audition # render the front/back wall fan calibration + sheets
 #   bash tools/render/bake-shells.sh --check-audition  # validate the candidate matrix; needs no Blender
-#   bash tools/render/bake-shells.sh --bake     # bake 1x + 2x, then check and build review sheets
+#   bash tools/render/bake-shells.sh --bake     # bake 1x + 2x, build review sheets, then check
 #
-# --bake renders the six shells with the pinned Blender at the current base scale,
-# writes frontend/public/table/shells/ (+ 2x/) and shells.json, then runs the
-# dependency-free integrity check and regenerates the throwaway review sheets
-# under tools/render/build/review/.
+# --bake renders the 77 shells (nine base + 68 front/back wall slots) with the
+# pinned Blender at the current base scale, writes
+# frontend/public/table/shells/ (+ 2x/) and shells.json, regenerates the
+# throwaway review sheets under tools/render/build/review/, then runs the
+# dependency-free integrity check.
 #
-# --audition is the wall-lean calibration path: it renders every candidate in
+# --audition is the front/back wall fan calibration path: it renders every candidate in
 # shell-spec.json's `audition` block at the new base scale into
 # build/review/candidates/ (+ the candidate manifest at
 # build/review/shell-candidates.json), then validates those outputs and writes
@@ -106,10 +107,10 @@ esac
 
 if [ "$mode" = "bake" ]; then
   "$blender" "${blender_args[@]}"
-  echo "[shells] validating the committed assets"
-  node "$here/scripts/check-shells.mjs"
   echo "[shells] review sheets (gitignored, for the user's visual sign-off)"
   node "$here/scripts/review-shells.mjs"
+  echo "[shells] validating the committed assets and the review sheets"
+  node "$here/scripts/check-shells.mjs"
 elif [ "$mode" = "audition" ]; then
   "$blender" "${blender_args[@]}"
   echo "[shells] candidate sheets (gitignored, for the user's pick)"

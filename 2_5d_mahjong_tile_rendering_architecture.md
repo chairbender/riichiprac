@@ -26,7 +26,8 @@ Rather than forcing one camera onto the whole board, each table zone uses the 2D
 | **Bottom Player Hand** | Front elevation at 28° | Upright front-on rectangle with a white top bevel, the blue resin edge, and a little more of the tile's top than a flat-on view (Phase 1 was 12°). | Zero glyph distortion; maximum reading speed. |
 | **Discard Ponds (`kawa`) & Open Melds** | Low-angle top-down at 45° | Face-up rectangle seen from a low camera, so the face plate is foreshortened and the near thickness face is clearly visible above the extrusion. Phase 1's 80° was rejected as too top-down. | Uniform tile size across all 4 seats; instant pattern scanning with a seated-player read. |
 | **Side Walls (`yama`)** | Off-axis perspective at 45° | Face-down stacks of two tiles, long edge parallel to the table edge. The camera sits slightly inside the wall, so the near end face is revealed and the far long edge converges toward the table centre. The tile itself is never rotated; one shell perspective is reused down the column (Tenhou-style). §10 has the geometry. | Frames the board with strong 3D depth without wasting horizontal screen width. |
-| **Top Hand & Top/Bottom Walls** | Low-angle top-down at 45° | Colored resin top face stacked above a white front thickness strip and a diffuse contact shadow, at the same low angle as the ponds. Each column is two tiles; a revealed dora indicator is the face-up top tile. | Preserves consistent back-to-front vertical layering. |
+| **Top/Bottom Walls (`yama`)** | Per-slot off-axis perspective at 45° | Seventeen slots per wall, each baked with its own camera offset: the tile straight in front of the human is straight on, and the outer slots reveal their inner side as the human's eye sees them. Each column is two tiles; a revealed dora indicator is the face-up top tile at its own slot. §10.8 has the geometry and the slot table. | The wall reads as a real ring around the table instead of a repeated flat stamp, without a shared scene camera. |
+| **Top Hand** | Low-angle top-down at 45° | The top player's concealed hand uses the generic face-down wall shell (colored resin top, white thickness strip, diffuse contact shadow) at the pond's 45°. | Preserves consistent back-to-front vertical layering. |
 
 Phase 1b (2026-11-14) also doubles the base sprite resolution: the Phase 1
 `@2x` output is the new `@1x` base (long axis 104 CSS px, was 52; the new `@2x`
@@ -75,17 +76,18 @@ Configure an automated Blender script to render the canonical blank tile shells 
 1. `shell_hand_standing`: Upright player hand tile (front elevation at 28° with the top bevel and resin sliver).
 2. `shell_flat_upright`: Flat face-up tile for normal discards and unrotated meld tiles (45°).
 3. `shell_flat_sideways`: Flat face-up tile oriented horizontally for *riichi* declarations and sideways meld calls (45°).
-4. `shell_wall_horizontal`: Face-down flat tile for top/bottom wall stacks (`yama`) and the top player's concealed hand (45°), plus `shell_wall_horizontal_faceup` for a revealed dora indicator.
-5. `shell_wall_side_left` & `shell_wall_side_right`: Oblique face-down tiles for the left and right walls, long edge across the view, column leaning inward at the far end (§10), plus `shell_wall_side_left_faceup` / `shell_wall_side_right_faceup` dora counterparts.
+4. `shell_wall_horizontal` / `shell_wall_horizontal_faceup`: the generic face-down / face-up wall tile at 45°, now used for the top player's concealed hand and as a straight-on fallback.
+5. `shell_wall_front_slot_00..16` / `shell_wall_back_slot_00..16`: the front (bottom) and back (top) wall fans, one face-down shell per slot, each with its own lateral camera offset from the human's eye; `_faceup` counterparts carry the dora-indicator face plate at the same slot (§10.8). The back dora shells rotate the 2D glyph 180° so it reads for the far player.
+6. `shell_wall_side_left` & `shell_wall_side_right`: off-axis perspective face-down tiles for the left and right walls, long edge parallel to the table edge, plus `shell_wall_side_left_faceup` / `shell_wall_side_right_faceup` dora counterparts (§10.4).
 
 ### Blender Scene & Shader Rules
-* **Camera:** Use an **Orthographic Camera** (`type = 'ORTHO'`) for the grid shells so parallel edges stay strictly parallel and scale identically across the board. The side walls are the one exception: they use an **off-axis perspective camera** with no yaw and no roll, laterally offset inside the wall (§10.4). Only a lateral perspective reveals the near end face while keeping the tile's long edge parallel to the table edge; yawing the tile or the camera slopes that edge instead.
+* **Camera:** Use an **Orthographic Camera** (`type = 'ORTHO'`) for the grid shells so parallel edges stay strictly parallel and scale identically across the board. The walls are the exception: the side walls (§10.4) and every front/back wall slot (§10.8) use an **off-axis perspective camera** with no yaw and no roll. Only a lateral perspective reveals the near face while keeping the tile square to the table; yawing the tile or the camera slopes the edges instead. The front/back slots reuse the same solver, with the camera placed at the human's x for that slot.
 * **Lighting:** Place a primary soft area light at **Top-Left-Front** (`-X, +Y, +Z`) and a weak ambient fill light so bevels show crisp highlights on top/left edges and cool grey-blue shading on bottom/right thickness faces.
 * **Two-Tone Resin Seam:** Ensure the sharp boundary between the colored tile back (*senaka*) and white front body is clearly visible along the top and side bevels—this is the primary visual cue distinguishing a mahjong tile from a flat card.
 * **Shadow Catcher & Cropping:**
   * Enable `Film -> Transparent` in Blender Cycles/Eevee.
   * Place a shadow-catcher plane directly underneath the tile mesh.
-  * Clamp/fade the shadow catcher alpha via a compositing mask or UV gradient so the cast shadow extends no more than **$3\text{--}4\text{ px}$** past the bottom and right edges, and adds a **$1\text{--}2\text{ px}$** soft dark AO fringe on the top and left edges.
+  * Clamp/fade the shadow catcher alpha via a compositing mask or UV gradient so the cast shadow is **diffuse and subtle**: **$10\text{--}16\text{ px}$** past the bottom and right edges, and a **$1\text{--}2\text{ px}$** soft dark AO fringe on the top and left edges. §10.6 has the committed contract.
 * **Output Manifest (`shells.json`):** Export a JSON metadata file alongside the PNGs recording for each shell:
   * `textureFile`: Path to PNG
   * `texWidth`, `texHeight`: Full PNG dimensions in pixels
@@ -93,6 +95,7 @@ Configure an automated Blender script to render the canonical blank tile shells 
   * `advanceWidth`, `advanceHeight`: Opaque body dimensions used for grid layout
   * `gridStepPx`: the physical tile-axis step for a tight grid
   * `stackStepPx` + `stackCount` (wall shells): the projected thickness vector from the lower tier's body top-left to the upper tier's, plus the 2-tile stack count
+  * `wallSlot` (front/back wall shells): `wall`, `index`, `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`, `angleDeg` and `faceUp`, so the per-slot fan is auditable
   * `faceQuad`: 4 corner coordinates (`[x, y]`) on the shell where the 2D face glyph should be mapped
 
 ---
@@ -483,7 +486,9 @@ base/angle numbers in §8 and the Phase 1b review in §9.
 
 The six original shells are now nine: the three wall shells each gained a
 face-up counterpart for revealed dora indicators (they are the top tile of the
-stack, flipped face up).
+stack, flipped face up). The front/back wall review then split those two walls
+into a per-slot fan (§10.8), adding 68 shells for **77 total**; the side walls
+and the nine-shell base are unchanged.
 
 ### 10.2 The committed bake, measured
 
@@ -503,11 +508,26 @@ All numbers are measured from the render and live in
 | `shell_wall_side_right` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 10,331 + 30,102 |
 | `shell_wall_side_right_faceup` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 9,729 + 28,528 |
 
-Total **332,068 B** (84,465 @1x + 247,603 @2x) against the 2,097,152 B budget;
-`shells.json` is 31,151 B against 65,536 B. The felt is unchanged
-(559,465 B). The standing hand lands exactly on the asked-for 88 × 120 / 176 ×
-240 texture; the body long axis is 102 px (the 104 px target minus the
-anti-aliased crop).
+The nine base shells above total **332,068 B** (84,465 @1x + 247,603 @2x).
+The 68 front/back slot shells add **2,539,608 B**, for **2,871,676 B**
+(725,973 @1x + 2,145,703 @2x) against the raised 4,194,304 B budget.
+`shells.json` is **268,242 B** against the raised 524,288 B budget. The felt is
+unchanged (559,465 B). The standing hand lands exactly on the asked-for
+88 × 120 / 176 × 240 texture; the body long axis is 102 px (the 104 px target
+minus the anti-aliased crop).
+
+Representative slots of the fan (all 17 per wall are in `shells.json`):
+
+| Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | stackStepPx | Bytes @1x + @2x |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `shell_wall_front_slot_08` | 0° / d40.8 | 91 × 120 / 182 × 240 | 73 × 102 | (69.72, 0) / (0, 66.07) | (0, −39.02) | 8,776 + 26,751 |
+| `shell_wall_front_slot_04` | 4.21° / d40.8 | 95 × 120 / 190 × 240 | 77 × 102 | (69.72, 0) / (−3.49, 66.07) | (−2.03, −39.02) | 10,070 + 29,793 |
+| `shell_wall_front_slot_16` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.97, 66.07) | (4.06, −39.02) | 10,428 + 30,501 |
+| `shell_wall_back_slot_08` | 0° / d54.8 | 90 × 120 / 180 × 240 | 72 × 102 | (69.64, 0) / (0, 65.91) | (0, −38.9) | 8,952 + 26,713 |
+| `shell_wall_back_slot_04` | 3.13° / d54.8 | 93 × 120 / 186 × 240 | 75 × 102 | (69.64, 0) / (−2.58, 65.91) | (−1.51, −38.9) | 9,821 + 29,343 |
+| `shell_wall_back_slot_16` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.16, 65.91) | (3.01, −38.9) | 10,228 + 30,090 |
+| `shell_wall_front_slot_16_faceup` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.8, 64.46) | (4.06, −39.02) | 9,604 + 28,180 |
+| `shell_wall_back_slot_16_faceup` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.06, 64.71) | (3.01, −38.9) | 9,489 + 27,623 |
 
 ### 10.3 The 2-tile wall stack
 
@@ -556,9 +576,10 @@ units are auditioned against the committed 2 (§10.7). The tile never rotates.
 
 ### 10.5 Face variants (updated plan, still not built)
 
-Face-up shells are now the hand, the upright pond shell, the sideways shell and
-the three face-up dora shells. The atlas plan in §4 and `shell-spec.json`
-(`faceVariants`) therefore defines:
+Face-up shells are the hand, the upright pond shell, the sideways shell, the
+three base face-up dora shells and the **34 per-slot front/back dora shells**
+(§10.8). The atlas plan in §4 and `shell-spec.json` (`faceVariants`) therefore
+defines:
 
 | Face-up shell | faceVariant id |
 | :--- | :--- |
@@ -568,14 +589,24 @@ the three face-up dora shells. The atlas plan in §4 and `shell-spec.json`
 | `shell_wall_horizontal_faceup` | `wall-topdown-dora` |
 | `shell_wall_side_left_faceup` | `wall-left-dora` |
 | `shell_wall_side_right_faceup` | `wall-right-dora` |
+| `shell_wall_front_slot_00..16_faceup` | `wall-front-dora-slot-00..16` |
+| `shell_wall_back_slot_00..16_faceup` | `wall-back-dora-slot-00..16` |
 
-The atlas key stays `(shellType, faceVariant, tileFace)`; the three face-down
-wall shells are bare and contribute no glyph entries. A dora shell's decal is
-its own perspective slot even where the projection matches a pond shell, because
-it is a different shell type in the key. `shell_wall_horizontal_faceup` is
-pixel-identical to `shell_flat_upright` in this bake (same pose, camera and
-light); it is still a separate catalogue id because its role and atlas key
-differ, and its bytes are duplicated deliberately rather than aliased.
+The atlas key stays `(shellType, faceVariant, tileFace)`; the face-down wall
+shells are bare and contribute no glyph entries. A dora shell's decal is its own
+perspective slot even where the projection matches a pond shell, because it is a
+different shell type in the key. `shell_wall_horizontal_faceup` is pixel-
+identical to `shell_flat_upright` in this bake (same pose, camera and light); it
+is still a separate catalogue id because its role and atlas key differ, and its
+bytes are duplicated deliberately rather than aliased.
+
+**The per-slot dora cost.** The 34 slot dora shells are 34 further atlas keys,
+so Phase 2 would composite 34 × 37 faces = **1,258** extra sprites in addition
+to the hand/pond/sideway dora variants. That is the price of giving the dora
+blank the same per-slot perspective as the wall, and it must be measured against
+the committed-asset budget before the atlas is built. If the packed atlas cannot
+hold it, the dora blank is the place to trade slots (for example, bake only the
+dead-wall slots the layout actually uses), not the wall body.
 
 ### 10.6 The diffuse contact shadow
 
@@ -596,22 +627,123 @@ coordinates are unchanged.
 
 ### 10.7 Validation and the open calibration
 
-`bash tools/render/bake-shells.sh --bake` renders the nine shells, writes both
-scales and `shells.json`, and runs **485 checks**: catalogue, felt, both texture
-scales, the 1 px AA ledge, the diffuse shadow/AO contract, the faceQuad and
-`gridStepPx`, the 2-tile `stackStepPx` (within 1.5 px of the projected
-thickness on the orthographic shells, 2.5 px on the perspective ones, whose
-thickness drifts sideways), the perspective trapezoid (long edges horizontal and
-the near edge longer), ivory/blue face sides, the cool near thickness, the
-decoded-RGBA hashes and the budgets. `--bake --verify-determinism` re-renders every shell and
-compares decoded RGBA.
+`bash tools/render/bake-shells.sh --bake --verify-determinism` renders the 77
+shells, writes both scales and `shells.json`, regenerates the review sheets and
+runs **4,316 checks**: catalogue and the 68-slot fan, felt, both texture scales,
+the 1 px AA ledge, the diffuse shadow/AO contract, the faceQuad and
+`gridStepPx`, the 2-tile `stackStepPx` (within 1.5 px of the projected thickness
+on the orthographic shells, 2.5 px on the perspective ones), the perspective
+trapezoid (one table-parallel edge pair, near edge longer, depth edges
+converging), the slot metadata (`wallSlot`, camera offset, distance, face
+rotation), the review-sheet pixel budgets, ivory/blue face sides, the decoded
+RGBA hashes and the budgets. `--verify-determinism` re-renders every shell and
+compares decoded RGBA; all 77 were identical.
 
-`bash tools/render/bake-shells.sh --audition` renders the **side-wall
-perspective calibration** — camera offsets 1, 3 and 4 units inside the wall per
-side, composed as 2-high stacks with the committed 2-unit offset as the REF —
-and validates it with **790 checks** in total (489 committed + 301 candidate and
-sheet). That is the one remaining visual pick: see the two
-`build/review/shell-candidates-shell_wall_side_*.png` sheets.
+`bash tools/render/bake-shells.sh --audition --verify-determinism` renders the
+**front/back wall fan-strength calibration** — the outer slot at three eye
+distances per wall (front 24 / 32 / 56, back 36 / 46 / 72), with the committed
+physical distance as the REF — and validates it with **4,642 checks** in total.
+The sheets are
+`build/review/shell-candidates-shell_wall_front_slot_16.png` and
+`..._back_slot_16.png`.
 
-Nothing downstream starts here: no atlas, layout engine, board renderer or app
-view, and the felt raster is untouched.
+The open visual pick is the **fan strength**, not a tile rotation: the
+committed fan is the physical eye distance (front 8.37° / back 6.25° at the outer
+slot). The deferred items are the contact-shadow strength, the hand face and the
+stack read; none is reopened here. Nothing downstream starts: no atlas, layout
+engine, board renderer or app view, and the felt raster is untouched.
+
+### 10.8 The front/back wall slot fan
+
+The front (bottom, human-side) and back (top) walls are **not one repeated
+shell**. The tile straight in front of the human is seen end-on; the tiles
+further from the centre are seen from the human's eye, so the far-right tile
+shows its inner (left) side and the far-left tile shows its inner (right) side.
+The user's example: the furthest-right front-wall tile would show more of its
+left side if the other tiles were removed. The fan is therefore baked per slot,
+and the dora-indicator blank gets the same per-slot treatment.
+
+**The model.** A wall is 17 stacks (`count` = 17, `centreIndex` = 8) spaced by
+one tile width (`stepUnits` = 0.75) along the table edge. The camera is the
+human's eye at the centre line:
+
+```text
+offsetUnits        = (index - 8) * 0.75
+lateralOffsetUnits = -offsetUnits
+angleDeg           = atan(|offsetUnits| / wallDistanceUnits)
+```
+
+The camera is the same off-axis perspective as the side walls: elevation 45, no
+yaw, no roll, looking along the wall's inward normal. It is translated to the
+human's x for the slot and re-centred with the solved lens shift. The tile is
+never rotated: `rotX 180` (face down) or `rotX 0` (face up), `rotZ 0`. The front
+distance is **40.8 units** and the back distance **54.8 units**, taken from the
+physical table plan (eye at y −47.8, wall centres at y ∓7.0 on the 28 mm tile
+scale). The nearer wall therefore has the stronger fan.
+
+| Slot | Offset (units) | Front angle | Back angle |
+| :--- | :--- | :--- | :--- |
+| 08 (centre) | 0 | 0.00° | 0.00° |
+| 07 / 09 | ∓0.75 | 1.05° | 0.78° |
+| 06 / 10 | ∓1.50 | 2.11° | 1.57° |
+| 05 / 11 | ∓2.25 | 3.16° | 2.35° |
+| 04 / 12 | ∓3.00 | 4.21° | 3.13° |
+| 03 / 13 | ∓3.75 | 5.25° | 3.92° |
+| 02 / 14 | ∓4.50 | 6.29° | 4.69° |
+| 01 / 15 | ∓5.25 | 7.33° | 5.47° |
+| 00 / 16 | ∓6.00 | 8.37° | 6.25° |
+
+**Measured.** The centre slot is straight on (front 73 × 102 body, back
+72 × 102); the outer slot adds the visible inner side (front **81 × 102**,
+back **78 × 102**). The front outer texture is 99 × 120 @1x and the back 96 ×
+120 @1x. The projected face is a trapezoid: the top/bottom edge pair stays
+horizontal, the near edge is longer (front outer 59.8 vs 59.2 px, back 59.7 vs
+59.2 px — a 0.49 px keystone at the far wall), and the depth edges converge.
+That is why the perspective check accepts a 0.25 px near-edge margin, not the
+0.5 px used when this check only covered the side walls.
+
+**The side face is occluded in a packed run.** The row advances by the physical
+width axis (`gridStepPx.x` = 69.72 front / 69.64 back), not by `advanceWidth`,
+so the outer sprites overlap their inner neighbour by up to 11 px. The visible
+side face tucks under that neighbour, exactly as it would with real tiles. It
+appears when the stack is exposed at the end of a drawn-down wall or when the
+neighbour is removed (the user's example). `build/review/wall-fan-1x.png` is the
+exploded row that shows every slot's side; `wall-stack-1x.png` is the packed,
+realistic read.
+
+**The stack drift.** The off-axis camera makes the projected thickness drift
+toward the outside of the table: `stackStepPx` is `(±4.06, −39.02)` at the front
+outer slot and `(±3.01, −38.9)` at the back outer slot, zero at the centre. The
+layout draws the bottom tier first, then the top tier at that slot's own
+`stackStepPx`, so the top tile is correctly staggered. The dora indicator is the
+face-up shell at the same slot.
+
+**Face-up dora.** `shell_wall_front_slot_<nn>_faceup` uses the same slot camera
+and `faceRotationDeg` 0; `shell_wall_back_slot_<nn>_faceup` uses 180 so the
+glyph reads for the far player, while the body is still seen from the human's
+side. The four new dora families are 17 slots × 2 walls = **34 face-up shells**.
+Each is a separate atlas key (a dora blank's decal is its own perspective slot),
+so Phase 2 composites 34 × 37 faces = **1,258** dora sprites in addition to the
+hand/pond/sideway variants; that is the per-slot dora cost and must be measured
+against the atlas budget before the atlas is built.
+
+**Ids.** `shell_wall_front_slot_00` … `shell_wall_front_slot_16` and
+`shell_wall_back_slot_00` … `_16`, each with a `_faceup` counterpart. The id
+names the slot, not the angle, so a later angle nudge keeps the id stable. The
+spec stores a compact `wallSlots` block (count, centre, step, distances, one
+entry per wall); the baker and checker expand it to the 68 ids, so the catalogue
+cannot drift. Each manifest record carries `wallSlot` with `wall`, `index`,
+`offsetUnits`, `lateralOffsetUnits`, `distanceUnits`, `angleDeg` and `faceUp`.
+
+**Budgets.** The 68 slot shells take the committed textures to **2,871,676 B**
+and `shells.json` to **268,242 B**. The self-imposed Phase 1 budgets were raised
+to **4,194,304 B** (textures) and **524,288 B** (manifest) for the fan; the
+standing AGENTS limits (total assets ≤ 8 MiB, initial hand + board load < 4 MiB)
+still hold, because a board loads only the slots it draws. The 17 front + 17
+back + 4 side + hand/pond shells are ~1.5 MB at @1x+@2x, plus the felt.
+
+**Open calibration.** The fan strength: the audition moves the eye to 24/32/56
+(front) and 36/46/72 (back) units while keeping the outer lateral offset, so the
+amount of side reveal at the wall end can be picked without touching any tile
+rotation. The centre slot stays straight on in every candidate. The physical
+distances are the committed default.
