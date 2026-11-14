@@ -1,4 +1,4 @@
-# Replay strategy and offline miner: sources, scenario design, and implementation plan
+# Replay strategy and offline miner (AI self-play only): sources, scenario design, and implementation plan
 
 Status: research / design. No replay parser, miner, pack loader, or frontend
 code was written in this pass. This is the **merged authoritative version** of
@@ -6,6 +6,35 @@ the replay analysis: it answers the six questions in task 261114-0906, folds in
 the related capture `261112-1826` ("Real riichi game database as a scenario
 source"), and incorporates the separate autonomous-miner agent specification
 reviewed on 2026-11-14.
+
+> ## Decision (2026-11-14): AI self-play is the only replay source
+>
+> **We will not acquire, ingest, redistribute, or ship any third-party replay
+> corpus — Tenhou, Mahjong Soul, Riichi City, Hime Mahjong, M-League, or any
+> other human game-record service — and we will not ship scenarios derived from
+> one.** This is a hard product decision, not a preference or a temporary
+> default. It applies to raw logs, converted mjai/tenhou6 logs, mined
+> `GameState` snapshots, labels, and evaluation data. No exception is planned
+> for “research only”, “just a small sample”, or “we will anonymise it”.
+>
+> **The replay pipeline will be fed exclusively by AI self-play that we generate
+> offline**, using Mortal (AGPL-3.0) and, where useful, Akochan as a second
+> policy under its non-commercial output terms. The resulting games are ours to
+> curate and publish as scenario packs. This also gives us direct control over
+> the skill level, style and error distribution of the play: strong networks for
+> correct lines, weaker/human-like networks for realistic mistakes, and fixed
+> seeds for reproducibility.
+>
+> **Consequences, all reflected below:**
+>
+> - no Tenhou/Mahjong Soul permission track, no scraping, no community dataset
+>   ingestion, no human-game corpus;
+> - no “human expert line” scenario family and no bring-your-own-replay feature
+>   in this plan;
+> - every published pack has `source.kind: "ai_selfplay"` and a provenance row
+>   naming the model/network and seed; the publisher rejects anything else;
+> - the legal analysis in Section 2 remains as the record of *why* this is the
+>   decision, not as a menu of future options.
 
 The merge is deliberate:
 
@@ -20,35 +49,41 @@ The merge is deliberate:
   comparison and the resolution in detail.
 
 External terms and limits were checked on **2026-11-14**. Platform terms change;
-re-check them before publishing anything derived from a third-party service.
+the legal analysis below is retained to justify the exclusion, not to invite
+third-party data back into the pipeline.
 
 ---
 
 ## 0. Executive summary
 
-**Recommendation: build the replay pipeline around our own AI self-play corpus,
-not around Tenhou or Mahjong Soul logs.**
+**Decision: build the replay pipeline exclusively on AI self-play. Do not use
+Tenhou, Mahjong Soul, or any other third-party human replay corpus.**
 
-1. **Third-party real-game logs are not freely redistributable.**
-   Tenhou asserts copyright in its game records, prohibits redistribution,
-   requires an application to download Houou logs, and prohibits using them to
-   develop a product that competes with Tenhou. Mahjong Soul has no public API;
-   its terms, as read by the Kanachan maintainer with a lawyer, make it risky to
-   hand game records obtained from an account to third parties. Riichi City,
-   Hime Mahjong and M-League records are in the same position. Public Hugging
-   Face/Kaggle datasets built from those logs do not cure the problem: a
-   derivative dataset cannot grant a licence the source platform never gave.
+1. **The legal position is bad enough that we are not going to build on
+   third-party logs.** Tenhou asserts copyright in its game records, explicitly
+   prohibits redistribution, requires an application to download Houou records,
+   and forbids using them to develop a product that competes with Tenhou.
+   Mahjong Soul has no public API; its terms, as read by the Kanachan maintainer
+   with a lawyer, make it risky to hand records obtained from an account to
+   third parties. Riichi City, Hime Mahjong and M-League records are in the same
+   position. Public Hugging Face/Kaggle datasets do not cure this: a derived
+   dataset cannot grant a licence the source platform never gave, and a mined
+   `GameState` is still derived from the record. We cannot produce a clean chain
+   of title for an open-source app, so **the answer is no third-party corpus at
+   all** — not for training, not for evaluation, not for a “small sample”, not
+   anonymised, and not via a permission request that is not on the roadmap.
 
-2. **AI self-play gives us a clean corpus, strong labels, and controllable
-   mistakes.** Mortal is open source (AGPL-3.0) and its `libriichi` emulator can
-   play and dump mjai logs; the documentation claims up to 40,000 hanchans/hour
-   on a high-end desktop. We can run strong networks (4.1b/4.1c) and a weaker,
-   more human-like network (3.0) offline, keep all of it out of the shipped app,
-   and generate both correct lines and realistic blunders. Akochan is a useful
-   second opinion / diversity source under its own non-commercial output terms.
-   The app already has an MIT Rust reimplementation of Mortal v4 inference
-   (`src/ai/`), so labelling a reconstructed `GameState` does not require
-   linking AGPL code into the app.
+2. **AI self-play is the only replay source, not a fallback.** It gives us a
+   corpus we own, strong labels, and direct control over skill level and error
+   distribution. Mortal is open source (AGPL-3.0) and its `libriichi` emulator
+   can play and dump mjai logs; the documentation claims up to 40,000
+   hanchans/hour on a high-end desktop. We can run strong networks (4.1b/4.1c)
+   for correct lines and a weaker, more human-like network (3.0) for realistic
+   mistakes, keep all of it out of the shipped app, and reproduce a corpus from
+   seeds. Akochan is a useful second opinion / diversity source under its own
+   non-commercial output terms. The app already has an MIT Rust reimplementation
+   of Mortal v4 inference (`src/ai/`), so labelling a reconstructed `GameState`
+   does not require linking AGPL code into the app.
 
 3. **The deliverable is a small, curated, static scenario pack — not a huge
    replay database.** The app is a client-side trainer. Ship a manifest plus
@@ -61,7 +96,7 @@ not around Tenhou or Mahjong Soul logs.**
    interestingness signal.** Start with replay states that satisfy an existing
    lesson's constraints *and* where Mortal agrees. Then add families the book
    cannot generate well: model-vs-model blunder mining, close calls, contested
-   book/Mortal positions, real table-reading/defense states, score/placement
+   book/Mortal positions, self-play table-reading/defense states, score/placement
    states, and eventually multi-step replay drills.
 
 5. **Do not implement the miner inside the WASM build.** Replay parsing,
@@ -126,6 +161,11 @@ and can be converted to every other format we care about. Store raw logs as
 gzipped mjai JSONL, store the reconstructed `GameState` snapshots separately,
 and use `tenhou6` only as an export/view for mjai-reviewer and outside tools.
 
+The format table above is explanatory. Under the decision at the top of this
+document, **only mjai self-play logs are ingested**; Tenhou/Mahjong Soul/Riichi
+City/Hime/protobuf formats are not parsed as inputs. `tenhou6` remains an
+export format for review, not a source.
+
 ### 1.3 What the app must be able to do with a mined state
 
 The existing frontend already renders and grades a `GameState`. A replay pack
@@ -184,19 +224,20 @@ follows Tenhou's 20-minute update interval and uses the official FileIndex.
 
 **What this means for us.**
 
-- Do not ship Tenhou logs, or scenario packs derived from them, without written
-  permission. "The code is MIT" does not launder the data.
+- **We are not using Tenhou records at all.** The copyright assertion, the
+  explicit no-redistribution rule, and the competing-product restriction are
+  enough that an open-source app cannot build a clean corpus from them.
+- Do not ship Tenhou logs or scenario packs derived from them. "The code is
+  MIT" does not launder the data.
 - Do not scrape Tenhou in CI, in a browser, or from multiple workers. The
   platform explicitly cares about load and concurrency.
-- A derived `GameState` is still a reproduction of a substantial part of the
-  record. Whether a court would treat it as a copyright work is uncertain; the
-  contractual terms and Tenhou's stated policy do not depend on that answer.
-- If we ever want real Tenhou data, the clean route is a **written permission
-  request** describing a free, non-commercial trainer that does not redistribute
-  raw logs and attributes Tenhou. That is a business/legal conversation, not an
-  engineering shortcut.
-- Even with permission, keep Tenhou-derived packs in a separate, clearly marked
-  channel; never mix them into the default MIT/CC corpus.
+- A derived `GameState` is still derived from the record. Whether a court would
+  treat it as a copyright work is uncertain; the contractual terms and Tenhou's
+  stated policy do not depend on that answer.
+- We are **not** pursuing a permission request. It would block the project, may
+  be refused, and is unnecessary now that self-play is the chosen source.
+- There is no “even with permission” branch in this plan. If the product ever
+  reopens the question, it is a new decision with a new legal review.
 
 ### 2.2 Mahjong Soul
 
@@ -215,23 +256,22 @@ He does intend to share simulation data generated by matches between trained
 models, because, in his view, that data is not subject to Mahjong Soul's terms.
 
 **What this means for us.** Treat Mahjong Soul records as all rights reserved
-and not redistributable. Do not build a public corpus from them. A user-local
-"import my own log" feature is a different risk profile and is discussed in
-§5.10.
+and not redistributable. Do not build a corpus from them, public or private. A
+user-local "import my own log" feature is also not planned; see §2.6 and §5.10.
 
 ### 2.3 Riichi City, Hime Mahjong, M-League and others
 
 - **Riichi City** exposes a per-game log id in the client; the community has
   parsers that convert it to tenhou6, and mjai-reviewer accepts the id directly.
   There is no open bulk API, and the terms are a standard game-service terms of
-  service. Assume no redistribution right.
+  service. **Excluded.**
 - **Hime Mahjong** is supported by mjai-reviewer through a log id; same
-  assumption.
+  position. **Excluded.**
 - **M-League** publishes match records in Tenhou-style form. The records are
   useful for study, but they are the league's publication, not an open dataset.
-  Ask before republishing.
+  **Excluded.**
 - **Janryumon, Mahjong Fight Club, Sega NET MJ, etc.** are closed platforms.
-  Their records are not an open source.
+  **Excluded.**
 
 ### 2.4 Public "open" datasets and licence laundering
 
@@ -247,47 +287,52 @@ There are large Hugging Face/Kaggle datasets built from Tenhou or Mahjong Soul:
 
 A dataset licence only covers what the uploader actually owns: their conversion
 code, annotations and selection. It cannot override the source platform's
-copyright or terms. Treat all of these as **research-only, not shippable**,
-unless the uploader can produce a written permission chain from the platform.
+copyright or terms. **Under the decision at the top of this document, none of
+these datasets is used at all — not for training, not for evaluation, not for a
+“small sample”.** They are listed so that no future contributor reintroduces
+them by mistake.
 
-### 2.5 What "freely usable" actually leaves
+### 2.5 What is usable: our AI self-play, and nothing else
 
-| Source | Can we view it? | Can we redistribute raw logs? | Can we ship derived scenarios? | Practical verdict |
+| Source | Can we view it? | Can we redistribute raw logs? | Can we ship derived scenarios? | Decision |
 | --- | --- | --- | --- | --- |
-| Tenhou Houou logs | yes, publicly | **no** (explicitly prohibited) | only with permission; treat as no | Avoid for the default corpus |
-| Tenhou own logs | yes | no | no | Avoid |
-| Mahjong Soul records | with an account | no | no | Avoid |
-| Riichi City / Hime records | with a log id | no | no | Avoid |
-| M-League records | yes | no | no | Ask |
-| HF/Kaggle Tenhou derivatives | yes | claim is invalid | no | Research only |
-| **Our AI self-play** | we generate it | **yes** (our data) | **yes** | **Primary source** |
-| **User's own log, imported locally** | user has it | we never receive it | user-local only | Optional feature |
+| Tenhou Houou logs | yes, publicly | **no** (explicitly prohibited) | **no** | **Excluded** |
+| Tenhou own logs | yes | no | no | **Excluded** |
+| Mahjong Soul records | with an account | no | no | **Excluded** |
+| Riichi City / Hime records | with a log id | no | no | **Excluded** |
+| M-League records | yes | no | no | **Excluded** |
+| HF/Kaggle Tenhou derivatives | yes | claim is invalid | no | **Excluded** |
+| **Our AI self-play** | we generate it | **yes** (our data) | **yes** | **The only source** |
+| User's own log, imported locally | user has it | we never receive it | no | **Not planned** |
 
-The only source that is unambiguously free for an open-source app is **data we
-generate ourselves**. That is the strategic conclusion.
+The "Can we view it?" column is descriptive only; the **Decision** column is
+binding. No third-party row is an ingestion path. The only source that is
+unambiguously free for an open-source app is **data we generate ourselves**.
+That is not just the strategic preference; it is the decision. There is no
+fallback source.
 
-### 2.6 The Tenhou/Mahjong Soul "maybe" paths
+### 2.6 Why we are not pursuing permission or user-local import
 
-If real human games are important enough to pursue, there are three paths, in
-increasing order of legal effort:
+A permission request and a user-local importer are the only theoretical paths
+to human records. Both are rejected:
 
-1. **Permission request.** Ask Tenhou (and, separately, Mahjong Soul/Riichi
-   City) for permission to use a bounded corpus for a free trainer, with no raw
-   log redistribution and attribution. This is the only path that could make a
-   public human-game corpus legitimate. It may simply be refused.
-2. **User-local import.** The user supplies their own log; the app parses it in
-   the browser or a local CLI and never uploads or republishes it. This avoids
-   us becoming a distributor, but it does not make the platform's terms
-   irrelevant to the user, and the browser parser is a substantial piece of
-   work. It is a good optional feature, not the foundation.
-3. **Internal research only.** Use logs privately to study what interesting
-   states look like, then design generators/classifiers that reproduce the
-   *pattern* without copying the record. Keep no derived pack in the repo. This
-   is legally the most conservative use of third-party logs, but it still
-   requires respecting the download rules and is hard to audit.
+- **Permission is not a dependency we can schedule around.** Tenhou’s published
+  position is that records may not be used to develop a competing product, and
+  the copyright assertion is explicit. A free trainer might or might not be
+  considered competing; waiting for a written answer would block the project,
+  and a refusal would leave a half-built pipeline. We are not spending the
+  project’s legal/relationship budget on it.
+- **A user-local importer still normalises third-party records.** It avoids us
+  hosting them, but it keeps us maintaining format parsers, platform-specific
+  quirks and a feature whose output is still governed by someone else’s terms.
+  It is not part of “AI self-play only”.
+- **“Internal research only” is not a loophole.** If we used logs privately to
+  design scenarios and then shipped the output, the provenance would be false
+  and the legal analysis would not change. We are not doing it.
 
-Do not quietly do (3) and then ship the output as if it were self-play. The
-provenance field in every pack must make the source obvious.
+If the product ever revisits this, it is a new decision with a new legal review,
+not an implicit extension of this document. The implemented pipeline is
+self-play only.
 
 ### 2.7 A note on "MJLogs"
 
@@ -296,11 +341,16 @@ the Tenhou **`mjlog` XML** format (the original gzipped XML record), and the
 various **`mjlog`/mjai log collections** in the community. Both are Tenhou
 records at bottom, so the Tenhou licensing analysis applies. The modern hub
 format is **mjai JSONL**, not a new Tenhou format. Do not treat a file extension
-as a licence.
+as a licence; **none of these is an input under this decision**.
 
 ---
 
 ## 3. AI-generating our own replays (question 2)
+
+**This is the only replay source.** The pipeline below never ingests a Tenhou,
+Mahjong Soul, Riichi City, Hime, M-League or other human record, and never
+converts one. It generates games locally, keeps the raw corpus private, and
+publishes only curated scenario packs with `source.kind: "ai_selfplay"`.
 
 ### 3.1 The AI landscape
 
@@ -418,7 +468,7 @@ Do not try to serve full replays to the browser. Separate the data by purpose:
 
 | Tier | Contents | Size (planning estimate) | Where it lives | Shipped? |
 | --- | --- | --- | --- | --- |
-| **Raw corpus** | gzipped mjai JSONL per game, plus a small metadata row | ~20–60 KB/game compressed; 10k games ≈ 0.3–0.6 GB; 100k ≈ 3–6 GB | Object storage (R2/HF) or local disk; never git | no |
+| **Raw corpus** | self-play gzipped mjai JSONL per game, plus a small metadata row | ~20–60 KB/game compressed; 10k games ≈ 0.3–0.6 GB; 100k ≈ 3–6 GB | Object storage (R2/HF) or local disk; never git | no |
 | **Candidate DB** | one row per decision point, with state hash, reconstructed `GameState`, labels, scores, provenance | ~2–10 KB/decision; a 10k-game corpus has millions of decisions | DuckDB/Parquet/SQLite offline | no |
 | **Curated packs** | selected, validated, deduplicated scenarios in app format | ~5–15 KB/scenario raw; 1k ≈ 5–15 MB; 10k ≈ 50–150 MB (gzip roughly halves it) | Pages same-origin, HF, or R2 | yes, lazily |
 
@@ -434,20 +484,19 @@ Use a small relational/columnar schema offline; use JSON packs at runtime.
 
 ```text
 replay_id          TEXT PRIMARY KEY   -- sha256 of canonical raw log
-source             TEXT              -- ai_selfplay / tenhou / majsoul / ...
-source_url         TEXT NULL         -- only if redistribution is permitted
-licence            TEXT              -- e.g. CC-BY-4.0, source-data-terms
-attribution        TEXT
-format             TEXT              -- mjai / tenhou6 / mjlog / protobuf
-rule               TEXT              -- 4p-hanchan, 4p-tonpu, ...
-played_at          TEXT NULL
-model              TEXT NULL         -- for self-play
-model_sha256       TEXT NULL
-seed               TEXT NULL
-log_path           TEXT
-log_bytes          INTEGER
-validation_status  TEXT              -- ok / bad / partial
-ingested_at        TEXT
+source             TEXT NOT NULL      -- CHECK (source = 'ai_selfplay')
+licence            TEXT NOT NULL      -- CC-BY-4.0 / CC0 for our generated data
+attribution        TEXT NOT NULL      -- Mortal/Akochan model + project credit
+format             TEXT NOT NULL      -- 'mjai' for the corpus
+rule               TEXT NOT NULL      -- 4p-hanchan (the supported rule set)
+generated_at       TEXT NOT NULL
+model              TEXT NOT NULL      -- e.g. mortal-4.1b, mortal-3.0
+model_sha256       TEXT NOT NULL
+seed               TEXT NOT NULL
+log_path           TEXT NOT NULL
+log_bytes          INTEGER NOT NULL
+validation_status  TEXT NOT NULL      -- ok / bad / partial
+ingested_at        TEXT NOT NULL
 ```
 
 **`decisions`**
@@ -465,7 +514,7 @@ state_hash         TEXT              -- canonical JSON hash
 state_json         TEXT / BLOB       -- reconstructed GameState
 visible_info_hash  TEXT              -- optional: dedupe after hiding hands
 legal_actions      JSON
-played_action      JSON              -- human or agent action in the record
+played_action      JSON              -- agent action in the self-play record
 book_match         JSON NULL         -- lesson id, answer, situation label
 mortal_top         TEXT NULL
 mortal_top_prob    REAL NULL
@@ -549,12 +598,12 @@ complexity are all worse than the options above.
   carries the hash and byte count; the loader verifies before parsing.
 - **Version the schema.** `schema: "riichiprac.scenario-pack"`, `version: 1`.
   Old app versions ignore unknown packs rather than crashing.
-- **Fail closed on licence.** A pack whose `source.licence` is not on the
-  publisher's allowlist never gets published. `redistributable: false` means
-  local-only, not "hide the field".
-- **Strip identities.** Never store player names, account ids, chat or IPs.
-  For human logs (if ever permitted), hash seat identities and drop anything
-  not needed for the decision.
+- **Fail closed on source.** A pack is publishable only when
+  `source.kind == "ai_selfplay"`, the model/seed/provenance fields are complete,
+  and the data licence is on the publisher's allowlist. Any other `source.kind`
+  is a hard rejection, not a warning.
+- **Strip identities.** Self-play has no player identities to begin with; never
+  add names, account ids, chat or IPs from any other source.
 - **Retention.** Raw self-play logs are reproducible from `(seed, model,
   code)`; keep them only as long as the candidate DB needs them. Curated packs
   are small and can be kept forever.
@@ -563,8 +612,8 @@ complexity are all worse than the options above.
 
 ## 5. Scenario options with replays in hand (question 4)
 
-The point of replay mining is not "random states from real games" for its own
-sake. It is to reach states the constructive generator cannot easily build, and
+The point of replay mining is not "random states from complete games" for its
+own sake. It is to reach states the constructive generator cannot easily build, and
 to label them with an independent evaluator. The families below are ordered by
 how directly they fit the current app.
 
@@ -575,8 +624,8 @@ push/fold, ch. 8's safety chart, ch. 7's Riichi/dama rule), and Mortal's top
 action is one of the lesson's accepted answers.
 
 - **Answer source:** the book rule (`correct_action` + `equivalent_tiles`).
-- **Why it is valuable:** the table is a real, reachable position rather than a
-  constructed one, and the two independent perspectives agree.
+- **Why it is valuable:** the table is a complete, reachable self-play position
+  rather than a constructed one, and the two independent perspectives agree.
 - **Caveat:** the existing generators are constructors, not classifiers. Each
   lesson needs a `matches(state) -> Option<Match>` predicate before this family
   can run. See §6.4.
@@ -597,11 +646,11 @@ app already knows how to show both columns and call neither "wrong".
   drill without an explanation of the disagreement. The existing dual-verdict
   UI is built for this.
 
-### 5.3 Mortal-only "best action" from a real game
+### 5.3 Mortal-only "best action" from a self-play game
 
 Any decision point where the model is confident, with no book rule. This is the
 replay analogue of the existing `AI Best Action` drill, but the table came from
-a real game instead of a random construction.
+a complete self-play game instead of a random construction.
 
 - **Answer source:** Mortal top-1 (with `riichi_discard` resolved by the second
   pass, and call actions mapped through the existing legal-action resolver).
@@ -701,7 +750,7 @@ Instead of one snapshot, store a short sequence of decisions from the same hand
 
 - **Answer source:** book/Mortal per step.
 - **Why it is valuable:** teaches plan continuation, call timing and defense
-  over time; much closer to a real game than a single decision.
+  over time; much closer to a complete game than a single decision.
 - **Caveat:** this is a UI/runtime feature, not just a data feature. Ship
   single snapshots first; keep `replay_id` + `event_index` in every scenario so
   sequences can be added later without re-mining.
@@ -725,37 +774,21 @@ Do **not** transform river order, scores, turn number or dora count unless the
 lesson explicitly says those do not matter. A transformation is only valid if
 the classifier/label still passes after it; otherwise reject the variant.
 
-### 5.10 Bring-your-own replay (optional, user-local)
+### 5.10 Not in scope: third-party or human replay corpora
 
-Let a user import their own Tenhou/Mahjong Soul/Riichi City log and mine a
-scenario locally. The app never uploads it and never redistributes it.
+Bring-your-own-replay and human-expert-line scenarios are **not part of this
+plan**. They are not “phase 8”; they are excluded by the decision at the top of
+this document.
 
-- **Why it is attractive:** the user gets scenarios from their own games, which
-  is often the most motivating content; it avoids us becoming a distributor.
-- **Why it is not first:** parsing every client format in the browser is a large
-  amount of work; the user's platform terms still apply to their use; and the
-  app would need a local Mortal evaluation to label it.
-- **Design:** a native CLI first (same parser as the miner), then optionally a
-  browser import for one or two formats. Keep it out of the default pack
-  pipeline.
+- A BYO importer still normalises third-party records and keeps us maintaining
+  platform-specific parsers and terms. It is not “AI self-play only”.
+- A human-expert line requires a human corpus, which we are not acquiring. The
+  model-vs-model mistake family (Section 5.4) is the substitute: it gives us
+  realistic errors and a strong label without using anyone else’s records.
+- If the product ever revisits human data, it is a new decision with a new legal
+  review. It is not an optional flag in this pipeline.
 
-### 5.11 Human expert line (permission-gated)
-
-If we ever obtain a legitimate human corpus (see §2.6), the actual move by a
-strong player can be the answer for a "what would the expert do?" drill. This is
-the one family that needs a human source; it is deliberately listed separately.
-
-- **Answer source:** the player's actual move, with their rank/strength and the
-  model's opinion recorded. Prefer states where the human is strong (for
-  example a high Houou rank) and Mortal agrees; if they disagree, ship it as
-  "contested" rather than pretending the human is always right.
-- **Why it is valuable:** it is the only way to train against real human
-  judgement, including lines a model may not choose.
-- **Caveat:** a human move is not ground truth. A strong player can blunder; a
-  weak player can get lucky. Do not label by outcome, and do not identify the
-  player. This family only ships after the permission in §2.6 is in writing.
-
-### 5.12 Family summary
+### 5.11 Family summary
 
 | Family | Answer source | How found | Book-aligned? | Best for |
 | --- | --- | --- | --- | --- |
@@ -765,12 +798,10 @@ the one family that needs a human source; it is deliberately listed separately.
 | Mistake mining | strong Mortal | weak-vs-strong gap | sometimes | teaching moments, common errors |
 | Close call | Mortal | top-2 margin | sometimes | advanced discrimination |
 | Speed vs value | book/Mortal | 1-shanten, divergent plans | sometimes | efficiency vs hand value |
-| Table reading / defense | book/Mortal | safety chart + hidden threat | yes | messy real rivers |
+| Table reading / defense | book/Mortal | safety chart + hidden threat | yes | messy rivers |
 | Score/placement | book/Mortal | score/round context | sometimes | all-last, push/fold |
 | Multi-step | book/Mortal | sequence of snapshots | sometimes | plan continuation |
 | Transformed | same | seat/suit/wind transforms | same | anti-memorisation, volume |
-| Human expert | strong human | permissioned corpus + Mortal | sometimes | real judgement |
-| BYO replay | book/Mortal | user import | either | personal practice |
 
 ---
 
@@ -800,11 +831,11 @@ the one family that needs a human source; it is deliberately listed separately.
 ### 6.2 Pipeline
 
 ```text
-raw logs (mjai / tenhou6 / mjlog / protobuf)
+self-play mjai JSONL (generated locally; no third-party input)
         │
         ▼
-[1] ingest + normalise to mjai JSONL
-        │  (format sniff, tile mapping, licence/provenance row)
+[1] ingest + validate provenance
+        │  (source must be ai_selfplay; model/seed/rule; licence/provenance row)
         ▼
 [2] validate replay
         │  (tile conservation, scores, wall count, event order)
@@ -842,7 +873,8 @@ raw logs (mjai / tenhou6 / mjlog / protobuf)
 
 ### 6.3 Reconstructing a `GameState` from a replay
 
-This is the core new library. A replay walker keeps:
+This is the core new library. It walks self-play mjai logs only; there is no
+third-party format reader in the ingestion path. A replay walker keeps:
 
 - per seat: hand, melds, river, riichi flag and declaration index, score, wind;
 - table: round wind, hand number, honba, riichi sticks, dora indicators
@@ -870,8 +902,8 @@ At each decision point:
 5. **Compute `tiles_remaining`.** Prefer the replay's own wall count; otherwise
    `70 - live_wall_draws` (Tenhou standard), adjusted for kans. Document the
    convention and assert it against the event stream.
-6. **Validate** with `validate_reachable_state`. A real replay should always
-   pass; a failure means the reconstruction (not the game) is wrong.
+6. **Validate** with `validate_reachable_state`. A self-play replay should
+   always pass; a failure means the reconstruction (not the game) is wrong.
 
 Open questions to settle in the parser:
 
@@ -1228,9 +1260,9 @@ Why this shape:
 A native binary, not shipped:
 
 ```bash
-# Ingest and normalise a corpus of mjai/tenhou6/mjlog/protobuf logs.
+# Ingest the self-play mjai corpus (no third-party logs).
 cargo run --release --features miner --bin mine_replays -- \
-  ingest --input corpus/raw --db miner.duckdb --out corpus/mjai
+  ingest --input corpus/selfplay --db miner.duckdb --out corpus/mjai
 
 # Walk the corpus and extract candidate decision states.
 cargo run --release --features miner --bin mine_replays -- \
@@ -1256,7 +1288,7 @@ cargo run --release --features miner --bin mine_replays -- \
 
 Flags that matter:
 
-- `--source-licence-allowlist` (fail closed);
+- `--source-allowlist ai_selfplay` (fail closed; any other source is rejected);
 - `--model-sha256` and `--classifier-version` (cache/reproducibility);
 - `--max-bytes`, `--max-scenarios`, `--quota-per-book-section`;
 - `--min-margin`, `--min-book-confidence`, `--max-ambiguous`;
@@ -1282,10 +1314,10 @@ The agent specification's operational advice is worth keeping:
   model_sha256, classifier_version, status)`. Rerunning a corpus skips finished
   work and retries only failures. This is cheaper and simpler than rebuilding
   the whole candidate table.
-- **Use `rclone` only for the operator's own storage.** It is a convenient way
-  to sync a local mjai corpus from personal storage, but it does not change the
-  licence analysis in Section 2. The source allowlist still runs at ingest and
-  at publish.
+- **Use `rclone` only for the self-play corpus.** It is a convenient way to
+  move generated mjai logs between the operator's own machines; it is not an
+  ingestion path for third-party records. The source allowlist still runs at
+  ingest and at publish.
 - **Log the funnel.** Count raw events → trigger hits → reconstructed states →
   valid states → classifier matches → Mortal labels → selected → packed. A
   run that silently drops 99.9% of candidates is not a success until the
@@ -1303,7 +1335,7 @@ The miner's tests should be a mixture of unit, fixture and integration tests:
 
 | Area | Test |
 | --- | --- |
-| Format conversion | tenhou6 ↔ mjai ↔ `GameState` fixture round-trip; tile ids, red fives, calls, kans, riichi flags |
+| Format conversion | self-play mjai → `GameState` fixture round-trip; tenhou6 export fixture for mjai-reviewer; tile ids, red fives, calls, kans, riichi flags |
 | Replay walk | a synthetic 1-kyoku game reaches the expected state at every event |
 | State validity | every reconstructed snapshot passes `validate_reachable_state` |
 | Tile ledger | 136 tiles conserved (minus kans/replacements), no duplicate fifth tile |
@@ -1317,7 +1349,7 @@ The miner's tests should be a mixture of unit, fixture and integration tests:
 | Prototype mapping | the agent-spec `context`/`board_state`/`solution` fields map into `GameState`/pack fields without loss (Section 9.3) |
 | Pack semantics | every `correct_action` is legal; `accepted` contains it; state/category agree |
 | Dedupe | identical states collapse; transformed states do not collide |
-| Licence gate | `redistributable: false` refuses to pack; unknown licence refuses |
+| Source gate | any `source.kind` other than `ai_selfplay` refuses to pack; missing provenance/licence refuses |
 | Size budget | manifest + selected packs ≤ configured bytes |
 | Frontend smoke | a pack loads through the same import path and renders (vitest; no visual judgement) |
 
@@ -1345,18 +1377,20 @@ are.
 
 | Phase | Deliverable | Gate |
 | --- | --- | --- |
-| **0. Policy** | This document; data-licence/provenance schema; source allowlist | No third-party source without a written permission story |
-| **1. Parser + state** | `replay` module: mjai reader, tenhou6 reader, replay walker, `GameState` reconstruction, `validate_reachable_state` integration | 1-kyoku fixture and 100 real self-play games round-trip; all states valid |
+| **0. Policy** | This document; data-licence/provenance schema; source allowlist | Source allowlist is exactly `ai_selfplay`; any other source is rejected |
+| **1. Parser + state** | `replay` module: mjai reader for self-play logs, replay walker, `GameState` reconstruction, `validate_reachable_state` integration, tenhou6 exporter for review | 1-kyoku fixture and 100 self-play games round-trip; all states valid |
 | **2. Self-play corpus** | Separate Mortal `libriichi::arena` runner; 1k-game smoke corpus; dataset card; storage plan | 1k logs parse; 0 invalid states; licence/provenance complete |
 | **3. Book classifiers** | `matches()` for the broad lessons; generated-state tests; near-miss tests | Every classifier passes generated/near-miss tests; answers legal |
 | **4. Mortal labeler** | Native batch labeler; per-action Q values; caching; agreement filter; ensemble option; Q-unit calibration | Reproducible labels; parity with `evaluate_state`; Q units documented; no re-eval on rerun |
 | **5. Selector** | Trigger families; interestingness rubric; family quotas; dedupe; transforms; review report | A 100-scenario hand-reviewed smoke pack with no duplicates/invalids |
 | **6. Pack + publish** | Pack/manifest schema; audit; Pages/R2/HF publisher; loader smoke test | Pack loads in the app; hash/byte budgets pass; licence gate passes |
 | **7. Frontend loader** | Separate task: manifest fetch, IndexedDB cache, picker integration, ARIA parity | `vitest` + build; no visual judgement from the agent |
-| **8. Optional BYO import** | Native CLI first; browser import later | Legal review; one format at a time |
 
 Do not start Phase 5 before Phase 3/4 are stable: a selector on top of an
 unstable classifier produces plausible-looking but wrong drills.
+
+There is deliberately no BYO-import or human-corpus phase. Those are rejected
+alternatives, not deferred work; see §2.6 and §5.10.
 
 ---
 
@@ -1385,8 +1419,9 @@ A candidate is rejected unless all of these hold:
 5. **Label confidence.** Book match is exact, or Mortal top-1
    probability/Q-gap exceeds a configured (preferably percentile-based)
    threshold. A coin-flip is not a "best" answer.
-6. **Licence/provenance.** The source is on the allowlist and the pack is
-   redistributable. Unknown means no.
+6. **Source/licence/provenance.** `source.kind` is exactly `ai_selfplay`, the
+   model/seed/rule provenance is complete, and the data licence is on the
+   allowlist. Any other source, or an unknown licence, means no.
 7. **Not a duplicate.** Exact state hash and a near-duplicate fingerprint are
    new to the pack.
 8. **No spoiler.** The prompt, title, provenance and pre-answer UI do not name
@@ -1454,8 +1489,8 @@ line up exactly with book lessons. These are the strongest:
    tile is safest, which wait is plausible, which call changed the hand. The
    answer can come from the safety chart or from the hidden hand (for a read
    drill), but the scenario must say which kind it is.
-9. **Continuation / multi-step.** A short sequence from a real game teaches plan
-   continuity, call timing and defense over time. This is a product feature, not
+9. **Continuation / multi-step.** A short sequence from a complete self-play
+   game teaches plan continuity, call timing and defense over time. This is a product feature, not
    just a data filter.
 
 ### 7.4 Anti-patterns
@@ -1502,12 +1537,13 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
 
 ### 8.1 Recommended build
 
-1. **Adopt the policy:** no third-party replay corpus without written
-   permission; self-play is the default source; packs carry provenance and a
-   licence; the publisher fails closed.
-2. **Build the replay library first:** mjai/tenhou6 reader → replay walker →
-   `GameState` → `validate_reachable_state`, with fixtures and tests. This is
-   the highest-risk, highest-leverage piece.
+1. **Adopt the policy:** AI self-play is the only replay source; no third-party
+   corpus is acquired, ingested or shipped; packs carry model/seed provenance
+   and a licence; the publisher rejects any other `source.kind`.
+2. **Build the replay library first:** mjai self-play reader → replay walker →
+   `GameState` → `validate_reachable_state`, with fixtures and tests, plus a
+   tenhou6 exporter for mjai-reviewer. This is the highest-risk,
+   highest-leverage piece.
 3. **Build the self-play corpus runner separately:** Mortal `libriichi::arena`
    with 4.1b/4.1c/3.0; dump mjai logs; store them outside the app repo. If the
    AGPL link is a concern, keep it in a separate repo or invoke it as a
@@ -1522,16 +1558,16 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
    lazy-loaded manifest, and measure load size, cache behaviour, answer
    accuracy and user feedback before scaling.
 7. **Only then** add the frontend pack loader as a separate task, and consider
-   multi-step drills or BYO import.
+   multi-step drills.
 
 ### 8.2 Open questions for the product owner
 
-1. **Is AI self-play "real enough" for the app's positioning?** It gives
-   realistic tables and mistakes, but not human games. If human games are
-   essential, are we prepared to pursue written permission from Tenhou/Mahjong
-   Soul, with the possibility of refusal?
+1. **How do we make self-play varied and human-like enough?** The decision is
+   self-play only; the remaining question is the recipe (network mix,
+   temperature, weak-agent frequency, seed schedule), not the source.
 2. **What is the primary interestingness target?** Book-aligned drills,
-   mistake mining, close calls, or coverage? The pack mix and UI copy differ.
+   mistake mining, close calls, speed vs value, or coverage? The pack mix and UI
+   copy differ.
 3. **Data licence:** CC BY 4.0 for packs (attribution, simple) vs CC0 (maximum
    reuse) vs MIT (code-style, awkward for data)? The app code stays MIT; the
    data needs its own file.
@@ -1544,9 +1580,7 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
    cannot without a review tool. What is the budget?
 7. **Multi-step drills now or later?** Single snapshots reuse the current UI;
    sequences need a step engine and new grading/history behavior.
-8. **Do we want a BYO-replay import?** It is the cleanest way to use real human
-   games, but it is a separate product surface and a separate legal review.
-9. **Do we need point-denominated EV copy?** Q values are model utility. If the
+8. **Do we need point-denominated EV copy?** Q values are model utility. If the
    UI or explanations must say "a 400-point decision", we need a calibrated
    Q→point mapping and a validation set; otherwise use margins/percentiles.
 
@@ -1554,6 +1588,8 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
 
 - It does not claim that any Tenhou/Mahjong Soul-derived dataset is safe to
   ship. It says the opposite.
+- It does not leave a third-party replay door open. The decision is AI
+  self-play only; the licensing analysis is the reason, not a menu.
 - It does not claim Mortal is ground truth. It is a strong policy and one
   perspective, which is why the app already shows book and Mortal side by side.
 - It does not claim the size/performance numbers are measured. They are planning
@@ -1578,9 +1614,9 @@ At a glance:
 | Dimension | This document (before merge) | Agent specification | Merged position |
 | --- | --- | --- | --- |
 | Scope | end-to-end: sources, licensing, scenario design, hosting, miner | one autonomous miner's execution recipe | end-to-end plan with a concrete miner recipe |
-| Source/licensing | detailed; self-play recommended | not addressed; "personal storage" logs assumed | self-play default; explicit permission/allowlist gate |
+| Source/licensing | detailed; self-play recommended | not addressed; "personal storage" logs assumed | **self-play only**; any other source rejected |
 | State model | full `GameState` + app validation | thin `board_state` | full `GameState`, prototype fields as metadata |
-| Label source | book + Mortal, contested option | Mortal optimal vs played | book + Mortal + played/weak-agent/ensemble |
+| Label source | book + Mortal, contested option | Mortal optimal vs played | book + Mortal + self-play agent/weak-agent/ensemble |
 | Value units | probabilities + scalar value | per-action EV in points | raw Q values + probability; calibrated points only if needed |
 | Triggers | broad families, no hard windows | defensive/offensive triggers | concrete triggers as recall filters with quotas |
 | Output | pack + manifest schema | compact prototype JSON | pack schema with `GameState`; field mapping in 9.3 |
@@ -1607,7 +1643,7 @@ At a glance:
    `GameState`/pack schema.
 5. **Operational discipline.** Batch jobs, SQLite tracking to avoid
    reprocessing, schema validation before writing public assets, `rclone` for
-   local corpora. These are now Section 6.8.1.
+   the self-play corpus. These are now Section 6.8.1.
 
 ### 9.2 Where it needs correction
 
@@ -1619,9 +1655,9 @@ At a glance:
 | `solution.mortal_commentary` is model prose | Mortal's policy net does not produce prose. Inventing a "Mortal commentary" string would be fabricated attribution. | Use `book_rationale` for the book side; for the model side show the ranking/attribution line, or add a human-written explanation clearly marked as such. |
 | `solution.optimal_discards: ["3z", "3z"]` | A discard names one tile type; two copies of the same tile are not two answers. The app distinguishes exact tile, equivalent tiles and action family. | Use `correct_action` + `accepted`/`equivalent_tiles`; a call uses `CorrectAction::Best` with `tiles`. |
 | Fixed absolute thresholds are portable | "Razor-thin" depends on the decision family, model, round and score. A 400-point gap in one context is huge; a 250-point gap in another is obvious. Q units are not points at all. | Percentile/calibrated thresholds per family; the agent spec's numbers are hypotheses, not constants. |
-| Input is "raw MJAI/JSON logs synced from personal storage" | The source could be Tenhou, Mahjong Soul or a private corpus; the spec has no licence/provenance gate. `rclone` does not create redistribution rights. | Source allowlist at ingest and publish; self-play is the default; third-party logs need written permission. Section 2 and Section 4.5. |
+| Input is "raw MJAI/JSON logs synced from personal storage" | The source could be Tenhou, Mahjong Soul or a private corpus; the spec has no licence/provenance gate. `rclone` does not create redistribution rights. | Source allowlist at ingest and publish is exactly `ai_selfplay`; any third-party log is rejected. Section 2 and Section 4.5. |
 | Categories `riichi_push_fold` / speed-vs-value are the app's scenario IDs | The app's manifest uses `ScenarioId`/`lesson_id`, book sections and `category` enums (`riichi_decision`, `defense_decision`, ...). A new naming scheme would fork the picker and grading. | Add replay lesson IDs (for example `replay_push_fold`, `replay_speed_value`) under the existing manifest, with `book` metadata where applicable. |
-| The "human player's actual choice" is always available | Self-play logs have an agent's played action, not a human's. A human corpus needs permission. | Call the field `played` with `kind: "human"` or `"ai"`, agent/model identity, and only treat it as an expert line when the source is legitimate. Section 5.11. |
+| The "human player's actual choice" is always available | Self-play logs have an agent's played action, not a human's. Human corpora are excluded. | Call the field `played` with `kind: "ai"` and agent/model identity; there is no human-expert-line family. Section 5.10. |
 | One pass over "all legal actions" is cheap | It is one forward pass per decision, not per action, but the candidate volume is still millions; without cheap filters the run is tens of hours. | Cheap structural/book/trigger filters first; one batched forward pass per retained state; cache. Section 6.5 and 6.10. |
 
 ### 9.3 Field mapping
@@ -1658,13 +1694,15 @@ At a glance:
 - **Keep its operational rules** (batch, SQLite, atomic writes, schema checks).
 - **Replace its thin board schema with `GameState`**, and its duplicate
   `optimal_discards` with `correct_action`/`accepted`.
-- **Add the missing source/licence gate** and the book/Mortal dual-label model.
+- **Add the missing source gate:** `ai_selfplay` only, with model/seed
+  provenance, and the book/Mortal dual-label model.
 - **Do not use its fixed 400/250-point thresholds as literals**; they become
   calibration hypotheses.
 
-The result is one implementation path: self-play or permissioned logs →
-replay walker → `GameState` + triggers → book classifiers and Mortal Q/probability
-labels → calibrated selection → validated static packs → lazy-loaded frontend.
+The result is one implementation path: AI self-play logs → replay walker →
+`GameState` + triggers → book classifiers and Mortal Q/probability labels →
+calibrated selection → validated static packs → lazy-loaded frontend. There is
+no third-party or human-log branch in that path.
 
 ---
 
