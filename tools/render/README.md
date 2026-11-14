@@ -35,18 +35,30 @@ starting point for Phase 1, with **no table model**:
 
 ```bash
 bash tools/render/bake-shells.sh --bake    # bake 1x + 2x, validate, build review sheets
+bash tools/render/bake-shells.sh --audition # Phase 1b candidate matrix + sheets under build/review
 bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
+bash tools/render/bake-shells.sh --check-audition  # validate the candidate matrix; no Blender
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
 ```
 
-`--bake` is the one command that regenerates everything: it renders the six
-shells at @1x and @2x with the pinned Blender, measures each render, writes
-`frontend/public/table/shells/*.png`, `shells/2x/*.png` and
-`frontend/public/table/shells.json`, then runs the dependency-free integrity
-check and regenerates the review sheets under `tools/render/build/review/`.
-`--bake --verify-determinism` additionally renders every shell a second time and
-compares the decoded RGBA.
+`--bake` is the one command that regenerates the committed assets: it renders
+the six shells at @1x and @2x with the pinned Blender at the current base scale,
+measures each render, writes `frontend/public/table/shells/*.png`,
+`shells/2x/*.png` and `frontend/public/table/shells.json`, then runs the
+dependency-free integrity check and regenerates the review sheets under
+`tools/render/build/review/`. `--bake --verify-determinism` additionally renders
+every shell a second time and compares the decoded RGBA.
+
+`--audition` is the Phase 1b review path. It renders every candidate in
+`shell-spec.json`'s `audition` block at the new base scale into
+`build/review/candidates/{1x,2x}/`, writes the candidate manifest
+`build/review/shell-candidates.json`, writes one labelled sheet per shell
+(`build/review/shell-candidates-<shell>.png`), then validates the candidates and
+the sheets with `check-shells.mjs --audition`. It **never writes the committed
+shells or `shells.json`**. `--audition --verify-determinism` re-renders every
+candidate. `--check-audition` runs only the dependency-free validation, which is
+what makes the audition self-checking in an environment without Blender.
 
 `--check` is the CI gate (`node tools/render/scripts/check-shells.mjs`). It
 validates the specs, the felt PNG, `shells.json` and both texture scales. It
@@ -110,9 +122,10 @@ its own regeneration, not mixed with CPU output.
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
 | `bake_felt.py` | yes | deterministic stdlib PNG generator for the felt + vignette |
 | `bake-felt.sh` | yes | one-command felt regeneration |
-| `scripts/check-shells.mjs` | yes | dependency-free spec + PNG + `shells.json` integrity check (CI gate) |
+| `scripts/check-shells.mjs` | yes | dependency-free spec + PNG + `shells.json` integrity check (CI gate); `--audition` validates the candidate matrix and its labelled sheets |
 | `scripts/png.mjs` | yes | dependency-free PNG decode/encode + sprite compositor shared by the checker and the review sheets |
-| `scripts/review-shells.mjs` | yes | lays the baked shells out with the manifest's own steps into review sheets |
+| `scripts/review-shells.mjs` | yes | lays the baked shells out with the manifest's own steps into review sheets; `--audition` writes the labelled candidate sheets |
+| `scripts/label-font.mjs` | yes | dependency-free 5×7 bitmap font for the candidate sheets' printed parameters |
 | `scripts/rasterize-face.mjs` | yes | vendored face SVG → PNG glyph (resvg) |
 | `faces/` | yes | vendored public-domain symbol-only SVG + provenance (`faces/SOURCE.md`) |
 | `../../frontend/public/table/felt.png` | yes | the committed full-screen felt raster |
@@ -120,6 +133,9 @@ its own regeneration, not mixed with CPU output.
 | `../../frontend/public/table/shells/2x/` | yes | the same six shells at @2x |
 | `../../frontend/public/table/shells.json` | yes | the published shell contract |
 | `node_modules/`, `build/` | no | installed dependencies and throwaway review output |
+| `build/review/candidates/` | no | Phase 1b candidate textures at the new base (`1x/`, `2x/`) |
+| `build/review/shell-candidates.json` | no | Phase 1b candidate manifest (same record shape as `shells.json`) |
+| `build/review/shell-candidates-<shell>.png` | no | Phase 1b labelled candidate sheets |
 
 Generated assets are never hand-edited. A regeneration commits the spec/script
 change together with the regenerated felt or shells.
@@ -172,9 +188,11 @@ isotropic and low-frequency, so the non-uniform stretch does not read as a
 stretched pattern. This decision is recorded in `felt-spec.json` under
 `runtime`.
 
-## Phase 1: the six shells
+## Phase 1: the six shells (the committed checkpoint)
 
-All six shells are baked, measured and committed. `shell-spec.json` carries each
+All six shells are baked, measured and committed at the Phase 1 base. This is
+the checkpoint the checker validates; Phase 1b (below) targets the doubled base
+and is pending the user's perspective pick. `shell-spec.json` carries each
 shell's pose (Euler degrees), camera (azimuth/elevation + which local face is
 visible) and expected aspect; `bake_shells.py` renders it, measures the alpha
 silhouette, projects the `faceQuad`, and writes both texture scales.
@@ -323,6 +341,90 @@ screen-locked key is more grazing on a vertical face — that is what one light
 locked in screen space means. If the user wants the hand as bright as the pond,
 the lever is `lighting.key` (or two lighting variants), not a per-shell hack.
 
+## Phase 1b: base scale and the candidate audition (pending review)
+
+The Phase 1 review approved the felt and rejected the shells as too top-down.
+Phase 1b changes no committed asset; it re-specifies the base size and produces
+the labelled perspective candidates the user picks from.
+
+### The base scale doubles
+
+The Phase 1 `@2x` output is the new `@1x` base. `bake.targetLongAxisPx1x` is
+**104** px (was 52) and the new `@2x` is **208** px, so the board coordinate
+space doubles in both axes and every later consumer reads the new
+`shells.json`. `bake.baseScale` in `shell-spec.json` records the old value and
+the rule. Textures are real renders at the new size; nothing is upscaled.
+
+The shadow/AO margin stays the **3–4 px right/bottom and 1–2 px top/left
+contract in @1x pixels** (`padding1x` is unchanged at 2/4/4/2), so it is half
+its Phase 1 relative width. The stale committed `shells.json` is still the
+Phase 1 bake at 52 px; `--check` keeps passing for that checkpoint and prints
+the committed-vs-spec base.
+
+### What the candidates change
+
+| Shell | Phase 1 | Phase 1b candidates |
+| --- | --- | --- |
+| `shell_hand_standing` | el 12° | el 16/20/24/28° (slightly higher: a little more tile top) |
+| `shell_flat_upright` | el 80° | el 65/55/45/35° (much lower: bottom thickness visible) |
+| `shell_flat_sideways` | el 80° | el 65/55/45/35° (much more side-on: the long side shows) |
+| `shell_wall_horizontal` | el 80° | el 65/55/45/35° (same low-angle treatment) |
+| `shell_wall_side_left` | rotY −35°, el 75° | face down; A/B/C long axis down the board with the camera leaned inward (az 22/35°, el 55/40); D/E long axis across the view (rotZ 90°, el 45/30) |
+| `shell_wall_side_right` | rotY +35°, el 75° | the mirror (az −22/−35°, rotZ −90°) |
+
+The `±35°` roll is gone. For the side walls the long edge is what must read to
+the player, and the two families are the two ways to get it; the sheets show
+both. The lean is a camera azimuth, not a tile roll, so the screen-locked
+top-left key is preserved. Full rationale and the measured table are in §9 of
+the architecture doc.
+
+### Measured candidate numbers
+
+26 candidates, 4–5 per shell, all rendered at the new base and measured exactly
+like `shells.json`:
+
+| | Range across the 26 candidates |
+| --- | --- |
+| Texture @1x | 76 × 89 … 112 × 110 (the hand's 78 × 110 is 156 × 220 at @2x) |
+| Body (`advance`) | 70 × 89 … 106 × 104 |
+| Projected face long × short | 57.5 × 33.3 … 92.6 × 59.2 px |
+| Bytes | 7,385 … 11,787 B @1x, 22,248 … 33,202 B @2x |
+| Totals | 245,666 B @1x + 730,449 B @2x = **976,115 B** (review-only) |
+| Shadow/AO extents | exactly L1/T1/R3/B3 px on all 26 |
+| Shadow/AO peaks | right/bottom 0.314–0.329, top/left 0.278–0.286 |
+
+`build/review/shell-candidates.json` holds each candidate's full record:
+`textureFile`, both scales, `anchor`, `advance`, `padding`, `faceQuad`,
+`gridStepPx`, `camera`, `pose`, `measured` and decoded-RGBA `sha256`.
+
+Two measured consequences: the standing hand's face dims as the camera rises
+(the vertical face is more grazing under the single screen key — luma 153 / 137 /
+120 / 99 at 16/20/24/28° versus 169 at 12°, while the blue top sliver stays), and
+the face plate foreshortens, so the Phase 2 glyph size follows the picked
+elevation.
+
+### Validating the audition
+
+```bash
+bash tools/render/bake-shells.sh --audition                    # render + sheets + check
+bash tools/render/bake-shells.sh --audition --verify-determinism  # + re-render every candidate
+bash tools/render/bake-shells.sh --check-audition              # no Blender; validates existing output
+```
+
+`check-shells.mjs --audition` keeps the committed-checkpoint checks and adds
+1,121 candidate checks (1,448 total): the new base long axis on every candidate
+(104 px ±4 for the alpha crop, and ≥ 1.8× the committed 54 px), both texture
+scales, the padding/anchor/advance identity, the 1 px AA ledge, the shadow/AO
+extents and peaks, `faceQuad` convexity/parallelogram/`gridStepPx` consistency, a
+plausibility aspect range for oblique elevations, face-up ivory vs face-down blue,
+the @1x/@2x agreement, the decoded-RGBA hashes, and — on the sheets — the felt
+base background, the title/label pixel counts (the bitmap font is exact, so this
+is deterministic), the tiles composited over the felt, and the row count.
+
+The candidate output is throwaway (`build/` is gitignored). The committed felt is
+untouched, and there is no atlas, layout engine, renderer or app view in this
+phase.
+
 ## The Blender shell rules
 
 The shell scene follows the architecture, not the retired pipeline:
@@ -360,6 +462,7 @@ The shell scene follows the architecture, not the retired pipeline:
 `PASS`/`FAIL` lines and numeric `INFO` lines. On the committed bake:
 
 ```text
+INFO committed bake target long axis 52 px @1x (spec 104 px)
 INFO felt luma centre 68.79, corners 24.29, ratio 2.831, stdDev 0.49
 INFO felt edges L/R 35.61/35.52 T/B 41.66/40.44
 PASS felt is 559465 B (budget 1572864 B)
@@ -374,8 +477,12 @@ PASS shell_wall_horizontal face is blue resin (0,50,130)
 INFO shell_flat_upright margin mass L14.76 T10.58 R22.33 B17.22
 PASS shell_flat_upright decoded-RGBA sha256 matches the committed PNGs
 INFO shell textures total 76360 B across 6 shells and 2 scales
-OK 323 checks passed
+OK 327 checks passed
 ```
+
+`--audition` additionally validates the candidate matrix and its sheets; on the
+Phase 1b output it reports `OK 1448 checks passed` (1,121 of them candidate and
+sheet checks). The committed-only run stays at 327.
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
 but the mottled noise is not mirrored. The check is for a broken or off-centre
@@ -413,6 +520,26 @@ before the top tier). The script prints the seam numbers too: on the committed
 bake the neighbour's face edge darkens from luma 204.3 to 159.1 where the
 previous tile's shadow lands on it, and the isolated tile's shadow reads 57.8
 against bare felt 66.8.
+
+To review the Phase 1b perspective candidates, run `--audition` (above) and open
+one sheet per shell:
+
+```bash
+xdg-open tools/render/build/review/shell-candidates-shell_hand_standing.png
+xdg-open tools/render/build/review/shell-candidates-shell_flat_upright.png
+xdg-open tools/render/build/review/shell-candidates-shell_flat_sideways.png
+xdg-open tools/render/build/review/shell-candidates-shell_wall_horizontal.png
+xdg-open tools/render/build/review/shell-candidates-shell_wall_side_left.png
+xdg-open tools/render/build/review/shell-candidates-shell_wall_side_right.png
+```
+
+Each sheet has a header with the shell id, the new base size and the question it
+asks, then one row (or, for the side walls, one column) per candidate with the
+candidate's printed camera, texture, body, projected face and byte numbers. A
+`REF PHASE 1` row/column shows the committed shell at its own half-size steps so
+the angle and size delta are visible side by side. Every tile is composed at that
+candidate's own `gridStepPx`; pond sheets show two rows, side-wall sheets show a
+four-tile column. The sheet is a review artefact: it is not the layout engine.
 
 State the numbers the check already verified, then ask the user the questions
 only they can answer: are the tile proportions and bevel right; does the resin

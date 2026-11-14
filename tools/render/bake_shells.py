@@ -34,11 +34,19 @@ Usage (normally through ``bake-shells.sh``, which resolves the pinned Blender):
         --python tools/render/bake_shells.py -- --bake
     blender --background --python-exit-code 1 \\
         --python tools/render/bake_shells.py -- --bake --verify-determinism
+    blender --background --python-exit-code 1 \\
+        --python tools/render/bake_shells.py -- --audition
+    blender --background --python-exit-code 1 \\
+        --python tools/render/bake_shells.py -- --audition --verify-determinism
 
 A dry run builds the tile, material and lights, prints the shell plan, and
 writes nothing. ``--bake`` renders the six shells, writes both scales and the
-manifest. ``--verify-determinism`` renders every shell twice and compares the
-decoded RGBA, which is the re-render determinism contract.
+manifest. ``--audition`` renders the Phase 1b candidate matrix described by the
+spec's ``audition`` block at the current base scale into
+``tools/render/build/review/`` (textures plus ``shell-candidates.json``) and
+never touches the committed shells or ``shells.json``. ``--verify-determinism``
+renders everything twice and compares the decoded RGBA, which is the re-render
+determinism contract.
 
 The dependency-free check that needs no Blender is:
 
@@ -1144,6 +1152,283 @@ def shell_plan(spec: dict) -> None:
     log(f"manifest:   {outputs['manifest']}")
 
 
+def build_rig_metadata(spec: dict, rigs: dict) -> dict:
+    """The audit trail shared by shells.json and the candidate manifest."""
+    bake = spec["bake"]
+    return {
+        "blender": bpy.app.version_string,
+        "engine": spec["scene"]["engine"],
+        "device": spec["scene"]["device"],
+        "samples": spec["scene"]["samples"],
+        "adaptiveThreshold": spec["scene"]["adaptiveThreshold"],
+        "denoiser": spec["scene"]["denoiser"],
+        "seed": 0,
+        "colorManagement": spec["scene"]["colorManagement"],
+        "key": {
+            "type": spec["lighting"]["key"]["type"],
+            "referenceAzimuthDeg": spec["lighting"]["key"]["azimuthDeg"],
+            "referenceElevationDeg": spec["lighting"]["key"]["elevationDeg"],
+            "screenDirection": [round(v, 4) for v in screen_space_key(spec)],
+            "distance": spec["lighting"]["key"]["distance"],
+            "size": spec["lighting"]["key"]["size"],
+            "sizeY": spec["lighting"]["key"]["sizeY"],
+            "energyW": spec["lighting"]["key"]["energyW"],
+            "hex": spec["lighting"]["key"]["hex"],
+        },
+        "world": spec["lighting"]["world"],
+        "targetLongAxisPx1x": bake["targetLongAxisPx1x"],
+        "baseScale": {
+            "previousTargetLongAxisPx1x": bake["baseScale"]["previousTargetLongAxisPx1x"],
+            "note": bake["baseScale"]["note"],
+        },
+        "shadow": {
+            "peakAlpha": bake["shadow"]["peakAlpha"],
+            "colorHex": bake["shadow"]["colorHex"],
+            "contactFloor": bake["shadow"]["contactFloor"],
+            "source": "Cycles shadow-catcher alpha, clamped to padding.right/bottom",
+        },
+        "ambientOcclusion": {
+            "peakAlpha": bake["ambientOcclusion"]["peakAlpha"],
+            "colorHex": bake["ambientOcclusion"]["colorHex"],
+            "source": "analytic fringe bounded by padding.top/left",
+        },
+        "determinism": (
+            "CPU Cycles, fixed seed 0, fixed adaptive threshold and OIDN. Each texture records "
+            "the sha256 of its decoded RGBA; re-baking the same spec must reproduce it "
+            "(bake_shells.py --bake --verify-determinism renders each shell twice; "
+            "--audition --verify-determinism does the same for every candidate)."
+        ),
+        "shellRigs": rigs,
+    }
+
+
+def validate_audition(spec: dict) -> None:
+    """Validate the Phase 1b candidate matrix before a single pixel is rendered."""
+    audition = spec.get("audition")
+    if not isinstance(audition, dict):
+        die("shell-spec.json has no audition block")
+    for key in ("outputDir", "sheetDir", "manifest", "shells"):
+        if key not in audition:
+            die(f"audition is missing {key!r}")
+    ids = list(audition["shells"])
+    missing = [shell_id for shell_id in CANONICAL_SHELL_IDS if shell_id not in ids]
+    extra = [shell_id for shell_id in ids if shell_id not in CANONICAL_SHELL_IDS]
+    if missing or extra:
+        die(f"audition must cover the six canonical shells; missing {missing}, unexpected {extra}")
+    for base_id, entry in audition["shells"].items():
+        candidates = entry.get("candidates")
+        if not isinstance(candidates, list) or not (3 <= len(candidates) <= 5):
+            die(f"audition {base_id} needs 3-5 candidates, got {len(candidates) if isinstance(candidates, list) else 'none'}")
+        seen = set()
+        for candidate in candidates:
+            for key in ("candidateId", "label", "pose", "camera"):
+                if key not in candidate:
+                    die(f"audition {base_id} candidate {candidate.get('candidateId', '?')} is missing {key!r}")
+            candidate_id = candidate["candidateId"]
+            if candidate_id in seen:
+                die(f"audition {base_id} has duplicate candidate id {candidate_id!r}")
+            seen.add(candidate_id)
+            for key in ("azimuthDeg", "elevationDeg", "faceLocalZ"):
+                if key not in candidate["camera"]:
+                    die(f"audition {base_id}/{candidate_id} camera is missing {key!r}")
+            if candidate["camera"]["faceLocalZ"] not in ("top", "bottom"):
+                die(f"audition {base_id}/{candidate_id} camera.faceLocalZ must be 'top' or 'bottom'")
+            if not (-90.0 <= float(candidate["camera"]["elevationDeg"]) <= 90.0):
+                die(f"audition {base_id}/{candidate_id} elevation must be -90..90")
+            for key in ("rotateXDeg", "rotateYDeg", "rotateZDeg"):
+                candidate["pose"].setdefault(key, 0.0)
+
+
+def audition_shell(base: dict, candidate: dict) -> dict:
+    """A throwaway shell record for one candidate; the catalogue is never mutated."""
+    return {
+        "id": f"{base['id']}--{candidate['candidateId']}",
+        "sourceShellId": base["id"],
+        "projection": base["projection"],
+        "faceRotationDeg": candidate.get("faceRotationDeg", base["faceRotationDeg"]),
+        "role": f"Phase 1b audition candidate {candidate['candidateId']} for {base['id']}",
+        "pose": dict(candidate["pose"]),
+        "camera": dict(candidate["camera"]),
+        "expectProjection": candidate.get("expectProjection", base.get("expectProjection")),
+    }
+
+
+def face_quad_size(quad: list[list[float]]) -> dict:
+    """The projected face plate's pixel width/height: the foreshortening read."""
+    width = math.hypot(quad[1][0] - quad[0][0], quad[1][1] - quad[0][1])
+    height = math.hypot(quad[2][0] - quad[1][0], quad[2][1] - quad[1][1])
+    return {
+        "width": round(width, 2),
+        "height": round(height, 2),
+        "aspect": round(width / height, 3) if height else 0.0,
+    }
+
+
+def bake_audition(
+    spec: dict,
+    args: argparse.Namespace,
+    scene: bpy.types.Scene,
+    tile: bpy.types.Object,
+    lights: list[bpy.types.Object],
+    catcher: bpy.types.Object,
+    outputs: dict,
+) -> int:
+    """Render every candidate at the new base scale and write the review manifest."""
+    audition = spec["audition"]
+    review_dir = (RENDER_DIR / audition["sheetDir"]).resolve()
+    candidate_dir = (RENDER_DIR / audition["outputDir"]).resolve()
+    manifest_path = (RENDER_DIR / audition["manifest"]).resolve()
+    texture_dir_1x = candidate_dir / "1x"
+    texture_dir_2x = candidate_dir / "2x"
+    temp_dir = outputs["intermediateDir"] / "audition"
+    for directory in (review_dir, texture_dir_1x, texture_dir_2x, temp_dir):
+        directory.mkdir(parents=True, exist_ok=True)
+
+    bake = spec["bake"]
+    long_axis = bake["targetLongAxisPx1x"]
+    previous = bake["baseScale"]["previousTargetLongAxisPx1x"]
+    log(
+        f"audition: base long axis {long_axis} px @1x / "
+        f"{long_axis * bake['pixelRatio']} px @2x (Phase 1 was {previous} px @1x)"
+    )
+
+    catalogue = {shell["id"]: shell for shell in spec["shells"]}
+    base_ids = [shell_id for shell_id in CANONICAL_SHELL_IDS if not args.only or shell_id in args.only]
+    if args.only:
+        log(f"development audition: only {base_ids} (candidate manifest will be partial)")
+    recorded: dict[str, list[dict]] = {}
+    rigs: dict[str, dict] = {}
+    total_bytes = 0
+
+    for base_id in base_ids:
+        base_shell = catalogue[base_id]
+        entry = audition["shells"][base_id]
+        log(f"{base_id}: {len(entry['candidates'])} candidates")
+        records = []
+        for candidate in entry["candidates"]:
+            shell = audition_shell(base_shell, candidate)
+            pose_tile(tile, shell)
+            camera, framing = build_shell_camera(scene, tile, shell, spec)
+            aim_key(lights[0], camera, world_bbox_center(tile), spec)
+            record = bake_shell(
+                scene,
+                tile,
+                shell,
+                spec,
+                camera,
+                framing,
+                catcher,
+                texture_dir_1x,
+                texture_dir_2x,
+                temp_dir,
+            )
+            expected_aspect(shell, record["advanceWidth"], record["advanceHeight"])
+            quad_size = face_quad_size(record["faceQuad"])
+            record["textureFile"] = f"candidates/1x/{shell['id']}.png"
+            record["textureFile2x"] = f"candidates/2x/{shell['id']}.png"
+            record["candidate"] = {
+                "candidateId": candidate["candidateId"],
+                "label": candidate["label"],
+                "note": candidate.get("note"),
+                "sourceShellId": base_id,
+            }
+            record["measured"]["faceQuadPx"] = quad_size
+            total_bytes += record["measured"]["bytes1x"] + record["measured"]["bytes2x"]
+            log(
+                f"  {candidate['candidateId']} {candidate['label']}: "
+                f"tex {record['texWidth']}x{record['texHeight']}, "
+                f"advance {record['advanceWidth']}x{record['advanceHeight']}, "
+                f"face {quad_size['width']:.1f}x{quad_size['height']:.1f} "
+                f"(aspect {quad_size['aspect']:.2f}), "
+                f"{record['measured']['bytes1x']}+{record['measured']['bytes2x']} B"
+            )
+            records.append(record)
+            rigs[shell["id"]] = framing
+            bpy.data.objects.remove(camera, do_unlink=True)
+        recorded[base_id] = records
+
+    if args.verify_determinism:
+        log("determinism: rendering every candidate a second time")
+        repeat_1x = temp_dir / "repeat-1x"
+        repeat_2x = temp_dir / "repeat-2x"
+        repeat_1x.mkdir(parents=True, exist_ok=True)
+        repeat_2x.mkdir(parents=True, exist_ok=True)
+        for base_id in base_ids:
+            base_shell = catalogue[base_id]
+            for candidate, record in zip(audition["shells"][base_id]["candidates"], recorded[base_id]):
+                shell = audition_shell(base_shell, candidate)
+                pose_tile(tile, shell)
+                camera, framing = build_shell_camera(scene, tile, shell, spec)
+                aim_key(lights[0], camera, world_bbox_center(tile), spec)
+                repeat = bake_shell(
+                    scene,
+                    tile,
+                    shell,
+                    spec,
+                    camera,
+                    framing,
+                    catcher,
+                    repeat_1x,
+                    repeat_2x,
+                    temp_dir,
+                )
+                same = repeat["sha256"] == record["sha256"]
+                log(
+                    f"determinism {shell['id']}: "
+                    f"{'identical decoded RGBA' if same else 'DIFFERS'} "
+                    f"({record['sha256']['decodedRgba1x'][:16]} vs {repeat['sha256']['decodedRgba1x'][:16]})"
+                )
+                if not same:
+                    die(f"{shell['id']} is not deterministic across renders")
+                bpy.data.objects.remove(camera, do_unlink=True)
+
+    manifest = {
+        "version": 1,
+        "generatedBy": "tools/render/bake_shells.py --audition",
+        "partial": bool(args.only),
+        "status": audition["status"],
+        "deliverable": audition["deliverable"],
+        "coordinateSpace": (
+            "Exactly the shells.json contract: anchorX/anchorY, advanceWidth/advanceHeight, "
+            "padding and faceQuad are CSS px of the @1x texture with a top-left origin; the @2x "
+            "texture is pixelRatio times that. These candidates are proposals, not the committed "
+            "catalogue."
+        ),
+        "base": {
+            "targetLongAxisPx1x": long_axis,
+            "targetLongAxisPx2x": long_axis * int(bake["pixelRatio"]),
+            "previousTargetLongAxisPx1x": previous,
+            "pixelRatio": int(bake["pixelRatio"]),
+        },
+        "padding1x": dict(bake["padding1x"]),
+        "pixelRatio": int(bake["pixelRatio"]),
+        "rig": build_rig_metadata(spec, rigs),
+        "shells": {
+            base_id: {
+                "question": audition["shells"][base_id].get("question"),
+                "reference": {
+                    "source": "frontend/public/table/shells.json",
+                    "shellId": base_id,
+                    "textureFile": f"shells/{base_id}.png",
+                    "pose": dict(catalogue[base_id]["pose"]),
+                    "camera": {
+                        "azimuthDeg": catalogue[base_id]["camera"]["azimuthDeg"],
+                        "elevationDeg": catalogue[base_id]["camera"]["elevationDeg"],
+                    },
+                },
+                "candidates": records,
+            }
+            for base_id, records in recorded.items()
+        },
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    log(
+        f"wrote {sum(len(r) for r in recorded.values())} candidate shells, "
+        f"{total_bytes} B of textures, to {candidate_dir} and {manifest_path}"
+    )
+    return 0
+
+
 def resolve_outputs(spec_path: Path, spec: dict) -> dict:
     root = spec_path.resolve().parent
     return {
@@ -1163,6 +1448,11 @@ def main(argv: list[str]) -> int:
         help="render the six shells at 1x and 2x, measure them and write shells.json",
     )
     parser.add_argument(
+        "--audition",
+        action="store_true",
+        help="render the Phase 1b candidate matrix under build/review/; never touches the committed shells",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="build the tile/material/lights, print the plan, write nothing",
@@ -1170,7 +1460,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--verify-determinism",
         action="store_true",
-        help="with --bake, render every shell a second time and compare decoded RGBA",
+        help="with --bake/--audition, render everything a second time and compare decoded RGBA",
     )
     parser.add_argument(
         "--only",
@@ -1184,6 +1474,8 @@ def main(argv: list[str]) -> int:
     spec = load_spec(args.spec)
     check_blender_version(spec)
     validate_shell_catalogue(spec)
+    if args.audition:
+        validate_audition(spec)
     resolve_tile_dimensions(spec)
 
     scene = reset_scene()
@@ -1201,9 +1493,11 @@ def main(argv: list[str]) -> int:
     )
     shell_plan(spec)
 
-    if args.dry_run or not args.bake:
+    if args.dry_run or not (args.bake or args.audition):
         log("dry run: no shells written")
         return 0
+    if args.bake and args.audition:
+        die("--bake and --audition are separate runs; pick one")
     if not spec.get("bakeImplemented"):
         die(
             "bakeImplemented is false: implement build_shell_camera/bake_shell and "
@@ -1213,6 +1507,9 @@ def main(argv: list[str]) -> int:
     outputs["shellDir"].mkdir(parents=True, exist_ok=True)
     outputs["shell2xDir"].mkdir(parents=True, exist_ok=True)
     outputs["intermediateDir"].mkdir(parents=True, exist_ok=True)
+
+    if args.audition:
+        return bake_audition(spec, args, scene, tile, lights, catcher, outputs)
 
     records = {}
     rigs = {}
@@ -1284,46 +1581,7 @@ def main(argv: list[str]) -> int:
             "pixelRatio times the resolution; divide its pixels by pixelRatio to get the same "
             "coordinates."
         ),
-        "rig": {
-            "blender": bpy.app.version_string,
-            "engine": spec["scene"]["engine"],
-            "device": spec["scene"]["device"],
-            "samples": spec["scene"]["samples"],
-            "adaptiveThreshold": spec["scene"]["adaptiveThreshold"],
-            "denoiser": spec["scene"]["denoiser"],
-            "seed": 0,
-            "colorManagement": spec["scene"]["colorManagement"],
-            "key": {
-                "type": spec["lighting"]["key"]["type"],
-                "referenceAzimuthDeg": spec["lighting"]["key"]["azimuthDeg"],
-                "referenceElevationDeg": spec["lighting"]["key"]["elevationDeg"],
-                "screenDirection": [round(v, 4) for v in screen_space_key(spec)],
-                "distance": spec["lighting"]["key"]["distance"],
-                "size": spec["lighting"]["key"]["size"],
-                "sizeY": spec["lighting"]["key"]["sizeY"],
-                "energyW": spec["lighting"]["key"]["energyW"],
-                "hex": spec["lighting"]["key"]["hex"],
-            },
-            "world": spec["lighting"]["world"],
-            "targetLongAxisPx1x": bake["targetLongAxisPx1x"],
-            "shadow": {
-                "peakAlpha": bake["shadow"]["peakAlpha"],
-                "colorHex": bake["shadow"]["colorHex"],
-                "contactFloor": bake["shadow"]["contactFloor"],
-                "source": "Cycles shadow-catcher alpha, clamped to padding.right/bottom",
-            },
-            "ambientOcclusion": {
-                "peakAlpha": bake["ambientOcclusion"]["peakAlpha"],
-                "colorHex": bake["ambientOcclusion"]["colorHex"],
-                "source": "analytic fringe bounded by padding.top/left",
-            },
-            "determinism": (
-                "CPU Cycles, fixed seed 0, fixed adaptive threshold and OIDN. Each texture records "
-                "the sha256 of its decoded RGBA; re-baking the same spec must reproduce it "
-                "(bake_shells.py --bake --verify-determinism renders each shell twice)."
-            ),
-            "shellRigs": rigs,
-        },
+        "rig": build_rig_metadata(spec, rigs),
         "shells": records,
     }
     outputs["manifest"].write_text(json.dumps(manifest, indent=2) + "\n")

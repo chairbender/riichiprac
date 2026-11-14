@@ -83,7 +83,12 @@
   },
   "bake": {
     "pixelRatio": 2,
-    "targetLongAxisPx1x": 52,
+    "targetLongAxisPx1x": 104,
+    "baseScale": {
+      "phase": "1b",
+      "previousTargetLongAxisPx1x": 52,
+      "note": "Phase 1b decision: the Phase 1 @2x output is the new @1x base. The long axis of the projected tile body is now 104 CSS px at @1x (was 52) and 208 px at @2x, so the board coordinate space doubles in both axes and every consumer must read the new shells.json. Render real pixels at the new resolution; never upscale the Phase 1 textures. The 3-4 px right/bottom shadow and 1-2 px top/left AO contract is unchanged in pixels at the new @1x."
+    },
     "frameMarginPx2x": 24,
     "padding1x": {
       "top": 2,
@@ -209,6 +214,457 @@
       "expectProjection": "portrait"
     }
   ],
+  "audition": {
+    "status": "Proposals only: Phase 1b candidate review. Every candidate is a real render at the new base scale, written under build/ (gitignored); nothing here changes the committed shell catalogue, and the user picks one candidate per shell before any catalogue angle changes.",
+    "outputDir": "build/review/candidates",
+    "sheetDir": "build/review",
+    "manifest": "build/review/shell-candidates.json",
+    "deliverable": "3-5 camera elevations/orientations per shell at the new base, each with its measured body/advance/texture numbers, the candidate manifest (shell-candidates.json) and one labelled sheet per shell (shell-candidates-<shell>.png) composed on the felt base at that candidate's own gridStepPx.",
+    "references": "Each sheet also shows the committed Phase 1 shell as a REF row, composed from the committed shells.json at its own (half-size) steps, so the size and angle delta are visible side by side.",
+    "shells": {
+      "shell_hand_standing": {
+        "question": "How much of the tile top should the standing hand show? Phase 1 is 12 deg; the rule is 'slightly higher', so these run from +4 to +16 deg.",
+        "candidates": [
+          {
+            "candidateId": "A",
+            "label": "EL 16 (+4)",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 16,
+              "faceLocalZ": "top"
+            }
+          },
+          {
+            "candidateId": "B",
+            "label": "EL 20 (+8)",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 20,
+              "faceLocalZ": "top"
+            }
+          },
+          {
+            "candidateId": "C",
+            "label": "EL 24 (+12)",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 24,
+              "faceLocalZ": "top"
+            }
+          },
+          {
+            "candidateId": "D",
+            "label": "EL 28 (+16)",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 28,
+              "faceLocalZ": "top"
+            }
+          }
+        ]
+      },
+      "shell_flat_upright": {
+        "question": "How low should the ponds sit? Phase 1 is 80 deg (nearly top-down). Lower elevations show more of the bottom thickness face and foreshorten the far edge of the face.",
+        "candidates": [
+          {
+            "candidateId": "A",
+            "label": "EL 65",
+            "pose": {
+              "rotateXDeg": 0,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 65,
+              "faceLocalZ": "top"
+            }
+          },
+          {
+            "candidateId": "B",
+            "label": "EL 55",
+            "pose": {
+              "rotateXDeg": 0,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 55,
+              "faceLocalZ": "top"
+            }
+          },
+          {
+            "candidateId": "C",
+            "label": "EL 45",
+            "pose": {
+              "rotateXDeg": 0,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "top"
+            }
+          },
+          {
+            "candidateId": "D",
+            "label": "EL 35",
+            "pose": {
+              "rotateXDeg": 0,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 35,
+              "faceLocalZ": "top"
+            }
+          }
+        ]
+      },
+      "shell_flat_sideways": {
+        "question": "How side-on should the sideways (riichi / called) tile read? Phase 1 is 80 deg. Lower elevations turn the long side of the shell toward the viewer instead of showing mostly its top.",
+        "candidates": [
+          {
+            "candidateId": "A",
+            "label": "EL 65",
+            "pose": {
+              "rotateXDeg": 0,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 65,
+              "faceLocalZ": "top"
+            }
+          },
+          {
+            "candidateId": "B",
+            "label": "EL 55",
+            "pose": {
+              "rotateXDeg": 0,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 55,
+              "faceLocalZ": "top"
+            }
+          },
+          {
+            "candidateId": "C",
+            "label": "EL 45",
+            "pose": {
+              "rotateXDeg": 0,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "top"
+            }
+          },
+          {
+            "candidateId": "D",
+            "label": "EL 35",
+            "pose": {
+              "rotateXDeg": 0,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 35,
+              "faceLocalZ": "top"
+            }
+          }
+        ]
+      },
+      "shell_wall_horizontal": {
+        "question": "How low should the top/bottom wall run sit? Same treatment as the ponds: Phase 1 is 80 deg, and the wall shows a lot more edge lower down.",
+        "candidates": [
+          {
+            "candidateId": "A",
+            "label": "EL 65",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 65,
+              "faceLocalZ": "bottom"
+            }
+          },
+          {
+            "candidateId": "B",
+            "label": "EL 55",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 55,
+              "faceLocalZ": "bottom"
+            }
+          },
+          {
+            "candidateId": "C",
+            "label": "EL 45",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom"
+            }
+          },
+          {
+            "candidateId": "D",
+            "label": "EL 35",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 35,
+              "faceLocalZ": "bottom"
+            }
+          }
+        ]
+      },
+      "shell_wall_side_left": {
+        "question": "Left wall: the tile lies face down. These candidates show the two ways its long edge can read: A-C keep the long axis running down the board and lean the camera in so the wall's inner long face shows; D-E turn the long axis across the view so each tile shows its long side edge. Pick the reading and the amount of edge.",
+        "candidates": [
+          {
+            "candidateId": "A",
+            "label": "AZ 22 EL 55",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 22,
+              "elevationDeg": 55,
+              "faceLocalZ": "bottom"
+            },
+            "expectProjection": "portrait",
+            "note": "long axis down the board, gentle inward lean (the wall's inner long face)"
+          },
+          {
+            "candidateId": "B",
+            "label": "AZ 35 EL 55",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 35,
+              "elevationDeg": 55,
+              "faceLocalZ": "bottom"
+            },
+            "expectProjection": "portrait",
+            "note": "long axis down the board, stronger inward lean"
+          },
+          {
+            "candidateId": "C",
+            "label": "AZ 35 EL 40",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": 35,
+              "elevationDeg": 40,
+              "faceLocalZ": "bottom"
+            },
+            "expectProjection": "portrait",
+            "note": "long axis down the board, stronger lean and a lower camera"
+          },
+          {
+            "candidateId": "D",
+            "label": "ROT90 EL 45",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom"
+            },
+            "expectProjection": "landscape",
+            "note": "long axis across the view, long side edge toward the player"
+          },
+          {
+            "candidateId": "E",
+            "label": "ROT90 EL 30",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 30,
+              "faceLocalZ": "bottom"
+            },
+            "expectProjection": "landscape",
+            "note": "long axis across the view, lowest camera (most side edge)"
+          }
+        ]
+      },
+      "shell_wall_side_right": {
+        "question": "Right wall: the mirror of the left. A-C mirror the inward lean (negative azimuth) with the long axis down the board; D-E mirror the across-the-view read.",
+        "candidates": [
+          {
+            "candidateId": "A",
+            "label": "AZ -22 EL 55",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": -22,
+              "elevationDeg": 55,
+              "faceLocalZ": "bottom"
+            },
+            "expectProjection": "portrait",
+            "note": "long axis down the board, gentle inward lean"
+          },
+          {
+            "candidateId": "B",
+            "label": "AZ -35 EL 55",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": -35,
+              "elevationDeg": 55,
+              "faceLocalZ": "bottom"
+            },
+            "expectProjection": "portrait",
+            "note": "long axis down the board, stronger inward lean"
+          },
+          {
+            "candidateId": "C",
+            "label": "AZ -35 EL 40",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": 0
+            },
+            "camera": {
+              "azimuthDeg": -35,
+              "elevationDeg": 40,
+              "faceLocalZ": "bottom"
+            },
+            "expectProjection": "portrait",
+            "note": "long axis down the board, stronger lean and a lower camera"
+          },
+          {
+            "candidateId": "D",
+            "label": "ROT90 EL 45",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": -90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom"
+            },
+            "expectProjection": "landscape",
+            "note": "long axis across the view, long side edge toward the player"
+          },
+          {
+            "candidateId": "E",
+            "label": "ROT90 EL 30",
+            "pose": {
+              "rotateXDeg": 180,
+              "rotateYDeg": 0,
+              "rotateZDeg": -90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 30,
+              "faceLocalZ": "bottom"
+            },
+            "expectProjection": "landscape",
+            "note": "long axis across the view, lowest camera (most side edge)"
+          }
+        ]
+      }
+    }
+  },
+  "faceVariants": {
+    "status": "Plan only for Phase 2 (2026-11-14). Not implemented, not baked, not part of the Phase 1/1b shell bake. The atlas is keyed by (shellType, faceVariant, tileFace), so a shell can host more than one pre-rasterised decal treatment instead of every shell reusing one glyph.",
+    "atlasKey": "(shellType, faceVariant, tileFace)",
+    "faceUpShells": {
+      "shell_hand_standing": [
+        "standing-front"
+      ],
+      "shell_flat_upright": [
+        "flat-topdown"
+      ],
+      "shell_flat_sideways": [
+        "flat-rot90"
+      ]
+    },
+    "faceDownShells": {
+      "shell_wall_horizontal": [
+        "bare"
+      ],
+      "shell_wall_side_left": [
+        "bare"
+      ],
+      "shell_wall_side_right": [
+        "bare"
+      ]
+    },
+    "note": "A variant id names the decal's perspective slot, not a camera angle: the Phase 1b pick fixes the angle behind the slot. A face-down wall shell is bare: it has no faceVariant glyph, so it contributes no atlas entries. A new treatment (for example a lifted/hovered hand decal or a second pond perspective) is a new faceVariant id on the same shell, never a second glyph swapped at draw time."
+  },
   "outputs": {
     "format": "png",
     "shellDir": "../../frontend/public/table/shells",
