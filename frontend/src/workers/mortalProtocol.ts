@@ -16,14 +16,15 @@ export type MortalCommand =
   | { op: 'init'; weights: ArrayBuffer; modelName: string }
   | { op: 'evaluate'; stateJson: string }
   | { op: 'generateAgreement'; category: string; optionsJson: string }
-  | { op: 'generateAi'; category: string };
+  | { op: 'generateAi'; category: string }
+  | { op: 'generateHotseat'; optionsJson: string };
 
 /** A request carrying the id its response will echo. */
 export type MortalRequest = MortalCommand & { id: number };
 
 /**
  * Responses. `value` is the raw payload the Rust export returned:
- * an evaluation object for `evaluate`, and a JSON string for the two
+ * an evaluation object for `evaluate`, and a JSON string for the
  * generation calls.
  */
 export type MortalResponse =

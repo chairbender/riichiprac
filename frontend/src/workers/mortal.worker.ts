@@ -82,6 +82,16 @@ scope.onmessage = async (event) => {
         });
         return;
       }
+      case 'generateHotseat': {
+        scope.postMessage({
+          id: request.id,
+          ok: true,
+          value: requireEvaluator().generate_hotseat_puzzle(
+            request.optionsJson,
+          ),
+        });
+        return;
+      }
     }
   } catch (error) {
     scope.postMessage({ id: request.id, ok: false, error: describeError(error) });

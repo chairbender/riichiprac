@@ -196,6 +196,15 @@ fn test_list_scenarios_payload() {
     assert!(
         scenarios
             .iter()
+            .any(|scenario| scenario["id"] == "ai_hotseat"
+                && scenario["requires_ai"] == true
+                && scenario["grading"] == "mortal_only"
+                && scenario["book"].is_null()),
+        "the hotseat drill must be listed as a Mortal-only scenario with no book rule"
+    );
+    assert!(
+        scenarios
+            .iter()
             .any(|scenario| scenario["id"] == "ryanmen_protorun"
                 && scenario["grading"] == "book_and_mortal"),
         "book lessons are graded by both perspectives"

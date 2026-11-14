@@ -36,6 +36,8 @@ export interface MortalClient {
   evaluate(stateJson: string): Promise<AiEvaluation>;
   /** Generate and finalize the AI Best Action drill. */
   generateAiPuzzle(category: string): Promise<string>;
+  /** Run a full Mortal self-play round and return one of its decisions. */
+  generateHotseatPuzzle(optionsJson: string): Promise<string>;
   /** Generate a lesson hand that Mortal also plays, with its sampling report. */
   generatePuzzleWithAgreement(
     category: string,
@@ -118,6 +120,9 @@ export function createMortalClient(
 
     generateAiPuzzle: (category) =>
       send({ op: 'generateAi', category }) as Promise<string>,
+
+    generateHotseatPuzzle: (optionsJson) =>
+      send({ op: 'generateHotseat', optionsJson }) as Promise<string>,
 
     generatePuzzleWithAgreement: (category, optionsJson) =>
       send({ op: 'generateAgreement', category, optionsJson }) as Promise<string>,

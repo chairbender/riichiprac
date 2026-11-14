@@ -62,8 +62,31 @@ describe('createMortalClient', () => {
     });
   });
 
-  it('rejects with the error the worker reported', async () => {
+  it('sends the AI Hotseat options to the worker', async () => {
     const worker = new FakeWorker();
+    const client = createMortalClient(worker);
+    const options = JSON.stringify({
+      round: 'south_3',
+      disparity: null,
+      seat: 'west',
+    });
+
+    const generated = client.generateHotseatPuzzle(options);
+    expect(worker.messages.map((message) => message.op)).toEqual([
+      'generateHotseat',
+    ]);
+    const message = worker.messages[0];
+    expect(message).toMatchObject({ op: 'generateHotseat', optionsJson: options });
+
+    worker.respond({
+      id: message.id,
+      ok: true,
+      value: '{"category":"ai_hotseat"}',
+    });
+    await expect(generated).resolves.toBe('{"category":"ai_hotseat"}');
+  });
+
+  it('rejects with the error the worker reported', async () => {    const worker = new FakeWorker();
     const client = createMortalClient(worker);
 
     const agreement = client.generatePuzzleWithAgreement(

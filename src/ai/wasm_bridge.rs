@@ -105,6 +105,21 @@ impl WasmMortalEvaluator {
             .map_err(|err| js_error(&format!("failed to serialize AI scenario: {err}")))
     }
 
+    /// Generate the AI Hotseat scenario: a full round self-played by Mortal,
+    /// presented at one of the inserted seat's real decisions.
+    ///
+    /// `options_json` is the generation card's shape, with `null` for each
+    /// option the player left random:
+    /// `{"round":"east_1","disparity":"about_equal_all","seat":"west"}`.
+    pub fn generate_hotseat_puzzle(&self, options_json: &str) -> Result<String, JsValue> {
+        let state =
+            crate::generator::hotseat::generate(&self.model, &self.model_name, options_json)
+                .map_err(|err| js_error(&format!("failed to generate hotseat scenario: {err}")))?;
+
+        serde_json::to_string(&state)
+            .map_err(|err| js_error(&format!("failed to serialize hotseat scenario: {err}")))
+    }
+
     /// Evaluate a serialized [`GameState`].
     pub fn evaluate(&self, game_state_json: &str) -> Result<JsValue, JsValue> {
         let state: GameState = serde_json::from_str(game_state_json)

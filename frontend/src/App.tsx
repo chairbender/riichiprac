@@ -7,11 +7,19 @@ import { ActionBar } from './components/ActionBar';
 import { AppControls } from './components/AppControls';
 import { ExportImportControls } from './components/ExportImportControls';
 import { HandDock } from './components/HandDock';
+import { HotseatCard } from './components/HotseatCard';
 import { PhysicalTable } from './components/PhysicalTable';
 import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
+import {
+  DEFAULT_HOTSEAT_OPTIONS,
+  HOTSEAT_SCENARIO_ID,
+  hotseatOptionsJson,
+  isHotseatOnly,
+} from './hotseat';
+import type { HotseatOptions } from './hotseat';
 import { downloadJson, readStateFile, serializeState } from './stateFile';
 import {
   ALL_SCENARIOS,
@@ -82,6 +90,17 @@ export const App = () => {
     useState<ScenarioOption[]>(FALLBACK_SCENARIOS);
   const [aiLoading, setAiLoading] = useState(false);
   const [agreementLoading, setAgreementLoading] = useState(false);
+  const [hotseatLoading, setHotseatLoading] = useState(false);
+  /**
+   * The last AI Hotseat card choice. Kept in a ref as well as state: the
+   * generator reads it without making `loadPuzzle` depend on it, so changing
+   * an option cannot re-run the first-hand effect.
+   */
+  const [hotseatOptions, setHotseatOptions] = useState<HotseatOptions>(
+    DEFAULT_HOTSEAT_OPTIONS,
+  );
+  const hotseatOptionsRef = useRef<HotseatOptions>(DEFAULT_HOTSEAT_OPTIONS);
+  const [hotseatOpen, setHotseatOpen] = useState(false);
   /**
    * Per-session choice, on by default: deal book-graded hands only where Mortal
    * plays the book answer. A Mortal-only drill has no book answer, so the pool
@@ -171,6 +190,7 @@ export const App = () => {
     async (
       scenarioSelection: ScenarioSelection,
       requireMortalAgreement: boolean,
+      forced?: { category: string; hotseat?: HotseatOptions },
     ) => {
       const requestId = ++loadRequestId.current;
       reset();
@@ -211,11 +231,13 @@ export const App = () => {
         }
 
         const options = manifestRef.current ?? FALLBACK_SCENARIOS;
-        const category = pickRandomScenarioFrom(
-          options,
-          scenarioSelection,
-          useGameStore.getState().aiStatus === 'ready',
-        );
+        const category =
+          forced?.category ??
+          pickRandomScenarioFrom(
+            options,
+            scenarioSelection,
+            useGameStore.getState().aiStatus === 'ready',
+          );
         const requiresAi =
           options.find((option) => option.id === category)?.requires_ai === true;
         // The AI drill's answer is Mortal's own argmax, so the agreement filter
@@ -239,11 +261,25 @@ export const App = () => {
               setTimeout(resolve, 0);
             });
             if (requestId !== loadRequestId.current) return;
-            const generated = await mortal.generateAiPuzzle(category);
+            let generated: string;
+            if (category === HOTSEAT_SCENARIO_ID) {
+              // A full round of Mortal self-play: the generation card's options
+              // decide the starting table, and the engine inserts the player at
+              // one of that seat's real decisions.
+              setHotseatLoading(true);
+              const hotseat =
+                forced?.hotseat ?? hotseatOptionsRef.current;
+              generated = await mortal.generateHotseatPuzzle(
+                hotseatOptionsJson(hotseat),
+              );
+            } else {
+              generated = await mortal.generateAiPuzzle(category);
+            }
             if (requestId !== loadRequestId.current) return;
             finish(() => loadFromJson(generated));
           } finally {
             setAiLoading(false);
+            setHotseatLoading(false);
           }
         } else if (wantsAgreement) {
           setAgreementLoading(true);
@@ -329,6 +365,7 @@ export const App = () => {
       loadRequestId.current += 1;
       setAiLoading(false);
       setAgreementLoading(false);
+      setHotseatLoading(false);
       restoreHistoryRef.current(snapshot);
     };
 
@@ -377,7 +414,36 @@ export const App = () => {
   };
 
   const handleNextScenario = () => {
-    void loadPuzzle(selection, requireAgreement);
+    // A hotseat hand is re-dealt with the same card choice; a mixed pool keeps
+    // drawing normally, and a hotseat drawn from it uses the last choice.
+    const forced = isHotseatOnly(selection)
+      ? {
+          category: HOTSEAT_SCENARIO_ID,
+          hotseat: hotseatOptionsRef.current,
+        }
+      : undefined;
+    void loadPuzzle(selection, requireAgreement, forced);
+  };
+
+  /** Open the generation card without generating anything yet. */
+  const handleConfigureHotseat = () => {
+    setHotseatOpen(true);
+  };
+
+  /** Run the card's chosen self-play round. */
+  const handleGenerateHotseat = (options: HotseatOptions) => {
+    hotseatOptionsRef.current = options;
+    setHotseatOptions(options);
+    setHotseatOpen(false);
+    const next: ScenarioSelection = {
+      kind: 'selected',
+      ids: [HOTSEAT_SCENARIO_ID],
+    };
+    setSelection(next);
+    void loadPuzzle(next, requireAgreement, {
+      category: HOTSEAT_SCENARIO_ID,
+      hotseat: options,
+    });
   };
 
   const handleAgreementChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -477,13 +543,15 @@ export const App = () => {
   const viewHint =
     'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view. Stays 2D: no 3D or perspective.';
 
-  const statusMessage = agreementLoading
-    ? 'Finding a hand Mortal agrees with…'
-    : aiLoading
-      ? 'Asking Mortal…'
-      : isLoading
-        ? 'Loading table…'
-        : null;
+  const statusMessage = hotseatLoading
+    ? 'Playing a Mortal self-play round…'
+    : agreementLoading
+      ? 'Finding a hand Mortal agrees with…'
+      : aiLoading
+        ? 'Asking Mortal…'
+        : isLoading
+          ? 'Loading table…'
+          : null;
 
   // The header controls, built once so the stacked and top-down layouts cannot
   // drift apart.
@@ -492,6 +560,7 @@ export const App = () => {
       scenarios={scenarios}
       selection={selection}
       onSelectionChange={handleSelectionChange}
+      onConfigureHotseat={handleConfigureHotseat}
       requireAgreement={requireAgreement}
       aiStatus={aiStatus}
       agreementHint={agreementHint}
@@ -573,6 +642,15 @@ export const App = () => {
 
         <div className="app-controls">{controls}</div>
       </header>
+
+      {hotseatOpen && (
+        <HotseatCard
+          initialOptions={hotseatOptions}
+          busy={isLoading || aiLoading}
+          onGenerate={handleGenerateHotseat}
+          onCancel={() => setHotseatOpen(false)}
+        />
+      )}
 
       {exportImportControls}
 

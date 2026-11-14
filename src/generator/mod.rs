@@ -63,6 +63,8 @@
 //!   the hand's value with and without honitsu decide whether to start
 //!   discarding off-suit or to play for efficiency.
 //! - `support`: shared deck, table, scoring, formatting, and retry helpers.
+//! - `hotseat`: a full round self-played by Mortal, presented at one of the
+//!   inserted seat's real decisions (the AI Hotseat drill).
 //!
 //! The Phase 2 `mock_table` fixture lives in `crate::fixtures`, outside the
 //! lesson registry.
@@ -80,6 +82,7 @@ mod dama_improving_hand;
 mod defense;
 mod fold_to_riichi;
 mod honitsu_decision;
+pub mod hotseat;
 mod meld_or_not;
 pub mod mortal_agreement;
 mod open_hand_defense;
@@ -644,6 +647,18 @@ pub const SCENARIO_MANIFEST: &[ScenarioMeta] = &[
         book: None,
     },
     ScenarioMeta {
+        id: ScenarioId::AiHotseat,
+        label: "AI Hotseat",
+        description: "Mortal plays all four seats of a round; you take over one seat at a \
+                      random decision that actually occurred, and are graded by Mortal's own \
+                      choice there.",
+        category: ScenarioCategory::AiDecision,
+        tags: &["ai", "mortal", "self_play", "hotseat", "full_hand"],
+        requires_ai: true,
+        grading: ScenarioGrading::MortalOnly,
+        book: None,
+    },
+    ScenarioMeta {
         id: ScenarioId::FoldToRiichi,
         label: "Defense: Fold to Riichi",
         description: "An opponent has declared Riichi against a junk hand: discard the one \
@@ -900,6 +915,7 @@ pub enum ScenarioId {
     DaiminkanDecision,
     WindDiscardOrder,
     AiBestAction,
+    AiHotseat,
     FoldToRiichi,
     PushOrFold,
     DefenseSafetyChart,
@@ -942,6 +958,7 @@ impl ScenarioId {
         ScenarioId::MeldOrNot,
         ScenarioId::DaiminkanDecision,
         ScenarioId::AiBestAction,
+        ScenarioId::AiHotseat,
         ScenarioId::FoldToRiichi,
         ScenarioId::PushOrFold,
         ScenarioId::DefenseSafetyChart,
@@ -984,6 +1001,7 @@ impl ScenarioId {
             ScenarioId::MeldOrNot => "meld_or_not",
             ScenarioId::DaiminkanDecision => "daiminkan_decision",
             ScenarioId::AiBestAction => "ai_best_action",
+            ScenarioId::AiHotseat => "ai_hotseat",
             ScenarioId::FoldToRiichi => "fold_to_riichi",
             ScenarioId::PushOrFold => "push_or_fold",
             ScenarioId::DefenseSafetyChart => "defense_safety_chart",
@@ -1027,6 +1045,7 @@ impl ScenarioId {
             "meld_or_not" => Some(ScenarioId::MeldOrNot),
             "daiminkan_decision" => Some(ScenarioId::DaiminkanDecision),
             "ai_best_action" => Some(ScenarioId::AiBestAction),
+            "ai_hotseat" => Some(ScenarioId::AiHotseat),
             "fold_to_riichi" => Some(ScenarioId::FoldToRiichi),
             "push_or_fold" => Some(ScenarioId::PushOrFold),
             "defense_safety_chart" => Some(ScenarioId::DefenseSafetyChart),
@@ -1073,6 +1092,11 @@ impl ScenarioId {
             ScenarioId::AiBestAction => Err(
                 "ai_best_action requires the loaded Mortal model; use the evaluator's \
                  generate_ai_puzzle"
+                    .to_string(),
+            ),
+            ScenarioId::AiHotseat => Err(
+                "ai_hotseat requires the loaded Mortal model; use the evaluator's \
+                 generate_hotseat_puzzle"
                     .to_string(),
             ),
             ScenarioId::FoldToRiichi => fold_to_riichi::generate(category),
@@ -1309,7 +1333,7 @@ mod tests {
     fn every_scenario_id_generates_its_own_category() {
         for &id in ScenarioId::ALL {
             assert_eq!(ScenarioId::from_id(id.as_str()), Some(id));
-            if id == ScenarioId::AiBestAction {
+            if matches!(id, ScenarioId::AiBestAction | ScenarioId::AiHotseat) {
                 assert!(id.generate(id.as_str()).is_err());
                 continue;
             }
@@ -1336,9 +1360,13 @@ mod tests {
     fn every_book_lesson_names_a_numbered_section() {
         for meta in SCENARIO_MANIFEST {
             match meta.book {
-                // The Mortal drill has no book rule to cite, so the picker
-                // files it under "Other" instead of inventing a group.
-                None => assert_eq!(meta.id, ScenarioId::AiBestAction),
+                // The Mortal drills have no book rule to cite, so the picker
+                // files them under "Other" instead of inventing a group.
+                None => assert!(
+                    matches!(meta.id, ScenarioId::AiBestAction | ScenarioId::AiHotseat),
+                    "{} has no book section",
+                    meta.id.as_str()
+                ),
                 Some(book) => {
                     assert!(
                         (1..=10).contains(&book.chapter),
@@ -1446,7 +1474,7 @@ mod tests {
         use crate::generator::support::state_validation::validate_reachable_state;
 
         for &id in ScenarioId::ALL {
-            if id == ScenarioId::AiBestAction {
+            if matches!(id, ScenarioId::AiBestAction | ScenarioId::AiHotseat) {
                 continue;
             }
             for run in 0..30 {
@@ -1471,7 +1499,7 @@ mod tests {
     #[test]
     fn non_kan_lessons_never_deal_a_concealed_quad() {
         for &id in ScenarioId::ALL {
-            if id == ScenarioId::AiBestAction {
+            if matches!(id, ScenarioId::AiBestAction | ScenarioId::AiHotseat) {
                 continue;
             }
             for run in 0..15 {

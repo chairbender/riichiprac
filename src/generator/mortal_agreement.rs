@@ -673,7 +673,9 @@ mod tests {
     #[test]
     fn sampling_accepts_every_lesson_on_the_first_attempt() {
         for &id in ScenarioId::ALL {
-            if id == ScenarioId::AiBestAction {
+            // The Mortal-only drills generate through the evaluator, not
+            // through the book-candidate sampler.
+            if matches!(id, ScenarioId::AiBestAction | ScenarioId::AiHotseat) {
                 continue;
             }
             let puzzle = generate(id.as_str(), MortalAgreementOptions::default(), |state| {

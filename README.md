@@ -112,7 +112,7 @@ touching the rest of the selection.
 The grouping is not a frontend list: `SCENARIO_MANIFEST` in
 `src/generator/mod.rs` carries each lesson's `BookSection`, `list_scenarios()`
 serialises it, and a Rust test pins every group's chapter to the citation the
-verdict panel shows. Lessons with no book rule (the Mortal drill) land in
+verdict panel shows. Lessons with no book rule (the Mortal drills) land in
 "Other".
 
 Edits are staged: ticking boxes changes the draft pool shown in the panel footer
@@ -153,6 +153,48 @@ The AI scenario is generated entirely in Rust/WASM: the state is built from the
 shared deck, validated, encoded, evaluated once (plus a second pass when the
 model chooses Riichi), and returned to React with `correct_action`, the legal
 action list, and the evaluation. React only renders and grades.
+
+## AI Hotseat scenario
+
+`AI Hotseat` does not hand-build a position at all. Mortal plays every seat of
+a full round, and the player is dropped into one of their own seat's decisions
+that actually occurred during that round. The answer is whatever Mortal chose in
+that seat at that moment, graded exactly like the AI drill (Mortal only, no book
+column).
+
+Choosing the scenario opens a **generation card** before anything is generated.
+Each option is either pinned or left to the engine:
+
+- **Round** — East 1-4 or South 1-4.
+- **Point disparity** — the nine starting-score shapes from "losing badly
+  alone" through "level with all four" to "first by a large gap". Each shape is
+  a fixed 100,000-point pattern; the inserted seat takes the position the label
+  names and the other three ranks are dealt around them.
+- **Your seat** — East, South, West, or North.
+
+The card's choice becomes the round's starting table. The Rust engine deals one
+136-tile wall, keeps the dead wall, and plays the round with the loaded Mortal
+model in every seat: draws, discards, Riichi declarations, calls, kans,
+replacement draws, dora reveals, tsumo and ron. Every time the inserted seat
+faces a real decision it records the position and the model's evaluation; when
+the round ends, one recorded position is chosen at random and returned. Forced
+turns (a Riichi hand throwing what it draws) and positions with only one legal
+choice are filtered out, so the returned state is always a question.
+
+React still renders and grades only: the state arrives as an ordinary
+`ai_hotseat` payload with `correct_action`, the legal action list, and the full
+ranking. The scenario needs the model weights and stays out of the "All
+scenarios" pool until they load. A full round costs many forward passes, so the
+header shows "Playing a Mortal self-play round…" while the worker runs it. The
+card opens when the scenario is chosen by name (its picker row has a **Setup**
+button, and picking only it and dealing does the same); if a hotseat hand is
+drawn from a mixed pool, it uses the last card choice, which starts as
+everything random.
+
+The engine uses the 34 base tile codes, so a hotseat round never contains red
+fives. Everything else the observation encoder needs (scores, round, rivers,
+melds, dora, riichi sticks, furiten) comes from the simulated table.
+
 
 ## Defense scenarios
 
