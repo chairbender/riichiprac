@@ -103,6 +103,17 @@ export function isRedFiveFace(face: TileFaceId): boolean {
 }
 
 /**
+ * The base game tile code a face draws: the aka faces lose their `r`.
+ *
+ * Used by the overlay/accessibility layer, which names a tile the way the rest
+ * of the app does (`5mr` is the red `5m`). The render key itself keeps the face
+ * id; never use this to build an atlas key.
+ */
+export function tileCodeOfFace(face: TileFaceId): string {
+  return isRedFiveFace(face) ? face.slice(0, 2) : face;
+}
+
+/**
  * Build the atlas key. Typed so a missing shell or face is a compile error.
  */
 export function tileRenderKey(shell: ShellId, face: TileFaceId): TileRenderKey {

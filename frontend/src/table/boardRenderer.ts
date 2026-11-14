@@ -1,10 +1,12 @@
 /**
- * Phase 4 painter's-algorithm board renderer.
+ * Phase 4 painter's-algorithm board renderer, extended by Phase 5 with the
+ * hover lift and the clipped overlay passes.
  *
  * The renderer is deliberately dumb: it takes the Phase 3 layout and the
  * startup atlas and blits, in order, with no Z-buffer, no depth test, no
  * dynamic shadow and no runtime 3D. Every visual decision (order, projection,
- * shadow, seam) was made offline; the frame loop is `drawImage` per tile.
+ * shadow, seam) was made offline; the frame loop is `drawImage` per tile plus a
+ * few constant-alpha overlay blits.
  *
  * ## Draw order
  *
@@ -14,6 +16,12 @@
  * emits the architecture §4.1 zone order (felt → top hand/melds → top wall →
  * side walls → ponds → bottom wall → side hands → bottom hand/melds) and the
  * §4.2 intra-zone order; the renderer only follows it.
+ *
+ * Phase 5's markers are inserted at the pond epoch: after the last pond tile
+ * and before the bottom wall. The secondary lift shadow is inserted just before
+ * the first lifted tile, so neighbouring hand bodies paint over it. Overlay
+ * tints and shimmer are painted immediately after their own tile, so a later
+ * neighbour can still cover the pair exactly as it covers the sprite.
  *
  * ## Full-screen felt
  *
@@ -26,17 +34,34 @@
  *
  * ## Sprite blits
  *
- * Each tile is `blitTileSprite(ctx, page, sprite, gridX, gridY)`: the atlas UV
- * rect is drawn at `grid - anchor` with the @1x logical size, so the shared
- * sprite serves a touching neighbour and an isolated tile without any adjacency
- * special-casing. Glyph rotation lives in the atlas (the shell's `faceQuad`),
- * never here.
+ * Each tile is `blitTileSprite(ctx, page, sprite, gridX, gridY - lift)`: the
+ * atlas UV rect is drawn at `grid - anchor`, so the shared sprite serves a
+ * touching neighbour and an isolated tile without any adjacency special-casing.
+ * Glyph rotation lives in the atlas (the shell's `faceQuad`), never here, and
+ * the lift moves the whole sprite (including its baked margin) without
+ * re-compositing or rotating it.
  */
 import type { TileAtlas } from './TileAtlas';
 import { blitTileSprite } from './TileAtlas';
 import { tileRenderKey } from './tiles';
 import { fitBoardToViewport } from './boardLayout';
 import type { BoardFit, BoardSize, TilePlacement } from './boardLayout';
+import {
+  DEFAULT_LIFT_PX,
+  LIFT_SHADOW_SPREAD_PX,
+} from './boardInteraction';
+import {
+  paintLiftShadow,
+  paintShimmer,
+  paintTint,
+} from './boardOverlays';
+import type {
+  LiftShadowAsset,
+  ShimmerAsset,
+  TileTint,
+} from './boardOverlays';
+import { paintRiichiStick } from './boardMarkers';
+import type { RiichiStickMarker } from './boardMarkers';
 
 /** The part of a layout the renderer needs: any ordered, static board. */
 export interface PaintableBoard {
@@ -53,6 +78,23 @@ export interface PaintOrderEntry {
   readonly gridY: number;
 }
 
+/**
+ * Phase 5 interaction state to paint over the board. All sets are by placement
+ * id; the renderer never decides *which* tile is hovered, dora or tsumogiri.
+ */
+export interface BoardRenderOverlay {
+  /** Placements drawn `liftPx` higher, and given a secondary baseline shadow. */
+  readonly liftedIds?: ReadonlySet<string>;
+  /** Upward draw offset in board px. Defaults to {@link DEFAULT_LIFT_PX}. */
+  readonly liftPx?: number;
+  /** Flat tints, each clipped to its tile's face plate. */
+  readonly tints?: readonly TileTint[];
+  /** Placements that get the additive dora/akadora sweep. */
+  readonly shimmerIds?: ReadonlySet<string>;
+  /** Riichi declaration/pot sticks, painted at the pond epoch. */
+  readonly markers?: readonly RiichiStickMarker[];
+}
+
 export interface BoardRenderOptions {
   /**
    * The full-screen felt raster (`frontend/public/table/felt.png`). When it is
@@ -67,6 +109,12 @@ export interface BoardRenderOptions {
    * pixels; the renderer maps the board into CSS px and scales by this.
    */
   readonly pixelRatio?: number;
+  /** Phase 5 interaction overlay. */
+  readonly overlay?: BoardRenderOverlay;
+  /** Startup-baked secondary shadow for lifted tiles. */
+  readonly liftShadow?: LiftShadowAsset | null;
+  /** Startup-baked additive sweep for dora/akadora tiles. */
+  readonly shimmer?: ShimmerAsset | null;
 }
 
 export interface BoardRenderStats {
@@ -80,6 +128,15 @@ export interface BoardRenderStats {
   readonly lastTileId: string | null;
   /** True when the felt covered the whole canvas, i.e. no transparent corner. */
   readonly feltCoversCanvas: boolean;
+  readonly liftedTiles: number;
+  readonly tintedTiles: number;
+  readonly shimmerTiles: number;
+  readonly markers: number;
+  /** The pond/bottom-wall boundary the marker epoch sits between. */
+  readonly markerZone: {
+    readonly afterId: string | null;
+    readonly beforeId: string | null;
+  };
 }
 
 const DEFAULT_FELT_COLOR = '#15503a';
@@ -122,7 +179,8 @@ export function paintOrderSnapshot(board: PaintableBoard): readonly PaintOrderEn
  *
  * The canvas is the whole viewport: the felt is stretched across it, then the
  * board transform is applied and every tile is blitted in paint order. Returns
- * the numbers the review script prints (fit, tile count, order ends).
+ * the numbers the review script prints (fit, tile count, order ends, overlay
+ * counts and the marker epoch).
  */
 export function renderBoard(
   context: CanvasRenderingContext2D,
@@ -138,6 +196,17 @@ export function renderBoard(
     width: canvasWidth / pixelRatio,
     height: canvasHeight / pixelRatio,
   };
+  const overlay = options.overlay ?? {};
+  const liftPx = overlay.liftPx ?? DEFAULT_LIFT_PX;
+  const lifted = overlay.liftedIds ?? EMPTY_IDS;
+  const shimmerIds = overlay.shimmerIds ?? EMPTY_IDS;
+  const tintsById = new Map<string, TileTint>();
+  for (const tint of overlay.tints ?? []) tintsById.set(tint.id, tint);
+  const markers = overlay.markers ?? [];
+
+  let liftedTiles = 0;
+  let tintedTiles = 0;
+  let shimmerTiles = 0;
 
   context.save();
   try {
@@ -160,12 +229,68 @@ export function renderBoard(
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
 
-    // 3. Tiles, strictly back-to-front.
+    // 3. Tiles, strictly back-to-front, with the Phase 5 insertions.
     const tiles = paintOrder(board);
-    for (const placement of tiles) {
+    const lastPondOrder = lastOrderOf(tiles, (placement) => placement.zone === 'pond');
+    const markerOrder = lastPondOrder + 1;
+    const shadowOrder = firstLiftedOrder(tiles, lifted);
+    let markersPainted = markers.length === 0;
+    let shadowsPainted = shadowOrder < 0;
+
+    const paintMarkers = (): void => {
+      if (markersPainted) return;
+      for (const marker of markers) paintRiichiStick(context, marker);
+      markersPainted = true;
+    };
+    const paintShadows = (): void => {
+      if (shadowsPainted || !options.liftShadow) return;
+      for (const placement of tiles) {
+        if (!lifted.has(placement.id)) continue;
+        paintLiftShadow(
+          context,
+          placement,
+          atlas.shells.shells[placement.shell],
+          options.liftShadow,
+          LIFT_SHADOW_SPREAD_PX,
+        );
+      }
+      shadowsPainted = true;
+    };
+
+    if (markerOrder <= 0) paintMarkers();
+    if (shadowOrder <= 0) paintShadows();
+
+    for (let index = 0; index < tiles.length; index += 1) {
+      if (index === markerOrder) paintMarkers();
+      if (index === shadowOrder) paintShadows();
+
+      const placement = tiles[index];
+      const shell = atlas.shells.shells[placement.shell];
+      const lift = lifted.has(placement.id) ? liftPx : 0;
+      if (lift !== 0) liftedTiles += 1;
+
       const sprite = atlas.getSprite(tileRenderKey(placement.shell, placement.face));
-      blitTileSprite(context, atlas.getPage(sprite), sprite, placement.gridX, placement.gridY);
+      blitTileSprite(
+        context,
+        atlas.getPage(sprite),
+        sprite,
+        placement.gridX,
+        placement.gridY - lift,
+      );
+
+      const tint = tintsById.get(placement.id);
+      if (tint) {
+        paintTint(context, placement, shell, tint, lift);
+        tintedTiles += 1;
+      }
+      if (shimmerIds.has(placement.id) && options.shimmer) {
+        paintShimmer(context, placement, shell, options.shimmer, lift);
+        shimmerTiles += 1;
+      }
     }
+
+    if (!markersPainted) paintMarkers();
+    if (!shadowsPainted) paintShadows();
 
     return {
       feltPainted: true,
@@ -178,8 +303,39 @@ export function renderBoard(
       // The felt/fill covers the whole canvas by construction; the review
       // script asserts the pixels rather than trusting this flag.
       feltCoversCanvas: true,
+      liftedTiles,
+      tintedTiles,
+      shimmerTiles,
+      markers: markers.length,
+      markerZone: {
+        afterId: markerOrder > 0 ? (tiles[markerOrder - 1]?.id ?? null) : null,
+        beforeId: tiles[markerOrder]?.id ?? null,
+      },
     };
   } finally {
     context.restore();
   }
+}
+
+const EMPTY_IDS: ReadonlySet<string> = new Set();
+
+function lastOrderOf(
+  tiles: readonly TilePlacement[],
+  predicate: (placement: TilePlacement) => boolean,
+): number {
+  for (let index = tiles.length - 1; index >= 0; index -= 1) {
+    if (predicate(tiles[index])) return index;
+  }
+  return -1;
+}
+
+function firstLiftedOrder(
+  tiles: readonly TilePlacement[],
+  lifted: ReadonlySet<string>,
+): number {
+  if (lifted.size === 0) return -1;
+  for (let index = 0; index < tiles.length; index += 1) {
+    if (lifted.has(tiles[index].id)) return index;
+  }
+  return -1;
 }
