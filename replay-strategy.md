@@ -1,9 +1,23 @@
-# Replay strategy: sources, offline mining, and a replay-driven scenario generator
+# Replay strategy and offline miner: sources, scenario design, and implementation plan
 
-Status: research / write-up. No replay parser, miner, pack loader, or frontend
-code was written in this pass. This document answers the six questions in task
-261114-0906 and folds in the concerns of the related capture
-`261112-1826` ("Real riichi game database as a scenario source").
+Status: research / design. No replay parser, miner, pack loader, or frontend
+code was written in this pass. This is the **merged authoritative version** of
+the replay analysis: it answers the six questions in task 261114-0906, folds in
+the related capture `261112-1826` ("Real riichi game database as a scenario
+source"), and incorporates the separate autonomous-miner agent specification
+reviewed on 2026-11-14.
+
+The merge is deliberate:
+
+- the earlier document's source/licensing analysis, `GameState` integration,
+  book classifiers, hosting plan and interestingness rubric are retained;
+- the agent specification's concrete decision-node triggers, counterfactual
+  evaluation pass, prototype JSON fields, and batch/SQLite operational rules are
+  adopted;
+- two of its assumptions are corrected: Mortal's per-action values are model
+  utility/Q values, **not point-denominated EV**, and the `agari` crate does not
+  provide a full game simulator or legal-action engine. Section 9 records the
+  comparison and the resolution in detail.
 
 External terms and limits were checked on **2026-11-14**. Platform terms change;
 re-check them before publishing anything derived from a third-party service.
@@ -55,6 +69,14 @@ not around Tenhou or Mahjong Soul logs.**
    offline tool. Keep it in a separate binary/feature (and, if it links
    `libriichi`, preferably a separate repository or process) so the MIT app and
    the AGPL tooling stay clearly separated.
+
+6. **Use the agent specification's triggers and counterfactual pass as
+   candidate-selection tools, not as the whole label.** The defensive and
+   offensive triggers raise recall for push/fold and speed/value decisions;
+   Mortal's per-action Q values order the alternatives. But Q values are model
+   utility, not points, so thresholds must be calibrated or expressed as
+   percentiles/probability margins. Section 6.5.1–6.5.2 and Section 9 cover the
+   exact reconciliation.
 
 The rest of this document explains the evidence and turns this into a design.
 
@@ -601,7 +623,7 @@ answer.
   mistake here" without using human data, and it produces a natural teaching
   moment ("what should you have done?").
 - **Caveat:** do not label by the game outcome. A bad move can get lucky; a good
-  move can deal in. Use model probability/EV and, for explanatory text, the
+  move can deal in. Use model probability/Q-gap and, for explanatory text, the
   book rule if one applies.
 - **Variant:** after the player answers, show the weak agent's actual move and
   why it is worse. That is a "find the mistake" drill, not a "best action"
@@ -611,7 +633,7 @@ answer.
 
 The top two actions are within a small probability margin. These are hard
 discriminations: the position is genuinely ambiguous to the model, and the
-learner must use a principle rather than a clear EV gap.
+learner must use a principle rather than a clear counterfactual gap.
 
 - **Answer source:** Mortal top-1, but label it "close" and show the margin.
 - **Why it is valuable:** trains judgement and tolerance for uncertainty; good
@@ -635,6 +657,28 @@ honor count) and the threat is genuinely tenpai in the hidden record.
   "safe" tile is only safe because of an opponent's hidden hand, it is a read
   drill, not a safety-chart drill.
 
+### 5.6.1 Speed vs value (from the agent specification)
+
+A 1-shanten hand with no opponent riichi where the top two discard candidates
+lead to genuinely different plans: one is the speed line (better ukeire,
+ryanmen, more live tiles), the other is the value line (keep a pair/dora/yaku,
+accept fewer tiles). The answer is whichever the book rule or the strong model
+prefers; the drill teaches the trade-off rather than a tile.
+
+- **Answer source:** book rule if one applies; otherwise Mortal, with the two
+  candidates' hand values and acceptance shown after the answer.
+- **How to find it:** target 1-shanten, no active riichi, turns 5–12, and two
+  legal discards whose resulting states diverge in both acceptance and hand
+  value. This is the agent specification's "offensive/architectural trigger",
+  generalised.
+- **Threshold:** the agent specification proposes `|EV(a1) - EV(a2)| < 250`
+  points. That is a useful *product hypothesis*, not a literal: Mortal's Q
+  values are not points. Start with a probability margin / Q-gap percentile,
+  then calibrate to point equity if the product needs point copy.
+- **Caveat:** "two discards near each other" is not enough. The candidates must
+  actually produce different configurations, or the scenario is just a close
+  call.
+
 ### 5.7 Score and placement decisions
 
 Late-game states where the score, dealer/renchan, honba, riichi sticks or
@@ -645,9 +689,9 @@ call, keeping a hand or folding for placement.
   a placement-aware evaluation).
 - **Why it is valuable:** the current generators mostly isolate a hand-shape or
   defense rule; real score context is hard to construct and easy to mine.
-- **Caveat:** the app's Mortal head is a round-EV model, not a placement-EV
-  model. Do not claim placement optimality from Mortal alone; use it as one
-  perspective, or add a placement-aware evaluator later.
+- **Caveat:** Mortal's value head is a kyoku/rank-utility model, not a
+  placement-EV model. Do not claim placement optimality from Mortal alone; use
+  it as one perspective, or add a placement-aware evaluator later.
 
 ### 5.8 Multi-step replay drills
 
@@ -720,6 +764,7 @@ the one family that needs a human source; it is deliberately listed separately.
 | Mortal best | Mortal | confidence filter | no | coverage, calls/kans, realistic texture |
 | Mistake mining | strong Mortal | weak-vs-strong gap | sometimes | teaching moments, common errors |
 | Close call | Mortal | top-2 margin | sometimes | advanced discrimination |
+| Speed vs value | book/Mortal | 1-shanten, divergent plans | sometimes | efficiency vs hand value |
 | Table reading / defense | book/Mortal | safety chart + hidden threat | yes | messy real rivers |
 | Score/placement | book/Mortal | score/round context | sometimes | all-last, push/fold |
 | Multi-step | book/Mortal | sequence of snapshots | sometimes | plan continuation |
@@ -764,8 +809,9 @@ raw logs (mjai / tenhou6 / mjlog / protobuf)
 [2] validate replay
         │  (tile conservation, scores, wall count, event order)
         ▼
-[3] enumerate decision points
-        │  (before each self-turn discard, call, riichi, kan, win/pass)
+[3] enumerate decision points + trigger prefilter
+        │  (before each self-turn discard, call, riichi, kan, win/pass;
+        │   defensive, offensive, book, call, score triggers as recall filters)
         ▼
 [4] reconstruct GameState
         │  (rotate actor to seat 0; fill hands, rivers, melds, dora, scores,
@@ -777,8 +823,9 @@ raw logs (mjai / tenhou6 / mjlog / protobuf)
 [6] book classification
         │  (matches() per lesson; unique answer; situation label)
         ▼
-[7] Mortal labelling
-        │  (top-1, full ranking, margin, riichi second pass, call mapping)
+[7] Mortal labelling + counterfactual Q pass
+        │  (top-1, full ranking, margin, per-action Q values, safe action,
+        │   riichi second pass, call mapping)
         ▼
 [8] interestingness scoring + selection
         │  (families, quotas, dedupe, diversity)
@@ -937,14 +984,110 @@ Performance:
 - Cache by `(state_hash, model_sha256, options)`; a rerun after a classifier
   change should not re-evaluate the same state.
 
+### 6.5.1 Decision-node trigger filters (adopted from the agent specification)
+
+The agent specification proposes two concrete triggers. They are useful recall
+filters, but they are **not** the whole candidate space: a hard 5–12 turn window
+would miss opening Riichi judgements, late all-last folds, calls and kans, and
+many book lessons. Run them as labelled families with quotas, alongside the
+book classifiers.
+
+| Trigger | Precondition | Signal | Families it feeds | Failure mode |
+| --- | --- | --- | --- | --- |
+| **Defensive / riichi** | At least one opponent has an active Riichi | Target is 0/1/2-shanten; a genbutsu or suji exists; threat is tenpai in the record | push/fold, safety chart, betaori, suji trap | Misses folds before a riichi declaration and states where every tile is dangerous |
+| **Offensive / architecture** | No active Riichi | Target is 1-shanten; turn 5–12; at least two legal discards lead to divergent speed/value plans | speed vs value, shape/efficiency, honitsu | Over-selects mid-game; misses 2-shanten value hands and late-game decisions |
+| **Book matcher** | Any | A lesson classifier returns a unique match | all book lessons | Low hit rate for narrow motifs |
+| **Call / kan** | Any | A chi/pon/kan offer exists, or a concealed/added quad is legal | meld/kan lessons, Mortal calls | Rare in some corpora |
+| **Score / placement** | Any | All-last, dealer renchan, honba, riichi sticks, or a large score gap | placement push/fold, riichi/dama | Needs a placement-aware label |
+| **Close call** | Any | Top-2 Mortal actions are within a calibrated margin | close-call drills | Can be ambiguous; mark as close |
+| **Blunder** | Any | Weak agent's move is far below the strong model's top action | mistake mining | Outcome bias if not careful |
+
+A trigger should record **why it fired** (`trigger: "defensive_riichi"`,
+`trigger: "offensive_architecture"`, `trigger: "book:ch8.1"`), so selection can
+balance families instead of silently taking the largest bucket.
+
+The "multiple viable tile discard branches" test in the offensive trigger should
+be concrete, not a vibe: compare the top two legal discards by the resulting
+hand's shanten/ukeire and by `evaluate_hand` / `agari` scoring. Require both
+acceptance divergence and value divergence, otherwise the candidate is a close
+call or a duplicate.
+
+### 6.5.2 Counterfactual evaluation and thresholds (corrected)
+
+The agent specification asks for per-action EV in points and proposes
+`|EV_opt - EV_safe| < 400` and `|EV(a1) - EV(a2)| < 250`. The *idea* is right:
+find decisions where the alternatives are close or where the safe line is close
+to the best line. The proposed units do not match our engine, though.
+
+Mortal is a DQN. Its network emits a value plus one Q value per action, and
+mjai-reviewer exposes those as `meta.q_values` before softmaxing them into the
+displayed probabilities. The examples in Mortal's own documentation are values
+like `-1.19`, `-1.56`, `-1.62` — model utility units, not mahjong points. The
+training target is a kyoku reward/rank utility controlled by `gamma` and the
+`pts` configuration, not a raw score delta. Our app's `Evaluation` currently
+keeps only the probabilities and the scalar `expected_value`; the per-action
+Q values are discarded at the WASM boundary.
+
+So the merged design is:
+
+1. **Expose Q values in the mining path.** The forward pass already computes
+   them. Add a native/mining-only `ActionEvaluation.q_value` (or a separate
+   `CounterfactualEvaluation`) rather than changing the browser payload unless
+   the UI needs it. Keep the legal mask alongside.
+2. **Store raw values and units.** Record `q_values`, `q_units:
+   "model_utility"`, `model_sha256`, and the model's `pts`/`gamma` if known.
+   Never call a raw Q difference "points".
+3. **Compute the useful gaps.** `q_gap_top2 = q(best) - q(second)`,
+   `q_gap_safe = q(best) - q(safest)`, plus the probability margin
+   `p(best) - p(second)`. Absolute Q values are not comparable across positions;
+   only differences within the same state are meaningful. The safe action comes
+   from `src/safety.rs` (`SafetyFacts::is_absolutely_safe`, suji/kabe), not from
+   "Mortal says so".
+4. **Select by percentile or probability, not absolute points.** For example:
+   "bottom 10% of `q_gap_top2` within this decision family" is a close call;
+   "top 10% is an obvious move"; "`q_gap_safe` in the bottom 20% of defensive
+   decisions" is a razor-thin push/fold. These are calibrated against the
+   corpus, not guessed.
+5. **Calibrate to point equity only if the product needs it.** If the copy must
+   say "this is a 400-point decision", fit `q_gap -> expected point delta`
+   (or rank-point equity) from replay outcomes or Monte Carlo rollouts and
+   version the calibration. The agent specification's 400/250 numbers become
+   hypotheses to test, not constants.
+6. **For speed vs value, use hand analysis as well as Q.** Label one candidate
+   "speed" (better ukeire/shanten) and one "value" (higher hand value/yaku/dora)
+   using `evaluate_hand`/`agari`; require genuine divergence. Mortal's Q gap then
+   tells you whether the trade-off is close.
+
+The counterfactual block in a pack should look like this:
+
+```jsonc
+"counterfactual": {
+  "model": "mortal_298k.safetensors",
+  "model_sha256": "…",
+  "q_units": "model_utility",
+  "q_values": { "Discard_3z": -0.12, "Discard_7p": -0.58, "Discard_1s": -1.71 },
+  "q_gap_top2": 0.46,
+  "q_gap_safe": 0.11,
+  "probability_margin": 0.18,
+  "safe_action": "Discard_3z",
+  "calibration_version": null,
+  "note": "Q values are model utility, not points."
+}
+```
+
+This preserves the agent specification's `expected_value_diffs` idea while
+fixing the unit error. If a calibrated point delta is later added, put it in a
+separate `expected_point_diffs` field with the calibration id; never overwrite
+the raw Q values.
+
 ### 6.6 Interestingness and selection
 
 See §7 for the full rubric. In the miner, selection is a quota problem, not a
 single sort:
 
 ```text
-for each family (book, contested, mortal_best, mistake, close_call, coverage,
-                 table_read, placement, multi_step):
+for each family (book, contested, mortal_best, mistake, close_call, speed_value,
+                 coverage, table_read, placement, multi_step):
     candidates = filter(candidates, family)
     candidates = gate(candidates)          # legality, uniqueness, confidence,
                                            # licence, visible-info, dedupe
@@ -957,7 +1100,10 @@ pedagogically valuable ones. Keep a small held-out set for QA.
 
 ### 6.7 Pack format
 
-At runtime, a pack is a gzipped JSON document. Example (abbreviated):
+At runtime, a pack is a gzipped JSON document. This is the agent
+specification's "chunked JSON scenario files destined for static hosting" with
+a manifest, integrity metadata and a real `GameState` inside. Example
+(abbreviated):
 
 ```jsonc
 {
@@ -995,7 +1141,17 @@ At runtime, a pack is a gzipped JSON document. Example (abbreviated):
         "top_probability": 0.62,
         "margin": 0.18,
         "expected_value": -0.02,
+        "value_units": "model_utility",
         "ranking": [ /* full ActionEvaluation list */ ]
+      },
+      "counterfactual": {
+        "q_units": "model_utility",
+        "q_values": { "Discard_1z": -0.12, "Discard_5m": -1.71 },
+        "q_gap_top2": 0.46,
+        "q_gap_safe": 0.11,
+        "probability_margin": 0.18,
+        "safe_action": "Discard_1z",
+        "calibration_version": null
       },
       "played": {
         "kind": "ai",
@@ -1007,7 +1163,7 @@ At runtime, a pack is a gzipped JSON document. Example (abbreviated):
         "score": 0.87,
         "book_match": true,
         "mortal_agreement": true,
-        "ev_gap": 0.31,
+        "counterfactual_tension": 0.80,
         "coverage": "new",
         "tags": ["defense", "riichi", "genbutsu", "all-last"]
       },
@@ -1062,6 +1218,8 @@ Why this shape:
   recomputes the state's copy and rejects a mismatch.
 - `mortal` is optional. If present, a user without weights can still see the
   label; if absent, the app recomputes when weights load.
+- `counterfactual` stores raw Q values and their gaps in model units; a
+  `calibration_version` is required before any field is rendered as points.
 - `provenance` is small and does not reveal the answer.
 - `validation` is a build-time record; the loader still revalidates the state.
 
@@ -1087,7 +1245,7 @@ cargo run --release --features miner --bin mine_replays -- \
 
 # Select per family/quota, dedupe, transform, and write packs.
 cargo run --release --features miner --bin mine_replays -- \
-  pack --db miner.duckdb --family book,contested,mistake,close_call \
+  pack --db miner.duckdb --family book,contested,mistake,close_call,speed_value \
   --quota-per-book-section 50 --out frontend/public/scenarios \
   --max-bytes 50000000
 
@@ -1102,9 +1260,42 @@ Flags that matter:
 - `--model-sha256` and `--classifier-version` (cache/reproducibility);
 - `--max-bytes`, `--max-scenarios`, `--quota-per-book-section`;
 - `--min-margin`, `--min-book-confidence`, `--max-ambiguous`;
+- `--trigger defensive,offensive,book,call,score` (enable/disable candidate
+  triggers; all on by default, each with its own quota);
+- `--q-gap-percentile 10` (close-call selection in model units, not points);
+- `--calibration <file>` (optional Q→point-equity calibration);
 - `--seed` for transforms;
 - `--json` for machine-readable summaries;
 - `--dry-run` for a report without writing packs.
+
+### 6.8.1 Execution rules and incremental tracking
+
+The agent specification's operational advice is worth keeping:
+
+- **Batch, do not thrash.** Load the weights once per process; process a shard
+  at a time; expose `--batch-size` and `--max-parallel`; pause between shards
+  if the machine is shared. A GPU run should not compete with the app's dev
+  server or an interactive session.
+- **Track processed work in SQLite.** Keep a small local DB (separate from the
+  analytics DB) with `processed_replays(replay_id, sha256, status, attempts,
+  last_error, updated_at)` and `processed_decisions(decision_id, state_hash,
+  model_sha256, classifier_version, status)`. Rerunning a corpus skips finished
+  work and retries only failures. This is cheaper and simpler than rebuilding
+  the whole candidate table.
+- **Use `rclone` only for the operator's own storage.** It is a convenient way
+  to sync a local mjai corpus from personal storage, but it does not change the
+  licence analysis in Section 2. The source allowlist still runs at ingest and
+  at publish.
+- **Log the funnel.** Count raw events → trigger hits → reconstructed states →
+  valid states → classifier matches → Mortal labels → selected → packed. A
+  run that silently drops 99.9% of candidates is not a success until the
+  reason is visible.
+- **Write atomically.** Validate the pack bytes, hash them, write to a temporary
+  file, then rename into `frontend/public/scenarios/`; a failed run must not
+  leave a half-written pack that the manifest points at.
+- **Fail closed.** Bad schema, unknown licence, illegal answer, failed
+  validation, or non-reproducible label stops publication for that candidate,
+  not the whole batch (unless `--strict` is set).
 
 ### 6.9 Validation and tests
 
@@ -1117,8 +1308,13 @@ The miner's tests should be a mixture of unit, fixture and integration tests:
 | State validity | every reconstructed snapshot passes `validate_reachable_state` |
 | Tile ledger | 136 tiles conserved (minus kans/replacements), no duplicate fifth tile |
 | Book classifier | generated lesson states classify as that lesson; near-misses do not |
+| Trigger filter | defensive/offensive fixtures fire; unrelated states do not; each hit records why |
 | Mortal label | fixed fixture + weights → exact top action/ranking (parity with `evaluate_state`) |
+| Counterfactual units | Q values match Mortal's metadata; probabilities are softmax/Q-derived; no field claims points without calibration |
+| Calibration | optional Q→point mapping is versioned; raw Q values are never overwritten |
+| Incremental DB | rerunning a shard skips finished decisions and retries only failures |
 | Pack schema | serde round-trip, required fields, no unknown answer shapes |
+| Prototype mapping | the agent-spec `context`/`board_state`/`solution` fields map into `GameState`/pack fields without loss (Section 9.3) |
 | Pack semantics | every `correct_action` is legal; `accepted` contains it; state/category agree |
 | Dedupe | identical states collapse; transformed states do not collide |
 | Licence gate | `redistributable: false` refuses to pack; unknown licence refuses |
@@ -1139,9 +1335,11 @@ These are planning numbers, not measurements:
 | Medium | 10,000 | 0.3–0.6 GB | 3M | 150k | ~1.7 h |
 | Large | 100,000 | 3–6 GB | 30M | 1.5M | ~17 h |
 
-A GPU/batched native inference will be much faster; the CPU number is the
-conservative planning bound. Self-play generation is not the bottleneck; label
-selection and human review are.
+Q values come from the same forward pass as the probabilities, so exposing them
+does not add a model pass; the extra cost is storage and calibration. A
+GPU/batched native inference will be much faster than the CPU bound above.
+Self-play generation is not the bottleneck; label selection and human review
+are.
 
 ### 6.11 Roadmap
 
@@ -1151,8 +1349,8 @@ selection and human review are.
 | **1. Parser + state** | `replay` module: mjai reader, tenhou6 reader, replay walker, `GameState` reconstruction, `validate_reachable_state` integration | 1-kyoku fixture and 100 real self-play games round-trip; all states valid |
 | **2. Self-play corpus** | Separate Mortal `libriichi::arena` runner; 1k-game smoke corpus; dataset card; storage plan | 1k logs parse; 0 invalid states; licence/provenance complete |
 | **3. Book classifiers** | `matches()` for the broad lessons; generated-state tests; near-miss tests | Every classifier passes generated/near-miss tests; answers legal |
-| **4. Mortal labeler** | Native batch labeler; caching; agreement filter; ensemble option | Reproducible labels; parity with `evaluate_state`; no re-eval on rerun |
-| **5. Selector** | Interestingness rubric; family quotas; dedupe; transforms; review report | A 100-scenario hand-reviewed smoke pack with no duplicates/invalids |
+| **4. Mortal labeler** | Native batch labeler; per-action Q values; caching; agreement filter; ensemble option; Q-unit calibration | Reproducible labels; parity with `evaluate_state`; Q units documented; no re-eval on rerun |
+| **5. Selector** | Trigger families; interestingness rubric; family quotas; dedupe; transforms; review report | A 100-scenario hand-reviewed smoke pack with no duplicates/invalids |
 | **6. Pack + publish** | Pack/manifest schema; audit; Pages/R2/HF publisher; loader smoke test | Pack loads in the app; hash/byte budgets pass; licence gate passes |
 | **7. Frontend loader** | Separate task: manifest fetch, IndexedDB cache, picker integration, ARIA parity | `vitest` + build; no visual judgement from the agent |
 | **8. Optional BYO import** | Native CLI first; browser import later | Legal review; one format at a time |
@@ -1184,8 +1382,9 @@ A candidate is rejected unless all of these hold:
    table, their hand and the rules. Hidden-hand facts may validate the scenario
    but must not be required to solve it (unless it is explicitly a "read the
    hidden hand" drill, which is a different product).
-5. **Label confidence.** Book match is exact, or Mortal top-1 margin exceeds a
-   configured threshold. A coin-flip is not a "best" answer.
+5. **Label confidence.** Book match is exact, or Mortal top-1
+   probability/Q-gap exceeds a configured (preferably percentile-based)
+   threshold. A coin-flip is not a "best" answer.
 6. **Licence/provenance.** The source is on the allowlist and the pack is
    redistributable. Unknown means no.
 7. **Not a duplicate.** Exact state hash and a near-duplicate fingerprint are
@@ -1199,6 +1398,7 @@ A candidate is rejected unless all of these hold:
 | --- | --- | --- |
 | **Book alignment** | classifier match + exact unique answer + citation | The book is the app's authority; a cited rule is teachable. |
 | **Model agreement** | Mortal top-1 in the accepted set; margin | Two independent perspectives agreeing is stronger than either alone. |
+| **Counterfactual gap** | `q_gap_top2`, `q_gap_safe`, probability margin; use percentiles | Razor-thin decisions are more instructive than an obvious 1-tile discard; huge gaps are easy drills. |
 | **Decision stakes** | score swing / placement leverage / hand value / threat value | A decision that matters is more memorable than a 1000-point nothing. |
 | **Discrimination** | weak agent fails, strong agent succeeds (or top-2 gap) | A scenario that separates good from bad play teaches something. |
 | **Novelty/coverage** | distance from existing catalogue; book-section/turn/decision-kind quotas | Avoid a hundred variations of the same ryanmen discard. |
@@ -1209,15 +1409,18 @@ A candidate is rejected unless all of these hold:
 A useful composite (configurable, not sacred):
 
 ```text
-score = 0.30 * book_match
-      + 0.20 * label_confidence
+score = 0.25 * book_match
+      + 0.15 * label_confidence
+      + 0.15 * counterfactual_tension
       + 0.15 * stakes
       + 0.15 * discrimination
       + 0.10 * novelty
-      + 0.10 * realism
+      + 0.05 * realism
 ```
 
-But keep it as a **ranking** within a family, after the gates. Do not let a
+`counterfactual_tension` is the percentile-normalised version of
+`q_gap_top2`/`q_gap_safe` from Section 6.5.2, not a raw point value. But keep
+the score as a **ranking** within a family, after the gates. Do not let a
 single scalar hide a licence failure or an ambiguous answer.
 
 ### 7.3 Interesting families beyond the book
@@ -1235,20 +1438,23 @@ line up exactly with book lessons. These are the strongest:
 3. **Close calls.** Top-2 actions within a small margin. These train judgement
    and are naturally hard; label them as close rather than pretending there is a
    unique best.
-4. **High-leverage / high-stakes.** All-last, dealer renchan, honba, riichi
+4. **Speed vs value.** A 1-shanten hand where the speed line and the value line
+   genuinely diverge (Section 5.6.1). It is a specific, teachable trade-off, not
+   just a close call, and deserves its own quota.
+5. **High-leverage / high-stakes.** All-last, dealer renchan, honba, riichi
    sticks, a big hand vs a big threat. The correct line may be book or Mortal,
    but the context is what makes it interesting.
-5. **Coverage gaps.** Mine states that fill a book section, decision kind, turn
+6. **Coverage gaps.** Mine states that fill a book section, decision kind, turn
    range or score band the current catalogue under-represents. This is a
    curriculum-completion objective, not a "rare" objective.
-6. **Rare motifs with a clear rule.** Suji traps, kabe, one-chance, double
+7. **Rare motifs with a clear rule.** Suji traps, kabe, one-chance, double
    one-chance, genbutsu waits, dora traps, furiten. The motif is rare but the
    answer is principled; good for advanced drills.
-7. **Table-reading drills.** Real rivers with irrelevant information: which
+8. **Table-reading drills.** Real rivers with irrelevant information: which
    tile is safest, which wait is plausible, which call changed the hand. The
    answer can come from the safety chart or from the hidden hand (for a read
    drill), but the scenario must say which kind it is.
-8. **Continuation / multi-step.** A short sequence from a real game teaches plan
+9. **Continuation / multi-step.** A short sequence from a real game teaches plan
    continuity, call timing and defense over time. This is a product feature, not
    just a data filter.
 
@@ -1310,7 +1516,8 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
    push/fold, defense safety, suji trap, pinfu head, honitsu and the call/kan
    lessons. Test them against the existing generators.
 5. **Add the native Mortal labeler** using the app's existing `MortalV4Model`;
-   cache by state/model/classifier hash; support an ensemble.
+   expose per-action Q values, cache by state/model/classifier hash, support an
+   ensemble, and calibrate Q gaps before any point-denominated copy.
 6. **Ship one small pack** (for example 100 ch. 8 defense scenarios) through a
    lazy-loaded manifest, and measure load size, cache behaviour, answer
    accuracy and user feedback before scaling.
@@ -1339,6 +1546,9 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
    sequences need a step engine and new grading/history behavior.
 8. **Do we want a BYO-replay import?** It is the cleanest way to use real human
    games, but it is a separate product surface and a separate legal review.
+9. **Do we need point-denominated EV copy?** Q values are model utility. If the
+   UI or explanations must say "a 400-point decision", we need a calibrated
+   Q→point mapping and a validation set; otherwise use margins/percentiles.
 
 ### 8.3 What this document does not claim
 
@@ -1353,10 +1563,118 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
 
 ---
 
+## 9. Comparison with the autonomous-miner agent specification
+
+The separate writeup (`riichi_replay_mining_scenario_agent_specification.md`,
+reviewed 2026-11-14) is a short execution recipe for one backend agent. It is
+not a licensing or product analysis. That is its strength: it names concrete
+triggers, a counterfactual pass, two scenario categories, a prototype JSON
+shape, and batch/checkpoint rules. This section records what we adopted, what
+we corrected, and how its fields map into the merged design. The external file
+is not checked in; this section is the durable record of the comparison.
+
+At a glance:
+
+| Dimension | This document (before merge) | Agent specification | Merged position |
+| --- | --- | --- | --- |
+| Scope | end-to-end: sources, licensing, scenario design, hosting, miner | one autonomous miner's execution recipe | end-to-end plan with a concrete miner recipe |
+| Source/licensing | detailed; self-play recommended | not addressed; "personal storage" logs assumed | self-play default; explicit permission/allowlist gate |
+| State model | full `GameState` + app validation | thin `board_state` | full `GameState`, prototype fields as metadata |
+| Label source | book + Mortal, contested option | Mortal optimal vs played | book + Mortal + played/weak-agent/ensemble |
+| Value units | probabilities + scalar value | per-action EV in points | raw Q values + probability; calibrated points only if needed |
+| Triggers | broad families, no hard windows | defensive/offensive triggers | concrete triggers as recall filters with quotas |
+| Output | pack + manifest schema | compact prototype JSON | pack schema with `GameState`; field mapping in 9.3 |
+| Operations | pipeline + hosting | batch, SQLite, rclone, schema check | adopted in 6.8.1 |
+| Validation | extensive table + gates | one line ("schema validation") | extensive table + Q-unit/trigger/calibration tests |
+
+### 9.1 What it adds
+
+1. **Concrete decision-node triggers.** Defensive: an opponent is in Riichi and
+   the target is 1- or 2-shanten. Offensive/architectural: the target is
+   1-shanten, turns 5–12, unthreatened, with multiple viable discard branches.
+   These are useful recall filters and are now Section 6.5.1.
+2. **A counterfactual evaluation pass.** Extract all legal actions, query Mortal
+   for each, compare the model's best action with the played action. This is the
+   right shape for mistake mining and close-call selection; it is now Section
+   6.5.2.
+3. **Two named product families:** `riichi_push_fold` and "speed vs value". The
+   first maps to our push/fold and defense families; the second is a genuinely
+   useful non-book family, now Section 5.6.1.
+4. **A compact prototype schema.** `scenario_id`, `category`, `context`,
+   `board_state`, `prompt`, `solution.optimal_discards`,
+   `solution.expected_value_diffs`, `solution.mortal_commentary`. The field
+   names are useful for a first smoke pack; Section 9.3 maps them to the real
+   `GameState`/pack schema.
+5. **Operational discipline.** Batch jobs, SQLite tracking to avoid
+   reprocessing, schema validation before writing public assets, `rclone` for
+   local corpora. These are now Section 6.8.1.
+
+### 9.2 Where it needs correction
+
+| Agent-spec assumption | Why it does not hold | Merged resolution |
+| --- | --- | --- |
+| "Mortal EV" for every action, in points, with 400/250-point thresholds | Mortal is a DQN. The network emits a value plus one Q value per action; mjai-reviewer exposes `meta.q_values` and then softmaxes them into probabilities. Mortal's own examples are values like `-1.19`, `-1.56`, `-1.62` — model utility, not points. The training target is a kyoku reward/rank utility governed by `gamma`/`pts`. | Store raw Q values with `q_units: "model_utility"`; use probability margin and Q-gap percentiles; calibrate to point equity only if needed. Section 6.5.2. |
+| `agari` provides "game rule validation, shanten calculations, and legal move generation" | `agari` is a hand-analysis crate (shanten, yaku, ukeire, scoring). It does not own a four-player game state, a replay walker, or the app's legal-action rules. | Use `agari` for hand analysis; use the replay walker plus the app's `GameState`/`src/ai/actions.rs` for legal actions and rule state. Section 6.3–6.4. |
+| `board_state` is enough for the frontend | It omits opponents' hands/melds/rivers, winds, seat scores, turn, riichi state, ura dora, `can_riichi`, decision context and the book rationale. The app cannot render or grade it without rebuilding all of that. | Ship a complete `GameState`; keep the prototype fields as optional metadata/aliases. Section 6.7. |
+| `solution.mortal_commentary` is model prose | Mortal's policy net does not produce prose. Inventing a "Mortal commentary" string would be fabricated attribution. | Use `book_rationale` for the book side; for the model side show the ranking/attribution line, or add a human-written explanation clearly marked as such. |
+| `solution.optimal_discards: ["3z", "3z"]` | A discard names one tile type; two copies of the same tile are not two answers. The app distinguishes exact tile, equivalent tiles and action family. | Use `correct_action` + `accepted`/`equivalent_tiles`; a call uses `CorrectAction::Best` with `tiles`. |
+| Fixed absolute thresholds are portable | "Razor-thin" depends on the decision family, model, round and score. A 400-point gap in one context is huge; a 250-point gap in another is obvious. Q units are not points at all. | Percentile/calibrated thresholds per family; the agent spec's numbers are hypotheses, not constants. |
+| Input is "raw MJAI/JSON logs synced from personal storage" | The source could be Tenhou, Mahjong Soul or a private corpus; the spec has no licence/provenance gate. `rclone` does not create redistribution rights. | Source allowlist at ingest and publish; self-play is the default; third-party logs need written permission. Section 2 and Section 4.5. |
+| Categories `riichi_push_fold` / speed-vs-value are the app's scenario IDs | The app's manifest uses `ScenarioId`/`lesson_id`, book sections and `category` enums (`riichi_decision`, `defense_decision`, ...). A new naming scheme would fork the picker and grading. | Add replay lesson IDs (for example `replay_push_fold`, `replay_speed_value`) under the existing manifest, with `book` metadata where applicable. |
+| The "human player's actual choice" is always available | Self-play logs have an agent's played action, not a human's. A human corpus needs permission. | Call the field `played` with `kind: "human"` or `"ai"`, agent/model identity, and only treat it as an expert line when the source is legitimate. Section 5.11. |
+| One pass over "all legal actions" is cheap | It is one forward pass per decision, not per action, but the candidate volume is still millions; without cheap filters the run is tens of hours. | Cheap structural/book/trigger filters first; one batched forward pass per retained state; cache. Section 6.5 and 6.10. |
+
+### 9.3 Field mapping
+
+| Agent-spec field | Merged field | Notes |
+| --- | --- | --- |
+| `scenario_id` | `id` | Keep a stable content hash; the agent-spec prefix is fine as a display id. |
+| `category: "riichi_push_fold"` | `lesson_id: "replay_push_fold"` + `book` | Use the existing manifest; `category` remains the broad enum. |
+| `context.round: "EAST_3"` | `state.round_wind`, `state.hand_number` | The app stores wind + hand number, not a display string. |
+| `context.honba` / `riichi_sticks` | `state.honba` / `state.riichi_sticks` | Direct. |
+| `context.player_seat` | `provenance.original_seat` | The state is rotated so the actor is seat 0; keep the original seat for provenance. |
+| `context.scores` | `state.players[].score` | Rotated with the seats. |
+| `context.dora_indicators` | `state.dora_indicators` | Only indicators visible at the decision; not future kan dora. |
+| `board_state.hand` | `state.players[0].hand` (+ `draw` on a self turn) | Use the app's tile codes; no duplicate copy semantics. |
+| `board_state.melds` | `state.players[].melds` | Include all four seats, not just the actor. |
+| `board_state.discards_by_player` | `state.players[].discards` | Keep tile, tsumogiri flag, riichi flag and declaration index. |
+| `board_state.wall_tile_count` | `state.tiles_remaining` | Document the 70-live-wall convention. |
+| `prompt` | `prompt` / `scenario_note` | Must not name the answer or the wait. |
+| `solution.optimal_discards` | `correct_action` + `accepted`/`equivalent_tiles` | One action family, not duplicate tile copies. |
+| `solution.expected_value_diffs` | `counterfactual.q_values` + `q_gap_top2` / `q_gap_safe` | Raw model utility; optional `expected_point_diffs` only with a calibration id. |
+| `solution.mortal_commentary` | `book_rationale` or a marked human explanation | Do not fabricate model prose. |
+| *(missing)* opponents' hidden hands | `state.players[].hand` | Needed to validate threat tenpai; hidden by the UI. |
+| *(missing)* `can_riichi`, decision context, call offer | `state.can_riichi`, `state.decision`, `state.call_offer` | Required for grading and UI. |
+| *(missing)* validation/provenance/licence | `validation`, `provenance`, `source` | Required for publication. |
+
+### 9.4 The merged position
+
+- **Keep the agent specification's triggers** as labelled recall filters, not
+  hard gates.
+- **Keep its counterfactual pass**, but expose and store Q values in model
+  units; use probability/Q-gap percentiles and calibrate before quoting points.
+- **Keep its speed-vs-value family**, with concrete speed/value divergence via
+  `evaluate_hand`/`agari`, not just "two close discards".
+- **Keep its operational rules** (batch, SQLite, atomic writes, schema checks).
+- **Replace its thin board schema with `GameState`**, and its duplicate
+  `optimal_discards` with `correct_action`/`accepted`.
+- **Add the missing source/licence gate** and the book/Mortal dual-label model.
+- **Do not use its fixed 400/250-point thresholds as literals**; they become
+  calibration hypotheses.
+
+The result is one implementation path: self-play or permissioned logs →
+replay walker → `GameState` + triggers → book classifiers and Mortal Q/probability
+labels → calibrated selection → validated static packs → lazy-loaded frontend.
+
+---
+
 ## Appendix A — Source notes
 
 Checked 2026-11-14:
 
+- Agent specification compared in Section 9:
+  `/home/kylehipke/Downloads/riichi_replay_mining_scenario_agent_specification.md`
+  (external, not checked in).
 - Tenhou manual: <https://tenhou.net/man/> (logs, `/0/ /5/ /6/` URLs, gzipped
   XML, 40-entry history, 10-day paid download, copyright notice, AI section).
 - Tenhou 2017 policy post: <http://blog.tenhou.net/article/181504123.html>
@@ -1372,6 +1690,15 @@ Checked 2026-11-14:
 - Mortal: <https://github.com/Equim-chan/Mortal> (AGPL-3.0; emulator; mjai;
   `libriichi::arena`; 40K hanchans/hour claim; weights AGPL).
 - Mortal docs: <https://mortal.ekyu.moe/>.
+- Mortal's `q_values` metadata and example outputs:
+  <https://github.com/Equim-chan/Mortal/blob/main/docs/src/user/docker.md>
+  (the `-1.19`-style values that show Q values are model utility, not points).
+- Mortal training reward configuration (`pts`, `gamma`):
+  <https://github.com/Equim-chan/Mortal/blob/main/mortal/config.example.toml>
+  and `mortal/reward_calculator.py`.
+- mjai-reviewer's Mortal review path (reads `meta.q_values`, softmaxes to
+  probabilities):
+  <https://github.com/Equim-chan/mjai-reviewer/blob/master/src/review/mortal.rs>.
 - Mortal arena source:
   <https://github.com/Equim-chan/Mortal/tree/main/libriichi/src/arena>.
 - Akochan: <https://github.com/critter-mj/akochan> (custom licence; output
@@ -1409,6 +1736,9 @@ Checked 2026-11-14:
 | `src/generator/mod.rs` | `SCENARIO_MANIFEST`, `generate_puzzle`, `finalize_state`, `GeneratedPuzzle` |
 | `src/generator/mortal_agreement.rs` | the accepted-answer comparison rules; reuse them for replay agreement |
 | `src/ai/wasm_bridge.rs` | `Evaluation`, `evaluate_state_named`, legal-action mask, riichi second pass |
+| `src/ai/model.rs` | `MortalV4Model`; the native forward pass that already produces the 47 outputs |
+| `src/ai/encoder.rs` | `encode_v4_observation`, tile index/name mapping |
+| `src/decision.rs` | `ActionEvaluation` / `ActionInfo`; the place to add a mining-only Q value |
 | `src/ai/actions.rs` | legal-action resolution; `riichi_is_legal` |
 | `src/export/tenhou6.rs` | tenhou6 tile ids and naki strings; reuse for export/view |
 | `src/report/model.rs` | `riichiprac.scenario-report`; a single-candidate review format |
@@ -1416,6 +1746,7 @@ Checked 2026-11-14:
 | `src/safety.rs` | ch. 8 safety chart, suji/kabe arithmetic, `SafetyFacts` |
 | `src/generator/support/analysis.rs` | `evaluate_hand`, shanten/ukeire helpers |
 | `src/generator/support/completion.rs` | waits/completion helpers used by shape lessons |
+| `agari` (dependency) | shanten, yaku, ukeire and scoring analysis; **not** a four-player simulator or legal-action engine |
 
 ## Appendix C — Glossary
 
@@ -1434,3 +1765,9 @@ Checked 2026-11-14:
   because all four copies of a neighbouring tile are visible.
 - **furiten** — a player cannot win on a tile they have discarded (or, for
   temporary furiten, have just passed on).
+- **Q value** — Mortal's per-action value output from its DQN head. It is a
+  model utility, not a mahjong point delta; the app currently softmaxes Q values
+  into probabilities and does not expose them at the WASM boundary.
+- **model utility** — the scale of Mortal's Q values/value head. The training
+  target is a kyoku reward/rank utility controlled by `gamma` and `pts`, so
+  raw values cannot be quoted as points without calibration.
