@@ -12,7 +12,9 @@
     "check": "node scripts/check-shells.mjs",
     "review": "node scripts/review-shells.mjs",
     "felt": "bash bake-felt.sh",
-    "rasterize": "node scripts/rasterize-face.mjs"
+    "rasterize": "node scripts/rasterize-face.mjs",
+    "faces": "node scripts/bake-faces.mjs",
+    "faces:verify": "node scripts/bake-faces.mjs --verify-determinism"
   },
   "dependencies": {
     "@resvg/resvg-js": "2.6.2"

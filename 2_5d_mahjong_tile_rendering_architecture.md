@@ -93,11 +93,11 @@ Configure an automated Blender script to render the canonical blank tile shells 
 - [x] **Task 1.3:** Render all 6 canonical blank shells at target DPI (plus `@2x` retina scale) and auto-generate `shells.json` containing `anchorX`, `anchorY`, `advanceWidth`, `advanceHeight`, and `faceQuad` coordinates. All numbers are measured from the render; see section 8.
 
 ### Phase 2: Runtime Texture Atlas & Face Glyph Compositor
-- [ ] **Task 2.1:** Prepare high-contrast, crisp 2D vector/SVG or high-DPI PNG assets for all 34 tile faces (plus red fives *akadora*). Avoid thin hairlines that blur at small discard sizes.
-- [ ] **Task 2.2:** Build a startup **Tile Atlas Generator** (`TileAtlasBuilder`) that composites every `(shellType, tileFace)` pair onto an offscreen canvas/texture atlas once at initialization:
+- [x] **Task 2.1:** Prepare high-contrast, crisp 2D vector/SVG or high-DPI PNG assets for all 34 tile faces (plus red fives *akadora*). Avoid thin hairlines that blur at small discard sizes. Landed: 37 committed 192 × 256 RGBA PNGs, see §9.
+- [x] **Task 2.2:** Build a startup **Tile Atlas Generator** (`TileAtlasBuilder`) that composites every `(shellType, tileFace)` pair onto an offscreen canvas/texture atlas once at initialization:
   - Draw the pre-baked Blender shell PNG.
   - Transform and draw the 2D face glyph into the shell's `faceQuad` (applying a $90^\circ$ counter-clockwise rotation to the glyph when compositing onto `shell_flat_sideways`).
-- [ ] **Task 2.3:** Store UV rects and layout metrics in a fast lookup map (`Map<TileRenderKey, BakedTileSprite>`) so runtime frame rendering requires zero dynamic shadows, blurs, or multi-pass shaders.
+- [x] **Task 2.3:** Store UV rects and layout metrics in a fast lookup map (`Map<TileRenderKey, BakedTileSprite>`) so runtime frame rendering requires zero dynamic shadows, blurs, or multi-pass shaders. Landed: `frontend/src/table/`, see §9.
 
 ### Phase 3: Coordinate System & Zone Layout Engine
 - [ ] **Task 3.1:** Implement the table layout engine strictly using `advanceWidth` and `advanceHeight` from `shells.json` (never `texWidth`/`texHeight`).
@@ -277,3 +277,60 @@ Total 76,360 B against a 2,097,152 B budget. The felt is unchanged
 Phase 2 owns the atlas and the glyph compositor: it maps each glyph's corners
 onto `faceQuad` after rotating it by `faceRotationDeg`, and never rotates a
 shell sprite.
+
+
+## 9. Phase 2 baseline (landed 2026-11-14)
+
+Phase 2 baked the 38 face glyphs and implemented the startup atlas. The
+authoritative pipeline numbers and asset contract are in
+[`tools/render/README.md`](tools/render/README.md) §"Phase 2"; this section
+records the decisions that narrow the architecture above.
+
+**Assets.** 37 glyph PNGs (34 standard + 3 red fives; `blank` has no asset),
+192 × 256 RGBA, 377,248 B total against a 1,048,576 B budget. They are the
+upstream public-domain symbol-only SVGs at commit
+`f37d6cc2557498d23f13eb3e955e0e44e5c863ff`, rasterised offline by
+`tools/render/scripts/bake-faces.mjs` with `@resvg/resvg-js` 2.6.2.
+`frontend/public/table/faces.json` records every glyph's decoded-RGBA sha256,
+ink bbox/counts and provenance. No tile art is rasterised in the browser.
+
+**Runtime.** `frontend/src/table/TileAtlasBuilder.ts` composes one offscreen
+Canvas 2D page per shell at startup, clips to the published `faceQuad` and maps
+the glyph's own corners onto it. `frontend/src/table/TileAtlas.ts` exposes the
+`Map<TileRenderKey, BakedTileSprite>` and a lazy `warm(shells)`; the first board
+warms all six shells. Frame code only blits `page.canvas` at `sprite.uv`.
+
+**Numbers.** 228 keys across 6 pages: 1,608,256 px / 6,433,024 B RGBA at @2x
+(402,064 px / 1,608,256 B at @1x), 108 glyph keys and 120 bare keys. Build time
+in Node Canvas is 14–27 ms. Review sheets and `atlas-numbers.json` are written
+by `frontend/scripts/review-atlas.ts` under `tools/render/build/review/`.
+
+**Decisions that narrow the architecture above.**
+
+1. **The atlas is composed at startup, not offline.** The shell and glyph PNGs
+   are already committed and resvg is a build tool, not a runtime dependency.
+   Composing on an offscreen 2D canvas keeps `shells.json` authoritative and
+   lets the atlas page scale follow `devicePixelRatio` (@2x on retina, @1x
+   otherwise). It is deterministic: the same manifests and PNGs produce the
+   same decoded RGBA, verified by a test and by `--verify-determinism` for the
+   glyph sources.
+2. **`faceQuad` carries `faceRotationDeg`; the builder does not rotate twice.**
+   The manifest publishes the quad in face-local corner order (top-left,
+   top-right, bottom-right, bottom-left) after the shell's pose. For
+   `shell_flat_sideways` the first edge therefore points up the screen, which is
+   the 90° counter-clockwise glyph rotation. Mapping the glyph's corners onto
+   the quad implements it; rotating the glyph again would cancel the rotation.
+   The builder re-derives the rotation from the quad and throws on a mismatch.
+3. **Face-down shells resolve every face key to one bare slot.** A
+   `shell_wall_*` sprite shows the blue resin back; compositing a glyph on it
+   would be wrong and would duplicate five megabytes of atlas. The 114 back keys
+   therefore share three bare slots (one per shell), and frame code can still
+   look up any `(shell, face)` without special-casing.
+4. **`blank` and `5z` share a bare slot.** A blank tile and a haku are both a
+   plain ivory face. The upstream haku symbol-only SVG rasterises to zero ink;
+   both keys map to the shell's shared bare slot instead of two transparent
+   copies.
+5. **No 3D, no WebGL, no per-frame art.** The atlas is an offscreen 2D canvas;
+   the only runtime work per tile is `drawImage` from the page. The tests scan
+   the atlas modules for WebGL/3D imports and assert draw order (all shells
+   before any glyph, clip then transform then glyph) on a recording context.
