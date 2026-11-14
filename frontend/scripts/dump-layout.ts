@@ -1,12 +1,12 @@
 /**
- * Scripted geometry dump for the Phase 3 board layout.
+ * Scripted geometry dump for the Phase 3–4 board layout.
  *
  *   cd frontend && npm run layout:dump
  *
  * It lays out a worst-case full board with the real `shells.json` and:
  *
  *   1. asserts the geometry (zone containment/disjointness, anchor mapping,
- *      hand pitch and tsumo gap, pond wrap, Riichi advance, wall tiers,
+ *      hand bands and pitches, melds, pond wrap, Riichi advance, wall tiers,
  *      draw order, uniform pond size, viewport fitting);
  *   2. writes `tools/render/build/review/layout-dump.json` with every placement
  *      and the derived numbers;
@@ -23,6 +23,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   FELT_RUNTIME,
+  HAND_MELD_GAP_PX,
   MAX_WALL_PAIRS_PER_SIDE,
   POND_COLUMNS,
   POND_ROWS,
@@ -36,6 +37,7 @@ import type {
   BoardLayout,
   BoardLayoutInput,
   BoardRect,
+  MeldInput,
   PondDiscardInput,
   TilePlacement,
 } from '../src/table/boardLayout';
@@ -66,10 +68,6 @@ function close(actual: number, expected: number, epsilon = 1e-6): boolean {
   return Math.abs(actual - expected) <= epsilon;
 }
 
-function round3(value: number): number {
-  return Math.round(value * 1000) / 1000;
-}
-
 const FACES: readonly TileFaceId[] = [
   '1m', '2m', '3m', '4m', '5m', '6m', '7m', '8m', '9m',
   '1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p',
@@ -84,9 +82,21 @@ function pond(offset: number, riichiIndex: number): PondDiscardInput[] {
   }));
 }
 
+function meld(kind: MeldInput['kind'], count: number, offset: number): MeldInput {
+  return { kind, tiles: FACES.slice(offset, offset + count) };
+}
+
+// A legal full table: 13 concealed-equivalent tiles per seat, four calls and
+// the human's draw. The human 10 concealed + pon + draw is 14 physical tiles.
 const input: BoardLayoutInput = {
-  hand: FACES.slice(0, 13),
+  hand: FACES.slice(0, 10),
   draw: '5p',
+  melds: [meld('pon', 3, 3)],
+  hands: {
+    top: { hand: FACES.slice(0, 10), melds: [meld('chi', 3, 6)] },
+    left: { hand: FACES.slice(0, 10), melds: [meld('pon', 3, 6)] },
+    right: { hand: FACES.slice(0, 13) },
+  },
   ponds: {
     bottom: pond(0, 3),
     right: pond(9, 8),
@@ -124,7 +134,7 @@ function overlaps(left: BoardRect, rightRect: BoardRect, epsilon = 1e-6): boolea
 // --- board and zones ---------------------------------------------------------
 const boardRect: BoardRect = { x: 0, y: 0, ...metrics.board };
 const zones = [
-  { name: 'hand', rect: metrics.zones.hand },
+  ...SEAT_SIDES.map((side) => ({ name: `hand-${side}`, rect: metrics.zones.hand[side] })),
   { name: 'reserve', rect: metrics.zones.reserve },
   ...SEAT_SIDES.map((side) => ({ name: `pond-${side}`, rect: metrics.zones.ponds[side] })),
   ...SEAT_SIDES.map((side) => ({ name: `wall-${side}`, rect: metrics.zones.walls[side] })),
@@ -142,7 +152,7 @@ for (let left = 0; left < zones.length; left += 1) {
 }
 
 // --- anchor mapping and body bounds -----------------------------------------
-check(layout.placements.length === counts.hand + counts.draw + counts.ponds + counts.walls, 'counts add up');
+check(layout.placements.length === counts.hand + counts.draw + counts.melds + counts.ponds + counts.walls, 'counts add up');
 for (const placement of layout.placements) {
   const shell = shells.shells[placement.shell];
   check(
@@ -162,7 +172,7 @@ for (const placement of layout.placements) {
   );
   const zone =
     placement.zone === 'hand'
-      ? metrics.zones.hand
+      ? metrics.zones.hand[placement.seat]
       : placement.zone === 'pond'
         ? metrics.zones.ponds[placement.seat]
         : metrics.zones.walls[placement.seat];
@@ -170,35 +180,65 @@ for (const placement of layout.placements) {
   check(contains(boardRect, placement.advanceRect), `${placement.id} body is inside the board`);
 }
 
-// --- hand -------------------------------------------------------------------
-const handTiles = layout.placements
-  .filter((placement) => placement.kind === 'hand')
+// --- hands and melds ---------------------------------------------------------
+for (const side of SEAT_SIDES) {
+  const tiles = layout.placements.filter(
+    (placement) => placement.zone === 'hand' && placement.seat === side,
+  );
+  const band = metrics.zones.hand[side];
+  const hidden = tiles.filter((placement) => placement.kind === 'hand');
+  const draws = tiles.filter((placement) => placement.kind === 'draw');
+  const calls = tiles.filter((placement) => placement.kind === 'meld');
+  check(hidden.length > 0, `${side} hand has concealed tiles`);
+  check(tiles.length === hidden.length + draws.length + calls.length, `${side} hand parts add up`);
+  for (const placement of tiles) {
+    check(contains(band, placement.advanceRect), `${placement.id} body is inside the hand band`);
+    if (placement.kind === 'meld') {
+      check(placement.shell === 'shell_flat_upright', `${placement.id} uses the upright meld shell`);
+    } else {
+      check(placement.shell === metrics.hands[side].shell, `${placement.id} uses the seat's hand shell`);
+    }
+  }
+  // Each run is centred in its band and steps monotonically along it.
+  const horizontal = metrics.hands[side].axis === 'horizontal';
+  const ordered = [...tiles].sort((left, rightTile) =>
+    horizontal ? left.gridX - rightTile.gridX : left.gridY - rightTile.gridY,
+  );
+  const first = ordered[0];
+  const last = ordered[ordered.length - 1];
+  check(
+    horizontal
+      ? close(first.gridX - band.x, right(band) - right(last.advanceRect), 0.75)
+      : close(first.gridY - band.y, bottom(band) - bottom(last.advanceRect), 0.75),
+    `${side} hand run is centred in its band`,
+  );
+}
+
+// The human row: concealed at 38 px, the draw after the tsumo gap, the call
+// after the meld gap, bottom-aligned in the band.
+const humanHand = layout.placements
+  .filter((placement) => placement.seat === 'bottom' && placement.kind === 'hand')
   .sort((left, rightTile) => left.gridX - rightTile.gridX);
-const draw = layout.placements.find((placement) => placement.kind === 'draw');
-check(handTiles.length === 13, 'hand has 13 concealed tiles');
-check(draw !== undefined, 'hand has a drawn tile');
-for (let index = 1; index < handTiles.length; index += 1) {
+const humanDraw = layout.placements.find((placement) => placement.kind === 'draw')!;
+const humanMelds = layout.placements
+  .filter((placement) => placement.seat === 'bottom' && placement.kind === 'meld')
+  .sort((left, rightTile) => left.gridX - rightTile.gridX);
+for (let index = 1; index < humanHand.length; index += 1) {
   check(
-    close(handTiles[index].gridX - handTiles[index - 1].gridX, standing.advanceWidth),
-    'hand pitch is advanceWidth',
+    close(humanHand[index].gridX - humanHand[index - 1].gridX, standing.advanceWidth),
+    'human hand pitch is advanceWidth',
   );
 }
-if (draw) {
-  check(
-    close(
-      draw.gridX - handTiles[handTiles.length - 1].gridX,
-      standing.advanceWidth + 0.35 * standing.advanceWidth,
-    ),
-    'tsumo gap is 0.35 * advanceWidth before the drawn tile',
-  );
-}
-const lastPlacedTile = draw ?? handTiles[handTiles.length - 1];
 check(
   close(
-    handTiles[0].gridX - metrics.zones.hand.x,
-    right(metrics.zones.hand) - right(lastPlacedTile.advanceRect),
+    humanDraw.gridX - humanHand[humanHand.length - 1].gridX,
+    standing.advanceWidth + 0.35 * standing.advanceWidth,
   ),
-  'hand is centred in its zone',
+  'tsumo gap is 0.35 * advanceWidth before the drawn tile',
+);
+check(
+  close(humanMelds[0].gridX - humanDraw.gridX, humanDraw.advanceRect.width + HAND_MELD_GAP_PX),
+  'first meld follows the draw by the meld gap',
 );
 
 // --- ponds ------------------------------------------------------------------
@@ -302,37 +342,28 @@ for (const side of SEAT_SIDES) {
 const orders = layout.placements.map((placement) => placement.drawOrder);
 check(new Set(orders).size === orders.length, 'draw order is unique');
 check(orders.every((order, index) => order === index), 'draw order is contiguous from 0');
-const lastTopWall = Math.max(
-  ...layout.placements
-    .filter((placement) => placement.seat === 'top' && placement.zone === 'wall')
-    .map((placement) => placement.drawOrder),
+function range(predicate: (placement: TilePlacement) => boolean): [number, number] {
+  const values = layout.placements.filter(predicate).map((placement) => placement.drawOrder);
+  return [Math.min(...values), Math.max(...values)];
+}
+const topHandOrder = range((placement) => placement.seat === 'top' && placement.zone === 'hand');
+const topWallOrder = range((placement) => placement.seat === 'top' && placement.zone === 'wall');
+const sideWallOrder = range(
+  (placement) => placement.zone === 'wall' && (placement.seat === 'left' || placement.seat === 'right'),
 );
-const firstSideWall = Math.min(
-  ...layout.placements
-    .filter(
-      (placement) =>
-        placement.zone === 'wall' && (placement.seat === 'left' || placement.seat === 'right'),
-    )
-    .map((placement) => placement.drawOrder),
+const pondOrder = range((placement) => placement.zone === 'pond');
+const bottomWallOrder = range((placement) => placement.seat === 'bottom' && placement.zone === 'wall');
+const sideHandOrder = range(
+  (placement) =>
+    placement.zone === 'hand' && (placement.seat === 'left' || placement.seat === 'right'),
 );
-const firstPond = Math.min(
-  ...layout.placements.filter((placement) => placement.zone === 'pond').map((placement) => placement.drawOrder),
-);
-const lastPond = Math.max(
-  ...layout.placements.filter((placement) => placement.zone === 'pond').map((placement) => placement.drawOrder),
-);
-const firstBottomWall = Math.min(
-  ...layout.placements
-    .filter((placement) => placement.seat === 'bottom' && placement.zone === 'wall')
-    .map((placement) => placement.drawOrder),
-);
-const firstHand = Math.min(
-  ...layout.placements.filter((placement) => placement.zone === 'hand').map((placement) => placement.drawOrder),
-);
-check(lastTopWall < firstSideWall, 'top wall paints before the side walls');
-check(firstSideWall < firstPond, 'side walls paint before the ponds');
-check(lastPond < firstBottomWall, 'ponds paint before the bottom wall');
-check(firstBottomWall < firstHand, 'bottom wall paints before the hand');
+const bottomHandOrder = range((placement) => placement.seat === 'bottom' && placement.zone === 'hand');
+check(topHandOrder[1] < topWallOrder[0], 'top hand paints before the top wall');
+check(topWallOrder[1] < sideWallOrder[0], 'top wall paints before the side walls');
+check(sideWallOrder[1] < pondOrder[0], 'side walls paint before the ponds');
+check(pondOrder[1] < bottomWallOrder[0], 'ponds paint before the bottom wall');
+check(bottomWallOrder[1] < sideHandOrder[0], 'bottom wall paints before the side hands');
+check(sideHandOrder[1] < bottomHandOrder[0], 'side hands paint before the bottom hand');
 
 // --- viewport fitting -------------------------------------------------------
 const viewports = [
@@ -382,6 +413,7 @@ const numbers = {
   },
   zones: metrics.zones,
   metrics: {
+    hands: metrics.hands,
     hand: metrics.hand,
     ponds: Object.fromEntries(
       SEAT_SIDES.map((side) => [
@@ -411,22 +443,26 @@ const numbers = {
     note: 'Tight-row advance from gridStepPx, not the 54 px advanceWidth: a tight row must not open a 2 px felt gap. Phase 1 baseline §8.4 / tools/render/README.md.',
   },
   handTsumoGapPx: metrics.hand.tsumoGapPx,
+  handMeldGapPx: metrics.hand.meldGapPx,
+  meldEnds: Object.fromEntries(
+    SEAT_SIDES.map((side) => [side, metrics.hands[side].meldSign > 0 ? 'end' : 'start']),
+  ),
   rounding: 'coordinates are rounded to 1e-3 here for readability; the engine keeps full precision',
   placements: layout.placements.map((placement) => ({
     ...placement,
-    gridX: round3(placement.gridX),
-    gridY: round3(placement.gridY),
-    drawX: round3(placement.drawX),
-    drawY: round3(placement.drawY),
+    gridX: Math.round(placement.gridX * 1000) / 1000,
+    gridY: Math.round(placement.gridY * 1000) / 1000,
+    drawX: Math.round(placement.drawX * 1000) / 1000,
+    drawY: Math.round(placement.drawY * 1000) / 1000,
     advanceRect: {
-      x: round3(placement.advanceRect.x),
-      y: round3(placement.advanceRect.y),
+      x: Math.round(placement.advanceRect.x * 1000) / 1000,
+      y: Math.round(placement.advanceRect.y * 1000) / 1000,
       width: placement.advanceRect.width,
       height: placement.advanceRect.height,
     },
     bodyRect: {
-      x: round3(placement.bodyRect.x),
-      y: round3(placement.bodyRect.y),
+      x: Math.round(placement.bodyRect.x * 1000) / 1000,
+      y: Math.round(placement.bodyRect.y * 1000) / 1000,
       width: placement.bodyRect.width,
       height: placement.bodyRect.height,
     },
@@ -441,7 +477,10 @@ const pad = 24;
 const width = metrics.board.width * scale + pad * 2;
 const height = metrics.board.height * scale + pad * 2;
 const zoneColors: Record<string, string> = {
-  hand: '#2f6b4f',
+  'hand-bottom': '#2f6b4f',
+  'hand-top': '#2f6b4f',
+  'hand-left': '#2f6b4f',
+  'hand-right': '#2f6b4f',
   reserve: '#5d5a44',
   'pond-bottom': '#24505f',
   'pond-top': '#24505f',
@@ -455,6 +494,7 @@ const zoneColors: Record<string, string> = {
 const tileColors: Record<string, string> = {
   hand: '#8fc9a8',
   draw: '#b7e0c8',
+  meld: '#c9b98f',
   discard: '#9fc7d6',
   'wall-lower': '#9a9cb0',
   'wall-upper': '#c2c4d6',
@@ -466,8 +506,8 @@ svg.push(
 svg.push(`<rect width="${width}" height="${height}" fill="#1a5038"/>`);
 svg.push(
   `<text x="${pad}" y="${pad - 8}" fill="#e8dfc8" font-family="system-ui, sans-serif" font-size="13">` +
-    `Phase 3 layout geometry: ${metrics.board.width} x ${metrics.board.height} board px; ` +
-    `${layout.placements.length} placements (${counts.hand} hand, ${counts.draw} draw, ${counts.ponds} discards, ${counts.walls} wall tiles). ` +
+    `Phase 3/4 layout geometry: ${metrics.board.width} x ${metrics.board.height} board px; ` +
+    `${layout.placements.length} placements (${counts.hand} concealed, ${counts.draw} draw, ${counts.melds} meld tiles, ${counts.ponds} discards, ${counts.walls} wall tiles). ` +
     `Solid = advance box at grid; dot = sprite draw origin (grid - anchor). Diagram, not a render.</text>`,
 );
 svg.push(`<g transform="translate(${pad} ${pad}) scale(${scale})">`);
@@ -524,8 +564,13 @@ for (const zone of zones) {
       .padStart(7)}`,
   );
 }
+for (const side of SEAT_SIDES) {
+  console.log(
+    `hand ${side.padEnd(6)} ${metrics.hands[side].axis.padEnd(10)} ${metrics.hands[side].shell.padEnd(24)} pitch ${metrics.hands[side].pitchPx.toFixed(2)} px, calls at ${metrics.hands[side].meldSign > 0 ? 'end' : 'start'}`,
+  );
+}
 console.log(
-  `hand: pitch ${metrics.hand.pitchPx} px, tsumo gap ${metrics.hand.tsumoGapPx.toFixed(2)} px`,
+  `hand: tsumo gap ${metrics.hand.tsumoGapPx.toFixed(2)} px, meld gap ${metrics.hand.meldGapPx} px, meld pitch ${metrics.hand.meldPitchPx.horizontal.toFixed(2)}/${metrics.hand.meldPitchPx.vertical.toFixed(2)} px`,
 );
 for (const side of SEAT_SIDES) {
   const frame = metrics.ponds[side];
@@ -542,7 +587,7 @@ for (const fit of fits) {
   );
 }
 console.log(
-  `placements: ${layout.placements.length} (hand ${counts.hand}, draw ${counts.draw}, discards ${counts.ponds}, walls ${counts.walls})`,
+  `placements: ${layout.placements.length} (concealed ${counts.hand}, draw ${counts.draw}, melds ${counts.melds}, discards ${counts.ponds}, walls ${counts.walls})`,
 );
 console.log(`dump:    ${join(outDir, 'layout-dump.json')}`);
 console.log(`preview: ${join(outDir, 'layout-preview.svg')}`);

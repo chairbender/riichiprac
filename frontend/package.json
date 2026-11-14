@@ -10,7 +10,8 @@
     "test": "vitest run",
     "preview": "vite preview",
     "atlas:review": "vite-node scripts/review-atlas.ts",
-    "layout:dump": "vite-node scripts/dump-layout.ts"
+    "layout:dump": "vite-node scripts/dump-layout.ts",
+    "board:review": "vite-node scripts/render-board.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

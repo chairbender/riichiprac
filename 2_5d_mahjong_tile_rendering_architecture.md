@@ -115,7 +115,7 @@ Configure an automated Blender script to render the canonical blank tile shells 
 ### Phase 4: Painter's Algorithm Renderer (Strict Draw Order)
 Because there is no Z-buffer, enforce a deterministic back-to-front draw order across and within every table zone:
 
-- [ ] **Task 4.1 — Global Zone Order:** Render zones in this exact order:
+- [x] **Task 4.1 — Global Zone Order:** Render zones in this exact order (§11):
   1. Table felt background (use a subtle, low-contrast mottled felt noise texture so semi-transparent tile shadows ground naturally instead of looking like flat stickers).
   2. Top wall (`yama`) & Top player's hand/melds.
   3. Left and Right side walls (`yama`) — draw from top-of-screen (back) to bottom-of-screen (front).
@@ -123,7 +123,7 @@ Because there is no Z-buffer, enforce a deterministic back-to-front draw order a
   5. Bottom wall (`yama`).
   6. Left and Right player open melds & concealed hands.
   7. Bottom player's open melds & standing hand (always drawn last so lifted/hovered tiles never clip behind the bottom wall).
-- [ ] **Task 4.2 — Intra-Zone Draw Order:**
+- [x] **Task 4.2 — Intra-Zone Draw Order:** (§11)
   - **Horizontal rows (hands, discard rows, top/bottom walls):** Iterate **Right-to-Left** (`index = length - 1` down to `0`) so each tile's right shadow overhang casts onto its right neighbor's left bevel.
   - **Multi-row grids (discard rows):** Iterate **Top-to-Bottom** (`row = 0` to `2`), drawing each row Right-to-Left.
   - **Stacked walls:** Draw the **bottom tier** completely before drawing the **top tier** at its upward `dy` offset.
@@ -452,3 +452,140 @@ runs 1379 geometry checks, writing `layout-dump.json` and
 `layout-preview.svg`. Per AGENTS.md §6 the SVG is a labelled geometry diagram
 for the user to open (`xdg-open tools/render/build/review/layout-preview.svg`),
 not agent visual evidence.
+
+## 11. Phase 4 baseline (landed 2026-11-14)
+
+Phase 4 paints a complete board from the Phase 2 atlas in strict back-to-front
+order. The renderer is
+[`frontend/src/table/boardRenderer.ts`](frontend/src/table/boardRenderer.ts);
+the layout in [`frontend/src/table/boardLayout.ts`](frontend/src/table/boardLayout.ts)
+grew the opponent hands and melds Phase 3 deferred. There is no Z-buffer, no
+dynamic shadow, no runtime 3D and no per-frame art.
+
+**The renderer.** `renderBoard(context, atlas, board, options)` treats its canvas
+as the whole viewport: it clears, stretches the committed felt over the entire
+canvas (`100% 100%`, §6.4), then contains and centres the fixed board with
+`fitBoardToViewport` and blits every tile with `blitTileSprite` at
+`grid − anchor`. `paintOrder(board)` sorts by `drawOrder` and throws unless the
+orders are a permutation of `0 … n−1`, so a board can never paint a duplicate or
+skip a slot; `paintOrderSnapshot(board)` is the auditable key/position list the
+committed fixture stores. No other drawing primitive is used, and the renderer
+source is scanned for WebGL/3D/shadow-blur calls by a test.
+
+**Board and hand bands (board px).** Phase 3's 612 × 642 board had no room for
+the opponent hands, so the board is now **712 × 704**, derived from the shells:
+a hand sits on the outer side of its wall, so each edge reads outward-in as
+hand → wall → pond → compass. The top/bottom bands are inset between the side
+hand columns; the side columns run the full board height.
+
+| Zone | x | y | w × h | Shells |
+| :--- | ---: | ---: | ---: | :--- |
+| top hand band | 58.24 | 8 | 595.76 × 54 | backs `shell_wall_horizontal`; melds `shell_flat_upright` |
+| bottom hand band | 58.24 | 641.11 | 595.76 × 54 | `shell_hand_standing`; melds `shell_flat_upright` |
+| left hand column | 8.24 | 8 | 42 × 688 | backs `shell_wall_side_left`; melds `shell_flat_upright` |
+| right hand column | 662 | 8 | 42 × 688 | backs `shell_wall_side_right`; melds `shell_flat_upright` |
+| top/bottom walls | 175.54 | 70 / 574.4 | 360.92 × 58.71 | `shell_wall_horizontal` |
+| side walls | 58.24 / 612 | 135.72 | 42 × 432.2 | `shell_wall_side_left` / `_right` |
+| ponds (top/bottom) | 239.24 | 136.71 / 423.91 | 233.52 × 147.2 | `shell_flat_upright` |
+| ponds (left/right) | 108.24 / 478 | 209.66 | 125.76 × 288.5 | `shell_flat_upright` |
+| compass reserve | 244 | 293.91 | 224 × 120 | reserved, nothing drawn |
+
+Hand pitches are the shells' tight axes: 38 px for the human's standing hand
+(its advance box, as in Phase 3), 35.88 px for the top backs, 41.78/41.79 px
+down the side columns. Melds use `shell_flat_upright` at the pond tight steps
+(35.88 horizontal, 47.10 vertical) with a 6 px gap between calls, and the human
+keeps its 13.3 px tsumo gap. Calls sit at the seat's **own right-hand end** of
+the row — screen right for the human, screen left for the top player, screen
+bottom for the left player, screen top for the right player — so a hand reads the
+way its owner would lay it down. Each band is sized from the shell metrics, and
+a run longer than its band (only a hand no trainer generates) is compressed
+uniformly at the steps and gaps; bodies never scale, so every body stays inside
+its zone.
+
+**Draw order.** The zones are emitted in the exact §4.1 sequence, each tile with
+a contiguous `drawOrder`: top hand/melds → top wall → left wall → right wall
+(each lower tier entirely, then upper, top of screen to bottom) → ponds (top,
+left, right, bottom; rows top-to-bottom and each row right-to-left / bottom-to-
+top, a sideways Riichi tile last in its row) → bottom wall → left hand → right
+hand → bottom hand/melds, which must always be last so a lifted tile can never
+clip behind the bottom wall. Horizontal hand rows paint right-to-left; side hand
+columns paint top-to-bottom. The committed
+`frontend/src/table/fixtures/paint-order.json` is the snapshot: 205 placements,
+first `top-hand:9`, last `bottom-hand:0`, counts 43 concealed / 1 draw / 9 meld
+tiles / 72 discards / 80 wall tiles.
+
+**Group order and disjointness.** The seven global groups paint in that order
+and the committed snapshot records it. A within-group seat order (top hand
+before top wall, left wall before right wall, top pond before left/right/bottom)
+cannot change a pixel: the zones are pairwise disjoint and every body stays
+inside its zone, so the only visually load-bearing orders are the intra-zone
+ones — a row's right-to-left pass, a pond's row pass, a wall's lower tier — and
+those are asserted separately in the layout tests and the review checks.
+
+**Verification numbers** (`cd frontend && npm run board:review`, which writes
+`tools/render/build/review/board-numbers.json`):
+
+1. **Shadow continuity.** Five tight blank tiles plus the drawn tile after the
+   real 13.3 px tsumo gap, rendered once with and once without each left tile in
+   the same 4 px band. The four tight seams darken the next body by
+   **5.35 / 5.35 / 5.40 / 5.36 luma** (75% of the band's pixels change); the
+   fifth tile's overhang (in the gap) darkens felt by **1.53** and the drawn
+   tile's by **1.14**. All six blit the same sprite slot.
+2. **Pond row seam.** Three full rows, six samples over two seams: the crease
+   between a row's bottom thickness and the next row's top edge is **2 px** at
+   **81.51–87.98 luma** against a face of **116.81–141.24**, i.e. a 1–2 px dark
+   separation, not a merged bright strip.
+3. **Riichi rotation.** `faceRotationDeg` 90; the sideways sprite's margin alpha
+   centroid is **dx +2.50, dy +3.60 px**, and the felt shadow mass is right 640
+   > left 441 and bottom 600 > top 281: the extrusion and shadow still point
+   down-right. Only the glyph is rotated.
+4. **Wall overlap.** Tier `dy` **−4.71 px**; the upper tile's body covers
+   **49.29 of 54 px** of the lower tile's plate; the visible lower strip is
+   **5 px**, **52.71 luma** stacked against **56.17** with the upper tile removed,
+   with 45% of its pixels changed by the upper tile's bottom shadow.
+5. **Viewports.** 390×844, 844×390, 1440×900, 320×480, 1024×768 and 712×704:
+   every pixel is opaque felt, the board is contained and centred, and the human
+   hand face reads 146–181 luma over a 24.2–24.6 corner vignette.
+
+**Review boards** (gitignored, for the user to open):
+`board-desktop-1440x900-1x.png`, `board-mobile-390x844-1x.png`,
+`board-desktop-1440x900-2x.png`, and the zooms `board-zoom-top-wall.png`,
+`board-zoom-riichi-pond.png`, `board-zoom-bottom-hand.png`, all under
+`tools/render/build/review/`. Per AGENTS.md §6 these are handed to the user with
+numbers; the agent does not sign them off.
+
+**Decisions that narrow the architecture above.**
+
+1. **Hands sit outside the walls, so the board grew to 712 × 704.** The felt is
+   still the full-screen raster and the board is contain-fitted, so a wider
+   board only changes the fit scale (portrait 390 px phone: 0.5478, 20.81 ×
+   29.58 px tiles).
+2. **Opponent hands are their seat's face-down shell.** The top player shows
+   top-down backs, the side players the fixed-oblique backs, so each hand reads
+   from that seat's own projection. The real faces stay in the placement (and
+   the review dump) but every face on a back shell resolves to the same bare
+   atlas slot, so nothing hidden is painted.
+3. **Every meld is `shell_flat_upright`, on every seat.** A call has the same
+   size and glyph orientation as a discard, like the ponds. The claimed-tile-
+   sideways convention is deferred: no face-up standing or oblique sideways
+   shell exists, and a pre-shaded sprite must never be rotated.
+4. **Calls sit at the seat's own right-hand end**, with the human's draw before
+   its calls; the band centres the whole row, so a hand stays ~13 tiles wide
+   whichever calls it holds.
+5. **Band compression is a documented fallback, not a rule.** The bands are
+   sized from the shell metrics (~13 physical tiles, plus the draw). A hand that
+   still does not fit (for example six calls, which no trainer generates)
+   tightens the steps and gaps uniformly; the body never scales, so zone
+   containment holds.
+6. **The paint order is a committed fixture.** `board:review --write-fixture`
+   rewrites `frontend/src/table/fixtures/paint-order.json`; the renderer test
+   compares the live snapshot against it, so any ordering or geometry change is
+   a reviewable diff rather than a silent one.
+7. **The renderer is not wired into the app view switch yet.** Phase 4's
+   non-goals (hover/selection lift, hit-testing, tint overlays, dora shimmer,
+   accessibility wiring, compass) stay open. The module takes a canvas and the
+   atlas, so Phase 5 mounts it without touching the paint order.
+8. **Phase 3's single human hand zone is now a per-seat record.** `zones.hand`
+   became `Record<SeatSide, BoardRect>` and the wall zones moved inward to make
+   room; the tests, the dump and the diagram were updated with the 712 × 704
+   numbers, and `metrics.hand.shell/pitchPx` became per-seat maps.

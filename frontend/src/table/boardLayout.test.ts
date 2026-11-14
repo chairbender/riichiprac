@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { boardLayoutFromState, wallPairsForRemaining } from './boardFromState';
+import { boardLayoutFromState, meldKindOf, wallPairsForRemaining } from './boardFromState';
 import {
   FELT_RUNTIME,
+  HAND_MELD_GAP_PX,
   MAX_WALL_PAIRS_PER_SIDE,
   POND_COLUMNS,
   POND_ROWS,
@@ -18,7 +19,9 @@ import type {
   BoardLayout,
   BoardLayoutInput,
   BoardRect,
+  MeldInput,
   PondDiscardInput,
+  SeatHandInput,
   SeatSide,
   TilePlacement,
 } from './boardLayout';
@@ -36,6 +39,9 @@ const metrics = boardMetrics(shells);
 const flat = shells.shells.shell_flat_upright;
 const sideways = shells.shells.shell_flat_sideways;
 const standing = shells.shells.shell_hand_standing;
+const wallHorizontal = shells.shells.shell_wall_horizontal;
+const sideLeft = shells.shells.shell_wall_side_left;
+const sideRight = shells.shells.shell_wall_side_right;
 
 /** A deterministic list of distinct faces for a hand. */
 const FACE_ORDER: readonly TileFaceId[] = [
@@ -66,10 +72,20 @@ function pond(count: number, riichiIndex: number | null = null): PondDiscardInpu
   }));
 }
 
+function meld(kind: MeldInput['kind'], count: number, offset = 0): MeldInput {
+  return { kind, tiles: FACE_ORDER.slice(offset, offset + count) };
+}
+
 function fullBoardInput(): BoardLayoutInput {
   return {
-    hand: handFaces(13),
+    hand: handFaces(10),
     draw: '5p',
+    melds: [meld('pon', 3, 3)],
+    hands: {
+      top: { hand: handFaces(10), melds: [meld('chi', 3, 6)] },
+      right: { hand: handFaces(13) },
+      left: { hand: handFaces(13) },
+    },
     ponds: {
       bottom: pond(9, 3),
       right: pond(7, 0),
@@ -107,6 +123,12 @@ function wallPlacements(
   });
 }
 
+function seatHandPlacements(layout: BoardLayout, side: SeatSide): TilePlacement[] {
+  return layout.placements.filter(
+    (placement) => placement.zone === 'hand' && placement.seat === side,
+  );
+}
+
 function right(rect: BoardRect): number {
   return rect.x + rect.width;
 }
@@ -133,26 +155,46 @@ function rectsOverlap(left: BoardRect, rightRect: BoardRect, epsilon = 1e-6): bo
   );
 }
 
+function zoneOf(layout: BoardLayout, placement: TilePlacement, seat = placement.seat): BoardRect {
+  return placement.zone === 'hand'
+    ? layout.metrics.zones.hand[seat]
+    : placement.zone === 'pond'
+      ? layout.metrics.zones.ponds[seat]
+      : layout.metrics.zones.walls[seat];
+}
+
 describe('board metrics', () => {
-  it('derives the 612 x 642 board and all four pond zones from the manifest', () => {
-    expect(metrics.board).toEqual({ width: 612, height: 642 });
+  it('derives the 712 x 704 board and every zone from the manifest', () => {
+    expect(metrics.board).toEqual({ width: 712, height: 704 });
+    expect(metrics.zones.reserve.x).toBe(244);
+    expect(metrics.zones.reserve.y).toBeCloseTo(293.91, 6);
     expect(metrics.zones.reserve.width).toBe(224);
     expect(metrics.zones.reserve.height).toBe(120);
-    for (const side of SEAT_SIDES) {
-      expect(metrics.zones.ponds[side].width).toBeGreaterThan(0);
-      expect(metrics.zones.ponds[side].height).toBeGreaterThan(0);
-    }
     // 6 x 35.88 + body, with a 54 px sideways tile possible anywhere.
     expect(metrics.zones.ponds.bottom.width).toBeCloseTo(233.52, 6);
     expect(metrics.zones.ponds.bottom.height).toBeCloseTo(147.2, 6);
     // Side rows run vertically: 6 x 47.10 tall, 3 rows across.
     expect(metrics.zones.ponds.left.height).toBeCloseTo(288.5, 6);
     expect(metrics.zones.ponds.left.width).toBeCloseTo(125.76, 6);
+    // Hand bands: horizontal above/below the walls, vertical outside them.
+    const handZone = (side: SeatSide) => metrics.zones.hand[side];
+    expect(handZone('top').x).toBeCloseTo(58.24, 6);
+    expect(handZone('top').y).toBe(8);
+    expect(handZone('top').width).toBeCloseTo(595.76, 6);
+    expect(handZone('top').height).toBe(54);
+    expect(handZone('bottom').x).toBeCloseTo(58.24, 6);
+    expect(handZone('bottom').y).toBeCloseTo(641.11, 6);
+    expect(handZone('left').x).toBeCloseTo(8.24, 6);
+    expect(handZone('left').y).toBe(8);
+    expect(handZone('left').width).toBe(42);
+    expect(handZone('left').height).toBe(688);
+    expect(handZone('right').x).toBe(662);
+    expect(handZone('right').width).toBe(42);
   });
 
   it('keeps every zone inside the board and pairwise disjoint at the full-board worst case', () => {
     const zones: Array<{ name: string; rect: BoardRect }> = [
-      { name: 'hand', rect: metrics.zones.hand },
+      ...SEAT_SIDES.map((side) => ({ name: `hand-${side}`, rect: metrics.zones.hand[side] })),
       { name: 'reserve', rect: metrics.zones.reserve },
       ...SEAT_SIDES.map((side) => ({ name: `pond-${side}`, rect: metrics.zones.ponds[side] })),
       ...SEAT_SIDES.map((side) => ({ name: `wall-${side}`, rect: metrics.zones.walls[side] })),
@@ -168,6 +210,18 @@ describe('board metrics', () => {
         ).toBe(false);
       }
     }
+  });
+
+  it('lays the board out outward-in as hand -> wall -> pond -> compass on every edge', () => {
+    expect(right(metrics.zones.hand.left)).toBeLessThan(metrics.zones.walls.left.x);
+    expect(right(metrics.zones.walls.left)).toBeLessThan(metrics.zones.ponds.left.x);
+    expect(right(metrics.zones.ponds.left)).toBeLessThan(metrics.zones.reserve.x);
+    expect(metrics.zones.walls.top.y).toBeGreaterThan(bottom(metrics.zones.hand.top));
+    expect(metrics.zones.ponds.top.y).toBeGreaterThan(bottom(metrics.zones.walls.top));
+    expect(metrics.zones.reserve.y).toBeGreaterThan(bottom(metrics.zones.ponds.top));
+    expect(metrics.zones.ponds.bottom.y).toBeGreaterThan(bottom(metrics.zones.reserve));
+    expect(metrics.zones.walls.bottom.y).toBeGreaterThan(bottom(metrics.zones.ponds.bottom));
+    expect(metrics.zones.hand.bottom.y).toBeGreaterThan(bottom(metrics.zones.walls.bottom));
   });
 
   it('reserves a compass region but places no tile in it', () => {
@@ -196,13 +250,9 @@ describe('anchor mapping', () => {
 
   it('keeps every logical body inside the board and inside its own zone', () => {
     for (const placement of full.placements) {
-      const zone =
-        placement.zone === 'hand'
-          ? metrics.zones.hand
-          : placement.zone === 'pond'
-            ? metrics.zones.ponds[placement.seat]
-            : metrics.zones.walls[placement.seat];
-      expect(rectContains(zone, placement.advanceRect), placement.id).toBe(true);
+      expect(rectContains(zoneOf(full, placement), placement.advanceRect), placement.id).toBe(
+        true,
+      );
       expect(rectContains({ x: 0, y: 0, ...full.board }, placement.advanceRect)).toBe(true);
     }
   });
@@ -210,8 +260,8 @@ describe('anchor mapping', () => {
 
 describe('player hand', () => {
   it('steps concealed tiles by advanceWidth and leaves the logical body rect', () => {
-    const hand = full.placements
-      .filter((placement) => placement.kind === 'hand')
+    const hand = layoutBoard(shells, { hand: handFaces(13) }).placements
+      .filter((placement) => placement.seat === 'bottom' && placement.kind === 'hand')
       .sort((left, rightTile) => left.gridX - rightTile.gridX);
     expect(hand).toHaveLength(13);
     expect(hand.every((placement) => placement.shell === 'shell_hand_standing')).toBe(true);
@@ -226,10 +276,11 @@ describe('player hand', () => {
   });
 
   it('adds a 0.35 * advanceWidth gap before the drawn tile', () => {
-    const concealed = full.placements
-      .filter((placement) => placement.kind === 'hand')
+    const layout = layoutBoard(shells, { hand: handFaces(13), draw: '5p' });
+    const concealed = layout.placements
+      .filter((placement) => placement.seat === 'bottom' && placement.kind === 'hand')
       .sort((left, rightTile) => left.gridX - rightTile.gridX);
-    const draw = full.placements.find((placement) => placement.kind === 'draw');
+    const draw = layout.placements.find((placement) => placement.kind === 'draw');
     expect(draw).toBeDefined();
     const lastConcealed = concealed[concealed.length - 1];
     expect(draw!.gridX).toBeCloseTo(
@@ -239,27 +290,199 @@ describe('player hand', () => {
     expect(draw!.gridY).toBe(lastConcealed.gridY);
   });
 
-  it('centres a 13-tile hand and its draw inside the hand zone', () => {
-    const hand = full.placements
-      .filter((placement) => placement.zone === 'hand')
-      .sort((left, rightTile) => left.gridX - rightTile.gridX);
+  it('centres a 13-tile hand and its draw inside the hand band', () => {
+    const layout = layoutBoard(shells, { hand: handFaces(13), draw: '5p' });
+    const hand = seatHandPlacements(layout, 'bottom').sort(
+      (left, rightTile) => left.gridX - rightTile.gridX,
+    );
     const first = hand[0];
     const draw = hand[hand.length - 1];
-    const leftSlack = first.gridX - metrics.zones.hand.x;
-    const rightSlack = right(metrics.zones.hand) - right(draw.advanceRect);
-    expect(leftSlack).toBeCloseTo(rightSlack, 10);
-    expect(leftSlack).toBeGreaterThan(0);
+    const band = layout.metrics.zones.hand.bottom;
+    expect(first.gridX - band.x).toBeCloseTo(right(band) - right(draw.advanceRect), 10);
+    expect(first.gridX - band.x).toBeGreaterThan(0);
+  });
+
+  it('puts the human calls at the right-hand end, after the draw', () => {
+    const layout = layoutBoard(shells, {
+      hand: handFaces(10),
+      draw: '5p',
+      melds: [meld('pon', 3, 3)],
+    });
+    const concealed = layout.placements
+      .filter((placement) => placement.seat === 'bottom' && placement.kind === 'hand')
+      .sort((left, rightTile) => left.gridX - rightTile.gridX);
+    const draw = layout.placements.find((placement) => placement.kind === 'draw')!;
+    const melds = layout.placements
+      .filter((placement) => placement.kind === 'meld')
+      .sort((left, rightTile) => left.gridX - rightTile.gridX);
+
+    expect(concealed).toHaveLength(10);
+    expect(melds).toHaveLength(3);
+    expect(melds.every((placement) => placement.shell === 'shell_flat_upright')).toBe(true);
+    expect(melds[0].gridX).toBeGreaterThan(draw.gridX);
+    expect(melds[0].gridX - draw.gridX).toBeCloseTo(
+      draw.advanceRect.width + HAND_MELD_GAP_PX,
+      10,
+    );
+    // A meld is one px shorter than a standing tile and bottom-aligns.
+    expect(melds[0].gridY).toBeCloseTo(
+      draw.gridY + standing.advanceHeight - flat.advanceHeight,
+      10,
+    );
+    for (let index = 1; index < melds.length; index += 1) {
+      expect(melds[index].gridX - melds[index - 1].gridX).toBeCloseTo(
+        Math.abs(flat.gridStepPx.x[0]),
+        10,
+      );
+    }
   });
 
   it('places a drawless hand symmetrically too', () => {
     const layout = layoutBoard(shells, { hand: handFaces(13) });
-    const hand = layout.placements
-      .filter((placement) => placement.zone === 'hand')
-      .sort((left, rightTile) => left.gridX - rightTile.gridX);
+    const hand = seatHandPlacements(layout, 'bottom').sort(
+      (left, rightTile) => left.gridX - rightTile.gridX,
+    );
+    const band = layout.metrics.zones.hand.bottom;
     expect(hand).toHaveLength(13);
-    expect(hand[0].gridX - metrics.zones.hand.x).toBeCloseTo(
-      right(metrics.zones.hand) - right(hand[12].advanceRect),
-      10,
+    expect(hand[0].gridX - band.x).toBeCloseTo(right(band) - right(hand[12].advanceRect), 10);
+  });
+});
+
+describe('opponent hands and melds', () => {
+  it('draws the top hand as a top-down row of backs above the top wall', () => {
+    const top = seatHandPlacements(full, 'top')
+      .filter((placement) => placement.kind === 'hand')
+      .sort(
+      (left, rightTile) => left.gridX - rightTile.gridX,
+    );
+    expect(top).toHaveLength(10);
+    expect(top.every((placement) => placement.shell === 'shell_wall_horizontal')).toBe(true);
+    expect(top.every((placement) => placement.kind === 'hand')).toBe(true);
+    for (let index = 1; index < top.length; index += 1) {
+      expect(top[index].gridX - top[index - 1].gridX).toBeCloseTo(
+        Math.abs(wallHorizontal.gridStepPx.x[0]),
+        10,
+      );
+      expect(top[index].gridY).toBe(top[0].gridY);
+    }
+    expect(top[0].gridY).toBe(full.metrics.zones.hand.top.y);
+    expect(rectContains(full.metrics.zones.hand.top, top[0].advanceRect)).toBe(true);
+  });
+
+  it('draws the side hands as vertical columns of obliquely rolled backs', () => {
+    for (const side of ['left', 'right'] as const) {
+      const column = seatHandPlacements(full, side).sort(
+        (left, rightTile) => left.gridY - rightTile.gridY,
+      );
+      const shell = side === 'left' ? sideLeft : sideRight;
+      expect(column).toHaveLength(13);
+      expect(column.every((placement) => placement.shell === `shell_wall_side_${side}`)).toBe(
+        true,
+      );
+      for (let index = 1; index < column.length; index += 1) {
+        expect(column[index].gridY - column[index - 1].gridY).toBeCloseTo(
+          shell.gridStepPx.y[1],
+          10,
+        );
+        expect(column[index].gridX).toBe(column[0].gridX);
+      }
+    }
+  });
+
+  it('puts each seat’s calls at its own right-hand end of the band', () => {
+    const layout = layoutBoard(shells, {
+      hands: {
+        bottom: { hand: handFaces(10), melds: [meld('pon', 3)] },
+        top: { hand: handFaces(10), melds: [meld('pon', 3)] },
+        left: { hand: handFaces(10), melds: [meld('pon', 3)] },
+        right: { hand: handFaces(10), melds: [meld('pon', 3)] },
+      },
+    });
+    const meldOf = (side: SeatSide): TilePlacement[] =>
+      layout.placements.filter(
+        (placement) => placement.seat === side && placement.kind === 'meld',
+      );
+    const concealedOf = (side: SeatSide): TilePlacement[] =>
+      layout.placements.filter(
+        (placement) => placement.seat === side && placement.kind === 'hand',
+      );
+
+    const bottomMelds = meldOf('bottom');
+    const bottomHand = concealedOf('bottom');
+    expect(Math.min(...bottomMelds.map((placement) => placement.gridX))).toBeGreaterThan(
+      Math.max(...bottomHand.map((placement) => placement.gridX)),
+    );
+
+    const topMelds = meldOf('top');
+    const topHand = concealedOf('top');
+    expect(Math.max(...topMelds.map((placement) => placement.gridX))).toBeLessThan(
+      Math.min(...topHand.map((placement) => placement.gridX)),
+    );
+
+    const leftMelds = meldOf('left');
+    const leftHand = concealedOf('left');
+    expect(Math.min(...leftMelds.map((placement) => placement.gridY))).toBeGreaterThan(
+      Math.max(...leftHand.map((placement) => placement.gridY)),
+    );
+
+    const rightMelds = meldOf('right');
+    const rightHand = concealedOf('right');
+    expect(Math.max(...rightMelds.map((placement) => placement.gridY))).toBeLessThan(
+      Math.min(...rightHand.map((placement) => placement.gridY)),
+    );
+
+    for (const placement of layout.placements.filter((entry) => entry.kind === 'meld')) {
+      expect(placement.shell).toBe('shell_flat_upright');
+      expect(rectContains(zoneOf(layout, placement), placement.advanceRect)).toBe(true);
+    }
+  });
+
+  it('fits a four-call hand plus its singleton inside every band', () => {
+    const fourCalls: MeldInput[] = [
+      meld('pon', 3, 0),
+      meld('chi', 3, 3),
+      meld('pon', 3, 6),
+      meld('kan', 4, 8),
+    ];
+    for (const side of SEAT_SIDES) {
+      const hands: Partial<Record<SeatSide, SeatHandInput>> = {
+        [side]: { hand: handFaces(1), melds: fourCalls },
+      };
+      const layout = layoutBoard(shells, { hands, wallPairsPerSide: 0 });
+      const band = layout.metrics.zones.hand[side];
+      const tiles = seatHandPlacements(layout, side);
+      expect(tiles).toHaveLength(14);
+      for (const placement of tiles) {
+        expect(rectContains(band, placement.advanceRect), `${side} ${placement.id}`).toBe(true);
+      }
+    }
+  });
+
+  it('compresses a pathological run instead of escaping the band', () => {
+    // Six calls is not a legal hand; the layout must still contain it.
+    const many = Array.from({ length: 6 }, (_value, index) => meld('kan', 4, index % 3));
+    for (const side of SEAT_SIDES) {
+      const layout = layoutBoard(shells, {
+        hands: { [side]: { hand: handFaces(1), melds: many } },
+        wallPairsPerSide: 0,
+      });
+      const band = layout.metrics.zones.hand[side];
+      for (const placement of seatHandPlacements(layout, side)) {
+        expect(rectContains(band, placement.advanceRect), `${side} ${placement.id}`).toBe(true);
+      }
+    }
+  });
+
+  it('counts concealed tiles, draws, calls, discards and wall tiles separately', () => {
+    expect(full.counts).toEqual({
+      hand: 10 + 10 + 13 + 13,
+      draw: 1,
+      melds: 3 + 3,
+      ponds: 9 + 7 + 12 + 4,
+      walls: MAX_WALL_PAIRS_PER_SIDE * 8,
+    });
+    expect(full.placements).toHaveLength(
+      full.counts.hand + full.counts.draw + full.counts.melds + full.counts.ponds + full.counts.walls,
     );
   });
 });
@@ -477,48 +700,61 @@ describe('walls', () => {
 });
 
 describe('paint order', () => {
-  it('is unique, contiguous and runs top wall -> side walls -> ponds -> bottom wall -> hand', () => {
+  it('is unique, contiguous and runs top hand -> top wall -> side walls -> ponds -> bottom wall -> side hands -> bottom hand', () => {
     const orders = full.placements.map((placement) => placement.drawOrder);
     expect(new Set(orders).size).toBe(orders.length);
     expect(orders).toEqual(orders.map((_value, index) => index));
 
-    const lastTopWall = Math.max(
-      ...full.placements
-        .filter((placement) => placement.seat === 'top' && placement.zone === 'wall')
-        .map((placement) => placement.drawOrder),
+    const orderOf = (predicate: (placement: TilePlacement) => boolean): [number, number] => {
+      const orders = full.placements.filter(predicate).map((placement) => placement.drawOrder);
+      return [Math.min(...orders), Math.max(...orders)];
+    };
+    const topHand = orderOf((placement) => placement.seat === 'top' && placement.zone === 'hand');
+    const topWall = orderOf((placement) => placement.seat === 'top' && placement.zone === 'wall');
+    const sideWalls = orderOf(
+      (placement) =>
+        placement.zone === 'wall' && (placement.seat === 'left' || placement.seat === 'right'),
     );
-    const firstSideWall = Math.min(
-      ...full.placements
-        .filter(
-          (placement) =>
-            placement.zone === 'wall' && (placement.seat === 'left' || placement.seat === 'right'),
-        )
-        .map((placement) => placement.drawOrder),
+    const ponds = orderOf((placement) => placement.zone === 'pond');
+    const bottomWall = orderOf(
+      (placement) => placement.seat === 'bottom' && placement.zone === 'wall',
     );
-    const firstPond = Math.min(
-      ...full.placements
-        .filter((placement) => placement.zone === 'pond')
-        .map((placement) => placement.drawOrder),
+    const sideHands = orderOf(
+      (placement) =>
+        placement.zone === 'hand' && (placement.seat === 'left' || placement.seat === 'right'),
     );
-    const lastPond = Math.max(
-      ...full.placements
-        .filter((placement) => placement.zone === 'pond')
-        .map((placement) => placement.drawOrder),
+    const bottomHand = orderOf(
+      (placement) => placement.seat === 'bottom' && placement.zone === 'hand',
     );
-    const firstBottomWall = Math.min(
-      ...full.placements
-        .filter((placement) => placement.seat === 'bottom' && placement.zone === 'wall')
-        .map((placement) => placement.drawOrder),
+
+    expect(topHand[1]).toBeLessThan(topWall[0]);
+    expect(topWall[1]).toBeLessThan(sideWalls[0]);
+    expect(sideWalls[1]).toBeLessThan(ponds[0]);
+    expect(ponds[1]).toBeLessThan(bottomWall[0]);
+    expect(bottomWall[1]).toBeLessThan(sideHands[0]);
+    expect(sideHands[1]).toBeLessThan(bottomHand[0]);
+  });
+
+  it('paints the left wall before the right wall, each top of screen to bottom', () => {
+    const left = full.placements
+      .filter((placement) => placement.seat === 'left' && placement.zone === 'wall')
+      .sort((a, b) => a.drawOrder - b.drawOrder);
+    const right = full.placements
+      .filter((placement) => placement.seat === 'right' && placement.zone === 'wall')
+      .sort((a, b) => a.drawOrder - b.drawOrder);
+    expect(Math.max(...left.map((placement) => placement.drawOrder))).toBeLessThan(
+      Math.min(...right.map((placement) => placement.drawOrder)),
     );
-    const firstHand = Math.min(
-      ...full.placements
-        .filter((placement) => placement.zone === 'hand')
-        .map((placement) => placement.drawOrder),
-    );
-    expect(lastTopWall).toBeLessThan(firstSideWall);
-    expect(firstSideWall).toBeLessThan(firstPond);
-    expect(lastPond).toBeLessThan(firstBottomWall);
-    expect(firstBottomWall).toBeLessThan(firstHand);
+    // Within each tier the column steps down the screen.
+    const tiers = ['lower', 'upper'] as const;
+    for (const tier of tiers) {
+      const column = left
+        .filter((placement) => placement.id.includes(`:${tier}:`))
+        .sort((a, b) => a.drawOrder - b.drawOrder);
+      for (let index = 1; index < column.length; index += 1) {
+        expect(column[index].gridY).toBeGreaterThan(column[index - 1].gridY);
+      }
+    }
   });
 
   it('paints rows right-to-left / bottom-to-top and rows away from the light', () => {
@@ -547,16 +783,38 @@ describe('paint order', () => {
   });
 
   it('paints the drawn tile first, then the concealed hand right-to-left', () => {
-    for (const placement of full.placements.filter((entry) => entry.zone === 'hand')) {
-      if (placement.kind === 'draw') continue;
-      const draw = full.placements.find((entry) => entry.kind === 'draw')!;
+    const bottom = full.placements.filter(
+      (placement) => placement.seat === 'bottom' && placement.zone === 'hand',
+    );
+    const draw = bottom.find((placement) => placement.kind === 'draw')!;
+    for (const placement of bottom) {
+      if (placement.kind !== 'hand') continue;
       expect(draw.drawOrder).toBeLessThan(placement.drawOrder);
     }
-    const hand = full.placements
+    const hand = bottom
       .filter((placement) => placement.kind === 'hand')
       .sort((left, rightTile) => rightTile.gridX - left.gridX);
     for (let index = 1; index < hand.length; index += 1) {
       expect(hand[index - 1].drawOrder).toBeLessThan(hand[index].drawOrder);
+    }
+  });
+
+  it('paints each hand horizontally right-to-left and each side hand top-to-bottom', () => {
+    for (const side of ['top', 'bottom'] as const) {
+      const row = seatHandPlacements(full, side).sort(
+        (left, rightTile) => left.drawOrder - rightTile.drawOrder,
+      );
+      for (let index = 1; index < row.length; index += 1) {
+        expect(row[index].gridX).toBeLessThan(row[index - 1].gridX);
+      }
+    }
+    for (const side of ['left', 'right'] as const) {
+      const column = seatHandPlacements(full, side).sort(
+        (left, rightTile) => left.drawOrder - rightTile.drawOrder,
+      );
+      for (let index = 1; index < column.length; index += 1) {
+        expect(column[index].gridY).toBeGreaterThan(column[index - 1].gridY);
+      }
     }
   });
 });
@@ -568,7 +826,7 @@ describe('viewport fitting and the felt', () => {
     { width: 1440, height: 900 },
     { width: 320, height: 480 },
     { width: 1024, height: 768 },
-    { width: 612, height: 642 },
+    { width: 712, height: 704 },
   ];
 
   it('contains and centres the board at every aspect ratio', () => {
@@ -600,7 +858,7 @@ describe('viewport fitting and the felt', () => {
 
   it('returns a zero fit for a degenerate viewport instead of NaN', () => {
     const fit = fitBoardToViewport({ width: 0, height: 0 }, metrics.board);
-    expect(fit).toEqual({ scale: 0, offsetX: 0, offsetY: 0, boardWidth: 612, boardHeight: 642 });
+    expect(fit).toEqual({ scale: 0, offsetX: 0, offsetY: 0, boardWidth: 712, boardHeight: 704 });
   });
 
   it('stretches the felt rather than cropping it', () => {
@@ -638,6 +896,14 @@ describe('layout inputs, purity and the texture boundary', () => {
     expect(layout.counts.hand).toBe(0);
     expect(layout.counts.walls).toBe(MAX_WALL_PAIRS_PER_SIDE * 8);
   });
+
+  it('places no hand tiles when no seat has a hand', () => {
+    const layout = layoutBoard(shells, {});
+    expect(layout.counts.hand).toBe(0);
+    expect(layout.counts.draw).toBe(0);
+    expect(layout.counts.melds).toBe(0);
+    expect(layout.placements.filter((placement) => placement.zone === 'hand')).toEqual([]);
+  });
 });
 
 function player(overrides: Partial<PlayerState> & { seat: number }): PlayerState {
@@ -658,7 +924,7 @@ function player(overrides: Partial<PlayerState> & { seat: number }): PlayerState
 }
 
 describe('GameState adapter', () => {
-  it('maps the human hand, red fives and the four seat ponds', () => {
+  it('maps hands, red fives, calls and the four seat ponds', () => {
     const state = {
       tiles_remaining: 66,
       players: [
@@ -668,27 +934,43 @@ describe('GameState adapter', () => {
           hand: ['1m', '5m'],
           draw: '3m',
           red_fives: ['5m'],
+          melds: [{ meld_type: 'Pon', tiles: ['7p', '7p', '7p'], called_from: 2 }],
           discards: [
             { tile: '5m', is_riichi: false, is_tsumogiri: false, is_red: true },
             { tile: '7z', is_riichi: true, is_tsumogiri: false },
           ],
         }),
-        player({ seat: 1, discards: [{ tile: '2p', is_riichi: false, is_tsumogiri: true }] }),
-        player({ seat: 2, discards: [] }),
+        player({
+          seat: 1,
+          discards: [{ tile: '2p', is_riichi: false, is_tsumogiri: true }],
+          melds: [{ meld_type: 'Chi', tiles: ['1s', '2s', '3s'], called_from: 0 }],
+        }),
+        player({ seat: 2, hand: ['1z', '2z'], discards: [] }),
         player({ seat: 3, discards: [{ tile: '9s', is_riichi: false, is_tsumogiri: false }] }),
       ],
     } as unknown as GameState;
 
     const layout = boardLayoutFromState(shells, state);
-    expect(layout.counts.hand).toBe(2);
+    expect(layout.counts.hand).toBe(4);
     expect(layout.counts.draw).toBe(1);
+    expect(layout.counts.melds).toBe(6);
     expect(layout.counts.ponds).toBe(4);
     expect(layout.wallPairsPerSide).toBe(9);
 
-    const hand = layout.placements.filter((placement) => placement.kind === 'hand');
+    const hand = layout.placements.filter(
+      (placement) => placement.seat === 'bottom' && placement.kind === 'hand',
+    );
     // The 5m is listed in red_fives, so it resolves to the aka-dora glyph.
     expect(hand.map((placement) => placement.face).sort()).toEqual(['1m', '5mr']);
     expect(layout.placements.find((placement) => placement.kind === 'draw')!.face).toBe('3m');
+
+    // The human's pon is a top-down meld at the right end of the bottom row.
+    const humanMelds = layout.placements.filter(
+      (placement) => placement.seat === 'bottom' && placement.kind === 'meld',
+    );
+    expect(humanMelds).toHaveLength(3);
+    expect(humanMelds.every((placement) => placement.face === '7p')).toBe(true);
+    expect(humanMelds.every((placement) => placement.shell === 'shell_flat_upright')).toBe(true);
 
     // By discard index, not paint order: the sideways tile paints first in
     // its row, so filter order is right-to-left.
@@ -701,12 +983,22 @@ describe('GameState adapter', () => {
     });
     expect(bottomPond.map((placement) => placement.face)).toEqual(['5mr', '7z']);
     expect(bottomPond[1].shell).toBe('shell_flat_sideways');
-    expect(
-      layout.placements
-        .filter((placement) => placement.zone === 'pond')
-        .map((placement) => placement.seat)
-        .sort(),
-    ).toEqual(['bottom', 'bottom', 'left', 'right']);
+
+    // Shimocha's chi is drawn face-up in that seat's hand band.
+    const rightMelds = layout.placements.filter(
+      (placement) => placement.seat === 'right' && placement.kind === 'meld',
+    );
+    expect(rightMelds.map((placement) => placement.face)).toEqual(['1s', '2s', '3s']);
+    for (const placement of rightMelds) {
+      expect(rectContains(layout.metrics.zones.hand.right, placement.advanceRect)).toBe(true);
+    }
+
+    // Toimen's two concealed tiles are backs, but the layout still knows them.
+    const topHand = layout.placements.filter(
+      (placement) => placement.seat === 'top' && placement.zone === 'hand',
+    );
+    expect(topHand.map((placement) => placement.face).sort()).toEqual(['1z', '2z']);
+    expect(topHand.every((placement) => placement.shell === 'shell_wall_horizontal')).toBe(true);
   });
 
   it('turns tiles_remaining into at most ten wall stacks a side', () => {
@@ -717,5 +1009,12 @@ describe('GameState adapter', () => {
     expect(wallPairsForRemaining(69)).toBe(9);
     expect(wallPairsForRemaining(83)).toBe(MAX_WALL_PAIRS_PER_SIDE);
     expect(wallPairsForRemaining(200)).toBe(MAX_WALL_PAIRS_PER_SIDE);
+  });
+
+  it('maps every engine meld type to the layout vocabulary', () => {
+    expect(meldKindOf('Chi')).toBe('chi');
+    expect(meldKindOf('Pon')).toBe('pon');
+    expect(meldKindOf('Kan')).toBe('kan');
+    expect(meldKindOf('Ankan')).toBe('ankan');
   });
 });

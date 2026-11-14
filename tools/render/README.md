@@ -41,6 +41,8 @@ bash tools/render/bake-felt.sh             # regenerate frontend/public/table/fe
 node tools/render/scripts/bake-faces.mjs   # rasterise the 38 face glyphs + faces.json
 node tools/render/scripts/check-shells.mjs # shells + felt + faces integrity (CI gate)
 cd frontend && npx vite-node scripts/review-atlas.ts  # atlas review sheets
+cd frontend && npm run board:review        # ratified board + the §5 checks
+cd frontend && npm run layout:dump         # layout geometry dump + diagram
 ```
 
 `--bake` is the one command that regenerates everything: it renders the six
@@ -408,6 +410,71 @@ Per AGENTS.md §6, the sheets and numbers are for the user to judge; the agent
 does not sign off the glyph weight, red-five contrast or sideways orientation
 from its own inspection.
 
+## Phase 3–4: layout and the painter's-algorithm renderer
+
+Phase 3's layout engine is `frontend/src/table/boardLayout.ts`; Phase 4's
+renderer is `frontend/src/table/boardRenderer.ts`. Together they turn a
+`GameState` into one fixed board and paint it from the committed atlas:
+
+```text
+felt (full-screen raster, 100% 100%)
+→ top hand/melds → top wall
+→ left wall → right wall (each lower tier then upper, top of screen to bottom)
+→ ponds (top, left, right, bottom; rows top-to-bottom, each row against the shadow)
+→ bottom wall
+→ left hand/melds → right hand/melds
+→ bottom hand/melds (always last)
+```
+
+Within a horizontal hand row, tiles paint right-to-left; a side hand column
+paints top-to-bottom; a sideways Riichi tile paints after its pond row. The
+renderer throws unless `drawOrder` is a permutation of `0 … n−1`, and every tile
+is one `blitTileSprite` from the atlas. Nothing is rasterised at runtime.
+
+The board is **712 × 704 board px**, derived from `shells.json` (Phase 3's
+612 × 642 had no room for the opponent hands): a hand sits outside its wall, so
+each edge reads hand → wall → pond → compass. Opponent concealed hands use their
+seat's face-down shell (`shell_wall_horizontal` on top, the oblique side shells
+on the sides); every meld is `shell_flat_upright` at the pond pitches; calls sit
+at the seat's own right-hand end. The full zone table and the decisions are in
+the architecture doc §11.
+
+### The review command
+
+`cd frontend && npm run board:review` builds the real atlas at @1x and @2x with
+a Node Canvas backend, lays out the committed full-table fixture, and writes
+under `tools/render/build/review/` (gitignored):
+
+| File | What it is |
+| --- | --- |
+| `board-desktop-1440x900-1x.png` | full board over the full-screen felt, @1x |
+| `board-mobile-390x844-1x.png` | portrait fit, @1x |
+| `board-desktop-1440x900-2x.png` | the same view from the @2x atlas |
+| `board-zoom-top-wall.png` | 3× zoom: top hand, both wall tiers |
+| `board-zoom-riichi-pond.png` | 3× zoom: pond rows and the sideways riichi |
+| `board-zoom-bottom-hand.png` | 3× zoom: the human's hand and open calls |
+| `board-numbers.json` | every check's numbers, the atlas sizes, artifact hashes |
+
+It exits non-zero on a failed assertion. The four §5 checks on the committed
+bake:
+
+```text
+shadow continuity: 4 seams over the next body (darker by 5.35/5.35/5.40/5.36
+  luma, changed 0.75/0.75/0.75/0.75); fifth over felt 1.53 luma
+  (changed 0.3), sixth over felt 1.14 luma (changed 0.142); shared sprite true
+pond row seam: 6 samples; darkest crease 87.98 at y+46 (face 116.81, run 2 px)
+riichi rotation: sprite margin alpha centroid dx 2.5 dy 3.6 px; felt masses
+  right 640 > left 441, bottom 600 > top 281; faceRotationDeg 90
+wall overlap: tier dy -4.71 px, upper body covers 49.29 of 54 px; visible
+  strip 5 px luma 52.71 (without upper 56.17), differing 45%
+paint order: 205 tiles, first top-hand:9, last bottom-hand:0
+```
+
+The paint-order snapshot is committed at
+`frontend/src/table/fixtures/paint-order.json`; `npm run board:review --
+--write-fixture` rewrites it after an intended layout change, and the renderer
+test diffs the live board against it.
+
 ## The Blender shell rules
 
 The shell scene follows the architecture, not the retired pipeline:
@@ -499,6 +566,10 @@ before the top tier). The script prints the seam numbers too: on the committed
 bake the neighbour's face edge darkens from luma 204.3 to 159.1 where the
 previous tile's shadow lands on it, and the isolated tile's shadow reads 57.8
 against bare felt 66.8.
+
+To review the painted board, run `cd frontend && npm run board:review` and open
+the six PNGs above (AGENTS.md §6: hand the paths to the user, do not judge the
+render).
 
 State the numbers the check already verified, then ask the user the questions
 only they can answer: are the tile proportions and bevel right; does the resin
