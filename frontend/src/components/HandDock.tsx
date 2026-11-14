@@ -152,7 +152,7 @@ export function HandDock({
   return (
     <section
       className={`hand-dock${showTiles ? '' : ' hand-dock--compact'}`}
-      aria-label="Your hand"
+      aria-label={showTiles ? 'Your hand' : 'Hand controls'}
     >
       {isAnswered && grade ? (
         <AnswerSummary grade={grade} onDetails={onShowVerdict} />
