@@ -13,8 +13,19 @@
 >
 > The Task 0–12 chain below is kept for history only. Its open command-center
 > tasks were retired and replaced by Phase 0–5 tasks taken from the new
-> document. `tools/render/README.md` documents the retired pipeline and is also
-> marked legacy until Phase 0 replaces it.
+> document:
+>
+> | Phase | Command-center task | Scope |
+> | --- | --- | --- |
+> | 0 | 261113-2201 | reset/cleanup, felt background, shell-baker skeleton |
+> | 1 | 261113-220131 | six orthographic shells + `shells.json` |
+> | 2 | 261113-220143 | 38 face glyphs + startup atlas |
+> | 3 | 261113-220154 | anchor/advance layout and per-zone projections |
+> | 4 | 261113-2202 | painter's-algorithm board renderer |
+> | 5 | 261113-220215 | hover lift, hitboxes, overlays, accessibility |
+>
+> `tools/render/README.md` documents the retired pipeline and is also marked
+> legacy until Phase 0 replaces it.
 
 Status (historical): design finalised by Task 0. Tasks 1–12 were the old chain;
 the experimental SVG isometric view had already been removed.
