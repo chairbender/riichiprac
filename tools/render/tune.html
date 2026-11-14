@@ -222,17 +222,19 @@
           <summary>Lighting</summary>
           <div class="hint" style="margin-bottom: 12px">
             Azimuth is around the tile: 0° front, 90° right, 180° behind, 270° left.
-            Elevation is degrees above horizontal; a top-lit upright tile wants the tubes near 70–85°.
-            The spec keeps both rigs (<code>studio</code> and <code>parlor</code>) so switching preset never loses numbers.
+            Elevation is degrees above horizontal. Two rigs are baked from one scene: the
+            <strong>body rig</strong> (key + fill) lights the tile blocks, table and background, and the
+            <strong>decal rig</strong> (parlor strips) lights the carved face. The preset switch picks the
+            decal rig; the key/fill controls always edit the body rig.
           </div>
 
           <div class="control">
-            <div class="row"><label for="rig">Rig preset</label><output id="rigOut"></output></div>
+            <div class="row"><label for="rig">Decal rig preset</label><output id="rigOut"></output></div>
             <select id="rig">
-              <option value="studio">Task 1 studio (single softbox key)</option>
               <option value="parlor">Parlor strips (ceiling tubes)</option>
+              <option value="studio">Task 1 studio (single softbox key)</option>
             </select>
-            <div class="hint">Which rig the preview builds. The other rig keeps its numbers untouched.</div>
+            <div class="hint">Which rig the carved decal is baked under. The body/table rig stays <code>lightRig</code>.</div>
           </div>
 
           <h3 class="group" id="parlorGroupTitle">Parlor strips</h3>
@@ -295,7 +297,7 @@
             </div>
           </div>
 
-          <h3 class="group" id="studioGroupTitle">Studio rig</h3>
+          <h3 class="group" id="studioGroupTitle">Body rig (key + fill)</h3>
           <div id="studioGroup">
             <div class="control">
               <div class="row"><label for="keyAzimuth">Key azimuth</label><output id="keyAzimuthOut"></output></div>
@@ -501,12 +503,9 @@
       }
 
       function updateRigVisibility() {
-        const parlor = currentRig() === "parlor";
-        el("parlorGroup").classList.toggle("group-off", !parlor);
-        el("studioGroup").classList.toggle("group-off", parlor);
-        el("parlorGroupTitle").classList.toggle("group-off", !parlor);
-        el("studioGroupTitle").classList.toggle("group-off", parlor);
-        el("rigOut").textContent = parlor ? "parlor strips" : "studio";
+        const rig = currentRig();
+        el("rigOut").textContent =
+          rig === "parlor" ? "parlor strips" : rig === "studio" ? "studio" : rig;
       }
 
       // Same cubic Bézier as build_and_render.py: P0=(0,0), P1=(top,0),

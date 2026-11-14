@@ -136,6 +136,18 @@ if (manifest) {
     fail('manifest.decals.pixels is missing');
   }
 
+  // Two rigs are baked from one scene: the body/table rig and the decal rig.
+  // Both must be recorded, because a runtime consumer (or the tuner) must know
+  // which lights produced the bodies and which produced the carved faces.
+  for (const [label, rig] of [
+    ['rig (body/table)', manifest.rig],
+    ['decals.rig', manifest.decals?.rig],
+  ]) {
+    if (!rig || typeof rig.preset !== 'string' || !Array.isArray(rig.lights) || rig.lights.length === 0) {
+      fail(`manifest.${label} is missing a preset with lights`);
+    }
+  }
+
   // Background ----------------------------------------------------------- //
   // The spike/review batch has no background (it is a single-tile study), so a
   // null background is allowed and simply skips the background checks.

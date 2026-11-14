@@ -196,9 +196,11 @@ first renders, but it does not reopen the section 12 decisions.
   response; blue melamine backing.
 - Fixed perspective camera with a long lens (subtle convergence and peripheral side faces,
   close to Tenhou).
-- A preset area rig from above/front-left; a soft contact shadow. The shipped
-  `parlor` preset (Task 1.5) is two ceiling tubes + a green bounce + a rim; the
-  `studio` preset keeps Task 1's key/fill/rim for comparison
+- A preset area rig from above/front-left; a soft contact shadow. The body,
+  table and background use the `keyfill` preset (front-left key + front-right
+  fill); the carved face decal keeps the `parlor` strip rig (two ceiling tubes
+  + a green bounce + a rim) it was tuned under. The `studio` preset stays in
+  the spec for comparison
   ([`rendered-table-strip-lights-plan.md`](rendered-table-strip-lights-plan.md)).
 - AgX colour management; denoised Cycles render.
 - Hand tiles stay vertical; the blue backing (the back face plus the rear 30% of
@@ -225,9 +227,14 @@ or inverts a quad.
   "facePixels": [360, 480],
   "background": "background.webp",
   "backgroundPixels": [1440, 900],
+  "backgroundStats": { "maxChannel": 205.0, "clippedPixels": 0, "opaquePixels": 1296000 },
+  "rig": { "preset": "keyfill", "lights": [ … key, fill … ], "world": { … } },
+  "decals": { "pixels": [463, 643], "frameUnits": [ … ], "rig": { "preset": "parlor", … }, … },
   "table": { "plan": { "feltHalfExtent": 12.9, "railWidth": 0.9, … },
              "seats": ["bottom", "right", "top", "left"],
-             "handRow": { "seat": "bottom", "y": -11.7,
+             "handRow": { "seat": "bottom", "y": -11.7, "concealedCount": 13,
+                          "spacingUnits": 0.75, "spacingMode": "touch",
+                          "drawGapUnits": 0.55,
                           "slotIds": ["hand-0", …, "hand-draw"] } },
   "slots": [
     {
@@ -237,15 +244,15 @@ or inverts a quad.
       "pose": "hand-upright",
       "orientation": "upright",
       "body": "bodies/hand-0.webp",
-      "x": 751, "y": 1478, "width": 159, "height": 190,
+      "x": 801, "y": 1478, "width": 158, "height": 190,
       "shadowGutterPx": 32,
       "faceQuad": [[x, y], [x, y], [x, y], [x, y]],
       "decalQuad": [[x, y], [x, y], [x, y], [x, y]],
       "faceMatrix": "matrix3d(…16 values…)",
       "drawOrder": 40,
       "back": { "pose": "hand-upright-back", "body": "bodies/hand-0-back.webp",
-                "x": 751, "y": 1478, "width": 159, "height": 190 },
-      "measurements": { "faceWidthPx": 74.26, "faceHeightPx": 76.99 }
+                "x": 801, "y": 1478, "width": 158, "height": 190 },
+      "measurements": { "faceWidthPx": 69.89, "faceHeightPx": 73.68 }
     }
   ],
   "faces": {
@@ -257,9 +264,9 @@ or inverts a quad.
       "opposite": "faces/1m-opposite.webp"
     }
   },
-  "assets": { "bodyFormat": "WEBP", "bodyQuality": 90, "bodyBytes": 141804,
-              "backgroundSamples": 64, "backgroundBytes": 19018,
-              "totalBytes": 160822,
+  "assets": { "bodyFormat": "WEBP", "bodyQuality": 90, "bodyBytes": 120590,
+              "backgroundSamples": 64, "backgroundBytes": 16572,
+              "totalBytes": 137162,
               "budgetBytes": { "total": 8388608, "bodies": 1048576,
                                "background": 157286, "manifest": 51200 } },
   "checks": { "slotRectsInsideScene": true, "faceQuadsInsideBodies": true,
@@ -343,9 +350,11 @@ headless browser).
    canonical face-on orthographic rig, never from the scene camera, so a decal
    is position-independent. `upright` stands the tile vertically facing the
    camera; the four flat classes lay it horizontally with the symbol at
-   0/90/180/270°. The scene light rig and melamine material are reused, so vertical
-   and horizontal lighting still differ. Ortho scale is one tile width and the
-   render is transparent outside the face.
+   0/90/180/270°. The melamine material is shared, but the decal is lit by its
+   own rig (`decals.lightRig`, the parlor strips) rather than the body/table
+   rig (`lightRig`, key + fill), because the strip look is what the engraving
+   wants. Vertical and horizontal decal classes still differ. Ortho scale is
+   one tile width and the render is transparent outside the face.
 4. **Decal placement.** The pipeline computes a per-slot CSS `matrix3d`
    homography from the decal's pixel rectangle to that slot's projected face
    quad and writes it into the manifest. The runtime applies it verbatim: no
@@ -520,15 +529,17 @@ them rather than guessing):
    65 mm, **elevation 33.7°**, 57.4 units out, one 1440 × 900 landscape framing
    (§12.9 unchanged). The near rail's corners sit just outside the frame, the far
    rail at ~18% height, the side rails converge, and a tile face is 74 × 77
-   device px (37 × 38.5 CSS) with the hand row 640 CSS px wide. The 33.7°
+   device px (37 × 38.5 CSS) with the hand row 640 CSS px wide (600 CSS after
+   the Task 2.5 flush pitch). The 33.7°
    elevation shows a real top surface and a ~10 px blue backing band above each
    face, which is the physical read for a 16.5 mm tile.
-3. **Slot inventory.** The human's row is 13 concealed slots at 0.82 spacing plus
-   the **separated draw** 0.55 units further out; ids `hand-0`…`hand-12` and
-   `hand-draw`, `role` `concealed`/`draw`, `drawOrder` 40…53. Every slot is baked
-   face-up *and* face-down (`hand-upright-back`) with a nested `back` record, so
-   Tasks 5 and 11 reuse the concealed pose at their own seat transforms. Bands:
-   0–39 wall/river/meld, 40–53 hands, 60+ overlays.
+3. **Slot inventory.** The human's row is 13 concealed slots at one tile-width
+   pitch (flush, `spacing: "touch"`; Task 2.5) plus the **separated draw** 0.55
+   units further out; ids `hand-0`…`hand-12` and `hand-draw`, `role`
+   `concealed`/`draw`, `drawOrder` 40…53. Every slot is baked face-up *and*
+   face-down (`hand-upright-back`) with a nested `back` record, so Tasks 5 and 11
+   reuse the concealed pose at their own seat transforms. Bands: 0–39
+   wall/river/meld, 40–53 hands, 60+ overlays.
 4. **Background.** One Cycles render from the same camera with opaque film and the
    felt no longer a shadow catcher (felt, track, aprons, compass plate, rail, room
    floor), rendered at 2880 × 1800 and box-filtered to **1440 × 900 WebP q90**.
@@ -551,9 +562,10 @@ them rather than guessing):
    §12.13 CI gate, and `render.sh` runs it after every batch.
 7. **Regeneration and weight.** `bash tools/render/render.sh` rebuilds and
    validates the shipped batch into `frontend/public/table/`; `--spike` rebuilds
-   the Task 1 review batch. The committed batch is 186 KB: 28 body sprites
-   (141,804 B), the background (19,018 B) and the manifest (24,620 B), against
-   the 8 MB / 1 MB / 150 KB budgets the bake and the validator both enforce.
+   the Task 1 review batch. The committed Task 2.5 batch is 160 KB: 28 body
+   sprites (120,590 B), the background (16,572 B) and the manifest (26,245 B),
+   against the 8 MB / 1 MB / 150 KB budgets the bake and the validator both
+   enforce.
 8. **Task 3 consequence.** At this framing a face is 74 × 77 device px while the
    canonical decal frame still renders at 492 × 672, an ~8.7× minification that
    would erase a 1 px fillet highlight. Task 3 must size the shipped decals
@@ -561,37 +573,71 @@ them rather than guessing):
 9. **Lighting uniformity was measured, not assumed.** The face underlay of a
    standing tile reads RGB(228, 226, 224) at the left end of the hand row and
    RGB(229, 228, 226) at the right — under 1% variation across the `upright`
-   class, well inside the seam tolerance. The side seats' *faces* sit at
-   RGB(204, 208, 215) / RGB(207, 210, 215) because of their grazing angle; that
-   is a per-class difference, which is what the five orientation classes exist
-   for. Tasks 3 and 6 must re-check flat classes across the whole table: the rig
-   is distant (56-unit throw, 40-unit tubes) but its targets are near the
-   human's side, so a flat tile at the far wall sees a different exposure than
-   one in the human's river.
+   class, well inside the seam tolerance. (Under the Task 2.5 `keyfill` body rig
+   the same sample reads RGB(197, 195, 194) at every slot, 0.9% spread.) The
+   side seats' *faces* sit at RGB(204, 208, 215) / RGB(207, 210, 215) because of
+   their grazing angle; that is a per-class difference, which is what the five
+   orientation classes exist for. Tasks 3 and 6 must re-check flat classes across
+   the whole table: the decal rig is distant (56-unit throw, 40-unit tubes) but
+   its targets are near the human's side, so a flat tile at the far wall sees a
+   different exposure than one in the human's river.
 
-### Task 2.5 note (261113-1543): the tile bevel and its material split
+### Task 2.5 note (261113-1543): per-tile hand, flush row, split light rigs
 
-The task's group-body work is on hold; what it keeps is the tile itself:
+The group-body bake (one baked body for the whole hand row) was tried and
+reverted: a single image for the hand cannot lift one tile on hover. The hand is
+therefore back to **one body sprite per slot**, and this pass makes that model
+match the Tenhou read:
 
-- **Bevel.** `tile.bevel.width` is **0.055** units (≈1.5 mm) with 6 segments and
-  `tile.faceInset` matches it, so the decal still sits on the flat face. The
-  0.035 bevel left the abutting row's groove too shallow to read. The face
+- **Flush concealed row.** `hand.spacing` is `"touch"`; the pitch is derived
+  from the tile width (0.75 units), so concealed tiles abut and only the bevel
+  grooves separate them. `drawGap` still separates the draw. The row (including
+  the draw) remains centred on `hand.centerX`, so slot ids and the
+  append-by-index rule are unchanged.
+- **Two light rigs.** Tile bodies, the table and the background are baked under
+  the new `keyfill` preset (front-left key + front-right fill). The carved face
+  decal keeps the `parlor` strip rig it was tuned under. `lightRig` selects the
+  body/table rig; `decals.lightRig` selects the decal rig. The bake swaps the
+  scene lights immediately before and after the decal pass, and the manifest
+  records both (`rig` and `decals.rig`). The tuner's preset switch chooses the
+  decal rig; its key/fill controls edit the body rig.
+- **Per-tile cast shadows are unchanged in this pass.** Each sprite still bakes
+  its own tile's contact shadow into a 32 px gutter. At the flush pitch adjacent
+  body rects overlap by roughly half a sprite, so a neighbour's clipped shadow
+  is pasted over its neighbour's tile. The review composites and the manifest's
+  `measurements.hand` expose that overlap and shadow-on-border fraction, so the
+  question "does this need a group shadow layer?" is answered from numbers and
+  the user's review, not from a prose claim.
+- **Bevel and material split from the earlier pass are kept.**
+  `tile.bevel.width` is **0.055** units (≈1.5 mm) with 6 segments and
+  `tile.faceInset` matches it, so the abutting row's groove reads. The face
   measures 69.89 × 73.68 device px and the blue top band still reads 10 device
-  px.
-- **One material, split on local Z.** The body is no longer bisected at
-  `backEdgeFraction` and no longer assigns whole faces to the white or blue
-  material. It is one material whose shader gates the two melamine BSDFs on the
-  object's local Z at `backEdgeFraction * thickness`, so the cut runs at the same
-  depth through the flat faces and the bevel: the blue is flush with the white at
-  every point around the tile and wraps the corners as one band. The old per-face
-  split put an edge loop through the vertical corner bevels, so the blue could
-  stop at a corner.
-- Everything else — the per-slot hand model, the 0.82 row pitch, the 32 px shadow
-  gutter, the parlor rig, manifest v2 — is back to the Task 2 state.
+  px. The body is one material whose shader gates the white and blue melamine
+  on the object's local Z at `backEdgeFraction * thickness`, so the blue is
+  flush with the white through the flat faces and the bevel and wraps the
+  corners as one band.
 
 The 74.3 × 77.0 face and 492 × 672 decal quoted in sections 7 and 12's Task 2
 results are pre-Task-2.5 measurements of the same framing; with the 0.055 inset
 they are 69.89 × 73.68 and 463 × 643.
+
+Measured on the regenerated batch:
+
+- flush pitch **81.9 device px**, face row including the draw **1201 device px
+  (600 CSS)**; alignment **0 shifted px of 137,914**, 0% soft edge;
+- adjacent body rects overlap **70.0 device px**, and **14 / 14** sprites have
+  baked shadow on their crop border (24.1% of border pixels above the 0.02
+  threshold), i.e. the per-tile shadow is clipped and overdraws neighbours;
+- the keyfill background has no clipped pixels; the felt below the hand row
+  reads ≈ RGB(1, 88, 54) and the far felt ≈ RGB(0, 46, 26), so the new key is
+  directional;
+- the parlor decal is unchanged: decal peak 241/255, body peak 254/255, 0
+  clipped, decal bake 80 s; the split-rig seam step is **1.2%** on the lit
+  (left) edge and ~10% on the key-shadowed (right) bevel.
+
+Review artifacts (gitignored): `build/review/hand-face-up.png`,
+`hand-face-down.png`, their `-closeup.png` 1:1 device-pixel rows, and
+`hand-face-up-seam-zoom.png` (4× nearest). The visual verdict is the user's.
 
 ## 14. Risks
 

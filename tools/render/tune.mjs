@@ -68,11 +68,12 @@ function tubeParams(entry) {
 
 function currentParams() {
   const carve = base.decals.carve;
-  const studio = (id) => rigLight("studio", id);
+  const bodyRig = base.lightRig;
+  const body = (id) => rigLight(bodyRig, id);
   const parlor = (id) => rigLight("parlor", id);
   const tubes = tubeEntries("parlor").map(tubeParams);
-  const key = studio("key");
-  const fill = studio("fill");
+  const key = body("key");
+  const fill = body("fill");
   return {
     depth: carve.depthFractionOfThickness,
     topSpread: carve.profile.topSpread,
@@ -81,7 +82,8 @@ function currentParams() {
     transitionMm: carve.transitionUnits * mmPerUnit,
     paintEdge: carve.paintEdge,
     paintRed: base.tile.materials.paint.red,
-    rig: base.lightRig,
+    rig: base.decals.lightRig ?? base.lightRig,
+    bodyRig: base.lightRig,
     rigs: rigNames,
     keyAzimuth: key.azimuthDeg,
     keyElevation: key.elevationDeg,
@@ -90,7 +92,7 @@ function currentParams() {
     fillAzimuth: fill.azimuthDeg,
     fillElevation: fill.elevationDeg,
     fillPower: fill.energyW,
-    studioRimPower: studio("rim").energyW,
+    studioRimPower: body("rim")?.energyW ?? 0,
     parlorRimPower: parlor("rim").energyW,
     bouncePower: parlor("bounce").energyW,
     tubeCount: tubes.filter((tube) => tube.enabled).length,
@@ -104,26 +106,36 @@ function currentParams() {
 }
 
 function applyLighting(spec, params) {
-  spec.lightRig = params.rig === "parlor" ? "parlor" : "studio";
+  // The switch picks the decal's rig; the body/table rig is `lightRig`. The
+  // key/fill controls edit the body rig, which the full-tile preview shows.
+  spec.decals.lightRig = params.rig;
+  const bodyRig = spec.lightRig;
+  const body = (id) => spec.lightPresets[bodyRig].lights.find((item) => item.id === id);
   const update = (name, id, patch) => {
     const entry = spec.lightPresets[name].lights.find((item) => item.id === id);
     if (entry) Object.assign(entry, patch);
   };
 
-  update("studio", "key", {
-    azimuthDeg: clamp(num(params.keyAzimuth, rigLight("studio", "key").azimuthDeg), 0, 360),
-    elevationDeg: clamp(num(params.keyElevation, rigLight("studio", "key").elevationDeg), 0, 89),
-    energyW: clamp(num(params.keyPower, rigLight("studio", "key").energyW), 0, 300000),
-    size: clamp(num(params.keySize, rigLight("studio", "key").size), 4, 60),
-  });
-  update("studio", "fill", {
-    azimuthDeg: clamp(num(params.fillAzimuth, rigLight("studio", "fill").azimuthDeg), 0, 360),
-    elevationDeg: clamp(num(params.fillElevation, rigLight("studio", "fill").elevationDeg), 0, 89),
-    energyW: clamp(num(params.fillPower, rigLight("studio", "fill").energyW), 0, 150000),
-  });
-  update("studio", "rim", {
-    energyW: clamp(num(params.studioRimPower, rigLight("studio", "rim").energyW), 0, 150000),
-  });
+  if (body("key")) {
+    update(bodyRig, "key", {
+      azimuthDeg: clamp(num(params.keyAzimuth, body("key").azimuthDeg), 0, 360),
+      elevationDeg: clamp(num(params.keyElevation, body("key").elevationDeg), 0, 89),
+      energyW: clamp(num(params.keyPower, body("key").energyW), 0, 300000),
+      size: clamp(num(params.keySize, body("key").size), 4, 60),
+    });
+  }
+  if (body("fill")) {
+    update(bodyRig, "fill", {
+      azimuthDeg: clamp(num(params.fillAzimuth, body("fill").azimuthDeg), 0, 360),
+      elevationDeg: clamp(num(params.fillElevation, body("fill").elevationDeg), 0, 89),
+      energyW: clamp(num(params.fillPower, body("fill").energyW), 0, 150000),
+    });
+  }
+  if (body("rim")) {
+    update(bodyRig, "rim", {
+      energyW: clamp(num(params.studioRimPower, body("rim").energyW), 0, 150000),
+    });
+  }
   update("parlor", "rim", {
     energyW: clamp(num(params.parlorRimPower, rigLight("parlor", "rim").energyW), 0, 150000),
   });

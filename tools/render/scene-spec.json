@@ -122,8 +122,49 @@
     "hex": "#b9c6d6",
     "strength": 0.4
   },
-  "lightRig": "parlor",
+  "lightRig": "keyfill",
   "lightPresets": {
+    "keyfill": {
+      "label": "Key + fill (body, table and background)",
+      "lights": [
+        {
+          "id": "key",
+          "group": "key",
+          "target": [
+            0,
+            -6,
+            0
+          ],
+          "azimuthDeg": 315,
+          "elevationDeg": 55,
+          "distance": 45,
+          "size": 18,
+          "sizeY": 18,
+          "rollDeg": 0,
+          "energyW": 90000,
+          "hex": "#fff4e4",
+          "enabled": true
+        },
+        {
+          "id": "fill",
+          "group": "fill",
+          "target": [
+            0,
+            -4,
+            0
+          ],
+          "azimuthDeg": 45,
+          "elevationDeg": 22,
+          "distance": 38,
+          "size": 22,
+          "sizeY": 22,
+          "rollDeg": 0,
+          "energyW": 10000,
+          "hex": "#dfe9ff",
+          "enabled": true
+        }
+      ]
+    },
     "studio": {
       "label": "Task 1 studio (one softbox key + fill + rim)",
       "lights": [
@@ -312,7 +353,7 @@
   "hand": {
     "seat": "bottom",
     "concealedCount": 13,
-    "spacing": 0.82,
+    "spacing": "touch",
     "drawGap": 0.55,
     "centerX": 0,
     "y": -11.7,
@@ -326,6 +367,7 @@
       240
     ],
     "renderScale": 3,
+    "lightRig": "parlor",
     "compositeSupersample": 1,
     "paddingPixels": 1,
     "carve": {
@@ -378,6 +420,13 @@
     "background": "background.{ext}",
     "body": "bodies/{id}.{ext}",
     "manifest": "manifest.json"
+  },
+  "review": {
+    "seamZoom": {
+      "width": 120,
+      "height": 110,
+      "scale": 4
+    }
   },
   "spike": {
     "slotId": "hand-0",

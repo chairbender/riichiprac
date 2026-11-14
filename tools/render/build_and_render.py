@@ -566,25 +566,32 @@ def build_camera(scene: bpy.types.Scene, spec: dict) -> bpy.types.Object:
     return obj
 
 
-def active_lights(spec: dict) -> list[dict]:
-    """The lights actually built: the selected preset's enabled entries.
+def active_lights(spec: dict, rig: str | None = None) -> list[dict]:
+    """The lights actually built for one rig: its preset's enabled entries.
 
-    The spec carries both rigs so the tuner can compare them without editing
-    anything: `studio` is Task 1's single softbox key, `parlor` is the strip
-    rig. `lightRig` names the active preset; `enabled: false` parks a tube
-    without deleting its numbers. A spec with a plain `lights` list (Task 1
-    format) still works.
+    Two rigs are baked from one scene. `lightRig` is the body/table rig (a
+    conventional key + fill); `decals.lightRig` is the carved-face rig (the
+    parlor strips, kept because that look is what the engraving wants).
+    `enabled: false` parks a light without deleting its numbers. A spec with a
+    plain `lights` list (Task 1 format) still works.
     """
     presets = spec.get("lightPresets")
     if not presets:
         return [entry for entry in spec["lights"] if entry.get("enabled", True)]
-    name = spec.get("lightRig")
+    name = rig or spec.get("lightRig")
     if name not in presets:
-        die(f"lightRig {name!r} is not one of {sorted(presets)}")
+        die(f"light rig {name!r} is not one of {sorted(presets)}")
     return [entry for entry in presets[name]["lights"] if entry.get("enabled", True)]
 
 
-def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
+def clear_lights() -> None:
+    """Remove every light object so the next rig starts from an empty scene."""
+    for obj in list(bpy.data.objects):
+        if obj.type == "LIGHT":
+            bpy.data.objects.remove(obj, do_unlink=True)
+
+
+def build_lights(scene: bpy.types.Scene, spec: dict, rig: str | None = None) -> None:
     """Place the area rig from spherical coordinates around each target.
 
     azimuth 0 points at the player (front, -Y), 90 is +X (right), 180 is +Y
@@ -597,15 +604,21 @@ def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
     aim or the target. That is the whole strip-light trick: length shapes the
     streak, width shapes its cross-section, roll picks which strokes catch it.
 
-    The rig is deliberately distant (see rendered-table-plan.md §12 and the
-    Task 1 findings): a decal is lit once per orientation and composited onto
-    bodies at every slot, so illumination must not vary much across the table.
+    The decal rig is deliberately distant (see rendered-table-plan.md §12 and
+    the Task 1 findings): a decal is lit once per orientation and composited
+    onto bodies at every slot, so illumination must not vary much across the
+    table. The body rig is baked per slot, so it may be closer; it still uses
+    large soft sources for the melamine bevels.
+
+    `rig` selects the preset; the body/table bake uses `lightRig`, the decal
+    bake uses `decals.lightRig`. They are not mixed.
     """
-    lights = active_lights(spec)
+    name = rig or spec.get("lightRig")
+    lights = active_lights(spec, name)
     if not lights:
-        die("the active light rig is empty")
+        die(f"the light rig {name!r} is empty")
     log(
-        f"rig {spec.get('lightRig', 'lights')}: "
+        f"rig {name}: "
         + ", ".join(
             f"{entry['id']} ({entry['size']:g}x{entry['sizeY']:g}, "
             f"{entry['elevationDeg']:g}°, roll {entry.get('rollDeg', 0):g}°, "
@@ -640,15 +653,16 @@ def build_lights(scene: bpy.types.Scene, spec: dict) -> None:
         obj["group"] = entry.get("group", "key")
 
 
-def rig_record(spec: dict) -> dict:
-    """The active rig as it was built, for the manifest.
+def rig_record(spec: dict, rig: str | None = None) -> dict:
+    """One rig as it was built, for the manifest.
 
     Recorded from the same resolved list `build_lights` consumes, so the
     manifest can never describe a rig the sprites were not baked with. Tasks 3+
     read this instead of assuming light positions.
     """
+    name = rig or spec.get("lightRig")
     return {
-        "preset": spec.get("lightRig"),
+        "preset": name,
         "convention": (
             "azimuth 0 front (-Y), 90 +X, 180 behind, 270 -X; elevation above "
             "horizontal; roll about the light's aim axis in degrees"
@@ -667,7 +681,7 @@ def rig_record(spec: dict) -> dict:
                 "energyW": entry["energyW"],
                 "hex": entry["hex"],
             }
-            for entry in active_lights(spec)
+            for entry in active_lights(spec, name)
         ],
         "world": {"hex": spec["world"]["hex"], "strength": spec["world"]["strength"]},
     }
@@ -695,6 +709,20 @@ def camera_record(spec: dict) -> dict:
 # --------------------------------------------------------------------------- #
 
 
+def row_spacing(spec: dict) -> float:
+    """Pitch between concealed hand tiles, in tile units.
+
+    `hand.spacing` is an explicit number or `"touch"`. `"touch"` derives the
+    pitch from the tile width, so the concealed row closes up like Tenhou's:
+    the tiles abut and only the bevel grooves separate them. Deriving it keeps
+    the flush layout from drifting with the tile proportions.
+    """
+    spacing = spec["hand"]["spacing"]
+    if spacing == "touch":
+        return spec["tile"]["width"]
+    return float(spacing)
+
+
 def hand_slots(spec: dict) -> list[dict]:
     """The human's hand row: 13 concealed slots plus the separated draw.
 
@@ -705,7 +733,7 @@ def hand_slots(spec: dict) -> list[dict]:
     """
     hand = spec["hand"]
     count = hand["concealedCount"]
-    spacing = hand["spacing"]
+    spacing = row_spacing(spec)
     gap = hand["drawGap"]
     tile_width = spec["tile"]["width"]
     concealed_span = (count - 1) * spacing
@@ -1286,6 +1314,11 @@ def render_review_composite(
     after a regeneration. It is assembled in device pixels (the manifest's own
     space, so nothing is scaled) and then box-filtered down to the shipped
     background size for viewing.
+
+    Also writes two crops next to `path`: the hand row at 1:1 device pixels
+    (`<stem>-closeup.png`) and a nearest-neighbour zoom of the first concealed
+    seam (`<stem>-seam-zoom.png`), so the flush row and its bevel groove can be
+    judged without rescaling the whole table.
     """
     canvas = background.copy()
     for record, face, _ in sorted(records, key=lambda item: item[0]["drawOrder"]):
@@ -1297,7 +1330,155 @@ def render_review_composite(
     canvas[..., 3] = 1.0
     review = downsample_box(canvas, spec["assets"]["background"].get("downscale", 1))
     save_raster(scene, path, review, "PNG", 100, colour_mode="RGB")
+
+    # 1:1 device-pixel crop around the whole row, including the shadow gutters.
+    rects = [
+        (
+            (record if pose_key == "face" else record["back"])["x"],
+            (record if pose_key == "face" else record["back"])["y"],
+            (record if pose_key == "face" else record["back"])["width"],
+            (record if pose_key == "face" else record["back"])["height"],
+        )
+        for record, _, _ in records
+    ]
+    margin = 24
+    x0 = max(0, min(rect[0] for rect in rects) - margin)
+    y0 = max(0, min(rect[1] for rect in rects) - margin)
+    x1 = min(canvas.shape[1], max(rect[0] + rect[2] for rect in rects) + margin)
+    y1 = min(canvas.shape[0], max(rect[1] + rect[3] for rect in rects) + margin)
+    closeup_path = path.with_name(f"{path.stem}-closeup.png")
+    save_raster(scene, closeup_path, canvas[y0:y1, x0:x1], "PNG", 100, colour_mode="RGB")
+
+    # Nearest-neighbour zoom of the first concealed seam: the predicted face
+    # right edge against the next face's left edge, with the bevel groove
+    # between them. At 4x one device pixel is four screen pixels, so the groove
+    # is inspectable at its real baked resolution.
+    if pose_key == "face":
+        ordered = [
+            record
+            for record, _, _ in sorted(records, key=lambda item: item[0]["drawOrder"])
+            if record["role"] == "concealed"
+        ]
+        if len(ordered) >= 2:
+            left = ordered[0]["faceQuad"]
+            right = ordered[1]["faceQuad"]
+            seam_x = (left[1][0] + left[2][0] + right[0][0] + right[3][0]) / 4.0
+            seam_y = (left[1][1] + left[2][1] + right[0][1] + right[3][1]) / 4.0
+            zoom = spec.get("review", {}).get("seamZoom", {})
+            crop_w = int(zoom.get("width", 120))
+            crop_h = int(zoom.get("height", 110))
+            scale = int(zoom.get("scale", 4))
+            zx0 = int(max(0, min(canvas.shape[1] - crop_w, seam_x - crop_w / 2.0)))
+            zy0 = int(max(0, min(canvas.shape[0] - crop_h, seam_y - crop_h / 2.0)))
+            crop = canvas[zy0 : zy0 + crop_h, zx0 : zx0 + crop_w]
+            magnified = np.repeat(np.repeat(crop, scale, axis=0), scale, axis=1)
+            save_raster(
+                scene,
+                path.with_name(f"{path.stem}-seam-zoom.png"),
+                magnified,
+                "PNG",
+                100,
+                colour_mode="RGB",
+            )
     return path
+
+
+def hand_composite_measurements(spec: dict, records: list) -> dict:
+    """Numbers behind the per-tile hand composite, for the manifest.
+
+    The flush row is the case where this model is most stressed: each sprite
+    carries its own clipped cast shadow, and at a one-tile-width pitch those
+    sprites overlap heavily. These are the measured consequences, so a review
+    of `build/review/hand-*-closeup.png` has figures to check against:
+
+    - `pitchPx` — median distance between adjacent concealed face centres;
+    - `adjacentSpriteOverlapPx` — median horizontal overlap of adjacent body
+      rects (a positive number means one sprite's shadow is pasted over its
+      neighbour's tile);
+    - `shadowBorderFraction` — mean fraction of a sprite's border pixels with
+      alpha above the shadow threshold (1.0 means the baked shadow is clipped at
+      every side of the crop);
+    - `clippedShadowSprites` — how many sprites have a clipped shadow on any side.
+    """
+    ordered = sorted(
+        (record for record, _, _ in records if record["role"] == "concealed"),
+        key=lambda record: record["index"],
+    )
+    faces = [
+        (
+            sum(corner[0] for corner in record["faceQuad"]) / 4.0,
+            sum(corner[1] for corner in record["faceQuad"]) / 4.0,
+        )
+        for record in ordered
+    ]
+    pitches = [
+        math.hypot(faces[index + 1][0] - faces[index][0], faces[index + 1][1] - faces[index][1])
+        for index in range(len(faces) - 1)
+    ]
+    overlaps = [
+        max(0, ordered[index]["x"] + ordered[index]["width"] - ordered[index + 1]["x"])
+        for index in range(len(ordered) - 1)
+    ]
+    threshold = 0.02
+    border_fractions = []
+    clipped = 0
+    for _, face, _ in records:
+        sprite = face["sprite"]
+        alpha = sprite[..., 3]
+        border = np.concatenate([alpha[0, :], alpha[-1, :], alpha[:, 0], alpha[:, -1]])
+        fraction = float((border > threshold).mean())
+        border_fractions.append(fraction)
+        if fraction > 0:
+            clipped += 1
+    return {
+        "spacingUnits": round(row_spacing(spec), 5),
+        "spacingMode": (
+            "touch" if isinstance(spec["hand"]["spacing"], str) else "explicit"
+        ),
+        "pitchPx": round(float(np.median(pitches)), 2) if pitches else None,
+        "adjacentSpriteOverlapPx": (
+            round(float(np.median(overlaps)), 1) if overlaps else None
+        ),
+        "shadowBorderFraction": round(float(np.mean(border_fractions)), 4),
+        "clippedShadowSprites": clipped,
+        "spriteCount": len(records),
+    }
+
+
+def decal_seam_measurement(record: dict, composite: np.ndarray) -> dict:
+    """Compare the composite just inside and outside the decal's left edge.
+
+    The decal is lit by its own canonical rig; the body is lit by the body rig.
+    This samples the flat decal face and the body surface immediately outside
+    it at the same mid-face height, so a rig mismatch that shows as a bright or
+    dark band around the decal is a number, not an impression.
+    """
+    quad = np.array(record["decalQuad"], dtype=np.float64) - np.array(
+        [record["x"], record["y"]]
+    )
+    left_mid = (quad[0] + quad[3]) / 2.0
+    right_mid = (quad[1] + quad[2]) / 2.0
+    height, width = composite.shape[:2]
+    samples = {}
+    for label, point, step in (
+        ("outsideLeft", left_mid, -3),
+        ("insideLeft", left_mid, 3),
+        ("insideRight", right_mid, -3),
+        ("outsideRight", right_mid, 3),
+    ):
+        x = int(round(point[0] + step))
+        y = int(round(point[1]))
+        if not (0 <= x < width and 0 <= y < height):
+            continue
+        patch = composite[max(0, y - 2) : y + 3, max(0, x - 2) : x + 3, :3]
+        samples[label] = [round(float(value), 4) for value in patch.mean(axis=(0, 1))]
+    if "insideLeft" not in samples or "outsideLeft" not in samples:
+        return samples
+    inside = np.array(samples["insideLeft"], dtype=np.float64)
+    outside = np.array(samples["outsideLeft"], dtype=np.float64)
+    fraction = float(np.abs(inside - outside).max() / max(inside.mean(), 1e-6))
+    samples["leftStepFraction"] = round(fraction, 4)
+    return samples
 
 
 def render_tile_mask(
@@ -2077,6 +2258,8 @@ def main() -> None:
             )
 
     # ---- background ------------------------------------------------------ #
+    face_entries: dict = {}
+    measurements: dict = {}
     background = None
     if mode == "table":
         background = bake_background(
@@ -2088,24 +2271,46 @@ def main() -> None:
             out_dir / spec["outputs"]["background"].format(ext=assets["background"]["fileFormat"].lower()),
         )
         review_dir = RENDER_DIR / "build" / "review"
+        review_dir.mkdir(parents=True, exist_ok=True)
+        for stale in review_dir.glob("*.png"):
+            stale.unlink()
         render_review_composite(
             spec, scene, background["render"], records, "face", review_dir / "hand-face-up.png"
         )
         render_review_composite(
             spec, scene, background["render"], records, "back", review_dir / "hand-face-down.png"
         )
+        measurements["hand"] = hand_composite_measurements(spec, records)
+        log(
+            "hand composite: "
+            f"pitch {measurements['hand']['pitchPx']} px, "
+            f"adjacent sprites overlap {measurements['hand']['adjacentSpriteOverlapPx']} px, "
+            f"shadow on sprite borders {measurements['hand']['shadowBorderFraction']:.1%} "
+            f"({measurements['hand']['clippedShadowSprites']}/{measurements['hand']['spriteCount']} sprites clipped)"
+        )
         log(f"review composite: {review_dir}")
+        stats = background["stats"]
+        log(
+            "background: "
+            f"peak {stats['maxChannel']}/255 "
+            f"({stats['clippedPixels']} clipped of {stats['opaquePixels']} opaque px)"
+        )
 
     # ---- decal and composite (spike batch) ------------------------------- #
-    face_entries: dict = {}
-    measurements: dict = {}
     if mode == "spike":
         decal_spec = spec["spike"]["decal"]
         top = spec["tile"]["thickness"]
+        # The carved face is baked under its own rig (parlor strips); the body
+        # and table keep the body rig. The decal look is the reason the split
+        # exists, so never let the two share a preset by accident.
+        clear_lights()
+        build_lights(scene, spec, spec["decals"]["lightRig"])
         decal_started = time.perf_counter()
         decal_path, decal_width, decal_height, frame_w, frame_h = bake_decal(
             spec, scene, camera, tile, table, out_dir
         )
+        clear_lights()
+        build_lights(scene, spec)
         decal_seconds = time.perf_counter() - decal_started
         log(f"decal bake: {decal_seconds:.1f}s")
         if preview.get("decalOnly"):
@@ -2179,6 +2384,7 @@ def main() -> None:
             "decalMaxChannel": decal_stats["maxChannel"],
             "decalClippedPixels": decal_stats["clippedPixels"],
             "decalBakeSeconds": round(decal_seconds, 1),
+            "seam": decal_seam_measurement(record, composite),
         }
         log(
             "blue sliver: "
@@ -2233,6 +2439,12 @@ def main() -> None:
             "handRow": {
                 "seat": spec["hand"]["seat"],
                 "y": spec["hand"]["y"],
+                "concealedCount": spec["hand"]["concealedCount"],
+                "spacingUnits": round(row_spacing(spec), 5),
+                "spacingMode": (
+                    "touch" if isinstance(spec["hand"]["spacing"], str) else "explicit"
+                ),
+                "drawGapUnits": spec["hand"]["drawGap"],
                 "slotIds": [slot["id"] for slot in hand_slots(spec)],
             },
         },
@@ -2246,12 +2458,14 @@ def main() -> None:
             else None
         ),
         "backgroundPixels": background["pixels"] if background else None,
+        "backgroundStats": background["stats"] if background else None,
         "rig": rig_record(spec),
         "decals": {
             "pixels": decal["pixels"],
             "frameUnits": decal["frameUnits"],
             "paddingPixels": decal["paddingPixels"],
             "renderedAtScale": spec["decals"]["renderScale"],
+            "rig": rig_record(spec, spec["decals"]["lightRig"]),
             "compositeSupersample": composite_supersample(
                 first_matrix if first_matrix is not None else np.eye(3),
                 spec["decals"].get("compositeSupersample"),

@@ -9,11 +9,19 @@ lighting, bevel highlights, and shadows are baked here.
 The pipeline builds two batches from one scene, spec, and script:
 
 - **shipped batch** (default) — the table background, one body sprite per hand
-  slot in both poses, and the manifest, written to `frontend/public/table/`.
-  Task 2 delivered this batch; Tasks 5–11 add their own slots to the same scene.
+  slot in both poses (the concealed row closed up flush, with a separated
+  draw), and the manifest, written to `frontend/public/table/`. Task 2 delivered
+  this batch; Tasks 5–11 add their own slots to the same scene.
 - **spike batch** (`--spike`) — the Task 1/1.5 review artifact: one hand-slot
   body, its concealed pose, the carved face decal, the homography composite, and
   the contact sheet, written to `tools/render/spike/`. Never shipped.
+
+Two light rigs are baked from the same scene. Bodies, the table, and the
+background use the **body rig** (`lightRig`, the `keyfill` preset: a front-left
+key plus a front-right fill). The carved face decal uses its **own** rig
+(`decals.lightRig`, the `parlor` strips), because the strip-light streak is what
+the engraving was tuned against. The bake swaps the lights around the decal
+pass; the manifest records both rigs.
 
 Task 1 proved the pipeline end to end on one tile and one decal; Task 1.5
 replaced its single studio key with a parlor strip rig; Task 2 added the table
@@ -63,11 +71,16 @@ The shipped batch:
 1. builds the scene and renders with headless Blender (`build_and_render.py`,
    `--python-exit-code 1` so failures are loud): the background, then every body
    sprite, then the alignment reference frame;
-2. verifies the result with `scripts/check-assets.mjs` (dependency-free, so the
+2. composites the hand row over the background exactly as the runtime will and
+   writes the review images to `build/review/`: `hand-face-up.png`,
+   `hand-face-down.png`, their `-closeup.png` 1:1 device-pixel rows, and
+   `hand-face-up-seam-zoom.png`, a 4× nearest zoom of the first concealed seam;
+3. verifies the result with `scripts/check-assets.mjs` (dependency-free, so the
    same command runs in CI): every referenced file exists at the size the
    manifest publishes, every slot rect sits inside the scene, every face and
    decal quad sits inside its body sprite, every `faceMatrix` reproduces its
-   `decalQuad`, and the batch is inside the asset budget.
+   `decalQuad`, both rigs are recorded, and the batch is inside the asset
+   budget.
 
 The spike batch additionally installs `tools/render`'s Node dependencies with
 `npm ci` on the first run (the directory is gitignored, forever offline after
@@ -115,12 +128,14 @@ It serves a browser UI (no build step, local only) with:
   Bézier controls, drawn live as the exact cross-section the mesh uses;
 - **mask blur** (mm), **paint edge** (fraction + mm inset) and **preview
   samples**;
-- **lighting**: a **rig preset** switch (`studio` = the Task 1 softbox,
+- **lighting**: a **decal-rig preset** switch (`studio` = the Task 1 softbox,
   `parlor` = ceiling strips), tube **count** (2–4), and per-tube **azimuth /
-  elevation / roll / offset / length / width / power**, plus bounce power, one
-  rim per rig and ambient strength. The compass draws every tube as a bar at its
-  azimuth turned by its roll, so which fixture covers which wall is visible; the
-  other rig keeps its numbers untouched while you tune one;
+  elevation / roll / offset / length / width / power**, plus bounce power, the
+  parlor rim and ambient strength. The key / fill / rim controls always edit the
+  **body rig** (`lightRig`, the `keyfill` preset), which is what the full-tile
+  preview's body and bevels are lit by. The compass draws every tube as a bar at
+  its azimuth turned by its roll, so which fixture covers which wall is visible;
+  the other rig keeps its numbers untouched while you tune one;
 - a **preview image** switch: **full tile** (body + decal, shows the top-edge and
   side lighting) or **decal only** (fast). Full tile is roughly 2–3× slower but
   is what you want when tuning lights, and it is now the default.
@@ -154,7 +169,7 @@ gitignored.
 
 | Path | Committed | Purpose |
 | --- | --- | --- |
-| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine/paint/table materials, table plan dimensions, camera, `lightRig` + `lightPresets` (studio and parlor), colour management, hand layout, carve, decal rig, composite sampling, asset format/budget, checks, output names |
+| `scene-spec.json` | yes | the single source of truth: tile proportions and bevel, melamine/paint/table materials, table plan dimensions, camera, `lightRig` + `decals.lightRig` + `lightPresets` (keyfill, studio, parlor), colour management, hand layout, carve, decal rig, composite sampling, asset format/budget, checks, output names |
 | `build_and_render.py` | yes | builds the whole scene from the spec with `bpy`, renders the table background and every body sprite, carves the symbol, projects, warps the decal, checks alignment, measures, writes the manifest |
 | `scripts/check-assets.mjs` | yes | dependency-free manifest/asset/budget validator (also the CI gate) |
 | `scripts/rasterize-face.mjs` | yes | vendored symbol-only SVG → paint colour + carve mask PNG (resvg) |
@@ -163,7 +178,7 @@ gitignored.
 | `faces/` | yes | vendored public-domain symbol-only SVGs + provenance (`faces/SOURCE.md`) |
 | `spike/` | yes | Task 1/1.5 review outputs: body sprite, concealed pose, decal, composite, zoom, contact sheet, review manifest |
 | `../../frontend/public/table/` | yes | the shipped batch: `background.webp`, `bodies/*.webp`, `manifest.json` |
-| `node_modules/`, `build/`, `tune-spec.json` | no | installed dependencies, intermediate renders, and the review composites (`build/review/hand-face-up.png`, `hand-face-down.png`) |
+| `node_modules/`, `build/`, `tune-spec.json` | no | installed dependencies, intermediate renders, and the review composites (`build/review/hand-face-up.png`, `hand-face-down.png`, their `-closeup.png` crops, `hand-face-up-seam-zoom.png`) |
 
 Generated sprites are never hand-edited. A regeneration commits the spec/script
 change together with the regenerated assets under `frontend/public/table/` (or
@@ -187,9 +202,11 @@ blue backing faces the camera (the concealed-hand pose). Both poses stand on the
 same felt footprint.
 
 The scene is one fixed perspective camera (65 mm on a 36 mm sensor, 2880 × 1800
-device pixels = 1440 × 900 CSS at `pixelRatio: 2`), a preset area rig
-(`parlor`: 2 tubes + bounce + rim), a shadow-catcher felt plane, and AgX colour
-management with denoised Cycles.
+device pixels = 1440 × 900 CSS at `pixelRatio: 2`), a shadow-catcher felt plane,
+AgX colour management with denoised Cycles, and **two area rigs baked from that
+one scene**: the body/table rig (`lightRig`, `keyfill`: front-left key +
+front-right fill) and the decal rig (`decals.lightRig`, `parlor`: 2 tubes +
+bounce + rim). The manifest records both as `rig` and `decals.rig`.
 
 **Manifest coordinates are rendered device pixels** (top-left origin, y down,
 sprite-intrinsic). Divide by `pixelRatio` for CSS. A slot rect is exactly the
@@ -250,12 +267,15 @@ keeps one framing (§12.9); Task 10 revisits it only if the phone check fails.
 
 ### Hand slots
 
-The human's row is 13 concealed slots at 0.82 spacing plus **the separated
-draw**: `hand-draw` sits 0.55 units past the last concealed slot, which is the
-gap the app's dock already shows between `player.hand` and `player.draw`. The
-row *including* the draw is centred on `hand.centerX`, so the runtime can append
-the drawn tile by index without re-centring anything. Ids are `hand-0` …
-`hand-12` and `hand-draw`; `role` is `concealed` or `draw`.
+The human's row is 13 concealed slots **flush at one tile width** (`spacing:
+"touch"`, 0.75 units) plus **the separated draw**: `hand-draw` sits 0.55 units
+past the last concealed slot, which is the gap the app's dock already shows
+between `player.hand` and `player.draw`. The row *including* the draw is centred
+on `hand.centerX`, so the runtime can append the drawn tile by index without
+re-centring anything. Ids are `hand-0` … `hand-12` and `hand-draw`; `role` is
+`concealed` or `draw`. `hand.spacing` may also be an explicit number; the
+manifest records `spacingUnits`, `spacingMode`, and the measured composite numbers
+under `measurements.hand`.
 
 Every slot is baked in both poses (`hand-upright` and `hand-upright-back`), so a
 concealed row can be drawn at these slots today and Tasks 5/11 reuse the same
@@ -264,7 +284,9 @@ and a nested `back` record with its own rect; it has no face quad. Draw order is
 `40 + index` (13 concealed + draw = 40…53), which reserves 0–39 for the wall,
 rivers, and melds and leaves 54+ for later overlay bands. Nothing overlaps inside
 the row itself, but a per-slot order keeps the manifest's "unique draw order"
-check meaningful.
+check meaningful. At the flush pitch the *body rects* (tile plus 32 px shadow
+gutter) overlap heavily even though the tiles abut; that is the per-tile shadow
+model, not a tile overlap.
 
 ### Background bake
 
@@ -282,30 +304,78 @@ script renders one 8-sample reference frame with **every** slot's tile in the
 scene at once, and pastes every sprite's tile-only alpha at its manifest rect
 (draw order applied). The two are compared with a one-pixel dilation so
 anti-aliasing and denoiser softness are ignored: any disagreement left is a real
-shift. The shipped batch reports **0 shifted pixels** out of ~143k tile pixels,
+shift. The shipped batch reports **0 shifted pixels** out of 137,914 tile pixels,
 which is what "sprites align with the background" means here — a crop or a rect
 off by one pixel fails the bake.
 
 A second, human-readable artifact proves the same thing over the real
 background: `build/review/hand-face-up.png` and `hand-face-down.png` composite
 the whole row exactly as the runtime will (device pixels, then box-filtered for
-viewing). They are gitignored review images, not assets.
+viewing). The Task 2.5 batch adds the 1:1 device-pixel `-closeup.png` crops and
+`hand-face-up-seam-zoom.png` (4× nearest) so the flush pitch can be inspected
+without rescaling the table. They are gitignored review images, not assets.
 
 ### Format, budget, and what the batch weighs
 
+Task 2.5 values (the Task 2 numbers in the plan are the pre-flush batch):
+
 | Asset | Format | Size |
 | --- | --- | --- |
-| background | WebP q90, 1440 × 900, 64 samples | 19,018 B |
-| body sprites | WebP q90 with alpha, 2× device px | 141,804 B (28 files, ~5 KB each) |
-| manifest | JSON (v2) | 24,620 B |
+| background | WebP q90, 1440 × 900, 64 samples | 16,572 B |
+| body sprites | WebP q90 with alpha, 2× device px | 120,590 B (28 files, ~4.3 KB each) |
+| manifest | JSON (v2) | 26,245 B |
 
-The batch is 186 KB against the plan's 8 MB total / 1 MB body budgets, and the
+The sprites and background are 137 KB, 160 KB with the manifest, against the
+plan's 8 MB total / 1 MB body budgets, and the
 `table` and `manifest` byte budgets are enforced by both the bake and
 `scripts/check-assets.mjs` (the manifest budget is set to 50 KB, with the
-manifest currently ~24 KB of that). The manifest is deliberately verbose —
-per-slot measurements, the full rig, and the check results — because it is the
+manifest currently ~26 KB of that). The manifest is deliberately verbose —
+per-slot measurements, both rigs, and the check results — because it is the
 pipeline's audit trail; Task 4 can strip a runtime projection of it if the load
 weight ever matters.
+
+## Task 2.5 results: the flush per-tile hand and the split rigs
+
+The hand is one body sprite per slot again (the alternative, one body for the
+whole row, cannot lift a single tile on hover). `hand.spacing` is `"touch"`, so
+the concealed pitch is the tile width: **0.75 units, 81.9 device px between face
+centres**. The face row including the separated draw is **1201 device px (600
+CSS)** wide. Slot ids, poses, draw order, and the 32 px shadow gutter are
+unchanged; the alignment check still reports **0 shifted pixels** of 137,914 and
+**0% soft edge**, so the flush geometry lands exactly on the background.
+
+The per-tile composite's cost is measured, not asserted:
+
+| Measurement | Value |
+| --- | --- |
+| adjacent body rects overlap | 70.0 device px (median) |
+| sprites whose baked shadow touches the crop border | 14 / 14 |
+| border pixels above the 0.02 shadow threshold | 24.1% (mean) |
+
+So every sprite's cast shadow is clipped by its own 32 px gutter (the standing
+tile's shadow is much wider than the gutter), and at the flush pitch each
+sprite's clipped shadow is pasted over its neighbour. The review artifacts are:
+
+- `build/review/hand-face-up.png` / `hand-face-down.png` — the row over the baked
+  background, downsampled for viewing;
+- `build/review/hand-face-up-closeup.png` (1326 × 238) and
+  `hand-face-down-closeup.png` — the same row at 1:1 device pixels;
+- `build/review/hand-face-up-seam-zoom.png` (480 × 440) — 4× nearest zoom of the
+  first concealed seam, where the abutting bevels and any shadow overdraw are
+  visible at baked resolution.
+
+The lighting split is also measured:
+`manifest.rig` = `keyfill` (key + fill), `manifest.decals.rig` = `parlor`
+(tubes + bounce + rim). The keyfill background has **no clipped pixels**; the
+felt below the hand row reads about RGB(1, 88, 54) and the far felt
+RGB(0, 46, 26), so the new key is directional and the far side is darker than
+the old overhead parlor coverage. The spike's decal bake is byte-for-byte the same parlor rig as
+before: decal peak 241/255, body peak 254/255, 0 clipped, seam step 1.2% on the
+lit edge and ~10% on the key-shadowed bevel (see "Seam tolerance with split
+rigs").
+
+A human should judge the review images; the numbers above only say what the
+model does.
 
 ## Findings and decisions (Task 1, updated by Task 1.5)
 
@@ -313,11 +383,12 @@ Measured from `spike/` and the `measurements` block of `spike/manifest.json`.
 
 ### Body sprite: real slot, position-dependent shading
 
-`hand-0` is the leftmost of the hand row (13 concealed slots at 0.82 spacing,
-row at y = −11.7), so the sprite is baked where that tile will actually sit, not
-on a neutral stage. The slot is left of the camera axis, which is what makes the
-shading position-dependent: the near (left) bevel catches the key light, the
-right bevel falls into the fill, and the right side of the body is visible at all
+`hand-0` is the leftmost of the hand row (13 concealed slots flush at one tile
+width since Task 2.5, row at y = −11.7), so the sprite is baked where that tile
+will actually sit, not on a neutral stage. The slot is left of the camera axis,
+which is what makes the shading position-dependent: the near (left) bevel catches
+the key light, the right bevel falls into the fill, and the right side of the
+body is visible at all
 (the face quad is a true trapezoid: top edge 74.66 px, bottom edge 73.86 px,
 centre sheared ~6.9 px). A slot at the row centre would lose the side face and
 flatten the bevel contrast. The crop is 159 × 190 device px including the 32 px
@@ -498,55 +569,93 @@ on filtering. Task 3 should therefore re-size the decal batch against the Task 2
 framing: the canonical frame is 0.68 × 0.93 units and a face is 74 × 77 device
 px, so a 2× decal is ~175 × 180 px, not the 492 × 672 px spike render.
 
-### Seam tolerance after the rig change (Task 1.5, re-checked by Task 2)
+### Seam tolerance with split rigs (Task 2.5)
 
-Re-checked on the Task 2 spike, whose decal rig now stands at the hand row's real
-y (−11.7): sampling the composite either side of the decal's left edge at
-mid-face, the body's face reads ≈ RGB(221, 219, 217) and the decal's flat face
-≈ RGB(225, 223, 221) — about 1.8% brighter, the same difference as Task 1 (the
-canonical rig sits at the hand row's centre while `hand-0` sits 5.6 units left of
-it), and it remains invisible at the shipped size.
+The decal is lit by the **parlor** rig and the body by **keyfill**, so the seam
+is a real material boundary, not a matched pair: the flat carved face is lit
+face-on and uniformly, while the body bevel beside it turns away from the
+front-left key. Measured on the Task 2.5 spike, sampling 3 device px either side
+of the decal's edge at mid-face:
 
-The parlor rig is still distant and large (56-unit throw, 40-unit tubes), so the
-position-independence constraint above holds unchanged; the tube targets span
-0.6…3 units along Y, which is small against that throw. The Task 2 camera looks
+| Sample | sRGB |
+| --- | --- |
+| decal face, inside left | RGB(225, 224, 221) |
+| body, outside left | RGB(225, 222, 218) → **1.2%** max-channel step |
+| decal face, inside right | RGB(225, 223, 221) |
+| body, outside right | RGB(200, 201, 203) → **~10%** step |
+
+The left edge is effectively seamless because the bevel there faces the key; the
+right edge is darker because that bevel turns away, and the old all-parlor
+composite showed the same left-bright / right-dark fall-off (≈0.87 vs ≈0.76 in
+the same sample space). It is the bevel model, not a split-rig regression. If a
+more symmetric seam is wanted, move the body key toward azimuth 0 in the tuner;
+the decal bake is unaffected.
+
+The body's flat face under keyfill reads RGB(197, 195, 194) at every hand slot —
+0.9% spread across the row — but it is covered by the decal and is not the seam
+surface. The exposed surfaces are the decal face and the bevel, above.
+
+The decal rig is still distant and large (56-unit throw, 40-unit tubes), so the
+position-independence constraint above holds unchanged. The Task 2 camera looks
 down at 33.7° rather than 18°, so a tube's bevel streak sits at
-`θn = (θL + 33.7°) / 2` on the body and `θL / 2` on the face-on decal rig; both
-still land on the up-facing fillets and the seam stays clean.
+`θn = (θL + 33.7°) / 2` on a body bevel and `θL / 2` on the face-on decal rig;
+the decal's streak still lands on the up-facing fillets.
 
-Measured across the whole Task 2 hand row, the upright face underlay reads
-RGB(228, 226, 224) at the left end and RGB(229, 228, 226) at the right: under 1%
-variation, so the once-lit `upright` decal sits flush at every hand slot. The
-side seats' faces read RGB(204, 208, 215) / RGB(207, 210, 215) — a real
+Across the whole Task 2 hand row under the parlor rig, the upright body face
+underlay read RGB(228, 226, 224) at the left end and RGB(229, 228, 226) at the
+right: under 1% variation, so a once-lit `upright` decal sits at every hand slot.
+The side seats' decal faces read RGB(204, 208, 215) / RGB(207, 210, 215) — a real
 per-class difference, which is why flat tiles get their own orientation-class
-rigs in Task 3. Re-check that the flat classes are as even across the table as
-the hand row is: the rig's targets are near the human's edge, and a far-wall
+decal rigs in Task 3. Re-check that the flat classes are as even across the table
+as the hand row is: the rig's targets are near the human's edge, and a far-wall
 flat tile sees a different exposure than one in the human's river.
 
-### Lighting: parlor strip rig (Task 1.5), studio rig kept for comparison
+### Lighting: two rigs from one scene (Task 2.5), parlor kept for the decal
 
-The reference is a **mahjong parlor**: long, narrow fluorescents overhead,
-mirrored in the glossy melamine as thin streaks along the up-facing bevels and
-the lower wall of every engraved stroke. Task 1 shipped one huge 26 × 20 area
-key, which is a studio softbox: a broad sheen that needed a deep carve and a
-near-clipping key just to show an edge. Task 1.5 replaces it with strips.
+Task 1.5 established the **mahjong parlor** look for the carved face: long,
+narrow fluorescents overhead, mirrored in the glossy melamine as thin streaks
+along the up-facing bevels and the lower wall of every engraved stroke. Task 1
+shipped one huge 26 × 20 area key, which is a studio softbox: a broad sheen that
+needed a deep carve and a near-clipping key just to show an edge. Task 1.5
+replaced it with strips.
 
-The spec keeps **both rigs** and selects one with `lightRig`:
+Task 2.5 splits the lighting by what is being baked. **Bodies, the table and the
+background** use a conventional, predictable **key + fill** (`lightRig =
+"keyfill"`). **The carved face decal** keeps the parlor strips
+(`decals.lightRig = "parlor"`), because those strips are the look the engraving
+was tuned against. The bake builds the body rig, bakes the bodies and the
+background, then swaps the scene lights to the decal rig for the decal pass and
+restores the body rig afterwards. The manifest records both:
+`rig` (body/table) and `decals.rig` (decal).
 
 ```json
-"lightRig": "parlor",
-"lightPresets": { "studio": { ...Task 1 rig verbatim... },
+"lightRig": "keyfill",
+"decals": { "lightRig": "parlor" },
+"lightPresets": { "keyfill": { ...key + fill... },
+                  "studio": { ...Task 1 rig verbatim... },
                   "parlor": { ...tubes + bounce + rim... } }
 ```
 
-`build_lights` resolves the active preset, skips entries with `enabled: false`
-and honours `rollDeg`, so a strip is just a very elongated `RECTANGLE` area
-light turned about its own aim axis. `group` (`tube` / `bounce` / `rim`) lets
-the tuner and the manifest address lights without positional assumptions; the
-manifest's `rig` block records the preset and every light that was actually
-built, so later tasks never guess the placement.
+`build_lights(scene, spec, rig)` resolves the named preset, skips entries with
+`enabled: false` and honours `rollDeg`, so a strip is just a very elongated
+`RECTANGLE` area light turned about its own aim axis. `group` (`key` / `fill` /
+`tube` / `bounce` / `rim`) lets the tuner and the manifest address lights without
+positional assumptions; the manifest's two `rig` blocks record each preset and
+every light that was actually built, so later tasks never guess the placement.
 
-#### Where the streak lands (and why the numbers are what they are)
+#### The shipped keyfill body/table rig (Task 2.5)
+
+| Light | Placement | Size | Power | Role |
+| --- | --- | --- | --- | --- |
+| `key` | azimuth 315, elevation 55, 45 units out, target y −6 | 18 × 18 | 90 kW | warm front-left key: tile face, bevels, near table |
+| `fill` | azimuth 45, elevation 22, 38 units out, target y −4 | 22 × 22 | 10 kW | cool front-right fill; lifts the shadow side without owning a highlight |
+
+The key/fill ratio is deliberately conventional (roughly 3:1 on the tile face):
+predictable and easy to re-aim in the tuner. The felt/track/rail palette was
+tuned under the old all-parlor rig, so the first keyfill background is a look to
+re-judge, not a palette that must stay byte-identical.
+
+#### The parlor decal rig: where the streak lands
 
 For a surface normal tilted `θn` from the face and a light at elevation `θL`,
 the mirror is at `2 θn`; with the camera at elevation `θv` it is at
@@ -573,7 +682,7 @@ and needs a big front bounce, which desaturates it instead.
 
 | Light | Placement | Size | Power | Role |
 | --- | --- | --- | --- | --- |
-| `tube-0` | azimuth 0, elevation 50, 56 units out | 40 × 2.5 | 85 kW | lights up-facing walls; the body's top-bevel streak |
+| `tube-0` | azimuth 0, elevation 50, 56 units out | 40 × 2.5 | 85 kW | lights up-facing walls; the decal's top-wall streak |
 | `tube-1` | azimuth 90, elevation 58, 56 units out | 40 × 2.5 | 65 kW | a second fixture; lights the other wall azimuth |
 | `bounce` | azimuth 30, elevation 10, 34 units out | 42 × 27 | 2.5 kW | green frontal bounce; owns the flat face and the junction band |
 | `rim` | azimuth 170, elevation 45, 40 units out | 28 × 20 | 6 kW | rear separation |
@@ -591,39 +700,39 @@ corners (a straight run is uniformly lit whatever the tube length). Azimuth and
 roll decide which walls catch it: roll rotates the rectangle about its aim axis,
 so 0 lies along X and 90 along Y.
 
-Measured on the regenerated spike: body peak **246/255**, decal peak
-**244/255**, zero clipped pixels in either; the decal bake is **~87 s** at 256
-samples, so adding fixtures did not cost bake time. At the
-shipped 2× size the parlor read holds: a bright streak runs the whole top bevel
-of the body (see the contact-sheet zoom), and every stroke fillet carries its own
-streak on the decal (see the 1:1 composite panel — where the sub-pixel highlight
-reads as the deliberate "sparkle" described below).
+Measured on the Task 2.5 spike: body peak **254/255** (the keyfill key on the
+tile bevel), decal peak **241/255**, zero clipped pixels in either; the decal
+bake is **80 s** at 256 samples. The parlor read is a decal property now: every
+stroke fillet carries its own streak on the decal (see the 1:1 composite panel,
+where the sub-pixel highlight reads as the deliberate "sparkle" described below).
+The tile bodies no longer use the parlor strips, so their bevel is lit by the
+keyfill key and fill.
 
-**Parlor vs studio.** Pick `lightRig: "studio"` (or the tuner's rig switch) to
-reproduce Task 1 exactly: key azimuth 0 / elevation 77 / 56 units / 200 kW,
-fill 45 / 11 / 34 / 23 kW, rim 170 / 45 / 40 / 22 kW, ambient 0.5. That is the
-softbox look the strips replace.
+**Parlor vs studio (the decal rig).** Pick `decals.lightRig: "studio"` (or the
+tuner's preset switch) to reproduce Task 1's decal lighting exactly: key azimuth
+0 / elevation 77 / 56 units / 200 kW, fill 45 / 11 / 34 / 23 kW, rim 170 / 45 /
+40 / 22 kW, ambient 0.5. That is the softbox look the strips replace.
 
-**Key/fill practice still applies.** The key is the dominant light; the fill is
-soft, dim and near the camera axis and must not own a highlight. Watch the fill
-direction: at azimuth 0 / elevation 32 (or 25° / 12°) a frontal light sits near
-the face's specular mirror and puts a broad white sheen on the glossy paint that
-desaturates the red. The parlor bounce is deliberately dim and off-axis for the
-same reason.
+**Key/fill practice still applies to the body rig.** The key is the dominant
+light; the fill is soft, dim and near the camera axis and must not own a
+highlight. Watch the fill direction: at azimuth 0 / elevation 32 (or 25° / 12°) a
+frontal light sits near the face's specular mirror and puts a broad white sheen
+on the body's glossy melamine.
 
-### Lighting must be position-independent for decals (§5/§12.3 consequence)
+### The decal rig must be position-independent (§5/§12.3 consequence)
 
 The decal is lit once per orientation, but it is composited onto body sprites at
 many positions. A close area rig made the face 24–30% brighter at `hand-0` than
 at the hand-row centre (where the canonical upright rig sits), which showed as a
 visible rectangle around the decal.
 
-The rig is therefore **distant and large** (key at ~66 units, fill/rim at ~50
-units, 3× the sizes), so the illumination varies by only a few percent across
-the hand row. The decal still gets a soft key gradient (its left/top side is
-slightly brighter) and vertical-vs-flat lighting still differs strongly, which is
-what the orientation classes need. **Tasks 2 and 3 must keep the rig distances
-in this range** or decals will no longer sit flush on distant slots.
+The **decal rig** is therefore distant and large (parlor tubes at 56 units), so
+the illumination varies by only a few percent across the hand row. It still gets
+a soft gradient and vertical-vs-flat lighting still differs strongly, which is
+what the orientation classes need. **Task 3 must keep the decal rig distances in
+this range** or decals will no longer sit flush on distant slots. The body rig
+does not share this constraint: each body sprite is baked in place, so its
+position-dependent shading is correct by construction.
 
 ### Shadows: two-pass shadow catcher, baked into the body sprite (§12.7 confirmed)
 
@@ -639,8 +748,13 @@ The two are combined in `numpy` (tile over shadow) and written as one RGBA
 sprite, with the crop grown by the 32 px gutter. Every other table part (rail,
 track, aprons, compass plate, room floor) is hidden in both passes: the
 background already carries their shading, and their shadows must not be counted
-twice. The measured `hand-0` crop is `159 × 190` device px with the whole shadow
-inside it, and a crop that touches the frame edge fails the bake.
+twice. The measured `hand-0` crop is `158 × 190` device px; a crop that touches
+the *scene* frame edge fails the bake. The cast shadow is much wider than the
+32 px gutter, so at the flush pitch **14 / 14 sprites have shadow on their crop
+border** (24.1% of border pixels above the 0.02 alpha threshold): each sprite's
+shadow is cut off at its own rectangle and pasted over its neighbour. That is a
+property of the per-tile model, measured in `measurements.hand` and visible in
+the review composites, not something the contract can hide.
 The shadow is neutral black alpha, i.e. a multiply-like darkening; over the green
 felt this reads correctly, and it is the same approximation §12.7 specifies
 (no runtime shadow layer, no CSS shadow).
@@ -672,7 +786,7 @@ bevel and alpha can be inspected; the shipped batch is 2× lossy WebP under
 
 | File | What it is |
 | --- | --- |
-| `bodies/hand-0.png` | 159 × 190 device px body sprite for the leftmost hand slot, alpha + baked shadow |
+| `bodies/hand-0.png` | 158 × 190 device px body sprite for the leftmost hand slot, alpha + baked shadow (Task 2.5 crop) |
 | `bodies/hand-0-back.png` | the same slot in the concealed pose (blue backing toward the camera) |
 | `1m-upright.decal.png` | 463 × 643 px lit 1-man face decal (inset + 1 px gutter), rendered at 3× CSS |
 | `1m-upright.composite.png` | body sprite with the decal homography-warped onto its face quad — the 2D composite the runtime will do |
@@ -693,17 +807,20 @@ transforms, so nothing about the pose has to be invented there.
 ## Next tasks
 
 - Task 3: vendor all 38 symbol-only SVGs at the pinned commit, rasterise each, and
-  render all five orientation classes per code; ship 2× WebP. Decide the decal
-  resolution against this framing: a face is 74 × 77 device px, so the spike's
-  492 × 672 render is an ~8.7× minification and a 1 px fillet highlight cannot
-  survive it. `compositeSupersample` only changes the review composite, not the
-  runtime texture. Fill the manifest's `faces` map.
+  render all five orientation classes per code; ship 2× WebP. Bake every decal
+  under `decals.lightRig` (the parlor strips), not the body/table rig. Decide the
+  decal resolution against this framing: a face is 74 × 77 device px, so the
+  spike's 492 × 672 render is an ~8.7× minification and a 1 px fillet highlight
+  cannot survive it. `compositeSupersample` only changes the review composite,
+  not the runtime texture. Fill the manifest's `faces` map.
 - Tasks 5–8, 11: add their slots to the same spec/scene and bake with the same
   `bake_body`/`build_table` helpers. Re-read `manifest.rig`, `manifest.table.plan`
   and `manifest.camera` rather than assuming light or table positions, and pick
   draw-order bands (0–39 wall/river/meld, 40–53 the hand row as shipped, 60+
-  overlays) so a stacked row can never overdraw the wrong tile. Keep the shipped `parlor` rig and the
-  Task 2 camera: both are baked into every sprite.
+  overlays) so a stacked row can never overdraw the wrong tile. Bodies use
+  `manifest.rig` (`keyfill`); decals use `manifest.decals.rig` (`parlor`). Keep
+  the Task 2 camera: it is baked into every sprite. Opponent hand rows reuse the
+  same flush pitch unless their seat transform needs a different one.
 - Task 4: the runtime reads `background`, `backgroundPixels`, `pixelRatio`, and
   each slot's `body`/rect/`faceMatrix`; it never projects a quad. Fall back to the
   top-down view if the assets fail to load.
