@@ -36,7 +36,7 @@ import {
 } from '../src/table/boardLayout';
 import type { PaintableBoard, TilePlacement } from '../src/table/boardLayout';
 import { paintOrderSnapshot, renderBoard } from '../src/table/boardRenderer';
-import type { PaintOrderEntry } from '../src/table/boardRenderer';
+import type { BoardRenderOptions, PaintOrderEntry } from '../src/table/boardRenderer';
 import { TileAtlas } from '../src/table/TileAtlas';
 import { parseFacesManifest } from '../src/table/faceManifest';
 import { parseShellsManifest } from '../src/table/shellManifest';
@@ -45,6 +45,17 @@ import type { AtlasCanvas, AtlasImage } from '../src/table/TileAtlasBuilder';
 import { SHELL_IDS, tileRenderKey } from '../src/table/tiles';
 import type { TileFaceId } from '../src/table/tiles';
 import { FIXTURE_FACES, fullBoardLayout } from '../src/table/fixtures/fullBoard';
+import {
+  DEFAULT_LIFT_PX,
+  hitTestBoard,
+  placementBodyRect,
+} from '../src/table/boardInteraction';
+import {
+  createLiftShadowAsset,
+  createShimmerAsset,
+  FACE_CLIP_INSET_PX,
+} from '../src/table/boardOverlays';
+import { riichiStickMarkers } from '../src/table/boardMarkers';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const tableDir = resolve(scriptDir, '../public/table');
@@ -73,6 +84,17 @@ function makeAtlas(pixelRatio: 1 | 2): Promise<TileAtlas> {
 
 const atlas1x = await makeAtlas(1);
 const atlas2x = await makeAtlas(2);
+const liftShadow = createLiftShadowAsset(
+  atlas1x,
+  (width, height) => createCanvas(width, height) as unknown as AtlasCanvas,
+);
+const liftShadow2x = createLiftShadowAsset(
+  atlas2x,
+  (width, height) => createCanvas(width, height) as unknown as AtlasCanvas,
+);
+const shimmer = createShimmerAsset(
+  (width, height) => createCanvas(width, height) as unknown as AtlasCanvas,
+);
 
 type Canvas = NapiCanvas;
 
@@ -139,9 +161,14 @@ function renderToCanvas(
   height: number,
   pixelRatio: number,
   atlas: TileAtlas,
+  extra: Partial<BoardRenderOptions> = {},
 ): { canvas: Canvas; stats: ReturnType<typeof renderBoard> } {
   const canvas = createCanvas(width, height);
-  const stats = renderBoard(contextOf(canvas), atlas, board, { felt, pixelRatio });
+  const stats = renderBoard(contextOf(canvas), atlas, board, {
+    felt,
+    pixelRatio,
+    ...extra,
+  });
   return { canvas, stats };
 }
 
@@ -542,6 +569,365 @@ const snapshot = paintOrderSnapshot(full);
 }
 
 // ---------------------------------------------------------------------------
+// Phase 5: hover lift, hit-testing, overlay masks and marker epoch.
+//
+// These are the same numbers the vitest suites assert, printed for the review
+// file. The rendered view's DOM/ARIA checks run in vitest (jsdom); the canvas
+// numbers run here on the real Node Canvas backend.
+// ---------------------------------------------------------------------------
+
+interface ChangedPixel {
+  readonly x: number;
+  readonly y: number;
+  readonly addedLuma: number;
+}
+
+function changedPixels(
+  base: Uint8ClampedArray,
+  after: Uint8ClampedArray,
+  width: number,
+): ChangedPixel[] {
+  const changed: ChangedPixel[] = [];
+  for (let index = 0; index < base.length; index += 4) {
+    if (
+      base[index] === after[index] &&
+      base[index + 1] === after[index + 1] &&
+      base[index + 2] === after[index + 2] &&
+      base[index + 3] === after[index + 3]
+    ) {
+      continue;
+    }
+    const pixel = index / 4;
+    changed.push({
+      x: pixel % width,
+      y: Math.floor(pixel / width),
+      addedLuma: pixelLuma(after, index) - pixelLuma(base, index),
+    });
+  }
+  return changed;
+}
+
+function pointInQuad(
+  x: number,
+  y: number,
+  quad: readonly (readonly [number, number])[],
+): boolean {
+  let inside = false;
+  for (let i = 0, j = quad.length - 1; i < quad.length; j = i, i += 1) {
+    const [xi, yi] = quad[i];
+    const [xj, yj] = quad[j];
+    const intersects =
+      yi > y !== yj > y &&
+      x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+{
+  const single = layoutBoard(shells, { hand: ['1m'], wallPairsPerSide: 0 });
+  const tile = single.placements.find((placement) => placement.id === 'bottom-hand:0')!;
+  const shell = shells.shells.shell_hand_standing;
+  const base = renderAtOneToOne(single);
+  const baseData = region(base, 0, 0, single.board.width, single.board.height).data;
+
+  const texturePoint = (x: number, y: number, lift = 0) => ({
+    x: x + 0.5 - tile.drawX,
+    y: y + 0.5 - (tile.drawY - lift),
+  });
+  const insideBody = (tx: number, ty: number): boolean =>
+    tx >= shell.anchorX &&
+    tx < shell.anchorX + shell.advanceWidth &&
+    ty >= shell.anchorY &&
+    ty < shell.anchorY + shell.advanceHeight;
+
+  {
+    const canvas = createCanvas(single.board.width, single.board.height);
+    renderBoard(contextOf(canvas), atlas1x, single, {
+      felt,
+      pixelRatio: 1,
+      overlay: {
+        tints: [{ id: tile.id, color: '#00ff00', alpha: 0.5 }],
+      },
+    });
+    const data = region(canvas, 0, 0, single.board.width, single.board.height).data;
+    const changed = changedPixels(baseData, data, single.board.width);
+    let outsideQuad = 0;
+    let outsideBody = 0;
+    let padding = 0;
+    for (const pixel of changed) {
+      const { x: tx, y: ty } = texturePoint(pixel.x, pixel.y);
+      if (!pointInQuad(tx, ty, shell.faceQuad)) outsideQuad += 1;
+      if (!insideBody(tx, ty)) outsideBody += 1;
+      if (
+        tx >= shell.anchorX + shell.advanceWidth ||
+        ty >= shell.anchorY + shell.advanceHeight
+      ) {
+        padding += 1;
+      }
+    }
+    assert(changed.length > 500, 'phase5 tint: the tint changes pixels');
+    assert(outsideQuad === 0, 'phase5 tint: every changed pixel is inside faceQuad');
+    assert(outsideBody === 0, 'phase5 tint: every changed pixel is inside the body');
+    assert(padding === 0, 'phase5 tint: the shadow margin is untouched');
+    results.push({
+      check: 'phase5-tint-mask',
+      changedPixels: changed.length,
+      outsideFaceQuad: outsideQuad,
+      outsideBody,
+      shadowMarginPixels: padding,
+      clipInsetPx: FACE_CLIP_INSET_PX,
+    });
+    console.log(
+      `phase5 tint mask: ${changed.length} changed px, outside faceQuad ${outsideQuad}, ` +
+        `outside body ${outsideBody}, shadow margin ${padding}, clip inset ${FACE_CLIP_INSET_PX} px`,
+    );
+  }
+  {
+    const canvas = createCanvas(single.board.width, single.board.height);
+    renderBoard(contextOf(canvas), atlas1x, single, {
+      felt,
+      pixelRatio: 1,
+      overlay: { shimmerIds: new Set([tile.id]) },
+      shimmer,
+    });
+    const data = region(canvas, 0, 0, single.board.width, single.board.height).data;
+    const changed = changedPixels(baseData, data, single.board.width);
+    let outsideQuad = 0;
+    let outsideBody = 0;
+    let glyphPixels = 0;
+    let glyphAdded = 0;
+    let maxAdded = 0;
+    for (const pixel of changed) {
+      const { x: tx, y: ty } = texturePoint(pixel.x, pixel.y);
+      if (!pointInQuad(tx, ty, shell.faceQuad)) outsideQuad += 1;
+      if (!insideBody(tx, ty)) outsideBody += 1;
+      maxAdded = Math.max(maxAdded, pixel.addedLuma);
+    }
+    for (let y = 0; y < single.board.height; y += 1) {
+      for (let x = 0; x < single.board.width; x += 1) {
+        const { x: tx, y: ty } = texturePoint(x, y);
+        if (!pointInQuad(tx, ty, shell.faceQuad)) continue;
+        const index = (y * single.board.width + x) * 4;
+        if (pixelLuma(baseData, index) < 95) {
+          glyphPixels += 1;
+          glyphAdded += pixelLuma(data, index) - pixelLuma(baseData, index);
+        }
+      }
+    }
+    const glyphMeanAdded = glyphPixels > 0 ? glyphAdded / glyphPixels : 0;
+    assert(changed.length > 200, 'phase5 shimmer: changes pixels');
+    assert(outsideQuad === 0, 'phase5 shimmer: every changed pixel is inside faceQuad');
+    assert(outsideBody === 0, 'phase5 shimmer: every changed pixel is inside the body');
+    assert(maxAdded < 80, 'phase5 shimmer: the additive sweep stays subtle');
+    assert(glyphMeanAdded < 35, 'phase5 shimmer: the glyph ink is not washed out');
+    results.push({
+      check: 'phase5-shimmer-mask',
+      changedPixels: changed.length,
+      outsideFaceQuad: outsideQuad,
+      outsideBody,
+      maxAddedLuma: round(maxAdded),
+      glyphPixels,
+      glyphMeanAddedLuma: round(glyphMeanAdded),
+    });
+    console.log(
+      `phase5 shimmer mask: ${changed.length} changed px, outside faceQuad ${outsideQuad}, ` +
+        `outside body ${outsideBody}; max added luma ${round(maxAdded)}, ` +
+        `glyph ink +${round(glyphMeanAdded)} over ${glyphPixels} px`,
+    );
+  }
+
+  {
+    const empty: PaintableBoard = { board: single.board, placements: [] };
+    const emptyData = region(renderAtOneToOne(empty), 0, 0, single.board.width, single.board.height).data;
+    const baselineTop = Math.min(
+      ...changedPixels(emptyData, baseData, single.board.width).map((pixel) => pixel.y),
+    );
+    const noShadowCanvas = createCanvas(single.board.width, single.board.height);
+    renderBoard(contextOf(noShadowCanvas), atlas1x, single, {
+      felt,
+      pixelRatio: 1,
+      overlay: { liftedIds: new Set([tile.id]) },
+    });
+    const liftedData = region(noShadowCanvas, 0, 0, single.board.width, single.board.height).data;
+    const liftedTop = Math.min(
+      ...changedPixels(emptyData, liftedData, single.board.width).map((pixel) => pixel.y),
+    );
+    const liftedLeft = Math.min(
+      ...changedPixels(emptyData, liftedData, single.board.width).map((pixel) => pixel.x),
+    );
+    const baselineLeft = Math.min(
+      ...changedPixels(emptyData, baseData, single.board.width).map((pixel) => pixel.x),
+    );
+    assert(
+      baselineTop - liftedTop === DEFAULT_LIFT_PX,
+      'phase5 lift: the visible sprite moves up by exactly the lift',
+    );
+    assert(liftedLeft === baselineLeft, 'phase5 lift: the sprite keeps its left edge');
+
+    const shadowCanvas = createCanvas(single.board.width, single.board.height);
+    renderBoard(contextOf(shadowCanvas), atlas1x, single, {
+      felt,
+      pixelRatio: 1,
+      overlay: { liftedIds: new Set([tile.id]) },
+      liftShadow,
+    });
+    const shadowData = region(shadowCanvas, 0, 0, single.board.width, single.board.height).data;
+    const shadowChanged = changedPixels(baseData, shadowData, single.board.width);
+    assert(shadowChanged.length > 200, 'phase5 lift: the secondary shadow paints');
+    results.push({
+      check: 'phase5-hover-lift',
+      liftPx: DEFAULT_LIFT_PX,
+      visibleSpriteTopPx: { baseline: baselineTop, lifted: liftedTop },
+      leftEdgePx: { baseline: baselineLeft, lifted: liftedLeft },
+      shadowAlpha: liftShadow.alpha,
+      shadowChangedPixels: shadowChanged.length,
+    });
+    console.log(
+      `phase5 hover lift: visible top ${baselineTop} -> ${liftedTop} ` +
+        `(${baselineTop - liftedTop} board px), left ${baselineLeft} -> ${liftedLeft}; ` +
+        `secondary shadow ${shadowChanged.length} px at alpha ${liftShadow.alpha}`,
+    );
+  }
+}
+
+{
+  const draw = full.placements.find(
+    (placement) => placement.id === 'bottom-hand:draw',
+  ) ?? full.placements.find((placement) => placement.id === 'bottom-hand:9')!;
+  const body = placementBodyRect(draw);
+  const centre = { x: body.x + body.width / 2, y: body.y + body.height / 2 };
+  const stickyTap = { x: centre.x, y: body.y + body.height - 2 };
+  const rows: Array<{
+    name: string;
+    point: { x: number; y: number };
+    options: { liftedIds?: ReadonlySet<string>; stickyId?: string | null };
+    expected: string | null;
+  }> = [
+    { name: 'body centre', point: centre, options: {}, expected: draw.id },
+    {
+      name: 'top-left is inside',
+      point: { x: body.x, y: body.y },
+      options: {},
+      expected: draw.id,
+    },
+    {
+      name: 'right edge is half-open',
+      point: { x: body.x + body.width, y: centre.y },
+      options: {},
+      expected: null,
+    },
+    {
+      name: 'right transparent margin',
+      point: { x: body.x + body.width + 1, y: centre.y },
+      options: {},
+      expected: null,
+    },
+    {
+      name: 'bottom transparent margin',
+      point: { x: centre.x, y: body.y + body.height + 1 },
+      options: {},
+      expected: null,
+    },
+    {
+      name: 'top-left transparent margin',
+      point: { x: body.x - 1, y: body.y - 1 },
+      options: {},
+      expected: null,
+    },
+    {
+      name: 'lifted body top',
+      point: { x: centre.x, y: body.y - DEFAULT_LIFT_PX + 1 },
+      options: { liftedIds: new Set([draw.id]) },
+      expected: draw.id,
+    },
+    {
+      name: 'lifted baseline bottom strip',
+      point: stickyTap,
+      options: { liftedIds: new Set([draw.id]) },
+      expected: null,
+    },
+    {
+      name: 'sticky hover keeps the strip',
+      point: stickyTap,
+      options: { liftedIds: new Set([draw.id]), stickyId: draw.id },
+      expected: draw.id,
+    },
+  ];
+  const rowsOut = rows.map((row) => {
+    const hit = hitTestBoard(full, row.point, row.options);
+    const pass = (hit?.id ?? null) === row.expected;
+    assert(pass, `phase5 hit-test ${row.name}: expected ${row.expected}, got ${hit?.id ?? null}`);
+    return {
+      name: row.name,
+      point: { x: round(row.point.x), y: round(row.point.y) },
+      expected: row.expected,
+      actual: hit?.id ?? null,
+      pass,
+    };
+  });
+  console.log(
+    `phase5 hit-test: ${rowsOut.filter((row) => row.pass).length}/${rowsOut.length} rows pass on ` +
+      `${draw.id} (body ${round(body.x)},${round(body.y)} ${round(body.width)}x${round(body.height)})`,
+  );
+  results.push({ check: 'phase5-hit-test', tile: draw.id, body, rows: rowsOut });
+}
+
+{
+  const hovered =
+    full.placements.find(
+      (placement) => placement.seat === 'bottom' && placement.kind === 'hand',
+    )!;
+  const markers = riichiStickMarkers(full.metrics.zones.reserve, {
+    riichiSides: ['bottom', 'right'],
+    potSticks: 2,
+  });
+  const overlay = {
+    liftedIds: new Set([hovered.id]),
+    tints: [
+      { id: hovered.id, color: '#74c0fc', alpha: 0.34 },
+      { id: 'bottom-pond:0', color: '#101820', alpha: 0.16 },
+      { id: 'top-pond:13', color: '#ffd43b', alpha: 0.3 },
+    ],
+    shimmerIds: new Set([hovered.id]),
+    markers,
+  } satisfies NonNullable<BoardRenderOptions['overlay']>;
+
+  const canvas = createCanvas(full.board.width, full.board.height);
+  const stats = renderBoard(contextOf(canvas), atlas1x, full, {
+    felt,
+    pixelRatio: 1,
+    overlay,
+    liftShadow,
+    shimmer,
+  });
+  assert(stats.liftedTiles === 1, 'phase5 overlay: one lifted tile');
+  assert(stats.tintedTiles === 3, 'phase5 overlay: three tints');
+  assert(stats.shimmerTiles === 1, 'phase5 overlay: one shimmer');
+  assert(stats.markers === 4, 'phase5 overlay: four markers');
+  assert(
+    /-pond:/.test(stats.markerZone.afterId ?? ''),
+    'phase5 markers: paint after the ponds',
+  );
+  assert(
+    /bottom-wall:/.test(stats.markerZone.beforeId ?? ''),
+    'phase5 markers: paint before the bottom wall',
+  );
+  console.log(
+    `phase5 overlay: lifted ${stats.liftedTiles}, tints ${stats.tintedTiles}, shimmer ${stats.shimmerTiles}, ` +
+      `markers ${stats.markers} after ${stats.markerZone.afterId} before ${stats.markerZone.beforeId}`,
+  );
+  results.push({
+    check: 'phase5-overlay-order',
+    liftedTiles: stats.liftedTiles,
+    tintedTiles: stats.tintedTiles,
+    shimmerTiles: stats.shimmerTiles,
+    markers: stats.markers,
+    markerZone: stats.markerZone,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Full-screen felt at multiple viewports.
 // ---------------------------------------------------------------------------
 {
@@ -649,6 +1035,87 @@ for (const [name, label, viewport, pixelRatio, atlas] of [
     { name: 'board-zoom-top-wall.png', label: 'zoom: top hand + two-tier top wall', x: 40, y: 0, width: 640, height: 150 },
     { name: 'board-zoom-riichi-pond.png', label: 'zoom: bottom pond + sideways riichi', x: 230, y: 400, width: 300, height: 180 },
     { name: 'board-zoom-bottom-hand.png', label: 'zoom: bottom hand + open melds', x: 50, y: 620, width: 620, height: 84 },
+  ];
+  for (const crop of crops) {
+    const target = createCanvas(crop.width * zoom, crop.height * zoom);
+    const ctx = contextOf(target);
+    ctx.drawImage(
+      canvas as unknown as CanvasImageSource,
+      crop.x * zoom,
+      crop.y * zoom,
+      crop.width * zoom,
+      crop.height * zoom,
+      0,
+      0,
+      crop.width * zoom,
+      crop.height * zoom,
+    );
+    saveCanvas(crop.name, target, crop.label);
+  }
+}
+
+{
+  // Phase 5 interaction states: one lifted/selected hand tile, a tsumogiri
+  // (dim) discard, a claimed discard (gold), one shimmering dora tile, and the
+  // riichi/pot sticks. Same overlay object as the checks above.
+  const hovered = full.placements.find(
+    (placement) => placement.seat === 'bottom' && placement.kind === 'hand',
+  )!;
+  const reviewOverlay = {
+    liftedIds: new Set([hovered.id]),
+    tints: [
+      { id: hovered.id, color: '#74c0fc', alpha: 0.34 },
+      { id: 'bottom-pond:0', color: '#101820', alpha: 0.16 },
+      { id: 'top-pond:13', color: '#ffd43b', alpha: 0.3 },
+    ],
+    shimmerIds: new Set([hovered.id]),
+    markers: riichiStickMarkers(full.metrics.zones.reserve, {
+      riichiSides: ['bottom', 'right'],
+      potSticks: 2,
+    }),
+  } satisfies NonNullable<BoardRenderOptions['overlay']>;
+
+  for (const [name, label, viewport, pixelRatio, atlas, shadow] of [
+    [
+      'board-interactive-desktop-1440x900-1x.png',
+      'desktop @1x, hover/selection/tint/shimmer/markers',
+      { width: 1440, height: 900 },
+      1,
+      atlas1x,
+      liftShadow,
+    ],
+    [
+      'board-interactive-mobile-390x844-1x.png',
+      'mobile @1x, hover/selection/tint/shimmer/markers',
+      { width: 390, height: 844 },
+      1,
+      atlas1x,
+      liftShadow,
+    ],
+  ] as const) {
+    const { canvas } = renderToCanvas(
+      full,
+      viewport.width,
+      viewport.height,
+      pixelRatio,
+      atlas,
+      { overlay: reviewOverlay, liftShadow: shadow, shimmer },
+    );
+    saveCanvas(name, canvas, label);
+  }
+
+  const zoom = 3;
+  const { canvas } = renderToCanvas(
+    full,
+    full.board.width * zoom,
+    full.board.height * zoom,
+    zoom,
+    atlas2x,
+    { overlay: reviewOverlay, liftShadow: liftShadow2x, shimmer },
+  );
+  const crops: Array<{ name: string; label: string; x: number; y: number; width: number; height: number }> = [
+    { name: 'board-interactive-zoom-bottom-hand.png', label: 'zoom: lifted/selected hand tile', x: 120, y: 600, width: 460, height: 100 },
+    { name: 'board-interactive-zoom-markers.png', label: 'zoom: reserved compass region + riichi/pot sticks', x: 210, y: 260, width: 300, height: 190 },
   ];
   for (const crop of crops) {
     const target = createCanvas(crop.width * zoom, crop.height * zoom);

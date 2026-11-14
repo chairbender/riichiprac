@@ -129,11 +129,11 @@ Because there is no Z-buffer, enforce a deterministic back-to-front draw order a
   - **Stacked walls:** Draw the **bottom tier** completely before drawing the **top tier** at its upward `dy` offset.
 
 ### Phase 5: Interactive States, Hitboxes & Visual Polish
-- [ ] **Task 5.1 — Hover & Selection Lift (Fake 3D Motion):** When the player hovers over or selects a tile in their hand, translate the tile upward (`drawY -= 12px`) and optionally draw a slightly softer/wider secondary shadow underneath at the baseline `gridY` to sell the illusion of lifting off the felt.
-- [ ] **Task 5.2 — Hit-Testing:** Perform pointer hit-testing against the logical bounding box `[gridX, gridY, advanceWidth, advanceHeight]` (accounting for any hover `dy` lift) rather than the transparent shadow padding.
-- [ ] **Task 5.3 — Gameplay State Overlays:**
-  - *Tsumogiri* (discard drawn immediately) or dimmed hover highlights: Composite a flat tint quad clipped strictly to the tile's `faceQuad` or opaque silhouette—never tint the transparent shadow margin.
-  - *Dora* / *Akadora* shimmer: Render an additive specular sweep masked to the `faceQuad`.
+- [x] **Task 5.1 — Hover & Selection Lift (Fake 3D Motion):** When the player hovers over or selects a tile in their hand, translate the tile upward (`drawY -= 12px`) and optionally draw a slightly softer/wider secondary shadow underneath at the baseline `gridY` to sell the illusion of lifting off the felt. Landed with a 12 board-px lift and a startup-baked wider silhouette; see §12.
+- [x] **Task 5.2 — Hit-Testing:** Perform pointer hit-testing against the logical bounding box `[gridX, gridY, advanceWidth, advanceHeight]` (accounting for any hover `dy` lift) rather than the transparent shadow padding. Landed as a half-open body-rect hit tester with sticky hover; see §12.
+- [x] **Task 5.3 — Gameplay State Overlays:**
+  - *Tsumogiri* (discard drawn immediately) or dimmed hover highlights: Composite a flat tint quad clipped strictly to the tile's `faceQuad` or opaque silhouette—never tint the transparent shadow margin. Landed with a 0.75 px inset clip; see §12.
+  - *Dora* / *Akadora* shimmer: Render an additive specular sweep masked to the `faceQuad`. Landed as a startup-baked 64 × 64 ramp blitted with `lighter`; see §12.
 
 ---
 
@@ -581,11 +581,153 @@ numbers; the agent does not sign them off.
    rewrites `frontend/src/table/fixtures/paint-order.json`; the renderer test
    compares the live snapshot against it, so any ordering or geometry change is
    a reviewable diff rather than a silent one.
-7. **The renderer is not wired into the app view switch yet.** Phase 4's
-   non-goals (hover/selection lift, hit-testing, tint overlays, dora shimmer,
-   accessibility wiring, compass) stay open. The module takes a canvas and the
-   atlas, so Phase 5 mounts it without touching the paint order.
+7. **The renderer was not wired into the app view switch in Phase 4.** Phase 5
+   mounted it as the opt-in `rendered` view (see §12) without touching the paint
+   order; the Phase 4 non-goals (hover/selection lift, hit-testing, tint
+   overlays, dora shimmer, accessibility wiring, compass) are closed or
+   explicitly deferred there.
 8. **Phase 3's single human hand zone is now a per-seat record.** `zones.hand`
    became `Record<SeatSide, BoardRect>` and the wall zones moved inward to make
    room; the tests, the dump and the diagram were updated with the 712 × 704
    numbers, and `metrics.hand.shell/pitchPx` became per-seat maps.
+
+## 12. Phase 5 baseline (landed 2026-11-14)
+
+Phase 5 mounts the painter's-algorithm renderer as the opt-in **Rendered 2.5D**
+view, then adds the interaction layer: hover/selection lift, logical-body
+hit-testing, clipped tints and shimmer, Riichi/pot markers, and full DOM/ARIA
+parity with the top-down plan. Stacked remains the default; switching views only
+redraws the hand already on screen.
+
+### 12.1 View wiring and fallback
+
+- `TableView` gained `'rendered'` (`stacked` is still `DEFAULT_TABLE_VIEW`).
+  `AppControls` offers **Rendered 2.5D**; old or unknown stored values still fall
+  back to stacked, including the removed `isometric`.
+- The rendered view mounts in `TableStage` as the full-screen table. The stage
+  menu drawer carries the header controls, export/import, table info, notes and
+  verdict, so no control is lost when the header is not visible. The floating
+  bottom band holds the action bar and a compact `HandDock` (call toggles, hint
+  and answer summary); the hand itself is on the canvas.
+- `RenderedTable` loads `loadFirstBoardAtlas()` (all six shells, memoised per
+  page) and `public/table/felt.png`, lays out the current `GameState` with
+  `boardLayoutFromState`, measures the stage, and contain-fits the 712 × 704
+  board. The felt is stretched over the whole canvas (`100% 100%`), and the
+  measured bottom control band is excluded from the fit so the human's hand is
+  never covered.
+- Any felt/manifest/shell/atlas/2D-context/paint failure reports once and calls
+  `onFallback`; `App` switches to `topdown`, persists that choice and shows the
+  reason in the import/export notice. Nothing is re-dealt.
+
+### 12.2 Lift and hit-testing
+
+Files: [`frontend/src/table/boardInteraction.ts`](frontend/src/table/boardInteraction.ts),
+[`boardOverlays.ts`](frontend/src/table/boardOverlays.ts),
+[`boardRenderer.ts`](frontend/src/table/boardRenderer.ts).
+
+| Tunable | Value | Notes |
+| :--- | ---: | :--- |
+| `DEFAULT_LIFT_PX` | **12 board px** | one number in `boardInteraction.ts`; 6.57 CSS px at 390 × 844 (fit 0.5478) and 15.34 CSS px at 1440 × 900 (fit 1.2784) |
+| secondary shadow | startup silhouette of `shell_hand_standing` | derived once from the blank sprite's alpha with `source-in` black; drawn at `alpha = 0.28` |
+| `LIFT_SHADOW_SPREAD_PX` | **3 board px** per side | the shadow is a scaled blit of the same silhouette, no blur/filter/alloc per frame |
+| hit target | `[gridX, gridY - lift, advanceWidth, advanceHeight]` | half-open; the 2 px top/left and 4 px right/bottom texture padding never hit |
+| sticky hover | baseline body of the tile already hovered | prevents lift/unlift buzz at the bottom 12 px; never applies to another tile |
+
+The renderer blits the whole sprite at `gridY − lift` (baked shadow/AO included),
+and paints all lifted tiles' secondary shadows just before the first lifted tile
+so neighbouring hand bodies still paint over them. `visible sprite top` moved
+`640 → 628` board px with the left edge unchanged; the secondary shadow changed
+3468 px.
+
+### 12.3 Overlays and markers
+
+All overlay art is built once at startup; the frame loop adds only constant-alpha
+blits. Both tint and shimmer clip to the published `faceQuad`, inset by
+`FACE_CLIP_INSET_PX = 0.75` so antialiasing cannot leave a partial pixel on the
+quad's outer edge. The transparent shadow margin is untouched by construction.
+
+| Overlay | Value | Pixels |
+| :--- | :--- | ---: |
+| selection tint | `#74c0fc` @ 0.34, clipped to faceQuad | 1200 changed px, **0** outside faceQuad/body, **0** in the right/bottom margin |
+| answer correct / incorrect | `#2f9e44` @ 0.34 / `#e03131` @ 0.30 | same clip |
+| claimed last discard | `#ffd43b` @ 0.30 | same clip |
+| tsumogiri | `#101820` @ 0.16 | same clip |
+| hover | `#ffffff` @ 0.10 | same clip |
+| dora/akadora shimmer | 64 × 64 ramp, peak alpha 0.24, drawn at 0.55 with `lighter` | 1181 changed px, **0** outside faceQuad/body; max added luma **31.86**, glyph ink **+13.6** over 274 ink px |
+| sideways Riichi tint | same clip, rotated quad | 1472 changed px, **0** outside the rotated faceQuad |
+
+Dora is derived from `dora_indicators` (`dora.ts`); aka fives are the `5mr`,
+`5pr`, `5sr` faces. Only face-up shells shimmer, so an opponent's blue back never
+does.
+
+**Riichi sticks.** The compass stays deferred and its 224 × 120 reserve is only
+a reserved screen region. Declaration sticks (20 × 5 px, inset 10 px from the
+reserve edge) sit on each declaring seat's side, and up to four pot sticks
+(23 px apart) sit in the middle. They paint at the pond epoch: the review board
+shows `after bottom-pond:3` / `before bottom-wall:lower:9`, and every marker pixel
+stays inside the reserve (657 changed px, 0 outside).
+
+### 12.4 Accessibility and interaction parity
+
+`RenderedBoard` renders one canvas plus a DOM layer, never a canvas-only UI:
+
+- the human's concealed hand and draw are real `<button>`s in dock order, with
+  the dock's exact labels (`Discard R5m`, `Declare Kan on …`, `, with Riichi`);
+  they are disabled after answering or when `canDiscard` is false. Buttons are
+  `pointer-events: none` so the pointer path is always the scripted hit test;
+  keyboard focus and screen-reader activation still use the buttons, and the
+  focus ring is the tile body. Tab order and click effects match the dock.
+- every other placement (walls, ponds, calls and opponents' concealed hands)
+  has a hidden `role="img"` item with an accessible name, grouped by seat and
+  zone. Opponent hands are named `Concealed tile n` and never leak a face.
+- a hidden summary carries the round, honba, tiles remaining, pot sticks, dora
+  indicators and dora, plus each seat's name, wind, score and Riichi state — the
+  compass information the top-down view shows — without drawing a visual compass.
+- the canvas itself is `aria-hidden`; the interactive root is a labelled group.
+
+Tests: `boardInteraction.test.ts` (scripted 10-row hit-test table incl. margins,
+lift, sticky and half-open edges), `boardOverlays.test.ts` (decoded-pixel mask,
+shimmer and shadow proofs), `renderedBoardModel.test.ts` (buttons, tints,
+shimmer ids, markers, accessibility tree), `RenderedBoard.test.tsx` and
+`RenderedTable.test.tsx` (DOM/ARIA, pointer hover, click/keyboard, disabled
+states, load/paint fallback), `AppControls.test.tsx` and the settings-store test
+(view option/default/persistence).
+
+### 12.5 Review artifacts
+
+`cd frontend && npm run board:review` wrote, under gitignored
+`tools/render/build/review/`:
+
+- `board-interactive-desktop-1440x900-1x.png`
+- `board-interactive-mobile-390x844-1x.png`
+- `board-interactive-zoom-bottom-hand.png` (lifted/selected hand tile)
+- `board-interactive-zoom-markers.png` (reserved compass region + sticks)
+- the Phase 4 artifacts and `board-numbers.json` (phase5 checks included).
+
+Per AGENTS.md §6 these PNGs are handed to the user; the script asserts and
+prints the numbers above and does not judge the images.
+
+A one-off headless-Chrome CDP smoke check at 390 × 844 (DPR 1) reported: canvas
+390 × 844 with **0** transparent pixels and 16,860 bright pixels; 11 hand
+buttons and 116 named non-hand tiles in 16 seat/zone groups; hovering the first
+tile moved its hitbox **6.571 CSS px** (= 12 board px at fit 0.5478); switching
+to top-down and back gave the same 11 button labels (no re-deal); clicking a
+tile disabled the buttons and showed the answer summary; **0** console errors.
+
+**Decisions that narrow the architecture above.**
+
+1. **The compass stays a reserve.** No table model or compass UI is drawn; Riichi
+   markers occupy the reserve edges, and the rest of the compass information is
+   in the menu and the screen-reader summary.
+2. **The lift is in board px.** It follows the shell coordinate system, so a
+   phone sees 6.57 CSS px and a desktop 15.34 CSS px; this is the one tunable
+   number (`DEFAULT_LIFT_PX`).
+3. **The secondary shadow is a startup asset, not an asset on disk.** It is the
+   standing shell's own alpha silhouette blacked out once at load; per frame it
+   is one scaled `drawImage` at alpha 0.28.
+4. **Hit-testing is pointer-by-pointer, not per-DOM-rect.** The single canvas
+   root runs the hit tester; the DOM buttons exist for keyboard and AT and are
+   positioned on the same body rects. This keeps one geometry source and one
+   selection path.
+5. **A failed rendered view falls back to the top-down plan.** That choice is
+   persisted (the safest accessible view), and the reason is shown to the user.

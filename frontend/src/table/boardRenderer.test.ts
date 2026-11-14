@@ -137,6 +137,7 @@ function stubAtlas(sizes: Readonly<Record<string, { width: number; height: numbe
       };
     },
     getPage: () => ({ canvas: {} }),
+    shells,
   } as unknown as TileAtlas;
 }
 
