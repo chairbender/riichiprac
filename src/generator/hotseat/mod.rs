@@ -12,6 +12,9 @@
 //!    it exactly like [`crate::generator::ai_best_action`]: the correct answer
 //!    is the model's top legal action at that position.
 //!
+//! Insertion points are real decisions only: forced Riichi tsumogiri turns and
+//! round-ending wins (tsumo/ron) are excluded.
+//!
 //! The whole engine is in Rust/WASM. React only renders the returned
 //! [`GameState`] and grades clicks against `correct_action`, so this scenario
 //! needs no new frontend rules logic.

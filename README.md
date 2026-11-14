@@ -191,6 +191,10 @@ reports the round's progress ("Playing a Mortal self-play round… turn 7 · 25
 draws played"); a retry, which only happens if a round ends without a usable
 decision, is labelled as a new attempt.
 
+Only real decisions are insertion points: a forced Riichi tsumogiri is skipped,
+and a tsumo or ron is never offered because a win ends the round rather than
+posing a choice.
+
 The insertion turn is **not** a uniform pick over recorded decisions. A round
 that ends at turn 12 simply has no decision at turn 16, so a uniform pick
 inherits the round-length survival curve and over-samples the opening. Instead,

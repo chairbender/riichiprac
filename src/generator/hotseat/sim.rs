@@ -274,7 +274,11 @@ impl SimTable {
                 (draw, false)
             } else {
                 let evaluation = policy.evaluate(&state)?;
-                if seat == self.target && !post_call && recordable(&state) {
+                if seat == self.target
+                    && !post_call
+                    && recordable(&state)
+                    && !evaluation_offers_a_win(&evaluation)
+                {
                     self.records.push(DecisionRecord {
                         state: state.clone(),
                         evaluation: evaluation.clone(),
@@ -418,7 +422,10 @@ impl SimTable {
                 .first()
                 .cloned()
                 .ok_or_else(|| "the policy returned no reaction".to_string())?;
-            if seat == self.target && recordable_reaction(&state) {
+            if seat == self.target
+                && recordable_reaction(&state)
+                && !evaluation_offers_a_win(&evaluation)
+            {
                 self.records.push(DecisionRecord {
                     state: state.clone(),
                     evaluation: evaluation.clone(),
@@ -591,7 +598,10 @@ impl SimTable {
                 .first()
                 .cloned()
                 .ok_or_else(|| "the policy returned no chankan reaction".to_string())?;
-            if seat == self.target && recordable_reaction(&state) {
+            if seat == self.target
+                && recordable_reaction(&state)
+                && !evaluation_offers_a_win(&evaluation)
+            {
                 self.records.push(DecisionRecord {
                     state: state.clone(),
                     evaluation: evaluation.clone(),
@@ -640,6 +650,19 @@ enum Reaction {
     None,
     Call { caller: usize },
     Ron { winner: usize },
+}
+
+/// True when a winning action is legal at the position.
+///
+/// A win is not an insertion point: handing the player "do you want to win?"
+/// is a round-ending action, not a turn to play. Tsumo and ron are both
+/// [`ActionKind::Agari`]. This checks every legal action, not just the model's
+/// top one, so a position where Mortal chose to pass on a win is excluded too.
+fn evaluation_offers_a_win(evaluation: &Evaluation) -> bool {
+    evaluation
+        .evaluations
+        .iter()
+        .any(|scored| scored.info.kind == ActionKind::Agari)
 }
 
 fn recordable(state: &GameState) -> bool {
@@ -832,6 +855,67 @@ mod tests {
                     .iter()
                     .any(|scored| scored.info.action == info.action)
             }));
+        }
+    }
+
+    #[test]
+    fn wins_are_never_recorded_as_insertion_points() {
+        use crate::decision::{ActionEvaluation, ActionInfo};
+        let scored = |kind: ActionKind, probability: f32| ActionEvaluation {
+            info: ActionInfo {
+                action: format!("{kind:?}"),
+                label: format!("{kind:?}"),
+                kind,
+                tile_index: None,
+                tile: Some("1m".to_string()),
+                tiles: Vec::new(),
+                kan_kind: None,
+            },
+            probability,
+        };
+        let evaluation = |top: ActionKind, rest: Vec<ActionKind>| Evaluation {
+            model: "test".to_string(),
+            expected_value: 0.0,
+            recommended_action: format!("{top:?}"),
+            riichi_discard: None,
+            evaluations: std::iter::once(scored(top, 0.6))
+                .chain(rest.into_iter().map(|kind| scored(kind, 0.2)))
+                .collect(),
+        };
+        assert!(evaluation_offers_a_win(&evaluation(
+            ActionKind::Agari,
+            Vec::new()
+        )));
+        assert!(
+            evaluation_offers_a_win(&evaluation(ActionKind::Pass, vec![ActionKind::Agari])),
+            "a legal win is excluded even when the model's top action is Pass"
+        );
+        assert!(!evaluation_offers_a_win(&evaluation(
+            ActionKind::Discard,
+            vec![ActionKind::Pass]
+        )));
+        assert!(!evaluation_offers_a_win(&evaluation(
+            ActionKind::Pass,
+            Vec::new()
+        )));
+    }
+
+    #[test]
+    fn a_winning_policy_never_leaves_a_winning_record() {
+        use crate::generator::hotseat::test_support::{FastMode, FastPolicy};
+
+        let policy = FastPolicy::new(FastMode::CallsAndWins);
+        for run in 0..20 {
+            let mut table = SimTable::deal(conditions());
+            table
+                .play(&policy)
+                .unwrap_or_else(|err| panic!("run {run}: {err}"));
+            for record in &table.records {
+                assert!(
+                    !evaluation_offers_a_win(&record.evaluation),
+                    "run {run} recorded a win as an insertion point"
+                );
+            }
         }
     }
 
