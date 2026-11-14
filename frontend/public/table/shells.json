@@ -37,102 +37,192 @@
       "hex": "#3b4a5c",
       "strength": 1.0
     },
-    "targetLongAxisPx1x": 52,
+    "targetLongAxisPx1x": 104,
+    "shadowContract": {
+      "phase": "1c",
+      "note": "Phase 1b review: the Phase 1/1b contact shadow was too tight. The drop shadow is now deliberately diffuse and subtle: 10-16 px right/bottom at the new @1x (was 3-4), peak alpha 0.12 (was 0.33), an 8 px @1x blur and a gentle 16 px falloff. The top/left AO fringe stays 1-2 px and drops to peak 0.20. The check enforces these ranges.",
+      "extentPx1x": {
+        "right": [
+          10,
+          16
+        ],
+        "bottom": [
+          10,
+          16
+        ],
+        "left": [
+          1,
+          2
+        ],
+        "top": [
+          1,
+          2
+        ]
+      },
+      "peakAlpha": {
+        "right": [
+          0.08,
+          0.16
+        ],
+        "bottom": [
+          0.08,
+          0.16
+        ],
+        "left": [
+          0.14,
+          0.26
+        ],
+        "top": [
+          0.14,
+          0.26
+        ]
+      }
+    },
+    "stack": {
+      "count": 2,
+      "note": "A wall column is a stack of two tiles. The bottom tier is a face-down wall shell; the top tier is the same face-down shell offset by the published stackStepPx, or the face-up dora shell for a revealed dora indicator. The stack step is the projected thickness (straight up on screen), not the face grid step."
+    },
+    "baseScale": {
+      "previousTargetLongAxisPx1x": 52,
+      "note": "Phase 1b decision: the Phase 1 @2x output is the new @1x base. The long axis of the projected tile body is now 104 CSS px at @1x (was 52) and 208 px at @2x, so the board coordinate space doubles in both axes and every consumer must read the new shells.json. Render real pixels at the new resolution; never upscale the Phase 1 textures. The 3-4 px right/bottom shadow and 1-2 px top/left AO contract is unchanged in pixels at the new @1x."
+    },
     "shadow": {
-      "peakAlpha": 0.33,
+      "peakAlpha": 0.12,
       "colorHex": "#0b1418",
-      "contactFloor": 0.55,
+      "contactFloor": 0.25,
       "source": "Cycles shadow-catcher alpha, clamped to padding.right/bottom"
     },
     "ambientOcclusion": {
-      "peakAlpha": 0.28,
+      "peakAlpha": 0.2,
       "colorHex": "#0d151a",
       "source": "analytic fringe bounded by padding.top/left"
     },
-    "determinism": "CPU Cycles, fixed seed 0, fixed adaptive threshold and OIDN. Each texture records the sha256 of its decoded RGBA; re-baking the same spec must reproduce it (bake_shells.py --bake --verify-determinism renders each shell twice).",
+    "determinism": "CPU Cycles, fixed seed 0, fixed adaptive threshold and OIDN. Each texture records the sha256 of its decoded RGBA; re-baking the same spec must reproduce it (bake_shells.py --bake --verify-determinism renders each shell twice; --audition --verify-determinism does the same for every candidate).",
     "shellRigs": {
       "shell_hand_standing": {
         "projectionWidthUnits": 0.75,
-        "projectionHeightUnits": 1.100667,
-        "pixelsPerUnit2x": 94.488165,
-        "orthoScale": 1.608667,
+        "projectionHeightUnits": 1.1596,
+        "pixelsPerUnit2x": 179.372121,
+        "orthoScale": 1.694801,
         "resolution2x": [
-          120,
-          152
+          232,
+          304
         ],
         "resolution1x": [
-          60,
-          76
+          116,
+          152
         ]
       },
       "shell_flat_upright": {
         "projectionWidthUnits": 0.75,
-        "projectionHeightUnits": 1.087136,
-        "pixelsPerUnit2x": 95.664201,
-        "orthoScale": 1.609798,
+        "projectionHeightUnits": 1.123795,
+        "pixelsPerUnit2x": 185.087201,
+        "orthoScale": 1.642469,
         "resolution2x": [
-          120,
-          154
+          236,
+          304
         ],
         "resolution1x": [
-          60,
-          77
+          118,
+          152
         ]
       },
       "shell_flat_sideways": {
         "projectionWidthUnits": 1.0,
-        "projectionHeightUnits": 0.840934,
-        "pixelsPerUnit2x": 104.0,
+        "projectionHeightUnits": 0.947018,
+        "pixelsPerUnit2x": 208.0,
         "orthoScale": 1.461538,
         "resolution2x": [
-          152,
-          136
+          304,
+          294
         ],
         "resolution1x": [
-          76,
-          68
+          152,
+          147
         ]
       },
       "shell_wall_horizontal": {
         "projectionWidthUnits": 0.75,
-        "projectionHeightUnits": 1.087136,
-        "pixelsPerUnit2x": 95.664207,
-        "orthoScale": 1.588891,
+        "projectionHeightUnits": 1.123795,
+        "pixelsPerUnit2x": 185.087191,
+        "orthoScale": 1.642469,
         "resolution2x": [
-          120,
-          152
+          236,
+          304
         ],
         "resolution1x": [
-          60,
-          76
+          118,
+          152
+        ]
+      },
+      "shell_wall_horizontal_faceup": {
+        "projectionWidthUnits": 0.75,
+        "projectionHeightUnits": 1.123795,
+        "pixelsPerUnit2x": 185.087201,
+        "orthoScale": 1.642469,
+        "resolution2x": [
+          236,
+          304
+        ],
+        "resolution1x": [
+          118,
+          152
         ]
       },
       "shell_wall_side_left": {
-        "projectionWidthUnits": 0.952364,
-        "projectionHeightUnits": 1.202201,
-        "pixelsPerUnit2x": 86.508005,
-        "orthoScale": 1.757063,
+        "projectionWidthUnits": 1.115044,
+        "projectionHeightUnits": 1.061749,
+        "pixelsPerUnit2x": 186.539744,
+        "orthoScale": 1.62968,
         "resolution2x": [
-          132,
-          152
+          304,
+          296
         ],
         "resolution1x": [
-          66,
-          76
+          152,
+          148
+        ]
+      },
+      "shell_wall_side_left_faceup": {
+        "projectionWidthUnits": 1.115044,
+        "projectionHeightUnits": 1.061749,
+        "pixelsPerUnit2x": 186.539744,
+        "orthoScale": 1.62968,
+        "resolution2x": [
+          304,
+          296
+        ],
+        "resolution1x": [
+          152,
+          148
         ]
       },
       "shell_wall_side_right": {
-        "projectionWidthUnits": 0.952364,
-        "projectionHeightUnits": 1.202201,
-        "pixelsPerUnit2x": 86.508005,
-        "orthoScale": 1.757063,
+        "projectionWidthUnits": 1.115044,
+        "projectionHeightUnits": 1.061749,
+        "pixelsPerUnit2x": 186.539744,
+        "orthoScale": 1.62968,
         "resolution2x": [
-          132,
-          152
+          304,
+          296
         ],
         "resolution1x": [
-          66,
-          76
+          152,
+          148
+        ]
+      },
+      "shell_wall_side_right_faceup": {
+        "projectionWidthUnits": 1.115044,
+        "projectionHeightUnits": 1.061749,
+        "pixelsPerUnit2x": 186.539744,
+        "orthoScale": 1.62968,
+        "resolution2x": [
+          304,
+          296
+        ],
+        "resolution1x": [
+          152,
+          148
         ]
       }
     }
@@ -141,46 +231,46 @@
     "shell_hand_standing": {
       "textureFile": "shells/shell_hand_standing.png",
       "textureFile2x": "shells/2x/shell_hand_standing.png",
-      "texWidth": 44,
-      "texHeight": 60,
+      "texWidth": 88,
+      "texHeight": 120,
       "anchorX": 2,
       "anchorY": 2,
-      "advanceWidth": 38,
-      "advanceHeight": 54,
+      "advanceWidth": 70,
+      "advanceHeight": 102,
       "padding": {
         "top": 2,
-        "right": 4,
-        "bottom": 4,
+        "right": 16,
+        "bottom": 16,
         "left": 2
       },
       "faceRotationDeg": 0,
       "faceQuad": [
         [
-          5.88,
-          11.33
+          8.3,
+          30.17
         ],
         [
-          36.12,
-          11.33
+          65.7,
+          30.17
         ],
         [
-          36.12,
-          52.46
+          65.7,
+          100.64
         ],
         [
-          5.88,
-          52.46
+          8.3,
+          100.64
         ]
       ],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
       "gridStepPx": {
         "x": [
-          35.44,
+          67.27,
           0.0
         ],
         "y": [
           0.0,
-          46.21
+          79.18
         ]
       },
       "projection": "front-elevation",
@@ -191,38 +281,38 @@
       },
       "camera": {
         "azimuthDeg": 0,
-        "elevationDeg": 12,
-        "orthoScale": 1.608667,
-        "pixelsPerUnit2x": 94.488165,
+        "elevationDeg": 28,
+        "orthoScale": 1.694801,
+        "pixelsPerUnit2x": 179.372121,
         "resolution1x": [
-          60,
-          76
+          116,
+          152
         ],
         "resolution2x": [
-          120,
-          152
+          232,
+          304
         ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 3,
-          "bottom": 3
+          "right": 12,
+          "bottom": 10
         },
         "alphaPeak1x": {
-          "left": 0.2784,
-          "top": 0.2784,
-          "right": 0.3294,
-          "bottom": 0.3294
+          "left": 0.2,
+          "top": 0.2078,
+          "right": 0.1216,
+          "bottom": 0.1176
         },
         "alphaMass1x": {
-          "left": 14.478,
-          "top": 9.467,
-          "right": 16.388,
-          "bottom": 22.353
+          "left": 19.2,
+          "top": 13.227,
+          "right": 38.69,
+          "bottom": 26.608
         },
-        "shadowCatcherPeak": 0.3566,
+        "shadowCatcherPeak": 0.3733,
         "solidInset1x": [
           1,
           1,
@@ -230,76 +320,76 @@
           1
         ],
         "faceSampleRgb": [
-          169,
-          166,
-          163
+          94,
+          100,
+          107
         ],
         "edgeSamplesRgb": {
           "top": [
-            13,
-            65,
-            138
+            3,
+            70,
+            166
           ],
           "bottom": [
-            25,
-            39,
-            51
+            81,
+            89,
+            98
           ]
         },
-        "bytes1x": 3315,
-        "bytes2x": 8790
+        "bytes1x": 9025,
+        "bytes2x": 25479
       },
       "sha256": {
-        "decodedRgba1x": "b19cd9e48b1f23d962100a3707163cc3a83a42d7c0820a8aebcdb52a9ce759d4",
-        "decodedRgba2x": "3045a48de7e9694903f223bbe27cc517ca78616399b1b79f472d5ab9e898ae2b"
+        "decodedRgba1x": "191c5b9264a8aff701b33ee33c984a447a0d2b08e9dfb70cbc4cd3506a14b296",
+        "decodedRgba2x": "43ef122c94e03c63ec3df6f9d74b16f090e927a2bbf83e00647e9051cdd99f76"
       }
     },
     "shell_flat_upright": {
       "textureFile": "shells/shell_flat_upright.png",
       "textureFile2x": "shells/2x/shell_flat_upright.png",
-      "texWidth": 44,
-      "texHeight": 59,
+      "texWidth": 90,
+      "texHeight": 120,
       "anchorX": 2,
       "anchorY": 2,
-      "advanceWidth": 38,
-      "advanceHeight": 53,
+      "advanceWidth": 72,
+      "advanceHeight": 102,
       "padding": {
         "top": 2,
-        "right": 4,
-        "bottom": 4,
+        "right": 16,
+        "bottom": 16,
         "left": 2
       },
       "faceRotationDeg": 0,
       "faceQuad": [
         [
-          5.69,
-          5.09
+          8.39,
+          4.6
         ],
         [
-          36.31,
-          5.09
+          67.61,
+          4.6
         ],
         [
-          36.31,
-          47.01
+          67.61,
+          62.84
         ],
         [
-          5.69,
-          47.01
+          8.39,
+          62.84
         ]
       ],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
       "gridStepPx": {
         "x": [
-          35.88,
+          69.4,
           0.0
         ],
         "y": [
           0.0,
-          47.1
+          65.44
         ]
       },
-      "projection": "top-down",
+      "projection": "low-angle-top-down",
       "pose": {
         "rotateXDeg": 0,
         "rotateYDeg": 0,
@@ -307,38 +397,38 @@
       },
       "camera": {
         "azimuthDeg": 0,
-        "elevationDeg": 80,
-        "orthoScale": 1.609798,
-        "pixelsPerUnit2x": 95.664201,
+        "elevationDeg": 45,
+        "orthoScale": 1.642469,
+        "pixelsPerUnit2x": 185.087201,
         "resolution1x": [
-          60,
-          77
+          118,
+          152
         ],
         "resolution2x": [
-          120,
-          154
+          236,
+          304
         ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 3,
-          "bottom": 3
+          "right": 11,
+          "bottom": 11
         },
         "alphaPeak1x": {
-          "left": 0.2784,
-          "top": 0.2784,
-          "right": 0.3216,
-          "bottom": 0.3216
+          "left": 0.2,
+          "top": 0.2,
+          "right": 0.1216,
+          "bottom": 0.1216
         },
         "alphaMass1x": {
-          "left": 14.757,
-          "top": 10.58,
-          "right": 22.329,
-          "bottom": 17.216
+          "left": 19.2,
+          "top": 13.4,
+          "right": 50.718,
+          "bottom": 41.992
         },
-        "shadowCatcherPeak": 0.4403,
+        "shadowCatcherPeak": 0.4966,
         "solidInset1x": [
           1,
           1,
@@ -346,76 +436,76 @@
           1
         ],
         "faceSampleRgb": [
-          207,
-          204,
-          200
+          223,
+          220,
+          216
         ],
         "edgeSamplesRgb": {
           "top": [
+            223,
             220,
-            217,
-            213
+            217
           ],
           "bottom": [
-            24,
-            40,
-            59
+            0,
+            8,
+            31
           ]
         },
-        "bytes1x": 2966,
-        "bytes2x": 8543
+        "bytes1x": 7990,
+        "bytes2x": 23580
       },
       "sha256": {
-        "decodedRgba1x": "018383e834df6e55ca5ae16703b5e319375d741a93f2fff20d4df0e0c43ed4cf",
-        "decodedRgba2x": "35a36c3271337ec03fb85b00747a2f3afae03f214931ea57b41761e24f873bcc"
+        "decodedRgba1x": "4498bd7c49eddbe618411a067deb0eb6ea4117c34ea6c6137c45030b88edb1e9",
+        "decodedRgba2x": "c644100e57cc2aecf9654a77676cfae16425df16a631d5942f62c02d9fa4d635"
       }
     },
     "shell_flat_sideways": {
       "textureFile": "shells/shell_flat_sideways.png",
       "textureFile2x": "shells/2x/shell_flat_sideways.png",
-      "texWidth": 60,
-      "texHeight": 50,
+      "texWidth": 124,
+      "texHeight": 113,
       "anchorX": 2,
       "anchorY": 2,
-      "advanceWidth": 54,
-      "advanceHeight": 44,
+      "advanceWidth": 106,
+      "advanceHeight": 95,
       "padding": {
         "top": 2,
-        "right": 4,
-        "bottom": 4,
+        "right": 16,
+        "bottom": 16,
         "left": 2
       },
       "faceRotationDeg": 90,
       "faceQuad": [
         [
-          5.86,
-          37.73
+          8.72,
+          51.36
         ],
         [
-          5.86,
-          4.95
+          8.72,
+          4.3
         ],
         [
-          52.14,
-          4.95
+          101.28,
+          4.3
         ],
         [
-          52.14,
-          37.73
+          101.28,
+          51.36
         ]
       ],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
       "gridStepPx": {
         "x": [
           0.0,
-          38.41
+          55.15
         ],
         "y": [
-          52.0,
+          104.0,
           0.0
         ]
       },
-      "projection": "top-down",
+      "projection": "low-angle-top-down",
       "pose": {
         "rotateXDeg": 0,
         "rotateYDeg": 0,
@@ -423,38 +513,38 @@
       },
       "camera": {
         "azimuthDeg": 0,
-        "elevationDeg": 80,
+        "elevationDeg": 45,
         "orthoScale": 1.461538,
-        "pixelsPerUnit2x": 104.0,
+        "pixelsPerUnit2x": 208.0,
         "resolution1x": [
-          76,
-          68
+          152,
+          147
         ],
         "resolution2x": [
-          152,
-          136
+          304,
+          294
         ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 3,
-          "bottom": 3
+          "right": 11,
+          "bottom": 11
         },
         "alphaPeak1x": {
-          "left": 0.2784,
-          "top": 0.2824,
-          "right": 0.3216,
-          "bottom": 0.3216
+          "left": 0.2,
+          "top": 0.2039,
+          "right": 0.1216,
+          "bottom": 0.1216
         },
         "alphaMass1x": {
-          "left": 12.251,
-          "top": 15.161,
-          "right": 18.09,
-          "bottom": 24.941
+          "left": 18.2,
+          "top": 20.58,
+          "right": 43.612,
+          "bottom": 65.761
         },
-        "shadowCatcherPeak": 0.4407,
+        "shadowCatcherPeak": 0.5031,
         "solidInset1x": [
           1,
           1,
@@ -462,76 +552,82 @@
           1
         ],
         "faceSampleRgb": [
-          207,
-          204,
-          199
+          223,
+          220,
+          216
         ],
         "edgeSamplesRgb": {
           "top": [
+            224,
             220,
-            217,
-            213
+            216
           ],
           "bottom": [
-            26,
-            41,
-            61
+            0,
+            8,
+            32
           ]
         },
-        "bytes1x": 3269,
-        "bytes2x": 9594
+        "bytes1x": 9543,
+        "bytes2x": 29353
       },
       "sha256": {
-        "decodedRgba1x": "14d50c64ed979d7f400722a394d717ed8b91925cef87db786bdb1532739596d3",
-        "decodedRgba2x": "4fa6ed5cc7e7f7ccb41a0cf486c21998ddb19f207e08923cbdcaf4b7cd80df37"
+        "decodedRgba1x": "fa749e3c403c1ed4d338611067f9f4a0423c301af9c41d14217fde0b7c049196",
+        "decodedRgba2x": "812798afcdc0d580c50a0d0ff426ec4af1966ee8cd74c15533012c0cb0ffbe4c"
       }
     },
     "shell_wall_horizontal": {
       "textureFile": "shells/shell_wall_horizontal.png",
       "textureFile2x": "shells/2x/shell_wall_horizontal.png",
-      "texWidth": 44,
-      "texHeight": 60,
+      "texWidth": 90,
+      "texHeight": 120,
       "anchorX": 2,
       "anchorY": 2,
-      "advanceWidth": 38,
-      "advanceHeight": 54,
+      "advanceWidth": 72,
+      "advanceHeight": 102,
       "padding": {
         "top": 2,
-        "right": 4,
-        "bottom": 4,
+        "right": 16,
+        "bottom": 16,
         "left": 2
       },
       "faceRotationDeg": 0,
       "faceQuad": [
         [
-          5.69,
-          47.51
+          8.39,
+          62.84
         ],
         [
-          36.31,
-          47.51
+          67.61,
+          62.84
         ],
         [
-          36.31,
-          5.59
+          67.61,
+          4.6
         ],
         [
-          5.69,
-          5.59
+          8.39,
+          4.6
         ]
       ],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
       "gridStepPx": {
         "x": [
-          35.88,
+          69.4,
           0.0
         ],
         "y": [
           0.0,
-          47.1
+          65.44
         ]
       },
-      "projection": "top-down",
+      "stackCount": 2,
+      "stackStepPx": [
+        0.0,
+        -38.56
+      ],
+      "stackStepNote": "Add this to the lower tier's body top-left to place the upper tier of the same wall column. It is the projected tile thickness, so it points straight up.",
+      "projection": "low-angle-top-down",
       "pose": {
         "rotateXDeg": 180,
         "rotateYDeg": 0,
@@ -539,38 +635,38 @@
       },
       "camera": {
         "azimuthDeg": 0,
-        "elevationDeg": 80,
-        "orthoScale": 1.588891,
-        "pixelsPerUnit2x": 95.664207,
+        "elevationDeg": 45,
+        "orthoScale": 1.642469,
+        "pixelsPerUnit2x": 185.087191,
         "resolution1x": [
-          60,
-          76
+          118,
+          152
         ],
         "resolution2x": [
-          120,
-          152
+          236,
+          304
         ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 3,
-          "bottom": 3
+          "right": 11,
+          "bottom": 11
         },
         "alphaPeak1x": {
-          "left": 0.2784,
-          "top": 0.2784,
-          "right": 0.3176,
-          "bottom": 0.3216
+          "left": 0.2,
+          "top": 0.2,
+          "right": 0.1216,
+          "bottom": 0.1216
         },
         "alphaMass1x": {
-          "left": 14.478,
-          "top": 10.024,
-          "right": 22.2,
-          "bottom": 16.941
+          "left": 19.2,
+          "top": 13.4,
+          "right": 50.231,
+          "bottom": 41.145
         },
-        "shadowCatcherPeak": 0.4335,
+        "shadowCatcherPeak": 0.4853,
         "solidInset1x": [
           1,
           1,
@@ -578,115 +674,243 @@
           1
         ],
         "faceSampleRgb": [
-          0,
-          50,
-          130
+          3,
+          68,
+          165
         ],
         "edgeSamplesRgb": {
           "top": [
-            5,
-            68,
-            158
+            3,
+            69,
+            166
           ],
           "bottom": [
-            31,
-            46,
-            60
+            41,
+            59,
+            75
           ]
         },
-        "bytes1x": 3217,
-        "bytes2x": 8723
+        "bytes1x": 8917,
+        "bytes2x": 26215
       },
       "sha256": {
-        "decodedRgba1x": "2c0ff89a98849c6ab1a2e7b691d23cb606a2b8b70c65fb5d467d2cc0af830845",
-        "decodedRgba2x": "54a47c02382a40b48e9369399360ae29ce61d3faa29d9d88066f7d0540d62c8d"
+        "decodedRgba1x": "5fc9ce9a0ab1eda6506b2500ce4188fcc6ade21df861d121f7ea3d82a9a1bba4",
+        "decodedRgba2x": "3f6100d4388fac17bc79501bc3ec5e7f91bdeb97f8f93b905b98986341bd6d00"
+      }
+    },
+    "shell_wall_horizontal_faceup": {
+      "textureFile": "shells/shell_wall_horizontal_faceup.png",
+      "textureFile2x": "shells/2x/shell_wall_horizontal_faceup.png",
+      "texWidth": 90,
+      "texHeight": 120,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 72,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          8.39,
+          4.6
+        ],
+        [
+          67.61,
+          4.6
+        ],
+        [
+          67.61,
+          62.84
+        ],
+        [
+          8.39,
+          62.84
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          69.4,
+          0.0
+        ],
+        "y": [
+          0.0,
+          65.44
+        ]
+      },
+      "stackCount": 2,
+      "stackStepPx": [
+        0.0,
+        -38.56
+      ],
+      "stackStepNote": "Add this to the lower tier's body top-left to place the upper tier of the same wall column. It is the projected tile thickness, so it points straight up.",
+      "projection": "low-angle-top-down",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 0
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "orthoScale": 1.642469,
+        "pixelsPerUnit2x": 185.087201,
+        "resolution1x": [
+          118,
+          152
+        ],
+        "resolution2x": [
+          236,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 11,
+          "bottom": 11
+        },
+        "alphaPeak1x": {
+          "left": 0.2,
+          "top": 0.2,
+          "right": 0.1216,
+          "bottom": 0.1216
+        },
+        "alphaMass1x": {
+          "left": 19.2,
+          "top": 13.4,
+          "right": 50.718,
+          "bottom": 41.992
+        },
+        "shadowCatcherPeak": 0.4966,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          223,
+          220,
+          216
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            223,
+            220,
+            217
+          ],
+          "bottom": [
+            0,
+            8,
+            31
+          ]
+        },
+        "bytes1x": 7990,
+        "bytes2x": 23580
+      },
+      "sha256": {
+        "decodedRgba1x": "4498bd7c49eddbe618411a067deb0eb6ea4117c34ea6c6137c45030b88edb1e9",
+        "decodedRgba2x": "c644100e57cc2aecf9654a77676cfae16425df16a631d5942f62c02d9fa4d635"
       }
     },
     "shell_wall_side_left": {
       "textureFile": "shells/shell_wall_side_left.png",
       "textureFile2x": "shells/2x/shell_wall_side_left.png",
-      "texWidth": 48,
-      "texHeight": 58,
+      "texWidth": 122,
+      "texHeight": 114,
       "anchorX": 2,
       "anchorY": 2,
-      "advanceWidth": 42,
-      "advanceHeight": 52,
+      "advanceWidth": 104,
+      "advanceHeight": 96,
       "padding": {
         "top": 2,
-        "right": 4,
-        "bottom": 4,
+        "right": 16,
+        "bottom": 16,
         "left": 2
       },
       "faceRotationDeg": 0,
       "faceQuad": [
         [
-          4.35,
-          45.94
+          89.69,
+          56.45
         ],
         [
-          27.03,
-          41.84
+          100.06,
+          14.88
         ],
         [
-          27.03,
-          4.65
+          18.31,
+          4.69
         ],
         [
-          4.35,
-          8.76
+          7.94,
+          46.26
         ]
       ],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
       "gridStepPx": {
         "x": [
-          26.58,
-          -4.8
+          -12.15,
+          48.71
         ],
         "y": [
-          0.0,
-          41.78
+          91.85,
+          11.45
         ]
       },
+      "stackCount": 2,
+      "stackStepPx": [
+        0.0,
+        -38.86
+      ],
+      "stackStepNote": "Add this to the lower tier's body top-left to place the upper tier of the same wall column. It is the projected tile thickness, so it points straight up.",
       "projection": "fixed-oblique",
       "pose": {
         "rotateXDeg": 180,
-        "rotateYDeg": -35,
-        "rotateZDeg": 0
+        "rotateYDeg": 0,
+        "rotateZDeg": 80
       },
       "camera": {
         "azimuthDeg": 0,
-        "elevationDeg": 75,
-        "orthoScale": 1.757063,
-        "pixelsPerUnit2x": 86.508005,
+        "elevationDeg": 45,
+        "orthoScale": 1.62968,
+        "pixelsPerUnit2x": 186.539744,
         "resolution1x": [
-          66,
-          76
+          152,
+          148
         ],
         "resolution2x": [
-          132,
-          152
+          304,
+          296
         ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 3,
-          "bottom": 3
+          "right": 12,
+          "bottom": 11
         },
         "alphaPeak1x": {
-          "left": 0.2784,
-          "top": 0.2784,
-          "right": 0.3176,
-          "bottom": 0.3176
+          "left": 0.2039,
+          "top": 0.2,
+          "right": 0.1216,
+          "bottom": 0.1216
         },
         "alphaMass1x": {
-          "left": 11.694,
-          "top": 3.063,
-          "right": 18.133,
-          "bottom": 16.773
+          "left": 8.212,
+          "top": 1.6,
+          "right": 42.675,
+          "bottom": 45.157
         },
-        "shadowCatcherPeak": 0.4211,
+        "shadowCatcherPeak": 0.456,
         "solidInset1x": [
           1,
           1,
@@ -694,115 +918,243 @@
           1
         ],
         "faceSampleRgb": [
-          1,
-          60,
-          152
+          3,
+          68,
+          165
         ],
         "edgeSamplesRgb": {
           "top": [
-            10,
-            42,
-            91
+            3,
+            69,
+            166
           ],
           "bottom": [
-            28,
             42,
-            54
+            60,
+            76
           ]
         },
-        "bytes1x": 3893,
-        "bytes2x": 10147
+        "bytes1x": 11644,
+        "bytes2x": 33548
       },
       "sha256": {
-        "decodedRgba1x": "a2f3a5df12975e1f3d5025e8254e3ab1f8ec2b43c62d429b57bed01d28e84bf8",
-        "decodedRgba2x": "679552c50c21d5f83c810c7c3fe0901d04c0df9e12c9a19505433c7e80f4d8d1"
+        "decodedRgba1x": "ff952dd9b6b4287e7967e9cf5a03d39892541165a293212c833b746b4575cf35",
+        "decodedRgba2x": "e809f63aef68aa131a57e0f42a63e53f2cbc5e9912438494af07efabbe8b8bfd"
+      }
+    },
+    "shell_wall_side_left_faceup": {
+      "textureFile": "shells/shell_wall_side_left_faceup.png",
+      "textureFile2x": "shells/2x/shell_wall_side_left_faceup.png",
+      "texWidth": 122,
+      "texHeight": 114,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 104,
+      "advanceHeight": 96,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          7.94,
+          46.26
+        ],
+        [
+          18.31,
+          4.69
+        ],
+        [
+          100.06,
+          14.88
+        ],
+        [
+          89.69,
+          56.45
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          -12.15,
+          48.71
+        ],
+        "y": [
+          91.85,
+          11.45
+        ]
+      },
+      "stackCount": 2,
+      "stackStepPx": [
+        0.0,
+        -38.86
+      ],
+      "stackStepNote": "Add this to the lower tier's body top-left to place the upper tier of the same wall column. It is the projected tile thickness, so it points straight up.",
+      "projection": "fixed-oblique",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 80
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "orthoScale": 1.62968,
+        "pixelsPerUnit2x": 186.539744,
+        "resolution1x": [
+          152,
+          148
+        ],
+        "resolution2x": [
+          304,
+          296
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 11
+        },
+        "alphaPeak1x": {
+          "left": 0.2039,
+          "top": 0.2,
+          "right": 0.1216,
+          "bottom": 0.1216
+        },
+        "alphaMass1x": {
+          "left": 8.224,
+          "top": 1.6,
+          "right": 43.192,
+          "bottom": 46.784
+        },
+        "shadowCatcherPeak": 0.462,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          223,
+          220,
+          216
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            223,
+            220,
+            216
+          ],
+          "bottom": [
+            0,
+            8,
+            32
+          ]
+        },
+        "bytes1x": 10915,
+        "bytes2x": 30733
+      },
+      "sha256": {
+        "decodedRgba1x": "8f5360be43ead44f69038a7ad74d680531fb75fc3b2e9db5d10be3306bb46810",
+        "decodedRgba2x": "3c6c8c991ca91f4ce9bddd662addea3244adffd58a90eb58c66dd8bc91b585d3"
       }
     },
     "shell_wall_side_right": {
       "textureFile": "shells/shell_wall_side_right.png",
       "textureFile2x": "shells/2x/shell_wall_side_right.png",
-      "texWidth": 48,
-      "texHeight": 58,
+      "texWidth": 122,
+      "texHeight": 114,
       "anchorX": 2,
       "anchorY": 2,
-      "advanceWidth": 42,
-      "advanceHeight": 52,
+      "advanceWidth": 104,
+      "advanceHeight": 96,
       "padding": {
         "top": 2,
-        "right": 4,
-        "bottom": 4,
+        "right": 16,
+        "bottom": 16,
         "left": 2
       },
       "faceRotationDeg": 0,
       "faceQuad": [
         [
-          18.97,
-          41.84
+          7.94,
+          14.88
         ],
         [
-          41.65,
-          45.94
+          18.31,
+          56.45
         ],
         [
-          41.65,
-          8.76
+          100.06,
+          46.26
         ],
         [
-          18.97,
-          4.65
+          89.69,
+          4.69
         ]
       ],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
       "gridStepPx": {
         "x": [
-          26.58,
-          4.8
+          12.15,
+          48.71
         ],
         "y": [
-          0.0,
-          41.79
+          91.85,
+          -11.45
         ]
       },
+      "stackCount": 2,
+      "stackStepPx": [
+        0.0,
+        -38.86
+      ],
+      "stackStepNote": "Add this to the lower tier's body top-left to place the upper tier of the same wall column. It is the projected tile thickness, so it points straight up.",
       "projection": "fixed-oblique",
       "pose": {
         "rotateXDeg": 180,
-        "rotateYDeg": 35,
-        "rotateZDeg": 0
+        "rotateYDeg": 0,
+        "rotateZDeg": -80
       },
       "camera": {
         "azimuthDeg": 0,
-        "elevationDeg": 75,
-        "orthoScale": 1.757063,
-        "pixelsPerUnit2x": 86.508005,
+        "elevationDeg": 45,
+        "orthoScale": 1.62968,
+        "pixelsPerUnit2x": 186.539744,
         "resolution1x": [
-          66,
-          76
+          152,
+          148
         ],
         "resolution2x": [
-          132,
-          152
+          304,
+          296
         ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 3,
-          "bottom": 3
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
-          "left": 0.2784,
-          "top": 0.2784,
-          "right": 0.3176,
-          "bottom": 0.3176
+          "left": 0.2078,
+          "top": 0.2,
+          "right": 0.1216,
+          "bottom": 0.1216
         },
         "alphaMass1x": {
-          "left": 11.694,
-          "top": 3.063,
-          "right": 18.627,
-          "bottom": 15.988
+          "left": 8.216,
+          "top": 1.6,
+          "right": 48.318,
+          "bottom": 66.161
         },
-        "shadowCatcherPeak": 0.4305,
+        "shadowCatcherPeak": 0.3948,
         "solidInset1x": [
           1,
           1,
@@ -810,28 +1162,150 @@
           1
         ],
         "faceSampleRgb": [
-          0,
-          31,
-          87
+          3,
+          68,
+          165
         ],
         "edgeSamplesRgb": {
           "top": [
-            9,
-            46,
-            101
+            3,
+            69,
+            166
           ],
           "bottom": [
-            20,
-            30,
-            39
+            41,
+            59,
+            75
           ]
         },
-        "bytes1x": 3803,
-        "bytes2x": 10100
+        "bytes1x": 11424,
+        "bytes2x": 33400
       },
       "sha256": {
-        "decodedRgba1x": "d3547d65afc24b874aeb472d6130fab576a1bfc222ec062137b458e06fdb3498",
-        "decodedRgba2x": "a5dd6ccd632380287501bc02f2fe1f3a1623a7aa0a1c04342ac064ce30ff9104"
+        "decodedRgba1x": "ee43fb69c2cd1888bf2a10e23bb6c9baada86cd1432a1bce10286ad19a0e9cf3",
+        "decodedRgba2x": "7cb40cdaae19a63ac7e91c80c8792ae5d81a5604a1c7c00c7108f1dff6b300e8"
+      }
+    },
+    "shell_wall_side_right_faceup": {
+      "textureFile": "shells/shell_wall_side_right_faceup.png",
+      "textureFile2x": "shells/2x/shell_wall_side_right_faceup.png",
+      "texWidth": 122,
+      "texHeight": 114,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 104,
+      "advanceHeight": 96,
+      "padding": {
+        "top": 2,
+        "right": 16,
+        "bottom": 16,
+        "left": 2
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          89.69,
+          4.69
+        ],
+        [
+          100.06,
+          46.26
+        ],
+        [
+          18.31,
+          56.45
+        ],
+        [
+          7.94,
+          14.88
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          12.15,
+          48.71
+        ],
+        "y": [
+          91.85,
+          -11.45
+        ]
+      },
+      "stackCount": 2,
+      "stackStepPx": [
+        0.0,
+        -38.86
+      ],
+      "stackStepNote": "Add this to the lower tier's body top-left to place the upper tier of the same wall column. It is the projected tile thickness, so it points straight up.",
+      "projection": "fixed-oblique",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": -80
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "orthoScale": 1.62968,
+        "pixelsPerUnit2x": 186.539744,
+        "resolution1x": [
+          152,
+          148
+        ],
+        "resolution2x": [
+          304,
+          296
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 1,
+          "top": 1,
+          "right": 12,
+          "bottom": 12
+        },
+        "alphaPeak1x": {
+          "left": 0.2039,
+          "top": 0.2,
+          "right": 0.1216,
+          "bottom": 0.1216
+        },
+        "alphaMass1x": {
+          "left": 8.216,
+          "top": 1.6,
+          "right": 48.925,
+          "bottom": 67.518
+        },
+        "shadowCatcherPeak": 0.4005,
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          223,
+          220,
+          216
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            223,
+            220,
+            217
+          ],
+          "bottom": [
+            0,
+            8,
+            31
+          ]
+        },
+        "bytes1x": 10855,
+        "bytes2x": 31317
+      },
+      "sha256": {
+        "decodedRgba1x": "b9c61824414822811430bd30d3d284d1c706cbc44df93e0d57fe9e73467c65e1",
+        "decodedRgba2x": "5a9a979431d15711feb49291973d26f3d496a7197ba9ea8d99bd60bcac6a85fb"
       }
     }
   }

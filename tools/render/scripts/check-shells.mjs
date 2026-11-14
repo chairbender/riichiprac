@@ -7,7 +7,7 @@
  * Dependency-free on purpose: it runs in CI and on any machine with Node, and
  * it never needs Blender. It validates facts, not looks:
  *
- *   - the shell spec still catalogs exactly the six canonical shells, with the
+ *   - the shell spec still catalogs exactly the canonical shells, with the
  *     0.055 / 6-segment bevel and the matching face inset;
  *   - the committed full-screen felt raster exists, decodes as 8-bit RGB PNG at
  *     the spec's size, is inside its byte budget, and its baked vignette really
@@ -26,7 +26,7 @@
  *     hand-edited or drifted bake fails here);
  *   - per-shell and total byte budgets.
  *
- * `--audition` adds the Phase 1b candidate matrix: the spec's `audition` block,
+ * `--audition` adds the candidate matrix: the spec's `audition` block,
  * `build/review/shell-candidates.json` and every candidate texture at the new
  * base (both scales, padding/anchor/advance, 1 px ledge, shadow/AO contract,
  * faceQuad, gridStepPx, hashes) plus the labelled sheets under
@@ -51,12 +51,38 @@ const CANONICAL_SHELL_IDS = [
   'shell_flat_upright',
   'shell_flat_sideways',
   'shell_wall_horizontal',
+  'shell_wall_horizontal_faceup',
   'shell_wall_side_left',
+  'shell_wall_side_left_faceup',
   'shell_wall_side_right',
+  'shell_wall_side_right_faceup',
 ];
 
-const FACE_UP = new Set(['shell_hand_standing', 'shell_flat_upright', 'shell_flat_sideways']);
-const FACE_DOWN = new Set(['shell_wall_horizontal', 'shell_wall_side_left', 'shell_wall_side_right']);
+const FACE_UP = new Set([
+  'shell_hand_standing',
+  'shell_flat_upright',
+  'shell_flat_sideways',
+  'shell_wall_horizontal_faceup',
+  'shell_wall_side_left_faceup',
+  'shell_wall_side_right_faceup',
+]);
+const FACE_DOWN = new Set([
+  'shell_wall_horizontal',
+  'shell_wall_side_left',
+  'shell_wall_side_right',
+]);
+const WALL = new Set([
+  'shell_wall_horizontal',
+  'shell_wall_horizontal_faceup',
+  'shell_wall_side_left',
+  'shell_wall_side_left_faceup',
+  'shell_wall_side_right',
+  'shell_wall_side_right_faceup',
+]);
+// Phase 1c shadow contract, in @1x px / alpha. The committed bake and every
+// audition candidate must satisfy it.
+const SHADOW_EXTENT = { right: [10, 16], bottom: [10, 16], left: [1, 2], top: [1, 2] };
+const SHADOW_PEAK = { right: [0.08, 0.16], bottom: [0.08, 0.16], left: [0.14, 0.26], top: [0.14, 0.26] };
 
 const failures = [];
 let checks = 0;
@@ -264,12 +290,28 @@ function checkShellSpec(spec) {
   check(spec.bakeImplemented === true, 'bakeImplemented is true (Phase 1 owns the bake)');
   const pads = spec.bake.padding1x;
   check(
-    pads.right >= 3 && pads.right <= 4 && pads.bottom >= 3 && pads.bottom <= 4,
-    `padding1x right/bottom are 3-4 px (${pads.right}/${pads.bottom})`,
+    pads.right >= 10 && pads.right <= 20 && pads.bottom >= 10 && pads.bottom <= 20,
+    `padding1x right/bottom hold the diffuse 10-16 px shadow (${pads.right}/${pads.bottom})`,
   );
   check(
     pads.left >= 1 && pads.left <= 2 && pads.top >= 1 && pads.top <= 2,
     `padding1x left/top are 1-2 px (${pads.left}/${pads.top})`,
+  );
+  check(
+    spec.bake.shadow.peakAlpha >= 0.08 && spec.bake.shadow.peakAlpha <= 0.16,
+    `shadow peak is diffuse and subtle (${spec.bake.shadow.peakAlpha})`,
+  );
+  check(
+    spec.bake.shadow.blurPx2x >= 4,
+    `shadow blur is at least 4 px @1x (${spec.bake.shadow.blurPx2x})`,
+  );
+  check(
+    typeof spec.bake.shadowContract?.note === 'string' && spec.bake.shadowContract.note.includes('diffuse'),
+    'the Phase 1c shadow decision is documented',
+  );
+  check(
+    spec.tile.stack?.count === 2,
+    `a wall column is a ${spec.tile.stack?.count}-tile stack`,
   );
   check(spec.bake.pixelRatio === 2, `bake.pixelRatio is 2 (${spec.bake.pixelRatio})`);
   // The baker derives the box from the jansou ratio; the manifest's faceQuad
@@ -405,6 +447,14 @@ function checkRig(manifest, spec) {
   check(
     typeof manifest.coordinateSpace === 'string' && manifest.coordinateSpace.includes('top-left'),
     'shells.json documents its coordinate space',
+  );
+  check(
+    rig.stack?.count === spec.tile.stack.count,
+    `rig records the ${rig.stack?.count}-tile wall stack`,
+  );
+  check(
+    rig.shadowContract?.phase === spec.bake.shadowContract.phase,
+    `rig records the ${rig.shadowContract?.phase} shadow contract`,
   );
 }
 
@@ -563,8 +613,10 @@ function checkShellsManifest(spec) {
       const width = Math.hypot(quad[1][0] - quad[0][0], quad[1][1] - quad[0][1]);
       const height = Math.hypot(quad[2][0] - quad[1][0], quad[2][1] - quad[1][1]);
       const ratio = width / height;
+      // A 45-degree camera legitimately foreshortens the face closer to square
+      // or wider than tall, so this is the oblique plausibility range.
       check(
-        ratio >= 0.5 && ratio <= 1.1,
+        ratio >= 0.3 && ratio <= 3.5,
         `${id} faceQuad is face-shaped (${width.toFixed(1)} x ${height.toFixed(1)} px, ratio ${ratio.toFixed(2)})`,
       );
 
@@ -600,6 +652,25 @@ function checkShellsManifest(spec) {
       );
     }
 
+    // Wall shells publish the projected thickness that separates the two tiers.
+    if (WALL.has(id)) {
+      const step = shell.stackStepPx;
+      check(shell.stackCount === 2, `${id} declares a 2-tile stack (${shell.stackCount})`);
+      check(
+        Array.isArray(step) && step.length === 2 && Math.abs(step[0]) <= 1.5 && step[1] < 0,
+        `${id} stackStepPx points straight up (${JSON.stringify(step)})`,
+      );
+      const ppu1x = (shell.camera.pixelsPerUnit2x ?? 0) / manifest.pixelRatio;
+      const rise = spec.tile.thickness * Math.cos((shell.camera.elevationDeg * Math.PI) / 180) * ppu1x;
+      check(
+        Math.abs((step?.[1] ?? 0) + rise) <= 1.5,
+        `${id} stackStepPx is the projected thickness ` +
+          `(${step?.[1]} vs ${(-rise).toFixed(2)} px)`,
+      );
+    } else {
+      check(shell.stackStepPx === undefined, `${id} is not a wall shell and has no stackStepPx`);
+    }
+
     const profile = alphaProfile(image, body);
     const floor = 2 / 255 + 5 / 255;
     const border = nearestBorderAlpha(image);
@@ -607,38 +678,20 @@ function checkShellsManifest(spec) {
       border <= floor * 255,
       `${id} outer texture ring is transparent (max alpha ${border}/255 <= ${Math.round(floor * 255)})`,
     );
-    check(
-      profile.extent.right >= 3 && profile.extent.right <= 4,
-      `${id} shadow reaches ${profile.extent.right} px right (contract 3-4)`,
-    );
-    check(
-      profile.extent.bottom >= 3 && profile.extent.bottom <= 4,
-      `${id} shadow reaches ${profile.extent.bottom} px down (contract 3-4)`,
-    );
-    check(
-      profile.extent.left >= 1 && profile.extent.left <= 2,
-      `${id} AO reaches ${profile.extent.left} px left (contract 1-2)`,
-    );
-    check(
-      profile.extent.top >= 1 && profile.extent.top <= 2,
-      `${id} AO reaches ${profile.extent.top} px up (contract 1-2)`,
-    );
-    check(
-      profile.peak.right >= 0.24 && profile.peak.right <= 0.36,
-      `${id} right shadow peaks at alpha ${profile.peak.right.toFixed(3)} (0.24-0.36)`,
-    );
-    check(
-      profile.peak.bottom >= 0.24 && profile.peak.bottom <= 0.36,
-      `${id} bottom shadow peaks at alpha ${profile.peak.bottom.toFixed(3)} (0.24-0.36)`,
-    );
-    check(
-      profile.peak.left >= 0.2 && profile.peak.left <= 0.32,
-      `${id} left AO peaks at alpha ${profile.peak.left.toFixed(3)} (0.20-0.32)`,
-    );
-    check(
-      profile.peak.top >= 0.2 && profile.peak.top <= 0.32,
-      `${id} top AO peaks at alpha ${profile.peak.top.toFixed(3)} (0.20-0.32)`,
-    );
+    for (const side of ['right', 'bottom', 'left', 'top']) {
+      const [min, max] = SHADOW_EXTENT[side];
+      check(
+        profile.extent[side] >= min && profile.extent[side] <= max,
+        `${id} ${side === 'right' || side === 'bottom' ? 'shadow' : 'AO'} reaches ` +
+          `${profile.extent[side]} px ${side} (contract ${min}-${max})`,
+      );
+      const [peakMin, peakMax] = SHADOW_PEAK[side];
+      check(
+        profile.peak[side] >= peakMin && profile.peak[side] <= peakMax,
+        `${id} ${side} ${side === 'right' || side === 'bottom' ? 'shadow' : 'AO'} peaks at alpha ` +
+          `${profile.peak[side].toFixed(3)} (${peakMin}-${peakMax})`,
+      );
+    }
     check(
       profile.extent.right > profile.extent.left && profile.extent.bottom > profile.extent.top,
       `${id} shadow points down-right (extents R${profile.extent.right}/B${profile.extent.bottom} > ` +
@@ -662,29 +715,44 @@ function checkShellsManifest(spec) {
       `${id} manifest alpha peaks match the texture`,
     );
 
-    // Light from the top-left: the top edge is brighter than the bottom edge,
-    // and the bottom thickness strip is cool (blue >= green >= red). The
-    // oblique side-wall silhouette's top edge is a foreshortened far side, so
-    // only the axis-aligned projections carry the top-brighter invariant.
+    // Light from the top-left. The flat tiles carry the two invariants: the far
+    // top bevel is brighter than the near bottom edge, and the near thickness
+    // strip is cool (blue >= green >= red). The standing hand is a front
+    // elevation whose top edge is the dark blue resin sliver, so it is checked
+    // by its own sliver assertion instead; the oblique side walls' top edge is
+    // a foreshortened far side, so they only carry the shadow-direction check.
     const edges = measured.edgeSamplesRgb ?? {};
     const oblique = shell.projection === 'fixed-oblique';
-    if (edges.top && edges.bottom && !oblique) {
+    const flat = [
+      'shell_flat_upright',
+      'shell_flat_sideways',
+      'shell_wall_horizontal',
+      'shell_wall_horizontal_faceup',
+    ].includes(id);
+    if (edges.top && edges.bottom && !oblique && flat) {
       check(
         luma(...edges.top) > luma(...edges.bottom),
         `${id} top edge is brighter than the bottom edge ` +
           `(${luma(...edges.top).toFixed(1)} > ${luma(...edges.bottom).toFixed(1)})`,
       );
-    }
-    if (edges.top && edges.bottom) {
       check(
-        edges.bottom[2] >= edges.bottom[1] && edges.bottom[1] >= edges.bottom[0] && luma(...edges.bottom) <= 90,
-        `${id} bottom thickness strip is cool and dark ` +
-          `(${edges.bottom.join(',')}, luma ${luma(...edges.bottom).toFixed(1)})`,
+        edges.bottom[2] >= edges.bottom[1] &&
+          edges.bottom[1] >= edges.bottom[0] &&
+          luma(...edges.bottom) < luma(...edges.top),
+        `${id} bottom thickness strip is cool and darker than the top ` +
+          `(${edges.bottom.join(',')}, luma ${luma(...edges.bottom).toFixed(1)} < ` +
+          `${luma(...edges.top).toFixed(1)})`,
       );
     }
     const face = measured.faceSampleRgb ?? [0, 0, 0];
     if (FACE_UP.has(id)) {
-      check(luma(...face) >= 150, `${id} face is ivory (luma ${luma(...face).toFixed(1)} >= 150)`);
+      // Ivory vs blue resin is a hue fact. The el-28 standing hand's vertical
+      // face is more grazing under the single screen-locked key, so it is
+      // dimmer than a pond face; that is the lighting trade-off recorded in §9.
+      check(
+        face[0] >= face[2] - 20 && luma(...face) >= 80,
+        `${id} face is ivory, not blue resin (${face.join(',')}, luma ${luma(...face).toFixed(1)})`,
+      );
     }
     if (FACE_DOWN.has(id)) {
       check(
@@ -743,7 +811,7 @@ function checkShellsManifest(spec) {
     totalBytes <= spec.budgets.totalShellBytes,
     `shell textures total ${totalBytes} B (budget ${spec.budgets.totalShellBytes} B)`,
   );
-  note(`shell textures total ${totalBytes} B across 6 shells and 2 scales`);
+  note(`shell textures total ${totalBytes} B across ${ids.length} shells and 2 scales`);
 }
 
 // --------------------------------------------------------------------------- //
@@ -768,15 +836,14 @@ function checkBaseScale(spec) {
     typeof bake.baseScale.note === 'string' && bake.baseScale.note.includes('@2x'),
     'the base-scale decision is documented in shell-spec.json',
   );
-  // The committed manifest is whatever was baked last. It is not a failure for
-  // it to predate the Phase 1b bake: the checkpoint stays runnable until the
-  // user picks the perspective candidates.
+  // The committed manifest must be at the spec's base once the catalogue is
+  // baked, so a spec edit without a rebake fails loudly.
   const committedPath = resolve(renderDir, spec.outputs.manifest);
   if (existsSync(committedPath)) {
     const committed = readJson(committedPath);
-    note(
-      `committed bake target long axis ${committed.rig?.targetLongAxisPx1x} px @1x ` +
-        `(spec ${bake.targetLongAxisPx1x} px)`,
+    check(
+      committed.rig?.targetLongAxisPx1x === bake.targetLongAxisPx1x,
+      `committed bake is at the spec base (${committed.rig?.targetLongAxisPx1x} px @1x)`,
     );
   }
 }
@@ -789,7 +856,6 @@ function checkCandidateRecord(context) {
     spec,
     manifest,
     reviewDir,
-    committedLongAxis,
   } = context;
   const target = spec.bake.targetLongAxisPx1x;
   const texturePath = resolve(reviewDir, record.textureFile ?? '');
@@ -823,7 +889,7 @@ function checkCandidateRecord(context) {
       padding.top === spec.bake.padding1x.top &&
       padding.right === spec.bake.padding1x.right &&
       padding.bottom === spec.bake.padding1x.bottom,
-    `${label} padding is the 1-2 / 3-4 px contract (${padding.left}/${padding.top}/${padding.right}/${padding.bottom})`,
+    `${label} padding matches the 1-2 / 10-16 px shadow contract (${padding.left}/${padding.top}/${padding.right}/${padding.bottom})`,
   );
   check(record.anchorX === padding.left, `${label} anchorX ${record.anchorX} equals left padding ${padding.left}`);
   check(record.anchorY === padding.top, `${label} anchorY ${record.anchorY} equals top padding ${padding.top}`);
@@ -836,20 +902,13 @@ function checkCandidateRecord(context) {
     `${label} anchorY + advanceHeight + bottom padding equals texHeight`,
   );
 
-  // The Phase 1b base: the projected silhouette's long axis is the spec's
-  // 104 px @1x target (the Phase 1 @2x size), and it is twice the committed
-  // Phase 1 checkpoint rather than an upscale of it.
+  // The base: the projected silhouette's long axis is the spec's 104 px @1x
+  // target (the Phase 1 @2x size).
   const longAxis = Math.max(record.advanceWidth, record.advanceHeight);
   check(
     longAxis >= target - 4 && longAxis <= target + 4,
     `${label} body long axis is ${longAxis} px @1x (target ${target} +/- 4 for the alpha crop)`,
   );
-  if (committedLongAxis) {
-    check(
-      longAxis >= committedLongAxis * 1.8,
-      `${label} is ${(longAxis / committedLongAxis).toFixed(2)}x the committed ${committedLongAxis} px long axis (>= 1.8x)`,
-    );
-  }
 
   const body = {
     x0: record.anchorX,
@@ -942,6 +1001,16 @@ function checkCandidateRecord(context) {
     );
   }
 
+  if (WALL.has(baseId)) {
+    const step = record.stackStepPx;
+    check(
+      record.stackCount === 2 && Array.isArray(step) && step[1] < 0 && Math.abs(step[0]) <= 1.5,
+      `${label} publishes an upward 2-tile stackStepPx (${JSON.stringify(step)})`,
+    );
+  } else {
+    check(record.stackStepPx === undefined, `${label} is not a wall shell and has no stackStepPx`);
+  }
+
   const profile = alphaProfile(image, body);
   const floor = 2 / 255 + 5 / 255;
   const border = nearestBorderAlpha(image);
@@ -949,30 +1018,20 @@ function checkCandidateRecord(context) {
     border <= floor * 255,
     `${label} outer texture ring is transparent (max alpha ${border}/255 <= ${Math.round(floor * 255)})`,
   );
-  check(
-    profile.extent.right >= 3 && profile.extent.right <= 4,
-    `${label} shadow reaches ${profile.extent.right} px right (contract 3-4)`,
-  );
-  check(
-    profile.extent.bottom >= 3 && profile.extent.bottom <= 4,
-    `${label} shadow reaches ${profile.extent.bottom} px down (contract 3-4)`,
-  );
-  check(
-    profile.extent.left >= 1 && profile.extent.left <= 2,
-    `${label} AO reaches ${profile.extent.left} px left (contract 1-2)`,
-  );
-  check(
-    profile.extent.top >= 1 && profile.extent.top <= 2,
-    `${label} AO reaches ${profile.extent.top} px up (contract 1-2)`,
-  );
-  check(
-    profile.peak.right >= 0.24 && profile.peak.right <= 0.36,
-    `${label} right shadow peaks at alpha ${profile.peak.right.toFixed(3)} (0.24-0.36)`,
-  );
-  check(
-    profile.peak.bottom >= 0.24 && profile.peak.bottom <= 0.36,
-    `${label} bottom shadow peaks at alpha ${profile.peak.bottom.toFixed(3)} (0.24-0.36)`,
-  );
+  for (const side of ['right', 'bottom', 'left', 'top']) {
+    const [min, max] = SHADOW_EXTENT[side];
+    check(
+      profile.extent[side] >= min && profile.extent[side] <= max,
+      `${label} ${side === 'right' || side === 'bottom' ? 'shadow' : 'AO'} reaches ` +
+        `${profile.extent[side]} px ${side} (contract ${min}-${max})`,
+    );
+    const [peakMin, peakMax] = SHADOW_PEAK[side];
+    check(
+      profile.peak[side] >= peakMin && profile.peak[side] <= peakMax,
+      `${label} ${side} ${side === 'right' || side === 'bottom' ? 'shadow' : 'AO'} peaks at alpha ` +
+        `${profile.peak[side].toFixed(3)} (${peakMin}-${peakMax})`,
+    );
+  }
   check(
     profile.extent.right > profile.extent.left && profile.extent.bottom > profile.extent.top,
     `${label} shadow points down-right (R${profile.extent.right}/B${profile.extent.bottom} > ` +
@@ -989,15 +1048,13 @@ function checkCandidateRecord(context) {
   check(['left', 'top', 'right', 'bottom'].every(samePeak), `${label} manifest alpha peaks match the texture`);
 
   const edges = measured.edgeSamplesRgb ?? {};
-  const oblique = record.projection === 'fixed-oblique';
-  if (edges.top && edges.bottom) {
-    if (!oblique) {
-      check(
-        luma(...edges.top) > luma(...edges.bottom),
-        `${label} top edge is brighter than the bottom edge ` +
-          `(${luma(...edges.top).toFixed(1)} > ${luma(...edges.bottom).toFixed(1)})`,
-      );
-    }
+  const flat = baseId.startsWith('shell_flat') || baseId === 'shell_wall_horizontal';
+  if (edges.top && edges.bottom && flat) {
+    check(
+      luma(...edges.top) > luma(...edges.bottom),
+      `${label} top edge is brighter than the bottom edge ` +
+        `(${luma(...edges.top).toFixed(1)} > ${luma(...edges.bottom).toFixed(1)})`,
+    );
     check(
       edges.bottom[2] >= edges.bottom[1] &&
         edges.bottom[1] >= edges.bottom[0] &&
@@ -1061,18 +1118,20 @@ function checkCandidateRecord(context) {
 
 function checkAudition(spec) {
   const audition = spec.audition;
-  check(Boolean(audition), 'shell-spec.json declares the Phase 1b audition matrix');
+  check(Boolean(audition), 'shell-spec.json declares the candidate matrix');
   if (!audition) return;
   check(
     typeof audition.status === 'string' && audition.status.toLowerCase().includes('proposal'),
     'the audition block is marked as proposals, not committed assets',
   );
   const shells = audition.shells ?? {};
+  const auditionIds = Object.keys(shells);
+  check(auditionIds.length >= 1, `the audition block covers ${auditionIds.length} shell(s)`);
   check(
-    CANONICAL_SHELL_IDS.every((id) => Array.isArray(shells[id]?.candidates)),
-    'the audition block covers all six canonical shells',
+    auditionIds.every((id) => CANONICAL_SHELL_IDS.includes(id)),
+    `the audition block names only catalogue shells (${auditionIds.join(', ')})`,
   );
-  for (const id of CANONICAL_SHELL_IDS) {
+  for (const id of auditionIds) {
     const candidates = shells[id]?.candidates ?? [];
     check(
       candidates.length >= 3 && candidates.length <= 5,
@@ -1095,9 +1154,7 @@ function checkAudition(spec) {
       `the atlas is keyed by (shellType, faceVariant, tileFace) (${faceVariants.atlasKey})`,
     );
     check(
-      ['shell_hand_standing', 'shell_flat_upright', 'shell_flat_sideways'].every(
-        (id) => (faceVariants.faceUpShells?.[id] ?? []).length >= 1,
-      ),
+      [...FACE_UP].every((id) => (faceVariants.faceUpShells?.[id] ?? []).length >= 1),
       'every face-up shell has at least one face variant',
     );
     check(
@@ -1140,29 +1197,18 @@ function checkAudition(spec) {
   checkRig(manifest, spec);
   check(manifest.rig?.targetLongAxisPx1x === target, 'candidate rig records the new base long axis');
 
-  const committedPath = resolve(renderDir, spec.outputs.manifest);
-  let committedLongAxis = null;
-  if (existsSync(committedPath)) {
-    const committed = readJson(committedPath);
-    committedLongAxis = Math.max(
-      ...Object.values(committed.shells ?? {}).map((shell) =>
-        Math.max(shell.advanceWidth ?? 0, shell.advanceHeight ?? 0),
-      ),
-    );
-    note(`committed Phase 1 checkpoint long axis ${committedLongAxis} px @1x`);
-  }
-
   const reviewDir = dirname(manifestPath);
   const manifestShells = manifest.shells ?? {};
+  const manifestIds = Object.keys(manifestShells);
   check(
-    partial || CANONICAL_SHELL_IDS.every((id) => Array.isArray(manifestShells[id]?.candidates)),
-    'shell-candidates.json covers all six canonical shells',
+    partial || manifestIds.length === Object.keys(shells).length,
+    `shell-candidates.json covers the ${Object.keys(shells).length} audition shells (${manifestIds.length})`,
+  );
+  check(
+    manifestIds.every((id) => shells[id]), 'the candidate manifest names only auditioned shells',
   );
   let totalBytes = 0;
   let count = 0;
-  const manifestIds = partial
-    ? CANONICAL_SHELL_IDS.filter((id) => Array.isArray(manifestShells[id]?.candidates))
-    : CANONICAL_SHELL_IDS;
   for (const baseId of manifestIds) {
     const entry = manifestShells[baseId] ?? {};
     const candidates = entry.candidates ?? [];
@@ -1192,22 +1238,21 @@ function checkAudition(spec) {
         spec,
         manifest,
         reviewDir,
-        committedLongAxis,
       });
       count += 1;
     }
   }
-  check(partial || count >= 18, `${count} candidate textures validated (>= 18)`);
+  check(partial || count >= 6, `${count} candidate textures validated (>= 6)`);
   check(
     totalBytes <= spec.budgets.totalShellBytes * 2,
     `candidate textures total ${totalBytes} B (review-only budget ${spec.budgets.totalShellBytes * 2} B)`,
   );
   note(`candidate textures total ${totalBytes} B across ${count} candidates and 2 scales`);
 
-  checkCandidateSheets(audition, manifest, shells);
+  checkCandidateSheets(audition, manifest, shells, manifestIds);
 }
 
-function checkCandidateSheets(audition, manifest, shells) {
+function checkCandidateSheets(audition, manifest, shells, manifestIds) {
   const sheetDir = resolve(renderDir, audition.sheetDir);
   const feltSpec = readJson(feltSpecPath);
   const [baseR, baseG, baseB] = feltSpec.baseColor;
@@ -1217,7 +1262,7 @@ function checkCandidateSheets(audition, manifest, shells) {
   const TITLE = [244, 238, 220];
   const LABEL = [204, 214, 200];
   const STRIP = [10, 22, 17];
-  for (const baseId of CANONICAL_SHELL_IDS) {
+  for (const baseId of manifestIds) {
     const path = join(sheetDir, `shell-candidates-${baseId}.png`);
     check(existsSync(path), `${baseId} candidate sheet exists (${path})`);
     if (!existsSync(path)) continue;

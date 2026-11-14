@@ -23,29 +23,28 @@ Rather than forcing one camera onto the whole board, each table zone uses the 2D
 
 | Table Zone | Projection Type | Visual Construction | Gameplay Purpose |
 | :--- | :--- | :--- | :--- |
-| **Bottom Player Hand** | Front elevation + a little top bevel | Upright front-on rectangle with a white top bevel, a white/blue resin edge, and slightly more of the tile's top than a flat-on view (Phase 1 was 12°; Phase 1b candidates raise it). | Zero glyph distortion; maximum reading speed. |
-| **Discard Ponds (`kawa`) & Open Melds** | Low-angle top-down | Face-up rectangle seen from a low camera, so the face plate is foreshortened and the near thickness face is clearly visible above the extrusion. Phase 1's near-80° angle is rejected as too top-down. | Uniform tile size across all 4 seats; instant pattern scanning with a seated-player read. |
-| **Side Walls (`yama`)** | Fixed-angle oblique | Face-down tiles lying flat with their long edge reading toward the player. The column steps down the board; the lean comes from a fixed camera azimuth, **not** a roll of the tile. §9 has the two candidate readings. | Frames the board with strong 3D depth without wasting horizontal screen width. |
-| **Top Hand & Top/Bottom Walls** | Low-angle top-down | Colored resin top face stacked above a white front thickness strip and bottom contact shadow, at the same low angle as the ponds. | Preserves consistent back-to-front vertical layering. |
+| **Bottom Player Hand** | Front elevation at 28° | Upright front-on rectangle with a white top bevel, the blue resin edge, and a little more of the tile's top than a flat-on view (Phase 1 was 12°). | Zero glyph distortion; maximum reading speed. |
+| **Discard Ponds (`kawa`) & Open Melds** | Low-angle top-down at 45° | Face-up rectangle seen from a low camera, so the face plate is foreshortened and the near thickness face is clearly visible above the extrusion. Phase 1's 80° was rejected as too top-down. | Uniform tile size across all 4 seats; instant pattern scanning with a seated-player read. |
+| **Side Walls (`yama`)** | Fixed-angle oblique at 45° | Face-down stacks of two tiles, long edge across the view, the column leaning inward at the far end (committed 10°; the lean direction/amount is the one open calibration). §10 has the geometry. | Frames the board with strong 3D depth without wasting horizontal screen width. |
+| **Top Hand & Top/Bottom Walls** | Low-angle top-down at 45° | Colored resin top face stacked above a white front thickness strip and a diffuse contact shadow, at the same low angle as the ponds. Each column is two tiles; a revealed dora indicator is the face-up top tile. | Preserves consistent back-to-front vertical layering. |
 
 Phase 1b (2026-11-14) also doubles the base sprite resolution: the Phase 1
 `@2x` output is the new `@1x` base (long axis 104 CSS px, was 52; the new `@2x`
 is 208 px). Every shell and every board coordinate is therefore twice the Phase
-1 size, and the perspective rework above is auditioned at that size. See §9.
+1 size, and the perspective rework above is baked at that size. See §10.
 
 ### B. Decoupled Layout Bounds vs. Sprite Texture Bounds (Single-Sprite Neighbor Shadows)
 You do **not** need separate sprites for isolated tiles vs. adjacent tiles, nor do you need neighbor-adjacency logic. Every tile orientation uses **one single shell sprite** whose texture dimensions are slightly larger than its opaque plastic body:
 
 * **Logical Advance Box (`advanceW`, `advanceH`):** The exact pixel width and height of the solid tile body used by the layout engine to position tiles on a grid.
 * **Sprite Texture Bounds (`texW`, `texH`):** Includes transparent padding around the solid body:
-  * **Right & Bottom Overhang ($+3\text{ to }+4\text{ px}$):** Contains a soft, semi-transparent directional drop shadow (`alpha` $\approx 0.25\text{--}0.35$).
-  * **Top & Left Rim ($+1\text{ to }+2\text{ px}$):** Contains a subtle dark ambient-occlusion (AO) fringe (`alpha` $\approx 0.25\text{--}0.30$) hugging the outer edge.
+  * **Right & Bottom Overhang ($+10\text{ to }+16\text{ px}$):** Contains a diffuse, semi-transparent directional drop shadow (`alpha` peak $\approx 0.12$, an 8 px blur and a 16 px falloff). Phase 1/1b used a tight 3–4 px band at alpha 0.33; the review rejected it as too tight, and this is the deliberate replacement (§10).
+  * **Top & Left Rim ($+1\text{ to }+2\text{ px}$):** Contains a subtle dark ambient-occlusion (AO) fringe (`alpha` peak $\approx 0.20$) hugging the outer edge.
 
-The shadow/AO margin is specified in **pixels at the @1x base**, and the Phase
-1b resolution doubling deliberately leaves it at 3–4 px / 1–2 px: the body
-doubles but the tight contact shadow does not, so it is half its Phase 1
-*relative* width. That is the contract `shells.json` and the checker measure
-(§9); it is not a percentage of the tile.
+The shadow/AO margin is specified in **pixels at the @1x base**. The body is
+104 px long and the shadow reaches 11–12 px beyond it, so it is a soft band
+rather than a contact line. That is the contract `shells.json` and the checker
+measure; it is not a percentage of the tile.
 
 **How this handles both touching and isolated tiles automatically:**
 1. **Horizontal Rows (Drawn Right-to-Left):** Because the light source is at top-left, drawing tiles **right-to-left** places the left tile *on top of* its right neighbor. The left tile's $+4\text{ px}$ right shadow overhang bleeds directly onto the right neighbor's rounded left bevel—creating a realistic cast shadow between touching tiles. On the rightmost tile (or an isolated *tsumo* tile), that same overhang blends onto the table felt as a normal drop shadow.
@@ -73,11 +72,11 @@ Tile 2 (drawn 1st):                                         [2px AO][======= 40p
 Configure an automated Blender script to render the canonical blank tile shells from your existing beveled R-tile 3D mesh (colored urea-resin back + white face body).
 
 ### Required Canonical Shells
-1. `shell_hand_standing`: Upright player hand tile (front elevation with slight top bevel & resin sliver).
-2. `shell_flat_upright`: Flat face-up tile for normal discards and unrotated meld tiles.
-3. `shell_flat_sideways`: Flat face-up tile oriented horizontally for *riichi* declarations and sideways meld calls.
-4. `shell_wall_horizontal`: Face-down flat tile for top/bottom walls (`yama`) and top player's concealed hand.
-5. `shell_wall_side_left` & `shell_wall_side_right`: Oblique/sheared face-down tiles angled inward for the left and right walls.
+1. `shell_hand_standing`: Upright player hand tile (front elevation at 28° with the top bevel and resin sliver).
+2. `shell_flat_upright`: Flat face-up tile for normal discards and unrotated meld tiles (45°).
+3. `shell_flat_sideways`: Flat face-up tile oriented horizontally for *riichi* declarations and sideways meld calls (45°).
+4. `shell_wall_horizontal`: Face-down flat tile for top/bottom wall stacks (`yama`) and the top player's concealed hand (45°), plus `shell_wall_horizontal_faceup` for a revealed dora indicator.
+5. `shell_wall_side_left` & `shell_wall_side_right`: Oblique face-down tiles for the left and right walls, long edge across the view, column leaning inward at the far end (§10), plus `shell_wall_side_left_faceup` / `shell_wall_side_right_faceup` dora counterparts.
 
 ### Blender Scene & Shader Rules
 * **Camera:** Use an **Orthographic Camera** (`type = 'ORTHO'`) for all shells so parallel edges stay strictly parallel and scale identically across the board. (For side walls, angle/shear the tile mesh or orthographic camera along a fixed cabinet projection angle).
@@ -92,6 +91,8 @@ Configure an automated Blender script to render the canonical blank tile shells 
   * `texWidth`, `texHeight`: Full PNG dimensions in pixels
   * `anchorX`, `anchorY`: Pixel offset from top-left of PNG to the top-left corner of the solid tile body
   * `advanceWidth`, `advanceHeight`: Opaque body dimensions used for grid layout
+  * `gridStepPx`: the physical tile-axis step for a tight grid
+  * `stackStepPx` + `stackCount` (wall shells): the projected thickness vector from the lower tier's body top-left to the upper tier's, plus the 2-tile stack count
   * `faceQuad`: 4 corner coordinates (`[x, y]`) on the shell where the 2D face glyph should be mapped
 
 ---
@@ -225,7 +226,7 @@ design records, not instructions.
 budgets) is documented in `tools/render/README.md` and enforced by
 `scripts/check-shells.mjs`.
 
-## 8. Phase 1 baseline (landed 2026-11-13)
+## 8. Phase 1 baseline (landed 2026-11-13; superseded by §10)
 
 Phase 1 baked the six canonical blank shells, both texture scales and the
 manifest. The authoritative numbers and the field-by-field contract are in
@@ -293,13 +294,14 @@ shell sprite. **§9 records the Phase 1b review that supersedes the base scale a
 camera angles above once the user picks**; until then the numbers here are the
 committed checkpoint.
 
-## 9. Phase 1b: base scale and perspective candidates (2026-11-14, pending review)
+## 9. Phase 1b: base scale and the perspective review (superseded by §10)
 
 The Phase 1 checkpoint (main `68a1b60`, tree `92d37d5`) was reviewed. The felt
-was approved; the six shells were not. Phase 1b **does not change the committed
-checkpoint**: it records the new decisions, doubles the base resolution and
-produces a labelled candidate matrix at that resolution so the user picks the
-angles. No atlas, layout, renderer or app view is part of this phase.
+was approved; the six shells were not. Phase 1b recorded the new decisions,
+doubled the base resolution and produced a labelled candidate matrix at that
+resolution. **The user then picked the candidates; the picks and the resulting
+bake are §10.** The candidate table below is the review record, not the current
+catalogue.
 
 ### 9.1 Base size: the Phase 1 `@2x` is the new `@1x`
 
@@ -460,3 +462,136 @@ started: no catalogue change, no face variants, no atlas, no layout engine, no
 renderer, no app view. The user picks one candidate per shell (or names a
 different angle) before the next task, and the pick is then baked into the
 catalogue at the new base.
+
+## 10. Phase 1c: the picked perspectives, the wall stack and the diffuse shadow (landed 2026-11-14)
+
+The Phase 1b review picked the cameras and added the requirements: the side
+walls need a small inward lean and a visible side edge, a wall column is two
+tiles high, the dora indicators need face-up counterparts, and the contact
+shadow is too tight. This section records the result. It supersedes the Phase 1
+base/angle numbers in §8 and the Phase 1b review in §9.
+
+### 10.1 The picked cameras
+
+| Shell | Phase 1 | Phase 1c (committed) |
+| :--- | :--- | :--- |
+| `shell_hand_standing` | el 12° | **el 28°** (candidate D: more tile top) |
+| `shell_flat_upright` | el 80° | **el 45°** (candidate C) |
+| `shell_flat_sideways` | el 80° | **el 45°** (candidate C) |
+| `shell_wall_horizontal` | el 80° | **el 45°** (candidate C) |
+| `shell_wall_side_left/right` | el 75°, rotY ∓35° | **el 45°**, face down, rotZ ±80° (candidate D + an inward lean; §10.4) |
+
+The six original shells are now nine: the three wall shells each gained a
+face-up counterpart for revealed dora indicators (they are the top tile of the
+stack, flipped face up).
+
+### 10.2 The committed bake, measured
+
+`bake.targetLongAxisPx1x` is 104 (the Phase 1 `@2x` size); the new `@2x` is 208.
+All numbers are measured from the render and live in
+`frontend/public/table/shells.json`.
+
+| Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | stackStepPx | Bytes @1x + @2x |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `shell_hand_standing` | el 28° | 88 × 120 / 176 × 240 | 70 × 102 | (67.27, 0) / (0, 79.18) | — | 9,025 + 25,479 |
+| `shell_flat_upright` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | — | 7,990 + 23,580 |
+| `shell_flat_sideways` | el 45° | 124 × 113 / 248 × 226 | 106 × 95 | (0, 55.15) / (104, 0) | — | 9,543 + 29,353 |
+| `shell_wall_horizontal` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 8,917 + 26,215 |
+| `shell_wall_horizontal_faceup` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 7,990 + 23,580 |
+| `shell_wall_side_left` | el 45°, rotZ 80° | 122 × 114 / 244 × 228 | 104 × 96 | (−12.15, 48.71) / (91.85, 11.45) | (0, −38.86) | 11,644 + 33,548 |
+| `shell_wall_side_left_faceup` | el 45°, rotZ 80° | 122 × 114 / 244 × 228 | 104 × 96 | (−12.15, 48.71) / (91.85, 11.45) | (0, −38.86) | 10,915 + 30,733 |
+| `shell_wall_side_right` | el 45°, rotZ −80° | 122 × 114 / 244 × 228 | 104 × 96 | (12.15, 48.71) / (91.85, −11.45) | (0, −38.86) | 11,424 + 33,400 |
+| `shell_wall_side_right_faceup` | el 45°, rotZ −80° | 122 × 114 / 244 × 228 | 104 × 96 | (12.15, 48.71) / (91.85, −11.45) | (0, −38.86) | 10,855 + 31,317 |
+
+Total **345,508 B** (88,303 @1x + 257,205 @2x) against the 2,097,152 B budget;
+`shells.json` is 29,965 B against 65,536 B. The felt is unchanged
+(559,465 B). The standing hand lands exactly on the asked-for 88 × 120 / 176 ×
+240 texture; the body long axis is 102 px (the 104 px target minus the
+anti-aliased crop).
+
+### 10.3 The 2-tile wall stack
+
+A wall column is **two tiles**. `shells.json` publishes `stackCount: 2` and
+`stackStepPx` on each wall shell — the projected vector from the lower tier's
+body top-left to the upper tier's. It is the projected **thickness** (straight
+up on screen, −38.6 px at 45°), not the face grid step. The layout draws the
+lower tier first, then the upper tier at `+stackStepPx`; a revealed dora
+indicator is the **face-up** counterpart shell in the upper tier. `gridStepPx`
+still steps between stacks.
+
+### 10.4 The side-wall lean and the visible edge
+
+The side-wall tile lies face down (blue back up) with its long edge across the
+view, at el 45°, and the column leans inward at the far end. The committed lean
+is 10°, done with a pose yaw: `rotZ 80` for the left wall and `rotZ −80` for the
+right. The measured column step is `(−12.15, 48.71)` on the left and
+`(12.15, 48.71)` on the right: stepping *down* the column moves inward-to-outward,
+so the far end is toward the board centre. The left and right sprites are true
+mirrors.
+
+**The geometric trade-off, recorded for the open pick.** A rigid projection
+cannot both lean the far end inward *and* turn the outer end face toward the
+viewer: the end that becomes visible is the one on the leaning side. With the
+committed inward lean the **inner** end sliver shows; the **outer** end (the
+edge the player sitting on that side would see) shows only when the wall leans
+outward. §10.7 keeps both variants in the audition, with 6° and 14° in each
+direction, so the user can choose the read rather than accept this one.
+
+### 10.5 Face variants (updated plan, still not built)
+
+Face-up shells are now the hand, the upright pond shell, the sideways shell and
+the three face-up dora shells. The atlas plan in §4 and `shell-spec.json`
+(`faceVariants`) therefore defines:
+
+| Face-up shell | faceVariant id |
+| :--- | :--- |
+| `shell_hand_standing` | `standing-front` |
+| `shell_flat_upright` | `flat-topdown` |
+| `shell_flat_sideways` | `flat-rot90` |
+| `shell_wall_horizontal_faceup` | `wall-topdown-dora` |
+| `shell_wall_side_left_faceup` | `wall-left-dora` |
+| `shell_wall_side_right_faceup` | `wall-right-dora` |
+
+The atlas key stays `(shellType, faceVariant, tileFace)`; the three face-down
+wall shells are bare and contribute no glyph entries. A dora shell's decal is
+its own perspective slot even where the projection matches a pond shell, because
+it is a different shell type in the key. `shell_wall_horizontal_faceup` is
+pixel-identical to `shell_flat_upright` in this bake (same pose, camera and
+light); it is still a separate catalogue id because its role and atlas key
+differ, and its bytes are duplicated deliberately rather than aliased.
+
+### 10.6 The diffuse contact shadow
+
+The Phase 1/1b shadow was a 3–4 px band at alpha 0.33: the review called it too
+tight. The committed Phase 1c contract is deliberately **diffuse and subtle**:
+
+| Property | Phase 1/1b | Phase 1c |
+| :--- | :--- | :--- |
+| Right/bottom extent | 3–4 px | **11–12 px** |
+| Right/bottom peak alpha | 0.33 | **0.12** |
+| Blur | 1 px @1x | **8 px @1x** |
+| Falloff | 4 px | **16 px** |
+| Top/left AO | 1–2 px at 0.28 | **1 px at 0.20** |
+
+`padding1x` grows to 2/16/16/2 to hold the band, and the checker enforces the
+ranges in `bake.shadowContract`. The texture grows, not the body: the board
+coordinates are unchanged.
+
+### 10.7 Validation and the open calibration
+
+`bash tools/render/bake-shells.sh --bake` renders the nine shells, writes both
+scales and `shells.json`, and runs **485 checks**: catalogue, felt, both texture
+scales, the 1 px AA ledge, the diffuse shadow/AO contract, the faceQuad and
+`gridStepPx`, the 2-tile `stackStepPx` (within 1.5 px of the projected
+thickness), ivory/blue face sides, the cool near thickness, the decoded-RGBA
+hashes and the budgets. `--bake --verify-determinism` re-renders every shell and
+compares decoded RGBA.
+
+`bash tools/render/bake-shells.sh --audition` renders the **wall-lean
+calibration** — IN 6°, IN 14°, OUT 6°, OUT 14° per side wall at el 45°, composed
+as 2-high stacks with the committed IN 10° as the REF — and validates it with
+**858 checks** in total. That is the one remaining visual pick: see the two
+`build/review/shell-candidates-shell_wall_side_*.png` sheets.
+
+Nothing downstream starts here: no atlas, layout engine, board renderer or app
+view, and the felt raster is untouched.

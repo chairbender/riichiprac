@@ -2,7 +2,7 @@
 """Shell baker for the 2.5D rendered view.
 
 The active architecture is ``2_5d_mahjong_tile_rendering_architecture.md``.
-Six blank tile **shells** are baked offline; 2D face glyphs are composited into
+Nine blank tile **shells** are baked offline; 2D face glyphs are composited into
 each shell's ``faceQuad`` at runtime. There is no table model and no single
 perspective scene camera: every shell is its own orthographic projection.
 
@@ -41,7 +41,7 @@ Usage (normally through ``bake-shells.sh``, which resolves the pinned Blender):
 
 A dry run builds the tile, material and lights, prints the shell plan, and
 writes nothing. ``--bake`` renders the six shells, writes both scales and the
-manifest. ``--audition`` renders the Phase 1b candidate matrix described by the
+manifest. ``--audition`` renders the wall-lean calibration described by the
 spec's ``audition`` block at the current base scale into
 ``tools/render/build/review/`` (textures plus ``shell-candidates.json``) and
 never touches the committed shells or ``shells.json``. ``--verify-determinism``
@@ -77,8 +77,11 @@ CANONICAL_SHELL_IDS = (
     "shell_flat_upright",
     "shell_flat_sideways",
     "shell_wall_horizontal",
+    "shell_wall_horizontal_faceup",
     "shell_wall_side_left",
+    "shell_wall_side_left_faceup",
     "shell_wall_side_right",
+    "shell_wall_side_right_faceup",
 )
 
 
@@ -439,7 +442,7 @@ def validate_shell_catalogue(spec: dict) -> None:
     extra = [shell_id for shell_id in ids if shell_id not in CANONICAL_SHELL_IDS]
     if missing or extra:
         die(
-            "the shell catalogue must be exactly the six canonical shells; "
+            "the shell catalogue must be exactly the canonical shells; "
             f"missing {missing}, unexpected {extra}"
         )
     for shell in spec["shells"]:
@@ -882,12 +885,32 @@ def alpha_profile(rgba: np.ndarray, bbox: tuple[int, int, int, int], pads: dict)
 
 
 def edge_samples(rgba: np.ndarray, bbox: tuple[int, int, int, int]) -> dict:
-    """Mean RGB of the top and bottom body edges: the two-tone resin seam."""
+    """Mean RGB of the top and bottom *silhouette* edges: the two-tone seam.
+
+    The leaned side-wall and sideways shells are parallelograms, so the top and
+    bottom rows of the body bounding box can run outside the opaque body in the
+    middle columns. This walks each column to its first and last opaque pixel
+    and samples one pixel inside, which is the edge for every projection.
+    """
     x0, y0, x1, y1 = bbox
+    alpha = rgba[..., 3]
     left = x0 + (x1 - x0) * 3 // 10
     right = x0 + (x1 - x0) * 7 // 10
-    top = rgba[y0 : y0 + 2, left:right, :3].reshape(-1, 3).mean(axis=0)
-    bottom = rgba[y1 - 1 : y1 + 1, left:right, :3].reshape(-1, 3).mean(axis=0)
+    tops = []
+    bottoms = []
+    for x in range(left, right):
+        column = alpha[y0 : y1 + 1, x]
+        opaque = np.nonzero(column >= 250)[0]
+        if not len(opaque):
+            continue
+        top_y = y0 + int(opaque[0])
+        bottom_y = y0 + int(opaque[-1])
+        tops.append(rgba[min(top_y + 1, y1), x, :3])
+        bottoms.append(rgba[max(bottom_y - 1, y0), x, :3])
+    if not tops or not bottoms:
+        die("the texture has no opaque edge samples")
+    top = np.array(tops, dtype=np.float64).mean(axis=0)
+    bottom = np.array(bottoms, dtype=np.float64).mean(axis=0)
     return {
         "top": [int(round(value)) for value in top],
         "bottom": [int(round(value)) for value in bottom],
@@ -1003,6 +1026,21 @@ def bake_shell(
         for x, y in face_quad(scene, camera, tile, shell, spec)
     ]
 
+    # A wall is a stack of two tiles. The upper tier sits one tile thickness
+    # higher, so its body top-left is the lower tier's plus this projected
+    # thickness vector (straight up on screen). It is published per shell so the
+    # layout never has to re-derive it from the camera.
+    stack_step = None
+    if "wall" in shell["id"]:
+        centre = world_bbox_center(tile)
+        low = project_pixels(scene, camera, [centre])[0]
+        high = project_pixels(
+            scene,
+            camera,
+            [centre + Vector((0.0, 0.0, spec["tile"]["thickness"]))],
+        )[0]
+        stack_step = [round(high[0] - low[0], 2), round(high[1] - low[1], 2)]
+
     texture_name = f"{shell['id']}.png"
     encode_png(output_dir / texture_name, texture_1x)
     encode_png(output_dir_2x / texture_name, texture_2x)
@@ -1040,6 +1078,18 @@ def bake_shell(
         "faceQuad": quad,
         "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
         "gridStepPx": grid_steps(quad, spec),
+        **(
+            {
+                "stackCount": int(spec["tile"]["stack"]["count"]),
+                "stackStepPx": stack_step,
+                "stackStepNote": (
+                    "Add this to the lower tier's body top-left to place the upper tier of the same wall "
+                    "column. It is the projected tile thickness, so it points straight up."
+                ),
+            }
+            if stack_step is not None
+            else {}
+        ),
         "projection": shell["projection"],
         "pose": dict(shell["pose"]),
         "camera": {
@@ -1177,6 +1227,8 @@ def build_rig_metadata(spec: dict, rigs: dict) -> dict:
         },
         "world": spec["lighting"]["world"],
         "targetLongAxisPx1x": bake["targetLongAxisPx1x"],
+        "shadowContract": bake.get("shadowContract"),
+        "stack": spec["tile"].get("stack"),
         "baseScale": {
             "previousTargetLongAxisPx1x": bake["baseScale"]["previousTargetLongAxisPx1x"],
             "note": bake["baseScale"]["note"],
@@ -1203,7 +1255,7 @@ def build_rig_metadata(spec: dict, rigs: dict) -> dict:
 
 
 def validate_audition(spec: dict) -> None:
-    """Validate the Phase 1b candidate matrix before a single pixel is rendered."""
+    """Validate the candidate matrix before a single pixel is rendered."""
     audition = spec.get("audition")
     if not isinstance(audition, dict):
         die("shell-spec.json has no audition block")
@@ -1211,10 +1263,11 @@ def validate_audition(spec: dict) -> None:
         if key not in audition:
             die(f"audition is missing {key!r}")
     ids = list(audition["shells"])
-    missing = [shell_id for shell_id in CANONICAL_SHELL_IDS if shell_id not in ids]
+    if not ids:
+        die("audition.shells is empty")
     extra = [shell_id for shell_id in ids if shell_id not in CANONICAL_SHELL_IDS]
-    if missing or extra:
-        die(f"audition must cover the six canonical shells; missing {missing}, unexpected {extra}")
+    if extra:
+        die(f"audition names shells outside the catalogue: {extra}")
     for base_id, entry in audition["shells"].items():
         candidates = entry.get("candidates")
         if not isinstance(candidates, list) or not (3 <= len(candidates) <= 5):
@@ -1293,7 +1346,8 @@ def bake_audition(
     )
 
     catalogue = {shell["id"]: shell for shell in spec["shells"]}
-    base_ids = [shell_id for shell_id in CANONICAL_SHELL_IDS if not args.only or shell_id in args.only]
+    audition_ids = [shell_id for shell_id in audition["shells"] if shell_id in catalogue]
+    base_ids = [shell_id for shell_id in audition_ids if not args.only or shell_id in args.only]
     if args.only:
         log(f"development audition: only {base_ids} (candidate manifest will be partial)")
     recorded: dict[str, list[dict]] = {}
@@ -1445,12 +1499,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--bake",
         action="store_true",
-        help="render the six shells at 1x and 2x, measure them and write shells.json",
+        help="render the catalogue at 1x and 2x, measure it and write shells.json",
     )
     parser.add_argument(
         "--audition",
         action="store_true",
-        help="render the Phase 1b candidate matrix under build/review/; never touches the committed shells",
+        help="render the candidate matrix under build/review/; never touches the committed shells",
     )
     parser.add_argument(
         "--dry-run",

@@ -3,7 +3,7 @@
 #
 #   bash tools/render/bake-shells.sh            # dry run: build the tile in Blender, print the plan
 #   bash tools/render/bake-shells.sh --check    # integrity check; needs no Blender
-#   bash tools/render/bake-shells.sh --audition # render the Phase 1b candidate matrix, validate, build sheets
+#   bash tools/render/bake-shells.sh --audition # render the wall-lean calibration, validate, build sheets
 #   bash tools/render/bake-shells.sh --check-audition  # validate the candidate matrix; needs no Blender
 #   bash tools/render/bake-shells.sh --bake     # bake 1x + 2x, then check and build review sheets
 #
@@ -12,11 +12,11 @@
 # dependency-free integrity check and regenerates the throwaway review sheets
 # under tools/render/build/review/.
 #
-# --audition is the Phase 1b review path: it renders every candidate in
+# --audition is the wall-lean calibration path: it renders every candidate in
 # shell-spec.json's `audition` block at the new base scale into
 # build/review/candidates/ (+ the candidate manifest at
 # build/review/shell-candidates.json), then validates those outputs and writes
-# one labelled sheet per shell. It never writes the committed shells or
+# one labelled sheet per auditioned shell. It never writes the committed shells or
 # shells.json. Add --verify-determinism to render every candidate twice.
 #
 # The Blender build is pinned to 4.5.9 LTS. Put it at the default location or

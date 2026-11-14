@@ -9,7 +9,7 @@
  * lays sprites out with the manifest's own `advanceWidth/Height` and draw order,
  * so what you see is the layout contract, not a hand-composed mock-up:
  *
- *   - `shells-row-1x.png`       all six shells in catalogue order, on the felt base
+ *   - `shells-row-1x.png`       every shell in catalogue order, on the felt base
  *   - `discard-row-1x.png`      6-tile discard row + an isolated tile, then a
  *                               riichi (sideways) tile in a row
  *   - `discard-row-zoom4x.png`  nearest-neighbour 4x of the discard seams
@@ -21,7 +21,7 @@
  * stacks bottom tier before top tier. The background is the felt's base colour
  * (not the felt raster), so shadow contrast is easy to see.
  *
- * `--audition` writes the Phase 1b candidate matrix instead: one labelled sheet
+ * `--audition` writes the candidate matrix instead: one labelled sheet
  * per shell (`shell-candidates-<shell>.png`) with one row (or, for the side
  * walls, one column) per candidate, each composed at that candidate's own
  * `gridStepPx`, plus a `REF PHASE 1` row/column from the committed half-size
@@ -189,59 +189,102 @@ if (!auditionMode) {
 }
 
 // --------------------------------------------------------------------------- //
-// 3. Two-tier wall stack (bottom tier first, then the top tier) and the side
-//    wall columns, which advance vertically.
+// 3. Wall stacks: two tiles per column, the upper tier at the published
+//    stackStepPx, plus face-up dora tiles on top of the revealed stacks.
 // --------------------------------------------------------------------------- //
 if (!auditionMode) {
   const wall = manifest.shells.shell_wall_horizontal;
   const leftWall = manifest.shells.shell_wall_side_left;
   const rightWall = manifest.shells.shell_wall_side_right;
   const pad = 24;
-  const stack = 8;
+  const run = 6;
+  const sideRun = 4;
   const wallStepX = wall.gridStepPx.x[0];
-  const wallStepY = Math.abs(wall.gridStepPx.y[1]);
-  const tierOffset = Math.round(wallStepY) - 10; // review placement: 10 px of the lower tier shows
-  const width = Math.ceil(2 * pad + stack * wallStepX + leftWall.advanceWidth + rightWall.advanceWidth + pad);
-  const sideRuns = 3;
-  const leftStep = leftWall.gridStepPx.y[1]; // published step already points down
-  const rightStep = rightWall.gridStepPx.y[1];
-  const height = Math.ceil(
-    Math.max(
-      2 * pad + tierOffset + wall.advanceHeight,
-      pad + sideRuns * leftStep + leftWall.advanceHeight + pad,
-    ),
-  );
+  const wallRise = Math.abs(wall.stackStepPx[1]);
+  // The column step is whichever published tile axis points down the screen
+  // (the long axis for the horizontal wall, the short axis for the side walls).
+  const downStep = (entry) => {
+    const x = entry.gridStepPx.x;
+    const y = entry.gridStepPx.y;
+    const pick = Math.abs(x[1]) >= Math.abs(y[1]) ? x : y;
+    return pick[1] < 0 ? [-pick[0], -pick[1]] : pick;
+  };
+  const columns = [
+    { id: 'shell_wall_side_left', dora: 'shell_wall_side_left_faceup', step: downStep(leftWall), entry: leftWall },
+    { id: 'shell_wall_side_right', dora: 'shell_wall_side_right_faceup', step: downStep(rightWall), entry: rightWall },
+  ].map((column) => ({
+    ...column,
+    span: Math.abs((sideRun - 1) * column.step[0]) + column.entry.advanceWidth + 8,
+  }));
+  const sideTop = pad + wallRise + wall.advanceHeight + pad;
+  const sideHeight = (sideRun - 1) * Math.abs(columns[0].step[1]) + leftWall.advanceHeight;
+  const width = Math.ceil(pad + run * wallStepX + pad + columns.reduce((sum, c) => sum + c.span + pad, 0));
+  const height = Math.ceil(sideTop + sideHeight + pad);
   const image = canvas(width, height);
+  const wallTop = pad + wallRise;
+  const assertInside = (id, gridX, gridY, what) => {
+    const entry = manifest.shells[id];
+    const sprite = texture(id);
+    const left = Math.round(gridX - entry.anchorX);
+    const top = Math.round(gridY - entry.anchorY);
+    if (left < 0 || top < 0 || left + sprite.width > image.width || top + sprite.height > image.height) {
+      throw new Error(
+        `wall-stack layout overflow: ${what} ${id} ${left},${top} ` +
+          `${sprite.width}x${sprite.height} leaves ${image.width}x${image.height}`,
+      );
+    }
+  };
 
-  for (let index = stack - 1; index >= 0; index -= 1) {
-    draw('shell_wall_horizontal', image, pad + index * wallStepX, pad + tierOffset);
+  // Horizontal wall: right-to-left; bottom tier, then the top tier. The fourth
+  // stack from the left is a revealed dora indicator (face-up top tile).
+  for (let index = run - 1; index >= 0; index -= 1) {
+    const x = pad + index * wallStepX;
+    assertInside('shell_wall_horizontal', x, wallTop, `wall ${index} bottom`);
+    draw('shell_wall_horizontal', image, x, wallTop);
+    const topId = index === 3 ? 'shell_wall_horizontal_faceup' : 'shell_wall_horizontal';
+    assertInside(topId, x + wall.stackStepPx[0], wallTop + wall.stackStepPx[1], `wall ${index} top`);
+    draw(topId, image, x + wall.stackStepPx[0], wallTop + wall.stackStepPx[1]);
   }
-  for (let index = stack - 1; index >= 0; index -= 1) {
-    draw('shell_wall_horizontal', image, pad + index * wallStepX, pad);
-  }
+  console.log(
+    `INFO wall stack: horizontal rise ${wall.stackStepPx[1]} px (projected thickness), 2 tiers`,
+  );
 
-  // Side-wall columns step along the tile's long axis, top-of-screen first.
-  const leftX = pad + stack * wallStepX + pad;
-  const rightX = leftX + leftWall.advanceWidth + pad;
-  for (let index = 0; index < sideRuns; index += 1) {
-    draw('shell_wall_side_left', image, leftX, pad + index * leftStep);
-    draw('shell_wall_side_right', image, rightX, pad + index * rightStep);
-  }
+  // Side-wall columns: top-of-screen first, bottom tier then top tier per
+  // stack. The second stack in each column is a dora indicator.
+  let cursorX = pad + run * wallStepX + pad;
+  columns.forEach((column) => {
+    const drift = Math.abs((sideRun - 1) * column.step[0]);
+    const originX = cursorX + (column.step[0] < 0 ? drift : 0) + 4;
+    for (let index = 0; index < sideRun; index += 1) {
+      const x = originX + index * column.step[0];
+      const y = sideTop + index * column.step[1];
+      assertInside(column.id, x, y, `${column.id} ${index} bottom`);
+      draw(column.id, image, x, y);
+      const topId = index === 1 ? column.dora : column.id;
+      assertInside(topId, x + column.entry.stackStepPx[0], y + column.entry.stackStepPx[1], `${column.id} ${index} top`);
+      draw(topId, image, x + column.entry.stackStepPx[0], y + column.entry.stackStepPx[1]);
+    }
+    console.log(
+      `INFO ${column.id}: column step ${column.step.map((value) => value.toFixed(2)).join(',')} px, ` +
+        `stack rise ${column.entry.stackStepPx[1]} px`,
+    );
+    cursorX += column.span + pad;
+  });
 
   write('wall-stack-1x.png', image);
   zoomOf(
     image,
-    pad + 2 * wallStepX - 8,
-    pad - 4,
-    3 * wallStepX + 16,
-    tierOffset + wall.advanceHeight + 8,
+    pad + 3 * wallStepX - 10,
+    wallTop - 6,
+    2 * wallStepX + 20,
+    wallRise + wall.advanceHeight + 12,
     4,
     'wall-stack-zoom4x.png',
   );
 }
 
 // --------------------------------------------------------------------------- //
-// 4. Phase 1b candidate matrix: one labelled sheet per shell at the new base.
+// 4. Candidate matrix: one labelled sheet per auditioned shell at the current base.
 // --------------------------------------------------------------------------- //
 if (auditionMode) {
   const candidateManifest = await readJson(join(renderDir, shellSpec.audition.manifest));
@@ -301,7 +344,7 @@ if (auditionMode) {
     rows.push({
       record: committed,
       texture: readPng(resolve(committedDir, committed.textureFile)),
-      title: 'REF PHASE 1',
+      title: 'REF COMMITTED',
       reference: true,
     });
     return rows;
@@ -319,12 +362,13 @@ if (auditionMode) {
       `FACE ${face.long.toFixed(0)}×${face.short.toFixed(0)}`,
       `SHORT/LONG ${face.ratio.toFixed(2)}`,
       `1X ${bytes.toFixed(1)}K B`,
+      ...(record.stackStepPx ? [`RISE ${record.stackStepPx[1]} PX`] : []),
     ];
   };
 
   const LABEL_WIDTH = 220;
   const LABEL_LINE = 16;
-  const LABEL_HEIGHT = LABEL_LINE * 8;
+  const LABEL_HEIGHT = LABEL_LINE * 9;
   const MARGIN = 20;
   const PAD = 16;
   const ISOLATED_GAP = 24;
@@ -406,8 +450,7 @@ if (auditionMode) {
     }
   }
 
-  for (const shell of shellSpec.shells) {
-    const baseId = shell.id;
+  for (const baseId of Object.keys(candidateManifest.shells)) {
     const entry = candidateManifest.shells[baseId];
     const rows = rowsFor(baseId);
     const sideWall = baseId.startsWith('shell_wall_side');
@@ -427,7 +470,8 @@ if (auditionMode) {
       });
       const columnHeights = rows.map((row) => {
         const down = downStep(row.record);
-        return LABEL_HEIGHT + 12 + (run - 1) * down[1] + row.record.texHeight;
+        const rise = Math.abs(row.record.stackStepPx?.[1] ?? 0);
+        return LABEL_HEIGHT + 12 + (run - 1) * down[1] + rise + row.record.texHeight;
       });
       const width = Math.ceil(MARGIN * 2 + spans.reduce((sum, value) => sum + value, 0) + (columns - 1) * 12);
       const plan = headerPlan(baseId, width);
@@ -443,9 +487,16 @@ if (auditionMode) {
         const drift = Math.abs((run - 1) * down[0]);
         const originX = x + (spans[index] - (drift + row.record.advanceWidth)) / 2 + (down[0] < 0 ? drift : 0);
         const originY = top + LABEL_HEIGHT + 12;
+        const rise = row.record.stackStepPx ?? [0, 0];
         for (let step = 0; step < run; step += 1) {
-          fit(image, row, originX + step * down[0], originY + step * down[1], `${baseId} column ${step}`);
-          drawAt(row, image, originX + step * down[0], originY + step * down[1]);
+          const x = originX + step * down[0];
+          const y = originY + step * down[1];
+          // A wall stack is two tiles: the bottom tier, then the top tier one
+          // projected thickness higher.
+          fit(image, row, x, y, `${baseId} column ${step} bottom`);
+          drawAt(row, image, x, y);
+          fit(image, row, x + rise[0], y + rise[1], `${baseId} column ${step} top`);
+          drawAt(row, image, x + rise[0], y + rise[1]);
         }
         x += spans[index] + 12;
       });
