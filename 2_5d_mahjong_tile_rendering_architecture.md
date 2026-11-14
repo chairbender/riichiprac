@@ -96,6 +96,7 @@ Configure an automated Blender script to render the canonical blank tile shells 
   * `anchorX`, `anchorY`: Pixel offset from top-left of PNG to the top-left corner of the solid tile body
   * `advanceWidth`, `advanceHeight`: Opaque body dimensions used for grid layout
   * `gridStepPx`: the physical tile-axis step for a tight grid
+  * `shadowTextureFile` / `shadowTextureFile2x` + `shadowTexWidth/Height`, `shadowAnchorX/Y`, `shadowOffsetPx`: the separate drop-shadow/AO sprite. It shares the body's texture box and grid position; draw it first, then the body.
   * `stackStepPx` + `stackCount` (wall shells): the projected thickness vector from the lower tier's body top-left to the upper tier's, plus the 2-tile stack count
   * `wallSlot` (front/back wall shells): `wall`, `index`, `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`, `angleDeg` and `faceUp`, so the per-slot fan is auditable
   * `faceQuad`: 4 corner coordinates (`[x, y]`) on the shell where the 2D face glyph should be mapped
@@ -142,6 +143,7 @@ Because there is no Z-buffer, enforce a deterministic back-to-front draw order a
   6. Left and Right player open melds & concealed hands.
   7. Bottom player's open melds & standing hand (always drawn last so lifted/hovered tiles never clip behind the bottom wall).
 - [ ] **Task 4.2 — Intra-Zone Draw Order:**
+  - **Shadows first, then bodies:** every shell has a separate shadow/AO sprite (same texture size and anchor as the body). For each zone, draw every shadow sprite first in the zone's back-to-front order, then every body sprite in the same order. A shadow is never baked into a body, so it cannot land on top of a neighbouring tile regardless of the painter's order.
   - **Uniform horizontal rows (ponds, discards):** Iterate **Right-to-Left** (`index = length - 1` down to `0`) so each tile's right shadow overhang casts onto its right neighbor's left bevel.
   - **Per-slot fan rows (standing hand, top hand, front/back walls):** Draw **outermost-to-innermost on both halves, centre last** (slots 0 and N, then 1 and N-1, …, then the centre), because the camera is at the row centre and the inner tile is nearer. Do not use the uniform right-to-left order here; it puts the left half's outer tile on top of its inner neighbour, which is the wrong overlap.
   - **Multi-row grids (discard rows):** Iterate **Top-to-Bottom** (`row = 0` to `2`), drawing each row Right-to-Left.
@@ -501,20 +503,20 @@ All numbers are measured from the render and live in
 
 | Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | stackStepPx | Bytes @1x + @2x |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_flat_upright` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | — | 8,333 + 24,322 |
-| `shell_flat_sideways` | el 45° | 124 × 113 / 248 × 226 | 106 × 95 | (0, 55.15) / (104, 0) | — | 9,933 + 30,110 |
-| `shell_wall_horizontal` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 9,275 + 26,972 |
-| `shell_wall_horizontal_faceup` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 8,333 + 24,322 |
-| `shell_wall_side_left` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 11,605 + 33,270 |
-| `shell_wall_side_left_faceup` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 10,124 + 29,052 |
-| `shell_wall_side_right` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 10,678 + 30,845 |
-| `shell_wall_side_right_faceup` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 10,075 + 29,250 |
+| `shell_flat_upright` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | — | 9,672 + 28,225 |
+| `shell_flat_sideways` | el 45° | 124 × 113 / 248 × 226 | 106 × 95 | (0, 55.15) / (104, 0) | — | 11,599 + 34,534 |
+| `shell_wall_horizontal` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 10,612 + 30,913 |
+| `shell_wall_horizontal_faceup` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 9,672 + 28,225 |
+| `shell_wall_side_left` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 13,021 + 37,320 |
+| `shell_wall_side_left_faceup` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 11,471 + 33,062 |
+| `shell_wall_side_right` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 12,023 + 34,805 |
+| `shell_wall_side_right_faceup` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 11,406 + 33,192 |
 
-The eight base shells above total **306,499 B** (78,356 @1x + 228,143 @2x).
-The 14 human-hand slots add **572,553 B**, the 13 top-hand slots **469,026 B**
-and the 68 front/back wall slots **2,625,341 B**, for **3,973,419 B**
-(1,012,559 @1x + 2,960,860 @2x) against the raised 4,194,304 B budget.
-`shells.json` is **357,707 B** against the raised 524,288 B budget. The felt is
+The eight base shells above total **349,752 B** (89,476 @1x + 260,276 @2x).
+The 14 human-hand slots add **643,830 B**, the 13 top-hand slots **535,009 B**
+and the 68 front/back wall slots **2,980,642 B**, for **4,509,233 B**
+(1,147,078 @1x + 3,362,155 @2x) against the raised 5,242,880 B budget.
+`shells.json` is **412,797 B** against the raised 524,288 B budget. The felt is
 unchanged (559,465 B). The hand slots keep the 104 px body long axis (102 px
 measured, minus the anti-aliased crop); the human-hand centre is 89 × 120 @1x,
 the drawn slot 103 × 120, and the top-hand centre 88 × 120.
@@ -523,31 +525,31 @@ Representative top-hand slots (all 13 are in `shells.json`):
 
 | Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | Bytes @1x + @2x |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_hand_top_slot_06` | 0° / d60 | 88 × 120 / 176 × 240 | 70 × 102 | (67.55, 0) / (0, 80.35) | 8,651 + 25,227 |
-| `shell_hand_top_slot_00` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (2.83, 80.35) | 9,623 + 28,123 |
-| `shell_hand_top_slot_12` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (−2.83, 80.35) | 9,566 + 28,012 |
+| `shell_hand_top_slot_06` | 0° / d60 | 88 × 120 / 176 × 240 | 70 × 102 | (67.55, 0) / (0, 80.35) | 9,945 + 28,935 |
+| `shell_hand_top_slot_00` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (2.83, 80.35) | 10,902 + 31,998 |
+| `shell_hand_top_slot_12` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (−2.83, 80.35) | 10,845 + 31,890 |
 
 Representative hand slots (all 14 are in `shells.json`):
 
 | Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | Bytes @1x + @2x |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_hand_slot_06` | 0° / d24 | 89 × 120 / 178 × 240 | 71 × 102 | (67.96, 0) / (0, 81.72) | 9,413 + 27,485 |
-| `shell_hand_slot_00` | 10.62° / d24 | 100 × 120 / 200 × 240 | 82 × 102 | (67.96, 0) / (7.37, 81.72) | 10,854 + 31,594 |
-| `shell_hand_slot_12` | 10.62° / d24 | 100 × 120 / 200 × 240 | 82 × 102 | (67.96, 0) / (−7.37, 81.72) | 11,062 + 32,549 |
-| `shell_hand_slot_draw` | 12.94° / d24 | 103 × 120 / 206 × 240 | 85 × 102 | (67.96, 0) / (−9.03, 81.72) | 11,218 + 32,662 |
+| `shell_hand_slot_06` | 0° / d24 | 89 × 120 / 178 × 240 | 71 × 102 | (67.96, 0) / (0, 81.72) | 10,666 + 31,255 |
+| `shell_hand_slot_00` | 10.62° / d24 | 100 × 120 / 200 × 240 | 82 × 102 | (67.96, 0) / (7.37, 81.72) | 12,142 + 35,515 |
+| `shell_hand_slot_12` | 10.62° / d24 | 100 × 120 / 200 × 240 | 82 × 102 | (67.96, 0) / (−7.37, 81.72) | 12,336 + 36,439 |
+| `shell_hand_slot_draw` | 12.94° / d24 | 103 × 120 / 206 × 240 | 85 × 102 | (67.96, 0) / (−9.03, 81.72) | 12,522 + 36,479 |
 
 Representative wall slots (all 17 per wall are in `shells.json`):
 
 | Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | stackStepPx | Bytes @1x + @2x |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_wall_front_slot_08` | 0° / d40.8 | 91 × 120 / 182 × 240 | 73 × 102 | (69.72, 0) / (0, 66.07) | (0, −39.02) | 9,179 + 27,566 |
-| `shell_wall_front_slot_04` | 4.21° / d40.8 | 95 × 120 / 190 × 240 | 77 × 102 | (69.72, 0) / (−3.49, 66.07) | (−2.03, −39.02) | 10,489 + 30,688 |
-| `shell_wall_front_slot_16` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.97, 66.07) | (4.06, −39.02) | 10,852 + 31,393 |
-| `shell_wall_back_slot_08` | 0° / d54.8 | 90 × 120 / 180 × 240 | 72 × 102 | (69.64, 0) / (0, 65.91) | (0, −38.9) | 9,303 + 27,488 |
-| `shell_wall_back_slot_04` | 3.13° / d54.8 | 93 × 120 / 186 × 240 | 75 × 102 | (69.64, 0) / (−2.58, 65.91) | (−1.51, −38.9) | 10,225 + 30,250 |
-| `shell_wall_back_slot_16` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.16, 65.91) | (3.01, −38.9) | 10,659 + 30,983 |
-| `shell_wall_front_slot_16_faceup` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.8, 64.46) | (4.06, −39.02) | 10,029 + 29,028 |
-| `shell_wall_back_slot_16_faceup` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.06, 64.71) | (3.01, −38.9) | 9,934 + 28,500 |
+| `shell_wall_front_slot_08` | 0° / d40.8 | 91 × 120 / 182 × 240 | 73 × 102 | (69.72, 0) / (0, 66.07) | (0, −39.02) | 10,507 + 31,481 |
+| `shell_wall_front_slot_04` | 4.21° / d40.8 | 95 × 120 / 190 × 240 | 77 × 102 | (69.72, 0) / (−3.49, 66.07) | (−2.03, −39.02) | 11,807 + 34,624 |
+| `shell_wall_front_slot_16` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.97, 66.07) | (4.06, −39.02) | 12,241 + 35,425 |
+| `shell_wall_back_slot_08` | 0° / d54.8 | 90 × 120 / 180 × 240 | 72 × 102 | (69.64, 0) / (0, 65.91) | (0, −38.9) | 10,644 + 31,353 |
+| `shell_wall_back_slot_04` | 3.13° / d54.8 | 93 × 120 / 186 × 240 | 75 × 102 | (69.64, 0) / (−2.58, 65.91) | (−1.51, −38.9) | 11,519 + 34,213 |
+| `shell_wall_back_slot_16` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.16, 65.91) | (3.01, −38.9) | 11,935 + 34,846 |
+| `shell_wall_front_slot_16_faceup` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.8, 64.46) | (4.06, −39.02) | 11,396 + 33,126 |
+| `shell_wall_back_slot_16_faceup` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.06, 64.71) | (3.01, −38.9) | 11,249 + 32,396 |
 
 ### 10.3 The 2-tile wall stack
 
@@ -647,10 +649,10 @@ following the silhouette inside the body box:
 
 | Property | Phase 1/1b | Committed revision |
 | :--- | :--- | :--- |
-| Right/bottom extent | 3–4 px | **11–12 px** (contract 10–16) |
-| Right/bottom peak alpha | 0.33 | **0.22** (contract 0.16–0.32) |
-| Blur | 1 px @1x | **8 px @1x** |
-| Falloff | 4 px | **16 px** |
+| Right/bottom extent | 3–4 px | **16 px** (contract 10–16) |
+| Right/bottom peak alpha | 0.33 | **0.30** (contract 0.18–0.34) |
+| Blur | 1 px @1x | **10 px @1x** |
+| Falloff | 4 px | **20 px** |
 | Top/left AO | 1–2 px at 0.28 | **1 px at 0.20** |
 
 The shadow is darkest at the tile and fades with the 16 px falloff; the
@@ -666,18 +668,27 @@ top-left beveled corner also gets the AO fringe. The bottom-right corner of a
 flat tile now measures ~56/255 alpha instead of 0, so the beveled corners are
 no longer unshadowed notches.
 
+**The separate shadow sprite.** The drop shadow/AO are **not baked into the body
+sprite**. Each shell exports a body PNG (`<id>.png`) and a shadow PNG
+(`<id>-shadow.png`) with the same dimensions and anchor. The runtime draws every
+shadow first, then every body, so the painter's order can never put one tile's
+shadow on top of another tile. The body PNG contains only the tile; the shadow
+PNG contains only the shadow/AO. Both are published in `shells.json` and both
+are checked.
+
 **The shadow audition.** `bash tools/render/bake-shells.sh --shadow-audition`
-renders the committed REF plus A/B/C on the flat, wall and hand shells and
-writes `build/review/shadow-candidates.png` with the peak/floor/blur/padding and
-the seam/drop luma printed. A is lighter (0.18 / 16 px), B is tighter
-(0.24 / 12 px), C is darkest and widest (0.30 / 20 px). The audition never
-touches the committed shells.
+renders the committed REF (variant C: 0.30 / floor 0.08 / blur 10 / pad 20)
+plus A/B/C on the flat, wall and hand shells and writes
+`build/review/shadow-candidates.png` with the peak/floor/blur/padding and the
+seam/drop luma printed. A is lighter (0.18 / 16 px), B is tighter (0.24 / 12 px),
+C is the committed darkest/widest (0.30 / 20 px). The audition never touches the
+committed shells.
 
 ### 10.7 Validation and the open calibration
 
 `bash tools/render/bake-shells.sh --bake --verify-determinism` renders the 103
 shells, writes both scales and `shells.json`, regenerates the review sheets and
-runs **5,834 checks**: catalogue and the 14 human-hand + 13 top-hand + 68 wall
+runs **6,967 checks**: catalogue and the 14 human-hand + 13 top-hand + 68 wall
 slot fans, the top-hand standing mapping,
 the straight-on ponds, felt, both texture scales, the 1 px AA ledge, the diffuse
 shadow/AO contract, the faceQuad and `gridStepPx`, the 2-tile `stackStepPx`
@@ -693,14 +704,13 @@ RGBA; all 103 were identical.
 `bash tools/render/bake-shells.sh --audition --verify-determinism` now renders
 the **hand fan-strength calibration**: the outer row slot and the drawn-tile slot
 at 14, 18 and 40 units, with the committed 24 units as the REF. It validates
-**6,159 checks** in total. The shadow audition validates **5,939 checks** (the committed checks plus the variant records and the `shadow-candidates.png` sheet). The hand sheets are
+**7,328 checks** in total. The shadow audition validates **7,084 checks** (the committed checks plus the variant records and the `shadow-candidates.png` sheet). The hand sheets are
 `build/review/shell-candidates-shell_hand_slot_12.png` and
 `build/review/shell-candidates-shell_hand_slot_draw.png`.
 
-The open visual pick is now the **shadow shape/falloff**: the committed REF is
-peak 0.22 / contact floor 0.12 / 8 px blur / 16 px padding, and the audition
-shows A (0.18 / 16), B (0.24 / 12) and C (0.30 / 20) on the flat, wall and hand
-shells. The hand fan and the standing top hand are approved; the wall fan and
+The **shadow is settled at variant C**: peak 0.30 / contact floor 0.08 / 10 px
+blur / 20 px padding, and the audition sheet keeps REF (C) and A (0.18 / 16),
+B (0.24 / 12), C (0.30 / 20) on the flat, wall and hand shells. The hand fan and the standing top hand are approved; the wall fan and
 side walls are approved; the ponds/melds are confirmed straight-on. The deferred
 item is the hand face brightness (the el-28 hand face is still ~94–107 luma
 against the pond's ~220). Nothing downstream starts: no atlas, layout engine,
@@ -788,9 +798,9 @@ entry per wall); the baker and checker expand it to the 68 ids, so the catalogue
 cannot drift. Each manifest record carries `wallSlot` with `wall`, `index`,
 `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`, `angleDeg` and `faceUp`.
 
-**Budgets.** The 68 wall slots are **2,625,341 B** of the 103-shell
-**3,973,419 B** total; `shells.json` is **357,707 B**. The self-imposed Phase 1
-budgets are **4,194,304 B** (textures) and **524,288 B** (manifest); the standing
+**Budgets.** The 68 wall slots are **2,980,642 B** of the 103-shell
+**4,509,233 B** total; `shells.json` is **412,797 B**. The self-imposed Phase 1
+budgets are **5,242,880 B** (textures) and **524,288 B** (manifest); the standing
 AGENTS limits (total assets ≤ 8 MiB, initial hand + board load < 4 MiB) still
 hold, because a board loads only the slots it draws. A board with the 14 hand
 slots, 17 front + 17 back wall slots, 4 side walls and the pond/hand base shells

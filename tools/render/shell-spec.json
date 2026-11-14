@@ -96,17 +96,17 @@
     "frameMarginPx2x": 48,
     "padding1x": {
       "top": 2,
-      "right": 16,
-      "bottom": 16,
+      "right": 20,
+      "bottom": 20,
       "left": 2
     },
     "edgeLedgePx": 1,
     "shadowCatcher": true,
     "shadow": {
-      "peakAlpha": 0.22,
+      "peakAlpha": 0.3,
       "colorHex": "#0b1418",
-      "contactFloor": 0.12,
-      "blurPx2x": 8
+      "contactFloor": 0.08,
+      "blurPx2x": 10
     },
     "ambientOcclusion": {
       "peakAlpha": 0.2,
@@ -115,7 +115,7 @@
     "note": "One render of the tile on transparent film plus one render of the Cycles shadow catcher under it, per scale. The catcher alpha gives the physical shadow shape; it is clamped to the declared padding (3-4 px right/bottom) and normalised so the overhang peaks at shadow.peakAlpha. The top/left ambient-occlusion fringe is analytic and bounded by the 1-2 px padding.",
     "shadowContract": {
       "phase": "1c",
-      "note": "Phase 1c refinement: the shadow is darker and still diffuse, with the darkest part at the tile and a falloff to the padding edge. Peak alpha 0.22, contact floor 0.12, 8 px @1x blur, 16 px falloff, 10-16 px right/bottom extent, 1-2 px top/left AO at 0.20. The shadow window now follows the silhouette inside the body box, so the beveled corners are not left unshadowed. The check enforces these ranges.",
+      "note": "Phase 1c refinement, variant C: the shadow is darker and still diffuse; it is darkest at the tile and fades over a 20 px falloff. Peak alpha 0.30, contact floor 0.08, 10 px @1x blur, 20 px right/bottom padding, 10-16 px visible extent, 1-2 px top/left AO at 0.20. The shadow/AO are a separate sprite: the runtime draws every shadow first, then every tile body, so a shadow can never sit on top of a neighbouring tile. The window follows the silhouette inside the body box. The check enforces the ranges.",
       "extentPx1x": {
         "right": [
           10,
@@ -136,12 +136,12 @@
       },
       "peakAlpha": {
         "right": [
-          0.16,
-          0.32
+          0.18,
+          0.34
         ],
         "bottom": [
-          0.16,
-          0.32
+          0.18,
+          0.34
         ],
         "left": [
           0.14,
@@ -543,8 +543,8 @@
   "budgets": {
     "manifestBytes": 524288,
     "shellBytes": 262144,
-    "totalShellBytes": 4194304,
-    "note": "The per-slot front/back wall fan and the per-slot hand fan multiply the shell catalogue (90 shells). The committed shell budget is 4 MiB and the manifest budget 512 KiB; a board loads only the slots it draws, and the total committed asset budget is still 8 MiB with an initial hand + board load under 4 MiB."
+    "totalShellBytes": 5242880,
+    "note": "The per-slot front/back wall fan, the per-slot hand fan and the separate body/shadow sprites multiply the catalogue (103 shells, each with a body and a shadow PNG at both scales). The committed shell budget is 5 MiB and the manifest budget 512 KiB; a board loads only the slots it draws, and the total committed asset budget is still 8 MiB with an initial hand + board load under 4 MiB."
   },
   "wallSlots": {
     "note": "The front/back walls are a fan of per-slot perspectives, not one shell. The tile directly in front of the human (slot 8 of 17) is straight on. Every other slot is seen from the human's eye, so the far-right tile shows its left side and the far-left tile shows its right side. The camera is the same off-axis perspective as the side walls; only its lateral offset and distance change. front = the bottom wall nearest the human; back = the top wall across the table. A slot's lateral offset is -(index - centreIndex) * stepUnits, i.e. the camera sits at the human's x on the centre line. The face-down and face-up dora shells share the slot's geometry; the back dora's glyph is rotated 180 so it reads for the far player.",
@@ -593,7 +593,7 @@
     ]
   },
   "shadowAudition": {
-    "status": "Proposals only: shadow strength, shape and falloff calibration. The committed shadow is the REF (peak 0.22, contact floor 0.12, 8 px @1x blur, 16 px falloff). The candidates vary the peak, contact floor, blur and padding/falloff length on the same flat, wall and hand shells. Written under build/ (gitignored); the committed assets are never touched.",
+    "status": "Proposals only: shadow strength, shape and falloff calibration. The committed shadow is variant C (peak 0.30, contact floor 0.08, 10 px @1x blur, 20 px falloff); the audition keeps REF + A/B/C for comparison. Written under build/ (gitignored); the committed assets are never touched.",
     "outputDir": "build/review/shadows",
     "sheetDir": "build/review",
     "manifest": "build/review/shadows.json",

@@ -48,7 +48,7 @@ bash tools/render/bake-felt.sh             # regenerate frontend/public/table/fe
 wall and hand shells under `build/review/shadows/`, writes
 `build/review/shadow-candidates.png` with the peak/floor/blur/padding and the
 seam/drop luma printed, and validates the variant records and the sheet
-(5,939 checks). It never touches the committed shells.
+(7,084 checks). It never touches the committed shells.
 
 `--preview` is the fast loop. It renders only the `--only` shells under
 `tools/render/build/preview/` (never the committed paths), writes a partial
@@ -227,12 +227,12 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
-The eight base PNGs are **306,499 B** (78,356 @1x + 228,143 @2x). The 14 hand
-slots add **572,553 B**, the 13 top-hand slots **469,026 B** and the 68 wall
-slots **2,625,341 B**, so all 103 are **3,973,419 B** (1,012,559 @1x +
-2,960,860 @2x; budget 4,194,304 B); the largest
-single shell is 43,721 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
-**357,707 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
+The eight base PNGs are **349,752 B** (89,476 @1x + 260,276 @2x). The 14 hand
+slots add **643,830 B**, the 13 top-hand slots **535,009 B** and the 68 wall
+slots **2,980,642 B**, so all 103 **body + shadow** pairs are **4,509,233 B** (1,147,078 @1x +
+3,362,155 @2x; budget 5,242,880 B); the largest
+single shell is 50,341 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
+**412,797 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
 (102 px measured); the centre is 89 × 120 @1x and the drawn slot 103 × 120. The
 budgets were raised for the fans; a board loads only the slots it draws, so the
 initial load stays well under the 4 MiB limit.
@@ -277,8 +277,8 @@ initial load stays well under the 4 MiB limit.
   first, then the upper tier at `+stackStepPx`. `gridStepPx` steps between
   stacks. A revealed dora indicator is the face-up counterpart shell in the
   upper tier.
-- **The contact shadow is darker but still diffuse**: 11–12 px right/bottom at
-  peak alpha 0.22 with an 8 px blur and a 16 px falloff, plus a 1 px / 0.20 AO
+- **The contact shadow is darker but still diffuse**: 16 px right/bottom at
+  peak alpha 0.30 with a 10 px blur and a 20 px falloff, plus a 1 px / 0.20 AO
   fringe. Phase 1/1b's 3–4 px band at 0.33 was the "too tight" note; the first
   diffuse pass at 0.12 was too faint. The shadow window now follows the tile
   silhouette inside the body box, so the beveled corners are not left as
@@ -318,9 +318,9 @@ would make the outer face skew much stronger than the hand should read.
 
 | Slot | Offset | Angle at d24 | Body | Texture @1x / @2x | Bytes @1x + @2x |
 | --- | --- | --- | --- | --- | --- |
-| 06 (centre) | 0 | 0.00° | 71 × 102 | 89 × 120 / 178 × 240 | 9,413 + 27,485 |
-| 00 / 12 | ∓4.50 | 10.62° | 82 × 102 | 100 × 120 / 200 × 240 | 10,854 + 31,594 / 11,062 + 32,549 |
-| drawn | +5.5125 | 12.94° | 85 × 102 | 103 × 120 / 206 × 240 | 11,218 + 32,662 |
+| 06 (centre) | 0 | 0.00° | 71 × 102 | 89 × 120 / 178 × 240 | 10,666 + 31,255 |
+| 00 / 12 | ∓4.50 | 10.62° | 82 × 102 | 100 × 120 / 200 × 240 | 12,142 + 35,515 / 12,336 + 36,439 |
+| drawn | +5.5125 | 12.94° | 85 × 102 | 103 × 120 / 206 × 240 | 12,522 + 36,479 |
 
 Measured on the committed bake:
 
@@ -491,7 +491,12 @@ real record (values from the committed bake):
 
 Fields the runtime and the checker rely on:
 
-- `textureFile` / `textureFile2x` — the @1x and @2x PNGs, both under `shells/`.
+- `textureFile` / `textureFile2x` — the @1x and @2x **body** PNGs, both under `shells/`.
+- `shadowTextureFile` / `shadowTextureFile2x` — the separate **shadow/AO**
+  sprites, same dimensions and anchor as the body. Draw every shadow first, then
+  every body; a shadow is never baked into a body, so it cannot sit on top of a
+  neighbouring tile. `shadowOffsetPx` is `[0,0]` and `shadowAnchorX/Y` equals
+  the body anchor.
 - `texWidth`/`texHeight` — the @1x PNG size. The @2x PNG is exactly twice that.
 - `anchorX`/`anchorY` — the top-left of the opaque body box in @1x px. They are
   equal to `padding.left`/`padding.top`, and `anchor + advance + padding` equals
@@ -556,13 +561,16 @@ Fields the runtime and the checker rely on:
 - `faceUp` — a boolean on every record (`camera.faceLocalZ === "top"`). It is
   the authoritative glyph/blue-back switch; the top-hand and wall slot records
   are face down.
+- The body + shadow pair is the draw contract: place both at the same
+  `gridX/gridY` (`grid - anchor`), shadow pass first, body pass second. The
+  atlas composites glyphs into the body only.
 - `rig` — Blender version, engine/device/samples/seed, colour management, the
   key's screen-space direction, the shadow/AO contract, the 2-tile stack, the
   target long-axis size, and each shell's framing. It is the audit trail for a
   bake.
 
-The check enforces: every path exists and decodes as 8-bit RGBA; the PNG sizes
-match (with the @2x exactly twice the @1x); the declared padding matches the
+The check enforces: every body and shadow path exists and decodes as 8-bit RGBA;
+the PNG sizes match (with the @2x exactly twice the @1x); the declared padding matches the
 spec and the anchor; the opaque body is inset exactly 1 px; the faceQuad is a
 convex quad inside the body with an oblique-plausible aspect (a parallelogram
 for the orthographic shells, a trapezoid for the perspective ones, with one
@@ -661,8 +669,8 @@ committed reference is 24 units. The output is gitignored:
 `check-shells.mjs --audition` keeps the committed checks and adds the candidate
 ones (both scales, the base long axis, the shadow/AO contract, the perspective
 trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
-printed-text and composited-tile pixel checks; the full run reports **6,159
-checks**. The committed bake alone reports **5,834** (including the review-sheet
+printed-text and composited-tile pixel checks; the full run reports **7,328
+checks**. The committed bake alone reports **6,967** (including the review-sheet
 pixels when the sheets are present).
 
 ## The Blender shell rules
@@ -717,14 +725,14 @@ PASS shell_hand_slot_12 handSlot offset 4.5 follows from handSlots (4.5)
 PASS shell_hand_slot_draw handSlot kind is row/draw (draw)
 PASS shell_hand_slot_draw top edge carries the blue resin sliver (3,69,165)
 PASS shell_wall_front_slot_16 camera sits at the human's x (lateral -6.0 = -offset)
-PASS hand-fan-1x.png composites its tiles (269001 px)
-INFO shell textures total 3973419 B across 103 shells and 2 scales
-OK 5834 checks passed
+PASS hand-fan-1x.png composites its tiles (284486 px)
+INFO shell textures total 4509233 B across 103 shells and 2 scales
+OK 6967 checks passed
 ```
 
 `--audition` additionally validates the hand fan calibration and its sheets; on
-the current output it reports `OK 6,159 checks passed` (the committed checks plus
-the candidate and sheet checks). The committed-only run stays at 5,834.
+the current output it reports `OK 7,328 checks passed` (the committed checks plus
+the candidate and sheet checks). The committed-only run stays at 6,967.
 
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
@@ -778,7 +786,7 @@ To review the shadow strength/shape/falloff, run `--shadow-audition` (above)
 and open `build/review/shadow-candidates.png`. It shows the REF row plus A/B/C,
 each with a flat discard run and an isolated tile, a wall stack and a hand run;
 the labels print the peak/floor/blur/padding and the seam/drop luma. The
-committed REF is 0.22 / floor 0.12 / blur 8 / pad 16.
+committed REF is variant C: 0.30 / floor 0.08 / blur 10 / pad 20.
 
 To review the approved hand fan, run `--audition` (above) and open the two
 sheets:

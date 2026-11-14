@@ -70,6 +70,16 @@ function texture(id) {
   return textures.get(id);
 }
 
+const shadowTextures = new Map();
+function shadowTexture(id) {
+  if (!shadowTextures.has(id)) {
+    const entry = manifest.shells[id];
+    if (!entry) throw new Error(`shells.json has no ${id}`);
+    shadowTextures.set(id, readPng(resolve(tableDir, entry.shadowTextureFile)));
+  }
+  return shadowTextures.get(id);
+}
+
 function canvas(width, height) {
   const data = Buffer.alloc(width * height * 4);
   for (let i = 0; i < width * height; i += 1) {
@@ -81,12 +91,38 @@ function canvas(width, height) {
   return { width, height, data, channels: 4, stride: width * 4 };
 }
 
+// The drop shadow is a separate sprite. Queue every tile placement, then flush
+// all shadow sprites first and all body sprites second. A shadow can never land
+// on top of a neighbouring tile, regardless of the row/stack painter order.
+const pendingDraws = [];
 function draw(id, target, gridX, gridY) {
-  const entry = manifest.shells[id];
-  drawSprite(target, texture(id), Math.round(gridX - entry.anchorX), Math.round(gridY - entry.anchorY));
+  pendingDraws.push({ id, target, gridX, gridY });
+}
+
+function flushDraws() {
+  for (const item of pendingDraws) {
+    const entry = manifest.shells[item.id];
+    drawSprite(
+      item.target,
+      shadowTexture(item.id),
+      Math.round(item.gridX - (entry.shadowAnchorX ?? entry.anchorX)),
+      Math.round(item.gridY - (entry.shadowAnchorY ?? entry.anchorY)),
+    );
+  }
+  for (const item of pendingDraws) {
+    const entry = manifest.shells[item.id];
+    drawSprite(
+      item.target,
+      texture(item.id),
+      Math.round(item.gridX - entry.anchorX),
+      Math.round(item.gridY - entry.anchorY),
+    );
+  }
+  pendingDraws.length = 0;
 }
 
 function write(name, image) {
+  flushDraws();
   const buffer = encodePng(image.width, image.height, image.channels, image.data);
   const path = join(outDir, name);
   writeFileSync(path, buffer);
@@ -187,15 +223,23 @@ if (shadowAuditionMode) {
   const shadowManifest = await readJson(join(renderDir, block.manifest));
   const shadowDir = dirname(join(renderDir, block.manifest));
   const shadowTextures = new Map();
-  const shadowTexture = (record) => {
+  const variantTexture = (record) => {
     const key = record.textureFile;
     if (!shadowTextures.has(key)) {
       shadowTextures.set(key, readPng(resolve(shadowDir, key)));
     }
     return shadowTextures.get(key);
   };
+  const variantShadowTexture = (record) => {
+    const key = record.shadowTextureFile;
+    if (!shadowTextures.has(key)) {
+      shadowTextures.set(key, readPng(resolve(shadowDir, key)));
+    }
+    return shadowTextures.get(key);
+  };
+  const pendingRecords = [];
   const drawRecord = (record, target, gridX, gridY, what = 'shadow') => {
-    const texture = shadowTexture(record);
+    const texture = variantTexture(record);
     const left = Math.round(gridX - record.anchorX);
     const top = Math.round(gridY - record.anchorY);
     if (left < 0 || top < 0 || left + texture.width > target.width || top + texture.height > target.height) {
@@ -204,7 +248,26 @@ if (shadowAuditionMode) {
           `${texture.width}x${texture.height} leaves ${target.width}x${target.height}`,
       );
     }
-    drawSprite(target, texture, left, top);
+    pendingRecords.push({ record, target, gridX, gridY });
+  };
+  const flushRecordDraws = () => {
+    for (const item of pendingRecords) {
+      drawSprite(
+        item.target,
+        variantShadowTexture(item.record),
+        Math.round(item.gridX - item.record.shadowAnchorX),
+        Math.round(item.gridY - item.record.shadowAnchorY),
+      );
+    }
+    for (const item of pendingRecords) {
+      drawSprite(
+        item.target,
+        variantTexture(item.record),
+        Math.round(item.gridX - item.record.anchorX),
+        Math.round(item.gridY - item.record.anchorY),
+      );
+    }
+    pendingRecords.length = 0;
   };
   const lumaAt = (image, x, y) => {
     const i = (Math.round(y) * image.width + Math.round(x)) * 4;
@@ -275,6 +338,7 @@ if (shadowAuditionMode) {
       drawRecord(handRecord, image, handX + index * handStep, bodyTop - 10);
     }
     drawRecord(handRecord, image, handX + 6 * handStep + gap, bodyTop - 10);
+    flushRecordDraws();
     const seam = lumaAt(image, flatX + flatStep + 2, bodyTop + flatRecord.advanceHeight * 0.5);
     const interior = lumaAt(image, flatX + flatStep + 14, bodyTop + flatRecord.advanceHeight * 0.5);
     const isolated = lumaAt(image, isolatedX + flatStep + 3, bodyTop + flatRecord.advanceHeight - 2);

@@ -133,7 +133,7 @@ const isVerticalFace = (shell) => shell?.pose?.rotateXDeg === 90;
 // Phase 1c shadow contract, in @1x px / alpha. The committed bake and every
 // audition candidate must satisfy it.
 const SHADOW_EXTENT = { right: [10, 16], bottom: [10, 16], left: [1, 2], top: [1, 2] };
-const SHADOW_PEAK = { right: [0.16, 0.32], bottom: [0.16, 0.32], left: [0.14, 0.26], top: [0.14, 0.26] };
+const SHADOW_PEAK = { right: [0.18, 0.34], bottom: [0.18, 0.34], left: [0.14, 0.26], top: [0.14, 0.26] };
 
 const failures = [];
 let checks = 0;
@@ -501,7 +501,7 @@ function checkShellSpec(spec) {
     `padding1x left/top are 1-2 px (${pads.left}/${pads.top})`,
   );
   check(
-    spec.bake.shadow.peakAlpha >= 0.16 && spec.bake.shadow.peakAlpha <= 0.32,
+    spec.bake.shadow.peakAlpha >= 0.18 && spec.bake.shadow.peakAlpha <= 0.34,
     `shadow peak is darker but still diffuse (${spec.bake.shadow.peakAlpha})`,
   );
   check(
@@ -713,34 +713,77 @@ function checkShellsManifest(spec) {
       `${id} textureFile2x is a PNG under shells/ (${shell.textureFile2x})`,
     );
     check(
+      typeof shell.shadowTextureFile === 'string' &&
+        shell.shadowTextureFile.startsWith('shells/') &&
+        shell.shadowTextureFile.endsWith('-shadow.png'),
+      `${id} shadowTextureFile is a separate PNG under shells/ (${shell.shadowTextureFile})`,
+    );
+    check(
+      typeof shell.shadowTextureFile2x === 'string' &&
+        shell.shadowTextureFile2x.startsWith('shells/') &&
+        shell.shadowTextureFile2x.endsWith('-shadow.png'),
+      `${id} shadowTextureFile2x is a separate PNG under shells/ (${shell.shadowTextureFile2x})`,
+    );
+    check(
       shell.faceRotationDeg === specRotation.get(id),
       `${id} faceRotationDeg is ${shell.faceRotationDeg} (spec ${specRotation.get(id)})`,
     );
     const texturePath = resolve(dirname(manifestPath), shell.textureFile ?? '');
     const texture2xPath = resolve(dirname(manifestPath), shell.textureFile2x ?? '');
+    const shadowPath = resolve(dirname(manifestPath), shell.shadowTextureFile ?? '');
+    const shadow2xPath = resolve(dirname(manifestPath), shell.shadowTextureFile2x ?? '');
     check(existsSync(texturePath), `${id} texture exists (${shell.textureFile})`);
     check(existsSync(texture2xPath), `${id} @2x texture exists (${shell.textureFile2x})`);
-    if (!existsSync(texturePath) || !existsSync(texture2xPath)) continue;
+    check(existsSync(shadowPath), `${id} shadow texture exists (${shell.shadowTextureFile})`);
+    check(existsSync(shadow2xPath), `${id} @2x shadow texture exists (${shell.shadowTextureFile2x})`);
+    if (
+      !existsSync(texturePath) ||
+      !existsSync(texture2xPath) ||
+      !existsSync(shadowPath) ||
+      !existsSync(shadow2xPath)
+    ) {
+      continue;
+    }
 
     const image = readPng(texturePath);
     const image2x = readPng(texture2xPath);
-    const bytes = image.bytes + image2x.bytes;
+    const shadowImage = readPng(shadowPath);
+    const shadowImage2x = readPng(shadow2xPath);
+    const bytes = image.bytes + image2x.bytes + shadowImage.bytes + shadowImage2x.bytes;
     totalBytes += bytes;
     check(
-      image.channels === 4 && image2x.channels === 4,
-      `${id} textures are RGBA (colour types ${image.colorType}/${image2x.colorType})`,
+      image.channels === 4 && image2x.channels === 4 && shadowImage.channels === 4 && shadowImage2x.channels === 4,
+      `${id} body and shadow textures are RGBA`,
     );
     check(
       image.width === shell.texWidth && image.height === shell.texHeight,
-      `${id} texture is ${image.width}x${image.height} (declared ${shell.texWidth}x${shell.texHeight})`,
+      `${id} body texture is ${image.width}x${image.height} (declared ${shell.texWidth}x${shell.texHeight})`,
+    );
+    check(
+      shadowImage.width === shell.shadowTexWidth &&
+        shadowImage.height === shell.shadowTexHeight,
+      `${id} shadow texture is ${shadowImage.width}x${shadowImage.height} ` +
+        `(declared ${shell.shadowTexWidth}x${shell.shadowTexHeight})`,
     );
     check(
       image2x.width === shell.texWidth * manifest.pixelRatio &&
         image2x.height === shell.texHeight * manifest.pixelRatio,
-      `${id} @2x texture is ${image2x.width}x${image2x.height} ` +
-        `(declared ${shell.texWidth * manifest.pixelRatio}x${shell.texHeight * manifest.pixelRatio})`,
+      `${id} @2x body is ${image2x.width}x${image2x.height}`,
     );
-    check(bytes <= spec.budgets.shellBytes, `${id} is ${bytes} B (budget ${spec.budgets.shellBytes} B)`);
+    check(
+      shadowImage2x.width === shell.shadowTexWidth * manifest.pixelRatio &&
+        shadowImage2x.height === shell.shadowTexHeight * manifest.pixelRatio,
+      `${id} @2x shadow is ${shadowImage2x.width}x${shadowImage2x.height}`,
+    );
+    check(bytes <= spec.budgets.shellBytes, `${id} is ${bytes} B body+shadow (budget ${spec.budgets.shellBytes} B)`);
+    check(
+      shell.shadowOffsetPx?.[0] === 0 && shell.shadowOffsetPx?.[1] === 0,
+      `${id} shadow sprite uses the same grid position (${JSON.stringify(shell.shadowOffsetPx)})`,
+    );
+    check(
+      shell.shadowAnchorX === shell.anchorX && shell.shadowAnchorY === shell.anchorY,
+      `${id} shadow anchor matches the body anchor (${shell.shadowAnchorX},${shell.shadowAnchorY})`,
+    );
 
     const padding = shell.padding ?? {};
     check(
@@ -1023,12 +1066,17 @@ function checkShellsManifest(spec) {
       check(false, `${id} is a top-hand slot but records no topHandSlot`);
     }
 
-    const profile = alphaProfile(image, body);
+    const profile = alphaProfile(shadowImage, body);
     const floor = 2 / 255 + 5 / 255;
-    const border = nearestBorderAlpha(image);
+    const bodyBorder = nearestBorderAlpha(image);
+    const shadowBorder = nearestBorderAlpha(shadowImage);
     check(
-      border <= floor * 255,
-      `${id} outer texture ring is transparent (max alpha ${border}/255 <= ${Math.round(floor * 255)})`,
+      bodyBorder <= floor * 255,
+      `${id} body outer texture ring is transparent (max alpha ${bodyBorder}/255 <= ${Math.round(floor * 255)})`,
+    );
+    check(
+      shadowBorder <= floor * 255,
+      `${id} shadow outer texture ring is transparent (max alpha ${shadowBorder}/255 <= ${Math.round(floor * 255)})`,
     );
     for (const side of ['right', 'bottom', 'left', 'top']) {
       const [min, max] = SHADOW_EXTENT[side];
@@ -1153,15 +1201,39 @@ function checkShellsManifest(spec) {
         Math.abs(solid2x.y0 - solid.y0 * 2) <= 2,
       `${id} @2x opaque body lines up with @1x`,
     );
+    const smallShadow = downsample2x(shadowImage2x);
+    let shadowDifference = 0;
+    let shadowSamples = 0;
+    for (let y = 0; y < shadowImage.height; y += 1) {
+      for (let x = 0; x < shadowImage.width; x += 1) {
+        const [r1, g1, b1, a1] = pixel(shadowImage, x, y);
+        const [r2, g2, b2, a2] = pixel(smallShadow, x, y);
+        if (a1 < 2 && a2 < 2) continue;
+        shadowDifference += Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2) + Math.abs(a1 - a2);
+        shadowSamples += 4;
+      }
+    }
+    const shadowMeanDelta = shadowSamples ? shadowDifference / shadowSamples : 255;
+    check(
+      shadowMeanDelta <= 8,
+      `${id} shadow @1x and @2x agree (mean channel delta ${shadowMeanDelta.toFixed(2)} <= 8)`,
+    );
 
     const hashes = shell.sha256 ?? {};
+    const shadowHashes = shell.shadowSha256 ?? {};
     check(
       hashes.decodedRgba1x === sha256(image.data) && hashes.decodedRgba2x === sha256(image2x.data),
-      `${id} decoded-RGBA sha256 matches the committed PNGs`,
+      `${id} body decoded-RGBA sha256 matches the committed PNGs`,
     );
     check(
-      measured.bytes1x === image.bytes && measured.bytes2x === image2x.bytes,
-      `${id} manifest byte counts match the files (${image.bytes} + ${image2x.bytes})`,
+      shadowHashes.decodedRgba1x === sha256(shadowImage.data) &&
+        shadowHashes.decodedRgba2x === sha256(shadowImage2x.data),
+      `${id} shadow decoded-RGBA sha256 matches the committed PNGs`,
+    );
+    check(
+      measured.bytes1x === image.bytes + shadowImage.bytes &&
+        measured.bytes2x === image2x.bytes + shadowImage2x.bytes,
+      `${id} manifest byte counts match body+shadow (${image.bytes}+${shadowImage.bytes})`,
     );
   }
   check(
@@ -1217,16 +1289,29 @@ function checkCandidateRecord(context) {
   const target = spec.bake.targetLongAxisPx1x;
   const texturePath = resolve(reviewDir, record.textureFile ?? '');
   const texture2xPath = resolve(reviewDir, record.textureFile2x ?? '');
+  const shadowPath = resolve(reviewDir, record.shadowTextureFile ?? '');
+  const shadow2xPath = resolve(reviewDir, record.shadowTextureFile2x ?? '');
   check(existsSync(texturePath), `${label} texture exists (${record.textureFile})`);
   check(existsSync(texture2xPath), `${label} @2x texture exists (${record.textureFile2x})`);
-  if (!existsSync(texturePath) || !existsSync(texture2xPath)) return 0;
+  check(existsSync(shadowPath), `${label} shadow texture exists (${record.shadowTextureFile})`);
+  check(existsSync(shadow2xPath), `${label} @2x shadow exists (${record.shadowTextureFile2x})`);
+  if (
+    !existsSync(texturePath) ||
+    !existsSync(texture2xPath) ||
+    !existsSync(shadowPath) ||
+    !existsSync(shadow2xPath)
+  ) {
+    return 0;
+  }
 
   const image = readPng(texturePath);
   const image2x = readPng(texture2xPath);
-  const bytes = image.bytes + image2x.bytes;
+  const shadowImage = readPng(shadowPath);
+  const shadowImage2x = readPng(shadow2xPath);
+  const bytes = image.bytes + image2x.bytes + shadowImage.bytes + shadowImage2x.bytes;
   check(
-    image.channels === 4 && image2x.channels === 4,
-    `${label} textures are RGBA (colour types ${image.colorType}/${image2x.colorType})`,
+    image.channels === 4 && image2x.channels === 4 && shadowImage.channels === 4 && shadowImage2x.channels === 4,
+    `${label} body and shadow textures are RGBA`,
   );
   check(
     image.width === record.texWidth && image.height === record.texHeight,
@@ -1238,7 +1323,17 @@ function checkCandidateRecord(context) {
     `${label} @2x texture is ${image2x.width}x${image2x.height} ` +
       `(declared ${record.texWidth * manifest.pixelRatio}x${record.texHeight * manifest.pixelRatio})`,
   );
-  check(bytes <= spec.budgets.shellBytes, `${label} is ${bytes} B (budget ${spec.budgets.shellBytes} B)`);
+  check(bytes <= spec.budgets.shellBytes, `${label} is ${bytes} B body+shadow (budget ${spec.budgets.shellBytes} B)`);
+  check(
+    shadowImage.width === record.shadowTexWidth &&
+      shadowImage.height === record.shadowTexHeight,
+    `${label} shadow texture is ${shadowImage.width}x${shadowImage.height}`,
+  );
+  check(
+    shadowImage2x.width === record.shadowTexWidth * manifest.pixelRatio &&
+      shadowImage2x.height === record.shadowTexHeight * manifest.pixelRatio,
+    `${label} @2x shadow is exactly twice @1x`,
+  );
 
   const padding = record.padding ?? {};
   check(
@@ -1386,12 +1481,17 @@ function checkCandidateRecord(context) {
     check(record.stackStepPx === undefined, `${label} is not a wall shell and has no stackStepPx`);
   }
 
-  const profile = alphaProfile(image, body);
+  const profile = alphaProfile(shadowImage, body);
   const floor = 2 / 255 + 5 / 255;
-  const border = nearestBorderAlpha(image);
+  const bodyBorder = nearestBorderAlpha(image);
+  const shadowBorder = nearestBorderAlpha(shadowImage);
   check(
-    border <= floor * 255,
-    `${label} outer texture ring is transparent (max alpha ${border}/255 <= ${Math.round(floor * 255)})`,
+    bodyBorder <= floor * 255,
+    `${label} body outer texture ring is transparent`,
+  );
+  check(
+    shadowBorder <= floor * 255,
+    `${label} shadow outer texture ring is transparent`,
   );
   for (const side of ['right', 'bottom', 'left', 'top']) {
     const [min, max] = SHADOW_EXTENT[side];
@@ -1480,13 +1580,20 @@ function checkCandidateRecord(context) {
   );
 
   const hashes = record.sha256 ?? {};
+  const shadowHashes = record.shadowSha256 ?? {};
   check(
     hashes.decodedRgba1x === sha256(image.data) && hashes.decodedRgba2x === sha256(image2x.data),
-    `${label} decoded-RGBA sha256 matches the candidate PNGs`,
+    `${label} body decoded-RGBA sha256 matches the candidate PNGs`,
   );
   check(
-    measured.bytes1x === image.bytes && measured.bytes2x === image2x.bytes,
-    `${label} manifest byte counts match the files (${image.bytes} + ${image2x.bytes})`,
+    shadowHashes.decodedRgba1x === sha256(shadowImage.data) &&
+      shadowHashes.decodedRgba2x === sha256(shadowImage2x.data),
+    `${label} shadow decoded-RGBA sha256 matches the candidate PNGs`,
+  );
+  check(
+    measured.bytes1x === image.bytes + shadowImage.bytes &&
+      measured.bytes2x === image2x.bytes + shadowImage2x.bytes,
+    `${label} manifest byte counts match body+shadow`,
   );
   return bytes;
 }
@@ -1624,21 +1731,44 @@ function checkShadowAudition(spec) {
       );
       const texturePath = resolve(baseDir, record.textureFile ?? '');
       const texture2xPath = resolve(baseDir, record.textureFile2x ?? '');
-      check(existsSync(texturePath) && existsSync(texture2xPath), `${variant.id}/${shellId} textures exist`);
-      if (!existsSync(texturePath) || !existsSync(texture2xPath)) continue;
+      const shadowPath = resolve(baseDir, record.shadowTextureFile ?? '');
+      const shadow2xPath = resolve(baseDir, record.shadowTextureFile2x ?? '');
+      check(
+        existsSync(texturePath) && existsSync(texture2xPath) &&
+          existsSync(shadowPath) && existsSync(shadow2xPath),
+        `${variant.id}/${shellId} body and shadow textures exist`,
+      );
+      if (
+        !existsSync(texturePath) || !existsSync(texture2xPath) ||
+        !existsSync(shadowPath) || !existsSync(shadow2xPath)
+      ) {
+        continue;
+      }
       const image = readPng(texturePath);
       const image2x = readPng(texture2xPath);
+      const shadowImage = readPng(shadowPath);
       check(
         image.width === record.texWidth && image.height === record.texHeight,
-        `${variant.id}/${shellId} @1x is ${image.width}x${image.height}`,
+        `${variant.id}/${shellId} body @1x is ${image.width}x${image.height}`,
       );
       check(
         image2x.width === image.width * manifest.pixelRatio &&
           image2x.height === image.height * manifest.pixelRatio,
-        `${variant.id}/${shellId} @2x is exactly twice @1x`,
+        `${variant.id}/${shellId} body @2x is exactly twice @1x`,
       );
-      const peak = record.measured?.alphaPeak1x?.right ?? 0;
-      const extent = record.measured?.alphaExtent1x?.right ?? 0;
+      check(
+        shadowImage.width === record.shadowTexWidth && shadowImage.height === record.shadowTexHeight,
+        `${variant.id}/${shellId} shadow is ${shadowImage.width}x${shadowImage.height}`,
+      );
+      const bodyBox = {
+        x0: record.anchorX,
+        y0: record.anchorY,
+        x1: record.anchorX + record.advanceWidth - 1,
+        y1: record.anchorY + record.advanceHeight - 1,
+      };
+      const profile = alphaProfile(shadowImage, bodyBox);
+      const peak = profile.peak.right;
+      const extent = profile.extent.right;
       check(
         peak >= 0.14 && peak <= 0.34,
         `${variant.id}/${shellId} decorated peak ${peak.toFixed(3)} is in the audition range`,

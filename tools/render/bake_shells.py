@@ -25,6 +25,10 @@ The baker owns:
 * a Cycles shadow-catcher pass under the mesh whose alpha is clamped to the
   declared 10-16 px right/bottom margin and normalised to the spec's diffuse
   shadow strength, plus a 1-2 px top/left ambient-occlusion fringe;
+* a **separate body and shadow/AO sprite** per shell: ``<id>.png`` is the tile
+  body and ``<id>-shadow.png`` is the shadow layer. The runtime draws every
+  shadow first, then every body, so a shadow can never sit on top of a
+  neighbouring tile;
 * ``frontend/public/table/shells/*.png`` (1x), ``shells/2x/*.png`` (2x) and
   ``frontend/public/table/shells.json``.
 
@@ -48,7 +52,7 @@ Usage (normally through ``bake-shells.sh``, which resolves the pinned Blender):
 
 A dry run builds the tile, material and lights, prints the shell plan, and
 writes nothing. ``--bake`` renders the 103 shells, writes both scales and the
-manifest. ``--preview`` with ``--only`` renders just those shells under
+manifest (body + shadow). ``--preview`` with ``--only`` renders just those shells under
 ``build/preview/``. ``--shadow-audition`` renders the REF plus the spec's
 ``shadowAudition`` variants on the flat, wall and hand shells under
 ``build/review/shadows/``. ``--audition`` renders the standing-hand fan
@@ -1277,6 +1281,22 @@ def compose_shell(
     rgb = premultiplied / np.maximum(out_alpha, 1e-6)[..., None]
     composed = np.concatenate([rgb, out_alpha[..., None]], axis=2)
 
+    # The drop shadow and AO are a separate sprite so the runtime can draw every
+    # shadow first and every tile body second. A shadow baked into the body
+    # sprite would land on top of a neighbour whenever that neighbour is drawn
+    # earlier (the painter's order), which is the shadow-over-tile artefact.
+    body = np.concatenate([tile_rgb, tile_alpha[..., None]], axis=2)
+    shadow_layer_alpha = shadow_alpha + (1.0 - shadow_alpha) * ao_alpha
+    shadow_layer_premultiplied = (
+        shadow_rgb * shadow_alpha[..., None]
+        + ao_rgb * (ao_alpha * (1.0 - shadow_alpha))[..., None]
+    )
+    shadow_rgb_out = shadow_layer_premultiplied / np.maximum(shadow_layer_alpha, 1e-6)[..., None]
+    shadow_layer = np.concatenate(
+        [shadow_rgb_out, shadow_layer_alpha[..., None]],
+        axis=2,
+    )
+
     stats = {
         "bodyBBox1x": [x0, y0, x1 - x0 + 1, y1 - y0 + 1],
         "solidInset1x": [solid[0] - x0, solid[1] - y0, x1 - solid[2], y1 - solid[3]],
@@ -1284,7 +1304,7 @@ def compose_shell(
         "shadowPeakAlpha": round(float(shadow_alpha.max()), 4),
         "aoPeakAlpha": round(float(ao_alpha.max()), 4),
     }
-    return composed, (x0, y0, x1, y1), stats
+    return composed, body, shadow_layer, (x0, y0, x1, y1), stats
 
 
 def alpha_profile(rgba: np.ndarray, bbox: tuple[int, int, int, int], pads: dict) -> dict:
@@ -1436,9 +1456,13 @@ def bake_shell(
         render_pass(scene, catcher_path, catcher, True)
         tile_rgba = load_rgba(tile_path)
         catcher_rgba = load_rgba(catcher_path)
-        composed, bbox, stats = compose_shell(tile_rgba, catcher_rgba, pads, spec, scale)
+        composed, body, shadow_layer, bbox, stats = compose_shell(
+            tile_rgba, catcher_rgba, pads, spec, scale
+        )
         renders[scale] = {
             "composed": composed,
+            "body": body,
+            "shadow": shadow_layer,
             "bbox": bbox,
             "stats": stats,
             "size": (width, height),
@@ -1452,13 +1476,30 @@ def bake_shell(
     crop_y = by0 - pads["top"]
     texture_width = advance_width + pads["left"] + pads["right"]
     texture_height = advance_height + pads["top"] + pads["bottom"]
-    texture_1x = quantize(frame_fade(crop(base["composed"], crop_x, crop_y, texture_width, texture_height), 1.0))
+    body_1x = quantize(
+        frame_fade(crop(base["body"], crop_x, crop_y, texture_width, texture_height), 1.0)
+    )
+    shadow_1x = quantize(
+        frame_fade(crop(base["shadow"], crop_x, crop_y, texture_width, texture_height), 1.0)
+    )
 
     big = renders[scale_2x]
-    texture_2x = quantize(
+    body_2x = quantize(
         frame_fade(
             crop(
-                big["composed"],
+                big["body"],
+                crop_x * scale_2x,
+                crop_y * scale_2x,
+                texture_width * scale_2x,
+                texture_height * scale_2x,
+            ),
+            float(scale_2x),
+        )
+    )
+    shadow_2x = quantize(
+        frame_fade(
+            crop(
+                big["shadow"],
                 crop_x * scale_2x,
                 crop_y * scale_2x,
                 texture_width * scale_2x,
@@ -1494,20 +1535,23 @@ def bake_shell(
         stack_step = [round(high[0] - low[0], 2), round(high[1] - low[1], 2)]
 
     texture_name = f"{shell['id']}.png"
-    encode_png(output_dir / texture_name, texture_1x)
-    encode_png(output_dir_2x / texture_name, texture_2x)
+    shadow_name = f"{shell['id']}-shadow.png"
+    encode_png(output_dir / texture_name, body_1x)
+    encode_png(output_dir_2x / texture_name, body_2x)
+    encode_png(output_dir / shadow_name, shadow_1x)
+    encode_png(output_dir_2x / shadow_name, shadow_2x)
 
     centre_x = sum(point[0] for point in quad) / 4.0
     centre_y = sum(point[1] for point in quad) / 4.0
     sample_x = int(round(centre_x))
     sample_y = int(round(centre_y))
-    sample = texture_1x[
+    sample = body_1x[
         max(0, sample_y - 1) : sample_y + 2, max(0, sample_x - 1) : sample_x + 2, :3
     ]
     face_sample = [int(round(value)) for value in sample.reshape(-1, 3).mean(axis=0)]
 
     profile = alpha_profile(
-        texture_1x,
+        shadow_1x,
         (
             pads["left"],
             pads["top"],
@@ -1519,6 +1563,13 @@ def bake_shell(
     record = {
         "textureFile": f"shells/{texture_name}",
         "textureFile2x": f"shells/2x/{texture_name}",
+        "shadowTextureFile": f"shells/{shadow_name}",
+        "shadowTextureFile2x": f"shells/2x/{shadow_name}",
+        "shadowTexWidth": int(texture_width),
+        "shadowTexHeight": int(texture_height),
+        "shadowAnchorX": int(pads["left"]),
+        "shadowAnchorY": int(pads["top"]),
+        "shadowOffsetPx": [0, 0],
         "texWidth": int(texture_width),
         "texHeight": int(texture_height),
         "anchorX": int(pads["left"]),
@@ -1588,7 +1639,7 @@ def bake_shell(
             "solidInset1x": base["stats"]["solidInset1x"],
             "faceSampleRgb": face_sample,
             "edgeSamplesRgb": edge_samples(
-                texture_1x,
+                body_1x,
                 (
                     pads["left"],
                     pads["top"],
@@ -1596,17 +1647,23 @@ def bake_shell(
                     texture_height - pads["bottom"] - 1,
                 ),
             ),
-            "bytes1x": int((output_dir / texture_name).stat().st_size),
-            "bytes2x": int((output_dir_2x / texture_name).stat().st_size),
+            "bytes1x": int((output_dir / texture_name).stat().st_size)
+            + int((output_dir / shadow_name).stat().st_size),
+            "bytes2x": int((output_dir_2x / texture_name).stat().st_size)
+            + int((output_dir_2x / shadow_name).stat().st_size),
         },
     }
     if record_hashes:
         record["sha256"] = {
-            "decodedRgba1x": rgba_sha256(texture_1x),
-            "decodedRgba2x": rgba_sha256(texture_2x),
+            "decodedRgba1x": rgba_sha256(body_1x),
+            "decodedRgba2x": rgba_sha256(body_2x),
+        }
+        record["shadowSha256"] = {
+            "decodedRgba1x": rgba_sha256(shadow_1x),
+            "decodedRgba2x": rgba_sha256(shadow_2x),
         }
     log(
-        f"{shell['id']}: {texture_width}x{texture_height} @1x "
+        f"{shell['id']}: body {texture_width}x{texture_height} @1x + shadow, "
         f"(advance {advance_width}x{advance_height}, anchor {pads['left']},{pads['top']}), "
         f"extent L{profile['extentPx']['left']}/T{profile['extentPx']['top']}/"
         f"R{profile['extentPx']['right']}/B{profile['extentPx']['bottom']}, "
@@ -1854,6 +1911,8 @@ def bake_audition(
             quad_size = face_quad_size(record["faceQuad"])
             record["textureFile"] = f"candidates/1x/{shell['id']}.png"
             record["textureFile2x"] = f"candidates/2x/{shell['id']}.png"
+            record["shadowTextureFile"] = f"candidates/1x/{shell['id']}-shadow.png"
+            record["shadowTextureFile2x"] = f"candidates/2x/{shell['id']}-shadow.png"
             record["candidate"] = {
                 "candidateId": candidate["candidateId"],
                 "label": candidate["label"],
@@ -2026,6 +2085,8 @@ def bake_shadow_audition(
             expected_aspect(shell, record["advanceWidth"], record["advanceHeight"])
             record["textureFile"] = f"shadows/{variant_id}/1x/{shell_id}.png"
             record["textureFile2x"] = f"shadows/{variant_id}/2x/{shell_id}.png"
+            record["shadowTextureFile"] = f"shadows/{variant_id}/1x/{shell_id}-shadow.png"
+            record["shadowTextureFile2x"] = f"shadows/{variant_id}/2x/{shell_id}-shadow.png"
             record["shadowVariant"] = {
                 "id": variant_id,
                 "label": variant["label"],
