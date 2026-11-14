@@ -40,7 +40,7 @@
     "targetLongAxisPx1x": 104,
     "shadowContract": {
       "phase": "1c",
-      "note": "Phase 1b review: the Phase 1/1b contact shadow was too tight. The drop shadow is now deliberately diffuse and subtle: 10-16 px right/bottom at the new @1x (was 3-4), peak alpha 0.12 (was 0.33), an 8 px @1x blur and a gentle 16 px falloff. The top/left AO fringe stays 1-2 px and drops to peak 0.20. The check enforces these ranges.",
+      "note": "Phase 1c refinement: the shadow is darker and still diffuse, with the darkest part at the tile and a falloff to the padding edge. Peak alpha 0.22, contact floor 0.12, 8 px @1x blur, 16 px falloff, 10-16 px right/bottom extent, 1-2 px top/left AO at 0.20. The shadow window now follows the silhouette inside the body box, so the beveled corners are not left unshadowed. The check enforces these ranges.",
       "extentPx1x": {
         "right": [
           10,
@@ -61,12 +61,12 @@
       },
       "peakAlpha": {
         "right": [
-          0.08,
-          0.16
+          0.16,
+          0.32
         ],
         "bottom": [
-          0.08,
-          0.16
+          0.16,
+          0.32
         ],
         "left": [
           0.14,
@@ -87,9 +87,9 @@
       "note": "Phase 1b decision: the Phase 1 @2x output is the new @1x base. The long axis of the projected tile body is now 104 CSS px at @1x (was 52) and 208 px at @2x, so the board coordinate space doubles in both axes and every consumer must read the new shells.json. Render real pixels at the new resolution; never upscale the Phase 1 textures. The 3-4 px right/bottom shadow and 1-2 px top/left AO contract is unchanged in pixels at the new @1x."
     },
     "shadow": {
-      "peakAlpha": 0.12,
+      "peakAlpha": 0.22,
       "colorHex": "#0b1418",
-      "contactFloor": 0.25,
+      "contactFloor": 0.12,
       "source": "Cycles shadow-catcher alpha, clamped to padding.right/bottom"
     },
     "ambientOcclusion": {
@@ -1896,6 +1896,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
+        "faceLocalZ": "top",
         "projection": "orthographic",
         "orthoScale": 1.642469,
         "pixelsPerUnit2x": 185.087201,
@@ -1906,29 +1907,28 @@
         "resolution2x": [
           236,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 19.2,
           "top": 13.4,
-          "right": 50.718,
-          "bottom": 41.992
+          "right": 84.329,
+          "bottom": 76.404
         },
-        "shadowCatcherPeak": 0.4966,
+        "shadowCatcherPeak": 0.5816,
         "solidInset1x": [
           1,
           1,
@@ -1952,12 +1952,12 @@
             31
           ]
         },
-        "bytes1x": 7990,
-        "bytes2x": 23580
+        "bytes1x": 8333,
+        "bytes2x": 24322
       },
       "sha256": {
-        "decodedRgba1x": "4498bd7c49eddbe618411a067deb0eb6ea4117c34ea6c6137c45030b88edb1e9",
-        "decodedRgba2x": "c644100e57cc2aecf9654a77676cfae16425df16a631d5942f62c02d9fa4d635"
+        "decodedRgba1x": "409f89170bec5b09a91a0cb53659f102b843b841536e0fe51a1e96bfb7bdff85",
+        "decodedRgba2x": "9b5cfa70475fd70e25b6f85ba3c6f66bee55b736de14cccf19df0b0ce108f209"
       }
     },
     "shell_flat_sideways": {
@@ -2015,6 +2015,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
+        "faceLocalZ": "top",
         "projection": "orthographic",
         "orthoScale": 1.461538,
         "pixelsPerUnit2x": 208.0,
@@ -2025,29 +2026,28 @@
         "resolution2x": [
           304,
           294
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 18.2,
           "top": 20.58,
-          "right": 43.612,
-          "bottom": 65.761
+          "right": 71.365,
+          "bottom": 119.973
         },
-        "shadowCatcherPeak": 0.5031,
+        "shadowCatcherPeak": 0.5846,
         "solidInset1x": [
           1,
           1,
@@ -2071,12 +2071,12 @@
             32
           ]
         },
-        "bytes1x": 9543,
-        "bytes2x": 29353
+        "bytes1x": 9933,
+        "bytes2x": 30110
       },
       "sha256": {
-        "decodedRgba1x": "fa749e3c403c1ed4d338611067f9f4a0423c301af9c41d14217fde0b7c049196",
-        "decodedRgba2x": "812798afcdc0d580c50a0d0ff426ec4af1966ee8cd74c15533012c0cb0ffbe4c"
+        "decodedRgba1x": "d4a0e5453fcb7ed6bd678d047775e949c10989affabec546a1431c24775453f5",
+        "decodedRgba2x": "723723c4d15d0d6c906e855c1fa871005d88b4cdb5e6c49acdd81292278f3dc6"
       }
     },
     "shell_wall_horizontal": {
@@ -2140,6 +2140,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
+        "faceLocalZ": "bottom",
         "projection": "orthographic",
         "orthoScale": 1.642469,
         "pixelsPerUnit2x": 185.087191,
@@ -2150,29 +2151,28 @@
         "resolution2x": [
           236,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 19.2,
           "top": 13.4,
-          "right": 50.231,
-          "bottom": 41.145
+          "right": 83.306,
+          "bottom": 74.616
         },
-        "shadowCatcherPeak": 0.4853,
+        "shadowCatcherPeak": 0.5682,
         "solidInset1x": [
           1,
           1,
@@ -2196,12 +2196,12 @@
             75
           ]
         },
-        "bytes1x": 8917,
-        "bytes2x": 26215
+        "bytes1x": 9275,
+        "bytes2x": 26972
       },
       "sha256": {
-        "decodedRgba1x": "5fc9ce9a0ab1eda6506b2500ce4188fcc6ade21df861d121f7ea3d82a9a1bba4",
-        "decodedRgba2x": "3f6100d4388fac17bc79501bc3ec5e7f91bdeb97f8f93b905b98986341bd6d00"
+        "decodedRgba1x": "5b83bf0b5cab6efe502d2418638383438f8f652aaa0548fbe1d1dab0399e63e1",
+        "decodedRgba2x": "8b5ec93eb0228175994f6117417f16129cb0a51292293219642a93d120b867b7"
       }
     },
     "shell_wall_horizontal_faceup": {
@@ -2265,6 +2265,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
+        "faceLocalZ": "top",
         "projection": "orthographic",
         "orthoScale": 1.642469,
         "pixelsPerUnit2x": 185.087201,
@@ -2275,29 +2276,28 @@
         "resolution2x": [
           236,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 19.2,
           "top": 13.4,
-          "right": 50.718,
-          "bottom": 41.992
+          "right": 84.329,
+          "bottom": 76.404
         },
-        "shadowCatcherPeak": 0.4966,
+        "shadowCatcherPeak": 0.5816,
         "solidInset1x": [
           1,
           1,
@@ -2321,12 +2321,12 @@
             31
           ]
         },
-        "bytes1x": 7990,
-        "bytes2x": 23580
+        "bytes1x": 8333,
+        "bytes2x": 24322
       },
       "sha256": {
-        "decodedRgba1x": "4498bd7c49eddbe618411a067deb0eb6ea4117c34ea6c6137c45030b88edb1e9",
-        "decodedRgba2x": "c644100e57cc2aecf9654a77676cfae16425df16a631d5942f62c02d9fa4d635"
+        "decodedRgba1x": "409f89170bec5b09a91a0cb53659f102b843b841536e0fe51a1e96bfb7bdff85",
+        "decodedRgba2x": "9b5cfa70475fd70e25b6f85ba3c6f66bee55b736de14cccf19df0b0ce108f209"
       }
     },
     "shell_wall_side_left": {
@@ -2390,6 +2390,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 301.7919,
         "shiftX": -1.214903,
@@ -2404,29 +2405,28 @@
         "resolution2x": [
           304,
           270
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.6,
           "top": 17.4,
-          "right": 38.816,
-          "bottom": 59.976
+          "right": 60.82,
+          "bottom": 93.533
         },
-        "shadowCatcherPeak": 0.4755,
+        "shadowCatcherPeak": 0.6852,
         "solidInset1x": [
           1,
           1,
@@ -2450,12 +2450,12 @@
             75
           ]
         },
-        "bytes1x": 11216,
-        "bytes2x": 32505
+        "bytes1x": 11605,
+        "bytes2x": 33270
       },
       "sha256": {
-        "decodedRgba1x": "cef40275b604f94fee5f471cd141e67be8f6f103dd7a6d2838ac1f39c098ef59",
-        "decodedRgba2x": "2c89eadc3b6c8a673061737b391d8afae2fe10db1c75adbefbbad08f1222bcf1"
+        "decodedRgba1x": "37ec344ee2d6c8c122a904d1fd556bfc1f4f4de7fac520697409e4af963edc55",
+        "decodedRgba2x": "870a75491c63e0a6dee9eaf013e3457491f5d3c0ed8ee3dbab0f3e27eb417911"
       }
     },
     "shell_wall_side_left_faceup": {
@@ -2519,6 +2519,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 301.7919,
         "shiftX": -1.214903,
@@ -2533,29 +2534,28 @@
         "resolution2x": [
           304,
           270
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.6,
           "top": 17.4,
-          "right": 39.322,
-          "bottom": 61.463
+          "right": 61.369,
+          "bottom": 95.851
         },
-        "shadowCatcherPeak": 0.4845,
+        "shadowCatcherPeak": 0.7008,
         "solidInset1x": [
           1,
           1,
@@ -2579,12 +2579,12 @@
             32
           ]
         },
-        "bytes1x": 9724,
-        "bytes2x": 28261
+        "bytes1x": 10124,
+        "bytes2x": 29052
       },
       "sha256": {
-        "decodedRgba1x": "352f6a5f9d7515889692d0779d97311c9520ea5d8ae32df64f700fa38c67e0bc",
-        "decodedRgba2x": "a5c90b52abfaabe3d9b0dff4f2a60626077d2ca94392fe58a0fd1cbb3374239e"
+        "decodedRgba1x": "a0721f1e017bbc68d54adeb2196b52d269d4f349da067c8b288a3a60f65c6a26",
+        "decodedRgba2x": "170e6ceed5e816e2828f9adc11de6f1b3d3e08447bda89f8ed695949afabd22c"
       }
     },
     "shell_wall_side_right": {
@@ -2648,6 +2648,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 301.7918,
         "shiftX": 1.214903,
@@ -2662,29 +2663,28 @@
         "resolution2x": [
           304,
           270
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 3.8,
           "top": 17.4,
-          "right": 33.769,
-          "bottom": 61.008
+          "right": 50.557,
+          "bottom": 90.557
         },
-        "shadowCatcherPeak": 0.4658,
+        "shadowCatcherPeak": 0.7292,
         "solidInset1x": [
           1,
           1,
@@ -2708,12 +2708,12 @@
             75
           ]
         },
-        "bytes1x": 10331,
-        "bytes2x": 30102
+        "bytes1x": 10678,
+        "bytes2x": 30845
       },
       "sha256": {
-        "decodedRgba1x": "6c8019756c9f2c1146761f602d8d31af688bdedeb8e9bbfe477b6b718bd883fe",
-        "decodedRgba2x": "43b24072b275e28cd72a6697fba853f3cace8836fcc6b8a354404fdd1b9c5f1e"
+        "decodedRgba1x": "9dcf3d2a4688fd31acf3137928911ff8af89e500722da897855dfbee87603973",
+        "decodedRgba2x": "a62d128e53540516b1450d96505c6aa140d84b881914dd2ed8fa4a2354fcd607"
       }
     },
     "shell_wall_side_right_faceup": {
@@ -2777,6 +2777,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 301.7918,
         "shiftX": 1.214903,
@@ -2791,29 +2792,28 @@
         "resolution2x": [
           304,
           270
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 3.8,
           "top": 17.4,
-          "right": 33.839,
-          "bottom": 62.875
+          "right": 50.561,
+          "bottom": 92.941
         },
-        "shadowCatcherPeak": 0.4732,
+        "shadowCatcherPeak": 0.7446,
         "solidInset1x": [
           1,
           1,
@@ -2837,12 +2837,12 @@
             32
           ]
         },
-        "bytes1x": 9729,
-        "bytes2x": 28528
+        "bytes1x": 10075,
+        "bytes2x": 29250
       },
       "sha256": {
-        "decodedRgba1x": "7bcd0e33d4062d31aa28c2bf97a7368096be63bfdd6487558570e0c0f672db29",
-        "decodedRgba2x": "3c0e350f4fe12d48bdb08d5036840bdd1054ff9723db6965f9dc4ac28d300b25"
+        "decodedRgba1x": "e73a15271afb9f23a8e606a0630c99128fc6bbf33e651b88af4e7a0811c4c69f",
+        "decodedRgba2x": "a83ca7c6610ba3fe0beeb2ffbf290aa05be77eec8621b17ff0037d5558911d80"
       }
     },
     "shell_hand_slot_00": {
@@ -2909,6 +2909,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 658.0646,
         "shiftX": -3.088177,
@@ -2923,29 +2924,28 @@
         "resolution2x": [
           262,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 3.404,
           "top": 13.435,
-          "right": 38.878,
-          "bottom": 31.71
+          "right": 46.306,
+          "bottom": 48.624
         },
-        "shadowCatcherPeak": 0.3659,
+        "shadowCatcherPeak": 0.6835,
         "solidInset1x": [
           1,
           1,
@@ -2969,12 +2969,12 @@
             98
           ]
         },
-        "bytes1x": 10569,
-        "bytes2x": 30941
+        "bytes1x": 10854,
+        "bytes2x": 31594
       },
       "sha256": {
-        "decodedRgba1x": "d815ad6820fd8602f5360313437bda220d5060627abb7938c350f064315f6af4",
-        "decodedRgba2x": "c26704a5b5a041e23bd5a810a5fbaff75cae6570707ac68b75ce2fceaa899f7e"
+        "decodedRgba1x": "77f1739e4e38c0d1a0241c604075dd6043214c2b3218139871ee14f41f5a250e",
+        "decodedRgba2x": "f93097311a47642d4819f443b0e2f15c628ba44ff2d173e13ed7b6d65f106d3b"
       }
     },
     "shell_hand_slot_01": {
@@ -3041,6 +3041,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 673.4882,
         "shiftX": -2.63461,
@@ -3055,29 +3056,28 @@
         "resolution2x": [
           256,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.2,
           "top": 13.435,
-          "right": 38.914,
-          "bottom": 30.765
+          "right": 47.961,
+          "bottom": 48.973
         },
-        "shadowCatcherPeak": 0.3665,
+        "shadowCatcherPeak": 0.6246,
         "solidInset1x": [
           1,
           1,
@@ -3101,12 +3101,12 @@
             99
           ]
         },
-        "bytes1x": 10346,
-        "bytes2x": 30413
+        "bytes1x": 10649,
+        "bytes2x": 31077
       },
       "sha256": {
-        "decodedRgba1x": "3dd465cec3f88a2fcbe8b05a590da6da9a6b1974752817100bc9684782310378",
-        "decodedRgba2x": "e922c8a53af18ff6fdc3c298896a29504769a746fe61dbccf39527585c8adde3"
+        "decodedRgba1x": "b7b48cf6aa01c50c3484a9d4c85801d025010136069dc44795a3efdf1db14b61",
+        "decodedRgba2x": "d18426d578a13cb2d53d376c5451538d633929a29f912236936debd711a586e3"
       }
     },
     "shell_hand_slot_02": {
@@ -3173,6 +3173,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 684.1782,
         "shiftX": -2.142133,
@@ -3187,29 +3188,28 @@
         "resolution2x": [
           252,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.0,
           "top": 13.435,
-          "right": 38.922,
-          "bottom": 29.914
+          "right": 49.0,
+          "bottom": 49.098
         },
-        "shadowCatcherPeak": 0.367,
+        "shadowCatcherPeak": 0.5914,
         "solidInset1x": [
           1,
           1,
@@ -3233,12 +3233,12 @@
             99
           ]
         },
-        "bytes1x": 10216,
-        "bytes2x": 30112
+        "bytes1x": 10519,
+        "bytes2x": 30838
       },
       "sha256": {
-        "decodedRgba1x": "a5c054bd0ea499a78e7346bce76bdd5619f9aa28ac51547eaf6c82800647dfdd",
-        "decodedRgba2x": "90d543754971a58dab66303a8035cc1f5a6ce33dd48d08235f66d55afccb1ff8"
+        "decodedRgba1x": "d5157db8df80af5402196f4bb61a88b93b1c0bbbf246afdb08b4352fcdfc5334",
+        "decodedRgba2x": "b2c5d8d1f6ea5b96f6cf55ccb6c3f4c0718ca9aed6136b7933f466a06cd9d6fc"
       }
     },
     "shell_hand_slot_03": {
@@ -3305,6 +3305,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 700.8656,
         "shiftX": -1.647055,
@@ -3319,29 +3320,28 @@
         "resolution2x": [
           246,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.404,
           "top": 13.439,
-          "right": 38.847,
-          "bottom": 28.608
+          "right": 50.62,
+          "bottom": 49.655
         },
-        "shadowCatcherPeak": 0.3708,
+        "shadowCatcherPeak": 0.538,
         "solidInset1x": [
           1,
           1,
@@ -3365,12 +3365,12 @@
             99
           ]
         },
-        "bytes1x": 9861,
-        "bytes2x": 29468
+        "bytes1x": 10220,
+        "bytes2x": 30205
       },
       "sha256": {
-        "decodedRgba1x": "d6bcd7bdef7455dee619139400d41ed78f935b5e8778e55dd7e039a6296312fe",
-        "decodedRgba2x": "786b73a10589af4b95ba81202527293c4aa8d3e447b4bb8042452a3aab53a02c"
+        "decodedRgba1x": "19a4064cfacbd88187d6cbd6aa997d2ffc3be8f9f0557b0cc68b94b1d2fddc61",
+        "decodedRgba2x": "b908d33037db1f58d83604c2ada193efeee86f889b9e29791b499d526325f66a"
       }
     },
     "shell_hand_slot_04": {
@@ -3437,6 +3437,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 712.4498,
         "shiftX": -1.117905,
@@ -3451,29 +3452,28 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.404,
           "top": 13.431,
-          "right": 38.839,
-          "bottom": 27.776
+          "right": 51.718,
+          "bottom": 50.506
         },
-        "shadowCatcherPeak": 0.372,
+        "shadowCatcherPeak": 0.5049,
         "solidInset1x": [
           1,
           1,
@@ -3497,12 +3497,12 @@
             99
           ]
         },
-        "bytes1x": 9620,
-        "bytes2x": 28758
+        "bytes1x": 9973,
+        "bytes2x": 29481
       },
       "sha256": {
-        "decodedRgba1x": "490546b6d0109d7bf640a61328d0ae4d3c9dbcc34d63a9b466fb8f718209fafa",
-        "decodedRgba2x": "8c78b320bcc13fee315caf8891a147bfb6bc4b9c7da3263b9d350fa838259f0a"
+        "decodedRgba1x": "8ccba887afddbd15b3f1ab2cbc51723a37c17bcacb6f2f429838bdb26efa2af6",
+        "decodedRgba2x": "535ea916c44a2f199d79540a203c995d9766ebd8d5d6b7a90f1913302c39cabd"
       }
     },
     "shell_hand_slot_05": {
@@ -3569,6 +3569,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 730.5631,
         "shiftX": -0.575808,
@@ -3583,29 +3584,28 @@
         "resolution2x": [
           236,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2078,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.0,
           "top": 13.439,
-          "right": 38.745,
-          "bottom": 27.345
+          "right": 51.706,
+          "bottom": 50.239
         },
-        "shadowCatcherPeak": 0.3729,
+        "shadowCatcherPeak": 0.4963,
         "solidInset1x": [
           1,
           1,
@@ -3629,12 +3629,12 @@
             99
           ]
         },
-        "bytes1x": 9288,
-        "bytes2x": 27618
+        "bytes1x": 9633,
+        "bytes2x": 28504
       },
       "sha256": {
-        "decodedRgba1x": "b0c4b19968b98461b212f3b5d646db9510e20719722aa093982277b77c92b25d",
-        "decodedRgba2x": "21524b18787c1fba0a27a4f685a442eabb75ad68e263bfb3dd5e257ac01743a4"
+        "decodedRgba1x": "c5a2ea229448db7af4124605bfb9829b1d4fa8e873511ad705eb4e9c98bcb3fd",
+        "decodedRgba2x": "320282b0b580a27fa1939af98581fe7d18fa2a1ffa018271ff66bce1e645dde7"
       }
     },
     "shell_hand_slot_06": {
@@ -3701,6 +3701,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 736.8073,
         "shiftX": 0.0,
@@ -3715,29 +3716,28 @@
         "resolution2x": [
           234,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2078,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 7.2,
           "top": 13.443,
-          "right": 38.651,
-          "bottom": 27.09
+          "right": 53.286,
+          "bottom": 50.176
         },
-        "shadowCatcherPeak": 0.372,
+        "shadowCatcherPeak": 0.5012,
         "solidInset1x": [
           1,
           1,
@@ -3761,12 +3761,12 @@
             98
           ]
         },
-        "bytes1x": 9043,
-        "bytes2x": 26629
+        "bytes1x": 9413,
+        "bytes2x": 27485
       },
       "sha256": {
-        "decodedRgba1x": "98743eeebb4f03d5f3136e2b8f7f8c8c904a561c20de0ed11f5fb21fe5983cb6",
-        "decodedRgba2x": "9e82321606dd8f26883d6e76702a04463d39aacea66bca86695d0f098e7730a3"
+        "decodedRgba1x": "2f4e4d9242d89125682379e34af32b8b6e078326e7ca79c0808598e02d70e8c8",
+        "decodedRgba2x": "2d856a141a55f427db423f8f9550ef65e2d5d2ed97cb92121ffcaa499d2b2c0a"
       }
     },
     "shell_hand_slot_07": {
@@ -3833,6 +3833,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 730.5631,
         "shiftX": 0.575808,
@@ -3847,29 +3848,28 @@
         "resolution2x": [
           236,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2078,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 11.8,
           "top": 13.443,
-          "right": 38.494,
-          "bottom": 27.624
+          "right": 51.62,
+          "bottom": 48.863
         },
-        "shadowCatcherPeak": 0.3694,
+        "shadowCatcherPeak": 0.549,
         "solidInset1x": [
           1,
           1,
@@ -3893,12 +3893,12 @@
             99
           ]
         },
-        "bytes1x": 9458,
-        "bytes2x": 28214
+        "bytes1x": 9798,
+        "bytes2x": 28996
       },
       "sha256": {
-        "decodedRgba1x": "d7c5609f6907efb3bc1ebcfb4abc338f7d6ac7cdf0d9b8ed478cb6ed423bc4f3",
-        "decodedRgba2x": "ca4347ef61d94dc70cfa6229644e73175152a62149ebe2c6a11bde09504c1f0d"
+        "decodedRgba1x": "3b0898349e58b7a737902c9b513815f5d81e14296b07e6089115e438bc56b876",
+        "decodedRgba2x": "bdb77fbcdc2bfcf6587394668f6765b54b0f4b155dac8c335501564abbc79217"
       }
     },
     "shell_hand_slot_08": {
@@ -3965,6 +3965,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 712.4498,
         "shiftX": 1.117905,
@@ -3979,29 +3980,28 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2078,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 11.008,
           "top": 13.439,
-          "right": 38.376,
-          "bottom": 27.969
+          "right": 51.047,
+          "bottom": 48.365
         },
-        "shadowCatcherPeak": 0.3685,
+        "shadowCatcherPeak": 0.5598,
         "solidInset1x": [
           1,
           1,
@@ -4025,12 +4025,12 @@
             98
           ]
         },
-        "bytes1x": 9804,
-        "bytes2x": 29121
+        "bytes1x": 10125,
+        "bytes2x": 29828
       },
       "sha256": {
-        "decodedRgba1x": "6aeeb15b5ac7232c44015fee6422ae83008ca5e29afc80812f20b759db00be2a",
-        "decodedRgba2x": "58289ed1c803b9f1260e16339076a12875ac307fe696348ea3dd02a799dd68e7"
+        "decodedRgba1x": "1b3b09893ef180653912bd0289ffa0fd62c716e7153b64e0ab9d7889d2c5efcd",
+        "decodedRgba2x": "22a4194aac827669bec1be2c4aca106735546084abb3a6df76c836e404630471"
       }
     },
     "shell_hand_slot_09": {
@@ -4097,6 +4097,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 700.8656,
         "shiftX": 1.647055,
@@ -4111,29 +4112,28 @@
         "resolution2x": [
           246,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2078,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 7.608,
           "top": 13.435,
-          "right": 38.271,
-          "bottom": 28.725
+          "right": 49.494,
+          "bottom": 47.855
         },
-        "shadowCatcherPeak": 0.3666,
+        "shadowCatcherPeak": 0.6064,
         "solidInset1x": [
           1,
           1,
@@ -4157,12 +4157,12 @@
             99
           ]
         },
-        "bytes1x": 10159,
-        "bytes2x": 29955
+        "bytes1x": 10452,
+        "bytes2x": 30652
       },
       "sha256": {
-        "decodedRgba1x": "da4491dbc7c175646285f15fc6798192feb1adb21f390cc3ba04a167a389d82d",
-        "decodedRgba2x": "23d4e302e23d4563a7dd5fa14b9caec66f2436e240c9d2f3ececb847bfd96432"
+        "decodedRgba1x": "8b57a0fcb3a9fa279c839fc3dc3bf724fdb5c7a5399e7f2f3ce17b9999b59347",
+        "decodedRgba2x": "8ed867f5c99232e7f35d3814babfa2d39094d91e5ada7d9145b7cb5318776e27"
       }
     },
     "shell_hand_slot_10": {
@@ -4229,6 +4229,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 684.1782,
         "shiftX": 2.142133,
@@ -4243,29 +4244,28 @@
         "resolution2x": [
           252,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 3.6,
           "top": 13.439,
-          "right": 38.137,
-          "bottom": 29.906
+          "right": 47.137,
+          "bottom": 47.302
         },
-        "shadowCatcherPeak": 0.3638,
+        "shadowCatcherPeak": 0.6791,
         "solidInset1x": [
           1,
           1,
@@ -4289,12 +4289,12 @@
             99
           ]
         },
-        "bytes1x": 10390,
-        "bytes2x": 30852
+        "bytes1x": 10668,
+        "bytes2x": 31459
       },
       "sha256": {
-        "decodedRgba1x": "e89134637c111c06bcfdab4ada0d1665d9dbab0b1074b1db7753f3f72bcb2f58",
-        "decodedRgba2x": "ea2c85519b56984f62c8de34e859e58d714e0df925ca6ab0e9e56cf5161b3f36"
+        "decodedRgba1x": "6703a6c1da6ef73d80fb0eb6cc0925e3cab504b24b1d5fb7fbb429588a542780",
+        "decodedRgba2x": "c0fd85805627d315b7bb6606be170ca9b886bbe328fe7c97163b87a2952238f6"
       }
     },
     "shell_hand_slot_11": {
@@ -4361,6 +4361,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 673.4882,
         "shiftX": 2.63461,
@@ -4375,29 +4376,28 @@
         "resolution2x": [
           256,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 3.2,
           "top": 13.439,
-          "right": 38.031,
-          "bottom": 30.729
+          "right": 45.608,
+          "bottom": 47.624
         },
-        "shadowCatcherPeak": 0.3615,
+        "shadowCatcherPeak": 0.7211,
         "solidInset1x": [
           1,
           1,
@@ -4421,12 +4421,12 @@
             99
           ]
         },
-        "bytes1x": 10740,
-        "bytes2x": 31037
+        "bytes1x": 11011,
+        "bytes2x": 31628
       },
       "sha256": {
-        "decodedRgba1x": "fd5449669a3523ee6efe342dca467e51cc3e71013d72df94c56e586af957b456",
-        "decodedRgba2x": "1320f32e6550a72a65236e8cf07c879014b7c81b7fcf9733add1b376420d588b"
+        "decodedRgba1x": "15a47da3e0715020faddfcb5d6d27bdecaf0e6c9dfd5872e89676fdbd34f2ec8",
+        "decodedRgba2x": "171049620bbd082be9f18fd53b7374a35d4186dccc551389a3af69065b746cb3"
       }
     },
     "shell_hand_slot_12": {
@@ -4493,6 +4493,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 658.0646,
         "shiftX": 3.088177,
@@ -4507,29 +4508,28 @@
         "resolution2x": [
           262,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
           "right": 12,
-          "bottom": 10
+          "bottom": 11
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.4,
           "top": 13.435,
-          "right": 37.839,
-          "bottom": 31.373
+          "right": 44.922,
+          "bottom": 48.224
         },
-        "shadowCatcherPeak": 0.3602,
+        "shadowCatcherPeak": 0.7341,
         "solidInset1x": [
           1,
           1,
@@ -4553,12 +4553,12 @@
             99
           ]
         },
-        "bytes1x": 10801,
-        "bytes2x": 32013
+        "bytes1x": 11062,
+        "bytes2x": 32549
       },
       "sha256": {
-        "decodedRgba1x": "faf0b19374f3ddac3069f96cc7428645ab8a65c98463812eeb7087800fbf99b0",
-        "decodedRgba2x": "d6f9a2441012481ae840ab0b5a2e043d8c5e476858ada80965c0f0acc0c81de5"
+        "decodedRgba1x": "0feeeaca92dfa948dbc820d800cf5fbd350ff0a53cfa8d6adefe4445ff8e6b7c",
+        "decodedRgba2x": "1e0621e30c89ef10bff678d10bc9ca1b355cfd6a65384db30cb8ffe7d9e5620f"
       }
     },
     "shell_hand_slot_draw": {
@@ -4625,6 +4625,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 643.3314,
         "shiftX": 3.697272,
@@ -4639,8 +4640,7 @@
         "resolution2x": [
           268,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -4652,16 +4652,16 @@
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.4,
           "top": 13.435,
-          "right": 37.463,
-          "bottom": 32.506
+          "right": 43.388,
+          "bottom": 48.224
         },
-        "shadowCatcherPeak": 0.3578,
+        "shadowCatcherPeak": 0.7901,
         "solidInset1x": [
           1,
           1,
@@ -4685,12 +4685,12 @@
             99
           ]
         },
-        "bytes1x": 11015,
-        "bytes2x": 32125
+        "bytes1x": 11218,
+        "bytes2x": 32662
       },
       "sha256": {
-        "decodedRgba1x": "862c1be73dd7bb3e0b0bed84115a98e96db1b664fb795ba1e846a61acc5c4787",
-        "decodedRgba2x": "0c847fd0b2d6010599ac1cfacc0e2060433c67bd31036c530da07a72766e8ba1"
+        "decodedRgba1x": "fdce0376a039d68200d5e800c3d191b719ef8b6693dead9dcd3ed6b9a87bb0e8",
+        "decodedRgba2x": "f88d19891af88c55ef974ad61428c1888e4e22906216eb3f6e6fd6fdb0cb2228"
       }
     },
     "shell_hand_top_slot_00": {
@@ -4757,6 +4757,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1799.736,
         "shiftX": -3.311513,
@@ -4771,8 +4772,7 @@
         "resolution2x": [
           244,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -4784,16 +4784,16 @@
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.8,
           "top": 13.447,
-          "right": 37.886,
-          "bottom": 31.867
+          "right": 49.631,
+          "bottom": 55.78
         },
-        "shadowCatcherPeak": 0.3802,
+        "shadowCatcherPeak": 0.5432,
         "solidInset1x": [
           1,
           1,
@@ -4817,12 +4817,12 @@
             41
           ]
         },
-        "bytes1x": 9309,
-        "bytes2x": 27419
+        "bytes1x": 9623,
+        "bytes2x": 28123
       },
       "sha256": {
-        "decodedRgba1x": "9be810f662908d40a04ea2d318ed8520aaa17f1fac3a508b6b1d209b1096cb80",
-        "decodedRgba2x": "eb878a074423965242c0227b6322ab9b35133d62162a118fde0a7d4b27fa0002"
+        "decodedRgba1x": "a9f44d89da5e241b7e5fc374bf4a42d243da163c8bb2fc43e8fb43036779d426",
+        "decodedRgba2x": "5351e25306ae06edeaf646254463839c1b24b86498298c99b863bdd480494eb3"
       }
     },
     "shell_hand_top_slot_01": {
@@ -4889,6 +4889,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1814.6096,
         "shiftX": -2.782738,
@@ -4903,8 +4904,7 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -4916,16 +4916,16 @@
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 6.4,
           "top": 13.447,
-          "right": 37.827,
-          "bottom": 31.4
+          "right": 49.812,
+          "bottom": 55.741
         },
-        "shadowCatcherPeak": 0.3814,
+        "shadowCatcherPeak": 0.5282,
         "solidInset1x": [
           1,
           1,
@@ -4949,12 +4949,12 @@
             40
           ]
         },
-        "bytes1x": 9168,
-        "bytes2x": 26941
+        "bytes1x": 9509,
+        "bytes2x": 27698
       },
       "sha256": {
-        "decodedRgba1x": "7911c3655a5f3398d05f26e7a9fc202f8255b6e3afc9e44cfea6c34f8c72d8d1",
-        "decodedRgba2x": "78f2a90117dd12aa21f242c988f83e02ea2723de332eff7baa24244b47da6d70"
+        "decodedRgba1x": "fcc2b1a2860a69bad4fd5baf3c018716943d4b9a2d66b9c07f15302f52627dd1",
+        "decodedRgba2x": "46e6f1a294ec01fbf3c7ec77b2b62e25e1fac74bc587e352a470f8035e2fbbd0"
       }
     },
     "shell_hand_top_slot_02": {
@@ -5021,6 +5021,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1829.7312,
         "shiftX": -2.24515,
@@ -5035,8 +5036,7 @@
         "resolution2x": [
           240,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -5048,16 +5048,16 @@
         "alphaPeak1x": {
           "left": 0.2078,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 8.408,
           "top": 13.447,
-          "right": 37.82,
-          "bottom": 30.957
+          "right": 50.482,
+          "bottom": 56.835
         },
-        "shadowCatcherPeak": 0.3823,
+        "shadowCatcherPeak": 0.5086,
         "solidInset1x": [
           1,
           1,
@@ -5081,12 +5081,12 @@
             40
           ]
         },
-        "bytes1x": 8979,
-        "bytes2x": 26790
+        "bytes1x": 9337,
+        "bytes2x": 27543
       },
       "sha256": {
-        "decodedRgba1x": "749698ef09a0a93c301465dda8e72c6963cc9880b0c3016835819ca746f767fd",
-        "decodedRgba2x": "01e52aac2010317f3ce3ac6eb6988b3717a0a9040f46e28b54c94c6a8408972f"
+        "decodedRgba1x": "7fdad212e90c2aefce34d576e5cb016f359045ca603f9464afed91798430c513",
+        "decodedRgba2x": "58759da16c761f37017c14b9d5766689ea4bc4120259b33c0d56d93001576791"
       }
     },
     "shell_hand_top_slot_03": {
@@ -5153,6 +5153,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1845.1068,
         "shiftX": -1.698527,
@@ -5167,8 +5168,7 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -5180,16 +5180,16 @@
         "alphaPeak1x": {
           "left": 0.2078,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 11.416,
           "top": 13.447,
-          "right": 37.776,
-          "bottom": 30.51
+          "right": 51.443,
+          "bottom": 56.702
         },
-        "shadowCatcherPeak": 0.3833,
+        "shadowCatcherPeak": 0.4836,
         "solidInset1x": [
           1,
           1,
@@ -5213,12 +5213,12 @@
             41
           ]
         },
-        "bytes1x": 8799,
-        "bytes2x": 26327
+        "bytes1x": 9178,
+        "bytes2x": 27113
       },
       "sha256": {
-        "decodedRgba1x": "9b90c89bdb0f1ad88ad490875a9b094977831a1f0d6dfe7317c7aed82b6164ee",
-        "decodedRgba2x": "12c341ed496d14209b29d7979734956d440a6980e61bcde9ebfbae18ec3ea925"
+        "decodedRgba1x": "51a15d857952ee4e445ca25c1b71a13f3ffe22d13dbd7430dffa10799f9edca5",
+        "decodedRgba2x": "ff2c25a62854c3bb3a1859207d095cc7480e6c07319fcccf327fc257629bd85e"
       }
     },
     "shell_hand_top_slot_04": {
@@ -5285,6 +5285,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1860.7432,
         "shiftX": -1.142639,
@@ -5299,8 +5300,7 @@
         "resolution2x": [
           236,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -5312,16 +5312,16 @@
         "alphaPeak1x": {
           "left": 0.2078,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 17.216,
           "top": 13.447,
-          "right": 37.745,
-          "bottom": 30.671
+          "right": 51.682,
+          "bottom": 56.494
         },
-        "shadowCatcherPeak": 0.3822,
+        "shadowCatcherPeak": 0.5123,
         "solidInset1x": [
           1,
           1,
@@ -5345,12 +5345,12 @@
             41
           ]
         },
-        "bytes1x": 8409,
-        "bytes2x": 25499
+        "bytes1x": 8748,
+        "bytes2x": 26305
       },
       "sha256": {
-        "decodedRgba1x": "fe780eacab06cd6064707d5e1826c3662c3e104f08466defb0fb620311a8122e",
-        "decodedRgba2x": "d950ea56c769827368ace524be1ec97cb43db60bf1b094489183798ee7a55ee6"
+        "decodedRgba1x": "a3114df9caddc8ce59f6cfff54e4a4fa389e847d9732becfb10fe12216b73bad",
+        "decodedRgba2x": "cf3ddd95160834aaae3b4888905701392e26966d80099373dfed88671562b724"
       }
     },
     "shell_hand_top_slot_05": {
@@ -5417,6 +5417,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1876.6467,
         "shiftX": -0.577249,
@@ -5431,8 +5432,7 @@
         "resolution2x": [
           234,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -5444,16 +5444,16 @@
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.4,
           "top": 13.451,
-          "right": 37.722,
-          "bottom": 30.443
+          "right": 50.118,
+          "bottom": 56.243
         },
-        "shadowCatcherPeak": 0.383,
+        "shadowCatcherPeak": 0.5108,
         "solidInset1x": [
           1,
           1,
@@ -5477,12 +5477,12 @@
             41
           ]
         },
-        "bytes1x": 8282,
-        "bytes2x": 24513
+        "bytes1x": 8640,
+        "bytes2x": 25294
       },
       "sha256": {
-        "decodedRgba1x": "ecce955ca0e56e37a495e5635d8304347717a3fc6fd1dfec957a8dfc83bab99e",
-        "decodedRgba2x": "663e712ca0f82cfdcc53ff875974c8ef284a1dd4250475d3f0eec888e87b02d1"
+        "decodedRgba1x": "01c3d26928a4c28cfe7f6e891b2beeadcc15d657ede3585fe087db0509231367",
+        "decodedRgba2x": "0c7d3a088fe56f3e233d6de0e2370de98c20136222dd323414be916fa4ffeaf7"
       }
     },
     "shell_hand_top_slot_06": {
@@ -5549,6 +5549,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1892.8245,
         "shiftX": 0.0,
@@ -5563,8 +5564,7 @@
         "resolution2x": [
           232,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -5576,16 +5576,16 @@
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 19.2,
           "top": 13.251,
-          "right": 37.647,
-          "bottom": 30.094
+          "right": 51.039,
+          "bottom": 56.992
         },
-        "shadowCatcherPeak": 0.3835,
+        "shadowCatcherPeak": 0.4772,
         "solidInset1x": [
           1,
           1,
@@ -5609,12 +5609,12 @@
             40
           ]
         },
-        "bytes1x": 8279,
-        "bytes2x": 24413
+        "bytes1x": 8651,
+        "bytes2x": 25227
       },
       "sha256": {
-        "decodedRgba1x": "1217150badf23728ecc69a865b399d8351ff22a29b1562505be98aba246f2ef1",
-        "decodedRgba2x": "6d469f406adf80b5da45859f0d14cd9c7d70a5f4cd0c4a8402bf2cf54f59fd6a"
+        "decodedRgba1x": "ae12e6f42b052062d29db12acc5d564fc3d23a7cb3759964470e656d3fa50129",
+        "decodedRgba2x": "bb5e23c8966dd970761fd1c26e8962ad1b2c5e93e019b9d9c04400397d34b57d"
       }
     },
     "shell_hand_top_slot_07": {
@@ -5681,6 +5681,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1876.6467,
         "shiftX": 0.577249,
@@ -5695,8 +5696,7 @@
         "resolution2x": [
           234,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -5708,16 +5708,16 @@
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 9.8,
           "top": 13.451,
-          "right": 37.635,
-          "bottom": 30.596
+          "right": 51.404,
+          "bottom": 56.373
         },
-        "shadowCatcherPeak": 0.3818,
+        "shadowCatcherPeak": 0.5115,
         "solidInset1x": [
           1,
           1,
@@ -5741,12 +5741,12 @@
             40
           ]
         },
-        "bytes1x": 8536,
-        "bytes2x": 24846
+        "bytes1x": 8883,
+        "bytes2x": 25605
       },
       "sha256": {
-        "decodedRgba1x": "5687b9baf4459c0f502de07256bd07617cca1370626e2050f9b0b51376cadae4",
-        "decodedRgba2x": "f55345082a1313a67ca09d740037033fbff0be45e7c00caf6c2a8475b3662eed"
+        "decodedRgba1x": "6db7cf1d8887da9e88abb037dab575015857f24fdaef77003234ae98b4ace72e",
+        "decodedRgba2x": "0095840ead7a845ca81cee396399a89e7c968754c9ea0415e1099b21f919cd8f"
       }
     },
     "shell_hand_top_slot_08": {
@@ -5813,6 +5813,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1860.7432,
         "shiftX": 1.142639,
@@ -5827,8 +5828,7 @@
         "resolution2x": [
           236,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -5840,16 +5840,16 @@
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.4,
           "top": 13.451,
-          "right": 37.596,
-          "bottom": 30.396
+          "right": 50.149,
+          "bottom": 56.216
         },
-        "shadowCatcherPeak": 0.3829,
+        "shadowCatcherPeak": 0.5029,
         "solidInset1x": [
           1,
           1,
@@ -5873,12 +5873,12 @@
             41
           ]
         },
-        "bytes1x": 8696,
-        "bytes2x": 25814
+        "bytes1x": 9060,
+        "bytes2x": 26639
       },
       "sha256": {
-        "decodedRgba1x": "af0d0d0d5332fad2dd6de5d005884d435ecfc4deca8b942615befba0ea13169d",
-        "decodedRgba2x": "1fe68b26830cbc523a491620e31b833845b3f6933a11416b51bb42abd299a44b"
+        "decodedRgba1x": "dbe1a5c950f2704f670a7514d93fd14efd14073ecaa8b83c26c0301d3dcf268a",
+        "decodedRgba2x": "c45beb0a91141f47bad2b308fd2086d6857fe8371f82e7875bde22cba1290795"
       }
     },
     "shell_hand_top_slot_09": {
@@ -5945,6 +5945,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1845.1068,
         "shiftX": 1.698527,
@@ -5959,8 +5960,7 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -5972,16 +5972,16 @@
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 17.235,
           "top": 13.447,
-          "right": 37.553,
-          "bottom": 30.561
+          "right": 51.325,
+          "bottom": 56.078
         },
-        "shadowCatcherPeak": 0.3816,
+        "shadowCatcherPeak": 0.5145,
         "solidInset1x": [
           1,
           1,
@@ -6005,12 +6005,12 @@
             41
           ]
         },
-        "bytes1x": 8807,
-        "bytes2x": 26423
+        "bytes1x": 9142,
+        "bytes2x": 27188
       },
       "sha256": {
-        "decodedRgba1x": "b8e5b70387f2b63a6438a28bb638bb9574bd3f1d4a5adacad2473b5a17a562c6",
-        "decodedRgba2x": "e84234ea098b571dca8c8ecb9a3689764d2ca7f6841c2744ce6cd1efb2550120"
+        "decodedRgba1x": "4912e9f80a0bce86855e350136fa9232069976ca3b84a966b3c38bd28cab8f12",
+        "decodedRgba2x": "739b9ce2df1777080a4c9e84f5dd7532c6d753f7c76b441335202a5f95d45b9d"
       }
     },
     "shell_hand_top_slot_10": {
@@ -6077,6 +6077,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1829.7312,
         "shiftX": 2.24515,
@@ -6091,8 +6092,7 @@
         "resolution2x": [
           240,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -6104,16 +6104,16 @@
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 11.608,
           "top": 13.447,
-          "right": 37.541,
-          "bottom": 30.98
+          "right": 50.263,
+          "bottom": 54.788
         },
-        "shadowCatcherPeak": 0.3804,
+        "shadowCatcherPeak": 0.5326,
         "solidInset1x": [
           1,
           1,
@@ -6137,12 +6137,12 @@
             41
           ]
         },
-        "bytes1x": 8947,
-        "bytes2x": 26704
+        "bytes1x": 9263,
+        "bytes2x": 27455
       },
       "sha256": {
-        "decodedRgba1x": "2d64460f2cb4b84dce12a6c6c65ae1a0e235b2a1a004ff0790050521a20b3d62",
-        "decodedRgba2x": "a36bee30ad1d85ef32b6efc658038f69fb6ab667247debcb498c7fbbe3c43f5e"
+        "decodedRgba1x": "2aaa07240187d29444f092f4e34a94f09ac5565f2973c52d4444dcba41c4ca67",
+        "decodedRgba2x": "f59cbf9065e89fd3ea1033f0ccdf00f2a89000e103bd583312e46ae435389080"
       }
     },
     "shell_hand_top_slot_11": {
@@ -6209,6 +6209,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1814.6096,
         "shiftX": 2.782738,
@@ -6223,8 +6224,7 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -6236,16 +6236,16 @@
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 8.404,
           "top": 13.447,
-          "right": 37.525,
-          "bottom": 31.4
+          "right": 50.173,
+          "bottom": 55.212
         },
-        "shadowCatcherPeak": 0.3791,
+        "shadowCatcherPeak": 0.5568,
         "solidInset1x": [
           1,
           1,
@@ -6269,12 +6269,12 @@
             41
           ]
         },
-        "bytes1x": 9137,
-        "bytes2x": 27040
+        "bytes1x": 9425,
+        "bytes2x": 27799
       },
       "sha256": {
-        "decodedRgba1x": "e0387548c9dd6a47978971d3c00ffe33e9014eb0ea5a24bcf7525e14a3f95030",
-        "decodedRgba2x": "d7eb04e43ab041a2b14f201836476d9290ff49f2ad819619a561d8a6fffb5dcd"
+        "decodedRgba1x": "9b1af3e5a1c5528d55398dbdc17e5065c7b461cab6037d1f282bdd3308ae1be5",
+        "decodedRgba2x": "7ba12cf715387f2c7f680127516369b58f71eb0ae07f5dd601bbbceebbd3374b"
       }
     },
     "shell_hand_top_slot_12": {
@@ -6341,6 +6341,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 28.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1799.736,
         "shiftX": 3.311513,
@@ -6355,8 +6356,7 @@
         "resolution2x": [
           244,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
@@ -6368,16 +6368,16 @@
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2039,
-          "right": 0.1216,
-          "bottom": 0.1176
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 6.2,
           "top": 13.447,
-          "right": 37.51,
-          "bottom": 31.867
+          "right": 49.616,
+          "bottom": 53.98
         },
-        "shadowCatcherPeak": 0.3778,
+        "shadowCatcherPeak": 0.5747,
         "solidInset1x": [
           1,
           1,
@@ -6401,12 +6401,12 @@
             41
           ]
         },
-        "bytes1x": 9287,
-        "bytes2x": 27323
+        "bytes1x": 9566,
+        "bytes2x": 28012
       },
       "sha256": {
-        "decodedRgba1x": "783f4841c208c3679744231cfc2dfdfd49f63884831e3d2e1bf02828666f573f",
-        "decodedRgba2x": "3d89c6750b614ec402bdea91e7d0b3ff18c9d0d9d7c3f6437dc8d5bb3edc3840"
+        "decodedRgba1x": "aa077d5c6ea5d977db9ba1461ef397ddff7e3798beb22f08ce49c7d7fd11448e",
+        "decodedRgba2x": "fa2f8d108aa48fe4b63d2af268069d897005689a6623b878ff263ffd9a570bb5"
       }
     },
     "shell_wall_front_slot_00": {
@@ -6479,6 +6479,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1486.1663,
         "shiftX": -4.311404,
@@ -6493,29 +6494,28 @@
         "resolution2x": [
           258,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.2,
           "top": 13.4,
-          "right": 50.647,
-          "bottom": 46.859
+          "right": 79.702,
+          "bottom": 70.412
         },
-        "shadowCatcherPeak": 0.4721,
+        "shadowCatcherPeak": 0.7298,
         "solidInset1x": [
           1,
           1,
@@ -6539,12 +6539,12 @@
             75
           ]
         },
-        "bytes1x": 10774,
-        "bytes2x": 31826
+        "bytes1x": 11142,
+        "bytes2x": 32621
       },
       "sha256": {
-        "decodedRgba1x": "279077430695ca02d6f438563900bd38a0bf8bb6f2e95bccaf6ca908cd512b45",
-        "decodedRgba2x": "a5ab2d40371ee28cff1f6881beabccf4ea527275897d4c55c3f66335fa971997"
+        "decodedRgba1x": "1961ec273ac4439f5b1b3646dceba88e5bec5e5671b0ac4f4f9b621a47368323",
+        "decodedRgba2x": "f9b0f641314214812bbd9bf01c3bbbdd6ca460f7daf5cea55f643d145521dc40"
       }
     },
     "shell_wall_front_slot_01": {
@@ -6617,6 +6617,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1509.572,
         "shiftX": -3.832226,
@@ -6631,29 +6632,28 @@
         "resolution2x": [
           254,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.004,
           "top": 13.4,
-          "right": 50.612,
-          "bottom": 45.408
+          "right": 81.039,
+          "bottom": 71.188
         },
-        "shadowCatcherPeak": 0.477,
+        "shadowCatcherPeak": 0.6944,
         "solidInset1x": [
           1,
           1,
@@ -6677,12 +6677,12 @@
             75
           ]
         },
-        "bytes1x": 10636,
-        "bytes2x": 31578
+        "bytes1x": 11057,
+        "bytes2x": 32384
       },
       "sha256": {
-        "decodedRgba1x": "342da1838b03a05564675b404a49d2c0d444cd579c355e91bce3aec067e02ac0",
-        "decodedRgba2x": "2ea7493004b1faf673a80ad70e943b25c73f210e5e0b09bdd4acda074c6c3a03"
+        "decodedRgba1x": "d868c18ad3a927a4dc21bbc78a895896f8504dd5380e2585f7f049d8484aa576",
+        "decodedRgba2x": "78e5f877549bee4f8f8332bf0b52a71bd0008f3e2fdddcdeaae9c37f7aa6a1d2"
       }
     },
     "shell_wall_front_slot_02": {
@@ -6755,6 +6755,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1521.5496,
         "shiftX": -3.311213,
@@ -6769,29 +6770,28 @@
         "resolution2x": [
           252,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.0,
           "top": 13.4,
-          "right": 50.439,
-          "bottom": 44.765
+          "right": 80.961,
+          "bottom": 71.412
         },
-        "shadowCatcherPeak": 0.4792,
+        "shadowCatcherPeak": 0.681,
         "solidInset1x": [
           1,
           1,
@@ -6815,12 +6815,12 @@
             75
           ]
         },
-        "bytes1x": 10450,
-        "bytes2x": 30785
+        "bytes1x": 10870,
+        "bytes2x": 31672
       },
       "sha256": {
-        "decodedRgba1x": "a6ca3f2c7942f25c7a9d84cb8e9c9311ce25058b03e3ae2d7f543b0bf6c72730",
-        "decodedRgba2x": "35c5581bc780e7da49aa6c238b62da6ffac935f6607933dd1e4712e54685eff1"
+        "decodedRgba1x": "29653db9fa7a06d27951b5242e9257a44c90afc78c744a184dd12793362bd135",
+        "decodedRgba2x": "30882ea0ee0198d57cbf9812b53ab9c7634efb5592c2d29e534b8a4a09019268"
       }
     },
     "shell_wall_front_slot_03": {
@@ -6893,6 +6893,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1533.7247,
         "shiftX": -2.781876,
@@ -6907,29 +6908,28 @@
         "resolution2x": [
           250,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.2,
           "top": 13.4,
-          "right": 50.349,
-          "bottom": 44.059
+          "right": 82.149,
+          "bottom": 72.012
         },
-        "shadowCatcherPeak": 0.4811,
+        "shadowCatcherPeak": 0.6567,
         "solidInset1x": [
           1,
           1,
@@ -6953,12 +6953,12 @@
             75
           ]
         },
-        "bytes1x": 10210,
-        "bytes2x": 30458
+        "bytes1x": 10654,
+        "bytes2x": 31394
       },
       "sha256": {
-        "decodedRgba1x": "fa6f92ee711a92aecce6c0856d5ba69db92297b5c592bd7a8b4ef83074d08a9f",
-        "decodedRgba2x": "711780a8d8cb19b34488635b83f8321b4bfcd2e6d322dbd3e8cf085587a7eb95"
+        "decodedRgba1x": "a0ce5e42a85bcd6e49f3fede493713da5a92dd35235da5f10e0464fb14a78b84",
+        "decodedRgba2x": "720ddaba6538c104331529c680f57316543956e938fdb1847fe6a6ac76f15435"
       }
     },
     "shell_wall_front_slot_04": {
@@ -7031,6 +7031,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1558.6609,
         "shiftX": -2.262236,
@@ -7045,29 +7046,28 @@
         "resolution2x": [
           246,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.0,
           "top": 13.4,
-          "right": 50.078,
-          "bottom": 43.973
+          "right": 83.29,
+          "bottom": 72.188
         },
-        "shadowCatcherPeak": 0.4813,
+        "shadowCatcherPeak": 0.6534,
         "solidInset1x": [
           1,
           1,
@@ -7091,12 +7091,12 @@
             75
           ]
         },
-        "bytes1x": 10070,
-        "bytes2x": 29793
+        "bytes1x": 10489,
+        "bytes2x": 30688
       },
       "sha256": {
-        "decodedRgba1x": "ce554f818521dfab6d5047ef12a8bff764c9d2a9a1916541e3a1783ce541b31d",
-        "decodedRgba2x": "f1f3249634c5ac2626b72a672bc3198f9acdf0d9bc86574fb771d13bc9992091"
+        "decodedRgba1x": "7e46c492aaef590d700ec67381285ee5e935bf674f936d09acb5fd35d6335856",
+        "decodedRgba2x": "a74cb80dbf6b1644ab341e058a4761584414f9200f48b799ffdef91c0fc11d29"
       }
     },
     "shell_wall_front_slot_05": {
@@ -7169,6 +7169,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1571.4398,
         "shiftX": -1.711284,
@@ -7183,29 +7184,28 @@
         "resolution2x": [
           244,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 9.004,
           "top": 13.4,
-          "right": 49.992,
-          "bottom": 43.114
+          "right": 85.114,
+          "bottom": 72.561
         },
-        "shadowCatcherPeak": 0.4826,
+        "shadowCatcherPeak": 0.6285,
         "solidInset1x": [
           1,
           1,
@@ -7229,12 +7229,12 @@
             75
           ]
         },
-        "bytes1x": 9793,
-        "bytes2x": 29312
+        "bytes1x": 10194,
+        "bytes2x": 30207
       },
       "sha256": {
-        "decodedRgba1x": "b2b3758c15043fa08b661c0efa7f55199127a813a03919adbf958cfc2e33c7d5",
-        "decodedRgba2x": "7870f96c9ffb0cc917da9f69f965e25234b3d3bdbb79940f8e69c783c236cd4e"
+        "decodedRgba1x": "4fbf78197dfff5267743e4b07849342611b26ccbada51ec34cda244e81eec0f2",
+        "decodedRgba2x": "f76d59e8ebdab5fb33855345396585ed0a813afe651208a2a6d7df8a2d0ecd19"
       }
     },
     "shell_wall_front_slot_06": {
@@ -7307,6 +7307,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1584.4279,
         "shiftX": -1.15122,
@@ -7321,29 +7322,28 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 11.204,
           "top": 13.4,
-          "right": 50.482,
-          "bottom": 41.761
+          "right": 82.835,
+          "bottom": 73.784
         },
-        "shadowCatcherPeak": 0.4853,
+        "shadowCatcherPeak": 0.5912,
         "solidInset1x": [
           1,
           1,
@@ -7367,12 +7367,12 @@
             75
           ]
         },
-        "bytes1x": 9549,
-        "bytes2x": 28695
+        "bytes1x": 9958,
+        "bytes2x": 29499
       },
       "sha256": {
-        "decodedRgba1x": "ba3278050c65c3fc46dc01d712fa1516e0aeff0b1b2a282f37102d268bb63dc6",
-        "decodedRgba2x": "503d10236fe72d93a35a8ed665fdff35cf85f1dbd3a63fa59d04ffe23a957a0e"
+        "decodedRgba1x": "29fc13b30cfe3040005a64849a88135e3b4e49bbbb5999b78f3d1dd87c4bb229",
+        "decodedRgba2x": "08ca8407fbb88c5f8cea74ada4748b5edaa4f1eb89a1593dde3a19e84268f883"
       }
     },
     "shell_wall_front_slot_07": {
@@ -7445,6 +7445,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1611.0542,
         "shiftX": -0.58671,
@@ -7459,29 +7460,28 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 6.6,
           "top": 13.2,
-          "right": 50.192,
-          "bottom": 41.643
+          "right": 82.604,
+          "bottom": 74.235
         },
-        "shadowCatcherPeak": 0.4856,
+        "shadowCatcherPeak": 0.5783,
         "solidInset1x": [
           1,
           1,
@@ -7505,12 +7505,12 @@
             75
           ]
         },
-        "bytes1x": 9306,
-        "bytes2x": 27638
+        "bytes1x": 9687,
+        "bytes2x": 28339
       },
       "sha256": {
-        "decodedRgba1x": "f388e6900c8a1998ce67b79487a36473419576f543214ea770f9072c96279786",
-        "decodedRgba2x": "5cfc7f50258c5526d97f7a598e5c712cf620d77ffd6509061eadc4627b38e6cd"
+        "decodedRgba1x": "fd9fa96d967ee03c365d31a4f5a6ad43bae7fd004bd1a33f24579baf987c1f06",
+        "decodedRgba2x": "036623835294f191938ef329634ab46d2dee005e9d577ba11e779d7f93eed69a"
       }
     },
     "shell_wall_front_slot_08": {
@@ -7583,6 +7583,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1611.0542,
         "shiftX": 0.0,
@@ -7597,29 +7598,28 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.8,
           "top": 13.4,
-          "right": 49.82,
-          "bottom": 41.698
+          "right": 86.035,
+          "bottom": 73.706
         },
-        "shadowCatcherPeak": 0.4852,
+        "shadowCatcherPeak": 0.5912,
         "solidInset1x": [
           1,
           1,
@@ -7643,12 +7643,12 @@
             75
           ]
         },
-        "bytes1x": 8776,
-        "bytes2x": 26751
+        "bytes1x": 9179,
+        "bytes2x": 27566
       },
       "sha256": {
-        "decodedRgba1x": "0736e7f45d6a300fae31f5af9ce186eb804b2ccc0f49c11a82afaae2c16b66c4",
-        "decodedRgba2x": "cbbc1f07d850d9dd5f80e6f786bd953a22a64a8045a6ebd0fff978c4fc03e4cf"
+        "decodedRgba1x": "a6a976107a113612e96d4b785183c64432748e935ff10d73bd9d676fbd6fc864",
+        "decodedRgba2x": "7bb4730d90a5e0f575b166216d8116ef27c77800ff3ae86f10fab0bc1853e3a1"
       }
     },
     "shell_wall_front_slot_09": {
@@ -7721,6 +7721,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1611.0542,
         "shiftX": 0.58671,
@@ -7735,29 +7736,28 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 18.8,
           "top": 13.2,
-          "right": 49.506,
-          "bottom": 41.757
+          "right": 82.737,
+          "bottom": 73.561
         },
-        "shadowCatcherPeak": 0.4847,
+        "shadowCatcherPeak": 0.5939,
         "solidInset1x": [
           1,
           1,
@@ -7781,12 +7781,12 @@
             75
           ]
         },
-        "bytes1x": 9264,
-        "bytes2x": 27868
+        "bytes1x": 9674,
+        "bytes2x": 28568
       },
       "sha256": {
-        "decodedRgba1x": "13cc951023776989265965a6b2110a0a95c77a62cc55394b745a1fe800dd5277",
-        "decodedRgba2x": "294d2e82a3bf826cb69003250b3e8282368a398f40757cd2aa00a5bb494dc80d"
+        "decodedRgba1x": "d6a5d938d2f8be68e37dacba546d11a70435391722cdfc2602ae1de0ae51b090",
+        "decodedRgba2x": "a553fd8f327907498e87276728fbe1cecaec904aaa4100e8ca6078caaea5f06d"
       }
     },
     "shell_wall_front_slot_10": {
@@ -7859,6 +7859,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1584.4279,
         "shiftX": 1.15122,
@@ -7873,29 +7874,28 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 17.447,
           "top": 13.4,
-          "right": 49.376,
-          "bottom": 41.675
+          "right": 79.918,
+          "bottom": 73.651
         },
-        "shadowCatcherPeak": 0.485,
+        "shadowCatcherPeak": 0.591,
         "solidInset1x": [
           1,
           1,
@@ -7919,12 +7919,12 @@
             75
           ]
         },
-        "bytes1x": 9453,
-        "bytes2x": 28453
+        "bytes1x": 9835,
+        "bytes2x": 29287
       },
       "sha256": {
-        "decodedRgba1x": "7476179da2c73a8f905b4172bcd54df33142cb226045bb567acd1b79a01a9365",
-        "decodedRgba2x": "0858e478d97110c3f9b964c99ade62431322949efb01896381ad1f4cd558e071"
+        "decodedRgba1x": "72131841940d4e9730d4cace329bfee377010af62ccd37d906c24285bad0112e",
+        "decodedRgba2x": "59d98ff91f790a3dbd7f0473bf12504ae076919599bdc85149a8a6b55f365c14"
       }
     },
     "shell_wall_front_slot_11": {
@@ -7997,6 +7997,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1571.4398,
         "shiftX": 1.711284,
@@ -8011,29 +8012,28 @@
         "resolution2x": [
           244,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.4,
           "top": 13.4,
-          "right": 49.004,
-          "bottom": 42.263
+          "right": 79.761,
+          "bottom": 74.157
         },
-        "shadowCatcherPeak": 0.4843,
+        "shadowCatcherPeak": 0.593,
         "solidInset1x": [
           1,
           1,
@@ -8057,12 +8057,12 @@
             75
           ]
         },
-        "bytes1x": 9713,
-        "bytes2x": 29057
+        "bytes1x": 10142,
+        "bytes2x": 29952
       },
       "sha256": {
-        "decodedRgba1x": "9c9553097b0412c55cc8c6aaf647ba08f6e3807739238ba943fdb2fdc14aff0c",
-        "decodedRgba2x": "8e7efc4f1e31dbd499c90416bc2a386f729ffd72afeeba04ce3af781a7afda9e"
+        "decodedRgba1x": "8b0cc37d43e8da9894a5494a2e92e0e30e57c25a510bdb01170c86a79016b432",
+        "decodedRgba2x": "69cf91d446d28f0518c952c795bc9adce845d635d3cac9ed48f1cf49710f6816"
       }
     },
     "shell_wall_front_slot_12": {
@@ -8135,6 +8135,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1558.6609,
         "shiftX": 2.262236,
@@ -8149,29 +8150,28 @@
         "resolution2x": [
           246,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.0,
           "top": 13.4,
-          "right": 48.118,
-          "bottom": 43.439
+          "right": 80.106,
+          "bottom": 72.796
         },
-        "shadowCatcherPeak": 0.4822,
+        "shadowCatcherPeak": 0.6276,
         "solidInset1x": [
           1,
           1,
@@ -8195,12 +8195,12 @@
             75
           ]
         },
-        "bytes1x": 9918,
-        "bytes2x": 29540
+        "bytes1x": 10345,
+        "bytes2x": 30463
       },
       "sha256": {
-        "decodedRgba1x": "345e01df9a9b77c1f05a5d87075ccbfeea5b888a6a29191786d38c6ea78d3acb",
-        "decodedRgba2x": "e49d6227d380cbbfa79885c78ed0f1e275bf43346dbf08355092c56087728024"
+        "decodedRgba1x": "eff6c56f5dbed7b6af5e6e19351f5f2c9fd58c0e19e554ba7911e94c36292078",
+        "decodedRgba2x": "3805c0caaf26569f06b07871cb9d97d58595b62910a846c57b38222bca7e08ce"
       }
     },
     "shell_wall_front_slot_13": {
@@ -8273,6 +8273,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1533.7247,
         "shiftX": 2.781876,
@@ -8287,29 +8288,28 @@
         "resolution2x": [
           250,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.804,
           "top": 13.4,
-          "right": 47.859,
-          "bottom": 43.325
+          "right": 77.373,
+          "bottom": 72.91
         },
-        "shadowCatcherPeak": 0.4823,
+        "shadowCatcherPeak": 0.6243,
         "solidInset1x": [
           1,
           1,
@@ -8333,12 +8333,12 @@
             75
           ]
         },
-        "bytes1x": 10093,
-        "bytes2x": 29605
+        "bytes1x": 10525,
+        "bytes2x": 30543
       },
       "sha256": {
-        "decodedRgba1x": "31c3f9d6df9c4af838921d2368b1fc459e337c06b3ad479dba7c674b8f2db29e",
-        "decodedRgba2x": "97c4313b59d002f2276020d3c3cf3af67114d1ff9268e871227142a7d321d82f"
+        "decodedRgba1x": "46365045b8b0fc96f4d988f9cab4f95cf5d5fbe7995cc9332533aa21f1d9aed8",
+        "decodedRgba2x": "7cc4c170555b184a824f2fe4c847d0f3baad387e0daa43fcd381bff0f7a198e9"
       }
     },
     "shell_wall_front_slot_14": {
@@ -8411,6 +8411,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1521.5496,
         "shiftX": 3.311213,
@@ -8425,29 +8426,28 @@
         "resolution2x": [
           252,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.404,
           "top": 13.4,
-          "right": 47.376,
-          "bottom": 43.737
+          "right": 76.325,
+          "bottom": 72.741
         },
-        "shadowCatcherPeak": 0.4818,
+        "shadowCatcherPeak": 0.63,
         "solidInset1x": [
           1,
           1,
@@ -8471,12 +8471,12 @@
             75
           ]
         },
-        "bytes1x": 10215,
-        "bytes2x": 30015
+        "bytes1x": 10617,
+        "bytes2x": 30953
       },
       "sha256": {
-        "decodedRgba1x": "cf6f22064ec051b73c2ad10286bff77e949924f2f18b84c43cde75868c7b1c90",
-        "decodedRgba2x": "0a98d1ee06a89a467a60084c30a71ad71af7c7b15b431f2e3665df77eb67974d"
+        "decodedRgba1x": "8580fc59f203b6c233fdd993a006993b092371f1d99520f484393fd5d72984cf",
+        "decodedRgba2x": "e1658132f4fb0efe1a344c16dae1c8bbfb4403af2eac03fde9d4ba0cec41d2b1"
       }
     },
     "shell_wall_front_slot_15": {
@@ -8549,6 +8549,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1509.572,
         "shiftX": 3.832226,
@@ -8563,29 +8564,28 @@
         "resolution2x": [
           254,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.004,
           "top": 13.4,
-          "right": 46.847,
-          "bottom": 44.106
+          "right": 74.573,
+          "bottom": 72.376
         },
-        "shadowCatcherPeak": 0.4807,
+        "shadowCatcherPeak": 0.642,
         "solidInset1x": [
           1,
           1,
@@ -8609,12 +8609,12 @@
             75
           ]
         },
-        "bytes1x": 10281,
-        "bytes2x": 30390
+        "bytes1x": 10710,
+        "bytes2x": 31266
       },
       "sha256": {
-        "decodedRgba1x": "d6e011fee508e22cab035e82d3583dd3012dc4202f7460fd6ab69029459e227e",
-        "decodedRgba2x": "a4caddc2184f4c12dc7ef64df8d3078842e5466218b4023f1fc5e9d1a080193d"
+        "decodedRgba1x": "3b624f4525ce89d43a4d2d2ac1ea5f570b2c2084b392caa0784a31ca27b49c6f",
+        "decodedRgba2x": "f2e74f047e7a59286b41906e4ae6ba19dd5f38764776eaa7359d191f5da2ec8f"
       }
     },
     "shell_wall_front_slot_16": {
@@ -8687,6 +8687,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 1486.1663,
         "shiftX": 4.311404,
@@ -8701,29 +8702,28 @@
         "resolution2x": [
           258,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.8,
           "top": 13.4,
-          "right": 45.98,
-          "bottom": 45.035
+          "right": 73.537,
+          "bottom": 72.063
         },
-        "shadowCatcherPeak": 0.4785,
+        "shadowCatcherPeak": 0.6622,
         "solidInset1x": [
           1,
           1,
@@ -8747,12 +8747,12 @@
             75
           ]
         },
-        "bytes1x": 10428,
-        "bytes2x": 30501
+        "bytes1x": 10852,
+        "bytes2x": 31393
       },
       "sha256": {
-        "decodedRgba1x": "722a33b97c17f0781f53ef0cb31952131b729ca824b7f89ad60f132540d57100",
-        "decodedRgba2x": "81c739f85671e5f9f4e7fdad4749c8724fb557a312a64e4f436f01ae86f9fdeb"
+        "decodedRgba1x": "6c091cff934b925784081dc12151e9b828c28cb7be569e3dc18508c0de3e7378",
+        "decodedRgba2x": "a9e9a3c2436a0fa468e56eb3c3f1db045b4c9fba7efa8f902de12014ca09614b"
       }
     },
     "shell_wall_front_slot_00_faceup": {
@@ -8825,6 +8825,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1486.1663,
         "shiftX": -4.311404,
@@ -8839,29 +8840,28 @@
         "resolution2x": [
           258,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.2,
           "top": 13.4,
-          "right": 51.29,
-          "bottom": 48.082
+          "right": 80.412,
+          "bottom": 71.973
         },
-        "shadowCatcherPeak": 0.4805,
+        "shadowCatcherPeak": 0.7468,
         "solidInset1x": [
           1,
           1,
@@ -8885,12 +8885,12 @@
             31
           ]
         },
-        "bytes1x": 9478,
-        "bytes2x": 27589
+        "bytes1x": 9869,
+        "bytes2x": 28396
       },
       "sha256": {
-        "decodedRgba1x": "b77f1a8666392e7de8b9e0f4d0189961efa2346b1c3be442c3ddcd2591e7c7de",
-        "decodedRgba2x": "e608a87c0550c50387bc352ddb1e428d1bcc510c672a822eb6e3dc897bb0178e"
+        "decodedRgba1x": "e259cde60b8d404ad974e10c5f829d99f51568684b5294f42e20d5fdc23b2667",
+        "decodedRgba2x": "aa735dd39ead1eb66f0aaad45b356c16e8a7cfd06f91268d2ee04630e5a2354c"
       }
     },
     "shell_wall_front_slot_01_faceup": {
@@ -8963,6 +8963,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1509.572,
         "shiftX": -3.832226,
@@ -8977,29 +8978,28 @@
         "resolution2x": [
           254,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.008,
           "top": 13.4,
-          "right": 51.318,
-          "bottom": 46.627
+          "right": 81.867,
+          "bottom": 72.953
         },
-        "shadowCatcherPeak": 0.4858,
+        "shadowCatcherPeak": 0.7099,
         "solidInset1x": [
           1,
           1,
@@ -9023,12 +9023,12 @@
             31
           ]
         },
-        "bytes1x": 9408,
-        "bytes2x": 27600
+        "bytes1x": 9839,
+        "bytes2x": 28419
       },
       "sha256": {
-        "decodedRgba1x": "869ef81ed1b659bd3424900a3d225c8d81b2f01e78ea53fe364f22d3f9955426",
-        "decodedRgba2x": "30d9bdab0b24cb9de3d7235bf4b3ecbc45837290834ed373c14c276759eb15c8"
+        "decodedRgba1x": "457af3102105a73620e704664fec969a925d741528034e7bfc516e5aa7449733",
+        "decodedRgba2x": "2e97120d025824e73b5dce438a948a3383db9d320dbb4e590f4284fb72c2b83c"
       }
     },
     "shell_wall_front_slot_02_faceup": {
@@ -9101,6 +9101,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1521.5496,
         "shiftX": -3.311213,
@@ -9115,29 +9116,28 @@
         "resolution2x": [
           252,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.004,
           "top": 13.4,
-          "right": 51.137,
-          "bottom": 45.831
+          "right": 81.635,
+          "bottom": 73.059
         },
-        "shadowCatcherPeak": 0.4887,
+        "shadowCatcherPeak": 0.6964,
         "solidInset1x": [
           1,
           1,
@@ -9161,12 +9161,12 @@
             31
           ]
         },
-        "bytes1x": 9374,
-        "bytes2x": 27206
+        "bytes1x": 9778,
+        "bytes2x": 28134
       },
       "sha256": {
-        "decodedRgba1x": "8730b7e81442011512bfb4c84896263ee95a113ad2e36224a218604cdc35a522",
-        "decodedRgba2x": "2e03ce1fe4db04ef0c7b0d7be328c365c76bbe3d02241ff1ec468cfb06ccd701"
+        "decodedRgba1x": "0aec64b2f3538f4ff3127326aad5f06c31d8a0be313884a95ce919482d5b0573",
+        "decodedRgba2x": "65762c60bb0ddb82711bb348958f9a1db270a5b4fd7736d8846bba5dff13d05d"
       }
     },
     "shell_wall_front_slot_03_faceup": {
@@ -9239,6 +9239,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1533.7247,
         "shiftX": -2.781876,
@@ -9253,29 +9254,28 @@
         "resolution2x": [
           250,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.2,
           "top": 13.4,
-          "right": 51.043,
-          "bottom": 45.173
+          "right": 82.894,
+          "bottom": 73.6
         },
-        "shadowCatcherPeak": 0.4907,
+        "shadowCatcherPeak": 0.6715,
         "solidInset1x": [
           1,
           1,
@@ -9299,12 +9299,12 @@
             31
           ]
         },
-        "bytes1x": 9256,
-        "bytes2x": 27060
+        "bytes1x": 9679,
+        "bytes2x": 27979
       },
       "sha256": {
-        "decodedRgba1x": "ad6dbbf9d77bbac20df5f61f9662d0046b956e07e1862ebf6e80080422b93030",
-        "decodedRgba2x": "a42fe8f16cc850df6dcbc674efa813305dd4617c1e636fb3b65912bdbeffd89f"
+        "decodedRgba1x": "fc5622edbfe78b33bb0418f631b3fd57e1a4f5f444335eb04056d55fe4e2e936",
+        "decodedRgba2x": "7c4d26122c7a63c92281c55c308d37a281b3d78f5d6d2cbbdc649d9da68ea5d9"
       }
     },
     "shell_wall_front_slot_04_faceup": {
@@ -9377,6 +9377,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1558.6609,
         "shiftX": -2.262236,
@@ -9391,29 +9392,28 @@
         "resolution2x": [
           246,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.0,
           "top": 13.4,
-          "right": 50.698,
-          "bottom": 45.016
+          "right": 84.196,
+          "bottom": 73.737
         },
-        "shadowCatcherPeak": 0.4911,
+        "shadowCatcherPeak": 0.6684,
         "solidInset1x": [
           1,
           1,
@@ -9437,12 +9437,12 @@
             31
           ]
         },
-        "bytes1x": 9202,
-        "bytes2x": 26760
+        "bytes1x": 9602,
+        "bytes2x": 27664
       },
       "sha256": {
-        "decodedRgba1x": "9816ffa4edc6ae86e8f26315c8883affb400c69d316cab6b7183edd2609354c3",
-        "decodedRgba2x": "216d0a45d93d9ce4f8869eee8d5e31c1ccecd9e2c20554faa392456ad1cd9e04"
+        "decodedRgba1x": "f79c23e6b16171734fa1c25f810c07f3e37838ec9e21bcd41d35be35177f2116",
+        "decodedRgba2x": "ac7a8f42cfa92dba45db3adf8e4a31ef936cc7416292792ee6c69bbd2efc8469"
       }
     },
     "shell_wall_front_slot_05_faceup": {
@@ -9515,6 +9515,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1571.4398,
         "shiftX": -1.711284,
@@ -9529,29 +9530,28 @@
         "resolution2x": [
           244,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 9.024,
           "top": 13.4,
-          "right": 50.612,
-          "bottom": 44.169
+          "right": 85.796,
+          "bottom": 74.341
         },
-        "shadowCatcherPeak": 0.4929,
+        "shadowCatcherPeak": 0.6434,
         "solidInset1x": [
           1,
           1,
@@ -9575,12 +9575,12 @@
             31
           ]
         },
-        "bytes1x": 9073,
-        "bytes2x": 26336
+        "bytes1x": 9470,
+        "bytes2x": 27195
       },
       "sha256": {
-        "decodedRgba1x": "f9e4a33bf44bbd54266c003d57e0c9d1156d994c99dce3cf723810cd2685d0c1",
-        "decodedRgba2x": "23b1319592920a609b0a95466c2c396fe392497766153d3e2ec3fa62810795e7"
+        "decodedRgba1x": "547d6ac2b7533fdb01369f96398e45da051f5baa55a71d3586a7e1cfeb0026a2",
+        "decodedRgba2x": "f48fd03fbb5cc2aca9a95c28b6a4a321af13abf32d07306177d059f165d07fac"
       }
     },
     "shell_wall_front_slot_06_faceup": {
@@ -9653,6 +9653,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1584.4279,
         "shiftX": -1.15122,
@@ -9667,29 +9668,28 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 11.22,
           "top": 13.4,
-          "right": 51.071,
-          "bottom": 42.643
+          "right": 83.412,
+          "bottom": 75.408
         },
-        "shadowCatcherPeak": 0.4965,
+        "shadowCatcherPeak": 0.6051,
         "solidInset1x": [
           1,
           1,
@@ -9713,12 +9713,12 @@
             31
           ]
         },
-        "bytes1x": 8761,
-        "bytes2x": 25961
+        "bytes1x": 9151,
+        "bytes2x": 26796
       },
       "sha256": {
-        "decodedRgba1x": "bd61d83618a7c0928517acba66c3846e3fc67093296c8891c845c5c99b7a0b76",
-        "decodedRgba2x": "be3159ceb9b7892f8443337286ba81efd038d555b5f61d492932cbc40125a6cc"
+        "decodedRgba1x": "926918c08c13c4358d6a218367a84f3d27f141aee78bc7ef691c7d53f0b4bd83",
+        "decodedRgba2x": "d636f3c51dbf5b553d14b119df0a8d11807636f57cfb3b4c9974738c156ee14f"
       }
     },
     "shell_wall_front_slot_07_faceup": {
@@ -9791,6 +9791,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1611.0542,
         "shiftX": -0.58671,
@@ -9805,29 +9806,28 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 6.4,
           "top": 13.2,
-          "right": 50.706,
-          "bottom": 42.541
+          "right": 83.455,
+          "bottom": 76.016
         },
-        "shadowCatcherPeak": 0.4966,
+        "shadowCatcherPeak": 0.5917,
         "solidInset1x": [
           1,
           1,
@@ -9851,12 +9851,12 @@
             31
           ]
         },
-        "bytes1x": 8390,
-        "bytes2x": 24987
+        "bytes1x": 8774,
+        "bytes2x": 25736
       },
       "sha256": {
-        "decodedRgba1x": "01a3aa4764c2cd50db9f2bd43a2385ff27f7e3ac65478885afcf92cde5b5f683",
-        "decodedRgba2x": "da61accde7048108ed6936e0ca5d69fefd28ef09e865bb79d243b81425eaee76"
+        "decodedRgba1x": "da28373d863c6a5a516d8abc74ba90f75ce27b3cda9453764825b1357fb84fc0",
+        "decodedRgba2x": "f11578d8b95636c631255a92c0ff6d2af0fe95226e16a6c987fc50a7bd4868cf"
       }
     },
     "shell_wall_front_slot_08_faceup": {
@@ -9929,6 +9929,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1611.0542,
         "shiftX": 0.0,
@@ -9943,29 +9944,28 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.8,
           "top": 13.4,
-          "right": 50.306,
-          "bottom": 42.6
+          "right": 86.773,
+          "bottom": 75.365
         },
-        "shadowCatcherPeak": 0.4964,
+        "shadowCatcherPeak": 0.6051,
         "solidInset1x": [
           1,
           1,
@@ -9989,12 +9989,12 @@
             31
           ]
         },
-        "bytes1x": 8158,
-        "bytes2x": 24040
+        "bytes1x": 8535,
+        "bytes2x": 24812
       },
       "sha256": {
-        "decodedRgba1x": "963fe89225b48cb080abb7fc54a8ae07124a302a9e92adf182dbdc2e881bd635",
-        "decodedRgba2x": "da4a731dc7da2a87c6bd2c825a44ce52774d3fde3e23ca55c134217bf353c5f7"
+        "decodedRgba1x": "d99206c3af3ec9d956649d86100c206426697b0b1973ba50b3c8009320babf4e",
+        "decodedRgba2x": "d9944b1b30d35f4ee7cbb5597de6bcba232bd87ff357a2a98b1c838664807eb6"
       }
     },
     "shell_wall_front_slot_09_faceup": {
@@ -10067,6 +10067,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1611.0542,
         "shiftX": 0.58671,
@@ -10081,29 +10082,28 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 18.8,
           "top": 13.2,
-          "right": 49.914,
-          "bottom": 42.678
+          "right": 83.592,
+          "bottom": 75.235
         },
-        "shadowCatcherPeak": 0.4959,
+        "shadowCatcherPeak": 0.6079,
         "solidInset1x": [
           1,
           1,
@@ -10127,12 +10127,12 @@
             31
           ]
         },
-        "bytes1x": 8479,
-        "bytes2x": 25368
+        "bytes1x": 8913,
+        "bytes2x": 26130
       },
       "sha256": {
-        "decodedRgba1x": "eb8499edc5da67d84d83d81e37a51c070a4eda178f03cb07be441dba92983bb0",
-        "decodedRgba2x": "3d03798a7c836fb5fcca2bf0d3c0bff26e09fdc4422d2039ca135acacced970f"
+        "decodedRgba1x": "e1509549ffab12d8a721b878f3503a3da45e8feaa93a34480a89e4b1840aeacf",
+        "decodedRgba2x": "d3f297351fc9d0b10ca009951afda97acc62484e4120c9d2583747c0fb192447"
       }
     },
     "shell_wall_front_slot_10_faceup": {
@@ -10205,6 +10205,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1584.4279,
         "shiftX": 1.15122,
@@ -10219,29 +10220,28 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 17.247,
           "top": 13.4,
-          "right": 49.706,
-          "bottom": 42.569
+          "right": 80.714,
+          "bottom": 75.302
         },
-        "shadowCatcherPeak": 0.4962,
+        "shadowCatcherPeak": 0.6049,
         "solidInset1x": [
           1,
           1,
@@ -10265,12 +10265,12 @@
             31
           ]
         },
-        "bytes1x": 8825,
-        "bytes2x": 26110
+        "bytes1x": 9205,
+        "bytes2x": 26915
       },
       "sha256": {
-        "decodedRgba1x": "13c4185d96ec4768c9f249ac23bb1c3927595b1484ae7c178566f91f5b548777",
-        "decodedRgba2x": "83711813ef0891ed16792bda15967156ef7cb2b4f08c9a1ceae3164a70cddfbc"
+        "decodedRgba1x": "12d2702c4ab517be23c0a4b8246ba0921f27c199a44082ddc1f8deac9054e49a",
+        "decodedRgba2x": "b223c7d485988c883073508b97bb2156dfaaee56ab66a0b01e506808e1e0f5c5"
       }
     },
     "shell_wall_front_slot_11_faceup": {
@@ -10343,6 +10343,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1571.4398,
         "shiftX": 1.711284,
@@ -10357,29 +10358,28 @@
         "resolution2x": [
           244,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.4,
           "top": 13.4,
-          "right": 49.31,
-          "bottom": 43.157
+          "right": 80.373,
+          "bottom": 75.804
         },
-        "shadowCatcherPeak": 0.4954,
+        "shadowCatcherPeak": 0.6072,
         "solidInset1x": [
           1,
           1,
@@ -10403,12 +10403,12 @@
             31
           ]
         },
-        "bytes1x": 9047,
-        "bytes2x": 26783
+        "bytes1x": 9483,
+        "bytes2x": 27682
       },
       "sha256": {
-        "decodedRgba1x": "14d14fdd845ca9e070f4cd3841fa7d526643ca932388d5c3bf86a5b637523aba",
-        "decodedRgba2x": "01012bd1215e3f154727fbfe2e2894c8782dd48fdb369ced446b9a7b35bdc981"
+        "decodedRgba1x": "009e4aefce0c586c684e7d2618cd998dc9e531cda1048989cec35445fb4bb549",
+        "decodedRgba2x": "f93d8153811ab8d8a270d98b2d9c4bcf1389551e99458ee15b692adf2c8f5ac6"
       }
     },
     "shell_wall_front_slot_12_faceup": {
@@ -10481,6 +10481,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1558.6609,
         "shiftX": 2.262236,
@@ -10495,29 +10496,28 @@
         "resolution2x": [
           246,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.0,
           "top": 13.4,
-          "right": 48.427,
-          "bottom": 44.49
+          "right": 80.718,
+          "bottom": 74.498
         },
-        "shadowCatcherPeak": 0.4922,
+        "shadowCatcherPeak": 0.6421,
         "solidInset1x": [
           1,
           1,
@@ -10541,12 +10541,12 @@
             31
           ]
         },
-        "bytes1x": 9261,
-        "bytes2x": 26928
+        "bytes1x": 9670,
+        "bytes2x": 27813
       },
       "sha256": {
-        "decodedRgba1x": "09c95b98686b5fb411f920bc23695ee2fe6bd615daa88ed08e6f52b1697fcbc6",
-        "decodedRgba2x": "9fa367e6dd3b2f7f8177a2a44a1643ce0282a22328a5236a8a57a6cd080e6322"
+        "decodedRgba1x": "ee89e03e09fce3e6fc5ca195be07a23ec0edd9a41a969b1c181fd03fb3b7b8a7",
+        "decodedRgba2x": "9c1033a9889b346097e1d3302567cd63dcf4420e10ea1e593e557d62ba276a6c"
       }
     },
     "shell_wall_front_slot_13_faceup": {
@@ -10619,6 +10619,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1533.7247,
         "shiftX": 2.781876,
@@ -10633,29 +10634,28 @@
         "resolution2x": [
           250,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.8,
           "top": 13.4,
-          "right": 48.137,
-          "bottom": 44.361
+          "right": 78.137,
+          "bottom": 75.039
         },
-        "shadowCatcherPeak": 0.4927,
+        "shadowCatcherPeak": 0.6358,
         "solidInset1x": [
           1,
           1,
@@ -10679,12 +10679,12 @@
             31
           ]
         },
-        "bytes1x": 9389,
-        "bytes2x": 27281
+        "bytes1x": 9826,
+        "bytes2x": 28207
       },
       "sha256": {
-        "decodedRgba1x": "064e2f4c179925f3c04ad4c6baeeee6fa8da5d9663f7b2a152d91589edef18d5",
-        "decodedRgba2x": "1a9579f62852d05df117c69e7df3a9ecd7724f58f89bbd7f24657a6ac75c94cc"
+        "decodedRgba1x": "279d3f40957e5e06506c00fd480abc51e8a806911b459f5f7de6abc39c73f95c",
+        "decodedRgba2x": "10e6ef5b4c9dcbb1f596e5a149742c040e817bd310beb6c57b4e6000109aa262"
       }
     },
     "shell_wall_front_slot_14_faceup": {
@@ -10757,6 +10757,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1521.5496,
         "shiftX": 3.311213,
@@ -10771,29 +10772,28 @@
         "resolution2x": [
           252,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.4,
           "top": 13.4,
-          "right": 47.667,
-          "bottom": 44.8
+          "right": 76.804,
+          "bottom": 74.643
         },
-        "shadowCatcherPeak": 0.4916,
+        "shadowCatcherPeak": 0.6445,
         "solidInset1x": [
           1,
           1,
@@ -10817,12 +10817,12 @@
             31
           ]
         },
-        "bytes1x": 9516,
-        "bytes2x": 27692
+        "bytes1x": 9984,
+        "bytes2x": 28559
       },
       "sha256": {
-        "decodedRgba1x": "748b8caf6a6481a21464f31cd5be8ecffb2ee29b0954285678b7e733680d9de2",
-        "decodedRgba2x": "2a03d285148d521300e4dd1c226fa9f7b07f5fcb2daaa1ee0592a1669661d2a8"
+        "decodedRgba1x": "db8a802e6a4ec680bd0f938a596ca0dd7c9863b811dff6d2ae36003f89302989",
+        "decodedRgba2x": "e5955f712a566b45c4334828653201c06812ce477cb6493ba827644b39b8aa67"
       }
     },
     "shell_wall_front_slot_15_faceup": {
@@ -10895,6 +10895,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1509.572,
         "shiftX": 3.832226,
@@ -10909,29 +10910,28 @@
         "resolution2x": [
           254,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.0,
           "top": 13.4,
-          "right": 47.086,
-          "bottom": 45.208
+          "right": 74.973,
+          "bottom": 74.043
         },
-        "shadowCatcherPeak": 0.4905,
+        "shadowCatcherPeak": 0.6565,
         "solidInset1x": [
           1,
           1,
@@ -10955,12 +10955,12 @@
             31
           ]
         },
-        "bytes1x": 9576,
-        "bytes2x": 28037
+        "bytes1x": 10001,
+        "bytes2x": 28950
       },
       "sha256": {
-        "decodedRgba1x": "be22cbe5a780b673e1313c98d19ee1f1d149b7bbc8ec69500a8a99992ea3385e",
-        "decodedRgba2x": "93c8d16f0a338e2fb748c50dd75be776496e282d5506c271ac28c5bc24fa750e"
+        "decodedRgba1x": "8dfa1ec540717941580bbb3c6ca99b73c07be61385f8e05d38359e66bc7ce7a8",
+        "decodedRgba2x": "6abd6316963488b52e0c975b88afcbaad4064692623d24c120d6a1abbefc9659"
       }
     },
     "shell_wall_front_slot_16_faceup": {
@@ -11033,6 +11033,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 1486.1663,
         "shiftX": 4.311404,
@@ -11047,29 +11048,28 @@
         "resolution2x": [
           258,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.8,
           "top": 13.4,
-          "right": 46.18,
-          "bottom": 46.184
+          "right": 73.804,
+          "bottom": 73.98
         },
-        "shadowCatcherPeak": 0.4877,
+        "shadowCatcherPeak": 0.6767,
         "solidInset1x": [
           1,
           1,
@@ -11093,12 +11093,12 @@
             31
           ]
         },
-        "bytes1x": 9604,
-        "bytes2x": 28180
+        "bytes1x": 10029,
+        "bytes2x": 29028
       },
       "sha256": {
-        "decodedRgba1x": "4fd2159f50eb490a3e6d742f83da7d2996043e878746b0f80fd026e60fea689b",
-        "decodedRgba2x": "987d1eacfb0b1bd95d54d7060a8ecb2aa5caa7079650bee4de9565cb3bc1bf39"
+        "decodedRgba1x": "0b61f06bf9e4dfec7b006cd798d62256aaa6edfc6c5dfc2bcdbc032e8ecbaa1b",
+        "decodedRgba2x": "ba15fe43f6bc35f528cea004852a8b72d894c8cfb5ff903e9ad53f3e793b9739"
       }
     },
     "shell_wall_back_slot_00": {
@@ -11171,6 +11171,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2045.0602,
         "shiftX": -4.412133,
@@ -11185,29 +11186,28 @@
         "resolution2x": [
           252,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.0,
           "top": 13.4,
-          "right": 50.447,
-          "bottom": 44.804
+          "right": 80.643,
+          "bottom": 71.208
         },
-        "shadowCatcherPeak": 0.4787,
+        "shadowCatcherPeak": 0.6866,
         "solidInset1x": [
           1,
           1,
@@ -11231,12 +11231,12 @@
             75
           ]
         },
-        "bytes1x": 10440,
-        "bytes2x": 31024
+        "bytes1x": 10876,
+        "bytes2x": 31928
       },
       "sha256": {
-        "decodedRgba1x": "cd4da118c3053162b67e3a0295529bf39888fd2553e6140c6ac2b20dbb9759a6",
-        "decodedRgba2x": "832e23fb07d49239fee23d2501102fdbc0d8a93f372c9e61bfbc4931cbe7d4fe"
+        "decodedRgba1x": "7c3db541a041c8296cd7b8f70b528771f8607234ad2911586594998a8f002245",
+        "decodedRgba2x": "40e6fc676d3badee76afce82f4107c3b9ddfb5dbb3becb7463c816e64fa4b3c9"
       }
     },
     "shell_wall_back_slot_01": {
@@ -11309,6 +11309,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2061.4211,
         "shiftX": -3.891755,
@@ -11323,29 +11324,28 @@
         "resolution2x": [
           250,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2078,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.808,
           "top": 13.4,
-          "right": 50.427,
-          "bottom": 44.137
+          "right": 81.973,
+          "bottom": 71.749
         },
-        "shadowCatcherPeak": 0.4806,
+        "shadowCatcherPeak": 0.6596,
         "solidInset1x": [
           1,
           1,
@@ -11369,12 +11369,12 @@
             75
           ]
         },
-        "bytes1x": 10243,
-        "bytes2x": 30476
+        "bytes1x": 10705,
+        "bytes2x": 31355
       },
       "sha256": {
-        "decodedRgba1x": "18a44aabda4fe87358cf880752cbdc43eab27751f94bd238eda8dcc40e2d7bb0",
-        "decodedRgba2x": "2e109fd8b7c7d1b220f02681df6b02a6f9d8087aab95d4d126840f8d718573b7"
+        "decodedRgba1x": "3ac2c8025648a835bf2782f25c0ccacf11029a3b300121032c08e5aac77115b2",
+        "decodedRgba2x": "7bd888c9d7458a2a165f37785477b01d8b77655ecde4241a63c70de639804d2b"
       }
     },
     "shell_wall_back_slot_02": {
@@ -11447,6 +11447,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2078.0461,
         "shiftX": -3.362983,
@@ -11461,29 +11462,28 @@
         "resolution2x": [
           248,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.8,
           "top": 13.4,
-          "right": 50.435,
-          "bottom": 43.541
+          "right": 81.988,
+          "bottom": 71.824
         },
-        "shadowCatcherPeak": 0.4818,
+        "shadowCatcherPeak": 0.6479,
         "solidInset1x": [
           1,
           1,
@@ -11507,12 +11507,12 @@
             75
           ]
         },
-        "bytes1x": 10078,
-        "bytes2x": 30006
+        "bytes1x": 10513,
+        "bytes2x": 30907
       },
       "sha256": {
-        "decodedRgba1x": "14ab4c513bc5a3c802480c778c986ebf1f972a7a4bea5886ed0aaf07474b09cc",
-        "decodedRgba2x": "ca86376c364b824e5f3ccc6da310936944fbb38ef0bc1e188373719e0692b302"
+        "decodedRgba1x": "f8c24f53471f2a848af834fba6c5dbf27f7546bbd64f1b1d0f4c9c90cbdb8d99",
+        "decodedRgba2x": "119626224a3676731fcb9c857d9118b11b3c8ab4bcabcc417b19ddd49685fe47"
       }
     },
     "shell_wall_back_slot_03": {
@@ -11585,6 +11585,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2094.9414,
         "shiftX": -2.825614,
@@ -11599,29 +11600,28 @@
         "resolution2x": [
           246,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2078,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 7.408,
           "top": 13.4,
-          "right": 50.38,
-          "bottom": 42.984
+          "right": 83.196,
+          "bottom": 72.961
         },
-        "shadowCatcherPeak": 0.4832,
+        "shadowCatcherPeak": 0.6228,
         "solidInset1x": [
           1,
           1,
@@ -11645,12 +11645,12 @@
             75
           ]
         },
-        "bytes1x": 9980,
-        "bytes2x": 29611
+        "bytes1x": 10427,
+        "bytes2x": 30469
       },
       "sha256": {
-        "decodedRgba1x": "9428cd85bf5431aa70140286c91661aa7cf2879b790e30c444ccc729af4bd96c",
-        "decodedRgba2x": "02e9c198fbe82248e8616192f4f08d95f220ef1a01b10e3732ad951d1eabf9f9"
+        "decodedRgba1x": "4e810a235c118d670a55790428e0549b26b91b75364b64e8f5721d6f429e5871",
+        "decodedRgba2x": "f221bf9432f9ce2e4e70769c6ec71b190751d49451c84767b42223fb045330a5"
       }
     },
     "shell_wall_back_slot_04": {
@@ -11723,6 +11723,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2112.106,
         "shiftX": -2.279426,
@@ -11737,29 +11738,28 @@
         "resolution2x": [
           244,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 9.404,
           "top": 13.4,
-          "right": 50.027,
-          "bottom": 43.169
+          "right": 84.957,
+          "bottom": 72.263
         },
-        "shadowCatcherPeak": 0.4823,
+        "shadowCatcherPeak": 0.6316,
         "solidInset1x": [
           1,
           1,
@@ -11783,12 +11783,12 @@
             75
           ]
         },
-        "bytes1x": 9821,
-        "bytes2x": 29343
+        "bytes1x": 10225,
+        "bytes2x": 30250
       },
       "sha256": {
-        "decodedRgba1x": "a77b45a8099cae75487e041f99e304f0c67eee1ac47f975dea86790a465f6907",
-        "decodedRgba2x": "cb0883df8dc66e1ff1485d4c10f9e409bac483261fbc071f2f7a02c3377b9909"
+        "decodedRgba1x": "76e0a6908d28fd55dabd92b68f9eb4bdd560c0674ece1a3d99b30cd3ad53faeb",
+        "decodedRgba2x": "cf961cab422a2c06d20dfffc7da464d904fe0fabe43d892d7208c0952e793288"
       }
     },
     "shell_wall_back_slot_05": {
@@ -11861,6 +11861,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2129.5618,
         "shiftX": -1.72422,
@@ -11875,29 +11876,28 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2078,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 12.627,
           "top": 13.4,
-          "right": 50.082,
-          "bottom": 42.51
+          "right": 84.831,
+          "bottom": 72.643
         },
-        "shadowCatcherPeak": 0.4836,
+        "shadowCatcherPeak": 0.6201,
         "solidInset1x": [
           1,
           1,
@@ -11921,12 +11921,12 @@
             75
           ]
         },
-        "bytes1x": 9619,
-        "bytes2x": 28825
+        "bytes1x": 10032,
+        "bytes2x": 29623
       },
       "sha256": {
-        "decodedRgba1x": "3777ec48d6a09653b2a79efc43227ed81065d65a6a2c1795d074b15828ef5bfd",
-        "decodedRgba2x": "7881facf7d9df4087a91a532df3e0cbff55a7094293b8c8a01d65a88f519a0ae"
+        "decodedRgba1x": "53a1929781aacdd9774bfdb90cfb35c594ec19ac2b04faa3ad084fe90a197814",
+        "decodedRgba2x": "677e7c418f16bd830a8ab1836b403ccae928d7910dc6186d7af500f304e9f7cc"
       }
     },
     "shell_wall_back_slot_06": {
@@ -11999,6 +11999,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2147.3088,
         "shiftX": -1.159761,
@@ -12013,29 +12014,28 @@
         "resolution2x": [
           240,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.8,
           "top": 13.4,
-          "right": 50.149,
-          "bottom": 42.231
+          "right": 85.796,
+          "bottom": 73.808
         },
-        "shadowCatcherPeak": 0.4844,
+        "shadowCatcherPeak": 0.5967,
         "solidInset1x": [
           1,
           1,
@@ -12059,12 +12059,12 @@
             75
           ]
         },
-        "bytes1x": 9412,
-        "bytes2x": 28259
+        "bytes1x": 9777,
+        "bytes2x": 29083
       },
       "sha256": {
-        "decodedRgba1x": "a7b971dfa248f6189b0c2a0c7c3d742fc267e71de97f4b659e01e4cf14e19e71",
-        "decodedRgba2x": "1ab369a3d2a2061f5b950ce193137137f9a5d973c679c19e603d3693123b813e"
+        "decodedRgba1x": "42f945d5e2ff7322ef88f3279990470a24c761db5327cddaa02692f4194a10e0",
+        "decodedRgba2x": "5da7bf198d53ffcddda6265cee71e2195cc34e074c917ca97849345675d79b9b"
       }
     },
     "shell_wall_back_slot_07": {
@@ -12137,6 +12137,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2165.3582,
         "shiftX": -0.585815,
@@ -12151,29 +12152,28 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.4,
           "top": 13.4,
-          "right": 50.149,
-          "bottom": 41.639
+          "right": 83.227,
+          "bottom": 73.859
         },
-        "shadowCatcherPeak": 0.4852,
+        "shadowCatcherPeak": 0.5881,
         "solidInset1x": [
           1,
           1,
@@ -12197,12 +12197,12 @@
             75
           ]
         },
-        "bytes1x": 9187,
-        "bytes2x": 27295
+        "bytes1x": 9607,
+        "bytes2x": 28056
       },
       "sha256": {
-        "decodedRgba1x": "5c221e4df6b767b66f4c69304eb7a7d57d485eab3ba114313e1e43597668605d",
-        "decodedRgba2x": "53e771e546cddbc1d6261613cec6ddc3bf340d02efc2a22c3c2e6ba2cc8ae361"
+        "decodedRgba1x": "67ec2c140a987799acfb7c348d286690eb4aee13ed11e86e837513496104fbcc",
+        "decodedRgba2x": "7c6d8215fe6e887d30eb3060efceb100265699ca6f7fec6c98c5624b33818d99"
       }
     },
     "shell_wall_back_slot_08": {
@@ -12275,6 +12275,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2183.7092,
         "shiftX": 0.0,
@@ -12289,29 +12290,28 @@
         "resolution2x": [
           236,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 19.2,
           "top": 13.2,
-          "right": 50.102,
-          "bottom": 41.208
+          "right": 83.114,
+          "bottom": 74.678
         },
-        "shadowCatcherPeak": 0.4856,
+        "shadowCatcherPeak": 0.5683,
         "solidInset1x": [
           1,
           1,
@@ -12335,12 +12335,12 @@
             75
           ]
         },
-        "bytes1x": 8952,
-        "bytes2x": 26713
+        "bytes1x": 9303,
+        "bytes2x": 27488
       },
       "sha256": {
-        "decodedRgba1x": "61fd98910c6aedbc8b4dddc29062e6c6de739239a108e585827991d661160d95",
-        "decodedRgba2x": "2e93f03640fa3a61b882f50022354e0f445542421dcbdfecfe48b355f0dc9383"
+        "decodedRgba1x": "052c5fc1d0adaf8b2de0e4979029cc861a4bf1490631998ee565008aebdcee4d",
+        "decodedRgba2x": "55d52f28e16ce0a1a106abe70f77e45b2910bcbc71660cac1bed9372cea89b8e"
       }
     },
     "shell_wall_back_slot_09": {
@@ -12413,6 +12413,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2165.3582,
         "shiftX": 0.585815,
@@ -12427,29 +12428,28 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 15.4,
           "top": 13.4,
-          "right": 49.627,
-          "bottom": 41.729
+          "right": 84.345,
+          "bottom": 73.475
         },
-        "shadowCatcherPeak": 0.4846,
+        "shadowCatcherPeak": 0.5939,
         "solidInset1x": [
           1,
           1,
@@ -12473,12 +12473,12 @@
             75
           ]
         },
-        "bytes1x": 9150,
-        "bytes2x": 27325
+        "bytes1x": 9569,
+        "bytes2x": 28094
       },
       "sha256": {
-        "decodedRgba1x": "3cc9cdceba49d97aea48d592abd6e4379e7533286a52233b5e439f4c7ce397ce",
-        "decodedRgba2x": "22a62cb597712a67d7a0f3f758f77ec56213e13a2b3b8121152a532d75f33177"
+        "decodedRgba1x": "12a21c27b90a67f9b7838c33240abbc1aee4a94d6b3a286254e78e89400f4d99",
+        "decodedRgba2x": "8bdac9cfdadfe83a6daeeabaa2ff8922aabbf436825d14b5d0fe72483a0be392"
       }
     },
     "shell_wall_back_slot_10": {
@@ -12551,6 +12551,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2147.3088,
         "shiftX": 1.159761,
@@ -12565,29 +12566,28 @@
         "resolution2x": [
           240,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.6,
           "top": 13.4,
-          "right": 49.337,
-          "bottom": 42.114
+          "right": 84.078,
+          "bottom": 73.722
         },
-        "shadowCatcherPeak": 0.4842,
+        "shadowCatcherPeak": 0.5965,
         "solidInset1x": [
           1,
           1,
@@ -12611,12 +12611,12 @@
             75
           ]
         },
-        "bytes1x": 9378,
-        "bytes2x": 28187
+        "bytes1x": 9762,
+        "bytes2x": 28945
       },
       "sha256": {
-        "decodedRgba1x": "cb446bc5d27ddc78c053b3ee7e7d39d99970e9b5a2aef8b53e3f6a3ae35d33c6",
-        "decodedRgba2x": "25fe1bf805d4aa1b6cb0ed39bc7df41c77735571da6b45a50dad53e5550eddb0"
+        "decodedRgba1x": "ddcc39c5781f4110810214cfb3ab31c7aaa5ad7b9f7ae3920a232780b8a67fea",
+        "decodedRgba2x": "6bb70c3246e7b467b8a5c6cffa8550bb12a490dba14582bd164e9aa73fd792c4"
       }
     },
     "shell_wall_back_slot_11": {
@@ -12689,6 +12689,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2129.5618,
         "shiftX": 1.72422,
@@ -12703,29 +12704,28 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.0,
           "top": 13.4,
-          "right": 49.42,
-          "bottom": 41.82
+          "right": 80.565,
+          "bottom": 73.996
         },
-        "shadowCatcherPeak": 0.485,
+        "shadowCatcherPeak": 0.581,
         "solidInset1x": [
           1,
           1,
@@ -12749,12 +12749,12 @@
             75
           ]
         },
-        "bytes1x": 9587,
-        "bytes2x": 28808
+        "bytes1x": 9946,
+        "bytes2x": 29645
       },
       "sha256": {
-        "decodedRgba1x": "9940cbd8332a62756ce4bb2403ad0e2acb6ab5bbb85e4859a7efd5e85ec80749",
-        "decodedRgba2x": "9e912d2f9859625c20a0bc55a442ebbbb1c24e77bf38a1d3852b7402e6351582"
+        "decodedRgba1x": "b9990831d7febd59a77f3570d96ca6de45b56ad37de4211e01f953eab7b48136",
+        "decodedRgba2x": "f20a59121702182861391e5b5d60e1883b44010474b947b925b88c4bd3cbf699"
       }
     },
     "shell_wall_back_slot_12": {
@@ -12827,6 +12827,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2112.106,
         "shiftX": 2.279426,
@@ -12841,29 +12842,28 @@
         "resolution2x": [
           244,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.0,
           "top": 13.4,
-          "right": 49.055,
-          "bottom": 42.212
+          "right": 79.694,
+          "bottom": 74.016
         },
-        "shadowCatcherPeak": 0.4844,
+        "shadowCatcherPeak": 0.5932,
         "solidInset1x": [
           1,
           1,
@@ -12887,12 +12887,12 @@
             75
           ]
         },
-        "bytes1x": 9761,
-        "bytes2x": 29195
+        "bytes1x": 10176,
+        "bytes2x": 30068
       },
       "sha256": {
-        "decodedRgba1x": "acc01ede9434992d695acaedbd3a5aea4a3e4d1eef44dc983fb1b34dd9facf1e",
-        "decodedRgba2x": "47ed45060ba1ae9e4bc934354c04af889f179388a801cc47fce3d0afa925f51b"
+        "decodedRgba1x": "14a7f3a8b1bf39a087e7686c8de284f64820a1e845dbde27e98473c11150c4c0",
+        "decodedRgba2x": "39f2b99013264868191637c19d4158f73849ce304d99d9f06958935cbcb0d1b0"
       }
     },
     "shell_wall_back_slot_13": {
@@ -12965,6 +12965,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2094.9414,
         "shiftX": 2.825614,
@@ -12979,29 +12980,28 @@
         "resolution2x": [
           246,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 9.416,
           "top": 13.4,
-          "right": 48.682,
-          "bottom": 42.392
+          "right": 79.055,
+          "bottom": 73.737
         },
-        "shadowCatcherPeak": 0.4839,
+        "shadowCatcherPeak": 0.5991,
         "solidInset1x": [
           1,
           1,
@@ -13025,12 +13025,12 @@
             75
           ]
         },
-        "bytes1x": 9815,
-        "bytes2x": 29323
+        "bytes1x": 10268,
+        "bytes2x": 30174
       },
       "sha256": {
-        "decodedRgba1x": "68c5125064edf0eb4846f0a2efe18a3739c8a23bed9c038f63931544d04499ce",
-        "decodedRgba2x": "efae3c3ab59652f9ebee69d3693a7c41f652fa432b37d242b8777307fc95469c"
+        "decodedRgba1x": "cb5b908c6a5cf1b8a90f02acea73af7e80e7721aebbce08f8b273fb54ff58531",
+        "decodedRgba2x": "c29afbfd652dad630a2758b610d40f7a471f2b5589b1889e1461dfa595085b0d"
       }
     },
     "shell_wall_back_slot_14": {
@@ -13103,6 +13103,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2078.0461,
         "shiftX": 3.362983,
@@ -13117,29 +13118,28 @@
         "resolution2x": [
           248,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 7.404,
           "top": 13.4,
-          "right": 48.302,
-          "bottom": 42.808
+          "right": 77.894,
+          "bottom": 72.729
         },
-        "shadowCatcherPeak": 0.4832,
+        "shadowCatcherPeak": 0.6147,
         "solidInset1x": [
           1,
           1,
@@ -13163,12 +13163,12 @@
             75
           ]
         },
-        "bytes1x": 9960,
-        "bytes2x": 29688
+        "bytes1x": 10388,
+        "bytes2x": 30606
       },
       "sha256": {
-        "decodedRgba1x": "9effef2bbc3d5a58d24b01f057f0880cc095b6e0f6d5c608938e6d54e8741c0b",
-        "decodedRgba2x": "5ac5405ee6751342219bef02105b76ffb1c54b5074810aa18f2138f3b790c831"
+        "decodedRgba1x": "8d8229cc37069bb2826b02df5ac9ba828c8299915e7be5ead0b319954f694466",
+        "decodedRgba2x": "33ba6c440c09cfe976ad1dbfb8f33f732d6ea3f162560c98f49167a779aba764"
       }
     },
     "shell_wall_back_slot_15": {
@@ -13241,6 +13241,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2061.4211,
         "shiftX": 3.891755,
@@ -13255,29 +13256,28 @@
         "resolution2x": [
           250,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 6.204,
           "top": 13.4,
-          "right": 47.89,
-          "bottom": 43.22
+          "right": 77.071,
+          "bottom": 73.106
         },
-        "shadowCatcherPeak": 0.4824,
+        "shadowCatcherPeak": 0.6212,
         "solidInset1x": [
           1,
           1,
@@ -13301,12 +13301,12 @@
             75
           ]
         },
-        "bytes1x": 10109,
-        "bytes2x": 29898
+        "bytes1x": 10551,
+        "bytes2x": 30807
       },
       "sha256": {
-        "decodedRgba1x": "364a59c88c2c530ec3e8cd7f169dad3d62c101d73c85c735653902e14c4a2058",
-        "decodedRgba2x": "1386559bdfb64068e0b12753547793758648f391091545ed20572d48bb50f0a8"
+        "decodedRgba1x": "731c9ea0a9654ed1ae4abf530b26da88dc9df79647f244f4b7ffdcc2a66e5416",
+        "decodedRgba2x": "2c6b8d3caa72d7f7878398c80a9bfb0dc0d040f6a541f3c657f8463f4ad92a91"
       }
     },
     "shell_wall_back_slot_16": {
@@ -13379,6 +13379,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "bottom",
         "projection": "perspective",
         "lensMm": 2045.0602,
         "shiftX": 4.412133,
@@ -13393,29 +13394,28 @@
         "resolution2x": [
           252,
           304
-        ],
-        "faceLocalZ": "bottom"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.004,
           "top": 13.4,
-          "right": 47.502,
-          "bottom": 43.655
+          "right": 76.525,
+          "bottom": 72.631
         },
-        "shadowCatcherPeak": 0.4817,
+        "shadowCatcherPeak": 0.6302,
         "solidInset1x": [
           1,
           1,
@@ -13439,12 +13439,12 @@
             75
           ]
         },
-        "bytes1x": 10228,
-        "bytes2x": 30090
+        "bytes1x": 10659,
+        "bytes2x": 30983
       },
       "sha256": {
-        "decodedRgba1x": "4a9f8e0b09395a4d7f81883c7c6a820041af50a08425cf93177144be10f61c49",
-        "decodedRgba2x": "647e50f96a77801402c6bc9189c90649098f19b3af337cb71aec972d4e3e6368"
+        "decodedRgba1x": "033e40dc9bcda7123b0b54ad3d72096a52153f8852bf7e2e96276fc87f1cd353",
+        "decodedRgba2x": "a3d09613f3da212918a06de92b3757e7a1be6db47f0110449754ea58b256aa87"
       }
     },
     "shell_wall_back_slot_00_faceup": {
@@ -13517,6 +13517,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2045.0602,
         "shiftX": -4.412133,
@@ -13531,29 +13532,28 @@
         "resolution2x": [
           252,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.004,
           "top": 13.4,
-          "right": 51.161,
-          "bottom": 45.89
+          "right": 81.298,
+          "bottom": 72.878
         },
-        "shadowCatcherPeak": 0.488,
+        "shadowCatcherPeak": 0.7022,
         "solidInset1x": [
           1,
           1,
@@ -13577,12 +13577,12 @@
             31
           ]
         },
-        "bytes1x": 9298,
-        "bytes2x": 27129
+        "bytes1x": 9715,
+        "bytes2x": 28023
       },
       "sha256": {
-        "decodedRgba1x": "4e41961bb84344b8ef82f79dba30442a1ce03a5ee5e875ee6418666e4f6eff85",
-        "decodedRgba2x": "43008e01696a149e917b4fa93b36f347e4a129a48d20d6e601be23b961cae942"
+        "decodedRgba1x": "10931c4efaaba75ede5e702ad60b282dab7633f27dc891bfeef2445b1f504237",
+        "decodedRgba2x": "50aaeb5edee27fcd9c1a04b232420f570823f40633a7677af172b3ecdd37e77d"
       }
     },
     "shell_wall_back_slot_01_faceup": {
@@ -13655,6 +13655,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2061.4211,
         "shiftX": -3.891755,
@@ -13669,29 +13670,28 @@
         "resolution2x": [
           250,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.808,
           "top": 13.4,
-          "right": 51.122,
-          "bottom": 45.259
+          "right": 82.733,
+          "bottom": 73.604
         },
-        "shadowCatcherPeak": 0.4901,
+        "shadowCatcherPeak": 0.6743,
         "solidInset1x": [
           1,
           1,
@@ -13715,12 +13715,12 @@
             31
           ]
         },
-        "bytes1x": 9224,
-        "bytes2x": 27208
+        "bytes1x": 9690,
+        "bytes2x": 28102
       },
       "sha256": {
-        "decodedRgba1x": "34f23c00058bd5879fca33a8a9bf5cccb49a668ca7c97c265f48b97581f7964b",
-        "decodedRgba2x": "38e8e6f777bb2450abba1686e336f9e09ca823efb4f1c9090101eba17399613e"
+        "decodedRgba1x": "37f812eba0c0360ad02012074dd623f7e6961eb8d3d8025d89aafd7c3c64059d",
+        "decodedRgba2x": "044ed08c2b50b811a55987f47d32e974aba623ddedefaf00398af5a0e01bcf69"
       }
     },
     "shell_wall_back_slot_02_faceup": {
@@ -13793,6 +13793,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2078.0461,
         "shiftX": -3.362983,
@@ -13807,29 +13808,28 @@
         "resolution2x": [
           248,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.808,
           "top": 13.4,
-          "right": 51.086,
-          "bottom": 44.58
+          "right": 82.788,
+          "bottom": 73.298
         },
-        "shadowCatcherPeak": 0.492,
+        "shadowCatcherPeak": 0.6629,
         "solidInset1x": [
           1,
           1,
@@ -13853,12 +13853,12 @@
             31
           ]
         },
-        "bytes1x": 9183,
-        "bytes2x": 27022
+        "bytes1x": 9608,
+        "bytes2x": 27898
       },
       "sha256": {
-        "decodedRgba1x": "98952d892ef57db1531d49dd683e978766b5f0d04054716781d1ea44e3852bbf",
-        "decodedRgba2x": "82ea784bcbbbb072b797a5e98e4d33b5d3dbceae38e16b99effbf1f4be033ac9"
+        "decodedRgba1x": "8bb1824ebb0fc7823ca0695987839130289c75ef262bbef44fa03a2cc0bc1fea",
+        "decodedRgba2x": "5afdc0360188734e1efb73da206e651e43454caf84c567c518ecd68b8bb7940a"
       }
     },
     "shell_wall_back_slot_03_faceup": {
@@ -13931,6 +13931,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2094.9414,
         "shiftX": -2.825614,
@@ -13945,29 +13946,28 @@
         "resolution2x": [
           246,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 7.412,
           "top": 13.4,
-          "right": 51.11,
-          "bottom": 44.008
+          "right": 84.024,
+          "bottom": 74.718
         },
-        "shadowCatcherPeak": 0.4935,
+        "shadowCatcherPeak": 0.6372,
         "solidInset1x": [
           1,
           1,
@@ -13991,12 +13991,12 @@
             31
           ]
         },
-        "bytes1x": 9159,
-        "bytes2x": 26677
+        "bytes1x": 9587,
+        "bytes2x": 27557
       },
       "sha256": {
-        "decodedRgba1x": "83ce93057fc01525c9f52f48a7ae1ba5adbb0f5ff16354dcc6319725146cfa7a",
-        "decodedRgba2x": "756de476ea88bfd1e8ff39a75d75ce01a66b273f72608567c29156484225d883"
+        "decodedRgba1x": "299cfd37538e43150be1dd16070e29a412747e2cecaca6d8c75d5a8e10398cb8",
+        "decodedRgba2x": "f2f6c1c9880c5acc3f761e4bf1951b19ef380e58c70cffc3d18d008bc72a875a"
       }
     },
     "shell_wall_back_slot_04_faceup": {
@@ -14069,6 +14069,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2112.106,
         "shiftX": -2.279426,
@@ -14083,29 +14084,28 @@
         "resolution2x": [
           244,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 9.424,
           "top": 13.4,
-          "right": 50.62,
-          "bottom": 44.184
+          "right": 85.965,
+          "bottom": 74.09
         },
-        "shadowCatcherPeak": 0.4926,
+        "shadowCatcherPeak": 0.6463,
         "solidInset1x": [
           1,
           1,
@@ -14129,12 +14129,12 @@
             31
           ]
         },
-        "bytes1x": 9023,
-        "bytes2x": 26490
+        "bytes1x": 9416,
+        "bytes2x": 27317
       },
       "sha256": {
-        "decodedRgba1x": "a11ed13f33b6bf346a2e45b4b5b2d72b1b383ceab5a6ed96ae1d4fb749cca6c8",
-        "decodedRgba2x": "e2bc4aa5dab68a6bf0f2d5d3915a633a7f20188e9e3b8b7345edfd32b9293122"
+        "decodedRgba1x": "13ba1e3e408643031a98d4e6a1d1eea71b3180d72f6dc79ad4b4ed313a3b90bc",
+        "decodedRgba2x": "58a2fca222547c36af0ce7e3a936e6b5fbcf971604f89bf6fd55bf49ff52fdbf"
       }
     },
     "shell_wall_back_slot_05_faceup": {
@@ -14207,6 +14207,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2129.5618,
         "shiftX": -1.72422,
@@ -14221,29 +14222,28 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2078,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 12.647,
           "top": 13.4,
-          "right": 50.596,
-          "bottom": 43.51
+          "right": 85.616,
+          "bottom": 74.514
         },
-        "shadowCatcherPeak": 0.4942,
+        "shadowCatcherPeak": 0.6346,
         "solidInset1x": [
           1,
           1,
@@ -14267,12 +14267,12 @@
             31
           ]
         },
-        "bytes1x": 8785,
-        "bytes2x": 26139
+        "bytes1x": 9190,
+        "bytes2x": 26985
       },
       "sha256": {
-        "decodedRgba1x": "c31aa7fa45004bc8d35c1b784c5b5b0cdbf203171128af9f9d1cabbdb8339650",
-        "decodedRgba2x": "a192286d4c2f96e8c94ffe7e65f53c7548789ab61ac5c8cbbf432cf52c913c7f"
+        "decodedRgba1x": "5b8fd0ae6c10602a0bd8c3ac392f33ed5a9eeecf0e24bb9667094e8e4ac50720",
+        "decodedRgba2x": "0da78c937e698d12254a397b186069e0fdaf05f0e8a0ec3e2251893f3dc0ae2e"
       }
     },
     "shell_wall_back_slot_06_faceup": {
@@ -14345,6 +14345,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2147.3088,
         "shiftX": -1.159761,
@@ -14359,29 +14360,28 @@
         "resolution2x": [
           240,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.8,
           "top": 13.4,
-          "right": 50.639,
-          "bottom": 43.102
+          "right": 86.953,
+          "bottom": 75.486
         },
-        "shadowCatcherPeak": 0.4953,
+        "shadowCatcherPeak": 0.6107,
         "solidInset1x": [
           1,
           1,
@@ -14405,12 +14405,12 @@
             31
           ]
         },
-        "bytes1x": 8578,
-        "bytes2x": 25679
+        "bytes1x": 8919,
+        "bytes2x": 26445
       },
       "sha256": {
-        "decodedRgba1x": "97c2793ea5901bf4b4ce22c60cdaf513cbe9175f3af57dea754fa51e68ac05c8",
-        "decodedRgba2x": "0e28667931be2965ed158c8b404f412a741c1d4ae5c2ffaf0c2c80168360399d"
+        "decodedRgba1x": "bd8e4ab984df6947f23e3702f06472812e18afda52d84df8085c1433afd2d17a",
+        "decodedRgba2x": "359c5fce05a72f0871b482edb1a64054e38c72a3920c1c6f0a15b540d504d45f"
       }
     },
     "shell_wall_back_slot_07_faceup": {
@@ -14483,6 +14483,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2165.3582,
         "shiftX": -0.585815,
@@ -14497,29 +14498,28 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.4,
           "top": 13.4,
-          "right": 50.678,
-          "bottom": 42.537
+          "right": 83.851,
+          "bottom": 75.416
         },
-        "shadowCatcherPeak": 0.4964,
+        "shadowCatcherPeak": 0.6018,
         "solidInset1x": [
           1,
           1,
@@ -14543,12 +14543,12 @@
             31
           ]
         },
-        "bytes1x": 8399,
-        "bytes2x": 24555
+        "bytes1x": 8809,
+        "bytes2x": 25311
       },
       "sha256": {
-        "decodedRgba1x": "242ac80fb032af0244f09d65288ef0472207a196dee768a6da22bc475959132b",
-        "decodedRgba2x": "7001754469c5295a373aaa87090324465f736a8f2143fbfe302a47904b9829ec"
+        "decodedRgba1x": "85d54c8cf32e9ec064846d649f44707e6d03e1c42bd83e57d3b60d879bcb7b75",
+        "decodedRgba2x": "22418cdbcf868c88244136750930726159ee584bd4470897ba1eb96d0699b2b5"
       }
     },
     "shell_wall_back_slot_08_faceup": {
@@ -14621,6 +14621,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2183.7092,
         "shiftX": 0.0,
@@ -14635,29 +14636,28 @@
         "resolution2x": [
           236,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 19.2,
           "top": 13.2,
-          "right": 50.627,
-          "bottom": 42.082
+          "right": 84.098,
+          "bottom": 76.455
         },
-        "shadowCatcherPeak": 0.4969,
+        "shadowCatcherPeak": 0.5819,
         "solidInset1x": [
           1,
           1,
@@ -14681,12 +14681,12 @@
             31
           ]
         },
-        "bytes1x": 8040,
-        "bytes2x": 24259
+        "bytes1x": 8395,
+        "bytes2x": 25013
       },
       "sha256": {
-        "decodedRgba1x": "76eab1b4b268a45d94e4aace7cdd62470ff51d61db0e4c2969f1c7f4183f23b8",
-        "decodedRgba2x": "758926ce8853028a6a64faab41ac42c44399e02d66b733eb10c6b44c6d4daf95"
+        "decodedRgba1x": "ed16206fa5a85e785e5f98bf906b5da44ee57831ca4a4754b79e05201c76d458",
+        "decodedRgba2x": "d3c536eaf1bfd292d39842f11c3679bef2249f8d664f76aa3d330a5e46454fc2"
       }
     },
     "shell_wall_back_slot_09_faceup": {
@@ -14759,6 +14759,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2165.3582,
         "shiftX": 0.585815,
@@ -14773,29 +14774,28 @@
         "resolution2x": [
           238,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 15.4,
           "top": 13.4,
-          "right": 50.09,
-          "bottom": 42.643
+          "right": 85.098,
+          "bottom": 75.133
         },
-        "shadowCatcherPeak": 0.4958,
+        "shadowCatcherPeak": 0.6079,
         "solidInset1x": [
           1,
           1,
@@ -14819,12 +14819,12 @@
             31
           ]
         },
-        "bytes1x": 8405,
-        "bytes2x": 24859
+        "bytes1x": 8837,
+        "bytes2x": 25624
       },
       "sha256": {
-        "decodedRgba1x": "afb73c963137a409bd220947d998dab0b069cb67c4ed8aba42192c570b51d368",
-        "decodedRgba2x": "c91476528b0f5bba4fe498d348d1d01345568c261c80b1cc4212545e97673b37"
+        "decodedRgba1x": "e8dd5d709c7f780df34f30e28d0963ffba2150949bd694a8851ac2ce65756a31",
+        "decodedRgba2x": "0e414afa70fafb35135c489a8ae0898ef200cdc2e0c4d15adf3a794442211841"
       }
     },
     "shell_wall_back_slot_10_faceup": {
@@ -14897,6 +14897,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2147.3088,
         "shiftX": 1.159761,
@@ -14911,29 +14912,28 @@
         "resolution2x": [
           240,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 4.6,
           "top": 13.4,
-          "right": 49.69,
-          "bottom": 43.055
+          "right": 84.988,
+          "bottom": 75.38
         },
-        "shadowCatcherPeak": 0.4951,
+        "shadowCatcherPeak": 0.6103,
         "solidInset1x": [
           1,
           1,
@@ -14957,12 +14957,12 @@
             31
           ]
         },
-        "bytes1x": 8703,
-        "bytes2x": 25753
+        "bytes1x": 9075,
+        "bytes2x": 26525
       },
       "sha256": {
-        "decodedRgba1x": "72e9df65a62e9e3e3d5798e9670a469fd01ddccc04fa9999144131f41441ca5f",
-        "decodedRgba2x": "b02a2ebd7b6a8ff44819171cbeede06e1b3fdfce4082b191c4dd560d72a2842b"
+        "decodedRgba1x": "eb304bd3f6b7ab94f59fe138c9b4163f4af23c5a2104d4fce97d7901d46ce911",
+        "decodedRgba2x": "b201d32608518ccf323ecbffb421a76733eaee7915aa556518a50cd1c5a9c4b0"
       }
     },
     "shell_wall_back_slot_11_faceup": {
@@ -15035,6 +15035,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2129.5618,
         "shiftX": 1.72422,
@@ -15049,29 +15050,28 @@
         "resolution2x": [
           242,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 2.0,
           "top": 13.4,
-          "right": 49.773,
-          "bottom": 42.714
+          "right": 81.259,
+          "bottom": 75.498
         },
-        "shadowCatcherPeak": 0.4963,
+        "shadowCatcherPeak": 0.5947,
         "solidInset1x": [
           1,
           1,
@@ -15095,12 +15095,12 @@
             31
           ]
         },
-        "bytes1x": 8907,
-        "bytes2x": 26263
+        "bytes1x": 9275,
+        "bytes2x": 27101
       },
       "sha256": {
-        "decodedRgba1x": "faf2ffea584fed5faf58776bfc499cf936b6616c0f3376f96732544244f69b96",
-        "decodedRgba2x": "caefee61c93c6ae81f8da5e9811de1929aee228d9fe3b982e2e60db32026e126"
+        "decodedRgba1x": "a6981b31e875b057207b614ac16455239ca4753f24a56a2a744dc6a1c5eeca54",
+        "decodedRgba2x": "e7aee1f36224d7dbb949c2e69b3a385056c713e56067c9ef453eed76b9abfd6f"
       }
     },
     "shell_wall_back_slot_12_faceup": {
@@ -15173,6 +15173,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2112.106,
         "shiftX": 2.279426,
@@ -15187,29 +15188,28 @@
         "resolution2x": [
           244,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 1.0,
           "top": 13.4,
-          "right": 49.412,
-          "bottom": 43.125
+          "right": 80.353,
+          "bottom": 75.678
         },
-        "shadowCatcherPeak": 0.4955,
+        "shadowCatcherPeak": 0.6073,
         "solidInset1x": [
           1,
           1,
@@ -15233,12 +15233,12 @@
             31
           ]
         },
-        "bytes1x": 9017,
-        "bytes2x": 26643
+        "bytes1x": 9438,
+        "bytes2x": 27539
       },
       "sha256": {
-        "decodedRgba1x": "65f3e2330db7275d415ba257431cdf55702005100f834d718170d317558b386d",
-        "decodedRgba2x": "23fb8bcbe0bc45522fb909ba1d55bf8cb7e612d8fa3d603ec9950a2b03e1257c"
+        "decodedRgba1x": "65832d6be888a54dfffbdc5d2a7fb7d1d9ec8ac6e5ebf791684e14aac7c6e571",
+        "decodedRgba2x": "ff67d1a368aeb283d54c2fd0e783c3084b9130ca70c5b7ce0a7dbe1a78bdba04"
       }
     },
     "shell_wall_back_slot_13_faceup": {
@@ -15311,6 +15311,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2094.9414,
         "shiftX": 2.825614,
@@ -15325,29 +15326,28 @@
         "resolution2x": [
           246,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 9.404,
           "top": 13.4,
-          "right": 49.004,
-          "bottom": 43.341
+          "right": 79.831,
+          "bottom": 75.42
         },
-        "shadowCatcherPeak": 0.4945,
+        "shadowCatcherPeak": 0.613,
         "solidInset1x": [
           1,
           1,
@@ -15371,12 +15371,12 @@
             31
           ]
         },
-        "bytes1x": 9169,
-        "bytes2x": 26891
+        "bytes1x": 9597,
+        "bytes2x": 27733
       },
       "sha256": {
-        "decodedRgba1x": "f6c8fa3399f2a305c050d36dbf8ddf7ae320efb9033ab7ccca67bad5ed25260c",
-        "decodedRgba2x": "fd467bdd3db60e637e5eb09daf50a0edc632820993b94c58ce50da326754d0a2"
+        "decodedRgba1x": "55c350735b60e0de5b85d86b573be4eeec156cf150c4060761b915ee1f677ca7",
+        "decodedRgba2x": "9006d643b6c03357648af86e0ff4f53031965128097544fc76d915b42df00776"
       }
     },
     "shell_wall_back_slot_14_faceup": {
@@ -15449,6 +15449,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2078.0461,
         "shiftX": 3.362983,
@@ -15463,29 +15464,28 @@
         "resolution2x": [
           248,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2039,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 7.404,
           "top": 13.4,
-          "right": 48.592,
-          "bottom": 43.812
+          "right": 78.424,
+          "bottom": 74.639
         },
-        "shadowCatcherPeak": 0.4937,
+        "shadowCatcherPeak": 0.629,
         "solidInset1x": [
           1,
           1,
@@ -15509,12 +15509,12 @@
             31
           ]
         },
-        "bytes1x": 9228,
-        "bytes2x": 27184
+        "bytes1x": 9667,
+        "bytes2x": 28068
       },
       "sha256": {
-        "decodedRgba1x": "53cfee20f651ac4563c01a38d18ffcd66dcde33f8fa3646b436e535537d3a25a",
-        "decodedRgba2x": "5a1c89beb50d049d4d6ca934d4b986450954ad7680611ef45092c455e19b2bf7"
+        "decodedRgba1x": "f808f0efe2ca984a5d36cdf688e24303b62e56e8dcdbb8267f1e07f20d25149a",
+        "decodedRgba2x": "bc1ebd4b0dc808f0450907481f056d67a274a87cc0032e94341ca8dbab4c75a5"
       }
     },
     "shell_wall_back_slot_15_faceup": {
@@ -15587,6 +15587,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2061.4211,
         "shiftX": 3.891755,
@@ -15601,29 +15602,28 @@
         "resolution2x": [
           250,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 6.2,
           "top": 13.4,
-          "right": 48.192,
-          "bottom": 44.255
+          "right": 77.698,
+          "bottom": 74.906
         },
-        "shadowCatcherPeak": 0.4928,
+        "shadowCatcherPeak": 0.636,
         "solidInset1x": [
           1,
           1,
@@ -15647,12 +15647,12 @@
             31
           ]
         },
-        "bytes1x": 9455,
-        "bytes2x": 27477
+        "bytes1x": 9909,
+        "bytes2x": 28326
       },
       "sha256": {
-        "decodedRgba1x": "1a0e7f1f5cfabb08d96d7f997de997e4000baf76428609d6125e9a04652c8e6d",
-        "decodedRgba2x": "3da227ad2dea58342cc8b168b7e4912861ec2183b398a86ec1ec32c9da47cbbd"
+        "decodedRgba1x": "d5274f82595afab187250f55dd3e9904d510b66170d67ba5f79a875d42fd799c",
+        "decodedRgba2x": "035258ef03b4ef4cf4f9f9c4dfe4774884a3803415b3c28ebfa0ec337e67acab"
       }
     },
     "shell_wall_back_slot_16_faceup": {
@@ -15725,6 +15725,7 @@
       "camera": {
         "azimuthDeg": 0,
         "elevationDeg": 45.0,
+        "faceLocalZ": "top",
         "projection": "perspective",
         "lensMm": 2045.0602,
         "shiftX": 4.412133,
@@ -15739,29 +15740,28 @@
         "resolution2x": [
           252,
           304
-        ],
-        "faceLocalZ": "top"
+        ]
       },
       "measured": {
         "alphaExtent1x": {
           "left": 1,
           "top": 1,
-          "right": 11,
-          "bottom": 11
+          "right": 12,
+          "bottom": 12
         },
         "alphaPeak1x": {
           "left": 0.2,
           "top": 0.2,
-          "right": 0.1216,
-          "bottom": 0.1216
+          "right": 0.2196,
+          "bottom": 0.2196
         },
         "alphaMass1x": {
           "left": 5.0,
           "top": 13.4,
-          "right": 47.769,
-          "bottom": 44.698
+          "right": 77.031,
+          "bottom": 74.451
         },
-        "shadowCatcherPeak": 0.4917,
+        "shadowCatcherPeak": 0.6447,
         "solidInset1x": [
           1,
           1,
@@ -15785,12 +15785,12 @@
             31
           ]
         },
-        "bytes1x": 9489,
-        "bytes2x": 27623
+        "bytes1x": 9934,
+        "bytes2x": 28500
       },
       "sha256": {
-        "decodedRgba1x": "1832b83c86ab1b4668256644cef631fb194136a186bfc0c3483c1ac709c08c94",
-        "decodedRgba2x": "f65c934fcad052eff67e8b83b62852c21e93ead046fe113d6dbc29179fb2d4c7"
+        "decodedRgba1x": "98b16ac3ac305eed6220e84feccb8bc11e303111663f21889f23e1462ee28639",
+        "decodedRgba2x": "82e170bcd94625944b65b7adf71a8a5762b4aeb7fae696a555f9ca15fbed1b35"
       }
     }
   }

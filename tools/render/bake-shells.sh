@@ -5,6 +5,7 @@
 #   bash tools/render/bake-shells.sh --check    # integrity check; needs no Blender
 #   bash tools/render/bake-shells.sh --preview --only <id> [--only <id>...]  # fast partial bake
 #   bash tools/render/bake-shells.sh --audition # render the standing-hand fan calibration + sheets
+#   bash tools/render/bake-shells.sh --shadow-audition  # shadow strength/shape/falloff sheet
 #   bash tools/render/bake-shells.sh --check-audition  # validate the candidate matrix; needs no Blender
 #   bash tools/render/bake-shells.sh --bake     # bake 1x + 2x, build review sheets, then check
 #
@@ -18,6 +19,10 @@
 # those shells under tools/render/build/preview/ (never the committed assets),
 # writes a preview manifest and a preview sheet, and skips the full 103-shell
 # check. Use it while tuning one shell; do a full --bake when the set is right.
+#
+# --shadow-audition renders the shadow strength/shape/falloff candidates on the flat,
+# wall and hand shells under build/review/shadows/, then draws a labelled comparison
+# sheet. It never touches the committed shells.
 #
 # --audition is the standing-hand fan calibration path: it renders every candidate in
 # shell-spec.json's `audition` block at the new base scale into
@@ -54,6 +59,10 @@ while [ $# -gt 0 ]; do
       ;;
     --audition)
       mode="audition"
+      shift
+      ;;
+    --shadow-audition)
+      mode="shadow-audition"
       shift
       ;;
     --dry-run)
@@ -125,6 +134,9 @@ case "$mode" in
   audition)
     blender_args+=(--audition "${verify[@]}")
     ;;
+  shadow-audition)
+    blender_args+=(--shadow-audition)
+    ;;
   *)
     blender_args+=(--dry-run)
     ;;
@@ -140,6 +152,12 @@ elif [ "$mode" = "preview" ]; then
   "$blender" "${blender_args[@]}"
   echo "[shells] preview sheet (gitignored, build/preview/preview-1x.png)"
   node "$here/scripts/review-shells.mjs" --preview --out "$here/build/preview"
+elif [ "$mode" = "shadow-audition" ]; then
+  "$blender" "${blender_args[@]}"
+  echo "[shells] shadow comparison sheet (gitignored, build/review/shadow-candidates.png)"
+  node "$here/scripts/review-shells.mjs" --shadow-audition
+  echo "[shells] validating the shadow audition"
+  node "$here/scripts/check-shells.mjs" --shadow-audition
 elif [ "$mode" = "audition" ]; then
   "$blender" "${blender_args[@]}"
   echo "[shells] candidate sheets (gitignored, for the user's pick)"

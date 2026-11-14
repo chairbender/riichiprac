@@ -49,8 +49,10 @@ Usage (normally through ``bake-shells.sh``, which resolves the pinned Blender):
 A dry run builds the tile, material and lights, prints the shell plan, and
 writes nothing. ``--bake`` renders the 103 shells, writes both scales and the
 manifest. ``--preview`` with ``--only`` renders just those shells under
-``build/preview/``. ``--audition`` renders the standing-hand fan calibration
-described by the spec's ``audition`` block at the current base scale into
+``build/preview/``. ``--shadow-audition`` renders the REF plus the spec's
+``shadowAudition`` variants on the flat, wall and hand shells under
+``build/review/shadows/``. ``--audition`` renders the standing-hand fan
+calibration described by the spec's ``audition`` block at the current base scale into
 ``tools/render/build/review/`` (textures plus ``shell-candidates.json``) and
 never touches the committed shells or ``shells.json``. ``--verify-determinism``
 renders everything twice and compares the decoded RGBA, which is the re-render
@@ -1193,7 +1195,17 @@ def compose_shell(
     beyond_left = np.maximum(0, x0 - xs)
     beyond_top = np.maximum(0, y0 - ys)
 
-    shadow_window = padded_falloff(beyond_right, right, beyond_bottom, bottom)
+    # The falloff must follow the tile silhouette, not its rectangular body box.
+    # The body box corners are outside a beveled tile; a rectangular window
+    # zeroes the shadow there and leaves the four corner notches unshadowed. Keep
+    # the full contact shadow for outside pixels inside the box, and use the
+    # directional padding falloff only once the point is outside the box.
+    inside_box = (xs >= x0) & (xs <= x1) & (ys >= y0) & (ys <= y1)
+    shadow_window = np.where(
+        inside_box,
+        1.0,
+        padded_falloff(beyond_right, right, beyond_bottom, bottom),
+    )
     shadow_window = np.where(outside, shadow_window, 0.0)
 
     physical = catcher[..., 3] * shadow_window
@@ -1219,17 +1231,32 @@ def compose_shell(
     shadow_shape = np.maximum(right_band / right_peak, bottom_band / bottom_peak)
     shadow_alpha = shadow_shape * float(bake["shadow"]["peakAlpha"])
 
-    ao_window = padded_falloff(beyond_left, left, beyond_top, top)
+    ao_window = np.where(
+        inside_box,
+        1.0,
+        padded_falloff(beyond_left, left, beyond_top, top),
+    )
+    ao_window = np.where(outside, ao_window, 0.0)
     band = max(left, top)
     ring = 1.0 - smoothstep((outside_distance(~outside, band) - 1.0) / max(1.0, band))
     ao = np.where(outside, ao_window * ring, 0.0)
     left_band = ao * (xs < x0)
     top_band = ao * (ys < y0)
+    # The top-left beveled corner is outside the tile but inside the body box;
+    # the directional left/top bands miss it, leaving a light notch in the AO.
+    corner_band = ao * inside_box * (xs <= x0 + band) * (ys <= y0 + band)
     left_peak = float(left_band.max())
     top_peak = float(top_band.max())
+    corner_peak = float(corner_band.max())
     if left_peak <= 0.0 or top_peak <= 0.0:
         die("the ambient-occlusion fringe has no support on the top/left padded side")
-    ao_shape = np.maximum(left_band / left_peak, top_band / top_peak)
+    ao_shape = np.maximum.reduce(
+        [
+            left_band / left_peak,
+            top_band / top_peak,
+            corner_band / corner_peak if corner_peak > 0.0 else np.zeros_like(ao),
+        ]
+    )
     ao_alpha = ao_shape * float(bake["ambientOcclusion"]["peakAlpha"])
 
     tile_alpha = alpha
@@ -1930,6 +1957,113 @@ def bake_audition(
     return 0
 
 
+def bake_shadow_audition(
+    spec: dict,
+    args: argparse.Namespace,
+    scene: bpy.types.Scene,
+    tile: bpy.types.Object,
+    lights: list[bpy.types.Object],
+    catcher: bpy.types.Object,
+    outputs: dict,
+) -> int:
+    """Render the shadow strength/shape/falloff candidates on fixed shells."""
+    block = spec["shadowAudition"]
+    base_dir = (RENDER_DIR / block["outputDir"]).resolve()
+    sheet_dir = (RENDER_DIR / block["sheetDir"]).resolve()
+    manifest_path = (RENDER_DIR / block["manifest"]).resolve()
+    temp_dir = outputs["intermediateDir"] / "shadow-audition"
+    for directory in (base_dir, sheet_dir, temp_dir):
+        directory.mkdir(parents=True, exist_ok=True)
+
+    catalogue = {shell["id"]: shell for shell in spec["shells"]}
+    missing = [shell_id for shell_id in block["shells"] if shell_id not in catalogue]
+    if missing:
+        die(f"shadowAudition names shells outside the catalogue: {missing}")
+    variants = [
+        {
+            "id": "REF",
+            "label": "REF COMMITTED",
+            "note": "the committed shadow",
+            "shadow": dict(spec["bake"]["shadow"]),
+            "padding1x": dict(spec["bake"]["padding1x"]),
+        }
+    ] + list(block["variants"])
+    recorded = []
+    for variant in variants:
+        variant_id = variant["id"]
+        v_shadow = {**spec["bake"]["shadow"], **variant.get("shadow", {})}
+        v_padding = variant.get("padding1x", spec["bake"]["padding1x"])
+        v_bake = {
+            **spec["bake"],
+            "shadow": v_shadow,
+            "padding1x": v_padding,
+        }
+        v_spec = {**spec, "bake": v_bake}
+        shells = {}
+        log(
+            f"shadow {variant_id}: peak {v_shadow['peakAlpha']}, floor {v_shadow['contactFloor']}, "
+            f"blur {v_shadow['blurPx2x']}, pad {v_padding['right']}"
+        )
+        for shell_id in block["shells"]:
+            shell = catalogue[shell_id]
+            out_1x = base_dir / variant_id / "1x"
+            out_2x = base_dir / variant_id / "2x"
+            pose_tile(tile, shell)
+            camera, framing = build_shell_camera(scene, tile, shell, v_spec)
+            aim_key(lights[0], camera, world_bbox_center(tile), v_spec)
+            record = bake_shell(
+                scene,
+                tile,
+                shell,
+                v_spec,
+                camera,
+                framing,
+                catcher,
+                out_1x,
+                out_2x,
+                temp_dir,
+            )
+            expected_aspect(shell, record["advanceWidth"], record["advanceHeight"])
+            record["textureFile"] = f"shadows/{variant_id}/1x/{shell_id}.png"
+            record["textureFile2x"] = f"shadows/{variant_id}/2x/{shell_id}.png"
+            record["shadowVariant"] = {
+                "id": variant_id,
+                "label": variant["label"],
+                "shadow": dict(v_shadow),
+                "padding1x": dict(v_padding),
+            }
+            shells[shell_id] = record
+            bpy.data.objects.remove(camera, do_unlink=True)
+        recorded.append(
+            {
+                "id": variant_id,
+                "label": variant["label"],
+                "note": variant.get("note"),
+                "shadow": dict(v_shadow),
+                "padding1x": dict(v_padding),
+                "shells": shells,
+            }
+        )
+
+    manifest = {
+        "version": 1,
+        "generatedBy": "tools/render/bake_shells.py --shadow-audition",
+        "status": block["status"],
+        "deliverable": block["deliverable"],
+        "pixelRatio": int(spec["bake"]["pixelRatio"]),
+        "base": {
+            "targetLongAxisPx1x": spec["bake"]["targetLongAxisPx1x"],
+            "targetLongAxisPx2x": spec["bake"]["targetLongAxisPx1x"] * int(spec["bake"]["pixelRatio"]),
+        },
+        "variants": recorded,
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    log(
+        f"wrote {len(recorded) * len(block['shells'])} shadow variants to {base_dir} and {manifest_path}"
+    )
+    return 0
+
+
 def resolve_outputs(spec_path: Path, spec: dict) -> dict:
     root = spec_path.resolve().parent
     return {
@@ -1952,6 +2086,11 @@ def main(argv: list[str]) -> int:
         "--audition",
         action="store_true",
         help="render the candidate matrix under build/review/; never touches the committed shells",
+    )
+    parser.add_argument(
+        "--shadow-audition",
+        action="store_true",
+        help="render the shadow strength/shape/falloff candidates under build/review/shadows/",
     )
     parser.add_argument(
         "--dry-run",
@@ -2010,11 +2149,13 @@ def main(argv: list[str]) -> int:
     )
     shell_plan(spec)
 
-    if args.dry_run or not (args.bake or args.audition):
+    if args.dry_run or not (args.bake or args.audition or args.shadow_audition):
         log("dry run: no shells written")
         return 0
     if args.bake and args.audition:
         die("--bake and --audition are separate runs; pick one")
+    if args.shadow_audition and (args.bake or args.audition):
+        die("--shadow-audition is its own mode; do not combine it with --bake/--audition")
     if not spec.get("bakeImplemented"):
         die(
             "bakeImplemented is false: implement build_shell_camera/bake_shell and "
@@ -2025,6 +2166,8 @@ def main(argv: list[str]) -> int:
     outputs["shell2xDir"].mkdir(parents=True, exist_ok=True)
     outputs["intermediateDir"].mkdir(parents=True, exist_ok=True)
 
+    if args.shadow_audition:
+        return bake_shadow_audition(spec, args, scene, tile, lights, catcher, outputs)
     if args.audition:
         return bake_audition(spec, args, scene, tile, lights, catcher, outputs)
 

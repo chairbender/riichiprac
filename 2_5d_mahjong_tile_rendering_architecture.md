@@ -501,20 +501,20 @@ All numbers are measured from the render and live in
 
 | Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | stackStepPx | Bytes @1x + @2x |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_flat_upright` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | — | 7,990 + 23,580 |
-| `shell_flat_sideways` | el 45° | 124 × 113 / 248 × 226 | 106 × 95 | (0, 55.15) / (104, 0) | — | 9,543 + 29,353 |
-| `shell_wall_horizontal` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 8,917 + 26,215 |
-| `shell_wall_horizontal_faceup` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 7,990 + 23,580 |
-| `shell_wall_side_left` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 11,216 + 32,505 |
-| `shell_wall_side_left_faceup` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 9,724 + 28,261 |
-| `shell_wall_side_right` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 10,331 + 30,102 |
-| `shell_wall_side_right_faceup` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 9,729 + 28,528 |
+| `shell_flat_upright` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | — | 8,333 + 24,322 |
+| `shell_flat_sideways` | el 45° | 124 × 113 / 248 × 226 | 106 × 95 | (0, 55.15) / (104, 0) | — | 9,933 + 30,110 |
+| `shell_wall_horizontal` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 9,275 + 26,972 |
+| `shell_wall_horizontal_faceup` | el 45° | 90 × 120 / 180 × 240 | 72 × 102 | (69.4, 0) / (0, 65.44) | (0, −38.56) | 8,333 + 24,322 |
+| `shell_wall_side_left` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 11,605 + 33,270 |
+| `shell_wall_side_left_faceup` | off-axis persp, +2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) | 10,124 + 29,052 |
+| `shell_wall_side_right` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 10,678 + 30,845 |
+| `shell_wall_side_right_faceup` | off-axis persp, −2 / d10 | 122 × 103 / 244 × 206 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 10,075 + 29,250 |
 
-The eight base shells above total **297,564 B** (75,440 @1x + 222,124 @2x).
-The 14 human-hand slots add **558,566 B**, the 13 top-hand slots **454,687 B**
-and the 68 front/back wall slots **2,539,608 B**, for **3,850,425 B**
-(972,893 @1x + 2,877,532 @2x) against the raised 4,194,304 B budget.
-`shells.json` is **357,606 B** against the raised 524,288 B budget. The felt is
+The eight base shells above total **306,499 B** (78,356 @1x + 228,143 @2x).
+The 14 human-hand slots add **572,553 B**, the 13 top-hand slots **469,026 B**
+and the 68 front/back wall slots **2,625,341 B**, for **3,973,419 B**
+(1,012,559 @1x + 2,960,860 @2x) against the raised 4,194,304 B budget.
+`shells.json` is **357,707 B** against the raised 524,288 B budget. The felt is
 unchanged (559,465 B). The hand slots keep the 104 px body long axis (102 px
 measured, minus the anti-aliased crop); the human-hand centre is 89 × 120 @1x,
 the drawn slot 103 × 120, and the top-hand centre 88 × 120.
@@ -523,31 +523,31 @@ Representative top-hand slots (all 13 are in `shells.json`):
 
 | Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | Bytes @1x + @2x |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_hand_top_slot_06` | 0° / d60 | 88 × 120 / 176 × 240 | 70 × 102 | (67.55, 0) / (0, 80.35) | 8,279 + 24,413 |
-| `shell_hand_top_slot_00` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (2.83, 80.35) | 9,309 + 27,419 |
-| `shell_hand_top_slot_12` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (−2.83, 80.35) | 9,287 + 27,323 |
+| `shell_hand_top_slot_06` | 0° / d60 | 88 × 120 / 176 × 240 | 70 × 102 | (67.55, 0) / (0, 80.35) | 8,651 + 25,227 |
+| `shell_hand_top_slot_00` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (2.83, 80.35) | 9,623 + 28,123 |
+| `shell_hand_top_slot_12` | 4.29° / d60 | 92 × 120 / 184 × 240 | 74 × 102 | (67.55, 0) / (−2.83, 80.35) | 9,566 + 28,012 |
 
 Representative hand slots (all 14 are in `shells.json`):
 
 | Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | Bytes @1x + @2x |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_hand_slot_06` | 0° / d24 | 89 × 120 / 178 × 240 | 71 × 102 | (67.96, 0) / (0, 81.72) | 9,043 + 26,629 |
-| `shell_hand_slot_00` | 10.62° / d24 | 100 × 120 / 200 × 240 | 82 × 102 | (67.96, 0) / (7.37, 81.72) | 10,569 + 30,941 |
-| `shell_hand_slot_12` | 10.62° / d24 | 100 × 120 / 200 × 240 | 82 × 102 | (67.96, 0) / (−7.37, 81.72) | 10,801 + 32,013 |
-| `shell_hand_slot_draw` | 12.94° / d24 | 103 × 120 / 206 × 240 | 85 × 102 | (67.96, 0) / (−9.03, 81.72) | 11,015 + 32,125 |
+| `shell_hand_slot_06` | 0° / d24 | 89 × 120 / 178 × 240 | 71 × 102 | (67.96, 0) / (0, 81.72) | 9,413 + 27,485 |
+| `shell_hand_slot_00` | 10.62° / d24 | 100 × 120 / 200 × 240 | 82 × 102 | (67.96, 0) / (7.37, 81.72) | 10,854 + 31,594 |
+| `shell_hand_slot_12` | 10.62° / d24 | 100 × 120 / 200 × 240 | 82 × 102 | (67.96, 0) / (−7.37, 81.72) | 11,062 + 32,549 |
+| `shell_hand_slot_draw` | 12.94° / d24 | 103 × 120 / 206 × 240 | 85 × 102 | (67.96, 0) / (−9.03, 81.72) | 11,218 + 32,662 |
 
 Representative wall slots (all 17 per wall are in `shells.json`):
 
 | Shell | Camera | Texture @1x / @2x | Body | gridStepPx x / y | stackStepPx | Bytes @1x + @2x |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `shell_wall_front_slot_08` | 0° / d40.8 | 91 × 120 / 182 × 240 | 73 × 102 | (69.72, 0) / (0, 66.07) | (0, −39.02) | 8,776 + 26,751 |
-| `shell_wall_front_slot_04` | 4.21° / d40.8 | 95 × 120 / 190 × 240 | 77 × 102 | (69.72, 0) / (−3.49, 66.07) | (−2.03, −39.02) | 10,070 + 29,793 |
-| `shell_wall_front_slot_16` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.97, 66.07) | (4.06, −39.02) | 10,428 + 30,501 |
-| `shell_wall_back_slot_08` | 0° / d54.8 | 90 × 120 / 180 × 240 | 72 × 102 | (69.64, 0) / (0, 65.91) | (0, −38.9) | 8,952 + 26,713 |
-| `shell_wall_back_slot_04` | 3.13° / d54.8 | 93 × 120 / 186 × 240 | 75 × 102 | (69.64, 0) / (−2.58, 65.91) | (−1.51, −38.9) | 9,821 + 29,343 |
-| `shell_wall_back_slot_16` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.16, 65.91) | (3.01, −38.9) | 10,228 + 30,090 |
-| `shell_wall_front_slot_16_faceup` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.8, 64.46) | (4.06, −39.02) | 9,604 + 28,180 |
-| `shell_wall_back_slot_16_faceup` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.06, 64.71) | (3.01, −38.9) | 9,489 + 27,623 |
+| `shell_wall_front_slot_08` | 0° / d40.8 | 91 × 120 / 182 × 240 | 73 × 102 | (69.72, 0) / (0, 66.07) | (0, −39.02) | 9,179 + 27,566 |
+| `shell_wall_front_slot_04` | 4.21° / d40.8 | 95 × 120 / 190 × 240 | 77 × 102 | (69.72, 0) / (−3.49, 66.07) | (−2.03, −39.02) | 10,489 + 30,688 |
+| `shell_wall_front_slot_16` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.97, 66.07) | (4.06, −39.02) | 10,852 + 31,393 |
+| `shell_wall_back_slot_08` | 0° / d54.8 | 90 × 120 / 180 × 240 | 72 × 102 | (69.64, 0) / (0, 65.91) | (0, −38.9) | 9,303 + 27,488 |
+| `shell_wall_back_slot_04` | 3.13° / d54.8 | 93 × 120 / 186 × 240 | 75 × 102 | (69.64, 0) / (−2.58, 65.91) | (−1.51, −38.9) | 10,225 + 30,250 |
+| `shell_wall_back_slot_16` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.16, 65.91) | (3.01, −38.9) | 10,659 + 30,983 |
+| `shell_wall_front_slot_16_faceup` | 8.37° / d40.8 | 99 × 120 / 198 × 240 | 81 × 102 | (69.72, 0) / (6.8, 64.46) | (4.06, −39.02) | 10,029 + 29,028 |
+| `shell_wall_back_slot_16_faceup` | 6.25° / d54.8 | 96 × 120 / 192 × 240 | 78 × 102 | (69.64, 0) / (5.06, 64.71) | (3.01, −38.9) | 9,934 + 28,500 |
 
 ### 10.3 The 2-tile wall stack
 
@@ -633,28 +633,51 @@ atlas cannot hold it, the dora blank and the hand are the places to trade slots
 subset of hand slots with nearest-slot reuse), not the wall/hand bodies. The
 top hand adds no face-up keys: its 13 shells are bare blue backs.
 
-### 10.6 The diffuse contact shadow
+### 10.6 The contact shadow: darker, still diffuse
 
 The Phase 1/1b shadow was a 3–4 px band at alpha 0.33: the review called it too
-tight. The committed Phase 1c contract is deliberately **diffuse and subtle**:
+tight. The first Phase 1c pass went deliberately diffuse and subtle at 0.12.
+The review then called it too faint and found **unshadowed notches at the tile
+corners**: the shadow window was a rectangle around the body box, so the
+beveled corners of the tile (outside the silhouette but inside the box) were
+zeroed.
 
-| Property | Phase 1/1b | Phase 1c |
+The committed revision is **darker and still diffuse**, with the shadow window
+following the silhouette inside the body box:
+
+| Property | Phase 1/1b | Committed revision |
 | :--- | :--- | :--- |
-| Right/bottom extent | 3–4 px | **11–12 px** |
-| Right/bottom peak alpha | 0.33 | **0.12** |
+| Right/bottom extent | 3–4 px | **11–12 px** (contract 10–16) |
+| Right/bottom peak alpha | 0.33 | **0.22** (contract 0.16–0.32) |
 | Blur | 1 px @1x | **8 px @1x** |
 | Falloff | 4 px | **16 px** |
 | Top/left AO | 1–2 px at 0.28 | **1 px at 0.20** |
 
-`padding1x` grows to 2/16/16/2 to hold the band, and the checker enforces the
-ranges in `bake.shadowContract`. The texture grows, not the body: the board
-coordinates are unchanged.
+The shadow is darkest at the tile and fades with the 16 px falloff; the
+`contactFloor` is 0.12 so the physical gradient dominates instead of a flat
+band. `padding1x` stays 2/16/16/2, and the checker enforces the ranges in
+`bake.shadowContract`. The texture grows, not the body: the board coordinates
+are unchanged.
+
+**The corner fix.** `compose_shell` now uses the tile's **silhouette** for the
+shadow/AO inside the body box: an outside-silhouette pixel inside the box keeps
+the full contact shadow instead of being zeroed by the rectangular window. The
+top-left beveled corner also gets the AO fringe. The bottom-right corner of a
+flat tile now measures ~56/255 alpha instead of 0, so the beveled corners are
+no longer unshadowed notches.
+
+**The shadow audition.** `bash tools/render/bake-shells.sh --shadow-audition`
+renders the committed REF plus A/B/C on the flat, wall and hand shells and
+writes `build/review/shadow-candidates.png` with the peak/floor/blur/padding and
+the seam/drop luma printed. A is lighter (0.18 / 16 px), B is tighter
+(0.24 / 12 px), C is darkest and widest (0.30 / 20 px). The audition never
+touches the committed shells.
 
 ### 10.7 Validation and the open calibration
 
 `bash tools/render/bake-shells.sh --bake --verify-determinism` renders the 103
 shells, writes both scales and `shells.json`, regenerates the review sheets and
-runs **5,822 checks**: catalogue and the 14 human-hand + 13 top-hand + 68 wall
+runs **5,834 checks**: catalogue and the 14 human-hand + 13 top-hand + 68 wall
 slot fans, the top-hand standing mapping,
 the straight-on ponds, felt, both texture scales, the 1 px AA ledge, the diffuse
 shadow/AO contract, the faceQuad and `gridStepPx`, the 2-tile `stackStepPx`
@@ -670,17 +693,18 @@ RGBA; all 103 were identical.
 `bash tools/render/bake-shells.sh --audition --verify-determinism` now renders
 the **hand fan-strength calibration**: the outer row slot and the drawn-tile slot
 at 14, 18 and 40 units, with the committed 24 units as the REF. It validates
-**6,147 checks** in total. The sheets are
+**6,159 checks** in total. The shadow audition validates **5,939 checks** (the committed checks plus the variant records and the `shadow-candidates.png` sheet). The hand sheets are
 `build/review/shell-candidates-shell_hand_slot_12.png` and
 `build/review/shell-candidates-shell_hand_slot_draw.png`.
 
-The open visual pick is the **hand fan strength**, not a tile rotation: the
-committed hand is the stylised 24-unit eye distance (outer row 10.62°, drawn tile
-12.94°). The wall fan is approved; the side walls are approved; the ponds/melds
-are confirmed straight-on. The deferred items are the contact-shadow strength and
-the hand face brightness (the el-28 hand face is still ~94–107 luma against the
-pond's ~220); neither is reopened here. Nothing downstream starts: no atlas,
-layout engine, board renderer or app view, and the felt raster is untouched.
+The open visual pick is now the **shadow shape/falloff**: the committed REF is
+peak 0.22 / contact floor 0.12 / 8 px blur / 16 px padding, and the audition
+shows A (0.18 / 16), B (0.24 / 12) and C (0.30 / 20) on the flat, wall and hand
+shells. The hand fan and the standing top hand are approved; the wall fan and
+side walls are approved; the ponds/melds are confirmed straight-on. The deferred
+item is the hand face brightness (the el-28 hand face is still ~94–107 luma
+against the pond's ~220). Nothing downstream starts: no atlas, layout engine,
+board renderer or app view, and the felt raster is untouched.
 
 ### 10.8 The front/back wall slot fan
 
@@ -764,8 +788,8 @@ entry per wall); the baker and checker expand it to the 68 ids, so the catalogue
 cannot drift. Each manifest record carries `wallSlot` with `wall`, `index`,
 `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`, `angleDeg` and `faceUp`.
 
-**Budgets.** The 68 wall slots are **2,539,608 B** of the 103-shell
-**3,850,425 B** total; `shells.json` is **357,606 B**. The self-imposed Phase 1
+**Budgets.** The 68 wall slots are **2,625,341 B** of the 103-shell
+**3,973,419 B** total; `shells.json` is **357,707 B**. The self-imposed Phase 1
 budgets are **4,194,304 B** (textures) and **524,288 B** (manifest); the standing
 AGENTS limits (total assets ≤ 8 MiB, initial hand + board load < 4 MiB) still
 hold, because a board loads only the slots it draws. A board with the 14 hand
@@ -856,10 +880,9 @@ face centre) because the vertical back is turned away from the key's strongest
 axis; it is still blue, not the bright face-down blue. The 13 shells are
 face-down and bare, so they add no face-up atlas keys.
 
-**Open calibration.** The hand fan strength: the audition moves the outer row
-slot and the drawn slot to 14 / 18 / 40 units, with the committed 24 as REF, so
-the amount of side reveal and face skew can be picked without rotating a tile.
-The centre stays straight on.
+**Approved.** The hand fan is approved at the 24-unit eye distance (outer row
+10.62°, drawn 12.94°). The 14 / 18 / 40-unit audition is kept for reference; the
+open calibration is now the shadow (§10.6). The centre stays straight on.
 
 ### 10.10 Straight-on ponds and melds
 

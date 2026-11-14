@@ -43,6 +43,7 @@ const outIndex = args.indexOf('--out');
 const outDir = outIndex >= 0 ? resolve(args[outIndex + 1]) : join(renderDir, 'build', 'review');
 const auditionMode = args.includes('--audition');
 const previewMode = args.includes('--preview');
+const shadowAuditionMode = args.includes('--shadow-audition');
 
 const readJson = async (path) => JSON.parse(await readFile(path, 'utf8'));
 const shellSpec = await readJson(join(renderDir, 'shell-spec.json'));
@@ -174,6 +175,128 @@ if (previewMode) {
     );
   }
   console.log(`${outDir}/preview-1x.png  and ${ids.length} 4x zoom(s)`);
+  process.exit(0);
+}
+
+// --------------------------------------------------------------------------- //
+// 0b. Shadow audition: the same flat/wall/hand shells at REF and three shadow
+//     variants, with the seam and isolated-drop luma printed.
+// --------------------------------------------------------------------------- //
+if (shadowAuditionMode) {
+  const block = shellSpec.shadowAudition;
+  const shadowManifest = await readJson(join(renderDir, block.manifest));
+  const shadowDir = dirname(join(renderDir, block.manifest));
+  const shadowTextures = new Map();
+  const shadowTexture = (record) => {
+    const key = record.textureFile;
+    if (!shadowTextures.has(key)) {
+      shadowTextures.set(key, readPng(resolve(shadowDir, key)));
+    }
+    return shadowTextures.get(key);
+  };
+  const drawRecord = (record, target, gridX, gridY, what = 'shadow') => {
+    const texture = shadowTexture(record);
+    const left = Math.round(gridX - record.anchorX);
+    const top = Math.round(gridY - record.anchorY);
+    if (left < 0 || top < 0 || left + texture.width > target.width || top + texture.height > target.height) {
+      throw new Error(
+        `shadow sheet overflow: ${what} ${record.textureFile} ${left},${top} ` +
+          `${texture.width}x${texture.height} leaves ${target.width}x${target.height}`,
+      );
+    }
+    drawSprite(target, texture, left, top);
+  };
+  const lumaAt = (image, x, y) => {
+    const i = (Math.round(y) * image.width + Math.round(x)) * 4;
+    return 0.2126 * image.data[i] + 0.7152 * image.data[i + 1] + 0.0722 * image.data[i + 2];
+  };
+  const advancePadding = (record) => record.padding?.right ?? 0;
+  const pad = 24;
+  const labelWidth = 340;
+  const labelLine = 16;
+  const gap = 24;
+  const flat = shadowManifest.variants[0].shells[block.shells[0]];
+  const wall = shadowManifest.variants[0].shells[block.shells[1]];
+  const hand = shadowManifest.variants[0].shells[block.shells[2]];
+  const flatStep = flat.gridStepPx.x[0];
+  const handStep = hand.gridStepPx.x[0];
+  const flatWidth = 6 * flatStep + gap + flat.advanceWidth + advancePadding(flat);
+  const handWidth = 6 * handStep + gap + hand.advanceWidth + advancePadding(hand);
+  const wallWidth = Math.abs(wall.stackStepPx[0]) + wall.advanceWidth + advancePadding(wall) + 20;
+  const width = Math.ceil(pad + labelWidth + pad + flatWidth + pad + wallWidth + pad + handWidth + pad);
+  const variantHeight = 170;
+  const headerHeight = 58;
+  const height = Math.ceil(pad + headerHeight + shadowManifest.variants.length * variantHeight + pad);
+  const image = canvas(width, height);
+  drawText(image, 'SHADOW CANDIDATES  REF + A/B/C', pad, pad, {
+    scale: 3,
+    rgb: [244, 238, 220],
+  });
+  drawText(
+    image,
+    'FLAT RUN + ISOLATED (SEAM AND DROP),  WALL STACK,  HAND RUN + ISOLATED',
+    pad,
+    pad + 28,
+    { scale: 2, rgb: [204, 214, 200] },
+  );
+  const flatX = pad + labelWidth + pad;
+  const wallX = flatX + flatWidth + pad;
+  const handX = wallX + wallWidth + pad;
+  shadowManifest.variants.forEach((variant, rowIndex) => {
+    const rowTop = pad + headerHeight + rowIndex * variantHeight;
+    drawText(image, variant.id, pad, rowTop, {
+      scale: 2,
+      rgb: [244, 238, 220],
+    });
+    drawText(image, variant.label, pad, rowTop + 20, {
+      scale: 1,
+      rgb: [204, 214, 200],
+    });
+    const flatRecord = variant.shells[block.shells[0]];
+    const wallRecord = variant.shells[block.shells[1]];
+    const handRecord = variant.shells[block.shells[2]];
+    const bodyTop = rowTop + 44;
+    // Flat run, right-to-left, then the isolated tile.
+    for (let index = 5; index >= 0; index -= 1) {
+      drawRecord(flatRecord, image, flatX + index * flatStep, bodyTop);
+    }
+    const isolatedX = flatX + 6 * flatStep + gap;
+    drawRecord(flatRecord, image, isolatedX, bodyTop);
+    // Wall stack: bottom tier, then the top tier at its projected thickness.
+    drawRecord(wallRecord, image, wallX, bodyTop);
+    drawRecord(
+      wallRecord,
+      image,
+      wallX + wallRecord.stackStepPx[0],
+      bodyTop + wallRecord.stackStepPx[1],
+    );
+    // Hand run, right-to-left, then the isolated tile.
+    for (let index = 5; index >= 0; index -= 1) {
+      drawRecord(handRecord, image, handX + index * handStep, bodyTop - 10);
+    }
+    drawRecord(handRecord, image, handX + 6 * handStep + gap, bodyTop - 10);
+    const seam = lumaAt(image, flatX + flatStep + 2, bodyTop + flatRecord.advanceHeight * 0.5);
+    const interior = lumaAt(image, flatX + flatStep + 14, bodyTop + flatRecord.advanceHeight * 0.5);
+    const isolated = lumaAt(image, isolatedX + flatStep + 3, bodyTop + flatRecord.advanceHeight - 2);
+    const bare = lumaAt(image, handX + handWidth - 6, bodyTop + flatRecord.advanceHeight - 2);
+    drawText(
+      image,
+      `SEAM ${seam.toFixed(1)} VS ${interior.toFixed(1)}   DROP ${isolated.toFixed(1)} VS ${bare.toFixed(1)}`,
+      pad,
+      rowTop + 108,
+      { scale: 1, rgb: [204, 214, 200] },
+    );
+    console.log(
+      `SHADOW ${variant.id}: seam ${seam.toFixed(1)} vs ${interior.toFixed(1)}, ` +
+        `drop ${isolated.toFixed(1)} vs ${bare.toFixed(1)}`,
+    );
+    drawText(image, variant.note ?? '', pad, rowTop + 124, {
+      scale: 1,
+      rgb: [160, 180, 164],
+    });
+  });
+  write('shadow-candidates.png', image);
+  console.log(`${outDir}/shadow-candidates.png  ${width}x${height}`);
   process.exit(0);
 }
 

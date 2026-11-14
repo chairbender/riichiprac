@@ -37,11 +37,18 @@ starting point for Phase 1, with **no table model**:
 bash tools/render/bake-shells.sh --bake    # bake 1x + 2x, build sheets, validate
 bash tools/render/bake-shells.sh --preview --only <id> [--only <id>...]  # fast partial bake
 bash tools/render/bake-shells.sh --audition # standing-hand fan calibration + sheets
+bash tools/render/bake-shells.sh --shadow-audition  # REF + A/B/C shadow sheet
 bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
 ```
+
+`--shadow-audition` renders the committed shadow REF plus A/B/C on the flat,
+wall and hand shells under `build/review/shadows/`, writes
+`build/review/shadow-candidates.png` with the peak/floor/blur/padding and the
+seam/drop luma printed, and validates the variant records and the sheet
+(5,939 checks). It never touches the committed shells.
 
 `--preview` is the fast loop. It renders only the `--only` shells under
 `tools/render/build/preview/` (never the committed paths), writes a partial
@@ -220,12 +227,12 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 122 × 103 / 244 × 206 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
-The eight base PNGs are **297,564 B** (75,440 @1x + 222,124 @2x). The 14 hand
-slots add **558,566 B**, the 13 top-hand slots **454,687 B** and the 68 wall
-slots **2,539,608 B**, so all 103 are **3,850,425 B** (972,893 @1x +
-2,877,532 @2x; budget 4,194,304 B); the largest
+The eight base PNGs are **306,499 B** (78,356 @1x + 228,143 @2x). The 14 hand
+slots add **572,553 B**, the 13 top-hand slots **469,026 B** and the 68 wall
+slots **2,625,341 B**, so all 103 are **3,973,419 B** (1,012,559 @1x +
+2,960,860 @2x; budget 4,194,304 B); the largest
 single shell is 43,721 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
-**357,606 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
+**357,707 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
 (102 px measured); the centre is 89 × 120 @1x and the drawn slot 103 × 120. The
 budgets were raised for the fans; a board loads only the slots it draws, so the
 initial load stays well under the 4 MiB limit.
@@ -270,9 +277,13 @@ initial load stays well under the 4 MiB limit.
   first, then the upper tier at `+stackStepPx`. `gridStepPx` steps between
   stacks. A revealed dora indicator is the face-up counterpart shell in the
   upper tier.
-- **The contact shadow is diffuse and subtle**: 11–12 px right/bottom at peak
-  alpha 0.12 with an 8 px blur and a 16 px falloff, plus a 1 px / 0.20 AO
-  fringe. Phase 1/1b's 3–4 px band at 0.33 was the "too tight" review note.
+- **The contact shadow is darker but still diffuse**: 11–12 px right/bottom at
+  peak alpha 0.22 with an 8 px blur and a 16 px falloff, plus a 1 px / 0.20 AO
+  fringe. Phase 1/1b's 3–4 px band at 0.33 was the "too tight" note; the first
+  diffuse pass at 0.12 was too faint. The shadow window now follows the tile
+  silhouette inside the body box, so the beveled corners are not left as
+  unshadowed notches. `--shadow-audition` renders the REF plus A/B/C on the flat,
+  wall and hand shells to `build/review/shadow-candidates.png`.
 
 ### The standing-hand fan
 
@@ -307,9 +318,9 @@ would make the outer face skew much stronger than the hand should read.
 
 | Slot | Offset | Angle at d24 | Body | Texture @1x / @2x | Bytes @1x + @2x |
 | --- | --- | --- | --- | --- | --- |
-| 06 (centre) | 0 | 0.00° | 71 × 102 | 89 × 120 / 178 × 240 | 9,043 + 26,629 |
-| 00 / 12 | ∓4.50 | 10.62° | 82 × 102 | 100 × 120 / 200 × 240 | 10,569 + 30,941 / 10,801 + 32,013 |
-| drawn | +5.5125 | 12.94° | 85 × 102 | 103 × 120 / 206 × 240 | 11,015 + 32,125 |
+| 06 (centre) | 0 | 0.00° | 71 × 102 | 89 × 120 / 178 × 240 | 9,413 + 27,485 |
+| 00 / 12 | ∓4.50 | 10.62° | 82 × 102 | 100 × 120 / 200 × 240 | 10,854 + 31,594 / 11,062 + 32,549 |
+| drawn | +5.5125 | 12.94° | 85 × 102 | 103 × 120 / 206 × 240 | 11,218 + 32,662 |
 
 Measured on the committed bake:
 
@@ -614,12 +625,10 @@ them. The committed fan uses the physical eye distances (front 40.8, back 54.8
 units; outer angles 8.37° / 6.25°). The ponds and melds are confirmed
 straight-on.
 
-The remaining visual is the **standing-hand fan**: the 13-tile row plus the
-drawn tile, each with its own camera offset from the player's eye. The centre
-slot is straight on; the outer row is 10.62° and the drawn tile 12.94° at the
-committed stylised 24-unit eye distance. `--audition` moves the **outer row slot
-and the drawn slot** to 14 / 18 / 40 units, keeping the lateral offset, so the
-fan strength can be picked without rotating a tile:
+The **standing-hand fan is approved** at the committed 24-unit eye distance
+(outer row 10.62°, drawn 12.94°); the 14 / 18 / 40-unit audition is kept for
+reference. The remaining visual is the **shadow shape/falloff**. `--audition`
+still renders the hand candidates if needed:
 
 ```bash
 bash tools/render/bake-shells.sh --audition                    # + sheets + validation
@@ -652,8 +661,8 @@ committed reference is 24 units. The output is gitignored:
 `check-shells.mjs --audition` keeps the committed checks and adds the candidate
 ones (both scales, the base long axis, the shadow/AO contract, the perspective
 trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
-printed-text and composited-tile pixel checks; the full run reports **6,147
-checks**. The committed bake alone reports **5,822** (including the review-sheet
+printed-text and composited-tile pixel checks; the full run reports **6,159
+checks**. The committed bake alone reports **5,834** (including the review-sheet
 pixels when the sheets are present).
 
 ## The Blender shell rules
@@ -708,14 +717,14 @@ PASS shell_hand_slot_12 handSlot offset 4.5 follows from handSlots (4.5)
 PASS shell_hand_slot_draw handSlot kind is row/draw (draw)
 PASS shell_hand_slot_draw top edge carries the blue resin sliver (3,69,165)
 PASS shell_wall_front_slot_16 camera sits at the human's x (lateral -6.0 = -offset)
-PASS hand-fan-1x.png composites its tiles (271951 px)
-INFO shell textures total 3850425 B across 103 shells and 2 scales
-OK 5822 checks passed
+PASS hand-fan-1x.png composites its tiles (269001 px)
+INFO shell textures total 3973419 B across 103 shells and 2 scales
+OK 5834 checks passed
 ```
 
 `--audition` additionally validates the hand fan calibration and its sheets; on
-the current output it reports `OK 6,147 checks passed` (the committed checks plus
-the candidate and sheet checks). The committed-only run stays at 5,822.
+the current output it reports `OK 6,159 checks passed` (the committed checks plus
+the candidate and sheet checks). The committed-only run stays at 5,834.
 
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
@@ -765,12 +774,19 @@ previous tile's shadow lands on it, and the isolated tile's shadow reads 61.1
 against bare felt 66.8. The diffuse band is deliberately subtle in these
 numbers; the strength is a visual call for the user.
 
-To review the open hand fan strength, run `--audition` (above) and open the
-two sheets:
+To review the shadow strength/shape/falloff, run `--shadow-audition` (above)
+and open `build/review/shadow-candidates.png`. It shows the REF row plus A/B/C,
+each with a flat discard run and an isolated tile, a wall stack and a hand run;
+the labels print the peak/floor/blur/padding and the seam/drop luma. The
+committed REF is 0.22 / floor 0.12 / blur 8 / pad 16.
+
+To review the approved hand fan, run `--audition` (above) and open the two
+sheets:
 
 ```bash
 xdg-open tools/render/build/review/shell-candidates-shell_hand_slot_12.png
 xdg-open tools/render/build/review/shell-candidates-shell_hand_slot_draw.png
+xdg-open tools/render/build/review/shadow-candidates.png
 ```
 
 Each sheet has a header with the shell id, the base size and the question it
