@@ -713,6 +713,11 @@ buttons and 116 named non-hand tiles in 16 seat/zone groups; hovering the first
 tile moved its hitbox **6.571 CSS px** (= 12 board px at fit 0.5478); switching
 to top-down and back gave the same 11 button labels (no re-deal); clicking a
 tile disabled the buttons and showed the answer summary; **0** console errors.
+The same check at 1440 × 900 reported a full-bleed **1440 × 900** canvas (the
+stage overrides the 680 px reading column), 0 transparent pixels, 14 hand
+buttons, and a **14.682 CSS px** lift (= 12 board px at fit 1.2235; the measured
+38 px control band reduces the fit from 1.2784), again with 0 console errors and
+an unchanged hand across view switches.
 
 **Decisions that narrow the architecture above.**
 

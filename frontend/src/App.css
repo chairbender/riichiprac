@@ -1386,7 +1386,11 @@
 /* Rendered 2.5D stage ------------------------------------------------------ */
 
 .app-shell--stage {
+  /* The stage owns the whole viewport: undo the 680px reading column. */
+  width: 100%;
+  max-width: none;
   min-height: 100dvh;
+  margin: 0;
   background-color: #070a0e;
 }
 
