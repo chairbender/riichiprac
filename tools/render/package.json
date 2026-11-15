@@ -9,7 +9,9 @@
     "shells:dry": "bash bake-shells.sh --dry-run",
     "shells:bake": "bash bake-shells.sh --bake",
     "shells:verify": "bash bake-shells.sh --bake --verify-determinism",
+    "shells:audition": "bash bake-shells.sh --audition",
     "check": "node scripts/check-shells.mjs",
+    "check:audition": "node scripts/check-shells.mjs --audition",
     "review": "node scripts/review-shells.mjs",
     "felt": "bash bake-felt.sh",
     "rasterize": "node scripts/rasterize-face.mjs"
