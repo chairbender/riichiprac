@@ -4,6 +4,7 @@
 #   bash tools/render/bake-shells.sh            # dry run: build the tile in Blender, print the plan
 #   bash tools/render/bake-shells.sh --check    # integrity check; needs no Blender
 #   bash tools/render/bake-shells.sh --preview --only <id> [--only <id>...]  # fast partial bake
+#   bash tools/render/bake-shells.sh --preview-shadow --only <id>  # single-tile shadow, no Blender
 #   bash tools/render/bake-shells.sh --audition # render the standing-hand fan calibration + sheets
 #   bash tools/render/bake-shells.sh --shadow-audition  # shadow strength/shape/falloff sheet
 #   bash tools/render/bake-shells.sh --check-audition  # validate the candidate matrix; needs no Blender
@@ -21,6 +22,11 @@
 # writes a preview manifest and a preview sheet, and skips the full 103-shell
 # check. Use it while tuning one shell; do a full --bake when the set is right.
 #
+# --preview-shadow is the fastest loop: it reads the committed body PNG and its
+# measured contact footprint, regenerates just that one shell's blob shadow from
+# the current spec, and writes a single-tile sheet. It never starts Blender and
+# never touches the committed assets.
+#
 # --shadow-audition renders the blob sigma/core-alpha/offset candidates on the flat,
 # wall and hand shells under build/review/shadows/, then draws a labelled comparison
 # sheet (each row unions its shadows before the bodies). It never touches the
@@ -31,7 +37,7 @@
 # build/review/candidates/ (+ the candidate manifest at
 # build/review/shell-candidates.json), then validates those outputs and writes
 # one labelled sheet per auditioned shell. It never writes the committed shells or
-# shells.json. Add --verify-determinism to render every candidate twice.
+# shells.json. The optional --verify-determinism renders every candidate twice.
 #
 # The Blender build is pinned to 4.5.9 LTS. Put it at the default location or
 # point BLENDER at it. The Python baker re-checks bpy.app.version_string, so a
@@ -67,6 +73,10 @@ while [ $# -gt 0 ]; do
       mode="shadow-audition"
       shift
       ;;
+    --preview-shadow)
+      mode="preview-shadow"
+      shift
+      ;;
     --dry-run)
       mode="dry-run"
       shift
@@ -97,6 +107,14 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+if [ "$mode" = "preview-shadow" ]; then
+  # Dependency-free single-shell shadow preview; no Blender, no manifest writes.
+  if [ ${#only[@]} -gt 0 ]; then
+    exec node "$here/scripts/preview-shadow.mjs" --id "${only[0]}"
+  fi
+  exec node "$here/scripts/preview-shadow.mjs"
+fi
 
 if [ "$mode" = "check" ]; then
   # Dependency-free: validates the spec, the felt raster and shells.json plus

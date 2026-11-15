@@ -36,6 +36,7 @@ starting point for Phase 1, with **no table model**:
 ```bash
 bash tools/render/bake-shells.sh --bake    # bake 1x + 2x, build sheets, validate
 bash tools/render/bake-shells.sh --preview --only <id> [--only <id>...]  # fast partial bake
+bash tools/render/bake-shells.sh --preview-shadow --only <id>  # single-tile shadow, no Blender
 bash tools/render/bake-shells.sh --audition # standing-hand fan calibration + sheets
 bash tools/render/bake-shells.sh --shadow-audition  # REF + A/B/C shadow sheet
 bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
@@ -48,7 +49,13 @@ bash tools/render/bake-felt.sh             # regenerate frontend/public/table/fe
 wall and hand shells under `build/review/shadows/`, writes
 `build/review/shadow-candidates.png` with the peak/floor/blur/padding and the
 seam/drop luma printed, and validates the variant records and the sheet
-(7,604 checks). It never touches the committed shells.
+(7,789 checks). It never touches the committed shells.
+
+`--preview-shadow` is the fastest loop for the blob: it reads the committed body
+PNG and its measured table-contact footprint, regenerates only that shell's
+shadow from the current spec, and writes `shadow-<id>-1x.png`, a 3x zoom and the
+shadow-only sprite under `build/preview/`. It never starts Blender and never
+writes the committed assets.
 
 `--preview` is the fast loop. It renders only the `--only` shells under
 `tools/render/build/preview/` (never the committed paths), writes a partial
@@ -64,8 +71,8 @@ pinned Blender at the current base scale, measures each render, writes
 `frontend/public/table/shells/*.png`, `shells/2x/*.png` and
 `frontend/public/table/shells.json`, regenerates the review sheets under
 `tools/render/build/review/`, then runs the dependency-free integrity check.
-`--bake --verify-determinism` additionally renders every shell a second time and
-compares the decoded RGBA.
+The optional `--verify-determinism` diagnostic renders every shell a second time
+and compares the decoded RGBA; it is not part of the standard bake.
 
 `--audition` is the standing-hand fan calibration path. It renders every candidate in
 `shell-spec.json`'s `audition` block into `build/review/candidates/{1x,2x}/`,
@@ -73,8 +80,7 @@ writes the candidate manifest `build/review/shell-candidates.json`, writes one
 labelled sheet per auditioned shell
 (`build/review/shell-candidates-<shell>.png`), then validates the candidates and
 the sheets with `check-shells.mjs --audition`. It **never writes the committed
-shells or `shells.json`**. `--audition --verify-determinism` re-renders every
-candidate. `--check-audition` runs only the dependency-free validation, which is
+shells or `shells.json`**. `--check-audition` runs only the dependency-free validation, which is
 what makes the calibration self-checking in an environment without Blender.
 
 `--check` is the CI gate (`node tools/render/scripts/check-shells.mjs`). It
@@ -227,12 +233,12 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
-The eight base PNGs are **417,674 B** (108,978 @1x + 308,696 @2x). The 14 hand
+The eight base PNGs are **459,971 B** (123,618 @1x + 336,353 @2x). The 14 hand
 slots add **688,686 B**, the 13 top-hand slots **569,950 B** and the 68 wall
-slots **3,523,611 B**, so all 103 **body + shadow** pairs are **5,199,921 B** (1,365,185 @1x +
-3,834,736 @2x; budget 5,242,880 B); the largest
-single shell is 60,092 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
-**479,585 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
+slots **3,929,429 B**, so all 103 **body + shadow** pairs are **5,648,036 B** (1,515,275 @1x +
+4,132,761 @2x; budget 6,291,456 B); the largest
+single shell is 63,866 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
+**497,090 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
 (102 px measured); the human-hand centre body is 75 × 106 and its blob 103 × 136,
 the drawn body 89 × 106 and its blob 117 × 136. The
 budgets were raised for the fans; a board loads only the slots it draws, so the
@@ -278,12 +284,17 @@ initial load stays well under the 4 MiB limit.
   first, then the upper tier at `+stackStepPx`. `gridStepPx` steps between
   stacks. A revealed dora indicator is the face-up counterpart shell in the
   upper tier.
-- **The shadow is a synthetic blob**: the tile's projected table-contact
-  footprint, offset 5 px right / 7 px down, filled at core alpha 0.60 and blurred
-  with a separable Gaussian (sigma 4 px @1x). A lying tile gets an ellipse that
-  covers the body box; a standing or tilted tile gets a capsule at its base. It
-  is a separate sprite with its own padding and is unioned before the bodies, so
-  there is no light moat at the contact and adjacent blobs do not double-darken.
+- **The shadow is a synthetic blob**: a lying tile gets a **rounded rectangle**
+  matching the body's long/short sides (`rectScale` 1.15, 8 px extra, corner
+  radius 0.3 of the short half-axis). Its top edge is trimmed 40 px so nothing
+  spills above the tile, while the bottom/left/right edges stay fixed. A standing
+  or tilted tile keeps a capsule at its base. Both are offset 5 px right / 7 px
+  down, filled at core alpha 0.60, and blurred with a separable Gaussian (sigma
+  12 px for the rounded rectangle, 4 px for the capsule). The shadow is a
+  separate sprite with its own padding; the review/runtime pass unions it before
+  the bodies, so there is no light moat at the contact and adjacent blobs do not
+  double-darken. The UI can also use the union-period left/middle/right tile map
+  (§10.12 in the architecture).
   Blender renders only the body; there is no catcher pass.
   `--shadow-audition` renders the REF plus A/B/C on the flat, wall and hand
   shells to `build/review/shadow-candidates.png`.
@@ -463,12 +474,12 @@ real record (values from the committed bake):
       "textureFile2x": "shells/2x/shell_flat_upright.png",
       "shadowTextureFile": "shells/shell_flat_upright-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_flat_upright-shadow.png",
-      "shadowTexWidth": 104,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 160,
+      "shadowTexHeight": 162,
+      "shadowAnchorX": 38,
+      "shadowAnchorY": 6,
       "shadowOffsetPx": [0, 0],
-      "shadowPadding": { "top": 12, "right": 20, "bottom": 22, "left": 12 },
+      "shadowPadding": { "top": 6, "right": 50, "bottom": 54, "left": 38 },
       "texWidth": 76,
       "texHeight": 106,
       "anchorX": 2,
@@ -476,7 +487,7 @@ real record (values from the committed bake):
       "advanceWidth": 72,
       "advanceHeight": 102,
       "padding": { "top": 2, "right": 2, "bottom": 2, "left": 2 },
-      "shadowBlob": { "model": "blob", "shape": "ellipse", "sigmaPx1x": 4, "coreAlpha": 0.6, "offsetPx1x": [5, 7], "colorHex": "#0b1418", "lying": true },
+      "shadowBlob": { "model": "blob", "shape": "rounded-rect", "sigmaPx1x": 12, "standingSigmaPx1x": 4, "coreAlpha": 0.6, "offsetPx1x": [5, 7], "rectScale": 1.15, "rectPaddingPx1x": 8, "cornerRadiusFraction": 0.3, "topTrimPx1x": 40, "colorHex": "#0b1418", "lying": true },
       "faceRotationDeg": 0,
       "faceQuad": [[8.39, 4.6], [67.61, 4.6], [67.61, 62.84], [8.39, 62.84]],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
@@ -485,16 +496,16 @@ real record (values from the committed bake):
       "pose": { "rotateXDeg": 0, "rotateYDeg": 0, "rotateZDeg": 0 },
       "camera": { "azimuthDeg": 0, "elevationDeg": 45, "projection": "orthographic", "orthoScale": 1.642469, "pixelsPerUnit2x": 185.087201, "resolution1x": [118, 152], "resolution2x": [236, 304] },
       "measured": {
-        "alphaExtent1x": { "left": 1, "top": 0, "right": 11, "bottom": 12 },
-        "alphaPeak1x": { "left": 0.0157, "top": 0.0, "right": 0.4392, "bottom": 0.4824 },
-        "alphaMass1x": { "left": 0.847, "top": 0.0, "right": 83.106, "bottom": 67.176 },
+        "alphaExtent1x": { "left": 33, "top": 0, "right": 43, "bottom": 48 },
+        "alphaPeak1x": { "left": 0.4392, "top": 0.0, "right": 0.5569, "bottom": 0.5843 },
+        "alphaMass1x": { "left": 398.114, "top": 0.0, "right": 755.722, "bottom": 956.984 },
         "shadowMaxAlpha": 0.6,
-        "contactQuadPx": [[13.3, 115.0], [13.3, 49.56], [82.7, 115.0], [82.7, 49.56]],
+        "contactQuadPx": [[39.3, 109.0], [39.3, 43.56], [108.7, 109.0], [108.7, 43.56]],
         "solidInset1x": [1, 1, 1, 1],
         "faceSampleRgb": [223, 220, 216],
         "edgeSamplesRgb": { "top": [223, 220, 217], "bottom": [0, 8, 31] },
-        "bytes1x": 11208,
-        "bytes2x": 33278
+        "bytes1x": 14242,
+        "bytes2x": 37739
       },
       "sha256": { "decodedRgba1x": "…", "decodedRgba2x": "…" },
       "shadowSha256": { "decodedRgba1x": "…", "decodedRgba2x": "…" }
@@ -513,7 +524,9 @@ Fields the runtime and the checker rely on:
   never baked into a body, so it cannot sit on top of a neighbouring tile and
   overlapping blobs do not double-darken. `shadowOffsetPx` is `[0,0]`;
   `shadowBlob` records the model, sigma, core alpha, offset and whether the tile
-  is lying (ellipse covers the body) or standing (capsule at the base).
+  is lying (rounded rect covers the body, top edge trimmed) or standing (capsule
+  at the base). The UI may replace the per-tile union with the union-period
+  left/middle/right tile map; the pieces are generated from the same sprite.
 - `texWidth`/`texHeight` — the @1x PNG size. The @2x PNG is exactly twice that.
 - `anchorX`/`anchorY` — the top-left of the opaque body box in @1x px. They are
   equal to `padding.left`/`padding.top`, and `anchor + advance + padding` equals
@@ -659,7 +672,6 @@ still renders the hand candidates if needed:
 
 ```bash
 bash tools/render/bake-shells.sh --audition                    # + sheets + validation
-bash tools/render/bake-shells.sh --audition --verify-determinism  # + re-render
 bash tools/render/bake-shells.sh --check-audition              # no Blender
 ```
 
@@ -688,8 +700,8 @@ committed reference is 24 units. The output is gitignored:
 `check-shells.mjs --audition` keeps the committed checks and adds the candidate
 ones (both scales, the base long axis, the blob contract, the perspective
 trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
-printed-text and composited-tile pixel checks; the full run reports **7,866
-checks**. The committed bake alone reports **7,487** (including the review-sheet
+printed-text and composited-tile pixel checks; the full run reports **8,057
+checks**. The committed bake alone reports **7,672** (including the review-sheet
 pixels when the sheets are present).
 
 ## The Blender shell rules
@@ -713,7 +725,7 @@ The shell scene follows the architecture, not the retired pipeline:
   point that produced a near-black shadow side).
 - **Blob shadow generated in Python, not Blender**: one render per shell per
   scale (the tile on transparent film). The shadow is the projected
-  table-contact footprint, fitted to an ellipse (lying) or a capsule (standing),
+  table-contact footprint, fitted to a rounded rectangle (lying) or a capsule (standing),
   offset down-right, Gaussian-blurred and written to its own sprite. A 1 px frame
   ramp guarantees nothing clips at the texture border. There is no
   shadow-catcher plane and no AO fringe.
@@ -722,10 +734,10 @@ The shell scene follows the architecture, not the retired pipeline:
   Z. This is what reads as a physical tile rather than a flat card.
 - **Blank faces.** Shells carry no symbol. The runtime composites the 2D face
   glyph into `faceQuad`.
-- **Determinism**: CPU Cycles, fixed seed 0, fixed adaptive threshold, OIDN.
-  `--bake --verify-determinism` renders each shell twice and compares the
-  decoded RGBA; the committed manifest records the sha256 of each texture's
-  decoded RGBA.
+- **Integrity**: CPU Cycles, fixed seed 0, fixed adaptive threshold, OIDN. The
+  committed manifest records the sha256 of each texture's decoded RGBA. A
+  re-render comparison is available as the optional `--verify-determinism`
+  diagnostic; it is not required for a bake.
 
 ## What the check prints
 
@@ -749,8 +761,8 @@ OK 6967 checks passed
 ```
 
 `--audition` additionally validates the hand fan calibration and its sheets; on
-the current output it reports `OK 7,866 checks passed` (the committed checks plus
-the candidate and sheet checks). The committed-only run stays at 7,487.
+the current output it reports `OK 8,057 checks passed` (the committed checks plus
+the candidate and sheet checks). The committed-only run stays at 7,672.
 
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
@@ -805,8 +817,8 @@ To review the blob softness/opacity/offset, run `--shadow-audition` (above) and
 open `build/review/shadow-candidates.png`. It shows the REF row plus A/B/C, each
 with a flat discard run and an isolated tile, a wall stack and a hand run; the
 labels print sigma/core alpha/offset and the seam/drop luma, and every row unions
-its shadows under the bodies. The committed REF is sigma 4 px / core 0.60 /
-offset 5,7.
+its shadows under the bodies. The committed REF is sigma 12 px / core 0.60 /
+offset 5,7 for the rounded rect (standing capsule sigma 4).
 
 To review the approved hand fan, run `--audition` (above) and open the two
 sheets:

@@ -96,19 +96,38 @@ function canvas(width, height) {
 // that layer over the felt, and only then draw the bodies. A shadow can never
 // land on top of a neighbouring tile, and two adjacent blobs do not double-darken
 // where they overlap.
+/** The union of the body box and the separate shadow box, relative to the grid. */
+function spriteBox(entry) {
+  const bodyLeft = -entry.anchorX;
+  const bodyTop = -entry.anchorY;
+  const shadowLeft = -(entry.shadowAnchorX ?? entry.anchorX);
+  const shadowTop = -(entry.shadowAnchorY ?? entry.anchorY);
+  const right = Math.max(
+    bodyLeft + entry.texWidth,
+    shadowLeft + (entry.shadowTexWidth ?? entry.texWidth),
+  );
+  const bottom = Math.max(
+    bodyTop + entry.texHeight,
+    shadowTop + (entry.shadowTexHeight ?? entry.texHeight),
+  );
+  return {
+    left: Math.min(bodyLeft, shadowLeft),
+    top: Math.min(bodyTop, shadowTop),
+    right,
+    bottom,
+    width: right - Math.min(bodyLeft, shadowLeft),
+    height: bottom - Math.min(bodyTop, shadowTop),
+  };
+}
+
 const pendingDraws = [];
 function draw(id, target, gridX, gridY) {
   const entry = manifest.shells[id];
-  const bodyLeft = Math.round(gridX - entry.anchorX);
-  const bodyTop = Math.round(gridY - entry.anchorY);
-  const shadowLeft = Math.round(gridX - (entry.shadowAnchorX ?? entry.anchorX));
-  const shadowTop = Math.round(gridY - (entry.shadowAnchorY ?? entry.anchorY));
-  const shadowWidth = entry.shadowTexWidth ?? entry.texWidth;
-  const shadowHeight = entry.shadowTexHeight ?? entry.texHeight;
-  const left = Math.min(bodyLeft, shadowLeft);
-  const top = Math.min(bodyTop, shadowTop);
-  const right = Math.max(bodyLeft + entry.texWidth, shadowLeft + shadowWidth);
-  const bottom = Math.max(bodyTop + entry.texHeight, shadowTop + shadowHeight);
+  const box = spriteBox(entry);
+  const left = Math.round(gridX + box.left);
+  const top = Math.round(gridY + box.top);
+  const right = Math.round(gridX + box.right);
+  const bottom = Math.round(gridY + box.bottom);
   if (left < 0 || top < 0 || right > target.width || bottom > target.height) {
     throw new Error(
       `sheet overflow: ${id} body/shadow ${left},${top}..${right},${bottom} ` +
@@ -155,8 +174,18 @@ function flushDraws() {
   pendingDraws.length = 0;
 }
 
+const pendingText = [];
+function queueText(image, text, x, y, options) {
+  pendingText.push({ image, text, x, y, options });
+}
+function flushText() {
+  for (const item of pendingText) drawText(item.image, item.text, item.x, item.y, item.options);
+  pendingText.length = 0;
+}
+
 function write(name, image) {
   flushDraws();
+  flushText();
   const buffer = encodePng(image.width, image.height, image.channels, image.data);
   const path = join(outDir, name);
   writeFileSync(path, buffer);
@@ -205,7 +234,7 @@ if (previewMode) {
   const width = Math.ceil(Math.max(packedRight, explodedRight) + pad + 160);
   const rowHeight = labelH + maxTextureHeight;
   const image = canvas(width, Math.ceil(pad + rowHeight * 2 + 2 * rowGap + 3 * labelH + 2 * pad));
-  drawText(
+  queueText(
     image,
     `PREVIEW  ${ids.length} SHELL${ids.length === 1 ? '' : 'S'}  (BUILD/PREVIEW, NOT COMMITTED)`,
     pad,
@@ -214,8 +243,8 @@ if (previewMode) {
   );
   const packedTop = pad + labelH + pad;
   const explodedTop = packedTop + rowHeight + rowGap + labelH;
-  drawText(image, 'PACKED AT GRIDSTEPPX', pad, packedTop - labelH, { scale: 2, rgb: [204, 214, 200] });
-  drawText(image, 'EXPLODED', pad, explodedTop - labelH, { scale: 2, rgb: [204, 214, 200] });
+  queueText(image, 'PACKED AT GRIDSTEPPX', pad, packedTop - labelH, { scale: 2, rgb: [204, 214, 200] });
+  queueText(image, 'EXPLODED', pad, explodedTop - labelH, { scale: 2, rgb: [204, 214, 200] });
   const offsetOf = (id) => {
     const entry = manifest.shells[id];
     return entry.handSlot?.offsetUnits ?? entry.topHandSlot?.offsetUnits ?? entry.wallSlot?.offsetUnits ?? 0;
@@ -227,7 +256,7 @@ if (previewMode) {
   for (let index = 0; index < ids.length; index += 1) {
     const id = ids[index];
     draw(id, image, pad + index * explodedStep, explodedTop);
-    drawText(
+    queueText(
       image,
       id.replace('shell_', ''),
       pad + index * explodedStep,
@@ -334,11 +363,11 @@ if (shadowAuditionMode) {
   const headerHeight = 58;
   const height = Math.ceil(pad + headerHeight + shadowManifest.variants.length * variantHeight + pad);
   const image = canvas(width, height);
-  drawText(image, 'SHADOW CANDIDATES  REF + A/B/C', pad, pad, {
+  queueText(image, 'SHADOW CANDIDATES  REF + A/B/C', pad, pad, {
     scale: 3,
     rgb: [244, 238, 220],
   });
-  drawText(
+  queueText(
     image,
     'FLAT RUN + ISOLATED (SEAM AND DROP),  WALL STACK,  HAND RUN + ISOLATED',
     pad,
@@ -350,11 +379,11 @@ if (shadowAuditionMode) {
   const handX = wallX + wallWidth + pad;
   shadowManifest.variants.forEach((variant, rowIndex) => {
     const rowTop = pad + headerHeight + rowIndex * variantHeight;
-    drawText(image, variant.id, pad, rowTop, {
+    queueText(image, variant.id, pad, rowTop, {
       scale: 2,
       rgb: [244, 238, 220],
     });
-    drawText(image, variant.label, pad, rowTop + 20, {
+    queueText(image, variant.label, pad, rowTop + 20, {
       scale: 1,
       rgb: [204, 214, 200],
     });
@@ -386,7 +415,7 @@ if (shadowAuditionMode) {
     const interior = lumaAt(image, flatX + flatStep + 14, bodyTop + flatRecord.advanceHeight * 0.5);
     const isolated = lumaAt(image, isolatedX + flatStep + 3, bodyTop + flatRecord.advanceHeight - 2);
     const bare = lumaAt(image, handX + handWidth - 6, bodyTop + flatRecord.advanceHeight - 2);
-    drawText(
+    queueText(
       image,
       `SEAM ${seam.toFixed(1)} VS ${interior.toFixed(1)}   DROP ${isolated.toFixed(1)} VS ${bare.toFixed(1)}`,
       pad,
@@ -397,7 +426,7 @@ if (shadowAuditionMode) {
       `SHADOW ${variant.id}: seam ${seam.toFixed(1)} vs ${interior.toFixed(1)}, ` +
         `drop ${isolated.toFixed(1)} vs ${bare.toFixed(1)}`,
     );
-    drawText(image, variant.note ?? '', pad, rowTop + 124, {
+    queueText(image, variant.note ?? '', pad, rowTop + 124, {
       scale: 1,
       rgb: [160, 180, 164],
     });
@@ -413,13 +442,17 @@ if (shadowAuditionMode) {
 if (!auditionMode) {
   const ids = shellSpec.shells.map((shell) => shell.id);
   const gap = 24;
-  const width = ids.reduce((sum, id) => sum + manifest.shells[id].texWidth + gap, gap);
-  const height = Math.max(...ids.map((id) => manifest.shells[id].texHeight)) + 2 * gap;
+  const boxes = ids.map((id) => spriteBox(manifest.shells[id]));
+  const leftPad = Math.max(...boxes.map((box) => -box.left)) + gap;
+  const topPad = Math.max(...boxes.map((box) => -box.top)) + gap;
+  const cell = Math.max(...boxes.map((box) => box.width)) + gap;
+  const width = Math.ceil(leftPad + ids.length * cell + gap);
+  const height = Math.ceil(topPad + Math.max(...boxes.map((box) => box.height)) + gap);
   const image = canvas(width, height);
-  let x = gap;
+  let x = leftPad;
   for (const id of ids) {
-    draw(id, image, x, gap);
-    x += manifest.shells[id].texWidth + gap;
+    draw(id, image, x, topPad);
+    x += cell;
   }
   write('shells-row-1x.png', image);
   for (const id of ids) {
@@ -434,31 +467,37 @@ if (!auditionMode) {
 if (!auditionMode) {
   const upright = manifest.shells.shell_flat_upright;
   const sideways = manifest.shells.shell_flat_sideways;
+  const upBox = spriteBox(upright);
+  const sideBox = spriteBox(sideways);
   const pad = 24;
-  const width = Math.ceil(pad * 2 + 10 * upright.advanceWidth + sideways.advanceWidth + 15);
-  const height = Math.ceil(pad * 3 + 2 * upright.advanceHeight + sideways.advanceHeight);
-  const image = canvas(width, height);
-  const rowY = (index) => pad + index * (upright.advanceHeight + pad);
-
-  // Rows advance by the physical tile width (gridStepPx.x), so neighbours touch
-  // with no felt showing between their bodies.
+  const padX = Math.max(pad, -upBox.left, -sideBox.left) + 4;
+  const padY = Math.max(pad, -upBox.top, -sideBox.top) + 4;
   const uprightStep = upright.gridStepPx.x[0];
   const sidewaysStep = sideways.gridStepPx.y[0];
+  const rowY = (index) => padY + index * (upright.advanceHeight + pad);
+  const riichiY = rowY(1) + upright.advanceHeight - sideways.advanceHeight;
+  const continuityRight = padX + 6 * uprightStep + 15 + upBox.right;
+  const riichiRight = padX + 6 * uprightStep + sidewaysStep + upBox.right;
+  const width = Math.ceil(Math.max(continuityRight, riichiRight) + pad);
+  const height = Math.ceil(
+    Math.max(rowY(0) + upBox.bottom, riichiY + Math.max(upBox.bottom, sideBox.bottom)) + pad,
+  );
+  const image = canvas(width, height);
 
   // Row 1: six touching tiles, then a 15 px gap, then an isolated tile. Drawn
   // right-to-left: the left tile's right shadow must fall on its right
   // neighbour's left bevel.
   const continuity = [];
   for (let index = 0; index < 6; index += 1) {
-    continuity.push(['shell_flat_upright', pad + index * uprightStep]);
+    continuity.push(['shell_flat_upright', padX + index * uprightStep]);
   }
-  continuity.push(['shell_flat_upright', pad + 6 * uprightStep + 15]);
+  continuity.push(['shell_flat_upright', padX + 6 * uprightStep + 15]);
   for (const [id, gridX] of [...continuity].reverse()) draw(id, image, gridX, rowY(0));
 
   // Row 2: a riichi / called tile rotated 90°, extrusion and shadow still
   // down-right. A sideways tile advances by its long (height) axis.
   const riichiRow = [];
-  let x = pad;
+  let x = padX;
   for (let index = 0; index < 3; index += 1) {
     riichiRow.push(['shell_flat_upright', x]);
     x += uprightStep;
@@ -469,13 +508,12 @@ if (!auditionMode) {
     riichiRow.push(['shell_flat_upright', x]);
     x += uprightStep;
   }
-  const riichiY = rowY(1) + upright.advanceHeight - sideways.advanceHeight;
   for (const [id, gridX] of [...riichiRow].reverse()) draw(id, image, gridX, riichiY);
 
   write('discard-row-1x.png', image);
   zoomOf(
     image,
-    pad - 2,
+    padX - 2,
     rowY(0) - 2,
     4 * upright.advanceWidth + 8,
     upright.advanceHeight + 8,
@@ -491,13 +529,13 @@ if (!auditionMode) {
     return 0.2126 * image.data[i] + 0.7152 * image.data[i + 1] + 0.0722 * image.data[i + 2];
   };
   const feltX = width - pad - 4;
-  const seamFaceX = pad + uprightStep + 2;
-  const interiorFaceX = pad + uprightStep + 14;
+  const seamFaceX = padX + uprightStep + 2;
+  const interiorFaceX = padX + uprightStep + 14;
   console.log(
     `INFO discard seam: neighbour face edge luma ${lumaAt(seamFaceX, rowY(0) + upright.advanceHeight * 0.5).toFixed(1)} ` +
       `vs its interior ${lumaAt(interiorFaceX, rowY(0) + upright.advanceHeight * 0.5).toFixed(1)}`,
   );
-  const isolatedX = pad + 6 * uprightStep + 15;
+  const isolatedX = padX + 6 * uprightStep + 15;
   console.log(
     `INFO isolated tile shadow luma ${lumaAt(isolatedX + upright.advanceWidth * 0.5, rowY(0) + upright.advanceHeight + 4).toFixed(1)} ` +
       `vs bare felt ${lumaAt(feltX, rowY(0) + upright.advanceHeight - 2).toFixed(1)}`,
@@ -522,6 +560,12 @@ if (!auditionMode) {
   const leftWall = manifest.shells.shell_wall_side_left;
   const rightWall = manifest.shells.shell_wall_side_right;
   const sideRun = 4;
+  const wallPadX = Math.max(
+    pad,
+    ...Object.entries(manifest.shells)
+      .filter(([id, entry]) => entry.wallSlot || id.startsWith('shell_wall_side'))
+      .map(([, entry]) => entry.shadowAnchorX ?? 0),
+  ) + 4;
 
   // The packed row advances by the physical tile-width axis of the centre slot;
   // each slot's own body is wider where its side face is revealed, exactly as
@@ -558,10 +602,11 @@ if (!auditionMode) {
     for (let index = 0; index < count; index += 1) {
       const down = manifest.shells[wallSlotId(wall, index, false)];
       const up = manifest.shells[wallSlotId(wall, index, true)];
-      const x = pad + index * wallStepX;
+      const x = wallPadX + index * wallStepX;
       for (const [entry, shift] of [[down, 0], [up, down.stackStepPx[0]]]) {
-        left = Math.min(left, x + shift - entry.anchorX);
-        right = Math.max(right, x + shift - entry.anchorX + entry.texWidth);
+        const box = spriteBox(entry);
+        left = Math.min(left, x + shift + box.left);
+        right = Math.max(right, x + shift + box.right);
       }
     }
     return { left, right };
@@ -574,7 +619,7 @@ if (!auditionMode) {
     { left: Infinity, right: -Infinity },
   );
   const sideWidth = columns.reduce((sum, column) => sum + column.span + pad, 0);
-  const width = Math.ceil(Math.max(runExtent.right + pad, pad + sideWidth));
+  const width = Math.ceil(Math.max(runExtent.right + pad, wallPadX + sideWidth));
   const runHeight = labelH + centreEntry.advanceHeight + 44;
   const sideHeight = labelH + (sideRun - 1) * Math.abs(columns[0].step[1]) + leftWall.advanceHeight + 24;
   // The upper tier of the wall stack sits one projected thickness above the
@@ -606,7 +651,7 @@ if (!auditionMode) {
 
   function drawPackedWall(wall, top, doraIndex) {
     const label = wall === 'front' ? 'FRONT WALL (BOTTOM, HUMAN SIDE)' : 'BACK WALL (TOP)';
-    drawText(image, `${label}  ${count} STACKS  PACKED`, pad, top, {
+    queueText(image, `${label}  ${count} STACKS  PACKED`, pad, top, {
       scale: 2,
       rgb: [244, 238, 220],
     });
@@ -616,7 +661,7 @@ if (!auditionMode) {
     const bottomIds = Array.from({ length: count }, (_, index) => wallSlotId(wall, index, false));
     for (const id of wallOuterToInner(bottomIds)) {
       const index = manifest.shells[id].wallSlot.index;
-      const x = pad + index * wallStepX;
+      const x = wallPadX + index * wallStepX;
       assertInside(id, x, bodyTop, `${wall} ${index} bottom`);
       draw(id, image, x, bodyTop);
     }
@@ -627,7 +672,7 @@ if (!auditionMode) {
     for (const id of wallOuterToInner(topIds)) {
       const index = manifest.shells[id].wallSlot.index;
       const down = manifest.shells[wallSlotId(wall, index, false)];
-      const x = pad + index * wallStepX + down.stackStepPx[0];
+      const x = wallPadX + index * wallStepX + down.stackStepPx[0];
       const y = bodyTop + down.stackStepPx[1];
       assertInside(id, x, y, `${wall} ${index} top`);
       draw(id, image, x, y);
@@ -642,12 +687,12 @@ if (!auditionMode) {
   // Side-wall columns: top-of-screen first, bottom tier then top tier per
   // stack. The second stack in each column is a dora indicator.
   const sideTop = backBottom + rowGap;
-  drawText(image, 'SIDE WALLS (APPROVED PERSPECTIVE, 2-TILE STACKS)', pad, sideTop, {
+  queueText(image, 'SIDE WALLS (APPROVED PERSPECTIVE, 2-TILE STACKS)', pad, sideTop, {
     scale: 2,
     rgb: [244, 238, 220],
   });
   const sideBodyTop = sideTop + labelH;
-  let cursorX = pad;
+  let cursorX = wallPadX;
   columns.forEach((column) => {
     const drift = Math.abs((sideRun - 1) * column.step[0]);
     const originX = cursorX + (column.step[0] < 0 ? drift : 0) + 4;
@@ -701,15 +746,21 @@ if (!auditionMode) {
   const fanStep = wallStepX + fanGap;
   const fanPad = 24;
   const fanLabelH = 24;
+  const fanPadX = Math.max(
+    fanPad,
+    ...Object.values(manifest.shells)
+      .filter((entry) => entry.wallSlot)
+      .map((entry) => entry.shadowAnchorX ?? 0),
+  ) + 4;
   let fanRight = -Infinity;
   for (const wall of ['front', 'back']) {
     for (let step = 0; step < half; step += 1) {
       const index = centre + step;
       const down = manifest.shells[wallSlotId(wall, index, false)];
       const up = manifest.shells[wallSlotId(wall, index, true)];
-      const x = fanPad + step * fanStep;
-      fanRight = Math.max(fanRight, x - down.anchorX + down.texWidth);
-      fanRight = Math.max(fanRight, x + down.stackStepPx[0] - up.anchorX + up.texWidth);
+      const x = fanPadX + step * fanStep;
+      fanRight = Math.max(fanRight, x + spriteBox(down).right);
+      fanRight = Math.max(fanRight, x + down.stackStepPx[0] + spriteBox(up).right);
     }
   }
   const fanWidth = Math.ceil(fanRight + fanPad);
@@ -732,13 +783,13 @@ if (!auditionMode) {
     }
   };
   function drawFanRow(wall, top, indices, label, doraIndex) {
-    drawText(fanImage, label, fanPad, top, { scale: 2, rgb: [244, 238, 220] });
+    queueText(fanImage, label, fanPad, top, { scale: 2, rgb: [244, 238, 220] });
     const bodyTop = top + fanLabelH;
     const bottomIds = indices.map((index) => wallSlotId(wall, index, false));
     for (const id of wallOuterToInner(bottomIds)) {
       const index = manifest.shells[id].wallSlot.index;
       const step = indices.indexOf(index);
-      const x = fanPad + step * fanStep;
+      const x = fanPadX + step * fanStep;
       fanAssertInside(id, x, bodyTop, `${wall} slot ${index} bottom`);
       draw(id, fanImage, x, bodyTop);
     }
@@ -747,7 +798,7 @@ if (!auditionMode) {
       const index = manifest.shells[id].wallSlot.index;
       const step = indices.indexOf(index);
       const down = manifest.shells[wallSlotId(wall, index, false)];
-      const x = fanPad + step * fanStep + down.stackStepPx[0];
+      const x = fanPadX + step * fanStep + down.stackStepPx[0];
       const y = bodyTop + down.stackStepPx[1];
       fanAssertInside(id, x, y, `${wall} slot ${index} top`);
       draw(id, fanImage, x, y);
@@ -755,7 +806,7 @@ if (!auditionMode) {
     // Slot number under each tile, so a note can name the slot directly.
     for (let step = 0; step < indices.length; step += 1) {
       const index = indices[step];
-      drawText(fanImage, String(index), fanPad + step * fanStep + 28, bodyTop + centreEntry.advanceHeight + 8, {
+      queueText(fanImage, String(index), fanPad + step * fanStep + 28, bodyTop + centreEntry.advanceHeight + 8, {
         scale: 2,
         rgb: [204, 214, 200],
       });
@@ -786,7 +837,7 @@ if (!auditionMode) {
   for (const row of fanRows.filter((entry) => entry.indices === rightIndices)) {
     zoomOf(
       fanImage,
-      fanPad + (half - 3) * fanStep - 8,
+      fanPadX + (half - 3) * fanStep - 8,
       row.top - 4,
       3 * fanStep + 16,
       fanLabelH + Math.abs(centreEntry.stackStepPx[1]) + centreEntry.advanceHeight + 16,
@@ -842,7 +893,7 @@ if (!auditionMode) {
       );
     }
   };
-  drawText(packed, 'HUMAN HAND  13-TILE ROW + DRAWN TILE  PACKED', pad, pad, {
+  queueText(packed, 'HUMAN HAND  13-TILE ROW + DRAWN TILE  PACKED', pad, pad, {
     scale: 2,
     rgb: [244, 238, 220],
   });
@@ -863,7 +914,7 @@ if (!auditionMode) {
   );
 
   const topTop = handTop + 120 + 12 + labelH;
-  drawText(packed, 'TOP HAND  13 TILES  STANDING, BLUE BACKS  PACKED', pad, topTop - labelH, {
+  queueText(packed, 'TOP HAND  13 TILES  STANDING, BLUE BACKS  PACKED', pad, topTop - labelH, {
     scale: 2,
     rgb: [244, 238, 220],
   });
@@ -932,7 +983,7 @@ if (!auditionMode) {
   };
   fanRows.forEach((row, rowIndex) => {
     const top = fanPad + rowIndex * (fanRowHeight + 16);
-    drawText(fanImage, row.title, fanPad, top, { scale: 2, rgb: [244, 238, 220] });
+    queueText(fanImage, row.title, fanPad, top, { scale: 2, rgb: [244, 238, 220] });
     const bodyTop = top + fanLabelH;
     const xOf = new Map(row.ids.map((id, step) => [id, fanPad + step * row.step]));
     for (const id of outerToInner(row.ids)) {
@@ -944,7 +995,7 @@ if (!auditionMode) {
         id === drawId
           ? 'D'
           : id.replace('shell_hand_top_slot_', 'TOP').replace('shell_hand_slot_', '');
-      drawText(fanImage, label, fanPad + step * row.step + 30, bodyTop + 124, {
+      queueText(fanImage, label, fanPad + step * row.step + 30, bodyTop + 124, {
         scale: 2,
         rgb: [204, 214, 200],
       });
@@ -1070,12 +1121,12 @@ if (auditionMode) {
   function header(image, baseId, plan, y) {
     const base = candidateManifest.base;
     let cursor = y;
-    drawText(image, `${baseId.toUpperCase()}  CANDIDATE MATRIX`, MARGIN, cursor, {
+    queueText(image, `${baseId.toUpperCase()}  CANDIDATE MATRIX`, MARGIN, cursor, {
       scale: 3,
       rgb: [244, 238, 220],
     });
     cursor += HEADER_TITLE;
-    drawText(
+    queueText(
       image,
       `BASE LONG AXIS ${base.targetLongAxisPx1x} PX @1X / ${base.targetLongAxisPx2x} PX @2X ` +
         `(PHASE 1 ${base.previousTargetLongAxisPx1x} / ${base.previousTargetLongAxisPx1x * base.pixelRatio})`,
@@ -1085,10 +1136,10 @@ if (auditionMode) {
     );
     cursor += HEADER_BASE;
     for (const line of plan.lines) {
-      drawText(image, line, MARGIN, cursor, { scale: 2, rgb: [214, 220, 190] });
+      queueText(image, line, MARGIN, cursor, { scale: 2, rgb: [214, 220, 190] });
       cursor += HEADER_LINE;
     }
-    drawText(
+    queueText(
       image,
       'TILES ARE COMPOSED WITH THIS CANDIDATE OWN GRIDSTEPPX; ROWS RIGHT-TO-LEFT, ROWS TOP-TO-BOTTOM',
       MARGIN,
@@ -1098,11 +1149,11 @@ if (auditionMode) {
     return cursor + HEADER_GAP;
   }
 
-  function label(image, row, x, y) {
+  function labelPanel(image, row, x, y) {
     fillRect(image, x, y, LABEL_WIDTH, LABEL_HEIGHT, [10, 22, 17]);
     const lines = labelLines(row);
     lines.forEach((line, index) => {
-      drawText(image, line, x + 8, y + 6 + index * LABEL_LINE, {
+      queueText(image, line, x + 8, y + 6 + index * LABEL_LINE, {
         scale: 2,
         rgb: index === 0 ? [244, 238, 220] : [204, 214, 200],
       });
@@ -1164,7 +1215,7 @@ if (auditionMode) {
       const top = header(image, baseId, plan, MARGIN);
       let x = MARGIN;
       rows.forEach((row, index) => {
-        label(image, row, x, top);
+        labelPanel(image, row, x, top);
         const down = downStep(row.record);
         const drift = Math.abs((run - 1) * down[0]);
         const originX = x + (spans[index] - (drift + row.record.advanceWidth)) / 2 + (down[0] < 0 ? drift : 0);
@@ -1208,7 +1259,7 @@ if (auditionMode) {
       const image = canvas(width, height);
       let y = header(image, baseId, plan, MARGIN);
       rows.forEach((row, index) => {
-        label(image, row, MARGIN, y);
+        labelPanel(image, row, MARGIN, y);
         const right = rightStep(row.record);
         const down = downStep(row.record);
         const originX = MARGIN + LABEL_WIDTH + PAD;

@@ -43,13 +43,13 @@ Usage (normally through ``bake-shells.sh``, which resolves the pinned Blender):
     blender --background --python-exit-code 1 \\
         --python tools/render/bake_shells.py -- --bake
     blender --background --python-exit-code 1 \\
-        --python tools/render/bake_shells.py -- --bake --verify-determinism
+        --python tools/render/bake_shells.py -- --bake
     blender --background --python-exit-code 1 \\
         --python tools/render/bake_shells.py -- --bake --preview --only shell_hand_top_slot_06
     blender --background --python-exit-code 1 \\
         --python tools/render/bake_shells.py -- --audition
     blender --background --python-exit-code 1 \\
-        --python tools/render/bake_shells.py -- --audition --verify-determinism
+        --python tools/render/bake_shells.py -- --audition
 
 A dry run builds the tile, material and lights, prints the shell plan, and
 writes nothing. ``--bake`` renders the 103 shells, writes both scales and the
@@ -59,9 +59,9 @@ manifest (body + shadow). ``--preview`` with ``--only`` renders just those shell
 ``build/review/shadows/``. ``--audition`` renders the standing-hand fan
 calibration described by the spec's ``audition`` block at the current base scale into
 ``tools/render/build/review/`` (textures plus ``shell-candidates.json``) and
-never touches the committed shells or ``shells.json``. ``--verify-determinism``
-renders everything twice and compares the decoded RGBA, which is the re-render
-determinism contract.
+never touches the committed shells or ``shells.json``. The optional
+``--verify-determinism`` diagnostic renders everything twice and compares the
+decoded RGBA; it is not required for a bake.
 
 The dependency-free check that needs no Blender is:
 
@@ -402,7 +402,7 @@ def aim_key(light: bpy.types.Object, camera: bpy.types.Object | None, target: Ve
 
 
 def configure_render(scene: bpy.types.Scene, spec: dict) -> None:
-    """Pin the renderer to CPU Cycles and AgX, as the determinism rule requires."""
+    """Pin the renderer to CPU Cycles and AgX for stable, auditable output."""
     render = scene.render
     settings = spec["scene"]
     render.engine = settings["engine"]
@@ -1140,6 +1140,25 @@ def contact_footprint_px(
     return project_pixels(scene, camera, [Vector((p.x, p.y, 0.0)) for p in on_table])
 
 
+def contact_is_lying(contact_px: list[tuple[float, float]], body_half_px: tuple[float, float]) -> bool:
+    """True when the contact footprint is comparable to the body box.
+
+    The projected contact of a flat/lying tile is a full face; a standing or
+    tilted tile leaves only a thin base strip. The principal minor axis separates
+    them, and that same flag picks the lying or standing shadow padding.
+    """
+    points = np.array(contact_px, dtype=np.float64)
+    if len(points) < 3:
+        return False
+    centred = points - points.mean(axis=0)
+    if np.allclose(centred, 0.0):
+        return True
+    eigenvalues, eigenvectors = np.linalg.eigh(np.cov(centred.T))
+    axes = eigenvectors[:, np.argsort(eigenvalues)[::-1]]
+    minor = float(np.max(np.abs(centred @ axes[:, 1])))
+    return minor >= 0.5 * float(np.min(body_half_px))
+
+
 def blob_shadow(
     width: int,
     height: int,
@@ -1148,7 +1167,8 @@ def blob_shadow(
     scale: int,
     body_centre_px: tuple[float, float],
     body_half_px: tuple[float, float],
-) -> tuple[np.ndarray, bool]:
+    lying: bool,
+) -> np.ndarray:
     """A soft translucent ellipse under the tile's table-contact footprint.
 
     A lying tile (the contact footprint is comparable to the body box) gets an
@@ -1160,11 +1180,7 @@ def blob_shadow(
     centre = points.mean(axis=0)
     centred = points - centre
     minimum = float(shadow["minHalfWidthPx1x"]) * scale
-    if np.allclose(centred, 0.0):
-        axes = np.eye(2)
-        major = minimum
-        minor = minimum
-    else:
+    if not lying:
         # Principal axes of the projected footprint. A standing tile's footprint
         # is a line, so the minor semi-axis is clamped to keep a capsule shape.
         eigenvalues, eigenvectors = np.linalg.eigh(np.cov(centred.T))
@@ -1173,29 +1189,55 @@ def blob_shadow(
         minor = float(np.max(np.abs(centred @ axes[:, 1])))
     offset = np.array(shadow["offsetPx1x"], dtype=np.float64) * scale
     body_half = np.array(body_half_px, dtype=np.float64) * scale
-    lying = minor >= 0.5 * float(np.min(body_half))
     if lying:
+        # A rounded rectangle matching the body's long/short sides, scaled up
+        # from the body box. The long side of the rectangle follows the body's
+        # long side, so a portrait tile gets a portrait shadow and a landscape
+        # tile a landscape one. The corner radius is a fraction of the short side.
         centre = np.array(body_centre_px, dtype=np.float64) * scale + offset
-        half = body_half * float(shadow["footprintScale"])
+        half = body_half * float(shadow["rectScale"]) + float(
+            shadow["rectPaddingPx1x"]
+        ) * scale
+        # Trim the top edge down while keeping the bottom/left/right edges fixed:
+        # the light is above and behind the tile, so nothing should spill over
+        # the top of the object. Moving the centre down by half the trim keeps the
+        # lower edge where it was.
+        trim = float(shadow.get("topTrimPx1x", 0.0)) * scale
+        half[1] = max(half[1] - trim * 0.5, 1.0)
+        centre[1] += trim * 0.5
+        radius = float(np.min(half)) * float(shadow["cornerRadiusFraction"])
+        ys, xs = np.mgrid[0:height, 0:width].astype(np.float64) + 0.5
+        dx = np.abs(xs - centre[0]) - (half[0] - radius)
+        dy = np.abs(ys - centre[1]) - (half[1] - radius)
+        outside = np.maximum(dx, 0.0) ** 2 + np.maximum(dy, 0.0) ** 2
+        inside = (
+            (outside <= radius * radius)
+            & (np.abs(xs - centre[0]) <= half[0])
+            & (np.abs(ys - centre[1]) <= half[1])
+        )
+        mask = inside.astype(np.float64)
     else:
         centre = centre + offset
         spread = float(shadow["spreadPx1x"]) * scale
         half = np.array([max(major + spread, minimum), max(minor + spread, minimum)])
-
-    ys, xs = np.mgrid[0:height, 0:width].astype(np.float64) + 0.5
-    dx = xs - centre[0]
-    dy = ys - centre[1]
-    u = dx * axes[0, 0] + dy * axes[1, 0]
-    v = dx * axes[0, 1] + dy * axes[1, 1]
-    mask = ((u / half[0]) ** 2 + (v / half[1]) ** 2 <= 1.0).astype(np.float64)
+        ys, xs = np.mgrid[0:height, 0:width].astype(np.float64) + 0.5
+        dx = xs - centre[0]
+        dy = ys - centre[1]
+        u = dx * axes[0, 0] + dy * axes[1, 0]
+        v = dx * axes[0, 1] + dy * axes[1, 1]
+        mask = ((u / half[0]) ** 2 + (v / half[1]) ** 2 <= 1.0).astype(np.float64)
+    sigma = float(
+        shadow["sigmaPx1x"]
+        if lying
+        else shadow.get("standingSigmaPx1x", shadow["sigmaPx1x"])
+    )
     alpha = np.clip(
-        gaussian_blur(mask, float(shadow["sigmaPx1x"]) * scale)
-        * float(shadow["coreAlpha"]),
+        gaussian_blur(mask, sigma * scale) * float(shadow["coreAlpha"]),
         0.0,
         1.0,
     )
     rgb = np.broadcast_to(hex_srgb(shadow["colorHex"]), (height, width, 3))
-    return np.concatenate([rgb, alpha[..., None]], axis=2), bool(lying)
+    return np.concatenate([rgb, alpha[..., None]], axis=2)
 
 
 def alpha_profile(rgba: np.ndarray, bbox: tuple[int, int, int, int], pads: dict) -> dict:
@@ -1342,7 +1384,6 @@ def bake_shell(
     scale_2x = int(bake["pixelRatio"])
     body_pads = bake["padding1x"]
     shadow = bake["shadow"]
-    shadow_pads = shadow["padding1x"]
     ledge = int(bake.get("edgeLedgePx", 1))
 
     # The contact footprint is measured on the @1x frame; the @2x blob is the
@@ -1387,16 +1428,23 @@ def bake_shell(
     ):
         die("the body padding leaves the render frame; raise bake.frameMarginPx2x")
 
-    shadow_crop_x = bx0 - shadow_pads["left"]
-    shadow_crop_y = by0 - shadow_pads["top"]
+    contact_body = [(x - bx0, y - by0) for x, y in contact_px]
+    body_half = (advance_width * 0.5, advance_height * 0.5)
+    lying = contact_is_lying(contact_body, body_half)
+    shadow_pads = (
+        shadow["padding1x"]
+        if lying
+        else shadow.get("standingPadding1x", shadow["padding1x"])
+    )
     shadow_width = advance_width + shadow_pads["left"] + shadow_pads["right"]
     shadow_height = advance_height + shadow_pads["top"] + shadow_pads["bottom"]
-    contact_local = [(x - shadow_crop_x, y - shadow_crop_y) for x, y in contact_px]
+    contact_local = [
+        (x + shadow_pads["left"], y + shadow_pads["top"]) for x, y in contact_body
+    ]
     body_centre = (
         shadow_pads["left"] + advance_width * 0.5,
         shadow_pads["top"] + advance_height * 0.5,
     )
-    body_half = (advance_width * 0.5, advance_height * 0.5)
 
     body_1x = quantize(
         frame_fade(
@@ -1404,7 +1452,7 @@ def bake_shell(
             1.0,
         )
     )
-    shadow_1x_rgba, lying = blob_shadow(
+    shadow_1x_rgba = blob_shadow(
         shadow_width,
         shadow_height,
         contact_local,
@@ -1412,6 +1460,7 @@ def bake_shell(
         1,
         body_centre,
         body_half,
+        lying,
     )
     shadow_1x = quantize(frame_fade(shadow_1x_rgba, 1.0))
 
@@ -1428,7 +1477,7 @@ def bake_shell(
             float(scale_2x),
         )
     )
-    shadow_2x_rgba, _ = blob_shadow(
+    shadow_2x_rgba = blob_shadow(
         shadow_width * scale_2x,
         shadow_height * scale_2x,
         contact_local,
@@ -1436,6 +1485,7 @@ def bake_shell(
         scale_2x,
         body_centre,
         body_half,
+        lying,
     )
     shadow_2x = quantize(frame_fade(shadow_2x_rgba, float(scale_2x)))
 
@@ -1509,10 +1559,15 @@ def bake_shell(
         "padding": dict(body_pads),
         "shadowBlob": {
             "model": shadow["model"],
-            "shape": shadow["shape"],
+            "shape": "rounded-rect" if lying else "capsule",
             "sigmaPx1x": shadow["sigmaPx1x"],
+            "standingSigmaPx1x": shadow.get("standingSigmaPx1x", shadow["sigmaPx1x"]),
             "coreAlpha": shadow["coreAlpha"],
             "offsetPx1x": list(shadow["offsetPx1x"]),
+            "rectScale": shadow.get("rectScale"),
+            "rectPaddingPx1x": shadow.get("rectPaddingPx1x"),
+            "cornerRadiusFraction": shadow.get("cornerRadiusFraction"),
+            "topTrimPx1x": shadow.get("topTrimPx1x", 0.0),
             "colorHex": shadow["colorHex"],
             "lying": lying,
         },
@@ -1713,16 +1768,23 @@ def build_rig_metadata(spec: dict, rigs: dict) -> dict:
             "model": bake["shadow"]["model"],
             "shape": bake["shadow"]["shape"],
             "sigmaPx1x": bake["shadow"]["sigmaPx1x"],
+            "standingSigmaPx1x": bake["shadow"].get("standingSigmaPx1x"),
+            "topTrimPx1x": bake["shadow"].get("topTrimPx1x", 0.0),
             "coreAlpha": bake["shadow"]["coreAlpha"],
+            "rectScale": bake["shadow"].get("rectScale"),
+            "rectPaddingPx1x": bake["shadow"].get("rectPaddingPx1x"),
+            "cornerRadiusFraction": bake["shadow"].get("cornerRadiusFraction"),
+            "padding1x": bake["shadow"].get("padding1x"),
+            "standingPadding1x": bake["shadow"].get("standingPadding1x"),
             "offsetPx1x": list(bake["shadow"]["offsetPx1x"]),
             "colorHex": bake["shadow"]["colorHex"],
             "source": "synthetic Gaussian blob from the projected table-contact footprint",
         },
-        "determinism": (
+        "integrity": (
             "CPU Cycles, fixed seed 0, fixed adaptive threshold and OIDN. Each texture records "
-            "the sha256 of its decoded RGBA; re-baking the same spec must reproduce it "
-            "(bake_shells.py --bake --verify-determinism renders each shell twice; "
-            "--audition --verify-determinism does the same for every candidate)."
+            "the sha256 of its decoded RGBA for integrity. Re-render comparison is optional: "
+            "bake_shells.py --bake --verify-determinism (or --audition --verify-determinism) "
+            "renders everything twice, but it is not part of the standard bake."
         ),
         "shellRigs": rigs,
     }

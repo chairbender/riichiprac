@@ -309,6 +309,34 @@ function checkBlobShadow({ label, image, record, spec }) {
     maxAlpha <= (blob.coreAlpha ?? 1) + 0.01,
     `${label} blob core alpha ${maxAlpha.toFixed(3)} <= coreAlpha ${blob.coreAlpha}`,
   );
+  check(
+    blob.shape === (blob.lying ? 'rounded-rect' : 'capsule'),
+    `${label} ${blob.lying ? 'lying' : 'standing'} tile uses a ${blob.shape}`,
+  );
+  if (blob.lying && blob.shape === 'rounded-rect') {
+    const contact = (record.measured?.contactQuadPx ?? []).map(([x, y]) => [
+      x - record.shadowAnchorX,
+      y - record.shadowAnchorY,
+    ]);
+    if (contact.length >= 2) {
+      const trim = blob.topTrimPx1x ?? 0;
+      const cx = record.advanceWidth / 2 + blob.offsetPx1x[0];
+      const cy = record.advanceHeight / 2 + blob.offsetPx1x[1] + trim / 2;
+      const halfX = (record.advanceWidth / 2) * blob.rectScale + blob.rectPaddingPx1x;
+      const halfY = Math.max(
+        (record.advanceHeight / 2) * blob.rectScale + blob.rectPaddingPx1x - trim / 2,
+        1,
+      );
+      const overhang = Math.max(
+        ...contact.map(([x, y]) => Math.max(Math.abs(x - cx) - halfX, Math.abs(y - cy) - halfY)),
+      );
+      check(
+        overhang <= 0,
+        `${label} rounded rect covers the contact footprint ` +
+          `(margin ${(-overhang).toFixed(1)} px)`,
+      );
+    }
+  }
   // A lying tile gets a shadow under its whole body, so the right edge must be
   // covered. A standing tile's shadow is the capsule at its base, so only the
   // bottom contact has to be dark.
@@ -597,12 +625,24 @@ function checkShellSpec(spec) {
   );
   const blob = spec.bake.shadow ?? {};
   check(
-    blob.model === 'blob' && blob.shape === 'ellipse',
-    `shadow is a synthetic ellipse blob (${blob.model}/${blob.shape})`,
+    blob.model === 'blob' && blob.shape === 'rounded-rect',
+    `shadow is a synthetic rounded-rectangle blob (${blob.model}/${blob.shape})`,
   );
   check(
-    blob.sigmaPx1x >= 2 && blob.sigmaPx1x <= 10,
-    `blob Gaussian sigma is ${blob.sigmaPx1x} px @1x (2-10)`,
+    blob.rectScale >= 1 && blob.rectScale <= 2,
+    `rounded rect is ${blob.rectScale}x the body box`,
+  );
+  check(
+    blob.rectPaddingPx1x >= 0,
+    `rounded rect has ${blob.rectPaddingPx1x} px of extra padding`,
+  );
+  check(
+    blob.cornerRadiusFraction > 0 && blob.cornerRadiusFraction < 0.5,
+    `rounded rect corner radius is ${blob.cornerRadiusFraction} of the short half-axis`,
+  );
+  check(
+    blob.sigmaPx1x >= 2 && blob.sigmaPx1x <= 16,
+    `blob Gaussian sigma is ${blob.sigmaPx1x} px @1x (2-16)`,
   );
   check(
     blob.coreAlpha >= 0.3 && blob.coreAlpha <= 0.9,
@@ -620,17 +660,35 @@ function checkShellSpec(spec) {
     `blob keeps a ${blob.minHalfWidthPx1x} px minimum half-width for a standing tile`,
   );
   const shadowPads = blob.padding1x ?? {};
+  const standingPads = blob.standingPadding1x ?? shadowPads;
   const blurTail = Math.ceil(3 * (blob.sigmaPx1x ?? 0));
+  const standingTail = Math.ceil(3 * (blob.standingSigmaPx1x ?? blob.sigmaPx1x ?? 0));
+  const topTail = Math.max(0, blurTail - (blob.topTrimPx1x ?? 0));
   check(
-    ['left', 'top', 'right', 'bottom'].every((side) => shadowPads[side] >= 6),
+    ['left', 'top', 'right', 'bottom'].every((side) => shadowPads[side] >= 1),
     `shadow padding1x holds the blob (${JSON.stringify(shadowPads)})`,
   );
   check(
+    ['left', 'top', 'right', 'bottom'].every((side) => standingPads[side] >= 1),
+    `standing shadow padding holds the capsule (${JSON.stringify(standingPads)})`,
+  );
+  check(
+    blob.topTrimPx1x >= 0,
+    `the rounded rect top is trimmed ${blob.topTrimPx1x} px (no spill above the tile)`,
+  );
+  check(
     shadowPads.left + blob.offsetPx1x?.[0] >= blurTail &&
-      shadowPads.top + blob.offsetPx1x?.[1] >= blurTail &&
       shadowPads.right - blob.offsetPx1x?.[0] >= blurTail &&
-      shadowPads.bottom - blob.offsetPx1x?.[1] >= blurTail,
-    `shadow padding covers the 3-sigma blur tail (${blurTail} px) on all sides`,
+      shadowPads.bottom - blob.offsetPx1x?.[1] >= blurTail &&
+      shadowPads.top + blob.offsetPx1x?.[1] >= topTail,
+    `shadow padding covers the 3-sigma blur tail (${blurTail} px, top trimmed to ${topTail})`,
+  );
+  check(
+    standingPads.left + blob.offsetPx1x?.[0] >= standingTail &&
+      standingPads.right - blob.offsetPx1x?.[0] >= standingTail &&
+      standingPads.bottom - blob.offsetPx1x?.[1] >= standingTail &&
+      standingPads.top + blob.offsetPx1x?.[1] >= standingTail,
+    `standing padding covers its ${standingTail} px blur tail`,
   );
   check(
     typeof spec.bake.shadowContract?.note === 'string' &&
@@ -773,8 +831,8 @@ function checkRig(manifest, spec) {
     `rig key is top-left-front in screen space (${direction.join(', ')})`,
   );
   check(
-    typeof rig.determinism === 'string' && rig.determinism.includes('sha256'),
-    'rig determinism records the decoded-RGBA sha256 contract',
+    typeof rig.integrity === 'string' && rig.integrity.includes('sha256'),
+    'rig records the decoded-RGBA sha256 integrity contract',
   );
   check(
     typeof manifest.coordinateSpace === 'string' && manifest.coordinateSpace.includes('top-left'),
@@ -910,7 +968,10 @@ function checkShellsManifest(spec) {
       `${id} shadow sprite uses the same grid position (${JSON.stringify(shell.shadowOffsetPx)})`,
     );
     const shadowPadding = shell.shadowPadding ?? {};
-    const specShadowPadding = spec.bake.shadow.padding1x;
+    const specShadowPadding =
+      shell.shadowBlob?.lying === true
+        ? spec.bake.shadow.padding1x
+        : spec.bake.shadow.standingPadding1x ?? spec.bake.shadow.padding1x;
     check(
       ['left', 'top', 'right', 'bottom'].every(
         (side) => shadowPadding[side] === specShadowPadding[side],
