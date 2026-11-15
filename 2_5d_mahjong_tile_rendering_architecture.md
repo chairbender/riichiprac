@@ -1040,8 +1040,11 @@ max 0.002 alpha). The browser lab,
 browser's blur matches the reference Gaussian (mean 0.0028, max 0.0277 alpha),
 that a screenshot of the CSS route matches the merged field (mean 0.28, max
 3.35/255 luma), and that a full-board rebuild (17 zones, 253 shapes, 355 bodies)
-costs about 10–12 ms of main-thread work. Visual quality remains the user's call
-(`AGENTS.md` §6).
+costs about 10–12 ms of main-thread work. **The user reviewed the lab on
+2026-11-14 and approved the merged-footprint look**, so this is the runtime
+contract for the compositor when Phase 3/4 lands. The per-shell shadow sprites
+are now redundant for rendering (they remain the checker's reference and the
+review sheets); dropping them is a follow-up asset cleanup, not a blocker.
 
 The uniform pond row is the one place the old tile map is still exact: its
 middle is one period of `max_k S(x - k * cell)`, and the test shows a naive crop

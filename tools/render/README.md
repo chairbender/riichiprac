@@ -359,12 +359,14 @@ xdg-open http://localhost:8123/tools/render/scripts/group-shadow-lab.html
 ```
 
 `preview-group-shadow.mjs` composes each zone twice and prints the alpha delta
-and the worst horizontal step; the lab renders the proposed CSS recipe live. The
+and the worst boundary kink; the lab renders the CSS recipe live. The
 headless check reports the main-thread cost (17 zones, 253 shapes, 355 bodies:
 about **10–12 ms** per rebuild on the dev box), the browser blur's fidelity to
 the reference Gaussian (mean **0.0028**, max **0.0277** alpha) and a screenshot
 pixel check of the CSS route against the merged field (mean **0.28**, max
-**3.35/255** luma). Visual quality is still the user's call (§6 of `AGENTS.md`).
+**3.35/255** luma). The user reviewed the lab on 2026-11-14 and approved the
+merged-footprint look; this is the runtime contract for the compositor. The
+per-shell shadow sprites are now only a checker reference and review asset.
 
 ### The standing-hand fan
 
