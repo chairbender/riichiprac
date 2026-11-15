@@ -962,7 +962,7 @@ if (!auditionMode) {
     let right = -Infinity;
     for (let step = 0; step < row.ids.length; step += 1) {
       const entry = manifest.shells[row.ids[step]];
-      right = Math.max(right, fanPad + step * row.step - entry.anchorX + entry.texWidth);
+      right = Math.max(right, fanPad + step * row.step + spriteBox(entry).right);
     }
     fanWidth = Math.max(fanWidth, right);
   }

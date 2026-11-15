@@ -91,7 +91,7 @@
       "model": "blob",
       "shape": "rounded-rect",
       "sigmaPx1x": 12.0,
-      "standingSigmaPx1x": 4.0,
+      "standingSigmaPx1x": 5.0,
       "topTrimPx1x": 40,
       "coreAlpha": 0.6,
       "rectScale": 1.15,
@@ -104,10 +104,10 @@
         "left": 38
       },
       "standingPadding1x": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "offsetPx1x": [
         5,
@@ -1895,7 +1895,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -1903,8 +1903,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.0,
+          78.0
+        ],
+        "halfPx": [
+          49.4,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -2069,7 +2090,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -2077,8 +2098,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          58.0,
+          74.5
+        ],
+        "halfPx": [
+          68.95,
+          42.625
+        ],
+        "radiusPx": 12.787,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -2243,7 +2285,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -2251,8 +2293,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.0,
+          78.0
+        ],
+        "halfPx": [
+          49.4,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -2423,7 +2486,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -2431,8 +2494,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.0,
+          78.0
+        ],
+        "halfPx": [
+          49.4,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -2603,7 +2687,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -2611,8 +2695,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          57.0,
+          69.5
+        ],
+        "halfPx": [
+          67.8,
+          36.875
+        ],
+        "radiusPx": 11.062,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -2787,7 +2892,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -2795,8 +2900,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          57.0,
+          69.5
+        ],
+        "halfPx": [
+          67.8,
+          36.875
+        ],
+        "radiusPx": 11.062,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -2971,7 +3097,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -2979,8 +3105,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          57.0,
+          69.5
+        ],
+        "halfPx": [
+          67.8,
+          36.875
+        ],
+        "radiusPx": 11.062,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -3155,7 +3302,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -3163,8 +3310,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          57.0,
+          69.5
+        ],
+        "halfPx": [
+          67.8,
+          36.875
+        ],
+        "radiusPx": 11.062,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -3309,19 +3477,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_00.png",
       "shadowTextureFile": "shells/shell_hand_slot_00-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_00-shadow.png",
-      "shadowTexWidth": 114,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 130,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 86,
       "texHeight": 106,
@@ -3337,9 +3505,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -3347,8 +3515,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          49.746,
+          97.576
+        ],
+        "halfPx": [
+          48.738,
+          19.65
+        ],
+        "radiusPx": 6.878,
+        "angleDeg": -2.8194,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -3420,40 +3609,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 0,
+          "left": 10,
           "top": 0,
-          "right": 15,
-          "bottom": 19
+          "right": 27,
+          "bottom": 27
         },
         "alphaPeak1x": {
-          "left": 0.0,
+          "left": 0.2314,
           "top": 0.0,
-          "right": 0.5216,
-          "bottom": 0.5961
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.0,
+          "left": 19.157,
           "top": 0.0,
-          "right": 44.02,
-          "bottom": 344.243
+          "right": 245.722,
+          "bottom": 736.655
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            27.58,
-            90.15
+            33.58,
+            86.15
           ],
           [
-            19.2,
-            115.0
+            25.2,
+            111.0
           ],
           [
-            93.65,
-            90.15
+            99.65,
+            86.15
           ],
           [
-            86.56,
-            115.0
+            92.56,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -3479,16 +3668,16 @@
             98
           ]
         },
-        "bytes1x": 13400,
-        "bytes2x": 38229
+        "bytes1x": 13767,
+        "bytes2x": 38631
       },
       "sha256": {
         "decodedRgba1x": "2c66632bd13e788d01b449d2394e7e3ef4bf8a5d805847ca442260fc1a9e6f84",
         "decodedRgba2x": "119d59021eb6891c0efdcaed1f17ce4119a3cf617c5f730bdfcb33ec43130641"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5a0b9e21f6cb4c5eda112b4cdd07a416d0a1ec96a0894499fce5ffbdd0abb973",
-        "decodedRgba2x": "c94313c780a35290f30cf8cd5a862009bb30c35fb4409f44137917eff854368f"
+        "decodedRgba1x": "3329538d0546fd4b23b5d87547b5e2ad02f6291af2f103e7352a74a340d7b1fb",
+        "decodedRgba2x": "7e7162b9a165c1251e5e6e96f8471bf473e5ddc73f8e0d82ba507b75700740bc"
       }
     },
     "shell_hand_slot_01": {
@@ -3496,19 +3685,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_01.png",
       "shadowTextureFile": "shells/shell_hand_slot_01-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_01-shadow.png",
-      "shadowTexWidth": 112,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 128,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 84,
       "texHeight": 106,
@@ -3524,9 +3713,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -3534,8 +3723,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          48.643,
+          97.576
+        ],
+        "halfPx": [
+          47.863,
+          19.403
+        ],
+        "radiusPx": 6.791,
+        "angleDeg": -2.3629,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -3607,40 +3817,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 0,
+          "left": 10,
           "top": 0,
-          "right": 15,
-          "bottom": 18
+          "right": 27,
+          "bottom": 27
         },
         "alphaPeak1x": {
-          "left": 0.0,
+          "left": 0.2471,
           "top": 0.0,
-          "right": 0.5255,
-          "bottom": 0.5961
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.0,
+          "left": 20.714,
           "top": 0.0,
-          "right": 44.784,
-          "bottom": 329.071
+          "right": 239.961,
+          "bottom": 705.58
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            25.83,
-            90.15
+            31.83,
+            86.15
           ],
           [
-            18.74,
-            115.0
+            24.74,
+            111.0
           ],
           [
-            91.9,
-            90.15
+            97.9,
+            86.15
           ],
           [
-            86.1,
-            115.0
+            92.1,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -3666,16 +3876,16 @@
             99
           ]
         },
-        "bytes1x": 12900,
-        "bytes2x": 37420
+        "bytes1x": 13587,
+        "bytes2x": 38071
       },
       "sha256": {
         "decodedRgba1x": "edd97ade3ff747287a0fac88656f92a3b0ea1a1f617ed17a9568cbdcc1b58f1d",
         "decodedRgba2x": "0fcb7b45657b41b54a77d10e88308afffad6309ac4d09a56e58a0bb63806f42d"
       },
       "shadowSha256": {
-        "decodedRgba1x": "8829bee88cfccac7a5f9041ba40ad93b99d95b293c624ee8fa307eeaa4206330",
-        "decodedRgba2x": "e20ceafbfee6d28ef8f1ef3df780d38440b2d273b36c5cc53f10a8ac0243dca8"
+        "decodedRgba1x": "3d0b5906d34da73569ea0c964f6a671f36b0dc5a1d3ee39e4e29402243e8a584",
+        "decodedRgba2x": "f3b2a34ca195045342e0d104ffaa7376d70ac07a454d01729bc18610254291eb"
       }
     },
     "shell_hand_slot_02": {
@@ -3683,19 +3893,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_02.png",
       "shadowTextureFile": "shells/shell_hand_slot_02-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_02-shadow.png",
-      "shadowTexWidth": 110,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 126,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 82,
       "texHeight": 106,
@@ -3711,9 +3921,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -3721,8 +3931,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          47.039,
+          97.576
+        ],
+        "halfPx": [
+          46.982,
+          19.137
+        ],
+        "radiusPx": 6.698,
+        "angleDeg": -1.8991,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -3794,40 +4025,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 0,
+          "left": 11,
           "top": 0,
-          "right": 14,
-          "bottom": 18
+          "right": 27,
+          "bottom": 26
         },
         "alphaPeak1x": {
-          "left": 0.0,
+          "left": 0.2745,
           "top": 0.0,
-          "right": 0.5137,
-          "bottom": 0.5961
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.0,
+          "left": 24.514,
           "top": 0.0,
-          "right": 40.843,
-          "bottom": 316.573
+          "right": 231.561,
+          "bottom": 677.996
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            23.58,
-            90.15
+            29.58,
+            86.15
           ],
           [
-            17.78,
-            115.0
+            23.78,
+            111.0
           ],
           [
-            89.65,
-            90.15
+            95.65,
+            86.15
           ],
           [
-            85.14,
-            115.0
+            91.14,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -3853,16 +4084,16 @@
             99
           ]
         },
-        "bytes1x": 12751,
-        "bytes2x": 36826
+        "bytes1x": 12984,
+        "bytes2x": 37143
       },
       "sha256": {
         "decodedRgba1x": "7e8007f7e87237ce3c4002b06d12023707de471e21986e622157ae0851e3fceb",
         "decodedRgba2x": "4a0a2dc43e96f098169ce802075b85513ba08c8b045f511b171b376094fe73cc"
       },
       "shadowSha256": {
-        "decodedRgba1x": "e203ea937deb65c84ee706f97815c75d32b88bd4dee2b18f95788ca8a1e8978d",
-        "decodedRgba2x": "8863b22225260aed0bca2aeb83015c95777cac13f9684643159056e983d1de39"
+        "decodedRgba1x": "370c7c91b35843afb240316eb45fa773cd21b2a328a1be723a30cd4cbd27211d",
+        "decodedRgba2x": "0f8961778842f6597133149bfa586b51ce3532f186d0b52105c0cef070068f0e"
       }
     },
     "shell_hand_slot_03": {
@@ -3870,19 +4101,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_03.png",
       "shadowTextureFile": "shells/shell_hand_slot_03-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_03-shadow.png",
-      "shadowTexWidth": 107,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 123,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 79,
       "texHeight": 106,
@@ -3898,9 +4129,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -3908,8 +4139,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.935,
+          97.576
+        ],
+        "halfPx": [
+          46.097,
+          18.855
+        ],
+        "radiusPx": 6.599,
+        "angleDeg": -1.4296,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -3981,40 +4233,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 0,
+          "left": 12,
           "top": 0,
-          "right": 15,
-          "bottom": 18
+          "right": 27,
+          "bottom": 26
         },
         "alphaPeak1x": {
-          "left": 0.0039,
+          "left": 0.3255,
           "top": 0.0,
-          "right": 0.5176,
-          "bottom": 0.5961
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.071,
+          "left": 31.376,
           "top": 0.0,
-          "right": 41.769,
-          "bottom": 301.635
+          "right": 224.267,
+          "bottom": 639.286
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            20.83,
-            90.15
+            26.83,
+            86.15
           ],
           [
-            16.32,
-            115.0
+            22.32,
+            111.0
           ],
           [
-            86.91,
-            90.15
+            92.91,
+            86.15
           ],
           [
-            83.68,
-            115.0
+            89.68,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -4040,16 +4292,16 @@
             99
           ]
         },
-        "bytes1x": 12538,
-        "bytes2x": 36047
+        "bytes1x": 12601,
+        "bytes2x": 36239
       },
       "sha256": {
         "decodedRgba1x": "7f38edfbfc10c21c2fef641d0d85698d106f9bed937d30f919c23fb86e9a07ca",
         "decodedRgba2x": "30c2d1120be58521c2d06a81aa9e438a001bbb53ebe21943b9140d6fc1f09d10"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5c142ad008d279c98fe6d61fafb67fa4d666eaa8da762f1680e363764c7a91f4",
-        "decodedRgba2x": "e53e3d678a3ff0c04461a78016435761045cbe7a2e6e48c62b68012441802cba"
+        "decodedRgba1x": "54e202b3f2736af60113ce66345ddde044ba361f3abc6eb0d433ed6414758969",
+        "decodedRgba2x": "058263a1da23353b39fa0ac711631e2e6b75c5572634d0dd9a9394276fae4471"
       }
     },
     "shell_hand_slot_04": {
@@ -4057,19 +4309,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_04.png",
       "shadowTextureFile": "shells/shell_hand_slot_04-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_04-shadow.png",
-      "shadowTexWidth": 105,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 121,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 77,
       "texHeight": 106,
@@ -4085,9 +4337,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -4095,8 +4347,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.332,
+          97.576
+        ],
+        "halfPx": [
+          45.207,
+          18.555
+        ],
+        "radiusPx": 6.494,
+        "angleDeg": -0.9556,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -4168,40 +4441,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 1,
+          "left": 13,
           "top": 0,
-          "right": 14,
-          "bottom": 18
+          "right": 26,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0118,
+          "left": 0.3725,
           "top": 0.0,
-          "right": 0.502,
-          "bottom": 0.5922
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.161,
+          "left": 39.247,
           "top": 0.0,
-          "right": 36.969,
-          "bottom": 286.173
+          "right": 212.675,
+          "bottom": 612.125
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            18.58,
-            90.15
+            24.58,
+            86.15
           ],
           [
-            15.36,
-            115.0
+            21.36,
+            111.0
           ],
           [
-            84.66,
-            90.15
+            90.66,
+            86.15
           ],
           [
-            82.72,
-            115.0
+            88.72,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -4227,16 +4500,16 @@
             99
           ]
         },
-        "bytes1x": 12135,
-        "bytes2x": 34985
+        "bytes1x": 12367,
+        "bytes2x": 35326
       },
       "sha256": {
         "decodedRgba1x": "95e6710690a26e9678a97ea0a0920e167feb6810b22ced14671a27aa26159952",
         "decodedRgba2x": "c3e1d9d19a504efd75bf233234d8cb38bd6ba133bc75a75cd7dfe38014a78056"
       },
       "shadowSha256": {
-        "decodedRgba1x": "c159be995aad2ab33c332912ea0d14a5ad4bf670ce3108018315134ea2a1b87d",
-        "decodedRgba2x": "9e31cbd710698f7e5462adf06bbaed87cfcee5ef7a80252482eab7c51c876da7"
+        "decodedRgba1x": "9ed4bc3bb84ce09fe550df4914c573fe2e8174d32a41980c4230f37b34ac0f84",
+        "decodedRgba2x": "439315ad4ba10c7a12c04742136bd29cbb3e6c2f529591d3642b374887314424"
       }
     },
     "shell_hand_slot_05": {
@@ -4244,19 +4517,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_05.png",
       "shadowTextureFile": "shells/shell_hand_slot_05-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_05-shadow.png",
-      "shadowTexWidth": 104,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 120,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 76,
       "texHeight": 106,
@@ -4272,9 +4545,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -4282,8 +4555,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.228,
+          97.576
+        ],
+        "halfPx": [
+          44.314,
+          18.239
+        ],
+        "radiusPx": 6.384,
+        "angleDeg": -0.4785,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -4355,40 +4649,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 1,
+          "left": 13,
           "top": 0,
-          "right": 13,
-          "bottom": 17
+          "right": 25,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0118,
+          "left": 0.3725,
           "top": 0.0,
-          "right": 0.4784,
-          "bottom": 0.5922
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.196,
+          "left": 39.247,
           "top": 0.0,
-          "right": 31.835,
-          "bottom": 272.412
+          "right": 194.91,
+          "bottom": 593.016
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            16.84,
-            90.15
+            22.84,
+            86.15
           ],
           [
-            14.9,
-            115.0
+            20.9,
+            111.0
           ],
           [
-            82.91,
-            90.15
+            88.91,
+            86.15
           ],
           [
-            82.26,
-            115.0
+            88.26,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -4414,16 +4708,16 @@
             99
           ]
         },
-        "bytes1x": 11541,
-        "bytes2x": 34091
+        "bytes1x": 11717,
+        "bytes2x": 33940
       },
       "sha256": {
         "decodedRgba1x": "b94b46c9a658e80c8f63c1b50d2a15e27e30555311313e2e609bee64d858f66a",
         "decodedRgba2x": "56623461ca83e9b95cbb50179728a70acb7c613800dabb9dbcf71247222b62c2"
       },
       "shadowSha256": {
-        "decodedRgba1x": "09ebc55f69bef9f98e700d4afcc94afebff409bdd5db8df4a57dc12af9991212",
-        "decodedRgba2x": "c18acf869b9ecc1bbe2e5861e9efd84938bce6d2082bbb70f0112d52512e663a"
+        "decodedRgba1x": "d85c364bee04592a2be57ecdf84066ad70acb9852273f6b7f5183c64494d83c7",
+        "decodedRgba2x": "bade07a22745b4070f0cf2ac3f411c953710cdb740da66623b17a8bde6f77d97"
       }
     },
     "shell_hand_slot_06": {
@@ -4431,19 +4725,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_06.png",
       "shadowTextureFile": "shells/shell_hand_slot_06-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_06-shadow.png",
-      "shadowTexWidth": 103,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 119,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 75,
       "texHeight": 106,
@@ -4459,9 +4753,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -4469,8 +4763,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          40.5,
+          97.576
+        ],
+        "halfPx": [
+          43.417,
+          17.909
+        ],
+        "radiusPx": 6.268,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -4542,40 +4857,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 2,
+          "left": 14,
           "top": 0,
-          "right": 12,
-          "bottom": 17
+          "right": 24,
+          "bottom": 24
         },
         "alphaPeak1x": {
-          "left": 0.0196,
+          "left": 0.4157,
           "top": 0.0,
-          "right": 0.4157,
-          "bottom": 0.5922
+          "right": 0.5961,
+          "bottom": 0.5961
         },
         "alphaMass1x": {
-          "left": 0.388,
+          "left": 47.745,
           "top": 0.0,
-          "right": 22.863,
-          "bottom": 261.573
+          "right": 167.349,
+          "bottom": 545.824
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            14.46,
-            90.15
+            20.46,
+            86.15
           ],
           [
-            13.82,
-            115.0
+            19.82,
+            111.0
           ],
           [
-            80.54,
-            90.15
+            86.54,
+            86.15
           ],
           [
-            81.18,
-            115.0
+            87.18,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -4601,16 +4916,16 @@
             98
           ]
         },
-        "bytes1x": 11570,
-        "bytes2x": 33058
+        "bytes1x": 10216,
+        "bytes2x": 32159
       },
       "sha256": {
         "decodedRgba1x": "002b0d20e5dfcb3cdcefe2554d72481477642e891c3edfd4a80d713046259e20",
         "decodedRgba2x": "f17043d65daa3f0221c2dea0e09460ea9378e78c055ec3802c396c524bb9e451"
       },
       "shadowSha256": {
-        "decodedRgba1x": "3ea4a4d781ea4c5efe801a457ebd8e52f6704d22b89b1de860e57d4e4ae70825",
-        "decodedRgba2x": "5b1ad8740419c6b09962359b7a3e2767517d01ae0fd65e3aacfb139b58e23aa2"
+        "decodedRgba1x": "8bf167433347d1f1c2611620788f0b5ae1860f9447cd9d6c3909f90ec7c6cf07",
+        "decodedRgba2x": "2290f06f957dd596e23dd52bf287e8181a40e462bdb2abac8eabf85c4448a101"
       }
     },
     "shell_hand_slot_07": {
@@ -4618,19 +4933,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_07.png",
       "shadowTextureFile": "shells/shell_hand_slot_07-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_07-shadow.png",
-      "shadowTexWidth": 104,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 120,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 76,
       "texHeight": 106,
@@ -4646,9 +4961,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -4656,8 +4971,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          39.772,
+          97.576
+        ],
+        "halfPx": [
+          44.314,
+          18.239
+        ],
+        "radiusPx": 6.384,
+        "angleDeg": 0.4785,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -4729,40 +5065,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 3,
+          "left": 15,
           "top": 0,
-          "right": 11,
-          "bottom": 17
+          "right": 23,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0471,
+          "left": 0.4863,
           "top": 0.0,
-          "right": 0.3686,
-          "bottom": 0.5922
+          "right": 0.5961,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 1.031,
+          "left": 65.133,
           "top": 0.0,
-          "right": 17.667,
-          "bottom": 275.651
+          "right": 154.8,
+          "bottom": 598.561
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            13.09,
-            90.15
+            19.09,
+            86.15
           ],
           [
-            13.74,
-            115.0
+            19.74,
+            111.0
           ],
           [
-            79.16,
-            90.15
+            85.16,
+            86.15
           ],
           [
-            81.1,
-            115.0
+            87.1,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -4788,16 +5124,16 @@
             99
           ]
         },
-        "bytes1x": 11707,
-        "bytes2x": 34607
+        "bytes1x": 11900,
+        "bytes2x": 34447
       },
       "sha256": {
         "decodedRgba1x": "ea08101c93e571e9e8559749cc9c21dfd925e9975c639eede9c19184d0ebde33",
         "decodedRgba2x": "e7cdcddaaf35312f6b531f71f8a69f47347a36fe0f7023c1c78c27889fbb923f"
       },
       "shadowSha256": {
-        "decodedRgba1x": "51b2b99ad5af19e8b7faab21bbb3288941f82dfe929855bdfcfc2b58689d048a",
-        "decodedRgba2x": "75f35024e7f06903db23069c3bc69190aa0bcb032155fbbc66a6c4d6db2fcd2d"
+        "decodedRgba1x": "1522795a93b31aed79617542bd280ba011a9112a40135669f6e2847d54358e42",
+        "decodedRgba2x": "da6d0516b2fdadbb6697fe23b323c74149f55c288d82efc4aef6da7a6251b102"
       }
     },
     "shell_hand_slot_08": {
@@ -4805,19 +5141,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_08.png",
       "shadowTextureFile": "shells/shell_hand_slot_08-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_08-shadow.png",
-      "shadowTexWidth": 105,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 121,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 77,
       "texHeight": 106,
@@ -4833,9 +5169,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -4843,8 +5179,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          39.668,
+          97.576
+        ],
+        "halfPx": [
+          45.207,
+          18.555
+        ],
+        "radiusPx": 6.494,
+        "angleDeg": 0.9556,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -4916,40 +5273,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 4,
+          "left": 16,
           "top": 0,
-          "right": 11,
-          "bottom": 18
+          "right": 23,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0549,
+          "left": 0.5137,
           "top": 0.0,
-          "right": 0.3569,
-          "bottom": 0.5922
+          "right": 0.5961,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 1.404,
+          "left": 76.851,
           "top": 0.0,
-          "right": 16.647,
-          "bottom": 290.804
+          "right": 155.157,
+          "bottom": 614.871
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            12.34,
-            90.15
+            18.34,
+            86.15
           ],
           [
-            14.28,
-            115.0
+            20.28,
+            111.0
           ],
           [
-            78.42,
-            90.15
+            84.42,
+            86.15
           ],
           [
-            81.64,
-            115.0
+            87.64,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -4975,16 +5332,16 @@
             98
           ]
         },
-        "bytes1x": 12294,
-        "bytes2x": 35463
+        "bytes1x": 12571,
+        "bytes2x": 35951
       },
       "sha256": {
         "decodedRgba1x": "733742c4abf7e4f3c1512e22904511b87004c7980913264bdb1d48cdc7a73c49",
         "decodedRgba2x": "4ff9c139131bc6336a5bea3a2547c680d039bec0973ff6ec0448b7c272d86c15"
       },
       "shadowSha256": {
-        "decodedRgba1x": "a67f37c47abe4afdef3dc4e4be3f4d6ee0bc324e49b0261583fbbf62f81f473a",
-        "decodedRgba2x": "f493b098b6a870d70654eeb7cc69643394d6aa4866acaa6e744ef80df5f5f15a"
+        "decodedRgba1x": "6385a9f8c9247b05aadc2de9845883ca110c862d367fa3e04c9921f8dcebbd9d",
+        "decodedRgba2x": "f5cc40def0bf440a35c4a568e4041c433ec1f00fe83a84d15a365be43e5ddc64"
       }
     },
     "shell_hand_slot_09": {
@@ -4992,19 +5349,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_09.png",
       "shadowTextureFile": "shells/shell_hand_slot_09-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_09-shadow.png",
-      "shadowTexWidth": 107,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 123,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 79,
       "texHeight": 106,
@@ -5020,9 +5377,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -5030,8 +5387,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          40.065,
+          97.576
+        ],
+        "halfPx": [
+          46.097,
+          18.855
+        ],
+        "radiusPx": 6.599,
+        "angleDeg": 1.4296,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -5103,40 +5481,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 5,
+          "left": 17,
           "top": 0,
-          "right": 10,
-          "bottom": 18
+          "right": 22,
+          "bottom": 26
         },
         "alphaPeak1x": {
-          "left": 0.0745,
+          "left": 0.5176,
           "top": 0.0,
-          "right": 0.3098,
-          "bottom": 0.5961
+          "right": 0.5882,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 2.02,
+          "left": 85.043,
           "top": 0.0,
-          "right": 12.937,
-          "bottom": 307.612
+          "right": 142.173,
+          "bottom": 643.953
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            12.09,
-            90.15
+            18.09,
+            86.15
           ],
           [
-            15.32,
-            115.0
+            21.32,
+            111.0
           ],
           [
-            78.17,
-            90.15
+            84.17,
+            86.15
           ],
           [
-            82.68,
-            115.0
+            88.68,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -5162,16 +5540,16 @@
             99
           ]
         },
-        "bytes1x": 12802,
-        "bytes2x": 36536
+        "bytes1x": 12943,
+        "bytes2x": 36918
       },
       "sha256": {
         "decodedRgba1x": "140021399fe23f2cfbbd7dab0cc32c1933353fc63a58908e05e8d44b46c515e2",
         "decodedRgba2x": "1e681c87aef25624e14d75ee75337f03d192b27168f1da99477849d9c0c8b200"
       },
       "shadowSha256": {
-        "decodedRgba1x": "ac317fb7229b41087f387920631719c757718544561afef228ca23cee9116ac8",
-        "decodedRgba2x": "7cefa97f8b422e290262519331d3d5014eb4ccfbec410010df3d6232adea2b1a"
+        "decodedRgba1x": "a1a09e82ab09dbbbf67c6f5af3936c6c503926a2f315188825190eed804c07d5",
+        "decodedRgba2x": "97fd750702941566c6b93c5d8367bfd01e03633f066e9f3c2c047040ec265bf0"
       }
     },
     "shell_hand_slot_10": {
@@ -5179,19 +5557,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_10.png",
       "shadowTextureFile": "shells/shell_hand_slot_10-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_10-shadow.png",
-      "shadowTexWidth": 110,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 126,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 82,
       "texHeight": 106,
@@ -5207,9 +5585,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -5217,8 +5595,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          40.961,
+          97.576
+        ],
+        "halfPx": [
+          46.982,
+          19.137
+        ],
+        "radiusPx": 6.698,
+        "angleDeg": 1.8991,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -5290,40 +5689,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 4,
+          "left": 17,
           "top": 0,
-          "right": 8,
-          "bottom": 18
+          "right": 21,
+          "bottom": 26
         },
         "alphaPeak1x": {
-          "left": 0.0706,
+          "left": 0.5176,
           "top": 0.0,
-          "right": 0.2314,
-          "bottom": 0.5961
+          "right": 0.5843,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 1.847,
+          "left": 87.467,
           "top": 0.0,
-          "right": 7.961,
-          "bottom": 322.906
+          "right": 129.141,
+          "bottom": 683.784
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            12.35,
-            90.15
+            18.35,
+            86.15
           ],
           [
-            16.86,
-            115.0
+            22.86,
+            111.0
           ],
           [
-            78.42,
-            90.15
+            84.42,
+            86.15
           ],
           [
-            84.22,
-            115.0
+            90.22,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -5349,16 +5748,16 @@
             99
           ]
         },
-        "bytes1x": 12890,
-        "bytes2x": 37494
+        "bytes1x": 13262,
+        "bytes2x": 37973
       },
       "sha256": {
         "decodedRgba1x": "3ae32a0d9342b0814518fd78dc7348aafe616953be6c0e6b3bb49cd9a54da7e2",
         "decodedRgba2x": "4fceafd1c0a9862b356fc269c84fa86dbfa44b6b4b9a1b1ed80b0412d6b9f39d"
       },
       "shadowSha256": {
-        "decodedRgba1x": "b1eb004ad9ff19f0838ae98a551cd93f22236c7f352c7991b1e128dba90c3a16",
-        "decodedRgba2x": "c4ae5cd86935395dcbf987d086a28abc511fbf18f801742b877ed4a8547b0039"
+        "decodedRgba1x": "b06eb1c13fdfdee414fcf907fb1a20edfd635d39deaaf34a0d414d2a065921b3",
+        "decodedRgba2x": "e97234d0e226804247dbc32ef9666a9067087959247aa1767cdc1046aa039a65"
       }
     },
     "shell_hand_slot_11": {
@@ -5366,19 +5765,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_11.png",
       "shadowTextureFile": "shells/shell_hand_slot_11-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_11-shadow.png",
-      "shadowTexWidth": 112,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 128,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 84,
       "texHeight": 106,
@@ -5394,9 +5793,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -5404,8 +5803,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.357,
+          97.576
+        ],
+        "halfPx": [
+          47.863,
+          19.403
+        ],
+        "radiusPx": 6.791,
+        "angleDeg": 2.3629,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -5477,40 +5897,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 5,
+          "left": 17,
           "top": 0,
-          "right": 7,
-          "bottom": 18
+          "right": 20,
+          "bottom": 27
         },
         "alphaPeak1x": {
-          "left": 0.0784,
+          "left": 0.5373,
           "top": 0.0,
-          "right": 0.1922,
-          "bottom": 0.5961
+          "right": 0.5765,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 2.255,
+          "left": 93.78,
           "top": 0.0,
-          "right": 6.016,
-          "bottom": 336.204
+          "right": 120.459,
+          "bottom": 713.482
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            12.1,
-            90.15
+            18.1,
+            86.15
           ],
           [
-            17.9,
-            115.0
+            23.9,
+            111.0
           ],
           [
-            78.17,
-            90.15
+            84.17,
+            86.15
           ],
           [
-            85.26,
-            115.0
+            91.26,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -5536,16 +5956,16 @@
             99
           ]
         },
-        "bytes1x": 13278,
-        "bytes2x": 38046
+        "bytes1x": 14010,
+        "bytes2x": 38715
       },
       "sha256": {
         "decodedRgba1x": "42ff2b4a699ed500a788a767c2c6f8f4f5ec84fad88c4d74dcc6b9f5a787ee74",
         "decodedRgba2x": "7e55261f5f2d41f7dfc93cf4202652bf411a901eb62d16bf71b9a3f884dbea24"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5e77f38f27f868b2e5dfaff9ed99428f00ca0f57aa2dea6e5b2963fd4706b22e",
-        "decodedRgba2x": "53758f42112d11eb0d6d6af499bb7dc50a3143a01592f57a55ba35f70fbd182c"
+        "decodedRgba1x": "e2549ec7064a8d7d43ffe9e9f0ccab36ebadc2fea83c327e38616ba2ffa58487",
+        "decodedRgba2x": "e142bbb4870c076019c69d967b5249ff05d0b2953a171203a25a84c25af7ed30"
       }
     },
     "shell_hand_slot_12": {
@@ -5553,19 +5973,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_12.png",
       "shadowTextureFile": "shells/shell_hand_slot_12-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_12-shadow.png",
-      "shadowTexWidth": 114,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 130,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 86,
       "texHeight": 106,
@@ -5581,9 +6001,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -5591,8 +6011,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.254,
+          97.576
+        ],
+        "halfPx": [
+          48.738,
+          19.65
+        ],
+        "radiusPx": 6.878,
+        "angleDeg": 2.8194,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -5664,40 +6105,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 5,
+          "left": 17,
           "top": 0,
-          "right": 7,
-          "bottom": 19
+          "right": 20,
+          "bottom": 27
         },
         "alphaPeak1x": {
-          "left": 0.0745,
+          "left": 0.5373,
           "top": 0.0,
-          "right": 0.1647,
-          "bottom": 0.5961
+          "right": 0.5725,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 2.129,
+          "left": 94.945,
           "top": 0.0,
-          "right": 4.675,
-          "bottom": 350.796
+          "right": 116.835,
+          "bottom": 743.616
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            12.35,
-            90.15
+            18.35,
+            86.15
           ],
           [
-            19.44,
-            115.0
+            25.44,
+            111.0
           ],
           [
-            78.42,
-            90.15
+            84.42,
+            86.15
           ],
           [
-            86.8,
-            115.0
+            92.8,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -5723,16 +6164,16 @@
             99
           ]
         },
-        "bytes1x": 13628,
-        "bytes2x": 39170
+        "bytes1x": 14033,
+        "bytes2x": 39564
       },
       "sha256": {
         "decodedRgba1x": "0ae5de55965533d9b8638ebe35ffb2f52053eb18ad3e7d4f48271fe5a7524906",
         "decodedRgba2x": "534f676113ad08598fef9f0f6967db1e5a0ad57b195fe6914705c20f35208ed2"
       },
       "shadowSha256": {
-        "decodedRgba1x": "a5479cdef6f14dde355d19f37a422f70ef6db45a3f40c6a8a0ad1b89f2519fd2",
-        "decodedRgba2x": "c68d8d541584041b26efa3782c2ecfd09bc33cf464ffc355d9cafc7ab77120da"
+        "decodedRgba1x": "5258d3a028f19268730d25a17f9108e4dba1e68ac14f226a1e0632b8827df669",
+        "decodedRgba2x": "329683dd2ee246c04387b6389587ccce5b2d2e8ac1926b66d8ff3bac03a6285c"
       }
     },
     "shell_hand_slot_draw": {
@@ -5740,19 +6181,19 @@
       "textureFile2x": "shells/2x/shell_hand_slot_draw.png",
       "shadowTextureFile": "shells/shell_hand_slot_draw-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_slot_draw-shadow.png",
-      "shadowTexWidth": 117,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 133,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 89,
       "texHeight": 106,
@@ -5768,9 +6209,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -5778,8 +6219,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.939,
+          97.576
+        ],
+        "halfPx": [
+          49.911,
+          19.955
+        ],
+        "radiusPx": 6.984,
+        "angleDeg": 3.4221,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -5851,40 +6313,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 5,
+          "left": 17,
           "top": 0,
-          "right": 6,
-          "bottom": 19
+          "right": 19,
+          "bottom": 28
         },
         "alphaPeak1x": {
-          "left": 0.0824,
+          "left": 0.5451,
           "top": 0.0,
-          "right": 0.1176,
-          "bottom": 0.5961
+          "right": 0.5608,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 2.404,
+          "left": 104.086,
           "top": 0.0,
-          "right": 2.933,
-          "bottom": 373.302
+          "right": 103.306,
+          "bottom": 788.216
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            12.16,
-            90.15
+            18.16,
+            86.15
           ],
           [
-            21.0,
-            115.0
+            27.0,
+            111.0
           ],
           [
-            78.24,
-            90.15
+            84.24,
+            86.15
           ],
           [
-            88.36,
-            115.0
+            94.36,
+            111.0
           ]
         ],
         "solidInset1x": [
@@ -5910,16 +6372,16 @@
             99
           ]
         },
-        "bytes1x": 13933,
-        "bytes2x": 39347
+        "bytes1x": 14363,
+        "bytes2x": 40041
       },
       "sha256": {
         "decodedRgba1x": "e4bab24b5cda3831e1f46b426dc03f686727accf15e0fd2799bc97197ab27183",
         "decodedRgba2x": "ee8591cbc2db030b9f2be9d98a1f13f1d948afd087bc41a8d7ba5b3f75f65654"
       },
       "shadowSha256": {
-        "decodedRgba1x": "27796de2f5eec95ed9f38ae881c1a8d7eb3bf92cebdd7c53e55174834a3eaa32",
-        "decodedRgba2x": "6c2ed746605799de5628d38b8a6baaef2a30f899e5df7b458b1fa5c77cb118f2"
+        "decodedRgba1x": "ac0c6cf3e6a0e02ce7a396bc19068237b604380c62c315d89ab6970d6c164f72",
+        "decodedRgba2x": "993efaf67603283484ce73f459f3bfae97146db71ed0f02e77f26d7fe7bf70e6"
       }
     },
     "shell_hand_top_slot_00": {
@@ -5927,19 +6389,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_00.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_00-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_00-shadow.png",
-      "shadowTexWidth": 106,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 122,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 78,
       "texHeight": 106,
@@ -5955,9 +6417,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -5965,8 +6427,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.65,
+          97.679
+        ],
+        "halfPx": [
+          45.509,
+          18.53
+        ],
+        "radiusPx": 6.485,
+        "angleDeg": -1.1107,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -6038,40 +6521,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 0,
+          "left": 13,
           "top": 0,
-          "right": 14,
-          "bottom": 18
+          "right": 26,
+          "bottom": 26
         },
         "alphaPeak1x": {
-          "left": 0.0078,
+          "left": 0.3725,
           "top": 0.0,
-          "right": 0.4941,
-          "bottom": 0.5961
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.133,
+          "left": 38.647,
           "top": 0.0,
-          "right": 35.176,
-          "bottom": 293.718
+          "right": 206.459,
+          "bottom": 625.604
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            82.77,
-            115.0
+            88.77,
+            111.0
           ],
           [
-            85.59,
-            90.36
+            91.59,
+            86.36
           ],
           [
-            15.46,
-            115.0
+            21.46,
+            111.0
           ],
           [
-            18.78,
-            90.36
+            24.78,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -6097,16 +6580,16 @@
             41
           ]
         },
-        "bytes1x": 12032,
-        "bytes2x": 33865
+        "bytes1x": 12051,
+        "bytes2x": 34369
       },
       "sha256": {
         "decodedRgba1x": "94441645370ded7ba6f2f85b77b83b045aa2f8827837ca2d7d94931ea579f022",
         "decodedRgba2x": "6584e0573f1fee419e9de337308b20128161c0081ced478362696e76415aef19"
       },
       "shadowSha256": {
-        "decodedRgba1x": "11254640f3a096d802233caddfd2b07b9e25c9f7042c36c97a75b3cbc2c0be5b",
-        "decodedRgba2x": "41bd3d59c19d6e6c9a6caf8fca44c2e047b5dbaaf38984a264c81272095d5917"
+        "decodedRgba1x": "964489348033a314d2d9d7c4634d94fda02e383b9437126f76bf12249492e738",
+        "decodedRgba2x": "66fc6dc5c5b27f8cf2759c89bbc482dd45f74037ab4108cb43a5bce2a05c717d"
       }
     },
     "shell_hand_top_slot_01": {
@@ -6114,19 +6597,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_01.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_01-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_01-shadow.png",
-      "shadowTexWidth": 105,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 121,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 77,
       "texHeight": 106,
@@ -6142,9 +6625,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -6152,8 +6635,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.916,
+          97.679
+        ],
+        "halfPx": [
+          45.157,
+          18.411
+        ],
+        "radiusPx": 6.444,
+        "angleDeg": -0.9264,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -6225,40 +6729,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 1,
+          "left": 13,
           "top": 0,
-          "right": 14,
-          "bottom": 18
+          "right": 26,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0118,
+          "left": 0.3725,
           "top": 0.0,
-          "right": 0.4902,
-          "bottom": 0.5922
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.196,
+          "left": 39.255,
           "top": 0.0,
-          "right": 34.686,
-          "bottom": 285.557
+          "right": 202.706,
+          "bottom": 610.522
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            82.29,
-            115.0
+            88.29,
+            111.0
           ],
           [
-            84.6,
-            90.36
+            90.6,
+            86.36
           ],
           [
-            14.98,
-            115.0
+            20.98,
+            111.0
           ],
           [
-            17.79,
-            90.36
+            23.79,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -6284,16 +6788,16 @@
             40
           ]
         },
-        "bytes1x": 11743,
-        "bytes2x": 33224
+        "bytes1x": 11745,
+        "bytes2x": 33590
       },
       "sha256": {
         "decodedRgba1x": "47b26aca2c0870faaa39fa33b71f72bae66897036988455b5560d482321fa627",
         "decodedRgba2x": "a112f65ab8ff1669f1beb5096bef1be4e4c0276a48cdd09e21b17b11232ea202"
       },
       "shadowSha256": {
-        "decodedRgba1x": "9dae779747933b376e5d5da6d08c8e3920960bccb03b88e366d14502f7c6de8e",
-        "decodedRgba2x": "5f49c5194bad2f2fb77fb1528c7a0dcde1ef55fdcc3e9f6c8aca83f746877706"
+        "decodedRgba1x": "3698a4a4b9ad66fc114ba302c4c8517d630f26d4761e1a36107a9114f06765e9",
+        "decodedRgba2x": "87b273c1a887e70515e785aef87521109bed6226328a3692e0ea49dc99ce766c"
       }
     },
     "shell_hand_top_slot_02": {
@@ -6301,19 +6805,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_02.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_02-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_02-shadow.png",
-      "shadowTexWidth": 104,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 120,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 76,
       "texHeight": 106,
@@ -6329,9 +6833,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -6339,8 +6843,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.182,
+          97.679
+        ],
+        "halfPx": [
+          44.804,
+          18.291
+        ],
+        "radiusPx": 6.402,
+        "angleDeg": -0.7417,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -6412,40 +6937,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 1,
+          "left": 14,
           "top": 0,
-          "right": 14,
-          "bottom": 17
+          "right": 26,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0157,
+          "left": 0.4157,
           "top": 0.0,
-          "right": 0.4902,
-          "bottom": 0.5922
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.267,
+          "left": 47.227,
           "top": 0.0,
-          "right": 34.69,
-          "bottom": 279.345
+          "right": 202.055,
+          "bottom": 594.878
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            81.82,
-            115.0
+            87.82,
+            111.0
           ],
           [
-            83.61,
-            90.36
+            89.61,
+            86.36
           ],
           [
-            14.5,
-            115.0
+            20.5,
+            111.0
           ],
           [
-            16.8,
-            90.36
+            22.8,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -6471,16 +6996,16 @@
             40
           ]
         },
-        "bytes1x": 11397,
-        "bytes2x": 33109
+        "bytes1x": 11445,
+        "bytes2x": 33138
       },
       "sha256": {
         "decodedRgba1x": "123040b38f65db7c6d72ae35266353aaeb1c0a00dafea40a738264c948c9ede2",
         "decodedRgba2x": "17807da057d03ddb2f00c3b9b93d12d9db09df12d32c40a90793c503ace064f3"
       },
       "shadowSha256": {
-        "decodedRgba1x": "2c35913b3174eaef8dcf9e74e9fdc7b499e17eaa3254f561622cff01ca812262",
-        "decodedRgba2x": "4c80c1f04d8bc7845e8f268077bc9b4f4035510e841f4cd5270563146526ed2b"
+        "decodedRgba1x": "fca72dd611ce2c2f0c69d4dad9b8706ebf33a176ce27e9c550e1e72067965989",
+        "decodedRgba2x": "bf8f6e8ab0d0bc68634b113cf7d481addc370001b3c98c535d988ef69337efbd"
       }
     },
     "shell_hand_top_slot_03": {
@@ -6488,19 +7013,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_03.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_03-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_03-shadow.png",
-      "shadowTexWidth": 103,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 119,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 75,
       "texHeight": 106,
@@ -6516,9 +7041,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -6526,8 +7051,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.447,
+          97.679
+        ],
+        "halfPx": [
+          44.451,
+          18.168
+        ],
+        "radiusPx": 6.359,
+        "angleDeg": -0.5566,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -6599,40 +7145,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 2,
+          "left": 14,
           "top": 0,
-          "right": 14,
-          "bottom": 17
+          "right": 26,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0196,
+          "left": 0.4157,
           "top": 0.0,
-          "right": 0.4902,
-          "bottom": 0.5922
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.365,
+          "left": 47.416,
           "top": 0.0,
-          "right": 33.816,
-          "bottom": 274.016
+          "right": 200.298,
+          "bottom": 587.467
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            81.34,
-            115.0
+            87.34,
+            111.0
           ],
           [
-            82.62,
-            90.36
+            88.62,
+            86.36
           ],
           [
-            14.02,
-            115.0
+            20.02,
+            111.0
           ],
           [
-            15.81,
-            90.36
+            21.81,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -6658,16 +7204,16 @@
             41
           ]
         },
-        "bytes1x": 11266,
-        "bytes2x": 32805
+        "bytes1x": 10795,
+        "bytes2x": 32650
       },
       "sha256": {
         "decodedRgba1x": "3671f89842dea152536d8de71a0d0c54c5111bbdd297260e9cc0b64f0c6c8475",
         "decodedRgba2x": "f6326c5ff2900a788b7ac287d18475dcac9623e29860254061922ed0bb986255"
       },
       "shadowSha256": {
-        "decodedRgba1x": "36969eb7a3b04fb881206edbd7855d99cde3b82122e7d81986e456c964967845",
-        "decodedRgba2x": "14f811948cf1c26df0f3aee908101659592d6307e9ef1c41fef2e47f7de3e7d5"
+        "decodedRgba1x": "1b2516628b6ea8bc2a39bafb49f21cd43fd8425d5b84537c714d66654feddde7",
+        "decodedRgba2x": "b689cd1899b1ee8002f814896117f175742bb493cd44e40db932c2de1ab37666"
       }
     },
     "shell_hand_top_slot_04": {
@@ -6675,19 +7221,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_04.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_04-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_04-shadow.png",
-      "shadowTexWidth": 103,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 119,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 75,
       "texHeight": 106,
@@ -6703,9 +7249,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -6713,8 +7259,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          40.713,
+          97.679
+        ],
+        "halfPx": [
+          44.098,
+          18.042
+        ],
+        "radiusPx": 6.315,
+        "angleDeg": -0.3712,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -6786,40 +7353,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 2,
+          "left": 14,
           "top": 0,
-          "right": 13,
-          "bottom": 17
+          "right": 25,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0235,
+          "left": 0.4157,
           "top": 0.0,
-          "right": 0.4471,
-          "bottom": 0.5922
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.455,
+          "left": 48.11,
           "top": 0.0,
-          "right": 26.863,
-          "bottom": 270.224
+          "right": 185.945,
+          "bottom": 587.463
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            80.86,
-            115.0
+            86.86,
+            111.0
           ],
           [
-            81.63,
-            90.36
+            87.63,
+            86.36
           ],
           [
-            13.54,
-            115.0
+            19.54,
+            111.0
           ],
           [
-            14.82,
-            90.36
+            20.82,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -6845,16 +7412,16 @@
             41
           ]
         },
-        "bytes1x": 10840,
-        "bytes2x": 31777
+        "bytes1x": 10701,
+        "bytes2x": 31782
       },
       "sha256": {
         "decodedRgba1x": "a586dd8107a03891b5cdbbe128658f3c494d793ab581c137ab5acb9d7e20fde2",
         "decodedRgba2x": "4dfb84c527d8279437c970b5754936c56144d24754f6a45142318782064f2da5"
       },
       "shadowSha256": {
-        "decodedRgba1x": "41604a9fe39115c3ec2b639aa160d0f5c588f73af32a5604d6027a1c55fd4e98",
-        "decodedRgba2x": "7a4410a6725a01058e2e93e691f50ebd04c25589c1c0f1f162513d934a0404ea"
+        "decodedRgba1x": "1073f3d94f364d6ff247abcb0f0f9acbee2adab036ced3d35a9b673a0c8de37c",
+        "decodedRgba2x": "a2f49d69263ba6f81032e3f0b0a58664ce3b747c98ee2ccc4c3e5e6e521b877f"
       }
     },
     "shell_hand_top_slot_05": {
@@ -6862,19 +7429,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_05.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_05-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_05-shadow.png",
-      "shadowTexWidth": 103,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 119,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 75,
       "texHeight": 106,
@@ -6890,9 +7457,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -6900,8 +7467,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          40.979,
+          97.679
+        ],
+        "halfPx": [
+          43.743,
+          17.915
+        ],
+        "radiusPx": 6.27,
+        "angleDeg": -0.1856,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -6973,40 +7561,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 2,
+          "left": 14,
           "top": 0,
-          "right": 13,
-          "bottom": 17
+          "right": 25,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0196,
+          "left": 0.4157,
           "top": 0.0,
-          "right": 0.451,
-          "bottom": 0.5922
+          "right": 0.6,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.333,
+          "left": 47.396,
           "top": 0.0,
-          "right": 27.059,
-          "bottom": 266.671
+          "right": 180.502,
+          "bottom": 585.086
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            81.38,
-            115.0
+            87.38,
+            111.0
           ],
           [
-            81.64,
-            90.36
+            87.64,
+            86.36
           ],
           [
-            14.07,
-            115.0
+            20.07,
+            111.0
           ],
           [
-            14.83,
-            90.36
+            20.83,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -7032,16 +7620,16 @@
             41
           ]
         },
-        "bytes1x": 10901,
-        "bytes2x": 30606
+        "bytes1x": 10454,
+        "bytes2x": 30647
       },
       "sha256": {
         "decodedRgba1x": "753319b71de720468a73405cc10949b6719277a470f0f8a3510cfedb9b796a05",
         "decodedRgba2x": "f6ba3dfdea3542b8e9d351e674f0aa07f0898856b4aa04d94cc23f78f8c53232"
       },
       "shadowSha256": {
-        "decodedRgba1x": "0af80d739741657e5cdac400c9af3b0b41e76c4e18063ef49776bf036fba317e",
-        "decodedRgba2x": "214e1efd647216b1db28b64183684e3472afa553db9cc8fd39006de570beb650"
+        "decodedRgba1x": "3eeb0d7ac5630031b5a5da3553e9da20280ba1d77cdc3e2aba3f6af5a584f3b7",
+        "decodedRgba2x": "bd565bd61395d73090e8c77407223855ccb71295e7311ca50c969e54f0ac20fb"
       }
     },
     "shell_hand_top_slot_06": {
@@ -7049,19 +7637,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_06.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_06-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_06-shadow.png",
-      "shadowTexWidth": 102,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 118,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 74,
       "texHeight": 106,
@@ -7077,9 +7665,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -7087,8 +7675,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          40.0,
+          97.679
+        ],
+        "halfPx": [
+          43.389,
+          17.785
+        ],
+        "radiusPx": 6.225,
+        "angleDeg": -0.0,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -7160,40 +7769,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 2,
+          "left": 14,
           "top": 0,
-          "right": 12,
-          "bottom": 17
+          "right": 24,
+          "bottom": 24
         },
         "alphaPeak1x": {
-          "left": 0.0275,
+          "left": 0.4157,
           "top": 0.0,
-          "right": 0.4392,
-          "bottom": 0.5922
+          "right": 0.5961,
+          "bottom": 0.5961
         },
         "alphaMass1x": {
-          "left": 0.569,
+          "left": 48.102,
           "top": 0.0,
-          "right": 25.427,
-          "bottom": 260.345
+          "right": 167.878,
+          "bottom": 538.459
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            80.66,
-            115.0
+            86.66,
+            111.0
           ],
           [
-            80.4,
-            90.36
+            86.4,
+            86.36
           ],
           [
-            13.34,
-            115.0
+            19.34,
+            111.0
           ],
           [
-            13.6,
-            90.36
+            19.6,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -7219,16 +7828,16 @@
             40
           ]
         },
-        "bytes1x": 10884,
-        "bytes2x": 30718
+        "bytes1x": 10241,
+        "bytes2x": 29742
       },
       "sha256": {
         "decodedRgba1x": "07d5d4893c65b41005fd2a6db717c81a6adf2fba7775abe53c447b287dd34d76",
         "decodedRgba2x": "022866ba91888f083900d398367a958e8ac01727a75663fbfe43fde87a5e129d"
       },
       "shadowSha256": {
-        "decodedRgba1x": "bb06bced0c019a124e4f90dc4867023f92cd7b2309a1d03bd98a54d55fabf779",
-        "decodedRgba2x": "89b29def2604526ca6861bba844f31cad951ac99d98323e5b11dc5c65576dcd8"
+        "decodedRgba1x": "42a77aba6f4c5adf024c53fb0a0703891b0f1ae65040f7e151e4ab47615539ba",
+        "decodedRgba2x": "a6e9aef0f0f3dd20960904dd39d16d1834bf9c87711671b04d413904ad745816"
       }
     },
     "shell_hand_top_slot_07": {
@@ -7236,19 +7845,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_07.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_07-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_07-shadow.png",
-      "shadowTexWidth": 103,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 119,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 75,
       "texHeight": 106,
@@ -7264,9 +7873,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -7274,8 +7883,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          40.021,
+          97.679
+        ],
+        "halfPx": [
+          43.744,
+          17.915
+        ],
+        "radiusPx": 6.27,
+        "angleDeg": 0.1856,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -7347,40 +7977,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 3,
+          "left": 15,
           "top": 0,
-          "right": 12,
-          "bottom": 17
+          "right": 24,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0314,
+          "left": 0.4549,
           "top": 0.0,
-          "right": 0.4078,
-          "bottom": 0.5922
+          "right": 0.5961,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.675,
+          "left": 57.455,
           "top": 0.0,
-          "right": 21.361,
-          "bottom": 267.682
+          "right": 166.718,
+          "bottom": 583.933
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            80.93,
-            115.0
+            86.93,
+            111.0
           ],
           [
-            80.17,
-            90.36
+            86.17,
+            86.36
           ],
           [
-            13.62,
-            115.0
+            19.62,
+            111.0
           ],
           [
-            13.36,
-            90.36
+            19.36,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -7406,16 +8036,16 @@
             40
           ]
         },
-        "bytes1x": 11131,
-        "bytes2x": 30824
+        "bytes1x": 10713,
+        "bytes2x": 31015
       },
       "sha256": {
         "decodedRgba1x": "46e241fdf050e2d2435f9dfb12b6bda141060e4cf568bdd2bb0ee77cdbac5d98",
         "decodedRgba2x": "567ee6b00288d365f159eb334510a6e3ca21bdf0640c32a110f0dd33d770f8b4"
       },
       "shadowSha256": {
-        "decodedRgba1x": "833037bc75d1955d9cdfd1013506ac7fc448f2d7ae4aa346d01e878a1cc07f0e",
-        "decodedRgba2x": "a6829398203c8e33a7329d0dc48509883795574f4e35e4e0ccf5e7e579789716"
+        "decodedRgba1x": "9c9f53361f9dfee40509171994870607616f3a95fcef2fb819a0ed5e56596056",
+        "decodedRgba2x": "4b6cc51dc7fcf1ed32573d03f5a9032bb88527cba348df85ccf9c57d255b957d"
       }
     },
     "shell_hand_top_slot_08": {
@@ -7423,19 +8053,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_08.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_08-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_08-shadow.png",
-      "shadowTexWidth": 103,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 119,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 75,
       "texHeight": 106,
@@ -7451,9 +8081,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -7461,8 +8091,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          40.287,
+          97.679
+        ],
+        "halfPx": [
+          44.098,
+          18.042
+        ],
+        "radiusPx": 6.315,
+        "angleDeg": 0.3712,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -7534,40 +8185,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 3,
+          "left": 15,
           "top": 0,
-          "right": 12,
-          "bottom": 17
+          "right": 24,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.0314,
+          "left": 0.4549,
           "top": 0.0,
-          "right": 0.4275,
-          "bottom": 0.5922
+          "right": 0.5961,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 0.671,
+          "left": 58.361,
           "top": 0.0,
-          "right": 23.753,
-          "bottom": 270.529
+          "right": 167.902,
+          "bottom": 586.839
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            81.46,
-            115.0
+            87.46,
+            111.0
           ],
           [
-            80.18,
-            90.36
+            86.18,
+            86.36
           ],
           [
-            14.14,
-            115.0
+            20.14,
+            111.0
           ],
           [
-            13.37,
-            90.36
+            19.37,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -7593,16 +8244,16 @@
             41
           ]
         },
-        "bytes1x": 11177,
-        "bytes2x": 32091
+        "bytes1x": 11056,
+        "bytes2x": 32151
       },
       "sha256": {
         "decodedRgba1x": "1bb203b192e950ce78841e4263ea823bb89fd0076b7ffbab467f93ca7843e7f2",
         "decodedRgba2x": "d0ef5aaf4177bcfad2088350e34cbe6f12aaa8e0d1923dd332f2d66f4a0dc16e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "69bc2a2e33d1a78b9971b308102afb39111b887d6aca6dd6f4db55480404be9e",
-        "decodedRgba2x": "e0a8884fb5df9b6665f1320c668d79c863dc75ab65d981072773b4268201a0bc"
+        "decodedRgba1x": "1323b7152c36710e363b3c7f82406c4e9a4e19cd6084315650ac48a2014be661",
+        "decodedRgba2x": "d528a104d60119c18ac1e52b06e49061bdcb01d37599270155827a3fb50bb536"
       }
     },
     "shell_hand_top_slot_09": {
@@ -7610,19 +8261,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_09.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_09-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_09-shadow.png",
-      "shadowTexWidth": 103,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 119,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 75,
       "texHeight": 106,
@@ -7638,9 +8289,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -7648,8 +8299,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          39.553,
+          97.679
+        ],
+        "halfPx": [
+          44.451,
+          18.168
+        ],
+        "radiusPx": 6.359,
+        "angleDeg": 0.5566,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -7721,40 +8393,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 4,
+          "left": 16,
           "top": 0,
-          "right": 12,
-          "bottom": 17
+          "right": 24,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.051,
+          "left": 0.4902,
           "top": 0.0,
-          "right": 0.4118,
-          "bottom": 0.5922
+          "right": 0.5961,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 1.231,
+          "left": 69.392,
           "top": 0.0,
-          "right": 21.902,
-          "bottom": 276.341
+          "right": 166.741,
+          "bottom": 589.647
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            80.98,
-            115.0
+            86.98,
+            111.0
           ],
           [
-            79.19,
-            90.36
+            85.19,
+            86.36
           ],
           [
-            13.66,
-            115.0
+            19.66,
+            111.0
           ],
           [
-            12.38,
-            90.36
+            18.38,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -7780,16 +8452,16 @@
             41
           ]
         },
-        "bytes1x": 11312,
-        "bytes2x": 32906
+        "bytes1x": 10878,
+        "bytes2x": 32763
       },
       "sha256": {
         "decodedRgba1x": "11a77a5534d6d001b6c8aaf2c7bfe0493430d59d285e8b207df12e360e186b06",
         "decodedRgba2x": "346dd34ff386b26a3633989745939bae18feec521917c7d8e93c240c2755c30b"
       },
       "shadowSha256": {
-        "decodedRgba1x": "2dc32d91ca6f3049b2fc6b61e8e4e2da14e93180ae89dec41e2693ecb2b8f355",
-        "decodedRgba2x": "2db9a2093a90848b8697295a308620bc030dbe5c257561c02ff6c8eaed369fc1"
+        "decodedRgba1x": "5adaffbca415528c48489cbb8efe77d7c3cf447fe0c1a608ae8de59d2fe7b360",
+        "decodedRgba2x": "175237a69bf1491ef06b35415c040ac931f3cef588e67881fbfa1e2c4cdffc6e"
       }
     },
     "shell_hand_top_slot_10": {
@@ -7797,19 +8469,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_10.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_10-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_10-shadow.png",
-      "shadowTexWidth": 104,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 120,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 76,
       "texHeight": 106,
@@ -7825,9 +8497,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -7835,8 +8507,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          39.818,
+          97.679
+        ],
+        "halfPx": [
+          44.804,
+          18.291
+        ],
+        "radiusPx": 6.402,
+        "angleDeg": 0.7417,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -7908,40 +8601,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 4,
+          "left": 16,
           "top": 0,
-          "right": 11,
-          "bottom": 17
+          "right": 24,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.051,
+          "left": 0.4902,
           "top": 0.0,
-          "right": 0.3922,
-          "bottom": 0.5922
+          "right": 0.5961,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 1.251,
+          "left": 70.725,
           "top": 0.0,
-          "right": 19.761,
-          "bottom": 282.055
+          "right": 166.494,
+          "bottom": 598.471
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            81.5,
-            115.0
+            87.5,
+            111.0
           ],
           [
-            79.2,
-            90.36
+            85.2,
+            86.36
           ],
           [
-            14.18,
-            115.0
+            20.18,
+            111.0
           ],
           [
-            12.39,
-            90.36
+            18.39,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -7967,16 +8660,16 @@
             41
           ]
         },
-        "bytes1x": 11339,
-        "bytes2x": 33204
+        "bytes1x": 11429,
+        "bytes2x": 33320
       },
       "sha256": {
         "decodedRgba1x": "576c1eb9f16e61d3f3d6c99c9049699ffdc6cd50493e7f527f2714c8481bc97f",
         "decodedRgba2x": "3cba2e41ef98164c0602810cebb2ea505343c842cc6efb05099e5fc8de42575c"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1de79aea245c34183311b82a8c93a1882f29800f576aee9ea0afa5f2361f45c6",
-        "decodedRgba2x": "e12ad63f0a4ee5531c4bdb684c1d1865fa64ea52978802f33e376d2af2bedcbd"
+        "decodedRgba1x": "a19713ad2c31e450dc7e995404d06547ff6a05e32e48833351bbc89b2fa04e60",
+        "decodedRgba2x": "4d0dacf1085fc4e52ecb9f58e547c63c508285f92551f0f18b1ec99c1dbdc1e4"
       }
     },
     "shell_hand_top_slot_11": {
@@ -7984,19 +8677,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_11.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_11-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_11-shadow.png",
-      "shadowTexWidth": 105,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 121,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 77,
       "texHeight": 106,
@@ -8012,9 +8705,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -8022,8 +8715,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          40.084,
+          97.679
+        ],
+        "halfPx": [
+          45.157,
+          18.411
+        ],
+        "radiusPx": 6.444,
+        "angleDeg": 0.9264,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -8095,40 +8809,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 4,
+          "left": 16,
           "top": 0,
-          "right": 11,
-          "bottom": 18
+          "right": 23,
+          "bottom": 25
         },
         "alphaPeak1x": {
-          "left": 0.051,
+          "left": 0.4902,
           "top": 0.0,
-          "right": 0.3686,
-          "bottom": 0.5922
+          "right": 0.5961,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 1.251,
+          "left": 71.169,
           "top": 0.0,
-          "right": 17.431,
-          "bottom": 288.996
+          "right": 154.804,
+          "bottom": 611.588
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            82.02,
-            115.0
+            88.02,
+            111.0
           ],
           [
-            79.21,
-            90.36
+            85.21,
+            86.36
           ],
           [
-            14.71,
-            115.0
+            20.71,
+            111.0
           ],
           [
-            12.4,
-            90.36
+            18.4,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -8154,16 +8868,16 @@
             41
           ]
         },
-        "bytes1x": 11718,
-        "bytes2x": 33348
+        "bytes1x": 11763,
+        "bytes2x": 33777
       },
       "sha256": {
         "decodedRgba1x": "5fa0ae6546cd55d67083535f6494d6058e631acc69ddc3404dc26039c417c7bd",
         "decodedRgba2x": "09b9541643ce4963bc75cdf3f1b3cbcac23525bc8fd562005fbf1904272ca310"
       },
       "shadowSha256": {
-        "decodedRgba1x": "d6e3a69271be7837d02ba1bcef75f74281291e077b671bd25b1758e37768c3b5",
-        "decodedRgba2x": "ff1efa96c61f7b11d7b32d58f825465735b3fc49eabeb70bbda408b4fe40dabf"
+        "decodedRgba1x": "9f8187c79ec4a54e54f0fc5aaa5e6bf4f09e1f5345d414527029dcfe53412cf4",
+        "decodedRgba2x": "6d3b5afdf1e3d08a620a6c03fbc9af530477dba168574f2f6ef722f167a7fbcf"
       }
     },
     "shell_hand_top_slot_12": {
@@ -8171,19 +8885,19 @@
       "textureFile2x": "shells/2x/shell_hand_top_slot_12.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_12-shadow.png",
       "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_12-shadow.png",
-      "shadowTexWidth": 106,
-      "shadowTexHeight": 136,
-      "shadowAnchorX": 12,
-      "shadowAnchorY": 12,
+      "shadowTexWidth": 122,
+      "shadowTexHeight": 142,
+      "shadowAnchorX": 18,
+      "shadowAnchorY": 8,
       "shadowOffsetPx": [
         0,
         0
       ],
       "shadowPadding": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
       },
       "texWidth": 78,
       "texHeight": 106,
@@ -8199,9 +8913,9 @@
       },
       "shadowBlob": {
         "model": "blob",
-        "shape": "capsule",
+        "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -8209,8 +8923,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          40.35,
+          97.679
+        ],
+        "halfPx": [
+          45.509,
+          18.53
+        ],
+        "radiusPx": 6.485,
+        "angleDeg": 1.1107,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": false
       },
@@ -8282,40 +9017,40 @@
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 4,
+          "left": 16,
           "top": 0,
-          "right": 10,
-          "bottom": 18
+          "right": 23,
+          "bottom": 26
         },
         "alphaPeak1x": {
-          "left": 0.051,
+          "left": 0.4902,
           "top": 0.0,
-          "right": 0.349,
-          "bottom": 0.5961
+          "right": 0.5961,
+          "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 1.267,
+          "left": 72.227,
           "top": 0.0,
-          "right": 15.702,
-          "bottom": 297.51
+          "right": 153.667,
+          "bottom": 626.263
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            82.54,
-            115.0
+            88.54,
+            111.0
           ],
           [
-            79.22,
-            90.36
+            85.22,
+            86.36
           ],
           [
-            15.23,
-            115.0
+            21.23,
+            111.0
           ],
           [
-            12.41,
-            90.36
+            18.41,
+            86.36
           ]
         ],
         "solidInset1x": [
@@ -8341,16 +9076,16 @@
             41
           ]
         },
-        "bytes1x": 11999,
-        "bytes2x": 33734
+        "bytes1x": 12093,
+        "bytes2x": 34392
       },
       "sha256": {
         "decodedRgba1x": "622d5a6a02db85c6e8526153659ca8ba3207e0ba09ba4da76306ded37a08030d",
         "decodedRgba2x": "9cd316f03e4544f1ca16b6426af71dad9abc80b0dfbf0f791ccb6add6241edb1"
       },
       "shadowSha256": {
-        "decodedRgba1x": "98779213bd1d104b4d91335c659b8df1151a62e4c3757412d76c4ea60bbdc511",
-        "decodedRgba2x": "8a7dec89412f8e48bed2c5708c62d95531907963d9af2023be42c05ddee0c7b4"
+        "decodedRgba1x": "0dfa31fe31ea6ce299df430d37f39cea630d85da0c92ead666c89e0303e72f5a",
+        "decodedRgba2x": "4db6d9ab97f7dca3ca1cba93424bc3617209f413835237cb41b4739424ed2eb3"
       }
     },
     "shell_wall_front_slot_00": {
@@ -8388,7 +9123,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -8396,8 +9131,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          45.5,
+          78.0
+        ],
+        "halfPx": [
+          54.575,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -8581,7 +9337,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -8589,8 +9345,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.5,
+          78.0
+        ],
+        "halfPx": [
+          53.425,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -8774,7 +9551,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -8782,8 +9559,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.0,
+          78.0
+        ],
+        "halfPx": [
+          52.85,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -8967,7 +9765,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -8975,8 +9773,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -9160,7 +9979,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -9168,8 +9987,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -9353,7 +10193,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -9361,8 +10201,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -9546,7 +10407,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -9554,8 +10415,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -9739,7 +10621,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -9747,8 +10629,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -9932,7 +10835,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -9940,8 +10843,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -10125,7 +11049,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -10133,8 +11057,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -10318,7 +11263,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -10326,8 +11271,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -10511,7 +11477,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -10519,8 +11485,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -10704,7 +11691,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -10712,8 +11699,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -10897,7 +11905,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -10905,8 +11913,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -11090,7 +12119,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -11098,8 +12127,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.0,
+          78.0
+        ],
+        "halfPx": [
+          52.85,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -11283,7 +12333,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -11291,8 +12341,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.5,
+          78.0
+        ],
+        "halfPx": [
+          53.425,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -11476,7 +12547,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -11484,8 +12555,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          45.5,
+          78.0
+        ],
+        "halfPx": [
+          54.575,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -11669,7 +12761,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -11677,8 +12769,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          45.5,
+          78.0
+        ],
+        "halfPx": [
+          54.575,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -11862,7 +12975,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -11870,8 +12983,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.5,
+          78.0
+        ],
+        "halfPx": [
+          53.425,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -12055,7 +13189,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -12063,8 +13197,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.0,
+          78.0
+        ],
+        "halfPx": [
+          52.85,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -12248,7 +13403,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -12256,8 +13411,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -12441,7 +13617,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -12449,8 +13625,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -12634,7 +13831,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -12642,8 +13839,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -12827,7 +14045,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -12835,8 +14053,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -13020,7 +14259,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -13028,8 +14267,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -13213,7 +14473,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -13221,8 +14481,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -13406,7 +14687,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -13414,8 +14695,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -13599,7 +14901,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -13607,8 +14909,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -13792,7 +15115,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -13800,8 +15123,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -13985,7 +15329,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -13993,8 +15337,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -14178,7 +15543,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -14186,8 +15551,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -14371,7 +15757,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -14379,8 +15765,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.0,
+          78.0
+        ],
+        "halfPx": [
+          52.85,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -14564,7 +15971,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -14572,8 +15979,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.5,
+          78.0
+        ],
+        "halfPx": [
+          53.425,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -14757,7 +16185,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -14765,8 +16193,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          45.5,
+          78.0
+        ],
+        "halfPx": [
+          54.575,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -14950,7 +16399,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -14958,8 +16407,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.0,
+          78.0
+        ],
+        "halfPx": [
+          52.85,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -15143,7 +16613,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -15151,8 +16621,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -15336,7 +16827,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -15344,8 +16835,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.0,
+          78.0
+        ],
+        "halfPx": [
+          51.7,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -15529,7 +17041,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -15537,8 +17049,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -15722,7 +17255,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -15730,8 +17263,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -15915,7 +17469,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -15923,8 +17477,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.0,
+          78.0
+        ],
+        "halfPx": [
+          50.55,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -16108,7 +17683,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -16116,8 +17691,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.0,
+          78.0
+        ],
+        "halfPx": [
+          50.55,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -16301,7 +17897,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -16309,8 +17905,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -16494,7 +18111,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -16502,8 +18119,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.0,
+          78.0
+        ],
+        "halfPx": [
+          49.4,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -16687,7 +18325,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -16695,8 +18333,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -16880,7 +18539,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -16888,8 +18547,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.0,
+          78.0
+        ],
+        "halfPx": [
+          50.55,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -17073,7 +18753,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -17081,8 +18761,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.0,
+          78.0
+        ],
+        "halfPx": [
+          50.55,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -17266,7 +18967,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -17274,8 +18975,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -17459,7 +19181,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -17467,8 +19189,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -17652,7 +19395,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -17660,8 +19403,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.0,
+          78.0
+        ],
+        "halfPx": [
+          51.7,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -17845,7 +19609,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -17853,8 +19617,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -18038,7 +19823,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -18046,8 +19831,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.0,
+          78.0
+        ],
+        "halfPx": [
+          52.85,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -18231,7 +20037,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -18239,8 +20045,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.0,
+          78.0
+        ],
+        "halfPx": [
+          52.85,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -18424,7 +20251,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -18432,8 +20259,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -18617,7 +20465,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -18625,8 +20473,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.0,
+          78.0
+        ],
+        "halfPx": [
+          51.7,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -18810,7 +20679,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -18818,8 +20687,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -19003,7 +20893,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -19011,8 +20901,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -19196,7 +21107,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -19204,8 +21115,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.0,
+          78.0
+        ],
+        "halfPx": [
+          50.55,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -19389,7 +21321,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -19397,8 +21329,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.0,
+          78.0
+        ],
+        "halfPx": [
+          50.55,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -19582,7 +21535,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -19590,8 +21543,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -19775,7 +21749,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -19783,8 +21757,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.0,
+          78.0
+        ],
+        "halfPx": [
+          49.4,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -19968,7 +21963,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -19976,8 +21971,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.5,
+          78.0
+        ],
+        "halfPx": [
+          49.975,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -20161,7 +22177,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -20169,8 +22185,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.0,
+          78.0
+        ],
+        "halfPx": [
+          50.55,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -20354,7 +22391,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -20362,8 +22399,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.0,
+          78.0
+        ],
+        "halfPx": [
+          50.55,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -20547,7 +22605,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -20555,8 +22613,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -20740,7 +22819,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -20748,8 +22827,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          42.5,
+          78.0
+        ],
+        "halfPx": [
+          51.125,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -20933,7 +23033,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -20941,8 +23041,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.0,
+          78.0
+        ],
+        "halfPx": [
+          51.7,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -21126,7 +23247,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -21134,8 +23255,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          43.5,
+          78.0
+        ],
+        "halfPx": [
+          52.275,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },
@@ -21319,7 +23461,7 @@
         "model": "blob",
         "shape": "rounded-rect",
         "sigmaPx1x": 12.0,
-        "standingSigmaPx1x": 4.0,
+        "standingSigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "offsetPx1x": [
           5,
@@ -21327,8 +23469,29 @@
         ],
         "rectScale": 1.15,
         "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
         "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
         "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          44.0,
+          78.0
+        ],
+        "halfPx": [
+          52.85,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
         "colorHex": "#0b1418",
         "lying": true
       },

@@ -39,13 +39,13 @@ You do **not** need separate sprites for isolated tiles vs. adjacent tiles, nor 
 
 * **Logical Advance Box (`advanceW`, `advanceH`):** The exact pixel width and height of the solid tile body used by the layout engine to position tiles on a grid.
 * **Body Texture Bounds (`texW`, `texH`):** The body plus a 1–3 px anti-aliased ledge. There are no shadow pixels in the body sprite.
-* **Shadow Texture Bounds (`shadowTexW`, `shadowTexH`):** A separate, larger transparent box holding the blob. It has its own `shadowAnchorX/Y`; draw it at `grid - shadowAnchor`. A lying tile's blob is an ellipse covering the body box, fading ~10–21 px past the right/bottom edges; a standing or tilted tile's blob is a capsule at its base. The blob is translucent black (`#0b1418`), a Gaussian-blurred shape (σ 4 px @1x) offset 5 px right / 7 px down.
+* **Shadow Texture Bounds (`shadowTexW`, `shadowTexH`):** A separate, larger transparent box holding the blob. It has its own `shadowAnchorX/Y`; draw it at `grid - shadowAnchor`. A lying tile's blob is a rounded rectangle covering the body box (top edge trimmed), fading ~10–21 px past the right/bottom edges; a standing tile's blob is the same rounded rectangle fitted to its base strip, rotated with the base. The blob is translucent black (`#0b1418`), a Gaussian-blurred hard shape (σ 12 px lying, 5 px standing) offset 5 px right / 7 px down. `shadowShape` publishes the hard rectangle so a group can be blurred once as a union (§10.12).
 
 The shadow is specified in **pixels at the @1x base**, not as a percentage of
 the tile, and it is never baked into the body.
 
 **How this handles both touching and isolated tiles automatically:**
-1. **Shadow union first, then bodies:** For each zone, draw every shadow sprite into one transparent layer with a per-pixel max (the union), draw that layer over the felt, then draw every body. Two adjacent blobs that overlap stay at the single-blob darkness instead of double-darkening, and a shadow can never darken a neighbouring tile's face.
+1. **Shadow group first, then bodies:** For each zone, take the hard `shadowShape` of every placed tile, draw them all at alpha 1 into one layer (overlaps merge), blur that layer **once** at the zone's sigma, draw it over the felt at core alpha, then draw every body. This is `blur(union of footprints)`; it is exact for a fan, a shrinking wall and a ragged pond, with no per-length asset. A shadow can never darken a neighbouring tile's face.
 2. **Uniform Horizontal Rows (Drawn Right-to-Left):** Body painter order for the pond/discard rows, so the left tile's bevel sits over the right tile's where they touch. The shadows are already unioned below both bodies.
 3. **Per-Slot Fan Rows (Drawn Outermost-to-Innermost):** The standing hand, the top hand and the front/back walls are baked as a camera fan whose centre is straight on, so the **inner** tile is nearer the camera than the outer tile. A uniform right-to-left order is wrong on the left half: it puts the outer left tile on top of the inner right tile, but the inner tile should overlap the outer tile's visible inner side. Draw the **outermost slots first on both halves**, then inward, with the centre slot last.
 4. **Vertical Discard Rows (Drawn Top-to-Bottom):** Row 2 sits below Row 1 and is drawn *after* Row 1, so the bodies stack in depth order.
@@ -92,15 +92,16 @@ Configure an automated Blender script to render the canonical blank tile shells 
 * **Two-Tone Resin Seam:** Ensure the sharp boundary between the colored tile back (*senaka*) and white front body is clearly visible along the top and side bevels—this is the primary visual cue distinguishing a mahjong tile from a flat card.
 * **Blob shadow (no catcher):**
   * Enable `Film -> Transparent` in Blender Cycles/Eevee and render only the tile body.
-  * Generate the shadow in Python: project the tile's table-contact footprint, fit an ellipse (lying tile) or a capsule (standing tile), offset it down-right, and apply a separable Gaussian. There is no shadow-catcher pass; §10.11 has the committed contract.
+  * Generate the shadow in Python: project the tile's table-contact footprint, fit a rounded rectangle (lying tile: the body box; standing tile: the base strip, rotated with it), offset it down-right, and apply a separable Gaussian. There is no shadow-catcher pass; §10.11 has the committed contract and `shadowShape`.
 * **Output Manifest (`shells.json`):** Export a JSON metadata file alongside the PNGs recording for each shell:
   * `textureFile`: Path to PNG
   * `texWidth`, `texHeight`: Full PNG dimensions in pixels
   * `anchorX`, `anchorY`: Pixel offset from top-left of PNG to the top-left corner of the solid tile body
   * `advanceWidth`, `advanceHeight`: Opaque body dimensions used for grid layout
   * `gridStepPx`: the physical tile-axis step for a tight grid
-  * `shadowTextureFile` / `shadowTextureFile2x` + `shadowTexWidth/Height`, `shadowAnchorX/Y`, `shadowOffsetPx`: the separate blob sprite. It has its own larger box and anchor; draw it at `grid - shadowAnchor` into the shadow-union layer, then draw the body.
+  * `shadowTextureFile` / `shadowTextureFile2x` + `shadowTexWidth/Height`, `shadowAnchorX/Y`, `shadowOffsetPx`: the separate single-tile shadow sprite. It has its own larger box and anchor; draw it at `grid - shadowAnchor` when rendering one tile (the group recipe does not use it).
   * `shadowPadding` (the shadow box's padding) and `shadowBlob` (`model`, `shape`, `sigmaPx1x`, `coreAlpha`, `offsetPx1x`, `lying`).
+  * `shadowShape`: the hard rotated rounded rectangle a tile's shadow is cast from, in @1x px relative to the grid anchor (`centrePx`, `halfPx`, `radiusPx`, `angleDeg`) plus `sigmaPx1x`, `coreAlpha`, `colorHex`, `lying`. The group renderer draws every placed tile's shape at alpha 1, blurs the union once, then fills it; that is exact for any row length, fan or grid.
   * `stackStepPx` + `stackCount` (wall shells): the projected thickness vector from the lower tier's body top-left to the upper tier's, plus the 2-tile stack count
   * `wallSlot` (front/back wall shells): `wall`, `index`, `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`, `angleDeg` and `faceUp`, so the per-slot fan is auditable
   * `faceQuad`: 4 corner coordinates (`[x, y]`) on the shell where the 2D face glyph should be mapped
@@ -111,7 +112,7 @@ Configure an automated Blender script to render the canonical blank tile shells 
 
 ### Phase 1: Blender Shell Baker & Manifest Exporter
 - [x] **Task 1.1:** Create a headless Blender Python script (`bake_shells.py`) that loads the existing 3D R-tile mesh, applies the two-tone resin/ivory materials, and sets up the orthographic camera and top-left key light. Landed in section 8.
-- [x] **Task 1.2:** Generate a synthetic blob shadow per shell (Phase 1d): a Gaussian-blurred ellipse/capsule under the tile's projected table-contact footprint, exported as a separate sprite. The Blender shadow-catcher pass was removed; see §10.11.
+- [x] **Task 1.2:** Generate a synthetic blob shadow per shell (Phase 1d): a Gaussian-blurred rounded rectangle under the tile's projected table-contact footprint, exported as a separate sprite plus the hard `shadowShape`. The Blender shadow-catcher pass was removed; see §10.11 and §10.12.
 - [x] **Task 1.3:** Render all 6 canonical blank shells at target DPI (plus `@2x` retina scale) and auto-generate `shells.json` containing `anchorX`, `anchorY`, `advanceWidth`, `advanceHeight`, and `faceQuad` coordinates. All numbers are measured from the render; see section 8.
 
 ### Phase 2: Runtime Texture Atlas & Face Glyph Compositor
@@ -121,7 +122,7 @@ Configure an automated Blender script to render the canonical blank tile shells 
   - Transform and draw the 2D face glyph into the shell's `faceQuad` (applying a $90^\circ$ counter-clockwise rotation to the glyph when compositing onto `shell_flat_sideways`).
   - Generate a **face variant per perspective a face-up shell appears in** instead of reusing one glyph for every shell: `standing-front-{slot}` for the 14 `shell_hand_slot_*` shells, `flat-topdown` for `shell_flat_upright`, `flat-rot90` for `shell_flat_sideways`. A variant id names a perspective slot, not a camera angle; the Phase 1b pick fixes the angle behind it.
   - The face-down wall shells (`shell_wall_horizontal`, `shell_wall_side_left`, `shell_wall_side_right`) are **bare**: no glyph, no face variant, no atlas entry.
-- [ ] **Task 2.3:** Store UV rects and layout metrics in a fast lookup map (`Map<TileRenderKey, BakedTileSprite>`, keyed by the same triple) so runtime frame rendering requires zero dynamic shadows, blurs, or multi-pass shaders. The atlas key is part of the shipped contract; adding a later variant (for example a lifted/hovered hand decal) is a new `faceVariant` entry, never a glyph swapped at draw time. Budget note: the variant dimension multiplies the composited sprites by the number of face-up shells (3 at Phase 1b) rather than by the 37 raw glyphs; measure the packed atlas in Phase 2 against the committed-asset budget.
+- [ ] **Task 2.3:** Store UV rects and layout metrics in a fast lookup map (`Map<TileRenderKey, BakedTileSprite>`, keyed by the same triple) so runtime frame rendering requires no dynamic face compositing or multi-pass shaders. The one dynamic pass is the shadow **group layer** (§10.12): one blur per zone over the hard shapes, rebuilt only when a tile in that zone moves. The atlas key is part of the shipped contract; adding a later variant (for example a lifted/hovered hand decal) is a new `faceVariant` entry, never a glyph swapped at draw time. Budget note: the variant dimension multiplies the composited sprites by the number of face-up shells (3 at Phase 1b) rather than by the 37 raw glyphs; measure the packed atlas in Phase 2 against the committed-asset budget.
 
 ### Phase 3: Coordinate System & Zone Layout Engine
 - [ ] **Task 3.1:** Implement the table layout engine strictly using `advanceWidth` and `advanceHeight` from `shells.json` (never `texWidth`/`texHeight`).
@@ -147,14 +148,14 @@ Because there is no Z-buffer, enforce a deterministic back-to-front draw order a
   6. Left and Right player open melds & concealed hands.
   7. Bottom player's open melds & standing hand (always drawn last so lifted/hovered tiles never clip behind the bottom wall).
 - [ ] **Task 4.2 — Intra-Zone Draw Order:**
-  - **Shadow union first, then bodies:** every shell has a separate blob sprite with its own larger box and anchor. For each zone, draw every shadow sprite into one transparent layer with a per-pixel max (the union), draw that layer over the felt, then draw every body in the zone's back-to-front order. A shadow is never baked into a body, so it cannot land on top of a neighbouring tile, and overlapping blobs do not double-darken.
+  - **Shadow group first, then bodies:** every shell publishes its hard `shadowShape`. For each zone, draw every placed tile's shape into one layer at alpha 1 (overlaps merge), blur that layer once at the zone's `sigmaPx1x`, draw it over the felt at `coreAlpha`, then draw every body in the zone's back-to-front order. A shadow is never baked into a body, so it cannot land on top of a neighbouring tile; `blur(union)` has no seam and no double-darkening. In DOM use `filter: blur(σpx)` on the layer; in canvas draw the shapes into a mask surface first and apply `ctx.filter` to one `drawImage`, never per shape. Zones: all four walls together, each pond, each seat's hand + melds.
   - **Uniform horizontal rows (ponds, discards):** Iterate **Right-to-Left** (`index = length - 1` down to `0`) for the body painter order.
   - **Per-slot fan rows (standing hand, top hand, front/back walls):** Draw **outermost-to-innermost on both halves, centre last** (slots 0 and N, then 1 and N-1, …, then the centre), because the camera is at the row centre and the inner tile is nearer. Do not use the uniform right-to-left order here; it puts the left half's outer tile on top of its inner neighbour, which is the wrong overlap.
   - **Multi-row grids (discard rows):** Iterate **Top-to-Bottom** (`row = 0` to `2`), drawing each row Right-to-Left.
   - **Stacked walls:** Draw the **bottom tier** completely before drawing the **top tier** at its upward `dy` offset.
 
 ### Phase 5: Interactive States, Hitboxes & Visual Polish
-- [ ] **Task 5.1 — Hover & Selection Lift (Fake 3D Motion):** When the player hovers over or selects a tile in their hand, translate the tile upward (`drawY -= 12px`) and optionally draw a slightly softer/wider secondary shadow underneath at the baseline `gridY` to sell the illusion of lifting off the felt.
+- [ ] **Task 5.1 — Hover & Selection Lift (Fake 3D Motion):** When the player hovers over or selects a tile in their hand, translate the tile upward (`drawY -= 12px`) but leave its hard shadow shape at the baseline, so the lift reads and the shadow stays on the felt. Only that seat's group layer rebuilds.
 - [ ] **Task 5.2 — Hit-Testing:** Perform pointer hit-testing against the logical bounding box `[gridX, gridY, advanceWidth, advanceHeight]` (accounting for any hover `dy` lift) rather than the transparent shadow padding.
 - [ ] **Task 5.3 — Gameplay State Overlays:**
   - *Tsumogiri* (discard drawn immediately) or dimmed hover highlights: Composite a flat tint quad clipped strictly to the tile's `faceQuad` or opaque silhouette—never tint the transparent shadow margin.
@@ -290,10 +291,12 @@ Total 76,360 B against a 2,097,152 B budget. The felt is unchanged
    published `gridStepPx.x/y` (the projected tile axes) for tight rows and wall
    runs; `advanceWidth` is for hit-testing and spacing.
 5. **The blob is arithmetic, not a compositor mask.** Python projects the
-   table-contact footprint, fits an ellipse (lying tile) or a capsule (standing
-   tile), offsets it down-right, Gaussian-blurs it and ramps the outer texture
-   ring to zero. Every number the check reports is a property of the committed
-   PNG, not of a Blender node graph. There is no catcher pass (§10.11).
+   table-contact footprint, fits a rounded rectangle (lying tile: the body box;
+   standing tile: the base strip, rotated with it), offsets it down-right,
+   Gaussian-blurs it and ramps the outer texture ring to zero. Every number the
+   check reports is a property of the committed PNG, not of a Blender node
+   graph. There is no catcher pass (§10.11); the hard shape is published as
+   `shadowShape` for the group layer (§10.12).
 6. **Rig tuning changed two numbers.** The Phase 0 key was 350 W and the world
    0.35 of `#20262b`, which rendered the shadow side near black; the bake uses
    3200 W and a `#3b4a5c` world at 1.0. The face samples are ivory
@@ -517,13 +520,14 @@ All numbers are measured from the render and live in
 | `shell_wall_side_right_faceup` | off-axis persp, −2 / d10 | 108 × 89 / 216 × 178 | 192 × 145 / 384 × 290 | 104 × 85 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) | 15,427 + 42,742 |
 
 The eight base shells above total **459,971 B** (123,618 @1x + 336,353 @2x).
-The 14 human-hand slots add **688,686 B**, the 13 top-hand slots **569,950 B**
-and the 68 front/back wall slots **3,929,429 B**, for **5,648,036 B**
-(1,515,275 @1x + 4,132,761 @2x) against the raised 6,291,456 B budget.
-`shells.json` is **497,090 B** against the raised 524,288 B budget. The felt is
+The 14 human-hand slots add **695,439 B**, the 13 top-hand slots **568,700 B**
+and the 68 front/back wall slots **3,929,429 B**, for **5,653,539 B**
+(1,515,854 @1x + 4,137,685 @2x) against the raised 6,291,456 B budget.
+`shells.json` is **561,793 B** against the 614,400 B budget (raised from 512 KiB
+when `shadowShape` was added). The felt is
 unchanged (559,465 B). The body keeps the 104 px projected long axis (102 px
-measured, minus the anti-aliased crop); the blob shadow adds its own box
-(human-hand centre 103 × 136, drawn 117 × 136, top-hand centre 102 × 136).
+measured, minus the anti-aliased crop); the shadow adds its own box
+(human-hand centre 119 × 142, drawn 133 × 142, top-hand centre 118 × 142).
 
 Representative top-hand slots (all 13 are in `shells.json`):
 
@@ -695,7 +699,7 @@ committed shells.
 ### 10.7 Validation and the open calibration
 
 `bash tools/render/bake-shells.sh --bake` renders the 103 shells once, writes
-both scales and `shells.json`, regenerates the review sheets and runs **7,672
+both scales and `shells.json`, regenerates the review sheets and runs **7,878
 checks**: catalogue and the 14 human-hand + 13 top-hand + 68 wall
 slot fans, the top-hand standing mapping,
 the straight-on ponds, felt, both texture scales, the 1 px AA ledge, the blob
@@ -807,8 +811,8 @@ cannot drift. Each manifest record carries `wallSlot` with `wall`, `index`,
 `offsetUnits`, `lateralOffsetUnits`, `distanceUnits`, `angleDeg` and `faceUp`.
 
 **Budgets.** The 68 wall slots are **3,929,429 B** of the 103-shell
-**5,648,036 B** total; `shells.json` is **497,090 B**. The self-imposed Phase 1
-budgets are **6,291,456 B** (textures) and **524,288 B** (manifest); the standing
+**5,653,539 B** total; `shells.json` is **561,793 B**. The self-imposed Phase 1
+budgets are **6,291,456 B** (textures) and **614,400 B** (manifest); the standing
 AGENTS limits (total assets ≤ 8 MiB, initial hand + board load < 4 MiB) still
 hold, because a board loads only the slots it draws. A board with the 14 hand
 slots, 17 front + 17 back wall slots, 4 side walls and the pond/hand base shells
@@ -938,42 +942,50 @@ body box: the flat ponds, the sideways shell, the front/back wall tiles) gets a
 the body box plus 8 px, with a corner radius of 0.3 x the short half-axis. Its top
 edge is trimmed 40 px while the bottom/left/right edges stay fixed, so the shadow
 does not spill above the object (the light is above and behind). A standing or
-tilted tile (the human hand, the top hand, the side walls) keeps a capsule at its
-base. The shape is offset 5 px right / 7 px down, filled at `coreAlpha` 0.60, and
-blurred with a separable Gaussian: **sigma 12 px** for the rounded rectangle
-(much more diffuse) and 4 px for the standing capsule. The body sprite is the
-tile only.
+tilted tile (the human hand, the top hand, the side walls) gets the same rounded
+rectangle **fitted to its projected base strip** (`standingRectScale` 1.2, +3 px,
+corner radius 0.35) and rotated with the base's principal axes — not a capsule,
+which read as an oval. The shape is offset 5 px right / 7 px down, filled at
+`coreAlpha` 0.60, and blurred with a separable Gaussian: **sigma 12 px** for
+lying tiles and **5 px** for standing ones. The body sprite is the tile only.
 
 **The contract.** `shells.json` publishes a separate `shadowTextureFile` /
 `shadowTextureFile2x` with its own `shadowTexWidth/Height`, `shadowAnchorX/Y`,
 `shadowOffsetPx` `[0,0]`, `shadowPadding` and `shadowBlob` (`model: blob`,
-`shape: rounded-rect` or `capsule`, `sigmaPx1x: 12`, `standingSigmaPx1x: 4`,
+`shape: rounded-rect`, `sigmaPx1x: 12`, `standingSigmaPx1x: 5`,
 `coreAlpha: 0.60`, `offsetPx1x: [5,7]`, `rectScale: 1.15`,
 `rectPaddingPx1x: 8`, `cornerRadiusFraction: 0.3`, `topTrimPx1x: 40`, `lying`).
-Lying tiles use the 30/40/46/32 box; standing tiles use 12/20/22/12. A lying tile
+It also publishes `shadowShape`: the derived **hard** rotated rounded rectangle
+in @1x px relative to the tile's grid anchor (`centrePx`, `halfPx`, `radiusPx`,
+`angleDeg`) plus `sigmaPx1x`, `coreAlpha`, `colorHex` and `lying`. That is the
+input to the group recipe (§10.12); the sprite is the same shape rendered alone,
+and the checker rasterises it and asserts the two agree (max alpha delta ≤ 0.02).
+Lying tiles use the 30/40/46/32 box; standing tiles use 8/30/32/18. A lying tile
 must have a real shadow 3-49 px right, 3-53 px below and 0-37 px left, with
 **no shadow above the body top** (top extent 0); a standing tile must have one at
 the bottom. Every sprite is smooth (max adjacent alpha step <= 0.12), its outer
 ring is transparent, and its maximum alpha is the core alpha.
 
-**The union pass.** The review sheets and the runtime contract draw every shadow
-into one transparent layer with a per-pixel max, then draw that layer over the
-felt, then every body. Two blobs that overlap stay at the single-blob value
-instead of the `1 - (1-a)^2` darkening of independent alpha blending. This is the
-correction for adjacent tiles, and it is a per-zone pass over whatever tiles are
-placed: **a wall that changes length needs no new assets**, because the runtime
-unions the slots it actually draws.
+**The union pass (Phase 1d).** The review sheets draw every shadow into one
+transparent layer with a per-pixel max, then draw that layer over the felt, then
+every body. Two blobs that overlap stay at the single-blob value instead of the
+`1 - (1-a)^2` darkening of independent alpha blending. This is the correction for
+adjacent tiles, and it is a per-zone pass over whatever tiles are placed: **a wall
+that changes length needs no new assets**. It is now the comparison reference;
+§10.12 supersedes it with the merged-footprint group recipe.
 
 **The audition.** `--shadow-audition` calibrates the blob: REF (sigma 12, core
 0.60, offset 5/7) plus A (sigma 3, 0.55, 4/6), B (sigma 5, 0.60, 6/8) and C
 (sigma 7, 0.50, 8/10) on the flat, wall and hand shells.
 `build/review/shadow-candidates.png` shows each row with the union pass.
 
-**Validation.** The committed bake runs **7,672 checks**, the hand audition
-**8,057** and the shadow audition **7,789**. The manifest records a decoded-RGBA
-hash per texture for integrity; the optional `--verify-determinism` diagnostic is
-not part of the standard run. Textures are **5,648,036 B** (1,515,275 @1x + 4,132,761 @2x)
-against the 6,291,456 B budget; `shells.json` is **497,090 B** against 524,288 B.
+**Validation.** The committed bake runs **7,878 checks** (including the
+`shadowShape` raster check), the hand audition **8,057** and the shadow audition
+**7,789** on their last matrices (a re-run adds the shape checks). The manifest
+records a decoded-RGBA hash per texture for integrity; the optional
+`--verify-determinism` diagnostic is not part of the standard run. Textures are
+**5,653,539 B** (1,515,854 @1x + 4,137,685 @2x) against the 6,291,456 B budget;
+`shells.json` is **561,793 B** against 614,400 B.
 
 **Deferred: tile-to-tile overlay shadows.** The blob pass cannot darken a
 neighbour's face by design. The agreed next step is a separate per-shell overlay
@@ -982,29 +994,57 @@ next tile's body covers the overlap, so the shading sits on the neighbour's face
 rather than on the felt. It must be generated per shell variation (each slot's
 geometry differs), so it is a follow-up task, not part of Phase 1d.
 
-### 10.12 Tile-map shadow blending (tested 2026-11-14)
+### 10.12 Group shadows: merged footprint, one blur (2026-11-14)
 
-The UI does not need a compositing surface if each shadow family is baked as a
-**left / middle / right tile map**:
+The tile-map idea from the first cut turned out to be exact only for **uniform**
+rows. A left / middle / right slice needs every slot in the row to have the same
+shadow family; the hand fan, the top hand, the front/back wall fan and the side
+wall columns all vary per slot (the camera is at the row centre, so each slot's
+base strip and side reveal differ). A pond is not one row either: the lying
+shadow is 162 px tall at a 65 px row step, so adjacent rows overlap by roughly
+97 px, and a discard row can end on a sideways riichi tile, which changes the
+step. The prototype measured the hand as **48.2 / 50.7** at the left transition
+and **50.7 / 52.4** at the right one against a smooth true union, plus a 0.2471
+alpha error with the drawn tile — that is the seam the user saw.
 
-1. **Middle** = one cell period of the per-tile union,
-   `max_k S(x - k * cell)`, not a crop of one sprite. It repeats at the row step
-   and its left/right edge alphas are identical.
-2. **Left / right** = the same union at the row ends, wider by the shadow's
-   overhang so the end caps are correct.
-3. The UI draws `left + (n - 2) * middle + right` edge-to-edge, then the bodies.
-   No runtime blend, no max pass.
+The runtime recipe is therefore **blur the union, once**:
 
-The test (`node tools/render/scripts/preview-shadow-tilemap.mjs --id
-shell_flat_upright --count 13`, no Blender, no shell re-render) shows why the
-middle must be the union period: a naive crop of one sprite at the cell width
-leaves a **5.7 luma step at every boundary** (44.2 on the left / 49.9 on the
-right), with a max alpha error of 0.122 against the true union. The union-period
-pieces are **byte-identical to the true per-tile max** (seam 44.2/44.2, alpha
-error 0.0000). The sheets are `build/preview/tilemap-shell_flat_upright-13-1x.png`
-(naive), `-union-1x.png` (correct), and `-true-union-1x.png` (reference).
+1. Take each placed tile's `shadowShape` (a rotated rounded rectangle; §10.11).
+2. Draw every shape at **alpha 1** into one layer per zone. Overlaps merge; they
+   do not add.
+3. Blur the whole layer once at the zone's `sigmaPx1x`.
+4. Draw it over the felt at `coreAlpha`, then draw every body.
 
-The uniform pond and wall rows need one piece set at their step. The per-slot
-hand and wall fans need one piece set per distinct shadow family, or the centre
-slot's middle plus the outer slots' end pieces; that is a Phase 2 asset task, not
-a new compositor.
+This is `blur(union of footprints)`, not `max(blur(footprint))`. It is exact for
+a fan, a shrinking wall and a ragged pond, because it reads the tile placements,
+not an asset family; no per-length asset exists. A zone is: all four walls
+together (they meet at the corners, so separate layers would double-darken the
+corner), each pond, and each seat's hand + melds. Zones do not overlap on screen.
+A zone is rebuilt only when one of its tiles moves.
+
+**Runtime paths.** In DOM, a positioned shadow layer containing one rounded,
+rotated `<div>` per tile with `filter: blur(σpx); opacity: coreAlpha` on the
+parent is exact: a CSS filter applies to the element's rendered children as one
+group. In canvas, draw the hard shapes into a **mask** surface at alpha 1, then
+`target.ctx.filter = 'blur(σpx)'; target.ctx.drawImage(mask, 0, 0)` — setting
+`ctx.filter` before each shape filters each drawing operation, which is the
+per-tile model with source-over darkening. SVG can use one `<g>` under
+`feGaussianBlur`. The DOM path is the recommended one.
+
+**Validation.** `node tools/render/scripts/preview-group-shadow.mjs` composes
+every representative zone twice (`merged` vs `perTile`), writes the sheets under
+`build/preview/` and prints the alpha delta and the worst horizontal step. The
+derived shape reproduces the committed single-tile sprites (mean 0.0004–0.0009,
+max 0.002 alpha). The browser lab,
+`group-shadow-lab.html`, renders the CSS recipe live and reports that the
+browser's blur matches the reference Gaussian (mean 0.0028, max 0.0277 alpha),
+that a screenshot of the CSS route matches the merged field (mean 0.28, max
+3.35/255 luma), and that a full-board rebuild (17 zones, 253 shapes, 355 bodies)
+costs about 10–12 ms of main-thread work. Visual quality remains the user's call
+(`AGENTS.md` §6).
+
+The uniform pond row is the one place the old tile map is still exact: its
+middle is one period of `max_k S(x - k * cell)`, and the test shows a naive crop
+leaves a 5.7 luma step while the union period is byte-identical to the true max.
+That result stands, but it is no longer the runtime plan; it is the fallback if a
+group layer ever proves too expensive on a target device.

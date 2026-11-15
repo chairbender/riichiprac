@@ -41,6 +41,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPng } from './png.mjs';
+import { deriveShadowShape, shadowAlpha } from './shadow-group.mjs';
 
 const renderDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const shellSpecPath = join(renderDir, 'shell-spec.json');
@@ -310,7 +311,7 @@ function checkBlobShadow({ label, image, record, spec }) {
     `${label} blob core alpha ${maxAlpha.toFixed(3)} <= coreAlpha ${blob.coreAlpha}`,
   );
   check(
-    blob.shape === (blob.lying ? 'rounded-rect' : 'capsule'),
+    blob.shape === 'rounded-rect',
     `${label} ${blob.lying ? 'lying' : 'standing'} tile uses a ${blob.shape}`,
   );
   if (blob.lying && blob.shape === 'rounded-rect') {
@@ -338,7 +339,7 @@ function checkBlobShadow({ label, image, record, spec }) {
     }
   }
   // A lying tile gets a shadow under its whole body, so the right edge must be
-  // covered. A standing tile's shadow is the capsule at its base, so only the
+  // covered. A standing tile's shadow is the base rectangle, so only the
   // bottom contact has to be dark.
   const rightContact = blob.lying ? profile.peak.right : Infinity;
   check(
@@ -388,6 +389,35 @@ function checkBlobShadow({ label, image, record, spec }) {
     `${label} blob mass L${profile.mass.left.toFixed(2)} T${profile.mass.top.toFixed(2)} ` +
       `R${profile.mass.right.toFixed(2)} B${profile.mass.bottom.toFixed(2)}`,
   );
+  // The group recipe composes shadows from the hard shape, not from this
+  // sprite. Prove the published shape and the committed sprite are the same
+  // geometry: rasterise the shape at the sprite's scale, blur once, and compare
+  // the interior alphas.
+  const shape = deriveShadowShape(record, spec);
+  check(shape !== null, `${label} publishes a hard shadow shape`);
+  if (shape) {
+    const placed = {
+      ...shape,
+      centre: [shape.centre[0] + record.shadowAnchorX, shape.centre[1] + record.shadowAnchorY],
+    };
+    const alpha = shadowAlpha(image.width, image.height, [placed], 'merged');
+    let max = 0;
+    let worst = null;
+    for (let y = 2; y < image.height - 2; y += 1) {
+      for (let x = 2; x < image.width - 2; x += 1) {
+        const delta = Math.abs(alpha[y * image.width + x] - pixel(image, x, y)[3] / 255);
+        if (delta > max) {
+          max = delta;
+          worst = [x, y];
+        }
+      }
+    }
+    check(
+      max <= 0.02,
+      `${label} hard shape rasterises to the committed blob ` +
+        `(max alpha delta ${max.toFixed(4)} at ${worst})`,
+    );
+  }
   return profile;
 }
 
@@ -670,7 +700,7 @@ function checkShellSpec(spec) {
   );
   check(
     ['left', 'top', 'right', 'bottom'].every((side) => standingPads[side] >= 1),
-    `standing shadow padding holds the capsule (${JSON.stringify(standingPads)})`,
+    `standing shadow padding holds the base rectangle (${JSON.stringify(standingPads)})`,
   );
   check(
     blob.topTrimPx1x >= 0,

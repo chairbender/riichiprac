@@ -118,24 +118,27 @@
         "bottom": 54,
         "left": 38
       },
-      "note": "A synthetic blob. A lying/upright tile gets a rounded rectangle matching the body's long/short sides, scaled rectScale x the body box and centred on the body box plus the down-right offset. The corner radius is cornerRadiusFraction x the short half-axis. A standing/tilted tile keeps a capsule at its base. The shape is filled at core alpha 0.60 and blurred with a separable Gaussian (sigma 8 px @1x), so it reads much more diffuse than the earlier circle. No catcher.",
+      "note": "A synthetic blob. Every tile gets a rounded rectangle: a lying/upright tile's matches the body's long/short sides (rectScale x the body box plus rectPaddingPx1x), and a standing tile's is fitted to its projected base strip and rotated with the base's principal axes. The corner radius is cornerRadiusFraction x the short half-axis. The shape is filled at core alpha 0.60 and blurred with a separable Gaussian (sigma 12 px @1x lying, 5 px standing). No catcher.",
       "spreadPx1x": 1.0,
       "rectScale": 1.15,
       "cornerRadiusFraction": 0.3,
       "rectPaddingPx1x": 8,
-      "standingSigmaPx1x": 4.0,
+      "standingSigmaPx1x": 5.0,
       "topTrimPx1x": 40,
       "standingPadding1x": {
-        "top": 12,
-        "right": 20,
-        "bottom": 22,
-        "left": 12
-      }
+        "top": 8,
+        "right": 30,
+        "bottom": 32,
+        "left": 18
+      },
+      "standingRectScale": 1.2,
+      "standingRectPaddingPx1x": 3,
+      "standingCornerRadiusFraction": 0.35
     },
     "note": "One render of the tile on transparent film per scale; there is no shadow-catcher pass. The shadow is a synthetic blob generated in Python from the tile's projected table-contact footprint. Body and shadow are separate sprites, and the runtime/review pass unions the shadows before drawing the bodies.",
     "shadowContract": {
       "phase": "1d-blob",
-      "note": "Phase 1d: the shadow is a synthetic translucent-black blob, not a Cycles catcher. A lying/upright tile gets a rounded rectangle matching the body's long/short sides: rectScale x the body box, plus rectPaddingPx1x, with a corner radius of cornerRadiusFraction x the short half-axis. The top edge is then trimmed by topTrimPx1x while the bottom/left/right edges stay fixed, so the shadow does not spill above the tile (light from above/behind). A standing/tilted tile keeps a capsule at its base. The shape is filled at core alpha 0.60 and blurred with a separable Gaussian (sigma 12 px for lying, 4 px for standing), so the lying edge is very soft. The review/runtime shadow pass unions overlapping blobs with a per-pixel max so adjacent tiles do not double-darken. The body carries the tile only.",
+      "note": "Phase 1d: the shadow is a synthetic translucent-black blob, not a Cycles catcher. A lying/upright tile gets a rounded rectangle matching the body's long/short sides: rectScale x the body box, plus rectPaddingPx1x, with a corner radius of cornerRadiusFraction x the short half-axis. The top edge is then trimmed by topTrimPx1x while the bottom/left/right edges stay fixed, so the shadow does not spill above the tile (light from above/behind). A standing tile gets the same rounded rectangle fitted to its projected base strip (standingRectScale, standingRectPaddingPx1x, standingCornerRadiusFraction) and rotated with the base's axes. The shape is filled at core alpha 0.60 and blurred with a separable Gaussian (sigma 12 px for lying, 5 px for standing). The baker publishes the hard shape as shadowShape; the group recipe draws every placed tile's shape at alpha 1, blurs the union once, and fills it at core alpha. The per-shell sprite is that shape rendered alone. The body carries the tile only.",
       "extentPx1x": {
         "right": [
           3,
@@ -562,10 +565,10 @@
     "intermediateDir": "build/shells"
   },
   "budgets": {
-    "manifestBytes": 524288,
+    "manifestBytes": 614400,
     "shellBytes": 262144,
     "totalShellBytes": 6291456,
-    "note": "The per-slot front/back wall fan, the per-slot hand fan, the separate body/shadow sprites and the larger diffuse rounded-rectangle shadow (sigma 12 px) multiply the catalogue (103 shells, each with a body and a shadow PNG at both scales). The committed shell budget is 6 MiB and the manifest budget 512 KiB; a board loads only the slots it draws, and the total committed asset budget is still 8 MiB with an initial hand + board load under 4 MiB."
+    "note": "The per-slot front/back wall fan, the per-slot hand fan, the separate body/shadow sprites and the larger diffuse rounded-rectangle shadow (sigma 12 px) multiply the catalogue (103 shells, each with a body and a shadow PNG at both scales). The committed shell budget is 6 MiB and the manifest budget 600 KiB (raised from 512 KiB when the per-shell `shadowShape` was added; it is the input that replaces the per-shell shadow sprite dependency for groups); a board loads only the slots it draws, and the total committed asset budget is still 8 MiB with an initial hand + board load under 4 MiB."
   },
   "wallSlots": {
     "note": "The front/back walls are a fan of per-slot perspectives, not one shell. The tile directly in front of the human (slot 8 of 17) is straight on. Every other slot is seen from the human's eye, so the far-right tile shows its left side and the far-left tile shows its right side. The camera is the same off-axis perspective as the side walls; only its lateral offset and distance change. front = the bottom wall nearest the human; back = the top wall across the table. A slot's lateral offset is -(index - centreIndex) * stepUnits, i.e. the camera sits at the human's x on the centre line. The face-down and face-up dora shells share the slot's geometry; the back dora's glyph is rotated 180 so it reads for the far player.",

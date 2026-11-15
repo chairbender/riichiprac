@@ -10,7 +10,7 @@
  * `build/preview/shadow-<id>-1x.png`, a 3x zoom, and the shadow-only sprite.
  *
  * This is a preview only. The canonical shadow is baked by `bake_shells.py`;
- * the math below mirrors the rounded-rectangle/capsule branches in
+ * the math below mirrors the rounded-rectangle branches in
  * `blob_shadow()` so the preview and the bake agree.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -175,9 +175,11 @@ if (lying) {
 } else {
   const axes = principalAxes(contactShadow);
   const minimum = shadow.minHalfWidthPx1x;
-  const spread = shadow.spreadPx1x;
-  const major = Math.max(axes.major + spread, minimum);
-  const minor = Math.max(axes.minor + spread, minimum);
+  const half = [
+    Math.max(axes.major * shadow.standingRectScale + shadow.standingRectPaddingPx1x, minimum),
+    Math.max(axes.minor * shadow.standingRectScale + shadow.standingRectPaddingPx1x, minimum),
+  ];
+  const corner = Math.min(...half) * shadow.standingCornerRadiusFraction;
   const cx = axes.centre[0] + offset[0];
   const cy = axes.centre[1] + offset[1];
   const ux = axes.majorAxis[0];
@@ -188,9 +190,13 @@ if (lying) {
     for (let x = 0; x < shadowWidth; x += 1) {
       const dx = x + 0.5 - cx;
       const dy = y + 0.5 - cy;
-      const u = (dx * ux + dy * uy) / major;
-      const v = (dx * vx + dy * vy) / minor;
-      alpha[y * shadowWidth + x] = u * u + v * v <= 1 ? 1 : 0;
+      const u = dx * ux + dy * uy;
+      const v = dx * vx + dy * vy;
+      const qx = Math.abs(u) - (half[0] - corner);
+      const qy = Math.abs(v) - (half[1] - corner);
+      const outside = Math.max(qx, 0) ** 2 + Math.max(qy, 0) ** 2;
+      alpha[y * shadowWidth + x] =
+        outside <= corner * corner && Math.abs(u) <= half[0] && Math.abs(v) <= half[1] ? 1 : 0;
     }
   }
   radius = 0;
@@ -293,7 +299,7 @@ for (let y = 0; y < shadowHeight; y += 1) {
   }
 }
 console.log(
-  `PREVIEW ${id}: ${lying ? 'rounded-rect' : 'capsule'}, sigma ${sigma} px, ` +
+  `PREVIEW ${id}: rounded-rect, sigma ${sigma} px, ` +
     `core ${coreAlpha}, offset ${offset.join(',')}`,
 );
 if (lying) {

@@ -1129,7 +1129,7 @@ def contact_footprint_px(
     ``pose_tile`` drops the tile onto z=0, so its local bottom face rests on the
     table. Flattening those four corners back onto the table plane and projecting
     them gives the area the shadow originates from: a full parallelogram for a
-    flat pond tile, and a thin bottom-edge capsule for a standing wall tile.
+    flat pond tile, and a thin base strip for a standing tile.
     """
     # Use the actual lowest corners, not the local z=0 face: a standing tile
     # rests on an edge (two corners), so its footprint is the base rectangle,
@@ -1159,6 +1159,86 @@ def contact_is_lying(contact_px: list[tuple[float, float]], body_half_px: tuple[
     return minor >= 0.5 * float(np.min(body_half_px))
 
 
+def shadow_core(
+    contact_px: list[tuple[float, float]],
+    shadow: dict,
+    body_centre_px: tuple[float, float],
+    body_half_px: tuple[float, float],
+    lying: bool,
+) -> dict:
+    """The hard rounded rectangle a tile's shadow is cast from, at @1x.
+
+    Returned in the shadow sprite's own pixel space (the box that starts one
+    ``padding`` left/above the body box). A lying tile uses a rounded rectangle
+    around the body box, with the top edge trimmed so nothing spills above the
+    tile. A standing tile fits the same rectangle to its projected base strip
+    and rotates it with the base's principal axes.
+
+    This is the shape the group recipe needs: draw every placed tile's rectangle
+    at full alpha so overlaps merge, blur the union once, then fill it with the
+    shadow colour. The per-shell sprite is that same geometry rendered alone.
+    """
+    points = np.array(contact_px, dtype=np.float64)
+    centre = points.mean(axis=0)
+    centred = points - centre
+    minimum = float(shadow["minHalfWidthPx1x"])
+    angle = 0.0
+    if not lying:
+        # A standing tile's footprint is a thin base strip; the principal axes
+        # give the rectangle's orientation and its two extents.
+        eigenvalues, eigenvectors = np.linalg.eigh(np.cov(centred.T))
+        axes = eigenvectors[:, np.argsort(eigenvalues)[::-1]]
+        major = float(np.max(np.abs(centred @ axes[:, 0])))
+        minor = float(np.max(np.abs(centred @ axes[:, 1])))
+        angle = math.degrees(math.atan2(axes[1, 0], axes[0, 0]))
+        # A rectangle rotated by 180 degrees is the same rectangle; publish the
+        # angle in (-90, 90] so the number is stable.
+        if angle > 90.0:
+            angle -= 180.0
+        if angle <= -90.0:
+            angle += 180.0
+    offset = np.array(shadow["offsetPx1x"], dtype=np.float64)
+    body_half = np.array(body_half_px, dtype=np.float64)
+    if lying:
+        # The body's long side picks the rectangle's long side, so a portrait
+        # tile gets a portrait shadow and a landscape tile a landscape one. The
+        # corner radius is a fraction of the short half-axis.
+        centre = np.array(body_centre_px, dtype=np.float64) + offset
+        half = body_half * float(shadow["rectScale"]) + float(
+            shadow["rectPaddingPx1x"]
+        )
+        # Trim the top edge down while keeping the bottom/left/right edges fixed:
+        # the light is above and behind the tile, so nothing should spill over
+        # the top of the object. Moving the centre down by half the trim keeps the
+        # lower edge where it was.
+        trim = float(shadow.get("topTrimPx1x", 0.0))
+        half[1] = max(half[1] - trim * 0.5, 1.0)
+        centre[1] += trim * 0.5
+        radius = float(np.min(half)) * float(shadow["cornerRadiusFraction"])
+        sigma = float(shadow["sigmaPx1x"])
+    else:
+        centre = centre + offset
+        pad = float(shadow.get("standingRectPaddingPx1x", 0.0))
+        scale_factor = float(shadow.get("standingRectScale", 1.0))
+        half = np.array(
+            [max(major * scale_factor + pad, minimum), max(minor * scale_factor + pad, minimum)]
+        )
+        radius = float(np.min(half)) * float(
+            shadow.get("standingCornerRadiusFraction", 0.35)
+        )
+        sigma = float(shadow.get("standingSigmaPx1x", shadow["sigmaPx1x"]))
+    return {
+        "centre": [float(centre[0]), float(centre[1])],
+        "half": [float(half[0]), float(half[1])],
+        "radius": float(radius),
+        "angleDeg": float(angle),
+        "sigmaPx1x": sigma,
+        "coreAlpha": float(shadow["coreAlpha"]),
+        "colorHex": shadow["colorHex"],
+        "lying": bool(lying),
+    }
+
+
 def blob_shadow(
     width: int,
     height: int,
@@ -1169,74 +1249,37 @@ def blob_shadow(
     body_half_px: tuple[float, float],
     lying: bool,
 ) -> np.ndarray:
-    """A soft translucent ellipse under the tile's table-contact footprint.
+    """One tile's shadow sprite: the hard core, Gaussian-blurred, tinted.
 
-    A lying tile (the contact footprint is comparable to the body box) gets an
-    ellipse covering the body box, so the fringe surrounds the tile instead of
-    leaving a light gap where the projected thickness shifts the contact face.
-    A standing or tilted tile keeps a capsule at its base.
+    The core is computed once at @1x and scaled, so the @1x and @2x sprites are
+    the same geometry.
     """
-    points = np.array(contact_px, dtype=np.float64) * scale
-    centre = points.mean(axis=0)
-    centred = points - centre
-    minimum = float(shadow["minHalfWidthPx1x"]) * scale
-    if not lying:
-        # Principal axes of the projected footprint. A standing tile's footprint
-        # is a line, so the minor semi-axis is clamped to keep a capsule shape.
-        eigenvalues, eigenvectors = np.linalg.eigh(np.cov(centred.T))
-        axes = eigenvectors[:, np.argsort(eigenvalues)[::-1]]
-        major = float(np.max(np.abs(centred @ axes[:, 0])))
-        minor = float(np.max(np.abs(centred @ axes[:, 1])))
-    offset = np.array(shadow["offsetPx1x"], dtype=np.float64) * scale
-    body_half = np.array(body_half_px, dtype=np.float64) * scale
-    if lying:
-        # A rounded rectangle matching the body's long/short sides, scaled up
-        # from the body box. The long side of the rectangle follows the body's
-        # long side, so a portrait tile gets a portrait shadow and a landscape
-        # tile a landscape one. The corner radius is a fraction of the short side.
-        centre = np.array(body_centre_px, dtype=np.float64) * scale + offset
-        half = body_half * float(shadow["rectScale"]) + float(
-            shadow["rectPaddingPx1x"]
-        ) * scale
-        # Trim the top edge down while keeping the bottom/left/right edges fixed:
-        # the light is above and behind the tile, so nothing should spill over
-        # the top of the object. Moving the centre down by half the trim keeps the
-        # lower edge where it was.
-        trim = float(shadow.get("topTrimPx1x", 0.0)) * scale
-        half[1] = max(half[1] - trim * 0.5, 1.0)
-        centre[1] += trim * 0.5
-        radius = float(np.min(half)) * float(shadow["cornerRadiusFraction"])
-        ys, xs = np.mgrid[0:height, 0:width].astype(np.float64) + 0.5
-        dx = np.abs(xs - centre[0]) - (half[0] - radius)
-        dy = np.abs(ys - centre[1]) - (half[1] - radius)
-        outside = np.maximum(dx, 0.0) ** 2 + np.maximum(dy, 0.0) ** 2
-        inside = (
-            (outside <= radius * radius)
-            & (np.abs(xs - centre[0]) <= half[0])
-            & (np.abs(ys - centre[1]) <= half[1])
-        )
-        mask = inside.astype(np.float64)
-    else:
-        centre = centre + offset
-        spread = float(shadow["spreadPx1x"]) * scale
-        half = np.array([max(major + spread, minimum), max(minor + spread, minimum)])
-        ys, xs = np.mgrid[0:height, 0:width].astype(np.float64) + 0.5
-        dx = xs - centre[0]
-        dy = ys - centre[1]
-        u = dx * axes[0, 0] + dy * axes[1, 0]
-        v = dx * axes[0, 1] + dy * axes[1, 1]
-        mask = ((u / half[0]) ** 2 + (v / half[1]) ** 2 <= 1.0).astype(np.float64)
-    sigma = float(
-        shadow["sigmaPx1x"]
-        if lying
-        else shadow.get("standingSigmaPx1x", shadow["sigmaPx1x"])
-    )
+    core = shadow_core(contact_px, shadow, body_centre_px, body_half_px, lying)
+    centre = np.array(core["centre"], dtype=np.float64) * scale
+    half = np.array(core["half"], dtype=np.float64) * scale
+    radius = core["radius"] * scale
+    radians = math.radians(core["angleDeg"])
+    cos = math.cos(radians)
+    sin = math.sin(radians)
+    ys, xs = np.mgrid[0:height, 0:width].astype(np.float64) + 0.5
+    dx = xs - centre[0]
+    dy = ys - centre[1]
+    u = dx * cos + dy * sin
+    v = -dx * sin + dy * cos
+    qx = np.abs(u) - (half[0] - radius)
+    qy = np.abs(v) - (half[1] - radius)
+    outside = np.maximum(qx, 0.0) ** 2 + np.maximum(qy, 0.0) ** 2
+    mask = (
+        (outside <= radius * radius)
+        & (np.abs(u) <= half[0])
+        & (np.abs(v) <= half[1])
+    ).astype(np.float64)
     alpha = np.clip(
-        gaussian_blur(mask, sigma * scale) * float(shadow["coreAlpha"]),
+        gaussian_blur(mask, core["sigmaPx1x"] * scale) * core["coreAlpha"],
         0.0,
         1.0,
     )
-    rgb = np.broadcast_to(hex_srgb(shadow["colorHex"]), (height, width, 3))
+    rgb = np.broadcast_to(hex_srgb(core["colorHex"]), (height, width, 3))
     return np.concatenate([rgb, alpha[..., None]], axis=2)
 
 
@@ -1538,6 +1581,7 @@ def bake_shell(
         shadow_pads["top"] + advance_height - 1,
     )
     profile = alpha_profile(shadow_1x, shadow_body_box, shadow_pads)
+    core_1x = shadow_core(contact_local, shadow, body_centre, body_half, lying)
 
     record = {
         "textureFile": f"shells/{texture_name}",
@@ -1559,17 +1603,38 @@ def bake_shell(
         "padding": dict(body_pads),
         "shadowBlob": {
             "model": shadow["model"],
-            "shape": "rounded-rect" if lying else "capsule",
+            "shape": "rounded-rect",
             "sigmaPx1x": shadow["sigmaPx1x"],
             "standingSigmaPx1x": shadow.get("standingSigmaPx1x", shadow["sigmaPx1x"]),
             "coreAlpha": shadow["coreAlpha"],
             "offsetPx1x": list(shadow["offsetPx1x"]),
             "rectScale": shadow.get("rectScale"),
             "rectPaddingPx1x": shadow.get("rectPaddingPx1x"),
+            "standingRectScale": shadow.get("standingRectScale"),
+            "standingRectPaddingPx1x": shadow.get("standingRectPaddingPx1x"),
             "cornerRadiusFraction": shadow.get("cornerRadiusFraction"),
+            "standingCornerRadiusFraction": shadow.get("standingCornerRadiusFraction"),
             "topTrimPx1x": shadow.get("topTrimPx1x", 0.0),
             "colorHex": shadow["colorHex"],
             "lying": lying,
+        },
+        "shadowShape": {
+            "model": "hard-rounded-rect",
+            "space": (
+                "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor "
+                "(the body-box left/top); rotate by angleDeg about centrePx"
+            ),
+            "centrePx": [
+                round(core_1x["centre"][0] - shadow_pads["left"], 3),
+                round(core_1x["centre"][1] - shadow_pads["top"], 3),
+            ],
+            "halfPx": [round(value, 3) for value in core_1x["half"]],
+            "radiusPx": round(core_1x["radius"], 3),
+            "angleDeg": round(core_1x["angleDeg"], 4),
+            "sigmaPx1x": core_1x["sigmaPx1x"],
+            "coreAlpha": core_1x["coreAlpha"],
+            "colorHex": core_1x["colorHex"],
+            "lying": core_1x["lying"],
         },
         "faceRotationDeg": shell["faceRotationDeg"],
         "faceQuad": quad,

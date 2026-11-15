@@ -41,9 +41,22 @@ bash tools/render/bake-shells.sh --audition # standing-hand fan calibration + sh
 bash tools/render/bake-shells.sh --shadow-audition  # REF + A/B/C shadow sheet
 bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
+node tools/render/scripts/preview-group-shadow.mjs  # merged vs per-tile group shadows; no Blender
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
 ```
+
+The group-shadow lab is a static page; serve the repo root and open it:
+
+```bash
+python3 -m http.server 8123
+xdg-open http://localhost:8123/tools/render/scripts/group-shadow-lab.html
+```
+
+It renders the proposed UI recipe (one CSS `filter: blur()` per zone) next to
+the per-tile-max reference, prints the browser blur's fidelity to the reference
+Gaussian, and times a full-board rebuild. `preview-group-shadow.mjs` writes the
+matching no-Blender sheets and the alpha/seam numbers under `build/preview/`.
 
 `--shadow-audition` renders the committed shadow REF plus A/B/C on the flat,
 wall and hand shells under `build/review/shadows/`, writes
@@ -147,6 +160,10 @@ its own regeneration, not mixed with CPU output.
 | `bake-felt.sh` | yes | one-command felt regeneration |
 | `scripts/check-shells.mjs` | yes | dependency-free spec + PNG + `shells.json` integrity check (CI gate); `--audition` validates the candidate matrix and its labelled sheets |
 | `scripts/png.mjs` | yes | dependency-free PNG decode/encode + sprite compositor shared by the checker and the review sheets |
+| `scripts/shadow-group.mjs` | yes | the hard shadow footprint per shell and the group field (`merged` union-then-blur vs `perTile` blur-then-max); browser-safe |
+| `scripts/group-layouts.mjs` | yes | representative groups (hands, melds, ponds, walls) placed with the manifest's own face-centre steps; browser-safe |
+| `scripts/preview-group-shadow.mjs` | yes | no-Blender group comparison: merged vs per-tile max, alpha/seam numbers and sheets |
+| `scripts/group-shadow-lab.html` | yes | browser lab for the proposed UI recipe: one CSS `filter: blur()` per zone; reports timing and a canvas-blur fidelity number |
 | `scripts/review-shells.mjs` | yes | lays the baked shells out with the manifest's own steps into review sheets; `--audition` writes the labelled candidate sheets |
 | `scripts/label-font.mjs` | yes | dependency-free 5×7 bitmap font for the candidate sheets' printed parameters |
 | `scripts/rasterize-face.mjs` | yes | vendored face SVG → PNG glyph (resvg) |
@@ -234,13 +251,14 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
 The eight base PNGs are **459,971 B** (123,618 @1x + 336,353 @2x). The 14 hand
-slots add **688,686 B**, the 13 top-hand slots **569,950 B** and the 68 wall
-slots **3,929,429 B**, so all 103 **body + shadow** pairs are **5,648,036 B** (1,515,275 @1x +
-4,132,761 @2x; budget 6,291,456 B); the largest
+slots add **695,439 B**, the 13 top-hand slots **568,700 B** and the 68 wall
+slots **3,929,429 B**, so all 103 **body + shadow** pairs are **5,653,539 B** (1,515,854 @1x +
+4,137,685 @2x; budget 6,291,456 B); the largest
 single shell is 63,866 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
-**497,090 B** (budget 524,288 B). The hand slots keep the 104 px body long axis
-(102 px measured); the human-hand centre body is 75 × 106 and its blob 103 × 136,
-the drawn body 89 × 106 and its blob 117 × 136. The
+**561,793 B** (budget 614,400 B; raised when `shadowShape` was added). The hand
+slots keep the 104 px body long axis (102 px measured); the human-hand centre
+body is 75 × 106 and its shadow 119 × 142, the drawn body 89 × 106 and its
+shadow 133 × 142. The
 budgets were raised for the fans; a board loads only the slots it draws, so the
 initial load stays well under the 4 MiB limit.
 
@@ -284,20 +302,69 @@ initial load stays well under the 4 MiB limit.
   first, then the upper tier at `+stackStepPx`. `gridStepPx` steps between
   stacks. A revealed dora indicator is the face-up counterpart shell in the
   upper tier.
-- **The shadow is a synthetic blob**: a lying tile gets a **rounded rectangle**
-  matching the body's long/short sides (`rectScale` 1.15, 8 px extra, corner
-  radius 0.3 of the short half-axis). Its top edge is trimmed 40 px so nothing
-  spills above the tile, while the bottom/left/right edges stay fixed. A standing
-  or tilted tile keeps a capsule at its base. Both are offset 5 px right / 7 px
-  down, filled at core alpha 0.60, and blurred with a separable Gaussian (sigma
-  12 px for the rounded rectangle, 4 px for the capsule). The shadow is a
-  separate sprite with its own padding; the review/runtime pass unions it before
-  the bodies, so there is no light moat at the contact and adjacent blobs do not
-  double-darken. The UI can also use the union-period left/middle/right tile map
-  (§10.12 in the architecture).
-  Blender renders only the body; there is no catcher pass.
-  `--shadow-audition` renders the REF plus A/B/C on the flat, wall and hand
-  shells to `build/review/shadow-candidates.png`.
+- **The shadow is a synthetic blob**: every tile — lying or standing — gets a
+  **rounded rectangle** fitted to what it rests on. A lying tile's rectangle
+  matches the body's long/short sides (`rectScale` 1.15, +8 px, corner radius
+  0.3 of the short half-axis), with the top edge trimmed 40 px so nothing spills
+  above the tile. A standing or tilted tile's rectangle is fitted to its
+  projected base strip (`standingRectScale` 1.2, +3 px, corner radius 0.35) and
+  rotated with the base's principal axes. Both are offset 5 px right / 7 px
+  down, filled at core alpha 0.60, and blurred with a separable Gaussian
+  (**sigma 12 px** for lying, **5 px** for standing). The shape is published as
+  `shadowShape` so a group can be composed without the per-shell sprite:
+  union every placed tile's hard rectangle at full alpha, blur the union once,
+  then fill it at core alpha (see *Group shadows* below). The separate sprite is
+  that same shape rendered alone; the checker rasterises `shadowShape` and
+  asserts it matches the sprite. Blender renders only the body; there is no
+  catcher pass. `--shadow-audition` renders the REF plus A/B/C on the flat, wall
+  and hand shells to `build/review/shadow-candidates.png`.
+
+### Group shadows: merged footprint, one blur
+
+A group of tiles cannot be assembled from the per-shell sprites without either a
+seam or a double-darkened overlap. A left/middle/right tile map is exact only
+where every slot has the same shadow family (a uniform pond row); the hand fan,
+the wall fan and a pond's row stack all vary per slot. The group recipe instead
+uses the hard shape:
+
+1. draw every placed tile's `shadowShape` into one layer per zone at **alpha 1**
+   (overlaps merge into a union, they do not add),
+2. blur that layer **once** at the zone's `sigmaPx1x`,
+3. draw it over the felt at `coreAlpha`, then draw every body.
+
+That is `blur(union of footprints)`, not `max(blur(footprint))`: no seams, no
+lobes, and any length. Zones are the four walls (one layer; they meet at the
+corners), each pond, and each seat's hand + melds (one layer; they touch). There
+is no per-length asset and no per-frame work — rebuild a zone only when one of
+its tiles moves (a discard, a call, a hover lift).
+
+Runtime options, same geometry:
+
+- **CSS** — a positioned `<div class="shadow-layer">` containing one rounded,
+  rotated `<div>` per tile, with `filter: blur(σpx); opacity: coreAlpha` on the
+  parent. A CSS filter applies to the element's rendered children as one group,
+  so this is exact and needs no canvas. This is the recommended path.
+- **Canvas** — draw the shapes into a **mask** canvas at alpha 1, then
+  `target.ctx.filter = 'blur(σpx)'; target.ctx.drawImage(mask, 0, 0)`. Do **not**
+  set `ctx.filter` before each shape: canvas filters each drawing operation, so
+  that is the per-tile model with source-over darkening.
+- **SVG** — one `<g>` of `<rect>`s under `feGaussianBlur`.
+
+The lab and the numbers (no Blender):
+
+```bash
+node tools/render/scripts/preview-group-shadow.mjs
+python3 -m http.server 8123          # from the repo root
+xdg-open http://localhost:8123/tools/render/scripts/group-shadow-lab.html
+```
+
+`preview-group-shadow.mjs` composes each zone twice and prints the alpha delta
+and the worst horizontal step; the lab renders the proposed CSS recipe live. The
+headless check reports the main-thread cost (17 zones, 253 shapes, 355 bodies:
+about **10–12 ms** per rebuild on the dev box), the browser blur's fidelity to
+the reference Gaussian (mean **0.0028**, max **0.0277** alpha) and a screenshot
+pixel check of the CSS route against the merged field (mean **0.28**, max
+**3.35/255** luma). Visual quality is still the user's call (§6 of `AGENTS.md`).
 
 ### The standing-hand fan
 
@@ -487,7 +554,19 @@ real record (values from the committed bake):
       "advanceWidth": 72,
       "advanceHeight": 102,
       "padding": { "top": 2, "right": 2, "bottom": 2, "left": 2 },
-      "shadowBlob": { "model": "blob", "shape": "rounded-rect", "sigmaPx1x": 12, "standingSigmaPx1x": 4, "coreAlpha": 0.6, "offsetPx1x": [5, 7], "rectScale": 1.15, "rectPaddingPx1x": 8, "cornerRadiusFraction": 0.3, "topTrimPx1x": 40, "colorHex": "#0b1418", "lying": true },
+      "shadowBlob": { "model": "blob", "shape": "rounded-rect", "sigmaPx1x": 12, "standingSigmaPx1x": 5, "coreAlpha": 0.6, "offsetPx1x": [5, 7], "rectScale": 1.15, "rectPaddingPx1x": 8, "cornerRadiusFraction": 0.3, "topTrimPx1x": 40, "colorHex": "#0b1418", "lying": true },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [41, 78],
+        "halfPx": [49.4, 46.65],
+        "radiusPx": 13.995,
+        "angleDeg": 0,
+        "sigmaPx1x": 12,
+        "coreAlpha": 0.6,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
       "faceRotationDeg": 0,
       "faceQuad": [[8.39, 4.6], [67.61, 4.6], [67.61, 62.84], [8.39, 62.84]],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
@@ -519,14 +598,18 @@ Fields the runtime and the checker rely on:
 - `textureFile` / `textureFile2x` — the @1x and @2x **body** PNGs, both under `shells/`.
 - `shadowTextureFile` / `shadowTextureFile2x` — the separate **blob** sprites.
   They have their own, larger box and anchor (`shadowTexWidth/Height`,
-  `shadowAnchorX/Y`, `shadowPadding`). Union every shadow into one transparent
-  layer (per-pixel max), draw it over the felt, then draw every body; a shadow is
-  never baked into a body, so it cannot sit on top of a neighbouring tile and
-  overlapping blobs do not double-darken. `shadowOffsetPx` is `[0,0]`;
+  `shadowAnchorX/Y`, `shadowPadding`). `shadowOffsetPx` is `[0,0]`;
   `shadowBlob` records the model, sigma, core alpha, offset and whether the tile
-  is lying (rounded rect covers the body, top edge trimmed) or standing (capsule
-  at the base). The UI may replace the per-tile union with the union-period
-  left/middle/right tile map; the pieces are generated from the same sprite.
+  is lying (rounded rect covers the body, top edge trimmed) or standing (rounded
+  rect fitted to the base strip). `shadowShape` is the derived **hard** shape for
+  the group recipe: a rotated rounded rectangle in @1x px relative to the tile's
+  grid anchor (`centrePx`, `halfPx`, `radiusPx`, `angleDeg`) plus the blur and
+  fill (`sigmaPx1x`, `coreAlpha`, `colorHex`). Draw every placed tile's shape at
+  full alpha into one layer per zone, blur the layer once at `sigmaPx1x`, draw it
+  at `coreAlpha`, then draw the bodies. That is `blur(union)`, so it is exact for
+  a fan, a shrinking wall and a ragged pond; the per-shell sprite is the same
+  shape rendered alone. The checker rasterises `shadowShape` and asserts it
+  matches `shadowTextureFile` (max alpha delta ≤ 0.02).
 - `texWidth`/`texHeight` — the @1x PNG size. The @2x PNG is exactly twice that.
 - `anchorX`/`anchorY` — the top-left of the opaque body box in @1x px. They are
   equal to `padding.left`/`padding.top`, and `anchor + advance + padding` equals
@@ -701,8 +784,9 @@ committed reference is 24 units. The output is gitignored:
 ones (both scales, the base long axis, the blob contract, the perspective
 trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
 printed-text and composited-tile pixel checks; the full run reports **8,057
-checks**. The committed bake alone reports **7,672** (including the review-sheet
-pixels when the sheets are present).
+checks**. The committed bake alone reports **7,878** (including the review-sheet
+pixels when the sheets are present and the `shadowShape` raster check on every
+shell).
 
 ## The Blender shell rules
 
@@ -725,8 +809,9 @@ The shell scene follows the architecture, not the retired pipeline:
   point that produced a near-black shadow side).
 - **Blob shadow generated in Python, not Blender**: one render per shell per
   scale (the tile on transparent film). The shadow is the projected
-  table-contact footprint, fitted to a rounded rectangle (lying) or a capsule (standing),
-  offset down-right, Gaussian-blurred and written to its own sprite. A 1 px frame
+  table-contact footprint, fitted to a rounded rectangle (the body box when lying,
+  the base strip when standing), offset down-right, Gaussian-blurred and written to
+  its own sprite plus the hard `shadowShape`. A 1 px frame
   ramp guarantees nothing clips at the texture border. There is no
   shadow-catcher plane and no AO fringe.
 - **Two-tone resin seam** visible along the top and side bevels: a white
@@ -761,8 +846,9 @@ OK 6967 checks passed
 ```
 
 `--audition` additionally validates the hand fan calibration and its sheets; on
-the current output it reports `OK 8,057 checks passed` (the committed checks plus
-the candidate and sheet checks). The committed-only run stays at 7,672.
+the current output it reports `OK 8,057 checks passed` on the last candidate
+matrix (the committed checks plus the candidate and sheet checks; a re-run adds
+the `shadowShape` checks). The committed-only run is 7,878.
 
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
@@ -818,7 +904,7 @@ open `build/review/shadow-candidates.png`. It shows the REF row plus A/B/C, each
 with a flat discard run and an isolated tile, a wall stack and a hand run; the
 labels print sigma/core alpha/offset and the seam/drop luma, and every row unions
 its shadows under the bodies. The committed REF is sigma 12 px / core 0.60 /
-offset 5,7 for the rounded rect (standing capsule sigma 4).
+offset 5,7 for the rounded rect (standing sigma 5).
 
 To review the approved hand fan, run `--audition` (above) and open the two
 sheets:
