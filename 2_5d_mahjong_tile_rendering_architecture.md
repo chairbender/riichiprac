@@ -719,8 +719,9 @@ at 14, 18 and 40 units, with the committed 24 units as the REF. It validates
 `build/review/shell-candidates-shell_hand_slot_12.png` and
 `build/review/shell-candidates-shell_hand_slot_draw.png`.
 
-The **shadow is now a synthetic blob** (§10.11): σ 4 px, core 0.60, offset 5/7,
-with a separate shadow box and a union draw pass. The audition sheet keeps REF
+The **shadow is now a synthetic blob** (§10.11): σ 12 px lying / 5 px standing,
+core 0.60, offset 5/7, with a separate shadow box; §10.12 replaces the per-tile
+union with the merged-footprint group layer. The audition sheet keeps REF
 plus A (σ 3), B (σ 5) and C (σ 7). The hand fan and the standing top hand are
 approved; the wall fan and side walls are approved; the ponds/melds are confirmed
 straight-on. The deferred item is the hand face brightness (the el-28 hand face
