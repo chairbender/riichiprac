@@ -7,6 +7,12 @@ the related capture `261112-1826` ("Real riichi game database as a scenario
 source"), and incorporates the separate autonomous-miner agent specification
 reviewed on 2026-11-14.
 
+Implementation breakdown: [`replay-implementation-plan.md`](replay-implementation-plan.md)
+turns this design into architecture components, an ordered unit sequence and a
+proposed command-center task slice. Two stages there are normative requirements,
+not options: mixed-agent corpora (§3.3 below) and scenario permutation (§5.9
+below).
+
 > ## Decision (2026-11-14): AI self-play is the only replay source
 >
 > **We will not acquire, ingest, redistribute, or ship any third-party replay
@@ -407,6 +413,15 @@ It is a mix:
 | Akochan vs Mortal | a genuinely different policy; more diversity; second-opinion labels |
 | 4.1a/4.1b/4.1c mixed | network disagreement; only ship a label when the ensemble is stable, or label the disagreement as "contested" |
 
+> **Status (2026-11-15): this table is a first-class pipeline requirement.**
+> The implementation plan (§3, families M1–M6 and corpus units C2–C7) makes each
+> row a separately gated corpus family with its own quota, report and acceptance
+> criteria. The corpus runner must accept pluggable agents/policies, including
+> non-neural rule/heuristic engines such as Akochan, and record per-game agent
+> identity, configuration, temperature and seeds. The table is the minimum
+> family set, not an optional menu; a family that is disabled or short is visible
+> in the corpus report.
+
 Practical defaults:
 
 - **Labeller:** 4.1b (balanced) for book agreement and default "best" labels;
@@ -773,6 +788,16 @@ Once a state is found, generate variants that preserve the decision logic:
 Do **not** transform river order, scores, turn number or dora count unless the
 lesson explicitly says those do not matter. A transformation is only valid if
 the classifier/label still passes after it; otherwise reject the variant.
+
+> **Status (2026-11-15): this is a required generator stage, not a later
+> nice-to-have.** It is pipeline stage [8] in
+> [`replay-implementation-plan.md`](replay-implementation-plan.md) §4 (units
+> V1–V2), after base selection and before pack assembly, with a
+> label-preservation gate and a per-lesson `TransformPolicy`. Every shipped
+> variant must re-run the classifier/label after transforming and is rejected if
+> the lesson breaks. "Seat rotation" above is the reconstruction's normalisation;
+> a seat *variant* should permute the opponents relative to the actor, because
+> rotating all four and re-normalising the actor is a no-op.
 
 ### 5.10 Not in scope: third-party or human replay corpora
 
@@ -1379,12 +1404,19 @@ are.
 | --- | --- | --- |
 | **0. Policy** | This document; data-licence/provenance schema; source allowlist | Source allowlist is exactly `ai_selfplay`; any other source is rejected |
 | **1. Parser + state** | `replay` module: mjai reader for self-play logs, replay walker, `GameState` reconstruction, `validate_reachable_state` integration, tenhou6 exporter for review | 1-kyoku fixture and 100 self-play games round-trip; all states valid |
-| **2. Self-play corpus** | Separate Mortal `libriichi::arena` runner; 1k-game smoke corpus; dataset card; storage plan | 1k logs parse; 0 invalid states; licence/provenance complete |
+| **2. Self-play corpus** | Separate Mortal `libriichi::arena` runner with a pluggable agent protocol; mixed-family plans (M1 strong mirror, M2 contrast, M3 weak/human-like, M4 Akochan, M5 ensemble, M6 rule baseline); 1k-game smoke corpus; dataset card; storage plan | Every family report has per-game agent identity/config/temperature/seed provenance; 1k logs parse; 0 invalid states; licence/provenance complete |
 | **3. Book classifiers** | `matches()` for the broad lessons; generated-state tests; near-miss tests | Every classifier passes generated/near-miss tests; answers legal |
 | **4. Mortal labeler** | Native batch labeler; per-action Q values; caching; agreement filter; ensemble option; Q-unit calibration | Reproducible labels; parity with `evaluate_state`; Q units documented; no re-eval on rerun |
-| **5. Selector** | Trigger families; interestingness rubric; family quotas; dedupe; transforms; review report | A 100-scenario hand-reviewed smoke pack with no duplicates/invalids |
-| **6. Pack + publish** | Pack/manifest schema; audit; Pages/R2/HF publisher; loader smoke test | Pack loads in the app; hash/byte budgets pass; licence gate passes |
-| **7. Frontend loader** | Separate task: manifest fetch, IndexedDB cache, picker integration, ARIA parity | `vitest` + build; no visual judgement from the agent |
+| **5. Selector** | Trigger families; interestingness rubric; family quotas; dedupe; review report | A 100-scenario hand-reviewed smoke pack with no duplicates/invalids |
+| **6. Permutation** | Required stage: seat/suit/rank/wind/red-five variants; per-lesson `TransformPolicy`; re-run classifier/label; reject broken variants; caps/dedupe | Every shipped variant is label-preserving; invalid variants rejected; variant report and caps pass |
+| **7. Pack + publish** | Pack/manifest schema; audit; Pages/R2/HF publisher; loader smoke test | Pack loads in the app; hash/byte budgets pass; licence gate passes |
+| **8. Frontend loader** | Separate task: manifest fetch, IndexedDB cache, picker integration, ARIA parity | `vitest` + build; no visual judgement from the agent |
+
+The implementation plan splits phases 2 and 5 into separate per-family and
+per-transform units; [`replay-implementation-plan.md`](replay-implementation-plan.md)
+§5 is the authoritative build order and gate list. Do not start the permutation
+stage before the classifier/labeler are stable: a variant gate on top of an
+unstable label ships plausible-looking but wrong drills.
 
 Do not start Phase 5 before Phase 3/4 are stable: a selector on top of an
 unstable classifier produces plausible-looking but wrong drills.

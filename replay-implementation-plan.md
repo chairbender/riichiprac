@@ -1,0 +1,1804 @@
+# Replay miner implementation breakdown and task sequence
+
+Status: planning. Drafted 2026-11-15 from the merged authoritative
+[`replay-strategy.md`](replay-strategy.md) (2026-11-14). This document does not
+re-open the source or licensing decision; it turns that design into an
+architecture decomposition, an ordered implementation sequence, and a proposed
+command-center task slice.
+
+Task: 261114-100729 ("Break down replay strategy into implementation task
+sequence").
+
+Read `replay-strategy.md` first for the evidence and the legal analysis. This
+document is the build order.
+
+**Two requirements are promoted here from supporting material to required
+pipeline stages:**
+
+1. **Mixed-agent corpora.** `replay-strategy.md` §3.3 is no longer an optional
+   recipe table. The corpus runner accepts pluggable neural, rule and heuristic
+   agents; every game records per-seat agent identity, configuration,
+   temperature and seed; each matchup family has its own corpus unit, quota and
+   acceptance gate. See §3.
+2. **Scenario permutation.** `replay-strategy.md` §5.9 is no longer a later
+   nice-to-have. It is a named pipeline stage with a label-preservation gate,
+   a lesson-invariance matrix and its own unit sequence. See §4.
+
+The planning task that produced this document implemented no miner code and made
+no frontend change. The only code-facing deliverables here are the proposed
+interfaces and gates.
+
+**At a glance.** The sequence has 27 implementation units plus one human-review
+task: 3 foundation and replay units (F1, R1, R2), 8 corpus units (C1–C8, one per
+matchup family plus the shared runner and integration gate), 3 classifier units
+(B1–B3), 2 labeler units (L1–L2), 3 selector units (S1–S3), 2 permutation units
+(V1–V2), 4 pack units (P1a, P1b, P2, P3), and 2 validation/ship units (Q1, Q2)
+plus the Q2r review task. The critical path to the first pack runs through the
+parser, reconstructor, shared corpus runner, the M1 family, the classifier/
+labeler, selection, the permutation gate, pack assembly, the loader and the
+end-to-end harness. B1/B2, L1/L2, V1 and the non-M1 corpus families can run in
+parallel around that path.
+
+---
+
+## 0. Scope and non-goals
+
+**In scope for the implementation sequence:**
+
+- a native-only replay library: mjai self-play reader, replay walker,
+  `GameState` reconstruction, structural validation, tenhou6 review export;
+- a corpus runner that generates mixed-agent self-play games and records
+  provenance;
+- book classifiers that recognise existing lessons in arbitrary states;
+- a native Mortal labeler that exposes per-action Q values and caches results;
+- trigger, counterfactual and interestingness selection with family quotas;
+- a scenario permutation generator with label-preservation checks;
+- pack/manifest schema, publisher, audit and hosting;
+- a lazy frontend pack loader;
+- end-to-end validation and the first curated pack.
+
+**Out of scope (some permanently, some deferred):**
+
+- any Tenhou, Mahjong Soul, Riichi City, Hime, M-League, Hugging Face or Kaggle
+  replay corpus; no BYO replay; no human-expert-line family
+  (`replay-strategy.md` §2, §5.10);
+- linking Mortal's `libriichi` (AGPL) into the shipped MIT/WASM app;
+- implementing the miner inside the WASM build or the frontend bundle;
+- point-denominated EV copy before a versioned Q→point calibration exists;
+- multi-step replay drills in the first pack (keep `replay_id` + `event_index`
+  in every scenario so they can be added later);
+- visual sign-off by an agent (AGENTS.md §6: hand the artifact to the user).
+
+---
+
+## 1. Decisions preserved
+
+The strategy document is the authority. These are the decisions every unit is
+gated on, with the place that enforces them.
+
+| Decision | Enforcement point | Units |
+| --- | --- | --- |
+| AI self-play is the only replay source; no third-party corpus is acquired, ingested or shipped | `source.kind` allowlist at corpus ingest **and** pack publish; typed rejection, not a warning | F1, C1, P1a |
+| Published packs are `source.kind = "ai_selfplay"` with model/seed/agent provenance | pack schema + publisher audit; missing provenance is a hard failure | F1, P1a, Q1 |
+| Mortal code and weights are AGPL-3.0 and never enter the shipped MIT/WASM build | separate `riichiprac-corpus` process/repo; no `libriichi` dependency in this crate; app-side labelling uses the existing MIT `MortalV4Model` | C1, C2, L1 |
+| Akochan is a rule-based generator whose outputs are non-commercial with attribution | per-game licence record; pack `data_commercial_use`; publisher refuses a commercial pack containing Akochan data | C5, P1a |
+| Use the complete `GameState` and existing validation/rationale/legal-action code | reuse `GameState`, `validate_reachable_state`, `finalize_state`, `rationale_for`, `legal_actions`, `compare_action_set`; no parallel scenario model | R2, B1, L1, V1 |
+| Mortal per-action values are Q values / model utility, not points | store `q_values` with `q_units: "model_utility"`; select by probability margin / Q-gap percentiles; calibrate before any point copy | L1, L2, S3 |
+| Pack hosting follows the existing Pages / Release / HF pattern | same-origin manifest + content-addressed packs; Release asset only as a CI copy step; optional R2/HF mirror | P2 |
+| The miner is native-only and must not break the WASM build | Cargo feature `miner`; `required-features` on the binary; default `cargo check --target wasm32-unknown-unknown` stays clean | F1, every Rust unit |
+| Human review is the last mile; an agent does not sign off its own visual work | review queue + AGENTS.md §6 handoff | S2, Q2 |
+
+Do not add a "third-party corpus" or "BYO replay" unit later in the sequence.
+Those are rejected alternatives, not deferred phases.
+
+`agari` remains the hand-analysis crate (shanten, yaku, ukeire, scoring). It is
+not a four-player simulator, a replay walker, or the legal-action engine; R2 and
+the classifiers use `src/state.rs` and `src/ai/actions.rs` for state and
+legality.
+
+---
+
+## 2. Architecture decomposition
+
+### 2.1 Repository and build boundaries
+
+The split exists to keep the MIT app and the AGPL generation stack legally and
+technically separate.
+
+| Piece | Where it lives | Licence | Build | Ships? |
+| --- | --- | --- | --- | --- |
+| App + rules + `GameState` + MIT Mortal inference | this repo (`riichiprac`) | MIT | default native/WASM | yes |
+| Replay library (`src/replay/`) | this repo | MIT | native, behind `miner` feature | no |
+| Miner tooling (`src/miner/`, `src/bin/mine_replays.rs`) | this repo | MIT | `--features miner` | no |
+| Book classifiers, labeler, selection, transforms, pack tools | this repo (`src/miner/`) | MIT | `--features miner` | no |
+| Corpus runner and match orchestration | new repo `riichiprac-corpus` | AGPL-3.0 (because it links `libriichi`) | native | no |
+| Mortal `libriichi` adapter + model weights | `riichiprac-corpus` | AGPL-3.0 | native | no |
+| Akochan adapter / bridge | `riichiprac-corpus` | AGPL-3.0 repo with Akochan NOTICE; user-supplied binary, private repo if bundled | native | no |
+| Pack publisher / audit | this repo | MIT | `--features miner` | tool only |
+| Frontend pack loader | this repo (`frontend/`) | MIT | Vite | yes |
+
+Rules for the boundary:
+
+- **No `libriichi` in this repo's `Cargo.toml`, in any feature.** The corpus
+  repo may depend on this crate's `miner` feature; the dependency direction is
+  one-way and the app never depends on the corpus repo.
+- The `miner` feature gates `clap`, gzip, SQLite/DuckDB, `rayon` and other
+  native-only dependencies. The default build must remain the current shipped
+  target.
+- `src/bin/mine_replays.rs` uses `required-features = ["miner"]`, so a plain
+  `cargo build` does not try to build it.
+- The corpus repo is where `libriichi` and Akochan live. It is never a build
+  input of the app, never a Pages asset, and never a git submodule of this repo.
+- If the corpus repo only invokes engines as subprocesses, it may choose MIT,
+  but the conservative default is **AGPL-3.0**, because that is the licence of
+  the code it links. The app stays MIT either way.
+
+### 2.2 Component map
+
+| # | Component | Responsibility | Home | Existing code to reuse |
+| --- | --- | --- | --- | --- |
+| 0 | Provenance / source / licence gate | define `AgentSpec`, `GameProvenance`, `RuleProfile`, `LicenseInfo`; reject non-self-play sources | this repo, `src/miner/` | serde types in `state.rs`, `report/model.rs` |
+| 1 | mjai reader + replay validator | parse gzipped mjai JSONL; validate event order, tile ledger, scores, wall count | this repo, `src/replay/` | none (new) |
+| 2 | Replay walker + `GameState` reconstruction | snapshot before decisions; rotate actor to seat 0; fill derived fields; validate reachable | this repo, `src/replay/` | `GameState`, `validate_reachable_state`, `finalize_state`, `ai::actions` |
+| 3 | Decision enumeration + trigger prefilter | enumerate self-turn/call/riichi/kan/win decisions; label why a trigger fired | this repo, `src/miner/` | `legal_actions`, `can_riichi`, `safety` |
+| 4 | Agent protocol + match runner | pluggable agents, match plans, seat/seed schedules, raw log emission | `riichiprac-corpus` | hotseat `Policy` concept as a reference |
+| 5 | Corpus families + adapters | Mortal arena, Akochan, heuristic/reference; per-family reports | `riichiprac-corpus` | corpus protocol, `GameProvenance` |
+| 6 | Book classifiers | `matches(state) -> Option<Match>` per lesson; `TransformPolicy` | this repo, `src/miner/` or next to lessons | `analysis`, `safety`, `completion`, `rationale` |
+| 7 | Mortal labeler | batch evaluation, Q values, cache, ensemble, agreement | this repo, `src/miner/` | `MortalV4Model`, `evaluate_state_named`, `compare_action_set` |
+| 8 | Interestingness + selection | hard gates, family quotas, dedupe, review queue | this repo, `src/miner/` | `scenario-report`, fuzz comparison |
+| 9 | Permutation engine | label-preserving seat/suit/rank/wind/red-five variants | this repo, `src/miner/transform/` | `GameState` tile helpers, `finalize_state` |
+| 10 | Pack schema + publisher + audit | pack/manifest types, source/licence gate, hash/byte budget, atomic write | this repo, `src/miner/pack/` | `export/tenhou6.rs` for review only |
+| 11 | Frontend pack loader | manifest fetch, schema check, IndexedDB cache, picker integration, ARIA parity | this repo, `frontend/src/` | `services/weightLoader.ts`, `scenarios.ts`, `App.tsx` |
+| 12 | Review / validation harness | end-to-end pipeline test, review queue, funnel report | this repo + corpus repo | `verify_report`, `fuzz_scenarios`, `scenario-report` |
+| 13 | Corpus storage / ops | raw logs outside git, dataset card, DB, object storage | corpus repo + operator | hosting-plan pattern |
+
+### 2.3 End-to-end pipeline
+
+This is the strategy's §6.2 pipeline with the two promoted stages made explicit
+and with the corpus generation separated from ingestion.
+
+```text
+[0] policy + schema + source gate
+        │  (source allowlist = ai_selfplay; agent/licence/rule provenance types)
+        ▼
+[1] corpus generation — mixed agents, per-game provenance
+        │  (match plan: M1 strong mirror, M2 contrast, M3 weak/human-like,
+        │   M4 cross-engine Akochan, M5 ensemble/heterogeneous, M6 rule baseline)
+        ▼
+[2] ingest + replay validation
+        │  (parse mjai, tile ledger, scores, event order, rule profile)
+        ▼
+[3] enumerate decision points + trigger prefilter
+        │  (self-turn discard, call, riichi, kan, win/pass; defensive/offensive/
+        │   book/call/score triggers; record why each fired)
+        ▼
+[4] reconstruct GameState + structural validation
+        │  (rotate actor to seat 0; hands/rivers/melds/dora/scores/turn;
+        │   decision context, call offer, can_riichi; validate_reachable_state)
+        ▼
+[5] book classification
+        │  (unique lesson match, visible-info answer, exact/equivalence class)
+        ▼
+[6] Mortal labelling + counterfactual Q pass
+        │  (top-1, ranking, probability margin, raw Q values, q_gap_top2,
+        │   q_gap_safe, riichi second pass, call mapping)
+        ▼
+[7] interestingness + selection (base scenarios)
+        │  (hard gates, family quotas, dedupe, held-out QA, review queue)
+        ▼
+[8] scenario permutation + label-preservation gate  ← REQUIRED STAGE
+        │  (seat/opponent, suit, rank, wind, red-five transforms; re-run
+        │   classifier/label; reject any variant whose lesson breaks)
+        ▼
+[9] pack assembly + manifest + audit
+        │  (schema, hash, byte budget, source/licence gate, atomic write)
+        ▼
+[10] publish + loader smoke test
+        │  (Pages / R2 / HF; manifest; IndexedDB cache; vitest)
+```
+
+Why permutation is stage [8], after selection and before packing:
+
+- generating every variant for every candidate would multiply the expensive
+  labeler pass by the transform count;
+- packing before permutation would let an unverified variant ship;
+- selecting before permutation keeps curriculum quotas based on base scenarios,
+  while variants serve anti-memorisation and volume.
+
+### 2.4 Shared contracts
+
+The units share a small set of serialisable types. Names are proposals; keep
+them stable once a pack uses them.
+
+| Contract | JSON schema name | Purpose |
+| --- | --- | --- |
+| `AgentSpec` | part of `riichiprac.corpus-match-plan` | identity/config/temperature/seed/licence of one seat |
+| `MatchPlan` | `riichiprac.corpus-match-plan` v1 | family, games, seat schedule, seed schedule, rule profile |
+| `GameProvenance` | `riichiprac.corpus-game` v1 | one generated game's full roster, seeds, config hashes, log hash, validation |
+| `TransformChain` | `riichiprac.scenario-transforms` v1 | ordered transforms and parameters applied to a scenario |
+| `ScenarioPack` | `riichiprac.scenario-pack` v1 | the existing strategy §6.7 shape, plus agent/variant provenance |
+| `PackManifest` | `riichiprac.scenario-pack-manifest` v1 | the existing strategy §6.7 shape |
+
+Sketch of the corpus-side types:
+
+```rust
+pub enum AgentKind { Neural, Rule, Heuristic, External }
+
+pub struct AgentSpec {
+    pub agent_id: String,          // "mortal-4.1b", "akochan-<ver>", "heuristic-v1"
+    pub kind: AgentKind,
+    pub engine: String,            // "libriichi", "akochan", "corpus-reference"
+    pub engine_version: String,
+    pub engine_sha256: Option<String>,
+    pub weights_sha256: Option<String>,
+    pub config: serde_json::Value,
+    pub config_hash: String,
+    pub temperature: Option<f32>,  // None when the engine is deterministic
+    pub sampling: String,          // "argmax" | "softmax" | "engine_default"
+    pub seed: Option<String>,
+    pub licence: LicenseInfo,
+}
+
+pub struct GameProvenance {
+    pub replay_id: String,         // sha256 of canonical raw log
+    pub corpus_id: String,
+    pub family: String,            // "strong_mirror", "weak_vs_strong", ...
+    pub match_plan_id: String,
+    pub match_plan_sha256: String,
+    pub rule_profile: String,
+    pub rule_config_hash: String,
+    pub generated_at: String,
+    pub generator: String,         // corpus repo + commit
+    pub seats: [AgentSpec; 4],
+    pub game_seed: String,
+    pub seat_schedule: String,
+    pub log: LogRef,               // format, path, bytes, sha256
+    pub validation: ValidationSummary,
+}
+```
+
+`LicenseInfo` must carry, at minimum: licence id, attribution string,
+`data_commercial_use: bool`, and a source URL. Unknown or missing licence data
+fails the publisher.
+
+---
+
+## 3. Corpus variety is a first-class pipeline requirement
+
+### 3.1 Requirement
+
+The corpus is **not** four clones of the strongest network. A useful corpus is a
+mix of strong lines, realistic mistakes, contested positions and genuinely
+different policies. That mix is the main source of the states worth mining, and
+it is a property of the corpus generator, not a post-hoc filter.
+
+Therefore:
+
+- the corpus runner accepts **pluggable agents/policies**, including non-neural
+  rule or heuristic engines such as Akochan;
+- every game records **per-seat agent identity and configuration**, generation
+  temperature and seeds, engine/weights hashes, rule profile and licence;
+- the matchup families in `replay-strategy.md` §3.3 are the **minimum family
+  set**, each with its own corpus unit, quota and acceptance gate;
+- a family that is disabled or misses its quota is visible in the corpus report;
+  it cannot silently disappear from a pack;
+- licensing constraints from `replay-strategy.md` §3.4 remain intact: Mortal is
+  AGPL and stays out of the shipped app; Akochan outputs are non-commercial with
+  attribution; pack data carries its own licence.
+
+### 3.2 Agent model
+
+The runner is agent-agnostic. It does not assume every seat is a Mortal
+checkpoint, and it does not assume a "best" network is the only generator.
+
+`AgentSpec` (above) captures:
+
+- **identity**: stable `agent_id`, plus engine name/version and hashes;
+- **kind**: `neural`, `rule`, `heuristic`, or `external`;
+- **config**: the full engine configuration object plus a canonical
+  `config_hash`; a name alone is not provenance;
+- **sampling**: `temperature`, `top_p`/`top_k` when supported, or
+  `engine_default`; `None` when deterministic;
+- **seed**: per-seat seed where the engine accepts one; `None` with an explicit
+  `reproducible: false` marker when it does not;
+- **licence**: licence id, attribution, data-commercial-use flag.
+
+Match plans also record:
+
+- **rule profile**: the canonical `tenhou-4p-hanchan` profile plus the exact
+  red-five/kuitan/starting-score/return/uma/kan-dora settings the engine used.
+  All four seats in a game must agree; a mismatch is rejected, not normalised;
+- **seat schedule**: rotate the lineup through all four seats across games so no
+  agent gains a fixed seat/dealer advantage; record the resolved seats per game;
+- **seed schedule**: a corpus-level schedule plus the resolved per-game and
+  per-seat seeds, so a game can be reproduced from `(corpus_id, family,
+  game_index, lineup)`.
+
+**Generation temperature vs label temperature.** Self-play may sample at
+temperature 1.0 for diversity. Labels are always argmax (`temperature: 0.0`),
+and the labeler's model identity is recorded separately. Never record one
+temperature for both.
+
+A match plan is a small, reviewable document:
+
+```jsonc
+{
+  "schema": "riichiprac.corpus-match-plan",
+  "version": 1,
+  "corpus_id": "mixed-2026-11",
+  "family": "weak_vs_strong",
+  "rule_profile": "tenhou-4p-hanchan",
+  "games": 1000,
+  "seat_schedule": "rotate_each_game",
+  "seed_schedule": { "kind": "sequence", "start": 1000, "step": 1 },
+  "seats": [ /* four AgentSpec objects; see §3.4 */ ],
+  "log_dir": "corpus/mixed/2026-11/weak_vs_strong"
+}
+```
+
+The runner writes the resolved per-game roster and seeds into
+`GameProvenance`, so the plan plus the plan hash are enough to audit a game.
+
+**Non-neural engines are generators and opponents first.** Akochan can be a
+generator, a second opinion and a source of different play. It is not the pack
+labeler unless its values are mapped and calibrated; the default labeler remains
+Mortal 4.1b / the app's MIT inference.
+
+### 3.3 Matchup families and acceptance gates
+
+These are the families the first corpus must support. Each is a separate
+implementation unit in §5 (C2–C7), so a failure in one does not block the
+others.
+
+| ID | Family | Seats (minimum) | What it feeds | Family-specific acceptance gate |
+| --- | --- | --- | --- | --- |
+| **M1** | Strong mirror | 4.1b vs 4.1b; optional 4.1c mirror | high-quality lines, book-aligned states, stable labels | configured games generated; 100 % logs parse; 0 invalid reconstructed states on the smoke sample; every game has complete per-seat provenance; rule profile matches; family report emitted |
+| **M2** | Aggressive / defensive contrast | 4.1c vs 4.1b, both seat directions | contested states, close calls, style contrast | M1 gates, plus a measured action-distribution divergence from M1; the contested/close-call yield is measured after labelling; both agents' identities and temperatures recorded |
+| **M3** | Weak / human-like | 3.0 vs 4.1b | mistakes, "find the blunder" drills | M1 gates, plus every candidate records the weak agent's played action and seat; the strong top action/Q gap is attached by the labeler/selector; no outcome-based labelling; configured blunder yield |
+| **M4** | Cross-engine Akochan | Akochan vs Mortal 4.1b; self-match fallback | genuinely different policy, diversity, second opinion | adapter/self-match produces parseable logs; per-seat identity; rule profile verified; `cross_engine` flag is truthful; Akochan licence/attribution/data-commercial-use flags present; configured diversity yield |
+| **M5** | Ensemble / heterogeneous | 4.1a/4.1b/4.1c mixed; optionally an Akochan seat | network disagreement, contested labels | every candidate records the seat roster; ensemble votes are attached by L2; stable vs contested split; no silent tie-break; M1 gates; per-family report |
+| **M6** | Rule / heuristic baseline | corpus-repo tsumogiri/random/heuristic, self-play or vs another supported seat | cheap pipeline fixtures, deterministic tests, optional beginner material | deterministic by seed; no weights; logs parse; provenance complete; if shipped, every scenario is graded by a strong labeler and marked model-graded |
+
+Family rules:
+
+- **M1 is the baseline, not the corpus.** It satisfies quality and label
+  stability; it is not allowed to fill a pack on its own. Selection quotas must
+  include at least one non-M1 family in a shipped pack.
+- **M2 and M3 are separate families** even when they share the same runner
+  backend. Their yields and acceptance criteria are different.
+- **M4 has two truthful modes.** Cross-play and Akochan self-match are both
+  useful; the game record says which one ran. Never label a self-match corpus
+  "Akochan vs Mortal".
+- **M5 does not hide disagreement.** A split vote becomes `contested` or a
+  rejection, never an arbitrary pick. 4.1a is an ensemble/heterogeneous member
+  here; a standalone 4.1a mirror is a new match plan, not a new implementation
+  unit.
+- **M6 is not a quality corpus by itself.** It is excellent for deterministic
+  plumbing and can produce beginner-visible mistakes, but a label must come from
+  a strong model or a book classifier.
+
+### 3.4 Per-game provenance (required, not optional)
+
+Every generated game carries a record like this. The raw log path is a logical
+corpus path, never an absolute local path or a username.
+
+```jsonc
+{
+  "schema": "riichiprac.corpus-game",
+  "version": 1,
+  "replay_id": "sha256:...",
+  "corpus_id": "mortal-4.1b-3.0-mixed-2026-11",
+  "family": "weak_vs_strong",
+  "match_plan_id": "m3-weak-vs-strong-2026-11",
+  "match_plan_sha256": "sha256:...",
+  "rule": {
+    "profile": "tenhou-4p-hanchan",
+    "config_hash": "sha256:...",
+    "red_fives": 3,
+    "kuitan": true
+  },
+  "generated_at": "2026-11-15T12:00:00Z",
+  "generator": {
+    "repo": "riichiprac-corpus",
+    "version": "0.1.0",
+    "commit": "abc1234"
+  },
+  "game_seed": "0x9f2c1a7b",
+  "seat_schedule": "rotate_each_game",
+  "seats": [
+    {
+      "seat": 0,
+      "agent_id": "mortal-4.1b",
+      "kind": "neural",
+      "engine": "libriichi",
+      "engine_version": "0.4.x",
+      "engine_sha256": "sha256:...",
+      "weights_sha256": "sha256:...",
+      "config": { "temperature": 1.0, "top_p": null },
+      "config_hash": "sha256:...",
+      "temperature": 1.0,
+      "sampling": "softmax",
+      "seed": "0x01",
+      "licence": {
+        "id": "AGPL-3.0",
+        "attribution": "Mortal 4.1b ...",
+        "data_commercial_use": true
+      }
+    },
+    {
+      "seat": 1,
+      "agent_id": "mortal-3.0",
+      "kind": "neural",
+      "engine": "libriichi",
+      "engine_version": "0.4.x",
+      "weights_sha256": "sha256:...",
+      "config_hash": "sha256:...",
+      "temperature": 1.0,
+      "sampling": "softmax",
+      "seed": "0x02",
+      "licence": {
+        "id": "AGPL-3.0",
+        "attribution": "Mortal 3.0 ...",
+        "data_commercial_use": true
+      }
+    }
+    // seats 2 and 3 omitted for brevity; a real record always has all four
+  ],
+  "log": {
+    "format": "mjai",
+    "path": "corpus/mixed/2026-11/weak_vs_strong/000017.jsonl.gz",
+    "bytes": 41234,
+    "sha256": "sha256:..."
+  },
+  "validation": {
+    "status": "ok",
+    "events": 812,
+    "tile_ledger": true,
+    "score_ledger": true,
+    "rule_profile_match": true
+  }
+}
+```
+
+The pack publisher requires the matching `GameProvenance` row for every
+`replay_id` it ships. A scenario whose game record is missing, incomplete, or
+has an unknown licence is rejected.
+
+### 3.5 Licensing and rule-profile gates
+
+- **Mortal.** AGPL-3.0 code and weights live in the corpus repo/process. The
+  generated log is data; it is published with attribution to Mortal and the
+  model version, and the weights are never in the dataset. The app's MIT
+  inference may label a reconstructed `GameState`. `data_commercial_use: true`
+  in the example records the strategy's data position; if the product owner
+  prefers the stricter reading, set it to `false` for every corpus generated
+  with AGPL weights and treat the pack as non-commercial. The publisher enforces
+  the flag; it does not adjudicate the law.
+- **Akochan.** Its terms allow non-commercial reproduction of outputs with
+  attribution. Every Akochan game carries `data_commercial_use: false` and an
+  attribution string. A pack containing any Akochan game is marked
+  `data_commercial_use: false`; the publisher refuses to publish it under a
+  commercial profile. If the app ever becomes commercial, replace the Akochan
+  data or obtain permission. Do not commit Akochan code or binaries to a public
+  repo; invoke a user-supplied binary, or keep the corpus repo private. Only the
+  generated logs (with attribution) enter the corpus and pack.
+- **Heuristic / corpus-repo.** Our code and generated data; use the repo's
+  licence for code and CC BY 4.0 for data, with attribution to the project.
+- **Unknown / external.** Unknown licence means reject at ingest and at publish.
+  "Public on the internet" is not a licence.
+- **Rule profile.** The app's `GameState` represents the Tenhou 4p-hanchan
+  profile. An engine whose rules cannot be represented (different red-five
+  count, no kuitan, sanma, local yaku, different starting score) is rejected for
+  that corpus. Do not silently normalise a different game into the app's state.
+- **Raw logs.** Never commit raw corpus logs, weights or third-party data. Keep
+  curated packs small and source-addressed; keep the corpus on local disk/R2/HF
+  with a dataset card.
+
+A pack's `source` block is the union of every contributing game's agents, not a
+per-scenario guess:
+
+```jsonc
+"source": {
+  "kind": "ai_selfplay",
+  "corpus_id": "mixed-2026-11",
+  "licence": "CC-BY-4.0",
+  "attribution": "Games generated with Mortal 4.1b/3.0 (AGPL-3.0) and Akochan (non-commercial, attribution). Scenario pack CC BY 4.0.",
+  "redistributable": true,
+  "data_commercial_use": false,
+  "agents": [
+    { "agent_id": "mortal-4.1b", "kind": "neural", "licence": "AGPL-3.0",
+      "attribution": "Mortal 4.1b ...", "data_commercial_use": true },
+    { "agent_id": "akochan-<ver>", "kind": "rule", "licence": "akochan-custom",
+      "attribution": "Akochan ...", "data_commercial_use": false }
+  ]
+}
+```
+
+`data_commercial_use` is the logical AND of the contributing agents. A pack with
+any `false` agent is non-commercial even if other agents permit commercial use.
+
+### 3.6 Corpus reports and quotas
+
+`mine_replays corpus report` prints one row per family:
+
+- games requested / generated / parsed / valid;
+- decision points and trigger hits;
+- book matches, Mortal labels, contested, blunders, close calls, selected;
+- rejection reasons, deduped counts;
+- agent roster and seat distribution;
+- temperature and seed ranges;
+- licence flags and rule profile;
+- quota shortfalls.
+
+Selection quotas are configured per family, book section, decision kind and
+turn bucket. A family that under-delivers is reported as a shortfall; the
+pipeline does not silently substitute M1 games.
+
+---
+
+## 4. Scenario permutation is a required generator stage
+
+### 4.1 Position and purpose
+
+Permutation is stage [8] in §2.3: after base selection, before pack assembly.
+Its purpose is anti-memorisation and volume:
+
+- a player must not memorise the exact states in the database;
+- one mined scenario should yield several drill variants that teach the same
+  lesson;
+- a variant is only shippable if the transformed state still has the same
+  lesson and the same answer after the inverse mapping.
+
+This is not "generate more random hands". It is a controlled transformation of a
+validated scenario, followed by a full label re-check.
+
+### 4.2 Normalisation is not a variant
+
+The replay walker already rotates the acting seat to `players[0]`. That is
+**normalisation**, and it is not a variant. Rotating all four players and then
+normalising the actor back to seat 0 is a no-op.
+
+A real seat variant permutes the **three opponents relative to the actor**:
+their hands, melds, rivers, winds, scores and any `from` references move
+together, while the actor stays at seat 0. This changes who is across, who is
+dealer, and who is on the left, without changing the actor's decision.
+
+### 4.3 Transform catalogue
+
+| Transform | Operation | Fields touched | Label risk | Default |
+| --- | --- | --- | --- | --- |
+| `seat_perm` | permute opponents 1–3; actor stays 0 | `players[1..4]`, `current_turn`, `DecisionContext.from`, `call_offer` tiles (not seats), dealer derivation, rivers/melds/scores | seat/dealer/placement lessons; `wind_discard_order` | requires policy opt-in |
+| `suit_perm` | one of 6 bijections on m/p/s | hands, draws, melds, rivers, dora/ura indicators, `call_offer` tiles, `correct_action` tiles, `equivalent_tiles`, `hand_string`, `tiles`, `ukeire_tiles`; remap action names such as `Discard_3m`/`Chi_*` and re-label | sanshoku, honitsu, ittsu, suit-specific value | recompute; usually allowed |
+| `rank_mirror` | rank `r → 10-r` within a suit | same tile-bearing fields as `suit_perm`; remap action names and re-label | ittsu/outside-hand/terminal patterns, pinfu head, waits | recompute |
+| `wind_relabel` | rotate player winds, wind honour tiles (`1z`–`4z`) and round wind by `k` | player winds, wind tiles everywhere, `round_wind`, dealer derivation | `wind_discard_order`, seat/dealer/placement context | requires policy opt-in |
+| `red5_normalize` | replace a red five's aka identity with a normal five | hands/draws/melds/rivers; recompute dora and scoring | red-five-dependent scoring, dora value, hand value | only if no red-five dependence; recompute |
+
+Explicitly **not** transformed:
+
+- river order, turn number, wall composition, dora count;
+- scores (except as they move with a permuted player), honba, riichi sticks;
+- hand contents (other than the transform itself);
+- hidden information in a way that is inconsistent with the game record.
+
+A transform chain is ordered and recorded. The engine must implement the
+inverse mapping for labels and for the `correct_action` tile.
+
+### 4.4 Label-preservation gate
+
+For every candidate variant:
+
+1. Clone the base state and apply the transform chain.
+2. Recompute derived fields (`hand_string`, `tiles`, shanten, ukeire,
+   `can_riichi`, `book_rationale`) through `finalize_state`.
+3. Run `validate_reachable_state` and the tile ledger. Reject on failure.
+4. Determine the label kind:
+   - **book**: run the lesson's `matches()` on the transformed state. Require the
+     same lesson id, a unique answer, and that the transformed `correct_action`
+     is the inverse-mapped original answer (or in its equivalence class).
+   - **Mortal-only**: run the labeler on the transformed state. Require the
+     top-1 action to inverse-map to the original top-1. For a close call, reject
+     if the top-1 flips or the calibrated margin band changes materially.
+   - **ensemble**: require every ensemble member's top-1 to inverse-map, or
+     preserve the original `contested` marking.
+   - **mistake / played action**: inverse-map the played action too; the
+     "find the mistake" lesson must still show the same mistake relative to the
+     same answer.
+5. Check legal actions: the answer is legal; a riichi answer has a legal
+   discard; a call answer has an offer.
+6. Check spoilers: prompt/title/provenance do not name the answer or wait.
+7. Check dedupe: exact state hash is new to the pack; the per-base cap is not
+   exceeded.
+8. Record the transform chain, inverse mapping, label-check result and any
+   rejection reason.
+
+If any check fails, **reject the variant**. Never hand-edit the label to make a
+variant fit.
+
+Model labels are cached by `(transformed_state_hash, model_sha256,
+classifier_version, transform_chain)`, so a rerun does not pay for the same
+evaluation twice.
+
+### 4.5 Lesson invariance matrix
+
+The transform engine must not guess. Each classifier declares a
+`TransformPolicy`:
+
+```rust
+pub struct TransformPolicy {
+    pub seat_perm: Allowed,
+    pub suit_perm: Allowed,
+    pub rank_mirror: Allowed,
+    pub wind_relabel: Allowed,
+    pub red5_normalize: Allowed,
+    pub note: &'static str,
+}
+
+pub enum Allowed {
+    Deny,
+    AllowWithRecompute,
+}
+```
+
+The default is `Deny` for every transform until a lesson opts in. This is
+deliberately conservative: a missing opt-in loses volume, while a wrong opt-in
+ships a broken drill.
+
+Starting matrix (to be confirmed by tests, not assumed):
+
+| Lesson family | Seat | Suit | Rank | Wind | Red five |
+| --- | --- | --- | --- | --- | --- |
+| `riichi_judgement`, dama lessons | allow* | allow | allow | allow* | deny if scoring depends on red five |
+| `push_or_fold`, `fold_to_riichi`, defense safety | allow* | allow | allow | allow* | allow with recompute |
+| `suji_trap_riichi` | allow* | allow | allow with recompute | allow* | allow with recompute |
+| `pinfu_head` | allow* | allow | allow with recompute | allow* | deny |
+| `honitsu_decision` | allow* | allow | allow | allow* | allow with recompute |
+| `meld_or_not`, kan lessons | allow* | allow | allow | allow* | allow with recompute |
+| `wind_discard_order` | deny | allow | allow | deny | allow |
+| placement / score-context lessons | deny unless score labels are preserved | allow | allow | deny unless preserved | allow with recompute |
+| replay score/placement family | deny unless preserved | allow | allow | deny unless preserved | allow with recompute |
+| any red-five-dependent family | allow* | allow | allow | allow* | deny |
+
+`allow*` means "allow only when the re-run gate confirms the same lesson and a
+legal answer"; the table is a starting policy, not a licence to skip the gate.
+
+Special cases to test explicitly:
+
+- **Sanshoku**: suit permutation usually preserves the same-rank-in-three-suits
+  relation, but the classifier must still return the same lesson.
+- **Honitsu**: suit permutation preserves the one-suit property; value/scoring
+  can change, so re-run.
+- **Ittsu / outside hand**: rank mirror can change the terminal relation; re-run.
+- **Red-five scoring**: normalising a red five can change han/dora; reject if the
+  label changes.
+- **Wind discard order**: seat and wind transforms generally break the seating
+  arithmetic; deny them.
+- **Placement**: seat permutation can change dealer/placement; deny unless the
+  transformed state still carries the same placement lesson.
+
+### 4.6 Variant identity, dedupe and caps
+
+Each variant records:
+
+```jsonc
+{
+  "id": "replay-9f2c1a7b-v3",
+  "variant_of": "replay-9f2c1a7b",
+  "transform_chain": [
+    { "kind": "suit_perm", "params": { "map": { "m": "p", "p": "s", "s": "m" } } },
+    { "kind": "rank_mirror", "params": {} }
+  ],
+  "transform_seed": "0x51",
+  "label_check": {
+    "kind": "book",
+    "preserved": true,
+    "classifier_version": "1",
+    "model_sha256": null
+  },
+  "provenance": {
+    "replay_id": "sha256:...",
+    "decision_index": 42,
+    "original_seat": 2
+  }
+}
+```
+
+Rules:
+
+- exact duplicate state hashes collapse;
+- variants are grouped by `variant_of` / base fingerprint for analytics and
+  review;
+- per-base cap is configurable (default 8) and per-pack share is capped (default
+  20 %) so one base cannot fill a pack;
+- novelty/coverage quotas count **base scenarios**, not variants;
+- a pack may ship several variants of a base, but each must be a distinct state
+  and pass the gate; "six suit permutations of the same hand" is a cap problem,
+  not automatic value.
+
+### 4.7 Acceptance gate for the permutation stage
+
+The stage is done when all of these hold:
+
+- 100 % of shipped variants pass `validate_reachable_state`, the tile ledger and
+  the legal-answer check;
+- every shipped variant passes the label-preservation gate for its label kind;
+- a per-transform/per-lesson yield report exists (attempted, preserved,
+  rejected by reason, disabled pairs);
+- any transform-lesson pair below a configured yield (initial suggestion: 50 %)
+  is disabled by default until reviewed;
+- no duplicate state hashes in a pack; per-base and per-pack caps enforced;
+- every variant carries `variant_of`, `transform_chain`, `transform_seed` and
+  `label_check`;
+- the pack report shows variant share and the largest single-base share;
+- a 100-scenario rehearsal pack contains variants from at least two transform
+  families and no base above the cap.
+
+### 4.8 Tests for the permutation stage
+
+- inverse round-trip for each transform and for a composed chain;
+- tile ledger conserved; no fifth copy of a tile;
+- red-five identity preserved or deliberately normalised, with scoring
+  recomputed;
+- classifier re-run on generated book states for every transform pair in the
+  matrix;
+- explicit sanshoku, honitsu, ittsu, pinfu-head, wind-order, red-five and
+  placement cases;
+- labeler re-run on a fixed fixture with the app model; top-1 inverse-maps;
+- a close-call fixture whose top-1 flips under a transform is rejected;
+- dedupe: two transforms that produce the same state collide;
+- caps: a base with more than the cap is truncated, and the report says so.
+
+---
+
+## 5. Ordered implementation sequence
+
+### 5.1 Dependency graph
+
+```text
+F1  (scaffold + provenance + source gate)
+├── R1  mjai reader + replay validator
+│   └── R2  walker + GameState + decision enumeration + tenhou6 export
+│       ├── C1  agent protocol + match plan + reference runners
+│       │   ├── C2  Mortal libriichi backend + M1 strong mirror
+│       │   │   ├── C3  M2 aggressive/defensive contrast
+│       │   │   ├── C4  M3 weak/human-like mistakes
+│       │   │   ├── C5  M4 cross-engine Akochan (spike first)
+│       │   │   └── C6  M5 ensemble/heterogeneous
+│       │   └── C7  M6 rule/heuristic baseline
+│       └── L1  native batch labeler + Q values + cache
+│           └── L2  ensemble + agreement + contested + calibration hooks
+├── B1  classifier framework + broad batch 1
+│   └── B2  classifier batch 2
+│       └── B3  shape/block-theory classifiers
+├── V1  transform engine
+└── P1a pack/manifest schema + audit (fixture packs only)
+
+C2 + C3 + C4 + C5 + C6 + C7 ── C8  corpus integration + quotas + smoke corpus
+B1 + L1 + C8 ── S1  triggers
+B1/B2 + L2 + S1 ── S2  interestingness + quotas + dedupe + review queue
+L2 + S1 ── S3  close-call / speed-value / blunder selectors
+V1 + B1/B2 + L2 + S2 ── V2  label-preservation gate + pipeline integration
+P1a + S2 + V2 ── P1b  pack assembly from selected, gated scenarios
+P1b ── P2  hosting/publisher
+P1a + P2 ── P3  frontend pack loader
+V2 + P2 + P3 ── Q1  end-to-end acceptance harness
+Q1 ── Q2  first curated pack
+```
+
+### 5.2 Waves
+
+| Wave | Can start together | Why |
+| --- | --- | --- |
+| 0 | F1 | every unit needs the feature boundary and provenance types |
+| 1 | R1, B1 (fixtures), V1 (synthetic states), P1a (schema with fixtures) | these do not need a real corpus |
+| 2 | R2, B2, C1 | parser output is ready; classifiers can grow; runner can start |
+| 3 | C2, C7, L1, B3 | Mortal backend starts; rule baseline is independent; labeler and hard classifiers run in parallel |
+| 4 | C3, C4, C5, C6, L2 | contrast, mistake, Akochan and ensemble families use the Mortal backend; ensemble labels |
+| 5 | C8, S1 | corpus integration and cheap trigger filters |
+| 6 | S2, S3 | selection, dedupe and family-specific ranking |
+| 7 | V2, P1b | variants need selected bases and stable labels; pack assembly needs variants |
+| 8 | P2, P3 | publish and load a real pack |
+| 9 | Q1, Q2 | end-to-end acceptance and first curated pack |
+
+Waves group units that become available around the same time. A unit may start as
+soon as **its own** dependencies are merged, even if the rest of its wave is
+still running; the table is a scheduling guide, not a barrier.
+
+The **critical path to the first pack** is:
+
+```text
+F1 → R1 → R2 → { (B1 → L1) ∥ (C1 → C2 → C8) } → S1 → S2
+   → V2 → P1b → P2 → P3 → Q1 → Q2
+```
+
+B1/B2, L1/L2, V1, and the corpus families can run in parallel around that path.
+Do not start S2 before B1/B2 and L1/L2 are stable; a selector on top of an
+unstable classifier produces plausible-looking but wrong drills
+(`replay-strategy.md` §6.11).
+
+### 5.3 Unit specifications
+
+Each unit is independently startable once its dependencies are merged. The
+"Accepts" bullets are the unit's acceptance criteria; its verification gate is
+the relevant shared command set in §7.1 plus the named evidence. A unit is not
+done because the code compiles or a screenshot looks plausible.
+
+#### Phase 0 — Foundation
+
+##### F1 — Miner scaffold, provenance schema and source gate
+
+**Goal.** Create the native-only miner skeleton and the metadata contracts every
+later unit uses.
+
+**Scope.**
+
+- Add a `miner` Cargo feature, optional native dependencies, and
+  `src/bin/mine_replays.rs` with subcommand stubs: `corpus`, `ingest`,
+  `extract`, `label`, `transform`, `pack`, `audit`, `review`.
+- Add `src/miner/{mod,provenance,source,licence,storage,funnel}.rs` with
+  `AgentSpec`, `AgentKind`, `LicenseInfo`, `RuleProfile`, `GameProvenance`,
+  `MatchPlan`, `CorpusId`, `ReplayId`.
+- Add the source allowlist (`ai_selfplay` only), typed rejection errors, an
+  atomic write helper, and a funnel counter.
+- Define the candidate DB schema from strategy §4.2 (`replays`, `decisions`,
+  `packs`), extended with `family`, `match_plan_id`, `agents`, `trigger`,
+  `variant_of`, `transform_chain` and label/unit fields. SQLite for local
+  tracking, Parquet/DuckDB for analytics if needed.
+- Document the JSON schema names and versioning rule.
+- No `libriichi` dependency; no AGPL code in this repo.
+
+**Accepts.** Schema round-trip; the candidate DB schema creates/migrates on a
+fixture; allowlist rejects every other source; atomic write leaves no partial
+file on error; `cargo tree --features miner` contains no `libriichi`; default
+WASM check stays clean.
+
+**Depends on.** Nothing.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+#### Phase 1 — Replay library
+
+##### R1 — mjai reader, replay validator and fixtures
+
+**Goal.** Parse self-play mjai JSONL and reject a malformed game before
+reconstruction.
+
+**Scope.**
+
+- Gzipped mjai JSONL reader; event enum for `start_kyoku`, `tsumo`, `dahai`,
+  `chi`, `pon`, `daiminkan`, `ankan`, `kakan`, `dora`, `reach`,
+  `reach_accepted`, `hora`, `ryukyoku`, `end_kyoku`, `end_game`.
+- Tile code mapping including red fives; no Tenhou/Mahjong Soul/Riichi City
+  parsers in the ingestion path.
+- Structural validation: tile conservation, wall count, scores, event order,
+  actor/seat consistency, call legality, dora timing.
+- Typed error taxonomy (`ParseError`, `LedgerError`, `EventOrderError`, etc.).
+- Synthetic 1-kyoku fixtures and malformed fixtures; a tiny fixture writer for
+  tests only.
+
+**Accepts.** The 1-kyoku fixture produces the expected event list; 100 % of
+fixture events are represented; every malformed fixture has a typed error; the
+tile ledger is conserved; 100 synthetic games parse; no third-party format is an
+input.
+
+**Depends on.** F1.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+##### R2 — Replay walker, `GameState` reconstruction, decision enumeration, tenhou6 export
+
+**Goal.** Turn a validated replay into complete `GameState` snapshots at every
+decision point, using the app's existing state and validation code.
+
+**Scope.**
+
+- Walk the replay and snapshot **before** applying each action.
+- Rotate seats so the actor is `players[0]`; rotate winds, scores, dealer,
+  `current_turn`, `from`/`called_from` references and river indices.
+- Fill `DecisionContext::SelfTurn`, `ReactToDiscard`, `ReactToKan`, and
+  `CallOffer` for call lessons.
+- Compute `hand_string`, `tiles`, shanten, agari, decompositions, ukeire,
+  `can_riichi` and `book_rationale` through the same helpers the generators use;
+  call `validate_reachable_state` and `finalize_state`.
+- `tiles_remaining`: prefer the replay's wall count; otherwise the documented
+  `70 - live_wall_draws` convention adjusted for kans; assert against the event
+  stream.
+- Ura dora, kan dora timing, red fives and furiten policy: store the actual ura
+  indicators from the record for post-answer display but never expose them
+  pre-answer; use only the dora/kan-dora indicators revealed at the decision;
+  compute furiten from the replay where possible, and reject a decision whose
+  legality/answer depends on furiten if the state model cannot represent it.
+- Enumerate decision IDs `sha256(replay_id, kyoku, event_index)`; keep
+  `replay_id` + `event_index` on every snapshot for future multi-step drills.
+- Reuse the tile-id/naki mapping in `src/export/tenhou6.rs` for a review export;
+  extend it to a full-replay log only if the review path needs one. tenhou6 is
+  an output, not an input.
+
+**Accepts.** A synthetic 1-kyoku game reaches the expected state at every event;
+every reconstructed snapshot passes `validate_reachable_state`; all decision
+kinds are covered; rotation invariance holds; tenhou6 export produces a
+reviewer-loadable log; 100 fixture games produce 0 invalid states; rerunning the
+same replay is deterministic. A validator rejection is triaged as a
+reconstruction bug or a documented validator gap; never bypass it silently.
+
+**Depends on.** R1.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+#### Phase 2 — Corpus generation
+
+##### C1 — Agent protocol, match plan and reference runners
+
+**Goal.** Make the corpus runner agent-agnostic and define the metadata it must
+write.
+
+**Scope.**
+
+- Create the `riichiprac-corpus` repo (AGPL-3.0 if it links `libriichi`).
+- Add an `Agent`/`Policy` contract that can wrap a neural model, a rule engine,
+  a heuristic, or an external process speaking the chosen protocol.
+- Add `MatchPlan` parsing: family, games, seat schedule, seed schedule, rule
+  profile, agent list, log directory.
+- Add reference agents: `tsumogiri`, `random`, and a small deterministic
+  heuristic. Reuse the hotseat `Policy` idea if practical; do not expand the
+  shipped WASM hotseat into a full corpus engine.
+- Write `GameProvenance` per game and per seat; emit raw logs outside git.
+- Document the referee/protocol decision and what it guarantees.
+
+**Accepts.** Two reference agents complete a kyoku; the same seed produces the
+same log; every game has complete per-seat provenance; the source/licence gates
+pass; the logs parse through R1/R2; no weights or AGPL code are needed for the
+reference family.
+
+**Depends on.** F1, R1, R2.
+
+**CC slice.** `worktree` / `riichiprac-corpus` (create the repo first if it does
+not exist; a `scratch` spike is acceptable before the repo exists).
+
+##### C2 — Mortal `libriichi` backend and M1 strong mirror
+
+**Goal.** Generate Mortal-vs-Mortal games in the sealed corpus repo and prove
+the baseline family.
+
+**Scope.**
+
+- `libriichi::arena` (or the Mortal mjai interface) adapter: load weights once
+  per process, batch a shard, dump gzipped mjai logs.
+- Pin model identity: file name, sha256, engine commit, config hash.
+- Generation temperature 1.0 for diversity; labels later at argmax.
+- Seat rotation across games; record resolved seats.
+- M1 plan: 4.1b vs 4.1b; optionally a 4.1c mirror as a separate configured run.
+- A few-hundred-game M1 smoke corpus (enough to prove the backend and family);
+  the 1k total-across-families corpus is C8.
+- Per-family report; validate through R1/R2.
+- Keep `libriichi` out of this repo's dependency graph.
+
+**Accepts.** Configured M1 games generated; 100 % parse; 0 invalid reconstructed
+states on the smoke sample; per-seat provenance complete; rule profile matches;
+licence/attribution recorded; the same seed reproduces the seat roster and, when
+the engine is deterministic, the log (otherwise `reproducible: false` is
+recorded); family report emitted; `cargo tree` in this repo still has no
+`libriichi`.
+
+**Depends on.** C1; external weights and a machine that can run them.
+
+**CC slice.** `worktree` / `riichiprac-corpus`.
+
+##### C3 — M2 aggressive/defensive contrast family
+
+**Goal.** Produce the style-contrast corpus that creates contested positions and
+close calls.
+
+**Scope.**
+
+- M2 plan: 4.1c vs 4.1b, both seat directions, seat rotation.
+- Record action distributions and compare them with M1.
+- Feed contested/close-call candidates to the selector; do not label a
+  disagreement as an error by itself.
+
+**Accepts.** M1 gates plus a measured divergence from M1; the contested/close-call
+rate is measured after labelling; both agents' identities/temperatures recorded;
+the family report explains where the candidate yield came from.
+
+**Depends on.** C2.
+
+**CC slice.** `worktree` / `riichiprac-corpus`.
+
+##### C4 — M3 weak/human-like mistake family
+
+**Goal.** Produce realistic mistakes without human data.
+
+**Scope.**
+
+- M3 plan: Mortal 3.0 vs 4.1b; seat rotation.
+- Record the weak agent's played action and seat; the strong labeler attaches the
+  top action/Q gap later. Do not use game outcome as a label.
+- Emit blunder candidates for the "find the mistake" family; keep the position
+  before the mistake as the drill.
+
+**Accepts.** M1 gates plus a configured candidate yield; every candidate records
+the weak action and seat; no outcome-based label; the strong label/Q gap is
+attached by L1/S3; family report.
+
+**Depends on.** C2.
+
+**CC slice.** `worktree` / `riichiprac-corpus`.
+
+##### C5 — M4 cross-engine Akochan family (spike + adapter)
+
+**Goal.** Add a genuinely different, non-neural policy while keeping its licence
+boundaries intact.
+
+**Scope.**
+
+- **Spike first:** determine whether Akochan can play in the same match as a
+  Mortal agent (mjai/API/process referee) or only self-match. Record the answer
+  and the evidence. Do not assume a bridge exists.
+- If cross-play is feasible: build the adapter in the corpus repo; record
+  `cross_engine: true`.
+- If not: ingest Akochan self-match logs; record `cross_engine: false` and do
+  not describe them as Akochan-vs-Mortal. If Akochan's native log format is not
+  mjai, convert it in the corpus repo and validate the converted log through
+  R1/R2; never add an Akochan parser to the app's WASM path.
+- Map Akochan's rule/configuration to the canonical rule profile; reject
+  mismatches. Record its version, config, tactic and seed.
+- Licence: `data_commercial_use: false`, attribution required, Akochan NOTICE in
+  the corpus repo; no Akochan code or binary in the app repo.
+- Diversity metric against M1 (action distribution / state novelty).
+
+**Accepts.** A written spike decision with evidence; parseable logs from the
+chosen mode; per-seat identity/config; rule-profile verification; Akochan
+licence flags/attribution; 0 invalid states; a configured diversity yield; no
+false cross-engine claim.
+
+**Depends on.** C1, R1/R2; an Akochan binary and a compatible environment.
+
+**CC slice.** `scratch` for the spike; then `worktree` / `riichiprac-corpus`
+for the adapter.
+
+##### C6 — M5 ensemble/heterogeneous family
+
+**Goal.** Turn network disagreement into labelled `contested` scenarios instead
+of hiding it.
+
+**Scope.**
+
+- M5 plan: 4.1a/b/c mixed seats; optionally one Akochan seat once C5 lands.
+- Record the seat roster and played actions; L2 attaches ensemble votes per
+  decision (stable when all agree, contested when they do not).
+- Never silently pick one model's answer.
+- Feed both stable and contested candidates to selection.
+
+**Accepts.** M1 gates; the seat roster is complete for every game; L2 can attach
+ensemble votes; stable/contested split is reported after labelling; no silent
+tie-break; family report.
+
+**Depends on.** C2 (and optionally C5 for a heterogeneous table).
+
+**CC slice.** `worktree` / `riichiprac-corpus`.
+
+##### C7 — M6 rule/heuristic baseline family
+
+**Goal.** A deterministic, weights-free corpus for plumbing, tests and optional
+beginner material.
+
+**Scope.**
+
+- Reference policies implemented in the corpus repo (from C1) as self-play, or
+  against another agent the runner supports; if no strong opponent is available,
+  generate with the heuristic and let L1 label the positions.
+- Deterministic by seed; no weights.
+- If shipped, label every scenario with a strong model or book classifier and
+  mark it model-graded; never present the heuristic as ground truth.
+
+**Accepts.** Same seed → same log; no weights; logs parse; provenance complete;
+family report; the pipeline can run end-to-end on this family alone.
+
+**Depends on.** C1.
+
+**CC slice.** `worktree` / `riichiprac-corpus`.
+
+##### C8 — Corpus integration: quotas, funnel and 1k smoke corpus
+
+**Goal.** Prove the families work together and produce an ingestible corpus.
+
+**Scope.**
+
+- A single corpus config listing enabled families, games, seat schedules, seed
+  ranges and quotas.
+- Run all enabled families; produce a funnel report and per-family shortfalls.
+- Ingest into the candidate DB; validate through R1/R2; verify provenance rows.
+- Dataset card, storage layout, retention note; raw logs outside git.
+- Deterministic rerun of a small shard.
+
+**Accepts.** A configured 1k-game smoke corpus (or the agreed size) across
+families; 100 % parse; 0 invalid states; complete provenance; funnel counts match
+the per-family reports; quotas/shortfalls visible; dataset card; no raw logs or
+weights in git; no third-party source. 10k games is the scale target only after
+this smoke gate passes.
+
+**Depends on.** C2–C7.
+
+**CC slice.** `worktree` / `riichiprac-corpus` for the runner; a `none` or
+`scratch` ops task for the actual run if it needs a GPU box.
+
+#### Phase 3 — Book classifiers
+
+##### B1 — Classifier framework and broad batch 1
+
+**Goal.** Recognise arbitrary states that satisfy a book lesson and return the
+lesson's unique answer.
+
+**Scope.**
+
+- Add `matches(state: &GameState) -> Option<Match>` and `Match { lesson,
+  situation, target_action, correct_action, equivalent_tiles }`.
+- Add `TransformPolicy` to the classifier contract (default deny).
+- Batch 1: `riichi_judgement`, the four `dama_*` lessons, `push_or_fold`,
+  `fold_to_riichi`, and the defense safety lessons.
+- Reuse `analysis`, `safety`, `completion`, `rationale`; no RNG or generator
+  skeleton; recompute the answer; visible information only for the answer.
+- Add near-miss tests and generated-state positive tests.
+
+**Accepts.** Existing generators' states classify as their lesson; near misses
+return `None`; every returned answer is legal; rotation invariance after seat
+normalisation; no dependence on generator RNG; transform policy declared; tests.
+
+**Depends on.** F1 (can use existing generators for fixtures); integration with
+R2 for replay states.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+##### B2 — Classifier batch 2
+
+**Goal.** Cover the medium-difficulty lessons that produce valuable replay
+families.
+
+**Scope.**
+
+- `suji_trap_riichi`, `pinfu_head`, `honitsu_decision`, `meld_or_not`,
+  `ankan_decision`, `shouminkan_decision`, `daiminkan_decision`,
+  `wind_discard_order`.
+- Same contract and tests as B1.
+
+**Accepts.** B1 criteria for each lesson; no cross-lesson misclassification in
+the near-miss set; transform policy declared.
+
+**Depends on.** B1.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+##### B3 — Shape/block-theory classifiers
+
+**Goal.** Extend recognition to arbitrary-state shape/efficiency comparisons.
+
+**Scope.**
+
+- Block-theory shape lessons that are harder to recognise than to construct.
+- Bound the search; return `None` when the comparison is not decisive.
+- Add performance budget tests.
+
+**Accepts.** B1 criteria plus a documented performance bound and no
+misclassification of ambiguous shapes.
+
+**Depends on.** B2.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+#### Phase 4 — Mortal labeler
+
+##### L1 — Native batch labeler, Q values and cache
+
+**Goal.** Label a reconstructed `GameState` with the app's MIT inference and keep
+the per-action Q values the browser currently discards.
+
+**Scope.**
+
+- Add a mining-only `q_value` to `ActionEvaluation` (or a separate
+  `CounterfactualEvaluation`); do not change the browser payload unless the UI
+  needs it.
+- Batch native evaluation with `MortalV4Model` and
+  `evaluate_state_named`; load weights once per process.
+- Record `model`, `model_sha256`, `q_units: "model_utility"`, `gamma`/`pts` when
+  known, `q_values`, `q_gap_top2`, `q_gap_safe`, `probability_margin`.
+- Riichi second pass; call mapping through `legal_actions`; agreement uses
+  `compare_action_set` (including `equivalent_tiles`).
+- Cache by `(state_hash, model_sha256, classifier_version, options)`; rerunning a
+  shard skips finished work and retries failures.
+- Parity test against `evaluate_state`; no `libriichi` link.
+
+**Accepts.** Exact top-1/ranking parity on a fixed fixture; Q values match the
+model metadata; probabilities are the softmax/Q-derived values; no field claims
+points; rerun does not re-evaluate finished states; every label records the
+labeler model identity, hash and units, and both labeler and generator identities
+when they differ; tests.
+
+**Depends on.** R2, F1.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+##### L2 — Ensemble, agreement, contested and calibration hooks
+
+**Goal.** Make model disagreement explicit and prepare (but do not fake) point
+equity.
+
+**Scope.**
+
+- Multi-model labels: 4.1a/b/c or the app model plus an upstream model; record
+  each model's identity/hash and votes.
+- `stable` vs `contested`; no silent tie-break.
+- Book agreement using `generator::mortal_agreement` /
+  `fuzz::compare_action_set`.
+- Percentile thresholds per decision family for close calls and confidence.
+- Optional Q→point calibration: a separate versioned mapping, a separate
+  `expected_point_diffs` field, raw Q values never overwritten.
+- Model identity mismatch (4.1 vs 298k) is recorded, not hidden.
+
+**Accepts.** Ensemble votes recorded; contested flagged; agreement uses the
+existing comparison rules; percentile selection is deterministic and configurable;
+calibration is versioned and separate; raw Q values preserved; tests.
+
+**Depends on.** L1, B1.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+#### Phase 5 — Selection
+
+##### S1 — Triggers and family filters
+
+**Goal.** Raise recall cheaply before the expensive model pass.
+
+**Scope.**
+
+- Defensive/riichi: an opponent has declared Riichi; target 0/1/2-shanten; a
+  genbutsu or suji exists; threat is tenpai in the record.
+- Offensive/architecture: no active Riichi; target 1-shanten; turns 5–12; two
+  legal discards with divergent speed/value plans.
+- Book matcher, call/kan, score/placement, close-call and blunder triggers.
+- Record why each fired (`trigger: "defensive_riichi"`, `"book:ch8.1"`, etc.).
+- Run cheap structural/book filters before Mortal.
+
+**Accepts.** Fixtures fire and do not fire correctly; reasons are recorded; a
+corpus sample report shows recall/precision; no model pass for cheap filters;
+tests.
+
+**Depends on.** B1, L1, C8.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+##### S2 — Interestingness, quotas, dedupe and review queue
+
+**Goal.** Select a balanced, legal, non-duplicated candidate set.
+
+**Scope.**
+
+- Hard gates from `replay-strategy.md` §7.1: legal/reachable, well-defined
+  answer, legal answer, visible-info answer, label confidence,
+  source/licence/provenance, not a duplicate, no spoiler.
+- Ranking signals and the composite score from `replay-strategy.md` §7.2, used
+  **within** a family after the gates.
+- Family quotas (book, contested, mortal_best, mistake, close_call, speed_value,
+  coverage, table_read, placement, multi_step later); per-book-section,
+  per-decision-kind and per-turn bucket quotas.
+- Dedupe: exact state hash + visible-info fingerprint; transformed states do not
+  collide by accident.
+- Held-out QA set; review queue as JSONL using the existing
+  `riichiprac.scenario-report` for a single candidate.
+- Funnel report: raw → trigger → reconstructed → valid → classified → labelled →
+  selected → packed.
+
+**Accepts.** A 100-scenario hand-reviewed smoke pack with no duplicates or
+invalids; quotas enforced; held-out set kept; review queue consumed; source/
+licence gates pass; no single family crowding out the others.
+
+**Depends on.** S1, L2, B1/B2, C8.
+
+**CC slice.** `worktree` / `riichiprac`; the human review itself is `none`.
+
+##### S3 — Close-call, speed-vs-value and blunder selectors
+
+**Goal.** Implement the non-book families with concrete, non-guessed logic.
+
+**Scope.**
+
+- Close call: top-2 probability/Q-gap percentile per family; mark "close"; use
+  `equivalent_tiles` for ties; show both actions when they genuinely differ.
+- Speed vs value: 1-shanten, no active Riichi, two legal discards whose
+  resulting states diverge in both acceptance (shanten/ukeire) and hand value
+  (`evaluate_hand`/`agari`); label one speed, one value; Q gap decides closeness.
+- Blunder: weak agent's played action vs strong labeler's top action; require a
+  confidence threshold; never use the game outcome.
+- No absolute point thresholds; the agent-spec 400/250 numbers are calibration
+  hypotheses, not constants.
+
+**Accepts.** Fixture tests for each selector; a real corpus sample report; no
+absolute point claim; no outcome bias; labels/answers legal.
+
+**Depends on.** L2, S1.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+#### Phase 6 — Permutation
+
+##### V1 — Transform engine
+
+**Goal.** Implement the transforms with inverses and complete field coverage.
+
+**Scope.**
+
+- `Transform` enum/chain for `seat_perm`, `suit_perm`, `rank_mirror`,
+  `wind_relabel`, `red5_normalize`.
+- Apply to every tile-bearing field; update `DecisionContext`/`call_offer`
+  references; recompute derived fields only in the gate, not silently in the
+  transform.
+- Implement the inverse mapping for labels and answers.
+- Record transform params and seed.
+- Property tests for round-trip and tile conservation.
+
+**Accepts.** Every transform is reversible; all fields are covered (a synthetic
+state with every field populated changes consistently); tile ledger conserved;
+no panic on edge cases (kans, red fives, ura dora, calls, riichi); tests.
+
+**Depends on.** F1 for generated-state fixtures; R2 for replay-state
+integration.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+##### V2 — Label-preservation gate and pipeline integration
+
+**Goal.** Make permutation a real pipeline stage, not a helper.
+
+**Scope.**
+
+- `transform` subcommand: take selected base scenarios, expand each into a
+  configured number of variants, apply the lesson's `TransformPolicy`, re-run the
+  classifier/labeler, reject failures, dedupe, enforce caps.
+- Store `variant_of`, `transform_chain`, `transform_seed`, `label_check`.
+- Per-transform/per-lesson yield report; disable pairs below the threshold.
+- Integrate with `pack` so only gated variants enter a pack.
+- Cache model labels.
+- Tests from §4.8.
+
+**Accepts.** §4.7 acceptance gate; a 100-scenario rehearsal with variants from at
+least two transform families; no base above the cap; every shipped variant
+label-preserving; report.
+
+**Depends on.** V1, B1/B2, L2, S2.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+#### Phase 7 — Pack and publish
+
+##### P1a — Pack/manifest schema, audit and fixture publisher
+
+**Goal.** Define and validate the static pack format before wiring the full
+selection/permutation output into it.
+
+**Scope.**
+
+- `PackSource` (kind, corpus_id, licence, attribution, redistributable,
+  `data_commercial_use`, `agents`), `PackScenario`, `PackManifest`.
+- Extend the existing strategy §6.7 shape with `source.agents`,
+  `provenance.variant_of`, `transform_chain`, `label_check`, `played.agent`.
+- Schema version 1; required fields; unknown fields tolerated only where the
+  app can ignore them safely.
+- Source/licence gate: reject non-`ai_selfplay`, missing/unknown licence,
+  incomplete agent provenance, missing `GameProvenance` for a scenario's
+  `replay_id`, commercial pack containing Akochan data.
+- Legal-answer check, spoiler check, hash/byte budget, atomic write, deterministic
+  pack hash.
+- `audit` subcommand with `--strict`; `pack report`.
+- Reuse `scenario-report` for single-candidate review.
+- A fixture pack written by hand/tests is enough for this unit.
+
+**Accepts.** Schema round-trip; source/licence gate rejects every negative case,
+including a scenario with no matching game provenance; every `correct_action`
+legal and included in `accepted`; no spoiler; pack bytes within budget; atomic
+write; audit clean; fixture pack.
+
+**Depends on.** F1.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+##### P1b — Pack assembly from selected, gated scenarios
+
+**Goal.** Turn the selector's base scenarios and the permutation stage's
+variants into a real, audited pack.
+
+**Scope.**
+
+- Read selected decisions + gated variants; emit `PackScenario` records with
+  provenance and transform chains.
+- Apply family quotas, per-base caps, dedupe and the pack byte budget.
+- Re-run the audit and write the manifest atomically.
+- Emit a pack report: family mix, variant share, largest base share, byte size,
+  licence/agent union.
+
+**Accepts.** A pack assembled from a real (or realistic fixture) selection;
+audit clean; quotas/caps/dedupe enforced; deterministic pack hash; pack report.
+
+**Depends on.** P1a, S2, V2.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+##### P2 — Hosting/publisher (Pages / R2 / HF)
+
+**Goal.** Publish packs with the existing hosting pattern without shipping the
+corpus.
+
+**Scope.**
+
+- Same-origin manifest + content-addressed packs under
+  `frontend/public/scenarios/`; keep total committed packs within the agreed
+  budget (default 50 MB; move to R2/HF when larger). The AGENTS.md 8 MB
+  committed-asset budget is already mostly consumed by the rendered-view
+  shell/felt assets (~7.2 MB), so packs default to a lazy external source or a
+  very small same-origin pack; do not assume pack bodies fit in the remaining
+  repo budget.
+- Optional R2/HF mirror; manifest stays same-origin; loader tries same-origin
+  first.
+- GitHub Release asset path only as a CI copy step, because Release assets send
+  no CORS headers (hosting-plan.md).
+- Deploy workflow copies selected packs; no raw corpus, no weights, no LFS.
+- Runbook + CORS/byte checks.
+
+**Accepts.** A smoke pack publishes; manifest loads; hash/bytes verified; Pages
+build includes the packs; CORS check for an external mirror; runbook; no raw
+corpus/weights in the artifact.
+
+**Depends on.** P1b.
+
+**CC slice.** `worktree` / `riichiprac`; account setup steps are `none`.
+
+##### P3 — Frontend pack loader
+
+**Goal.** Load the manifest and one pack lazily without changing game logic.
+
+**Scope.**
+
+- Manifest fetch + schema check; content-addressed pack fetch; verify hash/bytes
+  before parsing.
+- IndexedDB cache (follow `services/weightLoader.ts`): key by pack id + sha256;
+  cache version; swallow cache failures.
+- Merge WASM `list_scenarios()` metadata with pack lesson metadata; add replay
+  lesson IDs to `SCENARIO_MANIFEST` where a picker entry is needed.
+- Loading/error/empty states; no answer spoilers; no new game rules in React.
+- ARIA parity with the existing picker and table; interaction tests in vitest.
+- No visual sign-off by the agent; hand the dev URL to the user (AGENTS.md §6).
+
+**Accepts.** `npm test`, `npm run build`, `npm run lint`; manifest/pack load;
+cache hit on reload; hash mismatch/error path; picker can select a pack lesson;
+ARIA assertions; no new game logic; initial load budget unaffected (manifest
+only).
+
+**Depends on.** P1a (fixture manifest); P2 for a real pack.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+#### Phase 8 — Validation and first ship
+
+##### Q1 — End-to-end pipeline acceptance harness
+
+**Goal.** Make the whole pipeline reproducible and testable without a GPU or a
+network.
+
+**Scope.**
+
+- Scripted pipeline: fixture corpus → ingest → extract → classify → label
+  (fixture model or skipped) → select → transform → pack → audit → loader smoke.
+- Determinism check: same inputs → same pack hash.
+- Gate matrix: source/licence, provenance, legal answers, no spoilers, size
+  budget, dedupe, variant preservation.
+- CI job for fixtures and schema; real corpus generation stays offline.
+- Review queue + held-out QA.
+
+**Accepts.** The pipeline passes on fixtures in CI; the same inputs produce the
+same pack hash; every gate has a failing test; no third-party source; docs.
+
+**Depends on.** P2, P3, V2.
+
+**CC slice.** `worktree` / `riichiprac`.
+
+##### Q2 — First curated pack: 100 ch. 8 defense scenarios
+
+**Goal.** Ship one small pack and measure it before scaling.
+
+**Scope.**
+
+- Generate/choose the corpus families needed for ch. 8 defense; classify with
+  `fold_to_riichi`/defense safety; label with Mortal; select; expand variants;
+  pack; audit.
+- Human/agent-assisted review of all 100; reject ambiguous, illegal, spoiling or
+  unteachable scenarios.
+- Publish through the Pages manifest; loader smoke test.
+- Measure pack bytes, initial load, cache behaviour, answer accuracy and
+  "too easy/too hard" feedback (local or consented aggregate).
+- Record results and decide whether to scale.
+
+**Accepts.** 100 reviewed scenarios; no duplicates/invalids; source/licence/
+provenance complete; pack loads; byte/initial-load budgets; measurements
+recorded; user sign-off on the artifact; docs updated.
+
+**Depends on.** Q1.
+
+**CC slice.** `worktree` / `riichiprac` for the pack; `none` for the human
+review/sign-off. Q2r in §6 is that review task; it produces no code and is not
+counted as an implementation unit.
+
+### 5.4 Critical path and parallel tracks
+
+- **Critical path:** F1 → R1 → R2 → C1 → C2 → C8 → B1 → L1 → S1 → S2 → V2 →
+  P2 → P3 → Q1 → Q2.
+- **Parallel early:** B1/B2 can start after F1 using existing generators; V1 can
+  start after R2; P1a can start after F1 with fixture packs.
+- **Parallel corpus:** C3–C7 all start after C2 (or C1 for C7) and can run on
+  separate machines; C8 is the integration gate.
+- **Do not reorder:** S2 before classifiers/labels are stable; V2 before P2;
+  P2 before P3's real-pack acceptance; Q1 before Q2.
+
+---
+
+## 6. Proposed command-center slicing
+
+One task per implementation unit. All repo work is a **worktree** on the named
+repo. There is no `shared` project checkout in this plan; the only non-repo
+workspaces are the Akochan feasibility spike (`scratch`) and operational/human
+review tasks (`none`).
+
+| Unit | Proposed task title | Type | Repo / project | Depends on |
+| --- | --- | --- | --- | --- |
+| F1 | Replay miner F1: scaffold, provenance schema, source gate | worktree | `riichiprac` | — |
+| R1 | Replay miner R1: mjai reader, validator, fixtures | worktree | `riichiprac` | F1 |
+| R2 | Replay miner R2: walker, GameState reconstruction, tenhou6 export | worktree | `riichiprac` | R1 |
+| C1 | Corpus C1: agent protocol, match plan, reference runners | worktree | `riichiprac-corpus` | F1, R1, R2 |
+| C2 | Corpus C2: Mortal libriichi backend + M1 strong mirror | worktree | `riichiprac-corpus` | C1 |
+| C3 | Corpus C3: M2 aggressive/defensive contrast | worktree | `riichiprac-corpus` | C2 |
+| C4 | Corpus C4: M3 weak/human-like mistake corpus | worktree | `riichiprac-corpus` | C2 |
+| C5a | Corpus C5a: Akochan cross-play feasibility spike | scratch | — | C1 |
+| C5b | Corpus C5b: M4 Akochan adapter/self-match family | worktree | `riichiprac-corpus` | C5a, C1, R1/R2 |
+| C6 | Corpus C6: M5 ensemble/heterogeneous family | worktree | `riichiprac-corpus` | C2 |
+| C7 | Corpus C7: M6 rule/heuristic baseline family | worktree | `riichiprac-corpus` | C1 |
+| C8 | Corpus C8: family quotas, funnel, 1k smoke corpus | worktree | `riichiprac-corpus` | C2–C7 |
+| B1 | Classifiers B1: framework + broad batch 1 | worktree | `riichiprac` | F1 |
+| B2 | Classifiers B2: batch 2 | worktree | `riichiprac` | B1 |
+| B3 | Classifiers B3: shape/block-theory classifiers | worktree | `riichiprac` | B2 |
+| L1 | Labeler L1: native batch labels + Q values + cache | worktree | `riichiprac` | R2, F1 |
+| L2 | Labeler L2: ensemble, agreement, contested, calibration hooks | worktree | `riichiprac` | L1, B1 |
+| S1 | Selector S1: triggers and family filters | worktree | `riichiprac` | B1, L1, C8 |
+| S2 | Selector S2: interestingness, quotas, dedupe, review queue | worktree | `riichiprac` | S1, L2, B1/B2, C8 |
+| S3 | Selector S3: close-call, speed-value, blunder selectors | worktree | `riichiprac` | L2, S1 |
+| V1 | Variants V1: transform engine and inverses | worktree | `riichiprac` | F1 (R2 for replay states) |
+| V2 | Variants V2: label-preservation gate + pipeline stage | worktree | `riichiprac` | V1, B1/B2, L2, S2 |
+| P1a | Pack P1a: schema, audit, fixture publisher | worktree | `riichiprac` | F1 |
+| P1b | Pack P1b: assembly from selected, gated scenarios | worktree | `riichiprac` | P1a, S2, V2 |
+| P2 | Pack P2: Pages/R2/HF hosting and CI | worktree | `riichiprac` | P1b |
+| P3 | Pack P3: lazy frontend loader + picker | worktree | `riichiprac` | P1a, P2 |
+| Q1 | QA Q1: end-to-end acceptance harness | worktree | `riichiprac` | P2, P3, V2 |
+| Q2 | Ship Q2: first 100-scenario ch. 8 defense pack | worktree | `riichiprac` | Q1 |
+| Q2r | Review Q2r: human review of the first pack | none | — | Q2 |
+
+Before C1, create the `riichiprac-corpus` repo (AGPL-3.0, README, NOTICE for
+Akochan) as a manual/`none` setup task; C1's worktree requires an existing repo.
+Do not create C2–C8 worktrees before that repo exists. C5 is deliberately split
+into a `scratch` feasibility spike (C5a) and an adapter unit (C5b) because the
+cross-play mode is not known yet; every other row is one implementation unit.
+
+Suggested creation pattern (do not create the whole list at once; create the
+current wave):
+
+```bash
+cc-task new "Replay miner F1: scaffold, provenance schema, source gate" \
+  --open --type worktree --repo riichiprac <<'EOF'
+Implementation unit F1 from replay-implementation-plan.md. Read
+replay-strategy.md and the plan; implement only this unit.
+EOF
+```
+
+For the corpus repo:
+
+```bash
+cc-task new "Corpus C2: Mortal libriichi backend + M1 strong mirror" \
+  --open --type worktree --repo riichiprac-corpus <<'EOF'
+Implementation unit C2 from riichiprac/replay-implementation-plan.md. AGPL
+corpus repo; do not link libriichi into the app repo.
+EOF
+```
+
+For the Akochan spike, use a `scratch` task with no repo, and record the answer
+in the corpus repo's README/decision log. Do not create the adapter task until
+the spike says which mode is feasible.
+
+---
+
+## 7. Verification gates
+
+### 7.1 Shared commands
+
+Define these once; unit gates reference them.
+
+```bash
+# Default app gate (no miner feature, shipped target).
+cargo fmt --check
+cargo test --lib
+cargo clippy --lib --tests -- -D warnings
+cargo check --target wasm32-unknown-unknown
+
+# Miner library gate (native only).
+cargo fmt --check
+cargo test --features miner
+cargo clippy --all-targets --features miner -- -D warnings
+cargo check --target wasm32-unknown-unknown   # default features must stay clean
+! cargo tree --features miner | grep -qi libriichi
+
+# WASM browser gate (unchanged).
+wasm-pack test --headless --chrome
+
+# Frontend gate.
+cd frontend && npm test && npm run build && npm run lint
+```
+
+If the baseline `cargo fmt --check` is red on `main` for an unrelated file, fix
+or quarantine that separately; do not let it hide a real failure in a miner
+unit.
+
+Which gate applies:
+
+| Unit group | Gate |
+| --- | --- |
+| F1, R1, R2 | default app gate + miner library gate; R2 also G1/G2 |
+| C1–C8 | corpus repo's native tests + G1/G2/G3 on the generated sample |
+| B1–B3 | default app gate + the classifier positive/near-miss tests (G4) |
+| L1–L2 | default app gate + miner library gate + label parity/cache tests (G5) |
+| S1–S3 | default app gate + corpus sample selection report (G6) |
+| V1–V2 | default app gate + transform inverse/preservation tests (G7) |
+| P1a–P1b | miner library gate + pack audit (G8) |
+| P2 | Pages/CI build + manifest/hash/CORS checks |
+| P3 | frontend gate + loader/cache/ARIA tests (G9) |
+| Q1–Q2 | all of the above + end-to-end fixture pipeline (G10) |
+
+### 7.2 Pipeline gates
+
+| Gate | Evidence | Blocks |
+| --- | --- | --- |
+| G0 Source/provenance | every game has `source.kind = ai_selfplay`, a `GameProvenance` row, a licence allowlist entry | ingest, pack |
+| G1 Parser | 1-kyoku fixture + 100-game fixture corpus; 0 malformed passes; tile ledger | R2, C1 |
+| G2 Reconstruction | every sampled snapshot passes `validate_reachable_state`; 0 invalid | R2, C1 |
+| G3 Corpus families | per-family report: games, parse rate, valid rate, provenance, rule profile, licence flags, quota/shortfall | C2–C8 |
+| G4 Classifiers | generated positive tests + near-miss negatives; legal answers; rotation invariance | B1–B3 |
+| G5 Labels | top-1/ranking parity with `evaluate_state`; Q units documented; cache hit on rerun | L1–L2 |
+| G6 Selection | hard gates; family quotas; dedupe; held-out QA; review queue | S1–S3 |
+| G7 Variants | every shipped variant label-preserving; invalid rejected; caps/dedupe; yield report | V1–V2 |
+| G8 Pack | schema; source/licence; legal answers; no spoilers; hash/byte budget; atomic write | P1a–P1b |
+| G9 Loader | vitest, build, lint; manifest/pack load; cache; ARIA parity | P3 |
+| G10 End-to-end | fixture pipeline in CI; deterministic pack hash; all gates have a failing test | Q1 |
+
+### 7.3 Pack and loader gates
+
+- `source.kind` exactly `ai_selfplay`; any other value is a hard rejection.
+- Complete `source.agents` union with licence and attribution; unknown licence
+  fails.
+- If any Akochan game contributes, `data_commercial_use` is false and the
+  publisher refuses a commercial profile.
+- Every `correct_action` is legal; `accepted` contains it; a riichi answer has a
+  discard; a call answer has an offer.
+- No prompt/title/provenance spoiler.
+- Manifest + pack hash/bytes match; pack bytes within budget; manifest is small
+  and same-origin.
+- Pack loads through the same import/render path; no new React game logic.
+- Initial hand + board load is unaffected because only the manifest is loaded at
+  startup; packs are lazy.
+
+### 7.4 Visual work
+
+The agent does not sign off a render, screenshot, layout or "does it look
+right" judgement. For any visual change:
+
+1. save the artifact to a path inside the worktree (or `/tmp/opencode`);
+2. give the user the path and the command to view it;
+3. say what to compare and what question needs an answer;
+4. state the numeric checks already run;
+5. wait for the user's verdict before calling it done.
+
+For the loader, prefer vitest DOM/ARIA/geometry assertions. For the felt/shells,
+follow AGENTS.md §6 and `tools/render/README.md`.
+
+---
+
+## 8. Risks and open decisions
+
+| # | Risk / decision | Why it matters | Unit that resolves it |
+| --- | --- | --- | --- |
+| 1 | Is Akochan cross-play feasible, or only self-match? | The M4 family must not claim a mixed table it did not run; the licence applies to both modes | C5a spike |
+| 2 | Does a 4.1 checkpoint load in the app's MIT `MortalV4Model`, or must generation and labels use different models? | `replay-strategy.md` §3.3 warns the model identity is not interchangeable; a 4.1 model may need conversion/parity | C2, L1, L2 |
+| 3 | Rule-profile mismatch (Akochan defaults vs Tenhou 4p-hanchan) | A state from a different rule set is not a valid app state | C5, C8, R1 |
+| 4 | Furiten is not explicitly modelled | Furiten-dependent decisions must be computed or rejected, not silently mined | R2, B1 |
+| 5 | Ura/kan dora display timing | The snapshot must use indicators visible at the decision | R2, P3 |
+| 6 | Q→point calibration | The UI must not call a Q gap "points" before a versioned calibration exists | L2, S3 |
+| 7 | Precomputed labels vs on-load labels | Labels make packs useful without weights but spoil the answer in JSON and can go stale | P1a, P3 |
+| 8 | Human review budget | 100 scenarios can be reviewed; 10k cannot without a review tool | S2, Q2 |
+| 9 | Variant caps vs anti-memorisation volume | Too many variants of one base is duplication; too few loses the benefit | V2 |
+| 10 | Data licence CC BY 4.0 vs CC0 | The app code is MIT; data needs its own clear licence | P1a (product-owner decision) |
+| 11 | Hosting budget | Pages is simple but has site/bandwidth limits; R2/HF are cheap and CORS-friendly | P2 |
+| 12 | Multi-step drills | They need a step engine and grading/history behavior; keep IDs now, ship later | P1a, P3 |
+
+---
+
+## 9. Definition of done for the first shipped pack
+
+The first pack (Q2) is done when all of these are true:
+
+- 100 scenarios, all `source.kind = "ai_selfplay"`, with complete per-game
+  agent/config/temperature/seed provenance and licence/attribution;
+- at least two families contribute, including at least one mixed-agent family
+  (M2/M3/M4/M5) and one book-aligned family; M1 alone is not enough;
+- every scenario passes the legal/reachable/answer/no-spoiler gates;
+- variants are label-preserving, deduped, capped, and reported; the pack contains
+  variants from at least two transform families and at least 20 % of scenarios
+  are variants, or the pack report justifies a lower share; no single base
+  dominates the pack;
+- the pack and manifest pass audit, hash/byte budgets, and the source/licence
+  gate;
+- the frontend loads the manifest, fetches the pack lazily, caches it in
+  IndexedDB, and grades with the existing WASM path; vitest/build/lint pass;
+- a human has reviewed the 100 candidates (and the user has signed off any
+  visual artifact, per AGENTS.md §6);
+- measured pack size, initial load, cache behavior and answer accuracy are
+  recorded, and the scale-up decision is explicit.
+
+---
+
+## 10. Related docs
+
+- [`replay-strategy.md`](replay-strategy.md) — authoritative source, licensing,
+  scenario families, pack format, existing-code appendix.
+- [`hosting-plan.md`](hosting-plan.md) — Pages/Release/HF pattern, CORS findings,
+  weights licence boundary.
+- [`scenario-report-plan.md`](scenario-report-plan.md) — single-candidate report
+  envelope, useful for the review queue.
+- [`scenario-fuzz-plan.md`](scenario-fuzz-plan.md),
+  [`scenario-fuzz-findings.md`](scenario-fuzz-findings.md) — existing
+  book/Mortal comparison rules and real disagreement classes.
+- [`ai-scenario-plan.md`](ai-scenario-plan.md) — AI decision payloads, legal
+  actions, model identity and spoiler control.
+- [`mortal-validation.md`](mortal-validation.md) — model parity/validation
+  discipline.
+- [`generator-refactor-plan.md`](generator-refactor-plan.md) — lesson module
+  layout and shared analysis helpers.
+- `src/generator/hotseat/` — existing policy-agnostic one-round simulator; a
+  reference for the corpus protocol, not a substitute for a full native runner.
+- `src/ai/wasm_bridge.rs`, `src/ai/model.rs`, `src/decision.rs` — the MIT
+  inference path and the place to add a mining-only Q value.
+- `frontend/src/services/weightLoader.ts` — the ordered-source + IndexedDB
+  pattern to reuse for packs.
+
+---
+
+## Appendix A — What changed from the strategy document
+
+This plan deliberately does not rewrite the strategy's analysis. It makes two
+implicit stages explicit and gives them units and gates:
+
+1. **§3.3 corpus recipe → §3 corpus requirement + C2–C7.** The family table is
+   now a set of independently gated corpus products; the runner must accept
+   pluggable agents and record per-game agent identity/config/temperature/seed.
+2. **§5.9 transformations → §4 permutation stage + V1–V2.** The transform list is
+   now a required stage after selection, with a `TransformPolicy` per lesson, a
+   re-run label gate, and a variant-level acceptance gate.
+
+Everything else follows the strategy: `GameState` reuse, source allowlist,
+AGPL separation, Q-value units, pack hosting and human review.
+
+## Appendix B — Unit-to-code map
+
+| Unit | Primary files / repos |
+| --- | --- |
+| F1 | `Cargo.toml`, `src/bin/mine_replays.rs`, `src/miner/` |
+| R1 | `src/replay/mod.rs`, `src/replay/mjai.rs`, `src/replay/validate.rs`, fixtures |
+| R2 | `src/replay/walker.rs`, `src/replay/reconstruct.rs`, `src/export/tenhou6.rs` |
+| C1–C8 | `riichiprac-corpus` (new repo): `src/agent/`, `src/plan/`, `src/engine/`, `src/report/` |
+| B1–B3 | `src/miner/classifier/`, plus `matches()` next to lessons |
+| L1–L2 | `src/miner/label/`, `src/decision.rs`, `src/ai/wasm_bridge.rs` |
+| S1–S3 | `src/miner/select/`, `src/miner/triggers/` |
+| V1–V2 | `src/miner/transform/` |
+| P1a–P1b, P2 | `src/miner/pack/`, `frontend/public/scenarios/`, `.github/workflows/deploy.yml` |
+| P3 | `frontend/src/services/packLoader.ts`, `frontend/src/scenarios.ts`, `App.tsx` |
+| Q1–Q2 | `tests/`, `src/bin/mine_replays.rs`, `scripts/` |
