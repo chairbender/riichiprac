@@ -79,9 +79,17 @@ function currentParams(): Params {
   const carve = (spec as { carve: Record<string, unknown> }).carve;
   const lights: Record<string, LightParams> = {};
   for (const entry of lying.lights as Record<string, unknown>[]) {
+    const az = num(entry.azimuthDeg, 0);
+    const el = num(entry.elevationDeg, 0);
+    const normal = Math.cos((az * Math.PI) / 180) * Math.cos((el * Math.PI) / 180);
+    const fallbackTilt = (Math.acos(Math.max(-1, Math.min(1, normal))) * 180) / Math.PI;
+    const fallbackAround =
+      (Math.atan2(Math.sin((az * Math.PI) / 180) * Math.cos((el * Math.PI) / 180), Math.sin((el * Math.PI) / 180)) *
+        180) /
+      Math.PI;
     lights[String(entry.id)] = {
-      azimuthDeg: num(entry.azimuthDeg, 0),
-      elevationDeg: num(entry.elevationDeg, 0),
+      aroundDeg: num(entry.aroundDeg, (fallbackAround + 360) % 360),
+      tiltDeg: num(entry.tiltDeg, fallbackTilt),
       energyW: num(entry.energyW, 0),
       size: num(entry.size, 10),
       sizeY: num(entry.sizeY, 10),
@@ -111,8 +119,10 @@ function applyParams(spec: Record<string, unknown>, params: Params, preview: boo
   for (const entry of lying.lights as Record<string, unknown>[]) {
     const update = lights[String(entry.id)];
     if (!update) continue;
-    entry.azimuthDeg = clamp(num(update.azimuthDeg, num(entry.azimuthDeg, 0)), 0, 360);
-    entry.elevationDeg = clamp(num(update.elevationDeg, num(entry.elevationDeg, 0)), 0, 89);
+    entry.aroundDeg = clamp(num(update.aroundDeg, num(entry.aroundDeg, 0)), 0, 360);
+    entry.tiltDeg = clamp(num(update.tiltDeg, num(entry.tiltDeg, 0)), 0, 180);
+    delete entry.azimuthDeg;
+    delete entry.elevationDeg;
     entry.energyW = clamp(num(update.energyW, num(entry.energyW, 0)), 0, 300000);
     if ('size' in update) {
       entry.size = clamp(num(update.size, num(entry.size, 10)), 2, 80);

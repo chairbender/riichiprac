@@ -458,6 +458,7 @@ def build_decal_lights(
     # normal is -Y after stand_face_plane.
     axis = Vector((0.0, -1.0, 0.0))
     center = Vector((0.0, 0.0, tile["height"] / 2.0))
+    frame = lighting.get("frame", "world")
     for entry in lighting["lights"]:
         data = bpy.data.lights.new(entry["id"], "AREA")
         data.shape = "RECTANGLE"
@@ -465,16 +466,30 @@ def build_decal_lights(
         data.size_y = entry["sizeY"]
         data.energy = entry["energyW"]
         data.color = hex_linear(entry["hex"])[:3]
-        target = Vector(entry["target"]) + translate
-        azimuth = math.radians(entry["azimuthDeg"])
-        elevation = math.radians(entry["elevationDeg"])
-        direction = Vector(
-            (
-                math.sin(azimuth) * math.cos(elevation),
-                -math.cos(azimuth) * math.cos(elevation),
-                math.sin(elevation),
+        if frame == "face-normal":
+            # Room light expressed in the tile's face frame: aroundDeg turns
+            # around the face normal, tiltDeg is the angle from the normal.
+            target = center + Vector(entry["target"])
+            around = math.radians(entry["aroundDeg"])
+            tilt = math.radians(entry["tiltDeg"])
+            direction = Vector(
+                (
+                    math.sin(tilt) * math.sin(around),
+                    -math.cos(tilt),
+                    math.sin(tilt) * math.cos(around),
+                )
             )
-        )
+        else:
+            target = Vector(entry["target"]) + translate
+            azimuth = math.radians(entry["azimuthDeg"])
+            elevation = math.radians(entry["elevationDeg"])
+            direction = Vector(
+                (
+                    math.sin(azimuth) * math.cos(elevation),
+                    -math.cos(azimuth) * math.cos(elevation),
+                    math.sin(elevation),
+                )
+            )
         location = target + direction * entry["distance"]
         target = rotate_about_axis(target, center, axis, light_rotation_deg)
         location = rotate_about_axis(location, center, axis, light_rotation_deg)

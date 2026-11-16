@@ -1171,14 +1171,30 @@ rotations (`0/90/180/270`); the four lying images are the same tile under four
 light directions so the carve highlights change. There is no per-slot fan.
 
 **Lying tuner.** `cd frontend && npm run tune:carved` starts a local app at
-`http://localhost:7458`. It writes a temporary decal spec, runs the real Blender
-baker for the `1m` face with the lying rig at four light rotations, and
-composites each result onto the current `shell_flat_upright` through the real
-`TileAtlasBuilder` at @2x. A preview takes about **3 s** (48 samples, carve grid
-0.6, AO 4). "Apply lying params" writes only `lighting.lying` (and the shared
-carve controls) back to `decal-spec.json`; the upright rig is never touched.
-The four previews are the same flat tile under four light directions; the symbol
-stays upright so the carve highlights are what change.
+`http://localhost:7458` (`HOST=0.0.0.0` for a phone on the tailnet). It writes a
+temporary decal spec, runs the real Blender baker for the `1m` face with the
+lying rig at four light rotations, and composites each result onto the real,
+properly rotated river shell at @2x. A preview takes about **3 s** (48 samples,
+carve grid 0.6, AO 4). "Apply lying params" writes only `lighting.lying` (and the
+shared carve controls) back to `decal-spec.json`; the upright rig is never
+touched. The four previews are the four discard rivers:
+
+| Panel | Shell |
+| --- | --- |
+| bottom river · 0° | `shell_flat_upright` |
+| right river · 90° | `shell_flat_sideways` |
+| top river · 180° | `shell_flat_upright_180` |
+| left river · 270° | `shell_flat_sideways_270` |
+
+The shell bodies are rendered once by the existing shell baker with the existing
+shell/table lighting; the sliders only change the decal. The lying rig is in the
+**face-normal frame** (`frame: "face-normal"`): `aroundDeg` turns around the
+tile's face normal (0 = tile-up, 90 = right, 180 = down, 270 = left) and
+`tiltDeg` is the angle from the normal (0 = head-on, 90 = grazing, 180 =
+behind). The atlas adds `-quadRotation` so the room light is fixed while the
+tile turns. Rotating around the face normal, not world Z, keeps all four
+orientations equally lit; a world-Z rotation sends the key behind the vertical
+decal face at 90/180 and makes those carvings read flat.
 
 **Baker.** `tools/render/bake_decals.py` + `decal-spec.json`, Blender 4.5.9,
 Cycles CPU, 256 samples for a full bake. It imports the current shell baker's

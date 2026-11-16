@@ -21,7 +21,7 @@
     "notes": "The face plate is the inset face at @2x: 150 x 208 px (0.64 x 0.89 tile units, aspect 0.72). A 4 px transparent safety ring surrounds it, so a symbol that reaches the face edge is not clipped by the image border; the manifest's facePlateRect maps the inner 150 x 208 rect to the shell's faceQuad. The 90-degree rotation is not baked into the image: the symbol stays upright in face-local space and the shell's faceQuad applies the tile's rotation. The four images differ only in the baked light direction."
   },
   "carve": {
-    "depthFractionOfThickness": 0.0121,
+    "depthFractionOfThickness": 0.03,
     "profile": {
       "topSpread": 0.6,
       "bottomSpread": 0.8
@@ -46,7 +46,7 @@
       },
       "translation": {
         "fromSlotY": -11.7,
-        "cameraDistance": 5.0,
+        "cameraDistance": 5,
         "notes": "The retired parlor rig was tuned around the hand slot at y=-11.7. The canonical decal is at the origin, so the whole rig is translated by +11.7 in y. This preserves the old incidence angles instead of re-aiming the lights. The camera sits 5 units in front of the face, as in the retired decal rig."
       },
       "lights": [
@@ -118,19 +118,20 @@
           "energyW": 6000,
           "hex": "#ffffff"
         }
-      ]
+      ],
+      "frame": "world"
     },
     "lying": {
       "preset": "lying-parlor",
-      "rotationConvention": "lightRotationDeg is a counter-clockwise rotation of the whole rig about the face normal. For a lying tile the key sits high over the table; the four rotations show the same room light hitting a tile turned 0/90/180/270 on the felt.",
+      "rotationConvention": "aroundDeg rotates the whole rig around the tile's face normal (0 = tile-up, 90 = right, 180 = down, 270 = left); tiltDeg is the angle from the face normal (0 = head-on, 90 = grazing, 180 = behind). The atlas adds -quadRotation so the room light stays fixed while the tile turns.",
       "world": {
         "hex": "#b9c6d6",
         "strength": 0.4
       },
       "translation": {
-        "fromSlotY": 0.0,
-        "cameraDistance": 5.0,
-        "notes": "The lying decal is rendered face-on in the canonical rig. This rig is defined in the decal's own frame with the key high over the face, so it reads as a room light coming down onto a horizontal tile. The four light rotations keep that room light fixed while the tile turns."
+        "fromSlotY": 0,
+        "cameraDistance": 5,
+        "notes": "The lying rig is defined in the face-normal frame: the light direction is (sin tilt * sin around, -cos tilt, sin tilt * cos around) with the face normal at -Y and the face up at +Z. This is the room light on a horizontal tile; aroundDeg rotates it around the tile without changing its incidence, so the carve highlights orbit instead of the whole decal dimming."
       },
       "lights": [
         {
@@ -141,14 +142,14 @@
             0,
             0
           ],
-          "azimuthDeg": 315,
-          "elevationDeg": 65,
           "distance": 55,
           "size": 22,
           "sizeY": 18,
           "rollDeg": 0,
           "energyW": 90000,
-          "hex": "#fff4e4"
+          "hex": "#fff4e4",
+          "aroundDeg": 290.56,
+          "tiltDeg": 23.34
         },
         {
           "id": "fill",
@@ -158,14 +159,14 @@
             0,
             0
           ],
-          "azimuthDeg": 45,
-          "elevationDeg": 25,
           "distance": 45,
           "size": 30,
           "sizeY": 24,
           "rollDeg": 0,
           "energyW": 12000,
-          "hex": "#dfe9ff"
+          "hex": "#dfe9ff",
+          "aroundDeg": 56.6,
+          "tiltDeg": 50.14
         },
         {
           "id": "bounce",
@@ -173,16 +174,16 @@
           "target": [
             0,
             0,
-            -0.4
+            0
           ],
-          "azimuthDeg": 30,
-          "elevationDeg": 10,
           "distance": 34,
           "size": 42,
           "sizeY": 27,
           "rollDeg": 0,
           "energyW": 2500,
-          "hex": "#cfe4d3"
+          "hex": "#cfe4d3",
+          "aroundDeg": 70.57,
+          "tiltDeg": 31.47
         },
         {
           "id": "rim",
@@ -192,18 +193,19 @@
             0,
             0
           ],
-          "azimuthDeg": 170,
-          "elevationDeg": 45,
           "distance": 45,
           "size": 28,
           "sizeY": 20,
           "rollDeg": 0,
           "energyW": 6000,
-          "hex": "#ffffff"
+          "hex": "#ffffff",
+          "aroundDeg": 9.85,
+          "tiltDeg": 134.14
         }
       ],
       "tunable": true,
-      "tuner": "cd frontend && npm run tune:carved  # http://localhost:7458"
+      "tuner": "cd frontend && npm run tune:carved  # http://localhost:7458",
+      "frame": "face-normal"
     }
   },
   "surfaceRotations": {
