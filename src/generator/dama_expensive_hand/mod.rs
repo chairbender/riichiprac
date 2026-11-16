@@ -22,7 +22,7 @@
 //! enumeration over every winning tile (ch7:598), never from the constructor.
 
 mod board;
-mod judgement;
+pub(crate) mod judgement;
 mod scoring;
 mod skeleton;
 

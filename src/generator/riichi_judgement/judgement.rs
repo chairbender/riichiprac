@@ -166,6 +166,30 @@ pub(crate) fn han_without_riichi(
     seat_wind: Wind,
     dora_indicators: &[Tile],
 ) -> u8 {
+    han_without_riichi_with_aka(
+        winning_tiles,
+        wait,
+        round_wind,
+        seat_wind,
+        dora_indicators,
+        0,
+    )
+}
+
+/// [`han_without_riichi`] with the hand's red-five count.
+///
+/// The classifier runs on arbitrary replay states, which do hold red fives. A
+/// red five is worth one extra han, so ignoring it would turn a hand with a
+/// real han floor into a "riichi-only" hand (and the other way round). The
+/// generators keep red fives out, so their fixtures pass `0`.
+pub(crate) fn han_without_riichi_with_aka(
+    winning_tiles: &[Tile],
+    wait: Tile,
+    round_wind: Wind,
+    seat_wind: Wind,
+    dora_indicators: &[Tile],
+    aka_count: u8,
+) -> u8 {
     let counts = to_counts(winning_tiles);
     let context = GameContext::new(
         WinType::Ron,
@@ -173,7 +197,8 @@ pub(crate) fn han_without_riichi(
         wind_to_honor(seat_wind),
     )
     .with_winning_tile(wait)
-    .with_dora(dora_indicators.to_vec());
+    .with_dora(dora_indicators.to_vec())
+    .with_aka(aka_count);
 
     decompose_hand(&counts)
         .iter()
@@ -232,12 +257,38 @@ pub(crate) fn min_han_without_riichi(
     seat_wind: Wind,
     dora_indicators: &[Tile],
 ) -> u8 {
+    min_han_without_riichi_with_aka(
+        tenpai_tiles,
+        wait_tiles,
+        round_wind,
+        seat_wind,
+        dora_indicators,
+        0,
+    )
+}
+
+/// [`min_han_without_riichi`] with the hand's red-five count.
+pub(crate) fn min_han_without_riichi_with_aka(
+    tenpai_tiles: &[Tile],
+    wait_tiles: &[Tile],
+    round_wind: Wind,
+    seat_wind: Wind,
+    dora_indicators: &[Tile],
+    aka_count: u8,
+) -> u8 {
     wait_tiles
         .iter()
         .map(|&wait| {
             let mut winning_tiles = tenpai_tiles.to_vec();
             winning_tiles.push(wait);
-            han_without_riichi(&winning_tiles, wait, round_wind, seat_wind, dora_indicators)
+            han_without_riichi_with_aka(
+                &winning_tiles,
+                wait,
+                round_wind,
+                seat_wind,
+                dora_indicators,
+                aka_count,
+            )
         })
         .min()
         .unwrap_or(0)
@@ -252,13 +303,35 @@ pub(crate) fn evaluate(
     dora_indicators: &[Tile],
     visible: &HashMap<Tile, u8>,
 ) -> Conditions {
+    evaluate_with_aka(
+        tenpai_tiles,
+        wait_tiles,
+        round_wind,
+        seat_wind,
+        dora_indicators,
+        0,
+        visible,
+    )
+}
+
+/// [`evaluate`] with the hand's red-five count.
+pub(crate) fn evaluate_with_aka(
+    tenpai_tiles: &[Tile],
+    wait_tiles: &[Tile],
+    round_wind: Wind,
+    seat_wind: Wind,
+    dora_indicators: &[Tile],
+    aka_count: u8,
+    visible: &HashMap<Tile, u8>,
+) -> Conditions {
     Conditions {
-        extra_han: min_han_without_riichi(
+        extra_han: min_han_without_riichi_with_aka(
             tenpai_tiles,
             wait_tiles,
             round_wind,
             seat_wind,
             dora_indicators,
+            aka_count,
         ) >= 1,
         good_wait: wait_quality(tenpai_tiles, visible).is_good(),
         dealer: seat_wind == Wind::East,

@@ -36,7 +36,7 @@
 //! computed count clears the box.
 
 mod board;
-mod improvement;
+pub(crate) mod improvement;
 mod skeleton;
 
 use crate::generator::support::retry::generate_with_retries;

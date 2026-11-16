@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod classifier;
 pub mod decision;
 pub mod display;
 pub mod export;

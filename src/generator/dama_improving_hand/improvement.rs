@@ -47,9 +47,9 @@ use crate::generator::support::deck::ALL_TILES;
 use crate::state::Wind;
 
 /// The box's count clause: at least six kinds that improve the hand.
-pub(super) const MANY_IMPROVING_KINDS: usize = 6;
+pub(crate) const MANY_IMPROVING_KINDS: usize = 6;
 /// The box's alternative clause: one draw that adds at least three han.
-pub(super) const BIG_STEP_HAN: u8 = 3;
+pub(crate) const BIG_STEP_HAN: u8 = 3;
 /// ch7:491: a wait is good with at least two kinds ...
 const GOOD_WAIT_MIN_KINDS: usize = 2;
 /// ... and more than four live tiles.
@@ -57,7 +57,7 @@ const GOOD_WAIT_MIN_TILES: u8 = 5;
 
 /// What one ready hand can draw to improve itself.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Improvement {
+pub(crate) struct Improvement {
     /// Every kind whose draw keeps the hand ready and improves it.
     pub tiles: Vec<Tile>,
     /// The kinds whose draw adds at least three han in one step.
@@ -68,17 +68,17 @@ pub(super) struct Improvement {
 
 impl Improvement {
     /// The number of improving kinds (the box's first clause).
-    pub(super) fn kinds(&self) -> usize {
+    pub(crate) fn kinds(&self) -> usize {
         self.tiles.len()
     }
 
     /// Whether the hand meets the box's second clause through the big step.
-    pub(super) fn has_big_step(&self) -> bool {
+    pub(crate) fn has_big_step(&self) -> bool {
         !self.big_steps.is_empty()
     }
 
     /// Whether the box's improving-hand conditions hold for this hand.
-    pub(super) fn qualifies(&self) -> bool {
+    pub(crate) fn qualifies(&self) -> bool {
         self.kinds() >= MANY_IMPROVING_KINDS || self.has_big_step()
     }
 
@@ -140,7 +140,7 @@ fn worth_testing(drawn: Tile, counts: &HashMap<Tile, u8>) -> bool {
 }
 
 /// How many kinds improve `tenpai`, and whether any adds three han.
-pub(super) fn count(
+pub(crate) fn count(
     tenpai: &[Tile],
     round_wind: Wind,
     seat_wind: Wind,

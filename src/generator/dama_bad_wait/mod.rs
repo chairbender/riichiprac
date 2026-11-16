@@ -17,7 +17,7 @@
 //! with the book's box rather than with the constructor.
 
 mod board;
-mod judgement;
+pub(crate) mod judgement;
 mod shapes;
 mod skeleton;
 

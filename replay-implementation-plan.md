@@ -1400,6 +1400,21 @@ R2 for replay states.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-16, B1 branch).** Recognisers live in `src/classifier/`
+> (`riichi.rs`, `push_fold.rs`, `defense.rs`, shared `support.rs`) and the miner
+> seam in `src/miner/classifier.rs`; the module is **not** behind the `miner`
+> feature because the B1 gate is the default app gate. `Match` carries the
+> plan's five fields plus the trigger/reason lists and pre-answer note the
+> shipped rationale needs, and `Match::stamp` writes them onto a state through
+> `finalize_state`. Two label overlaps are documented and pinned by tests:
+> (a) inside ch. 7, the general rule and the later `dama_*` sections can read the
+> same hand differently — `classify_unique` reports a `Conflict` and the miner
+> rejects the state (never picks a side); (b) in ch. 8, `defense_safety_chart`
+> stops above `CC` and the fallback lesson owns `CC`/`C`, so the chart
+> generator's `non_suji` theme (`CC`) is refused and may be labelled by the
+> fallback instead. The lesson owners should settle which shipped answer each
+> cell keeps before S2 selects from these families.
+
 ##### B2 — Classifier batch 2
 
 **Goal.** Cover the medium-difficulty lessons that produce valuable replay
@@ -2096,7 +2111,7 @@ AGPL separation, Q-value units, pack hosting and human review.
 | R1 | `src/replay/mod.rs`, `src/replay/mjai.rs`, `src/replay/validate.rs`, fixtures |
 | R2 | `src/replay/walker.rs`, `src/replay/reconstruct.rs`, `src/export/tenhou6.rs` |
 | C1–C8 | `riichiprac-corpus` (new private repo): `src/agent/`, `src/plan/`, `src/engine/`, `src/report/` |
-| B1–B3 | `src/miner/classifier/`, plus `matches()` next to lessons |
+| B1–B3 | `src/classifier/` (framework + per-family recognisers; it must build on the default app gate, so it is not behind `miner`), plus `src/miner/classifier.rs` for the replay-walker seam |
 | L1–L2 | `src/miner/label/`, `src/decision.rs`, `src/ai/wasm_bridge.rs` |
 | S1–S3 | `src/miner/select/`, `src/miner/triggers/` |
 | V1–V2 | `src/miner/transform/` |

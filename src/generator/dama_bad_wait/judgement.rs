@@ -22,11 +22,11 @@ use agari::tile::Tile;
 use crate::state::{DamaReason, RiichiTrigger};
 
 /// Three live winning tiles is the box's riichi threshold (ch7:521).
-pub(super) const RIICHI_MIN_LIVE_TILES: u8 = 3;
+pub(crate) const RIICHI_MIN_LIVE_TILES: u8 = 3;
 
 /// The box's verdict for one wait.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Verdict {
+pub(crate) enum Verdict {
     /// At least three live winning tiles: call riichi (ch7:521).
     ThreeLiveTiles,
     /// One or two live tiles on an honor/terminal wait: riichi anyway
@@ -38,12 +38,12 @@ pub(super) enum Verdict {
 
 impl Verdict {
     /// True when the box tells the player to declare Riichi.
-    pub(super) fn picks_riichi(self) -> bool {
+    pub(crate) fn picks_riichi(self) -> bool {
         !matches!(self, Self::DamaFewSimpleTiles)
     }
 
     /// The trigger that explains a riichi answer.
-    pub(super) fn trigger(self) -> Option<RiichiTrigger> {
+    pub(crate) fn trigger(self) -> Option<RiichiTrigger> {
         match self {
             Self::ThreeLiveTiles => Some(RiichiTrigger::ThreeLiveWinningTiles),
             Self::HonorTerminalWait => Some(RiichiTrigger::HonorTerminalWait),
@@ -57,7 +57,7 @@ impl Verdict {
 /// The count comes from the riichi-judgement `wait_quality` helper, which
 /// subtracts the hand's own copies and every table-visible copy. A wait with
 /// two kinds (the dual pon wait) still counts only the live tiles in total.
-pub(super) fn verdict(wait_tiles: &[Tile], live_tiles: u8) -> Verdict {
+pub(crate) fn verdict(wait_tiles: &[Tile], live_tiles: u8) -> Verdict {
     if live_tiles >= RIICHI_MIN_LIVE_TILES {
         Verdict::ThreeLiveTiles
     } else if live_tiles >= 1 && wait_tiles.iter().any(|tile| tile.is_terminal_or_honor()) {
@@ -72,7 +72,7 @@ pub(super) fn verdict(wait_tiles: &[Tile], live_tiles: u8) -> Verdict {
 /// The general rule's failures come first, then the box's own reason:
 /// riichi-only and non-dealer are what make the general rule say dama, and the
 /// small live-tile count is what keeps it dama under this section.
-pub(super) fn dama_reasons() -> Vec<DamaReason> {
+pub(crate) fn dama_reasons() -> Vec<DamaReason> {
     vec![
         DamaReason::NotDealer,
         DamaReason::BadWait,
