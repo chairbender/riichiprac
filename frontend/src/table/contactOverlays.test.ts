@@ -147,7 +147,7 @@ describe('overlay manifest', () => {
   });
 
   it('publishes lying catches for the pond and meld signatures', () => {
-    expect(Object.keys(lyingCatches.catches).length).toBeGreaterThan(50);
+    expect(Object.keys(lyingCatches.catches).length).toBeGreaterThanOrEqual(30);
     expect(lyingCatches.combination).toBe('physical+ao');
     const record = Object.values(lyingCatches.catches)[0];
     expect(record.signature).toBeDefined();

@@ -296,8 +296,8 @@
     },
     {
      "bodyIndex": 7,
-     "casterIndex": 13,
-     "side": "up"
+     "casterIndex": 8,
+     "side": "right"
     },
     {
      "bodyIndex": 8,
@@ -322,11 +322,6 @@
     {
      "bodyIndex": 12,
      "casterIndex": 18,
-     "side": "right"
-    },
-    {
-     "bodyIndex": 13,
-     "casterIndex": 19,
      "side": "right"
     },
     {
@@ -462,11 +457,11 @@
     },
     {
      "bodyIndex": 7,
-     "casterIndex": 13,
-     "shell": "shell_flat_sideways",
-     "contact": "up",
+     "casterIndex": 8,
+     "shell": "shell_flat_upright",
+     "contact": "right",
      "kind": "catch",
-     "cacheKey": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@0,78",
+     "cacheKey": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0",
      "drawX": 284,
      "drawY": 65,
      "texWidth": 76,
@@ -531,18 +526,6 @@
      "drawY": 131,
      "texWidth": 76,
      "texHeight": 106
-    },
-    {
-     "bodyIndex": 13,
-     "casterIndex": 19,
-     "shell": "shell_flat_upright",
-     "contact": "right",
-     "kind": "catch",
-     "cacheKey": "shell_flat_sideways|bottom|right:shell_flat_upright@0,53|up:shell_flat_upright@0,53",
-     "drawX": 284,
-     "drawY": 144,
-     "texWidth": 110,
-     "texHeight": 99
     },
     {
      "bodyIndex": 14,
@@ -917,11 +900,6 @@
      "side": "up"
     },
     {
-     "bodyIndex": 1,
-     "casterIndex": 5,
-     "side": "right"
-    },
-    {
      "bodyIndex": 2,
      "casterIndex": 6,
      "side": "up"
@@ -935,11 +913,6 @@
      "bodyIndex": 4,
      "casterIndex": 9,
      "side": "right"
-    },
-    {
-     "bodyIndex": 5,
-     "casterIndex": 9,
-     "side": "up"
     },
     {
      "bodyIndex": 6,
@@ -1041,18 +1014,6 @@
      "texHeight": 99
     },
     {
-     "bodyIndex": 1,
-     "casterIndex": 5,
-     "shell": "shell_flat_upright_180",
-     "contact": "right",
-     "kind": "catch",
-     "cacheKey": "shell_flat_sideways|right|left:shell_flat_upright_180@17,54|right:shell_flat_upright_180@17,54|up:shell_flat_upright_180@17,54",
-     "drawX": 217,
-     "drawY": 0,
-     "texWidth": 110,
-     "texHeight": 99
-    },
-    {
      "bodyIndex": 2,
      "casterIndex": 6,
      "shell": "shell_flat_sideways",
@@ -1087,18 +1048,6 @@
      "drawY": 65,
      "texWidth": 110,
      "texHeight": 99
-    },
-    {
-     "bodyIndex": 5,
-     "casterIndex": 9,
-     "shell": "shell_flat_sideways",
-     "contact": "up",
-     "kind": "catch",
-     "cacheKey": "shell_flat_upright_180|right|up:shell_flat_sideways@-17,67",
-     "drawX": 234,
-     "drawY": 54,
-     "texWidth": 76,
-     "texHeight": 106
     },
     {
      "bodyIndex": 6,
@@ -1585,8 +1534,8 @@
     },
     {
      "bodyIndex": 4,
-     "casterIndex": 10,
-     "side": "up"
+     "casterIndex": 5,
+     "side": "right"
     },
     {
      "bodyIndex": 5,
@@ -1611,11 +1560,6 @@
     {
      "bodyIndex": 9,
      "casterIndex": 15,
-     "side": "up"
-    },
-    {
-     "bodyIndex": 10,
-     "casterIndex": 16,
      "side": "up"
     },
     {
@@ -1730,11 +1674,11 @@
     },
     {
      "bodyIndex": 4,
-     "casterIndex": 10,
-     "shell": "shell_flat_sideways_270",
-     "contact": "up",
+     "casterIndex": 5,
+     "shell": "shell_flat_upright_180",
+     "contact": "right",
      "kind": "catch",
-     "cacheKey": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_sideways_270@-34,71",
+     "cacheKey": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0",
      "drawX": 110,
      "drawY": 0,
      "texWidth": 76,
@@ -1794,23 +1738,11 @@
      "shell": "shell_flat_upright_180",
      "contact": "up",
      "kind": "catch",
-     "cacheKey": "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,6|up:shell_flat_upright_180@0,65",
+     "cacheKey": "shell_flat_upright_180|top|up:shell_flat_upright_180@0,65",
      "drawX": 180,
      "drawY": 65,
      "texWidth": 76,
      "texHeight": 106
-    },
-    {
-     "bodyIndex": 10,
-     "casterIndex": 16,
-     "shell": "shell_flat_upright_180",
-     "contact": "up",
-     "kind": "catch",
-     "cacheKey": "shell_flat_sideways_270|top|right:shell_flat_upright_180@-70,-6|up:shell_flat_upright_180@34,60",
-     "drawX": 77,
-     "drawY": 71,
-     "texWidth": 110,
-     "texHeight": 99
     },
     {
      "bodyIndex": 11,
@@ -2286,11 +2218,6 @@
      "side": "up"
     },
     {
-     "bodyIndex": 14,
-     "casterIndex": 18,
-     "side": "right"
-    },
-    {
      "bodyIndex": 15,
      "casterIndex": 19,
      "side": "up"
@@ -2304,11 +2231,6 @@
      "bodyIndex": 17,
      "casterIndex": 22,
      "side": "right"
-    },
-    {
-     "bodyIndex": 18,
-     "casterIndex": 22,
-     "side": "up"
     },
     {
      "bodyIndex": 19,
@@ -2501,18 +2423,6 @@
      "texHeight": 99
     },
     {
-     "bodyIndex": 14,
-     "casterIndex": 18,
-     "shell": "shell_flat_upright",
-     "contact": "right",
-     "kind": "catch",
-     "cacheKey": "shell_flat_sideways_270|left|left:shell_flat_upright@17,55|right:shell_flat_upright@17,55|up:shell_flat_upright@17,55",
-     "drawX": 113,
-     "drawY": 165,
-     "texWidth": 110,
-     "texHeight": 99
-    },
-    {
      "bodyIndex": 15,
      "casterIndex": 19,
      "shell": "shell_flat_sideways_270",
@@ -2547,18 +2457,6 @@
      "drawY": 221,
      "texWidth": 110,
      "texHeight": 99
-    },
-    {
-     "bodyIndex": 18,
-     "casterIndex": 22,
-     "shell": "shell_flat_sideways_270",
-     "contact": "up",
-     "kind": "catch",
-     "cacheKey": "shell_flat_upright|left|up:shell_flat_sideways_270@-17,66",
-     "drawX": 130,
-     "drawY": 220,
-     "texWidth": 76,
-     "texHeight": 106
     },
     {
      "bodyIndex": 19,
@@ -4607,44 +4505,8 @@
      "gridY": 2
     }
    ],
-   "contacts": [
-    {
-     "bodyIndex": 0,
-     "casterIndex": 1,
-     "side": "right"
-    },
-    {
-     "bodyIndex": 1,
-     "casterIndex": 2,
-     "side": "right"
-    }
-   ],
-   "overlays": [
-    {
-     "bodyIndex": 0,
-     "casterIndex": 1,
-     "shell": "shell_flat_sideways",
-     "contact": "right",
-     "kind": "catch",
-     "cacheKey": "shell_flat_upright|bottom|right:shell_flat_sideways@-104,13",
-     "drawX": 180,
-     "drawY": 0,
-     "texWidth": 76,
-     "texHeight": 106
-    },
-    {
-     "bodyIndex": 1,
-     "casterIndex": 2,
-     "shell": "shell_flat_upright",
-     "contact": "right",
-     "kind": "catch",
-     "cacheKey": "shell_flat_sideways|bottom|right:shell_flat_upright@-69,-13",
-     "drawX": 75,
-     "drawY": 13,
-     "texWidth": 110,
-     "texHeight": 99
-    }
-   ]
+   "contacts": [],
+   "overlays": []
   },
   {
    "id": "melds-right",
@@ -4704,46 +4566,12 @@
    ],
    "contacts": [
     {
-     "bodyIndex": 0,
-     "casterIndex": 1,
-     "side": "up"
-    },
-    {
-     "bodyIndex": 1,
-     "casterIndex": 2,
-     "side": "up"
-    },
-    {
      "bodyIndex": 2,
      "casterIndex": 3,
      "side": "up"
     }
    ],
    "overlays": [
-    {
-     "bodyIndex": 0,
-     "casterIndex": 1,
-     "shell": "shell_flat_upright_180",
-     "contact": "up",
-     "kind": "catch",
-     "cacheKey": "shell_flat_sideways|right|left:shell_flat_upright_180@17,54|right:shell_flat_upright_180@17,54|up:shell_flat_upright_180@17,54",
-     "drawX": 9,
-     "drawY": 0,
-     "texWidth": 110,
-     "texHeight": 99
-    },
-    {
-     "bodyIndex": 1,
-     "casterIndex": 2,
-     "shell": "shell_flat_sideways",
-     "contact": "up",
-     "kind": "catch",
-     "cacheKey": "shell_flat_upright_180|right|up:shell_flat_sideways@-17,67",
-     "drawX": 26,
-     "drawY": 54,
-     "texWidth": 76,
-     "texHeight": 106
-    },
     {
      "bodyIndex": 2,
      "casterIndex": 3,

@@ -1469,8 +1469,7 @@ before the caster body, clipped to the target's **full advance box**, not the
 synthetic bands' inset `bodyQuads` hull. The lying ponds and melds extend the
 same method with multiple primary casters: the distinct
 `target | zone side | nearest caster per side` signatures from the full
-pond/meld stress matrix are published in `lying-catches.json` (**66 catches**,
-447,906 B). The resolver selects a lying catch by that signature before falling
+pond/meld stress matrix are published in `lying-catches.json` (**37 catches**, 291,723 B). The turned Riichi/called tile is excluded as a target and as a caster: its 3-D cell does not line up with the face-centred turn and produced a black-square shadow; those tiles stay unshadowed. The resolver selects a lying catch by that signature before falling
 back to the standing `target:caster` catch or a synthetic band. Walls remain
 disabled. The catch is already masked to the
 target's opaque body; the inset hull clips the bevel at the body edge and leaves

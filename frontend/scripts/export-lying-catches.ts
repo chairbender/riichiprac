@@ -13,7 +13,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseShellsManifest } from '../src/table/shellManifest';
 import type { ShellsManifest } from '../src/table/shellManifest';
-import { lyingSignature, primaryContacts } from '../src/table/contactOverlays';
+import { lyingPrimaryContacts, lyingSignature } from '../src/table/contactOverlays';
 import { layoutMeld, layoutPond } from '../src/table/zoneLayout';
 import type { LayoutZone, PondDiscard, TableSide } from '../src/table/zoneLayout';
 import type { TileFaceId } from '../src/table/tiles';
@@ -70,7 +70,7 @@ const addZone = (zone: LayoutZone, limit: number): void => {
   for (let targetIndex = 0; targetIndex < zone.bodies.length; targetIndex += 1) {
     const target = zone.bodies[targetIndex];
     if (!target.cell) continue;
-    const primaries = primaryContacts(manifest, zone, targetIndex);
+    const primaries = lyingPrimaryContacts(manifest, zone, targetIndex);
     if (primaries.length === 0) continue;
     const signature = lyingSignature(zone, targetIndex, primaries);
     if (jobs.has(signature)) continue;

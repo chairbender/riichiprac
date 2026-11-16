@@ -511,7 +511,7 @@ function checkLyingCatches() {
   check(lyingCatchesManifest.model === 'target-space-3d-catch', 'lying-catches model');
   check(lyingCatchesManifest.combination === 'physical+ao', 'lying catches combine physical and AO');
   const entries = Object.entries(lyingCatchesManifest.catches);
-  check(entries.length > 50, `lying-catches.json publishes ${entries.length} catches`);
+  check(entries.length >= 30, `lying-catches.json publishes ${entries.length} catches`);
   let total1x = 0;
   let total2x = 0;
   const expected1x = new Set();

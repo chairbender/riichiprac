@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** Validate the baked lying catches and publish frontend/public/table/lying-catches.json. */
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPng } from './png.mjs';
@@ -37,6 +37,21 @@ for (const [signature, record] of Object.entries(records)) {
     else total2x += bytes;
   }
 }
+// Remove textures from a previous, larger signature set.
+for (const [directory, catchRecords] of [
+  [resolve(tableDir, 'overlays/lying'), records],
+  [resolve(tableDir, 'overlays/lying/2x'), records],
+]) {
+  const expected = new Set(
+    Object.values(catchRecords).map((record) =>
+      (directory.endsWith('/2x') ? record.textureFile2x : record.textureFile).split('/').pop(),
+    ),
+  );
+  for (const file of readdirSync(directory)) {
+    if (file.endsWith('.png') && !expected.has(file)) unlinkSync(resolve(directory, file));
+  }
+}
+
 const manifest = {
   version: 1,
   generatedBy: 'tools/render/bake_lying_catches.py',

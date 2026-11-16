@@ -7,7 +7,7 @@
   "coordinateSpace": "The texture is the target shell texture in @1x px: draw it at the target drawX/drawY, after the target body and before its casters, clipped to the full target advance box.",
   "catches": {
     "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45": {
-      "id": "lying-0061",
+      "id": "lying-0032",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45",
@@ -19,8 +19,8 @@
           "dy": 45
         }
       ],
-      "textureFile": "overlays/lying/lying-0061.png",
-      "textureFile2x": "overlays/lying/2x/lying-0061.png",
+      "textureFile": "overlays/lying/lying-0032.png",
+      "textureFile2x": "overlays/lying/2x/lying-0032.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -34,7 +34,7 @@
       "bytes2x": 2779
     },
     "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55": {
-      "id": "lying-0066",
+      "id": "lying-0037",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55",
@@ -58,8 +58,8 @@
           "dy": 56
         }
       ],
-      "textureFile": "overlays/lying/lying-0066.png",
-      "textureFile2x": "overlays/lying/2x/lying-0066.png",
+      "textureFile": "overlays/lying/lying-0037.png",
+      "textureFile2x": "overlays/lying/2x/lying-0037.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -73,7 +73,7 @@
       "bytes2x": 10374
     },
     "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|up:shell_flat_sideways_270@0,55": {
-      "id": "lying-0062",
+      "id": "lying-0033",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|up:shell_flat_sideways_270@0,55",
@@ -91,8 +91,8 @@
           "dy": 56
         }
       ],
-      "textureFile": "overlays/lying/lying-0062.png",
-      "textureFile2x": "overlays/lying/2x/lying-0062.png",
+      "textureFile": "overlays/lying/lying-0033.png",
+      "textureFile2x": "overlays/lying/2x/lying-0033.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -106,7 +106,7 @@
       "bytes2x": 9514
     },
     "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,55": {
-      "id": "lying-0056",
+      "id": "lying-0027",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,55",
@@ -118,8 +118,8 @@
           "dy": 55
         }
       ],
-      "textureFile": "overlays/lying/lying-0056.png",
-      "textureFile2x": "overlays/lying/2x/lying-0056.png",
+      "textureFile": "overlays/lying/lying-0027.png",
+      "textureFile2x": "overlays/lying/2x/lying-0027.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -133,7 +133,7 @@
       "bytes2x": 2407
     },
     "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,65": {
-      "id": "lying-0057",
+      "id": "lying-0028",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,65",
@@ -145,8 +145,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0057.png",
-      "textureFile2x": "overlays/lying/2x/lying-0057.png",
+      "textureFile": "overlays/lying/lying-0028.png",
+      "textureFile2x": "overlays/lying/2x/lying-0028.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -159,47 +159,8 @@
       "bytes1x": 344,
       "bytes2x": 953
     },
-    "shell_flat_sideways_270|left|left:shell_flat_upright@17,55|right:shell_flat_upright@17,55|up:shell_flat_upright@17,55": {
-      "id": "lying-0053",
-      "target": "shell_flat_sideways_270",
-      "zoneSide": "left",
-      "signature": "shell_flat_sideways_270|left|left:shell_flat_upright@17,55|right:shell_flat_upright@17,55|up:shell_flat_upright@17,55",
-      "casters": [
-        {
-          "shell": "shell_flat_upright",
-          "side": "up",
-          "dx": 17,
-          "dy": 55
-        },
-        {
-          "shell": "shell_flat_upright",
-          "side": "left",
-          "dx": 17,
-          "dy": 55
-        },
-        {
-          "shell": "shell_flat_upright",
-          "side": "right",
-          "dx": 17,
-          "dy": 55
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0053.png",
-      "textureFile2x": "overlays/lying/2x/lying-0053.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.8324,
-      "supportPx": 4520,
-      "sha256": {
-        "decodedRgba1x": "4baade99ce53ec02db7635a27810babbeffda9916a87548247630ad8c54928d4",
-        "decodedRgba2x": "582ecd3472f660e582efd3cfde5b0af6460b6ebc66f90d813eb6e6af775cdeb2"
-      },
-      "bytes1x": 1510,
-      "bytes2x": 4212
-    },
     "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10": {
-      "id": "lying-0064",
+      "id": "lying-0035",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10",
@@ -211,8 +172,8 @@
           "dy": -10
         }
       ],
-      "textureFile": "overlays/lying/lying-0064.png",
-      "textureFile2x": "overlays/lying/2x/lying-0064.png",
+      "textureFile": "overlays/lying/lying-0035.png",
+      "textureFile2x": "overlays/lying/2x/lying-0035.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -226,7 +187,7 @@
       "bytes2x": 2487
     },
     "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55": {
-      "id": "lying-0058",
+      "id": "lying-0029",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55",
@@ -244,8 +205,8 @@
           "dy": 55
         }
       ],
-      "textureFile": "overlays/lying/lying-0058.png",
-      "textureFile2x": "overlays/lying/2x/lying-0058.png",
+      "textureFile": "overlays/lying/lying-0029.png",
+      "textureFile2x": "overlays/lying/2x/lying-0029.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -259,7 +220,7 @@
       "bytes2x": 9356
     },
     "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0": {
-      "id": "lying-0063",
+      "id": "lying-0034",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0",
@@ -271,8 +232,8 @@
           "dy": 0
         }
       ],
-      "textureFile": "overlays/lying/lying-0063.png",
-      "textureFile2x": "overlays/lying/2x/lying-0063.png",
+      "textureFile": "overlays/lying/lying-0034.png",
+      "textureFile2x": "overlays/lying/2x/lying-0034.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -286,7 +247,7 @@
       "bytes2x": 3440
     },
     "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0|up:shell_flat_sideways_270@0,55": {
-      "id": "lying-0055",
+      "id": "lying-0026",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0|up:shell_flat_sideways_270@0,55",
@@ -304,8 +265,8 @@
           "dy": 55
         }
       ],
-      "textureFile": "overlays/lying/lying-0055.png",
-      "textureFile2x": "overlays/lying/2x/lying-0055.png",
+      "textureFile": "overlays/lying/lying-0026.png",
+      "textureFile2x": "overlays/lying/2x/lying-0026.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -319,7 +280,7 @@
       "bytes2x": 9446
     },
     "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10": {
-      "id": "lying-0065",
+      "id": "lying-0036",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10",
@@ -331,8 +292,8 @@
           "dy": 10
         }
       ],
-      "textureFile": "overlays/lying/lying-0065.png",
-      "textureFile2x": "overlays/lying/2x/lying-0065.png",
+      "textureFile": "overlays/lying/lying-0036.png",
+      "textureFile2x": "overlays/lying/2x/lying-0036.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -346,7 +307,7 @@
       "bytes2x": 6641
     },
     "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10|up:shell_flat_sideways_270@0,55": {
-      "id": "lying-0060",
+      "id": "lying-0031",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10|up:shell_flat_sideways_270@0,55",
@@ -364,8 +325,8 @@
           "dy": 55
         }
       ],
-      "textureFile": "overlays/lying/lying-0060.png",
-      "textureFile2x": "overlays/lying/2x/lying-0060.png",
+      "textureFile": "overlays/lying/lying-0031.png",
+      "textureFile2x": "overlays/lying/2x/lying-0031.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -379,7 +340,7 @@
       "bytes2x": 8332
     },
     "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,65|up:shell_flat_sideways_270@0,55": {
-      "id": "lying-0059",
+      "id": "lying-0030",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,65|up:shell_flat_sideways_270@0,55",
@@ -397,8 +358,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0059.png",
-      "textureFile2x": "overlays/lying/2x/lying-0059.png",
+      "textureFile": "overlays/lying/lying-0030.png",
+      "textureFile2x": "overlays/lying/2x/lying-0030.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -412,7 +373,7 @@
       "bytes2x": 8612
     },
     "shell_flat_sideways_270|left|up:shell_flat_sideways_270@0,55": {
-      "id": "lying-0051",
+      "id": "lying-0025",
       "target": "shell_flat_sideways_270",
       "zoneSide": "left",
       "signature": "shell_flat_sideways_270|left|up:shell_flat_sideways_270@0,55",
@@ -424,8 +385,8 @@
           "dy": 55
         }
       ],
-      "textureFile": "overlays/lying/lying-0051.png",
-      "textureFile2x": "overlays/lying/2x/lying-0051.png",
+      "textureFile": "overlays/lying/lying-0025.png",
+      "textureFile2x": "overlays/lying/2x/lying-0025.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -438,299 +399,8 @@
       "bytes1x": 2704,
       "bytes2x": 8548
     },
-    "shell_flat_sideways_270|top|left:shell_flat_upright_180@34,60|up:shell_flat_upright_180@34,60": {
-      "id": "lying-0050",
-      "target": "shell_flat_sideways_270",
-      "zoneSide": "top",
-      "signature": "shell_flat_sideways_270|top|left:shell_flat_upright_180@34,60|up:shell_flat_upright_180@34,60",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": 34,
-          "dy": 59
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "left",
-          "dx": 34,
-          "dy": 59
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0050.png",
-      "textureFile2x": "overlays/lying/2x/lying-0050.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.79,
-      "supportPx": 3614,
-      "sha256": {
-        "decodedRgba1x": "efedb01ffd7cf97d1fa36a71646f2a5f73dc1fbaab419033b848b0229bf95840",
-        "decodedRgba2x": "8f01ecf90bd17cc8825f73418fc14601367af8760ab16c9aa3bd154a090c0b07"
-      },
-      "bytes1x": 1104,
-      "bytes2x": 3161
-    },
-    "shell_flat_sideways_270|top|right:shell_flat_upright_180@-36,60|up:shell_flat_upright_180@34,60": {
-      "id": "lying-0040",
-      "target": "shell_flat_sideways_270",
-      "zoneSide": "top",
-      "signature": "shell_flat_sideways_270|top|right:shell_flat_upright_180@-36,60|up:shell_flat_upright_180@34,60",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": 34,
-          "dy": 59
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": -35,
-          "dy": 59
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0040.png",
-      "textureFile2x": "overlays/lying/2x/lying-0040.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.5397,
-      "supportPx": 4483,
-      "sha256": {
-        "decodedRgba1x": "0900b2ea310d8a29cc43b7a68d8f9e8ebe871c4a66b5c5282c7a8d2c4b473b60",
-        "decodedRgba2x": "1360db0ab5c5b78107e9c4ab6a25d6c31faa8d44b34023ae8c2344be698ce936"
-      },
-      "bytes1x": 2099,
-      "bytes2x": 6353
-    },
-    "shell_flat_sideways_270|top|right:shell_flat_upright_180@-70,-6": {
-      "id": "lying-0029",
-      "target": "shell_flat_sideways_270",
-      "zoneSide": "top",
-      "signature": "shell_flat_sideways_270|top|right:shell_flat_upright_180@-70,-6",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": -71,
-          "dy": -6
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0029.png",
-      "textureFile2x": "overlays/lying/2x/lying-0029.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.3178,
-      "supportPx": 1244,
-      "sha256": {
-        "decodedRgba1x": "88386882b6770c2e18e837bf83b37a25857c40d76757b22021fef53fc3f4fca4",
-        "decodedRgba2x": "f033b2f89aa539daf16793d00d8c5913a03921d8f2199edbb6db8f5b410d1b73"
-      },
-      "bytes1x": 1680,
-      "bytes2x": 5635
-    },
-    "shell_flat_sideways_270|top|right:shell_flat_upright_180@-70,-6|up:shell_flat_upright_180@34,60": {
-      "id": "lying-0045",
-      "target": "shell_flat_sideways_270",
-      "zoneSide": "top",
-      "signature": "shell_flat_sideways_270|top|right:shell_flat_upright_180@-70,-6|up:shell_flat_upright_180@34,60",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": -70,
-          "dy": -6
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": 34,
-          "dy": 59
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0045.png",
-      "textureFile2x": "overlays/lying/2x/lying-0045.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.2992,
-      "supportPx": 4110,
-      "sha256": {
-        "decodedRgba1x": "653709521abf13478b3d70615ef3caa0f14d23efe394f96909df000eeae7f931",
-        "decodedRgba2x": "7bd0d0ad2bba192342c36f11667002e49605171bc61beaca081ccfb7e83778e4"
-      },
-      "bytes1x": 2289,
-      "bytes2x": 7575
-    },
-    "shell_flat_sideways_270|top|right:shell_flat_upright_180@17,60|up:shell_flat_upright_180@17,60": {
-      "id": "lying-0033",
-      "target": "shell_flat_sideways_270",
-      "zoneSide": "top",
-      "signature": "shell_flat_sideways_270|top|right:shell_flat_upright_180@17,60|up:shell_flat_upright_180@17,60",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": 17,
-          "dy": 60
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": 17,
-          "dy": 60
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0033.png",
-      "textureFile2x": "overlays/lying/2x/lying-0033.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.7314,
-      "supportPx": 4357,
-      "sha256": {
-        "decodedRgba1x": "ce58aec2a8078d9e17ba0f2bd1bcb08d704bb1dcb07d1b010b53f62ccc5deb77",
-        "decodedRgba2x": "1f4707e66b88da3fe1a7fb1b62ded32aa74714e9cbdf7990aa2e23d8df4d42ad"
-      },
-      "bytes1x": 1777,
-      "bytes2x": 5771
-    },
-    "shell_flat_sideways_270|top|right:shell_flat_upright_180@34,60|up:shell_flat_upright_180@34,60": {
-      "id": "lying-0047",
-      "target": "shell_flat_sideways_270",
-      "zoneSide": "top",
-      "signature": "shell_flat_sideways_270|top|right:shell_flat_upright_180@34,60|up:shell_flat_upright_180@34,60",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": 33,
-          "dy": 59
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": 33,
-          "dy": 59
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0047.png",
-      "textureFile2x": "overlays/lying/2x/lying-0047.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.785,
-      "supportPx": 3924,
-      "sha256": {
-        "decodedRgba1x": "ef512f7f09cfb3da8482fb98be4f5e4d2bfecc7c64847ab875cd966351cab363",
-        "decodedRgba2x": "23fab4dd2aee9aa028ea52439e44903bb49bc76f38637ed5b46450844c94b8de"
-      },
-      "bytes1x": 1209,
-      "bytes2x": 3380
-    },
-    "shell_flat_sideways|bottom|left:shell_flat_upright@17,53|right:shell_flat_upright@17,53|up:shell_flat_upright@17,53": {
-      "id": "lying-0005",
-      "target": "shell_flat_sideways",
-      "zoneSide": "bottom",
-      "signature": "shell_flat_sideways|bottom|left:shell_flat_upright@17,53|right:shell_flat_upright@17,53|up:shell_flat_upright@17,53",
-      "casters": [
-        {
-          "shell": "shell_flat_upright",
-          "side": "up",
-          "dx": 17,
-          "dy": 52
-        },
-        {
-          "shell": "shell_flat_upright",
-          "side": "left",
-          "dx": 17,
-          "dy": 52
-        },
-        {
-          "shell": "shell_flat_upright",
-          "side": "right",
-          "dx": 17,
-          "dy": 52
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0005.png",
-      "textureFile2x": "overlays/lying/2x/lying-0005.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.857,
-      "supportPx": 4580,
-      "sha256": {
-        "decodedRgba1x": "f9b77d01fed8c87b0f41e8fe5ddcb7eb67b998464df12dfcb377436483f6a68c",
-        "decodedRgba2x": "427a472c8ecf1237d2fcec5c64821333e2716561c5654fc3b5db36e008048156"
-      },
-      "bytes1x": 1263,
-      "bytes2x": 3651
-    },
-    "shell_flat_sideways|bottom|right:shell_flat_upright@-69,-13": {
-      "id": "lying-0002",
-      "target": "shell_flat_sideways",
-      "zoneSide": "bottom",
-      "signature": "shell_flat_sideways|bottom|right:shell_flat_upright@-69,-13",
-      "casters": [
-        {
-          "shell": "shell_flat_upright",
-          "side": "right",
-          "dx": -69,
-          "dy": -13
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0002.png",
-      "textureFile2x": "overlays/lying/2x/lying-0002.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.3233,
-      "supportPx": 464,
-      "sha256": {
-        "decodedRgba1x": "aa4834dfe2bea7562f8fb8b069469a0ecf1ccb63419e3fe842b92ac04a00fec6",
-        "decodedRgba2x": "1464a1e675138be263937a68318f6feafae067d4aca139e78d0c590aee92346f"
-      },
-      "bytes1x": 882,
-      "bytes2x": 3273
-    },
-    "shell_flat_sideways|bottom|right:shell_flat_upright@0,53|up:shell_flat_upright@0,53": {
-      "id": "lying-0010",
-      "target": "shell_flat_sideways",
-      "zoneSide": "bottom",
-      "signature": "shell_flat_sideways|bottom|right:shell_flat_upright@0,53|up:shell_flat_upright@0,53",
-      "casters": [
-        {
-          "shell": "shell_flat_upright",
-          "side": "right",
-          "dx": 1,
-          "dy": 52
-        },
-        {
-          "shell": "shell_flat_upright",
-          "side": "up",
-          "dx": 1,
-          "dy": 52
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0010.png",
-      "textureFile2x": "overlays/lying/2x/lying-0010.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.8111,
-      "supportPx": 4547,
-      "sha256": {
-        "decodedRgba1x": "154544f5e625f7a5eae0cbc293d83690134d13cec7f79a31da554bf422890859",
-        "decodedRgba2x": "76940483dfc6204b5ce0b2a7dac43b15e073418a7363acc4fb698bc3c0243160"
-      },
-      "bytes1x": 1550,
-      "bytes2x": 4726
-    },
     "shell_flat_sideways|right|left:shell_flat_sideways@104,45|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55": {
-      "id": "lying-0026",
+      "id": "lying-0015",
       "target": "shell_flat_sideways",
       "zoneSide": "right",
       "signature": "shell_flat_sideways|right|left:shell_flat_sideways@104,45|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55",
@@ -754,8 +424,8 @@
           "dy": 56
         }
       ],
-      "textureFile": "overlays/lying/lying-0026.png",
-      "textureFile2x": "overlays/lying/2x/lying-0026.png",
+      "textureFile": "overlays/lying/lying-0015.png",
+      "textureFile2x": "overlays/lying/2x/lying-0015.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -769,7 +439,7 @@
       "bytes2x": 10444
     },
     "shell_flat_sideways|right|left:shell_flat_sideways@104,45|up:shell_flat_sideways@0,55": {
-      "id": "lying-0024",
+      "id": "lying-0013",
       "target": "shell_flat_sideways",
       "zoneSide": "right",
       "signature": "shell_flat_sideways|right|left:shell_flat_sideways@104,45|up:shell_flat_sideways@0,55",
@@ -787,8 +457,8 @@
           "dy": 56
         }
       ],
-      "textureFile": "overlays/lying/lying-0024.png",
-      "textureFile2x": "overlays/lying/2x/lying-0024.png",
+      "textureFile": "overlays/lying/lying-0013.png",
+      "textureFile2x": "overlays/lying/2x/lying-0013.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -801,86 +471,8 @@
       "bytes1x": 2952,
       "bytes2x": 9527
     },
-    "shell_flat_sideways|right|left:shell_flat_upright_180@17,54|right:shell_flat_upright_180@17,54|up:shell_flat_upright_180@17,54": {
-      "id": "lying-0019",
-      "target": "shell_flat_sideways",
-      "zoneSide": "right",
-      "signature": "shell_flat_sideways|right|left:shell_flat_upright_180@17,54|right:shell_flat_upright_180@17,54|up:shell_flat_upright_180@17,54",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": 17,
-          "dy": 54
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "left",
-          "dx": 17,
-          "dy": 54
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": 17,
-          "dy": 54
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0019.png",
-      "textureFile2x": "overlays/lying/2x/lying-0019.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.843,
-      "supportPx": 4522,
-      "sha256": {
-        "decodedRgba1x": "fb32bb583920480931d1d514869e2427f603114948299272e5ffec0a56dccc60",
-        "decodedRgba2x": "c615fa3c3a479e84802b3d1f4426d30336ef10ee8ec285f595b2e8fc85137726"
-      },
-      "bytes1x": 1384,
-      "bytes2x": 3893
-    },
-    "shell_flat_sideways|right|left:shell_flat_upright_180@17,60|right:shell_flat_upright_180@17,60|up:shell_flat_upright_180@17,60": {
-      "id": "lying-0017",
-      "target": "shell_flat_sideways",
-      "zoneSide": "right",
-      "signature": "shell_flat_sideways|right|left:shell_flat_upright_180@17,60|right:shell_flat_upright_180@17,60|up:shell_flat_upright_180@17,60",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": 17,
-          "dy": 60
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "left",
-          "dx": 17,
-          "dy": 60
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": 17,
-          "dy": 60
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0017.png",
-      "textureFile2x": "overlays/lying/2x/lying-0017.png",
-      "texWidth": 110,
-      "texHeight": 99,
-      "peakAlpha": 1,
-      "meanAlpha": 0.631,
-      "supportPx": 4440,
-      "sha256": {
-        "decodedRgba1x": "29567053d7760ecbc856d7d3a60a1b3bc46fe637c85001b3b3ec12250ca82f99",
-        "decodedRgba2x": "8b96d1dcddfdb42423eb633d7c534e4d9dc0ce17113d3f961f6b0c249b12b313"
-      },
-      "bytes1x": 2964,
-      "bytes2x": 9599
-    },
     "shell_flat_sideways|right|right:shell_flat_sideways@-104,-10|up:shell_flat_sideways@0,55": {
-      "id": "lying-0022",
+      "id": "lying-0011",
       "target": "shell_flat_sideways",
       "zoneSide": "right",
       "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,-10|up:shell_flat_sideways@0,55",
@@ -898,8 +490,8 @@
           "dy": 55
         }
       ],
-      "textureFile": "overlays/lying/lying-0022.png",
-      "textureFile2x": "overlays/lying/2x/lying-0022.png",
+      "textureFile": "overlays/lying/lying-0011.png",
+      "textureFile2x": "overlays/lying/2x/lying-0011.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -913,7 +505,7 @@
       "bytes2x": 9361
     },
     "shell_flat_sideways|right|right:shell_flat_sideways@-104,0": {
-      "id": "lying-0020",
+      "id": "lying-0009",
       "target": "shell_flat_sideways",
       "zoneSide": "right",
       "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,0",
@@ -925,8 +517,8 @@
           "dy": 0
         }
       ],
-      "textureFile": "overlays/lying/lying-0020.png",
-      "textureFile2x": "overlays/lying/2x/lying-0020.png",
+      "textureFile": "overlays/lying/lying-0009.png",
+      "textureFile2x": "overlays/lying/2x/lying-0009.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -940,7 +532,7 @@
       "bytes2x": 3440
     },
     "shell_flat_sideways|right|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55": {
-      "id": "lying-0021",
+      "id": "lying-0010",
       "target": "shell_flat_sideways",
       "zoneSide": "right",
       "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55",
@@ -958,8 +550,8 @@
           "dy": 55
         }
       ],
-      "textureFile": "overlays/lying/lying-0021.png",
-      "textureFile2x": "overlays/lying/2x/lying-0021.png",
+      "textureFile": "overlays/lying/lying-0010.png",
+      "textureFile2x": "overlays/lying/2x/lying-0010.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -973,7 +565,7 @@
       "bytes2x": 9452
     },
     "shell_flat_sideways|right|right:shell_flat_sideways@-104,10|up:shell_flat_sideways@0,55": {
-      "id": "lying-0025",
+      "id": "lying-0014",
       "target": "shell_flat_sideways",
       "zoneSide": "right",
       "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,10|up:shell_flat_sideways@0,55",
@@ -991,8 +583,8 @@
           "dy": 55
         }
       ],
-      "textureFile": "overlays/lying/lying-0025.png",
-      "textureFile2x": "overlays/lying/2x/lying-0025.png",
+      "textureFile": "overlays/lying/lying-0014.png",
+      "textureFile2x": "overlays/lying/2x/lying-0014.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -1006,7 +598,7 @@
       "bytes2x": 8331
     },
     "shell_flat_sideways|right|right:shell_flat_sideways@-104,55|up:shell_flat_sideways@0,55": {
-      "id": "lying-0023",
+      "id": "lying-0012",
       "target": "shell_flat_sideways",
       "zoneSide": "right",
       "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,55|up:shell_flat_sideways@0,55",
@@ -1024,8 +616,8 @@
           "dy": 55
         }
       ],
-      "textureFile": "overlays/lying/lying-0023.png",
-      "textureFile2x": "overlays/lying/2x/lying-0023.png",
+      "textureFile": "overlays/lying/lying-0012.png",
+      "textureFile2x": "overlays/lying/2x/lying-0012.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -1039,7 +631,7 @@
       "bytes2x": 8685
     },
     "shell_flat_sideways|right|up:shell_flat_sideways@0,55": {
-      "id": "lying-0016",
+      "id": "lying-0008",
       "target": "shell_flat_sideways",
       "zoneSide": "right",
       "signature": "shell_flat_sideways|right|up:shell_flat_sideways@0,55",
@@ -1051,8 +643,8 @@
           "dy": 55
         }
       ],
-      "textureFile": "overlays/lying/lying-0016.png",
-      "textureFile2x": "overlays/lying/2x/lying-0016.png",
+      "textureFile": "overlays/lying/lying-0008.png",
+      "textureFile2x": "overlays/lying/2x/lying-0008.png",
       "texWidth": 110,
       "texHeight": 99,
       "peakAlpha": 1,
@@ -1065,113 +657,8 @@
       "bytes1x": 2697,
       "bytes2x": 8548
     },
-    "shell_flat_upright_180|right|up:shell_flat_sideways@-17,67": {
-      "id": "lying-0018",
-      "target": "shell_flat_upright_180",
-      "zoneSide": "right",
-      "signature": "shell_flat_upright_180|right|up:shell_flat_sideways@-17,67",
-      "casters": [
-        {
-          "shell": "shell_flat_sideways",
-          "side": "up",
-          "dx": -17,
-          "dy": 67
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0018.png",
-      "textureFile2x": "overlays/lying/2x/lying-0018.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.5729,
-      "supportPx": 2756,
-      "sha256": {
-        "decodedRgba1x": "d3276d503712a99e9f76594a827283cfbc6fa2e366b77d73c74eb964a162e330",
-        "decodedRgba2x": "b402767502847e1c9857940abe77d28e57d1fe0022c89a5983e26e2af605fb1b"
-      },
-      "bytes1x": 1855,
-      "bytes2x": 5800
-    },
-    "shell_flat_upright_180|top|left:shell_flat_sideways_270@52,71|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@-35,65": {
-      "id": "lying-0036",
-      "target": "shell_flat_upright_180",
-      "zoneSide": "top",
-      "signature": "shell_flat_upright_180|top|left:shell_flat_sideways_270@52,71|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@-35,65",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": -35,
-          "dy": 65
-        },
-        {
-          "shell": "shell_flat_sideways_270",
-          "side": "left",
-          "dx": 52,
-          "dy": 71
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": -35,
-          "dy": 65
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0036.png",
-      "textureFile2x": "overlays/lying/2x/lying-0036.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.6368,
-      "supportPx": 1841,
-      "sha256": {
-        "decodedRgba1x": "4bb05bea94d95a1de46f72afa4d02f7005d07d9728c254b8cd6b1799eaab9c1c",
-        "decodedRgba2x": "324b1b1007d007d2f0591ffe754f43a9d7b776edbb924bc261b714e6da0fe7ef"
-      },
-      "bytes1x": 1051,
-      "bytes2x": 2991
-    },
-    "shell_flat_upright_180|top|left:shell_flat_sideways_270@52,71|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65": {
-      "id": "lying-0041",
-      "target": "shell_flat_upright_180",
-      "zoneSide": "top",
-      "signature": "shell_flat_upright_180|top|left:shell_flat_sideways_270@52,71|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": -70,
-          "dy": 0
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": -35,
-          "dy": 65
-        },
-        {
-          "shell": "shell_flat_sideways_270",
-          "side": "left",
-          "dx": 52,
-          "dy": 71
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0041.png",
-      "textureFile2x": "overlays/lying/2x/lying-0041.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.5511,
-      "supportPx": 2034,
-      "sha256": {
-        "decodedRgba1x": "26f08e01ee81956d93c67027d3c1d23a9dd228c69dc12387c4b948d630ece125",
-        "decodedRgba2x": "8691f88f8c39d4f440cf783f1fe5f7b28cb7ad16ed79807b86b3075b2148e268"
-      },
-      "bytes1x": 1544,
-      "bytes2x": 4055
-    },
     "shell_flat_upright_180|top|left:shell_flat_upright_180@35,65|up:shell_flat_upright_180@35,65": {
-      "id": "lying-0049",
+      "id": "lying-0024",
       "target": "shell_flat_upright_180",
       "zoneSide": "top",
       "signature": "shell_flat_upright_180|top|left:shell_flat_upright_180@35,65|up:shell_flat_upright_180@35,65",
@@ -1189,8 +676,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0049.png",
-      "textureFile2x": "overlays/lying/2x/lying-0049.png",
+      "textureFile": "overlays/lying/lying-0024.png",
+      "textureFile2x": "overlays/lying/2x/lying-0024.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1203,101 +690,8 @@
       "bytes1x": 1038,
       "bytes2x": 2979
     },
-    "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,6": {
-      "id": "lying-0028",
-      "target": "shell_flat_upright_180",
-      "zoneSide": "top",
-      "signature": "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,6",
-      "casters": [
-        {
-          "shell": "shell_flat_sideways_270",
-          "side": "right",
-          "dx": -103,
-          "dy": 6
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0028.png",
-      "textureFile2x": "overlays/lying/2x/lying-0028.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.1988,
-      "supportPx": 402,
-      "sha256": {
-        "decodedRgba1x": "f73b58d496bf3f3317e1b3127cc40c417e0b15b92636c29a3a770b9fae39d69e",
-        "decodedRgba2x": "4d0ffc8c09c38ee4248490c3f1a91429664b3718bb28447abcc7959240f6e09a"
-      },
-      "bytes1x": 844,
-      "bytes2x": 1916
-    },
-    "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,6|up:shell_flat_upright_180@0,65": {
-      "id": "lying-0039",
-      "target": "shell_flat_upright_180",
-      "zoneSide": "top",
-      "signature": "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,6|up:shell_flat_upright_180@0,65",
-      "casters": [
-        {
-          "shell": "shell_flat_sideways_270",
-          "side": "right",
-          "dx": -103,
-          "dy": 6
-        },
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": 0,
-          "dy": 65
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0039.png",
-      "textureFile2x": "overlays/lying/2x/lying-0039.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.7068,
-      "supportPx": 3038,
-      "sha256": {
-        "decodedRgba1x": "6b11ac07766cc978bf6474270274240cf75f1c09587c2fc48c950c1e3ad08224",
-        "decodedRgba2x": "d05bd793d827bd8594a6092f89f7059747ea57abe5fc6f1d4bb1b6fa1ef7912c"
-      },
-      "bytes1x": 1733,
-      "bytes2x": 4961
-    },
-    "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,71|up:shell_flat_upright_180@0,65": {
-      "id": "lying-0032",
-      "target": "shell_flat_upright_180",
-      "zoneSide": "top",
-      "signature": "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,71|up:shell_flat_upright_180@0,65",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "up",
-          "dx": 0,
-          "dy": 65
-        },
-        {
-          "shell": "shell_flat_sideways_270",
-          "side": "right",
-          "dx": -103,
-          "dy": 71
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0032.png",
-      "textureFile2x": "overlays/lying/2x/lying-0032.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.7401,
-      "supportPx": 2808,
-      "sha256": {
-        "decodedRgba1x": "4b0b6f3579b3de287d384a08f0f9e2083ebfe4b0d027b6d9a10099b7c24bc372",
-        "decodedRgba2x": "49fa4456ff5817c36a4c15536efa6793600988ccd5cf4a437899e5e247b62fe4"
-      },
-      "bytes1x": 1444,
-      "bytes2x": 4242
-    },
     "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@-35,65": {
-      "id": "lying-0042",
+      "id": "lying-0020",
       "target": "shell_flat_upright_180",
       "zoneSide": "top",
       "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@-35,65",
@@ -1305,32 +699,32 @@
         {
           "shell": "shell_flat_upright_180",
           "side": "up",
-          "dx": -34,
+          "dx": -35,
           "dy": 65
         },
         {
           "shell": "shell_flat_upright_180",
           "side": "right",
-          "dx": -34,
+          "dx": -35,
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0042.png",
-      "textureFile2x": "overlays/lying/2x/lying-0042.png",
+      "textureFile": "overlays/lying/lying-0020.png",
+      "textureFile2x": "overlays/lying/2x/lying-0020.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
-      "meanAlpha": 0.6034,
-      "supportPx": 2535,
+      "meanAlpha": 0.5955,
+      "supportPx": 2520,
       "sha256": {
-        "decodedRgba1x": "9876c504c4b2459baf77a080d0c4e425c24e9e4dc81dc3e5802438bbef6af606",
-        "decodedRgba2x": "df2e2f3bd53bb60d8baa8c1e6fc7dded12fb6f9e583523f0a34b922cd276434c"
+        "decodedRgba1x": "e7578d339002a424e8a664cbeadbab3784b818ed228f5ed196daeaeda0546ff6",
+        "decodedRgba2x": "882b584d9c4670f0dd88773b0743a660a80c247d314746f976f6abadb07b7b22"
       },
-      "bytes1x": 1758,
-      "bytes2x": 5023
+      "bytes1x": 1737,
+      "bytes2x": 5104
     },
     "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@35,65": {
-      "id": "lying-0038",
+      "id": "lying-0021",
       "target": "shell_flat_upright_180",
       "zoneSide": "top",
       "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@35,65",
@@ -1348,8 +742,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0038.png",
-      "textureFile2x": "overlays/lying/2x/lying-0038.png",
+      "textureFile": "overlays/lying/lying-0021.png",
+      "textureFile2x": "overlays/lying/2x/lying-0021.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1363,7 +757,7 @@
       "bytes2x": 3589
     },
     "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0": {
-      "id": "lying-0027",
+      "id": "lying-0016",
       "target": "shell_flat_upright_180",
       "zoneSide": "top",
       "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0",
@@ -1375,8 +769,8 @@
           "dy": 0
         }
       ],
-      "textureFile": "overlays/lying/lying-0027.png",
-      "textureFile2x": "overlays/lying/2x/lying-0027.png",
+      "textureFile": "overlays/lying/lying-0016.png",
+      "textureFile2x": "overlays/lying/2x/lying-0016.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1389,44 +783,11 @@
       "bytes1x": 867,
       "bytes2x": 2004
     },
-    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_sideways_270@-17,71": {
-      "id": "lying-0035",
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65": {
+      "id": "lying-0022",
       "target": "shell_flat_upright_180",
       "zoneSide": "top",
-      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_sideways_270@-17,71",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": -69,
-          "dy": 0
-        },
-        {
-          "shell": "shell_flat_sideways_270",
-          "side": "up",
-          "dx": -17,
-          "dy": 71
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0035.png",
-      "textureFile2x": "overlays/lying/2x/lying-0035.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.2766,
-      "supportPx": 2763,
-      "sha256": {
-        "decodedRgba1x": "4cbd0d8f4f23a6cef19d066f001cff25981fcaa60adb5f944c61d73c0d5a1fb6",
-        "decodedRgba2x": "ff822868913b7a9138d8a8ab7b2e2f1a25116b7dcafe32ca0b65797426dd162c"
-      },
-      "bytes1x": 1290,
-      "bytes2x": 3611
-    },
-    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_sideways_270@-34,71": {
-      "id": "lying-0043",
-      "target": "shell_flat_upright_180",
-      "zoneSide": "top",
-      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_sideways_270@-34,71",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65",
       "casters": [
         {
           "shell": "shell_flat_upright_180",
@@ -1435,61 +796,28 @@
           "dy": 0
         },
         {
-          "shell": "shell_flat_sideways_270",
-          "side": "up",
-          "dx": -34,
-          "dy": 71
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0043.png",
-      "textureFile2x": "overlays/lying/2x/lying-0043.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.2588,
-      "supportPx": 2719,
-      "sha256": {
-        "decodedRgba1x": "52877e89e74801ee35f6d862c6be87870c36ac5bc84853dff0e2f7099621991b",
-        "decodedRgba2x": "19a562d06cb2c43934cb5c654a51ecd2bddcd810752621fec76294792c461e46"
-      },
-      "bytes1x": 1377,
-      "bytes2x": 3737
-    },
-    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65": {
-      "id": "lying-0046",
-      "target": "shell_flat_upright_180",
-      "zoneSide": "top",
-      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65",
-      "casters": [
-        {
-          "shell": "shell_flat_upright_180",
-          "side": "right",
-          "dx": -69,
-          "dy": 0
-        },
-        {
           "shell": "shell_flat_upright_180",
           "side": "up",
-          "dx": -34,
+          "dx": -35,
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0046.png",
-      "textureFile2x": "overlays/lying/2x/lying-0046.png",
+      "textureFile": "overlays/lying/lying-0022.png",
+      "textureFile2x": "overlays/lying/2x/lying-0022.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
-      "meanAlpha": 0.5496,
+      "meanAlpha": 0.5313,
       "supportPx": 2780,
       "sha256": {
-        "decodedRgba1x": "35320029375fcd3cedcb21361ee1741882b23d3e71052e5d1478ebbb1954791e",
-        "decodedRgba2x": "25d4e22bb1db288b0200181eaa424a546ec6e22535c9a7f6240946ae14957e5f"
+        "decodedRgba1x": "5ac664db8d15149f1bac0cb67ab210c5657650d15aede5ca7552a969a0d7a680",
+        "decodedRgba2x": "da73e9447bb9c43ac00b937b81a50e62b7717602c92afaeb3b3a42c20c1f1fd2"
       },
-      "bytes1x": 2173,
-      "bytes2x": 6375
+      "bytes1x": 2184,
+      "bytes2x": 6298
     },
     "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@0,65": {
-      "id": "lying-0034",
+      "id": "lying-0019",
       "target": "shell_flat_upright_180",
       "zoneSide": "top",
       "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@0,65",
@@ -1507,8 +835,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0034.png",
-      "textureFile2x": "overlays/lying/2x/lying-0034.png",
+      "textureFile": "overlays/lying/lying-0019.png",
+      "textureFile2x": "overlays/lying/2x/lying-0019.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1522,7 +850,7 @@
       "bytes2x": 5045
     },
     "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@35,65": {
-      "id": "lying-0044",
+      "id": "lying-0023",
       "target": "shell_flat_upright_180",
       "zoneSide": "top",
       "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@35,65",
@@ -1540,8 +868,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0044.png",
-      "textureFile2x": "overlays/lying/2x/lying-0044.png",
+      "textureFile": "overlays/lying/lying-0023.png",
+      "textureFile2x": "overlays/lying/2x/lying-0023.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1555,7 +883,7 @@
       "bytes2x": 5141
     },
     "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,65|up:shell_flat_upright_180@0,65": {
-      "id": "lying-0030",
+      "id": "lying-0017",
       "target": "shell_flat_upright_180",
       "zoneSide": "top",
       "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,65|up:shell_flat_upright_180@0,65",
@@ -1573,8 +901,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0030.png",
-      "textureFile2x": "overlays/lying/2x/lying-0030.png",
+      "textureFile": "overlays/lying/lying-0017.png",
+      "textureFile2x": "overlays/lying/2x/lying-0017.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1587,62 +915,8 @@
       "bytes1x": 1485,
       "bytes2x": 4187
     },
-    "shell_flat_upright_180|top|up:shell_flat_sideways_270@-17,71": {
-      "id": "lying-0031",
-      "target": "shell_flat_upright_180",
-      "zoneSide": "top",
-      "signature": "shell_flat_upright_180|top|up:shell_flat_sideways_270@-17,71",
-      "casters": [
-        {
-          "shell": "shell_flat_sideways_270",
-          "side": "up",
-          "dx": -17,
-          "dy": 71
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0031.png",
-      "textureFile2x": "overlays/lying/2x/lying-0031.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.1985,
-      "supportPx": 2458,
-      "sha256": {
-        "decodedRgba1x": "185003bdb0d23256db6ec03ab8b76da9644a88c9244ec35364997eb0a019a345",
-        "decodedRgba2x": "0b0bc1d4f19db4a787b39ad61608edfd56f746c2e4bab72867b71b74628cf32e"
-      },
-      "bytes1x": 1024,
-      "bytes2x": 3001
-    },
-    "shell_flat_upright_180|top|up:shell_flat_sideways_270@-34,71": {
-      "id": "lying-0037",
-      "target": "shell_flat_upright_180",
-      "zoneSide": "top",
-      "signature": "shell_flat_upright_180|top|up:shell_flat_sideways_270@-34,71",
-      "casters": [
-        {
-          "shell": "shell_flat_sideways_270",
-          "side": "up",
-          "dx": -34,
-          "dy": 71
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0037.png",
-      "textureFile2x": "overlays/lying/2x/lying-0037.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.1924,
-      "supportPx": 2410,
-      "sha256": {
-        "decodedRgba1x": "9e1b580afc5c8022e1c5128fe597339d2c98c199cc525fb53588a7a62527b856",
-        "decodedRgba2x": "565b16a59a8057a5dbd6391da90ee1e8fac53bfc3823163fd565858472e2ba82"
-      },
-      "bytes1x": 1130,
-      "bytes2x": 3256
-    },
     "shell_flat_upright_180|top|up:shell_flat_upright_180@0,65": {
-      "id": "lying-0048",
+      "id": "lying-0018",
       "target": "shell_flat_upright_180",
       "zoneSide": "top",
       "signature": "shell_flat_upright_180|top|up:shell_flat_upright_180@0,65",
@@ -1654,8 +928,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0048.png",
-      "textureFile2x": "overlays/lying/2x/lying-0048.png",
+      "textureFile": "overlays/lying/lying-0018.png",
+      "textureFile2x": "overlays/lying/2x/lying-0018.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1669,7 +943,7 @@
       "bytes2x": 4251
     },
     "shell_flat_upright|bottom|left:shell_flat_upright@35,65|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65": {
-      "id": "lying-0012",
+      "id": "lying-0006",
       "target": "shell_flat_upright",
       "zoneSide": "bottom",
       "signature": "shell_flat_upright|bottom|left:shell_flat_upright@35,65|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65",
@@ -1693,8 +967,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0012.png",
-      "textureFile2x": "overlays/lying/2x/lying-0012.png",
+      "textureFile": "overlays/lying/lying-0006.png",
+      "textureFile2x": "overlays/lying/2x/lying-0006.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1707,35 +981,8 @@
       "bytes1x": 1461,
       "bytes2x": 4228
     },
-    "shell_flat_upright|bottom|right:shell_flat_sideways@-104,13": {
-      "id": "lying-0003",
-      "target": "shell_flat_upright",
-      "zoneSide": "bottom",
-      "signature": "shell_flat_upright|bottom|right:shell_flat_sideways@-104,13",
-      "casters": [
-        {
-          "shell": "shell_flat_sideways",
-          "side": "right",
-          "dx": -105,
-          "dy": 13
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0003.png",
-      "textureFile2x": "overlays/lying/2x/lying-0003.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.2697,
-      "supportPx": 494,
-      "sha256": {
-        "decodedRgba1x": "675e58fb3ad872a6166526e43ef4b7f5c6f1204f3d84d5c0da6178f10bf6ebce",
-        "decodedRgba2x": "98116f20b1cc8b961b6659dce700320aafdf60aedf4679d321e44b4714eb3152"
-      },
-      "bytes1x": 914,
-      "bytes2x": 2394
-    },
     "shell_flat_upright|bottom|right:shell_flat_upright@-35,65|up:shell_flat_upright@-35,65": {
-      "id": "lying-0009",
+      "id": "lying-0004",
       "target": "shell_flat_upright",
       "zoneSide": "bottom",
       "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-35,65|up:shell_flat_upright@-35,65",
@@ -1753,8 +1000,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0009.png",
-      "textureFile2x": "overlays/lying/2x/lying-0009.png",
+      "textureFile": "overlays/lying/lying-0004.png",
+      "textureFile2x": "overlays/lying/2x/lying-0004.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1794,107 +1041,8 @@
       "bytes1x": 868,
       "bytes2x": 1995
     },
-    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@-70,78": {
-      "id": "lying-0013",
-      "target": "shell_flat_upright",
-      "zoneSide": "bottom",
-      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@-70,78",
-      "casters": [
-        {
-          "shell": "shell_flat_upright",
-          "side": "right",
-          "dx": -69,
-          "dy": 0
-        },
-        {
-          "shell": "shell_flat_sideways",
-          "side": "up",
-          "dx": -70,
-          "dy": 78
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0013.png",
-      "textureFile2x": "overlays/lying/2x/lying-0013.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.2161,
-      "supportPx": 570,
-      "sha256": {
-        "decodedRgba1x": "0889d28d07fecc81bc178b7f084bd783951a43ace197bc81eac6fff0ea7803ce",
-        "decodedRgba2x": "2b696d51d75f5b5d192aef66a771849a9b7e727295caa5d565c62bcfc2a3da78"
-      },
-      "bytes1x": 885,
-      "bytes2x": 2126
-    },
-    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@-86,78": {
-      "id": "lying-0006",
-      "target": "shell_flat_upright",
-      "zoneSide": "bottom",
-      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@-86,78",
-      "casters": [
-        {
-          "shell": "shell_flat_upright",
-          "side": "right",
-          "dx": -69,
-          "dy": 0
-        },
-        {
-          "shell": "shell_flat_sideways",
-          "side": "up",
-          "dx": -86,
-          "dy": 78
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0006.png",
-      "textureFile2x": "overlays/lying/2x/lying-0006.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.2864,
-      "supportPx": 618,
-      "sha256": {
-        "decodedRgba1x": "43f54352eef62512de837ba29c947229680486290a473114c38ec31874987f47",
-        "decodedRgba2x": "f1c51b0baa3c37144813c72f18cbc31a6f895157d6e2556e7afc17e3a426c874"
-      },
-      "bytes1x": 953,
-      "bytes2x": 2301
-    },
-    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@0,78": {
-      "id": "lying-0014",
-      "target": "shell_flat_upright",
-      "zoneSide": "bottom",
-      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@0,78",
-      "casters": [
-        {
-          "shell": "shell_flat_upright",
-          "side": "right",
-          "dx": -70,
-          "dy": 0
-        },
-        {
-          "shell": "shell_flat_sideways",
-          "side": "up",
-          "dx": -1,
-          "dy": 78
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0014.png",
-      "textureFile2x": "overlays/lying/2x/lying-0014.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.1757,
-      "supportPx": 460,
-      "sha256": {
-        "decodedRgba1x": "eeb9ca7f2c0049ca16255bf52b41a00e6b3754eb390d45c22633af09897f9646",
-        "decodedRgba2x": "51e3ca382f1cf632db9fa42c556cbf747435bf5069edd4fe7b182b699446e405"
-      },
-      "bytes1x": 757,
-      "bytes2x": 1779
-    },
     "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@-35,65": {
-      "id": "lying-0011",
+      "id": "lying-0005",
       "target": "shell_flat_upright",
       "zoneSide": "bottom",
       "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@-35,65",
@@ -1912,8 +1060,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0011.png",
-      "textureFile2x": "overlays/lying/2x/lying-0011.png",
+      "textureFile": "overlays/lying/lying-0005.png",
+      "textureFile2x": "overlays/lying/2x/lying-0005.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1927,7 +1075,7 @@
       "bytes2x": 6287
     },
     "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@0,65": {
-      "id": "lying-0008",
+      "id": "lying-0003",
       "target": "shell_flat_upright",
       "zoneSide": "bottom",
       "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@0,65",
@@ -1945,8 +1093,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0008.png",
-      "textureFile2x": "overlays/lying/2x/lying-0008.png",
+      "textureFile": "overlays/lying/lying-0003.png",
+      "textureFile2x": "overlays/lying/2x/lying-0003.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1960,7 +1108,7 @@
       "bytes2x": 4935
     },
     "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65": {
-      "id": "lying-0015",
+      "id": "lying-0007",
       "target": "shell_flat_upright",
       "zoneSide": "bottom",
       "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65",
@@ -1978,8 +1126,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0015.png",
-      "textureFile2x": "overlays/lying/2x/lying-0015.png",
+      "textureFile": "overlays/lying/lying-0007.png",
+      "textureFile2x": "overlays/lying/2x/lying-0007.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -1992,35 +1140,8 @@
       "bytes1x": 1807,
       "bytes2x": 5039
     },
-    "shell_flat_upright|bottom|up:shell_flat_sideways@-17,78": {
-      "id": "lying-0007",
-      "target": "shell_flat_upright",
-      "zoneSide": "bottom",
-      "signature": "shell_flat_upright|bottom|up:shell_flat_sideways@-17,78",
-      "casters": [
-        {
-          "shell": "shell_flat_sideways",
-          "side": "up",
-          "dx": -17,
-          "dy": 78
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0007.png",
-      "textureFile2x": "overlays/lying/2x/lying-0007.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.1153,
-      "supportPx": 61,
-      "sha256": {
-        "decodedRgba1x": "ab2980f61abae4f192ff864f97812913a7eeee966031e45a92f24472605db20c",
-        "decodedRgba2x": "023e68fc3d06269dc54daeee29bbe782fd6bce7794307e18cb334838679b112a"
-      },
-      "bytes1x": 361,
-      "bytes2x": 712
-    },
     "shell_flat_upright|bottom|up:shell_flat_upright@0,65": {
-      "id": "lying-0004",
+      "id": "lying-0002",
       "target": "shell_flat_upright",
       "zoneSide": "bottom",
       "signature": "shell_flat_upright|bottom|up:shell_flat_upright@0,65",
@@ -2032,8 +1153,8 @@
           "dy": 65
         }
       ],
-      "textureFile": "overlays/lying/lying-0004.png",
-      "textureFile2x": "overlays/lying/2x/lying-0004.png",
+      "textureFile": "overlays/lying/lying-0002.png",
+      "textureFile2x": "overlays/lying/2x/lying-0002.png",
       "texWidth": 76,
       "texHeight": 106,
       "peakAlpha": 1,
@@ -2045,60 +1166,6 @@
       },
       "bytes1x": 1467,
       "bytes2x": 4247
-    },
-    "shell_flat_upright|left|up:shell_flat_sideways_270@-17,66": {
-      "id": "lying-0054",
-      "target": "shell_flat_upright",
-      "zoneSide": "left",
-      "signature": "shell_flat_upright|left|up:shell_flat_sideways_270@-17,66",
-      "casters": [
-        {
-          "shell": "shell_flat_sideways_270",
-          "side": "up",
-          "dx": -17,
-          "dy": 66
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0054.png",
-      "textureFile2x": "overlays/lying/2x/lying-0054.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.704,
-      "supportPx": 2777,
-      "sha256": {
-        "decodedRgba1x": "9b3253a1dab7e986a649c6ccad9df75077e15007a8a268f09348e626cb6b89e4",
-        "decodedRgba2x": "8c585df358901cefddab99b72b59bca72ece78df9f8512db37fe1dcb9d1c9a8d"
-      },
-      "bytes1x": 1792,
-      "bytes2x": 5384
-    },
-    "shell_flat_upright|left|up:shell_flat_sideways_270@-17,71": {
-      "id": "lying-0052",
-      "target": "shell_flat_upright",
-      "zoneSide": "left",
-      "signature": "shell_flat_upright|left|up:shell_flat_sideways_270@-17,71",
-      "casters": [
-        {
-          "shell": "shell_flat_sideways_270",
-          "side": "up",
-          "dx": -17,
-          "dy": 71
-        }
-      ],
-      "textureFile": "overlays/lying/lying-0052.png",
-      "textureFile2x": "overlays/lying/2x/lying-0052.png",
-      "texWidth": 76,
-      "texHeight": 106,
-      "peakAlpha": 1,
-      "meanAlpha": 0.1985,
-      "supportPx": 2458,
-      "sha256": {
-        "decodedRgba1x": "185003bdb0d23256db6ec03ab8b76da9644a88c9244ec35364997eb0a019a345",
-        "decodedRgba2x": "4b7d52014a51f7b40cf4d7cdca253ae18c7327b8e711df00ce3b4bf5e5aab4e7"
-      },
-      "bytes1x": 1024,
-      "bytes2x": 2993
     }
   }
 }

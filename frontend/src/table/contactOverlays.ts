@@ -30,6 +30,7 @@ import { lyingCatchFor } from './lyingCatchManifest';
 import type { LyingCatchesManifest } from './lyingCatchManifest';
 import type { OverlayDecal, OverlayManifest, OverlaySide } from './overlayManifest';
 import { isOverlayEnabled, overlayDecalFor } from './overlayManifest';
+import { flatShellsForSeat } from './zoneLayout';
 import type { LayoutZone, PlacedTile } from './zoneLayout';
 
 /** A caster edge only counts as a contact if this much of it overlaps. */
@@ -251,6 +252,25 @@ export function primaryContacts(
   return [...bySide.values()];
 }
 
+/**
+ * Primary contacts for a lying catch. The turned (Riichi/called) shell is
+ * excluded as a target and as a caster: its 3D cell/pose does not line up with
+ * the 2D face-centred turn, and the trial showed a black square shadow around
+ * its far end. The riichi tile is therefore left unshadowed by policy.
+ */
+export function lyingPrimaryContacts(
+  manifest: ShellsManifest,
+  zone: LayoutZone,
+  targetIndex: number,
+): ContactEdge[] {
+  if (zone.side === null || (zone.kind !== 'pond' && zone.kind !== 'melds')) return [];
+  const turnedId = flatShellsForSeat(manifest, zone.side).turnedId;
+  if (zone.bodies[targetIndex].shell === turnedId) return [];
+  return primaryContacts(manifest, zone, targetIndex).filter(
+    (edge) => zone.bodies[edge.casterIndex].shell !== turnedId,
+  );
+}
+
 /** The stable catch signature for a lying target. */
 export function lyingSignature(
   zone: LayoutZone,
@@ -277,7 +297,7 @@ export function lyingCatchForZone(
   targetIndex: number,
 ): { readonly overlay: ContactOverlay; readonly signature: string } | null {
   if (!lyingCatches || (zone.kind !== 'pond' && zone.kind !== 'melds')) return null;
-  const primaries = primaryContacts(manifest, zone, targetIndex);
+  const primaries = lyingPrimaryContacts(manifest, zone, targetIndex);
   if (primaries.length === 0) return null;
   const signature = lyingSignature(zone, targetIndex, primaries);
   const record = lyingCatchFor(lyingCatches, signature);
