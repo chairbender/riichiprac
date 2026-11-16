@@ -49,6 +49,7 @@ const shellPreviewRoot = resolve(renderDir, 'build/preview');
 const shellPreviewManifest = join(shellPreviewRoot, 'shells.json');
 const blender = process.env.BLENDER ?? '/home/kylehipke/.local/opt/blender-4.5.9/blender';
 const port = Number(process.env.PORT ?? 7458);
+const host = process.env.HOST ?? '127.0.0.1';
 const face = process.env.TUNE_FACE ?? '1m';
 
 /** The four face-up orientations, one real shell each. */
@@ -447,8 +448,8 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(`[tune-carved] lying decal tuner at http://localhost:${port}`);
+server.listen(port, host, () => {
+  console.log(`[tune-carved] lying decal tuner at http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
   if (!existsSync(blender)) console.warn(`[tune-carved] Blender not found at ${blender}`);
   // Start the one-time shell render early so the first preview is quick.
   void ensurePreviewShells().catch((error) => console.error('[tune-carved] shell render failed', error));
