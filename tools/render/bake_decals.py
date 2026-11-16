@@ -1,0 +1,822 @@
+#!/usr/bin/env python3
+"""Bake the carved, painted, separately lit tile face decals.
+
+Run inside the pinned Blender:
+
+    ~/.local/opt/blender-4.5.9/blender --background \
+        --python tools/render/bake_decals.py -- [options]
+
+Options:
+    --dry-run              print the plan, write nothing
+    --spike                bake decal-spec.json's spike faces into build/decals
+    --only FACE[,FACE]     bake only these face ids
+    --rotations N[,N]      override the light rotations (default 0,90,180,270)
+    --verify-determinism   render every decal twice and compare decoded RGBA
+
+This restores only the retired full-scene pipeline's carve -> paint -> light
+decal step. The decal is a transparent carve/paint overlay: it contains the
+recessed lip/fillet and the paint, and transparent pixels everywhere else, so
+the current shell keeps its own lighting and face colour outside the carve.
+
+The symbol stays upright in face-local space; the shell's published faceQuad
+applies the tile's rotation. The four images per face differ only in the baked
+light direction, chosen so the light lands top-left on screen after that quad
+rotation. There is one image per (face, light rotation, symbol rotation); the
+Phase 2 catalogue bakes symbol rotation 0 only.
+
+Outputs (full bake):
+    frontend/public/table/decals/<face>-l<rotation>.png
+    frontend/public/table/decals.json
+Spike outputs (gitignored):
+    tools/render/build/decals/<face>-l<rotation>.png
+    tools/render/build/decals.json
+"""
+from __future__ import annotations
+
+import json
+import math
+import sys
+from pathlib import Path
+
+import bpy
+import numpy as np
+from mathutils import Matrix, Vector
+
+RENDER_DIR = Path(__file__).resolve().parent
+if str(RENDER_DIR) not in sys.path:
+    sys.path.insert(0, str(RENDER_DIR))
+
+from bake_shells import (  # noqa: E402  (Blender adds the script directory)
+    aim,
+    check_blender_version,
+    configure_render,
+    die,
+    encode_png,
+    hex_linear,
+    load_rgba,
+    log,
+    new_material,
+    new_object,
+    principled,
+    quantize,
+    render_pass,
+    reset_scene,
+    resolve_tile_dimensions,
+    rgba_sha256,
+)
+
+# --------------------------------------------------------------------------- #
+# Small helpers
+# --------------------------------------------------------------------------- #
+
+
+def read_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text())
+    except FileNotFoundError:
+        die(f"{path} not found")
+    except json.JSONDecodeError as error:
+        die(f"{path} is not valid JSON: {error}")
+
+
+def parse_options(argv: list[str]) -> dict:
+    options = {
+        "dryRun": False,
+        "spike": False,
+        "build": False,
+        "only": None,
+        "rotations": None,
+        "verifyDeterminism": False,
+    }
+    index = 0
+    while index < len(argv):
+        arg = argv[index]
+        if arg == "--dry-run":
+            options["dryRun"] = True
+        elif arg == "--spike":
+            options["spike"] = True
+        elif arg == "--build":
+            options["build"] = True
+        elif arg == "--verify-determinism":
+            options["verifyDeterminism"] = True
+        elif arg in ("--only", "--rotations"):
+            if index + 1 >= len(argv):
+                die(f"{arg} needs a value")
+            value = argv[index + 1]
+            index += 1
+            if arg == "--only":
+                options["only"] = [part.strip() for part in value.split(",") if part.strip()]
+            else:
+                options["rotations"] = [int(part.strip()) for part in value.split(",") if part.strip()]
+        else:
+            die(f"unknown option {arg}")
+        index += 1
+    return options
+
+
+def normalize_rotation(value: int) -> int:
+    return (int(value) // 90 * 90) % 360
+
+
+def rotate_about_z(point: Vector, center: Vector, angle_deg: float) -> Vector:
+    angle = math.radians(angle_deg)
+    delta = point - center
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    return center + Vector(
+        (
+            delta.x * cos_a - delta.y * sin_a,
+            delta.x * sin_a + delta.y * cos_a,
+            delta.z,
+        )
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Geometry, field and carve (ported from the retired scene pipeline, e39d92e)
+# --------------------------------------------------------------------------- #
+
+
+def decal_geometry(shell_spec: dict, decal_spec: dict) -> dict:
+    """The inset face plate at the decal's @2x frame, in world units and pixels."""
+    tile = shell_spec["tile"]
+    raster = decal_spec["raster"]
+    padding = int(raster.get("paddingPixels", 0))
+    inset_w = tile["width"] - 2.0 * tile["faceInset"]
+    inset_h = tile["height"] - 2.0 * tile["faceInset"]
+    width = int(raster["width"])
+    height = int(raster["height"])
+    frame_w = width - 2 * padding
+    frame_h = height - 2 * padding
+    px_per_unit = frame_h / inset_h
+    derived_w = round(inset_w * px_per_unit) + 2 * padding
+    if abs(derived_w - width) > 1:
+        die(
+            f"decal raster {width}x{height} does not match the inset face "
+            f"({derived_w}x{height} at {px_per_unit:.4f} px/unit)"
+        )
+    return {
+        "width": width,
+        "height": height,
+        "padding": padding,
+        "frameW": frame_w / px_per_unit,
+        "frameH": frame_h / px_per_unit,
+        "pxPerUnit": px_per_unit,
+    }
+
+
+def blur2d(array: np.ndarray, sigma: float) -> np.ndarray:
+    """Separable Gaussian blur; the carve wall is a smooth ramp of the mask."""
+    radius = max(1, int(round(sigma * 3)))
+    offsets = np.arange(-radius, radius + 1, dtype=np.float32)
+    kernel = np.exp(-(offsets**2) / (2.0 * sigma * sigma))
+    kernel /= kernel.sum()
+    result = array.astype(np.float32)
+    for axis in (0, 1):
+        padding = [(0, 0), (0, 0)]
+        padding[axis] = (radius, radius)
+        padded = np.pad(result, padding)
+        accumulated = np.zeros_like(result)
+        count = result.shape[axis]
+        for index, weight in enumerate(kernel):
+            window = [slice(None), slice(None)]
+            window[axis] = slice(index, index + count)
+            accumulated += weight * padded[tuple(window)]
+        result = accumulated
+    return result
+
+
+def _inverse_erf_table() -> tuple[np.ndarray, np.ndarray]:
+    x = np.linspace(-0.9999, 0.9999, 20001)
+    f = np.array([math.erf(value) for value in x], dtype=np.float64)
+    return f, x
+
+
+_ERF_VALUES, _ERFINV_VALUES = _inverse_erf_table()
+
+
+def alpha_to_distance(alpha: np.ndarray, sigma_px: float) -> np.ndarray:
+    """Approximate signed distance (pixels, positive inside) from a blurred mask."""
+    value = np.clip(2.0 * alpha - 1.0, -0.9999, 0.9999)
+    return (
+        np.interp(value, _ERF_VALUES, _ERFINV_VALUES)
+        * sigma_px
+        * math.sqrt(2.0)
+    )
+
+
+def bilinear2d(array: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
+    height, width = array.shape
+    xs = np.clip(xs, 0.0, width - 1.001)
+    ys = np.clip(ys, 0.0, height - 1.001)
+    x0 = np.floor(xs).astype(np.int32)
+    y0 = np.floor(ys).astype(np.int32)
+    x1 = np.minimum(x0 + 1, width - 1)
+    y1 = np.minimum(y0 + 1, height - 1)
+    fx = xs - x0
+    fy = ys - y0
+    return (
+        array[y0, x0] * (1 - fx) * (1 - fy)
+        + array[y0, x1] * fx * (1 - fy)
+        + array[y1, x0] * (1 - fx) * fy
+        + array[y1, x1] * fx * fy
+    )
+
+
+def bezier_profile(u: np.ndarray, top_spread: float, bottom_spread: float) -> np.ndarray:
+    """Groove height profile as a cubic Bézier with independent fillets."""
+    ts = np.linspace(0.0, 1.0, 1025)
+    one_minus = 1.0 - ts
+    xs = (
+        3.0 * one_minus * one_minus * ts * top_spread
+        + 3.0 * one_minus * ts * ts * (1.0 - bottom_spread)
+        + ts * ts * ts
+    )
+    ys = ts * ts * (3.0 - 2.0 * ts)
+    xs = np.maximum.accumulate(xs) + np.arange(ts.size) * 1e-12
+    return np.interp(np.clip(u, 0.0, 1.0), xs, ys)
+
+
+def carve_field(symbol_path: Path, decal_spec: dict, geometry: dict, out_path: Path) -> np.ndarray:
+    """Load the glyph, make the carve distance field and write it as a PNG."""
+    carve = decal_spec["carve"]
+    px_per_unit = geometry["pxPerUnit"]
+    symbol = load_rgba(symbol_path)
+    raw_mask = symbol[..., 3]
+    sigma_px = float(carve["blurUnits"]) * px_per_unit
+    blurred = blur2d(raw_mask, sigma_px)
+    distance_px = alpha_to_distance(blurred, sigma_px)
+    transition_px = float(carve["transitionUnits"]) * px_per_unit
+    field = np.clip(distance_px / transition_px, 0.0, 1.0)
+    rgba = np.stack([field, field, field, np.ones_like(field)], axis=-1)
+    encode_png(out_path, quantize(rgba))
+    return field
+
+
+def build_carved_face(
+    shell_spec: dict,
+    decal_spec: dict,
+    material: bpy.types.Material,
+    field: np.ndarray,
+    half_w: float,
+    half_h: float,
+    top: float,
+    uv_rect: tuple[float, float, float, float],
+    decal_pixels: tuple[int, int],
+) -> bpy.types.Object:
+    """Subdivided face plate with the painted symbol physically recessed."""
+    carve = decal_spec["carve"]
+    depth = carve["depthFractionOfThickness"] * shell_spec["tile"]["thickness"]
+    columns = max(2, round(decal_pixels[0] * carve["gridScale"]))
+    rows = max(2, round(decal_pixels[1] * carve["gridScale"]))
+    u0, v0, u1, v1 = uv_rect
+
+    grid_x = np.linspace(-half_w, half_w, columns, dtype=np.float64)
+    grid_y = np.linspace(half_h, -half_h, rows, dtype=np.float64)
+    u = np.linspace(u0, u1, columns)
+    v = np.linspace(v1, v0, rows)  # row 0 is the top of the face (v = v1)
+    uu, vv = np.meshgrid(u, v)
+
+    field_height, field_width = field.shape
+    sampled = bilinear2d(field, uu * (field_width - 1), (1.0 - vv) * (field_height - 1))
+    profile = carve["profile"]
+    height = bezier_profile(sampled, profile["topSpread"], profile["bottomSpread"])
+    z = top - depth * height
+
+    xx, yy = np.meshgrid(grid_x, grid_y)
+    verts = np.stack([xx.ravel(), yy.ravel(), z.ravel()], axis=1)
+
+    indices = np.arange(rows * columns).reshape(rows, columns)
+    faces = np.stack(
+        [
+            indices[:-1, :-1].ravel(),
+            indices[1:, :-1].ravel(),
+            indices[1:, 1:].ravel(),
+            indices[:-1, 1:].ravel(),
+        ],
+        axis=1,
+    )
+
+    mesh = bpy.data.meshes.new("face-plane")
+    mesh.from_pydata(verts.tolist(), [], faces.tolist())
+    mesh.update()
+    for polygon in mesh.polygons:
+        polygon.use_smooth = True
+    mesh.materials.append(material)
+
+    uv_layer = mesh.uv_layers.new(name="UVMap")
+    uv_top_left = np.stack([uu[:-1, :-1].ravel(), vv[:-1, :-1].ravel()], axis=1)
+    uv_bottom_left = np.stack([uu[1:, :-1].ravel(), vv[1:, :-1].ravel()], axis=1)
+    uv_bottom_right = np.stack([uu[1:, 1:].ravel(), vv[1:, 1:].ravel()], axis=1)
+    uv_top_right = np.stack([uu[:-1, 1:].ravel(), vv[:-1, 1:].ravel()], axis=1)
+    uvs = np.concatenate([uv_top_left, uv_bottom_left, uv_bottom_right, uv_top_right], axis=1)
+    uv_layer.data.foreach_set("uv", uvs.ravel().tolist())
+
+    return new_object("face-plane", mesh)
+
+
+# --------------------------------------------------------------------------- #
+# Decal material
+# --------------------------------------------------------------------------- #
+
+
+def decal_material(
+    shell_spec: dict,
+    decal_spec: dict,
+    symbol_path: Path,
+    field_path: Path,
+) -> bpy.types.Material:
+    """The carved face shader: face + paint, cavity AO, and transparent outside."""
+    tile_spec = shell_spec["tile"]
+    carve = decal_spec["carve"]
+    material = new_material("face-decal")
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    face_spec = tile_spec["materials"]["face"]
+    paint_spec = tile_spec["materials"]["paint"]
+
+    face_bsdf = principled(material)
+    face_bsdf.inputs["Roughness"].default_value = face_spec["roughness"]
+    face_bsdf.inputs["Specular IOR Level"].default_value = 0.5
+    face_bsdf.inputs["Coat Weight"].default_value = face_spec["coat"]
+    face_bsdf.inputs["Coat Roughness"].default_value = face_spec["coatRoughness"]
+
+    ambient = nodes.new("ShaderNodeAmbientOcclusion")
+    ambient.inputs["Distance"].default_value = carve["occlusionDistance"]
+    ambient.samples = carve["occlusionSamples"]
+    ambient.only_local = True
+    occlusion_strength = carve["occlusionStrength"]
+
+    face_colour = nodes.new("ShaderNodeRGB")
+    face_colour.outputs["Color"].default_value = hex_linear(face_spec["hex"])
+    face_ao = nodes.new("ShaderNodeMixRGB")
+    face_ao.blend_type = "MULTIPLY"
+    face_ao.inputs["Fac"].default_value = occlusion_strength
+    links.new(face_colour.outputs["Color"], face_ao.inputs[1])
+    links.new(ambient.outputs["Color"], face_ao.inputs[2])
+    links.new(face_ao.outputs["Color"], face_bsdf.inputs["Base Color"])
+
+    symbol_image = bpy.data.images.load(str(symbol_path))
+    symbol_image.colorspace_settings.name = "sRGB"
+    symbol_node = nodes.new("ShaderNodeTexImage")
+    symbol_node.image = symbol_image
+    symbol_node.interpolation = "Linear"
+
+    field_image = bpy.data.images.load(str(field_path))
+    field_image.colorspace_settings.name = "Non-Color"
+    field_node = nodes.new("ShaderNodeTexImage")
+    field_node.image = field_image
+    field_node.interpolation = "Linear"
+    field_channel = nodes.new("ShaderNodeSeparateColor")
+    links.new(field_node.outputs["Color"], field_channel.inputs["Color"])
+
+    paint_bsdf = nodes.new("ShaderNodeBsdfPrincipled")
+    paint_base = nodes.new("ShaderNodeMixRGB")
+    paint_base.blend_type = "MULTIPLY"
+    paint_base.inputs["Fac"].default_value = occlusion_strength
+    links.new(symbol_node.outputs["Color"], paint_base.inputs[1])
+    links.new(ambient.outputs["Color"], paint_base.inputs[2])
+    links.new(paint_base.outputs["Color"], paint_bsdf.inputs["Base Color"])
+    paint_bsdf.inputs["Roughness"].default_value = paint_spec["roughness"]
+    paint_bsdf.inputs["Specular IOR Level"].default_value = 0.5
+    paint_bsdf.inputs["Coat Weight"].default_value = paint_spec["coat"]
+    paint_bsdf.inputs["Coat Roughness"].default_value = paint_spec["coatRoughness"]
+
+    paint_gate = nodes.new("ShaderNodeMapRange")
+    paint_edge = carve["paintEdge"]
+    paint_gate.inputs["From Min"].default_value = paint_edge - 0.02
+    paint_gate.inputs["From Max"].default_value = paint_edge + 0.02
+    paint_gate.inputs["To Min"].default_value = 0.0
+    paint_gate.inputs["To Max"].default_value = 1.0
+    paint_gate.clamp = True
+    links.new(field_channel.outputs["Red"], paint_gate.inputs["Value"])
+
+    paint_mix = nodes.new("ShaderNodeMixShader")
+    links.new(paint_gate.outputs["Result"], paint_mix.inputs["Fac"])
+    links.new(face_bsdf.outputs["BSDF"], paint_mix.inputs[1])
+    links.new(paint_bsdf.outputs["BSDF"], paint_mix.inputs[2])
+
+    # Transparent surround: alpha is 1 only where the carve/paint exists. The
+    # outer lip fades over alphaRamp of the transition so it melts into the
+    # shell face instead of ending on a hard decal rectangle.
+    field_gate = nodes.new("ShaderNodeMapRange")
+    field_gate.inputs["From Min"].default_value = 0.0
+    field_gate.inputs["From Max"].default_value = carve["alphaRamp"]
+    field_gate.inputs["To Min"].default_value = 0.0
+    field_gate.inputs["To Max"].default_value = 1.0
+    field_gate.clamp = True
+    links.new(field_channel.outputs["Red"], field_gate.inputs["Value"])
+
+    coverage = nodes.new("ShaderNodeMath")
+    coverage.operation = "MAXIMUM"
+    links.new(field_gate.outputs["Result"], coverage.inputs[0])
+    links.new(paint_gate.outputs["Result"], coverage.inputs[1])
+
+    transparent = nodes.new("ShaderNodeBsdfTransparent")
+    final_mix = nodes.new("ShaderNodeMixShader")
+    links.new(coverage.outputs["Value"], final_mix.inputs["Fac"])
+    links.new(transparent.outputs["BSDF"], final_mix.inputs[1])
+    links.new(paint_mix.outputs["Shader"], final_mix.inputs[2])
+    output_node = nodes["Material Output"]
+    links.new(final_mix.outputs["Shader"], output_node.inputs["Surface"])
+    return material
+
+
+# --------------------------------------------------------------------------- #
+# Scene: camera and decal light rig
+# --------------------------------------------------------------------------- #
+
+
+def stand_face_plane(obj: bpy.types.Object, shell_spec: dict) -> None:
+    """Stand the local XY face plane up at world y=0, facing the camera."""
+    tile = shell_spec["tile"]
+    rotation = Matrix.Rotation(math.radians(90.0), 4, "X")
+    location = Vector((0.0, tile["thickness"], tile["height"] / 2.0))
+    obj.matrix_world = Matrix.Translation(location) @ rotation
+
+
+def build_decal_lights(
+    scene: bpy.types.Scene,
+    decal_spec: dict,
+    light_rotation_deg: int,
+) -> None:
+    """The retired parlor rig, translated to the canonical face and rotated."""
+    lighting = decal_spec["lighting"]
+    old_slot_y = float(lighting["translation"]["fromSlotY"])
+    translate = Vector((0.0, -old_slot_y, 0.0))
+    center = Vector((0.0, 0.0, 0.0))
+    for entry in lighting["lights"]:
+        data = bpy.data.lights.new(entry["id"], "AREA")
+        data.shape = "RECTANGLE"
+        data.size = entry["size"]
+        data.size_y = entry["sizeY"]
+        data.energy = entry["energyW"]
+        data.color = hex_linear(entry["hex"])[:3]
+        target = Vector(entry["target"]) + translate
+        azimuth = math.radians(entry["azimuthDeg"])
+        elevation = math.radians(entry["elevationDeg"])
+        direction = Vector(
+            (
+                math.sin(azimuth) * math.cos(elevation),
+                -math.cos(azimuth) * math.cos(elevation),
+                math.sin(elevation),
+            )
+        )
+        location = target + direction * entry["distance"]
+        target = rotate_about_z(target, center, light_rotation_deg)
+        location = rotate_about_z(location, center, light_rotation_deg)
+        obj = new_object(entry["id"], data)
+        obj.location = location
+        aim(obj, target)
+        roll = entry.get("rollDeg", 0.0)
+        if roll:
+            obj.matrix_world = obj.matrix_world @ Matrix.Rotation(math.radians(roll), 4, "Z")
+        obj["group"] = entry.get("group", "key")
+
+
+def build_decal_camera(
+    scene: bpy.types.Scene,
+    shell_spec: dict,
+    decal_spec: dict,
+    geometry: dict,
+) -> bpy.types.Object:
+    tile = shell_spec["tile"]
+    camera_data = bpy.data.cameras.new("decal-camera")
+    camera_data.type = "ORTHO"
+    camera_data.ortho_scale = geometry["frameH"]
+    camera_data.clip_start = 0.1
+    camera_data.clip_end = 200.0
+    camera = new_object("decal-camera", camera_data)
+    distance = float(decal_spec["lighting"]["translation"].get("cameraDistance", 5.0))
+    target = Vector((0.0, 0.0, tile["height"] / 2.0))
+    camera.location = Vector((0.0, -distance, tile["height"] / 2.0))
+    aim(camera, target)
+    scene.camera = camera
+    return camera
+
+
+def build_decal_world(scene: bpy.types.Scene, decal_spec: dict) -> None:
+    world_spec = decal_spec["lighting"]["world"]
+    world = bpy.data.worlds.new("decal-world")
+    world.use_nodes = True
+    background = world.node_tree.nodes["Background"]
+    background.inputs["Color"].default_value = hex_linear(world_spec["hex"])
+    background.inputs["Strength"].default_value = world_spec["strength"]
+    scene.world = world
+
+
+# --------------------------------------------------------------------------- #
+# Measurement and manifest
+# --------------------------------------------------------------------------- #
+
+
+def measure(rgba_u8: np.ndarray) -> dict:
+    alpha = rgba_u8[..., 3].astype(np.float64) / 255.0
+    height, width = alpha.shape
+    mask = alpha > (8.0 / 255.0)
+    alpha_pixels = int(mask.sum())
+    if alpha_pixels == 0:
+        die("decal render has no visible pixels")
+    ys, xs = np.nonzero(mask)
+    bbox = {
+        "left": int(xs.min()),
+        "top": int(ys.min()),
+        "right": int(xs.max()),
+        "bottom": int(ys.max()),
+    }
+    rgb = rgba_u8[..., :3].astype(np.int32)
+    red = int(((rgb[..., 0] > rgb[..., 1] + 40) & (rgb[..., 0] > rgb[..., 2] + 40) & mask).sum())
+    luma = 0.2126 * rgb[..., 0] + 0.7152 * rgb[..., 1] + 0.0722 * rgb[..., 2]
+    saturation = rgb.max(axis=-1) - rgb.min(axis=-1)
+    ink = int((((saturation > 24) | (luma < 150)) & mask & (alpha > 0.5)).sum())
+    corners = [
+        int(rgba_u8[0, 0, 3]),
+        int(rgba_u8[0, width - 1, 3]),
+        int(rgba_u8[height - 1, 0, 3]),
+        int(rgba_u8[height - 1, width - 1, 3]),
+    ]
+    if any(corner != 0 for corner in corners):
+        die(f"decal corners are not transparent: {corners}; option A requires a carve-only decal")
+    return {
+        "width": width,
+        "height": height,
+        "alphaBBox": bbox,
+        "alphaPixels": alpha_pixels,
+        "transparentFraction": round(1.0 - alpha_pixels / (width * height), 5),
+        "inkPixels": ink,
+        "redPixels": red,
+        "cornerAlpha": corners,
+    }
+
+
+def bake_one(
+    shell_spec: dict,
+    decal_spec: dict,
+    faces_spec: dict,
+    face: str,
+    light_rotation_deg: int,
+    symbol_rotation_deg: int,
+    symbol_path: Path,
+    output_path: Path,
+    field_dir: Path,
+) -> dict:
+    if symbol_rotation_deg != 0:
+        die("symbol rotations other than 0 are not implemented yet")
+    if not symbol_path.exists():
+        die(f"{symbol_path} is missing; run node tools/render/scripts/bake-faces.mjs first")
+
+    geometry = decal_geometry(shell_spec, decal_spec)
+    tile = shell_spec["tile"]
+    scene = reset_scene()
+    configure_render(scene, shell_spec)
+    build_decal_world(scene, decal_spec)
+    scene.render.resolution_x = geometry["width"]
+    scene.render.resolution_y = geometry["height"]
+    scene.render.resolution_percentage = 100
+    build_decal_lights(scene, decal_spec, light_rotation_deg)
+    build_decal_camera(scene, shell_spec, decal_spec, geometry)
+
+    field_path = field_dir / f"{face}-field.png"
+    field = carve_field(symbol_path, decal_spec, geometry, field_path)
+
+    material = decal_material(shell_spec, decal_spec, symbol_path, field_path)
+    half_w = tile["width"] / 2.0 - tile["faceInset"]
+    half_h = tile["height"] / 2.0 - tile["faceInset"]
+    u0 = tile["faceInset"] / tile["width"]
+    u1 = 1.0 - u0
+    v0 = tile["faceInset"] / tile["height"]
+    v1 = 1.0 - v0
+    plane = build_carved_face(
+        shell_spec,
+        decal_spec,
+        material,
+        field,
+        half_w,
+        half_h,
+        tile["thickness"],
+        (u0, v0, u1, v1),
+        (geometry["width"], geometry["height"]),
+    )
+    stand_face_plane(plane, shell_spec)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    render_pass(scene, output_path)
+    rgba = load_rgba(output_path)
+    decoded = quantize(rgba)
+    measured = measure(decoded)
+    log(
+        f"decal {face} l{light_rotation_deg} s{symbol_rotation_deg}: "
+        f"{geometry['width']}x{geometry['height']}, "
+        f"alpha {measured['alphaPixels']} px, ink {measured['inkPixels']} px, "
+        f"{output_path.stat().st_size} B"
+    )
+    return {
+        "face": face,
+        "lightRotationDeg": light_rotation_deg,
+        "symbolRotationDeg": symbol_rotation_deg,
+        "textureFile": f"decals/{output_path.name}",
+        "width": geometry["width"],
+        "height": geometry["height"],
+        "facePlateRect": [0.0, 0.0, 1.0, 1.0],
+        "bytes": output_path.stat().st_size,
+        "sha256": {"decodedRgba": rgba_sha256(decoded)},
+        "measured": measured,
+    }
+
+
+def verify_determinism(
+    shell_spec: dict,
+    decal_spec: dict,
+    face: str,
+    light_rotation_deg: int,
+    symbol_rotation_deg: int,
+    symbol_path: Path,
+    output_path: Path,
+    field_dir: Path,
+) -> None:
+    first = load_rgba(output_path)
+    second_path = output_path.with_name(output_path.stem + "-repeat.png")
+    bake_one(
+        shell_spec,
+        decal_spec,
+        {},
+        face,
+        light_rotation_deg,
+        symbol_rotation_deg,
+        symbol_path,
+        second_path,
+        field_dir,
+    )
+    second = load_rgba(second_path)
+    second_path.unlink(missing_ok=True)
+    if not np.array_equal(quantize(first), quantize(second)):
+        die(f"{face} l{light_rotation_deg} is not deterministic across renders")
+
+
+# --------------------------------------------------------------------------- #
+# Main
+# --------------------------------------------------------------------------- #
+
+
+def main(argv: list[str]) -> int:
+    options = parse_options(argv)
+    decal_spec = read_json(RENDER_DIR / "decal-spec.json")
+    shell_spec = read_json(RENDER_DIR / "shell-spec.json")
+    faces_spec = read_json(RENDER_DIR / decal_spec["source"]["facesSpec"])
+    check_blender_version(decal_spec)
+    resolve_tile_dimensions(shell_spec)
+
+    geometry = decal_geometry(shell_spec, decal_spec)
+    log(
+        f"decal frame {geometry['width']}x{geometry['height']} px, "
+        f"{geometry['pxPerUnit']:.3f} px/unit, face plate "
+        f"{geometry['frameW']:.3f} x {geometry['frameH']:.3f} units"
+    )
+
+    faces = [entry["id"] for entry in faces_spec["faces"]]
+    if options["spike"]:
+        faces = list(decal_spec["spike"]["faces"])
+    if options["spike"] or options["build"]:
+        output_dir = RENDER_DIR / decal_spec["output"]["buildDir"]
+        manifest_path = RENDER_DIR / decal_spec["output"]["buildManifest"]
+    else:
+        output_dir = RENDER_DIR / decal_spec["output"]["dir"]
+        manifest_path = RENDER_DIR / decal_spec["output"]["manifest"]
+    if options["only"]:
+        missing = [face for face in options["only"] if face not in faces]
+        if missing:
+            die(f"unknown face(s) {missing}")
+        faces = options["only"]
+    rotations = options["rotations"] or list(decal_spec["rotations"])
+    if any(rotation % 90 != 0 for rotation in rotations):
+        die(f"rotations must be multiples of 90: {rotations}")
+    rotations = [normalize_rotation(rotation) for rotation in rotations]
+    symbol_rotations = list(decal_spec.get("symbolRotations", [0]))
+
+    symbol_dir = (RENDER_DIR / decal_spec["source"]["symbolDir"]).resolve()
+    inkless = []
+    for face in faces:
+        symbol_path = symbol_dir / f"{face}.png"
+        if not symbol_path.exists():
+            die(f"{symbol_path} is missing; run node tools/render/scripts/bake-faces.mjs first")
+        if load_rgba(symbol_path)[..., 3].max() <= 0.0:
+            inkless.append(face)
+    if inkless:
+        log(f"skipping inkless faces (no carve, bare shell): {', '.join(inkless)}")
+        faces = [face for face in faces if face not in inkless]
+    if not faces:
+        log("no inked faces to bake")
+        return 0
+
+    plan = [
+        (face, rotation, symbol_rotation)
+        for face in faces
+        for rotation in rotations
+        for symbol_rotation in symbol_rotations
+    ]
+    log(
+        f"plan: {len(plan)} decals ({len(faces)} faces x {len(rotations)} light "
+        f"rotations x {len(symbol_rotations)} symbol rotations) -> {output_dir}"
+    )
+    if options["dryRun"]:
+        for face, rotation, symbol_rotation in plan:
+            log(f"  {face} light {rotation} symbol {symbol_rotation}")
+        return 0
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    field_dir = RENDER_DIR / decal_spec["output"]["buildDir"] / "fields"
+    field_dir.mkdir(parents=True, exist_ok=True)
+    records: dict[str, dict] = {}
+    total_bytes = 0
+    for index, (face, rotation, symbol_rotation) in enumerate(plan, start=1):
+        symbol_path = symbol_dir / f"{face}.png"
+        output_path = output_dir / f"{face}-l{rotation}.png"
+        log(f"[{index}/{len(plan)}] {face} light {rotation}")
+        record = bake_one(
+            shell_spec,
+            decal_spec,
+            faces_spec,
+            face,
+            rotation,
+            symbol_rotation,
+            symbol_path,
+            output_path,
+            field_dir,
+        )
+        if options["verifyDeterminism"]:
+            verify_determinism(
+                shell_spec,
+                decal_spec,
+                face,
+                rotation,
+                symbol_rotation,
+                symbol_path,
+                output_path,
+                field_dir,
+            )
+        key = f"{face}:l{rotation}:s{symbol_rotation}"
+        records[key] = record
+        total_bytes += record["bytes"]
+
+    manifest = {
+        "version": 1,
+        "generatedBy": "tools/render/bake_decals.py",
+        "coordinateSpace": (
+            "Each textureFile is the inset face plate at raster.scale times the "
+            "@1x face. It is mapped into the shell's faceQuad (face-local order) "
+            "with symbolRotationDeg applied inside the plate; the quad applies "
+            "the tile's rotation. lightRotationDeg is the baked rig rotation, "
+            "chosen so the light lands top-left on screen after that rotation. "
+            "facePlateRect is the normalized sub-rect of the decal that maps to "
+            "the face plate; [0,0,1,1] means the whole image."
+        ),
+        "source": {
+            "facesSpec": decal_spec["source"]["facesSpec"],
+            "shellSpec": decal_spec["source"]["shellSpec"],
+            "symbolDir": decal_spec["source"]["symbolDir"],
+            "upstream": faces_spec["source"],
+        },
+        "raster": {
+            "width": geometry["width"],
+            "height": geometry["height"],
+            "scale": decal_spec["raster"]["scale"],
+            "format": decal_spec["raster"]["format"],
+            "pxPerUnit": round(geometry["pxPerUnit"], 6),
+            "frameUnits": [round(geometry["frameW"], 6), round(geometry["frameH"], 6)],
+        },
+        "carve": decal_spec["carve"],
+        "lighting": {
+            "preset": decal_spec["lighting"]["preset"],
+            "rotationConvention": decal_spec["lighting"]["rotationConvention"],
+            "world": decal_spec["lighting"]["world"],
+            "translation": decal_spec["lighting"]["translation"],
+            "lights": decal_spec["lighting"]["lights"],
+        },
+        "rotations": rotations,
+        "symbolRotations": symbol_rotations,
+        "budget": {"bytes": decal_spec["output"]["bytesBudget"]},
+        "totals": {
+            "decals": len(records),
+            "faces": len(faces),
+            "lightRotations": len(rotations),
+            "symbolRotations": len(symbol_rotations),
+            "bytes": total_bytes,
+        },
+        "decals": records,
+    }
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    log(
+        f"wrote {len(records)} decals ({total_bytes} B) to {output_dir} and "
+        f"{manifest_path}"
+    )
+    if total_bytes > int(decal_spec["output"]["bytesBudget"]):
+        die(
+            f"decal bytes {total_bytes} exceed the budget "
+            f"{decal_spec['output']['bytesBudget']}"
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else sys.argv[1:]))

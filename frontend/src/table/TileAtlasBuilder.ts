@@ -34,7 +34,13 @@ import {
 import type { FaceUpShellId, TileFaceId, TileRenderKey } from './tiles';
 import { faceHasInk } from './faceManifest';
 import type { FacesManifest } from './faceManifest';
-import { glyphRotationDegFor } from './shellManifest';
+import { decalFor } from './decalManifest';
+import type { DecalRecord, DecalRotation, DecalsManifest } from './decalManifest';
+import {
+  decalLightRotationDegFor,
+  decalSymbolRotationDegFor,
+  glyphRotationDegFor,
+} from './shellManifest';
 import type { FaceQuad, ShellsManifest, ShellStats } from './shellManifest';
 
 /** An image source with known dimensions: HTMLImageElement, ImageBitmap, ... */
@@ -99,6 +105,10 @@ export interface BakedTileSprite {
   readonly faceRotationDeg: 0 | 90 | 180 | 270;
   /** Extra rotation applied inside the face plate (0 for every Phase 2 shell). */
   readonly glyphRotationDeg: 0 | 90 | 180 | 270;
+  /** The carved decal used, or null when the flat glyph was composited. */
+  readonly decalFile: string | null;
+  readonly decalLightRotationDeg: DecalRotation | null;
+  readonly decalSymbolRotationDeg: DecalRotation | null;
 }
 
 export interface AtlasStats {
@@ -107,6 +117,10 @@ export interface AtlasStats {
   readonly sprites: number;
   readonly glyphSprites: number;
   readonly bareSprites: number;
+  /** Sprites composited from a carved decal (subset of glyphSprites). */
+  readonly decalSprites: number;
+  /** Sprites composited from a flat glyph (subset of glyphSprites). */
+  readonly flatGlyphSprites: number;
   readonly atlasPixels: number;
   readonly rgbaBytes: number;
   readonly pixelRatio: number;
@@ -116,6 +130,7 @@ export interface AtlasStats {
 export interface BakedTileAtlas {
   readonly shells: ShellsManifest;
   readonly faces: FacesManifest;
+  readonly decals: DecalsManifest | null;
   readonly pages: readonly AtlasPage[];
   readonly sprites: ReadonlyMap<TileRenderKey, BakedTileSprite>;
   readonly stats: AtlasStats;
@@ -124,6 +139,10 @@ export interface BakedTileAtlas {
 export interface TileAtlasBuilderOptions {
   readonly shells: ShellsManifest;
   readonly faces: FacesManifest;
+  /** Optional carved decal set; missing faces fall back to the flat glyph. */
+  readonly decals?: DecalsManifest;
+  /** Throw when a face has no carved decal instead of falling back. */
+  readonly requireDecals?: boolean;
   readonly resolveUrl: ResolveAssetUrl;
   readonly loadImage: LoadAtlasImage;
   readonly createCanvas?: CreateAtlasCanvas;
@@ -243,6 +262,7 @@ export class TileAtlasBuilder {
   private readonly maxPageWidthPx: number;
   private readonly createCanvas: CreateAtlasCanvas;
   private readonly glyphCache = new Map<TileFaceId, Promise<AtlasImage>>();
+  private readonly decalCache = new Map<string, Promise<AtlasImage>>();
 
   constructor(options: TileAtlasBuilderOptions) {
     this.options = options;
@@ -265,13 +285,42 @@ export class TileAtlasBuilder {
     return pending;
   }
 
+  /** Load and cache one carved decal; shared by every slot with that rotation. */
+  private decal(record: DecalRecord): Promise<AtlasImage> {
+    let pending = this.decalCache.get(`${record.textureFile}`);
+    if (!pending) {
+      pending = this.options.loadImage(this.options.resolveUrl(record.textureFile));
+      this.decalCache.set(`${record.textureFile}`, pending);
+    }
+    return pending;
+  }
+
   /**
-   * Drop decoded glyph sources once every face-up page has been composed. The
+   * Drop decoded source images once every face-up page has been composed. The
    * atlas pixels are already copied into the pages, so keeping 37 decoded
-   * 288 × 384 images would cost ~16 MB for nothing.
+   * glyphs or decals would cost megabytes for nothing.
    */
   releaseGlyphCache(): void {
     this.glyphCache.clear();
+    this.decalCache.clear();
+  }
+
+  /** Prefer a carved decal for this shell/face, else the flat glyph. */
+  private async sourceFor(
+    face: TileFaceId,
+    lightRotationDeg: DecalRotation,
+    symbolRotationDeg: DecalRotation,
+  ): Promise<{ image: AtlasImage; decal: DecalRecord | null }> {
+    const record = decalFor(this.options.decals, face, lightRotationDeg, symbolRotationDeg);
+    if (record) {
+      return { image: await this.decal(record), decal: record };
+    }
+    if (this.options.requireDecals) {
+      throw new Error(
+        `face ${face} has no carved decal for light ${lightRotationDeg} / symbol ${symbolRotationDeg}`,
+      );
+    }
+    return { image: await this.glyph(face), decal: null };
   }
 
   /**
@@ -294,6 +343,8 @@ export class TileAtlasBuilder {
     const scale = this.pixelRatio;
     const variant = faceVariantForShell(shellId);
     const glyphRotationDeg = glyphRotationDegFor(shell);
+    const lightRotationDeg = decalLightRotationDegFor(shell);
+    const symbolRotationDeg = decalSymbolRotationDegFor(shell);
     const inkedFaces = TILE_FACE_IDS.filter((face) => faceHasInk(this.options.faces.faces[face]));
     const slots = atlasSlotCount(this.options.faces);
     const { width: pageWidth, height: pageHeight, columns } = planAtlasPage(
@@ -309,9 +360,9 @@ export class TileAtlasBuilder {
     const shellUrl = this.options.resolveUrl(
       scale === 2 ? shell.textureFile2x : shell.textureFile,
     );
-    const [shellImage, ...glyphImages] = await Promise.all([
+    const [shellImage, ...sources] = await Promise.all([
       this.options.loadImage(shellUrl),
-      ...inkedFaces.map((face) => this.glyph(face)),
+      ...inkedFaces.map((face) => this.sourceFor(face, lightRotationDeg, symbolRotationDeg)),
     ]);
     assertSpriteSize(shell, shellImage, scale);
 
@@ -326,19 +377,22 @@ export class TileAtlasBuilder {
       y: Math.floor(slot / columns) * spriteHeight,
     });
 
-    // Pass 1: every shell body, in slot order. The glyph pass is strictly
-    // afterwards, so no glyph can ever be under a later shell blit.
+    // Pass 1: every shell body, in slot order. The face pass is strictly
+    // afterwards, so no glyph or decal can ever be under a later shell blit.
     for (let slot = 0; slot < slots; slot += 1) {
       const { x, y } = slotOffset(slot);
       ctx.drawImage(shellImage as CanvasImageSource, x, y, spriteWidth, spriteHeight);
     }
 
-    // Pass 2: glyph into its own slot, clipped to the face plate.
+    // Pass 2: the carved decal or flat glyph into its own slot, clipped to the
+    // face plate. A decal already carries its baked light rotation; only the
+    // symbol's in-plate rotation is applied here.
     inkedFaces.forEach((_face, index) => {
       const slot = index + 1;
       const { x, y } = slotOffset(slot);
-      const image = glyphImages[index];
-      this.drawGlyph(ctx, shell, image, x, y, scale, glyphRotationDeg);
+      const source = sources[index];
+      const rotation = source.decal ? symbolRotationDeg : glyphRotationDeg;
+      this.drawGlyph(ctx, shell, source.image, x, y, scale, rotation);
     });
 
     const page: AtlasPage = {
@@ -351,12 +405,12 @@ export class TileAtlasBuilder {
       bytes: pageWidth * pageHeight * 4,
     };
 
-    const indexByFace = new Map<TileFaceId, number>();
-    inkedFaces.forEach((face, index) => indexByFace.set(face, index + 1));
+    const sourceByFace = new Map<TileFaceId, { slot: number; decal: DecalRecord | null }>();
+    inkedFaces.forEach((face, index) => sourceByFace.set(face, { slot: index + 1, decal: sources[index].decal }));
 
     const sprites = TILE_FACE_IDS.map((face): BakedTileSprite => {
-      const slot = indexByFace.get(face) ?? 0;
-      const offset = slotOffset(slot);
+      const entry = sourceByFace.get(face);
+      const offset = slotOffset(entry?.slot ?? 0);
       return {
         key: tileRenderKey(shellId, face),
         shell: shellId,
@@ -365,7 +419,7 @@ export class TileAtlasBuilder {
         pageIndex,
         uv: { x: offset.x, y: offset.y, width: spriteWidth, height: spriteHeight },
         pixelRatio: scale,
-        hasGlyph: indexByFace.has(face),
+        hasGlyph: Boolean(entry),
         texWidth: shell.texWidth,
         texHeight: shell.texHeight,
         anchorX: shell.anchorX,
@@ -376,6 +430,9 @@ export class TileAtlasBuilder {
         faceQuad: shell.faceQuad,
         faceRotationDeg: shell.faceRotationDeg,
         glyphRotationDeg,
+        decalFile: entry?.decal?.textureFile ?? null,
+        decalLightRotationDeg: entry?.decal ? lightRotationDeg : null,
+        decalSymbolRotationDeg: entry?.decal ? symbolRotationDeg : null,
       };
     });
 
@@ -443,6 +500,8 @@ export class TileAtlasBuilder {
     const sprites = new Map<TileRenderKey, BakedTileSprite>();
     let glyphSprites = 0;
     let bareSprites = 0;
+    let decalSprites = 0;
+    let flatGlyphSprites = 0;
 
     for (const shellId of FACE_UP_SHELL_IDS) {
       if (!requested.has(shellId)) continue;
@@ -450,8 +509,13 @@ export class TileAtlasBuilder {
       pages.push(page);
       for (const sprite of shellSprites) {
         sprites.set(sprite.key, sprite);
-        if (sprite.hasGlyph) glyphSprites += 1;
-        else bareSprites += 1;
+        if (sprite.hasGlyph) {
+          glyphSprites += 1;
+          if (sprite.decalFile) decalSprites += 1;
+          else flatGlyphSprites += 1;
+        } else {
+          bareSprites += 1;
+        }
       }
     }
 
@@ -459,6 +523,7 @@ export class TileAtlasBuilder {
     return {
       shells: this.options.shells,
       faces: this.options.faces,
+      decals: this.options.decals ?? null,
       pages,
       sprites,
       stats: {
@@ -467,6 +532,8 @@ export class TileAtlasBuilder {
         sprites: sprites.size,
         glyphSprites,
         bareSprites,
+        decalSprites,
+        flatGlyphSprites,
         atlasPixels,
         rgbaBytes: atlasPixels * 4,
         pixelRatio: this.pixelRatio,

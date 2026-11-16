@@ -1149,3 +1149,55 @@ atlas-build emboss pass), not an unfinished step here.
    55.02 MiB at @1x, which would nearly quadruple the atlas. The task's
    deliverable enumerated the three land families; a revealed dora indicator is
    a separate variant-family task, not a glyph swapped at draw time.
+
+## 12. Phase 2b: the carved face decals (spike 2026-11-15)
+
+The user asked to keep the retired pipeline's **carve → paint → light** face
+decal, separate from the current shell/board lighting, and paste it onto the
+current shells. The other retired pieces (table model, fixed scene camera, body
+sprites, scene manifest) are **not** restored. The chosen treatment is
+**option A**: a transparent carve/paint overlay, so the shell's own lighting and
+face colour remain outside the recessed lip.
+
+**Assets.** The decal is the inset face plate at **150 × 208** (@2x), written
+with straight alpha. It contains the painted symbol, the recessed lip/fillet and
+cavity AO; everything outside the carve is transparent (four corners alpha 0,
+33–66% of the image transparent in the spike). The symbol stays upright in
+face-local space; the four images per face are four baked **light rotations**
+(0/90/180/270), chosen so the light lands top-left on screen after the shell's
+`faceQuad` rotation. There is no per-slot fan: every hand slot with the same
+rotation shares the decal. `5z` has no ink and is skipped, so the full catalogue
+is 36 faces × 4 = **144 decals**.
+
+**Baker.** `tools/render/bake_decals.py` + `decal-spec.json`, Blender 4.5.9,
+Cycles CPU, 256 samples. It imports the current shell baker's tile/material/
+render helpers and ports the retired carve functions (`alpha_to_distance`,
+`bezier_profile`, `build_carved_face`) and parameters (depth 0.0121 × thickness,
+Bézier 0.6/0.8, transition 0.0107, paint edge 0.18, cavity AO). The retired
+parlor rig is translated from its original hand slot (y=-11.7) to the canonical
+face and rotated per decal. A new `alphaRamp` (0.08) feathers the outer lip into
+the shell face so the decal has no hard rectangle.
+
+**Spike numbers.** 4 faces × 4 rotations = 16 decals, **718,240 B** PNG,
+**54 s** (~2.2–3.4 s each) on the dev box; `check-decals.mjs` reports 311
+checks. The full 144-decal set would be ~6.5 MB PNG, which does not fit the
+8 MiB committed budget alongside the current assets. AVIF q60 (~1.2 MB) or
+WebP q90 (~1.8 MB) are the likely encodings; the flat glyphs would be dropped
+from the shipped assets (they remain the build-time symbol source), or only the
+two rotations the current 16 shells use would be committed. The user's look and
+budget call is pending; **no decal set is committed yet**.
+
+**Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json`.
+`TileAtlasBuilder` takes an optional decal set, selects
+`lightRotationDeg = -screenRotationOfQuad(faceQuad)` and
+`symbolRotationDeg = faceRotationDeg - quadRotation`, loads the decal instead of
+the flat glyph, and still composites one `BakedTileSprite` per
+`(shell, variant, face)`. Missing decals fall back to the flat glyph;
+`requireDecals: true` makes a missing decal a hard error. No per-frame
+compositing is added.
+
+**Review.** `cd frontend && npm run atlas:review:carved` writes
+`carved-compare-4x.png` (flat vs carved), `carved-variants-1x.png`,
+`carved-hand-fan-1x.png` and `carved-numbers.json` under
+`tools/render/build/review/`. The user signs off the look; the agent does not
+(AGENTS.md §6).

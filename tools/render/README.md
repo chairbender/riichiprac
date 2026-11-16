@@ -44,6 +44,9 @@ bash tools/render/bake-shells.sh --check-audition  # validate the calibration; n
 node tools/render/scripts/preview-group-shadow.mjs  # merged vs per-tile group shadows; no Blender
 node tools/render/scripts/bake-faces.mjs   # bake the 37 face glyphs + faces.json (resvg)
 node tools/render/scripts/check-faces.mjs  # face glyph + atlas budget gate; no Blender/resvg
+bash tools/render/bake-decals.sh --spike   # carve/lit decal spike into build/decals (Blender)
+bash tools/render/bake-decals.sh --check   # validate the build decal manifest; no Blender
+cd frontend && npm run atlas:review:carved # flat vs carved review sheets
 cd frontend && npm run atlas:review        # build the real atlas and write review sheets
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
@@ -163,6 +166,10 @@ its own regeneration, not mixed with CPU output.
 | `faces-spec.json` | yes | the 37 face glyphs: pinned upstream SVGs, 288 × 384 RGBA raster, red paint, output paths, byte budget |
 | `bake-faces.mjs` / `face-raster.mjs` | yes | resvg glyph baker and its single shared rasteriser (also used by `rasterize-face.mjs`) |
 | `check-faces.mjs` | yes | dependency-free face-glyph + committed-asset + atlas-budget gate (CI) |
+| `decal-spec.json` | yes | the carved decal contract: pin, 150 × 208 @2x raster, carve parameters, parlor light rig, rotations, outputs |
+| `bake_decals.py` | yes | Blender 4.5.9 carve/paint/light decal baker (imports the shell baker's helpers) |
+| `bake-decals.sh` | yes | one command for dry-run/spike/build/commit/check |
+| `check-decals.mjs` | yes | dependency-free carved-decal + budget gate (PNG) |
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
 | `bake_felt.py` | yes | deterministic stdlib PNG generator for the felt + vignette |
 | `bake-felt.sh` | yes | one-command felt regeneration |
@@ -623,6 +630,63 @@ the agent does not sign off its own render (AGENTS.md §6).
 `node tools/render/scripts/check-faces.mjs` is the CI gate: glyph hashes and
 ink, red fives, haku zero ink, transparent corners, the byte budgets and the
 atlas page plan.
+
+### Phase 2b: carved face decals (spike landed 2026-11-15)
+
+The picked direction is **option A**: restore only the retired pipeline's
+carve → paint → light decal, as a **transparent carve/paint overlay** pasted
+into the current shells' `faceQuad`. The shell keeps its own lighting and face
+colour outside the recessed lip. The symbol stays upright in face-local space;
+the four images per face are four baked **light rotations** (`0/90/180/270`),
+chosen so the light lands top-left on screen after the shell's quad rotation.
+There is no per-slot fanning: a decal is shared by every slot with the same
+light rotation.
+
+The baker is `bake_decals.py` + `decal-spec.json`; it imports the current shell
+baker's tile/material/render helpers and ports the retired carve math
+(`alpha_to_distance`, `bezier_profile`, `build_carved_face`). The carve
+parameters are unchanged from the retired pipeline (commit `e39d92e`). The
+parlor light rig is translated from its original hand slot at y=-11.7 to the
+canonical face and rotated per decal.
+
+```bash
+bash tools/render/bake-decals.sh --dry-run   # print the plan
+bash tools/render/bake-decals.sh --spike     # 4 faces x 4 light rotations -> build/decals
+bash tools/render/bake-decals.sh --build     # every inked face x 4 -> build/decals
+bash tools/render/bake-decals.sh --bake      # commit frontend/public/table/decals + decals.json
+bash tools/render/bake-decals.sh --check     # validate build/decals.json (no Blender)
+bash tools/render/bake-decals.sh --check-committed
+```
+
+**Spike (measured).** 4 faces (`1m`, `5p`, `7z`, `5mr`) × 4 light rotations =
+**16 decals at 150 × 208**, **718,240 B** PNG, **54 s** wall (~2.2–3.4 s per
+decal) on the dev box. Each decal is 33–57 KB PNG, 33–66% transparent, with its
+four corners transparent. `check-decals.mjs` reports 311 checks.
+
+**Full-set projection.** `5z` (haku) has no ink and is skipped, so the full
+catalogue is **36 faces × 4 = 144 decals**. At the spike's average that is about
+**6.5 MB PNG**, which does not fit the 8 MiB committed-asset budget alongside
+the current shells and manifests. The likely encodings are AVIF q60 (~1.2 MB) or
+WebP q90 (~1.8 MB); the flat glyphs would be dropped from the shipped assets
+(they remain the build-time symbol source) or only the two rotations the current
+16 shells use would be committed. The decision is pending the user's look and
+budget call; no decal set is committed yet.
+
+**Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json`;
+`TileAtlasBuilder` takes an optional decal set, picks
+`lightRotationDeg = -screenRotationOfQuad(faceQuad)` and
+`symbolRotationDeg = faceRotationDeg - quadRotation`, loads the decal instead of
+the flat glyph, and still composites one `BakedTileSprite` per
+`(shell, variant, face)`. Missing decals fall back to the flat glyph (tests and
+the spike); `requireDecals: true` makes a missing decal a hard error. No
+per-frame compositing.
+
+**Review.** `cd frontend && npm run atlas:review:carved` writes under
+`tools/render/build/review/`:
+`carved-compare-4x.png` (spike faces, flat vs carved, 4×),
+`carved-variants-1x.png`, `carved-hand-fan-1x.png`, and
+`carved-numbers.json`. These are evidence for the user, not for the agent to
+sign off (AGENTS.md §6).
 
 ### `shells.json` contract
 

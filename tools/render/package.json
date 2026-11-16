@@ -17,7 +17,11 @@
     "rasterize": "node scripts/rasterize-face.mjs",
     "faces": "node scripts/bake-faces.mjs",
     "faces:verify": "node scripts/bake-faces.mjs --verify-determinism",
-    "check:faces": "node scripts/check-faces.mjs"
+    "check:faces": "node scripts/check-faces.mjs",
+    "decals": "bash bake-decals.sh --bake",
+    "decals:build": "bash bake-decals.sh --build",
+    "decals:spike": "bash bake-decals.sh --spike",
+    "check:decals": "node scripts/check-decals.mjs"
   },
   "dependencies": {
     "@resvg/resvg-js": "2.6.2"

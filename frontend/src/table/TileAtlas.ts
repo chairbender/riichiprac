@@ -21,6 +21,8 @@ import { FACE_UP_SHELL_IDS, TILE_FACE_IDS } from './tiles';
 import type { FaceUpShellId, TileRenderKey } from './tiles';
 import { parseFacesManifest } from './faceManifest';
 import type { FacesManifest } from './faceManifest';
+import { parseDecalsManifest } from './decalManifest';
+import type { DecalsManifest } from './decalManifest';
 import { parseShellsManifest } from './shellManifest';
 import type { ShellsManifest } from './shellManifest';
 import { TileAtlasBuilder, estimateAtlasBytes } from './TileAtlasBuilder';
@@ -38,10 +40,14 @@ import type {
 export const DEFAULT_MAX_ATLAS_RGBA_BYTES = 48 * 1024 * 1024;
 
 export interface TileAtlasLoadOptions {
-  /** Directory holding `shells.json`, `faces.json`, `shells/` and `faces/`. */
+  /** Directory holding `shells.json`, `faces.json`, `decals.json`, assets. */
   readonly baseUrl?: string;
   readonly shellsUrl?: string;
   readonly facesUrl?: string;
+  /** Carved decal manifest URL; null/undefined keeps the flat glyph path. */
+  readonly decalsUrl?: string | null;
+  /** A pre-parsed decal manifest, for tests and the review scripts. */
+  readonly decals?: DecalsManifest;
   readonly fetchJson?: (url: string) => Promise<unknown>;
   readonly loadImage?: LoadAtlasImage;
   readonly createCanvas?: CreateAtlasCanvas;
@@ -103,6 +109,7 @@ function devicePixelRatioPreference(): 1 | 2 {
 export class TileAtlas {
   readonly shells: ShellsManifest;
   readonly faces: FacesManifest;
+  readonly decals: DecalsManifest | null;
   /** The ratio actually used. */
   readonly pixelRatio: 1 | 2;
   /** The ratio DPR asked for, before the memory cap. */
@@ -118,10 +125,12 @@ export class TileAtlas {
     shells: ShellsManifest,
     faces: FacesManifest,
     requestedPixelRatio: 1 | 2 = builder.pixelRatio,
+    decals: DecalsManifest | null = null,
   ) {
     this.builder = builder;
     this.shells = shells;
     this.faces = faces;
+    this.decals = decals;
     this.pixelRatio = builder.pixelRatio;
     this.requestedPixelRatio = requestedPixelRatio;
   }
@@ -197,9 +206,16 @@ export class TileAtlas {
     );
     let glyphSprites = 0;
     let bareSprites = 0;
+    let decalSprites = 0;
+    let flatGlyphSprites = 0;
     for (const sprite of this.spriteMap.values()) {
-      if (sprite.hasGlyph) glyphSprites += 1;
-      else bareSprites += 1;
+      if (sprite.hasGlyph) {
+        glyphSprites += 1;
+        if (sprite.decalFile) decalSprites += 1;
+        else flatGlyphSprites += 1;
+      } else {
+        bareSprites += 1;
+      }
     }
     return {
       shells: this.summaries.length,
@@ -207,6 +223,8 @@ export class TileAtlas {
       sprites: this.spriteMap.size,
       glyphSprites,
       bareSprites,
+      decalSprites,
+      flatGlyphSprites,
       atlasPixels,
       rgbaBytes: atlasPixels * 4,
       pixelRatio: this.pixelRatio,
@@ -224,6 +242,11 @@ export class TileAtlas {
     ]);
     const shells = parseShellsManifest(shellsRaw);
     const faces = parseFacesManifest(facesRaw);
+    const decals =
+      options.decals ??
+      (options.decalsUrl
+        ? parseDecalsManifest(await fetchJson(options.decalsUrl))
+        : null);
 
     const requestedPixelRatio = options.pixelRatio ?? devicePixelRatioPreference();
     const maxRgbaBytes = options.maxRgbaBytes ?? DEFAULT_MAX_ATLAS_RGBA_BYTES;
@@ -234,12 +257,13 @@ export class TileAtlas {
     const builder = new TileAtlasBuilder({
       shells,
       faces,
+      decals: decals ?? undefined,
       resolveUrl: (relativePath) => joinUrl(baseUrl, relativePath),
       loadImage: options.loadImage ?? defaultLoadImage,
       createCanvas: options.createCanvas,
       pixelRatio,
     });
-    const atlas = new TileAtlas(builder, shells, faces, requestedPixelRatio);
+    const atlas = new TileAtlas(builder, shells, faces, requestedPixelRatio, decals);
     await atlas.warm(options.warmShells ?? FACE_UP_SHELL_IDS);
     return atlas;
   }

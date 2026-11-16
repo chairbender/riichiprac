@@ -55,7 +55,10 @@
         "coatRoughness": 0.1
       },
       "paint": {
-        "material": "flat face paint (runtime 2D glyphs; no carved decal)",
+        "material": "flat face paint (runtime 2D glyphs; also the carved decal paint)",
+        "roughness": 0.16,
+        "coat": 0.35,
+        "coatRoughness": 0.1,
         "red": "#a60c0c",
         "redBase": "#b93c3c"
       }

@@ -126,6 +126,11 @@ function normalizeDegrees(value: number): 0 | 90 | 180 | 270 {
   return wrapped as 0 | 90 | 180 | 270;
 }
 
+/** Normalize a multiple-of-90 angle to 0/90/180/270. */
+export function normalizeRotationDeg(value: number): 0 | 90 | 180 | 270 {
+  return normalizeDegrees(value);
+}
+
 /**
  * Screen rotation, in degrees counter-clockwise, that maps the glyph's own
  * top-left-to-top-right edge onto the faceQuad's first edge. 0 when the edge
@@ -150,6 +155,31 @@ export function screenRotationOfQuad(quad: FaceQuad): 0 | 90 | 180 | 270 {
  * side-wall dora shells 270, for the follow-up variant work.
  */
 export function glyphRotationDegFor(shell: {
+  readonly faceQuad: FaceQuad;
+  readonly faceRotationDeg: 0 | 90 | 180 | 270;
+}): 0 | 90 | 180 | 270 {
+  return normalizeDegrees(shell.faceRotationDeg - screenRotationOfQuad(shell.faceQuad));
+}
+
+/**
+ * The baked carve light rotation for a shell. The decal is lit in face-local
+ * space, then the shell's quad rotates it on screen. To keep the carve light
+ * top-left on screen, the decal is pre-rotated by the negative of the quad's
+ * own rotation. `shell_flat_sideways` (quad 90°) therefore uses the 270° decal.
+ */
+export function decalLightRotationDegFor(shell: {
+  readonly faceQuad: FaceQuad;
+}): 0 | 90 | 180 | 270 {
+  return normalizeDegrees(-screenRotationOfQuad(shell.faceQuad));
+}
+
+/**
+ * The extra in-plate symbol rotation for a shell: the published face rotation
+ * minus the quad's own rotation. It is 0 for every Phase 2 shell (the symbol
+ * rides with the tile); the back-wall dora slots need 180 and the side-wall
+ * dora slots 270.
+ */
+export function decalSymbolRotationDegFor(shell: {
   readonly faceQuad: FaceQuad;
   readonly faceRotationDeg: 0 | 90 | 180 | 270;
 }): 0 | 90 | 180 | 270 {
