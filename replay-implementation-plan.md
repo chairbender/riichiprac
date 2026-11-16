@@ -2038,6 +2038,9 @@ The first pack (Q2) is done when all of these are true:
 
 - [`replay-strategy.md`](replay-strategy.md) — authoritative source, licensing,
   scenario families, pack format, existing-code appendix.
+- [`replay-miner-operations.md`](replay-miner-operations.md) — F1 operator
+  contract: feature boundary, data root, provenance schemas, source/licence
+  gates, SQLite schema, snapshots and the optional rclone backup.
 - [`hosting-plan.md`](hosting-plan.md) — Pages/Release/HF pattern, CORS findings,
   weights licence boundary.
 - [rclone Google Drive](https://rclone.org/drive/) and

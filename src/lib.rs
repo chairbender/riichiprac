@@ -5,6 +5,8 @@ pub mod export;
 pub(crate) mod fixtures;
 pub mod fuzz;
 pub mod generator;
+#[cfg(feature = "miner")]
+pub mod miner;
 pub mod rationale;
 pub mod report;
 pub mod rng;
