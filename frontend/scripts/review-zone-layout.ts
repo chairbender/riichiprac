@@ -8,7 +8,7 @@
  * (gitignored):
  *
  *   zone-layouts-1x.png    every representative zone at 1:1 with real art
- *   pond-layouts-1x.png    the four seat ponds with their seat shells and frames
+ *   pond-layout-bodies-1x.png    the four seat ponds with their seat shells and frames
  *   zone-layout-numbers.json  per-zone bounds, counts and draw-order facts
  *
  * AGENTS.md §6: the PNG is evidence for the user to inspect, not for the agent
@@ -467,7 +467,7 @@ const report = {
 
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'zone-layouts-1x.png'), canvas.toBuffer('image/png'));
-writeFileSync(join(outDir, 'pond-layouts-1x.png'), pondCanvas.toBuffer('image/png'));
+writeFileSync(join(outDir, 'pond-layout-bodies-1x.png'), pondCanvas.toBuffer('image/png'));
 writeFileSync(join(outDir, 'zone-layout-numbers.json'), `${JSON.stringify(report, null, 2)}\n`);
 
 console.log(
@@ -491,7 +491,7 @@ for (const pond of pondNumbers) {
   );
 }
 console.log(`wrote ${join(outDir, 'zone-layouts-1x.png')}`);
-console.log(`wrote ${join(outDir, 'pond-layouts-1x.png')}`);
+console.log(`wrote ${join(outDir, 'pond-layout-bodies-1x.png')}`);
 console.log(`wrote ${join(outDir, 'zone-layout-numbers.json')}`);
 
 if (fractionalDraw !== 0 || hitBoxErrors !== 0 || report.maxFaceAnchorErrorPx > 1e-9) {

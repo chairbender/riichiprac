@@ -50,11 +50,11 @@ the tile, and it is never baked into the body.
 3. **Per-Slot Fan Rows (Drawn Outermost-to-Innermost):** The standing hand, the top hand and the front/back walls are baked as a camera fan whose centre is straight on, so the **inner** tile is nearer the camera than the outer tile. A uniform right-to-left order is wrong on the left half: it puts the outer left tile on top of the inner right tile, but the inner tile should overlap the outer tile's visible inner side. Draw the **outermost slots first on both halves**, then inward, with the centre slot last.
 4. **Vertical Discard Rows (Drawn Top-to-Bottom):** Row 2 sits below Row 1 and is drawn *after* Row 1, so the bodies stack in depth order.
 
-**Deferred: tile-to-tile overlay shadows.** The blob pass deliberately cannot
-darken a neighbour's face. The next step is a separate per-shell overlay that is
-drawn onto the *next* tile before that tile's body, so a tile can cast contact
-shading onto the neighbour drawn above it; it has to be generated per shell
-variation. It is recorded in §10.11 and `TASK.md`, not part of Phase 1d.
+**Contact-shadow decals (Phase 3.5, §15).** The blob pass deliberately cannot
+darken a neighbour's face, so Phase 3.5 adds one small per-shell decal per
+contact side. It is drawn after the neighbour body and before the caster body,
+clipped to the neighbour's published body polygon; the group recipe above is
+unchanged.
 
 ```text
 Horizontal Row (Drawn Right-to-Left: Tile 2 -> Tile 1 -> Tile 0)
@@ -1001,12 +1001,10 @@ records a decoded-RGBA hash per texture for integrity; the optional
 **5,653,539 B** (1,515,854 @1x + 4,137,685 @2x) against the 6,291,456 B budget;
 `shells.json` is **561,793 B** against 614,400 B.
 
-**Deferred: tile-to-tile overlay shadows.** The blob pass cannot darken a
-neighbour's face by design. The agreed next step is a separate per-shell overlay
-shadow, drawn onto the tile that will be above it before that tile's body: the
-next tile's body covers the overlap, so the shading sits on the neighbour's face
-rather than on the felt. It must be generated per shell variation (each slot's
-geometry differs), so it is a follow-up task, not part of Phase 1d.
+**Resolved in Phase 3.5 (§15): contact-shadow decals.** The blob still cannot
+darken a neighbour's face; the separate per-shell overlay is now baked and
+composed between the bodies. The derivation stays per shell variation, as
+predicted; the group recipe above is untouched.
 
 ### 10.12 Group shadows: merged footprint, one blur (2026-11-14)
 
@@ -1426,6 +1424,134 @@ unrotated local space, so Phase 4 applies the transform to the zone group and
 Phase 5 applies the same transform when hit-testing. `leanDeg` overrides the
 angle, and `0` disables it.
 
-**Deferred.** The tile-to-tile overlay shadow is still the next polish step: the
-few visible slivers where two tiles touch are not shadowed because the group
-blob is unioned under both bodies. Phase 3.5 records that work.
+**Contact shadows.** The few visible slivers where two tiles touch were not
+shadowed because the group blob is unioned under both bodies. Phase 3.5 closed
+that gap with per-shell decals; see §15.
+
+
+## 15. Phase 3.5: contact-shadow decals (landed 2026-11-16)
+
+The group layer (§10.12) is one blurred union **under** every body. It is correct
+for the felt, but where two tiles touch the neighbour's exposed sliver is not
+darkened: the bodies cover the union. Phase 3.5 adds a **contact-shadow decal**
+per shell and per screen side. It is still 2D: no WebGL, no per-frame lighting,
+and the group recipe remains one blur per zone.
+
+### 15.1 What the decal is, and why it is not `shadowShape`
+
+A decal is a small straight-alpha PNG of a soft band that hugs one edge of the
+caster's *own body silhouette*, baked from the committed shell PNG alpha:
+
+```
+alpha(d) = coreAlpha * exp(-0.5 * (d / sigma)^2)
+```
+
+`d` is the distance outward from the silhouette's opaque contour in @1x px; the
+band is zero inside the body and beyond `supportSigma * sigma`, and fades to zero
+over `tangentFadePx1x` at both ends. The committed values are `coreAlpha 0.35`,
+`sigmaPx1x` 6 lying / 4 standing, tangent fade 16 px, support 3σ, ink `#0b1418`.
+The band is not the cast blob: `shadowShape` is 1.15× the body box with a 40 px
+top trim and a 5/7 offset, so using it here would smear across the neighbour
+instead of hugging the contact. Only its `lying/standing` classification, ink
+and sigma family are reused.
+
+A decal belongs to the **caster** (the later body) but is drawn **after the
+neighbour body it lands on** and before the caster's body. The caster covers the
+overlap; only the neighbour's exposed sliver darkens. The compositor clips the
+decal to the neighbour's published **body polygon** (`bodyQuads`), an inset
+convex hull of its opaque silhouette. The advance box is not enough: an oblique
+side-wall or standing-hand body does not fill its box, and a box clip would let
+the band show through the empty corners onto the felt.
+
+### 15.2 Contact detection and painter order
+
+`frontend/src/table/contactOverlays.ts` derives the contacts from the **Phase 3
+painter order**, not from a per-zone special case. For each earlier body A and
+later caster B whose drawn advance boxes overlap, each B edge that lies strictly
+inside A's box with at least 4 px of edge overlap is a contact. A decal whose
+strongest point is already covered by a later body is pruned. The same pair can
+qualify on two sides, which is what the side hand's L-shaped sliver needs.
+
+This is the complete matrix; the four ponds differ exactly as §10.10 predicted:
+
+| Family | Later body is | Sides used |
+| :--- | :--- | :--- |
+| Bottom / top pond | below (row seam), left/right (column seam) | `up`, `left`, `right` |
+| Right / left pond | below in a column, across the logical rows | `up`, `left`, `right` |
+| Turned riichi / called tile | sideways family; the near-edge nudge | inherits its shell's sides |
+| Human hand fan | the inner neighbour (left or right half) | `left` / `right`; centre both |
+| Top hand | the same fan rule on blue backs | `left` / `right` |
+| Side hands | the next tile down-left | `up` + `right` (or `left`) |
+| Melds | the pond row rule; called tile sideways | `left` / `right` / `up` |
+| Front / back wall fans | inner slot horizontally; upper tier down | `left` / `right` / `down` |
+| Side wall columns | next stack down; upper tier down | `up`, `down` |
+
+The **side-pond 1° lean** is a single group transform around
+`rotationDeg/pivotX/pivotY`; the decals are baked and drawn in the same local
+unrotated frame as the bodies, inside that transform. The grid positions and hit
+boxes stay in local space, exactly as Phase 3 publishes them.
+
+### 15.3 Asset and manifest contract
+
+`tools/render/bake_overlays.mjs` bakes
+`frontend/public/table/overlays/<shell>--<side>.png` and the `2x/` twin, plus
+`frontend/public/table/overlays.json`:
+
+- `model`: `contact-ao-band`, `coreAlpha`, `sigmaPx1x`, `tangentFadePx1x`,
+  `supportSigma`, `colorHex`, and the anchor/clip rules;
+- `aliases`: the `_faceup` wall dora shells share their face-down twin's decal
+  (the drawn body geometry is identical);
+- `bodyQuads`: one inset convex clip polygon per shell, in drawn-body-box
+  coordinates;
+- `decals`: keyed `${shell}:${side}`, with the texture files, @1x size,
+  `bodyAnchorX/Y`, support rectangle, peak alpha, decoded-RGBA sha256 and bytes.
+
+The `(shell, side)` set is not hand-written. `frontend/scripts/export-overlays.ts
+--sides` runs the real layout over **5,877 supported compositions** (every pond
+length and Riichi position × 4 seats, hands 1–14, side hands, melds with every
+called index, every wall run/start/dora) and writes the side histogram; the
+baker bakes exactly that set. The `--fixture` mode writes the committed
+`tools/render/overlay-zones.json` for the dependency-free checker, and
+`contactOverlays.test.ts` rejects fixture drift.
+
+The bake produces **146 decals** (37 `_faceup` aliases), **88,760 B @1x +
+242,918 B @2x = 331,678 B** across both scales.
+
+### 15.4 Verification
+
+`node tools/render/scripts/check-overlays.mjs` runs **3,451 dependency-free
+checks**:
+
+- **assets**: both scales exist at the published size/bytes/hash, the outer ring
+  is transparent, the alpha peak is the published core, the band is smooth in
+  the normal direction, it decays away from the contact, and it is **zero inside
+  the caster's opaque body**;
+- **layout**: every contact in the fixture resolves to a decal, every decal is
+  attached to an earlier body, every draw position is whole-pixel, and every
+  clip polygon is convex and inside the neighbour advance box;
+- **pixels**: the group shadow + bodies + decals are composed over the real felt
+  at 1:1 and compared with the same composition without decals. Each of the four
+  ponds, both hands, the side hands, melds and all four walls changes **zero felt
+  pixels**, the group field is identical (it is the same object), the §10.12
+  seam kink stays below 0.05, and the side ponds' decals survive the 1° inverse
+  transform. The four-pond numbers are 57/52/57/52 decals, mean Δluma 21.5–21.8
+  on the changed body pixels, with max stacked alpha 0.724 (top 0.814).
+
+The review script (`cd frontend && npm run overlays:review`) writes
+`build/review/pond-layouts-1x.png` (four seats, full pond plus 2× crops with and
+without the decals), `overlay-zones-1x.png`, `overlay-decals-1x.png` and
+`overlay-audition-1x.png`. The layout script's bodies-only pond sheet is
+`pond-layout-bodies-1x.png`. Visual sign-off is the user's (AGENTS.md §6).
+
+### 15.5 Known limits
+
+- Two bands can meet on one body where two later tiles touch it (the side-hand
+  L, pond corners, wall tier corners). They composite with source-over; the
+  measured worst stacked alpha is 0.83 on a side wall. This is reported, not
+  clamped, pending the visual review.
+- The body polygon is an inset convex hull, not the exact silhouette. It is a
+  superset of the visible body, so it can only make the clip conservative; the
+  decoded-pixel check asserts zero felt change.
+- The decals are baked per committed shell silhouette, so a future shell or a
+  change to a body texture must re-run `bake-overlays.sh --bake` (the side
+  histogram and the fixture are regenerated by the same command).

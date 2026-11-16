@@ -39,7 +39,9 @@ bash tools/render/bake-shells.sh --preview --only <id> [--only <id>...]  # fast 
 bash tools/render/bake-shells.sh --preview-shadow --only <id>  # single-tile shadow, no Blender
 bash tools/render/bake-shells.sh --audition # standing-hand fan calibration + sheets
 bash tools/render/bake-shells.sh --shadow-audition  # REF + A/B/C shadow sheet
-bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
+bash tools/render/bake-shells.sh --check   # shell + contact-shadow check; no Blender needed
+bash tools/render/bake-overlays.sh --bake  # bake the Phase 3.5 contact decals + check
+bash tools/render/bake-overlays.sh --check # contact decals + composed pixels; no Blender
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
 node tools/render/scripts/preview-group-shadow.mjs  # merged vs per-tile group shadows; no Blender
 node tools/render/scripts/bake-faces.mjs   # bake the 37 face glyphs + faces.json (resvg)
@@ -103,9 +105,10 @@ the sheets with `check-shells.mjs --audition`. It **never writes the committed
 shells or `shells.json`**. `--check-audition` runs only the dependency-free validation, which is
 what makes the calibration self-checking in an environment without Blender.
 
-`--check` is the CI gate (`node tools/render/scripts/check-shells.mjs`). It
-validates the specs, the felt PNG, `shells.json` and both texture scales. It
-never invokes Blender.
+`--check` is the CI gate. It runs `check-shells.mjs` (the specs, the felt PNG,
+`shells.json` and both texture scales) and then `check-overlays.mjs` (the Phase
+3.5 decals and their composed pixels). It never invokes Blender. The standalone
+overlay loop is `bash tools/render/bake-overlays.sh --check`.
 
 The default `bake-shells.sh` run is a **dry run**: it starts the pinned Blender,
 builds the tile, material and lights, prints the seventy-seven-shell plan, and exits
@@ -1185,22 +1188,35 @@ review sheet and its numbers:
 ```bash
 cd frontend && npm run layout:review
 xdg-open ../tools/render/build/review/zone-layouts-1x.png
-xdg-open ../tools/render/build/review/pond-layouts-1x.png
+xdg-open ../tools/render/build/review/pond-layout-bodies-1x.png
 cat ../tools/render/build/review/zone-layout-numbers.json
+```
+
+The **Phase 3.5 contact shadows** have their own composed review:
+
+```bash
+cd frontend && npm run overlays:review
+xdg-open ../tools/render/build/review/pond-layouts-1x.png        # the sign-off sheet
+xdg-open ../tools/render/build/review/overlay-zones-1x.png
+xdg-open ../tools/render/build/review/overlay-decals-1x.png
+xdg-open ../tools/render/build/review/overlay-audition-1x.png
+cat ../tools/render/build/review/overlay-numbers.json
 ```
 
 The sheet is real art (the @1x atlas and the face-down shell PNGs) at 1:1, with
 the zones normalised to `(0, 0)`. It is evidence for the user's eyes; the script
 prints the facts: fractional draw positions (must be 0), the face-anchor error,
 and hit boxes that are not the published advance box (must be 0).
-`pond-layouts-1x.png` is the focused four-seat pond sheet: the same 24 discards
-and the row-2/column-4 riichi as the bottom, right, top and left ponds, each with
-its own normal/turned shells and frame. The bodies are drawn furthest depth line
-first and right-to-left within a line; a turned riichi tile stays centred on its
-discard-row line. The left/right ponds also carry the 1°
+`pond-layout-bodies-1x.png` is the bodies-only four-seat pond sheet: the same 24
+discards and the row-2/column-4 riichi as the bottom, right, top and left ponds,
+each with its own normal/turned shells and frame. The bodies are drawn furthest
+depth line first and right-to-left within a line; a turned riichi tile stays
+centred on its discard-row line. The left/right ponds also carry the 1°
 whole-zone lean (right −1°, left +1°) about the near body edge, drawn as one
 group transform; the JSON `ponds` block records every seat's size, step deltas,
-first/last body, lean pivot and rotation, and riichi body.
+first/last body, lean pivot and rotation, and riichi body. The **composed**
+four-pond sheet with the group shadow and the contact decals is
+`pond-layouts-1x.png`, written by `npm run overlays:review` (below).
 
 State the numbers the check already verified, then ask the user the questions
 only they can answer: does the hand fan read at 24 units, or does it need the
@@ -1208,6 +1224,48 @@ only they can answer: does the hand fan read at 24 units, or does it need the
 standing hand's dimmer face acceptable next to the pond; is the packed hand row
 with the drawn gap the right read? Compare decoded pixels, not PNG container
 bytes: zlib can change the container while the image is identical.
+
+## Phase 3.5: contact shadows (tile-to-tile)
+
+The group shadow is one blur per zone **under** the bodies (§10.12), so it cannot
+darken a neighbour's face where two tiles touch. Phase 3.5 adds a per-shell,
+per-screen-side **contact-shadow decal**. It is 2D (PNG plus draw order), no
+WebGL and no per-frame lighting, and the group recipe is unchanged.
+
+- **What is baked:** `frontend/public/table/overlays/<shell>--<side>.png` and
+  `overlays/2x/`, plus `frontend/public/table/overlays.json`. A decal is an
+  outward half-Gaussian from the caster body's opaque contour
+  (`alpha(d) = coreAlpha * exp(-0.5 (d/sigma)^2)`), zero inside the body and
+  beyond `3σ`, faded at both tangential ends. Committed: `coreAlpha 0.35`,
+  `σ 6 px lying / 4 px standing`, fade 16 px, ink `#0b1418`. It is baked from
+  the committed shell PNG alpha, **not** from `shadowShape` (the blob is 1.15×
+  the body with a 40 px top trim and a 5/7 offset, so it would smear).
+- **Which decals exist:** `cd frontend && npm run overlays:export -- --sides`
+  runs every supported composition (5,877 zones) and writes
+  `build/overlays-sides.json`; `bake_overlays.mjs` bakes exactly that
+  `(shell, side)` set. The `_faceup` wall shells alias to their face-down twin.
+  The current bake is **146 decals, 331,678 B** across both scales.
+- **Where they go:** `frontend/src/table/contactOverlays.ts` derives contacts
+  from the Phase 3 painter order. For each earlier body A and later caster B,
+  each B edge inside A's advance box with at least 4 px of overlap is a
+  contact. The decal is drawn after A's body and before B's body, inside the
+  zone's one transform, so the side ponds' 1° lean carries it automatically.
+- **How it stays off the felt:** the compositor clips each decal to the
+  neighbour's `bodyQuads` polygon (an inset hull in `overlays.json`), not to the
+  advance box: an oblique side-wall or standing-hand body does not fill its box.
+- **Checks:** `node tools/render/scripts/check-overlays.mjs` runs 3,451
+  dependency-free checks (asset alpha/hash/shape, clip coverage, and a decoded-
+  pixel composition over the real felt). Every zone changes **0 felt pixels**;
+  the four ponds are 57/52/57/52 decals with mean Δluma 21.5–21.8 and max
+  stacked alpha 0.724 (top 0.814). The §10.12 seam kink stays below 0.05.
+- **Fixture:** `tools/render/overlay-zones.json` is committed and regenerated by
+  `npm run overlays:export -- --fixture`; `contactOverlays.test.ts` asserts the
+  layout reproduces it and that every contact in the full stress matrix has a
+  decal.
+- **Review:** `npm run overlays:review` writes `pond-layouts-1x.png` (four
+  seats; full pond + 2× crops with and without decals), `overlay-zones-1x.png`,
+  `overlay-decals-1x.png` and `overlay-audition-1x.png`. Visual sign-off is the
+  user's (AGENTS.md §6).
 
 ## Legacy
 

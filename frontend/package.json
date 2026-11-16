@@ -12,6 +12,8 @@
     "atlas:review": "vite-node scripts/review-atlas.ts",
     "atlas:review:carved": "vite-node scripts/review-carved.ts",
     "layout:review": "vite-node scripts/review-zone-layout.ts",
+    "overlays:export": "vite-node scripts/export-overlays.ts",
+    "overlays:review": "vite-node scripts/review-overlays.ts",
     "tune:carved": "vite-node scripts/tune-carved.ts"
   },
   "dependencies": {
