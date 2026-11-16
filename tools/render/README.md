@@ -659,17 +659,20 @@ bash tools/render/bake-decals.sh --check-committed
 ```
 
 **Spike (measured).** 4 faces (`1m`, `5p`, `7z`, `5mr`) × 4 light rotations =
-**16 decals at 150 × 208**, **718,240 B** PNG, **54 s** wall (~2.2–3.4 s per
-decal) on the dev box. Each decal is 33–57 KB PNG, 33–66% transparent, with its
-four corners transparent. `check-decals.mjs` reports 311 checks.
+**16 decals at 158 × 216** (150 × 208 face plate + a 4 px transparent safety ring), **739,056 B** PNG, **54 s** wall (~2.2–3.4 s per
+decal) on the dev box. Each decal is 34–62 KB PNG, 18–66% transparent, with its
+four corners transparent. `check-decals.mjs` reports 312 checks on the spike
+and 2,656 on the full build.
 
-**Full-set projection.** `5z` (haku) has no ink and is skipped, so the full
-catalogue is **36 faces × 4 = 144 decals**. At the spike's average that is about
-**6.5 MB PNG**, which does not fit the 8 MiB committed-asset budget alongside
-the current shells and manifests. The likely encodings are AVIF q60 (~1.2 MB) or
-WebP q90 (~1.8 MB); the flat glyphs would be dropped from the shipped assets
-(they remain the build-time symbol source) or only the two rotations the current
-16 shells use would be committed. The decision is pending the user's look and
+**Full set (built, not committed).** `5z` (haku) has no ink and is skipped, so
+the catalogue is **36 faces × 4 = 144 decals**. The full PNG build is
+**7,109,639 B**, far over the 8 MiB committed budget. Encoding the same images:
+WebP q90 **1.79 MiB**, WebP q80 **1.48 MiB**, AVIF q60 **1.20 MiB**, AVIF q50
+**1.03 MiB**. Dropping the superseded flat glyphs from the shipped assets frees
+577 KB, so AVIF q60 all-4-rotations fits (about 8.13 MB total); keeping the flat
+glyphs only fits two rotations (the 16 current shells use 0° and 270°). The
+decision is pending the user's look and budget call; no decal set is committed
+yet. The decision is pending the user's look and
 budget call; no decal set is committed yet.
 
 **Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json`;

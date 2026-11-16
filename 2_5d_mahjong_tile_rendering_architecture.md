@@ -1159,10 +1159,12 @@ sprites, scene manifest) are **not** restored. The chosen treatment is
 **option A**: a transparent carve/paint overlay, so the shell's own lighting and
 face colour remain outside the recessed lip.
 
-**Assets.** The decal is the inset face plate at **150 × 208** (@2x), written
-with straight alpha. It contains the painted symbol, the recessed lip/fillet and
+**Assets.** The decal is the inset face plate at **150 × 208** (@2x) plus a 4 px
+transparent safety ring, so the PNG is **158 × 216**, written with straight
+alpha. `facePlateRect` maps the inner 150 × 208 rect to the faceQuad, so a
+symbol that reaches the face edge is not clipped by the image border. It contains the painted symbol, the recessed lip/fillet and
 cavity AO; everything outside the carve is transparent (four corners alpha 0,
-33–66% of the image transparent in the spike). The symbol stays upright in
+18–66% of the image transparent in the spike). The symbol stays upright in
 face-local space; the four images per face are four baked **light rotations**
 (0/90/180/270), chosen so the light lands top-left on screen after the shell's
 `faceQuad` rotation. There is no per-slot fan: every hand slot with the same
@@ -1178,13 +1180,14 @@ parlor rig is translated from its original hand slot (y=-11.7) to the canonical
 face and rotated per decal. A new `alphaRamp` (0.08) feathers the outer lip into
 the shell face so the decal has no hard rectangle.
 
-**Spike numbers.** 4 faces × 4 rotations = 16 decals, **718,240 B** PNG,
-**54 s** (~2.2–3.4 s each) on the dev box; `check-decals.mjs` reports 311
-checks. The full 144-decal set would be ~6.5 MB PNG, which does not fit the
-8 MiB committed budget alongside the current assets. AVIF q60 (~1.2 MB) or
-WebP q90 (~1.8 MB) are the likely encodings; the flat glyphs would be dropped
-from the shipped assets (they remain the build-time symbol source), or only the
-two rotations the current 16 shells use would be committed. The user's look and
+**Spike numbers.** 4 faces × 4 rotations = 16 decals, **739,056 B** PNG,
+**54 s** (~2.2–3.4 s each) on the dev box; `check-decals.mjs` reports 312
+checks on the spike. The full 144-decal PNG build (not committed) is
+**7,109,639 B**. WebP q90 is **1.79 MiB**, WebP q80 **1.48 MiB**, AVIF q60
+**1.20 MiB**, AVIF q50 **1.03 MiB**. Dropping the superseded flat glyphs from
+the shipped assets frees 577 KB, so AVIF q60 all-4-rotations fits (~8.13 MB
+total); keeping the flat glyphs only fits two rotations (0° and 270°). The
+user's look and budget call is pending; **no decal set is committed yet**. The user's look and
 budget call is pending; **no decal set is committed yet**.
 
 **Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json`.

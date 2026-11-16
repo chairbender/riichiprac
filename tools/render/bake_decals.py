@@ -138,7 +138,7 @@ def rotate_about_z(point: Vector, center: Vector, angle_deg: float) -> Vector:
 
 
 def decal_geometry(shell_spec: dict, decal_spec: dict) -> dict:
-    """The inset face plate at the decal's @2x frame, in world units and pixels."""
+    """The padded face-plate frame at the decal's @2x size, in units and pixels."""
     tile = shell_spec["tile"]
     raster = decal_spec["raster"]
     padding = int(raster.get("paddingPixels", 0))
@@ -155,13 +155,20 @@ def decal_geometry(shell_spec: dict, decal_spec: dict) -> dict:
             f"decal raster {width}x{height} does not match the inset face "
             f"({derived_w}x{height} at {px_per_unit:.4f} px/unit)"
         )
+    face_plate_rect = [
+        padding / width,
+        padding / height,
+        (width - padding) / width,
+        (height - padding) / height,
+    ]
     return {
         "width": width,
         "height": height,
         "padding": padding,
-        "frameW": frame_w / px_per_unit,
-        "frameH": frame_h / px_per_unit,
+        "frameW": width / px_per_unit,
+        "frameH": height / px_per_unit,
         "pxPerUnit": px_per_unit,
+        "facePlateRect": face_plate_rect,
     }
 
 
@@ -617,7 +624,7 @@ def bake_one(
         "textureFile": f"decals/{output_path.name}",
         "width": geometry["width"],
         "height": geometry["height"],
-        "facePlateRect": [0.0, 0.0, 1.0, 1.0],
+        "facePlateRect": [round(value, 8) for value in geometry["facePlateRect"]],
         "bytes": output_path.stat().st_size,
         "sha256": {"decodedRgba": rgba_sha256(decoded)},
         "measured": measured,
@@ -674,6 +681,7 @@ def main(argv: list[str]) -> int:
     )
 
     faces = [entry["id"] for entry in faces_spec["faces"]]
+    all_faces = list(faces)
     if options["spike"]:
         faces = list(decal_spec["spike"]["faces"])
     if options["spike"] or options["build"]:
@@ -683,7 +691,7 @@ def main(argv: list[str]) -> int:
         output_dir = RENDER_DIR / decal_spec["output"]["dir"]
         manifest_path = RENDER_DIR / decal_spec["output"]["manifest"]
     if options["only"]:
-        missing = [face for face in options["only"] if face not in faces]
+        missing = [face for face in options["only"] if face not in all_faces]
         if missing:
             die(f"unknown face(s) {missing}")
         faces = options["only"]
@@ -810,11 +818,12 @@ def main(argv: list[str]) -> int:
         f"wrote {len(records)} decals ({total_bytes} B) to {output_dir} and "
         f"{manifest_path}"
     )
-    if total_bytes > int(decal_spec["output"]["bytesBudget"]):
-        die(
-            f"decal bytes {total_bytes} exceed the budget "
-            f"{decal_spec['output']['bytesBudget']}"
-        )
+    if options["spike"] or options["build"]:
+        budget = int(decal_spec["output"].get("buildBytesBudget", decal_spec["output"]["bytesBudget"]))
+    else:
+        budget = int(decal_spec["output"]["bytesBudget"])
+    if total_bytes > budget:
+        die(f"decal bytes {total_bytes} exceed the budget {budget}")
     return 0
 
 

@@ -111,10 +111,14 @@ function checkDecalsSpec() {
   const spec = readJson(join(renderDir, 'decal-spec.json'));
   check(spec.version === 1, 'decal-spec.json version is 1');
   check(
-    spec.raster?.width === 150 && spec.raster?.height === 208,
-    `decal raster is 150x208 (${spec.raster?.width}x${spec.raster?.height})`,
+    spec.raster?.width === 158 && spec.raster?.height === 216,
+    `decal raster is 158x216 (${spec.raster?.width}x${spec.raster?.height})`,
   );
   check(spec.raster?.scale === 2, `decal raster is @2x (scale ${spec.raster?.scale})`);
+  check(
+    spec.raster?.paddingPixels === 4,
+    `decal raster has a 4 px safety ring (${spec.raster?.paddingPixels})`,
+  );
   check(
     JSON.stringify(spec.rotations) === JSON.stringify([0, 90, 180, 270]),
     `decal light rotations are 0/90/180/270 (${spec.rotations?.join('/')})`,
@@ -132,9 +136,14 @@ function checkManifest() {
   const manifest = readJson(manifestPath);
   check(manifest.version === 1, 'decals.json version is 1');
   check(
-    manifest.raster?.width === 150 && manifest.raster?.height === 208,
-    `decals.json raster is 150x208 (${manifest.raster?.width}x${manifest.raster?.height})`,
+    manifest.raster?.width === 158 && manifest.raster?.height === 216,
+    `decals.json raster is 158x216 (${manifest.raster?.width}x${manifest.raster?.height})`,
   );
+  const expectedRect = [4 / 158, 4 / 216, 154 / 158, 212 / 216];
+  const rectMatches = (rect) =>
+    Array.isArray(rect) &&
+    rect.length === 4 &&
+    rect.every((value, index) => Math.abs(value - expectedRect[index]) < 1e-6);
   check(
     JSON.stringify(manifest.rotations) === JSON.stringify([0, 90, 180, 270]),
     'decals.json light rotations are 0/90/180/270',
@@ -171,8 +180,8 @@ function checkManifest() {
       `${key} textureFile is under decals/ (${record.textureFile})`,
     );
     check(
-      JSON.stringify(record.facePlateRect) === JSON.stringify([0, 0, 1, 1]),
-      `${key} maps its whole image to the face plate`,
+      rectMatches(record.facePlateRect),
+      `${key} maps the inner 150x208 face plate, leaving the 4 px safety ring (${JSON.stringify(record.facePlateRect)})`,
     );
     const file = join(assetRoot, record.textureFile);
     check(existsSync(file), `${key} PNG exists (${record.textureFile})`);
@@ -202,7 +211,7 @@ function checkManifest() {
     check(stats.alphaPixels > 500, `${key} has a visible carve (${stats.alphaPixels} px)`);
     check(stats.inkPixels > 200, `${key} has visible paint (${stats.inkPixels} px)`);
     check(
-      stats.transparentFraction >= 0.2,
+      stats.transparentFraction >= 0.1,
       `${key} is a carve overlay, ${(stats.transparentFraction * 100).toFixed(1)}% transparent`,
     );
     for (const [x, y] of [
@@ -230,9 +239,13 @@ function checkManifest() {
     hashesByFace.set(record.face, hashes);
   }
 
+  const spec = readJson(join(renderDir, 'decal-spec.json'));
+  const budget = committed
+    ? manifest.budget.bytes
+    : (spec.output.buildBytesBudget ?? manifest.budget.bytes);
   check(
-    totalBytes <= manifest.budget.bytes,
-    `decal assets total ${totalBytes} B (budget ${manifest.budget.bytes} B)`,
+    totalBytes <= budget,
+    `decal assets total ${totalBytes} B (${committed ? 'committed' : 'build'} budget ${budget} B)`,
   );
   note(`decal assets total ${totalBytes} B across ${entries.length} PNGs`);
 

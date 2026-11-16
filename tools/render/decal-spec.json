@@ -14,11 +14,11 @@
   },
   "raster": {
     "scale": 2,
-    "width": 150,
-    "height": 208,
-    "paddingPixels": 0,
+    "width": 158,
+    "height": 216,
+    "paddingPixels": 4,
     "format": "8-bit RGBA PNG",
-    "notes": "The frame is the inset face plate at @2x: the shell's 104 px @1x long axis is 208 px @2x, minus the faceInset. The inset face is 0.64 x 0.89 tile units, so the exact @2x plate is 150 x 208 px (aspect 0.72, not the full tile's 0.75). A 90-degree rotation of the symbol is not baked into the image: the symbol stays upright in face-local space and the shell's published faceQuad applies the tile's rotation. The four images differ only in the baked light direction, so the carve stays screen-lit after the quad rotation."
+    "notes": "The face plate is the inset face at @2x: 150 x 208 px (0.64 x 0.89 tile units, aspect 0.72). A 4 px transparent safety ring surrounds it, so a symbol that reaches the face edge is not clipped by the image border; the manifest's facePlateRect maps the inner 150 x 208 rect to the shell's faceQuad. The 90-degree rotation is not baked into the image: the symbol stays upright in face-local space and the shell's faceQuad applies the tile's rotation. The four images differ only in the baked light direction."
   },
   "carve": {
     "depthFractionOfThickness": 0.0121,
@@ -52,7 +52,11 @@
       {
         "id": "tube-0",
         "group": "tube",
-        "target": [0, -8.5, 0],
+        "target": [
+          0,
+          -8.5,
+          0
+        ],
         "azimuthDeg": 0,
         "elevationDeg": 50,
         "distance": 56,
@@ -65,7 +69,11 @@
       {
         "id": "tube-1",
         "group": "tube",
-        "target": [-2, 3, 0],
+        "target": [
+          -2,
+          3,
+          0
+        ],
         "azimuthDeg": 90,
         "elevationDeg": 58,
         "distance": 56,
@@ -78,7 +86,11 @@
       {
         "id": "bounce",
         "group": "bounce",
-        "target": [0, -1, 0.3],
+        "target": [
+          0,
+          -1,
+          0.3
+        ],
         "azimuthDeg": 30,
         "elevationDeg": 10,
         "distance": 34,
@@ -91,7 +103,11 @@
       {
         "id": "rim",
         "group": "rim",
-        "target": [0, 0, 0],
+        "target": [
+          0,
+          0,
+          0
+        ],
         "azimuthDeg": 170,
         "elevationDeg": 45,
         "distance": 40,
@@ -103,10 +119,22 @@
       }
     ]
   },
-  "rotations": [0, 90, 180, 270],
-  "symbolRotations": [0],
+  "rotations": [
+    0,
+    90,
+    180,
+    270
+  ],
+  "symbolRotations": [
+    0
+  ],
   "spike": {
-    "faces": ["1m", "5p", "7z", "5mr"],
+    "faces": [
+      "1m",
+      "5p",
+      "7z",
+      "5mr"
+    ],
     "notes": "Spike output goes to tools/render/build/decals and build/decals.json (gitignored). Do not commit a carved decal set until the user has reviewed the sheets."
   },
   "output": {
@@ -114,6 +142,7 @@
     "manifest": "../../frontend/public/table/decals.json",
     "buildDir": "build/decals",
     "buildManifest": "build/decals.json",
-    "bytesBudget": 2097152
+    "bytesBudget": 2097152,
+    "buildBytesBudget": 12582912
   }
 }

@@ -391,8 +391,11 @@ export class TileAtlasBuilder {
       const slot = index + 1;
       const { x, y } = slotOffset(slot);
       const source = sources[index];
-      const rotation = source.decal ? symbolRotationDeg : glyphRotationDeg;
-      this.drawGlyph(ctx, shell, source.image, x, y, scale, rotation);
+      if (source.decal) {
+        this.drawDecal(ctx, shell, source.decal, source.image, x, y, scale, symbolRotationDeg);
+      } else {
+        this.drawGlyph(ctx, shell, source.image, x, y, scale, glyphRotationDeg);
+      }
     });
 
     const page: AtlasPage = {
@@ -440,7 +443,66 @@ export class TileAtlasBuilder {
   }
 
   /**
-   * Draw one glyph into the shell's face plate.
+   * Draw one carved decal into the shell's face plate.
+   *
+   * A decal carries a transparent safety ring around the face plate, so the
+   * manifest's `facePlateRect` selects the inner image sub-rect. That sub-rect
+   * maps to the same face-local sub-quad of `faceQuad`; the rest of the image
+   * (the ring) is never drawn. Phase 2 decals have symbol rotation 0; a dora
+   * decal with 180/270 will extend this method with rotated source corners.
+   */
+  private drawDecal(
+    ctx: CanvasRenderingContext2D,
+    shell: ShellStats,
+    record: DecalRecord,
+    image: AtlasImage,
+    offsetX: number,
+    offsetY: number,
+    scale: number,
+    symbolRotationDeg: DecalRotation,
+  ): void {
+    if (symbolRotationDeg !== 0) {
+      throw new Error(
+        `${record.face} needs symbol rotation ${symbolRotationDeg}; only 0 is baked in Phase 2`,
+      );
+    }
+    const quad = shell.faceQuad.map(
+      ([x, y]) => [x * scale + offsetX, y * scale + offsetY] as const,
+    ) as unknown as FaceQuad;
+    const [u0, v0, u1, v1] = record.facePlateRect;
+    const point = (u: number, v: number): readonly [number, number] => [
+      quad[0][0] + u * (quad[1][0] - quad[0][0]) + v * (quad[3][0] - quad[0][0]),
+      quad[0][1] + u * (quad[1][1] - quad[0][1]) + v * (quad[3][1] - quad[0][1]),
+    ];
+    const origin = point(u0, v0);
+    const right = point(u1, v0);
+    const down = point(u0, v1);
+    const sourceX = u0 * image.width;
+    const sourceY = v0 * image.height;
+    const sourceWidth = (u1 - u0) * image.width;
+    const sourceHeight = (v1 - v0) * image.height;
+    const glyph = image as CanvasImageSource;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(quad[0][0], quad[0][1]);
+    ctx.lineTo(quad[1][0], quad[1][1]);
+    ctx.lineTo(quad[2][0], quad[2][1]);
+    ctx.lineTo(quad[3][0], quad[3][1]);
+    ctx.closePath();
+    ctx.clip();
+
+    const a = (right[0] - origin[0]) / sourceWidth;
+    const b = (right[1] - origin[1]) / sourceWidth;
+    const c = (down[0] - origin[0]) / sourceHeight;
+    const d = (down[1] - origin[1]) / sourceHeight;
+    ctx.setTransform(a, b, c, d, origin[0], origin[1]);
+    ctx.drawImage(glyph, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+    ctx.restore();
+  }
+
+  /**
+   * Draw one flat glyph into the shell's face plate.
    *
    * `faceQuad` is published in face-local order (top-left, top-right,
    * bottom-right, bottom-left) of the *rotated* face, so mapping the glyph's

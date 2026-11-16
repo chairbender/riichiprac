@@ -140,9 +140,11 @@ function spriteFor(
   return { sprite, page };
 }
 
-/** Spike faces, flat vs carved, 4x. */
+const COMPARE_FACES = ['1m', '5p', '7z', '5mr'] as const;
+
+/** Representative faces, flat vs carved, 4x. */
 function compareSheet() {
-  const spikeFaces = TILE_FACE_IDS.filter((face) =>
+  const spikeFaces = COMPARE_FACES.filter((face) =>
     Object.values(decals.decals).some((record) => record.face === face),
   );
   const zoom = 4;
@@ -332,6 +334,7 @@ const numbers = {
   committed,
   decalManifest: decalManifestPath.replace(repoDir, '<repo>'),
   decalSpikeFaces: [...new Set(Object.values(decals.decals).map((record) => record.face))],
+  compareFaces: [...COMPARE_FACES],
   decalRecords: Object.keys(decals.decals).length,
   decalBytes,
   flatTotals: flatAtlas.stats,
