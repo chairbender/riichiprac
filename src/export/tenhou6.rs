@@ -940,12 +940,17 @@ fn append_decision_turn(
         DecisionContext::ReactToDiscard { from, .. } => {
             // The reviewer only records a reaction when the game continues, so
             // let the next seat draw and end the kyoku on it. Nothing after the
-            // snapshot exists in the state.
+            // snapshot exists in the state, so the drawn tile is future
+            // information: any tile with a free copy keeps the log loadable and
+            // the tail is excluded from the wall accounting.
+            let tile = spare_indicator(state).ok_or_else(|| {
+                "a reaction tail needs a future draw tile and no tile has a free copy".to_string()
+            })?;
             turns.push(Turn {
                 seat: (from + 1) % 4,
                 pairs: vec![Pair {
                     take: Take::Draw {
-                        tile: None,
+                        tile: Some(tile),
                         rinshan: false,
                     },
                     discard: None,

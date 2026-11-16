@@ -373,9 +373,11 @@ fn finish_discard(seat: &mut ReplayedSeat, entry: &Value, last_draw: Option<u8>,
 /// Pon holds three copies and the caller holds the fourth, so there is no spare
 /// copy to be a discard.
 ///
-/// `daiminkan_decision` plants its open Chi's discard too, but the exporter
-/// cannot write a `ReactToDiscard` snapshot yet: the tail draw that follows the
-/// answer has no tile to show (see `append_decision_turn`), so it stays out.
+/// `daiminkan_decision` plants its open Chi's discard too, but its table does
+/// not replay to itself in [`assert_replayable`] yet: a reaction snapshot ends
+/// with a tail draw for the next seat (see `append_decision_turn`), and the
+/// replay helper only models the deciding seat's turn, so seat 0's hand comes
+/// back one tile short. The exporter writes the log; only this check is out.
 const EXPORTABLE: &[ScenarioId] = &[
     ScenarioId::ChiitoitsuRiichiVsDama,
     ScenarioId::OpenHandDefense,
