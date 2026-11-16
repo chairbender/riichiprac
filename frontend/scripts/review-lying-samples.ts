@@ -11,8 +11,6 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { parseOverlayManifest } from '../src/table/overlayManifest';
-import type { OverlayManifest } from '../src/table/overlayManifest';
 import { parseShellsManifest } from '../src/table/shellManifest';
 import type { ShellsManifest } from '../src/table/shellManifest';
 import { TileAtlas } from '../src/table/TileAtlas';
@@ -29,9 +27,6 @@ const renderDir = resolve(scriptDir, '../../tools/render');
 const sampleDir = join(renderDir, 'build/lying-samples');
 const manifest: ShellsManifest = parseShellsManifest(
   JSON.parse(readFileSync(join(tableDir, 'shells.json'), 'utf8')),
-);
-const overlays: OverlayManifest = parseOverlayManifest(
-  JSON.parse(readFileSync(join(tableDir, 'overlays.json'), 'utf8')),
 );
 const spec = JSON.parse(readFileSync(join(renderDir, 'shell-spec.json'), 'utf8'));
 const feltSpec = JSON.parse(readFileSync(join(renderDir, 'felt-spec.json'), 'utf8'));
@@ -172,7 +167,7 @@ for (const def of sampleDefs) {
 const cellW = 250 * SCALE;
 const cellH = 175 * SCALE;
 const sheetW = MARGIN * 2 + 3 * cellW + 2 * GAP;
-const sheetH = MARGIN * 2 + 54 + cells.reduce((sum, cell) => sum + LABEL_H + cellH + 38, 0);
+const sheetH = MARGIN * 2 + 54 + cells.reduce((sum) => sum + LABEL_H + cellH + 38, 0);
 const sheet = createCanvas(sheetW, sheetH);
 const context = sheet.getContext('2d');
 context.fillStyle = FELT;
