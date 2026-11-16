@@ -1400,6 +1400,33 @@ R2 for replay states.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-16, B1 branch).** Recognisers live in `src/classifier/`
+> (`riichi.rs`, `push_fold.rs`, `defense.rs`, shared `support.rs`) and the miner
+> seam in `src/miner/classifier.rs`; the module is **not** behind the `miner`
+> feature because the B1 gate is the default app gate. `Match` carries the
+> plan's five fields plus the trigger/reason lists and pre-answer note the
+> shipped rationale needs, and `Match::stamp` writes them onto a state through
+> `finalize_state`. When two book rules read the same visible state differently,
+> **Mortal is the tiebreaker**: `classify_with_mortal` keeps the lesson whose
+> answer the model's top action agrees with (the app's existing
+> `compare_action_set` rule, including `equivalent_tiles` and the Riichi
+> second-pass discard) and records `Resolution::MortalTiebreak { rejected }` for
+> provenance. Without an evaluation, `classify_unique` fails closed with a
+> `Conflict`. `src/miner/classifier.rs` mirrors both paths for the walker
+> (`classify_decision`, `classify_decision_with_mortal`).
+>
+> Two label overlaps are settled by the same Mortal rule, and the lesson
+> content was aligned so they cannot arise from generated states: (a) inside
+> ch. 7, the generators now build disjoint cells — `riichi_judgement` only draws
+> its riichi sets, `dama_bad_wait` owns every bad wait, the improving board
+> plants two live simple tanki so the box agrees, and the expensive board keeps
+> a good wait. An *arbitrary replay* state can still satisfy two specific ch. 7
+> sections at once; `classify_all` shows both and Mortal picks the label. (b) In
+> ch. 8, a `CC` board is the safety chart's `non_suji` answer *and* the fallback
+> lesson's board, and the two can name different tiles; both recognisers return
+> their match and Mortal decides. Without an evaluation either overlap is a
+> `Conflict` and the state is not shipped.
+
 ##### B2 — Classifier batch 2
 
 **Goal.** Cover the medium-difficulty lessons that produce valuable replay
@@ -2096,7 +2123,7 @@ AGPL separation, Q-value units, pack hosting and human review.
 | R1 | `src/replay/mod.rs`, `src/replay/mjai.rs`, `src/replay/validate.rs`, fixtures |
 | R2 | `src/replay/walker.rs`, `src/replay/reconstruct.rs`, `src/export/tenhou6.rs` |
 | C1–C8 | `riichiprac-corpus` (new private repo): `src/agent/`, `src/plan/`, `src/engine/`, `src/report/` |
-| B1–B3 | `src/miner/classifier/`, plus `matches()` next to lessons |
+| B1–B3 | `src/classifier/` (framework + per-family recognisers; it must build on the default app gate, so it is not behind `miner`), plus `src/miner/classifier.rs` for the replay-walker seam |
 | L1–L2 | `src/miner/label/`, `src/decision.rs`, `src/ai/wasm_bridge.rs` |
 | S1–S3 | `src/miner/select/`, `src/miner/triggers/` |
 | V1–V2 | `src/miner/transform/` |

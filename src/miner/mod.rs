@@ -34,12 +34,14 @@
 #[cfg(target_arch = "wasm32")]
 compile_error!("the `miner` feature is native-only; do not enable it for the wasm32 browser build");
 
+pub mod classifier;
 pub mod funnel;
 pub mod licence;
 pub mod provenance;
 pub mod source;
 pub mod storage;
 
+pub use classifier::{classify_decision, classify_decision_with_mortal};
 pub use funnel::{FunnelCounter, FunnelStage};
 pub use licence::{LicenceError, LicenseInfo, allowed_data_licence, data_commercial_use_all};
 pub use provenance::{

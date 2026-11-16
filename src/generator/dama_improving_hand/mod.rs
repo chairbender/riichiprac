@@ -31,12 +31,18 @@
 //! model the chiitoitsu lesson already uses). The improving count is verified
 //! for both kept hands, so neither discard hides a worse hand.
 //!
+//! Both single waits are simple tiles and the board plants one visible copy of
+//! each, leaving exactly two live winning tiles. That is the ch7 bad-wait box's
+//! dama cell ("Go dama if there are only one or two simple tiles left to win
+//! on", ch7:521), so the two sections agree on this hand instead of answering
+//! it oppositely.
+//!
 //! The count itself lives in [`improvement`] and is anchored on the book's own
 //! fourteen-kind example; the skeleton and board only accept hands whose
 //! computed count clears the box.
 
 mod board;
-mod improvement;
+pub(crate) mod improvement;
 mod skeleton;
 
 use crate::generator::support::retry::generate_with_retries;
@@ -360,6 +366,24 @@ mod tests {
             // The book's own example counts fourteen kinds; the lesson should
             // be in that territory rather than scraping past six.
             assert!(improvement.kinds() >= 6, "run {run}");
+
+            // The ch7 bad-wait box must agree with this lesson: both twin
+            // tanki are simple waits with exactly two live tiles, the box's
+            // "one or two simple tiles left to win on" dama cell (ch7:521).
+            assert!(
+                puzzle.waits.iter().all(|wait| wait.is_simple()),
+                "run {run}: the tanki wait must be simple"
+            );
+            assert_eq!(
+                riichi::wait_quality(&puzzle.kept, &puzzle.visible).live_tiles,
+                2,
+                "run {run}"
+            );
+            assert_eq!(
+                riichi::wait_quality(&puzzle.twin, &puzzle.visible).live_tiles,
+                2,
+                "run {run}"
+            );
         }
 
         let elapsed = started.elapsed();

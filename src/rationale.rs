@@ -6482,10 +6482,11 @@ mod tests {
         use crate::generator::riichi_judgement::{self, judgement::Conditions};
 
         // Pin every cell of ch7:55-59's box instead of hoping a fixed number of
-        // random draws includes both branches. The dama cell is weighted 2/24,
-        // so the old 40-draw loop missed it about 3.6% of the time and the test
-        // failed with no reproducible seed. The tile fill under each pinned
-        // condition set is still random.
+        // random draws includes them. The empty condition set is the ch7
+        // bad-wait box's cell (`dama_bad_wait`), so this lesson only draws the
+        // seven non-empty cells; the tile fill under each pinned set is still
+        // random.
+        let mut conditions_seen = [false; 3];
         for extra_han in [false, true] {
             for good_wait in [false, true] {
                 for dealer in [false, true] {
@@ -6494,6 +6495,9 @@ mod tests {
                         good_wait,
                         dealer,
                     };
+                    if !target.picks_riichi() {
+                        continue;
+                    }
                     let state = crate::generator::finalize_state(
                         riichi_judgement::generate_with_target("riichi_judgement", target)
                             .unwrap_or_else(|err| panic!("{target:?}: {err}")),
@@ -6508,32 +6512,37 @@ mod tests {
                             .any(|caveat| caveat.contains("not modelled")),
                         "the lesson must say which ch7 dama cases it leaves out"
                     );
+                    assert!(
+                        !state.riichi_triggers.is_empty(),
+                        "{target:?}: this lesson only answers riichi"
+                    );
+                    assert!(
+                        state.dama_reasons.is_empty(),
+                        "{target:?}: the dama cells belong to the later ch7 sections"
+                    );
+                    assert!(rationale.summary.contains("Declare Riichi"), "{target:?}");
+                    assert!(!rationale.rules.is_empty(), "{target:?}");
 
-                    if target.picks_riichi() {
-                        assert!(
-                            !state.riichi_triggers.is_empty(),
-                            "{target:?}: the box picks Riichi"
-                        );
-                        assert!(rationale.summary.contains("Declare Riichi"), "{target:?}");
-                        assert!(!rationale.rules.is_empty(), "{target:?}");
-                    } else {
-                        assert!(
-                            state.riichi_triggers.is_empty(),
-                            "{target:?}: the box picks dama"
-                        );
-                        assert!(rationale.summary.contains("Stay in dama"), "{target:?}");
-                        assert_eq!(rationale.rules.len(), 3, "{target:?}");
-                        assert!(
-                            rationale
-                                .caveats
-                                .iter()
-                                .any(|caveat| caveat.contains("tsumo")),
-                            "a riichi-only dama hand can only win by tsumo"
-                        );
+                    for (index, trigger) in [
+                        RiichiTrigger::HasExtraHan,
+                        RiichiTrigger::GoodWait,
+                        RiichiTrigger::Dealer,
+                    ]
+                    .into_iter()
+                    .enumerate()
+                    {
+                        if state.riichi_triggers.contains(&trigger) {
+                            conditions_seen[index] = true;
+                        }
                     }
                 }
             }
         }
+
+        assert!(
+            conditions_seen.iter().all(|seen| *seen),
+            "every condition must be cited at least once: {conditions_seen:?}"
+        );
     }
 
     #[test]

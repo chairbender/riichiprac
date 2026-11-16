@@ -41,7 +41,7 @@ pub mod validate;
 pub mod walk;
 
 #[cfg(test)]
-mod fixtures;
+pub(crate) mod fixtures;
 
 pub use mjai::{
     EventKind, MAX_DECOMPRESSED_BYTES, MAX_EVENTS, MAX_LINE_BYTES, MjaiEvent, ParseError,

@@ -29,7 +29,7 @@
 //! by trusting the constructor.
 
 mod board;
-mod judgement;
+pub(crate) mod judgement;
 mod shapes;
 mod skeleton;
 

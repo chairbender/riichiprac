@@ -47,9 +47,9 @@ use crate::generator::support::deck::ALL_TILES;
 use crate::state::Wind;
 
 /// The box's count clause: at least six kinds that improve the hand.
-pub(super) const MANY_IMPROVING_KINDS: usize = 6;
+pub(crate) const MANY_IMPROVING_KINDS: usize = 6;
 /// The box's alternative clause: one draw that adds at least three han.
-pub(super) const BIG_STEP_HAN: u8 = 3;
+pub(crate) const BIG_STEP_HAN: u8 = 3;
 /// ch7:491: a wait is good with at least two kinds ...
 const GOOD_WAIT_MIN_KINDS: usize = 2;
 /// ... and more than four live tiles.
@@ -57,7 +57,7 @@ const GOOD_WAIT_MIN_TILES: u8 = 5;
 
 /// What one ready hand can draw to improve itself.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Improvement {
+pub(crate) struct Improvement {
     /// Every kind whose draw keeps the hand ready and improves it.
     pub tiles: Vec<Tile>,
     /// The kinds whose draw adds at least three han in one step.
@@ -68,7 +68,7 @@ pub(super) struct Improvement {
 
 impl Improvement {
     /// The number of improving kinds (the box's first clause).
-    pub(super) fn kinds(&self) -> usize {
+    pub(crate) fn kinds(&self) -> usize {
         self.tiles.len()
     }
 
@@ -76,19 +76,17 @@ impl Improvement {
     ///
     /// The improving-hand lesson deliberately builds only the count clause, so
     /// this predicate is exercised by the improvement tests that pin the book's
-    /// kanchan example rather than by the generator.
-    #[cfg_attr(not(test), allow(dead_code))]
-    pub(super) fn has_big_step(&self) -> bool {
+    /// kanchan example and by the classifier's situation label.
+    pub(crate) fn has_big_step(&self) -> bool {
         !self.big_steps.is_empty()
     }
 
     /// Whether the box's improving-hand conditions hold for this hand.
     ///
     /// See [`Self::has_big_step`]: the lesson narrows the box to the count
-    /// clause, and this full predicate stays as the oracle for the improvement
-    /// tests.
-    #[cfg_attr(not(test), allow(dead_code))]
-    pub(super) fn qualifies(&self) -> bool {
+    /// clause; the classifier uses the full predicate as its oracle, because an
+    /// arbitrary replay hand may qualify through either clause.
+    pub(crate) fn qualifies(&self) -> bool {
         self.kinds() >= MANY_IMPROVING_KINDS || self.has_big_step()
     }
 
@@ -150,7 +148,7 @@ fn worth_testing(drawn: Tile, counts: &HashMap<Tile, u8>) -> bool {
 }
 
 /// How many kinds improve `tenpai`, and whether any adds three han.
-pub(super) fn count(
+pub(crate) fn count(
     tenpai: &[Tile],
     round_wind: Wind,
     seat_wind: Wind,

@@ -28,15 +28,15 @@
 use crate::state::DamaReason;
 
 /// The book's expensive-hand cut-point with red fives (ch7:569).
-pub(super) const EXPENSIVE_MIN_POINTS: u32 = 7_700;
+pub(crate) const EXPENSIVE_MIN_POINTS: u32 = 7_700;
 
 /// Haneman ron for a non-dealer: "Don't riichi if the minimum hand value is
 /// haneman or better" (ch7:646).
-pub(super) const HANEMAN_MIN_POINTS: u32 = 12_000;
+pub(crate) const HANEMAN_MIN_POINTS: u32 = 12_000;
 
 /// The section's verdict for one hand, from its worst winning tile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Verdict {
+pub(crate) enum Verdict {
     /// At least 7700 but below haneman: dama is the book's acceptable play.
     DamaExpensive,
     /// Haneman or better at every winning tile: the book says do not riichi.
@@ -45,7 +45,7 @@ pub(super) enum Verdict {
 
 impl Verdict {
     /// The dama reasons that explain this verdict.
-    pub(super) fn dama_reasons(self) -> Vec<DamaReason> {
+    pub(crate) fn dama_reasons(self) -> Vec<DamaReason> {
         match self {
             Self::DamaExpensive => vec![DamaReason::Mangan],
             Self::DamaHaneman => vec![DamaReason::HanemanPlus],
@@ -57,7 +57,7 @@ impl Verdict {
 ///
 /// Returns `None` when the hand is not expensive enough: its dama cell only
 /// starts at 7700 (ch7:569, ch7:598).
-pub(super) fn verdict(min_points: u32) -> Option<Verdict> {
+pub(crate) fn verdict(min_points: u32) -> Option<Verdict> {
     if min_points >= HANEMAN_MIN_POINTS {
         Some(Verdict::DamaHaneman)
     } else if min_points >= EXPENSIVE_MIN_POINTS {

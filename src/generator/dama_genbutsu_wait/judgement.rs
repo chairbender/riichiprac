@@ -37,7 +37,7 @@ use crate::state::DamaReason;
 /// The safety facts already carry every genbutsu kind the book names: the
 /// threat's own river and anything anyone discarded after the threat declared
 /// Riichi (ch. 8, "Genbutsu and other absolutely safe tiles").
-pub(super) fn genbutsu_waits(wait_tiles: &[Tile], facts: &SafetyFacts) -> Vec<Tile> {
+pub(crate) fn genbutsu_waits(wait_tiles: &[Tile], facts: &SafetyFacts) -> Vec<Tile> {
     let mut waits: Vec<Tile> = wait_tiles
         .iter()
         .copied()
@@ -53,7 +53,7 @@ pub(super) fn genbutsu_waits(wait_tiles: &[Tile], facts: &SafetyFacts) -> Vec<Ti
 /// At least one winning tile must be the threat's genbutsu (ch7:539) and at
 /// least one must not be: a wait whose every winning tile is already genbutsu is
 /// dead, and the answer would be to change the wait, not to go dama.
-pub(super) fn applies(wait_tiles: &[Tile], facts: &SafetyFacts) -> bool {
+pub(crate) fn applies(wait_tiles: &[Tile], facts: &SafetyFacts) -> bool {
     !genbutsu_waits(wait_tiles, facts).is_empty()
         && wait_tiles.iter().any(|tile| !facts.is_genbutsu(*tile))
 }
@@ -63,7 +63,7 @@ pub(super) fn applies(wait_tiles: &[Tile], facts: &SafetyFacts) -> bool {
 /// The general rule's other conditions are *not* cited: this hand has a han and
 /// a good wait, so `no_extra_han` and `bad_wait` would both be false. The
 /// genbutsu wait is the whole reason the book keeps the hand concealed.
-pub(super) fn dama_reasons() -> Vec<DamaReason> {
+pub(crate) fn dama_reasons() -> Vec<DamaReason> {
     vec![DamaReason::GenbutsuWait]
 }
 

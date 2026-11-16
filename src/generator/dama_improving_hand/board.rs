@@ -88,9 +88,21 @@ pub(super) fn build(category: &str, skeleton: &Skeleton) -> Result<GameState, St
         choose(&ura_candidates).ok_or_else(|| "No legal ura indicator".to_string())?;
     deck.take(ura_indicator)?;
 
+    // The bad-wait box must agree with this lesson. A tanki on two live simple
+    // tiles is the box's dama cell (ch7:521: "Go dama if there are only one or
+    // two simple tiles left to win on"), so one visible copy of each single is
+    // reserved and planted in an opponent's river below. The improving count is
+    // a shape property and does not read visible tiles, so both halves of the
+    // box still clear it.
+    let planted = [skeleton.wait_tile, skeleton.drawn_tile];
+    for &tile in &planted {
+        deck.take(tile)?;
+    }
+
     // The improving kinds, both singles and the indicator stay out of every
     // river: an improving kind must keep a live copy, and the wait must never
-    // be in the human's river (furiten).
+    // be in the human's river (furiten). The two planted singles are placed
+    // explicitly rather than drawn, so they bypass the exclusion list.
     let mut excluded = skeleton.improvement.tiles.clone();
     excluded.extend(skeleton.equivalent_improvement.tiles.iter().copied());
     excluded.push(skeleton.wait_tile);
@@ -108,7 +120,7 @@ pub(super) fn build(category: &str, skeleton: &Skeleton) -> Result<GameState, St
         ));
     }
     let scores = random_scores_with_human_first();
-    let deal = deal_opponents_excluding(&mut deck, human_wind, &scores, &plan, &excluded)
+    let deal = deal_opponents_excluding(&mut deck, human_wind, &scores, &plan, &excluded, &planted)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
     let human_river = deck
         .draw_excluding(plan.counts[0], &excluded)
@@ -137,8 +149,15 @@ pub(super) fn build(category: &str, skeleton: &Skeleton) -> Result<GameState, St
     }
 
     let quality = riichi::wait_quality(&skeleton.tenpai_tiles, &visible);
-    if quality.live_tiles == 0 {
-        return Err("the table killed the whole wait".to_string());
+    let twin_quality = riichi::wait_quality(&skeleton.twin_tiles(), &visible);
+    if quality.live_tiles != 2 || twin_quality.live_tiles != 2 {
+        return Err(format!(
+            "the bad-wait box needs both tanki on two live tiles, got {} and {}",
+            quality.live_tiles, twin_quality.live_tiles
+        ));
+    }
+    if !skeleton.wait_tile.is_simple() || !skeleton.drawn_tile.is_simple() {
+        return Err("the improving lesson needs simple tanki waits".to_string());
     }
     let conditions = riichi::evaluate(
         &skeleton.tenpai_tiles,
@@ -193,6 +212,7 @@ fn deal_opponents_excluding(
     scores: &[i32; 4],
     plan: &crate::generator::support::table::RiverPlan,
     excluded: &[Tile],
+    planted: &[Tile],
 ) -> Option<OpponentDeal> {
     let opponent_meta = [(1usize, "Shimocha"), (2, "Toimen"), (3, "Kamicha")];
 
@@ -200,7 +220,16 @@ fn deal_opponents_excluding(
     let mut rivers = Vec::with_capacity(3);
     for (index, (seat, name)) in opponent_meta.iter().enumerate() {
         let hand = deck.draw_n(13)?;
-        let river = deck.draw_excluding(plan.counts[*seat], excluded)?;
+        let mut river = deck.draw_excluding(plan.counts[*seat], excluded)?;
+        // One reserved single per opponent river, so each twin hand keeps two
+        // live winning tiles. The first two opponents are enough and always
+        // have a river slot (the plan gives every seat at least two discards).
+        if let Some(&tile) = planted.get(index)
+            && !river.is_empty()
+        {
+            let slot = gen_range(0, river.len());
+            river[slot] = tile;
+        }
         rivers.push(river.clone());
         players.push(PlayerState {
             seat: *seat,

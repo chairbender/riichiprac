@@ -90,7 +90,14 @@ pub(super) fn build(
     let scores = random_scores_with_human_first();
     // The human is about to discard, so every river comes from one legal
     // timeline that ends on Kamicha's discard.
-    let plan = self_turn_river_plan(human_wind, &[], gen_range(2, 7));
+    //
+    // The table is deliberately *past the 8th turn* (at least ten discards per
+    // seat). That keeps the ch7 "many possibilities of improving the hand"
+    // section out of the sample without paying for its improving-count walk:
+    // that box only applies on an early turn (ch7:658), and it is the
+    // `dama_improving_hand` lesson's cell. The general three-condition rule is
+    // turn-independent, so nothing about this lesson needs a short river.
+    let plan = self_turn_river_plan(human_wind, &[], gen_range(10, 15));
     let deal = deal_opponents(&mut deck, human_wind, &scores, &plan)
         .ok_or_else(|| "Deck exhausted drawing the opponents".to_string())?;
     // The human is not furiten: no winning tile may already be in their river.
@@ -125,27 +132,34 @@ pub(super) fn build(
         ));
     }
 
-    // ch7 "High scoring hand": a hand already worth 7700+ is a dama case on
-    // its own, so no riichi answer may be generated above mangan without riichi.
-    if conditions.picks_riichi() {
-        for &wait in &skeleton.wait_tiles {
-            let mut winning_tiles = skeleton.tenpai_tiles.clone();
-            winning_tiles.push(wait);
-            if judgement::worst_score_level(
-                &winning_tiles,
-                wait,
-                round_wind,
-                human_wind,
-                &[dora_indicator],
-            ) >= agari::scoring::ScoreLevel::Mangan
-            {
-                return Err(
-                    "Riichi hand is already mangan without Riichi, which the book lets you \
-                     keep dama"
-                        .to_string(),
-                );
-            }
-        }
+    // The later ch7 dama sections own their hands: the general rule must not
+    // ship a cell another lesson also answers (the classifier defers to those
+    // lessons, so a generated hand here would contradict one of them).
+    //
+    // "High scoring hand" (ch7:569/598): the section's floor is 7700, not
+    // mangan, so a hand at 7700-7999 is a dama cell even though the old mangan
+    // guard let it through. Recomputed with this table's dora and winds.
+    let worst = crate::generator::support::value::worst_value(
+        &skeleton.tenpai_tiles,
+        &skeleton.wait_tiles,
+        round_wind,
+        human_wind,
+        &[dora_indicator],
+        0,
+    );
+    if worst.is_some_and(|value| {
+        value.points >= crate::generator::dama_expensive_hand::judgement::EXPENSIVE_MIN_POINTS
+    }) {
+        return Err(
+            "the hand is already worth the expensive-hand section's 7700 floor".to_string(),
+        );
+    }
+    // "Many possibilities of improving the hand" (ch7:656-660) only applies on
+    // an early turn, and the river plan above is always past the 8th turn, so
+    // the improving-hand lesson can never own a hand built here. No count walk
+    // is needed.
+    if plan.counts[0] < 8 {
+        return Err("the riichi-judgement river must be past the 8th turn".to_string());
     }
 
     let tiles_remaining = deck.remaining().saturating_sub(12).min(u8::MAX as usize) as u8;
