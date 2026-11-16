@@ -13,8 +13,9 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseShellsManifest } from '../src/table/shellManifest';
 import type { ShellsManifest } from '../src/table/shellManifest';
-import { lyingPrimaryContacts, lyingSignature } from '../src/table/contactOverlays';
+import { lyingPrimaryContacts, lyingSignature, primaryContacts, wallCatchSignature } from '../src/table/contactOverlays';
 import { layoutMeld, layoutPond } from '../src/table/zoneLayout';
+import { layoutSideWall, layoutWall } from '../src/table/zoneLayout';
 import type { LayoutZone, PondDiscard, TableSide } from '../src/table/zoneLayout';
 import type { TileFaceId } from '../src/table/tiles';
 
@@ -53,7 +54,7 @@ interface JobCaster {
 }
 interface Job {
   id: string;
-  kind: 'pond' | 'melds';
+  kind: 'pond' | 'melds' | 'wall';
   zoneSide: string;
   target: string;
   targetDraw: [number, number];
@@ -61,18 +62,26 @@ interface Job {
   signature: string;
 }
 
+const spec = JSON.parse(readFileSync(join(renderDir, 'shell-spec.json'), 'utf8'));
+const THICKNESS = (spec.tile.heightUnits * spec.tile.proportionsMm.thickness) / spec.tile.proportionsMm.height;
 const jobs = new Map<string, Job>();
 const addZone = (zone: LayoutZone, limit: number): void => {
-  if (zone.side === null) return;
+  if (zone.side === null && zone.kind !== 'wall') return;
   if (jobs.size >= limit) return;
   const right = RIGHT_WORLD[zone.side];
   const down = DOWN_WORLD[zone.side];
   for (let targetIndex = 0; targetIndex < zone.bodies.length; targetIndex += 1) {
     const target = zone.bodies[targetIndex];
     if (!target.cell) continue;
-    const primaries = lyingPrimaryContacts(manifest, zone, targetIndex);
+    const primaries =
+      zone.kind === 'wall'
+        ? primaryContacts(manifest, zone, targetIndex)
+        : lyingPrimaryContacts(manifest, zone, targetIndex);
     if (primaries.length === 0) continue;
-    const signature = lyingSignature(zone, targetIndex, primaries);
+    const signature =
+      zone.kind === 'wall'
+        ? wallCatchSignature(zone, targetIndex)
+        : lyingSignature(zone, targetIndex, primaries);
     if (jobs.has(signature)) continue;
     const casters: JobCaster[] = [];
     for (const edge of primaries) {
@@ -80,28 +89,35 @@ const addZone = (zone: LayoutZone, limit: number): void => {
       if (!caster.cell) continue;
       let dx = 0;
       let dy = 0;
+      let dz = 0;
       if (zone.kind === 'pond') {
         const columnDiff = (caster.cell.column ?? 0) - (target.cell.column ?? 0);
         const rowDiff = (caster.cell.row ?? 0) - (target.cell.row ?? 0);
         dx = columnDiff * 0.75 * right[0] + rowDiff * 1.0 * down[0];
         dy = columnDiff * 0.75 * right[1] + rowDiff * 1.0 * down[1];
-      } else {
+      } else if (zone.kind === 'melds') {
         const columnDiff = (caster.cell.column ?? 0) - (target.cell.column ?? 0);
         dx = columnDiff * 0.75 * right[0];
         dy = columnDiff * 0.75 * right[1];
+      } else {
+        const slotDiff = (caster.cell.slot ?? 0) - (target.cell.slot ?? 0);
+        const tierDiff = (caster.cell.tier ?? 0) - (target.cell.tier ?? 0);
+        if (zone.side === null) dx = slotDiff * 0.75;
+        else dy = slotDiff * 0.75;
+        dz = tierDiff * THICKNESS;
       }
       casters.push({
         shell: caster.shell,
         draw: [caster.drawX, caster.drawY],
         side: edge.side,
-        offset3D: [dx, dy, 0],
+        offset3D: [dx, dy, dz],
       });
     }
     if (casters.length !== primaries.length) continue;
     jobs.set(signature, {
       id: `lying-${String(jobs.size + 1).padStart(4, '0')}`,
-      kind: zone.kind === 'pond' ? 'pond' : 'melds',
-      zoneSide: zone.side,
+      kind: zone.kind === 'wall' ? 'wall' : zone.kind === 'pond' ? 'pond' : 'melds',
+      zoneSide: zone.side ?? zone.id,
       target: target.shell,
       targetDraw: [target.drawX, target.drawY],
       casters,
@@ -134,6 +150,14 @@ for (const side of SIDES) {
       );
     }
   }
+}
+// Walls: one full 17-slot run per wall/side. Run-edge and dora-faceup variants
+// are dropped; the catch is keyed per slot/tier and the dora shells alias.
+for (const wall of ['front', 'back'] as const) {
+  addZone(layoutWall(manifest, { wall, count: 17, doraIndex: null }), LIMIT);
+}
+for (const side of ['left', 'right'] as const) {
+  addZone(layoutSideWall(manifest, { side, count: 17, doraIndex: null }), LIMIT);
 }
 
 const out = {

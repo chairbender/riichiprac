@@ -1065,7 +1065,7 @@ function checkComposition() {
         console.log(`  overlay ${overlay.shell}:${overlay.contact} draw ${overlay.drawX},${overlay.drawY} local ${lx},${ly} alpha ${a.toFixed(3)} clipTop ${Math.min(...clip.points.map((q) => q[1]))}`);
       }
     }
-    if (zone.overlays.length > 0 && zone.kind !== 'pond' && zone.kind !== 'melds') {
+    if (zone.overlays.length > 0 && zone.kind !== 'pond' && zone.kind !== 'melds' && zone.kind !== 'wall') {
       check(
         delta.maxRowDelta < 30,
         `${zone.id}: no horizontal overlay discontinuity ` +

@@ -247,11 +247,11 @@ describe('contact edges', () => {
     expect(resolveContactOverlays(manifest, overlays, zone)).toEqual([]);
   });
 
-  it('keeps the disabled families unshadowed and enables the hand', () => {
+  it('enables the hand, the ponds and the trimmed walls', () => {
     const pond = layoutPond(manifest, { discards: POND_DISCARDS.slice(0, 24) });
     expect(resolveContactOverlays(manifest, overlays, pond, catches, lyingCatches).length).toBeGreaterThan(0);
     const wall = layoutWall(manifest, { wall: 'front', doraIndex: 12 });
-    expect(resolveContactOverlays(manifest, overlays, wall, catches, lyingCatches)).toEqual([]);
+    expect(resolveContactOverlays(manifest, overlays, wall, catches, lyingCatches).length).toBeGreaterThan(0);
     const hand = layoutHand(manifest, { faces: FACES.slice(0, 13), draw: '5p' });
     expect(resolveContactOverlays(manifest, overlays, hand, catches, lyingCatches).length).toBeGreaterThan(0);
   });

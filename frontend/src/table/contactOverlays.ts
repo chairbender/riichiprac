@@ -289,6 +289,19 @@ export function lyingSignature(
   return `${target.shell}|${zone.side ?? '-'}|${parts.join('|')}`;
 }
 
+/**
+ * The wall catch identity. Run-edge and dora-faceup variants are deliberately
+ * dropped: one catch per wall slot/tier, with the full 17-slot neighbours, and
+ * the dora faceup shells alias to their face-down twin.
+ */
+export function wallCatchSignature(zone: LayoutZone, targetIndex: number): string {
+  const target = zone.bodies[targetIndex];
+  const shell = target.shell.endsWith('_faceup')
+    ? target.shell.slice(0, -'_faceup'.length)
+    : target.shell;
+  return `${shell}|tier${target.cell?.tier ?? 0}`;
+}
+
 /** A lying target's catch, resolved by its signature. */
 export function lyingCatchForZone(
   manifest: ShellsManifest,
@@ -296,10 +309,20 @@ export function lyingCatchForZone(
   zone: LayoutZone,
   targetIndex: number,
 ): { readonly overlay: ContactOverlay; readonly signature: string } | null {
-  if (!lyingCatches || (zone.kind !== 'pond' && zone.kind !== 'melds')) return null;
-  const primaries = lyingPrimaryContacts(manifest, zone, targetIndex);
-  if (primaries.length === 0) return null;
-  const signature = lyingSignature(zone, targetIndex, primaries);
+  if (!lyingCatches) return null;
+  let primaries: ContactEdge[];
+  let signature: string;
+  if (zone.kind === 'wall') {
+    primaries = primaryContacts(manifest, zone, targetIndex);
+    if (primaries.length === 0) return null;
+    signature = wallCatchSignature(zone, targetIndex);
+  } else if (zone.kind === 'pond' || zone.kind === 'melds') {
+    primaries = lyingPrimaryContacts(manifest, zone, targetIndex);
+    if (primaries.length === 0) return null;
+    signature = lyingSignature(zone, targetIndex, primaries);
+  } else {
+    return null;
+  }
   const record = lyingCatchFor(lyingCatches, signature);
   if (!record) return null;
   const target = zone.bodies[targetIndex];
@@ -352,7 +375,7 @@ export function resolveContactOverlays(
   const resolved: ContactOverlay[] = [];
   const usedCatches = new Set<string>();
   const lyingTargets = new Set<number>();
-  if (zone.kind === 'pond' || zone.kind === 'melds') {
+  if (zone.kind === 'pond' || zone.kind === 'melds' || zone.kind === 'wall') {
     for (let index = 0; index < zone.bodies.length; index += 1) {
       const lying = lyingCatchForZone(manifest, lyingCatches, zone, index);
       if (!lying) continue;
@@ -452,7 +475,7 @@ export function validateOverlayCoverage(
   const missing: string[] = [];
   for (const zone of zones) {
     const lyingTargets = new Set<number>();
-    if (zone.kind === 'pond' || zone.kind === 'melds') {
+    if (zone.kind === 'pond' || zone.kind === 'melds' || zone.kind === 'wall') {
       for (let index = 0; index < zone.bodies.length; index += 1) {
         if (lyingCatchForZone(manifest, lyingCatches, zone, index)) lyingTargets.add(index);
       }
