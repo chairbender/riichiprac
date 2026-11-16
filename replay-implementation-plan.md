@@ -337,6 +337,42 @@ Consequences for the corpus recipe:
   weights we already ship, not a licence to ingest Tenhou replays; review it
   separately before any commercial use.
 
+**Reference heuristic baselines (M6).** These are small, deterministic policies
+we own, not learned agents. They exist to keep the pipeline testable without
+weights and to generate weak-policy deviations from the Mortal label. They are
+not a substitute for Akochan or for the Mortal labeler.
+
+| ID | Policy | What it is for | What it is not |
+| --- | --- | --- | --- |
+| H0 `tsumogiri-v1` | On a self turn, discard the tile just drawn; take a win if offered; otherwise pass calls/kans and never declare Riichi | parser/walker smoke tests, a legal lowest-skill baseline, deterministic fixtures | a realistic player; never ship its scenarios unlabelled |
+| H1 `random-legal-v1` | Uniform random choice over the legal actions, driven by the recorded seed | fuzzing the walker/selector with unusual calls, kans and riichi lines; checking that illegal states are rejected | a quality corpus; most decisions are noise |
+| H2 `isolated-first-v1` | Discard isolated honours first, then isolated terminals, then isolated simples; keep pairs and connected shapes; no calls, no defence | a cheap weak opponent that makes obvious shape mistakes; beginner/contrast material | a plausible intermediate player; its mistakes are often too easy |
+| H3 `efficiency-safety-v1` | Use `agari` to compare each legal discard's resulting shanten/ukeire; pick the smallest acceptance loss (seed tie-break); if an opponent has declared Riichi, prefer genbutsu/suji/kabe from `src/safety.rs` when available; declare Riichi when tenpai and legal | a plausible non-neural policy, useful for defence states and a stronger ablation baseline; still Mortal-labelled when shipped | a labeler or ground truth; it has no hand-reading or score model |
+
+Why keep them:
+
+- **Weights-free instrumentation.** H0/H1 let the parser, walker, selector,
+  transforms and pack gates run in CI on any machine, with no GPU, no AGPL
+  weights and no corpus download.
+- **Mistake generation without human data.** H2/H3 often play a different move
+  from the Mortal top action; the position before that move is a "what should
+  you have done?" drill. The Mortal label supplies the answer, not the
+  heuristic.
+- **A genuine non-neural diversity axis.** Even after Akochan lands, the
+  heuristics provide a cheap third policy and a way to test whether the
+  mixed-agent corpus is actually adding variety or just relabelling the same
+  Mortal lines.
+- **An ablation baseline.** If an M6-only pack looks as good as an
+  Akochan/Mortal pack, the selection is not doing its job; if M6 produces only
+  trivial blunders, the interestingness gates are working.
+- **A fallback while the Akochan bridge is unresolved.** M6 keeps the pipeline
+  end-to-end testable, but it is not enough for the first curated pack; that
+  needs M3 (Akochan), per §9.
+
+`H0`/`H1` are fixtures and fuzzers: do not ship their scenarios as drills.
+`H2`/`H3` may be shipped only when a Mortal/book label is attached and the
+scenario is explicitly marked as weak-opponent material.
+
 The runner is agent-agnostic. It does not assume every seat is a Mortal
 checkpoint, and it does not assume a "best" network is the only generator.
 
@@ -410,7 +446,7 @@ others.
 | **M3** | Akochan tactic sweep | Akochan vs Akochan, different tactic/config profiles when supported; otherwise one profile | genuinely different rule-based policy, style contrast, mistakes | parseable logs; per-seat identity/config; rule profile verified; Akochan licence/attribution/commercial flags; measured divergence from M1; `cross_engine: false`; family report |
 | **M4** | Akochan vs Mortal | Akochan vs `mortal_298k` if the cross-engine bridge is feasible; otherwise a **corpus-level** M3+M1 mix, not a same-table claim | cross-policy contested states | spike decision + adapter; `cross_engine` flag is truthful; per-seat identity; rule profile; Akochan flags; 0 invalid states; configured diversity yield |
 | **M5** | Heterogeneous table | one Mortal + Akochan + heuristic seats, only if the cross-engine bridge is feasible; otherwise deferred | multi-policy table texture | M4 gates plus three distinct agents in the seat roster; no silent fallback; if not feasible, the family is marked deferred and no heterogeneous games are claimed |
-| **M6** | Rule / heuristic baseline | corpus-repo tsumogiri/random/heuristic, self-play or vs another supported seat | cheap pipeline fixtures, deterministic tests, beginner material | deterministic by seed; no weights; logs parse; provenance complete; if shipped, every scenario is graded by a strong labeler and marked model-graded |
+| **M6** | Rule / heuristic baseline | H0 `tsumogiri`, H1 `random-legal`, H2 `isolated-first`, H3 `efficiency-safety`; self-play or vs another supported seat | cheap pipeline fixtures, deterministic tests, weak-policy mistakes, beginner material | deterministic by seed; no weights; logs parse; provenance complete; H0/H1 are fixtures/fuzzers only; H2/H3 are Mortal/book-labelled and marked weak-opponent when shipped; no claim that the heuristic is ground truth |
 
 Family rules:
 
@@ -430,7 +466,8 @@ Family rules:
   heterogeneous table by relabelling a corpus-level mix.
 - **M6 is not a quality corpus by itself.** It is excellent for deterministic
   plumbing and can produce beginner-visible mistakes, but a label must come from
-  the Mortal checkpoint or a book classifier.
+  the Mortal checkpoint or a book classifier. H0/H1 never ship; H2/H3 ship only
+  as clearly marked weak-opponent, Mortal/book-labelled material.
 - **No ensemble family.** With one Mortal checkpoint there is no neural ensemble
   to run. Multi-model labelling is an optional future capability in L2, not a
   corpus family or gate.
@@ -1003,17 +1040,17 @@ write.
   a heuristic, or an external process speaking the chosen protocol.
 - Add `MatchPlan` parsing: family, games, seat schedule, seed schedule, rule
   profile, agent list, log directory.
-- Add reference agents: `tsumogiri`, `random`, and a small deterministic
-  heuristic. Reuse the hotseat `Policy` idea if practical; do not expand the
-  shipped WASM hotseat into a full corpus engine.
+- Add the reference agents H0 `tsumogiri`, H1 `random-legal`, H2
+  `isolated-first`, H3 `efficiency-safety` from §3.2. Reuse the hotseat `Policy`
+  idea if practical; do not expand the shipped WASM hotseat into a full corpus
+  engine.
 - Write `GameProvenance` per game and per seat; emit raw logs outside git.
 - Document the referee/protocol decision and what it guarantees.
 
-**Accepts.** Two reference agents complete a kyoku; a third reference agent can
-be added through configuration only, without changing the runner; the same seed
-produces the same log; every game has complete per-seat provenance; the
-source/licence gates pass; the logs parse through R1/R2; no weights or AGPL code
-are needed for the reference family.
+**Accepts.** H0 and H1 complete a kyoku; H2/H3 are config-selectable without
+changing the runner; the same seed produces the same log; every game has complete
+per-seat provenance; the source/licence gates pass; the logs parse through R1/R2;
+no weights or AGPL code are needed for the reference family.
 
 **Depends on.** F1, R1, R2.
 
@@ -1171,15 +1208,17 @@ beginner material.
 
 **Scope.**
 
-- Reference policies implemented in the corpus repo (from C1) as self-play, or
-  against another agent the runner supports; if no strong opponent is available,
-  generate with the heuristic and let L1 label the positions.
+- Implement H0 `tsumogiri`, H1 `random-legal`, H2 `isolated-first` and H3
+  `efficiency-safety` as specified in §3.2, in the corpus repo.
+- H0/H1 are fixture/fuzzer agents: they must never enter a curated pack.
+- H2/H3 may be shipped only after a Mortal/book label is attached and the
+  scenario is marked weak-opponent.
 - Deterministic by seed; no weights.
-- If shipped, label every scenario with a strong model or book classifier and
-  mark it model-graded; never present the heuristic as ground truth.
 
-**Accepts.** Same seed → same log; no weights; logs parse; provenance complete;
-family report; the pipeline can run end-to-end on this family alone.
+**Accepts.** Each baseline is deterministic by seed; H0/H1 are rejected by the
+pack gate; H2/H3 are Mortal/book-labelled and marked weak-opponent; logs parse;
+provenance complete; family report; the pipeline can run end-to-end on this
+family alone.
 
 **Depends on.** C1.
 

@@ -430,7 +430,7 @@ It is a mix, but the available engines constrain what we can actually run:
 | Akochan vs Akochan, tactic sweep (M3) | a genuinely different rule-based policy; style contrast; mistakes |
 | Akochan vs `mortal_298k` (M4), only if a cross-engine bridge is feasible; otherwise a corpus-level M3+M1 mix | cross-policy contested states; style contrast |
 | Mortal + Akochan + heuristic table (M5), only if the bridge is feasible | multi-policy table texture |
-| heuristic/tsumogiri baseline (M6) | deterministic fixtures, cheap mistakes, a weak baseline |
+| heuristic/tsumogiri baseline (M6): H0 tsumogiri, H1 random-legal, H2 isolated-first, H3 efficiency-safety | deterministic fixtures, cheap mistakes, a weak ablation baseline; H0/H1 are fixtures only |
 
 > **Status (2026-11-15): this is a first-class pipeline requirement, with a
 > corrected model inventory.** The implementation plan (§3, families M1–M6 and
