@@ -1185,6 +1185,7 @@ review sheet and its numbers:
 ```bash
 cd frontend && npm run layout:review
 xdg-open ../tools/render/build/review/zone-layouts-1x.png
+xdg-open ../tools/render/build/review/pond-layouts-1x.png
 cat ../tools/render/build/review/zone-layout-numbers.json
 ```
 
@@ -1192,6 +1193,10 @@ The sheet is real art (the @1x atlas and the face-down shell PNGs) at 1:1, with
 the zones normalised to `(0, 0)`. It is evidence for the user's eyes; the script
 prints the facts: fractional draw positions (must be 0), the face-anchor error,
 and hit boxes that are not the published advance box (must be 0).
+`pond-layouts-1x.png` is the focused four-seat pond sheet: the same 24 discards
+and the row-2/column-4 riichi as the bottom, right, top and left ponds, each with
+its own normal/turned shells and frame. The JSON `ponds` block records every
+seat's size, step vectors and riichi body.
 
 State the numbers the check already verified, then ask the user the questions
 only they can answer: does the hand fan read at 24 units, or does it need the

@@ -1318,9 +1318,11 @@ all bottom tiers first).
 
 `cd frontend && npm run layout:review` writes
 `tools/render/build/review/zone-layouts-1x.png` and
-`zone-layout-numbers.json`. The committed run reports **10 zones / 300 tiles, 0
-fractional draw positions, max face-anchor error 1.14e-13 px, 0 hit boxes off
-the advance box**:
+`zone-layout-numbers.json`, plus `pond-layouts-1x.png`, which draws the same 24
+discards and row-2/column-4 riichi as the bottom, right, top and left ponds with
+each seat’s normal/turned shells and frame. The committed run reports **10 zones
+/ 300 tiles, 0 fractional draw positions, max face-anchor error 1.14e-13 px, 0
+hit boxes off the advance box**:
 
 | Zone | Size @1x | Bodies | Shadows |
 | :--- | :--- | ---: | ---: |

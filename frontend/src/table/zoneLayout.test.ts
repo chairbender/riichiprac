@@ -54,17 +54,22 @@ const byShell = (zone: LayoutZone, shell: string): PlacedTile => {
   return tile;
 };
 
-const faceSpan = (
-  tile: PlacedTile,
+const spanOf = (
+  shellId: string,
   axis: readonly [number, number],
 ): { readonly min: number; readonly max: number } => {
-  const shell = manifest.shells[tile.shell];
+  const shell = manifest.shells[shellId];
   const centre = faceCentreOf(shell);
   const projections = shell.faceQuad.map(
     ([x, y]) => (x - centre[0]) * axis[0] + (y - centre[1]) * axis[1],
   );
   return { min: Math.min(...projections), max: Math.max(...projections) };
 };
+
+const faceSpan = (
+  tile: PlacedTile,
+  axis: readonly [number, number],
+): { readonly min: number; readonly max: number } => spanOf(tile.shell, axis);
 
 describe('fan helpers', () => {
   it('centres a short hand on the 13-slot fan', () => {
@@ -378,8 +383,39 @@ describe('pond zone', () => {
     expect(zone.blurPad).toBe(36);
   });
 
-  it('rotates the pond frame for each seat', () => {
+  it('keeps the riichi face clear in every seat frame', () => {
+    const seats = ['bottom', 'right', 'top', 'left'] as const;
+    const axes = {
+      bottom: [1, 0],
+      right: [0, -1],
+      top: [-1, 0],
+      left: [0, 1],
+    } as const;
     const six = Array.from({ length: 12 }, (_, index) => ({
+      face: FACES[index % FACES.length],
+      riichi: index === 4,
+    }));
+
+    for (const side of seats) {
+      const zone = layoutPond(manifest, { discards: six, side });
+      const previous = zone.shadows[3];
+      const riichi = zone.shadows[4];
+      const axis = axes[side];
+      const shells = flatShellsForSeat(manifest, side);
+      const normalStep = Math.abs(
+        shells.normal.gridStepPx.x[0] * axis[0] + shells.normal.gridStepPx.x[1] * axis[1],
+      );
+      const normalExtent = spanOf(shells.normalId, axis);
+      const gap = normalStep - (normalExtent.max - normalExtent.min);
+      const previousFar =
+        previous.faceX * axis[0] + previous.faceY * axis[1] + faceSpan(previous, axis).max;
+      const riichiNear =
+        riichi.faceX * axis[0] + riichi.faceY * axis[1] + faceSpan(riichi, axis).min;
+      expect(riichiNear - previousFar, side).toBeCloseTo(gap, 6);
+    }
+  });
+
+  it('rotates the pond frame for each seat', () => {    const six = Array.from({ length: 12 }, (_, index) => ({
       face: FACES[index % FACES.length],
       riichi: index === 4,
     }));

@@ -8,6 +8,7 @@
  * (gitignored):
  *
  *   zone-layouts-1x.png    every representative zone at 1:1 with real art
+ *   pond-layouts-1x.png    the four seat ponds with their seat shells and frames
  *   zone-layout-numbers.json  per-zone bounds, counts and draw-order facts
  *
  * AGENTS.md §6: the PNG is evidence for the user to inspect, not for the agent
@@ -22,9 +23,15 @@ import type { ShellsManifest } from '../src/table/shellManifest';
 import { TileAtlas } from '../src/table/TileAtlas';
 import type { AtlasCanvas, AtlasImage } from '../src/table/TileAtlasBuilder';
 import { isFaceUpShellId, tileRenderKey } from '../src/table/tiles';
-import type { FaceUpShellId } from '../src/table/tiles';
-import { faceCentreOf, layoutSideHand, representativeZones } from '../src/table/zoneLayout';
-import type { LayoutZone, PlacedTile } from '../src/table/zoneLayout';
+import type { FaceUpShellId, TileFaceId } from '../src/table/tiles';
+import {
+  faceCentreOf,
+  flatShellsForSeat,
+  layoutPond,
+  layoutSideHand,
+  representativeZones,
+} from '../src/table/zoneLayout';
+import type { LayoutZone, PlacedTile, PondDiscard } from '../src/table/zoneLayout';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const tableDir = resolve(scriptDir, '../public/table');
@@ -51,6 +58,8 @@ const WARM_SHELLS: FaceUpShellId[] = [
   'shell_hand_slot_draw',
   'shell_flat_upright',
   'shell_flat_sideways',
+  'shell_flat_upright_180',
+  'shell_flat_sideways_270',
 ];
 
 const atlas = await TileAtlas.load({
@@ -238,8 +247,143 @@ for (const panel of panels) {
   y = panelY + panel.height + MARGIN;
 }
 
-const allTiles = zones.flatMap((zone) => [...zone.bodies, ...zone.shadows]);
-const fractionalDraw = allTiles.filter(
+// --------------------------------------------------------------------------- //
+// The four ponds: same discard sequence, each seat's shell family and frame.
+// --------------------------------------------------------------------------- //
+
+const POND_FACES: TileFaceId[] = [
+  '1m',
+  '2m',
+  '3m',
+  '4m',
+  '5m',
+  '6m',
+  '7m',
+  '8m',
+  '9m',
+  '1p',
+  '2p',
+  '3p',
+  '4p',
+  '5p',
+  '6p',
+  '7p',
+  '8p',
+  '9p',
+  '1s',
+  '2s',
+  '3s',
+  '4s',
+  '5s',
+  '6s',
+];
+const pondDiscards: PondDiscard[] = POND_FACES.map((face, index) => ({
+  face,
+  riichi: index === 16,
+}));
+const POND_SEATS = ['bottom', 'right', 'top', 'left'] as const;
+const POND_SIDE_LABEL = {
+  bottom: 'bottom · human',
+  right: 'right · shimocha',
+  top: 'top · toimen',
+  left: 'left · kamicha',
+} as const;
+const pondZones = POND_SEATS.map((side) =>
+  layoutPond(manifest, { discards: pondDiscards, side }),
+);
+
+const POND_GAP = 28;
+const POND_LABEL_H = 46;
+const pondCellW = Math.max(...pondZones.map((zone) => zone.width)) + POND_GAP;
+const pondCellH = Math.max(...pondZones.map((zone) => zone.height)) + POND_LABEL_H + POND_GAP;
+const pondSheetWidth = MARGIN * 2 + pondCellW * 2;
+const pondSheetHeight = MARGIN * 2 + 56 + pondCellH * 2;
+const pondCanvas = createCanvas(pondSheetWidth, pondSheetHeight);
+const pondContext = pondCanvas.getContext('2d');
+pondContext.fillStyle = FELT;
+pondContext.fillRect(0, 0, pondSheetWidth, pondSheetHeight);
+pondContext.fillStyle = INK;
+pondContext.font = 'bold 18px sans-serif';
+pondContext.fillText(
+  'Ponds by seat — 24 discards, riichi at row 2 column 4 — each seat’s shells and frame',
+  MARGIN,
+  MARGIN + 6,
+);
+pondContext.font = '12px sans-serif';
+pondContext.fillStyle = MUTED;
+pondContext.fillText(
+  'Each panel is the pond in that seat’s own frame; the riichi tile lies sideways ' +
+    'and keeps the normal face gap.',
+  MARGIN,
+  MARGIN + 26,
+);
+
+const pondNumbers = pondZones.map((zone, index) => {
+  const side = POND_SEATS[index];
+  const shells = flatShellsForSeat(manifest, side);
+  const column = index % 2;
+  const row = Math.floor(index / 2);
+  const originX = MARGIN + column * pondCellW;
+  const originY = MARGIN + 56 + row * pondCellH;
+
+  pondContext.fillStyle = INK;
+  pondContext.font = 'bold 13px sans-serif';
+  pondContext.textAlign = 'left';
+  pondContext.fillText(
+    `${POND_SIDE_LABEL[side]} · ${zone.width}×${zone.height} · ${zone.bodies.length} bodies`,
+    originX,
+    originY + 14,
+  );
+  pondContext.font = '11px sans-serif';
+  pondContext.fillStyle = MUTED;
+  pondContext.fillText(
+    `${shells.normalId} → ${shells.turnedId} · layer ${zone.layer} · ` +
+      `${zone.shadowGroup} · σ ${zone.sigmaPx1x}`,
+    originX,
+    originY + 30,
+  );
+  pondContext.strokeStyle = RULE;
+  pondContext.lineWidth = 1;
+  pondContext.strokeRect(originX + 0.5, originY + POND_LABEL_H + 0.5, zone.width, zone.height);
+
+  return {
+    side,
+    width: zone.width,
+    height: zone.height,
+    bodies: zone.bodies.length,
+    shadows: zone.shadows.length,
+    layer: zone.layer,
+    shadowGroup: zone.shadowGroup,
+    normalShell: shells.normalId,
+    turnedShell: shells.turnedId,
+    normalColumnDelta: [
+      zone.shadows[1].faceX - zone.shadows[0].faceX,
+      zone.shadows[1].faceY - zone.shadows[0].faceY,
+    ],
+    rowDelta: [
+      zone.shadows[6].faceX - zone.shadows[0].faceX,
+      zone.shadows[6].faceY - zone.shadows[0].faceY,
+    ],
+    riichiAdvance: [
+      zone.shadows[17].faceX - zone.shadows[16].faceX,
+      zone.shadows[17].faceY - zone.shadows[16].faceY,
+    ],
+    riichiBody: zone.bodies.find((tile) => tile.riichi) ?? null,
+  };
+});
+
+for (let index = 0; index < pondZones.length; index += 1) {
+  const zone = pondZones[index];
+  const column = index % 2;
+  const row = Math.floor(index / 2);
+  const originX = MARGIN + column * pondCellW;
+  const originY = MARGIN + 56 + row * pondCellH + POND_LABEL_H;
+  for (const tile of zone.bodies) {
+    await drawTile(pondContext, tile, originX, originY);
+  }
+}
+
+const allTiles = zones.flatMap((zone) => [...zone.bodies, ...zone.shadows]);const fractionalDraw = allTiles.filter(
   (tile) => !Number.isInteger(tile.drawX) || !Number.isInteger(tile.drawY),
 ).length;
 const anchorErrors = zones.flatMap((zone) =>
@@ -267,10 +411,12 @@ const report = {
   maxFaceAnchorErrorPx: Math.max(0, ...anchorErrors),
   hitBoxesNotAdvanceBox: hitBoxErrors,
   zones: numbers,
+  ponds: pondNumbers,
 };
 
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'zone-layouts-1x.png'), canvas.toBuffer('image/png'));
+writeFileSync(join(outDir, 'pond-layouts-1x.png'), pondCanvas.toBuffer('image/png'));
 writeFileSync(join(outDir, 'zone-layout-numbers.json'), `${JSON.stringify(report, null, 2)}\n`);
 
 console.log(
@@ -287,7 +433,14 @@ for (const zone of zones) {
       `layer ${zone.layer}  ${zone.shadowGroup}`,
   );
 }
+for (const pond of pondNumbers) {
+  console.log(
+    `  pond ${pond.side.padEnd(6)} ${String(pond.width).padStart(4)}×${String(pond.height).padEnd(4)} ` +
+      `${pond.bodies} bodies · ${pond.normalShell} → ${pond.turnedShell}`,
+  );
+}
 console.log(`wrote ${join(outDir, 'zone-layouts-1x.png')}`);
+console.log(`wrote ${join(outDir, 'pond-layouts-1x.png')}`);
 console.log(`wrote ${join(outDir, 'zone-layout-numbers.json')}`);
 
 if (fractionalDraw !== 0 || hitBoxErrors !== 0 || report.maxFaceAnchorErrorPx > 1e-9) {
