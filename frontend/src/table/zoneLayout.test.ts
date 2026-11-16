@@ -6,6 +6,7 @@ import { parseShellsManifest } from './shellManifest';
 import type { ShellsManifest } from './shellManifest';
 import {
   HAND_ROW_SLOTS,
+  SIDE_POND_LEAN_DEG,
   POND_COLUMNS,
   WALL_CENTRE_INDEX,
   WALL_STACKS,
@@ -474,6 +475,45 @@ describe('pond zone', () => {
         expect(Number.isInteger(tile.drawY), `${side} ${tile.shell} drawY`).toBe(true);
       }
     }
+  });
+
+  it('leans the side ponds toward the viewer as one group transform', () => {
+    const sides = ['bottom', 'right', 'top', 'left'] as const;
+    const zones = sides.map((side) => layoutPond(manifest, { discards, side }));
+    const bottom = zones[0];
+    const right = zones[1];
+    const top = zones[2];
+    const left = zones[3];
+    expect([bottom.rotationDeg, top.rotationDeg]).toEqual([0, 0]);
+    expect(right.rotationDeg).toBe(-SIDE_POND_LEAN_DEG);
+    expect(left.rotationDeg).toBe(SIDE_POND_LEAN_DEG);
+
+    const bodyBounds = (zone: LayoutZone) => {
+      let leftX = Infinity;
+      let topY = Infinity;
+      let rightX = -Infinity;
+      let bottomY = -Infinity;
+      for (const tile of zone.bodies) {
+        const shell = manifest.shells[tile.shell];
+        leftX = Math.min(leftX, tile.gridX - shell.anchorX);
+        topY = Math.min(topY, tile.gridY - shell.anchorY);
+        rightX = Math.max(rightX, tile.gridX - shell.anchorX + shell.texWidth);
+        bottomY = Math.max(bottomY, tile.gridY - shell.anchorY + shell.texHeight);
+      }
+      return { leftX, topY, rightX, bottomY };
+    };
+    for (const zone of [right, left]) {
+      const bounds = bodyBounds(zone);
+      expect(zone.pivotX).toBeCloseTo((bounds.leftX + bounds.rightX) / 2, 9);
+      expect(zone.pivotY).toBeCloseTo(bounds.bottomY, 9);
+    }
+
+    // The lean is a render transform, not a per-tile repositioning.
+    const flatRight = layoutPond(manifest, { discards, side: 'right', leanDeg: 0 });
+    expect(flatRight.rotationDeg).toBe(0);
+    expect(flatRight.bodies.map((tile) => [tile.gridX, tile.gridY])).toEqual(
+      right.bodies.map((tile) => [tile.gridX, tile.gridY]),
+    );
   });
 
   it('rotates the pond frame for each seat', () => {    const six = Array.from({ length: 12 }, (_, index) => ({

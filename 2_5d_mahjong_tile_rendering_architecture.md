@@ -1409,6 +1409,17 @@ logical row and column and sorts on the seat's depth key (`row` for front/back,
 `-row` for top, `-column` for right, `column` for left), then descending screen
 x. A vertical meld row follows the same far-to-near rule (top tile first).
 
+**Side-pond lean.** The left and right ponds carry a **1° whole-zone
+rotation** about the centre of their near (bottom) body edge: right `−1°`, left
+`+1°`, so the far end leans toward the table centre (the top edge shifts
+**6.72 px** inward on the committed 450 × 406 rows). It is a group transform of
+the composed pond (shadow layer + bodies), not a per-tile reposition or a new
+sprite; every tile, face and shadow stays the baked asset. `layoutPond` publishes
+`rotationDeg`/`pivotX`/`pivotY`; the grid positions and hit boxes remain in the
+unrotated local space, so Phase 4 applies the transform to the zone group and
+Phase 5 applies the same transform when hit-testing. `leanDeg` overrides the
+angle, and `0` disables it.
+
 **Deferred.** The tile-to-tile overlay shadow is still the next polish step: the
 few visible slivers where two tiles touch are not shadowed because the group
 blob is unioned under both bodies. Phase 3.5 records that work.

@@ -179,6 +179,26 @@ async function drawTile(
 
 const numbers: Record<string, unknown>[] = [];
 
+async function drawZoneBodies(
+  target: SheetContext,
+  zone: LayoutZone,
+  originX: number,
+  originY: number,
+): Promise<void> {
+  target.save();
+  if (zone.rotationDeg !== 0) {
+    const pivotX = originX + zone.pivotX;
+    const pivotY = originY + zone.pivotY;
+    target.translate(pivotX, pivotY);
+    target.rotate((zone.rotationDeg * Math.PI) / 180);
+    target.translate(-pivotX, -pivotY);
+  }
+  for (const tile of zone.bodies) {
+    await drawTile(target, tile, originX, originY);
+  }
+  target.restore();
+}
+
 for (const panel of panels) {
   const { zone } = panel;
   context.fillStyle = INK;
@@ -204,9 +224,7 @@ for (const panel of panels) {
   context.lineWidth = 1;
   context.strokeRect(MARGIN + 0.5, panelY + 0.5, panel.width, panel.height);
 
-  for (const tile of zone.bodies) {
-    await drawTile(context, tile, MARGIN, panelY);
-  }
+  await drawZoneBodies(context, zone, MARGIN, panelY);
 
   numbers.push({
     id: zone.id,
@@ -220,6 +238,9 @@ for (const panel of panels) {
     shadows: zone.shadows.length,
     sigmaPx1x: zone.sigmaPx1x,
     blurPad: zone.blurPad,
+    rotationDeg: zone.rotationDeg,
+    pivotX: zone.pivotX,
+    pivotY: zone.pivotY,
     firstBody: zone.bodies[0]
       ? {
           shell: zone.bodies[0].shell,
@@ -313,7 +334,8 @@ pondContext.font = '12px sans-serif';
 pondContext.fillStyle = MUTED;
 pondContext.fillText(
   'Each panel is the pond in that seat’s own frame; the riichi tile lies sideways ' +
-    'and keeps the normal face gap. Bodies draw furthest first, right-to-left in each depth line.',
+    'and keeps the normal face gap. Bodies draw furthest first, right-to-left in each depth line. ' +
+    'Side ponds lean 1° toward the viewer as one group transform; no new sprites.',
   MARGIN,
   MARGIN + 26,
 );
@@ -325,6 +347,16 @@ const pondNumbers = pondZones.map((zone, index) => {
   const row = Math.floor(index / 2);
   const originX = MARGIN + column * pondCellW;
   const originY = MARGIN + 56 + row * pondCellH;
+
+  let bodyTop = Infinity;
+  for (const tile of zone.bodies) {
+    const shell = manifest.shells[tile.shell];
+    bodyTop = Math.min(bodyTop, tile.gridY - shell.anchorY);
+  }
+  const leanTopShiftPx =
+    zone.rotationDeg === 0
+      ? 0
+      : -(bodyTop - zone.pivotY) * Math.sin((zone.rotationDeg * Math.PI) / 180);
 
   pondContext.fillStyle = INK;
   pondContext.font = 'bold 13px sans-serif';
@@ -338,7 +370,8 @@ const pondNumbers = pondZones.map((zone, index) => {
   pondContext.fillStyle = MUTED;
   pondContext.fillText(
     `${shells.normalId} → ${shells.turnedId} · layer ${zone.layer} · ` +
-      `${zone.shadowGroup} · σ ${zone.sigmaPx1x}`,
+      `${zone.shadowGroup} · σ ${zone.sigmaPx1x}` +
+      (zone.rotationDeg === 0 ? '' : ` · lean ${zone.rotationDeg.toFixed(2)}°`),
     originX,
     originY + 30,
   );
@@ -356,6 +389,10 @@ const pondNumbers = pondZones.map((zone, index) => {
     shadowGroup: zone.shadowGroup,
     normalShell: shells.normalId,
     turnedShell: shells.turnedId,
+    rotationDeg: zone.rotationDeg,
+    pivotX: zone.pivotX,
+    pivotY: zone.pivotY,
+    leanTopShiftPx,
     normalColumnDelta: [
       zone.shadows[1].faceX - zone.shadows[0].faceX,
       zone.shadows[1].faceY - zone.shadows[0].faceY,
@@ -394,9 +431,7 @@ for (let index = 0; index < pondZones.length; index += 1) {
   const row = Math.floor(index / 2);
   const originX = MARGIN + column * pondCellW;
   const originY = MARGIN + 56 + row * pondCellH + POND_LABEL_H;
-  for (const tile of zone.bodies) {
-    await drawTile(pondContext, tile, originX, originY);
-  }
+  await drawZoneBodies(pondContext, zone, originX, originY);
 }
 
 const allTiles = zones.flatMap((zone) => [...zone.bodies, ...zone.shadows]);const fractionalDraw = allTiles.filter(

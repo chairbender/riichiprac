@@ -53,6 +53,12 @@ export const POND_COLUMNS = 6;
 export const HAND_ROW_SLOTS = 13;
 /** The straight-on fan's centre slot. */
 export const HAND_CENTRE_INDEX = 6;
+/**
+ * The whole-zone lean of each side pond, in screen degrees. Positive is
+ * clockwise. It is a group transform of the composed pond (shadow + bodies),
+ * not a per-tile position change or a new sprite.
+ */
+export const SIDE_POND_LEAN_DEG = 1;
 
 /**
  * Architecture Task 4.1's global paint order. Felt is layer 0 and is not a
@@ -121,6 +127,15 @@ export interface LayoutZone {
   readonly sigmaPx1x: number;
   /** Transparent margin the Gaussian tail needs around the bounds. */
   readonly blurPad: number;
+  /**
+   * Optional whole-zone rotation in screen degrees (positive clockwise). It is
+   * applied as one group transform to the shadow layer and the bodies; the
+   * placements and hit boxes below remain in the unrotated local space.
+   */
+  readonly rotationDeg: number;
+  /** Rotation pivot in zone-local @1x px. */
+  readonly pivotX: number;
+  readonly pivotY: number;
 }
 
 export interface HandLayoutOptions {
@@ -158,6 +173,12 @@ export interface PondDiscard {
 export interface PondLayoutOptions {
   readonly discards: readonly PondDiscard[];
   readonly side?: TableSide;
+  /**
+   * Whole-zone lean for the left/right ponds, in screen degrees (positive
+   * clockwise). Defaults to {@link SIDE_POND_LEAN_DEG}; 0 disables it. The
+   * bottom/top ponds ignore it.
+   */
+  readonly leanDeg?: number;
 }
 
 export interface WallLayoutOptions {
@@ -223,6 +244,8 @@ interface ZoneSeed {
   readonly shadows: readonly RawTile[];
   /** Shell whose shadow sigma the zone's group uses. */
   readonly sigmaShell: string;
+  /** Whole-zone lean in screen degrees; the pivot is the body near edge. */
+  readonly rotationDeg?: number;
 }
 
 const pad2 = (value: number): string => String(value).padStart(2, '0');
@@ -512,12 +535,22 @@ function finishZone(manifest: ShellsManifest, seed: ZoneSeed): LayoutZone {
     right = Math.max(right, x1);
     bottom = Math.max(bottom, y1);
   };
+  let bodyLeft = Infinity;
+  let bodyTop = Infinity;
+  let bodyRight = -Infinity;
+  let bodyBottom = -Infinity;
 
   for (const tile of seed.bodies) {
     const shell = shellOf(manifest, tile.shell);
-    const bodyLeft = tile.gridX - shell.anchorX;
-    const bodyTop = tile.gridY - shell.anchorY;
-    include(bodyLeft, bodyTop, bodyLeft + shell.texWidth, bodyTop + shell.texHeight);
+    const bodyLeftEdge = tile.gridX - shell.anchorX;
+    const bodyTopEdge = tile.gridY - shell.anchorY;
+    const bodyRightEdge = bodyLeftEdge + shell.texWidth;
+    const bodyBottomEdge = bodyTopEdge + shell.texHeight;
+    bodyLeft = Math.min(bodyLeft, bodyLeftEdge);
+    bodyTop = Math.min(bodyTop, bodyTopEdge);
+    bodyRight = Math.max(bodyRight, bodyRightEdge);
+    bodyBottom = Math.max(bodyBottom, bodyBottomEdge);
+    include(bodyLeftEdge, bodyTopEdge, bodyRightEdge, bodyBottomEdge);
   }
   for (const tile of seed.shadows) {
     const shell = shellOf(manifest, tile.shell);
@@ -562,6 +595,8 @@ function finishZone(manifest: ShellsManifest, seed: ZoneSeed): LayoutZone {
   };
 
   const sigmaPx1x = shellOf(manifest, seed.sigmaShell).shadowShape.sigmaPx1x;
+  const rotationDeg = seed.rotationDeg ?? 0;
+  const hasBodies = Number.isFinite(bodyLeft);
   return {
     id: seed.id,
     kind: seed.kind,
@@ -574,6 +609,9 @@ function finishZone(manifest: ShellsManifest, seed: ZoneSeed): LayoutZone {
     height: Math.ceil(bottom - top),
     sigmaPx1x,
     blurPad: Math.ceil(3 * sigmaPx1x),
+    rotationDeg,
+    pivotX: rotationDeg && hasBodies ? (bodyLeft + bodyRight) / 2 - left : 0,
+    pivotY: rotationDeg && hasBodies ? bodyBottom - top : 0,
   };
 }
 
@@ -791,6 +829,10 @@ export function layoutPond(manifest: ShellsManifest, options: PondLayoutOptions)
     )
     .map((entry) => entry.tile);
 
+  const lean = options.leanDeg ?? SIDE_POND_LEAN_DEG;
+  const rotationDeg =
+    lean === 0 ? 0 : side === 'right' ? -lean : side === 'left' ? lean : 0;
+
   return finishZone(manifest, {
     id: `pond-${side}`,
     kind: 'pond',
@@ -798,6 +840,7 @@ export function layoutPond(manifest: ShellsManifest, options: PondLayoutOptions)
     bodies,
     shadows,
     sigmaShell: shells.normalId,
+    rotationDeg,
   });
 }
 
