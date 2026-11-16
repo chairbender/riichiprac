@@ -17,12 +17,17 @@ pipeline stages:**
 
 1. **Mixed-agent corpora.** `replay-strategy.md` §3.3 is no longer an optional
    recipe table. The corpus runner accepts pluggable neural, rule and heuristic
-   agents; every game records per-seat agent identity, configuration,
-   temperature and seed; each matchup family has its own corpus unit, quota and
-   acceptance gate. See §3.
+   agents; every game records per-seat agent identity, configuration, sampling
+   (including temperature-like knobs) and seed; each matchup family has its own
+   corpus unit, quota and acceptance gate. See §3.
 2. **Scenario permutation.** `replay-strategy.md` §5.9 is no longer a later
    nice-to-have. It is a named pipeline stage with a label-preservation gate,
    a lesson-invariance matrix and its own unit sequence. See §4.
+
+**One correction is folded in.** The plan does not assume the Mortal
+4.1a/b/c/3.0 weights are available offline; only the community `mortal_298k`
+checkpoint is. The offline policy set is that checkpoint, Akochan, and
+heuristic/reference policies. See §3.2.
 
 The planning task that produced this document implemented no miner code and made
 no frontend change. The only code-facing deliverables here are the proposed
@@ -34,10 +39,10 @@ matchup family plus the shared runner and integration gate), 3 classifier units
 (B1–B3), 2 labeler units (L1–L2), 3 selector units (S1–S3), 2 permutation units
 (V1–V2), 4 pack units (P1a, P1b, P2, P3), and 2 validation/ship units (Q1, Q2)
 plus the Q2r review task. The critical path to the first pack runs through the
-parser, reconstructor, shared corpus runner, the M1 family, the classifier/
-labeler, selection, the permutation gate, pack assembly, the loader and the
-end-to-end harness. B1/B2, L1/L2, V1 and the non-M1 corpus families can run in
-parallel around that path.
+parser, reconstructor, shared corpus runner, the M1 and M3 families, the
+classifier/labeler, selection, the permutation gate, pack assembly, the loader
+and the end-to-end harness. B1/B2, L1/L2, V1 and the additional corpus families
+can run in parallel around that path.
 
 ---
 
@@ -111,9 +116,9 @@ technically separate.
 | Replay library (`src/replay/`) | this repo | MIT | native, behind `miner` feature | no |
 | Miner tooling (`src/miner/`, `src/bin/mine_replays.rs`) | this repo | MIT | `--features miner` | no |
 | Book classifiers, labeler, selection, transforms, pack tools | this repo (`src/miner/`) | MIT | `--features miner` | no |
-| Corpus runner and match orchestration | new repo `riichiprac-corpus` | AGPL-3.0 (because it links `libriichi`) | native | no |
-| Mortal `libriichi` adapter + model weights | `riichiprac-corpus` | AGPL-3.0 | native | no |
-| Akochan adapter / bridge | `riichiprac-corpus` | AGPL-3.0 repo with Akochan NOTICE; user-supplied binary, private repo if bundled | native | no |
+| Corpus runner and match orchestration | new **private** repo `riichiprac-corpus` | AGPL-3.0 (because it links `libriichi`); private until a later publication decision | native | no |
+| Mortal `libriichi` adapter + model weights | `riichiprac-corpus` (private) | AGPL-3.0 | native | no |
+| Akochan adapter / bridge | `riichiprac-corpus` (private) | AGPL-3.0 repo with Akochan NOTICE; user-supplied binary, private repo if bundled | native | no |
 | Pack publisher / audit | this repo | MIT | `--features miner` | tool only |
 | Frontend pack loader | this repo (`frontend/`) | MIT | Vite | yes |
 
@@ -144,7 +149,7 @@ Rules for the boundary:
 | 4 | Agent protocol + match runner | pluggable agents, match plans, seat/seed schedules, raw log emission | `riichiprac-corpus` | hotseat `Policy` concept as a reference |
 | 5 | Corpus families + adapters | Mortal arena, Akochan, heuristic/reference; per-family reports | `riichiprac-corpus` | corpus protocol, `GameProvenance` |
 | 6 | Book classifiers | `matches(state) -> Option<Match>` per lesson; `TransformPolicy` | this repo, `src/miner/` or next to lessons | `analysis`, `safety`, `completion`, `rationale` |
-| 7 | Mortal labeler | batch evaluation, Q values, cache, ensemble, agreement | this repo, `src/miner/` | `MortalV4Model`, `evaluate_state_named`, `compare_action_set` |
+| 7 | Mortal labeler | batch evaluation, Q values, cache, book agreement, optional future multi-model labels | this repo, `src/miner/` | `MortalV4Model`, `evaluate_state_named`, `compare_action_set` |
 | 8 | Interestingness + selection | hard gates, family quotas, dedupe, review queue | this repo, `src/miner/` | `scenario-report`, fuzz comparison |
 | 9 | Permutation engine | label-preserving seat/suit/rank/wind/red-five variants | this repo, `src/miner/transform/` | `GameState` tile helpers, `finalize_state` |
 | 10 | Pack schema + publisher + audit | pack/manifest types, source/licence gate, hash/byte budget, atomic write | this repo, `src/miner/pack/` | `export/tenhou6.rs` for review only |
@@ -162,8 +167,9 @@ and with the corpus generation separated from ingestion.
         │  (source allowlist = ai_selfplay; agent/licence/rule provenance types)
         ▼
 [1] corpus generation — mixed agents, per-game provenance
-        │  (match plan: M1 strong mirror, M2 contrast, M3 weak/human-like,
-        │   M4 cross-engine Akochan, M5 ensemble/heterogeneous, M6 rule baseline)
+        │  (match plan: M1 Mortal mirror, M2 Mortal sampling sweep,
+        │   M3 Akochan tactics, M4 Akochan vs Mortal, M5 heterogeneous
+        │   table if cross-engine, M6 rule baseline)
         ▼
 [2] ingest + replay validation
         │  (parse mjai, tile ledger, scores, event order, rule profile)
@@ -212,7 +218,7 @@ them stable once a pack uses them.
 
 | Contract | JSON schema name | Purpose |
 | --- | --- | --- |
-| `AgentSpec` | part of `riichiprac.corpus-match-plan` | identity/config/temperature/seed/licence of one seat |
+| `AgentSpec` | part of `riichiprac.corpus-match-plan` | identity/config/sampling/temperature/seed/licence of one seat |
 | `MatchPlan` | `riichiprac.corpus-match-plan` v1 | family, games, seat schedule, seed schedule, rule profile |
 | `GameProvenance` | `riichiprac.corpus-game` v1 | one generated game's full roster, seeds, config hashes, log hash, validation |
 | `TransformChain` | `riichiprac.scenario-transforms` v1 | ordered transforms and parameters applied to a scenario |
@@ -225,7 +231,7 @@ Sketch of the corpus-side types:
 pub enum AgentKind { Neural, Rule, Heuristic, External }
 
 pub struct AgentSpec {
-    pub agent_id: String,          // "mortal-4.1b", "akochan-<ver>", "heuristic-v1"
+    pub agent_id: String,          // "mortal-298k", "akochan-<ver>", "heuristic-v1"
     pub kind: AgentKind,
     pub engine: String,            // "libriichi", "akochan", "corpus-reference"
     pub engine_version: String,
@@ -243,7 +249,7 @@ pub struct AgentSpec {
 pub struct GameProvenance {
     pub replay_id: String,         // sha256 of canonical raw log
     pub corpus_id: String,
-    pub family: String,            // "strong_mirror", "weak_vs_strong", ...
+    pub family: String,            // "mortal_mirror", "akochan_tactics", ...
     pub match_plan_id: String,
     pub match_plan_sha256: String,
     pub rule_profile: String,
@@ -268,7 +274,7 @@ fails the publisher.
 
 ### 3.1 Requirement
 
-The corpus is **not** four clones of the strongest network. A useful corpus is a
+The corpus is **not** four clones of one strong policy. A useful corpus is a
 mix of strong lines, realistic mistakes, contested positions and genuinely
 different policies. That mix is the main source of the states worth mining, and
 it is a property of the corpus generator, not a post-hoc filter.
@@ -278,7 +284,8 @@ Therefore:
 - the corpus runner accepts **pluggable agents/policies**, including non-neural
   rule or heuristic engines such as Akochan;
 - every game records **per-seat agent identity and configuration**, generation
-  temperature and seeds, engine/weights hashes, rule profile and licence;
+  sampling (including temperature-like knobs) and seeds, engine/weights hashes,
+  rule profile and licence;
 - the matchup families in `replay-strategy.md` §3.3 are the **minimum family
   set**, each with its own corpus unit, quota and acceptance gate;
 - a family that is disabled or misses its quota is visible in the corpus report;
@@ -289,6 +296,47 @@ Therefore:
 
 ### 3.2 Agent model
 
+**Availability check (2026-11-15).** The upstream Mortal project does **not**
+publish trained weights. Its documentation's "Okay cool now give me the weights!"
+section points at the author's post, whose latest update (2022-08-19) says there
+is currently no plan to release the trained model. The 4.1a/b/c, 4.0 and 3.0
+names are networks used by the **online review service** at
+<https://mjai.ekyu.moe>; they are not downloadable checkpoints. The only Mortal
+checkpoint we have is the community `VoidShine/mortal-298k`
+(`mortal_298k.safetensors`), which this app already uses.
+
+| Engine | Available offline? | Evidence | Intended role |
+| --- | --- | --- | --- |
+| **Mortal `mortal_298k`** | **yes** | `VoidShine/mortal-298k` HF checkpoint; converted weights already in the app | primary Mortal generator and labeler |
+| Mortal 4.1a / 4.1b / 4.1c | **no** | online-service networks; upstream weights unreleased | not a corpus source; do not name them in a match plan |
+| Mortal 4.0 / 3.0 | **no** | same | not a corpus source |
+| **Akochan** | **yes** (user-supplied binary) | C++ engine under its own terms | second, non-neural policy; self-match and, if feasible, cross-engine |
+| **Heuristic / reference** | **yes** | our corpus-repo code | weak/baseline policy, deterministic fixtures |
+| Kanachan / NAGA / Suphx | **no** usable weights | no shipped models / proprietary / paper only | not usable |
+
+Consequences for the corpus recipe:
+
+- **One Mortal checkpoint, one Akochan, and heuristic baselines are the offline
+  policy set.** M1 and M2 below use the same Mortal checkpoint with different
+  sampling settings; they are **not** different AIs and must not be described as
+  a network mix.
+- **Policy variety starts at M3 (Akochan) and M6 (heuristic).** A pack that only
+  contains M1/M2 games is a clone corpus and does not satisfy the variety
+  requirement.
+- **Multi-model ensembles are parked.** L2 can accept more than one labeler if a
+  checkpoint is ever obtained, but no family, quota or gate depends on it. With
+  one Mortal model there is no neural ensemble to run.
+- **Do not scrape or automate the online service.** It is a review UI, not a
+  batch self-play API, and its terms are not a corpus grant.
+- **If more neural policies are wanted later**, the options are explicit: obtain
+  permission/weights, train our own checkpoint (a separate, large RL/data
+  project), or add another open engine through the same agent protocol. None of
+  those is assumed by this sequence.
+- **Weights provenance is separate from replay provenance.** The `mortal_298k`
+  model card says it was trained on Tenhou hanchan data. That is a fact about the
+  weights we already ship, not a licence to ingest Tenhou replays; review it
+  separately before any commercial use.
+
 The runner is agent-agnostic. It does not assume every seat is a Mortal
 checkpoint, and it does not assume a "best" network is the only generator.
 
@@ -298,8 +346,10 @@ checkpoint, and it does not assume a "best" network is the only generator.
 - **kind**: `neural`, `rule`, `heuristic`, or `external`;
 - **config**: the full engine configuration object plus a canonical
   `config_hash`; a name alone is not provenance;
-- **sampling**: `temperature`, `top_p`/`top_k` when supported, or
-  `engine_default`; `None` when deterministic;
+- **sampling**: `boltzmann_epsilon` / `boltzmann_temp` / `top_p` for Mortal;
+  `temperature` / `top_p` for engines that expose it; or `engine_default`;
+  `None` when deterministic. Record the full sampling object in `config` and the
+  canonical temperature-like knob in `temperature`.
 - **seed**: per-seat seed where the engine accepts one; `None` with an explicit
   `reproducible: false` marker when it does not;
 - **licence**: licence id, attribution, data-commercial-use flag.
@@ -315,10 +365,12 @@ Match plans also record:
   per-seat seeds, so a game can be reproduced from `(corpus_id, family,
   game_index, lineup)`.
 
-**Generation temperature vs label temperature.** Self-play may sample at
-temperature 1.0 for diversity. Labels are always argmax (`temperature: 0.0`),
-and the labeler's model identity is recorded separately. Never record one
-temperature for both.
+**Generation sampling vs label sampling.** Mortal's engine exposes
+`boltzmann_epsilon` (a mixture of greedy and sampled actions),
+`boltzmann_temp`, and `top_p`; record all three in `config` and the canonical
+temperature-like knob in `temperature`. Self-play may sample for diversity;
+labels are always argmax (`boltzmann_epsilon = 0`). The labeler's model identity
+is recorded separately. Never record one sampling setting for both.
 
 A match plan is a small, reviewable document:
 
@@ -327,13 +379,13 @@ A match plan is a small, reviewable document:
   "schema": "riichiprac.corpus-match-plan",
   "version": 1,
   "corpus_id": "mixed-2026-11",
-  "family": "weak_vs_strong",
+  "family": "mortal_mirror",
   "rule_profile": "tenhou-4p-hanchan",
   "games": 1000,
   "seat_schedule": "rotate_each_game",
   "seed_schedule": { "kind": "sequence", "start": 1000, "step": 1 },
   "seats": [ /* four AgentSpec objects; see §3.4 */ ],
-  "log_dir": "corpus/mixed/2026-11/weak_vs_strong"
+  "log_dir": "corpus/mixed/2026-11/mortal_mirror"
 }
 ```
 
@@ -342,8 +394,8 @@ The runner writes the resolved per-game roster and seeds into
 
 **Non-neural engines are generators and opponents first.** Akochan can be a
 generator, a second opinion and a source of different play. It is not the pack
-labeler unless its values are mapped and calibrated; the default labeler remains
-Mortal 4.1b / the app's MIT inference.
+labeler unless its values are mapped and calibrated; the default labeler is the
+one `mortal_298k` checkpoint via the app's MIT inference.
 
 ### 3.3 Matchup families and acceptance gates
 
@@ -351,32 +403,37 @@ These are the families the first corpus must support. Each is a separate
 implementation unit in §5 (C2–C7), so a failure in one does not block the
 others.
 
-| ID | Family | Seats (minimum) | What it feeds | Family-specific acceptance gate |
+| ID | Family | Seats (available offline) | What it feeds | Family-specific acceptance gate |
 | --- | --- | --- | --- | --- |
-| **M1** | Strong mirror | 4.1b vs 4.1b; optional 4.1c mirror | high-quality lines, book-aligned states, stable labels | configured games generated; 100 % logs parse; 0 invalid reconstructed states on the smoke sample; every game has complete per-seat provenance; rule profile matches; family report emitted |
-| **M2** | Aggressive / defensive contrast | 4.1c vs 4.1b, both seat directions | contested states, close calls, style contrast | M1 gates, plus a measured action-distribution divergence from M1; the contested/close-call yield is measured after labelling; both agents' identities and temperatures recorded |
-| **M3** | Weak / human-like | 3.0 vs 4.1b | mistakes, "find the blunder" drills | M1 gates, plus every candidate records the weak agent's played action and seat; the strong top action/Q gap is attached by the labeler/selector; no outcome-based labelling; configured blunder yield |
-| **M4** | Cross-engine Akochan | Akochan vs Mortal 4.1b; self-match fallback | genuinely different policy, diversity, second opinion | adapter/self-match produces parseable logs; per-seat identity; rule profile verified; `cross_engine` flag is truthful; Akochan licence/attribution/data-commercial-use flags present; configured diversity yield |
-| **M5** | Ensemble / heterogeneous | 4.1a/4.1b/4.1c mixed; optionally an Akochan seat | network disagreement, contested labels | every candidate records the seat roster; ensemble votes are attached by L2; stable vs contested split; no silent tie-break; M1 gates; per-family report |
-| **M6** | Rule / heuristic baseline | corpus-repo tsumogiri/random/heuristic, self-play or vs another supported seat | cheap pipeline fixtures, deterministic tests, optional beginner material | deterministic by seed; no weights; logs parse; provenance complete; if shipped, every scenario is graded by a strong labeler and marked model-graded |
+| **M1** | Mortal mirror | `mortal_298k` vs itself, sampled self-play (`boltzmann_epsilon` > 0), rotated seats | high-quality lines, book-aligned states, label baseline | configured games generated; 100 % logs parse; 0 invalid reconstructed states on the smoke sample; every game has complete per-seat provenance; rule profile matches; family report emitted |
+| **M2** | Mortal sampling sweep | same `mortal_298k`, several `boltzmann_epsilon` / `boltzmann_temp` / `top_p` profiles, seat/dealer rotations | wider state coverage, mild style variation | M1 gates, plus a measured action-distribution divergence from M1; provenance records `policy_variety: "sampling"` and the same model hash; never describe this as a different agent or network |
+| **M3** | Akochan tactic sweep | Akochan vs Akochan, different tactic/config profiles when supported; otherwise one profile | genuinely different rule-based policy, style contrast, mistakes | parseable logs; per-seat identity/config; rule profile verified; Akochan licence/attribution/commercial flags; measured divergence from M1; `cross_engine: false`; family report |
+| **M4** | Akochan vs Mortal | Akochan vs `mortal_298k` if the cross-engine bridge is feasible; otherwise a **corpus-level** M3+M1 mix, not a same-table claim | cross-policy contested states | spike decision + adapter; `cross_engine` flag is truthful; per-seat identity; rule profile; Akochan flags; 0 invalid states; configured diversity yield |
+| **M5** | Heterogeneous table | one Mortal + Akochan + heuristic seats, only if the cross-engine bridge is feasible; otherwise deferred | multi-policy table texture | M4 gates plus three distinct agents in the seat roster; no silent fallback; if not feasible, the family is marked deferred and no heterogeneous games are claimed |
+| **M6** | Rule / heuristic baseline | corpus-repo tsumogiri/random/heuristic, self-play or vs another supported seat | cheap pipeline fixtures, deterministic tests, beginner material | deterministic by seed; no weights; logs parse; provenance complete; if shipped, every scenario is graded by a strong labeler and marked model-graded |
 
 Family rules:
 
 - **M1 is the baseline, not the corpus.** It satisfies quality and label
-  stability; it is not allowed to fill a pack on its own. Selection quotas must
-  include at least one non-M1 family in a shipped pack.
-- **M2 and M3 are separate families** even when they share the same runner
-  backend. Their yields and acceptance criteria are different.
-- **M4 has two truthful modes.** Cross-play and Akochan self-match are both
-  useful; the game record says which one ran. Never label a self-match corpus
-  "Akochan vs Mortal".
-- **M5 does not hide disagreement.** A split vote becomes `contested` or a
-  rejection, never an arbitrary pick. 4.1a is an ensemble/heterogeneous member
-  here; a standalone 4.1a mirror is a new match plan, not a new implementation
-  unit.
+  stability; it is not allowed to fill a pack on its own. M1 and M2 use the same
+  Mortal checkpoint with different sampling settings, so neither counts as
+  policy variety.
+- **Policy variety starts at M3.** Akochan is the first genuinely different
+  engine; M6 is the weak/baseline policy. A shipped pack must include at least
+  one M3–M6 family, not just M1/M2.
+- **M3 does not claim cross-play.** Akochan self-match is useful and honest; the
+  game record says `cross_engine: false`.
+- **M4 has two truthful modes.** Same-table cross-play and a corpus-level mix are
+  both useful; the game record and family report say which one ran. Never label a
+  corpus-level mix "Akochan vs Mortal at the same table".
+- **M5 is conditional.** If the bridge is not feasible, defer it; do not fake a
+  heterogeneous table by relabelling a corpus-level mix.
 - **M6 is not a quality corpus by itself.** It is excellent for deterministic
   plumbing and can produce beginner-visible mistakes, but a label must come from
-  a strong model or a book classifier.
+  the Mortal checkpoint or a book classifier.
+- **No ensemble family.** With one Mortal checkpoint there is no neural ensemble
+  to run. Multi-model labelling is an optional future capability in L2, not a
+  corpus family or gate.
 
 ### 3.4 Per-game provenance (required, not optional)
 
@@ -388,9 +445,9 @@ corpus path, never an absolute local path or a username.
   "schema": "riichiprac.corpus-game",
   "version": 1,
   "replay_id": "sha256:...",
-  "corpus_id": "mortal-4.1b-3.0-mixed-2026-11",
-  "family": "weak_vs_strong",
-  "match_plan_id": "m3-weak-vs-strong-2026-11",
+  "corpus_id": "mortal298k-heuristic-2026-11",
+  "family": "rule_baseline",
+  "match_plan_id": "m6-rule-baseline-2026-11",
   "match_plan_sha256": "sha256:...",
   "rule": {
     "profile": "tenhou-4p-hanchan",
@@ -409,39 +466,39 @@ corpus path, never an absolute local path or a username.
   "seats": [
     {
       "seat": 0,
-      "agent_id": "mortal-4.1b",
+      "agent_id": "mortal-298k",
       "kind": "neural",
       "engine": "libriichi",
       "engine_version": "0.4.x",
       "engine_sha256": "sha256:...",
       "weights_sha256": "sha256:...",
-      "config": { "temperature": 1.0, "top_p": null },
+      "config": { "boltzmann_epsilon": 0.05, "boltzmann_temp": 1.0, "top_p": 1.0 },
       "config_hash": "sha256:...",
       "temperature": 1.0,
-      "sampling": "softmax",
+      "sampling": "boltzmann_epsilon",
       "seed": "0x01",
       "reproducible": true,
       "licence": {
         "id": "AGPL-3.0",
-        "attribution": "Mortal 4.1b ...",
+        "attribution": "Mortal 298k checkpoint ...",
         "data_commercial_use": true
       }
     },
     {
       "seat": 1,
-      "agent_id": "mortal-3.0",
-      "kind": "neural",
-      "engine": "libriichi",
-      "engine_version": "0.4.x",
-      "weights_sha256": "sha256:...",
+      "agent_id": "heuristic-v1",
+      "kind": "heuristic",
+      "engine": "corpus-reference",
+      "engine_version": "0.1.0",
+      "config": { "style": "isolated-honor-first" },
       "config_hash": "sha256:...",
-      "temperature": 1.0,
-      "sampling": "softmax",
+      "temperature": null,
+      "sampling": "deterministic",
       "seed": "0x02",
       "reproducible": true,
       "licence": {
-        "id": "AGPL-3.0",
-        "attribution": "Mortal 3.0 ...",
+        "id": "MIT",
+        "attribution": "riichiprac corpus reference policy",
         "data_commercial_use": true
       }
     }
@@ -449,7 +506,7 @@ corpus path, never an absolute local path or a username.
   ],
   "log": {
     "format": "mjai",
-    "path": "corpus/mixed/2026-11/weak_vs_strong/000017.jsonl.gz",
+    "path": "corpus/mixed/2026-11/rule_baseline/000017.jsonl.gz",
     "bytes": 41234,
     "sha256": "sha256:..."
   },
@@ -482,9 +539,9 @@ has an unknown licence is rejected.
   attribution string. A pack containing any Akochan game is marked
   `data_commercial_use: false`; the publisher refuses to publish it under a
   commercial profile. If the app ever becomes commercial, replace the Akochan
-  data or obtain permission. Do not commit Akochan code or binaries to a public
-  repo; invoke a user-supplied binary, or keep the corpus repo private. Only the
-  generated logs (with attribution) enter the corpus and pack.
+  data or obtain permission. The corpus repo is private for now; even so, prefer
+  a user-supplied Akochan binary and do not redistribute its code or binaries.
+  Only the generated logs (with attribution) enter the corpus and pack.
 - **Heuristic / corpus-repo.** Our code and generated data; use the repo's
   licence for code and CC BY 4.0 for data, with attribution to the project.
 - **Unknown / external.** Unknown licence means reject at ingest and at publish.
@@ -505,12 +562,12 @@ per-scenario guess:
   "kind": "ai_selfplay",
   "corpus_id": "mixed-2026-11",
   "licence": "CC-BY-4.0",
-  "attribution": "Games generated with Mortal 4.1b/3.0 (AGPL-3.0) and Akochan (non-commercial, attribution). Scenario pack CC BY 4.0.",
+  "attribution": "Games generated with Mortal 298k (AGPL-3.0) and Akochan (non-commercial, attribution). Scenario pack CC BY 4.0.",
   "redistributable": true,
   "data_commercial_use": false,
   "agents": [
-    { "agent_id": "mortal-4.1b", "kind": "neural", "licence": "AGPL-3.0",
-      "attribution": "Mortal 4.1b ...", "data_commercial_use": true },
+    { "agent_id": "mortal-298k", "kind": "neural", "licence": "AGPL-3.0",
+      "attribution": "Mortal 298k checkpoint ...", "data_commercial_use": true },
     { "agent_id": "akochan-<ver>", "kind": "rule", "licence": "akochan-custom",
       "attribution": "Akochan ...", "data_commercial_use": false }
   ]
@@ -529,7 +586,7 @@ any `false` agent is non-commercial even if other agents permit commercial use.
 - book matches, Mortal labels, contested, blunders, close calls, selected;
 - rejection reasons, deduped counts;
 - agent roster and seat distribution;
-- temperature and seed ranges;
+- sampling/temperature and seed ranges;
 - licence flags and rule profile;
 - quota shortfalls.
 
@@ -601,8 +658,9 @@ For every candidate variant:
    - **Mortal-only**: run the labeler on the transformed state. Require the
      top-1 action to inverse-map to the original top-1. For a close call, reject
      if the top-1 flips or the calibrated margin band changes materially.
-   - **ensemble**: require every ensemble member's top-1 to inverse-map, or
-     preserve the original `contested` marking.
+   - **multi-model (optional, future)**: if more than one labeler ever exists,
+     require every member's top-1 to inverse-map, or preserve the original
+     `contested` marking. With one Mortal checkpoint this kind is not used.
    - **mistake / played action**: inverse-map the played action too; the
      "find the mistake" lesson must still show the same mistake relative to the
      same answer.
@@ -761,14 +819,14 @@ F1  (scaffold + provenance + source gate)
 ├── R1  mjai reader + replay validator
 │   └── R2  walker + GameState + decision enumeration + tenhou6 export
 │       ├── C1  agent protocol + match plan + reference runners
-│       │   ├── C2  Mortal libriichi backend + M1 strong mirror
-│       │   │   ├── C3  M2 aggressive/defensive contrast
-│       │   │   ├── C4  M3 weak/human-like mistakes
-│       │   │   ├── C5  M4 cross-engine Akochan (spike first)
-│       │   │   └── C6  M5 ensemble/heterogeneous
-│       │   └── C7  M6 rule/heuristic baseline
+│       │   ├── C2  Mortal libriichi backend + M1 Mortal mirror
+│       │   │   └── C3  M2 Mortal sampling sweep
+│       │   ├── C4  M3 Akochan tactic sweep
+│       │   │   └── C5  M4 Akochan vs Mortal (spike first)
+│       │   ├── C7  M6 rule/heuristic baseline
+│       │   └── C6  M5 heterogeneous table (conditional; needs C2 + C5 + C7)
 │       └── L1  native batch labeler + Q values + cache
-│           └── L2  ensemble + agreement + contested + calibration hooks
+│           └── L2  agreement + contested + optional future labels + calibration hooks
 ├── B1  classifier framework + broad batch 1
 │   └── B2  classifier batch 2
 │       └── B3  shape/block-theory classifiers
@@ -795,7 +853,7 @@ Q1 ── Q2  first curated pack
 | 1 | R1, B1 (fixtures), V1 (synthetic states), P1a (schema with fixtures) | these do not need a real corpus |
 | 2 | R2, B2, C1 | parser output is ready; classifiers can grow; runner can start |
 | 3 | C2, C7, L1, B3 | Mortal backend starts; rule baseline is independent; labeler and hard classifiers run in parallel |
-| 4 | C3, C4, C5, C6, L2 | contrast, mistake, Akochan and ensemble families use the Mortal backend; ensemble labels |
+| 4 | C3, C4, C5, C6, L2 | sampling sweep, Akochan tactics, cross-engine and heterogeneous families; label agreement |
 | 5 | C8, S1 | corpus integration and cheap trigger filters |
 | 6 | S2, S3 | selection, dedupe and family-specific ranking |
 | 7 | V2, P1b | variants need selected bases and stable labels; pack assembly needs variants |
@@ -809,11 +867,14 @@ still running; the table is a scheduling guide, not a barrier.
 The **critical path to the first pack** is:
 
 ```text
-F1 → R1 → R2 → { (B1 → L1) ∥ (C1 → C2 → C8) } → S1 → S2
+F1 → R1 → R2 → { (B1 → L1) ∥ (C1 → { C2, C4 } → C8) } → S1 → S2
    → V2 → P1b → P2 → P3 → Q1 → Q2
 ```
 
-B1/B2, L1/L2, V1, and the corpus families can run in parallel around that path.
+B1/B2, L1/L2, V1, and the additional corpus families (C3, C5, C6, C7) can run in
+parallel around that path. The first curated pack needs at least one
+Akochan-derived family, so C4 is on the critical path; M6 (C7) is useful for
+pipeline smoke but is not enough for the first curated pack.
 Do not start S2 before B1/B2 and L1/L2 are stable; a selector on top of an
 unstable classifier produces plausible-looking but wrong drills
 (`replay-strategy.md` §6.11).
@@ -936,7 +997,8 @@ write.
 
 **Scope.**
 
-- Create the `riichiprac-corpus` repo (AGPL-3.0 if it links `libriichi`).
+- Create the `riichiprac-corpus` repo as a **private** repository (AGPL-3.0
+  licence file if it links `libriichi`; README and Akochan NOTICE).
 - Add an `Agent`/`Policy` contract that can wrap a neural model, a rule engine,
   a heuristic, or an external process speaking the chosen protocol.
 - Add `MatchPlan` parsing: family, games, seat schedule, seed schedule, rule
@@ -958,19 +1020,22 @@ are needed for the reference family.
 **CC slice.** `worktree` / `riichiprac-corpus` (create the repo first if it does
 not exist; a `scratch` spike is acceptable before the repo exists).
 
-##### C2 — Mortal `libriichi` backend and M1 strong mirror
+##### C2 — Mortal `libriichi` backend and M1 Mortal mirror
 
-**Goal.** Generate Mortal-vs-Mortal games in the sealed corpus repo and prove
-the baseline family.
+**Goal.** Generate Mortal-vs-Mortal games with the one available checkpoint and
+prove the baseline family.
 
 **Scope.**
 
 - `libriichi::arena` (or the Mortal mjai interface) adapter: load weights once
   per process, batch a shard, dump gzipped mjai logs.
-- Pin model identity: file name, sha256, engine commit, config hash.
-- Generation temperature 1.0 for diversity; labels later at argmax.
+- Pin model identity: file name, sha256, engine commit, config hash. The only
+  supported checkpoint is `mortal_298k`; do not accept a match plan naming a
+  4.1/3.0 model that we do not have.
+- Generation sampling profiles (`boltzmann_epsilon` / `boltzmann_temp` /
+  `top_p`) for diversity; labels later at argmax.
 - Seat rotation across games; record resolved seats.
-- M1 plan: 4.1b vs 4.1b; optionally a 4.1c mirror as a separate configured run.
+- M1 plan: `mortal_298k` vs itself, rotated seats.
 - A few-hundred-game M1 smoke corpus (enough to prove the backend and family);
   the 1k total-across-families corpus is C8.
 - Per-family report; validate through R1/R2.
@@ -987,98 +1052,117 @@ recorded); family report emitted; `cargo tree` in this repo still has no
 
 **CC slice.** `worktree` / `riichiprac-corpus`.
 
-##### C3 — M2 aggressive/defensive contrast family
+##### C3 — M2 Mortal sampling sweep
 
-**Goal.** Produce the style-contrast corpus that creates contested positions and
-close calls.
+**Goal.** Widen state coverage and produce mild style variation from the same
+Mortal checkpoint. This is **not** a different agent and must not be described as
+a network mix.
 
 **Scope.**
 
-- M2 plan: 4.1c vs 4.1b, both seat directions, seat rotation.
+- M2 plan: `mortal_298k` with several `boltzmann_epsilon` /
+  `boltzmann_temp` / `top_p` profiles, rotated seats and dealer positions.
+- Record `policy_variety: "sampling"` and the same `weights_sha256` for every
+  seat; the config hash differs only by sampling parameters.
 - Record action distributions and compare them with M1.
-- Feed contested/close-call candidates to the selector; do not label a
-  disagreement as an error by itself.
+- Feed the wider state set to the selector; do not claim policy diversity from
+  this family.
 
-**Accepts.** M1 gates plus a measured divergence from M1; the contested/close-call
-rate is measured after labelling; both agents' identities/temperatures recorded;
-the family report explains where the candidate yield came from.
+**Accepts.** M1 gates plus a measured divergence from M1; provenance names the
+same model hash and marks the variation as sampling; no field claims a
+different agent; the family report explains the state-coverage gain.
 
 **Depends on.** C2.
 
 **CC slice.** `worktree` / `riichiprac-corpus`.
 
-##### C4 — M3 weak/human-like mistake family
+##### C4 — M3 Akochan tactic sweep
 
-**Goal.** Produce realistic mistakes without human data.
+**Goal.** Add a genuinely different, non-neural rule-based policy and use it to
+create style contrast and realistic mistakes.
 
 **Scope.**
 
-- M3 plan: Mortal 3.0 vs 4.1b; seat rotation.
-- Record the weak agent's played action and seat; the strong labeler attaches the
-  top action/Q gap later. Do not use game outcome as a label.
-- Emit blunder candidates for the "find the mistake" family; keep the position
-  before the mistake as the drill.
+- M3 plan: Akochan vs Akochan, using different tactic/config profiles when the
+  engine supports them; otherwise a single documented profile.
+- Record every seat's Akochan version, config/tactic and seed; `cross_engine:
+  false` for self-match.
+- If Akochan's native log format is not mjai, convert it in the corpus repo and
+  validate the converted log through R1/R2; never add an Akochan parser to the
+  app's WASM path.
+- Map Akochan's rule/configuration to the canonical rule profile; reject
+  mismatches.
+- Licence: `data_commercial_use: false`, attribution required, Akochan NOTICE;
+  user-supplied binary; no Akochan code or binary in the app repo.
+- Record played actions; the Mortal labeler attaches the strong top action/Q gap
+  later. Do not use game outcome as a label.
 
-**Accepts.** M1 gates plus a configured candidate yield; every candidate records
-the weak action and seat; no outcome-based label; the strong label/Q gap is
-attached by L1/S3; family report.
+**Accepts.** Parseable logs; per-seat identity/config; rule-profile verification;
+Akochan licence flags/attribution; 0 invalid states; measured divergence from
+M1; `cross_engine: false`; family report.
 
-**Depends on.** C2.
+**Depends on.** C1, R1/R2; an Akochan binary and a compatible environment.
 
 **CC slice.** `worktree` / `riichiprac-corpus`.
 
-##### C5 — M4 cross-engine Akochan family (spike + adapter)
+##### C5 — M4 Akochan vs Mortal (spike + adapter)
 
-**Goal.** Add a genuinely different, non-neural policy while keeping its licence
-boundaries intact.
+**Goal.** Determine whether Akochan can share a table with the Mortal checkpoint,
+and build the adapter only if it can.
 
 **Scope.**
 
 - **Spike first:** determine whether Akochan can play in the same match as a
-  Mortal agent (mjai/API/process referee) or only self-match. Record the answer
-  and the evidence. Do not assume a bridge exists.
+  `mortal_298k` agent (mjai/API/process referee) or only self-match. Record the
+  answer and the evidence. Do not assume a bridge exists. Lead: Mortal's tree
+  contains `libriichi/src/agent/akochan.rs`; inspect whether it is a usable
+  bridge before building one from scratch.
 - If cross-play is feasible: build the adapter in the corpus repo; record
-  `cross_engine: true`.
-- If not: ingest Akochan self-match logs; record `cross_engine: false` and do
-  not describe them as Akochan-vs-Mortal. If Akochan's native log format is not
-  mjai, convert it in the corpus repo and validate the converted log through
-  R1/R2; never add an Akochan parser to the app's WASM path.
+  `cross_engine: true`; generate M4 same-table games.
+- If not: do **not** build a fake cross-play family. Record the decision, mark
+  M4 same-table deferred, and satisfy policy mix at the **corpus level** by
+  combining M3 (Akochan) and M1/M2 (Mortal) logs in C8. Never describe that mix
+  as a same-table Akochan-vs-Mortal game.
 - Map Akochan's rule/configuration to the canonical rule profile; reject
   mismatches. Record its version, config, tactic and seed.
 - Licence: `data_commercial_use: false`, attribution required, Akochan NOTICE in
-  the corpus repo; no Akochan code or binary in the app repo.
+  the private corpus repo; no Akochan code or binary in the app repo.
 - Diversity metric against M1 (action distribution / state novelty).
 
-**Accepts.** A written spike decision with evidence; parseable logs from the
-chosen mode; per-seat identity/config; rule-profile verification; Akochan
-licence flags/attribution; 0 invalid states; a configured diversity yield; no
-false cross-engine claim.
+**Accepts.** A written spike decision with evidence; if feasible, parseable
+same-table logs with per-seat identity/config and `cross_engine: true`; if not,
+no same-table claim and a documented corpus-level fallback; rule-profile
+verification; Akochan licence flags/attribution; 0 invalid states; configured
+diversity yield.
 
-**Depends on.** C1, R1/R2; an Akochan binary and a compatible environment.
+**Depends on.** C1, C4, R1/R2; an Akochan binary and a compatible environment.
 
 **CC slice.** `scratch` for the spike; then `worktree` / `riichiprac-corpus`
-for the adapter.
+for the adapter only if the spike says cross-play is feasible.
 
-##### C6 — M5 ensemble/heterogeneous family
+##### C6 — M5 heterogeneous table (conditional)
 
-**Goal.** Turn network disagreement into labelled `contested` scenarios instead
-of hiding it.
+**Goal.** If cross-engine play is feasible, generate tables with a mix of Mortal,
+Akochan and heuristic seats.
 
 **Scope.**
 
-- M5 plan: 4.1a/b/c mixed seats; optionally one Akochan seat once C5 lands.
-- Record the seat roster and played actions; L2 attaches ensemble votes per
-  decision (stable when all agree, contested when they do not).
-- Never silently pick one model's answer.
-- Feed both stable and contested candidates to selection.
+- M5 plan: one `mortal_298k` seat, one Akochan seat, one heuristic/reference
+  seat (and a fourth supported agent), rotated across seats.
+- Record the full roster; no hidden model substitution or relabelled corpus mix.
+- Feed multi-policy contested states to selection.
+- If C5 says cross-play is not feasible, **defer this unit**. Do not relabel a
+  corpus-level mix as a heterogeneous table.
 
-**Accepts.** M1 gates; the seat roster is complete for every game; L2 can attach
-ensemble votes; stable/contested split is reported after labelling; no silent
-tie-break; family report.
+**Accepts.** If feasible: M4 gates plus at least three distinct agents in the
+roster, per-seat provenance and a family report. If not feasible: the family is
+marked deferred and the corpus report says so; no heterogeneous games are
+claimed.
 
-**Depends on.** C2 (and optionally C5 for a heterogeneous table).
+**Depends on.** C2, C5, C7.
 
-**CC slice.** `worktree` / `riichiprac-corpus`.
+**CC slice.** `worktree` / `riichiprac-corpus` only if C5 is feasible;
+otherwise close it as deferred.
 
 ##### C7 — M6 rule/heuristic baseline family
 
@@ -1220,26 +1304,31 @@ when they differ; tests.
 
 **CC slice.** `worktree` / `riichiprac`.
 
-##### L2 — Ensemble, agreement, contested and calibration hooks
+##### L2 — Book agreement, contested states and calibration hooks
 
-**Goal.** Make model disagreement explicit and prepare (but do not fake) point
-equity.
+**Goal.** Make book/Mortal disagreement explicit and prepare (but do not fake)
+point equity.
 
 **Scope.**
 
-- Multi-model labels: 4.1a/b/c or the app model plus an upstream model; record
-  each model's identity/hash and votes.
-- `stable` vs `contested`; no silent tie-break.
+- Single-model labels from `mortal_298k`: record the model identity/hash and
+  units on every label.
 - Book agreement using `generator::mortal_agreement` /
-  `fuzz::compare_action_set`.
+  `fuzz::compare_action_set`; `stable` vs `contested`; no silent tie-break.
+- Optional future multi-model support: accept a `--models` list and record each
+  member's identity/votes if more checkpoints are ever obtained. With one Mortal
+  model this path is unused; do **not** call one model an ensemble.
 - Percentile thresholds per decision family for close calls and confidence.
 - Optional Q→point calibration: a separate versioned mapping, a separate
   `expected_point_diffs` field, raw Q values never overwritten.
-- Model identity mismatch (4.1 vs 298k) is recorded, not hidden.
+- Model identity mismatch (e.g. a future checkpoint vs 298k) is recorded, not
+  hidden.
 
-**Accepts.** Ensemble votes recorded; contested flagged; agreement uses the
-existing comparison rules; percentile selection is deterministic and configurable;
-calibration is versioned and separate; raw Q values preserved; tests.
+**Accepts.** Single-model labels work end to end; book/Mortal disagreement is
+flagged `contested`; agreement uses the existing comparison rules; percentile
+selection is deterministic and configurable; calibration is versioned and
+separate; raw Q values preserved; multi-model is an optional, tested path that
+no gate depends on; tests.
 
 **Depends on.** L1, B1.
 
@@ -1309,8 +1398,9 @@ licence gates pass; no single family crowding out the others.
 - Speed vs value: 1-shanten, no active Riichi, two legal discards whose
   resulting states diverge in both acceptance (shanten/ukeire) and hand value
   (`evaluate_hand`/`agari`); label one speed, one value; Q gap decides closeness.
-- Blunder: weak agent's played action vs strong labeler's top action; require a
-  confidence threshold; never use the game outcome.
+- Blunder: the weaker policy's played action (Akochan or heuristic) vs the
+  Mortal labeler's top action; require a confidence threshold; never use the
+  game outcome.
 - No absolute point thresholds; the agent-spec 400/250 numbers are calibration
   hypotheses, not constants.
 
@@ -1508,9 +1598,10 @@ same pack hash; every gate has a failing test; no third-party source; docs.
 
 **Scope.**
 
-- Generate/choose the corpus families needed for ch. 8 defense; classify with
-  `fold_to_riichi`/defense safety; label with Mortal; select; expand variants;
-  pack; audit.
+- Generate/choose the corpus families needed for ch. 8 defense; use M1/M2
+  Mortal plus M3 Akochan (or M4/M5 if cross-engine), not M1/M2 alone; classify
+  with `fold_to_riichi`/defense safety; label with Mortal; select; expand
+  variants; pack; audit.
 - Human/agent-assisted review of all 100; reject ambiguous, illegal, spoiling or
   unteachable scenarios.
 - Publish through the Pages manifest; loader smoke test.
@@ -1554,19 +1645,19 @@ review tasks (`none`).
 | R1 | Replay miner R1: mjai reader, validator, fixtures | worktree | `riichiprac` | F1 |
 | R2 | Replay miner R2: walker, GameState reconstruction, tenhou6 export | worktree | `riichiprac` | R1 |
 | C1 | Corpus C1: agent protocol, match plan, reference runners | worktree | `riichiprac-corpus` | F1, R1, R2 |
-| C2 | Corpus C2: Mortal libriichi backend + M1 strong mirror | worktree | `riichiprac-corpus` | C1 |
-| C3 | Corpus C3: M2 aggressive/defensive contrast | worktree | `riichiprac-corpus` | C2 |
-| C4 | Corpus C4: M3 weak/human-like mistake corpus | worktree | `riichiprac-corpus` | C2 |
-| C5a | Corpus C5a: Akochan cross-play feasibility spike | scratch | — | C1 |
-| C5b | Corpus C5b: M4 Akochan adapter/self-match family | worktree | `riichiprac-corpus` | C5a, C1, R1/R2 |
-| C6 | Corpus C6: M5 ensemble/heterogeneous family | worktree | `riichiprac-corpus` | C2 |
+| C2 | Corpus C2: Mortal libriichi backend + M1 Mortal mirror | worktree | `riichiprac-corpus` | C1 |
+| C3 | Corpus C3: M2 Mortal sampling sweep | worktree | `riichiprac-corpus` | C2 |
+| C4 | Corpus C4: M3 Akochan tactic sweep | worktree | `riichiprac-corpus` | C1, R1/R2 |
+| C5a | Corpus C5a: Akochan cross-play feasibility spike | scratch | — | C1, C4 |
+| C5b | Corpus C5b: M4 Akochan-vs-Mortal adapter (only if feasible) | worktree | `riichiprac-corpus` | C5a, C1, C4, R1/R2 |
+| C6 | Corpus C6: M5 heterogeneous table (conditional, only if cross-play) | worktree | `riichiprac-corpus` | C2, C5b, C7 |
 | C7 | Corpus C7: M6 rule/heuristic baseline family | worktree | `riichiprac-corpus` | C1 |
 | C8 | Corpus C8: family quotas, funnel, 1k smoke corpus | worktree | `riichiprac-corpus` | C2–C7 |
 | B1 | Classifiers B1: framework + broad batch 1 | worktree | `riichiprac` | F1 |
 | B2 | Classifiers B2: batch 2 | worktree | `riichiprac` | B1 |
 | B3 | Classifiers B3: shape/block-theory classifiers | worktree | `riichiprac` | B2 |
 | L1 | Labeler L1: native batch labels + Q values + cache | worktree | `riichiprac` | R2, F1 |
-| L2 | Labeler L2: ensemble, agreement, contested, calibration hooks | worktree | `riichiprac` | L1, B1 |
+| L2 | Labeler L2: book agreement, contested states, calibration hooks | worktree | `riichiprac` | L1, B1 |
 | S1 | Selector S1: triggers and family filters | worktree | `riichiprac` | B1, L1, C8 |
 | S2 | Selector S2: interestingness, quotas, dedupe, review queue | worktree | `riichiprac` | S1, L2, B1/B2, C8 |
 | S3 | Selector S3: close-call, speed-value, blunder selectors | worktree | `riichiprac` | L2, S1 |
@@ -1580,11 +1671,14 @@ review tasks (`none`).
 | Q2 | Ship Q2: first 100-scenario ch. 8 defense pack | worktree | `riichiprac` | Q1 |
 | Q2r | Review Q2r: human review of the first pack | none | — | Q2 |
 
-Before C1, create the `riichiprac-corpus` repo (AGPL-3.0, README, NOTICE for
-Akochan) as a manual/`none` setup task; C1's worktree requires an existing repo.
-Do not create C2–C8 worktrees before that repo exists. C5 is deliberately split
-into a `scratch` feasibility spike (C5a) and an adapter unit (C5b) because the
-cross-play mode is not known yet; every other row is one implementation unit.
+Before C1, create the `riichiprac-corpus` repo as a **private** repository
+(AGPL-3.0 licence file, README, Akochan NOTICE). We will consider making it
+public later; do not publish it, its logs or its engine bundle until that
+decision is made. C1's worktree requires an existing repo. Do not create C2–C8
+worktrees before that repo exists. C5 is deliberately split into a `scratch`
+feasibility spike (C5a) and an adapter unit (C5b) because the cross-play mode is
+not known yet; C6 is created only if C5 says cross-play is feasible. Every other
+row is one implementation unit.
 
 Suggested creation pattern (do not create the whole list at once; create the
 current wave):
@@ -1600,10 +1694,10 @@ EOF
 For the corpus repo:
 
 ```bash
-cc-task new "Corpus C2: Mortal libriichi backend + M1 strong mirror" \
+cc-task new "Corpus C2: Mortal libriichi backend + M1 Mortal mirror" \
   --open --type worktree --repo riichiprac-corpus <<'EOF'
-Implementation unit C2 from riichiprac/replay-implementation-plan.md. AGPL
-corpus repo; do not link libriichi into the app repo.
+Implementation unit C2 from riichiprac/replay-implementation-plan.md. Private
+AGPL corpus repo; do not link libriichi into the app repo.
 EOF
 ```
 
@@ -1712,7 +1806,7 @@ follow AGENTS.md §6 and `tools/render/README.md`.
 | # | Risk / decision | Why it matters | Unit that resolves it |
 | --- | --- | --- | --- |
 | 1 | Is Akochan cross-play feasible, or only self-match? | The M4 family must not claim a mixed table it did not run; the licence applies to both modes | C5a spike |
-| 2 | Does a 4.1 checkpoint load in the app's MIT `MortalV4Model`, or must generation and labels use different models? | `replay-strategy.md` §3.3 warns the model identity is not interchangeable; a 4.1 model may need conversion/parity | C2, L1, L2 |
+| 2 | Only one Mortal checkpoint (`mortal_298k`) is available offline; the 4.1a/b/c/3.0 networks are online-service only and their weights are unreleased | Policy variety cannot come from the Mortal ladder; M2 is sampling-only, and Akochan/heuristic carry the real diversity | C4, C5, C6 |
 | 3 | Rule-profile mismatch (Akochan defaults vs Tenhou 4p-hanchan) | A state from a different rule set is not a valid app state | C5, C8, R1 |
 | 4 | Furiten is not explicitly modelled | Furiten-dependent decisions must be computed or rejected, not silently mined | R2, B1 |
 | 5 | Ura/kan dora display timing | The snapshot must use indicators visible at the decision | R2, P3 |
@@ -1723,6 +1817,7 @@ follow AGENTS.md §6 and `tools/render/README.md`.
 | 10 | Data licence CC BY 4.0 vs CC0 | The app code is MIT; data needs its own clear licence | P1a (product-owner decision) |
 | 11 | Hosting budget | Pages is simple but has site/bandwidth limits; R2/HF are cheap and CORS-friendly | P2 |
 | 12 | Multi-step drills | They need a step engine and grading/history behavior; keep IDs now, ship later | P1a, P3 |
+| 13 | `mortal_298k` is a community checkpoint whose model card says it was trained on Tenhou hanchan data | This is a weights-provenance question, separate from the no-third-party-replay rule; review before commercial use | product owner; P1a licence gate |
 
 ---
 
@@ -1731,9 +1826,11 @@ follow AGENTS.md §6 and `tools/render/README.md`.
 The first pack (Q2) is done when all of these are true:
 
 - 100 scenarios, all `source.kind = "ai_selfplay"`, with complete per-game
-  agent/config/temperature/seed provenance and licence/attribution;
-- at least two families contribute, including at least one mixed-agent family
-  (M2/M3/M4/M5) and one book-aligned family; M1 alone is not enough;
+  agent/config/sampling/seed provenance and licence/attribution;
+- at least two families contribute, including at least one Akochan-derived family
+  (M3, or M4/M5 if cross-engine) and one book-aligned family; M1/M2 alone are
+  not enough. M6-only is acceptable for a pipeline smoke pack, not for the first
+  curated pack;
 - every scenario passes the legal/reachable/answer/no-spoiler gates;
 - variants are label-preserving, deduped, capped, and reported; the pack contains
   variants from at least two transform families and at least 20 % of scenarios
@@ -1783,10 +1880,15 @@ implicit stages explicit and gives them units and gates:
 
 1. **§3.3 corpus recipe → §3 corpus requirement + C2–C7.** The family table is
    now a set of independently gated corpus products; the runner must accept
-   pluggable agents and record per-game agent identity/config/temperature/seed.
+   pluggable agents and record per-game agent identity/config/sampling/seed.
 2. **§5.9 transformations → §4 permutation stage + V1–V2.** The transform list is
    now a required stage after selection, with a `TransformPolicy` per lesson, a
    re-run label gate, and a variant-level acceptance gate.
+3. **§3.1/§3.3 model availability → one Mortal checkpoint + Akochan +
+   heuristic.** The plan no longer assumes the 4.1a/b/c/3.0 weights exist
+   offline; M1/M2 are the same `mortal_298k` checkpoint at different
+   sampling settings, M3–M6 provide the actual policy variety, and multi-model
+   ensembles are parked.
 
 Everything else follows the strategy: `GameState` reuse, source allowlist,
 AGPL separation, Q-value units, pack hosting and human review.
@@ -1798,7 +1900,7 @@ AGPL separation, Q-value units, pack hosting and human review.
 | F1 | `Cargo.toml`, `src/bin/mine_replays.rs`, `src/miner/` |
 | R1 | `src/replay/mod.rs`, `src/replay/mjai.rs`, `src/replay/validate.rs`, fixtures |
 | R2 | `src/replay/walker.rs`, `src/replay/reconstruct.rs`, `src/export/tenhou6.rs` |
-| C1–C8 | `riichiprac-corpus` (new repo): `src/agent/`, `src/plan/`, `src/engine/`, `src/report/` |
+| C1–C8 | `riichiprac-corpus` (new private repo): `src/agent/`, `src/plan/`, `src/engine/`, `src/report/` |
 | B1–B3 | `src/miner/classifier/`, plus `matches()` next to lessons |
 | L1–L2 | `src/miner/label/`, `src/decision.rs`, `src/ai/wasm_bridge.rs` |
 | S1–S3 | `src/miner/select/`, `src/miner/triggers/` |
