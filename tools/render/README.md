@@ -557,6 +557,17 @@ the longest @2x face axis (185.1 px), so the atlas only ever downsamples the
 master. Haku (`5z`) bakes with zero ink by design (a white dragon is a blank
 face) and shares the shell's bare atlas slot.
 
+**No carved/lit decal.** The carve → paint → light process belonged to the
+retired full-scene pipeline (`rendered-table-plan.md`, retired 2026-11-13): it
+recessed the symbol into a subdivided face plate, lit it once per orientation
+and composited a baked decal. The active architecture replaced that with
+**flat, perspective-neutral glyph masters**: the shell already carries the baked
+lighting and bevel, and the glyph is colour-on-transparent ink mapped into
+`faceQuad`. There is no carve geometry, no per-orientation decal render and no
+specular line on the paint in Phase 2. Adding a carved or embossed treatment
+later is a visual decision that needs its own spec; it is not a leftover step in
+this pipeline.
+
 **The face variants.** A variant names a perspective slot, not a camera angle:
 `standing-front-00..12` + `standing-front-draw` for the 14 `shell_hand_slot_*`
 shells, `flat-topdown` for `shell_flat_upright`, and `flat-rot90` for

@@ -2,9 +2,13 @@
 
 The 37 `Regular-*.svg` files are the public-domain **symbol-only** SVGs for the
 34 standard tile faces plus the three red fives (akadora), copied verbatim from
-upstream. Their alpha is the carve mask and their colour is the engraving paint;
-the tile face itself is the melamine material colour. The 300 × 400 canvas
-aligns pixel-for-pixel with the upstream full-face (`-m`) variant.
+upstream. In the active 2.5D pipeline their alpha is the ink coverage and their
+colour is the flat face paint; the pipeline does **not** carve the tile face.
+The retired full-scene pipeline used these same files as a carve mask and a lit
+engraving paint (see `rendered-table-plan.md`, retired 2026-11-13); the active
+architecture replaces baked lit decals with flat glyphs composited into each
+shell's `faceQuad`. The 300 × 400 canvas aligns pixel-for-pixel with the
+upstream full-face (`-m`) variant.
 
 The upstream `Regular-Blank.svg` is **not** vendored: it draws a red question
 mark, not an empty tile face. An empty face is the bare ivory shell, so the

@@ -1105,6 +1105,16 @@ for a focused preview or a device with the headroom. The review sheets and
 manifests + glyphs is **2,632,636 B** of the 4 MiB initial-load limit. The atlas
 is composed locally, not downloaded.
 
+**No carved/lit decal.** The retired full-scene pipeline carved the symbol into
+the face plate, painted it and lit it once per orientation, then composited a
+baked decal (`rendered-table-plan.md`, retired 2026-11-13). The active
+architecture deliberately does not do that: the shell carries the baked
+lighting and bevel, and the glyph is flat colour-on-transparent ink mapped into
+`faceQuad`. Phase 2 therefore has no carve geometry, no per-orientation decal
+render and no specular line on the paint. A carved/embossed look would be a new
+visual decision with its own cost model (a per-perspective lit decal bake or an
+atlas-build emboss pass), not an unfinished step here.
+
 **Decisions that narrow the architecture above.**
 
 1. **The atlas is composed at startup, not offline.** The shell and glyph PNGs
