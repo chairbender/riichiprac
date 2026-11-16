@@ -43,6 +43,13 @@ const buildDir = resolve(renderDir, 'build');
 
 const manifestPath = join(tableDir, 'shells.json');
 const overlaysPath = join(tableDir, 'overlays.json');
+const shellSpec = JSON.parse(readFileSync(join(renderDir, 'shell-spec.json'), 'utf8'));
+const enabledFamilies: string[] = shellSpec.overlay?.enabledFamilies ?? [];
+if (enabledFamilies.length === 0) {
+  throw new Error('shell-spec.json overlay.enabledFamilies is empty');
+}
+const overlayEnabled = (shell: string): boolean =>
+  enabledFamilies.some((family) => shell.startsWith(family));
 
 const manifest: ShellsManifest = parseShellsManifest(
   JSON.parse(readFileSync(manifestPath, 'utf8')),
@@ -181,8 +188,10 @@ function writeSides(): void {
   let contacts = 0;
   for (const zone of zones) {
     for (const edge of contactEdges(manifest, zone)) {
+      const shell = zone.bodies[edge.casterIndex].shell;
+      if (!overlayEnabled(shell)) continue;
       contacts += 1;
-      const key: SideKey = `${zone.bodies[edge.casterIndex].shell}:${edge.side}`;
+      const key: SideKey = `${shell}:${edge.side}`;
       sides.set(key, (sides.get(key) ?? 0) + 1);
     }
   }
@@ -272,11 +281,13 @@ function fixtureOf(zone: LayoutZone, overlays: OverlayManifest): FixtureZone {
     })),
     // The clip polygon is derived from `overlays.bodyQuads` at check time, so
     // the fixture stays small and cannot disagree with the committed assets.
-    contacts: contactEdges(manifest, zone).map((edge) => ({
-      bodyIndex: edge.bodyIndex,
-      casterIndex: edge.casterIndex,
-      side: edge.side,
-    })),
+    contacts: contactEdges(manifest, zone)
+      .filter((edge) => overlayEnabled(zone.bodies[edge.casterIndex].shell))
+      .map((edge) => ({
+        bodyIndex: edge.bodyIndex,
+        casterIndex: edge.casterIndex,
+        side: edge.side,
+      })),
     overlays: resolveContactOverlays(manifest, overlays, zone).map((overlay) => ({
       bodyIndex: overlay.bodyIndex,
       casterIndex: overlay.casterIndex,

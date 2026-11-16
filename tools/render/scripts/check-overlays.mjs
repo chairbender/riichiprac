@@ -98,6 +98,26 @@ function checkSpec() {
     `manifest tangent fade matches the spec (${overlaySpec.tangentFadePx1x} px)`,
   );
   check(overlaySpec.colorHex === overlayManifest.model.colorHex, 'manifest ink matches the spec');
+  check(
+    JSON.stringify(overlaySpec.enabledFamilies) === JSON.stringify(overlayManifest.enabled.families),
+    `manifest enabled families match the spec (${overlayManifest.enabled.families.join(', ')})`,
+  );
+  const specSides = overlaySpec.sideOverrides ?? {};
+  for (const [side, value] of Object.entries(specSides)) {
+    const model = overlayManifest.model.sideOverrides[side];
+    check(Boolean(model), `manifest publishes the ${side} side override`);
+    if (!model) continue;
+    check(
+      model.coreAlpha === value.coreAlpha && model.sigmaPx1x === value.sigmaPx1x,
+      `manifest ${side} override is core ${value.coreAlpha} / sigma ${value.sigmaPx1x}`,
+    );
+  }
+  for (const decal of Object.values(overlayManifest.decals)) {
+    check(
+      overlayManifest.enabled.families.some((family) => decal.shell.startsWith(family)),
+      `${decal.shell}:${decal.contact} belongs to an enabled family`,
+    );
+  }
   check(overlayManifest.version === 1, 'overlays.json version is 1');
   check(overlayManifest.pixelRatio === 2, 'overlays.json publishes pixelRatio 2');
 }
@@ -718,10 +738,18 @@ function checkComposition() {
       delta.feltChanged === 0,
       `${zone.id}: overlays change 0 felt pixels (${delta.feltChanged} changed)`,
     );
-    check(
-      delta.bodyChanged > 0,
-      `${zone.id}: overlays darken ${delta.bodyChanged} visible body px (mean Δluma ${delta.mean.toFixed(2)}, max ${delta.max.toFixed(2)})`,
-    );
+    const shadowsEnabled = zone.overlays.length > 0;
+    if (shadowsEnabled) {
+      check(
+        delta.bodyChanged > 0,
+        `${zone.id}: overlays darken ${delta.bodyChanged} visible body px (mean Δluma ${delta.mean.toFixed(2)}, max ${delta.max.toFixed(2)})`,
+      );
+    } else {
+      check(
+        delta.bodyChanged === 0,
+        `${zone.id}: contact shadows are disabled, so the composition is unchanged (${delta.bodyChanged} px)`,
+      );
+    }
     check(
       seam.worst < 0.05,
       `${zone.id}: group-shadow seam kink stays below 0.05 (${seam.worst.toFixed(4)})`,
@@ -816,7 +844,9 @@ function checkComposition() {
         `max stacked alpha ${maxStack.toFixed(3)}, felt changed ${delta.feltChanged}` +
         (lean ? `, lean ${lean.rotationDeg}° verified` : ''),
     );
-    check(delta.mean > 0.5 && delta.mean < 40, `${zone.id}: mean darkening is in a sane band`);
+    if (shadowsEnabled) {
+      check(delta.mean > 0.5 && delta.mean < 40, `${zone.id}: mean darkening is in a sane band`);
+    }
   }
 
   // The four ponds, called out by direction because their slivers differ.
@@ -830,9 +860,19 @@ function checkComposition() {
     note(
       'four ponds: ' +
         ponds
-          .map((pond) => `${pond.side} ${pond.overlays}d/${pond.meanDeltaLuma}Δ/${pond.maxStackedAlpha}α`)
+          .map((pond) =>
+            pond.overlays === 0
+              ? `${pond.side} disabled (0Δ)`
+              : `${pond.side} ${pond.overlays}d/${pond.meanDeltaLuma}Δ/${pond.maxStackedAlpha}α`,
+          )
           .join(', '),
     );
+    for (const pond of ponds) {
+      check(
+        pond.overlays === 0,
+        `face-up lying pond ${pond.side} stays unshadowed (${pond.overlays} decals)`,
+      );
+    }
   }
 
   mkdirSync(reviewDir, { recursive: true });

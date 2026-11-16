@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { parseOverlayManifest } from './overlayManifest';
+import { isOverlayEnabled, parseOverlayManifest } from './overlayManifest';
 import type { OverlayManifest } from './overlayManifest';
 import { parseShellsManifest } from './shellManifest';
 import type { ShellsManifest } from './shellManifest';
@@ -67,11 +67,13 @@ const shapeOf = (zone: LayoutZone) => ({
     drawX: body.drawX,
     drawY: body.drawY,
   })),
-  contacts: contactEdges(manifest, zone).map((edge) => ({
-    bodyIndex: edge.bodyIndex,
-    casterIndex: edge.casterIndex,
-    side: edge.side,
-  })),
+  contacts: contactEdges(manifest, zone)
+    .filter((edge) => isOverlayEnabled(overlays, zone.bodies[edge.casterIndex].shell))
+    .map((edge) => ({
+      bodyIndex: edge.bodyIndex,
+      casterIndex: edge.casterIndex,
+      side: edge.side,
+    })),
   overlays: resolveContactOverlays(manifest, overlays, zone).map((overlay) => ({
     bodyIndex: overlay.bodyIndex,
     casterIndex: overlay.casterIndex,
@@ -95,6 +97,17 @@ describe('overlay manifest', () => {
     }
   });
 
+  it('enables only the human hand fan and publishes the right-side override', () => {
+    expect(overlays.enabled.families).toContain('shell_hand_slot_');
+    expect(overlays.model.sideOverrides.right).toEqual({ coreAlpha: 0.5, sigmaPx1x: 2.5 });
+    for (const decal of Object.values(overlays.decals)) {
+      expect(decal.shell.startsWith('shell_hand_slot_')).toBe(true);
+      const expected = decal.contact === 'right' ? 0.5 : 0.35;
+      expect(decal.peakAlpha).toBeGreaterThan(expected - 0.02);
+      expect(decal.peakAlpha).toBeLessThanOrEqual(expected + 0.001);
+    }
+  });
+
   it('resolves the _faceup wall aliases to their face-down twin', () => {
     expect(overlays.aliases.shell_wall_front_slot_08_faceup).toBe(
       'shell_wall_front_slot_08',
@@ -104,7 +117,7 @@ describe('overlay manifest', () => {
 
   it('rejects a document with a missing clip or a bad side', () => {
     const broken = structuredClone(overlays) as unknown as Record<string, unknown>;
-    delete (broken.bodyQuads as Record<string, unknown>).shell_flat_upright;
+    delete (broken.bodyQuads as Record<string, unknown>).shell_hand_slot_06;
     expect(() => parseOverlayManifest(broken)).toThrow(/bodyQuads/);
 
     const side = structuredClone(overlays) as unknown as {
@@ -177,7 +190,16 @@ describe('contact edges', () => {
     expect(resolveContactOverlays(manifest, overlays, zone)).toEqual([]);
   });
 
-  it('emits the side hand L-shaped sliver as two sides', () => {
+  it('keeps the disabled families unshadowed and enables the hand', () => {
+    const pond = layoutPond(manifest, { discards: POND_DISCARDS });
+    const wall = layoutWall(manifest, { wall: 'front', doraIndex: 12 });
+    expect(resolveContactOverlays(manifest, overlays, pond)).toEqual([]);
+    expect(resolveContactOverlays(manifest, overlays, wall)).toEqual([]);
+    const hand = layoutHand(manifest, { faces: FACES.slice(0, 13), draw: '5p' });
+    expect(resolveContactOverlays(manifest, overlays, hand).length).toBeGreaterThan(0);
+  });
+
+  it('derives the side hand L-shaped sliver as two contact sides', () => {
     const zone = layoutSideHand(manifest, { side: 'left' });
     const contacts = contactEdges(manifest, zone);
     const sides = new Set(contacts.map((edge) => edge.side));

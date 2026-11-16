@@ -24,6 +24,12 @@ export type OverlaySide = 'up' | 'down' | 'left' | 'right';
 
 export const OVERLAY_SIDES: readonly OverlaySide[] = ['up', 'down', 'left', 'right'];
 
+/** A per-side override of the standing band (thinner/darker on one cast side). */
+export interface OverlaySideOverride {
+  readonly coreAlpha: number;
+  readonly sigmaPx1x: number;
+}
+
 export interface OverlayModel {
   /** `contact-ao-band`: an outward half-Gaussian from the body contour. */
   readonly kind: string;
@@ -40,6 +46,8 @@ export interface OverlayModel {
   /** The support extends this many sigma outward from the contour. */
   readonly supportSigma: number;
   readonly colorHex: string;
+  /** Per-side overrides; the hand's right casts are thinner and darker. */
+  readonly sideOverrides: Readonly<Partial<Record<OverlaySide, OverlaySideOverride>>>;
 }
 
 /** One baked contact-shadow decal. */
@@ -75,6 +83,13 @@ export interface OverlayManifest {
    * is identical (the `_faceup` wall shells do not change the body silhouette).
    */
   readonly aliases: Readonly<Record<string, string>>;
+  /**
+   * Shell-family prefixes that currently have contact shadows. Phase 3.5
+   * follow-up: only the human hand fan is enabled; the lying face-up ponds and
+   * melds looked smudged and are deliberately unchanged. Re-enable by adding a
+   * prefix and re-baking.
+   */
+  readonly enabled: { readonly families: readonly string[]; readonly note: string };
   /**
    * Clipping polygon per shell, in drawn body-box coordinates. An oblique
    * side-wall or standing-hand body does not fill its advance box, so the
@@ -191,6 +206,18 @@ export function parseOverlayManifest(raw: unknown): OverlayManifest {
   if (model.kind !== 'contact-ao-band') fail(`unknown overlay model ${String(model.kind)}`);
   const sigmas = model.sigmaPx1x;
   if (!isObject(sigmas)) fail('model.sigmaPx1x must be an object');
+  const sideOverrides: Partial<Record<OverlaySide, OverlaySideOverride>> = {};
+  if (model.sideOverrides !== undefined) {
+    if (!isObject(model.sideOverrides)) fail('model.sideOverrides must be an object');
+    for (const [side, value] of Object.entries(model.sideOverrides)) {
+      const key = sideOf(side, `model.sideOverrides.${side}`);
+      if (!isObject(value)) fail(`model.sideOverrides.${side} must be an object`);
+      sideOverrides[key] = {
+        coreAlpha: positive(value.coreAlpha, `model.sideOverrides.${side}.coreAlpha`),
+        sigmaPx1x: positive(value.sigmaPx1x, `model.sideOverrides.${side}.sigmaPx1x`),
+      };
+    }
+  }
   const parsedModel: OverlayModel = {
     kind: 'contact-ao-band',
     anchor: typeof model.anchor === 'string' ? model.anchor : fail('model.anchor'),
@@ -203,9 +230,25 @@ export function parseOverlayManifest(raw: unknown): OverlayManifest {
     tangentFadePx1x: nonNegative(model.tangentFadePx1x, 'model.tangentFadePx1x'),
     supportSigma: positive(model.supportSigma, 'model.supportSigma'),
     colorHex: typeof model.colorHex === 'string' ? model.colorHex : fail('model.colorHex'),
+    sideOverrides,
   };
   if (parsedModel.coreAlpha > 1) fail('model.coreAlpha must be in (0, 1]');
   if (!/^#[0-9a-f]{6}$/i.test(parsedModel.colorHex)) fail('model.colorHex must be #rrggbb');
+
+  if (!isObject(raw.enabled)) fail('enabled must be an object');
+  const families = raw.enabled.families;
+  if (!Array.isArray(families) || families.length === 0) {
+    fail('enabled.families must be a non-empty array');
+  }
+  for (const family of families) {
+    if (typeof family !== 'string' || !family.startsWith('shell_')) {
+      fail(`enabled.families must contain shell prefixes, got ${String(family)}`);
+    }
+  }
+  const enabled = {
+    families: families as string[],
+    note: typeof raw.enabled.note === 'string' ? raw.enabled.note : '',
+  };
 
   if (!isObject(raw.aliases)) fail('aliases must be an object');
   const aliases: Record<string, string> = {};
@@ -252,6 +295,7 @@ export function parseOverlayManifest(raw: unknown): OverlayManifest {
     generatedBy,
     pixelRatio: 2,
     model: parsedModel,
+    enabled,
     aliases,
     bodyQuads,
     decals,
@@ -270,6 +314,11 @@ export function overlayDecalFor(
 ): OverlayDecal | null {
   const resolved = manifest.aliases[shell] ?? shell;
   return manifest.decals[`${resolved}:${side}`] ?? null;
+}
+
+/** Whether the current policy gives this shell contact shadows. */
+export function isOverlayEnabled(manifest: OverlayManifest, shell: string): boolean {
+  return manifest.enabled.families.some((family) => shell.startsWith(family));
 }
 
 /** Every `(shell, side)` pair a caster can use, for coverage checks. */

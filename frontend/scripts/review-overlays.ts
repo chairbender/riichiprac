@@ -180,10 +180,11 @@ async function drawTile(
  */
 async function composeZone(
   zone: LayoutZone,
-  options: { overlays: boolean; overlayAlphaScale?: number },
+  options: { overlays: boolean; overlayAlphaScale?: number; radialScale?: number },
 ): Promise<ReturnType<typeof createCanvas>> {
   const withOverlays = options.overlays;
   const overlayAlphaScale = options.overlayAlphaScale ?? 1;
+  const radialScale = options.radialScale ?? 1;
   const pad = zone.blurPad;
   const width = zone.width + pad * 2;
   const height = zone.height + pad * 2;
@@ -242,7 +243,26 @@ async function composeZone(
       context.closePath();
       context.clip();
       if (overlayAlphaScale !== 1) context.globalAlpha = overlayAlphaScale;
-      context.drawImage(image as never, overlay.drawX + pad, overlay.drawY + pad);
+      const width = (image as { width: number }).width;
+      const height = (image as { height: number }).height;
+      let dx = overlay.drawX + pad;
+      let dy = overlay.drawY + pad;
+      let dw = width;
+      let dh = height;
+      if (radialScale !== 1) {
+        if (overlay.contact === 'right') {
+          dw = width * radialScale;
+        } else if (overlay.contact === 'left') {
+          dx += width * (1 - radialScale);
+          dw = width * radialScale;
+        } else if (overlay.contact === 'down') {
+          dh = height * radialScale;
+        } else if (overlay.contact === 'up') {
+          dy += height * (1 - radialScale);
+          dh = height * radialScale;
+        }
+      }
+      context.drawImage(image as never, dx, dy, dw, dh);
       context.restore();
     }
   }
@@ -292,7 +312,7 @@ zoneContext.fillRect(0, 0, zoneSheetWidth, zoneSheetHeight);
 zoneContext.fillStyle = INK;
 zoneContext.font = 'bold 18px sans-serif';
 zoneContext.fillText(
-  'Contact shadows on every zone family — group shadow + bodies + per-shell decals at @1x',
+  'Contact shadows by zone family — only the human hand fan is enabled',
   ZONE_MARGIN,
   ZONE_MARGIN + 6,
 );
@@ -300,7 +320,8 @@ zoneContext.font = '12px sans-serif';
 zoneContext.fillStyle = MUTED;
 zoneContext.fillText(
   'Each decal is drawn after the neighbour it lands on and before the caster body. ' +
-    'The group blur is unchanged: one union per shadow group.',
+    'The group blur is unchanged. The lying face-up ponds/melds, top hand and walls are ' +
+    'deliberately unshadowed for now.',
   ZONE_MARGIN,
   ZONE_MARGIN + 26,
 );
@@ -354,15 +375,16 @@ pondContext.fillRect(0, 0, pondSheetWidth, pondSheetHeight);
 pondContext.fillStyle = INK;
 pondContext.font = 'bold 18px sans-serif';
 pondContext.fillText(
-  'Four ponds — contact decals by seat, group shadow + bodies at @1x',
+  'Four ponds — contact shadows disabled for face-up lying tiles (baseline)',
   ZONE_MARGIN,
   ZONE_MARGIN + 6,
 );
 pondContext.font = '12px sans-serif';
 pondContext.fillStyle = MUTED;
 pondContext.fillText(
-  '24 discards, riichi at row 2 column 4. Each panel: the composed pond, then a 2× crop with the ' +
-    'decals and the same crop without them. Side ponds carry their 1° lean as one group transform.',
+  'Phase 3.5 follow-up: the face-up lying family is intentionally unshadowed because the bands read ' +
+    'as smudges. Each panel shows the composed pond and the same 2× crop; the side ponds keep their ' +
+    '1° whole-zone lean. The human hand sheet is the active review.',
   ZONE_MARGIN,
   ZONE_MARGIN + 26,
 );
@@ -383,7 +405,7 @@ for (let index = 0; index < pondComposed.length; index += 1) {
   pondContext.font = 'bold 13px sans-serif';
   pondContext.fillText(
     `${POND_LABEL[side]} · ${zone.width}×${zone.height} · ${zone.bodies.length} bodies` +
-      (numbers ? ` · ${numbers.overlays} decals` : ''),
+      numbers && numbers.overlays > 0 ? ` · ${numbers.overlays} decals` : ' · contact shadows disabled',
     originX,
     originY + 14,
   );
@@ -516,19 +538,119 @@ for (let index = 0; index < decalEntries.length; index += 1) {
 }
 
 // --------------------------------------------------------------------------- //
-// Strength audition: same geometry, 0.7x / 1x / 1.3x
+// The human hand fan: 1:1 plus left / centre / right seam crops
 // --------------------------------------------------------------------------- //
 
-const auditionZone = pondZones[0];
-const auditionPad = auditionZone.blurPad;
-const auditionCrop = { x: auditionPad + 70, y: auditionPad + 10, width: 220, height: 150 };
-const auditionScale = 3;
-const auditionVariants = [
-  { factor: 0.7, label: '0.7× (α 0.245)' },
-  { factor: 1, label: 'committed (α 0.35)' },
-  { factor: 1.3, label: '1.3× (α 0.455)' },
+const handZone = layoutHand(manifest, {
+  faces: POND_FACES.slice(0, 13),
+  draw: '5p',
+  id: 'hand-bottom-draw',
+});
+const handPad = handZone.blurPad;
+const handWith = await composeZone(handZone, { overlays: true });
+const handWithout = await composeZone(handZone, { overlays: false });
+const HAND_CROP_W = 130;
+const HAND_CROP_H = Math.min(150, handZone.height);
+const HAND_CROP_SCALE = 3;
+const handCropSeams = [
+  { fraction: 0.16, label: 'left half · inner over outer' },
+  { fraction: 0.52, label: 'centre · slot 06 over 05 and 07' },
+  { fraction: 0.8, label: 'right half · thinner/darker cast' },
 ];
-const auditionWidth = ZONE_MARGIN * 2 + auditionCrop.width * auditionScale * auditionVariants.length + 24 * 2;
+const handSheetWidth =
+  ZONE_MARGIN * 2 + Math.max(handZone.width, 2 * HAND_CROP_W * HAND_CROP_SCALE + 24) + 8;
+const handSheetHeight =
+  ZONE_MARGIN * 2 + 54 + handZone.height + 20 + handCropSeams.length * (HAND_CROP_H * HAND_CROP_SCALE + 42);
+const handSheet = createCanvas(handSheetWidth, handSheetHeight);
+const handContext = handSheet.getContext('2d');
+handContext.fillStyle = FELT;
+handContext.fillRect(0, 0, handSheetWidth, handSheetHeight);
+handContext.fillStyle = INK;
+handContext.font = 'bold 18px sans-serif';
+handContext.fillText(
+  'Human hand fan — contact shadows only; left / centre / right seams at 3×',
+  ZONE_MARGIN,
+  ZONE_MARGIN + 6,
+);
+handContext.font = '12px sans-serif';
+handContext.fillStyle = MUTED;
+handContext.fillText(
+  'Top: the composed hand at 1:1. Each row: the same seam with the decals (left) and without (right). ' +
+    'The right-half casts use the thinner, darker side override.',
+  ZONE_MARGIN,
+  ZONE_MARGIN + 26,
+);
+handContext.drawImage(
+  handWith as never,
+  handPad,
+  handPad,
+  handZone.width,
+  handZone.height,
+  ZONE_MARGIN,
+  ZONE_MARGIN + 48,
+  handZone.width,
+  handZone.height,
+);
+handContext.imageSmoothingEnabled = false;
+let handRowY = ZONE_MARGIN + 48 + handZone.height + 24;
+handContext.font = 'bold 11px sans-serif';
+for (const seam of handCropSeams) {
+  const sourceCenterX = handPad + Math.round(handZone.width * seam.fraction);
+  const cropX = Math.max(0, Math.min(handWith.width - HAND_CROP_W, sourceCenterX - Math.round(HAND_CROP_W / 2)));
+  const cropY = handPad;
+  handContext.fillStyle = INK;
+  handContext.fillText(`${seam.label} · with decals`, ZONE_MARGIN, handRowY + 10);
+  handContext.fillText(
+    'without decals',
+    ZONE_MARGIN + HAND_CROP_W * HAND_CROP_SCALE + 20,
+    handRowY + 10,
+  );
+  handContext.drawImage(
+    handWith as never,
+    cropX,
+    cropY,
+    HAND_CROP_W,
+    HAND_CROP_H,
+    ZONE_MARGIN,
+    handRowY + 16,
+    HAND_CROP_W * HAND_CROP_SCALE,
+    HAND_CROP_H * HAND_CROP_SCALE,
+  );
+  handContext.drawImage(
+    handWithout as never,
+    cropX,
+    cropY,
+    HAND_CROP_W,
+    HAND_CROP_H,
+    ZONE_MARGIN + HAND_CROP_W * HAND_CROP_SCALE + 20,
+    handRowY + 16,
+    HAND_CROP_W * HAND_CROP_SCALE,
+    HAND_CROP_H * HAND_CROP_SCALE,
+  );
+  handRowY += HAND_CROP_H * HAND_CROP_SCALE + 42;
+}
+handContext.imageSmoothingEnabled = true;
+
+// --------------------------------------------------------------------------- //
+// Hand right-seam audition: previous σ4/α0.35, committed, thinner/darker
+// --------------------------------------------------------------------------- //
+
+const auditionZone = handZone;
+const auditionPad = auditionZone.blurPad;
+const auditionCrop = {
+  x: Math.max(auditionPad, Math.round(auditionPad + auditionZone.width * 0.72)),
+  y: auditionPad,
+  width: 140,
+  height: Math.min(140, auditionZone.height),
+};
+const auditionScale = 4;
+const auditionVariants = [
+  { radialScale: 1.6, alphaScale: 0.7, label: 'previous · σ4 / α0.35' },
+  { radialScale: 1, alphaScale: 1, label: 'committed · σ2.5 / α0.50' },
+  { radialScale: 0.7, alphaScale: 1.15, label: 'thinner still · σ1.75 / α0.575' },
+];
+const auditionWidth =
+  ZONE_MARGIN * 2 + auditionCrop.width * auditionScale * auditionVariants.length + 24 * 2;
 const auditionHeight = ZONE_MARGIN * 2 + 54 + auditionCrop.height * auditionScale + 20;
 const audition = createCanvas(auditionWidth, auditionHeight);
 const auditionContext = audition.getContext('2d');
@@ -537,21 +659,26 @@ auditionContext.fillRect(0, 0, auditionWidth, auditionHeight);
 auditionContext.fillStyle = INK;
 auditionContext.font = 'bold 18px sans-serif';
 auditionContext.fillText(
-  'Contact-shadow strength audition — same bands, 0.7× / 1× / 1.3×',
+  'Right-half hand seam audition — width and strength',
   ZONE_MARGIN,
   ZONE_MARGIN + 6,
 );
 auditionContext.font = '12px sans-serif';
 auditionContext.fillStyle = MUTED;
 auditionContext.fillText(
-  'A crop of the bottom-pond row seam at 3×. The committed bake is the middle panel.',
+  'The same seam at 4×. The radial scale simulates a sigma change from the new band; ' +
+    'the middle panel is the committed bake.',
   ZONE_MARGIN,
   ZONE_MARGIN + 26,
 );
 auditionContext.imageSmoothingEnabled = false;
 for (let index = 0; index < auditionVariants.length; index += 1) {
   const variant = auditionVariants[index];
-  const composed = await composeZone(auditionZone, { overlays: true, overlayAlphaScale: variant.factor });
+  const composed = await composeZone(auditionZone, {
+    overlays: true,
+    radialScale: variant.radialScale,
+    overlayAlphaScale: variant.alphaScale,
+  });
   const x = ZONE_MARGIN + index * (auditionCrop.width * auditionScale + 24);
   const y = ZONE_MARGIN + 48;
   auditionContext.fillStyle = INK;
@@ -574,6 +701,7 @@ for (let index = 0; index < auditionVariants.length; index += 1) {
 
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'pond-layouts-1x.png'), pondSheet.toBuffer('image/png'));
+writeFileSync(join(outDir, 'hand-layouts-1x.png'), handSheet.toBuffer('image/png'));
 writeFileSync(join(outDir, 'overlay-zones-1x.png'), zoneSheet.toBuffer('image/png'));
 writeFileSync(join(outDir, 'overlay-decals-1x.png'), gallery.toBuffer('image/png'));
 writeFileSync(join(outDir, 'overlay-audition-1x.png'), audition.toBuffer('image/png'));
@@ -602,12 +730,20 @@ writeFileSync(
         numbers: numbersById.get(zone.id) ?? null,
       })),
       decals: decalEntries.length,
+      policy: overlays.enabled,
+      sideOverrides: overlays.model.sideOverrides,
+      hand: {
+        id: handZone.id,
+        contacts: overlaysOf(handZone).length,
+        numbers: numbersById.get(handZone.id) ?? null,
+      },
     },
     null,
     2,
   )}\n`,
 );
 
+console.log(`hand sheet:      ${join(outDir, 'hand-layouts-1x.png')}`);
 console.log(`pond sheet:      ${join(outDir, 'pond-layouts-1x.png')}`);
 console.log(`zone sheet:      ${join(outDir, 'overlay-zones-1x.png')}`);
 console.log(`decal gallery:   ${join(outDir, 'overlay-decals-1x.png')}`);

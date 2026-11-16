@@ -63,6 +63,21 @@ const sidesReport = readJson(sidesPath);
 
 const SIGMA = overlaySpec.sigmaPx1x;
 const CORE = overlaySpec.coreAlpha;
+const SIDE_OVERRIDES = overlaySpec.sideOverrides ?? {};
+const ENABLED_FAMILIES = overlaySpec.enabledFamilies ?? [];
+if (!Array.isArray(ENABLED_FAMILIES) || ENABLED_FAMILIES.length === 0) {
+  console.error('[overlays] shell-spec.json overlay.enabledFamilies must be a non-empty array');
+  process.exit(2);
+}
+const enabled = (shellId) => ENABLED_FAMILIES.some((family) => shellId.startsWith(family));
+const paramsFor = (shell, side) => {
+  const override = SIDE_OVERRIDES[side] ?? {};
+  const poseSigma = shell.shadowShape.lying ? SIGMA.lying : SIGMA.standing;
+  return {
+    sigmaPx1x: override.sigmaPx1x ?? poseSigma,
+    coreAlpha: override.coreAlpha ?? CORE,
+  };
+};
 const FADE = overlaySpec.tangentFadePx1x;
 const SUPPORT_SIGMA = overlaySpec.supportSigma;
 const CONTOUR_ALPHA = overlaySpec.contourAlpha;
@@ -322,7 +337,7 @@ function supportBox(silhouette, side, sigma) {
  * 2x pass it is exactly 2x the 1x crop, so the two textures describe the same
  * rectangle. Returns straight-alpha RGBA.
  */
-function bandImage(image, silhouette, side, crop, sigma, fade) {
+function bandImage(image, silhouette, side, crop, sigma, fade, core) {
   const data = Buffer.alloc(crop.width * crop.height * 4);
   const cutoff = SUPPORT_SIGMA * sigma;
   let peak = 0;
@@ -373,7 +388,7 @@ function bandImage(image, silhouette, side, crop, sigma, fade) {
         const y = crop.y + ly;
         const d = side === 'up' ? contour - y - 0.5 : y - contour - 0.5;
         if (d <= 0 || d > cutoff) continue;
-        const alpha = CORE * Math.exp(-0.5 * (d / sigma) ** 2) * t;
+        const alpha = core * Math.exp(-0.5 * (d / sigma) ** 2) * t;
         write(lx, ly, alpha);
       }
     }
@@ -404,7 +419,7 @@ function bandImage(image, silhouette, side, crop, sigma, fade) {
         const x = crop.x + lx;
         const d = side === 'left' ? contour - x - 0.5 : x - contour - 0.5;
         if (d <= 0 || d > cutoff) continue;
-        const alpha = CORE * Math.exp(-0.5 * (d / sigma) ** 2) * t;
+        const alpha = core * Math.exp(-0.5 * (d / sigma) ** 2) * t;
         write(lx, ly, alpha);
       }
     }
@@ -442,6 +457,7 @@ for (const key of Object.keys(sidesReport.sides)) {
   const [shell, side] = key.split(':');
   if (!shells[shell]) throw new Error(`overlays-sides.json names missing shell ${shell}`);
   const canonical = canonicalOf(shell);
+  if (!enabled(shell) && !enabled(canonical)) continue;
   targets.set(`${canonical}:${side}`, { shell: canonical, side });
 }
 const targetList = [...targets.values()].sort(
@@ -469,7 +485,7 @@ let generated = 0;
 
 for (const { shell: shellId, side } of targetList) {
   const shell = shells[shellId];
-  const sigma1x = shell.shadowShape.lying ? SIGMA.lying : SIGMA.standing;
+  const { sigmaPx1x: sigma1x, coreAlpha: core } = paramsFor(shell, side);
   const silhouette1x = silhouetteOfShell(shellId, 1);
   const crop1x = supportBox(silhouette1x, side, sigma1x);
   // (band1x is filled after the crop union below, so both scales share a box.)
@@ -498,7 +514,7 @@ for (const { shell: shellId, side } of targetList) {
     width: crop1xFinal.width * PIXEL_RATIO,
     height: crop1xFinal.height * PIXEL_RATIO,
   };
-  const band1x = bandImage(imageOf(shellId, 1), silhouette1x, side, crop1xFinal, sigma1x, FADE);
+  const band1x = bandImage(imageOf(shellId, 1), silhouette1x, side, crop1xFinal, sigma1x, FADE, core);
   const band2x = bandImage(
     imageOf(shellId, 2),
     silhouette2x,
@@ -506,6 +522,7 @@ for (const { shell: shellId, side } of targetList) {
     crop2x,
     sigma2x,
     FADE * PIXEL_RATIO,
+    core,
   );
 
   const base = `${shellId}--${side}`;
@@ -548,7 +565,7 @@ for (const { shell: shellId, side } of targetList) {
     writeFileSync(join(outputDir, file1x), png1x);
     writeFileSync(join(output2xDir, basename(file2x)), png2x);
     if (verifyDeterminism) {
-      const again = bandImage(imageOf(shellId, 1), silhouette1x, side, crop1x, sigma1x, FADE);
+      const again = bandImage(imageOf(shellId, 1), silhouette1x, side, crop1x, sigma1x, FADE, core);
       if (sha256(again.data) !== record.sha256.decodedRgba1x) {
         throw new Error(`${base} is not deterministic`);
       }
@@ -583,6 +600,11 @@ const manifest = {
     tangentFadePx1x: FADE,
     supportSigma: SUPPORT_SIGMA,
     colorHex: overlaySpec.colorHex,
+    sideOverrides: SIDE_OVERRIDES,
+  },
+  enabled: {
+    families: ENABLED_FAMILIES,
+    note: overlaySpec.enabledNote ?? '',
   },
   aliases,
   bodyQuads,

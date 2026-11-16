@@ -1437,6 +1437,17 @@ darkened: the bodies cover the union. Phase 3.5 adds a **contact-shadow decal**
 per shell and per screen side. It is still 2D: no WebGL, no per-frame lighting,
 and the group recipe remains one blur per zone.
 
+**Scope follow-up (2026-11-16 review).** The decals are currently enabled **only
+for the human hand fan**. On the lying face-up ponds and melds the bands read as
+smudges over tiles that already look right, so those families are deliberately
+unshadowed; the top hand, side hands and walls are also off until the hand is
+signed off. `overlay.enabledFamilies` in `shell-spec.json` (published as
+`enabled.families` in `overlays.json`) is the switch; re-enable a family and
+re-bake. The right half of the hand fan used the same 4 px / 0.35 band as the
+left and looked too wide, so the `right` casts now use a **side override**:
+**σ 2.5 px, α 0.50** (left casts stay σ 4 / α 0.35). The thinner/darker cast
+matches the left half's read without turning the inner sliver into a smudge.
+
 ### 15.1 What the decal is, and why it is not `shadowShape`
 
 A decal is a small straight-alpha PNG of a soft band that hugs one edge of the
@@ -1449,7 +1460,8 @@ alpha(d) = coreAlpha * exp(-0.5 * (d / sigma)^2)
 `d` is the distance outward from the silhouette's opaque contour in @1x px; the
 band is zero inside the body and beyond `supportSigma * sigma`, and fades to zero
 over `tangentFadePx1x` at both ends. The committed values are `coreAlpha 0.35`,
-`sigmaPx1x` 6 lying / 4 standing, tangent fade 16 px, support 3σ, ink `#0b1418`.
+`sigmaPx1x` 6 lying / 4 standing, tangent fade 16 px, support 3σ, ink `#0b1418`;
+the hand's `right` side overrides those with σ 2.5 / α 0.50.
 The band is not the cast blob: `shadowShape` is 1.15× the body box with a 40 px
 top trim and a 5/7 offset, so using it here would smear across the neighbour
 instead of hugging the contact. Only its `lying/standing` classification, ink
@@ -1514,13 +1526,15 @@ baker bakes exactly that set. The `--fixture` mode writes the committed
 `tools/render/overlay-zones.json` for the dependency-free checker, and
 `contactOverlays.test.ts` rejects fixture drift.
 
-The bake produces **146 decals** (37 `_faceup` aliases), **88,760 B @1x +
-242,918 B @2x = 331,678 B** across both scales.
+The current bake produces **13 hand decals** (the `_faceup` wall aliases are
+published but no wall decal is baked while the walls are disabled): **5,631 B
+@1x + 14,641 B @2x = 20,272 B** across both scales.
 
 ### 15.4 Verification
 
-`node tools/render/scripts/check-overlays.mjs` runs **3,451 dependency-free
-checks**:
+`node tools/render/scripts/check-overlays.mjs` runs **529 dependency-free
+checks** (the count is lower than the first all-family bake because only the
+hand decals exist):
 
 - **assets**: both scales exist at the published size/bytes/hash, the outer ring
   is transparent, the alpha peak is the published core, the band is smooth in
@@ -1534,21 +1548,30 @@ checks**:
   ponds, both hands, the side hands, melds and all four walls changes **zero felt
   pixels**, the group field is identical (it is the same object), the §10.12
   seam kink stays below 0.05, and the side ponds' decals survive the 1° inverse
-  transform. The four-pond numbers are 57/52/57/52 decals, mean Δluma 21.5–21.8
-  on the changed body pixels, with max stacked alpha 0.724 (top 0.814).
+  transform. The **four ponds are asserted to stay unshadowed** (0 decals, 0 changed
+  pixels); the human hand has 12 decals, mean Δluma **15.59** on 9,352 changed
+  body pixels, max Δluma 94.77 and max stacked alpha **0.49**. The disabled
+  families are byte-identical to the no-overlay baseline.
 
 The review script (`cd frontend && npm run overlays:review`) writes
-`build/review/pond-layouts-1x.png` (four seats, full pond plus 2× crops with and
-without the decals), `overlay-zones-1x.png`, `overlay-decals-1x.png` and
-`overlay-audition-1x.png`. The layout script's bodies-only pond sheet is
-`pond-layout-bodies-1x.png`. Visual sign-off is the user's (AGENTS.md §6).
+`build/review/hand-layouts-1x.png` (the hand at 1:1 plus left/centre/right seam
+crops with and without the decals — the active sign-off sheet),
+`overlay-audition-1x.png` (the right seam at 4×: previous σ4/α0.35, committed
+σ2.5/α0.50, and a thinner still variant), `pond-layouts-1x.png` (the disabled
+baseline), `overlay-zones-1x.png`, `overlay-decals-1x.png`. The layout script's
+bodies-only pond sheet is `pond-layout-bodies-1x.png`. Visual sign-off is the
+user's (AGENTS.md §6).
 
 ### 15.5 Known limits
 
 - Two bands can meet on one body where two later tiles touch it (the side-hand
   L, pond corners, wall tier corners). They composite with source-over; the
-  measured worst stacked alpha is 0.83 on a side wall. This is reported, not
-  clamped, pending the visual review.
+  first all-family bake measured 0.83 on a side wall. In the committed hand-only
+  scope the worst stacked alpha is 0.49 (one seam per tile), so this is dormant
+  until another family is re-enabled.
+- The face-up lying families are **disabled by policy**, not because the code
+  cannot bake them. Re-enabling them needs a visual pass on the strength and the
+  corner stacking.
 - The body polygon is an inset convex hull, not the exact silhouette. It is a
   superset of the visible body, so it can only make the clip conservative; the
   decoded-pixel check asserts zero felt change.

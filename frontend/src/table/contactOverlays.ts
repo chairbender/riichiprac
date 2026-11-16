@@ -25,7 +25,7 @@
  */
 import type { ShellStats, ShellsManifest } from './shellManifest';
 import type { OverlayDecal, OverlayManifest, OverlaySide } from './overlayManifest';
-import { overlayDecalFor } from './overlayManifest';
+import { isOverlayEnabled, overlayDecalFor } from './overlayManifest';
 import type { LayoutZone, PlacedTile } from './zoneLayout';
 
 /** A caster edge only counts as a contact if this much of it overlaps. */
@@ -268,6 +268,7 @@ export function validateOverlayCoverage(
   for (const zone of zones) {
     for (const edge of contactEdges(manifest, zone)) {
       const caster = zone.bodies[edge.casterIndex];
+      if (!isOverlayEnabled(overlays, caster.shell)) continue;
       if (!overlayDecalFor(overlays, caster.shell, edge.side)) {
         missing.push(`${zone.id}: ${caster.shell} ${edge.side}`);
       }

@@ -664,7 +664,7 @@
     "intermediateDir": "build/shells"
   },
   "overlay": {
-    "status": "Phase 3.5: a contact-ao-band per (shell, screen side), baked from the committed body alpha. Not a cast shadow: it hugs the shell's own contour and is clipped by the compositor to the neighbour's advance box.",
+    "status": "Phase 3.5 follow-up (2026-11-16): contact-ao-band decals, enabled only for the human hand fan (overlay.enabledFamilies). Bands are baked from the committed body alpha, clipped by the compositor to the neighbour's bodyQuads polygon, and drawn between bodies. The face-up lying ponds/melds, top hand, side hands and walls are disabled because the bands read as smudges; the hand's right casts use a side override (sigma 2.5 / alpha 0.50) because the right half looked too wide at the left half's 4 / 0.35.",
     "model": "contact-ao-band",
     "coreAlpha": 0.35,
     "sigmaPx1x": {
@@ -681,7 +681,18 @@
     "output2xDir": "../../frontend/public/table/overlays/2x",
     "manifest": "../../frontend/public/table/overlays.json",
     "aliases": "Shells whose drawn body geometry is identical share a decal; the `_faceup` wall dora shells alias to their face-down twin.",
-    "verification": "bake_overlays.mjs refuses a side the layout never asks for; check-overlays.mjs asserts the decoded alpha, the empty outer ring, the zero alpha inside the contour and the zero-on-felt composition."
+    "verification": "bake_overlays.mjs refuses a side the layout never asks for; check-overlays.mjs asserts the decoded alpha, the empty outer ring, the zero alpha inside the contour and the zero-on-felt composition.",
+    "enabledFamilies": [
+      "shell_hand_slot_"
+    ],
+    "enabledNote": "Phase 3.5 follow-up (2026-11-16): only the human hand fan is active. The lying face-up ponds/melds looked smudged and are unchanged; remove a family prefix from this list to re-enable it (and re-bake).",
+    "sideOverrides": {
+      "right": {
+        "coreAlpha": 0.5,
+        "sigmaPx1x": 2.5,
+        "note": "The right half of the hand looked too wide; thinner and darker to match the left half."
+      }
+    }
   },
   "budgets": {
     "manifestBytes": 614400,
