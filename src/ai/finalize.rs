@@ -151,6 +151,7 @@ mod tests {
                 .map(|info| ActionEvaluation {
                     info,
                     probability: 1.0 / legal.len() as f32,
+                    q_value: None,
                 })
                 .collect(),
         };

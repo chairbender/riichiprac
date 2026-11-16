@@ -75,6 +75,7 @@ impl Policy for FastPolicy {
             evaluations.push(ActionEvaluation {
                 info: action.clone(),
                 probability,
+                q_value: None,
             });
         }
         evaluations.sort_by(|left, right| {

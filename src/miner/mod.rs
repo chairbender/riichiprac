@@ -20,6 +20,7 @@
 //! | [`SCENARIO_TRANSFORMS_SCHEMA`] | `riichiprac.scenario-transforms` | a transform chain |
 //! | [`SCENARIO_PACK_SCHEMA`] | `riichiprac.scenario-pack` | a shipped scenario pack |
 //! | [`SCENARIO_PACK_MANIFEST_SCHEMA`] | `riichiprac.scenario-pack-manifest` | the pack manifest |
+//! | [`MODEL_LABEL_SCHEMA`] | `riichiprac.model-label` | one Mortal label (L1) |
 //!
 //! The versioning rule is **additive within a version**: new optional fields
 //! use `#[serde(default)]` so older files still parse, and unknown fields are
@@ -36,6 +37,7 @@ compile_error!("the `miner` feature is native-only; do not enable it for the was
 
 pub mod classifier;
 pub mod funnel;
+pub mod label;
 pub mod licence;
 pub mod provenance;
 pub mod source;
@@ -43,6 +45,11 @@ pub mod storage;
 
 pub use classifier::{classify_decision, classify_decision_with_mortal};
 pub use funnel::{FunnelCounter, FunnelStage};
+pub use label::{
+    BookAgreement, BookConflict, BookLabel, CLASSIFIER_VERSION, LabelDisposition, LabelError,
+    LabelOptions, Labeler, ModelIdentity, ModelLabel, Q_UNITS, Q_UNITS_NOTE, RankedAction,
+    StateEvaluator, VALUE_UNITS, build_label, label_decision, safest_discard, state_hash,
+};
 pub use licence::{LicenceError, LicenseInfo, allowed_data_licence, data_commercial_use_all};
 pub use provenance::{
     AgentKind, AgentSpec, CorpusId, GameProvenance, GeneratorInfo, IdError, LogRef, MatchPlan,
@@ -71,6 +78,9 @@ pub const SCENARIO_PACK_SCHEMA: &str = "riichiprac.scenario-pack";
 
 /// Schema name for the scenario-pack manifest.
 pub const SCENARIO_PACK_MANIFEST_SCHEMA: &str = "riichiprac.scenario-pack-manifest";
+
+/// Schema name for one Mortal label document (L1).
+pub const MODEL_LABEL_SCHEMA: &str = "riichiprac.model-label";
 
 /// Current version of every miner JSON schema defined in F1.
 ///
