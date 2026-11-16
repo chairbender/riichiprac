@@ -415,6 +415,35 @@ describe('pond zone', () => {
     }
   });
 
+  it('draws the furthest pond tiles first in every seat', () => {
+    const seats = ['bottom', 'right', 'top', 'left'] as const;
+    for (const side of seats) {
+      const zone = layoutPond(manifest, { discards, side });
+      const groupSize = side === 'bottom' || side === 'top' ? POND_COLUMNS : 4;
+      const groups = Array.from({ length: 4 }, (_, index) =>
+        zone.bodies.slice(index * groupSize, (index + 1) * groupSize),
+      );
+      const minY = (group: PlacedTile[]) =>
+        Math.min(...group.map((tile) => tile.faceY));
+
+      // Each group is one depth line (a screen row for front/back, a screen
+      // column for the side ponds). The lines run far-to-near.
+      for (let index = 1; index < groups.length; index += 1) {
+        expect(minY(groups[index]), `${side} group ${index}`).toBeGreaterThan(
+          minY(groups[index - 1]) - 1e-9,
+        );
+      }
+      // Within a depth line the draw order is right-to-left on screen.
+      for (const group of groups) {
+        for (let index = 1; index < group.length; index += 1) {
+          expect(group[index].faceX, `${side} group tile ${index}`).toBeLessThan(
+            group[index - 1].faceX,
+          );
+        }
+      }
+    }
+  });
+
   it('keeps every seat pond inside its local bounds with whole draw positions', () => {
     const seats = ['bottom', 'right', 'top', 'left'] as const;
     const expected = {

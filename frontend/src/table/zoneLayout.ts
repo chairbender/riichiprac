@@ -463,9 +463,9 @@ function placeRow(
 }
 
 /**
- * Uniform-row body order: draw the tile with the greatest screen coordinate
- * along the row's dominant axis first, so the left/top tile's bevel lands over
- * its neighbour. Rows themselves are emitted top-to-bottom by the caller.
+ * Uniform-row body order. A horizontal row is drawn right-to-left so the left
+ * tile's bevel lands over its neighbour; a vertical row is drawn from the far
+ * (top) tile toward the near (bottom) one.
  */
 function paintOrderForRow(row: readonly RawTile[]): RawTile[] {
   if (row.length < 2) return [...row];
@@ -473,7 +473,7 @@ function paintOrderForRow(row: readonly RawTile[]): RawTile[] {
   const last = row[row.length - 1];
   const horizontal = Math.abs(last.faceX - first.faceX) >= Math.abs(last.faceY - first.faceY);
   return [...row].sort((left, right) =>
-    horizontal ? right.faceX - left.faceX : right.faceY - left.faceY,
+    horizontal ? right.faceX - left.faceX : left.faceY - right.faceY,
   );
 }
 
@@ -731,6 +731,11 @@ export function layoutMeld(manifest: ShellsManifest, options: MeldLayoutOptions)
 /**
  * A discard pond: 6 columns per row, rows laid by the normal shell's long-axis
  * step. A Riichi tile lies sideways and advances the row by its long axis.
+ *
+ * The body order is a depth sort, not a row order: the furthest tiles on screen
+ * are drawn first. For the bottom/top ponds depth is the logical row; for the
+ * side ponds it is the logical column (the vertical column runs into the
+ * screen). Within one depth line the tiles are drawn right-to-left.
  */
 export function layoutPond(manifest: ShellsManifest, options: PondLayoutOptions): LayoutZone {
   const side = options.side ?? 'bottom';
@@ -738,8 +743,14 @@ export function layoutPond(manifest: ShellsManifest, options: PondLayoutOptions)
   const shells = flatShellsForSeat(manifest, side);
   const rowStep = along(shells.normal.gridStepPx.y, axes.down);
 
-  const placedRows: RawTile[][] = [];
-  const bodyRows: RawTile[][] = [];
+  interface PondPlacement {
+    readonly tile: RawTile;
+    readonly rowIndex: number;
+    readonly columnIndex: number;
+  }
+
+  const placed: PondPlacement[] = [];
+  const shadows: RawTile[] = [];
   const rowCount = Math.ceil(options.discards.length / POND_COLUMNS);
   for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
     const discards = options.discards.slice(
@@ -760,16 +771,32 @@ export function layoutPond(manifest: ShellsManifest, options: PondLayoutOptions)
       })),
       startFace,
     );
-    placedRows.push(row);
-    bodyRows.push(paintOrderForRow(row));
+    shadows.push(...row);
+    row.forEach((tile, columnIndex) => placed.push({ tile, rowIndex, columnIndex }));
   }
+
+  // Depth is the screen-y grid line: row-major for the front/back ponds,
+  // column-major for the side ponds. The turned tile's near-edge offset is a
+  // within-line alignment shift, so it does not move the tile's depth line.
+  const depthKey = (entry: PondPlacement): number => {
+    if (side === 'bottom') return entry.rowIndex;
+    if (side === 'top') return -entry.rowIndex;
+    if (side === 'right') return -entry.columnIndex;
+    return entry.columnIndex;
+  };
+  const bodies = [...placed]
+    .sort(
+      (left, right) =>
+        depthKey(left) - depthKey(right) || right.tile.faceX - left.tile.faceX,
+    )
+    .map((entry) => entry.tile);
 
   return finishZone(manifest, {
     id: `pond-${side}`,
     kind: 'pond',
     side,
-    bodies: bodyRows.flat(),
-    shadows: placedRows.flat(),
+    bodies,
+    shadows,
     sigmaShell: shells.normalId,
   });
 }

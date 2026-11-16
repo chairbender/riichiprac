@@ -1398,6 +1398,17 @@ rule is applied to the called tile in a meld and to every seat's pond frame
 `group-layouts.mjs` applies the same rule, so the parity test still compares the
 two implementations exactly; the test also asserts the riichi face gap directly.
 
+**Pond body order is a depth sort, not the logical row order.** The bottom and
+top ponds draw the logical row furthest from the viewer first (bottom row 0,
+top row 3); the side ponds draw the highest screen column first (right column 5,
+left column 0); inside one depth line the bodies are drawn right-to-left. This
+matters because a side pond's logical rows are horizontal but its tiles are
+stacked into vertical columns on screen, so walking the logical rows would draw
+the near column before the far one. `layoutPond` assigns each placement its
+logical row and column and sorts on the seat's depth key (`row` for front/back,
+`-row` for top, `-column` for right, `column` for left), then descending screen
+x. A vertical meld row follows the same far-to-near rule (top tile first).
+
 **Deferred.** The tile-to-tile overlay shadow is still the next polish step: the
 few visible slivers where two tiles touch are not shadowed because the group
 blob is unioned under both bodies. Phase 3.5 records that work.

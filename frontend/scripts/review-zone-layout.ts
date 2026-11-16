@@ -313,7 +313,7 @@ pondContext.font = '12px sans-serif';
 pondContext.fillStyle = MUTED;
 pondContext.fillText(
   'Each panel is the pond in that seat’s own frame; the riichi tile lies sideways ' +
-    'and keeps the normal face gap.',
+    'and keeps the normal face gap. Bodies draw furthest first, right-to-left in each depth line.',
   MARGIN,
   MARGIN + 26,
 );
@@ -368,6 +368,22 @@ const pondNumbers = pondZones.map((zone, index) => {
       zone.shadows[17].faceX - zone.shadows[16].faceX,
       zone.shadows[17].faceY - zone.shadows[16].faceY,
     ],
+    firstBody: zone.bodies[0]
+      ? {
+          shell: zone.bodies[0].shell,
+          face: zone.bodies[0].face,
+          faceX: zone.bodies[0].faceX,
+          faceY: zone.bodies[0].faceY,
+        }
+      : null,
+    lastBody: zone.bodies.at(-1)
+      ? {
+          shell: zone.bodies.at(-1)!.shell,
+          face: zone.bodies.at(-1)!.face,
+          faceX: zone.bodies.at(-1)!.faceX,
+          faceY: zone.bodies.at(-1)!.faceY,
+        }
+      : null,
     riichiBody: zone.bodies.find((tile) => tile.riichi) ?? null,
   };
 });
