@@ -21,6 +21,8 @@ import { contactEdges, resolveContactOverlays } from '../src/table/contactOverla
 import type { ContactEdge, ContactOverlay } from '../src/table/contactOverlays';
 import { parseCatchesManifest } from '../src/table/catchManifest';
 import type { CatchesManifest } from '../src/table/catchManifest';
+import { parseLyingCatchesManifest } from '../src/table/lyingCatchManifest';
+import type { LyingCatchesManifest } from '../src/table/lyingCatchManifest';
 import { parseOverlayManifest } from '../src/table/overlayManifest';
 import type { OverlayManifest } from '../src/table/overlayManifest';
 import { parseShellsManifest } from '../src/table/shellManifest';
@@ -46,6 +48,7 @@ const buildDir = resolve(renderDir, 'build');
 const manifestPath = join(tableDir, 'shells.json');
 const overlaysPath = join(tableDir, 'overlays.json');
 const catchesPath = join(tableDir, 'catches.json');
+const lyingCatchesPath = join(tableDir, 'lying-catches.json');
 const shellSpec = JSON.parse(readFileSync(join(renderDir, 'shell-spec.json'), 'utf8'));
 const enabledFamilies: string[] = shellSpec.overlay?.enabledFamilies ?? [];
 if (enabledFamilies.length === 0) {
@@ -260,6 +263,7 @@ interface FixtureZone {
     | 'shell'
     | 'contact'
     | 'kind'
+    | 'cacheKey'
     | 'drawX'
     | 'drawY'
     | 'texWidth'
@@ -267,7 +271,12 @@ interface FixtureZone {
   >[];
 }
 
-function fixtureOf(zone: LayoutZone, overlays: OverlayManifest, catches: CatchesManifest): FixtureZone {
+function fixtureOf(
+  zone: LayoutZone,
+  overlays: OverlayManifest,
+  catches: CatchesManifest,
+  lyingCatches: LyingCatchesManifest,
+): FixtureZone {
   return {
     id: zone.id,
     kind: zone.kind,
@@ -293,7 +302,7 @@ function fixtureOf(zone: LayoutZone, overlays: OverlayManifest, catches: Catches
     // The clip polygon is derived from `overlays.bodyQuads` at check time, so
     // the fixture stays small and cannot disagree with the committed assets.
     contacts: (() => {
-      const resolved = resolveContactOverlays(manifest, overlays, zone, catches);
+      const resolved = resolveContactOverlays(manifest, overlays, zone, catches, lyingCatches);
       const active = new Set(
         resolved.map((overlay) => `${overlay.bodyIndex}:${overlay.casterIndex}:${overlay.contact}`),
       );
@@ -305,12 +314,13 @@ function fixtureOf(zone: LayoutZone, overlays: OverlayManifest, catches: Catches
           side: edge.side,
         }));
     })(),
-    overlays: resolveContactOverlays(manifest, overlays, zone, catches).map((overlay) => ({
+    overlays: resolveContactOverlays(manifest, overlays, zone, catches, lyingCatches).map((overlay) => ({
       bodyIndex: overlay.bodyIndex,
       casterIndex: overlay.casterIndex,
       shell: overlay.shell,
       contact: overlay.contact,
       kind: overlay.kind,
+      cacheKey: overlay.cacheKey ?? null,
       drawX: overlay.drawX,
       drawY: overlay.drawY,
       texWidth: overlay.texWidth,
@@ -322,6 +332,7 @@ function fixtureOf(zone: LayoutZone, overlays: OverlayManifest, catches: Catches
 function writeFixture(): void {
   const overlays = parseOverlayManifest(JSON.parse(readFileSync(overlaysPath, 'utf8')));
   const catches = parseCatchesManifest(JSON.parse(readFileSync(catchesPath, 'utf8')));
+  const lyingCatches = parseLyingCatchesManifest(JSON.parse(readFileSync(lyingCatchesPath, 'utf8')));
   const zones: LayoutZone[] = [
     ...POND_SEATS.map((side) => layoutPond(manifest, { discards: pondDiscards, side })),
     { ...layoutPond(manifest, { discards: pondDiscards.slice(0, 6), side: 'bottom' }), id: 'pond-bottom-6' },
@@ -340,7 +351,7 @@ function writeFixture(): void {
   const fixture = {
     version: 1,
     generatedBy: 'frontend/scripts/export-overlays.ts --fixture',
-    zones: zones.map((zone) => fixtureOf(zone, overlays, catches)),
+    zones: zones.map((zone) => fixtureOf(zone, overlays, catches, lyingCatches)),
   };
   const out = join(renderDir, 'overlay-zones.json');
   writeFileSync(out, `${JSON.stringify(fixture, null, 1)}\n`);

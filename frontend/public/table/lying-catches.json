@@ -1,0 +1,2104 @@
+{
+  "version": 1,
+  "generatedBy": "tools/render/bake_lying_catches.py",
+  "publishedBy": "tools/render/scripts/commit-lying-catches.mjs",
+  "model": "target-space-3d-catch",
+  "combination": "physical+ao",
+  "coordinateSpace": "The texture is the target shell texture in @1x px: draw it at the target drawX/drawY, after the target body and before its casters, clipped to the full target advance box.",
+  "catches": {
+    "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45": {
+      "id": "lying-0061",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 104,
+          "dy": 45
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0061.png",
+      "textureFile2x": "overlays/lying/2x/lying-0061.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2283,
+      "supportPx": 623,
+      "sha256": {
+        "decodedRgba1x": "9851b0092bcba1de6d94b62d7986b0f27c0b9d78d8d3e2afc234e10e62eed57c",
+        "decodedRgba2x": "f92d4df87681ca70392d503ff47a1b0190fe013578f72704f392518d72737ed6"
+      },
+      "bytes1x": 909,
+      "bytes2x": 2779
+    },
+    "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0066",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": -10
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 104,
+          "dy": 45
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 56
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0066.png",
+      "textureFile2x": "overlays/lying/2x/lying-0066.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6086,
+      "supportPx": 4757,
+      "sha256": {
+        "decodedRgba1x": "2556c7ae6a48e1b6d442affb7ef7540884e9170246c5daca51c3584dbd87a335",
+        "decodedRgba2x": "e44593325934f7497392d8d113c6936c479d82d0fba16c13c412d2455d13ed78"
+      },
+      "bytes1x": 3101,
+      "bytes2x": 10374
+    },
+    "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0062",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 104,
+          "dy": 45
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 56
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0062.png",
+      "textureFile2x": "overlays/lying/2x/lying-0062.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6267,
+      "supportPx": 4564,
+      "sha256": {
+        "decodedRgba1x": "f690b517dfa32f3512618b7667977453dca27d1e6bf5b5aa733e9373ed7045b3",
+        "decodedRgba2x": "27354695f8d246f86126f59bf9310149c58a8744fa0fa5441f7f88e45e740ac2"
+      },
+      "bytes1x": 2960,
+      "bytes2x": 9514
+    },
+    "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,55": {
+      "id": "lying-0056",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 104,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0056.png",
+      "textureFile2x": "overlays/lying/2x/lying-0056.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1717,
+      "supportPx": 560,
+      "sha256": {
+        "decodedRgba1x": "2052835ca7c8af8075f14bea654f5b76e976b79931e586401606459427aaa990",
+        "decodedRgba2x": "94e7859a8ab0b1d628df54c9dad77240667bb962d68301eaeffbde35cd034ebd"
+      },
+      "bytes1x": 807,
+      "bytes2x": 2407
+    },
+    "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,65": {
+      "id": "lying-0057",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,65",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 104,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0057.png",
+      "textureFile2x": "overlays/lying/2x/lying-0057.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1707,
+      "supportPx": 44,
+      "sha256": {
+        "decodedRgba1x": "629c926f295506a8b49b1af95329a8bde3c8280a90cb2b75a45b4ac14be24224",
+        "decodedRgba2x": "96274e379f96cc06c5f6d825e1bc34577b614bcc762383a06034b7ea0e058bf8"
+      },
+      "bytes1x": 344,
+      "bytes2x": 953
+    },
+    "shell_flat_sideways_270|left|left:shell_flat_upright@17,55|right:shell_flat_upright@17,55|up:shell_flat_upright@17,55": {
+      "id": "lying-0053",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_upright@17,55|right:shell_flat_upright@17,55|up:shell_flat_upright@17,55",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 17,
+          "dy": 55
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "left",
+          "dx": 17,
+          "dy": 55
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": 17,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0053.png",
+      "textureFile2x": "overlays/lying/2x/lying-0053.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.8324,
+      "supportPx": 4520,
+      "sha256": {
+        "decodedRgba1x": "4baade99ce53ec02db7635a27810babbeffda9916a87548247630ad8c54928d4",
+        "decodedRgba2x": "582ecd3472f660e582efd3cfde5b0af6460b6ebc66f90d813eb6e6af775cdeb2"
+      },
+      "bytes1x": 1510,
+      "bytes2x": 4212
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10": {
+      "id": "lying-0064",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": -10
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0064.png",
+      "textureFile2x": "overlays/lying/2x/lying-0064.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1111,
+      "supportPx": 324,
+      "sha256": {
+        "decodedRgba1x": "98c5312ef086b57c8908eec2f2d12eed9c8ed93476e775e92203346f0ef4cbfa",
+        "decodedRgba2x": "084a816338868ee31f7b4fa471121a834a2939b848a74f19827f9ee7399f148f"
+      },
+      "bytes1x": 655,
+      "bytes2x": 2487
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0058",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": -10
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0058.png",
+      "textureFile2x": "overlays/lying/2x/lying-0058.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6893,
+      "supportPx": 4746,
+      "sha256": {
+        "decodedRgba1x": "1c4b18dfcac4bb095165e6baf80e41f33dc669ec2e12b9797c11138e85ac77c0",
+        "decodedRgba2x": "6564ce1b5ebdda12e2f7fec733853feedd42b8cb2d8dcd6df09f0aa725a12a16"
+      },
+      "bytes1x": 2894,
+      "bytes2x": 9356
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0": {
+      "id": "lying-0063",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0063.png",
+      "textureFile2x": "overlays/lying/2x/lying-0063.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2871,
+      "supportPx": 450,
+      "sha256": {
+        "decodedRgba1x": "bdad4b4bd0d849e958e97e10b691dc2e590f317499814a22905fe5ae39938415",
+        "decodedRgba2x": "81ff771eae3b343f568b7fb6de95c85cb90ff08786392405247dedc57e445513"
+      },
+      "bytes1x": 815,
+      "bytes2x": 3440
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0055",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0055.png",
+      "textureFile2x": "overlays/lying/2x/lying-0055.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7057,
+      "supportPx": 4766,
+      "sha256": {
+        "decodedRgba1x": "e1b5e883b058004689e98aaedafc7796b4d9193976b1b3b966d5230cff8f9c13",
+        "decodedRgba2x": "908e3169d15102bfc014aaafd3fd2360b12461ab3515dd7ffecccc3d905be373"
+      },
+      "bytes1x": 2873,
+      "bytes2x": 9446
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10": {
+      "id": "lying-0065",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": 10
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0065.png",
+      "textureFile2x": "overlays/lying/2x/lying-0065.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3233,
+      "supportPx": 1615,
+      "sha256": {
+        "decodedRgba1x": "ddb12140007bdd7a819896627cc060d25ff1ec761f473b7a661b58f802362f00",
+        "decodedRgba2x": "368cfa75e8fb5e8a1977115a34885e2648b071cac1068990106ef89c21fed303"
+      },
+      "bytes1x": 1957,
+      "bytes2x": 6641
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0060",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": 10
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0060.png",
+      "textureFile2x": "overlays/lying/2x/lying-0060.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.728,
+      "supportPx": 4763,
+      "sha256": {
+        "decodedRgba1x": "a5c763ad87ade61928d1ee59255bd476fe3a17999632b0a7f2db9c09640dbd37",
+        "decodedRgba2x": "ed29b4fc9d4d896e4dbf5ecdb8f5f2fda49fd43738bb5924fb696a7e4aa37000"
+      },
+      "bytes1x": 2552,
+      "bytes2x": 8332
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,65|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0059",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,65|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0059.png",
+      "textureFile2x": "overlays/lying/2x/lying-0059.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7103,
+      "supportPx": 4547,
+      "sha256": {
+        "decodedRgba1x": "7f4021d4c848a7226be2ac1d448045e3dc3308fd57e0de59720e04c189cfe492",
+        "decodedRgba2x": "d6b852f6d69c6ef1c566300ad7e1e139139d69f6963c5cf202041ad2de0f527a"
+      },
+      "bytes1x": 2698,
+      "bytes2x": 8612
+    },
+    "shell_flat_sideways_270|left|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0051",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0051.png",
+      "textureFile2x": "overlays/lying/2x/lying-0051.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7106,
+      "supportPx": 4556,
+      "sha256": {
+        "decodedRgba1x": "cdccd50574b3070bb5ed019a1ab2798f9d1591600160fb0f0bce73b5234a2d84",
+        "decodedRgba2x": "5c4b8a2198b49f6c5765dc5f9646c22ae1807d2448d15a34258db423c9893a85"
+      },
+      "bytes1x": 2704,
+      "bytes2x": 8548
+    },
+    "shell_flat_sideways_270|top|left:shell_flat_upright_180@34,60|up:shell_flat_upright_180@34,60": {
+      "id": "lying-0050",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "top",
+      "signature": "shell_flat_sideways_270|top|left:shell_flat_upright_180@34,60|up:shell_flat_upright_180@34,60",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 34,
+          "dy": 59
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "left",
+          "dx": 34,
+          "dy": 59
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0050.png",
+      "textureFile2x": "overlays/lying/2x/lying-0050.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.79,
+      "supportPx": 3614,
+      "sha256": {
+        "decodedRgba1x": "efedb01ffd7cf97d1fa36a71646f2a5f73dc1fbaab419033b848b0229bf95840",
+        "decodedRgba2x": "8f01ecf90bd17cc8825f73418fc14601367af8760ab16c9aa3bd154a090c0b07"
+      },
+      "bytes1x": 1104,
+      "bytes2x": 3161
+    },
+    "shell_flat_sideways_270|top|right:shell_flat_upright_180@-36,60|up:shell_flat_upright_180@34,60": {
+      "id": "lying-0040",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "top",
+      "signature": "shell_flat_sideways_270|top|right:shell_flat_upright_180@-36,60|up:shell_flat_upright_180@34,60",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 34,
+          "dy": 59
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -35,
+          "dy": 59
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0040.png",
+      "textureFile2x": "overlays/lying/2x/lying-0040.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5397,
+      "supportPx": 4483,
+      "sha256": {
+        "decodedRgba1x": "0900b2ea310d8a29cc43b7a68d8f9e8ebe871c4a66b5c5282c7a8d2c4b473b60",
+        "decodedRgba2x": "1360db0ab5c5b78107e9c4ab6a25d6c31faa8d44b34023ae8c2344be698ce936"
+      },
+      "bytes1x": 2099,
+      "bytes2x": 6353
+    },
+    "shell_flat_sideways_270|top|right:shell_flat_upright_180@-70,-6": {
+      "id": "lying-0029",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "top",
+      "signature": "shell_flat_sideways_270|top|right:shell_flat_upright_180@-70,-6",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -71,
+          "dy": -6
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0029.png",
+      "textureFile2x": "overlays/lying/2x/lying-0029.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3178,
+      "supportPx": 1244,
+      "sha256": {
+        "decodedRgba1x": "88386882b6770c2e18e837bf83b37a25857c40d76757b22021fef53fc3f4fca4",
+        "decodedRgba2x": "f033b2f89aa539daf16793d00d8c5913a03921d8f2199edbb6db8f5b410d1b73"
+      },
+      "bytes1x": 1680,
+      "bytes2x": 5635
+    },
+    "shell_flat_sideways_270|top|right:shell_flat_upright_180@-70,-6|up:shell_flat_upright_180@34,60": {
+      "id": "lying-0045",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "top",
+      "signature": "shell_flat_sideways_270|top|right:shell_flat_upright_180@-70,-6|up:shell_flat_upright_180@34,60",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -70,
+          "dy": -6
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 34,
+          "dy": 59
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0045.png",
+      "textureFile2x": "overlays/lying/2x/lying-0045.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2992,
+      "supportPx": 4110,
+      "sha256": {
+        "decodedRgba1x": "653709521abf13478b3d70615ef3caa0f14d23efe394f96909df000eeae7f931",
+        "decodedRgba2x": "7bd0d0ad2bba192342c36f11667002e49605171bc61beaca081ccfb7e83778e4"
+      },
+      "bytes1x": 2289,
+      "bytes2x": 7575
+    },
+    "shell_flat_sideways_270|top|right:shell_flat_upright_180@17,60|up:shell_flat_upright_180@17,60": {
+      "id": "lying-0033",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "top",
+      "signature": "shell_flat_sideways_270|top|right:shell_flat_upright_180@17,60|up:shell_flat_upright_180@17,60",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 17,
+          "dy": 60
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": 17,
+          "dy": 60
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0033.png",
+      "textureFile2x": "overlays/lying/2x/lying-0033.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7314,
+      "supportPx": 4357,
+      "sha256": {
+        "decodedRgba1x": "ce58aec2a8078d9e17ba0f2bd1bcb08d704bb1dcb07d1b010b53f62ccc5deb77",
+        "decodedRgba2x": "1f4707e66b88da3fe1a7fb1b62ded32aa74714e9cbdf7990aa2e23d8df4d42ad"
+      },
+      "bytes1x": 1777,
+      "bytes2x": 5771
+    },
+    "shell_flat_sideways_270|top|right:shell_flat_upright_180@34,60|up:shell_flat_upright_180@34,60": {
+      "id": "lying-0047",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "top",
+      "signature": "shell_flat_sideways_270|top|right:shell_flat_upright_180@34,60|up:shell_flat_upright_180@34,60",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 33,
+          "dy": 59
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": 33,
+          "dy": 59
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0047.png",
+      "textureFile2x": "overlays/lying/2x/lying-0047.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.785,
+      "supportPx": 3924,
+      "sha256": {
+        "decodedRgba1x": "ef512f7f09cfb3da8482fb98be4f5e4d2bfecc7c64847ab875cd966351cab363",
+        "decodedRgba2x": "23fab4dd2aee9aa028ea52439e44903bb49bc76f38637ed5b46450844c94b8de"
+      },
+      "bytes1x": 1209,
+      "bytes2x": 3380
+    },
+    "shell_flat_sideways|bottom|left:shell_flat_upright@17,53|right:shell_flat_upright@17,53|up:shell_flat_upright@17,53": {
+      "id": "lying-0005",
+      "target": "shell_flat_sideways",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_sideways|bottom|left:shell_flat_upright@17,53|right:shell_flat_upright@17,53|up:shell_flat_upright@17,53",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 17,
+          "dy": 52
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "left",
+          "dx": 17,
+          "dy": 52
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": 17,
+          "dy": 52
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0005.png",
+      "textureFile2x": "overlays/lying/2x/lying-0005.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.857,
+      "supportPx": 4580,
+      "sha256": {
+        "decodedRgba1x": "f9b77d01fed8c87b0f41e8fe5ddcb7eb67b998464df12dfcb377436483f6a68c",
+        "decodedRgba2x": "427a472c8ecf1237d2fcec5c64821333e2716561c5654fc3b5db36e008048156"
+      },
+      "bytes1x": 1263,
+      "bytes2x": 3651
+    },
+    "shell_flat_sideways|bottom|right:shell_flat_upright@-69,-13": {
+      "id": "lying-0002",
+      "target": "shell_flat_sideways",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_sideways|bottom|right:shell_flat_upright@-69,-13",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -69,
+          "dy": -13
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0002.png",
+      "textureFile2x": "overlays/lying/2x/lying-0002.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3233,
+      "supportPx": 464,
+      "sha256": {
+        "decodedRgba1x": "aa4834dfe2bea7562f8fb8b069469a0ecf1ccb63419e3fe842b92ac04a00fec6",
+        "decodedRgba2x": "1464a1e675138be263937a68318f6feafae067d4aca139e78d0c590aee92346f"
+      },
+      "bytes1x": 882,
+      "bytes2x": 3273
+    },
+    "shell_flat_sideways|bottom|right:shell_flat_upright@0,53|up:shell_flat_upright@0,53": {
+      "id": "lying-0010",
+      "target": "shell_flat_sideways",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_sideways|bottom|right:shell_flat_upright@0,53|up:shell_flat_upright@0,53",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": 1,
+          "dy": 52
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 1,
+          "dy": 52
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0010.png",
+      "textureFile2x": "overlays/lying/2x/lying-0010.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.8111,
+      "supportPx": 4547,
+      "sha256": {
+        "decodedRgba1x": "154544f5e625f7a5eae0cbc293d83690134d13cec7f79a31da554bf422890859",
+        "decodedRgba2x": "76940483dfc6204b5ce0b2a7dac43b15e073418a7363acc4fb698bc3c0243160"
+      },
+      "bytes1x": 1550,
+      "bytes2x": 4726
+    },
+    "shell_flat_sideways|right|left:shell_flat_sideways@104,45|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55": {
+      "id": "lying-0026",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|left:shell_flat_sideways@104,45|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "left",
+          "dx": 104,
+          "dy": 45
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 56
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0026.png",
+      "textureFile2x": "overlays/lying/2x/lying-0026.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6257,
+      "supportPx": 4772,
+      "sha256": {
+        "decodedRgba1x": "680e40279f46280675a4485fced69a5655a66f116d9190660c529592fcb84cc3",
+        "decodedRgba2x": "f82c7b9fc6049115be86cfad1e693ee1686ad14d82c3110b896dae1aae08d6b9"
+      },
+      "bytes1x": 3110,
+      "bytes2x": 10444
+    },
+    "shell_flat_sideways|right|left:shell_flat_sideways@104,45|up:shell_flat_sideways@0,55": {
+      "id": "lying-0024",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|left:shell_flat_sideways@104,45|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "left",
+          "dx": 104,
+          "dy": 45
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 56
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0024.png",
+      "textureFile2x": "overlays/lying/2x/lying-0024.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6268,
+      "supportPx": 4563,
+      "sha256": {
+        "decodedRgba1x": "aa68b7e1a5c5f5d9001293a698469c82d25df86e9f07bd7f5c7003f08aa5e889",
+        "decodedRgba2x": "a82671154ed4155a9c083a8daa37f36a89c39308554c1e01d0b69ae5cee2d23b"
+      },
+      "bytes1x": 2952,
+      "bytes2x": 9527
+    },
+    "shell_flat_sideways|right|left:shell_flat_upright_180@17,54|right:shell_flat_upright_180@17,54|up:shell_flat_upright_180@17,54": {
+      "id": "lying-0019",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|left:shell_flat_upright_180@17,54|right:shell_flat_upright_180@17,54|up:shell_flat_upright_180@17,54",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 17,
+          "dy": 54
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "left",
+          "dx": 17,
+          "dy": 54
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": 17,
+          "dy": 54
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0019.png",
+      "textureFile2x": "overlays/lying/2x/lying-0019.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.843,
+      "supportPx": 4522,
+      "sha256": {
+        "decodedRgba1x": "fb32bb583920480931d1d514869e2427f603114948299272e5ffec0a56dccc60",
+        "decodedRgba2x": "c615fa3c3a479e84802b3d1f4426d30336ef10ee8ec285f595b2e8fc85137726"
+      },
+      "bytes1x": 1384,
+      "bytes2x": 3893
+    },
+    "shell_flat_sideways|right|left:shell_flat_upright_180@17,60|right:shell_flat_upright_180@17,60|up:shell_flat_upright_180@17,60": {
+      "id": "lying-0017",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|left:shell_flat_upright_180@17,60|right:shell_flat_upright_180@17,60|up:shell_flat_upright_180@17,60",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 17,
+          "dy": 60
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "left",
+          "dx": 17,
+          "dy": 60
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": 17,
+          "dy": 60
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0017.png",
+      "textureFile2x": "overlays/lying/2x/lying-0017.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.631,
+      "supportPx": 4440,
+      "sha256": {
+        "decodedRgba1x": "29567053d7760ecbc856d7d3a60a1b3bc46fe637c85001b3b3ec12250ca82f99",
+        "decodedRgba2x": "8b96d1dcddfdb42423eb633d7c534e4d9dc0ce17113d3f961f6b0c249b12b313"
+      },
+      "bytes1x": 2964,
+      "bytes2x": 9599
+    },
+    "shell_flat_sideways|right|right:shell_flat_sideways@-104,-10|up:shell_flat_sideways@0,55": {
+      "id": "lying-0022",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,-10|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": -10
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0022.png",
+      "textureFile2x": "overlays/lying/2x/lying-0022.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6894,
+      "supportPx": 4745,
+      "sha256": {
+        "decodedRgba1x": "7ef004128c6b16f510b11299710378eb4cd2d19b7c1a5cb3f003116dbbd64a7a",
+        "decodedRgba2x": "41c7bfe2247ecd64917b0a21af505fe54b8fed4c4e5eedf598b0a1236e1d3f65"
+      },
+      "bytes1x": 2893,
+      "bytes2x": 9361
+    },
+    "shell_flat_sideways|right|right:shell_flat_sideways@-104,0": {
+      "id": "lying-0020",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,0",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0020.png",
+      "textureFile2x": "overlays/lying/2x/lying-0020.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2871,
+      "supportPx": 450,
+      "sha256": {
+        "decodedRgba1x": "bdad4b4bd0d849e958e97e10b691dc2e590f317499814a22905fe5ae39938415",
+        "decodedRgba2x": "721f521a879da70c5ef45af6b8b57bc0f00bd04df0f91eea81926a6595b85c3a"
+      },
+      "bytes1x": 815,
+      "bytes2x": 3440
+    },
+    "shell_flat_sideways|right|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55": {
+      "id": "lying-0021",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0021.png",
+      "textureFile2x": "overlays/lying/2x/lying-0021.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7058,
+      "supportPx": 4765,
+      "sha256": {
+        "decodedRgba1x": "ed542f95ccbd72a1255210e12ec83f334ad3dd7eb2a7469fde595f37f8ee0ae7",
+        "decodedRgba2x": "52e513602a6a58e150f72178f994e19d43776aac110aa0df911ef3240adc29d0"
+      },
+      "bytes1x": 2871,
+      "bytes2x": 9452
+    },
+    "shell_flat_sideways|right|right:shell_flat_sideways@-104,10|up:shell_flat_sideways@0,55": {
+      "id": "lying-0025",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,10|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": 10
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0025.png",
+      "textureFile2x": "overlays/lying/2x/lying-0025.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7283,
+      "supportPx": 4761,
+      "sha256": {
+        "decodedRgba1x": "900e2657818c0a2ee7f43fd33e4bc2827727fd4be4dd8e7d2448a43f60efbd74",
+        "decodedRgba2x": "772abb0e9e4d00a0bd20e24685815d0cd1cc7fcae657053b6f49351838507467"
+      },
+      "bytes1x": 2548,
+      "bytes2x": 8331
+    },
+    "shell_flat_sideways|right|right:shell_flat_sideways@-104,55|up:shell_flat_sideways@0,55": {
+      "id": "lying-0023",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,55|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0023.png",
+      "textureFile2x": "overlays/lying/2x/lying-0023.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7335,
+      "supportPx": 4563,
+      "sha256": {
+        "decodedRgba1x": "9000a681c0f7fb3cb448e4277d75cf1c657ad656573bc83fac0e7f02ae0223d0",
+        "decodedRgba2x": "3c854092362999413ebba3835807de61a90fe64ca743ced1412890ae46876b01"
+      },
+      "bytes1x": 2714,
+      "bytes2x": 8685
+    },
+    "shell_flat_sideways|right|up:shell_flat_sideways@0,55": {
+      "id": "lying-0016",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0016.png",
+      "textureFile2x": "overlays/lying/2x/lying-0016.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7108,
+      "supportPx": 4555,
+      "sha256": {
+        "decodedRgba1x": "a1ab8f10c0852848c465e84787ea975b6a8c0138e9f5049e4c126528a7a979a7",
+        "decodedRgba2x": "33398d0fdb022bdf324ca1e46a23dcfcc007fce2ec83a696b21a04b52fe7859e"
+      },
+      "bytes1x": 2697,
+      "bytes2x": 8548
+    },
+    "shell_flat_upright_180|right|up:shell_flat_sideways@-17,67": {
+      "id": "lying-0018",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "right",
+      "signature": "shell_flat_upright_180|right|up:shell_flat_sideways@-17,67",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": -17,
+          "dy": 67
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0018.png",
+      "textureFile2x": "overlays/lying/2x/lying-0018.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5729,
+      "supportPx": 2756,
+      "sha256": {
+        "decodedRgba1x": "d3276d503712a99e9f76594a827283cfbc6fa2e366b77d73c74eb964a162e330",
+        "decodedRgba2x": "b402767502847e1c9857940abe77d28e57d1fe0022c89a5983e26e2af605fb1b"
+      },
+      "bytes1x": 1855,
+      "bytes2x": 5800
+    },
+    "shell_flat_upright_180|top|left:shell_flat_sideways_270@52,71|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@-35,65": {
+      "id": "lying-0036",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|left:shell_flat_sideways_270@52,71|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@-35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": -35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 52,
+          "dy": 71
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0036.png",
+      "textureFile2x": "overlays/lying/2x/lying-0036.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6368,
+      "supportPx": 1841,
+      "sha256": {
+        "decodedRgba1x": "4bb05bea94d95a1de46f72afa4d02f7005d07d9728c254b8cd6b1799eaab9c1c",
+        "decodedRgba2x": "324b1b1007d007d2f0591ffe754f43a9d7b776edbb924bc261b714e6da0fe7ef"
+      },
+      "bytes1x": 1051,
+      "bytes2x": 2991
+    },
+    "shell_flat_upright_180|top|left:shell_flat_sideways_270@52,71|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65": {
+      "id": "lying-0041",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|left:shell_flat_sideways_270@52,71|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": -35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 52,
+          "dy": 71
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0041.png",
+      "textureFile2x": "overlays/lying/2x/lying-0041.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5511,
+      "supportPx": 2034,
+      "sha256": {
+        "decodedRgba1x": "26f08e01ee81956d93c67027d3c1d23a9dd228c69dc12387c4b948d630ece125",
+        "decodedRgba2x": "8691f88f8c39d4f440cf783f1fe5f7b28cb7ad16ed79807b86b3075b2148e268"
+      },
+      "bytes1x": 1544,
+      "bytes2x": 4055
+    },
+    "shell_flat_upright_180|top|left:shell_flat_upright_180@35,65|up:shell_flat_upright_180@35,65": {
+      "id": "lying-0049",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|left:shell_flat_upright_180@35,65|up:shell_flat_upright_180@35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "left",
+          "dx": 35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0049.png",
+      "textureFile2x": "overlays/lying/2x/lying-0049.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6642,
+      "supportPx": 1832,
+      "sha256": {
+        "decodedRgba1x": "eee59084ffe7c0c12d8e6624af5e7c471284b8214d35813edd6e6e80ff313c95",
+        "decodedRgba2x": "91f52743b4ae5d8a80d676c71b501220ec35621d4e2f39d9bad892173c8b2f86"
+      },
+      "bytes1x": 1038,
+      "bytes2x": 2979
+    },
+    "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,6": {
+      "id": "lying-0028",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,6",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -103,
+          "dy": 6
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0028.png",
+      "textureFile2x": "overlays/lying/2x/lying-0028.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1988,
+      "supportPx": 402,
+      "sha256": {
+        "decodedRgba1x": "f73b58d496bf3f3317e1b3127cc40c417e0b15b92636c29a3a770b9fae39d69e",
+        "decodedRgba2x": "4d0ffc8c09c38ee4248490c3f1a91429664b3718bb28447abcc7959240f6e09a"
+      },
+      "bytes1x": 844,
+      "bytes2x": 1916
+    },
+    "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,6|up:shell_flat_upright_180@0,65": {
+      "id": "lying-0039",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,6|up:shell_flat_upright_180@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -103,
+          "dy": 6
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0039.png",
+      "textureFile2x": "overlays/lying/2x/lying-0039.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7068,
+      "supportPx": 3038,
+      "sha256": {
+        "decodedRgba1x": "6b11ac07766cc978bf6474270274240cf75f1c09587c2fc48c950c1e3ad08224",
+        "decodedRgba2x": "d05bd793d827bd8594a6092f89f7059747ea57abe5fc6f1d4bb1b6fa1ef7912c"
+      },
+      "bytes1x": 1733,
+      "bytes2x": 4961
+    },
+    "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,71|up:shell_flat_upright_180@0,65": {
+      "id": "lying-0032",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_sideways_270@-103,71|up:shell_flat_upright_180@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -103,
+          "dy": 71
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0032.png",
+      "textureFile2x": "overlays/lying/2x/lying-0032.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7401,
+      "supportPx": 2808,
+      "sha256": {
+        "decodedRgba1x": "4b0b6f3579b3de287d384a08f0f9e2083ebfe4b0d027b6d9a10099b7c24bc372",
+        "decodedRgba2x": "49fa4456ff5817c36a4c15536efa6793600988ccd5cf4a437899e5e247b62fe4"
+      },
+      "bytes1x": 1444,
+      "bytes2x": 4242
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@-35,65": {
+      "id": "lying-0042",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@-35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": -34,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -34,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0042.png",
+      "textureFile2x": "overlays/lying/2x/lying-0042.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6034,
+      "supportPx": 2535,
+      "sha256": {
+        "decodedRgba1x": "9876c504c4b2459baf77a080d0c4e425c24e9e4dc81dc3e5802438bbef6af606",
+        "decodedRgba2x": "df2e2f3bd53bb60d8baa8c1e6fc7dded12fb6f9e583523f0a34b922cd276434c"
+      },
+      "bytes1x": 1758,
+      "bytes2x": 5023
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@35,65": {
+      "id": "lying-0038",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -34,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0038.png",
+      "textureFile2x": "overlays/lying/2x/lying-0038.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7935,
+      "supportPx": 2797,
+      "sha256": {
+        "decodedRgba1x": "03d44c606581e741c2817b8d92e70371aae957a4beb55dc7f3dc2d20446f87d2",
+        "decodedRgba2x": "8baefbae95b3639f00effffdd8febdc3e4cb0f6a26027d2de4c8fd1b6fcb3f4f"
+      },
+      "bytes1x": 1276,
+      "bytes2x": 3589
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0": {
+      "id": "lying-0027",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0027.png",
+      "textureFile2x": "overlays/lying/2x/lying-0027.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2536,
+      "supportPx": 494,
+      "sha256": {
+        "decodedRgba1x": "c352b34e7d2d161ec0705d9cc95f6ad5064f1cf1b38f5f513b9937afcdd48afc",
+        "decodedRgba2x": "7b91bec0600f52f2498ae8de9dbcc1ef7b4ea1ba8321025b5a3d5ff56e075f93"
+      },
+      "bytes1x": 867,
+      "bytes2x": 2004
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_sideways_270@-17,71": {
+      "id": "lying-0035",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_sideways_270@-17,71",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": -17,
+          "dy": 71
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0035.png",
+      "textureFile2x": "overlays/lying/2x/lying-0035.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2766,
+      "supportPx": 2763,
+      "sha256": {
+        "decodedRgba1x": "4cbd0d8f4f23a6cef19d066f001cff25981fcaa60adb5f944c61d73c0d5a1fb6",
+        "decodedRgba2x": "ff822868913b7a9138d8a8ab7b2e2f1a25116b7dcafe32ca0b65797426dd162c"
+      },
+      "bytes1x": 1290,
+      "bytes2x": 3611
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_sideways_270@-34,71": {
+      "id": "lying-0043",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_sideways_270@-34,71",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": -34,
+          "dy": 71
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0043.png",
+      "textureFile2x": "overlays/lying/2x/lying-0043.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2588,
+      "supportPx": 2719,
+      "sha256": {
+        "decodedRgba1x": "52877e89e74801ee35f6d862c6be87870c36ac5bc84853dff0e2f7099621991b",
+        "decodedRgba2x": "19a562d06cb2c43934cb5c654a51ecd2bddcd810752621fec76294792c461e46"
+      },
+      "bytes1x": 1377,
+      "bytes2x": 3737
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65": {
+      "id": "lying-0046",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": -34,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0046.png",
+      "textureFile2x": "overlays/lying/2x/lying-0046.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5496,
+      "supportPx": 2780,
+      "sha256": {
+        "decodedRgba1x": "35320029375fcd3cedcb21361ee1741882b23d3e71052e5d1478ebbb1954791e",
+        "decodedRgba2x": "25d4e22bb1db288b0200181eaa424a546ec6e22535c9a7f6240946ae14957e5f"
+      },
+      "bytes1x": 2173,
+      "bytes2x": 6375
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@0,65": {
+      "id": "lying-0034",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0034.png",
+      "textureFile2x": "overlays/lying/2x/lying-0034.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7243,
+      "supportPx": 3070,
+      "sha256": {
+        "decodedRgba1x": "627f83e0358773c464821d47fdf0bba7713bd897970af6e6ff1a06a5adfcb410",
+        "decodedRgba2x": "83626e52a4fb7acc737fe15eb1a10e95156d00cafaf89b5cd527622504b24703"
+      },
+      "bytes1x": 1686,
+      "bytes2x": 5045
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@35,65": {
+      "id": "lying-0044",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0044.png",
+      "textureFile2x": "overlays/lying/2x/lying-0044.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5584,
+      "supportPx": 2167,
+      "sha256": {
+        "decodedRgba1x": "8f707f43f0eb19a0d0a1eac4ef7d4aed23631c37886a1829328dc01fc709cc67",
+        "decodedRgba2x": "31417d3947896730d6a014caad78381a1c34bbba97100ff6ab98833dcdb594e6"
+      },
+      "bytes1x": 1763,
+      "bytes2x": 5141
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,65|up:shell_flat_upright_180@0,65": {
+      "id": "lying-0030",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,65|up:shell_flat_upright_180@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -69,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0030.png",
+      "textureFile2x": "overlays/lying/2x/lying-0030.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7653,
+      "supportPx": 2823,
+      "sha256": {
+        "decodedRgba1x": "6f05c8fa3fbc438d856760779a0b336a389751cbca834f96dbfd4656426e2f92",
+        "decodedRgba2x": "13a19c04a83a491b7d8dca39cb2fe0ddd0ba5a03e34674c5f1bd123b35b96a93"
+      },
+      "bytes1x": 1485,
+      "bytes2x": 4187
+    },
+    "shell_flat_upright_180|top|up:shell_flat_sideways_270@-17,71": {
+      "id": "lying-0031",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|up:shell_flat_sideways_270@-17,71",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": -17,
+          "dy": 71
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0031.png",
+      "textureFile2x": "overlays/lying/2x/lying-0031.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1985,
+      "supportPx": 2458,
+      "sha256": {
+        "decodedRgba1x": "185003bdb0d23256db6ec03ab8b76da9644a88c9244ec35364997eb0a019a345",
+        "decodedRgba2x": "0b0bc1d4f19db4a787b39ad61608edfd56f746c2e4bab72867b71b74628cf32e"
+      },
+      "bytes1x": 1024,
+      "bytes2x": 3001
+    },
+    "shell_flat_upright_180|top|up:shell_flat_sideways_270@-34,71": {
+      "id": "lying-0037",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|up:shell_flat_sideways_270@-34,71",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": -34,
+          "dy": 71
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0037.png",
+      "textureFile2x": "overlays/lying/2x/lying-0037.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1924,
+      "supportPx": 2410,
+      "sha256": {
+        "decodedRgba1x": "9e1b580afc5c8022e1c5128fe597339d2c98c199cc525fb53588a7a62527b856",
+        "decodedRgba2x": "565b16a59a8057a5dbd6391da90ee1e8fac53bfc3823163fd565858472e2ba82"
+      },
+      "bytes1x": 1130,
+      "bytes2x": 3256
+    },
+    "shell_flat_upright_180|top|up:shell_flat_upright_180@0,65": {
+      "id": "lying-0048",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|up:shell_flat_upright_180@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0048.png",
+      "textureFile2x": "overlays/lying/2x/lying-0048.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7408,
+      "supportPx": 2810,
+      "sha256": {
+        "decodedRgba1x": "8d634c8cb9dcb16f9fc2c2ebfec82b433fb913f82697ca6c71a7167db51f65ff",
+        "decodedRgba2x": "1f8742eeadc19f4d944921e1b406527a486284b36e7da2cae368c42ecda8cb56"
+      },
+      "bytes1x": 1467,
+      "bytes2x": 4251
+    },
+    "shell_flat_upright|bottom|left:shell_flat_upright@35,65|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65": {
+      "id": "lying-0012",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|left:shell_flat_upright@35,65|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "left",
+          "dx": 35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0012.png",
+      "textureFile2x": "overlays/lying/2x/lying-0012.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5985,
+      "supportPx": 2234,
+      "sha256": {
+        "decodedRgba1x": "21a16f645bc6700db44b83dab5d5665061feea9adb21565c536cdd8cb0459861",
+        "decodedRgba2x": "747809a27bca0ca0fb3fcea696b6014cba861dba44c58deb5afa9968d91b4c87"
+      },
+      "bytes1x": 1461,
+      "bytes2x": 4228
+    },
+    "shell_flat_upright|bottom|right:shell_flat_sideways@-104,13": {
+      "id": "lying-0003",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_sideways@-104,13",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -105,
+          "dy": 13
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0003.png",
+      "textureFile2x": "overlays/lying/2x/lying-0003.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2697,
+      "supportPx": 494,
+      "sha256": {
+        "decodedRgba1x": "675e58fb3ad872a6166526e43ef4b7f5c6f1204f3d84d5c0da6178f10bf6ebce",
+        "decodedRgba2x": "98116f20b1cc8b961b6659dce700320aafdf60aedf4679d321e44b4714eb3152"
+      },
+      "bytes1x": 914,
+      "bytes2x": 2394
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-35,65|up:shell_flat_upright@-35,65": {
+      "id": "lying-0009",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-35,65|up:shell_flat_upright@-35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": -35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0009.png",
+      "textureFile2x": "overlays/lying/2x/lying-0009.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5956,
+      "supportPx": 2520,
+      "sha256": {
+        "decodedRgba1x": "413eaf6c0e3f592394caea3ffe8c5de468d0c1f6f7923e054fd2c5940b40ebab",
+        "decodedRgba2x": "20f9584c6a8c081e0d982e6bd8b2a15b945cd6699dfb87c1fa5de925f09b4316"
+      },
+      "bytes1x": 1733,
+      "bytes2x": 5116
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0": {
+      "id": "lying-0001",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0001.png",
+      "textureFile2x": "overlays/lying/2x/lying-0001.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2531,
+      "supportPx": 495,
+      "sha256": {
+        "decodedRgba1x": "6c238651073c959f897fffb456e7c57cee323db94ffed5cde34c2068eba5acb2",
+        "decodedRgba2x": "750713dac1096d26d94f350ab94f729e5c03f93afc08c996abbb05d17f64d3ae"
+      },
+      "bytes1x": 868,
+      "bytes2x": 1995
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@-70,78": {
+      "id": "lying-0013",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@-70,78",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": -70,
+          "dy": 78
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0013.png",
+      "textureFile2x": "overlays/lying/2x/lying-0013.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2161,
+      "supportPx": 570,
+      "sha256": {
+        "decodedRgba1x": "0889d28d07fecc81bc178b7f084bd783951a43ace197bc81eac6fff0ea7803ce",
+        "decodedRgba2x": "2b696d51d75f5b5d192aef66a771849a9b7e727295caa5d565c62bcfc2a3da78"
+      },
+      "bytes1x": 885,
+      "bytes2x": 2126
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@-86,78": {
+      "id": "lying-0006",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@-86,78",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": -86,
+          "dy": 78
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0006.png",
+      "textureFile2x": "overlays/lying/2x/lying-0006.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2864,
+      "supportPx": 618,
+      "sha256": {
+        "decodedRgba1x": "43f54352eef62512de837ba29c947229680486290a473114c38ec31874987f47",
+        "decodedRgba2x": "f1c51b0baa3c37144813c72f18cbc31a6f895157d6e2556e7afc17e3a426c874"
+      },
+      "bytes1x": 953,
+      "bytes2x": 2301
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@0,78": {
+      "id": "lying-0014",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_sideways@0,78",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": -1,
+          "dy": 78
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0014.png",
+      "textureFile2x": "overlays/lying/2x/lying-0014.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1757,
+      "supportPx": 460,
+      "sha256": {
+        "decodedRgba1x": "eeb9ca7f2c0049ca16255bf52b41a00e6b3754eb390d45c22633af09897f9646",
+        "decodedRgba2x": "51e3ca382f1cf632db9fa42c556cbf747435bf5069edd4fe7b182b699446e405"
+      },
+      "bytes1x": 757,
+      "bytes2x": 1779
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@-35,65": {
+      "id": "lying-0011",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@-35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": -35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0011.png",
+      "textureFile2x": "overlays/lying/2x/lying-0011.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5313,
+      "supportPx": 2780,
+      "sha256": {
+        "decodedRgba1x": "57b852c68d50ff1650cc9637a244ce8d642c019ca9ed85d16e24ce80073db604",
+        "decodedRgba2x": "1592d35e4fee7be97eb070f4a759f977b6a898a467d4e04050efc258db5ac9a8"
+      },
+      "bytes1x": 2191,
+      "bytes2x": 6287
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@0,65": {
+      "id": "lying-0008",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0008.png",
+      "textureFile2x": "overlays/lying/2x/lying-0008.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7112,
+      "supportPx": 3078,
+      "sha256": {
+        "decodedRgba1x": "d979e9e75acd24da3868b0190928db0dd1f88cb024a5afb1bc65e25ed32515d4",
+        "decodedRgba2x": "08647ac62cb9447a319858a9d4272d70e0157d0fda1e512f6704ff14ef0ac6db"
+      },
+      "bytes1x": 1702,
+      "bytes2x": 4935
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65": {
+      "id": "lying-0015",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 34,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0015.png",
+      "textureFile2x": "overlays/lying/2x/lying-0015.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5462,
+      "supportPx": 2217,
+      "sha256": {
+        "decodedRgba1x": "749ce1af46e41ed9b0dfe08944e95ed4aa36b60cc4ed518438274ace2caac820",
+        "decodedRgba2x": "c6c76b00329c2ed0c94296a5e756dd3de1029b56a586a25e78071b1b3613f99a"
+      },
+      "bytes1x": 1807,
+      "bytes2x": 5039
+    },
+    "shell_flat_upright|bottom|up:shell_flat_sideways@-17,78": {
+      "id": "lying-0007",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|up:shell_flat_sideways@-17,78",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": -17,
+          "dy": 78
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0007.png",
+      "textureFile2x": "overlays/lying/2x/lying-0007.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1153,
+      "supportPx": 61,
+      "sha256": {
+        "decodedRgba1x": "ab2980f61abae4f192ff864f97812913a7eeee966031e45a92f24472605db20c",
+        "decodedRgba2x": "023e68fc3d06269dc54daeee29bbe782fd6bce7794307e18cb334838679b112a"
+      },
+      "bytes1x": 361,
+      "bytes2x": 712
+    },
+    "shell_flat_upright|bottom|up:shell_flat_upright@0,65": {
+      "id": "lying-0004",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|up:shell_flat_upright@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0004.png",
+      "textureFile2x": "overlays/lying/2x/lying-0004.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7408,
+      "supportPx": 2810,
+      "sha256": {
+        "decodedRgba1x": "8d634c8cb9dcb16f9fc2c2ebfec82b433fb913f82697ca6c71a7167db51f65ff",
+        "decodedRgba2x": "bdfc67bce402362becea4a504b9ea502ed0d941bd6ff43a09cced9fcda60b1c8"
+      },
+      "bytes1x": 1467,
+      "bytes2x": 4247
+    },
+    "shell_flat_upright|left|up:shell_flat_sideways_270@-17,66": {
+      "id": "lying-0054",
+      "target": "shell_flat_upright",
+      "zoneSide": "left",
+      "signature": "shell_flat_upright|left|up:shell_flat_sideways_270@-17,66",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": -17,
+          "dy": 66
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0054.png",
+      "textureFile2x": "overlays/lying/2x/lying-0054.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.704,
+      "supportPx": 2777,
+      "sha256": {
+        "decodedRgba1x": "9b3253a1dab7e986a649c6ccad9df75077e15007a8a268f09348e626cb6b89e4",
+        "decodedRgba2x": "8c585df358901cefddab99b72b59bca72ece78df9f8512db37fe1dcb9d1c9a8d"
+      },
+      "bytes1x": 1792,
+      "bytes2x": 5384
+    },
+    "shell_flat_upright|left|up:shell_flat_sideways_270@-17,71": {
+      "id": "lying-0052",
+      "target": "shell_flat_upright",
+      "zoneSide": "left",
+      "signature": "shell_flat_upright|left|up:shell_flat_sideways_270@-17,71",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": -17,
+          "dy": 71
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0052.png",
+      "textureFile2x": "overlays/lying/2x/lying-0052.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1985,
+      "supportPx": 2458,
+      "sha256": {
+        "decodedRgba1x": "185003bdb0d23256db6ec03ab8b76da9644a88c9244ec35364997eb0a019a345",
+        "decodedRgba2x": "4b7d52014a51f7b40cf4d7cdca253ae18c7327b8e711df00ce3b4bf5e5aab4e7"
+      },
+      "bytes1x": 1024,
+      "bytes2x": 2993
+    }
+  }
+}

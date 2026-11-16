@@ -84,6 +84,14 @@ export interface LayoutHitBox {
   readonly height: number;
 }
 
+/** The logical cell a lying tile occupies (the 3D catch bake needs it). */
+export interface PlacedCell {
+  readonly row?: number;
+  readonly column?: number;
+  readonly slot?: number;
+  readonly tier?: number;
+}
+
 /** One shell placed on the board. */
 export interface PlacedTile {
   /** Key into `shells.json` (`shell_hand_slot_06`, `shell_flat_upright`, ...). */
@@ -105,6 +113,8 @@ export interface PlacedTile {
   readonly dora: boolean;
   /** True on a Riichi declaration discard. */
   readonly riichi: boolean;
+  /** Logical cell for the lying-family catch bake; absent on standing shells. */
+  readonly cell?: PlacedCell;
 }
 
 /** A placed zone in its own local coordinate space, starting at (0, 0). */
@@ -233,6 +243,7 @@ interface RawTile {
   readonly faceY: number;
   readonly dora: boolean;
   readonly riichi: boolean;
+  readonly cell?: PlacedCell;
 }
 
 interface ZoneSeed {
@@ -597,6 +608,7 @@ function finishZone(manifest: ShellsManifest, seed: ZoneSeed): LayoutZone {
       },
       dora: tile.dora,
       riichi: tile.riichi,
+      ...(tile.cell === undefined ? {} : { cell: tile.cell }),
     };
   };
 
@@ -762,12 +774,13 @@ export function layoutMeld(manifest: ShellsManifest, options: MeldLayoutOptions)
     options.faces.map((face, index) => ({ face, turned: index === calledIndex })),
     [0, 0],
   );
+  const cells = row.map((tile, column) => ({ ...tile, cell: { column } }));
   return finishZone(manifest, {
     id: `melds-${side}`,
     kind: 'melds',
     side,
-    bodies: paintOrderForRow(row),
-    shadows: row,
+    bodies: paintOrderForRow(cells),
+    shadows: cells,
     sigmaShell: flatShellsForSeat(manifest, side).normalId,
   });
 }
@@ -815,8 +828,11 @@ export function layoutPond(manifest: ShellsManifest, options: PondLayoutOptions)
       })),
       startFace,
     );
-    shadows.push(...row);
-    row.forEach((tile, columnIndex) => placed.push({ tile, rowIndex, columnIndex }));
+    row.forEach((tile, columnIndex) => {
+      const cell = { ...tile, cell: { row: rowIndex, column: columnIndex } };
+      placed.push({ tile: cell, rowIndex, columnIndex });
+      shadows.push(cell);
+    });
   }
 
   // Depth is the screen-y grid line: row-major for the front/back ponds,
@@ -879,7 +895,10 @@ export function layoutWall(manifest: ShellsManifest, options: WallLayoutOptions)
     const id = wallSlotId(options.wall, index);
     const shell = shellOf(manifest, id);
     baseShells.set(index, shell);
-    lowers.set(index, placeAtFace(id, shell, null, index * step, 0));
+    lowers.set(index, {
+      ...placeAtFace(id, shell, null, index * step, 0),
+      cell: { slot: index, tier: 0 },
+    });
   }
 
   const order = fanOrder(indices);
@@ -893,14 +912,17 @@ export function layoutWall(manifest: ShellsManifest, options: WallLayoutOptions)
     const dora = options.doraIndex === index;
     const id = wallSlotId(options.wall, index, dora);
     const shell = shellOf(manifest, id);
-    return placeAtGrid(
-      id,
-      shell,
-      null,
-      lower.gridX + down.stackStepPx[0],
-      lower.gridY + down.stackStepPx[1],
-      dora,
-    );
+    return {
+      ...placeAtGrid(
+        id,
+        shell,
+        null,
+        lower.gridX + down.stackStepPx[0],
+        lower.gridY + down.stackStepPx[1],
+        dora,
+      ),
+      cell: { slot: index, tier: 1 },
+    };
   });
 
   return finishZone(manifest, {
@@ -943,22 +965,26 @@ export function layoutSideWall(
   const step: PointPx = downAxis[1] < 0 ? [-downAxis[0], -downAxis[1]] : downAxis;
   const indices = Array.from({ length: count }, (_, offset) => startIndex + offset);
 
-  const lowers = indices.map((index) =>
-    placeAtFace(baseId, base, null, index * step[0], index * step[1]),
-  );
+  const lowers = indices.map((index) => ({
+    ...placeAtFace(baseId, base, null, index * step[0], index * step[1]),
+    cell: { slot: index, tier: 0 },
+  }));
   const uppers = indices.map((index) => {
     const lower = lowers[index - startIndex];
     const dora = options.doraIndex === index;
     const id = dora ? `${baseId}_faceup` : baseId;
     const shell = shellOf(manifest, id);
-    return placeAtGrid(
-      id,
-      shell,
-      null,
-      lower.gridX + base.stackStepPx![0],
-      lower.gridY + base.stackStepPx![1],
-      dora,
-    );
+    return {
+      ...placeAtGrid(
+        id,
+        shell,
+        null,
+        lower.gridX + base.stackStepPx![0],
+        lower.gridY + base.stackStepPx![1],
+        dora,
+      ),
+      cell: { slot: index, tier: 1 },
+    };
   });
 
   return finishZone(manifest, {

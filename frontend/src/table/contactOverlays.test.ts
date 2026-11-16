@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parseCatchesManifest } from './catchManifest';
+import { parseLyingCatchesManifest } from './lyingCatchManifest';
+import type { LyingCatchesManifest } from './lyingCatchManifest';
 import type { CatchesManifest } from './catchManifest';
 import { parseOverlayManifest } from './overlayManifest';
 import type { OverlayManifest } from './overlayManifest';
@@ -35,6 +37,9 @@ const overlays: OverlayManifest = parseOverlayManifest(
 );
 const catches: CatchesManifest = parseCatchesManifest(
   JSON.parse(readFileSync(join(tableDir, 'catches.json'), 'utf8')),
+);
+const lyingCatches: LyingCatchesManifest = parseLyingCatchesManifest(
+  JSON.parse(readFileSync(join(tableDir, 'lying-catches.json'), 'utf8')),
 );
 const fixture = JSON.parse(readFileSync(join(renderDir, 'overlay-zones.json'), 'utf8'));
 
@@ -73,7 +78,7 @@ const shapeOf = (zone: LayoutZone) => ({
     drawY: body.drawY,
   })),
   contacts: (() => {
-    const resolved = resolveContactOverlays(manifest, overlays, zone, catches);
+    const resolved = resolveContactOverlays(manifest, overlays, zone, catches, lyingCatches);
     const active = new Set(
       resolved.map((overlay) => `${overlay.bodyIndex}:${overlay.casterIndex}:${overlay.contact}`),
     );
@@ -85,12 +90,13 @@ const shapeOf = (zone: LayoutZone) => ({
         side: edge.side,
       }));
   })(),
-  overlays: resolveContactOverlays(manifest, overlays, zone, catches).map((overlay) => ({
+  overlays: resolveContactOverlays(manifest, overlays, zone, catches, lyingCatches).map((overlay) => ({
     bodyIndex: overlay.bodyIndex,
     casterIndex: overlay.casterIndex,
     shell: overlay.shell,
     contact: overlay.contact,
     kind: overlay.kind,
+    cacheKey: overlay.cacheKey ?? null,
     drawX: overlay.drawX,
     drawY: overlay.drawY,
     texWidth: overlay.texWidth,
@@ -138,6 +144,14 @@ describe('overlay manifest', () => {
     expect(resolved.length).toBe(12);
     expect(resolved.every((overlay) => overlay.kind === 'catch')).toBe(true);
     expect(resolved.every((overlay) => overlay.texWidth > 0 && overlay.texHeight > 0)).toBe(true);
+  });
+
+  it('publishes lying catches for the pond and meld signatures', () => {
+    expect(Object.keys(lyingCatches.catches).length).toBeGreaterThan(50);
+    expect(lyingCatches.combination).toBe('physical+ao');
+    const record = Object.values(lyingCatches.catches)[0];
+    expect(record.signature).toBeDefined();
+    expect(record.casters.length).toBeGreaterThan(0);
   });
 
   it('enables only the human hand fan and publishes the right-side override', () => {
@@ -200,7 +214,7 @@ describe('contact edges', () => {
 
   it('uses a whole-pixel decal position and attaches it to an earlier body', () => {
     for (const zone of fixtureZones()) {
-      for (const overlay of resolveContactOverlays(manifest, overlays, zone, catches)) {
+      for (const overlay of resolveContactOverlays(manifest, overlays, zone, catches, lyingCatches)) {
         expect(Number.isInteger(overlay.drawX)).toBe(true);
         expect(Number.isInteger(overlay.drawY)).toBe(true);
         expect(overlay.bodyIndex).toBeLessThan(overlay.casterIndex);
@@ -212,7 +226,7 @@ describe('contact edges', () => {
 
   it('keeps every clip polygon inside the neighbour advance box', () => {
     for (const zone of fixtureZones()) {
-      for (const overlay of resolveContactOverlays(manifest, overlays, zone, catches)) {
+      for (const overlay of resolveContactOverlays(manifest, overlays, zone, catches, lyingCatches)) {
         const neighbour = zone.bodies[overlay.bodyIndex];
         const shell = manifest.shells[neighbour.shell];
         const left = neighbour.drawX + shell.padding.left;
@@ -234,12 +248,12 @@ describe('contact edges', () => {
   });
 
   it('keeps the disabled families unshadowed and enables the hand', () => {
-    const pond = layoutPond(manifest, { discards: POND_DISCARDS });
+    const pond = layoutPond(manifest, { discards: POND_DISCARDS.slice(0, 24) });
+    expect(resolveContactOverlays(manifest, overlays, pond, catches, lyingCatches).length).toBeGreaterThan(0);
     const wall = layoutWall(manifest, { wall: 'front', doraIndex: 12 });
-    expect(resolveContactOverlays(manifest, overlays, pond, catches)).toEqual([]);
-    expect(resolveContactOverlays(manifest, overlays, wall, catches)).toEqual([]);
+    expect(resolveContactOverlays(manifest, overlays, wall, catches, lyingCatches)).toEqual([]);
     const hand = layoutHand(manifest, { faces: FACES.slice(0, 13), draw: '5p' });
-    expect(resolveContactOverlays(manifest, overlays, hand, catches).length).toBeGreaterThan(0);
+    expect(resolveContactOverlays(manifest, overlays, hand, catches, lyingCatches).length).toBeGreaterThan(0);
   });
 
   it('derives the side hand L-shaped sliver as two contact sides', () => {
@@ -319,6 +333,6 @@ describe('contact edges', () => {
         }
       }
     }
-    expect(validateOverlayCoverage(manifest, overlays, zones, catches)).toEqual([]);
+    expect(validateOverlayCoverage(manifest, overlays, zones, catches, lyingCatches)).toEqual([]);
   }, 30_000);
 });

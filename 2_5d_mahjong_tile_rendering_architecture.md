@@ -1466,7 +1466,13 @@ is a straight-alpha ink overlay in the target's own texture coordinates, one per
 covered slot (12 hand + 12 top + 2 side = 26), published in `catches.json`; the
 compositor draws it at the target's `drawX/drawY`, after the target body and
 before the caster body, clipped to the target's **full advance box**, not the
-synthetic bands' inset `bodyQuads` hull. The catch is already masked to the
+synthetic bands' inset `bodyQuads` hull. The lying ponds and melds extend the
+same method with multiple primary casters: the distinct
+`target | zone side | nearest caster per side` signatures from the full
+pond/meld stress matrix are published in `lying-catches.json` (**66 catches**,
+447,906 B). The resolver selects a lying catch by that signature before falling
+back to the standing `target:caster` catch or a synthetic band. Walls remain
+disabled. The catch is already masked to the
 target's opaque body; the inset hull clips the bevel at the body edge and leaves
 a bright sliver on the target's bottom/side face (the small light line at the
 bottom of the right-half hand's left face). The synthetic bands (including the σ 2.5/α 0.50

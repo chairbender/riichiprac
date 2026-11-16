@@ -17,6 +17,7 @@
     "experiment:review": "vite-node scripts/review-contact-shadow-experiment.ts",
     "lying:samples": "vite-node scripts/export-lying-samples.ts",
     "lying:review": "vite-node scripts/review-lying-samples.ts",
+    "lying:export": "vite-node scripts/export-lying-catches.ts",
     "tune:carved": "vite-node scripts/tune-carved.ts"
   },
   "dependencies": {

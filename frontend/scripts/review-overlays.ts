@@ -19,6 +19,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { parseCatchesManifest } from '../src/table/catchManifest';
+import { parseLyingCatchesManifest } from '../src/table/lyingCatchManifest';
+import type { LyingCatchesManifest } from '../src/table/lyingCatchManifest';
 import type { CatchesManifest } from '../src/table/catchManifest';
 import { parseOverlayManifest } from '../src/table/overlayManifest';
 import type { OverlayManifest } from '../src/table/overlayManifest';
@@ -55,6 +57,9 @@ const overlays: OverlayManifest = parseOverlayManifest(
 );
 const catches: CatchesManifest = parseCatchesManifest(
   JSON.parse(readFileSync(join(tableDir, 'catches.json'), 'utf8')),
+);
+const lyingCatches: LyingCatchesManifest = parseLyingCatchesManifest(
+  JSON.parse(readFileSync(join(tableDir, 'lying-catches.json'), 'utf8')),
 );
 const spec = JSON.parse(readFileSync(join(renderDir, 'shell-spec.json'), 'utf8'));
 const feltSpec = JSON.parse(readFileSync(join(renderDir, 'felt-spec.json'), 'utf8'));
@@ -146,7 +151,7 @@ const zones: Array<{ zone: LayoutZone; label: string; note: string }> = [
 ];
 
 const overlaysOf = (zone: LayoutZone): ContactOverlay[] =>
-  resolveContactOverlays(manifest, overlays, zone, catches);
+  resolveContactOverlays(manifest, overlays, zone, catches, lyingCatches);
 
 async function drawTile(
   context: Context,
@@ -315,16 +320,15 @@ zoneContext.fillRect(0, 0, zoneSheetWidth, zoneSheetHeight);
 zoneContext.fillStyle = INK;
 zoneContext.font = 'bold 18px sans-serif';
 zoneContext.fillText(
-  'Contact shadows by zone family — 3D catches on the human hand only',
+  'Contact shadows by zone family — 3D catches on the standing hands and the lying ponds/melds',
   ZONE_MARGIN,
   ZONE_MARGIN + 6,
 );
 zoneContext.font = '12px sans-serif';
 zoneContext.fillStyle = MUTED;
 zoneContext.fillText(
-  'Each decal is drawn after the neighbour it lands on and before the caster body. ' +
-    'The group blur is unchanged. The lying face-up ponds/melds, top hand and walls are ' +
-    'deliberately unshadowed for now.',
+  'Each catch is drawn after its target body and before its casters; synthetic bands remain the ' +
+    'fallback. The group blur is unchanged. The walls are still baseline.',
   ZONE_MARGIN,
   ZONE_MARGIN + 26,
 );
@@ -378,16 +382,16 @@ pondContext.fillRect(0, 0, pondSheetWidth, pondSheetHeight);
 pondContext.fillStyle = INK;
 pondContext.font = 'bold 18px sans-serif';
 pondContext.fillText(
-  'Four ponds — contact shadows disabled for face-up lying tiles (baseline)',
+  'Four ponds — 3D target-space catches by seat',
   ZONE_MARGIN,
   ZONE_MARGIN + 6,
 );
 pondContext.font = '12px sans-serif';
 pondContext.fillStyle = MUTED;
 pondContext.fillText(
-  'Phase 3.5 follow-up: the face-up lying family is intentionally unshadowed because the bands read ' +
-    'as smudges. Each panel shows the composed pond and the same 2× crop; the side ponds keep their ' +
-    '1° whole-zone lean. The human hand sheet is the active review.',
+  'Each seat uses its own target-space catches (physical + contact AO). Each panel shows the composed ' +
+    'pond, then the same 2× seam crop with and without the catches; the side ponds keep their 1° ' +
+    'whole-zone lean as one group transform.',
   ZONE_MARGIN,
   ZONE_MARGIN + 26,
 );
@@ -408,7 +412,7 @@ for (let index = 0; index < pondComposed.length; index += 1) {
   pondContext.font = 'bold 13px sans-serif';
   pondContext.fillText(
     `${POND_LABEL[side]} · ${zone.width}×${zone.height} · ${zone.bodies.length} bodies` +
-      numbers && numbers.overlays > 0 ? ` · ${numbers.overlays} decals` : ' · contact shadows disabled',
+      numbers && numbers.overlays > 0 ? ` · ${numbers.overlays} catches` : ' · no catches',
     originX,
     originY + 14,
   );

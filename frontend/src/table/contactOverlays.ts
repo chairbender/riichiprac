@@ -26,6 +26,8 @@
 import type { ShellStats, ShellsManifest } from './shellManifest';
 import { catchFor } from './catchManifest';
 import type { CatchesManifest } from './catchManifest';
+import { lyingCatchFor } from './lyingCatchManifest';
+import type { LyingCatchesManifest } from './lyingCatchManifest';
 import type { OverlayDecal, OverlayManifest, OverlaySide } from './overlayManifest';
 import { isOverlayEnabled, overlayDecalFor } from './overlayManifest';
 import type { LayoutZone, PlacedTile } from './zoneLayout';
@@ -79,6 +81,8 @@ export interface ContactOverlay {
    * off the felt where an oblique body does not fill its box.
    */
   readonly clip: BodyBox & { readonly points: readonly (readonly [number, number])[] };
+  /** The cache key for a catch (the lying signature); absent on a synthetic band. */
+  readonly cacheKey?: string;
 }
 
 /** The drawn (opaque) body box of a placed tile, in zone-local @1x px. */
@@ -219,6 +223,100 @@ function clipFor(target: BodyBox): BodyBox {
 }
 
 /**
+ * The nearest contact per caster side for a target. A lying target can be
+ * touched by several neighbours; the catch bake includes one primary caster per
+ * side and the runtime signature uses the same selection.
+ */
+export function primaryContacts(
+  manifest: ShellsManifest,
+  zone: LayoutZone,
+  targetIndex: number,
+): ContactEdge[] {
+  const target = zone.bodies[targetIndex];
+  const bySide = new Map<OverlaySide, ContactEdge>();
+  for (const edge of contactEdges(manifest, zone)) {
+    if (edge.bodyIndex !== targetIndex) continue;
+    const caster = zone.bodies[edge.casterIndex];
+    const distance = Math.abs(caster.gridX - target.gridX) + Math.abs(caster.gridY - target.gridY);
+    const previous = bySide.get(edge.side);
+    if (!previous) {
+      bySide.set(edge.side, edge);
+      continue;
+    }
+    const previousCaster = zone.bodies[previous.casterIndex];
+    const previousDistance =
+      Math.abs(previousCaster.gridX - target.gridX) + Math.abs(previousCaster.gridY - target.gridY);
+    if (distance < previousDistance) bySide.set(edge.side, edge);
+  }
+  return [...bySide.values()];
+}
+
+/** The stable catch signature for a lying target. */
+export function lyingSignature(
+  zone: LayoutZone,
+  targetIndex: number,
+  primaries: readonly ContactEdge[],
+): string {
+  const target = zone.bodies[targetIndex];
+  const parts = primaries
+    .map((edge) => {
+      const caster = zone.bodies[edge.casterIndex];
+      const dx = Math.round(caster.gridX - target.gridX);
+      const dy = Math.round(caster.gridY - target.gridY);
+      return `${edge.side}:${caster.shell}@${dx},${dy}`;
+    })
+    .sort();
+  return `${target.shell}|${zone.side ?? '-'}|${parts.join('|')}`;
+}
+
+/** A lying target's catch, resolved by its signature. */
+export function lyingCatchForZone(
+  manifest: ShellsManifest,
+  lyingCatches: LyingCatchesManifest | null | undefined,
+  zone: LayoutZone,
+  targetIndex: number,
+): { readonly overlay: ContactOverlay; readonly signature: string } | null {
+  if (!lyingCatches || (zone.kind !== 'pond' && zone.kind !== 'melds')) return null;
+  const primaries = primaryContacts(manifest, zone, targetIndex);
+  if (primaries.length === 0) return null;
+  const signature = lyingSignature(zone, targetIndex, primaries);
+  const record = lyingCatchFor(lyingCatches, signature);
+  if (!record) return null;
+  const target = zone.bodies[targetIndex];
+  const shell = manifest.shells[target.shell];
+  if (!shell) return null;
+  const box = bodyBoxOf(target, shell);
+  const last = primaries.reduce((max, edge) => (edge.casterIndex > max.casterIndex ? edge : max));
+  const caster = zone.bodies[last.casterIndex];
+  return {
+    signature,
+    overlay: {
+      bodyIndex: targetIndex,
+      casterIndex: last.casterIndex,
+      shell: caster.shell,
+      contact: last.side,
+      kind: 'catch',
+      textureFile: record.textureFile,
+      textureFile2x: record.textureFile2x,
+      drawX: target.drawX,
+      drawY: target.drawY,
+      texWidth: record.texWidth,
+      texHeight: record.texHeight,
+      clip: {
+        ...box,
+        points: [
+          [box.x, box.y],
+          [box.x + box.width, box.y],
+          [box.x + box.width, box.y + box.height],
+          [box.x, box.y + box.height],
+        ],
+      },
+      cacheKey: signature,
+    },
+  };
+}
+
+/**
  * Resolve a zone's contact edges to published decals. Missing decals are
  * skipped; `validateOverlayCoverage` is the test-time gate that the committed
  * manifest covers every layout the engine can produce.
@@ -228,11 +326,22 @@ export function resolveContactOverlays(
   overlays: OverlayManifest,
   zone: LayoutZone,
   catches?: CatchesManifest | null,
+  lyingCatches?: LyingCatchesManifest | null,
 ): ContactOverlay[] {
   const shells = manifest.shells;
   const resolved: ContactOverlay[] = [];
   const usedCatches = new Set<string>();
+  const lyingTargets = new Set<number>();
+  if (zone.kind === 'pond' || zone.kind === 'melds') {
+    for (let index = 0; index < zone.bodies.length; index += 1) {
+      const lying = lyingCatchForZone(manifest, lyingCatches, zone, index);
+      if (!lying) continue;
+      resolved.push(lying.overlay);
+      lyingTargets.add(index);
+    }
+  }
   for (const edge of contactEdges(manifest, zone)) {
+    if (lyingTargets.has(edge.bodyIndex)) continue;
     const target = zone.bodies[edge.bodyIndex];
     const caster = zone.bodies[edge.casterIndex];
     const shell = shells[caster.shell];
@@ -318,10 +427,18 @@ export function validateOverlayCoverage(
   overlays: OverlayManifest,
   zones: readonly LayoutZone[],
   catches?: CatchesManifest | null,
+  lyingCatches?: LyingCatchesManifest | null,
 ): string[] {
   const missing: string[] = [];
   for (const zone of zones) {
+    const lyingTargets = new Set<number>();
+    if (zone.kind === 'pond' || zone.kind === 'melds') {
+      for (let index = 0; index < zone.bodies.length; index += 1) {
+        if (lyingCatchForZone(manifest, lyingCatches, zone, index)) lyingTargets.add(index);
+      }
+    }
     for (const edge of contactEdges(manifest, zone)) {
+      if (lyingTargets.has(edge.bodyIndex)) continue;
       const target = zone.bodies[edge.bodyIndex];
       const caster = zone.bodies[edge.casterIndex];
       if (catchFor(catches, target.shell, caster.shell)) continue;

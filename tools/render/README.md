@@ -45,6 +45,7 @@ bash tools/render/bake-overlays.sh --check # contact decals + composed pixels; n
 bash tools/render/bake-hand-catches.sh        # production 3D hand catches + check
 bash tools/render/bake-contact-shadow-experiment.sh  # 3D shadow-catch experiment; build-only
 bash tools/render/bake-lying-samples.sh          # lying-family catch samples; build-only
+bash tools/render/bake-lying-catches.sh          # production pond/meld catches + review
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
 node tools/render/scripts/preview-group-shadow.mjs  # merged vs per-tile group shadows; no Blender
 node tools/render/scripts/bake-faces.mjs   # bake the 37 face glyphs + faces.json (resvg)

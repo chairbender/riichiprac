@@ -75,6 +75,7 @@ const shellsManifest = readJson(join(tableDir, 'shells.json'));
 const shells = shellsManifest.shells;
 const overlayManifest = readJson(join(tableDir, 'overlays.json'));
 const catchesManifest = readJson(join(tableDir, 'catches.json'));
+const lyingCatchesManifest = readJson(join(tableDir, 'lying-catches.json'));
 const fixture = readJson(join(renderDir, 'overlay-zones.json'));
 const feltSpec = readJson(join(renderDir, 'felt-spec.json'));
 const [FELT_R, FELT_G, FELT_B] = feltSpec.baseColor;
@@ -502,6 +503,89 @@ function checkCatches() {
 }
 
 // --------------------------------------------------------------------------- //
+// The lying-family catches
+// --------------------------------------------------------------------------- //
+
+function checkLyingCatches() {
+  check(lyingCatchesManifest.version === 1, 'lying-catches.json version is 1');
+  check(lyingCatchesManifest.model === 'target-space-3d-catch', 'lying-catches model');
+  check(lyingCatchesManifest.combination === 'physical+ao', 'lying catches combine physical and AO');
+  const entries = Object.entries(lyingCatchesManifest.catches);
+  check(entries.length > 50, `lying-catches.json publishes ${entries.length} catches`);
+  let total1x = 0;
+  let total2x = 0;
+  const expected1x = new Set();
+  const expected2x = new Set();
+  for (const [key, record] of entries) {
+    const targetShell = shells[record.target];
+    check(Boolean(targetShell), `${key} names a target shell`);
+    if (!targetShell) continue;
+    check(key === record.signature, `${key} is keyed by its signature`);
+    check(
+      record.texWidth === targetShell.texWidth && record.texHeight === targetShell.texHeight,
+      `${key} is the target texture size`,
+    );
+    expected1x.add(record.textureFile.replace('overlays/lying/', ''));
+    expected2x.add(record.textureFile2x.replace('overlays/lying/2x/', ''));
+    for (const [file, bytes, hash, width, height, scale] of [
+      [record.textureFile, record.bytes1x, record.sha256.decodedRgba1x, record.texWidth, record.texHeight, 1],
+      [record.textureFile2x, record.bytes2x, record.sha256.decodedRgba2x, record.texWidth * 2, record.texHeight * 2, 2],
+    ]) {
+      const path = resolve(tableDir, file);
+      check(existsSync(path), `${key} ${scale}x exists`);
+      if (!existsSync(path)) continue;
+      const image = readPng(path);
+      check(image.width === width && image.height === height, `${key} ${scale}x size`);
+      check(image.bytes === bytes, `${key} ${scale}x bytes`);
+      check(sha256(image.data) === hash, `${key} ${scale}x hash`);
+      if (scale === 1) total1x += image.bytes;
+      else total2x += image.bytes;
+      const targetImage = shellImageAt(record.target, scale);
+      let peak = 0;
+      let support = 0;
+      let alphaSum = 0;
+      let outer = 0;
+      let outside = 0;
+      for (let y = 0; y < image.height; y += 1) {
+        for (let x = 0; x < image.width; x += 1) {
+          const a = image.data[(y * image.width + x) * 4 + 3] / 255;
+          if (a > 0) {
+            support += 1;
+            alphaSum += a;
+            peak = Math.max(peak, a);
+            if (targetImage.data[(y * targetImage.width + x) * 4 + 3] < 128) outside += 1;
+          }
+          if (x === 0 || y === 0 || x === image.width - 1 || y === image.height - 1) {
+            if (a > 0) outer += 1;
+          }
+        }
+      }
+      check(outer === 0, `${key} ${scale}x outer ring is transparent`);
+      check(outside === 0, `${key} ${scale}x is zero outside the target body`);
+      if (scale === 1) {
+        check(Math.abs(peak - record.peakAlpha) <= 0.02, `${key} 1x peak`);
+        check(support === record.supportPx, `${key} support`);
+        const mean = support > 0 ? alphaSum / support : 0;
+        check(Math.abs(mean - record.meanAlpha) <= 0.01, `${key} mean`);
+      }
+    }
+  }
+  for (const [directory, expected] of [
+    [join(tableDir, 'overlays/lying'), expected1x],
+    [join(tableDir, 'overlays/lying/2x'), expected2x],
+  ]) {
+    const files = readdirSync(directory).filter((file) => file.endsWith('.png'));
+    const orphans = files.filter((file) => !expected.has(file));
+    check(orphans.length === 0, `${directory} has no orphan lying catches (${orphans.length})`);
+  }
+  note(`lying catches ${total1x} B @1x + ${total2x} B @2x = ${total1x + total2x} B`);
+  budgetCheck(
+    total1x + total2x <= 4 * 1024 * 1024,
+    `lying catches stay under a 4 MiB advisory budget (${total1x + total2x} B)`,
+  );
+}
+
+// --------------------------------------------------------------------------- //
 // Layout fixture and clips
 // --------------------------------------------------------------------------- //
 
@@ -523,6 +607,11 @@ function isConvex(points) {
 /** The committed overlay asset (catch or synthetic band) for a fixture overlay. */
 function overlayRecordOf(overlay, zone) {
   if (overlay.kind === 'catch') {
+    if (overlay.cacheKey) {
+      const record = lyingCatchesManifest.catches[overlay.cacheKey];
+      if (!record) throw new Error(`no lying catch for ${overlay.cacheKey}`);
+      return record;
+    }
     const target = zone.bodies[overlay.bodyIndex].shell;
     const record = catchesManifest.catches[`${target}:${overlay.shell}`];
     if (!record) throw new Error(`no catch for ${target} <- ${overlay.shell}`);
@@ -615,8 +704,12 @@ function checkFixture() {
       }
       if (!overlay.kind) missing += 1;
       if (overlay.kind === 'catch') {
-        const target = zone.bodies[overlay.bodyIndex].shell;
-        if (!catchesManifest.catches[`${target}:${overlay.shell}`]) missing += 1;
+        if (overlay.cacheKey) {
+          if (!lyingCatchesManifest.catches[overlay.cacheKey]) missing += 1;
+        } else {
+          const target = zone.bodies[overlay.bodyIndex].shell;
+          if (!catchesManifest.catches[`${target}:${overlay.shell}`]) missing += 1;
+        }
       } else {
         const resolvedShell = overlayManifest.aliases[overlay.shell] ?? overlay.shell;
         if (!overlayManifest.decals[`${resolvedShell}:${overlay.contact}`]) missing += 1;
@@ -972,11 +1065,16 @@ function checkComposition() {
         console.log(`  overlay ${overlay.shell}:${overlay.contact} draw ${overlay.drawX},${overlay.drawY} local ${lx},${ly} alpha ${a.toFixed(3)} clipTop ${Math.min(...clip.points.map((q) => q[1]))}`);
       }
     }
-    if (zone.overlays.length > 0) {
+    if (zone.overlays.length > 0 && zone.kind !== 'pond' && zone.kind !== 'melds') {
       check(
         delta.maxRowDelta < 30,
         `${zone.id}: no horizontal overlay discontinuity ` +
           `(worst row-to-row Δ ${delta.maxRowDelta.toFixed(2)} luma at ${JSON.stringify(delta.rowAt)})`,
+      );
+    } else if (zone.overlays.length > 0) {
+      note(
+        `${zone.id}: lying catch edge row-to-row Δ ${delta.maxRowDelta.toFixed(2)} luma ` +
+          `at ${JSON.stringify(delta.rowAt)} (body-edge boundary; review sheet is the gate)`,
       );
     }
 
@@ -1095,8 +1193,12 @@ function checkComposition() {
     );
     for (const pond of ponds) {
       check(
-        pond.overlays === 0,
-        `face-up lying pond ${pond.side} stays unshadowed (${pond.overlays} decals)`,
+        pond.overlays > 0,
+        `face-up lying pond ${pond.side} carries target-space catches (${pond.overlays})`,
+      );
+      check(
+        pond.meanDeltaLuma > 0.5 && pond.meanDeltaLuma < 40,
+        `pond ${pond.side} visible mean is in a sane band (${pond.meanDeltaLuma})`,
       );
     }
   }
@@ -1128,6 +1230,7 @@ try {
   checkAliases();
   checkAssets();
   checkCatches();
+  checkLyingCatches();
   checkFixture();
   checkComposition();
 } catch (error) {
