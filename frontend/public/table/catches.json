@@ -6,6 +6,52 @@
   "combination": "physical+ao",
   "coordinateSpace": "The texture is the target shell texture in @1x px: draw it at the target drawX/drawY, after the target body and before the caster body. Alpha is zero outside the target body.",
   "catches": {
+    "shell_hand_side_left:shell_hand_side_left": {
+      "target": "shell_hand_side_left",
+      "caster": "shell_hand_side_left",
+      "textureFile": "overlays/catches/shell_hand_side_left_from_shell_hand_side_left.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_side_left_from_shell_hand_side_left.png",
+      "texWidth": 71,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7988,
+      "supportPx": 3307,
+      "sha256": {
+        "decodedRgba1x": "b2ea1d1b4e0caee1ebc18e5fc587cfc38848698da5d91a68347b94a177901eca",
+        "decodedRgba2x": "2424d5e425df1da2214ea12c8f4f0aefb5dcbf5d433ba5b67391f9519b0c03df"
+      },
+      "bytes1x": 1569,
+      "bytes2x": 4480,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 23.2
+    },
+    "shell_hand_side_right:shell_hand_side_right": {
+      "target": "shell_hand_side_right",
+      "caster": "shell_hand_side_right",
+      "textureFile": "overlays/catches/shell_hand_side_right_from_shell_hand_side_right.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_side_right_from_shell_hand_side_right.png",
+      "texWidth": 71,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7888,
+      "supportPx": 3199,
+      "sha256": {
+        "decodedRgba1x": "71f2e5bc490db5c5498dc28890018356f16ba3791995762da11609b777f73714",
+        "decodedRgba2x": "a5ef1d686585060eb9898c37050025551d9e1ad59e9ef8a8161b938bf298e146"
+      },
+      "bytes1x": 1536,
+      "bytes2x": 4820,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 39.2
+    },
     "shell_hand_slot_00:shell_hand_slot_01": {
       "target": "shell_hand_slot_00",
       "caster": "shell_hand_slot_01",
@@ -27,7 +73,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 24.4
+      "renderSeconds": 29
     },
     "shell_hand_slot_01:shell_hand_slot_02": {
       "target": "shell_hand_slot_01",
@@ -50,7 +96,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 23.9
+      "renderSeconds": 34.5
     },
     "shell_hand_slot_02:shell_hand_slot_03": {
       "target": "shell_hand_slot_02",
@@ -73,7 +119,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 21.3
+      "renderSeconds": 31.6
     },
     "shell_hand_slot_03:shell_hand_slot_04": {
       "target": "shell_hand_slot_03",
@@ -96,7 +142,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 22.1
+      "renderSeconds": 29.3
     },
     "shell_hand_slot_04:shell_hand_slot_05": {
       "target": "shell_hand_slot_04",
@@ -119,7 +165,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 23.9
+      "renderSeconds": 30.6
     },
     "shell_hand_slot_05:shell_hand_slot_06": {
       "target": "shell_hand_slot_05",
@@ -142,7 +188,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 23.3
+      "renderSeconds": 28.1
     },
     "shell_hand_slot_07:shell_hand_slot_06": {
       "target": "shell_hand_slot_07",
@@ -165,7 +211,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 23.1
+      "renderSeconds": 29.1
     },
     "shell_hand_slot_08:shell_hand_slot_07": {
       "target": "shell_hand_slot_08",
@@ -188,7 +234,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 23.4
+      "renderSeconds": 29.1
     },
     "shell_hand_slot_09:shell_hand_slot_08": {
       "target": "shell_hand_slot_09",
@@ -211,7 +257,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 24.3
+      "renderSeconds": 28.5
     },
     "shell_hand_slot_10:shell_hand_slot_09": {
       "target": "shell_hand_slot_10",
@@ -234,7 +280,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 24.7
+      "renderSeconds": 27.6
     },
     "shell_hand_slot_11:shell_hand_slot_10": {
       "target": "shell_hand_slot_11",
@@ -257,7 +303,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 24.9
+      "renderSeconds": 31.1
     },
     "shell_hand_slot_12:shell_hand_slot_11": {
       "target": "shell_hand_slot_12",
@@ -280,7 +326,283 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 25.3
+      "renderSeconds": 31.5
+    },
+    "shell_hand_top_slot_00:shell_hand_top_slot_01": {
+      "target": "shell_hand_top_slot_00",
+      "caster": "shell_hand_top_slot_01",
+      "textureFile": "overlays/catches/shell_hand_top_slot_00_from_shell_hand_top_slot_01.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_00_from_shell_hand_top_slot_01.png",
+      "texWidth": 78,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7535,
+      "supportPx": 834,
+      "sha256": {
+        "decodedRgba1x": "6b44ca96ee738ac7333dafa2b3c9293396f8f52f7e6f9a6c2ce97d80bf76c5fc",
+        "decodedRgba2x": "0027b7993bb6d48d27458b14217c16c6e0215a84668ef7e42b63ae21a1d7722b"
+      },
+      "bytes1x": 917,
+      "bytes2x": 2255,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 44.8
+    },
+    "shell_hand_top_slot_01:shell_hand_top_slot_02": {
+      "target": "shell_hand_top_slot_01",
+      "caster": "shell_hand_top_slot_02",
+      "textureFile": "overlays/catches/shell_hand_top_slot_01_from_shell_hand_top_slot_02.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_01_from_shell_hand_top_slot_02.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7627,
+      "supportPx": 781,
+      "sha256": {
+        "decodedRgba1x": "9632135e8dd66f7b1c7c29891c9c0c9cfae7e5449988be2ed20fe80e6f899a51",
+        "decodedRgba2x": "cbea0035a432561a9f474b00921a75db1cc7e23c23ab29b1930b05176ad98e9e"
+      },
+      "bytes1x": 885,
+      "bytes2x": 2123,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 42.1
+    },
+    "shell_hand_top_slot_02:shell_hand_top_slot_03": {
+      "target": "shell_hand_top_slot_02",
+      "caster": "shell_hand_top_slot_03",
+      "textureFile": "overlays/catches/shell_hand_top_slot_02_from_shell_hand_top_slot_03.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_02_from_shell_hand_top_slot_03.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7397,
+      "supportPx": 734,
+      "sha256": {
+        "decodedRgba1x": "961a9c318aa9d21021c3def46a7b1b93717fedaee8cdf9b08ebcba2e6f87e3f9",
+        "decodedRgba2x": "92e6b24181eb65ad317babf7cfa6223afb10bb955bae03b98946715d3ccbca5e"
+      },
+      "bytes1x": 874,
+      "bytes2x": 1990,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 22.5
+    },
+    "shell_hand_top_slot_03:shell_hand_top_slot_04": {
+      "target": "shell_hand_top_slot_03",
+      "caster": "shell_hand_top_slot_04",
+      "textureFile": "overlays/catches/shell_hand_top_slot_03_from_shell_hand_top_slot_04.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_03_from_shell_hand_top_slot_04.png",
+      "texWidth": 75,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7351,
+      "supportPx": 662,
+      "sha256": {
+        "decodedRgba1x": "b42aaa8c88e2d44469c4249298b65d8cf186edb6d822e28c4071432873a8471c",
+        "decodedRgba2x": "559fb61f42c09cbfa3bc9e3c0162a2b2bdbca1f74c7c9038f54ad8c3d4e03907"
+      },
+      "bytes1x": 798,
+      "bytes2x": 2072,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 23.1
+    },
+    "shell_hand_top_slot_04:shell_hand_top_slot_05": {
+      "target": "shell_hand_top_slot_04",
+      "caster": "shell_hand_top_slot_05",
+      "textureFile": "overlays/catches/shell_hand_top_slot_04_from_shell_hand_top_slot_05.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_04_from_shell_hand_top_slot_05.png",
+      "texWidth": 75,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.746,
+      "supportPx": 673,
+      "sha256": {
+        "decodedRgba1x": "264124da6f63b8922c77e16e3c8c7660d82431b9909977b9d5a8e6be8746c9d3",
+        "decodedRgba2x": "c0c887435d3f0b83442239f025fc6a351d060ac689b83d9c76e45e4f9d699d71"
+      },
+      "bytes1x": 881,
+      "bytes2x": 1887,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 41.8
+    },
+    "shell_hand_top_slot_05:shell_hand_top_slot_06": {
+      "target": "shell_hand_top_slot_05",
+      "caster": "shell_hand_top_slot_06",
+      "textureFile": "overlays/catches/shell_hand_top_slot_05_from_shell_hand_top_slot_06.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_05_from_shell_hand_top_slot_06.png",
+      "texWidth": 75,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7333,
+      "supportPx": 618,
+      "sha256": {
+        "decodedRgba1x": "0f7001296190d9e55c6c1b00631ba68ed1ad3854d1d72a93a978d329a416220a",
+        "decodedRgba2x": "c565cd2ecc2063c505682023720cfd0d9161f7635126b08fbb985c4df86d8567"
+      },
+      "bytes1x": 799,
+      "bytes2x": 1678,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 48.7
+    },
+    "shell_hand_top_slot_07:shell_hand_top_slot_06": {
+      "target": "shell_hand_top_slot_07",
+      "caster": "shell_hand_top_slot_06",
+      "textureFile": "overlays/catches/shell_hand_top_slot_07_from_shell_hand_top_slot_06.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_07_from_shell_hand_top_slot_06.png",
+      "texWidth": 75,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.784,
+      "supportPx": 704,
+      "sha256": {
+        "decodedRgba1x": "f8c0741189442152fa219a440830cf439590cdd819dd36ab67eb02c57f80538e",
+        "decodedRgba2x": "fea372386a2597fd9b3e43dea3d7902eed585b3dbb84f7ec72b9f33d4a1f3831"
+      },
+      "bytes1x": 957,
+      "bytes2x": 1876,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 22.2
+    },
+    "shell_hand_top_slot_08:shell_hand_top_slot_07": {
+      "target": "shell_hand_top_slot_08",
+      "caster": "shell_hand_top_slot_07",
+      "textureFile": "overlays/catches/shell_hand_top_slot_08_from_shell_hand_top_slot_07.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_08_from_shell_hand_top_slot_07.png",
+      "texWidth": 75,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7972,
+      "supportPx": 683,
+      "sha256": {
+        "decodedRgba1x": "6d39163530d247aa6429e01df0118cbbc1dce24d878dc495735ab8dd147ee69a",
+        "decodedRgba2x": "d3dd8781b2f1d94d6086d76e0d9fbbfe3fbebb2b169889054dac88f6c766c6bf"
+      },
+      "bytes1x": 879,
+      "bytes2x": 2088,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 31.9
+    },
+    "shell_hand_top_slot_09:shell_hand_top_slot_08": {
+      "target": "shell_hand_top_slot_09",
+      "caster": "shell_hand_top_slot_08",
+      "textureFile": "overlays/catches/shell_hand_top_slot_09_from_shell_hand_top_slot_08.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_09_from_shell_hand_top_slot_08.png",
+      "texWidth": 75,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.8094,
+      "supportPx": 685,
+      "sha256": {
+        "decodedRgba1x": "7f3a63b1efd1fdc8cb2f79b8cd4b8ffd463c37c170c021edb9cee712c748863b",
+        "decodedRgba2x": "5ccfebdd33754b415b317dd14e097eac36ce77a52ed21711032afe1885ef68ef"
+      },
+      "bytes1x": 817,
+      "bytes2x": 2175,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 43.7
+    },
+    "shell_hand_top_slot_10:shell_hand_top_slot_09": {
+      "target": "shell_hand_top_slot_10",
+      "caster": "shell_hand_top_slot_09",
+      "textureFile": "overlays/catches/shell_hand_top_slot_10_from_shell_hand_top_slot_09.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_10_from_shell_hand_top_slot_09.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.803,
+      "supportPx": 707,
+      "sha256": {
+        "decodedRgba1x": "b64953a8e54799751cd82197d62f60607eeea19e8ec77e7990bc5c3d2a075e65",
+        "decodedRgba2x": "6738958c610d2ed6c1935dfc65e37771c93ce7519ee96cda8f37eef10dcf789b"
+      },
+      "bytes1x": 828,
+      "bytes2x": 2231,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 27
+    },
+    "shell_hand_top_slot_11:shell_hand_top_slot_10": {
+      "target": "shell_hand_top_slot_11",
+      "caster": "shell_hand_top_slot_10",
+      "textureFile": "overlays/catches/shell_hand_top_slot_11_from_shell_hand_top_slot_10.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_11_from_shell_hand_top_slot_10.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.8169,
+      "supportPx": 772,
+      "sha256": {
+        "decodedRgba1x": "ae4677c01f7b935991a06a212c5975c44bd30ceb90115804d8609ac06682b2b7",
+        "decodedRgba2x": "b59aa40730f12f489077d33b512ddd686d3399afec708ad44e2889e1d99093a5"
+      },
+      "bytes1x": 849,
+      "bytes2x": 2291,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 37.5
+    },
+    "shell_hand_top_slot_12:shell_hand_top_slot_11": {
+      "target": "shell_hand_top_slot_12",
+      "caster": "shell_hand_top_slot_11",
+      "textureFile": "overlays/catches/shell_hand_top_slot_12_from_shell_hand_top_slot_11.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_top_slot_12_from_shell_hand_top_slot_11.png",
+      "texWidth": 78,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.8165,
+      "supportPx": 864,
+      "sha256": {
+        "decodedRgba1x": "69acddbc0b50a0faa61649bc74beb509154934304ed1524af21fa3a12be18145",
+        "decodedRgba2x": "c84dbb1f556d46cf79d3c82d82f8b06003294ea8e05f6f1a43745b4736319cd1"
+      },
+      "bytes1x": 930,
+      "bytes2x": 2325,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 38.9
     }
   }
 }

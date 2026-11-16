@@ -52,10 +52,12 @@ from bake_shells import (  # noqa: E402
     die,
     encode_png,
     expand_hand_slots,
+    expand_top_hand_slots,
     load_rgba,
     load_spec,
     log,
     pose_tile,
+    project_pixels,
     reset_scene,
     resolve_tile_dimensions,
     set_resolution,
@@ -70,24 +72,34 @@ from contact_shadow_experiment import (  # noqa: E402
     overlay_alpha,
     quantize,
     reference_matches,
-    row_offset,
     shell_by_id,
 )
 
-PAIRS = [
-    ("shell_hand_slot_00", "shell_hand_slot_01"),
-    ("shell_hand_slot_01", "shell_hand_slot_02"),
-    ("shell_hand_slot_02", "shell_hand_slot_03"),
-    ("shell_hand_slot_03", "shell_hand_slot_04"),
-    ("shell_hand_slot_04", "shell_hand_slot_05"),
-    ("shell_hand_slot_05", "shell_hand_slot_06"),
-    ("shell_hand_slot_07", "shell_hand_slot_06"),
-    ("shell_hand_slot_08", "shell_hand_slot_07"),
-    ("shell_hand_slot_09", "shell_hand_slot_08"),
-    ("shell_hand_slot_10", "shell_hand_slot_09"),
-    ("shell_hand_slot_11", "shell_hand_slot_10"),
-    ("shell_hand_slot_12", "shell_hand_slot_11"),
-]
+JOBS = []
+
+
+def add_row_jobs(prefix: str) -> None:
+    """The 12 covered slots of a 13-slot fan, caster one slot inward."""
+    for index in range(13):
+        if index == 6:
+            continue
+        caster = index + 1 if index < 6 else index - 1
+        JOBS.append(
+            {
+                "target": f"{prefix}{index:02d}",
+                "caster": f"{prefix}{caster:02d}",
+                "offset": None,
+            }
+        )
+
+
+add_row_jobs("shell_hand_slot_")
+add_row_jobs("shell_hand_top_slot_")
+# The side hands reuse one shell down a row. The caster is the next tile
+# towards the viewer; the row runs along world Y. The sign is verified against
+# the committed gridStepPx in the loop.
+JOBS.append({"target": "shell_hand_side_left", "caster": "shell_hand_side_left", "offset": [0.0, -0.75, 0.0]})
+JOBS.append({"target": "shell_hand_side_right", "caster": "shell_hand_side_right", "offset": [0.0, -0.75, 0.0]})
 
 
 def sha256(data: bytes) -> str:
@@ -99,6 +111,7 @@ def main() -> None:
     started = time.time()
     spec = load_spec(DEFAULT_SPEC)
     expand_hand_slots(spec)
+    expand_top_hand_slots(spec)
     resolve_tile_dimensions(spec)
     check_blender_version(spec)
     committed = json.loads(
@@ -118,21 +131,60 @@ def main() -> None:
     ao_material = build_ao_material()
 
     catches = {}
-    for target_id, caster_id in PAIRS:
+    selected = [job for job in JOBS if not args.only or job["target"] in args.only]
+    if args.only:
+        log(f"development bake: only {[job['target'] for job in selected]}")
+    for job in selected:
+        target_id = job["target"]
+        caster_id = job["caster"]
         pair_started = time.time()
         target_shell = shell_by_id(spec, target_id)
         caster_shell = shell_by_id(spec, caster_id)
-        offset = row_offset(caster_shell) - row_offset(target_shell)
         pose_tile(target, target_shell)
         pose_tile(caster, caster_shell)
-        caster.location.x += offset
+        if job["offset"] is None:
+            target_slot = target_shell.get("handSlot") or target_shell.get("topHandSlot")
+            caster_slot = caster_shell.get("handSlot") or caster_shell.get("topHandSlot")
+            if not target_slot or not caster_slot:
+                die(f"{target_id}/{caster_id}: no fan slot metadata")
+            offset = [
+                float(caster_slot["offsetUnits"]) - float(target_slot["offsetUnits"]),
+                0.0,
+                0.0,
+            ]
+        else:
+            offset = list(job["offset"])
+        caster.location.x += offset[0]
+        caster.location.y += offset[1]
+        caster.location.z += offset[2]
         bpy.context.view_layer.update()
 
         camera, framing = build_shell_camera(scene, target, target_shell, spec)
         aim_key(key, camera, world_bbox_center(target), spec)
+        if target_id.startswith("shell_hand_side_"):
+            # Verify that the chosen row direction projects the caster down the
+            # screen like the committed gridStepPx; flip it if the camera basis
+            # says otherwise.
+            set_resolution(scene, framing["resolution1x"][0], framing["resolution1x"][1])
+            projected = project_pixels(
+                scene,
+                camera,
+                [world_bbox_center(target), world_bbox_center(caster)],
+            )
+            step = (
+                projected[1][0] - projected[0][0],
+                projected[1][1] - projected[0][1],
+            )
+            expected = committed[target_id]["gridStepPx"]["x"]
+            log(f"{target_id}: side-hand projected step {step}, committed step {expected}")
+            if (step[1] >= 0) != (expected[1] >= 0):
+                caster.location.y -= 2.0 * offset[1]
+                offset[1] = -offset[1]
+                bpy.context.view_layer.update()
+                log(f"{target_id}: flipped the side-hand row sign to {offset[1]:+0.2f}")
         pair_tag = f"{target_id}_from_{caster_id}"
         log(
-            f"{pair_tag}: offset {offset:+.4f}, "
+            f"{pair_tag}: offset {offset[0]:+.4f},{offset[1]:+.4f},{offset[2]:+.4f}, "
             f"{framing['resolution1x'][0]}x{framing['resolution1x'][1]} @1x"
         )
 
@@ -284,6 +336,7 @@ def render_to(out: str, pair_tag: str, tag: str, scale: int, scene: bpy.types.Sc
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default="build/hand-catches")
+    parser.add_argument("--only", action="append", default=[], help="development: bake one target")
     return parser.parse_args(blender_args(sys.argv))
 
 

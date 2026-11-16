@@ -1959,8 +1959,202 @@
      "gridY": 2
     }
    ],
-   "contacts": [],
-   "overlays": []
+   "contacts": [
+    {
+     "bodyIndex": 0,
+     "casterIndex": 2,
+     "side": "left"
+    },
+    {
+     "bodyIndex": 1,
+     "casterIndex": 3,
+     "side": "right"
+    },
+    {
+     "bodyIndex": 2,
+     "casterIndex": 4,
+     "side": "left"
+    },
+    {
+     "bodyIndex": 3,
+     "casterIndex": 5,
+     "side": "right"
+    },
+    {
+     "bodyIndex": 4,
+     "casterIndex": 6,
+     "side": "left"
+    },
+    {
+     "bodyIndex": 5,
+     "casterIndex": 7,
+     "side": "right"
+    },
+    {
+     "bodyIndex": 6,
+     "casterIndex": 8,
+     "side": "left"
+    },
+    {
+     "bodyIndex": 7,
+     "casterIndex": 9,
+     "side": "right"
+    },
+    {
+     "bodyIndex": 8,
+     "casterIndex": 10,
+     "side": "left"
+    },
+    {
+     "bodyIndex": 9,
+     "casterIndex": 11,
+     "side": "right"
+    },
+    {
+     "bodyIndex": 10,
+     "casterIndex": 12,
+     "side": "left"
+    },
+    {
+     "bodyIndex": 11,
+     "casterIndex": 12,
+     "side": "right"
+    }
+   ],
+   "overlays": [
+    {
+     "bodyIndex": 0,
+     "casterIndex": 2,
+     "shell": "shell_hand_top_slot_01",
+     "contact": "left",
+     "kind": "catch",
+     "drawX": 0,
+     "drawY": 0,
+     "texWidth": 78,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 1,
+     "casterIndex": 3,
+     "shell": "shell_hand_top_slot_11",
+     "contact": "right",
+     "kind": "catch",
+     "drawX": 808,
+     "drawY": 0,
+     "texWidth": 78,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 2,
+     "casterIndex": 4,
+     "shell": "shell_hand_top_slot_02",
+     "contact": "left",
+     "kind": "catch",
+     "drawX": 68,
+     "drawY": 0,
+     "texWidth": 77,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 3,
+     "casterIndex": 5,
+     "shell": "shell_hand_top_slot_10",
+     "contact": "right",
+     "kind": "catch",
+     "drawX": 741,
+     "drawY": 0,
+     "texWidth": 77,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 4,
+     "casterIndex": 6,
+     "shell": "shell_hand_top_slot_03",
+     "contact": "left",
+     "kind": "catch",
+     "drawX": 136,
+     "drawY": 0,
+     "texWidth": 76,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 5,
+     "casterIndex": 7,
+     "shell": "shell_hand_top_slot_09",
+     "contact": "right",
+     "kind": "catch",
+     "drawX": 675,
+     "drawY": 0,
+     "texWidth": 76,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 6,
+     "casterIndex": 8,
+     "shell": "shell_hand_top_slot_04",
+     "contact": "left",
+     "kind": "catch",
+     "drawX": 204,
+     "drawY": 0,
+     "texWidth": 75,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 7,
+     "casterIndex": 9,
+     "shell": "shell_hand_top_slot_08",
+     "contact": "right",
+     "kind": "catch",
+     "drawX": 608,
+     "drawY": 0,
+     "texWidth": 75,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 8,
+     "casterIndex": 10,
+     "shell": "shell_hand_top_slot_05",
+     "contact": "left",
+     "kind": "catch",
+     "drawX": 271,
+     "drawY": 0,
+     "texWidth": 75,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 9,
+     "casterIndex": 11,
+     "shell": "shell_hand_top_slot_07",
+     "contact": "right",
+     "kind": "catch",
+     "drawX": 540,
+     "drawY": 0,
+     "texWidth": 75,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 10,
+     "casterIndex": 12,
+     "shell": "shell_hand_top_slot_06",
+     "contact": "left",
+     "kind": "catch",
+     "drawX": 338,
+     "drawY": 0,
+     "texWidth": 75,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 11,
+     "casterIndex": 12,
+     "shell": "shell_hand_top_slot_06",
+     "contact": "right",
+     "kind": "catch",
+     "drawX": 473,
+     "drawY": 0,
+     "texWidth": 75,
+     "texHeight": 106
+    }
+   ]
   },
   {
    "id": "hand-left",
@@ -2108,8 +2302,202 @@
      "gridY": 542
     }
    ],
-   "contacts": [],
-   "overlays": []
+   "contacts": [
+    {
+     "bodyIndex": 0,
+     "casterIndex": 1,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 1,
+     "casterIndex": 2,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 2,
+     "casterIndex": 3,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 3,
+     "casterIndex": 4,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 4,
+     "casterIndex": 5,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 5,
+     "casterIndex": 6,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 6,
+     "casterIndex": 7,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 7,
+     "casterIndex": 8,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 8,
+     "casterIndex": 9,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 9,
+     "casterIndex": 10,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 10,
+     "casterIndex": 11,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 11,
+     "casterIndex": 12,
+     "side": "up"
+    }
+   ],
+   "overlays": [
+    {
+     "bodyIndex": 0,
+     "casterIndex": 1,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 90,
+     "drawY": 0,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 1,
+     "casterIndex": 2,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 83,
+     "drawY": 45,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 2,
+     "casterIndex": 3,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 77,
+     "drawY": 90,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 3,
+     "casterIndex": 4,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 70,
+     "drawY": 135,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 4,
+     "casterIndex": 5,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 63,
+     "drawY": 180,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 5,
+     "casterIndex": 6,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 56,
+     "drawY": 225,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 6,
+     "casterIndex": 7,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 50,
+     "drawY": 270,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 7,
+     "casterIndex": 8,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 43,
+     "drawY": 315,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 8,
+     "casterIndex": 9,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 36,
+     "drawY": 360,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 9,
+     "casterIndex": 10,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 30,
+     "drawY": 405,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 10,
+     "casterIndex": 11,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 23,
+     "drawY": 450,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 11,
+     "casterIndex": 12,
+     "shell": "shell_hand_side_left",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 16,
+     "drawY": 495,
+     "texWidth": 71,
+     "texHeight": 106
+    }
+   ]
   },
   {
    "id": "hand-right",
@@ -2257,8 +2645,202 @@
      "gridY": 502.04
     }
    ],
-   "contacts": [],
-   "overlays": []
+   "contacts": [
+    {
+     "bodyIndex": 0,
+     "casterIndex": 1,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 1,
+     "casterIndex": 2,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 2,
+     "casterIndex": 3,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 3,
+     "casterIndex": 4,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 4,
+     "casterIndex": 5,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 5,
+     "casterIndex": 6,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 6,
+     "casterIndex": 7,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 7,
+     "casterIndex": 8,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 8,
+     "casterIndex": 9,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 9,
+     "casterIndex": 10,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 10,
+     "casterIndex": 11,
+     "side": "up"
+    },
+    {
+     "bodyIndex": 11,
+     "casterIndex": 12,
+     "side": "up"
+    }
+   ],
+   "overlays": [
+    {
+     "bodyIndex": 0,
+     "casterIndex": 1,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 22,
+     "drawY": 0,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 1,
+     "casterIndex": 2,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 28,
+     "drawY": 42,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 2,
+     "casterIndex": 3,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 34,
+     "drawY": 83,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 3,
+     "casterIndex": 4,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 41,
+     "drawY": 125,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 4,
+     "casterIndex": 5,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 47,
+     "drawY": 167,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 5,
+     "casterIndex": 6,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 53,
+     "drawY": 208,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 6,
+     "casterIndex": 7,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 59,
+     "drawY": 250,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 7,
+     "casterIndex": 8,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 65,
+     "drawY": 292,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 8,
+     "casterIndex": 9,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 72,
+     "drawY": 333,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 9,
+     "casterIndex": 10,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 78,
+     "drawY": 375,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 10,
+     "casterIndex": 11,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 84,
+     "drawY": 417,
+     "texWidth": 71,
+     "texHeight": 106
+    },
+    {
+     "bodyIndex": 11,
+     "casterIndex": 12,
+     "shell": "shell_hand_side_right",
+     "contact": "up",
+     "kind": "catch",
+     "drawX": 90,
+     "drawY": 458,
+     "texWidth": 71,
+     "texHeight": 106
+    }
+   ]
   },
   {
    "id": "melds-bottom",

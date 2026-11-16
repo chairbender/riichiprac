@@ -231,6 +231,7 @@ export function resolveContactOverlays(
 ): ContactOverlay[] {
   const shells = manifest.shells;
   const resolved: ContactOverlay[] = [];
+  const usedCatches = new Set<string>();
   for (const edge of contactEdges(manifest, zone)) {
     const target = zone.bodies[edge.bodyIndex];
     const caster = zone.bodies[edge.casterIndex];
@@ -254,6 +255,12 @@ export function resolveContactOverlays(
     // already in the target's texture coordinates.
     const catchRecord = catchFor(catches, target.shell, caster.shell);
     if (catchRecord) {
+      // One catch is baked for the immediate neighbour. A target can have
+      // farther contacts with the same shell (the side hand's L); skip those
+      // rather than stacking the same catch twice.
+      const catchKey = `${edge.bodyIndex}:${caster.shell}`;
+      if (usedCatches.has(catchKey)) continue;
+      usedCatches.add(catchKey);
       resolved.push({
         bodyIndex: edge.bodyIndex,
         casterIndex: edge.casterIndex,

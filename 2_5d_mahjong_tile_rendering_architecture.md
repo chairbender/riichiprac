@@ -1445,8 +1445,11 @@ then approved as **target-space 3D catches**. `overlay.enabledFamilies` in
 `shell-spec.json` is the synthetic fallback switch; the catches are a separate
 `catches.json` and take precedence in `contactOverlays.ts`.
 
-**3D catch (active hand path).** `tools/render/bake_hand_catches.py` renders the
-target tile with its adjacent caster at the target's published shell camera.
+**3D catch (active standing-hand path).** `tools/render/bake_hand_catches.py`
+renders the target tile with its adjacent caster at the target's published shell
+camera. It covers the human hand (12), the top hand (12) and one catch per side
+hand (the shell is reused down the row; its row sign is verified against the
+committed `gridStepPx`).
 The per-slot cameras are one eye at the row centre (`lateralOffsetUnits =
 -offsetUnits`), so the pair is just the target at the origin, the caster one
 0.75-unit row step away, and the same eye; the target's reference crop is
@@ -1455,10 +1458,11 @@ key/world shadow (reference vs caster-present, caster invisible to camera) with
 a **contact AO** term (an emission target with a Cycles ambient-occlusion node,
 distance 0.12 units, no key/world; the caster occludes the AO rays). The result
 is a straight-alpha ink overlay in the target's own texture coordinates, one per
-covered slot (12), published in `catches.json`; the compositor draws it at the
-target's `drawX/drawY`, after the target body and before the caster body. The
-hand's synthetic bands (including the σ 2.5/α 0.50 right-side override) remain a
-fallback for any pair without a catch, and the other families stay disabled.
+covered slot (12 hand + 12 top + 2 side = 26), published in `catches.json`; the
+compositor draws it at the target's `drawX/drawY`, after the target body and
+before the caster body. The synthetic bands (including the σ 2.5/α 0.50
+right-side override) remain a fallback for any pair without a catch. The lying
+ponds/melds and walls stay disabled for now.
 
 ### 15.1 What the decal is, and why it is not `shadowShape`
 
@@ -1543,13 +1547,13 @@ baker bakes exactly that set. The `--fixture` mode writes the committed
 `contactOverlays.test.ts` rejects fixture drift.
 
 The current bakes produce **13 synthetic hand decals** (fallback; 35,780 B across
-both scales) and **12 target-space 3D catches** (active; 60,000 B across both
-scales). The catches publish `target:caster`, the target texture size, peak/mean
+both scales) and **26 target-space 3D catches** (12 human + 12 top hand + 2 side
+hands; active; 107,803 B across both scales). The catches publish `target:caster`, the target texture size, peak/mean
 alpha, support, decoded-RGBA sha and bytes.
 
 ### 15.4 Verification
 
-`node tools/render/scripts/check-overlays.mjs` runs **816 dependency-free
+`node tools/render/scripts/check-overlays.mjs` runs **1,116 dependency-free
 checks**:
 
 - **assets**: the synthetic fallback bands still pass their size/bytes/hash,
@@ -1566,8 +1570,9 @@ checks**:
   object) and the §10.12 seam kink stays below 0.05. The **four ponds are
   asserted to stay unshadowed** (0 overlays, 0 changed pixels); the human hand
   uses the 12 catches, with mean Δluma **15.41** on 6,019 changed body pixels
-  and zero felt change. The disabled families are byte-identical to the
-  no-overlay baseline.
+  and zero felt change. The top hand's 12 catches are drawn with mean Δluma
+  **5.75**; the side hands' catches with **6.83 / 1.77**. The disabled families
+  are byte-identical to the no-overlay baseline.
 
 The review script (`cd frontend && npm run overlays:review`) writes
 `build/review/hand-layouts-1x.png` (the hand at 1:1 plus left/centre/right seam

@@ -37,6 +37,11 @@ const expectedTargets = [
   'shell_hand_slot_10',
   'shell_hand_slot_11',
   'shell_hand_slot_12',
+  ...Array.from({ length: 13 }, (_, index) => `shell_hand_top_slot_${String(index).padStart(2, '0')}`).filter(
+    (id) => !id.endsWith('_06'),
+  ),
+  'shell_hand_side_left',
+  'shell_hand_side_right',
 ];
 const pairs = Object.values(fragment.catches);
 if (pairs.length !== expectedTargets.length) {

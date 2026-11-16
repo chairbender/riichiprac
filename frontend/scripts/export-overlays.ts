@@ -292,13 +292,19 @@ function fixtureOf(zone: LayoutZone, overlays: OverlayManifest, catches: Catches
     })),
     // The clip polygon is derived from `overlays.bodyQuads` at check time, so
     // the fixture stays small and cannot disagree with the committed assets.
-    contacts: contactEdges(manifest, zone)
-      .filter((edge) => overlayEnabled(zone.bodies[edge.casterIndex].shell))
-      .map((edge) => ({
-        bodyIndex: edge.bodyIndex,
-        casterIndex: edge.casterIndex,
-        side: edge.side,
-      })),
+    contacts: (() => {
+      const resolved = resolveContactOverlays(manifest, overlays, zone, catches);
+      const active = new Set(
+        resolved.map((overlay) => `${overlay.bodyIndex}:${overlay.casterIndex}:${overlay.contact}`),
+      );
+      return contactEdges(manifest, zone)
+        .filter((edge) => active.has(`${edge.bodyIndex}:${edge.casterIndex}:${edge.side}`))
+        .map((edge) => ({
+          bodyIndex: edge.bodyIndex,
+          casterIndex: edge.casterIndex,
+          side: edge.side,
+        }));
+    })(),
     overlays: resolveContactOverlays(manifest, overlays, zone, catches).map((overlay) => ({
       bodyIndex: overlay.bodyIndex,
       casterIndex: overlay.casterIndex,

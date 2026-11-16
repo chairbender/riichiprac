@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parseCatchesManifest } from './catchManifest';
 import type { CatchesManifest } from './catchManifest';
-import { isOverlayEnabled, parseOverlayManifest } from './overlayManifest';
+import { parseOverlayManifest } from './overlayManifest';
 import type { OverlayManifest } from './overlayManifest';
 import { parseShellsManifest } from './shellManifest';
 import type { ShellsManifest } from './shellManifest';
@@ -72,13 +72,19 @@ const shapeOf = (zone: LayoutZone) => ({
     drawX: body.drawX,
     drawY: body.drawY,
   })),
-  contacts: contactEdges(manifest, zone)
-    .filter((edge) => isOverlayEnabled(overlays, zone.bodies[edge.casterIndex].shell))
-    .map((edge) => ({
-      bodyIndex: edge.bodyIndex,
-      casterIndex: edge.casterIndex,
-      side: edge.side,
-    })),
+  contacts: (() => {
+    const resolved = resolveContactOverlays(manifest, overlays, zone, catches);
+    const active = new Set(
+      resolved.map((overlay) => `${overlay.bodyIndex}:${overlay.casterIndex}:${overlay.contact}`),
+    );
+    return contactEdges(manifest, zone)
+      .filter((edge) => active.has(`${edge.bodyIndex}:${edge.casterIndex}:${edge.side}`))
+      .map((edge) => ({
+        bodyIndex: edge.bodyIndex,
+        casterIndex: edge.casterIndex,
+        side: edge.side,
+      }));
+  })(),
   overlays: resolveContactOverlays(manifest, overlays, zone, catches).map((overlay) => ({
     bodyIndex: overlay.bodyIndex,
     casterIndex: overlay.casterIndex,
@@ -103,8 +109,10 @@ describe('overlay manifest', () => {
     }
   });
 
-  it('publishes one target-space catch for every covered hand slot', () => {
-    expect(Object.keys(catches.catches)).toHaveLength(12);
+  it('publishes a target-space catch for every covered standing hand slot', () => {
+    expect(Object.keys(catches.catches)).toHaveLength(26);
+    expect(Object.values(catches.catches).filter((record) => record.target.startsWith('shell_hand_top_slot_'))).toHaveLength(12);
+    expect(Object.values(catches.catches).filter((record) => record.target.startsWith('shell_hand_side_'))).toHaveLength(2);
     for (const target of [
       'shell_hand_slot_00',
       'shell_hand_slot_01',

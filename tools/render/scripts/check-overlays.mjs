@@ -408,7 +408,7 @@ function checkCatches() {
   check(catchesManifest.model === 'target-space-3d-catch', 'catches.json model is target-space-3d-catch');
   check(catchesManifest.combination === 'physical+ao', 'catches combine the physical term and contact AO');
   const entries = Object.entries(catchesManifest.catches);
-  check(entries.length === 12, `catches.json publishes 12 hand-target catches (${entries.length})`);
+  check(entries.length === 26, `catches.json publishes 26 catches (12 hand + 12 top + 2 side; ${entries.length})`);
   let total1x = 0;
   let total2x = 0;
   const expected1x = new Set();
@@ -419,7 +419,12 @@ function checkCatches() {
     check(key === `${record.target}:${record.caster}`, `${key} is keyed target:caster`);
     check(Boolean(targetShell) && Boolean(casterShell), `${key} names committed shells`);
     if (!targetShell || !casterShell) continue;
-    check(record.target.startsWith('shell_hand_slot_'), `${key} target is a hand slot`);
+    check(
+      record.target.startsWith('shell_hand_slot_') ||
+        record.target.startsWith('shell_hand_top_slot_') ||
+        record.target.startsWith('shell_hand_side_'),
+      `${key} target is a hand/top-hand/side-hand shell`,
+    );
     check(
       record.texWidth === targetShell.texWidth && record.texHeight === targetShell.texHeight,
       `${key} texture is exactly the target shell texture ` +
