@@ -80,12 +80,12 @@ writes the committed assets.
 `--preview` is the fast loop. It renders only the `--only` shells under
 `tools/render/build/preview/` (never the committed paths), writes a partial
 preview manifest, and draws `preview-1x.png` plus a 4x zoom per shell. It skips
-the full 103-shell check, so a one- or two-shell change takes seconds instead of
+the full 105-shell check, so a one- or two-shell change takes seconds instead of
 the full bake. Use it while tuning a shell, then do a full `--bake` for the
 committed manifest and the full review sheets.
 
 `--bake` is the one command that regenerates the committed assets: it renders
-all 103 shells (eight base + 14 human-hand slots + 13 top-hand slots + 68
+all 105 shells (ten base + 14 human-hand slots + 13 top-hand slots + 68
 front/back wall slots) at @1x and @2x with the
 pinned Blender at the current base scale, measures each render, writes
 `frontend/public/table/shells/*.png`, `shells/2x/*.png` and
@@ -188,7 +188,7 @@ its own regeneration, not mixed with CPU output.
 | `faces/` | yes | the 37 vendored public-domain symbol-only SVGs + provenance (`faces/SOURCE.md`) |
 | `../../frontend/public/table/felt.png` | yes | the committed full-screen felt raster |
 | `../../frontend/public/table/shells/` | yes | shell textures at @1x (`shell_*.png`) |
-| `../../frontend/public/table/shells/2x/` | yes | all 103 shells at @2x |
+| `../../frontend/public/table/shells/2x/` | yes | all 105 shells at @2x |
 | `../../frontend/public/table/shells.json` | yes | the published shell contract |
 | `../../frontend/public/table/faces/` | yes | the 37 committed face glyphs at 288 × 384 RGBA |
 | `../../frontend/public/table/faces.json` | yes | the published face-glyph contract |
@@ -252,9 +252,10 @@ stretched pattern. This decision is recorded in `felt-spec.json` under
 
 ## The committed bake (Phase 1c + the hand/wall fans)
 
-Ninety shells are baked, measured and committed at the Phase 1b base (the Phase 1
-`@2x` size): the eight-shell base below, the 14-slot standing-hand fan, and the
-68 front/back wall slot shells (17 slots × 2 walls × face-down/face-up).
+**105 shells** are baked, measured and committed at the Phase 1b base (the
+Phase 1 `@2x` size): the ten-shell base below (including the four flat river
+orientations), the 14-slot standing-hand fan, and the 68 front/back wall slot
+shells (17 slots × 2 walls × face-down/face-up).
 `shell-spec.json` carries each base shell's pose (Euler degrees), camera
 (azimuth/elevation + which local face is visible) and expected aspect, plus the
 compact `handSlots` and `wallSlots` blocks the baker expands into the slot
@@ -265,6 +266,8 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `shell_flat_upright` | low-angle top-down | — | az 0 / el 45 | 72 × 102 | 76 × 106 / 104 × 136 | (69.4, 0) / (0, 65.44) | — |
 | `shell_flat_sideways` | low-angle top-down | rotZ 90° | az 0 / el 45 | 106 × 95 | 110 × 99 / 138 × 129 | (0, 55.15) / (104, 0) | — |
+| `shell_flat_upright_180` | low-angle top-down | rotZ 180° | az 0 / el 45 | 72 × 102 | 76 × 106 / 160 × 162 | (69.41, 0) / (0, 65.44) | — |
+| `shell_flat_sideways_270` | low-angle top-down | rotZ 270° | az 0 / el 45 | 106 × 95 | 110 × 99 / 194 × 155 | (0, 55.15) / (104, 0) | — |
 | `shell_wall_horizontal` | low-angle top-down | rotX 180° | az 0 / el 45 | 72 × 102 | 76 × 106 / 104 × 136 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
 | `shell_wall_horizontal_faceup` | low-angle top-down | — | az 0 / el 45 | 72 × 102 | 76 × 106 / 104 × 136 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
 | `shell_wall_side_left` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
@@ -272,17 +275,13 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
-The eight base PNGs are **459,971 B** (123,618 @1x + 336,353 @2x). The 14 hand
-slots add **695,439 B**, the 13 top-hand slots **568,700 B** and the 68 wall
-slots **3,929,429 B**, so all 103 **body + shadow** pairs are **5,653,539 B** (1,515,854 @1x +
-4,137,685 @2x; budget 6,291,456 B); the largest
-single shell is 63,866 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
-**561,793 B** (budget 614,400 B; raised when `shadowShape` was added). The hand
+All 105 body + shadow pairs are **5,765,417 B** (1,546,149 @1x +
+4,219,268 @2x; budget 6,291,456 B); the largest single shell is still inside the
+per-shell ceiling. `shells.json` is **571,609 B** (budget 614,400 B). The hand
 slots keep the 104 px body long axis (102 px measured); the human-hand centre
 body is 75 × 106 and its shadow 119 × 142, the drawn body 89 × 106 and its
-shadow 133 × 142. The
-budgets were raised for the fans; a board loads only the slots it draws, so the
-initial load stays well under the 4 MiB limit.
+shadow 133 × 142. The budgets were raised for the fans; a board loads only the
+slots it draws, so the initial load stays well under the 4 MiB limit.
 
 **Why the projections are what they are.**
 
@@ -549,7 +548,7 @@ tile. The committed values are the physical distances.
 
 ### Phase 2: face glyphs and the startup atlas (landed 2026-11-15)
 
-The runtime is `frontend/src/table/`: `tiles.ts` (face ids, the 16-shell
+The runtime is `frontend/src/table/`: `tiles.ts` (face ids, the 18-shell
 face-up catalogue and the `(shell, faceVariant, face)` key), `shellManifest.ts`
 and `faceManifest.ts` (validating parsers), `TileAtlasBuilder.ts` (the startup
 compositor) and `TileAtlas.ts` (the `Map<TileRenderKey, BakedTileSprite>` and
@@ -581,8 +580,9 @@ this pipeline.
 **The face variants.** A variant names a perspective slot, not a camera angle:
 `standing-front-00..12` + `standing-front-draw` for the 14 `shell_hand_slot_*`
 shells, `flat-topdown` for `shell_flat_upright`, and `flat-rot90` for
-`shell_flat_sideways`. That is **16 face-up shells**, 38 face ids each, so the
-atlas resolves **608 keys**: 576 glyph keys + 32 bare keys (blank and haku share
+`shell_flat_sideways` plus the 180/270 river shells. That is **18 face-up shells**,
+38 face ids each, so the atlas resolves **684 keys**: 648 glyph keys + 36 bare
+keys (blank and haku share
 one bare slot per page). The face-down wall shells (`shell_wall_horizontal`,
 `shell_wall_side_left`, `shell_wall_side_right`) are bare: no glyph, no variant,
 no atlas entry.
@@ -595,13 +595,13 @@ review run:
 
 | | @1x (runtime default) | @2x (opt-in) |
 | :--- | :--- | :--- |
-| Pages | 16 | 16 |
-| Pixels | 6,922,196 | 24,358,848 |
-| RGBA | **26.41 MiB** | **92.92 MiB** |
+| Pages | 18 | 18 |
+| Pixels | 7,929,168 | 27,575,784 |
+| RGBA | **30.25 MiB** | **105.19 MiB** |
 | Build (Node Canvas) | ~33–44 ms for all 16 | ~12 ms for one hand page |
 
 The loader defaults to @1x and refuses an @2x atlas above `maxRgbaBytes`
-(48 MiB), because an all-@2x atlas costs 93 MiB of decoded canvas. @2x remains
+(48 MiB), because an all-@2x atlas costs 105 MiB of decoded canvas. @2x remains
 available (`pixelRatio: 2`) for a single-shell preview or a device with the
 memory headroom. The 34 per-slot dora shells are the next face-variant family
 (§10.5 of the architecture); they would add 14,424,056 px / 55.02 MiB at @1x
@@ -618,10 +618,10 @@ that path. The builder clips to the quad and fits an affine to three corners,
 so the small trapezoid keystone on the perspective hand faces is clipped inside
 the plate rather than spilling onto the bevel.
 
-**Budgets (measured).** Committed table assets are **7,379,149 B** of the 8 MiB
-total limit (shells 5,653,539 + `shells.json` 561,793 + felt 559,465 + glyphs
+**Budgets (measured).** Committed table assets are **7,500,843 B** of the 8 MiB
+total limit (shells 5,765,417 + `shells.json` 571,609 + felt 559,465 + glyphs
 576,938 + `faces.json` 27,414), leaving ~1.0 MB. A full board's @1x bodies +
-felt + both manifests + glyphs is **2,632,636 B** of the 4 MiB initial-load
+felt + both manifests + glyphs is **2,658,858 B** of the 4 MiB initial-load
 limit; the atlas is composed locally from those requests, not downloaded.
 
 **Review.** `cd frontend && npm run atlas:review` builds the real atlas with
@@ -974,7 +974,7 @@ committed reference is 24 units. The output is gitignored:
 ones (both scales, the base long axis, the blob contract, the perspective
 trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
 printed-text and composited-tile pixel checks; the full run reports **8,057
-checks**. The committed bake alone reports **7,878** (including the review-sheet
+checks**. The committed bake alone reports **8,012** (including the review-sheet
 pixels when the sheets are present and the `shadowShape` raster check on every
 shell).
 
@@ -1031,7 +1031,7 @@ PASS shell_hand_slot_draw handSlot kind is row/draw (draw)
 PASS shell_hand_slot_draw top edge carries the blue resin sliver (3,69,165)
 PASS shell_wall_front_slot_16 camera sits at the human's x (lateral -6.0 = -offset)
 PASS hand-fan-1x.png composites its tiles (284486 px)
-INFO shell textures total 4509233 B across 103 shells and 2 scales
+INFO shell textures total 5653580 B across 105 shells and 2 scales
 OK 6967 checks passed
 ```
 
@@ -1063,7 +1063,7 @@ To review the shells, bake (or just regenerate the sheets) and open them:
 
 ```bash
 node tools/render/scripts/review-shells.mjs
-xdg-open tools/render/build/review/shells-row-1x.png      # the eight base shells, catalogue order
+xdg-open tools/render/build/review/shells-row-1x.png      # the ten base shells, catalogue order
 xdg-open tools/render/build/review/discard-row-1x.png     # 6-tile row + isolated + riichi
 xdg-open tools/render/build/review/hand-stack-1x.png      # packed hand row + drawn tile + top hand
 xdg-open tools/render/build/review/hand-fan-1x.png        # exploded hand fan + top hand, numbered

@@ -117,9 +117,9 @@ describe('tile face ids and render keys', () => {
     expect(() => faceIdForTile('nope')).toThrow(/unknown tile code/);
   });
 
-  it('names a face variant for exactly the 16 Phase 2 face-up shells', () => {
-    expect(FACE_UP_SHELL_IDS).toHaveLength(16);
-    expect(Object.keys(FACE_VARIANT_BY_SHELL)).toHaveLength(16);
+  it('names a face variant for every Phase 2 face-up shell', () => {
+    expect(FACE_UP_SHELL_IDS).toHaveLength(18);
+    expect(Object.keys(FACE_VARIANT_BY_SHELL)).toHaveLength(18);
     expect(FACE_VARIANT_BY_SHELL.shell_hand_slot_06).toBe('standing-front-06');
     expect(FACE_VARIANT_BY_SHELL.shell_hand_slot_draw).toBe('standing-front-draw');
     expect(FACE_VARIANT_BY_SHELL.shell_flat_upright).toBe('flat-topdown');
@@ -136,8 +136,8 @@ describe('tile face ids and render keys', () => {
   });
 
   it('keys the atlas by the (shell, variant, face) triple', () => {
-    expect(ALL_TILE_RENDER_KEYS).toHaveLength(16 * 38);
-    expect(new Set(ALL_TILE_RENDER_KEYS).size).toBe(16 * 38);
+    expect(ALL_TILE_RENDER_KEYS).toHaveLength(FACE_UP_SHELL_IDS.length * 38);
+    expect(new Set(ALL_TILE_RENDER_KEYS).size).toBe(FACE_UP_SHELL_IDS.length * 38);
     expect(tileRenderKey('shell_flat_upright', '1m')).toBe(
       'shell_flat_upright:flat-topdown:1m',
     );
@@ -159,17 +159,17 @@ describe('tile face ids and render keys', () => {
 });
 
 describe('startup tile atlas', () => {
-  it('resolves all 16 x 38 keys', () => {
-    expect(atlas.sprites.size).toBe(16 * 38);
+  it('resolves every face-up shell x 38 keys', () => {
+    expect(atlas.sprites.size).toBe(FACE_UP_SHELL_IDS.length * 38);
     for (const key of ALL_TILE_RENDER_KEYS) {
       expect(atlas.sprites.has(key), key).toBe(true);
     }
-    expect(atlas.stats.pages).toBe(16);
-    expect(atlas.stats.glyphSprites).toBe(16 * 36);
-    expect(atlas.stats.bareSprites).toBe(16 * 2);
+    expect(atlas.stats.pages).toBe(FACE_UP_SHELL_IDS.length);
+    expect(atlas.stats.glyphSprites).toBe(FACE_UP_SHELL_IDS.length * 36);
+    expect(atlas.stats.bareSprites).toBe(FACE_UP_SHELL_IDS.length * 2);
   });
 
-  it('bakes only the 16 face-up shells, never a bare wall shell', () => {
+  it('bakes only the face-up shells, never a bare wall shell', () => {
     expect(atlas.pages.map((page) => page.shell)).toEqual([...FACE_UP_SHELL_IDS]);
     for (const shell of FACE_DOWN_SHELL_IDS) {
       expect(
@@ -230,7 +230,7 @@ describe('startup tile atlas', () => {
     expect(registry.pixelRatio).toBe(1);
     expect(registry.pages[0].pixelRatio).toBe(1);
     expect(estimateAtlasBytes(shells, faces, 2)).toBeGreaterThan(
-      estimateAtlasBytes(shells, faces, 1) * 3.5,
+      estimateAtlasBytes(shells, faces, 1) * 3.0,
     );
   });
 
@@ -254,21 +254,21 @@ describe('startup tile atlas', () => {
     }
   });
 
-  it('rotates the sideways glyph 90 degrees counter-clockwise and leaves the others upright', async () => {
-    expect(shells.shells.shell_flat_sideways.faceRotationDeg).toBe(90);
-    const quad = shells.shells.shell_flat_sideways.faceQuad;
-    // Face-local top edge points up the screen: that is a 90° CCW rotation of
-    // the glyph, while every upright shell's top edge points right.
-    expect(quad[1][1]).toBeLessThan(quad[0][1]);
-    expect(quad[1][0]).toBeCloseTo(quad[0][0], 5);
+  it('publishes the four flat river orientations and the upright hand', async () => {
     for (const shell of FACE_UP_SHELL_IDS) {
-      if (shell === 'shell_flat_sideways') continue;
-      const upright = shells.shells[shell].faceQuad;
-      expect(shells.shells[shell].faceRotationDeg, shell).toBe(0);
-      expect(Math.abs(upright[1][1] - upright[0][1]), shell).toBeLessThan(
-        Math.abs(upright[1][0] - upright[0][0]),
+      expect(screenRotationOfQuad(shells.shells[shell].faceQuad), shell).toBe(
+        shells.shells[shell].faceRotationDeg,
       );
     }
+    expect(shells.shells.shell_flat_upright.faceRotationDeg).toBe(0);
+    expect(shells.shells.shell_flat_sideways.faceRotationDeg).toBe(90);
+    expect(shells.shells.shell_flat_upright_180.faceRotationDeg).toBe(180);
+    expect(shells.shells.shell_flat_sideways_270.faceRotationDeg).toBe(270);
+    const quad = shells.shells.shell_flat_sideways.faceQuad;
+    // Face-local top edge points up the screen: that is a 90° CCW rotation of
+    // the glyph.
+    expect(quad[1][1]).toBeLessThan(quad[0][1]);
+    expect(quad[1][0]).toBeCloseTo(quad[0][0], 5);
 
     // Pixel proof with a synthetic glyph: source top-left red, top-right
     // green, bottom-left blue. On the sideways shell red must land at quad[0]

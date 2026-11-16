@@ -41,6 +41,8 @@ const FACE_UP_SHELL_IDS = [
   ),
   'shell_flat_upright',
   'shell_flat_sideways',
+  'shell_flat_upright_180',
+  'shell_flat_sideways_270',
 ];
 
 const failures = [];

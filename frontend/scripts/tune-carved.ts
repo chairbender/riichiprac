@@ -3,12 +3,21 @@
  *
  *   cd frontend && npm run tune:carved     # then open http://localhost:7458
  *
- * Serves a small browser UI. "Render preview" writes a temporary decal spec,
- * runs the real Blender decal baker for the `1m` face with the lying rig at
- * four light rotations (0/90/180/270), then composites each result onto the
- * current `shell_flat_upright` through the real `TileAtlasBuilder`. "Apply lying
- * params" writes only `lighting.lying` (and the shared carve controls) back to
- * `tools/render/decal-spec.json`; the upright rig is never touched.
+ * The shell bodies are rendered ONCE by the existing shell baker with the
+ * existing shell/table lighting, not with the decal rig. This tuner previews
+ * the four face-up orientations the player actually sees — the four discard
+ * rivers — using one properly rotated shell for each:
+ *
+ *   0°   shell_flat_upright       bottom river
+ *   90°  shell_flat_sideways      right river
+ *   180° shell_flat_upright_180   top river
+ *   270° shell_flat_sideways_270  left river
+ *
+ * The decal lighting is separate: each shell picks the lying decal whose baked
+ * light rotation is `-quadRotation`, so the room light stays fixed in screen
+ * space. The sliders below edit only `lighting.lying`; the upright rig and the
+ * shell lighting are never touched. "Render preview" rebakes only the decals
+ * (about 3 s) and composites them onto the cached shell bodies.
  *
  * This is a developer tool: it is never bundled or shipped.
  */
@@ -18,31 +27,37 @@ import http from 'node:http';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { parseDecalsManifest } from '../src/table/decalManifest';
+import { decalKey, parseDecalsManifest } from '../src/table/decalManifest';
 import type { DecalRotation, DecalsManifest } from '../src/table/decalManifest';
-import { parseFacesManifest } from '../src/table/faceManifest';
-import { parseShellsManifest } from '../src/table/shellManifest';
-import { TileAtlasBuilder } from '../src/table/TileAtlasBuilder';
-import type { AtlasCanvas, AtlasImage } from '../src/table/TileAtlasBuilder';
-import { tileRenderKey } from '../src/table/tiles';
+import {
+  normalizeRotationDeg,
+  parseShellsManifest,
+  screenRotationOfQuad,
+} from '../src/table/shellManifest';
+import type { ShellStats } from '../src/table/shellManifest';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const frontendDir = resolve(scriptDir, '..');
 const repoDir = resolve(frontendDir, '..');
 const renderDir = resolve(repoDir, 'tools/render');
-const tableDir = resolve(frontendDir, 'public/table');
 const decalSpecPath = resolve(renderDir, 'decal-spec.json');
 const tuneDir = resolve(renderDir, 'build/tune');
 const tuneSpecPath = join(tuneDir, 'decal-spec.json');
 const tuneManifestPath = join(tuneDir, 'decals.json');
 const previewDir = join(tuneDir, 'preview');
+const shellPreviewRoot = resolve(renderDir, 'build/preview');
+const shellPreviewManifest = join(shellPreviewRoot, 'shells.json');
 const blender = process.env.BLENDER ?? '/home/kylehipke/.local/opt/blender-4.5.9/blender';
 const port = Number(process.env.PORT ?? 7458);
 const face = process.env.TUNE_FACE ?? '1m';
-const rotations: DecalRotation[] = [0, 90, 180, 270];
 
-const shells = parseShellsManifest(JSON.parse(readFileSync(join(tableDir, 'shells.json'), 'utf8')));
-const faces = parseFacesManifest(JSON.parse(readFileSync(join(tableDir, 'faces.json'), 'utf8')));
+/** The four face-up orientations, one real shell each. */
+const SHELL_ORIENTATIONS = [
+  { rotation: 0, shell: 'shell_flat_upright', label: 'bottom river · 0°' },
+  { rotation: 90, shell: 'shell_flat_sideways', label: 'right river · 90°' },
+  { rotation: 180, shell: 'shell_flat_upright_180', label: 'top river · 180°' },
+  { rotation: 270, shell: 'shell_flat_sideways_270', label: 'left river · 270°' },
+] as const;
 
 type Params = Record<string, number | string | Record<string, Record<string, number>>>;
 type LightParams = Record<string, number>;
@@ -142,57 +157,148 @@ function run(command: string, args: string[], cwd: string): Promise<{ code: numb
   });
 }
 
-async function loadNapi(url: string): Promise<AtlasImage> {
-  return (await loadImage(readFileSync(url))) as unknown as AtlasImage;
+function previewShellsReady(): boolean {
+  if (!existsSync(shellPreviewManifest)) return false;
+  try {
+    const parsed = parseShellsManifest(JSON.parse(readFileSync(shellPreviewManifest, 'utf8')));
+    return SHELL_ORIENTATIONS.every(({ shell }) => Boolean(parsed.shells[shell]));
+  } catch {
+    return false;
+  }
 }
 
-async function composePreviews(decalSet: DecalsManifest): Promise<void> {
+let shellPromise: Promise<void> | null = null;
+
+/** Render the four flat shell orientations once, with the existing shell rig. */
+function ensurePreviewShells(): Promise<void> {
+  if (previewShellsReady()) return Promise.resolve();
+  if (shellPromise) return shellPromise;
+  shellPromise = (async () => {
+    const args = [
+      '--background',
+      '--python-exit-code',
+      '1',
+      '--python',
+      join(renderDir, 'bake_shells.py'),
+      '--',
+      '--bake',
+      '--preview',
+    ];
+    for (const { shell } of SHELL_ORIENTATIONS) args.push('--only', shell);
+    console.log('[tune-carved] rendering the four flat shell orientations once');
+    const result = await run(blender, args, renderDir);
+    if (result.code !== 0) {
+      shellPromise = null;
+      throw new Error(result.output.slice(-6000));
+    }
+    console.log('[tune-carved] shell orientations ready');
+  })();
+  return shellPromise;
+}
+
+async function loadNapi(path: string): Promise<Awaited<ReturnType<typeof loadImage>>> {
+  return loadImage(readFileSync(path));
+}
+
+function drawDecal(
+  ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
+  shell: ShellStats,
+  decal: { facePlateRect: readonly [number, number, number, number] },
+  decalImage: Awaited<ReturnType<typeof loadImage>>,
+  scale: number,
+): void {
+  const quad = shell.faceQuad.map(([x, y]) => [x * scale, y * scale] as const);
+  const [u0, v0, u1, v1] = decal.facePlateRect;
+  const point = (u: number, v: number): readonly [number, number] => [
+    quad[0][0] + u * (quad[1][0] - quad[0][0]) + v * (quad[3][0] - quad[0][0]),
+    quad[0][1] + u * (quad[1][1] - quad[0][1]) + v * (quad[3][1] - quad[0][1]),
+  ];
+  const origin = point(u0, v0);
+  const right = point(u1, v0);
+  const down = point(u0, v1);
+  const sourceX = u0 * decalImage.width;
+  const sourceY = v0 * decalImage.height;
+  const sourceWidth = (u1 - u0) * decalImage.width;
+  const sourceHeight = (v1 - v0) * decalImage.height;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(quad[0][0], quad[0][1]);
+  ctx.lineTo(quad[1][0], quad[1][1]);
+  ctx.lineTo(quad[2][0], quad[2][1]);
+  ctx.lineTo(quad[3][0], quad[3][1]);
+  ctx.closePath();
+  ctx.clip();
+  const a = (right[0] - origin[0]) / sourceWidth;
+  const b = (right[1] - origin[1]) / sourceWidth;
+  const c = (down[0] - origin[0]) / sourceHeight;
+  const d = (down[1] - origin[1]) / sourceHeight;
+  ctx.setTransform(a, b, c, d, origin[0], origin[1]);
+  ctx.drawImage(
+    decalImage as unknown as never,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    sourceWidth,
+    sourceHeight,
+  );
+  ctx.restore();
+}
+
+async function composePreviews(decalSet: DecalsManifest): Promise<
+  Array<{ rotation: DecalRotation; shell: string; label: string; url: string }>
+> {
+  await ensurePreviewShells();
+  const shells = parseShellsManifest(JSON.parse(readFileSync(shellPreviewManifest, 'utf8')));
   mkdirSync(previewDir, { recursive: true });
-  for (const rotation of rotations) {
-    const builder = new TileAtlasBuilder({
-      shells,
-      faces,
-      decals: decalSet,
-      resolveUrl: (relativePath) =>
-        relativePath.startsWith('decals/') ? join(tuneDir, relativePath) : join(tableDir, relativePath),
-      loadImage: loadNapi,
-      createCanvas: (width, height) => createCanvas(width, height) as unknown as AtlasCanvas,
-      pixelRatio: 2,
-      forceDecalLightRotationDeg: rotation,
-    });
-    const atlas = await builder.build(['shell_flat_upright']);
-    const sprite = atlas.sprites.get(tileRenderKey('shell_flat_upright', face as never));
-    if (!sprite) throw new Error(`no sprite for ${face}`);
-    const page = atlas.pages[sprite.pageIndex];
-    const zoom = 2;
-    const canvas = createCanvas(sprite.uv.width * zoom, sprite.uv.height * zoom);
+  const previews: Array<{ rotation: DecalRotation; shell: string; label: string; url: string }> = [];
+  for (const orientation of SHELL_ORIENTATIONS) {
+    const shell = shells.shells[orientation.shell];
+    if (!shell) throw new Error(`preview shell ${orientation.shell} is missing`);
+    const quadRotation = screenRotationOfQuad(shell.faceQuad);
+    const light = normalizeRotationDeg(-quadRotation);
+    const symbol = normalizeRotationDeg(shell.faceRotationDeg - quadRotation);
+    const record = decalSet.decals[decalKey(face as never, 'lying', light, symbol)];
+    if (!record) {
+      throw new Error(
+        `no lying decal for ${face} light ${light} symbol ${symbol} (${orientation.shell})`,
+      );
+    }
+    const shellImage = await loadNapi(join(shellPreviewRoot, shell.textureFile2x));
+    const decalImage = await loadNapi(join(tuneDir, record.textureFile));
+    const canvas = createCanvas(shell.texWidth * 2, shell.texHeight * 2);
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(
-      page.canvas as unknown as never,
-      sprite.uv.x,
-      sprite.uv.y,
-      sprite.uv.width,
-      sprite.uv.height,
-      0,
-      0,
-      sprite.uv.width * zoom,
-      sprite.uv.height * zoom,
-    );
-    writeFileSync(join(previewDir, `preview-${rotation}.png`), canvas.toBuffer('image/png'));
+    ctx.drawImage(shellImage as unknown as never, 0, 0);
+    drawDecal(ctx, shell, record, decalImage, 2);
+    const fileName = `flat-${orientation.rotation}.png`;
+    writeFileSync(join(previewDir, fileName), canvas.toBuffer('image/png'));
+    previews.push({
+      rotation: orientation.rotation,
+      shell: orientation.shell,
+      label: orientation.label,
+      url: `/preview/${fileName}?v=${Date.now()}`,
+    });
   }
+  return previews;
 }
 
 let busy = false;
 
-async function renderPreview(params: Params): Promise<{ elapsed: string; log: string[] }> {
+async function renderPreview(params: Params): Promise<{
+  elapsed: string;
+  log: string[];
+  previews: Array<{ rotation: DecalRotation; shell: string; label: string; url: string }>;
+}> {
   const started = Date.now();
   const spec = readSpec();
   applyParams(spec, params, true);
   mkdirSync(tuneDir, { recursive: true });
   writeFileSync(tuneSpecPath, JSON.stringify(spec, null, 2) + '\n');
-
   const render = await run(
     blender,
     [
@@ -217,13 +323,14 @@ async function renderPreview(params: Params): Promise<{ elapsed: string; log: st
   if (render.code !== 0) throw new Error(render.output.slice(-6000));
   if (!existsSync(tuneManifestPath)) throw new Error('the preview bake wrote no manifest');
   const decalSet = parseDecalsManifest(JSON.parse(readFileSync(tuneManifestPath, 'utf8')));
-  await composePreviews(decalSet);
+  const previews = await composePreviews(decalSet);
   return {
     elapsed: ((Date.now() - started) / 1000).toFixed(1),
     log: render.output
       .split('\n')
       .filter((line) => line.includes('[shells]') || line.includes('Saved:'))
       .slice(-8),
+    previews,
   };
 }
 
@@ -246,6 +353,16 @@ function sendJson(response: http.ServerResponse, status: number, payload: unknow
   response.end(JSON.stringify(payload));
 }
 
+function statePreviews() {
+  return SHELL_ORIENTATIONS.map(({ rotation, shell, label }) => ({
+    rotation,
+    shell,
+    label,
+    url: `/preview/flat-${rotation}.png?v=${Date.now()}`,
+    exists: existsSync(join(previewDir, `flat-${rotation}.png`)),
+  }));
+}
+
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', `http://localhost:${port}`);
   try {
@@ -260,12 +377,22 @@ const server = http.createServer(async (request, response) => {
         face,
         blender,
         blenderFound: existsSync(blender),
-        previews: rotations.map((rotation) => ({
-          rotation,
-          url: `/preview/${rotation}.png?v=${Date.now()}`,
-          exists: existsSync(join(previewDir, `preview-${rotation}.png`)),
-        })),
+        shellsReady: previewShellsReady(),
+        previews: statePreviews(),
       });
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/api/shells') {
+      shellPromise = null;
+      try {
+        await ensurePreviewShells();
+        sendJson(response, 200, { ok: true, previews: statePreviews() });
+      } catch (error) {
+        sendJson(response, 500, {
+          ok: false,
+          error: String((error as Error)?.message ?? error).slice(-6000),
+        });
+      }
       return;
     }
     if (request.method === 'POST' && url.pathname === '/api/render') {
@@ -279,15 +406,7 @@ const server = http.createServer(async (request, response) => {
         console.log('[tune-carved] preview render');
         const result = await renderPreview(params);
         console.log(`[tune-carved] preview done in ${result.elapsed}s`);
-        sendJson(response, 200, {
-          ok: true,
-          elapsed: result.elapsed,
-          log: result.log,
-          previews: rotations.map((rotation) => ({
-            rotation,
-            url: `/preview/${rotation}.png?v=${Date.now()}`,
-          })),
-        });
+        sendJson(response, 200, { ok: true, ...result });
       } catch (error) {
         console.error('[tune-carved] preview failed');
         sendJson(response, 500, {
@@ -310,7 +429,7 @@ const server = http.createServer(async (request, response) => {
     }
     if (request.method === 'GET' && url.pathname.startsWith('/preview/')) {
       const name = url.pathname.slice('/preview/'.length);
-      const file = join(previewDir, name.startsWith('preview-') ? name : `preview-${name}`);
+      const file = join(previewDir, name);
       if (!existsSync(file)) {
         response.writeHead(404);
         response.end('render a preview first');
@@ -331,4 +450,6 @@ const server = http.createServer(async (request, response) => {
 server.listen(port, '127.0.0.1', () => {
   console.log(`[tune-carved] lying decal tuner at http://localhost:${port}`);
   if (!existsSync(blender)) console.warn(`[tune-carved] Blender not found at ${blender}`);
+  // Start the one-time shell render early so the first preview is quick.
+  void ensurePreviewShells().catch((error) => console.error('[tune-carved] shell render failed', error));
 });

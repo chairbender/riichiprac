@@ -8,7 +8,7 @@
  *
  *   atlas-variants-1x.png    the three Phase 2 face variants, every face, at
  *                            discard size (hand slot 06, flat upright, sideways)
- *   atlas-all-faces-1x.png   every face on all 16 face-up shells, one section
+ *   atlas-all-faces-1x.png   every face on all 18 face-up shells, one section
  *                            per shell at @1x
  *   atlas-<shell>-1x.png     one sheet per shell at @1x
  *   atlas-hand-06-2x.png     the centre hand slot at @2x (the glyph crispness
@@ -129,7 +129,7 @@ function shellSheet(shell: FaceUpShellId, pixelRatio: 1 | 2): Sheet {
 // runtime default (an all-@2x atlas is ~93 MiB RGBA).
 const twoXAtlas = await makeBuilder(2).build(['shell_hand_slot_06']);
 
-/** All 16 shells, every face, @1x: one section per shell. */
+/** All 18 shells, every face, @1x: one section per shell. */
 function allFacesSheet(): Sheet {
   const columns = 10;
   const margin = 16;

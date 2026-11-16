@@ -6,14 +6,14 @@
  * rendering is a `drawImage(page.canvas, sprite.uv…, …)` per tile: no shadow,
  * blur, glyph rasterisation or 3D context at draw time.
  *
- * The Phase 2 catalogue is the 16 face-up shells: 14 standing-hand slots plus
+ * The Phase 2 catalogue is the 18 face-up shells: 14 standing-hand slots plus
  * the upright and sideways pond/meld shells. There are 38 faces per shell, so
- * the atlas resolves 608 keys (592 glyph keys + 16 shared bare keys for
+ * the atlas resolves 684 keys (648 glyph keys + 36 shared bare keys for
  * `blank`/`5z`). Face-down wall shells are drawn from their own PNGs and are
  * deliberately absent.
  *
- * A page is 37 slots (36 inked + one bare). At @1x that is 16 pages,
- * 6,922,196 px / 26.41 MiB RGBA. @2x is four times that (92.92 MiB), so the
+ * A page is 37 slots (36 inked + one bare). At @1x that is 18 pages,
+ * 7,929,168 px / 30.25 MiB RGBA. @2x is four times that (105.19 MiB), so the
  * loader only uses @2x when the estimated cost is inside `maxRgbaBytes`
  * (default 48 MiB); otherwise it composes at @1x and reports the decision.
  */

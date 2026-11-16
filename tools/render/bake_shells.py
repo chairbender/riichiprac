@@ -90,6 +90,8 @@ DEFAULT_SPEC = SPEC_DIR / "shell-spec.json"
 BASE_SHELL_IDS = (
     "shell_flat_upright",
     "shell_flat_sideways",
+    "shell_flat_upright_180",
+    "shell_flat_sideways_270",
     "shell_wall_horizontal",
     "shell_wall_horizontal_faceup",
     "shell_wall_side_left",

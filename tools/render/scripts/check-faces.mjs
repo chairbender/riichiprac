@@ -19,7 +19,7 @@
  *   - the committed table assets (shells + manifest + felt + glyphs +
  *     `faces.json`) stay under the 8 MiB total-asset limit, and a full board's
  *     @1x bodies + felt + manifests stay under the 4 MiB initial-load limit;
- *   - the Phase 2 atlas is planned for the 16 face-up shells (14 hand slots +
+ *   - the Phase 2 atlas is planned for the 18 face-up shells (14 hand slots +
  *     the flat upright/sideways pond shells) with the runtime's page formula,
  *     and reports its decoded RGBA cost at 1x and 2x. The 34 per-slot dora
  *     shells are not in the Phase 2 catalogue; this prints their additional
@@ -118,6 +118,8 @@ const PHASE2_FACE_UP_SHELL_IDS = [
   ...HAND_SLOT_IDS.map((slot) => `shell_hand_slot_${slot}`),
   'shell_flat_upright',
   'shell_flat_sideways',
+  'shell_flat_upright_180',
+  'shell_flat_sideways_270',
 ];
 
 function checkFacesSpec(spec) {
@@ -325,7 +327,7 @@ function checkAtlasPlan() {
   );
   check(
     PHASE2_FACE_UP_SHELL_IDS.every((id) => shells[id]?.faceUp === true),
-    'all 16 Phase 2 atlas shells are face-up in shells.json',
+    `all ${PHASE2_FACE_UP_SHELL_IDS.length} Phase 2 atlas shells are face-up in shells.json`,
   );
   check(
     ['shell_wall_horizontal', 'shell_wall_side_left', 'shell_wall_side_right'].every(

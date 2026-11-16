@@ -217,6 +217,40 @@
       "expectProjection": "landscape"
     },
     {
+      "id": "shell_flat_upright_180",
+      "projection": "low-angle-top-down",
+      "faceRotationDeg": 180,
+      "role": "face-up discards from the top river: the same straight-on camera and screen lighting as shell_flat_upright, with the tile rotated 180 about Z",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 180
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "faceLocalZ": "top"
+      },
+      "expectProjection": "portrait"
+    },
+    {
+      "id": "shell_flat_sideways_270",
+      "projection": "low-angle-top-down",
+      "faceRotationDeg": 270,
+      "role": "face-up discards from the left river: the same straight-on camera and screen lighting as shell_flat_sideways, with the tile rotated 270 about Z",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 270
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "faceLocalZ": "top"
+      },
+      "expectProjection": "landscape"
+    },
+    {
       "id": "shell_wall_horizontal",
       "projection": "low-angle-top-down",
       "faceRotationDeg": 0,
@@ -486,7 +520,7 @@
     }
   },
   "faceVariants": {
-    "status": "Landed 2026-11-15 for the three landed families: standing-front-00..12 + draw (14 hand slots), flat-topdown (shell_flat_upright) and flat-rot90 (shell_flat_sideways). The 37 glyph masters and the startup atlas are committed; see the architecture doc §11 and tools/render/README.md. The per-slot dora families below remain the next face-variant task.",
+    "status": "Landed 2026-11-15 for the three landed families: standing-front-00..12 + draw (14 hand slots), flat-topdown (shell_flat_upright) and flat-rot90 (shell_flat_sideways). The 37 glyph masters and the startup atlas are committed; see the architecture doc \u00a711 and tools/render/README.md. The per-slot dora families below remain the next face-variant task.",
     "atlasKey": "(shellType, faceVariant, tileFace)",
     "faceUpShells": {
       "shell_flat_upright": [

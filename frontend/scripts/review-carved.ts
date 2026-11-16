@@ -48,6 +48,8 @@ const REVIEW_SHELLS: FaceUpShellId[] = [
   'shell_hand_slot_06',
   'shell_flat_upright',
   'shell_flat_sideways',
+  'shell_flat_upright_180',
+  'shell_flat_sideways_270',
 ];
 
 async function loadNapi(url: string): Promise<AtlasImage> {

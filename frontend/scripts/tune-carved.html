@@ -214,12 +214,6 @@
         ['gridScale', 'carve grid', 0.3, 1, 0.05],
         ['occlusionSamples', 'AO samples', 1, 16, 1],
       ];
-      const LABELS = {
-        0: ['light 0°', 'key from top-left'],
-        90: ['light 90°', 'key from top-right'],
-        180: ['light 180°', 'key from bottom-right'],
-        270: ['light 270°', 'key from bottom-left'],
-      };
 
       const state = { params: null };
 
@@ -304,13 +298,12 @@
         const host = document.getElementById('previews');
         host.innerHTML = '';
         for (const preview of previews) {
-          const [title, subtitle] = LABELS[preview.rotation] ?? [String(preview.rotation), ''];
           const card = document.createElement('div');
           card.className = 'preview';
           const h = document.createElement('h2');
-          h.textContent = `${title} — ${subtitle}`;
+          h.textContent = preview.label ?? String(preview.rotation);
           const p = document.createElement('p');
-          p.textContent = 'composited on shell_flat_upright at @2x';
+          p.textContent = `${preview.shell ?? 'flat shell'} · shell lighting unchanged, carved decal @2x`;
           const img = document.createElement('img');
           img.alt = h.textContent;
           img.src = preview.url;
@@ -328,6 +321,8 @@
         renderPreviews(data.previews);
         if (!data.blenderFound) {
           document.getElementById('status').textContent = `Blender not found at ${data.blender}`;
+        } else if (!data.shellsReady) {
+          document.getElementById('status').textContent = 'Rendering the four shell orientations once…';
         }
       }
 

@@ -123,7 +123,7 @@ Configure an automated Blender script to render the canonical blank tile shells 
   - Generate a **face variant per perspective a face-up shell appears in** instead of reusing one glyph for every shell: `standing-front-{slot}` for the 14 `shell_hand_slot_*` shells, `flat-topdown` for `shell_flat_upright`, `flat-rot90` for `shell_flat_sideways`. A variant id names a perspective slot, not a camera angle; the Phase 1b pick fixes the angle behind it.
   - The face-down wall shells (`shell_wall_horizontal`, `shell_wall_side_left`, `shell_wall_side_right`) are **bare**: no glyph, no face variant, no atlas entry.
   - Landed 2026-11-15: `frontend/src/table/TileAtlasBuilder.ts`, see §11.
-- [x] **Task 2.3:** Store UV rects and layout metrics in a fast lookup map (`Map<TileRenderKey, BakedTileSprite>`, keyed by the same triple) so runtime frame rendering requires no dynamic face compositing or multi-pass shaders. The one dynamic pass is the shadow **group layer** (§10.12): one blur per zone over the hard shapes, rebuilt only when a tile in that zone moves. The atlas key is part of the shipped contract; adding a later variant (for example a lifted/hovered hand decal) is a new `faceVariant` entry, never a glyph swapped at draw time. Budget note: the variant dimension multiplies the composited sprites by the number of face-up shells rather than by the 37 raw glyphs; measure the packed atlas in Phase 2 against the committed-asset budget. Landed 2026-11-15: 608 keys, 16 pages, 26.41 MiB @1x, see §11.
+- [x] **Task 2.3:** Store UV rects and layout metrics in a fast lookup map (`Map<TileRenderKey, BakedTileSprite>`, keyed by the same triple) so runtime frame rendering requires no dynamic face compositing or multi-pass shaders. The one dynamic pass is the shadow **group layer** (§10.12): one blur per zone over the hard shapes, rebuilt only when a tile in that zone moves. The atlas key is part of the shipped contract; adding a later variant (for example a lifted/hovered hand decal) is a new `faceVariant` entry, never a glyph swapped at draw time. Budget note: the variant dimension multiplies the composited sprites by the number of face-up shells rather than by the 37 raw glyphs; measure the packed atlas in Phase 2 against the committed-asset budget. Landed 2026-11-15: 684 keys, 18 pages, 30.25 MiB @1x, see §11.
 
 ### Phase 3: Coordinate System & Zone Layout Engine
 - [ ] **Task 3.1:** Implement the table layout engine strictly using `advanceWidth` and `advanceHeight` from `shells.json` (never `texWidth`/`texHeight`).
@@ -497,11 +497,13 @@ base/angle numbers in §8 and the Phase 1b review in §9.
 | `shell_wall_horizontal` | el 80° | **el 45°** (candidate C) |
 | `shell_wall_side_left/right` | el 75°, rotY ∓35° | **el 45°**, face down, off-axis perspective with the camera 2 units inside the wall (§10.4) |
 
-The six original shells are now **103**: the three wall shells each gained a
+The six original shells became **103** in Phase 1c: the three wall shells each gained a
 face-up counterpart for revealed dora indicators; the front/back walls split
 into a 68-shell per-slot fan (§10.8); the human hand split into a 14-slot fan
 (§10.9); and the top hand is a dedicated 13-slot standing blue-back fan. The
-ponds/melds stay straight-on and the side walls are approved.
+ponds/melds stay straight-on and the side walls are approved. Phase 2b later
+adds two flat river shells (`shell_flat_upright_180`, `shell_flat_sideways_270`),
+for **105** committed shells; see §12.
 
 ### 10.2 The committed bake, measured
 
@@ -1090,30 +1092,27 @@ lazy `warm(shells)`; the first board warms all 16. Frame code only blits
 `page.canvas` at `sprite.uv`. The face-down wall shells are bare and have no
 atlas entry: the board draws their PNGs directly.
 
-**Numbers.** 608 keys across 16 pages (576 glyph keys + 32 bare keys; each page
+**Numbers.** 684 keys across 18 pages (648 glyph keys + 36 bare keys; each page
 holds 37 slots: 36 inked + 1 shared bare). At **@1x** the atlas is
-**6,922,196 px / 26.41 MiB RGBA** and builds in ~33–44 ms in Node Canvas; at
-**@2x** it would be **24,358,848 px / 92.92 MiB**, so the loader defaults to
+**7,929,168 px / 30.25 MiB RGBA** and builds in ~33–44 ms in Node Canvas; at
+**@2x** it would be **27,575,784 px / 105.19 MiB**, so the loader defaults to
 @1x and demotes a requested @2x atlas above `maxRgbaBytes` (48 MiB). A single
 hand page at @2x is 1,240,200 px / 4.73 MiB and ~12 ms, so @2x remains available
 for a focused preview or a device with the headroom. The review sheets and
 `atlas-numbers.json` come from `frontend/scripts/review-atlas.ts`.
 
-**Budgets.** Committed table assets are **7,379,149 B** of the 8 MiB total limit
-(shells 5,653,539 + `shells.json` 561,793 + felt 559,465 + glyphs 576,938 +
-`faces.json` 27,414), leaving ~1.0 MB. A full board's @1x bodies + felt + both
-manifests + glyphs is **2,632,636 B** of the 4 MiB initial-load limit. The atlas
+**Budgets.** Committed table assets are **7,500,843 B** of the 8 MiB total limit
+(shells 5,765,417 + `shells.json` 571,609 + felt 559,465 + glyphs 576,938 +
+`faces.json` 27,414), leaving ~0.86 MB. A full board's @1x bodies + felt + both
+manifests + glyphs is **2,658,858 B** of the 4 MiB initial-load limit. The atlas
 is composed locally, not downloaded.
 
-**No carved/lit decal.** The retired full-scene pipeline carved the symbol into
-the face plate, painted it and lit it once per orientation, then composited a
-baked decal (`rendered-table-plan.md`, retired 2026-11-13). The active
-architecture deliberately does not do that: the shell carries the baked
-lighting and bevel, and the glyph is flat colour-on-transparent ink mapped into
-`faceQuad`. Phase 2 therefore has no carve geometry, no per-orientation decal
-render and no specular line on the paint. A carved/embossed look would be a new
-visual decision with its own cost model (a per-perspective lit decal bake or an
-atlas-build emboss pass), not an unfinished step here.
+**Carved decals (Phase 2b).** The flat glyphs above remain the Phase 2
+baseline and the fallback. Phase 2b restores the retired pipeline's carved,
+painted, separately lit face decal as a transparent overlay; it adds the
+`decalManifest` and a second source path in `TileAtlasBuilder` without changing
+the key contract. See §12 for the separate upright/lying light rigs, the four
+flat river shells and the lying tuner.
 
 **Decisions that narrow the architecture above.**
 
@@ -1123,7 +1122,7 @@ atlas-build emboss pass), not an unfinished step here.
    atlas page scale follow `devicePixelRatio` where the memory allows.
 2. **One page per face-up shell.** It keeps lazy warming and the review sheets
    simple, and it lets the key's shell choose the page without a global packer.
-   The cost is 26.41 MiB at @1x; a future global shelf packer could recover the
+   The cost is 30.25 MiB at @1x; a future global shelf packer could recover the
    row-end waste (about 6.8 MiB) if a device needs it.
 3. **`faceQuad` carries the shell's rotation; `faceRotationDeg` is the desired
    screen rotation.** For `shell_flat_sideways` the first edge points up the

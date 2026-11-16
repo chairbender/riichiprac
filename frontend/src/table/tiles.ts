@@ -7,7 +7,7 @@
  * and the shell's face variant, because the atlas stores one composited sprite
  * per `(shellType, faceVariant, tileFace)`.
  *
- * The Phase 2 atlas covers the 16 face-up shells that exist today: the 14
+ * The Phase 2 atlas covers the 18 face-up shells that exist today: the 14
  * standing-hand slots and the two straight-on pond/meld shells. The 34
  * per-slot dora shells (§10.5 of the architecture) are a later face-variant
  * family and deliberately have no keys here; a revealed dora indicator is
@@ -43,6 +43,8 @@ export const FACE_UP_SHELL_IDS = [
   ...HAND_SLOT_IDS.map((slot) => `shell_hand_slot_${slot}` as const),
   'shell_flat_upright',
   'shell_flat_sideways',
+  'shell_flat_upright_180',
+  'shell_flat_sideways_270',
 ] as const;
 
 export type FaceUpShellId = (typeof FACE_UP_SHELL_IDS)[number];
@@ -71,6 +73,8 @@ export const FACE_SURFACE_BY_SHELL: Readonly<Record<FaceUpShellId, FaceSurface>>
   shell_hand_slot_draw: 'upright',
   shell_flat_upright: 'lying',
   shell_flat_sideways: 'lying',
+  shell_flat_upright_180: 'lying',
+  shell_flat_sideways_270: 'lying',
 };
 
 export function surfaceForShell(shell: FaceUpShellId): FaceSurface {
@@ -107,6 +111,8 @@ export const FACE_VARIANT_BY_SHELL: Readonly<Record<FaceUpShellId, string>> = {
   shell_hand_slot_draw: 'standing-front-draw',
   shell_flat_upright: 'flat-topdown',
   shell_flat_sideways: 'flat-rot90',
+  shell_flat_upright_180: 'flat-topdown-180',
+  shell_flat_sideways_270: 'flat-rot270',
 };
 
 /** All 38 face ids, in atlas order. `blank` has no glyph asset. */
@@ -229,7 +235,7 @@ export function faceIdForTile(code: string, redFive = false): TileFaceId {
   return code;
 }
 
-/** Every key the Phase 2 atlas must resolve: 16 shells x 38 faces. */
+/** Every key the Phase 2 atlas must resolve: 18 shells x 38 faces. */
 export const ALL_TILE_RENDER_KEYS: readonly TileRenderKey[] = FACE_UP_SHELL_IDS.flatMap(
   (shell) => TILE_FACE_IDS.map((face) => tileRenderKey(shell, face)),
 );
