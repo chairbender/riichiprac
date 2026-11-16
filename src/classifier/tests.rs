@@ -244,7 +244,7 @@ fn is_documented_conflict(matches: &[Match]) -> bool {
 }
 
 #[test]
-fn no_two_recognisers_disagree_outside_the_arbitrated_families() {
+fn generated_states_only_disagree_on_the_ch8_bottom_row() {
     for &lesson in B1_LESSONS {
         for _ in 0..3 {
             let state = generated(lesson);
@@ -255,8 +255,8 @@ fn no_two_recognisers_disagree_outside_the_arbitrated_families() {
             let first = &matches[0];
             let agree = matches[1..].iter().all(|other| first.same_answer(other));
             assert!(
-                agree || is_documented_conflict(&matches),
-                "{}: conflicting answers from {:?}",
+                agree || is_documented_defense_conflict(&matches),
+                "{}: generated cells must be disjoint (except ch8's bottom row): {:?}",
                 lesson.as_str(),
                 matches
                     .iter()
@@ -290,8 +290,8 @@ fn classify_unique_is_ok_for_every_generated_b1_state() {
                 Ok(None) => panic!("{} did not classify at all", lesson.as_str()),
                 Err(conflict) => {
                     assert!(
-                        is_documented_conflict(&conflict.matches),
-                        "{}: unexpected conflict: {conflict}",
+                        is_documented_defense_conflict(&conflict.matches),
+                        "{}: generated cells must not conflict: {conflict}",
                         lesson.as_str()
                     );
                 }
@@ -333,63 +333,57 @@ fn evaluation_agreeing_with(matched: &Match) -> Evaluation {
     }
 }
 
-/// A generated state where the general rule and the bad-wait box disagree.
+/// A state where two ch. 7 sections disagree.
+///
+/// The lesson generators now build disjoint cells, so the disagreement is
+/// constructed: the improving board plants one visible copy of each single to
+/// make the bad-wait box agree (a two-live simple tanki). Removing those
+/// planted copies leaves each twin tanki on three live tiles, where the box
+/// calls riichi while the improving section keeps dama. This is the arbitrary
+/// replay shape the Mortal tiebreak exists for.
 fn ch7_conflict_state() -> GameState {
-    for _ in 0..160 {
-        let state = generated(ScenarioId::RiichiJudgement);
-        let (Some(general), Some(boxed)) = (
-            classify(&state, ScenarioId::RiichiJudgement),
-            classify(&state, ScenarioId::DamaBadWait),
-        ) else {
-            continue;
-        };
-        if !general.same_answer(&boxed) {
-            return state;
-        }
+    let mut state = generated(ScenarioId::DamaImprovingHand);
+    let mut singles = state.equivalent_tiles.clone();
+    singles.push(
+        state
+            .correct_action
+            .tile()
+            .expect("the improving answer names a discard")
+            .to_string(),
+    );
+    for player in &mut state.players {
+        player
+            .discards
+            .retain(|discard| !singles.contains(&discard.tile));
     }
-    panic!("the generators must produce a ch7 disagreement");
+    let matches = classify_all(&state);
+    assert!(
+        is_documented_ch7_conflict(&matches),
+        "the constructed ch7 state must disagree: {matches:?}"
+    );
+    state
 }
 
 #[test]
-fn mortal_breaks_a_ch7_disagreement_toward_the_general_rule() {
+fn mortal_breaks_a_ch7_disagreement_toward_each_rule() {
     let state = ch7_conflict_state();
-    let general = classify(&state, ScenarioId::RiichiJudgement).expect("the general rule");
-    let boxed = classify(&state, ScenarioId::DamaBadWait).expect("the bad-wait box");
-    assert!(!general.same_answer(&boxed));
+    let matches = classify_all(&state);
+    assert_eq!(matches.len(), 2, "{matches:?}");
 
-    let evaluation = evaluation_agreeing_with(&general);
-    let label = classify_with_mortal(&state, &evaluation)
-        .expect("Mortal distinguishes the two answers")
-        .expect("a label");
-    assert_eq!(label.matched, general);
-    assert_eq!(
-        label.resolution,
-        Resolution::MortalTiebreak {
-            rejected: vec![ScenarioId::DamaBadWait]
-        }
-    );
-    label.matched.validate(&state).expect("a legal answer");
-}
-
-#[test]
-fn mortal_breaks_a_ch7_disagreement_toward_the_exception() {
-    let state = ch7_conflict_state();
-    let general = classify(&state, ScenarioId::RiichiJudgement).expect("the general rule");
-    let boxed = classify(&state, ScenarioId::DamaBadWait).expect("the bad-wait box");
-
-    let evaluation = evaluation_agreeing_with(&boxed);
-    let label = classify_with_mortal(&state, &evaluation)
-        .expect("Mortal distinguishes the two answers")
-        .expect("a label");
-    assert_eq!(label.matched, boxed);
-    assert_eq!(
-        label.resolution,
-        Resolution::MortalTiebreak {
-            rejected: vec![ScenarioId::RiichiJudgement]
-        }
-    );
-    label.matched.validate(&state).expect("a legal answer");
-    assert_ne!(label.matched, general);
+    for chosen in &matches {
+        let rejected: Vec<ScenarioId> = matches
+            .iter()
+            .filter(|other| *other != chosen)
+            .map(|other| other.lesson)
+            .collect();
+        let evaluation = evaluation_agreeing_with(chosen);
+        let label = classify_with_mortal(&state, &evaluation)
+            .expect("Mortal distinguishes the two answers")
+            .expect("a label");
+        assert_eq!(&label.matched, chosen);
+        assert_eq!(label.resolution, Resolution::MortalTiebreak { rejected });
+        label.matched.validate(&state).expect("a legal answer");
+    }
 }
 
 #[test]

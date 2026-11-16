@@ -51,23 +51,22 @@
 //! constructor. They still call each lesson's own judgement helpers instead of
 //! re-implementing the book rule.
 //!
-//! # Known ch. 7 disagreements
+//! # ch. 7 sections can disagree on arbitrary states
 //!
 //! The chapter's structure is a general rule plus a list of exceptions, and the
-//! app ships each as its own lesson. On some hands the general
-//! [`ScenarioId::RiichiJudgement`] rule and one of the later `dama_*` sections
-//! read the same visible hand differently:
+//! app ships each cell as its own lesson. The **lesson generators** now build
+//! disjoint cells (see each lesson's module doc): the general rule only draws
+//! its riichi cells, the bad-wait box owns every bad wait, the improving board
+//! makes the box agree, and the expensive board keeps a good wait. A generated
+//! state therefore has one book answer.
 //!
-//! - the general rule's dama cell (ch7:71, "bad-wait riichi-only non-dealer")
-//!   against [`ScenarioId::DamaBadWait`]'s "three or more live winning tiles"
-//!   cell (ch7:521), which calls riichi;
-//! - the general rule's riichi against the genbutsu-wait (ch7:539), expensive-
-//!   hand (ch7:569) or improving-hand (ch7:656) dama sections;
-//! - [`ScenarioId::DamaBadWait`]'s riichi cell against the improving-hand dama
-//!   cell (both are "specific" exceptions the book does not rank).
-//!
-//! Each recogniser mirrors its shipped lesson, so [`classify_all`] can return
-//! two ch. 7 matches with different answers.
+//! A replay state is arbitrary, though, and two *specific* sections can still
+//! read the same visible hand differently — for example a 7700+ hand on a 3-4
+//! live bad wait is the bad-wait box's riichi (ch7:521) and the expensive-hand
+//! section's dama (ch7:569), and a tanki with three live tiles can be both the
+//! box's riichi and the improving-hand section's dama (ch7:656). The general
+//! rule defers to all of them. [`classify_all`] returns every match, so the
+//! disagreement is visible rather than hidden.
 //!
 //! # Mortal is the tiebreaker
 //!

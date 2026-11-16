@@ -122,6 +122,16 @@ pub(super) fn build(
             quality.live_kinds
         ));
     }
+    // The ch7 bad-wait box is a *bad*-wait reason; this lesson's hand must stay
+    // a good wait (at least two kinds and more than four live tiles, ch7:491)
+    // or the box would call riichi on the same board and the two lessons would
+    // disagree. The side wait is two kinds, so this is the live-tile half.
+    if quality.live_tiles < 5 {
+        return Err(format!(
+            "the wait has only {} live tiles; the bad-wait box would call riichi",
+            quality.live_tiles
+        ));
+    }
 
     // Recount the hand's value from the finished table. Nothing on the board
     // changes it, but the book's test is about the value *after* the discard,

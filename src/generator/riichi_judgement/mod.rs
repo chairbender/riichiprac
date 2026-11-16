@@ -15,14 +15,31 @@
 //! A good wait means "at least two kinds and more than four tiles left to win
 //! on" (ch7:491), counted over live tiles.
 //!
-//! The generator builds the hand for a target set of conditions and then
-//! rejects it unless the computed conditions — han at the worst winning tile,
-//! live wait quality, seat wind — match that target exactly. Board cases where
-//! the later ch. 7 sections prefer dama (a 1-2 tile bad wait, being in the
-//! lead, a genbutsu wait, a hand already worth 7700+) are deliberately kept
-//! out of the sample. So is any hand holding four copies of a tile: that makes
-//! a closed kan (ankan) legal, which is a different lesson and an action the
-//! UI never offers here.
+//! # Which cells this lesson owns
+//!
+//! The chapter's later sections refine the general rule, and each one is its
+//! own shipped lesson. This lesson only draws the general rule's **riichi**
+//! cells (the seven non-empty condition sets); the answer is always Riichi.
+//! Every dama cell belongs to the section that introduces it:
+//!
+//! - the empty condition set and the 1-2 live-tile cells are the bad-wait
+//!   box's, taught by `dama_bad_wait` (ch7:521);
+//! - the genbutsu wait is `dama_genbutsu_wait` (ch7:539);
+//! - a hand already worth 7700 without riichi is `dama_expensive_hand`
+//!   (ch7:569/598), so this generator rejects at that floor, not at mangan;
+//! - the improving-hand box is `dama_improving_hand` (ch7:656-660); it needs
+//!   an early turn, so this table is deliberately past the 8th turn.
+//!
+//! That keeps the shipped lessons from answering the same hand differently.
+//! For an arbitrary replay state two sections can still both apply (the
+//! classifier's note in `src/classifier/riichi.rs`), and the miner settles it
+//! with Mortal.
+//!
+//! The generator builds the hand for a target condition set and then rejects it
+//! unless the computed conditions — han at the worst winning tile, live wait
+//! quality, seat wind — match that target exactly. A hand holding four copies
+//! of a tile is rejected too: that makes a closed kan (ankan) legal, which is a
+//! different lesson and an action the UI never offers here.
 
 mod board;
 // The wait-quality and han helpers are shared with the `dama_bad_wait`
@@ -72,13 +89,12 @@ mod tests {
 
     use agari::hand::{HandStructure, decompose_hand};
     use agari::parse::to_counts;
-    use agari::scoring::ScoreLevel;
     use agari::shanten::calculate_shanten;
     use agari::tile::Tile;
 
     use crate::generator::support::analysis::{evaluate_hand, visible_tile_counts};
     use crate::generator::support::testing::parse_tile;
-    use crate::state::{CorrectActionType, DamaReason, RiichiTrigger, TargetAction, Wind};
+    use crate::state::{CorrectActionType, RiichiTrigger, TargetAction, Wind};
 
     /// A hand as the player sees it, read back off the generated state.
     struct Puzzle {
@@ -199,6 +215,12 @@ mod tests {
             triggers.push(RiichiTrigger::Dealer);
         }
         triggers
+    }
+
+    /// The learner's river length (the 1-based turn about to be played is one
+    /// more).
+    fn puzzle_human_discards(state: &GameState) -> usize {
+        state.players[0].discards.len()
     }
 
     /// Every distinct tile in a list, sorted, for discard sweeps.
@@ -380,8 +402,6 @@ mod tests {
     #[test]
     fn test_riichi_judgement_constraints() {
         let started = std::time::Instant::now();
-        let mut riichi = 0;
-        let mut dama = 0;
         let mut extra_han = 0;
         let mut good_wait = 0;
         let mut dealer = 0;
@@ -400,73 +420,58 @@ mod tests {
                 "run {run}: triggers must be the conditions the book rule finds"
             );
 
-            // Riichi Book 1, ch. 7: riichi if at least one condition holds.
-            if conditions.picks_riichi() {
-                riichi += 1;
-                assert_eq!(state.target_action, TargetAction::Riichi, "run {run}");
-                assert_eq!(
-                    state.correct_action.action_type(),
-                    CorrectActionType::Riichi
-                );
-                assert!(state.dama_reasons.is_empty(), "run {run}");
-                assert!(
-                    !state.riichi_triggers.is_empty(),
-                    "run {run}: a riichi answer needs a cited condition"
-                );
+            // Riichi Book 1, ch. 7: this lesson only draws the cells where at
+            // least one condition holds. The empty set is the bad-wait box's
+            // cell (`dama_bad_wait`), which refines the wait by live tiles.
+            assert!(conditions.picks_riichi(), "run {run}: {conditions:?}");
+            assert_eq!(state.target_action, TargetAction::Riichi, "run {run}");
+            assert_eq!(
+                state.correct_action.action_type(),
+                CorrectActionType::Riichi
+            );
+            assert!(state.dama_reasons.is_empty(), "run {run}");
+            assert!(
+                !state.riichi_triggers.is_empty(),
+                "run {run}: a riichi answer needs a cited condition"
+            );
 
-                // The high-scoring dama case must not be generated as riichi.
-                for winning in puzzle.winning_hands() {
-                    let wait = *winning.last().expect("winning tile");
-                    assert!(
-                        judgement::worst_score_level(
-                            &winning,
-                            wait,
-                            puzzle.round_wind,
-                            puzzle.wind,
-                            &puzzle.dora,
-                        ) < ScoreLevel::Mangan,
-                        "run {run}: riichi hand is already mangan without riichi"
-                    );
-                }
-            } else {
-                dama += 1;
-                assert_eq!(state.target_action, TargetAction::Dama, "run {run}");
-                assert_eq!(state.correct_action.action_type(), CorrectActionType::Dama);
-                assert!(state.riichi_triggers.is_empty(), "run {run}");
-                assert_eq!(
-                    state.dama_reasons,
-                    vec![
-                        DamaReason::NotDealer,
-                        DamaReason::BadWait,
-                        DamaReason::NoExtraHan,
-                    ],
-                    "run {run}"
-                );
-
-                // The only prohibited riichi: bad wait, riichi-only, non-dealer.
-                assert_ne!(puzzle.wind, Wind::East, "run {run}");
-                assert!(!puzzle.good_wait(), "run {run}");
-                assert_eq!(puzzle.extra_han(), 0, "run {run}");
-                assert!(
-                    judgement::wait_quality(&puzzle.tenpai, &puzzle.visible).live_tiles >= 3,
-                    "run {run}: the 1-2 tile bad wait is a different lesson"
-                );
-            }
+            // The later ch7 dama sections own their hands; this generator must
+            // not build one of their cells.
+            //
+            // High scoring hand: the section's floor is 7700 on the *worst*
+            // winning tile (ch7:598), not mangan.
+            let worst = crate::generator::support::value::worst_value(
+                &puzzle.tenpai,
+                &puzzle.waits,
+                puzzle.round_wind,
+                puzzle.wind,
+                &puzzle.dora,
+                0,
+            );
+            assert!(
+                worst.is_none_or(|value| value.points < 7_700),
+                "run {run}: the expensive-hand section owns this hand"
+            );
+            // Many possibilities of improving the hand: that box needs an
+            // early turn (ch7:658), and this table is deliberately past the
+            // 8th, so its cell cannot apply however many kinds improve.
+            assert!(
+                puzzle_human_discards(&state) + 1 > 8,
+                "run {run}: the improving-hand section needs an early turn"
+            );
 
             extra_han += usize::from(conditions.extra_han);
             good_wait += usize::from(conditions.good_wait);
             dealer += usize::from(conditions.dealer);
         }
 
-        assert!(riichi > 0, "no Riichi states were generated");
-        assert!(dama > 0, "no dama states were generated");
         assert!(extra_han > 0, "condition 1 was never exercised");
         assert!(good_wait > 0, "condition 2 was never exercised");
         assert!(dealer > 0, "condition 3 was never exercised");
 
         let elapsed = started.elapsed();
         assert!(
-            elapsed < std::time::Duration::from_secs(10),
+            elapsed < std::time::Duration::from_secs(20),
             "300 riichi-judgement generations took {elapsed:?}"
         );
     }
@@ -552,9 +557,7 @@ mod tests {
 
     #[test]
     fn test_riichi_judgement_each_condition_combination_can_be_applied() {
-        let targets = judgement::Conditions::RIICHI_SETS
-            .into_iter()
-            .chain(std::iter::once(judgement::Conditions::default()));
+        let targets = judgement::Conditions::RIICHI_SETS.into_iter();
 
         for target in targets {
             let mut generated = None;

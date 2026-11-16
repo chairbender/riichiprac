@@ -18,8 +18,11 @@
 //!
 //! The two "riichi anyway" cells of the box are held off on purpose — the human
 //! is in front, and the table is past the 6th turn — so the hand's value is the
-//! only thing deciding. Both branches are graded from a fresh score
-//! enumeration over every winning tile (ch7:598), never from the constructor.
+//! only thing deciding. The wait is kept a good wait (two kinds, more than four
+//! live tiles), because the bad-wait box is a *bad*-wait reason: on a short wait
+//! it would call riichi on the same board. Both branches are graded from a
+//! fresh score enumeration over every winning tile (ch7:598), never from the
+//! constructor.
 
 mod board;
 pub(crate) mod judgement;

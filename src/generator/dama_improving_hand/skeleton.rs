@@ -162,10 +162,14 @@ pub(super) fn build() -> Result<Skeleton, String> {
             continue;
         };
 
-        // The two singles: isolated, distinct, and each available.
+        // The two singles: isolated, distinct, and each available. They are
+        // restricted to simple tiles so both twin tanki are 1-2 live *simple*
+        // waits, the bad-wait box's dama cell (ch7:521); an honor or terminal
+        // wait would let the box call riichi on the same hand.
         let singles: Vec<Tile> = ALL_TILES
             .iter()
             .copied()
+            .filter(|&tile| tile.is_simple())
             .filter(|&tile| deck.has(tile) && is_isolated(tile, &runs))
             .collect();
         let Some(first) = choose(&singles) else {

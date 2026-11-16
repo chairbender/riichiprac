@@ -68,38 +68,36 @@ impl Skeleton {
     }
 }
 
-/// Relative draw weights for the eight parameter sets.
+/// Relative draw weights for the seven condition sets.
 ///
-/// The pool is the book's dama case followed by [`Conditions::RIICHI_SETS`].
-/// A uniform draw over the eight sets meant only three eighths of the hands
-/// isolated one condition; the rest stacked two or three conditions on one
-/// hand, so a player could answer from whichever condition was easiest to spot
-/// and never learn the others. The isolated cases are the point of the box, so
-/// they carry the highest weight:
+/// A uniform draw over the seven sets put only three sevenths of the hands on
+/// an isolated condition; the rest stacked two or three conditions on one hand,
+/// so a player could answer from whichever condition was easiest to spot and
+/// never learn the others. The isolated cases are the point of the box, so they
+/// carry the highest weight:
 ///
 /// | set | weight |
 /// |---|---|
-/// | dama (no condition) | 2 |
 /// | one condition | 5 each |
 /// | two conditions | 2 each |
 /// | all three conditions | 1 |
 ///
-/// That puts five eighths of the draw on an isolated condition, while the
-/// combinations stay reachable (and the dama case stays the rarer answer, as
-/// the book's rule makes it).
-pub(super) const TARGET_WEIGHTS: [u32; 8] = [2, 5, 5, 5, 2, 2, 2, 1];
+/// That puts most of the draw on an isolated condition while the combinations
+/// stay reachable.
+///
+/// The empty condition set is deliberately **not** in this pool. It is the
+/// bad-wait box's cell: ch7:521 refines "bad wait" by live winning tiles
+/// (3+ call riichi, 1-2 simple stay dama), and the shipped `dama_bad_wait`
+/// lesson owns it. Generating it here as dama would ship two contradictory
+/// answers for the same rule cell (see the classifier's ch7 note).
+pub(super) const TARGET_WEIGHTS: [u32; 7] = [5, 5, 5, 2, 2, 2, 1];
 
 /// Sum of [`TARGET_WEIGHTS`]; the draw is a uniform roll in this range.
-pub(super) const TOTAL_TARGET_WEIGHT: u32 = 24;
+pub(super) const TOTAL_TARGET_WEIGHT: u32 = 22;
 
 /// The parameter set at `index`, and its weight.
 fn target_at(index: usize) -> (Conditions, u32) {
-    let target = if index == 0 {
-        Conditions::default()
-    } else {
-        Conditions::RIICHI_SETS[index - 1]
-    };
-    (target, TARGET_WEIGHTS[index])
+    (Conditions::RIICHI_SETS[index], TARGET_WEIGHTS[index])
 }
 
 /// Maps one roll in `[0, TOTAL_TARGET_WEIGHT)` onto its weighted set.
@@ -352,22 +350,20 @@ fn unique_tenpai_discard(full_tiles: &[Tile]) -> Option<Tile> {
 mod tests {
     use super::*;
 
+    /// The lesson only draws cells the general rule answers with riichi. The
+    /// empty set is the bad-wait box's cell (`dama_bad_wait`).
     #[test]
-    fn random_targets_cover_the_whole_rule() {
-        let mut riichi = 0;
-        let mut dama = 0;
+    fn random_targets_only_pick_riichi_cells() {
         for _ in 0..1_000 {
-            if random_target().picks_riichi() {
-                riichi += 1;
-            } else {
-                dama += 1;
-            }
+            assert!(
+                random_target().picks_riichi(),
+                "the dama cell belongs to the bad-wait box"
+            );
         }
-        assert!(riichi > 0 && dama > 0, "riichi {riichi}, dama {dama}");
     }
 
-    /// The weight table covers exactly the dama case plus the seven non-empty
-    /// condition sets, and each slot is exactly as wide as its weight.
+    /// The weight table covers exactly the seven non-empty condition sets, and
+    /// each slot is exactly as wide as its weight.
     #[test]
     fn every_roll_maps_onto_its_weighted_slot() {
         assert_eq!(
@@ -376,9 +372,7 @@ mod tests {
             "the pool total must match the table"
         );
 
-        let expected: Vec<Conditions> = std::iter::once(Conditions::default())
-            .chain(Conditions::RIICHI_SETS)
-            .collect();
+        let expected: Vec<Conditions> = Conditions::RIICHI_SETS.to_vec();
         assert_eq!(expected.len(), TARGET_WEIGHTS.len());
 
         let mut counts = vec![0u32; expected.len()];
@@ -399,7 +393,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn single_condition_sets_dominate_the_draw() {
-        let single_weight: u32 = TARGET_WEIGHTS[1..=3].iter().sum();
+        let single_weight: u32 = TARGET_WEIGHTS[0..=2].iter().sum();
         let single_share = f64::from(single_weight) / f64::from(TOTAL_TARGET_WEIGHT);
         assert!(
             single_share > 0.6,
@@ -436,7 +430,7 @@ mod tests {
             singles.iter().all(|&count| count > 0),
             "every isolated condition must appear: {singles:?}"
         );
-        assert!(dama > 0, "the dama case must still appear");
+        assert_eq!(dama, 0, "the dama cell belongs to the bad-wait box");
         assert!(combined > 0, "the combinations must still appear");
         assert!(
             single as f64 / draws as f64 > 0.55,

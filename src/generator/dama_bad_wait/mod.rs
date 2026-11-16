@@ -1,9 +1,10 @@
 //! Riichi vs. dama on a bad wait: Riichi Book 1, ch. 7, "Bad wait".
 //!
 //! The chapter's later dama sections are exceptions to the general
-//! three-condition rule. This lesson takes the one case the general rule
-//! forbids — a bad-wait, riichi-only hand by a non-dealer — and applies the
-//! section's countable threshold instead:
+//! three-condition rule. This lesson **owns every bad-wait cell**: the one case
+//! the general rule forbids (a bad-wait, riichi-only hand by a non-dealer, the
+//! empty condition set) and the 1-2 live-tile cells. `riichi_judgement` defers
+//! all of them here, and the section's countable threshold decides:
 //!
 //! > Call riichi if there are three or more winning tiles left in the board.
 //! > Go dama if there are only one or two simple tiles left to win on.

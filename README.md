@@ -558,11 +558,14 @@ the pinned set cannot be built at all the call fails with an error naming it,
 rather than silently choosing a different situation.
 
 The `riichi_judgement` draw is also weighted toward the isolated conditions now:
-a uniform draw over the eight sets spent five eighths of the hands on two or
+a uniform draw over its seven sets spent three sevenths of the hands on two or
 three conditions at once, so the drill rarely tested one condition on its own.
 Single-condition sets (good wait only, extra han only, dealer only) carry five
-times the weight of the all-three set, which puts five eighths of the draw on an
-isolated condition while keeping every combination reachable.
+times the weight of the all-three set, which puts most of the draw on an
+isolated condition while keeping every combination reachable. The empty
+condition set (bad-wait, riichi-only, non-dealer) is not drawn here at all: it
+is the ch. 7 bad-wait box's cell, taught by `dama_bad_wait`, so the two lessons
+cannot answer the same hand differently.
 
 In the app it is the **Mortal must agree** checkbox beside the scenario picker.
 It is per-session and checked by default, including for the first hand; it stays

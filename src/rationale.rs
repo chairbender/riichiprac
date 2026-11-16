@@ -6479,8 +6479,9 @@ mod tests {
 
     #[test]
     fn riichi_judgement_rationale_follows_the_three_condition_rule() {
-        let mut saw_riichi = false;
-        let mut saw_dama = false;
+        // The lesson now only draws the general rule's riichi cells; the dama
+        // cells are the later sections' lessons, each citing its own rule.
+        let mut conditions_seen = [false; 3];
 
         for _ in 0..40 {
             let state = generate_puzzle("riichi_judgement").expect("scenario must generate");
@@ -6494,26 +6495,35 @@ mod tests {
                     .any(|caveat| caveat.contains("not modelled")),
                 "the lesson must say which ch7 dama cases it leaves out"
             );
+            assert!(
+                !state.riichi_triggers.is_empty(),
+                "this lesson only answers riichi, so a condition must be cited"
+            );
+            assert!(
+                state.dama_reasons.is_empty(),
+                "the dama cells belong to the later ch7 sections"
+            );
+            assert!(rationale.summary.contains("Declare Riichi"));
+            assert!(!rationale.rules.is_empty());
 
-            if state.riichi_triggers.is_empty() {
-                saw_dama = true;
-                assert!(rationale.summary.contains("Stay in dama"));
-                assert_eq!(rationale.rules.len(), 3);
-                assert!(
-                    rationale
-                        .caveats
-                        .iter()
-                        .any(|caveat| caveat.contains("tsumo")),
-                    "a riichi-only dama hand can only win by tsumo"
-                );
-            } else {
-                saw_riichi = true;
-                assert!(rationale.summary.contains("Declare Riichi"));
-                assert!(!rationale.rules.is_empty());
+            for (index, trigger) in [
+                RiichiTrigger::HasExtraHan,
+                RiichiTrigger::GoodWait,
+                RiichiTrigger::Dealer,
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                if state.riichi_triggers.contains(&trigger) {
+                    conditions_seen[index] = true;
+                }
             }
         }
 
-        assert!(saw_riichi && saw_dama);
+        assert!(
+            conditions_seen.iter().all(|seen| *seen),
+            "every condition must be cited at least once: {conditions_seen:?}"
+        );
     }
 
     #[test]

@@ -12,9 +12,10 @@
 //! The book cells, as the generators encode them:
 //!
 //! - [`super::ScenarioId::RiichiJudgement`] — the general three-condition rule
-//!   (ch7:55-59): riichi if at least one of extra han, good wait, dealer holds;
-//!   otherwise dama (ch7:71). The 1-2 live-tile cells belong to the later
-//!   bad-wait box, so they are left to [`super::ScenarioId::DamaBadWait`].
+//!   (ch7:55-59): riichi if at least one of extra han, good wait, dealer holds.
+//!   Its dama cell (the empty condition set) and the 1-2 live-tile cells belong
+//!   to the later bad-wait box, and the other dama sections own their hands, so
+//!   this recogniser defers all of them.
 //! - [`super::ScenarioId::DamaBadWait`] — the ch7:521 box: 3+ live winning tiles
 //!   call riichi; 1-2 live simple tiles stay dama; 1-2 live honor/terminal tiles
 //!   may call riichi.
@@ -29,8 +30,10 @@
 //! cheap/expensive waits, trap waits) are **not** modelled: a classifier that
 //! cannot read the exception returns `None` rather than claiming dama.
 //!
-//! See the module-level note in [`super`] on the known conflict between
-//! `riichi_judgement`'s dama cell and `dama_bad_wait`'s 3+ live cell.
+//! See the module-level note in [`super`] on the ch. 7 disagreement. The lesson
+//! generators now build disjoint cells, so a *generated* state never needs the
+//! Mortal tiebreak; an arbitrary replay state can still hit two sections at
+//! once, and `classify_with_mortal` settles it.
 
 use agari::tile::Tile;
 
@@ -66,59 +69,72 @@ pub(crate) const DAMA_POLICY: TransformPolicy = TransformPolicy {
            han, so normalising it can move a hand across the 7700 and extra-han thresholds.",
 };
 
-/// The general three-condition rule (ch7:55-59).
+/// The general three-condition rule (ch7:55-59), on the cells it owns.
+///
+/// The chapter's later dama sections refine the general rule, and the shipped
+/// lessons encode each one. This recogniser therefore **defers** every cell a
+/// dedicated lesson owns, so the two never answer the same hand differently:
+///
+/// - `dama_bad_wait` owns bad waits (the 1-2 live-tile cells and the
+///   three-condition empty set, which is the same bad-wait box's territory);
+/// - `dama_genbutsu_wait`, `dama_expensive_hand` and `dama_improving_hand` own
+///   the hands their sections keep in dama.
+///
+/// What remains is the general rule's riichi cells, so the answer here is
+/// always Riichi.
 pub fn riichi_judgement(state: &GameState) -> Option<Match> {
     let turn = support::turn(state)?;
     let candidates = support::candidates(&turn)?;
-    let (declaration, chosen, equivalents) = unanimity_index(&turn, &candidates, |_, kept| {
+    let facts =
+        support::sole_riichi_threat(state).and_then(|seat| SafetyFacts::from_state(state, seat));
+    let (_, chosen, equivalents) = unanimity_index(&turn, &candidates, |turn, kept| {
         if !is_book_tenpai(kept) {
             return None;
         }
-        // ch7:521's box owns the 1-2 live-tile cells, including the honor and
-        // terminal footnote, so the general rule defers to it.
-        if kept.quality.live_tiles <= 2 {
+        // The bad-wait box owns every bad-wait cell: the 1-2 live tiles by its
+        // own threshold (ch7:521) and the empty three-condition set, which is a
+        // bad-wait riichi-only non-dealer hand.
+        if kept.quality.live_tiles <= 2 || !kept.conditions.picks_riichi() {
             return None;
         }
-        Some(if kept.conditions.picks_riichi() {
-            Declaration::Riichi
-        } else {
-            Declaration::Dama
-        })
+        // The later ch7 dama sections own their hands.
+        if facts
+            .as_ref()
+            .is_some_and(|facts| genbutsu::applies(&kept.waits, facts))
+        {
+            return None;
+        }
+        if expensive_cell(turn, kept).is_some() || improving_cell(turn, kept).is_some() {
+            return None;
+        }
+        Some(())
     })?;
 
-    if declaration == Declaration::Riichi && !riichi_is_legal(state) {
+    if !riichi_is_legal(state) {
         return None;
     }
     let conditions = candidates[chosen].kept.conditions;
     let mut triggers = Vec::new();
-    let mut reasons = Vec::new();
-    if declaration == Declaration::Riichi {
-        if conditions.extra_han {
-            triggers.push(RiichiTrigger::HasExtraHan);
-        }
-        if conditions.good_wait {
-            triggers.push(RiichiTrigger::GoodWait);
-        }
-        if conditions.dealer {
-            triggers.push(RiichiTrigger::Dealer);
-        }
-    } else {
-        if !conditions.dealer {
-            reasons.push(DamaReason::NotDealer);
-        }
-        reasons.push(DamaReason::BadWait);
-        if !conditions.extra_han {
-            reasons.push(DamaReason::NoExtraHan);
-        }
+    if conditions.extra_han {
+        triggers.push(RiichiTrigger::HasExtraHan);
+    }
+    if conditions.good_wait {
+        triggers.push(RiichiTrigger::GoodWait);
+    }
+    if conditions.dealer {
+        triggers.push(RiichiTrigger::Dealer);
     }
 
     Some(declaration_match(
         ScenarioId::RiichiJudgement,
         Some(conditions.label().to_string()),
-        declaration,
+        Declaration::Riichi,
         candidates[chosen].discard,
         equivalents,
-        Hints { triggers, reasons },
+        Hints {
+            triggers,
+            reasons: Vec::new(),
+        },
         None,
     ))
 }
@@ -625,7 +641,7 @@ mod tests {
     fn a_hand_with_no_yaku_floor_is_not_the_expensive_lesson() {
         let mut checked = 0;
         for _ in 0..80 {
-            let state = generated("riichi_judgement");
+            let state = generated("dama_bad_wait");
             if !state.dama_reasons.contains(&DamaReason::NoExtraHan) {
                 continue;
             }
@@ -667,30 +683,83 @@ mod tests {
     }
 
     #[test]
-    fn the_riichi_judgement_dama_cell_and_the_bad_wait_box_conflict() {
-        // The known ch7 conflict: a bad-wait riichi-only non-dealer with 3-4
-        // live winning tiles is dama under the general rule (ch7:71) and riichi
-        // under the later bad-wait box (ch7:521).
-        let mut found = false;
-        for _ in 0..80 {
-            let state = generated("riichi_judgement");
-            if state.correct_action.action_type() != crate::state::CorrectActionType::Dama {
-                continue;
-            }
-            let general = riichi_judgement(&state).expect("the lesson's own cell");
+    fn the_general_rule_defers_to_the_bad_wait_box() {
+        // The box owns bad waits and the empty three-condition set; the general
+        // rule must not also claim them with the old dama answer.
+        let mut riichi_only = 0;
+        let mut one_or_two_live = 0;
+        for _ in 0..40 {
+            let state = generated("dama_bad_wait");
             let boxed = dama_bad_wait(&state).expect("the box's own cell");
-            assert_eq!(
-                general.correct_action.action_type(),
-                crate::state::CorrectActionType::Dama
+            assert!(
+                riichi_judgement(&state).is_none(),
+                "the general rule must defer to the box"
             );
+            if state.dama_reasons.contains(&DamaReason::NoExtraHan) {
+                riichi_only += 1;
+            }
+            if boxed
+                .dama_reasons
+                .contains(&DamaReason::FewLiveWinningTiles)
+            {
+                one_or_two_live += 1;
+            }
+        }
+        assert!(riichi_only > 0, "the box must produce a riichi-only hand");
+        assert!(
+            one_or_two_live > 0,
+            "the box must produce its 1-2 live dama cell"
+        );
+    }
+
+    #[test]
+    fn the_general_rule_defers_to_every_ch7_dama_section() {
+        for category in [
+            "dama_bad_wait",
+            "dama_genbutsu_wait",
+            "dama_expensive_hand",
+            "dama_improving_hand",
+        ] {
+            for _ in 0..4 {
+                let state = generated(category);
+                assert!(
+                    riichi_judgement(&state).is_none(),
+                    "{category} is a later ch7 section's cell"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_lesson_generator_never_builds_another_dama_cell() {
+        // The content alignment: `riichi_judgement` only draws the general
+        // rule's riichi cells, so its own states never match a dama lesson.
+        for _ in 0..16 {
+            let state = generated("riichi_judgement");
+            let matched = riichi_judgement(&state).expect("the lesson's own cell");
             assert_eq!(
-                boxed.correct_action.action_type(),
+                matched.correct_action.action_type(),
                 crate::state::CorrectActionType::Riichi
             );
-            assert!(!general.same_answer(&boxed));
-            found = true;
-            break;
+            // Another later section may still read the same hand for the same
+            // answer (the bad-wait box calls a 3-4 live bad wait riichi too);
+            // what must never happen is a different answer.
+            for category in [
+                "dama_bad_wait",
+                "dama_genbutsu_wait",
+                "dama_expensive_hand",
+                "dama_improving_hand",
+            ] {
+                if let Some(other) = super::super::classify(
+                    &state,
+                    crate::generator::ScenarioId::from_id(category).expect("a lesson"),
+                ) {
+                    assert!(
+                        matched.same_answer(&other),
+                        "{category} disagrees with the general rule"
+                    );
+                }
+            }
         }
-        assert!(found, "the generator must produce the conflicted cell");
     }
 }
