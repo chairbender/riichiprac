@@ -55,6 +55,7 @@ function manifest(records: DecalRecord[]): DecalsManifest {
     generatedBy: 'test',
     raster: { width: 2, height: 2, scale: 2, format: 'test' },
     surfaces: ['upright', 'lying'],
+    surfaceRotations: { upright: [0], lying: [0, 90, 180, 270] },
     rotations: [0, 90, 180, 270],
     symbolRotations: [0],
     budgetBytes: 1024,

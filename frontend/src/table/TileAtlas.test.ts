@@ -206,6 +206,7 @@ describe('startup tile atlas', () => {
       loadImage: loadFileImage,
       createCanvas: createNapiCanvas,
       pixelRatio: 1,
+      decalsUrl: null,
       warmShells: ['shell_flat_upright'],
     });
     expect(fetched).toEqual([join(tableDir, 'shells.json'), join(tableDir, 'faces.json')]);
@@ -216,6 +217,25 @@ describe('startup tile atlas', () => {
     );
   });
 
+  it('loads the committed carved decal set and uses it instead of flat glyphs', async () => {
+    const registry = await TileAtlas.load({
+      baseUrl: tableDir,
+      fetchJson: async (url) => JSON.parse(readFileSync(url, 'utf8')),
+      loadImage: loadFileImage,
+      createCanvas: createNapiCanvas,
+      pixelRatio: 1,
+      warmShells: ['shell_flat_upright'],
+    });
+    expect(registry.decals).not.toBeNull();
+    expect(registry.decals?.surfaceRotations?.lying).toEqual([0, 90, 180, 270]);
+    const sprite = registry.getSprite(tileRenderKey('shell_flat_upright', '1m'));
+    expect(sprite.decalSurface).toBe('lying');
+    expect(sprite.decalFile).toMatch(/^decals\/1m-lying-l0\.avif$/);
+    expect(sprite.decalLightRotationDeg).toBe(0);
+    expect(registry.stats.decalSprites).toBe(36);
+    expect(registry.stats.flatGlyphSprites).toBe(0);
+  });
+
   it('demotes an over-budget @2x atlas to @1x and records the request', async () => {
     const registry = await TileAtlas.load({
       baseUrl: tableDir,
@@ -224,6 +244,7 @@ describe('startup tile atlas', () => {
       createCanvas: createNapiCanvas,
       pixelRatio: 2,
       maxRgbaBytes: 1,
+      decalsUrl: null,
       warmShells: ['shell_flat_upright'],
     });
     expect(registry.requestedPixelRatio).toBe(2);

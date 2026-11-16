@@ -38,3 +38,6 @@ scripts/.weights-cache/
 frontend/public/models/*.safetensors
 frontend/public/models/*.pth
 
+
+# Root-level Node caches from ad-hoc npx runs (frontend/tools have their own).
+/node_modules

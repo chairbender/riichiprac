@@ -938,40 +938,26 @@ function checkShellsManifest(spec) {
       `${id} shadowTextureFile is a separate PNG under shells/ (${shell.shadowTextureFile})`,
     );
     check(
-      typeof shell.shadowTextureFile2x === 'string' &&
-        shell.shadowTextureFile2x.startsWith('shells/') &&
-        shell.shadowTextureFile2x.endsWith('-shadow.png'),
-      `${id} shadowTextureFile2x is a separate PNG under shells/ (${shell.shadowTextureFile2x})`,
-    );
-    check(
       shell.faceRotationDeg === specRotation.get(id),
       `${id} faceRotationDeg is ${shell.faceRotationDeg} (spec ${specRotation.get(id)})`,
     );
     const texturePath = resolve(dirname(manifestPath), shell.textureFile ?? '');
     const texture2xPath = resolve(dirname(manifestPath), shell.textureFile2x ?? '');
     const shadowPath = resolve(dirname(manifestPath), shell.shadowTextureFile ?? '');
-    const shadow2xPath = resolve(dirname(manifestPath), shell.shadowTextureFile2x ?? '');
     check(existsSync(texturePath), `${id} texture exists (${shell.textureFile})`);
     check(existsSync(texture2xPath), `${id} @2x texture exists (${shell.textureFile2x})`);
     check(existsSync(shadowPath), `${id} shadow texture exists (${shell.shadowTextureFile})`);
-    check(existsSync(shadow2xPath), `${id} @2x shadow texture exists (${shell.shadowTextureFile2x})`);
-    if (
-      !existsSync(texturePath) ||
-      !existsSync(texture2xPath) ||
-      !existsSync(shadowPath) ||
-      !existsSync(shadow2xPath)
-    ) {
+    if (!existsSync(texturePath) || !existsSync(texture2xPath) || !existsSync(shadowPath)) {
       continue;
     }
 
     const image = readPng(texturePath);
     const image2x = readPng(texture2xPath);
     const shadowImage = readPng(shadowPath);
-    const shadowImage2x = readPng(shadow2xPath);
-    const bytes = image.bytes + image2x.bytes + shadowImage.bytes + shadowImage2x.bytes;
+    const bytes = image.bytes + image2x.bytes + shadowImage.bytes;
     totalBytes += bytes;
     check(
-      image.channels === 4 && image2x.channels === 4 && shadowImage.channels === 4 && shadowImage2x.channels === 4,
+      image.channels === 4 && image2x.channels === 4 && shadowImage.channels === 4,
       `${id} body and shadow textures are RGBA`,
     );
     check(
@@ -988,11 +974,6 @@ function checkShellsManifest(spec) {
       image2x.width === shell.texWidth * manifest.pixelRatio &&
         image2x.height === shell.texHeight * manifest.pixelRatio,
       `${id} @2x body is ${image2x.width}x${image2x.height}`,
-    );
-    check(
-      shadowImage2x.width === shell.shadowTexWidth * manifest.pixelRatio &&
-        shadowImage2x.height === shell.shadowTexHeight * manifest.pixelRatio,
-      `${id} @2x shadow is ${shadowImage2x.width}x${shadowImage2x.height}`,
     );
     check(bytes <= spec.budgets.shellBytes, `${id} is ${bytes} B body+shadow (budget ${spec.budgets.shellBytes} B)`);
     check(
@@ -1401,24 +1382,6 @@ function checkShellsManifest(spec) {
         Math.abs(solid2x.y0 - solid.y0 * 2) <= 2,
       `${id} @2x opaque body lines up with @1x`,
     );
-    const smallShadow = downsample2x(shadowImage2x);
-    let shadowDifference = 0;
-    let shadowSamples = 0;
-    for (let y = 0; y < shadowImage.height; y += 1) {
-      for (let x = 0; x < shadowImage.width; x += 1) {
-        const [r1, g1, b1, a1] = pixel(shadowImage, x, y);
-        const [r2, g2, b2, a2] = pixel(smallShadow, x, y);
-        if (a1 < 2 && a2 < 2) continue;
-        shadowDifference += Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2) + Math.abs(a1 - a2);
-        shadowSamples += 4;
-      }
-    }
-    const shadowMeanDelta = shadowSamples ? shadowDifference / shadowSamples : 255;
-    check(
-      shadowMeanDelta <= 8,
-      `${id} shadow @1x and @2x agree (mean channel delta ${shadowMeanDelta.toFixed(2)} <= 8)`,
-    );
-
     const hashes = shell.sha256 ?? {};
     const shadowHashes = shell.shadowSha256 ?? {};
     check(
@@ -1426,13 +1389,12 @@ function checkShellsManifest(spec) {
       `${id} body decoded-RGBA sha256 matches the committed PNGs`,
     );
     check(
-      shadowHashes.decodedRgba1x === sha256(shadowImage.data) &&
-        shadowHashes.decodedRgba2x === sha256(shadowImage2x.data),
-      `${id} shadow decoded-RGBA sha256 matches the committed PNGs`,
+      shadowHashes.decodedRgba1x === sha256(shadowImage.data),
+      `${id} shadow decoded-RGBA sha256 matches the committed PNG`,
     );
     check(
       measured.bytes1x === image.bytes + shadowImage.bytes &&
-        measured.bytes2x === image2x.bytes + shadowImage2x.bytes,
+        measured.bytes2x === image2x.bytes,
       `${id} manifest byte counts match body+shadow (${image.bytes}+${shadowImage.bytes})`,
     );
   }

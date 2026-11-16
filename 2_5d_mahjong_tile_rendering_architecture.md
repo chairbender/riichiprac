@@ -1054,7 +1054,8 @@ costs about 10–12 ms of main-thread work. **The user reviewed the lab on
 2026-11-14 and approved the merged-footprint look**, so this is the runtime
 contract for the compositor when Phase 3/4 lands. The per-shell shadow sprites
 are now redundant for rendering (they remain the checker's reference and the
-review sheets); dropping them is a follow-up asset cleanup, not a blocker.
+review sheets). Phase 2b removed the **@2x shadow sprites** to make room for the
+carved decals; the @1x shadow sprite remains the checker/review reference.
 
 The uniform pond row is the one place the old tile map is still exact: its
 middle is one period of `max_k S(x - k * cell)`, and the test shows a naive crop
@@ -1101,11 +1102,13 @@ hand page at @2x is 1,240,200 px / 4.73 MiB and ~12 ms, so @2x remains available
 for a focused preview or a device with the headroom. The review sheets and
 `atlas-numbers.json` come from `frontend/scripts/review-atlas.ts`.
 
-**Budgets.** Committed table assets are **7,500,843 B** of the 8 MiB total limit
-(shells 5,765,417 + `shells.json` 571,609 + felt 559,465 + glyphs 576,938 +
-`faces.json` 27,414), leaving ~0.86 MB. A full board's @1x bodies + felt + both
-manifests + glyphs is **2,658,858 B** of the 4 MiB initial-load limit. The atlas
-is composed locally, not downloaded.
+**Budgets.** Committed table assets are **7,887,000 B** of the 8 MiB total limit
+(shells 4,351,264 + `shells.json` 553,571 + felt 559,465 + flat glyphs 576,938
++ `faces.json` 27,414 + carved decals 1,651,011 + `decals.json` 167,337),
+leaving ~0.50 MB. A decal-based initial @1x board is **3,882,230 B** of the 4
+MiB initial-load limit; the flat glyph PNGs are build/fallback assets and are
+not fetched when every inked face has a carved decal. The atlas is composed
+locally, not downloaded.
 
 **Carved decals (Phase 2b).** The flat glyphs above remain the Phase 2
 baseline and the fallback. Phase 2b restores the retired pipeline's carved,
@@ -1202,23 +1205,27 @@ tile/material/render helpers and ports the retired carve functions
 (`alpha_to_distance`, `bezier_profile`, `build_carved_face`) and parameters
 (depth 0.0121 × thickness, Bézier 0.6/0.8, transition 0.0107, paint edge 0.18,
 cavity AO). The upright parlour rig is translated from its original hand slot
-(y=-11.7) to the canonical face; the lying rig is defined in the face frame
-with a high key so it reads as room light on a horizontal tile. `alphaRamp`
-(0.08) feathers the outer lip into the shell face.
+(y=-11.7) to the canonical face; the lying rig is expressed in the face-normal
+frame (`aroundDeg` around the tile, `tiltDeg` from the normal) so it reads as
+room light on a horizontal tile. `alphaRamp` (0.08) feathers the outer lip into
+the shell face.
 
-**Numbers.** The spike is 4 faces × (1 upright + 4 lying) = 20 decals,
-**926,272 B** PNG, ~1 min; `check-decals.mjs` reports 410 checks. The full set
-is 36 inked faces × 5 surface rotations = **180 decals** (5z is skipped). It is
-not committed. At 2× the PNG build is several MB, so the shipped format/scope
-decision is still pending: WebP/AVIF, dropping the superseded flat glyphs, or
-committing only the lying rotations the current shells use. The earlier
-all-light-rotation 144-decal PNG build measured 7,109,639 B; AVIF q60 was
-1.20 MiB for that set.
+**Numbers (committed).** The spike is 4 faces × (1 upright + 4 lying) = 20
+decals, 926,272 B PNG, ~1 min; `check-decals.mjs` reports 2,991 checks on the
+full committed set. The full set is 36 inked faces × 5 surface rotations =
+**180 decals** (5z is skipped): the PNG bake is 9,077,995 B, shipped as **AVIF
+q60 + alpha, 1,651,011 B**, plus `decals.json` 167,337 B. The redundant **@2x
+shadow sprites** were removed (the runtime uses `shadowShape` group layers; the
+@1x shadow sprite remains the checker/review reference), so committed table
+assets are **7,887,000 B (7.52 MiB)** of 8 MiB and a decal-based initial @1x
+board is **3,882,230 B (3.70 MiB)** of 4 MiB. The flat glyph PNGs remain
+build/fallback assets and are not fetched by a decal board.
 
 **Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json` with a
 key of `${face}:${surface}:l${light}:s${symbol}`. `TileAtlasBuilder` selects the
 surface from the shell (`upright` for the 14 hand slots, `lying` for
-`shell_flat_upright`/`shell_flat_sideways`), picks
+`shell_flat_upright`, `shell_flat_sideways`, `shell_flat_upright_180` and
+`shell_flat_sideways_270`), picks
 `lightRotationDeg = -screenRotationOfQuad(faceQuad)` and
 `symbolRotationDeg = faceRotationDeg - quadRotation`, loads the decal instead of
 the flat glyph, and still composites one `BakedTileSprite` per
@@ -1230,5 +1237,5 @@ compositing is added.
 `carved-compare-4x.png` (flat vs carved), `carved-variants-1x.png`,
 `carved-hand-fan-1x.png` and `carved-numbers.json` under
 `tools/render/build/review/`; the lying tuner writes
-`tools/render/build/tune/preview/preview-{0,90,180,270}.png`. The user signs off
+`tools/render/build/tune/preview/flat-{0,90,180,270}.png`. The user signs off
 the look; the agent does not (AGENTS.md §6).

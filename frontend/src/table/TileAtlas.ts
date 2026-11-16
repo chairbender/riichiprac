@@ -242,11 +242,17 @@ export class TileAtlas {
     ]);
     const shells = parseShellsManifest(shellsRaw);
     const faces = parseFacesManifest(facesRaw);
-    const decals =
-      options.decals ??
-      (options.decalsUrl
-        ? parseDecalsManifest(await fetchJson(options.decalsUrl))
-        : null);
+    const decalsUrl =
+      options.decalsUrl === undefined ? joinUrl(baseUrl, 'decals.json') : options.decalsUrl;
+    let decals: DecalsManifest | null = options.decals ?? null;
+    if (!decals && decalsUrl) {
+      try {
+        decals = parseDecalsManifest(await fetchJson(decalsUrl));
+      } catch (error) {
+        // The flat glyph path is the fallback if the carved set is unavailable.
+        console.warn(`carved decals unavailable: ${String(error)}`);
+      }
+    }
 
     const requestedPixelRatio = options.pixelRatio ?? devicePixelRatioPreference();
     const maxRgbaBytes = options.maxRgbaBytes ?? DEFAULT_MAX_ATLAS_RGBA_BYTES;

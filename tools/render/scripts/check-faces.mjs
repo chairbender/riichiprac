@@ -270,7 +270,6 @@ function checkBudgets() {
       record.textureFile,
       record.textureFile2x,
       record.shadowTextureFile,
-      record.shadowTextureFile2x,
     ]) {
       shellsBytes += statSync(join(tableDir, path)).size;
     }
@@ -284,17 +283,28 @@ function checkBudgets() {
   for (const record of Object.values(readJson(facesManifestPath).faces)) {
     facesBytes += statSync(join(tableDir, record.textureFile)).size;
   }
+  const decalsManifestPath = join(tableDir, 'decals.json');
+  let decalsBytes = 0;
+  let decalsManifestBytes = 0;
+  if (existsSync(decalsManifestPath)) {
+    decalsManifestBytes = statSync(decalsManifestPath).size;
+    for (const record of Object.values(readJson(decalsManifestPath).decals)) {
+      decalsBytes += statSync(join(tableDir, record.textureFile)).size;
+    }
+  }
   const manifestBytes = statSync(shellsManifestPath).size + statSync(facesManifestPath).size;
   const feltBytes = statSync(feltPath).size;
-  const total = shellsBytes + manifestBytes + feltBytes + facesBytes;
+  const total =
+    shellsBytes + manifestBytes + feltBytes + facesBytes + decalsBytes + decalsManifestBytes;
   check(
     total <= TOTAL_BUDGET,
     `committed table assets are ${total} B (${(total / 1024 / 1024).toFixed(2)} MiB, limit 8 MiB)`,
   );
 
-  // A board loads one body per drawn shell at @1x, the felt, both manifests and
-  // the 37 glyph masters. Shadows are group shapes, not sprites. The @1x
-  // bodies of all 103 shells are the worst case if every zone is drawn.
+  // The flat-glyph board loads one body per drawn shell at @1x, the felt, both
+  // manifests and the 37 glyph masters. Shadows are group shapes, not sprites.
+  // The @1x bodies of all 105 shells are the worst case if every zone is drawn.
+  // The decal-based initial load is measured by check-decals.mjs.
   const initial = body1xBytes + feltBytes + manifestBytes + facesBytes;
   check(
     initial <= INITIAL_LOAD_BUDGET,

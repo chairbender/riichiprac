@@ -126,7 +126,8 @@ node tools/render/scripts/rasterize-face.mjs \
 ```
 
 `bake-faces.mjs` needs `npm ci` in `tools/render` once (the directory is
-gitignored); `check-faces.mjs` needs nothing but Node. The 2.5D runtime
+gitignored); `check-faces.mjs` needs nothing but Node. `check-decals.mjs` needs
+`@napi-rs/canvas` to decode the committed AVIF/WebP decals. The 2.5D runtime
 composites these 2D glyphs into each shell's `faceQuad` in a startup atlas; tile
 art is never rasterised in the browser. See "Phase 2" below.
 
@@ -137,6 +138,7 @@ art is never rasterised in the browser. See "Phase 2" below.
 | Blender | **4.5.9 LTS** | `~/.local/opt/blender-4.5.9/blender` (or `BLENDER=...`) | tile mesh, lights, shell renders |
 | Node | ≥ 18 | system `node` | the integrity check and resvg scripts |
 | `@resvg/resvg-js` | **2.6.2** | `tools/render/node_modules` (installed, gitignored) | rasterising face SVGs |
+| `@napi-rs/canvas` | **1.1.1** | `tools/render/node_modules` (installed, gitignored) | AVIF/WebP decal encoding and the decal integrity check |
 | Python | 3.10+ | system `python3` | the procedural felt generator |
 
 Blender is a portable Linux build installed outside every task worktree. The
@@ -170,7 +172,9 @@ its own regeneration, not mixed with CPU output.
 | `decal-spec.json` | yes | the carved decal contract: pin, 158 × 216 @2x raster, carve parameters, separate upright/lying light rigs, surface rotations, outputs |
 | `bake_decals.py` | yes | Blender 4.5.9 carve/paint/light decal baker (imports the shell baker's helpers) |
 | `bake-decals.sh` | yes | one command for dry-run/spike/build/commit/check |
-| `check-decals.mjs` | yes | dependency-free carved-decal + budget gate (PNG) |
+| `encode-decals.mjs` | yes | PNG → AVIF/WebP encoder for the committed decal set, with decoded measurements/hashes |
+| `decal-image.mjs` | yes | Node Canvas decode + decal measurement shared by the encoder and checker |
+| `check-decals.mjs` | yes | Node Canvas carved-decal (AVIF/WebP/PNG) + committed budget gate (CI) |
 | `../../frontend/scripts/tune-carved.ts` | yes | the lying-rig preview/tuner server |
 | `../../frontend/scripts/tune-carved.html` | yes | the tuner UI |
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
@@ -188,10 +192,12 @@ its own regeneration, not mixed with CPU output.
 | `faces/` | yes | the 37 vendored public-domain symbol-only SVGs + provenance (`faces/SOURCE.md`) |
 | `../../frontend/public/table/felt.png` | yes | the committed full-screen felt raster |
 | `../../frontend/public/table/shells/` | yes | shell textures at @1x (`shell_*.png`) |
-| `../../frontend/public/table/shells/2x/` | yes | all 105 shells at @2x |
+| `../../frontend/public/table/shells/2x/` | yes | all 105 body shells at @2x (no @2x shadow sprites) |
 | `../../frontend/public/table/shells.json` | yes | the published shell contract |
 | `../../frontend/public/table/faces/` | yes | the 37 committed face glyphs at 288 × 384 RGBA |
 | `../../frontend/public/table/faces.json` | yes | the published face-glyph contract |
+| `../../frontend/public/table/decals/` | yes | the 180 committed AVIF q60 carved decals |
+| `../../frontend/public/table/decals.json` | yes | the published carved-decal contract |
 | `../../frontend/src/table/` | yes | the runtime `TileAtlasBuilder` / `TileAtlas` / manifests, not part of this pipeline |
 | `../../frontend/scripts/review-atlas.ts` | yes | builds the real atlas with Node Canvas and writes the review sheets |
 | `node_modules/`, `build/` | no | installed dependencies and throwaway review output |
@@ -275,9 +281,10 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
-All 105 body + shadow pairs are **5,765,417 B** (1,546,149 @1x +
-4,219,268 @2x; budget 6,291,456 B); the largest single shell is still inside the
-per-shell ceiling. `shells.json` is **571,609 B** (budget 614,400 B). The hand
+All 105 shell bodies plus their @1x shadow references are **4,351,264 B**
+(budget 6,291,456 B); the @2x body textures are included, the redundant @2x
+shadow sprites were removed in Phase 2b. `shells.json` is **553,571 B** (budget
+614,400 B). The hand
 slots keep the 104 px body long axis (102 px measured); the human-hand centre
 body is 75 × 106 and its shadow 119 × 142, the drawn body 89 × 106 and its
 shadow 133 × 142. The budgets were raised for the fans; a board loads only the
@@ -691,9 +698,10 @@ as room light on a horizontal tile.
 bash tools/render/bake-decals.sh --dry-run   # print the plan
 bash tools/render/bake-decals.sh --spike     # 4 faces x upright 1 + lying 4 -> build/decals
 bash tools/render/bake-decals.sh --build     # every inked face, both surfaces -> build/decals
-bash tools/render/bake-decals.sh --bake      # commit frontend/public/table/decals + decals.json
-bash tools/render/bake-decals.sh --check     # validate build/decals.json (no Blender)
+bash tools/render/bake-decals.sh --bake      # PNG bake, encode AVIF, commit decals.json, check
+bash tools/render/bake-decals.sh --check     # validate build/decals.json (needs Node Canvas)
 bash tools/render/bake-decals.sh --check-committed
+cd tools/render && npm run decals:encode     # re-encode the PNG bake to AVIF q60
 cd frontend && npm run tune:carved           # lying-rig tuner
 cd frontend && npm run atlas:review:carved   # flat vs carved review sheets
 ```
@@ -704,18 +712,26 @@ ring), **926,272 B** PNG, ~1 min wall on the dev box. Each decal is 34–62 KB
 PNG, 18–66% transparent, with its four corners transparent.
 `check-decals.mjs` reports 410 checks on the spike.
 
-**Full set.** `5z` (haku) has no ink and is skipped: 36 faces × 5 surface
-rotations = **180 decals** (36 upright + 144 lying). It has not been committed.
-At 2× the PNG build will be several MB, so the shipped format/scope decision
-(WebP/AVIF, dropping the superseded flat glyphs, or limiting the committed
-lying rotations to the ones the current shells use) is still pending the user's
-look and the 8 MiB budget. The all-light-rotation 144-decal PNG build measured
-7,109,639 B; AVIF q60 was 1.20 MiB for that set.
+**Full set (committed).** `5z` (haku) has no ink and is skipped: 36 faces × 5
+surface rotations = **180 decals** (36 upright + 144 lying). The full PNG bake
+is **9,077,995 B**; the shipped set is **AVIF q60 with alpha**, **1,651,011 B**
+across 180 files, plus `decals.json` (167,337 B). The manifest keeps the decode
+measurements and decoded-RGBA sha256 for every encoded image. AVIF q60 was
+chosen over WebP (2.4 MB) to fit the budget without touching the decal size or
+the flat fallback.
+
+The redundant **@2x shadow sprites** were removed to make room: the runtime
+already draws group shadows from `shadowShape` (§10.12), and the @1x shadow
+sprites remain the checker/review reference. Committed table assets are
+**7,887,000 B (7.52 MiB)** of the 8 MiB limit; a decal-based initial @1x board
+is **3,882,230 B (3.70 MiB)** of the 4 MiB limit (the flat glyph PNGs remain
+build/fallback assets and are not fetched when decals cover every inked face).
 
 **Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json` with a
 key of `${face}:${surface}:l${light}:s${symbol}`. `TileAtlasBuilder` selects the
 surface from the shell (`upright` for the 14 hand slots, `lying` for
-`shell_flat_upright`/`shell_flat_sideways`), picks
+`shell_flat_upright`, `shell_flat_sideways`, `shell_flat_upright_180` and
+`shell_flat_sideways_270`), picks
 `lightRotationDeg = -screenRotationOfQuad(faceQuad)` and
 `symbolRotationDeg = faceRotationDeg - quadRotation`, loads the decal instead of
 the flat glyph, and still composites one `BakedTileSprite` per
@@ -748,7 +764,6 @@ real record (values from the committed bake):
       "textureFile": "shells/shell_flat_upright.png",
       "textureFile2x": "shells/2x/shell_flat_upright.png",
       "shadowTextureFile": "shells/shell_flat_upright-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_flat_upright-shadow.png",
       "shadowTexWidth": 160,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -804,8 +819,9 @@ real record (values from the committed bake):
 Fields the runtime and the checker rely on:
 
 - `textureFile` / `textureFile2x` — the @1x and @2x **body** PNGs, both under `shells/`.
-- `shadowTextureFile` / `shadowTextureFile2x` — the separate **blob** sprites.
-  They have their own, larger box and anchor (`shadowTexWidth/Height`,
+- `shadowTextureFile` — the @1x **blob** reference sprite (the @2x shadow sprite
+  was removed; the runtime uses `shadowShape`). It has its own, larger box and
+  anchor (`shadowTexWidth/Height`,
   `shadowAnchorX/Y`, `shadowPadding`). `shadowOffsetPx` is `[0,0]`;
   `shadowBlob` records the model, sigma, core alpha, offset and whether the tile
   is lying (rounded rect covers the body, top edge trimmed) or standing (rounded
@@ -992,7 +1008,7 @@ committed reference is 24 units. The output is gitignored:
 ones (both scales, the base long axis, the blob contract, the perspective
 trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
 printed-text and composited-tile pixel checks; the full run reports **8,057
-checks**. The committed bake alone reports **8,012** (including the review-sheet
+checks**. The committed bake alone reports **7,592** (including the review-sheet
 pixels when the sheets are present and the `shadowShape` raster check on every
 shell).
 
@@ -1049,14 +1065,14 @@ PASS shell_hand_slot_draw handSlot kind is row/draw (draw)
 PASS shell_hand_slot_draw top edge carries the blue resin sliver (3,69,165)
 PASS shell_wall_front_slot_16 camera sits at the human's x (lateral -6.0 = -offset)
 PASS hand-fan-1x.png composites its tiles (284486 px)
-INFO shell textures total 5653580 B across 105 shells and 2 scales
+INFO shell textures total 4351264 B across 105 shells and 2 scales
 OK 6967 checks passed
 ```
 
 `--audition` additionally validates the hand fan calibration and its sheets; on
 the current output it reports `OK 8,057 checks passed` on the last candidate
 matrix (the committed checks plus the candidate and sheet checks; a re-run adds
-the `shadowShape` checks). The committed-only run is 7,878.
+the `shadowShape` checks). The committed-only run is 7,592.
 
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,

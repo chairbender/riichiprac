@@ -2,7 +2,7 @@
   "version": 1,
   "name": "riichiprac 2.5D carved face decals",
   "purpose": "Bake the carved, painted, separately lit tile face decals that are pasted into the current shells' faceQuad. This restores only the retired pipeline's carve/paint/light decal step; it does not bring back the full-scene table, body sprites, fixed camera or scene manifest. The decal is a transparent carve/paint overlay (option A): the shell keeps its own lighting everywhere except the recessed lip and the paint.",
-  "status": "Phase 2b: carved face decals with separate upright and lying light rigs. The upright parlour rig is unchanged and approved. The lying rig is the new tunable rig for flat tiles; it is previewed and adjusted with frontend/scripts/tune-carved.ts. No carved decal set is committed yet.",
+  "status": "Phase 2b: carved face decals with separate upright (world-frame parlour) and lying (face-normal frame) light rigs. 180 decals (36 upright + 144 lying) are baked at 2x and committed as AVIF q60 with alpha. The lying rig is tuned with frontend/scripts/tune-carved.ts; the redundant @2x shadow sprites were removed to keep the committed table under 8 MiB.",
   "blender": {
     "requiredVersion": "4.5.9"
   },
@@ -148,7 +148,7 @@
           "rollDeg": 0,
           "energyW": 90000,
           "hex": "#fff4e4",
-          "aroundDeg": 290.56,
+          "aroundDeg": 0,
           "tiltDeg": 23.34
         },
         {
@@ -243,7 +243,9 @@
     "buildDir": "build/decals",
     "buildManifest": "build/decals.json",
     "bytesBudget": 2097152,
-    "buildBytesBudget": 12582912
+    "buildBytesBudget": 12582912,
+    "format": "avif",
+    "quality": 60
   },
   "surfaces": [
     "upright",

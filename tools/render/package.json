@@ -21,9 +21,14 @@
     "decals": "bash bake-decals.sh --bake",
     "decals:build": "bash bake-decals.sh --build",
     "decals:spike": "bash bake-decals.sh --spike",
-    "check:decals": "node scripts/check-decals.mjs"
+    "check:decals": "node scripts/check-decals.mjs",
+    "decals:encode": "node scripts/encode-decals.mjs --format avif --quality 60",
+    "check:decals:committed": "node scripts/check-decals.mjs --committed"
   },
   "dependencies": {
     "@resvg/resvg-js": "2.6.2"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^1.1.1"
   }
 }

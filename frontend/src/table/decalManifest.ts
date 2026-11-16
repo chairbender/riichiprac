@@ -65,6 +65,7 @@ export interface DecalsManifest {
     readonly format: string;
   };
   readonly surfaces: readonly DecalSurface[];
+  readonly surfaceRotations: Readonly<Record<string, readonly DecalRotation[]>>;
   readonly rotations: readonly DecalRotation[];
   readonly symbolRotations: readonly DecalRotation[];
   readonly budgetBytes: number;
@@ -211,6 +212,23 @@ export function parseDecalsManifest(raw: unknown): DecalsManifest {
   const rotationsRaw = doc.rotations;
   if (!Array.isArray(rotationsRaw)) fail('rotations must be an array');
   const rotations = rotationsRaw.map((value, index) => rotation(value, `rotations[${index}]`));
+  const surfaceRotationsRaw = doc.surfaceRotations;
+  const surfaceRotations: Record<string, DecalRotation[]> = {};
+  if (surfaceRotationsRaw !== undefined) {
+    if (typeof surfaceRotationsRaw !== 'object' || surfaceRotationsRaw === null) {
+      fail('surfaceRotations must be an object');
+    }
+    for (const [surface, values] of Object.entries(
+      surfaceRotationsRaw as Record<string, unknown>,
+    )) {
+      if (!Array.isArray(values)) fail(`surfaceRotations.${surface} must be an array`);
+      surfaceRotations[surface] = values.map((value, index) =>
+        rotation(value, `surfaceRotations.${surface}[${index}]`),
+      );
+    }
+  } else {
+    for (const surface of surfaces) surfaceRotations[surface] = rotations;
+  }
   const symbolRotationsRaw = doc.symbolRotations;
   if (!Array.isArray(symbolRotationsRaw)) fail('symbolRotations must be an array');
   const symbolRotations = symbolRotationsRaw.map((value, index) =>
@@ -232,6 +250,7 @@ export function parseDecalsManifest(raw: unknown): DecalsManifest {
       format: typeof raster.format === 'string' ? raster.format : '',
     },
     surfaces,
+    surfaceRotations,
     rotations,
     symbolRotations,
     budgetBytes: finite(budget.bytes, 'budget.bytes'),

@@ -1,0 +1,7286 @@
+{
+  "version": 1,
+  "generatedBy": "tools/render/scripts/encode-decals.mjs",
+  "coordinateSpace": "Each textureFile is the inset face plate at raster.scale times the @1x face. It is mapped into the shell's faceQuad (face-local order) with symbolRotationDeg applied inside the plate; the quad applies the tile's rotation. lightRotationDeg is the baked rig rotation, chosen so the light lands top-left on screen after that rotation. facePlateRect is the normalized sub-rect of the decal that maps to the face plate; the 4 px safety ring is outside it. surface selects the separate upright or lying light rig.",
+  "source": {
+    "facesSpec": "faces-spec.json",
+    "shellSpec": "shell-spec.json",
+    "symbolDir": "../../frontend/public/table/faces",
+    "upstream": {
+      "repo": "https://github.com/SakaiTaka23/riichi-mahjong-tiles",
+      "path": "Regular/regular",
+      "commit": "f37d6cc2557498d23f13eb3e955e0e44e5c863ff",
+      "variant": "regular symbol-only SVG, 300 x 400 viewBox, transparent background",
+      "license": "CC0 1.0 public domain (upstream README: 'All assets are in the public domain')",
+      "notes": "The upstream Regular-Blank.svg is a red question mark, not an empty tile face, so it is deliberately not vendored. Haku (5z) is a real face: its symbol-only SVG rasterises to zero ink because a white dragon has no printed symbol."
+    }
+  },
+  "raster": {
+    "width": 158,
+    "height": 216,
+    "scale": 2,
+    "format": "AVIF (lossy q60, alpha)",
+    "pxPerUnit": 233.707865,
+    "frameUnits": [
+      0.676058,
+      0.924231
+    ]
+  },
+  "carve": {
+    "depthFractionOfThickness": 0.03,
+    "profile": {
+      "topSpread": 0.6,
+      "bottomSpread": 0.8
+    },
+    "gridScale": 1,
+    "occlusionDistance": 0.2,
+    "occlusionStrength": 0.75,
+    "occlusionSamples": 16,
+    "blurUnits": 0.004285714285714286,
+    "transitionUnits": 0.010714285714285714,
+    "paintEdge": 0.18,
+    "alphaRamp": 0.08,
+    "notes": "Ported unchanged from the retired full-scene pipeline (scene-spec.json at commit e39d92e) so the engraving keeps the look the user approved then. alphaRamp is the new transparent-overlay feather: the decal alpha ramps 0..1 over the first 8% of the carve transition, so the outer lip fades into the shell face instead of ending on a hard rectangle."
+  },
+  "lighting": {
+    "upright": {
+      "preset": "parlor",
+      "rotationConvention": "lightRotationDeg is a counter-clockwise rotation of the whole rig about the face normal. The atlas picks -screenRotationOfQuad so the baked light ends up top-left on screen after the shell quad rotates the decal. 0/90/180/270 is therefore a screen-locked carve light, not a rotating tile light.",
+      "world": {
+        "hex": "#b9c6d6",
+        "strength": 0.4
+      },
+      "translation": {
+        "fromSlotY": -11.7,
+        "cameraDistance": 5,
+        "notes": "The retired parlor rig was tuned around the hand slot at y=-11.7. The canonical decal is at the origin, so the whole rig is translated by +11.7 in y. This preserves the old incidence angles instead of re-aiming the lights. The camera sits 5 units in front of the face, as in the retired decal rig."
+      },
+      "lights": [
+        {
+          "id": "tube-0",
+          "group": "tube",
+          "target": [
+            0,
+            -8.5,
+            0
+          ],
+          "azimuthDeg": 0,
+          "elevationDeg": 50,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "energyW": 85000,
+          "hex": "#fdf9f1"
+        },
+        {
+          "id": "tube-1",
+          "group": "tube",
+          "target": [
+            -2,
+            3,
+            0
+          ],
+          "azimuthDeg": 90,
+          "elevationDeg": 58,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "energyW": 65000,
+          "hex": "#fdf9f1"
+        },
+        {
+          "id": "bounce",
+          "group": "bounce",
+          "target": [
+            0,
+            -1,
+            0.3
+          ],
+          "azimuthDeg": 30,
+          "elevationDeg": 10,
+          "distance": 34,
+          "size": 42,
+          "sizeY": 27,
+          "rollDeg": 0,
+          "energyW": 2500,
+          "hex": "#cfe4d3"
+        },
+        {
+          "id": "rim",
+          "group": "rim",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "azimuthDeg": 170,
+          "elevationDeg": 45,
+          "distance": 40,
+          "size": 28,
+          "sizeY": 20,
+          "rollDeg": 0,
+          "energyW": 6000,
+          "hex": "#ffffff"
+        }
+      ]
+    },
+    "lying": {
+      "preset": "lying-parlor",
+      "rotationConvention": "aroundDeg rotates the whole rig around the tile's face normal (0 = tile-up, 90 = right, 180 = down, 270 = left); tiltDeg is the angle from the face normal (0 = head-on, 90 = grazing, 180 = behind). The atlas adds -quadRotation so the room light stays fixed while the tile turns.",
+      "world": {
+        "hex": "#b9c6d6",
+        "strength": 0.4
+      },
+      "translation": {
+        "fromSlotY": 0,
+        "cameraDistance": 5,
+        "notes": "The lying rig is defined in the face-normal frame: the light direction is (sin tilt * sin around, -cos tilt, sin tilt * cos around) with the face normal at -Y and the face up at +Z. This is the room light on a horizontal tile; aroundDeg rotates it around the tile without changing its incidence, so the carve highlights orbit instead of the whole decal dimming."
+      },
+      "lights": [
+        {
+          "id": "key",
+          "group": "key",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "distance": 55,
+          "size": 22,
+          "sizeY": 18,
+          "rollDeg": 0,
+          "energyW": 90000,
+          "hex": "#fff4e4",
+          "aroundDeg": 0,
+          "tiltDeg": 23.34
+        },
+        {
+          "id": "fill",
+          "group": "fill",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "distance": 45,
+          "size": 30,
+          "sizeY": 24,
+          "rollDeg": 0,
+          "energyW": 12000,
+          "hex": "#dfe9ff",
+          "aroundDeg": 56.6,
+          "tiltDeg": 50.14
+        },
+        {
+          "id": "bounce",
+          "group": "bounce",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "distance": 34,
+          "size": 42,
+          "sizeY": 27,
+          "rollDeg": 0,
+          "energyW": 2500,
+          "hex": "#cfe4d3",
+          "aroundDeg": 70.57,
+          "tiltDeg": 31.47
+        },
+        {
+          "id": "rim",
+          "group": "rim",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "distance": 45,
+          "size": 28,
+          "sizeY": 20,
+          "rollDeg": 0,
+          "energyW": 6000,
+          "hex": "#ffffff",
+          "aroundDeg": 9.85,
+          "tiltDeg": 134.14
+        }
+      ]
+    }
+  },
+  "surfaces": [
+    "upright",
+    "lying"
+  ],
+  "surfaceRotations": {
+    "upright": [
+      0
+    ],
+    "lying": [
+      0,
+      90,
+      180,
+      270
+    ]
+  },
+  "rotations": [
+    0,
+    90,
+    180,
+    270
+  ],
+  "symbolRotations": [
+    0
+  ],
+  "budget": {
+    "bytes": 2097152
+  },
+  "totals": {
+    "decals": 180,
+    "faces": 36,
+    "surfaces": 2,
+    "lightRotations": 4,
+    "surfaceRotations": {
+      "upright": [
+        0
+      ],
+      "lying": [
+        0,
+        90,
+        180,
+        270
+      ]
+    },
+    "symbolRotations": 1,
+    "bytes": 1651011
+  },
+  "decals": {
+    "1m:upright:l0:s0": {
+      "face": "1m",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1m-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8596,
+      "sha256": {
+        "decodedRgba": "9b3b3e8ae633ef16afc3955d59c09fdb31ab363bb5419068651a371cb3b684f9"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 10589,
+        "inkPixels": 8917,
+        "redPixels": 6533,
+        "alphaBBox": {
+          "left": 12,
+          "top": 19,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.68973,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1m:lying:l0:s0": {
+      "face": "1m",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1m-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8854,
+      "sha256": {
+        "decodedRgba": "ac0f21dc2007570fc0cbabd3fb29a68c611e65924e646cf37bc5318635470f1f"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 10582,
+        "inkPixels": 8737,
+        "redPixels": 6472,
+        "alphaBBox": {
+          "left": 12,
+          "top": 19,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.68993,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1m:lying:l90:s0": {
+      "face": "1m",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1m-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8730,
+      "sha256": {
+        "decodedRgba": "452fc2d861c4c269dac9be24307117ef2f53a31fdd31e137a1132293db265b79"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 10583,
+        "inkPixels": 8878,
+        "redPixels": 6659,
+        "alphaBBox": {
+          "left": 12,
+          "top": 19,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.6899,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1m:lying:l180:s0": {
+      "face": "1m",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1m-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8770,
+      "sha256": {
+        "decodedRgba": "ad0908dcb02a854d3e401527aa3e7bed51019a3816057cd69e9a86e5b8025cd8"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 10585,
+        "inkPixels": 8713,
+        "redPixels": 6523,
+        "alphaBBox": {
+          "left": 12,
+          "top": 19,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.68984,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1m:lying:l270:s0": {
+      "face": "1m",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1m-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8761,
+      "sha256": {
+        "decodedRgba": "cfa6273ff165bbf5694d9e2841cfb557d67229b1333813e571c068a5fe525c55"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 10582,
+        "inkPixels": 8900,
+        "redPixels": 6613,
+        "alphaBBox": {
+          "left": 12,
+          "top": 19,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.68993,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2m:upright:l0:s0": {
+      "face": "2m",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2m-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9545,
+      "sha256": {
+        "decodedRgba": "b920aeb42ed5455b2680f68e76f4e520779fdff5e3957e2a9854fa4c6164cfc4"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11542,
+        "inkPixels": 9600,
+        "redPixels": 6515,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 150,
+          "bottom": 211
+        },
+        "transparentFraction": 0.6618,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2m:lying:l0:s0": {
+      "face": "2m",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2m-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9823,
+      "sha256": {
+        "decodedRgba": "292c84b1fd3254bd0d94382d855f19bc8b78fc5fa8ac8bc57f4223cbfccf2f32"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11542,
+        "inkPixels": 9380,
+        "redPixels": 6472,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 150,
+          "bottom": 211
+        },
+        "transparentFraction": 0.6618,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2m:lying:l90:s0": {
+      "face": "2m",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2m-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9666,
+      "sha256": {
+        "decodedRgba": "1aa8d7b891ea3f927066445bd43e39bdb621e7eea6a162538f3822f16b1566d7"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11543,
+        "inkPixels": 9594,
+        "redPixels": 6642,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 150,
+          "bottom": 211
+        },
+        "transparentFraction": 0.66177,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2m:lying:l180:s0": {
+      "face": "2m",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2m-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9753,
+      "sha256": {
+        "decodedRgba": "5aed30cea6c067144cb4120b8431b7ca5526f7f7ba400178ad039517e0c7cb81"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11542,
+        "inkPixels": 9295,
+        "redPixels": 6515,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 150,
+          "bottom": 211
+        },
+        "transparentFraction": 0.6618,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2m:lying:l270:s0": {
+      "face": "2m",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2m-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9724,
+      "sha256": {
+        "decodedRgba": "e87a4b4d1518ce03fe16c5e7349fadb14c438543b02f8a510c1fd66367fc800b"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11544,
+        "inkPixels": 9567,
+        "redPixels": 6635,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 150,
+          "bottom": 211
+        },
+        "transparentFraction": 0.66174,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3m:upright:l0:s0": {
+      "face": "3m",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3m-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10227,
+      "sha256": {
+        "decodedRgba": "5a4433153e6d5f4932c93b8c91e23eeaae8bcb4af419c914b483fda5993a79a4"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12286,
+        "inkPixels": 10113,
+        "redPixels": 6536,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.64,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3m:lying:l0:s0": {
+      "face": "3m",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3m-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10424,
+      "sha256": {
+        "decodedRgba": "404b5ae63584e19ae025ca9634b8115fb0986a4e7572b28454a442a60d78e2ad"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12282,
+        "inkPixels": 9735,
+        "redPixels": 6485,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.64012,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3m:lying:l90:s0": {
+      "face": "3m",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3m-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10266,
+      "sha256": {
+        "decodedRgba": "7b31cd8bef2dbcfa6802bd29b4ac87b77084c55f3e40e40fc1d44699658a97cb"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12284,
+        "inkPixels": 10105,
+        "redPixels": 6630,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.64006,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3m:lying:l180:s0": {
+      "face": "3m",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3m-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10404,
+      "sha256": {
+        "decodedRgba": "687c6d8259b96145936324e12b2325b8e90aff15dde5f532ef8f3b5066f226c2"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12284,
+        "inkPixels": 9817,
+        "redPixels": 6508,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.64006,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3m:lying:l270:s0": {
+      "face": "3m",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3m-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10290,
+      "sha256": {
+        "decodedRgba": "d26c0b6a00d0fee122dec8bbb1977b46f4f93577b4e49b38568bfe3231a1a5a3"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12281,
+        "inkPixels": 10078,
+        "redPixels": 6645,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.64015,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4m:upright:l0:s0": {
+      "face": "4m",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4m-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10567,
+      "sha256": {
+        "decodedRgba": "cd0860b7669de7bc350f75ad2654d234e8861013e379641e4238dabcd150e48b"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13338,
+        "inkPixels": 11221,
+        "redPixels": 6548,
+        "alphaBBox": {
+          "left": 5,
+          "top": 3,
+          "right": 151,
+          "bottom": 211
+        },
+        "transparentFraction": 0.60918,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4m:lying:l0:s0": {
+      "face": "4m",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4m-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10895,
+      "sha256": {
+        "decodedRgba": "d39a3b5772efa5f0022fae415700e06de75e59bde37df5dd8f17b0a75f452a9a"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13338,
+        "inkPixels": 10974,
+        "redPixels": 6475,
+        "alphaBBox": {
+          "left": 5,
+          "top": 3,
+          "right": 151,
+          "bottom": 211
+        },
+        "transparentFraction": 0.60918,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4m:lying:l90:s0": {
+      "face": "4m",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4m-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10762,
+      "sha256": {
+        "decodedRgba": "316b4e9fb421175a21d14db703ddbc0dfa3ef9d6d77dd3c7afbe1107a286f6e0"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13344,
+        "inkPixels": 11034,
+        "redPixels": 6637,
+        "alphaBBox": {
+          "left": 5,
+          "top": 3,
+          "right": 151,
+          "bottom": 211
+        },
+        "transparentFraction": 0.609,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4m:lying:l180:s0": {
+      "face": "4m",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4m-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10825,
+      "sha256": {
+        "decodedRgba": "db0e803b6446e30c108a493f7236b60df1ce105817f2032e315715f22dc5ca0e"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13342,
+        "inkPixels": 10918,
+        "redPixels": 6537,
+        "alphaBBox": {
+          "left": 5,
+          "top": 3,
+          "right": 151,
+          "bottom": 211
+        },
+        "transparentFraction": 0.60906,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4m:lying:l270:s0": {
+      "face": "4m",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4m-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10867,
+      "sha256": {
+        "decodedRgba": "1d44f5cf0612dd68b616e53b0143c3aa02c813efce384ae1b2e6ce722d93ef6f"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13340,
+        "inkPixels": 11033,
+        "redPixels": 6633,
+        "alphaBBox": {
+          "left": 5,
+          "top": 3,
+          "right": 151,
+          "bottom": 211
+        },
+        "transparentFraction": 0.60912,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5m:upright:l0:s0": {
+      "face": "5m",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5m-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11071,
+      "sha256": {
+        "decodedRgba": "2b288854550d60737d6c29bf7cf11d5248662e2ae5665c1f41ccc1d54d6fe33b"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13149,
+        "inkPixels": 10905,
+        "redPixels": 6517,
+        "alphaBBox": {
+          "left": 7,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.61472,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5m:lying:l0:s0": {
+      "face": "5m",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5m-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11431,
+      "sha256": {
+        "decodedRgba": "59d1b988d293f3b7542bd1d215bdc0b4794cc695459ad5d62865685032e0cf19"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13146,
+        "inkPixels": 10559,
+        "redPixels": 6476,
+        "alphaBBox": {
+          "left": 7,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.6148,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5m:lying:l90:s0": {
+      "face": "5m",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5m-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11242,
+      "sha256": {
+        "decodedRgba": "343d2276113f34bf9a8fef2333d6aefd895b63f8a60bea21a56bea3ed02bc0e2"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13149,
+        "inkPixels": 10692,
+        "redPixels": 6629,
+        "alphaBBox": {
+          "left": 7,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.61472,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5m:lying:l180:s0": {
+      "face": "5m",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5m-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11347,
+      "sha256": {
+        "decodedRgba": "a09788ef41038c8f85fff1a557ceef98a13d67a5bc136fc08e43a0a7d4c8d00b"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13149,
+        "inkPixels": 10663,
+        "redPixels": 6508,
+        "alphaBBox": {
+          "left": 7,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.61472,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5m:lying:l270:s0": {
+      "face": "5m",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5m-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11354,
+      "sha256": {
+        "decodedRgba": "f481c6138930d6fe44fd0d5dc08d534c2f0f66aa2859391f8d82bad97377ab91"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13149,
+        "inkPixels": 10702,
+        "redPixels": 6632,
+        "alphaBBox": {
+          "left": 7,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.61472,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6m:upright:l0:s0": {
+      "face": "6m",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6m-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10409,
+      "sha256": {
+        "decodedRgba": "f259727d39292cc6fba90125a4b605f71f9687b5cf8f7c40fca3dc46ccdf60a9"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12279,
+        "inkPixels": 10141,
+        "redPixels": 6535,
+        "alphaBBox": {
+          "left": 9,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.64021,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6m:lying:l0:s0": {
+      "face": "6m",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6m-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10836,
+      "sha256": {
+        "decodedRgba": "d3aab4efc05afce9d3614e3f027accb8242f76da8987d6fe83ad0e548333b5a8"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12283,
+        "inkPixels": 9878,
+        "redPixels": 6469,
+        "alphaBBox": {
+          "left": 9,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.64009,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6m:lying:l90:s0": {
+      "face": "6m",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6m-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10667,
+      "sha256": {
+        "decodedRgba": "cdb123f30701128320dfdc095cedc4e550e4652c158a23b20e1ec8b9c835a054"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12280,
+        "inkPixels": 10047,
+        "redPixels": 6648,
+        "alphaBBox": {
+          "left": 9,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.64018,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6m:lying:l180:s0": {
+      "face": "6m",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6m-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10669,
+      "sha256": {
+        "decodedRgba": "55f30bb2cad27f649e5b9b91818fb6f2a9ced78f34434cf9e0640bc87b83df99"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12276,
+        "inkPixels": 9920,
+        "redPixels": 6532,
+        "alphaBBox": {
+          "left": 9,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.6403,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6m:lying:l270:s0": {
+      "face": "6m",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6m-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10707,
+      "sha256": {
+        "decodedRgba": "d765935f8e6a4744d17db1cec06621e71b93bcf547f493fc5c05132b5140e320"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12278,
+        "inkPixels": 10055,
+        "redPixels": 6626,
+        "alphaBBox": {
+          "left": 9,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.64024,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7m:upright:l0:s0": {
+      "face": "7m",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7m-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9720,
+      "sha256": {
+        "decodedRgba": "68492c49e9015a736c4c2a3fd54f0bba75a6c961cee9f9ce2057578e1f4cc13c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11647,
+        "inkPixels": 9753,
+        "redPixels": 6537,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.65873,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7m:lying:l0:s0": {
+      "face": "7m",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7m-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9874,
+      "sha256": {
+        "decodedRgba": "613c88d50dc11b50c22914e40111b3de9d4b49b0036deb3de3626ec86b573f5b"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11650,
+        "inkPixels": 9561,
+        "redPixels": 6456,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.65864,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7m:lying:l90:s0": {
+      "face": "7m",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7m-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9684,
+      "sha256": {
+        "decodedRgba": "af3d080feb1ba29e2af69ab22ef73b70b7d152198d15d3f70e1b1f0049e27604"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11652,
+        "inkPixels": 9655,
+        "redPixels": 6651,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.65858,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7m:lying:l180:s0": {
+      "face": "7m",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7m-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9783,
+      "sha256": {
+        "decodedRgba": "aa57d060d15d5beca5423eb520b96e2d596af092961f267e8bb3800e21fa7daf"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11651,
+        "inkPixels": 9509,
+        "redPixels": 6516,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.65861,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7m:lying:l270:s0": {
+      "face": "7m",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7m-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9839,
+      "sha256": {
+        "decodedRgba": "e3d423ecd681eef56e78a71f2bc683f0f27bf4b9facd97893389185c0048d619"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11650,
+        "inkPixels": 9651,
+        "redPixels": 6625,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.65864,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8m:upright:l0:s0": {
+      "face": "8m",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8m-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9464,
+      "sha256": {
+        "decodedRgba": "69c8f67138aaaa0e5765c5a698d67f0c98695715e4ac45e71e6ef5e524931332"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11074,
+        "inkPixels": 9329,
+        "redPixels": 6535,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 149,
+          "bottom": 211
+        },
+        "transparentFraction": 0.67552,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8m:lying:l0:s0": {
+      "face": "8m",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8m-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9766,
+      "sha256": {
+        "decodedRgba": "282386e6d38bdcd6be1e7f6ec1fe563b353027b439b59d35224f4843520190f6"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11073,
+        "inkPixels": 9145,
+        "redPixels": 6464,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 149,
+          "bottom": 211
+        },
+        "transparentFraction": 0.67555,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8m:lying:l90:s0": {
+      "face": "8m",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8m-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9612,
+      "sha256": {
+        "decodedRgba": "b5ce0ac00d3583ef9404009718679658990d008f67b2191716cc6064b74c73ad"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11074,
+        "inkPixels": 9223,
+        "redPixels": 6641,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 149,
+          "bottom": 211
+        },
+        "transparentFraction": 0.67552,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8m:lying:l180:s0": {
+      "face": "8m",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8m-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9677,
+      "sha256": {
+        "decodedRgba": "d4d2b80248c2c28cfa32051f9bc542b720c6a11a40e987b7f986e37b28c43b1b"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11074,
+        "inkPixels": 9187,
+        "redPixels": 6521,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 149,
+          "bottom": 211
+        },
+        "transparentFraction": 0.67552,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8m:lying:l270:s0": {
+      "face": "8m",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8m-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9717,
+      "sha256": {
+        "decodedRgba": "5a31f65540d4c8f8a357ea59a1d78f677697fad445781805dd4a6dc904483e6a"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11071,
+        "inkPixels": 9236,
+        "redPixels": 6634,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 149,
+          "bottom": 211
+        },
+        "transparentFraction": 0.6756,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9m:upright:l0:s0": {
+      "face": "9m",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9m-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10039,
+      "sha256": {
+        "decodedRgba": "d129daa0744a4e524e836c7919ba44f9c5b6a077f9e1c81861c19d61ca3037b3"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11925,
+        "inkPixels": 9930,
+        "redPixels": 6538,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.65058,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9m:lying:l0:s0": {
+      "face": "9m",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9m-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10293,
+      "sha256": {
+        "decodedRgba": "fd2f92da8863a5474b3a049f88c42cb1c351780131c2c89b7c1c0ce42567df06"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11915,
+        "inkPixels": 9660,
+        "redPixels": 6464,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.65087,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9m:lying:l90:s0": {
+      "face": "9m",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9m-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10135,
+      "sha256": {
+        "decodedRgba": "525d8d25e23ec8939e27685a116d2d9a4edb93ee14fd84c19e310b872709a9a3"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11918,
+        "inkPixels": 9728,
+        "redPixels": 6641,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.65079,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9m:lying:l180:s0": {
+      "face": "9m",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9m-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10164,
+      "sha256": {
+        "decodedRgba": "b19050aceaa328d7cc05db15b057c88170e85a09e6cd28e25890b07990925d08"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11915,
+        "inkPixels": 9763,
+        "redPixels": 6522,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.65087,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9m:lying:l270:s0": {
+      "face": "9m",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9m-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10164,
+      "sha256": {
+        "decodedRgba": "7fa64081e9cb83527462001335c087edd333e8b48b8e1a4f7eba6f6f0f000017"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11916,
+        "inkPixels": 9693,
+        "redPixels": 6634,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 144,
+          "bottom": 211
+        },
+        "transparentFraction": 0.65084,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1p:upright:l0:s0": {
+      "face": "1p",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1p-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8064,
+      "sha256": {
+        "decodedRgba": "6a34fd898f44462c9231516791876986cd3a2950fb26accc0ea6c31fc343bf22"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 22516,
+        "inkPixels": 12521,
+        "redPixels": 2240,
+        "alphaBBox": {
+          "left": 3,
+          "top": 21,
+          "right": 154,
+          "bottom": 194
+        },
+        "transparentFraction": 0.34025,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1p:lying:l0:s0": {
+      "face": "1p",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1p-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8211,
+      "sha256": {
+        "decodedRgba": "7f9fbca789adc02674824cc429e0e80bd21d60c21cd7e419c70b552035d3afb3"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 22515,
+        "inkPixels": 11985,
+        "redPixels": 2180,
+        "alphaBBox": {
+          "left": 3,
+          "top": 21,
+          "right": 154,
+          "bottom": 194
+        },
+        "transparentFraction": 0.34028,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1p:lying:l90:s0": {
+      "face": "1p",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1p-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8374,
+      "sha256": {
+        "decodedRgba": "719b5c2b1f3023423617d38130298b48d184e6230328f3b26ad621a32e5af88e"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 22512,
+        "inkPixels": 12198,
+        "redPixels": 2158,
+        "alphaBBox": {
+          "left": 3,
+          "top": 21,
+          "right": 154,
+          "bottom": 194
+        },
+        "transparentFraction": 0.34037,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1p:lying:l180:s0": {
+      "face": "1p",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1p-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8186,
+      "sha256": {
+        "decodedRgba": "3a1d90df6e4d39c5fb508cc1ef4b9a06b3240216f028ffbb1786c23a78a9b220"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 22517,
+        "inkPixels": 11988,
+        "redPixels": 2153,
+        "alphaBBox": {
+          "left": 3,
+          "top": 21,
+          "right": 154,
+          "bottom": 194
+        },
+        "transparentFraction": 0.34022,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1p:lying:l270:s0": {
+      "face": "1p",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1p-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8307,
+      "sha256": {
+        "decodedRgba": "b30c9cd4fe4112e0a71ce5060a4615905aef35a5334d4741d92272f7c57ea77f"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 22515,
+        "inkPixels": 12198,
+        "redPixels": 2175,
+        "alphaBBox": {
+          "left": 3,
+          "top": 21,
+          "right": 154,
+          "bottom": 194
+        },
+        "transparentFraction": 0.34028,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2p:upright:l0:s0": {
+      "face": "2p",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2p-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 6736,
+      "sha256": {
+        "decodedRgba": "467e8bbae5db214a15921777ebba670ea8a5092134afba6737a8db4dfa128f33"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 17076,
+        "inkPixels": 10029,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 26,
+          "top": 3,
+          "right": 131,
+          "bottom": 212
+        },
+        "transparentFraction": 0.49965,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2p:lying:l0:s0": {
+      "face": "2p",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2p-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 6923,
+      "sha256": {
+        "decodedRgba": "fe60731aa9180a328b617dc01f8220b9b34f9c1333577a187845608220b7ebaa"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 17074,
+        "inkPixels": 9592,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 26,
+          "top": 3,
+          "right": 131,
+          "bottom": 212
+        },
+        "transparentFraction": 0.49971,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2p:lying:l90:s0": {
+      "face": "2p",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2p-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7061,
+      "sha256": {
+        "decodedRgba": "317eb5dbcd3ae1cea6bc1f242309eb8ba9a1534b8a7176b036967388a9c89430"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 17074,
+        "inkPixels": 9679,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 26,
+          "top": 3,
+          "right": 131,
+          "bottom": 212
+        },
+        "transparentFraction": 0.49971,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2p:lying:l180:s0": {
+      "face": "2p",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2p-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 6915,
+      "sha256": {
+        "decodedRgba": "605858a7274eae5c4ff0c91f9eeeba6faa277bc9d600f53e89bc0023968bf00c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 17074,
+        "inkPixels": 9596,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 26,
+          "top": 3,
+          "right": 131,
+          "bottom": 212
+        },
+        "transparentFraction": 0.49971,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2p:lying:l270:s0": {
+      "face": "2p",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2p-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7048,
+      "sha256": {
+        "decodedRgba": "ea626745366aefb688b0e972d31c9f2e53892dcfe27f47d6aa82d482a6d20429"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 17074,
+        "inkPixels": 9664,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 26,
+          "top": 3,
+          "right": 131,
+          "bottom": 212
+        },
+        "transparentFraction": 0.49971,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3p:upright:l0:s0": {
+      "face": "3p",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3p-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 5521,
+      "sha256": {
+        "decodedRgba": "b1c52095b5e301cb2994d9924b3cc48833453b6d8ddc32f4badee52e52479eaf"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12217,
+        "inkPixels": 8476,
+        "redPixels": 1376,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.64202,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3p:lying:l0:s0": {
+      "face": "3p",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3p-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 5620,
+      "sha256": {
+        "decodedRgba": "86f0ccd6182cf82b6ec2a2098a5db23ace6637035ed57c7f072a0ef6a8c888c4"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12219,
+        "inkPixels": 8187,
+        "redPixels": 1356,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.64197,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3p:lying:l90:s0": {
+      "face": "3p",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3p-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 5667,
+      "sha256": {
+        "decodedRgba": "888600c69f35f33a156d97a22925c13211e1bf31da2082570f991e7cba854059"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12215,
+        "inkPixels": 8236,
+        "redPixels": 1361,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.64208,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3p:lying:l180:s0": {
+      "face": "3p",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3p-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 5585,
+      "sha256": {
+        "decodedRgba": "1cd2d3f7c1947017a4c56c8743eaff23054daa68940f76c440c013f735254ed6"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12216,
+        "inkPixels": 8187,
+        "redPixels": 1358,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.64205,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3p:lying:l270:s0": {
+      "face": "3p",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3p-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 5651,
+      "sha256": {
+        "decodedRgba": "70cd7411302494c3be1ac7f3e6136dc02a2578600783309fd69cfbd831a72534"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12219,
+        "inkPixels": 8232,
+        "redPixels": 1358,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.64197,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4p:upright:l0:s0": {
+      "face": "4p",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4p-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7789,
+      "sha256": {
+        "decodedRgba": "cedc1f524254a7b38699255b7ea52b3aa1fe2144df8ea1b42cebfd9ee9a840e3"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 16626,
+        "inkPixels": 11419,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.51283,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4p:lying:l0:s0": {
+      "face": "4p",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4p-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8114,
+      "sha256": {
+        "decodedRgba": "95b544402a3f10c49d3ad3e3e92bc704b9ac879fb1542f1bdfc097dfb2490476"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 16623,
+        "inkPixels": 10902,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.51292,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4p:lying:l90:s0": {
+      "face": "4p",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4p-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8120,
+      "sha256": {
+        "decodedRgba": "98e728621dcc4d5bad0fbdf9d76db5729d7225b04dfcf46e5955ae969cc12ef1"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 16626,
+        "inkPixels": 11028,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.51283,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4p:lying:l180:s0": {
+      "face": "4p",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4p-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8106,
+      "sha256": {
+        "decodedRgba": "734b4e59ac0478e769289d2fc8ca9d249877e121d88f5f62613dae8a62ec34ee"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 16624,
+        "inkPixels": 10906,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.51289,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4p:lying:l270:s0": {
+      "face": "4p",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4p-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8154,
+      "sha256": {
+        "decodedRgba": "82c92f0eae90c318d367adef8e2a2d734d1c3652643914217a0b80f667ab91a6"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 16626,
+        "inkPixels": 11034,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.51283,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5p:upright:l0:s0": {
+      "face": "5p",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5p-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9759,
+      "sha256": {
+        "decodedRgba": "5751ecd56e32a55ffd14b21d4413520b592a57e0de6880211e859ba7e40edbbe"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 20831,
+        "inkPixels": 14430,
+        "redPixels": 1384,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.38962,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5p:lying:l0:s0": {
+      "face": "5p",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5p-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10099,
+      "sha256": {
+        "decodedRgba": "453ec035cc242f968f07af1c34881409a1e91905f573e2cc3c4642e0cfcade2a"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 20830,
+        "inkPixels": 13823,
+        "redPixels": 1364,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.38965,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5p:lying:l90:s0": {
+      "face": "5p",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5p-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10143,
+      "sha256": {
+        "decodedRgba": "0e5502b22dae78ab47be8a06870b2515d7e65a819f4673d2bbe44fef4cd5114c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 20829,
+        "inkPixels": 13974,
+        "redPixels": 1363,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.38968,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5p:lying:l180:s0": {
+      "face": "5p",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5p-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10104,
+      "sha256": {
+        "decodedRgba": "870d24be6ea52fb217d7365fb0d9fe814e98e4affaf7afb08838261bd0dde11b"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 20827,
+        "inkPixels": 13853,
+        "redPixels": 1363,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.38974,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5p:lying:l270:s0": {
+      "face": "5p",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5p-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10179,
+      "sha256": {
+        "decodedRgba": "a4e734d122b6ce2cc7080b07082b79928fd115390a8440d8fa9cd05a23b45998"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 20829,
+        "inkPixels": 13967,
+        "redPixels": 1364,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.38968,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6p:upright:l0:s0": {
+      "face": "6p",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6p-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8800,
+      "sha256": {
+        "decodedRgba": "569d3492822d224a22914755f9306fdd37bd9965af27c484b1f1774abd497f8a"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21718,
+        "inkPixels": 15240,
+        "redPixels": 5503,
+        "alphaBBox": {
+          "left": 13,
+          "top": 3,
+          "right": 144,
+          "bottom": 212
+        },
+        "transparentFraction": 0.36363,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6p:lying:l0:s0": {
+      "face": "6p",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6p-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8963,
+      "sha256": {
+        "decodedRgba": "2c1cbe037a25f77b7e7b51cabf77bb25d76849e957316fea754bb2db29577d7c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21716,
+        "inkPixels": 14793,
+        "redPixels": 5408,
+        "alphaBBox": {
+          "left": 13,
+          "top": 3,
+          "right": 144,
+          "bottom": 212
+        },
+        "transparentFraction": 0.36369,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6p:lying:l90:s0": {
+      "face": "6p",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6p-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9187,
+      "sha256": {
+        "decodedRgba": "553a72d8fb7daca527306abc1def53629ab95347a2758d893b0946c867d0fa52"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21715,
+        "inkPixels": 14851,
+        "redPixels": 5420,
+        "alphaBBox": {
+          "left": 13,
+          "top": 3,
+          "right": 144,
+          "bottom": 212
+        },
+        "transparentFraction": 0.36372,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6p:lying:l180:s0": {
+      "face": "6p",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6p-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8904,
+      "sha256": {
+        "decodedRgba": "424907fdbad6b042af65f8b18a5d7ad82c57111d01a30dd7ab665d56b02e4748"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21711,
+        "inkPixels": 14777,
+        "redPixels": 5411,
+        "alphaBBox": {
+          "left": 13,
+          "top": 3,
+          "right": 144,
+          "bottom": 212
+        },
+        "transparentFraction": 0.36384,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6p:lying:l270:s0": {
+      "face": "6p",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6p-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9083,
+      "sha256": {
+        "decodedRgba": "3dccb56687e29049cf764664a42e3583f2de1931596dcc64362d8dd736212d99"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21710,
+        "inkPixels": 14813,
+        "redPixels": 5426,
+        "alphaBBox": {
+          "left": 13,
+          "top": 3,
+          "right": 144,
+          "bottom": 212
+        },
+        "transparentFraction": 0.36387,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7p:upright:l0:s0": {
+      "face": "7p",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7p-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9196,
+      "sha256": {
+        "decodedRgba": "d2e46a1fd50051b31a565ee73cdc3f73bf42826a48e518d4d0088751fbfbedc0"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 23347,
+        "inkPixels": 16040,
+        "redPixels": 5541,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.3159,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7p:lying:l0:s0": {
+      "face": "7p",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7p-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9306,
+      "sha256": {
+        "decodedRgba": "ecbe6a5885dc03fb28496ecc38d30f4cfde59e6f972a4eaf283f002763f9097e"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 23352,
+        "inkPixels": 15594,
+        "redPixels": 5446,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.31575,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7p:lying:l90:s0": {
+      "face": "7p",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7p-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9455,
+      "sha256": {
+        "decodedRgba": "6ed18ae659e2d040511ba54c16be3d17b8c4f5b6eb32f79b55b4c5f520705788"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 23349,
+        "inkPixels": 15626,
+        "redPixels": 5458,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.31584,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7p:lying:l180:s0": {
+      "face": "7p",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7p-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9305,
+      "sha256": {
+        "decodedRgba": "918d55d8f7ae9097e3572faee7f21d7ee261a53c1a852809bd9a29f0da4d7f5c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 23348,
+        "inkPixels": 15530,
+        "redPixels": 5468,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.31587,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7p:lying:l270:s0": {
+      "face": "7p",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7p-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9480,
+      "sha256": {
+        "decodedRgba": "22dd312882db74bde5f3079907121ce97e64e1a71f279d40b20d125c29e47da4"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 23346,
+        "inkPixels": 15633,
+        "redPixels": 5456,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.31593,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8p:upright:l0:s0": {
+      "face": "8p",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8p-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10201,
+      "sha256": {
+        "decodedRgba": "19ecac77977ec5284ac67eeb13f6d9f2edb84b1bd1c90c698458ed5460dff4b0"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 26511,
+        "inkPixels": 17648,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 145,
+          "bottom": 212
+        },
+        "transparentFraction": 0.22319,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8p:lying:l0:s0": {
+      "face": "8p",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8p-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10603,
+      "sha256": {
+        "decodedRgba": "a662f4f78936c86b722bb679af9b7f61be6b7c5b2b16b680dcb4142a8f64a1b9"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 26512,
+        "inkPixels": 16950,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 145,
+          "bottom": 212
+        },
+        "transparentFraction": 0.22316,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8p:lying:l90:s0": {
+      "face": "8p",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8p-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10805,
+      "sha256": {
+        "decodedRgba": "deeb5c47a05790f29fb801545553f359c39eae87082a9467eb6bbed7a530e0b6"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 26514,
+        "inkPixels": 17026,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 145,
+          "bottom": 212
+        },
+        "transparentFraction": 0.2231,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8p:lying:l180:s0": {
+      "face": "8p",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8p-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10598,
+      "sha256": {
+        "decodedRgba": "7e5a4a73efcc7c53ee9d14712f5abaca36db13c2b93f68d324570f7e21247356"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 26513,
+        "inkPixels": 16978,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 145,
+          "bottom": 212
+        },
+        "transparentFraction": 0.22313,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8p:lying:l270:s0": {
+      "face": "8p",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8p-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10808,
+      "sha256": {
+        "decodedRgba": "7f567d2b07ff625a329b0c4767e7770f0ece30a39f4da64c681fbc9862dd76b4"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 26513,
+        "inkPixels": 17011,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 12,
+          "top": 3,
+          "right": 145,
+          "bottom": 212
+        },
+        "transparentFraction": 0.22313,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9p:upright:l0:s0": {
+      "face": "9p",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9p-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11250,
+      "sha256": {
+        "decodedRgba": "49e67da86aed5a6bd4fbdb7d59bfa6ad2500dc037fd70ea44d2716ebcf1a5df0"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 27902,
+        "inkPixels": 18589,
+        "redPixels": 4165,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.18243,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9p:lying:l0:s0": {
+      "face": "9p",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9p-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11448,
+      "sha256": {
+        "decodedRgba": "b5543249716b7bd11c54e4a9c5e1996c8984e2c3680d57e91fdd3445d45e329d"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 27897,
+        "inkPixels": 17956,
+        "redPixels": 4089,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.18258,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9p:lying:l90:s0": {
+      "face": "9p",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9p-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11556,
+      "sha256": {
+        "decodedRgba": "03df38252db583ac48884641a504ca3cb92eaa324bbb53fb5cdb9c01ac5f3995"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 27896,
+        "inkPixels": 18254,
+        "redPixels": 4101,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.18261,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9p:lying:l180:s0": {
+      "face": "9p",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9p-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11508,
+      "sha256": {
+        "decodedRgba": "12f3c2564a09beadfe16b990d15951dbde16a13b52785773306764e0025713e8"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 27898,
+        "inkPixels": 17955,
+        "redPixels": 4096,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.18255,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9p:lying:l270:s0": {
+      "face": "9p",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9p-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11602,
+      "sha256": {
+        "decodedRgba": "539e57f41f7066cf4745c76570a6c189147a82043e5487ee8e6e41a7439be648"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 27899,
+        "inkPixels": 18249,
+        "redPixels": 4110,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.18252,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1s:upright:l0:s0": {
+      "face": "1s",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1s-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12152,
+      "sha256": {
+        "decodedRgba": "08bdb076c72dcb0dd2175ffc8161a8e50e8df17157a3277c54d7206f52362dc0"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 20516,
+        "inkPixels": 10914,
+        "redPixels": 880,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.39885,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1s:lying:l0:s0": {
+      "face": "1s",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1s-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12360,
+      "sha256": {
+        "decodedRgba": "d7fa8d1c48743451bba5d95aab5d1e732065c924490deed8ca210cd8c5fb8787"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 20522,
+        "inkPixels": 10501,
+        "redPixels": 950,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.39868,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1s:lying:l90:s0": {
+      "face": "1s",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1s-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12495,
+      "sha256": {
+        "decodedRgba": "321294a856a68ecb7be54b39ddf7021946ff0e66d8b534760a2e9f954affe549"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 20520,
+        "inkPixels": 10649,
+        "redPixels": 900,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.39873,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1s:lying:l180:s0": {
+      "face": "1s",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1s-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12341,
+      "sha256": {
+        "decodedRgba": "97471be92d32882487e0b4f8f8afdc0b02ca435c5b97cc6e8bb22e6b6607d2cd"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 20519,
+        "inkPixels": 10527,
+        "redPixels": 925,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 153,
+          "bottom": 212
+        },
+        "transparentFraction": 0.39876,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1s:lying:l270:s0": {
+      "face": "1s",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1s-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12517,
+      "sha256": {
+        "decodedRgba": "6e5a6df3488d5a1c696e515833b913b73b2d066f6f43cfea45ed2a2566e0d28a"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 20520,
+        "inkPixels": 10632,
+        "redPixels": 900,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.39873,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2s:upright:l0:s0": {
+      "face": "2s",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2s-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 3890,
+      "sha256": {
+        "decodedRgba": "53006f38113da19703c7c0cc7f0e5fd10e37e93619679b5000ced2df6eb2244a"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 7705,
+        "inkPixels": 5573,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 53,
+          "top": 3,
+          "right": 103,
+          "bottom": 212
+        },
+        "transparentFraction": 0.77423,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2s:lying:l0:s0": {
+      "face": "2s",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2s-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 3968,
+      "sha256": {
+        "decodedRgba": "8814ae89e430e0ecff086a06a9e1c30a50a6275f1b58dad186aad43d16f93a7f"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 7704,
+        "inkPixels": 5508,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 53,
+          "top": 3,
+          "right": 103,
+          "bottom": 212
+        },
+        "transparentFraction": 0.77426,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2s:lying:l90:s0": {
+      "face": "2s",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2s-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 4028,
+      "sha256": {
+        "decodedRgba": "699f5549608bce14043d2ca078b23e2fec311dd096204f5b2d0345cdcc108359"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 7703,
+        "inkPixels": 5464,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 53,
+          "top": 3,
+          "right": 103,
+          "bottom": 212
+        },
+        "transparentFraction": 0.77429,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2s:lying:l180:s0": {
+      "face": "2s",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2s-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 3979,
+      "sha256": {
+        "decodedRgba": "1eed9e9bde8892b3e7dfe89336220162d91619e93b5c1cb940662a7782d20111"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 7703,
+        "inkPixels": 5533,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 53,
+          "top": 3,
+          "right": 103,
+          "bottom": 212
+        },
+        "transparentFraction": 0.77429,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2s:lying:l270:s0": {
+      "face": "2s",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2s-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 4116,
+      "sha256": {
+        "decodedRgba": "027876067cf5831f28c628c94a5a97797e8535eb1a8465a897fa47f5e408c91b"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 7702,
+        "inkPixels": 5377,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 53,
+          "top": 3,
+          "right": 103,
+          "bottom": 212
+        },
+        "transparentFraction": 0.77432,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3s:upright:l0:s0": {
+      "face": "3s",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3s-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 4838,
+      "sha256": {
+        "decodedRgba": "2addd3b0149b4a6bd1250d2ad0ffb13c647f206ce3034018ee32020f71a47ff5"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 10860,
+        "inkPixels": 7741,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.68179,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3s:lying:l0:s0": {
+      "face": "3s",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3s-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 4973,
+      "sha256": {
+        "decodedRgba": "5d8bb74cce83a28882a4d44073d51d197ed59a23f085efb27175dccf9fcd1b52"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 10861,
+        "inkPixels": 7616,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.68176,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3s:lying:l90:s0": {
+      "face": "3s",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3s-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 4983,
+      "sha256": {
+        "decodedRgba": "947ed53266d7c0abb2148cff08a44f4998e48495187eeb85986aaf9cf665d3c5"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 10861,
+        "inkPixels": 7530,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.68176,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3s:lying:l180:s0": {
+      "face": "3s",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3s-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 5020,
+      "sha256": {
+        "decodedRgba": "fb48c1ccaff1dc5439fc28eba5ceabe8156f555068f9b1815904a29bdef3e3a8"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 10861,
+        "inkPixels": 7617,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.68176,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3s:lying:l270:s0": {
+      "face": "3s",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3s-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 5056,
+      "sha256": {
+        "decodedRgba": "9ea81a21c47185f557ce85a66c71497740b20b8f3015e51f41478566928df442"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 10867,
+        "inkPixels": 7504,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.68158,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4s:upright:l0:s0": {
+      "face": "4s",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4s-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7626,
+      "sha256": {
+        "decodedRgba": "9a4c734dfe00c24ea256eb921ff2a39db7831659267cb1e67d3635b034a2ab34"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 15346,
+        "inkPixels": 11037,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 8,
+          "top": 3,
+          "right": 149,
+          "bottom": 212
+        },
+        "transparentFraction": 0.55034,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4s:lying:l0:s0": {
+      "face": "4s",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4s-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7830,
+      "sha256": {
+        "decodedRgba": "bc0152ebffc6e2eea2da961f61a52575ed9f276820b63f8f053160aaf14324e4"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 15346,
+        "inkPixels": 10838,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 8,
+          "top": 3,
+          "right": 149,
+          "bottom": 212
+        },
+        "transparentFraction": 0.55034,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4s:lying:l90:s0": {
+      "face": "4s",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4s-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7952,
+      "sha256": {
+        "decodedRgba": "f220ec2fae1aa99bd5f11205ff6aa2162525f5aac3f902eb8b085fa89012e65d"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 15348,
+        "inkPixels": 10671,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 8,
+          "top": 3,
+          "right": 149,
+          "bottom": 212
+        },
+        "transparentFraction": 0.55028,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4s:lying:l180:s0": {
+      "face": "4s",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4s-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7870,
+      "sha256": {
+        "decodedRgba": "192f9bf2eb9a80bc8bc18199ded864e56a158bbe7eece0a3e53bd837f7956507"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 15345,
+        "inkPixels": 10825,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 8,
+          "top": 3,
+          "right": 149,
+          "bottom": 212
+        },
+        "transparentFraction": 0.55037,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4s:lying:l270:s0": {
+      "face": "4s",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4s-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7938,
+      "sha256": {
+        "decodedRgba": "40051b589f3f461f319c4a3b57af76023959b02ef7d7f1947e59b570fbe0c14c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 15345,
+        "inkPixels": 10607,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 8,
+          "top": 3,
+          "right": 149,
+          "bottom": 212
+        },
+        "transparentFraction": 0.55037,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5s:upright:l0:s0": {
+      "face": "5s",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5s-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8205,
+      "sha256": {
+        "decodedRgba": "a3f3930c04faed5755c7dbd1a7191ee5a102644aca0550a29bcbbb700b352d73"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 18313,
+        "inkPixels": 13204,
+        "redPixels": 3112,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.4634,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5s:lying:l0:s0": {
+      "face": "5s",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5s-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8429,
+      "sha256": {
+        "decodedRgba": "a1e5466429c280c60edbe5542eb16e385cd682d53d531b7c1a5454b0d8819cf4"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 18314,
+        "inkPixels": 12928,
+        "redPixels": 3117,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.46337,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5s:lying:l90:s0": {
+      "face": "5s",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5s-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8474,
+      "sha256": {
+        "decodedRgba": "73e4842323621b54cb4d563c81999c86743ae212aa2a914441f7c3d8274a9218"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 18311,
+        "inkPixels": 12913,
+        "redPixels": 3085,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.46346,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5s:lying:l180:s0": {
+      "face": "5s",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5s-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8538,
+      "sha256": {
+        "decodedRgba": "39f8cd7c1d13bf2d6f143fc1d0799db25e97b7f93958da1a63779cad602e9019"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 18314,
+        "inkPixels": 13014,
+        "redPixels": 3137,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.46337,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5s:lying:l270:s0": {
+      "face": "5s",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5s-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8561,
+      "sha256": {
+        "decodedRgba": "da87ae47eebf11488fa21c965571d9532b1fc7143fb81e6cb292ed77f922d800"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 18317,
+        "inkPixels": 12825,
+        "redPixels": 3085,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.46329,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6s:upright:l0:s0": {
+      "face": "6s",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6s-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9669,
+      "sha256": {
+        "decodedRgba": "cda8e991619421a3be0dddcde838f1631d0f5d0547ed12f0a9861b14028bfefb"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21796,
+        "inkPixels": 15472,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.36135,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6s:lying:l0:s0": {
+      "face": "6s",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6s-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10016,
+      "sha256": {
+        "decodedRgba": "7b0e317952fb2d8e7fd2000cca2c7777eb30a1558664425eeb3166c8ebbdd841"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21800,
+        "inkPixels": 15124,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.36123,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6s:lying:l90:s0": {
+      "face": "6s",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6s-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10113,
+      "sha256": {
+        "decodedRgba": "d74ddef54d281c3225bedeac250b9c5e2120d10aa8d92d177e747931109444b9"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21804,
+        "inkPixels": 15004,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.36111,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6s:lying:l180:s0": {
+      "face": "6s",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6s-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10216,
+      "sha256": {
+        "decodedRgba": "ed71ece1500089e13ac7baf7ee333746ad90422726b3397076aa9a7297da02ab"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21801,
+        "inkPixels": 15232,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.3612,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6s:lying:l270:s0": {
+      "face": "6s",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6s-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10269,
+      "sha256": {
+        "decodedRgba": "ffe21de46b6f43a19a971b4304b7ee4e2794d7d283d0046384651854c6d057e8"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21799,
+        "inkPixels": 14960,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.36126,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7s:upright:l0:s0": {
+      "face": "7s",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7s-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9711,
+      "sha256": {
+        "decodedRgba": "5442d1867b3067d5f41ba32b4b019e22ae34ac7dacd11840816eee95fe40a89c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 15221,
+        "inkPixels": 11100,
+        "redPixels": 1606,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.554,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7s:lying:l0:s0": {
+      "face": "7s",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7s-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10130,
+      "sha256": {
+        "decodedRgba": "10147730fad7b6636dab353d3aea4630e15b56627065caac2f23571592078a72"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 15217,
+        "inkPixels": 10809,
+        "redPixels": 1588,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.55412,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7s:lying:l90:s0": {
+      "face": "7s",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7s-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10238,
+      "sha256": {
+        "decodedRgba": "c60063c4c4efd67b346cdd6f9f658f1115f18ab482b01e0d6d50f29549e232b1"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 15218,
+        "inkPixels": 10802,
+        "redPixels": 1591,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.55409,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7s:lying:l180:s0": {
+      "face": "7s",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7s-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10222,
+      "sha256": {
+        "decodedRgba": "201d61227dc39d09f1ac0c1f732558b232a1912441a5efbc904ab3c9daa70045"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 15218,
+        "inkPixels": 10775,
+        "redPixels": 1612,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.55409,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7s:lying:l270:s0": {
+      "face": "7s",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7s-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10073,
+      "sha256": {
+        "decodedRgba": "57e66c7a44da580a14a1db9db52466ad723642dce0457616380c5fac1a91ed9c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 15217,
+        "inkPixels": 10723,
+        "redPixels": 1600,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.55412,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8s:upright:l0:s0": {
+      "face": "8s",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8s-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7946,
+      "sha256": {
+        "decodedRgba": "6fa2b03c9bc8f7fc4c932a4960e56177eef91871ffb5f626d0e3390c9b1f737a"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 22892,
+        "inkPixels": 16363,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.32923,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8s:lying:l0:s0": {
+      "face": "8s",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8s-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8194,
+      "sha256": {
+        "decodedRgba": "83400144a66f897a0d9a1b0b1f1dda56008700301f5841b1e4ed0927dddd4585"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 22898,
+        "inkPixels": 16061,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.32906,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8s:lying:l90:s0": {
+      "face": "8s",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8s-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8255,
+      "sha256": {
+        "decodedRgba": "d7a8dfeec0d31b1ec2082008815519a5c575d93fa988e33c49f6c3e55187853c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 22896,
+        "inkPixels": 16302,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.32911,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8s:lying:l180:s0": {
+      "face": "8s",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8s-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8122,
+      "sha256": {
+        "decodedRgba": "f9cf01439aa6af538accdbb43a2b963b43dfc728d2c94a5a39169cef384168c3"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 22894,
+        "inkPixels": 16092,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.32917,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "8s:lying:l270:s0": {
+      "face": "8s",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/8s-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8304,
+      "sha256": {
+        "decodedRgba": "e4b097730062748dcd089c226636279069d15b215497d0725f4128e898753e82"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 22898,
+        "inkPixels": 16183,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.32906,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9s:upright:l0:s0": {
+      "face": "9s",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9s-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12356,
+      "sha256": {
+        "decodedRgba": "c2e35205fc0bf5723efa6aaf87b4e48f351d50a9c01efda0328daa5e388ce105"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 19214,
+        "inkPixels": 14046,
+        "redPixels": 4928,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.437,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9s:lying:l0:s0": {
+      "face": "9s",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9s-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 13058,
+      "sha256": {
+        "decodedRgba": "717656ae50498f9d340edb7427dc67982d076cc58192af530e42a343c8520ac7"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 19211,
+        "inkPixels": 13843,
+        "redPixels": 4929,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.43709,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9s:lying:l90:s0": {
+      "face": "9s",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9s-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 13025,
+      "sha256": {
+        "decodedRgba": "c5aadfde2a1ea287730ef6b92dfb0438a2ebe803ed8b9284264920278a878b33"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 19217,
+        "inkPixels": 13847,
+        "redPixels": 4917,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.43691,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9s:lying:l180:s0": {
+      "face": "9s",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9s-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12856,
+      "sha256": {
+        "decodedRgba": "7e419539413882ee57380edd24b365e8e68ebe84be4b18789eafe8a1c34bac3a"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 19208,
+        "inkPixels": 13872,
+        "redPixels": 4960,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.43718,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "9s:lying:l270:s0": {
+      "face": "9s",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/9s-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12889,
+      "sha256": {
+        "decodedRgba": "48e7b28b0bcde35bde7ad4683cf68386be575bfda9b38e689032d53516c8fab2"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 19207,
+        "inkPixels": 13765,
+        "redPixels": 4924,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.43721,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5mr:upright:l0:s0": {
+      "face": "5mr",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5mr-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12057,
+      "sha256": {
+        "decodedRgba": "d4b60fe227aab2a08057fb3df7e86e57889a7df890c64e6bd6480c0018da373c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13628,
+        "inkPixels": 11425,
+        "redPixels": 9484,
+        "alphaBBox": {
+          "left": 7,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.60068,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5mr:lying:l0:s0": {
+      "face": "5mr",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5mr-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12669,
+      "sha256": {
+        "decodedRgba": "52e5374c9ae2a90ec9860c6291b989685772f2103601289e1d771fcdeff7538c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13631,
+        "inkPixels": 11225,
+        "redPixels": 10222,
+        "alphaBBox": {
+          "left": 7,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.60059,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5mr:lying:l90:s0": {
+      "face": "5mr",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5mr-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12554,
+      "sha256": {
+        "decodedRgba": "eac99831331c03b9460c6df2f69c9ecb8eb0089363cd26d3f3c0ab54dc434542"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13631,
+        "inkPixels": 11243,
+        "redPixels": 10545,
+        "alphaBBox": {
+          "left": 7,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.60059,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5mr:lying:l180:s0": {
+      "face": "5mr",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5mr-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12584,
+      "sha256": {
+        "decodedRgba": "38a691e0fdcefafb190e6fe5506e9ca443bad98417281459e32237d634fd62cd"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13631,
+        "inkPixels": 11188,
+        "redPixels": 10342,
+        "alphaBBox": {
+          "left": 7,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.60059,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5mr:lying:l270:s0": {
+      "face": "5mr",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5mr-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 12593,
+      "sha256": {
+        "decodedRgba": "43e8da6439bf3b42b81eb41a3d01ff7287f5264356a6be666482bbb5684058ae"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 13630,
+        "inkPixels": 11220,
+        "redPixels": 10493,
+        "alphaBBox": {
+          "left": 7,
+          "top": 3,
+          "right": 145,
+          "bottom": 211
+        },
+        "transparentFraction": 0.60062,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5pr:upright:l0:s0": {
+      "face": "5pr",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5pr-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10992,
+      "sha256": {
+        "decodedRgba": "2bc72c71c27874c86b4bca1a3c540d3bb46a766e06dd7ef372ec210b36765689"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21314,
+        "inkPixels": 15849,
+        "redPixels": 14308,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.37547,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5pr:lying:l0:s0": {
+      "face": "5pr",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5pr-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11133,
+      "sha256": {
+        "decodedRgba": "8b8078a6bfab8b9fa3360ff45a07219c1b470eed6363e454360a01bb968cb01b"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21315,
+        "inkPixels": 15607,
+        "redPixels": 14756,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.37544,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5pr:lying:l90:s0": {
+      "face": "5pr",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5pr-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11307,
+      "sha256": {
+        "decodedRgba": "b7a976ee1062e80000e56578327977edb26852694c6426c8fa9f2d06e9aa4df5"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21312,
+        "inkPixels": 15600,
+        "redPixels": 14834,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.37553,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5pr:lying:l180:s0": {
+      "face": "5pr",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5pr-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11190,
+      "sha256": {
+        "decodedRgba": "f1c66a9542597076c6ac0216405d673e0363ecd0414930873a2256f6eed26870"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21313,
+        "inkPixels": 15615,
+        "redPixels": 14749,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.3755,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5pr:lying:l270:s0": {
+      "face": "5pr",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5pr-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11254,
+      "sha256": {
+        "decodedRgba": "36fb8d93e229a77bb439182285d8fe2aa95641b775c850b1af5001f615e5c9ce"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 21312,
+        "inkPixels": 15654,
+        "redPixels": 14810,
+        "alphaBBox": {
+          "left": 3,
+          "top": 7,
+          "right": 154,
+          "bottom": 208
+        },
+        "transparentFraction": 0.37553,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5sr:upright:l0:s0": {
+      "face": "5sr",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5sr-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8973,
+      "sha256": {
+        "decodedRgba": "f2ebfaef4214e7feb9d8ffc5805b6bc0f4a2178b3092b125d523cc70a4510460"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 18806,
+        "inkPixels": 13994,
+        "redPixels": 13364,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.44896,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5sr:lying:l0:s0": {
+      "face": "5sr",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5sr-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9182,
+      "sha256": {
+        "decodedRgba": "ef566d914dac26ba8b808eae9a2e76c5da462942af09d3ad26ada62e7cba6f26"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 18803,
+        "inkPixels": 13896,
+        "redPixels": 13672,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.44904,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5sr:lying:l90:s0": {
+      "face": "5sr",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5sr-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9370,
+      "sha256": {
+        "decodedRgba": "ada42a65475ff0958e498f4ebe6ae4b11237391a3c14c709d3bf1807f119233e"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 18806,
+        "inkPixels": 13929,
+        "redPixels": 13561,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.44896,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5sr:lying:l180:s0": {
+      "face": "5sr",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5sr-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9324,
+      "sha256": {
+        "decodedRgba": "bd5dae38549977574235dc0442989fd7e7bd6f9ae1d9859524b4654d76fac0ea"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 18804,
+        "inkPixels": 13926,
+        "redPixels": 13642,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.44902,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "5sr:lying:l270:s0": {
+      "face": "5sr",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/5sr-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9249,
+      "sha256": {
+        "decodedRgba": "a4bf62ccc866c248adde6fa9b56b55372731b0e2b8a09cef24c38c974f3ced34"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 18805,
+        "inkPixels": 13877,
+        "redPixels": 13457,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.44899,
+        "cornerAlpha": [
+          1,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1z:upright:l0:s0": {
+      "face": "1z",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1z-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8300,
+      "sha256": {
+        "decodedRgba": "56961da238e8cd59beb2f0b975d4834a5fd593e2305eaa45f40e9b0b6642adad"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11152,
+        "inkPixels": 9588,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.67323,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1z:lying:l0:s0": {
+      "face": "1z",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1z-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8421,
+      "sha256": {
+        "decodedRgba": "8d539169235febc066010786b3421f2cdc7c0d96097cd03832a2db9642ceb027"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11156,
+        "inkPixels": 9213,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.67311,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1z:lying:l90:s0": {
+      "face": "1z",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1z-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8460,
+      "sha256": {
+        "decodedRgba": "6b287406ebedd2379fd9c4c0946f911a9435d5d1a93d9d46c16d8ae15f2ca9a8"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11154,
+        "inkPixels": 9187,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.67317,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1z:lying:l180:s0": {
+      "face": "1z",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1z-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8475,
+      "sha256": {
+        "decodedRgba": "698834a35d317b7d86a4c160fd42bc4614f372649b88b959b83a1efc851084b6"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11157,
+        "inkPixels": 9182,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.67308,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "1z:lying:l270:s0": {
+      "face": "1z",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/1z-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 8386,
+      "sha256": {
+        "decodedRgba": "458e19c3dc90deef617befbbac3a40c7c01e4ccde326562eb84a7ea927d3352d"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11153,
+        "inkPixels": 9255,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 3,
+          "right": 154,
+          "bottom": 212
+        },
+        "transparentFraction": 0.6732,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2z:upright:l0:s0": {
+      "face": "2z",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2z-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9219,
+      "sha256": {
+        "decodedRgba": "22bca2cac7b1bbc0f5fb96793b14d63fb92c5cd39d3f818c989832c3a6977df7"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12737,
+        "inkPixels": 10987,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 4,
+          "top": 4,
+          "right": 153,
+          "bottom": 211
+        },
+        "transparentFraction": 0.62679,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2z:lying:l0:s0": {
+      "face": "2z",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2z-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9473,
+      "sha256": {
+        "decodedRgba": "3dbe53078f75ef549b7525f4c9e7ec5ade704d72d50e73129b24820037fcc100"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12742,
+        "inkPixels": 10572,
+        "redPixels": 1,
+        "alphaBBox": {
+          "left": 4,
+          "top": 4,
+          "right": 153,
+          "bottom": 211
+        },
+        "transparentFraction": 0.62664,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2z:lying:l90:s0": {
+      "face": "2z",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2z-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9542,
+      "sha256": {
+        "decodedRgba": "10876331a3c91bc92d80fd7f24520563387be964c2920463f2fe5232e85c5853"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12739,
+        "inkPixels": 10634,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 4,
+          "top": 4,
+          "right": 153,
+          "bottom": 211
+        },
+        "transparentFraction": 0.62673,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2z:lying:l180:s0": {
+      "face": "2z",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2z-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9436,
+      "sha256": {
+        "decodedRgba": "0393a668681449e6b633bc5abcdc78692b67d27a2e717ce1ce1dc7b6fd2c2bcb"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12745,
+        "inkPixels": 10620,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 4,
+          "top": 4,
+          "right": 153,
+          "bottom": 211
+        },
+        "transparentFraction": 0.62655,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2z:lying:l270:s0": {
+      "face": "2z",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/2z-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 9414,
+      "sha256": {
+        "decodedRgba": "29bb154ac40e5797dca70b0151fe017b1949d786c08a5b33ca6ff0aa9aa6c098"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 12740,
+        "inkPixels": 10573,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 4,
+          "top": 4,
+          "right": 153,
+          "bottom": 211
+        },
+        "transparentFraction": 0.6267,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3z:upright:l0:s0": {
+      "face": "3z",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3z-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7495,
+      "sha256": {
+        "decodedRgba": "5247138075d0b56df3a121448aaa0aa1e59dfac033d065ae220d4f80f673fc6f"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11307,
+        "inkPixels": 9671,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 4,
+          "top": 26,
+          "right": 153,
+          "bottom": 188
+        },
+        "transparentFraction": 0.66869,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3z:lying:l0:s0": {
+      "face": "3z",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3z-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7819,
+      "sha256": {
+        "decodedRgba": "aa4755ff8a26cb451af43f9912566e50dcd323fb965bf6c2eec7fa965f8def7c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11307,
+        "inkPixels": 9239,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 4,
+          "top": 26,
+          "right": 153,
+          "bottom": 188
+        },
+        "transparentFraction": 0.66869,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3z:lying:l90:s0": {
+      "face": "3z",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3z-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7883,
+      "sha256": {
+        "decodedRgba": "e31d76ee662040829e389a8ff56f8addec64edbe5ede1dfed94f13a6a61ed3de"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11307,
+        "inkPixels": 9223,
+        "redPixels": 1,
+        "alphaBBox": {
+          "left": 4,
+          "top": 26,
+          "right": 153,
+          "bottom": 188
+        },
+        "transparentFraction": 0.66869,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3z:lying:l180:s0": {
+      "face": "3z",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3z-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7990,
+      "sha256": {
+        "decodedRgba": "c602835f07d640647eeaa7e760f166c506a44754000dfa6212748cdfba337ea4"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11307,
+        "inkPixels": 9263,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 4,
+          "top": 26,
+          "right": 153,
+          "bottom": 188
+        },
+        "transparentFraction": 0.66869,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "3z:lying:l270:s0": {
+      "face": "3z",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/3z-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 7849,
+      "sha256": {
+        "decodedRgba": "e873562a3993bb57e96c7a29dcdd8f92ba231abc8178ed4dbbc0eb38bc3f354c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11305,
+        "inkPixels": 9198,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 4,
+          "top": 26,
+          "right": 153,
+          "bottom": 188
+        },
+        "transparentFraction": 0.66875,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4z:upright:l0:s0": {
+      "face": "4z",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4z-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 6632,
+      "sha256": {
+        "decodedRgba": "cfb28d3edda2141a29fdb4682c24eea9db2c7e11e5448ad4f486e5591416b4e6"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 8878,
+        "inkPixels": 7619,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 25,
+          "right": 154,
+          "bottom": 179
+        },
+        "transparentFraction": 0.73986,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4z:lying:l0:s0": {
+      "face": "4z",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4z-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 6808,
+      "sha256": {
+        "decodedRgba": "805a4ea85d7f3903cd582b96170bcc627b613a0599e763ca7ccdb1220f4034dd"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 8886,
+        "inkPixels": 7398,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 25,
+          "right": 154,
+          "bottom": 179
+        },
+        "transparentFraction": 0.73963,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4z:lying:l90:s0": {
+      "face": "4z",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4z-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 6891,
+      "sha256": {
+        "decodedRgba": "1f45e81971867c087b2b94016b419af7389bf5bd726c2e70db51f2ca2e838f8c"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 8882,
+        "inkPixels": 7289,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 25,
+          "right": 154,
+          "bottom": 179
+        },
+        "transparentFraction": 0.73974,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4z:lying:l180:s0": {
+      "face": "4z",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4z-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 6809,
+      "sha256": {
+        "decodedRgba": "d208a5cb3da7334c34b849d6f2b94c21886f018d8ceabe3dcb5522c45a50dbd9"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 8882,
+        "inkPixels": 7376,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 25,
+          "right": 154,
+          "bottom": 179
+        },
+        "transparentFraction": 0.73974,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "4z:lying:l270:s0": {
+      "face": "4z",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/4z-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 6762,
+      "sha256": {
+        "decodedRgba": "7f3e977403ab3d84736fbacf6fd68eb314ce4d7ad8958dd4937a78fe0dc7ea99"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 8882,
+        "inkPixels": 7290,
+        "redPixels": 1,
+        "alphaBBox": {
+          "left": 3,
+          "top": 25,
+          "right": 154,
+          "bottom": 179
+        },
+        "transparentFraction": 0.73974,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6z:upright:l0:s0": {
+      "face": "6z",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6z-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10501,
+      "sha256": {
+        "decodedRgba": "ede4c2c33d565a449b4c3ac4bc03244d508d8f7579b8fd71444459ff4a6bfbe7"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11696,
+        "inkPixels": 9459,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 16,
+          "right": 154,
+          "bottom": 190
+        },
+        "transparentFraction": 0.65729,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6z:lying:l0:s0": {
+      "face": "6z",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6z-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10914,
+      "sha256": {
+        "decodedRgba": "f13b6cefacac18cc3e2e205ba533e68dad409d3ab40f488dca71cc8848094545"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11695,
+        "inkPixels": 8997,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 16,
+          "right": 154,
+          "bottom": 190
+        },
+        "transparentFraction": 0.65732,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6z:lying:l90:s0": {
+      "face": "6z",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6z-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 11135,
+      "sha256": {
+        "decodedRgba": "f8066ea9a6de0b4a3c713cfb0d2956c254f84c1e8ad0cffd3722da51acd9d9a4"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11697,
+        "inkPixels": 9095,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 16,
+          "right": 154,
+          "bottom": 190
+        },
+        "transparentFraction": 0.65726,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6z:lying:l180:s0": {
+      "face": "6z",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6z-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10895,
+      "sha256": {
+        "decodedRgba": "34e44ed11e376444655f0ba6c5240f3c0e0fd450687935256952a83993e1de19"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11696,
+        "inkPixels": 9012,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 16,
+          "right": 154,
+          "bottom": 190
+        },
+        "transparentFraction": 0.65729,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "6z:lying:l270:s0": {
+      "face": "6z",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/6z-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 10881,
+      "sha256": {
+        "decodedRgba": "9337c025ad063dd597e2757aa3cbab6e0c73aae1f4ddf2e6c489d507ebbe34e8"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 11695,
+        "inkPixels": 9025,
+        "redPixels": 0,
+        "alphaBBox": {
+          "left": 3,
+          "top": 16,
+          "right": 154,
+          "bottom": 190
+        },
+        "transparentFraction": 0.65732,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7z:upright:l0:s0": {
+      "face": "7z",
+      "surface": "upright",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7z-upright-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 4803,
+      "sha256": {
+        "decodedRgba": "fb119270143912810192e753556574fafe7eab320a56e6095858f30a9f79a684"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 8514,
+        "inkPixels": 7549,
+        "redPixels": 7267,
+        "alphaBBox": {
+          "left": 11,
+          "top": 3,
+          "right": 149,
+          "bottom": 212
+        },
+        "transparentFraction": 0.75053,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7z:lying:l0:s0": {
+      "face": "7z",
+      "surface": "lying",
+      "lightRotationDeg": 0,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7z-lying-l0.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 5006,
+      "sha256": {
+        "decodedRgba": "31ae9e560e773c17d24a787b488793442c9dfacdc81305b45d5e84ecb1b47282"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 8517,
+        "inkPixels": 7517,
+        "redPixels": 7178,
+        "alphaBBox": {
+          "left": 11,
+          "top": 3,
+          "right": 149,
+          "bottom": 212
+        },
+        "transparentFraction": 0.75044,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7z:lying:l90:s0": {
+      "face": "7z",
+      "surface": "lying",
+      "lightRotationDeg": 90,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7z-lying-l90.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 4915,
+      "sha256": {
+        "decodedRgba": "63e32250ab0d4cd9e5c9cf3162173cc19345065a620680d365e6c498aa45c760"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 8517,
+        "inkPixels": 7521,
+        "redPixels": 7094,
+        "alphaBBox": {
+          "left": 11,
+          "top": 3,
+          "right": 149,
+          "bottom": 212
+        },
+        "transparentFraction": 0.75044,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7z:lying:l180:s0": {
+      "face": "7z",
+      "surface": "lying",
+      "lightRotationDeg": 180,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7z-lying-l180.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 4827,
+      "sha256": {
+        "decodedRgba": "351c938c8aff88c983ee7cb6477e0c5999e177de596c8b10c6f531bca21a4c8e"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 8517,
+        "inkPixels": 7534,
+        "redPixels": 7215,
+        "alphaBBox": {
+          "left": 11,
+          "top": 3,
+          "right": 149,
+          "bottom": 212
+        },
+        "transparentFraction": 0.75044,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "7z:lying:l270:s0": {
+      "face": "7z",
+      "surface": "lying",
+      "lightRotationDeg": 270,
+      "symbolRotationDeg": 0,
+      "textureFile": "decals/7z-lying-l270.avif",
+      "width": 158,
+      "height": 216,
+      "facePlateRect": [
+        0.02531646,
+        0.01851852,
+        0.97468354,
+        0.98148148
+      ],
+      "bytes": 4931,
+      "sha256": {
+        "decodedRgba": "e550e92ac70462814057f99d8fe50e966fe88053892d4eedd7ddfe8796bfb418"
+      },
+      "measured": {
+        "width": 158,
+        "height": 216,
+        "alphaPixels": 8516,
+        "inkPixels": 7503,
+        "redPixels": 7100,
+        "alphaBBox": {
+          "left": 11,
+          "top": 3,
+          "right": 149,
+          "bottom": 212
+        },
+        "transparentFraction": 0.75047,
+        "cornerAlpha": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  },
+  "encodedBy": {
+    "script": "tools/render/scripts/encode-decals.mjs",
+    "format": "avif",
+    "quality": 60
+  }
+}

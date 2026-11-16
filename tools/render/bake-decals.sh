@@ -4,7 +4,7 @@
 #   bash tools/render/bake-decals.sh --dry-run   # print the plan, no render
 #   bash tools/render/bake-decals.sh --spike     # 4 faces x 4 light rotations into build/decals
 #   bash tools/render/bake-decals.sh --build     # all inked faces x 4 rotations into build/decals
-#   bash tools/render/bake-decals.sh --bake      # commit the full set + decals.json, then check
+#   bash tools/render/bake-decals.sh --bake      # PNG bake, encode AVIF, commit decals.json, check
 #   bash tools/render/bake-decals.sh --check     # validate build/decals.json (no Blender)
 #   bash tools/render/bake-decals.sh --check-committed  # validate frontend/public/table/decals.json
 #
@@ -13,9 +13,11 @@
 # four images per face are four baked light rotations, chosen so the light lands
 # top-left on screen after the shell's quad rotation.
 #
-# --spike and --build never touch the committed assets. --bake writes
-# frontend/public/table/decals/ (+ decals.json) and then runs check-decals.mjs.
-# The Blender build is pinned to 4.5.9 LTS; set BLENDER to override the path.
+# --spike and --build never touch the committed assets. --bake writes the PNG
+# bake to build/decals, encodes it to frontend/public/table/decals/ (AVIF by
+# default, DECAL_FORMAT/DECAL_QUALITY to override), writes decals.json and runs
+# check-decals.mjs --committed. The Blender build is pinned to 4.5.9 LTS; set
+# BLENDER to override the path.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -80,5 +82,8 @@ fi
 "$blender" --background --python "$here/bake_decals.py" -- "${bake_args[@]}" "${args[@]}"
 
 if [ "$mode" = "bake" ]; then
+  node "$here/scripts/encode-decals.mjs" \
+    --format "${DECAL_FORMAT:-avif}" \
+    --quality "${DECAL_QUALITY:-60}"
   node "$here/scripts/check-decals.mjs" --committed
 fi
