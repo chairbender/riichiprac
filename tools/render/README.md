@@ -1282,7 +1282,13 @@ WebGL and no per-frame lighting, and the group recipe is unchanged.
   step away and the target's published camera. The reference crop is
   byte-identical to the committed target body, so the pair geometry is exact.
   It combines the physical key/world shadow and a contact-AO pass
-  (`physical+ao`); the current bake is **26 catches, 107,803 B** at 1x/2x.
+  (`physical+ao`); the current bake is **26 catches, 109,321 B** at 1x/2x.
+  The hidden caster is then translated so its **projected contact edge** lands
+  on the committed caster sprite's body edge. The per-slot caster sprite is
+  normalised for its own camera; under the target camera its physical edge sat
+  up to ~3 px inside the drawn edge and left a bright unshadowed sliver on the
+  target's visible side (most visible on the right half of the hand). This is
+  a catch alignment fix, not a layout-spacing change.
   `frontend/public/table/catches.json` publishes `target:caster` records; the
   compositor draws one at the target's `drawX/drawY`, after the target body and
   before the caster body. `contactOverlays.ts` prefers a catch, skips farther

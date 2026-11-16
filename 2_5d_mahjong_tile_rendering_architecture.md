@@ -1449,7 +1449,12 @@ then approved as **target-space 3D catches**. `overlay.enabledFamilies` in
 renders the target tile with its adjacent caster at the target's published shell
 camera. It covers the human hand (12), the top hand (12) and one catch per side
 hand (the shell is reused down the row; its row sign is verified against the
-committed `gridStepPx`).
+committed `gridStepPx`). The hidden caster is translated until its **projected
+contact edge** matches the committed caster sprite's body edge: the per-slot
+caster sprite is normalised for its own camera, and under the target camera its
+physical edge can sit ~3 px inside the drawn edge, leaving a bright unshadowed
+sliver on the target's visible side (worst on the right half of the hand). That
+is a catch alignment fix, not a layout-spacing change.
 The per-slot cameras are one eye at the row centre (`lateralOffsetUnits =
 -offsetUnits`), so the pair is just the target at the origin, the caster one
 0.75-unit row step away, and the same eye; the target's reference crop is
@@ -1548,7 +1553,7 @@ baker bakes exactly that set. The `--fixture` mode writes the committed
 
 The current bakes produce **13 synthetic hand decals** (fallback; 35,780 B across
 both scales) and **26 target-space 3D catches** (12 human + 12 top hand + 2 side
-hands; active; 107,803 B across both scales). The catches publish `target:caster`, the target texture size, peak/mean
+hands; active; 109,321 B across both scales). The catches publish `target:caster`, the target texture size, peak/mean
 alpha, support, decoded-RGBA sha and bytes.
 
 ### 15.4 Verification
@@ -1569,9 +1574,9 @@ checks**:
   changes **zero felt pixels**; the group field is identical (it is the same
   object) and the §10.12 seam kink stays below 0.05. The **four ponds are
   asserted to stay unshadowed** (0 overlays, 0 changed pixels); the human hand
-  uses the 12 catches, with mean Δluma **15.41** on 6,019 changed body pixels
+  uses the 12 catches, with mean Δluma **16.67** on 5,801 changed body pixels
   and zero felt change. The top hand's 12 catches are drawn with mean Δluma
-  **5.75**; the side hands' catches with **6.83 / 1.77**. The disabled families
+  **5.78**; the side hands' catches with **3.60 / 1.77**. The disabled families
   are byte-identical to the no-overlay baseline.
 
 The review script (`cd frontend && npm run overlays:review`) writes

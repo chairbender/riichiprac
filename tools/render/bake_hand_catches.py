@@ -58,6 +58,7 @@ from bake_shells import (  # noqa: E402
     log,
     pose_tile,
     project_pixels,
+    projected_bbox,
     reset_scene,
     resolve_tile_dimensions,
     set_resolution,
@@ -130,6 +131,9 @@ def main() -> None:
     scale_2x = int(spec["bake"]["pixelRatio"])
     ao_material = build_ao_material()
 
+    fixture = json.loads((RENDER_DIR / "overlay-zones.json").read_text())
+    fixture_zones = {zone["id"]: zone for zone in fixture["zones"]}
+
     catches = {}
     selected = [job for job in JOBS if not args.only or job["target"] in args.only]
     if args.only:
@@ -187,23 +191,114 @@ def main() -> None:
             f"{pair_tag}: offset {offset[0]:+.4f},{offset[1]:+.4f},{offset[2]:+.4f}, "
             f"{framing['resolution1x'][0]}x{framing['resolution1x'][1]} @1x"
         )
+        if args.probe:
+            if target_id.startswith("shell_hand_top_slot_"):
+                zone_id = "hand-top"
+            elif target_id.startswith("shell_hand_side_left"):
+                zone_id = "hand-left"
+            elif target_id.startswith("shell_hand_side_right"):
+                zone_id = "hand-right"
+            else:
+                zone_id = "hand-bottom"
+            zone = fixture_zones[zone_id]
+            if target_id.startswith("shell_hand_side_"):
+                layout_target = zone["bodies"][5]
+                layout_caster = zone["bodies"][6]
+            else:
+                layout_target = next(body for body in zone["bodies"] if body["shell"] == target_id)
+                layout_caster = next(body for body in zone["bodies"] if body["shell"] == caster_id)
+            set_resolution(scene, framing["resolution1x"][0], framing["resolution1x"][1])
+            projected_target = projected_bbox(scene, camera, target)
+            projected_caster = projected_bbox(scene, camera, caster)
+            layout_target_left = layout_target["drawX"] + 2
+            layout_caster_left = layout_caster["drawX"] + 2
+            offset_px = projected_target[0] - layout_target_left
+            expected_left = layout_caster_left + offset_px
+            expected_right = expected_left + committed[caster_id]["advanceWidth"]
+            log(
+                f"PROBE {pair_tag}: projected caster L/R "
+                f"{projected_caster[0]:.2f}/{projected_caster[2]:.2f}, "
+                f"layout caster L/R {expected_left:.2f}/{expected_right:.2f}, "
+                f"ΔL {projected_caster[0] - expected_left:+.2f} "
+                f"ΔR {projected_caster[2] - expected_right:+.2f}"
+            )
+            bpy.data.objects.remove(camera, do_unlink=True)
+            continue
 
         physical = {}
         ao = {}
         reference = {}
-        for scale in (1, scale_2x):
-            set_resolution(
-                scene,
-                framing["resolution1x"][0] * scale,
-                framing["resolution1x"][1] * scale,
+        set_resolution(scene, framing["resolution1x"][0], framing["resolution1x"][1])
+        caster.hide_render = True
+        caster.visible_camera = True
+        reference[1] = render_to(args.out, pair_tag, "ref", 1, scene)
+        solid1 = alpha_bbox(reference[1][..., 3])
+        crop1 = crop_box(solid1, pads)
+        target_record = committed[target_id]
+        if (crop1[2], crop1[3]) != (target_record["texWidth"], target_record["texHeight"]):
+            die(
+                f"{pair_tag}: crop {crop1[2]}x{crop1[3]} is not the target texture "
+                f"{target_record['texWidth']}x{target_record['texHeight']}"
             )
-            caster.hide_render = True
-            caster.visible_camera = True
-            reference[scale] = render_to(args.out, pair_tag, "ref", scale, scene)
-            caster.hide_render = False
-            caster.visible_camera = False
-            physical[scale] = render_to(args.out, pair_tag, "physical", scale, scene)
-            caster.visible_camera = True
+
+        # The committed caster sprite is normalised for its own camera; under
+        # this target camera its projected contact edge can sit inside the drawn
+        # body, leaving an unshadowed sliver on the target's visible side. Move
+        # the (hidden) caster so its contact edge lands on the drawn caster edge.
+        if target_id.startswith("shell_hand_top_slot_"):
+            zone_id = "hand-top"
+        elif target_id.startswith("shell_hand_side_left"):
+            zone_id = "hand-left"
+        elif target_id.startswith("shell_hand_side_right"):
+            zone_id = "hand-right"
+        else:
+            zone_id = "hand-bottom"
+        zone = fixture_zones[zone_id]
+        side_job = target_id.startswith("shell_hand_side_")
+        if side_job:
+            # The side row reuses one shell, so the zone has 13 identical
+            # shells; use a representative adjacent pair for the row step.
+            layout_target = zone["bodies"][5]
+            layout_caster = zone["bodies"][6]
+        else:
+            layout_target = next(body for body in zone["bodies"] if body["shell"] == target_id)
+            layout_caster = next(body for body in zone["bodies"] if body["shell"] == caster_id)
+        contact = "up" if side_job else ("right" if layout_caster["drawX"] < layout_target["drawX"] else "left")
+        for iteration in range(3):
+            projected = projected_bbox(scene, camera, caster)
+            if contact == "up":
+                expected = crop1[1] + (layout_caster["drawY"] + 2 - layout_target["drawY"])
+                delta = projected[1] - expected
+                ppu = max(1.0, abs(layout_caster["drawY"] - layout_target["drawY"]) / 0.75)
+                caster.location.y += delta / ppu
+            else:
+                edge = layout_caster["drawX"] + 2 + (
+                    committed[caster_id]["advanceWidth"] if contact == "right" else 0
+                )
+                expected = crop1[0] + (edge - layout_target["drawX"])
+                projected_edge = projected[2] if contact == "right" else projected[0]
+                delta = projected_edge - expected
+                ppu = max(1.0, abs(layout_caster["drawX"] - layout_target["drawX"]) / 0.75)
+                caster.location.x += (expected - projected_edge) / ppu
+            bpy.context.view_layer.update()
+            log(
+                f"{pair_tag}: caster align {contact} iter {iteration}: "
+                f"Δ {delta:+.3f} px"
+            )
+            if abs(delta) < 0.15:
+                break
+
+        caster.hide_render = False
+        caster.visible_camera = False
+        physical[1] = render_to(args.out, pair_tag, "physical", 1, scene)
+        caster.visible_camera = True
+        set_resolution(scene, framing["resolution1x"][0] * scale_2x, framing["resolution1x"][1] * scale_2x)
+        caster.hide_render = True
+        reference[scale_2x] = render_to(args.out, pair_tag, "ref", scale_2x, scene)
+        caster.hide_render = False
+        caster.visible_camera = False
+        physical[scale_2x] = render_to(args.out, pair_tag, "physical", scale_2x, scene)
+        caster.visible_camera = True
 
         original_material = target.data.materials[0]
         target.data.materials[0] = ao_material
@@ -228,20 +323,12 @@ def main() -> None:
         key.hide_render = False
         scene.world.node_tree.nodes["Background"].inputs["Strength"].default_value = world_strength
 
-        solid1 = alpha_bbox(reference[1][..., 3])
-        crop1 = crop_box(solid1, pads)
         crop2 = (
             crop1[0] * scale_2x,
             crop1[1] * scale_2x,
             crop1[2] * scale_2x,
             crop1[3] * scale_2x,
         )
-        target_record = committed[target_id]
-        if (crop1[2], crop1[3]) != (target_record["texWidth"], target_record["texHeight"]):
-            die(
-                f"{pair_tag}: crop {crop1[2]}x{crop1[3]} is not the target texture "
-                f"{target_record['texWidth']}x{target_record['texHeight']}"
-            )
         alignment = reference_matches(
             reference[1],
             crop1,
@@ -337,6 +424,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default="build/hand-catches")
     parser.add_argument("--only", action="append", default=[], help="development: bake one target")
+    parser.add_argument("--probe", action="store_true", help="development: log caster alignment, no renders")
     return parser.parse_args(blender_args(sys.argv))
 
 
