@@ -236,6 +236,7 @@ pub struct AgentSpec {
     pub temperature: Option<f32>,  // None when the engine is deterministic
     pub sampling: String,          // "argmax" | "softmax" | "engine_default"
     pub seed: Option<String>,
+    pub reproducible: bool,        // false when the engine/config cannot replay the seed
     pub licence: LicenseInfo,
 }
 
@@ -419,6 +420,7 @@ corpus path, never an absolute local path or a username.
       "temperature": 1.0,
       "sampling": "softmax",
       "seed": "0x01",
+      "reproducible": true,
       "licence": {
         "id": "AGPL-3.0",
         "attribution": "Mortal 4.1b ...",
@@ -436,6 +438,7 @@ corpus path, never an absolute local path or a username.
       "temperature": 1.0,
       "sampling": "softmax",
       "seed": "0x02",
+      "reproducible": true,
       "licence": {
         "id": "AGPL-3.0",
         "attribution": "Mortal 3.0 ...",
@@ -944,10 +947,11 @@ write.
 - Write `GameProvenance` per game and per seat; emit raw logs outside git.
 - Document the referee/protocol decision and what it guarantees.
 
-**Accepts.** Two reference agents complete a kyoku; the same seed produces the
-same log; every game has complete per-seat provenance; the source/licence gates
-pass; the logs parse through R1/R2; no weights or AGPL code are needed for the
-reference family.
+**Accepts.** Two reference agents complete a kyoku; a third reference agent can
+be added through configuration only, without changing the runner; the same seed
+produces the same log; every game has complete per-seat provenance; the
+source/licence gates pass; the logs parse through R1/R2; no weights or AGPL code
+are needed for the reference family.
 
 **Depends on.** F1, R1, R2.
 
