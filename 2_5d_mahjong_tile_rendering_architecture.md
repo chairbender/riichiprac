@@ -116,13 +116,14 @@ Configure an automated Blender script to render the canonical blank tile shells 
 - [x] **Task 1.3:** Render all 6 canonical blank shells at target DPI (plus `@2x` retina scale) and auto-generate `shells.json` containing `anchorX`, `anchorY`, `advanceWidth`, `advanceHeight`, and `faceQuad` coordinates. All numbers are measured from the render; see section 8.
 
 ### Phase 2: Runtime Texture Atlas & Face Glyph Compositor
-- [ ] **Task 2.1:** Prepare high-contrast, crisp 2D vector/SVG or high-DPI PNG assets for all 34 tile faces (plus red fives *akadora*). Avoid thin hairlines that blur at small discard sizes. The master glyphs stay perspective-neutral; the per-perspective treatment is the face variant in Task 2.2.
-- [ ] **Task 2.2:** Build a startup **Tile Atlas Generator** (`TileAtlasBuilder`) that composites every **`(shellType, faceVariant, tileFace)`** triple onto an offscreen canvas/texture atlas once at initialization:
+- [x] **Task 2.1:** Prepare high-contrast, crisp 2D vector/SVG or high-DPI PNG assets for all 34 tile faces (plus red fives *akadora*). Avoid thin hairlines that blur at small discard sizes. The master glyphs stay perspective-neutral; the per-perspective treatment is the face variant in Task 2.2. Landed 2026-11-15: 37 committed 288 × 384 RGBA PNGs, see §11.
+- [x] **Task 2.2:** Build a startup **Tile Atlas Generator** (`TileAtlasBuilder`) that composites every **`(shellType, faceVariant, tileFace)`** triple onto an offscreen canvas/texture atlas once at initialization:
   - Draw the pre-baked Blender shell PNG.
   - Transform and draw the 2D face glyph into the shell's `faceQuad` (applying a $90^\circ$ counter-clockwise rotation to the glyph when compositing onto `shell_flat_sideways`).
   - Generate a **face variant per perspective a face-up shell appears in** instead of reusing one glyph for every shell: `standing-front-{slot}` for the 14 `shell_hand_slot_*` shells, `flat-topdown` for `shell_flat_upright`, `flat-rot90` for `shell_flat_sideways`. A variant id names a perspective slot, not a camera angle; the Phase 1b pick fixes the angle behind it.
   - The face-down wall shells (`shell_wall_horizontal`, `shell_wall_side_left`, `shell_wall_side_right`) are **bare**: no glyph, no face variant, no atlas entry.
-- [ ] **Task 2.3:** Store UV rects and layout metrics in a fast lookup map (`Map<TileRenderKey, BakedTileSprite>`, keyed by the same triple) so runtime frame rendering requires no dynamic face compositing or multi-pass shaders. The one dynamic pass is the shadow **group layer** (§10.12): one blur per zone over the hard shapes, rebuilt only when a tile in that zone moves. The atlas key is part of the shipped contract; adding a later variant (for example a lifted/hovered hand decal) is a new `faceVariant` entry, never a glyph swapped at draw time. Budget note: the variant dimension multiplies the composited sprites by the number of face-up shells (3 at Phase 1b) rather than by the 37 raw glyphs; measure the packed atlas in Phase 2 against the committed-asset budget.
+  - Landed 2026-11-15: `frontend/src/table/TileAtlasBuilder.ts`, see §11.
+- [x] **Task 2.3:** Store UV rects and layout metrics in a fast lookup map (`Map<TileRenderKey, BakedTileSprite>`, keyed by the same triple) so runtime frame rendering requires no dynamic face compositing or multi-pass shaders. The one dynamic pass is the shadow **group layer** (§10.12): one blur per zone over the hard shapes, rebuilt only when a tile in that zone moves. The atlas key is part of the shipped contract; adding a later variant (for example a lifted/hovered hand decal) is a new `faceVariant` entry, never a glyph swapped at draw time. Budget note: the variant dimension multiplies the composited sprites by the number of face-up shells rather than by the 37 raw glyphs; measure the packed atlas in Phase 2 against the committed-asset budget. Landed 2026-11-15: 608 keys, 16 pages, 26.41 MiB @1x, see §11.
 
 ### Phase 3: Coordinate System & Zone Layout Engine
 - [ ] **Task 3.1:** Implement the table layout engine strictly using `advanceWidth` and `advanceHeight` from `shells.json` (never `texWidth`/`texHeight`).
@@ -606,6 +607,12 @@ units are auditioned against the committed 2 (§10.7). The tile never rotates.
 
 ### 10.5 Face variants (updated plan, still not built)
 
+> **Status 2026-11-15:** Phase 2 landed the three face-variant families the
+> task enumerated: `standing-front-{slot}` for the 14 hand slots,
+> `flat-topdown` and `flat-rot90`. The 34 per-slot dora families below are still
+> the open follow-up; see §11 for the landed numbers and the measured dora
+> cost.
+
 Face-up shells are the **14 hand slots**, the upright pond shell, the sideways
 shell, the three base face-up dora shells and the **34 per-slot front/back dora
 shells** (§10.8). The top hand is a dedicated 13-slot standing blue-back family
@@ -1052,3 +1059,83 @@ middle is one period of `max_k S(x - k * cell)`, and the test shows a naive crop
 leaves a 5.7 luma step while the union period is byte-identical to the true max.
 That result stands, but it is no longer the runtime plan; it is the fallback if a
 group layer ever proves too expensive on a target device.
+
+## 11. Phase 2: the face glyphs and the startup atlas (landed 2026-11-15)
+
+Phase 2 baked the 37 face glyphs and implemented the startup atlas on the
+Phase 1c/1d base. The authoritative pipeline numbers and asset contract are in
+[`tools/render/README.md`](tools/render/README.md) §"Phase 2"; this section
+records the decisions that narrow the architecture above.
+
+**Assets.** 37 RGBA PNGs at **288 × 384** (34 standard faces + 3 red fives;
+blank has no asset), **576,938 B** total against a 1,310,720 B budget. They are
+the upstream public-domain symbol-only SVGs at pinned commit
+`f37d6cc2557498d23f13eb3e955e0e44e5c863ff`, rasterised offline by
+`tools/render/scripts/bake-faces.mjs` with `@resvg/resvg-js` 2.6.2. The masters
+are perspective-neutral: the atlas maps one glyph into each face-up shell's
+`faceQuad` at startup, so there is no per-shell glyph art. 288 px is 2.07× the
+longest @2x face axis (185.1 px). `frontend/public/table/faces.json` records
+every glyph's decoded-RGBA sha256, ink bbox/counts and provenance; haku (`5z`)
+has zero ink by design and shares the bare slot. No tile art is rasterised in
+the browser.
+
+**Runtime.** `frontend/src/table/TileAtlasBuilder.ts` composes one offscreen
+Canvas 2D page per **face-up shell**, clips the glyph to the published
+`faceQuad` and maps the glyph's own corners onto it. The catalogue is the 16
+face-up shells the task enumerated: `standing-front-00..12` + `-draw` for the
+14 hand slots, `flat-topdown` for `shell_flat_upright`, `flat-rot90` for
+`shell_flat_sideways`. `frontend/src/table/TileAtlas.ts` exposes the
+`Map<TileRenderKey, BakedTileSprite>` (key = `shell:faceVariant:face`) and a
+lazy `warm(shells)`; the first board warms all 16. Frame code only blits
+`page.canvas` at `sprite.uv`. The face-down wall shells are bare and have no
+atlas entry: the board draws their PNGs directly.
+
+**Numbers.** 608 keys across 16 pages (576 glyph keys + 32 bare keys; each page
+holds 37 slots: 36 inked + 1 shared bare). At **@1x** the atlas is
+**6,922,196 px / 26.41 MiB RGBA** and builds in ~33–44 ms in Node Canvas; at
+**@2x** it would be **24,358,848 px / 92.92 MiB**, so the loader defaults to
+@1x and demotes a requested @2x atlas above `maxRgbaBytes` (48 MiB). A single
+hand page at @2x is 1,240,200 px / 4.73 MiB and ~12 ms, so @2x remains available
+for a focused preview or a device with the headroom. The review sheets and
+`atlas-numbers.json` come from `frontend/scripts/review-atlas.ts`.
+
+**Budgets.** Committed table assets are **7,379,149 B** of the 8 MiB total limit
+(shells 5,653,539 + `shells.json` 561,793 + felt 559,465 + glyphs 576,938 +
+`faces.json` 27,414), leaving ~1.0 MB. A full board's @1x bodies + felt + both
+manifests + glyphs is **2,632,636 B** of the 4 MiB initial-load limit. The atlas
+is composed locally, not downloaded.
+
+**Decisions that narrow the architecture above.**
+
+1. **The atlas is composed at startup, not offline.** The shell and glyph PNGs
+   are committed and resvg is a build tool, not a runtime dependency. Composing
+   on an offscreen 2D canvas keeps `shells.json` authoritative and lets the
+   atlas page scale follow `devicePixelRatio` where the memory allows.
+2. **One page per face-up shell.** It keeps lazy warming and the review sheets
+   simple, and it lets the key's shell choose the page without a global packer.
+   The cost is 26.41 MiB at @1x; a future global shelf packer could recover the
+   row-end waste (about 6.8 MiB) if a device needs it.
+3. **`faceQuad` carries the shell's rotation; `faceRotationDeg` is the desired
+   screen rotation.** For `shell_flat_sideways` the first edge points up the
+   screen, which is the 90° CCW glyph rotation; the builder does not rotate the
+   glyph again. `glyphRotationDegFor` subtracts the quad's rotation to get the
+   extra in-plate rotation (0 for every Phase 2 shell, 180 for the back-wall
+   dora slots and 270 for the side-wall dora slots when those land). Mapping the
+   glyph's three corners affinely and clipping to the quad keeps the small
+   trapezoid keystone inside the plate.
+4. **`blank` and `5z` share a bare slot.** A blank tile and a haku are both a
+   plain ivory face. The upstream haku SVG rasterises to zero ink; both keys map
+   to the shell's shared bare slot instead of two transparent copies. The atlas
+   still resolves all 38 face ids per shell, so frame code never special-cases
+   a missing key.
+5. **No 3D, no WebGL, no per-frame art.** The atlas is an offscreen 2D canvas;
+   the only runtime work per tile is `drawImage` from the page. The tests scan
+   the atlas modules for WebGL/3D imports and assert draw order (all shell
+   bodies before any glyph, clip then transform then glyph) on a recording
+   context, plus decoded-pixel proofs for the sideways orientation, the glyph
+   margins and the red fives.
+6. **The 34 per-slot dora shells are deferred.** They are the next face-variant
+   family (§10.5): 34 face-up shells × 37 = 1,258 sprites, 14,424,056 px /
+   55.02 MiB at @1x, which would nearly quadruple the atlas. The task's
+   deliverable enumerated the three land families; a revealed dora indicator is
+   a separate variant-family task, not a glyph swapped at draw time.

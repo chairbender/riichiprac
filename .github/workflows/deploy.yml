@@ -90,6 +90,9 @@ jobs:
       - name: Verify rendered-view assets
         run: node tools/render/scripts/check-shells.mjs
 
+      - name: Verify face glyphs and the atlas budget
+        run: node tools/render/scripts/check-faces.mjs
+
       - name: Configure Pages
         uses: actions/configure-pages@v6
 

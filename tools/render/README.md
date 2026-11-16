@@ -42,6 +42,9 @@ bash tools/render/bake-shells.sh --shadow-audition  # REF + A/B/C shadow sheet
 bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
 node tools/render/scripts/preview-group-shadow.mjs  # merged vs per-tile group shadows; no Blender
+node tools/render/scripts/bake-faces.mjs   # bake the 37 face glyphs + faces.json (resvg)
+node tools/render/scripts/check-faces.mjs  # face glyph + atlas budget gate; no Blender/resvg
+cd frontend && npm run atlas:review        # build the real atlas and write review sheets
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
 ```
@@ -113,13 +116,15 @@ python3 tools/render/bake_felt.py --spec tools/render/felt-spec.json
 Face glyphs are rasterised with the pinned resvg rasteriser:
 
 ```bash
+node tools/render/scripts/bake-faces.mjs          # all 37 glyphs + faces.json
 node tools/render/scripts/rasterize-face.mjs \
-  tools/render/faces/Regular-Man1-symbol.svg build/faces/1m.png --width 300
+  tools/render/faces/Regular-Man1.svg build/faces/1m.png --width 300
 ```
 
-It needs `npm ci` in `tools/render` once (the directory is gitignored). The
-2.5D runtime will composite these 2D glyphs into each shell's `faceQuad`; tile
-art is never rasterised in the browser.
+`bake-faces.mjs` needs `npm ci` in `tools/render` once (the directory is
+gitignored); `check-faces.mjs` needs nothing but Node. The 2.5D runtime
+composites these 2D glyphs into each shell's `faceQuad` in a startup atlas; tile
+art is never rasterised in the browser. See "Phase 2" below.
 
 ## Toolchain (pinned, outside the repo)
 
@@ -155,6 +160,9 @@ its own regeneration, not mixed with CPU output.
 | `shell-spec.json` | yes | the shell-baker source of truth: Blender pin, CPU-Cycles/AgX settings, jansou tile proportions, bevel `0.055 / 6`, the one-material white/blue split, top-left key + ambient fill, the nine-shell base catalogue and the wallSlots fan, output paths, budgets |
 | `bake_shells.py` | yes | Blender entry point: version check, tile mesh/material, lights, shell catalogue validation, dry-run plan, Phase 1 render loop |
 | `bake-shells.sh` | yes | one command; resolves the pinned Blender, or runs `--check` with no Blender |
+| `faces-spec.json` | yes | the 37 face glyphs: pinned upstream SVGs, 288 × 384 RGBA raster, red paint, output paths, byte budget |
+| `bake-faces.mjs` / `face-raster.mjs` | yes | resvg glyph baker and its single shared rasteriser (also used by `rasterize-face.mjs`) |
+| `check-faces.mjs` | yes | dependency-free face-glyph + committed-asset + atlas-budget gate (CI) |
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
 | `bake_felt.py` | yes | deterministic stdlib PNG generator for the felt + vignette |
 | `bake-felt.sh` | yes | one-command felt regeneration |
@@ -167,11 +175,15 @@ its own regeneration, not mixed with CPU output.
 | `scripts/review-shells.mjs` | yes | lays the baked shells out with the manifest's own steps into review sheets; `--audition` writes the labelled candidate sheets |
 | `scripts/label-font.mjs` | yes | dependency-free 5×7 bitmap font for the candidate sheets' printed parameters |
 | `scripts/rasterize-face.mjs` | yes | vendored face SVG → PNG glyph (resvg) |
-| `faces/` | yes | vendored public-domain symbol-only SVG + provenance (`faces/SOURCE.md`) |
+| `faces/` | yes | the 37 vendored public-domain symbol-only SVGs + provenance (`faces/SOURCE.md`) |
 | `../../frontend/public/table/felt.png` | yes | the committed full-screen felt raster |
 | `../../frontend/public/table/shells/` | yes | shell textures at @1x (`shell_*.png`) |
-| `../../frontend/public/table/shells/2x/` | yes | all 77 shells at @2x |
+| `../../frontend/public/table/shells/2x/` | yes | all 103 shells at @2x |
 | `../../frontend/public/table/shells.json` | yes | the published shell contract |
+| `../../frontend/public/table/faces/` | yes | the 37 committed face glyphs at 288 × 384 RGBA |
+| `../../frontend/public/table/faces.json` | yes | the published face-glyph contract |
+| `../../frontend/src/table/` | yes | the runtime `TileAtlasBuilder` / `TileAtlas` / manifests, not part of this pipeline |
+| `../../frontend/scripts/review-atlas.ts` | yes | builds the real atlas with Node Canvas and writes the review sheets |
 | `node_modules/`, `build/` | no | installed dependencies and throwaway review output |
 | `build/review/candidates/` | no | Phase 1b candidate textures at the new base (`1x/`, `2x/`) |
 | `build/review/shell-candidates.json` | no | Phase 1b candidate manifest (same record shape as `shells.json`) |
@@ -524,6 +536,82 @@ The open calibration is the **fan strength**: `--audition` moves the outer
 slot's eye to 24 / 32 / 56 units (front) and 36 / 46 / 72 (back), keeping the
 lateral offset, so the amount of side reveal can be picked without rotating any
 tile. The committed values are the physical distances.
+
+### Phase 2: face glyphs and the startup atlas (landed 2026-11-15)
+
+The runtime is `frontend/src/table/`: `tiles.ts` (face ids, the 16-shell
+face-up catalogue and the `(shell, faceVariant, face)` key), `shellManifest.ts`
+and `faceManifest.ts` (validating parsers), `TileAtlasBuilder.ts` (the startup
+compositor) and `TileAtlas.ts` (the `Map<TileRenderKey, BakedTileSprite>` and
+the single `blitTileSprite` draw call). Nothing in this directory is bundled;
+the pipeline only produces the committed PNGs and manifests.
+
+**The glyph masters.** 37 RGBA PNGs at 288 × 384 (34 standard faces + the three
+red fives; blank has no asset) are rasterised from the vendored public-domain
+symbol-only SVGs at pinned commit
+`f37d6cc2557498d23f13eb3e955e0e44e5c863ff`. The masters are
+**perspective-neutral**: one flat glyph per face, not one per shell. They total
+**576,938 B** against a 1,310,720 B budget; `faces.json` records each glyph's
+decoded-RGBA sha256, ink bbox/counts and upstream provenance. 288 px is 2.07x
+the longest @2x face axis (185.1 px), so the atlas only ever downsamples the
+master. Haku (`5z`) bakes with zero ink by design (a white dragon is a blank
+face) and shares the shell's bare atlas slot.
+
+**The face variants.** A variant names a perspective slot, not a camera angle:
+`standing-front-00..12` + `standing-front-draw` for the 14 `shell_hand_slot_*`
+shells, `flat-topdown` for `shell_flat_upright`, and `flat-rot90` for
+`shell_flat_sideways`. That is **16 face-up shells**, 38 face ids each, so the
+atlas resolves **608 keys**: 576 glyph keys + 32 bare keys (blank and haku share
+one bare slot per page). The face-down wall shells (`shell_wall_horizontal`,
+`shell_wall_side_left`, `shell_wall_side_right`) are bare: no glyph, no variant,
+no atlas entry.
+
+**The startup atlas.** `TileAtlasBuilder` composes one offscreen Canvas 2D page
+per face-up shell, once at init: every shell body first, then each glyph clipped
+to the published `faceQuad`. A page holds 37 slots (36 inked + 1 bare) at
+2048 px maximum width. Numbers from `check-faces.mjs` and the Node Canvas
+review run:
+
+| | @1x (runtime default) | @2x (opt-in) |
+| :--- | :--- | :--- |
+| Pages | 16 | 16 |
+| Pixels | 6,922,196 | 24,358,848 |
+| RGBA | **26.41 MiB** | **92.92 MiB** |
+| Build (Node Canvas) | ~33–44 ms for all 16 | ~12 ms for one hand page |
+
+The loader defaults to @1x and refuses an @2x atlas above `maxRgbaBytes`
+(48 MiB), because an all-@2x atlas costs 93 MiB of decoded canvas. @2x remains
+available (`pixelRatio: 2`) for a single-shell preview or a device with the
+memory headroom. The 34 per-slot dora shells are the next face-variant family
+(§10.5 of the architecture); they would add 14,424,056 px / 55.02 MiB at @1x
+and are deliberately **not** built by this task.
+
+**Glyph rotation.** `faceQuad` is published in face-local corner order, so
+mapping the glyph's corners onto it already applies the shell's rotation:
+`shell_flat_sideways`'s first edge points up the screen, which is the 90°
+counter-clockwise read. `faceRotationDeg` is the *desired on-screen* rotation,
+and `glyphRotationDegFor` subtracts the quad's own rotation to get the extra
+in-plate rotation. It is 0 for every Phase 2 shell; the follow-up dora families
+need 180 (back wall) and 270 (side wall) and the builder already implements
+that path. The builder clips to the quad and fits an affine to three corners,
+so the small trapezoid keystone on the perspective hand faces is clipped inside
+the plate rather than spilling onto the bevel.
+
+**Budgets (measured).** Committed table assets are **7,379,149 B** of the 8 MiB
+total limit (shells 5,653,539 + `shells.json` 561,793 + felt 559,465 + glyphs
+576,938 + `faces.json` 27,414), leaving ~1.0 MB. A full board's @1x bodies +
+felt + both manifests + glyphs is **2,632,636 B** of the 4 MiB initial-load
+limit; the atlas is composed locally from those requests, not downloaded.
+
+**Review.** `cd frontend && npm run atlas:review` builds the real atlas with
+Node Canvas and writes under `tools/render/build/review/`:
+`atlas-variants-1x.png` (the three variants, every face, at discard size),
+`atlas-all-faces-1x.png`, one sheet per shell, `atlas-hand-06-2x.png` (the
+crispness check), and `atlas-numbers.json`. Those are evidence for the user;
+the agent does not sign off its own render (AGENTS.md §6).
+`node tools/render/scripts/check-faces.mjs` is the CI gate: glyph hashes and
+ink, red fives, haku zero ink, transparent corners, the byte budgets and the
+atlas page plan.
 
 ### `shells.json` contract
 
@@ -900,6 +988,23 @@ difference is the body's own bevel shading; the shadow union sits under the
 bodies and does not touch the neighbour's face), and the isolated tile's shadow
 reads 54.6 against bare felt 66.8. The blob strength is still a visual call for
 the user.
+
+To review the Phase 2 glyphs and the startup atlas, build the real atlas and
+open the sheets (they are gitignored review output):
+
+```bash
+cd frontend && npm run atlas:review
+xdg-open ../tools/render/build/review/atlas-variants-1x.png   # the three variants at discard size
+xdg-open ../tools/render/build/review/atlas-all-faces-1x.png  # all 16 shells
+xdg-open ../tools/render/build/review/atlas-shell_hand_slot_06-2x.png
+node ../tools/render/scripts/check-faces.mjs                  # the numbers
+```
+
+`atlas-numbers.json` in the same directory has every page's pixels and RGBA
+bytes. The question for the user is whether the glyphs are crisp and legible at
+discard size on each variant, whether the sideways `flat-rot90` read is right,
+and whether the hand glyphs sit correctly inside the face plate. Compare against
+the stacked/top-down views, not against another agent-generated screenshot.
 
 To review the blob softness/opacity/offset, run `--shadow-audition` (above) and
 open `build/review/shadow-candidates.png`. It shows the REF row plus A/B/C, each
