@@ -1437,16 +1437,28 @@ darkened: the bodies cover the union. Phase 3.5 adds a **contact-shadow decal**
 per shell and per screen side. It is still 2D: no WebGL, no per-frame lighting,
 and the group recipe remains one blur per zone.
 
-**Scope follow-up (2026-11-16 review).** The decals are currently enabled **only
-for the human hand fan**. On the lying face-up ponds and melds the bands read as
-smudges over tiles that already look right, so those families are deliberately
-unshadowed; the top hand, side hands and walls are also off until the hand is
-signed off. `overlay.enabledFamilies` in `shell-spec.json` (published as
-`enabled.families` in `overlays.json`) is the switch; re-enable a family and
-re-bake. The right half of the hand fan used the same 4 px / 0.35 band as the
-left and looked too wide, so the `right` casts now use a **side override**:
-**σ 2.5 px, α 0.50** (left casts stay σ 4 / α 0.35). The thinner/darker cast
-matches the left half's read without turning the inner sliver into a smudge.
+**Scope follow-up (2026-11-16 review).** The lying face-up ponds and melds read
+as smudges with contact bands over tiles that already look right, so those
+families are deliberately unshadowed; the top hand, side hands and walls are
+also off. The human hand was first narrowed to synthetic per-caster-side bands,
+then approved as **target-space 3D catches**. `overlay.enabledFamilies` in
+`shell-spec.json` is the synthetic fallback switch; the catches are a separate
+`catches.json` and take precedence in `contactOverlays.ts`.
+
+**3D catch (active hand path).** `tools/render/bake_hand_catches.py` renders the
+target tile with its adjacent caster at the target's published shell camera.
+The per-slot cameras are one eye at the row centre (`lateralOffsetUnits =
+-offsetUnits`), so the pair is just the target at the origin, the caster one
+0.75-unit row step away, and the same eye; the target's reference crop is
+**byte-identical to the committed target body**. Each pair combines the physical
+key/world shadow (reference vs caster-present, caster invisible to camera) with
+a **contact AO** term (an emission target with a Cycles ambient-occlusion node,
+distance 0.12 units, no key/world; the caster occludes the AO rays). The result
+is a straight-alpha ink overlay in the target's own texture coordinates, one per
+covered slot (12), published in `catches.json`; the compositor draws it at the
+target's `drawX/drawY`, after the target body and before the caster body. The
+hand's synthetic bands (including the σ 2.5/α 0.50 right-side override) remain a
+fallback for any pair without a catch, and the other families stay disabled.
 
 ### 15.1 What the decal is, and why it is not `shadowShape`
 
@@ -1530,42 +1542,41 @@ baker bakes exactly that set. The `--fixture` mode writes the committed
 `tools/render/overlay-zones.json` for the dependency-free checker, and
 `contactOverlays.test.ts` rejects fixture drift.
 
-The current bake produces **13 hand decals** (the `_faceup` wall aliases are
-published but no wall decal is baked while the walls are disabled): **11,811 B
-@1x + 23,969 B @2x = 35,780 B** across both scales.
+The current bakes produce **13 synthetic hand decals** (fallback; 35,780 B across
+both scales) and **12 target-space 3D catches** (active; 60,000 B across both
+scales). The catches publish `target:caster`, the target texture size, peak/mean
+alpha, support, decoded-RGBA sha and bytes.
 
 ### 15.4 Verification
 
-`node tools/render/scripts/check-overlays.mjs` runs **555 dependency-free
-checks** (the count is lower than the first all-family bake because only the
-hand decals exist):
+`node tools/render/scripts/check-overlays.mjs` runs **816 dependency-free
+checks**:
 
-- **assets**: both scales exist at the published size/bytes/hash, the outer ring
-  is transparent, the alpha peak is the published core, the band is smooth in
-  the normal direction **and along the tangent where it is visible** (the
-  staircase regression), it decays away from the contact, and it is **zero
-  inside the caster's opaque body**;
-- **layout**: every contact in the fixture resolves to a decal, every decal is
-  attached to an earlier body, every draw position is whole-pixel, and every
-  clip polygon is convex and inside the neighbour advance box;
-- **pixels**: the group shadow + bodies + decals are composed over the real felt
-  at 1:1 and compared with the same composition without decals. Each of the four
-  ponds, both hands, the side hands, melds and all four walls changes **zero felt
-  pixels**, the group field is identical (it is the same object), the §10.12
-  seam kink stays below 0.05, and the side ponds' decals survive the 1° inverse
-  transform. The **four ponds are asserted to stay unshadowed** (0 decals, 0 changed
-  pixels); the human hand has 12 decals, mean Δluma **15.59** on 9,352 changed
-  body pixels, max Δluma 94.77 and max stacked alpha **0.49**. The disabled
-  families are byte-identical to the no-overlay baseline.
+- **assets**: the synthetic fallback bands still pass their size/bytes/hash,
+  outer-ring, peak, contour-staircase and inside-body checks. Each **catch** is
+  exactly the target shell texture size, hashes to its published decoded RGBA,
+  has its published peak/mean/support, is transparent on the outer ring and is
+  **zero outside the target's opaque body**;
+- **layout**: every contact in the fixture resolves to a catch or a fallback
+  decal, every overlay is attached to an earlier body, every draw position is
+  whole-pixel, and every clip polygon is convex and inside the body box;
+- **pixels**: the group shadow + bodies + overlays are composed over the real
+  felt at 1:1 and compared with the same composition without them. Every zone
+  changes **zero felt pixels**; the group field is identical (it is the same
+  object) and the §10.12 seam kink stays below 0.05. The **four ponds are
+  asserted to stay unshadowed** (0 overlays, 0 changed pixels); the human hand
+  uses the 12 catches, with mean Δluma **15.41** on 6,019 changed body pixels
+  and zero felt change. The disabled families are byte-identical to the
+  no-overlay baseline.
 
 The review script (`cd frontend && npm run overlays:review`) writes
 `build/review/hand-layouts-1x.png` (the hand at 1:1 plus left/centre/right seam
-crops with and without the decals — the active sign-off sheet),
-`overlay-audition-1x.png` (the right seam at 4×: previous σ4/α0.35, committed
-σ2.5/α0.50, and a thinner still variant), `pond-layouts-1x.png` (the disabled
-baseline), `overlay-zones-1x.png`, `overlay-decals-1x.png`. The layout script's
-bodies-only pond sheet is `pond-layout-bodies-1x.png`. Visual sign-off is the
-user's (AGENTS.md §6).
+crops with and without the catches — the active sign-off sheet),
+`overlay-decals-1x.png` (the 12 catches), `pond-layouts-1x.png` (the disabled
+baseline), and `overlay-zones-1x.png`. The layout script's bodies-only pond sheet
+is `pond-layout-bodies-1x.png`. The build-only experiment sheet
+(`build/contact-shadow-experiment/contact-shadow-experiment-sheet.png`) remains
+the A/B record. Visual sign-off is the user's (AGENTS.md §6).
 
 ### 15.5 Known limits
 
@@ -1583,9 +1594,8 @@ user's (AGENTS.md §6).
 - The decals are baked per committed shell silhouette, so a future shell or a
   change to a body texture must re-run `bake-overlays.sh --bake` (the side
   histogram and the fixture are regenerated by the same command).
-- A **build-only 3D catch experiment** (`bake-contact-shadow-experiment.sh`)
-  renders the target + adjacent caster with the target's published camera and
-  writes a physical and a contact-AO overlay, plus a review sheet. Its target
-  reference crop is byte-identical to the committed body, but nothing is
-  committed; it is the candidate replacement for the per-caster synthetic stamp
-  on the fan.
+- The **3D catch** is the committed active hand path
+  (`bake-hand-catches.sh`); the two-pair experiment
+  (`bake-contact-shadow-experiment.sh`) is kept as the A/B exploration harness.
+  The catches are target-space, so they carry the target's own bevel and edge
+  exactly; the synthetic per-caster stamp remains the fallback.

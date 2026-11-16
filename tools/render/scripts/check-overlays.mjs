@@ -74,6 +74,7 @@ const overlaySpec = spec.overlay;
 const shellsManifest = readJson(join(tableDir, 'shells.json'));
 const shells = shellsManifest.shells;
 const overlayManifest = readJson(join(tableDir, 'overlays.json'));
+const catchesManifest = readJson(join(tableDir, 'catches.json'));
 const fixture = readJson(join(renderDir, 'overlay-zones.json'));
 const feltSpec = readJson(join(renderDir, 'felt-spec.json'));
 const [FELT_R, FELT_G, FELT_B] = feltSpec.baseColor;
@@ -399,6 +400,103 @@ function checkAssets() {
 }
 
 // --------------------------------------------------------------------------- //
+// The 3D catches
+// --------------------------------------------------------------------------- //
+
+function checkCatches() {
+  check(catchesManifest.version === 1, 'catches.json version is 1');
+  check(catchesManifest.model === 'target-space-3d-catch', 'catches.json model is target-space-3d-catch');
+  check(catchesManifest.combination === 'physical+ao', 'catches combine the physical term and contact AO');
+  const entries = Object.entries(catchesManifest.catches);
+  check(entries.length === 12, `catches.json publishes 12 hand-target catches (${entries.length})`);
+  let total1x = 0;
+  let total2x = 0;
+  const expected1x = new Set();
+  const expected2x = new Set();
+  for (const [key, record] of entries) {
+    const targetShell = shells[record.target];
+    const casterShell = shells[record.caster];
+    check(key === `${record.target}:${record.caster}`, `${key} is keyed target:caster`);
+    check(Boolean(targetShell) && Boolean(casterShell), `${key} names committed shells`);
+    if (!targetShell || !casterShell) continue;
+    check(record.target.startsWith('shell_hand_slot_'), `${key} target is a hand slot`);
+    check(
+      record.texWidth === targetShell.texWidth && record.texHeight === targetShell.texHeight,
+      `${key} texture is exactly the target shell texture ` +
+        `(${record.texWidth}x${record.texHeight})`,
+    );
+    expected1x.add(record.textureFile.replace('overlays/catches/', ''));
+    expected2x.add(record.textureFile2x.replace('overlays/catches/2x/', ''));
+    for (const [file, bytes, hash, width, height, scale] of [
+      [record.textureFile, record.bytes1x, record.sha256.decodedRgba1x, record.texWidth, record.texHeight, 1],
+      [record.textureFile2x, record.bytes2x, record.sha256.decodedRgba2x, record.texWidth * 2, record.texHeight * 2, 2],
+    ]) {
+      const path = resolve(tableDir, file);
+      check(existsSync(path), `${key} ${scale}x file exists`);
+      if (!existsSync(path)) continue;
+      const image = readPng(path);
+      check(
+        image.width === width && image.height === height,
+        `${key} ${scale}x is ${width}x${height} (got ${image.width}x${image.height})`,
+      );
+      check(image.bytes === bytes, `${key} ${scale}x is ${bytes} B (got ${image.bytes})`);
+      check(sha256(image.data) === hash, `${key} ${scale}x decoded-RGBA sha256 matches`);
+      if (scale === 1) total1x += image.bytes;
+      else total2x += image.bytes;
+      let peak = 0;
+      let support = 0;
+      let alphaSum = 0;
+      let outerRing = 0;
+      let outsideBody = 0;
+      const targetImage = shellImageAt(record.target, scale);
+      const alphaAt = (x, y) => image.data[(y * image.width + x) * 4 + 3] / 255;
+      for (let y = 0; y < image.height; y += 1) {
+        for (let x = 0; x < image.width; x += 1) {
+          const a = alphaAt(x, y);
+          if (a > 0) {
+            support += 1;
+            alphaSum += a;
+            peak = Math.max(peak, a);
+            if (targetImage.data[(y * targetImage.width + x) * 4 + 3] < 128) outsideBody += 1;
+          }
+          if (x === 0 || y === 0 || x === image.width - 1 || y === image.height - 1) {
+            if (a > 0) outerRing += 1;
+          }
+        }
+      }
+      check(support > 0, `${key} ${scale}x has a shadow support (${support} px)`);
+      check(outerRing === 0, `${key} ${scale}x outer ring is transparent (${outerRing} px)`);
+      check(outsideBody === 0, `${key} ${scale}x is zero outside the target body (${outsideBody} px)`);
+      if (scale === 1) {
+        check(
+          Math.abs(peak - record.peakAlpha) <= 0.02,
+          `${key} 1x peak ${peak.toFixed(3)} matches ${record.peakAlpha}`,
+        );
+        check(support === record.supportPx, `${key} support ${support} matches ${record.supportPx}`);
+        const mean = support > 0 ? alphaSum / support : 0;
+        check(
+          Math.abs(mean - record.meanAlpha) <= 0.01,
+          `${key} mean ${mean.toFixed(3)} matches ${record.meanAlpha}`,
+        );
+      }
+    }
+  }
+  for (const [directory, expected] of [
+    [join(tableDir, 'overlays/catches'), expected1x],
+    [join(tableDir, 'overlays/catches/2x'), expected2x],
+  ]) {
+    const files = readdirSync(directory).filter((file) => file.endsWith('.png'));
+    const orphans = files.filter((file) => !expected.has(file));
+    check(orphans.length === 0, `${directory} has no orphan catch textures (${orphans.length})`);
+  }
+  note(`catches ${total1x} B @1x + ${total2x} B @2x = ${total1x + total2x} B`);
+  budgetCheck(
+    total1x + total2x <= 2 * 1024 * 1024,
+    `3D catches stay under a 2 MiB advisory budget (${total1x + total2x} B)`,
+  );
+}
+
+// --------------------------------------------------------------------------- //
 // Layout fixture and clips
 // --------------------------------------------------------------------------- //
 
@@ -417,8 +515,14 @@ function isConvex(points) {
   return true;
 }
 
-/** The committed decal record for a stripped fixture overlay. */
-function decalRecordOf(overlay) {
+/** The committed overlay asset (catch or synthetic band) for a fixture overlay. */
+function overlayRecordOf(overlay, zone) {
+  if (overlay.kind === 'catch') {
+    const target = zone.bodies[overlay.bodyIndex].shell;
+    const record = catchesManifest.catches[`${target}:${overlay.shell}`];
+    if (!record) throw new Error(`no catch for ${target} <- ${overlay.shell}`);
+    return record;
+  }
   const shell = overlayManifest.aliases[overlay.shell] ?? overlay.shell;
   const record = overlayManifest.decals[`${shell}:${overlay.contact}`];
   if (!record) throw new Error(`no decal for ${overlay.shell}:${overlay.contact}`);
@@ -501,8 +605,14 @@ function checkFixture() {
           badClip += 1;
         }
       }
-      const resolvedShell = overlayManifest.aliases[overlay.shell] ?? overlay.shell;
-      if (!overlayManifest.decals[`${resolvedShell}:${overlay.contact}`]) missing += 1;
+      if (!overlay.kind) missing += 1;
+      if (overlay.kind === 'catch') {
+        const target = zone.bodies[overlay.bodyIndex].shell;
+        if (!catchesManifest.catches[`${target}:${overlay.shell}`]) missing += 1;
+      } else {
+        const resolvedShell = overlayManifest.aliases[overlay.shell] ?? overlay.shell;
+        if (!overlayManifest.decals[`${resolvedShell}:${overlay.contact}`]) missing += 1;
+      }
     }
     contacts += zone.contacts.length;
     if (zone.contacts.length !== zone.overlays.length) {
@@ -675,7 +785,7 @@ function composeZone(zone, shadow, withOverlays) {
       }
     }
     for (const overlay of grouped[index]) {
-      const sprite = decalImage(decalRecordOf(overlay).textureFile);
+      const sprite = decalImage(overlayRecordOf(overlay, zone).textureFile);
       const clip = clipOf(zone, overlay);
       drawSpriteClipped(
         canvas,
@@ -834,7 +944,7 @@ function checkComposition() {
         const px = dx - pad;
         const py = dy - pad;
         if (!insidePolygon(clip.points, px + 0.5, py + 0.5)) continue;
-        const sprite = decalImage(decalRecordOf(overlay).textureFile);
+        const sprite = decalImage(overlayRecordOf(overlay, zone).textureFile);
         const lx = px - overlay.drawX;
         const ly = py - overlay.drawY;
         if (lx < 0 || ly < 0 || lx >= sprite.width || ly >= sprite.height) continue;
@@ -854,7 +964,7 @@ function checkComposition() {
     let maxStack = 0;
     const stack = new Float32Array(baseline.canvas.data.length / 4);
     for (const overlay of zone.overlays) {
-      const sprite = decalImage(decalRecordOf(overlay).textureFile);
+      const sprite = decalImage(overlayRecordOf(overlay, zone).textureFile);
       const clip = clipOf(zone, overlay);
       for (let y = 0; y < sprite.height; y += 1) {
         const targetY = overlay.drawY + pad + y;
@@ -997,6 +1107,7 @@ try {
   checkSpec();
   checkAliases();
   checkAssets();
+  checkCatches();
   checkFixture();
   checkComposition();
 } catch (error) {

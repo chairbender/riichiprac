@@ -1,0 +1,286 @@
+{
+  "version": 1,
+  "generatedBy": "tools/render/bake_hand_catches.py",
+  "publishedBy": "tools/render/scripts/commit-catches.mjs",
+  "model": "target-space-3d-catch",
+  "combination": "physical+ao",
+  "coordinateSpace": "The texture is the target shell texture in @1x px: draw it at the target drawX/drawY, after the target body and before the caster body. Alpha is zero outside the target body.",
+  "catches": {
+    "shell_hand_slot_00:shell_hand_slot_01": {
+      "target": "shell_hand_slot_00",
+      "caster": "shell_hand_slot_01",
+      "textureFile": "overlays/catches/shell_hand_slot_00_from_shell_hand_slot_01.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_00_from_shell_hand_slot_01.png",
+      "texWidth": 86,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4821,
+      "supportPx": 1283,
+      "sha256": {
+        "decodedRgba1x": "94c10aa5c84f193f728750fc608cfde775ef49ff3c3616ff3ff8a1c1a5316b39",
+        "decodedRgba2x": "678916f7263bddd7c58bd16044bb7787a1b576c7a380c0fcd3e30348ff8ea3d1"
+      },
+      "bytes1x": 1477,
+      "bytes2x": 3537,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 24.4
+    },
+    "shell_hand_slot_01:shell_hand_slot_02": {
+      "target": "shell_hand_slot_01",
+      "caster": "shell_hand_slot_02",
+      "textureFile": "overlays/catches/shell_hand_slot_01_from_shell_hand_slot_02.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_01_from_shell_hand_slot_02.png",
+      "texWidth": 84,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4487,
+      "supportPx": 1140,
+      "sha256": {
+        "decodedRgba1x": "006eefdae604843e2fb762f9f7a8d0aa0062bf574ee21394ddec7dc355060eb3",
+        "decodedRgba2x": "5f0ba80e1d450e8131cb22db076148c41cf4a9d771d2636c59f1d0affffd8271"
+      },
+      "bytes1x": 1381,
+      "bytes2x": 3458,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 23.9
+    },
+    "shell_hand_slot_02:shell_hand_slot_03": {
+      "target": "shell_hand_slot_02",
+      "caster": "shell_hand_slot_03",
+      "textureFile": "overlays/catches/shell_hand_slot_02_from_shell_hand_slot_03.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_02_from_shell_hand_slot_03.png",
+      "texWidth": 82,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4218,
+      "supportPx": 965,
+      "sha256": {
+        "decodedRgba1x": "acaef82089a7ed572090939853985abefd2c4c7d29c3b08c596d0de42f96cfd2",
+        "decodedRgba2x": "29417ea3068a5790128759c1ee7174e36c346c2a8592b57d84f7ff708b028a42"
+      },
+      "bytes1x": 1297,
+      "bytes2x": 3090,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 21.3
+    },
+    "shell_hand_slot_03:shell_hand_slot_04": {
+      "target": "shell_hand_slot_03",
+      "caster": "shell_hand_slot_04",
+      "textureFile": "overlays/catches/shell_hand_slot_03_from_shell_hand_slot_04.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_03_from_shell_hand_slot_04.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3447,
+      "supportPx": 871,
+      "sha256": {
+        "decodedRgba1x": "efc3aafa562012c9a9a68ad5850e1c04b8d7f2d7828897633ae1c336a63f39c1",
+        "decodedRgba2x": "9acba67209d70f25e0698983d5f7c9ca5cd185669bfe25ebb8dee20985801338"
+      },
+      "bytes1x": 1277,
+      "bytes2x": 3013,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 22.1
+    },
+    "shell_hand_slot_04:shell_hand_slot_05": {
+      "target": "shell_hand_slot_04",
+      "caster": "shell_hand_slot_05",
+      "textureFile": "overlays/catches/shell_hand_slot_04_from_shell_hand_slot_05.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_04_from_shell_hand_slot_05.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2685,
+      "supportPx": 731,
+      "sha256": {
+        "decodedRgba1x": "c07de5de3da506b19c763645d4ada5cce3f905add1ad3a51afc3e29ade196077",
+        "decodedRgba2x": "463e61cf7a94180eee72e02ba7eed7f388f49f10138f61536c215caca1d7d7ae"
+      },
+      "bytes1x": 1210,
+      "bytes2x": 2722,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 23.9
+    },
+    "shell_hand_slot_05:shell_hand_slot_06": {
+      "target": "shell_hand_slot_05",
+      "caster": "shell_hand_slot_06",
+      "textureFile": "overlays/catches/shell_hand_slot_05_from_shell_hand_slot_06.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_05_from_shell_hand_slot_06.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1734,
+      "supportPx": 582,
+      "sha256": {
+        "decodedRgba1x": "fc39307fa9fe2824645f60d5ee20b31cde0498d99ade7dbdf70c99e0169ba4a4",
+        "decodedRgba2x": "707985546c9c0c550172ede8178ec00d3926da96d57e50b3536b9de36265c7c3"
+      },
+      "bytes1x": 1007,
+      "bytes2x": 2857,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 23.3
+    },
+    "shell_hand_slot_07:shell_hand_slot_06": {
+      "target": "shell_hand_slot_07",
+      "caster": "shell_hand_slot_06",
+      "textureFile": "overlays/catches/shell_hand_slot_07_from_shell_hand_slot_06.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_07_from_shell_hand_slot_06.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2678,
+      "supportPx": 593,
+      "sha256": {
+        "decodedRgba1x": "1a71b939ca4b700c617973cec5baca42e182c6d9c279c4dc50a1bb6951f8c361",
+        "decodedRgba2x": "cf5a5c40d12826ece99ef9dc7aeef332b74253220adbbdd2fe193fd33a72fd43"
+      },
+      "bytes1x": 1188,
+      "bytes2x": 3339,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 23.1
+    },
+    "shell_hand_slot_08:shell_hand_slot_07": {
+      "target": "shell_hand_slot_08",
+      "caster": "shell_hand_slot_07",
+      "textureFile": "overlays/catches/shell_hand_slot_08_from_shell_hand_slot_07.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_08_from_shell_hand_slot_07.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3686,
+      "supportPx": 696,
+      "sha256": {
+        "decodedRgba1x": "fcca4dac49549d6ffa2c44dd61aab04650ce8649e2d559468b1f6cfddd53d12f",
+        "decodedRgba2x": "0ada3bf34374ec713f7cab8e30c155c1325f11a7bb8c429049305cfc06a82a83"
+      },
+      "bytes1x": 1370,
+      "bytes2x": 3772,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 23.4
+    },
+    "shell_hand_slot_09:shell_hand_slot_08": {
+      "target": "shell_hand_slot_09",
+      "caster": "shell_hand_slot_08",
+      "textureFile": "overlays/catches/shell_hand_slot_09_from_shell_hand_slot_08.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_09_from_shell_hand_slot_08.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4526,
+      "supportPx": 802,
+      "sha256": {
+        "decodedRgba1x": "30c923b1deb89a8d73c92692213e18d8ef69cb12353a6ef361cd27d2b3014320",
+        "decodedRgba2x": "35685030e001703ca45573fa008e7549b3d9de89cbc3bdeec1d67dbd42037056"
+      },
+      "bytes1x": 1376,
+      "bytes2x": 4078,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 24.3
+    },
+    "shell_hand_slot_10:shell_hand_slot_09": {
+      "target": "shell_hand_slot_10",
+      "caster": "shell_hand_slot_09",
+      "textureFile": "overlays/catches/shell_hand_slot_10_from_shell_hand_slot_09.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_10_from_shell_hand_slot_09.png",
+      "texWidth": 82,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4896,
+      "supportPx": 967,
+      "sha256": {
+        "decodedRgba1x": "1f4422a393c00486f01b2dd8e84eaa523e7d129e8d604e15adbe419a908c1a27",
+        "decodedRgba2x": "3be7da5b196dbbadbaaa2411a3dfb9c93235e12faae50ac51c7c735930bafe77"
+      },
+      "bytes1x": 1490,
+      "bytes2x": 4195,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 24.7
+    },
+    "shell_hand_slot_11:shell_hand_slot_10": {
+      "target": "shell_hand_slot_11",
+      "caster": "shell_hand_slot_10",
+      "textureFile": "overlays/catches/shell_hand_slot_11_from_shell_hand_slot_10.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_11_from_shell_hand_slot_10.png",
+      "texWidth": 84,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4624,
+      "supportPx": 1260,
+      "sha256": {
+        "decodedRgba1x": "ab919d37387ca71b3ccae4b7c8235b1d778cde8da66fba45c141d519fbba0b6b",
+        "decodedRgba2x": "94d36d5cb8001a532014f06e0b89492b6cf6d82b24b33dd72ca776081bfd1513"
+      },
+      "bytes1x": 1804,
+      "bytes2x": 4604,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 24.9
+    },
+    "shell_hand_slot_12:shell_hand_slot_11": {
+      "target": "shell_hand_slot_12",
+      "caster": "shell_hand_slot_11",
+      "textureFile": "overlays/catches/shell_hand_slot_12_from_shell_hand_slot_11.png",
+      "textureFile2x": "overlays/catches/2x/shell_hand_slot_12_from_shell_hand_slot_11.png",
+      "texWidth": 86,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5462,
+      "supportPx": 1263,
+      "sha256": {
+        "decodedRgba1x": "f232e9d7e49ac82dfca35644ef16109320abc2dbf68fca22cf20ef8c4fd013c7",
+        "decodedRgba2x": "a76fb946a80305ab31c3a96add827b0e52322c95154ab0c85d211aa0fb4aa237"
+      },
+      "bytes1x": 1695,
+      "bytes2x": 4756,
+      "reference": {
+        "meanDelta": 0,
+        "maxDelta": 0,
+        "alphaMeanDelta": 0
+      },
+      "renderSeconds": 25.3
+    }
+  }
+}

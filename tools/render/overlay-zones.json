@@ -1331,120 +1331,132 @@
      "casterIndex": 2,
      "shell": "shell_hand_slot_01",
      "contact": "left",
-     "drawX": 53,
-     "drawY": 2,
-     "texWidth": 29,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 0,
+     "drawY": 0,
+     "texWidth": 86,
+     "texHeight": 106
     },
     {
      "bodyIndex": 1,
      "casterIndex": 3,
      "shell": "shell_hand_slot_11",
      "contact": "right",
-     "drawX": 812,
-     "drawY": 2,
-     "texWidth": 24,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 808,
+     "drawY": 0,
+     "texWidth": 86,
+     "texHeight": 106
     },
     {
      "bodyIndex": 2,
      "casterIndex": 4,
      "shell": "shell_hand_slot_02",
      "contact": "left",
-     "drawX": 121,
-     "drawY": 2,
-     "texWidth": 28,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 68,
+     "drawY": 0,
+     "texWidth": 84,
+     "texHeight": 106
     },
     {
      "bodyIndex": 3,
      "casterIndex": 5,
      "shell": "shell_hand_slot_10",
      "contact": "right",
-     "drawX": 745,
-     "drawY": 2,
-     "texWidth": 23,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 742,
+     "drawY": 0,
+     "texWidth": 84,
+     "texHeight": 106
     },
     {
      "bodyIndex": 4,
      "casterIndex": 6,
      "shell": "shell_hand_slot_03",
      "contact": "left",
-     "drawX": 190,
-     "drawY": 2,
-     "texWidth": 26,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 136,
+     "drawY": 0,
+     "texWidth": 82,
+     "texHeight": 106
     },
     {
      "bodyIndex": 5,
      "casterIndex": 7,
      "shell": "shell_hand_slot_09",
      "contact": "right",
-     "drawX": 677,
-     "drawY": 2,
-     "texWidth": 22,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 676,
+     "drawY": 0,
+     "texWidth": 82,
+     "texHeight": 106
     },
     {
      "bodyIndex": 6,
      "casterIndex": 8,
      "shell": "shell_hand_slot_04",
      "contact": "left",
-     "drawX": 258,
-     "drawY": 2,
-     "texWidth": 25,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 205,
+     "drawY": 0,
+     "texWidth": 79,
+     "texHeight": 106
     },
     {
      "bodyIndex": 7,
      "casterIndex": 9,
      "shell": "shell_hand_slot_08",
      "contact": "right",
+     "kind": "catch",
      "drawX": 610,
-     "drawY": 2,
-     "texWidth": 21,
-     "texHeight": 101
+     "drawY": 0,
+     "texWidth": 79,
+     "texHeight": 106
     },
     {
      "bodyIndex": 8,
      "casterIndex": 10,
      "shell": "shell_hand_slot_05",
      "contact": "left",
-     "drawX": 326,
-     "drawY": 2,
-     "texWidth": 25,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 273,
+     "drawY": 0,
+     "texWidth": 77,
+     "texHeight": 106
     },
     {
      "bodyIndex": 9,
      "casterIndex": 11,
      "shell": "shell_hand_slot_07",
      "contact": "right",
-     "drawX": 543,
-     "drawY": 2,
-     "texWidth": 20,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 544,
+     "drawY": 0,
+     "texWidth": 77,
+     "texHeight": 106
     },
     {
      "bodyIndex": 10,
      "casterIndex": 12,
      "shell": "shell_hand_slot_06",
      "contact": "left",
-     "drawX": 395,
-     "drawY": 2,
-     "texWidth": 24,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 341,
+     "drawY": 0,
+     "texWidth": 76,
+     "texHeight": 106
     },
     {
      "bodyIndex": 11,
      "casterIndex": 12,
      "shell": "shell_hand_slot_06",
      "contact": "right",
-     "drawX": 476,
-     "drawY": 2,
-     "texWidth": 19,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 477,
+     "drawY": 0,
+     "texWidth": 76,
+     "texHeight": 106
     }
    ]
   },
@@ -1672,120 +1684,132 @@
      "casterIndex": 2,
      "shell": "shell_hand_slot_01",
      "contact": "left",
-     "drawX": 53,
-     "drawY": 2,
-     "texWidth": 29,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 0,
+     "drawY": 0,
+     "texWidth": 86,
+     "texHeight": 106
     },
     {
      "bodyIndex": 1,
      "casterIndex": 3,
      "shell": "shell_hand_slot_11",
      "contact": "right",
-     "drawX": 812,
-     "drawY": 2,
-     "texWidth": 24,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 808,
+     "drawY": 0,
+     "texWidth": 86,
+     "texHeight": 106
     },
     {
      "bodyIndex": 2,
      "casterIndex": 4,
      "shell": "shell_hand_slot_02",
      "contact": "left",
-     "drawX": 121,
-     "drawY": 2,
-     "texWidth": 28,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 68,
+     "drawY": 0,
+     "texWidth": 84,
+     "texHeight": 106
     },
     {
      "bodyIndex": 3,
      "casterIndex": 5,
      "shell": "shell_hand_slot_10",
      "contact": "right",
-     "drawX": 745,
-     "drawY": 2,
-     "texWidth": 23,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 742,
+     "drawY": 0,
+     "texWidth": 84,
+     "texHeight": 106
     },
     {
      "bodyIndex": 4,
      "casterIndex": 6,
      "shell": "shell_hand_slot_03",
      "contact": "left",
-     "drawX": 190,
-     "drawY": 2,
-     "texWidth": 26,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 136,
+     "drawY": 0,
+     "texWidth": 82,
+     "texHeight": 106
     },
     {
      "bodyIndex": 5,
      "casterIndex": 7,
      "shell": "shell_hand_slot_09",
      "contact": "right",
-     "drawX": 677,
-     "drawY": 2,
-     "texWidth": 22,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 676,
+     "drawY": 0,
+     "texWidth": 82,
+     "texHeight": 106
     },
     {
      "bodyIndex": 6,
      "casterIndex": 8,
      "shell": "shell_hand_slot_04",
      "contact": "left",
-     "drawX": 258,
-     "drawY": 2,
-     "texWidth": 25,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 205,
+     "drawY": 0,
+     "texWidth": 79,
+     "texHeight": 106
     },
     {
      "bodyIndex": 7,
      "casterIndex": 9,
      "shell": "shell_hand_slot_08",
      "contact": "right",
+     "kind": "catch",
      "drawX": 610,
-     "drawY": 2,
-     "texWidth": 21,
-     "texHeight": 101
+     "drawY": 0,
+     "texWidth": 79,
+     "texHeight": 106
     },
     {
      "bodyIndex": 8,
      "casterIndex": 10,
      "shell": "shell_hand_slot_05",
      "contact": "left",
-     "drawX": 326,
-     "drawY": 2,
-     "texWidth": 25,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 273,
+     "drawY": 0,
+     "texWidth": 77,
+     "texHeight": 106
     },
     {
      "bodyIndex": 9,
      "casterIndex": 11,
      "shell": "shell_hand_slot_07",
      "contact": "right",
-     "drawX": 543,
-     "drawY": 2,
-     "texWidth": 20,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 544,
+     "drawY": 0,
+     "texWidth": 77,
+     "texHeight": 106
     },
     {
      "bodyIndex": 10,
      "casterIndex": 12,
      "shell": "shell_hand_slot_06",
      "contact": "left",
-     "drawX": 395,
-     "drawY": 2,
-     "texWidth": 24,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 341,
+     "drawY": 0,
+     "texWidth": 76,
+     "texHeight": 106
     },
     {
      "bodyIndex": 11,
      "casterIndex": 12,
      "shell": "shell_hand_slot_06",
      "contact": "right",
-     "drawX": 476,
-     "drawY": 2,
-     "texWidth": 19,
-     "texHeight": 101
+     "kind": "catch",
+     "drawX": 477,
+     "drawY": 0,
+     "texWidth": 76,
+     "texHeight": 106
     }
    ]
   },

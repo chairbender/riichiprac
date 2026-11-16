@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { parseCatchesManifest } from './catchManifest';
+import type { CatchesManifest } from './catchManifest';
 import { isOverlayEnabled, parseOverlayManifest } from './overlayManifest';
 import type { OverlayManifest } from './overlayManifest';
 import { parseShellsManifest } from './shellManifest';
@@ -30,6 +32,9 @@ const manifest: ShellsManifest = parseShellsManifest(
 );
 const overlays: OverlayManifest = parseOverlayManifest(
   JSON.parse(readFileSync(join(tableDir, 'overlays.json'), 'utf8')),
+);
+const catches: CatchesManifest = parseCatchesManifest(
+  JSON.parse(readFileSync(join(tableDir, 'catches.json'), 'utf8')),
 );
 const fixture = JSON.parse(readFileSync(join(renderDir, 'overlay-zones.json'), 'utf8'));
 
@@ -74,11 +79,12 @@ const shapeOf = (zone: LayoutZone) => ({
       casterIndex: edge.casterIndex,
       side: edge.side,
     })),
-  overlays: resolveContactOverlays(manifest, overlays, zone).map((overlay) => ({
+  overlays: resolveContactOverlays(manifest, overlays, zone, catches).map((overlay) => ({
     bodyIndex: overlay.bodyIndex,
     casterIndex: overlay.casterIndex,
     shell: overlay.shell,
     contact: overlay.contact,
+    kind: overlay.kind,
     drawX: overlay.drawX,
     drawY: overlay.drawY,
     texWidth: overlay.texWidth,
@@ -95,6 +101,35 @@ describe('overlay manifest', () => {
       expect(overlays.bodyQuads[decal.shell], decal.shell).toBeDefined();
       expect(overlays.bodyQuads[decal.shell].length).toBeGreaterThanOrEqual(3);
     }
+  });
+
+  it('publishes one target-space catch for every covered hand slot', () => {
+    expect(Object.keys(catches.catches)).toHaveLength(12);
+    for (const target of [
+      'shell_hand_slot_00',
+      'shell_hand_slot_01',
+      'shell_hand_slot_02',
+      'shell_hand_slot_03',
+      'shell_hand_slot_04',
+      'shell_hand_slot_05',
+      'shell_hand_slot_07',
+      'shell_hand_slot_08',
+      'shell_hand_slot_09',
+      'shell_hand_slot_10',
+      'shell_hand_slot_11',
+      'shell_hand_slot_12',
+    ]) {
+      expect(Object.values(catches.catches).some((catchRecord) => catchRecord.target === target)).toBe(true);
+    }
+    expect(catches.combination).toBe('physical+ao');
+  });
+
+  it('uses catches for the hand instead of the synthetic bands', () => {
+    const hand = layoutHand(manifest, { faces: FACES.slice(0, 13), draw: '5p' });
+    const resolved = resolveContactOverlays(manifest, overlays, hand, catches);
+    expect(resolved.length).toBe(12);
+    expect(resolved.every((overlay) => overlay.kind === 'catch')).toBe(true);
+    expect(resolved.every((overlay) => overlay.texWidth > 0 && overlay.texHeight > 0)).toBe(true);
   });
 
   it('enables only the human hand fan and publishes the right-side override', () => {
@@ -157,7 +192,7 @@ describe('contact edges', () => {
 
   it('uses a whole-pixel decal position and attaches it to an earlier body', () => {
     for (const zone of fixtureZones()) {
-      for (const overlay of resolveContactOverlays(manifest, overlays, zone)) {
+      for (const overlay of resolveContactOverlays(manifest, overlays, zone, catches)) {
         expect(Number.isInteger(overlay.drawX)).toBe(true);
         expect(Number.isInteger(overlay.drawY)).toBe(true);
         expect(overlay.bodyIndex).toBeLessThan(overlay.casterIndex);
@@ -169,7 +204,7 @@ describe('contact edges', () => {
 
   it('keeps every clip polygon inside the neighbour advance box', () => {
     for (const zone of fixtureZones()) {
-      for (const overlay of resolveContactOverlays(manifest, overlays, zone)) {
+      for (const overlay of resolveContactOverlays(manifest, overlays, zone, catches)) {
         const neighbour = zone.bodies[overlay.bodyIndex];
         const shell = manifest.shells[neighbour.shell];
         const left = neighbour.drawX + shell.padding.left;
@@ -193,10 +228,10 @@ describe('contact edges', () => {
   it('keeps the disabled families unshadowed and enables the hand', () => {
     const pond = layoutPond(manifest, { discards: POND_DISCARDS });
     const wall = layoutWall(manifest, { wall: 'front', doraIndex: 12 });
-    expect(resolveContactOverlays(manifest, overlays, pond)).toEqual([]);
-    expect(resolveContactOverlays(manifest, overlays, wall)).toEqual([]);
+    expect(resolveContactOverlays(manifest, overlays, pond, catches)).toEqual([]);
+    expect(resolveContactOverlays(manifest, overlays, wall, catches)).toEqual([]);
     const hand = layoutHand(manifest, { faces: FACES.slice(0, 13), draw: '5p' });
-    expect(resolveContactOverlays(manifest, overlays, hand).length).toBeGreaterThan(0);
+    expect(resolveContactOverlays(manifest, overlays, hand, catches).length).toBeGreaterThan(0);
   });
 
   it('derives the side hand L-shaped sliver as two contact sides', () => {
@@ -276,6 +311,6 @@ describe('contact edges', () => {
         }
       }
     }
-    expect(validateOverlayCoverage(manifest, overlays, zones)).toEqual([]);
+    expect(validateOverlayCoverage(manifest, overlays, zones, catches)).toEqual([]);
   }, 30_000);
 });

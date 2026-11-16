@@ -24,6 +24,8 @@
  * baked from the shell PNG's alpha (see `tools/render/scripts/bake_overlays.mjs`).
  */
 import type { ShellStats, ShellsManifest } from './shellManifest';
+import { catchFor } from './catchManifest';
+import type { CatchesManifest } from './catchManifest';
 import type { OverlayDecal, OverlayManifest, OverlaySide } from './overlayManifest';
 import { isOverlayEnabled, overlayDecalFor } from './overlayManifest';
 import type { LayoutZone, PlacedTile } from './zoneLayout';
@@ -56,9 +58,14 @@ export interface ContactEdge {
 export interface ContactOverlay {
   readonly bodyIndex: number;
   readonly casterIndex: number;
-  /** The caster shell (the decal's owner). */
+  /** The caster shell; for a catch the target is `zone.bodies[bodyIndex]`. */
   readonly shell: string;
   readonly contact: OverlaySide;
+  /**
+   * `band`: the synthetic per-caster-side decal in `overlays.json`.
+   * `catch`: the target-space 3D catch in `catches.json`.
+   */
+  readonly kind: 'band' | 'catch';
   readonly textureFile: string;
   readonly textureFile2x: string;
   /** Integer @1x draw position in the zone's local space. */
@@ -220,19 +227,19 @@ export function resolveContactOverlays(
   manifest: ShellsManifest,
   overlays: OverlayManifest,
   zone: LayoutZone,
+  catches?: CatchesManifest | null,
 ): ContactOverlay[] {
   const shells = manifest.shells;
   const resolved: ContactOverlay[] = [];
   for (const edge of contactEdges(manifest, zone)) {
+    const target = zone.bodies[edge.bodyIndex];
     const caster = zone.bodies[edge.casterIndex];
     const shell = shells[caster.shell];
-    const decal: OverlayDecal | null = overlayDecalFor(overlays, caster.shell, edge.side);
-    if (!decal || !shell) continue;
-    const box = bodyBoxOf(caster, shell);
-    const neighbour = zone.bodies[edge.bodyIndex];
-    const neighbourShell = shells[neighbour.shell];
-    const neighbourBox = bodyBoxOf(neighbour, neighbourShell);
-    const quad = overlays.bodyQuads[neighbour.shell];
+    if (!shell) continue;
+    const neighbourShell = shells[target.shell];
+    if (!neighbourShell) continue;
+    const neighbourBox = bodyBoxOf(target, neighbourShell);
+    const quad = overlays.bodyQuads[target.shell];
     const points: Array<readonly [number, number]> = quad
       ? quad.map(([x, y]) => [neighbourBox.x + x, neighbourBox.y + y] as const)
       : [
@@ -241,18 +248,45 @@ export function resolveContactOverlays(
           [neighbourBox.x + neighbourBox.width, neighbourBox.y + neighbourBox.height] as const,
           [neighbourBox.x, neighbourBox.y + neighbourBox.height] as const,
         ];
+    const clip = { ...neighbourBox, points };
+
+    // Prefer the target's 3D catch: it is baked for exactly this pair and is
+    // already in the target's texture coordinates.
+    const catchRecord = catchFor(catches, target.shell, caster.shell);
+    if (catchRecord) {
+      resolved.push({
+        bodyIndex: edge.bodyIndex,
+        casterIndex: edge.casterIndex,
+        shell: caster.shell,
+        contact: edge.side,
+        kind: 'catch',
+        textureFile: catchRecord.textureFile,
+        textureFile2x: catchRecord.textureFile2x,
+        drawX: target.drawX,
+        drawY: target.drawY,
+        texWidth: catchRecord.texWidth,
+        texHeight: catchRecord.texHeight,
+        clip,
+      });
+      continue;
+    }
+
+    const decal: OverlayDecal | null = overlayDecalFor(overlays, caster.shell, edge.side);
+    if (!decal) continue;
+    const casterBox = bodyBoxOf(caster, shell);
     resolved.push({
       bodyIndex: edge.bodyIndex,
       casterIndex: edge.casterIndex,
       shell: caster.shell,
       contact: edge.side,
+      kind: 'band',
       textureFile: decal.textureFile,
       textureFile2x: decal.textureFile2x,
-      drawX: box.x + decal.bodyAnchorX,
-      drawY: box.y + decal.bodyAnchorY,
+      drawX: casterBox.x + decal.bodyAnchorX,
+      drawY: casterBox.y + decal.bodyAnchorY,
       texWidth: decal.texWidth,
       texHeight: decal.texHeight,
-      clip: { ...neighbourBox, points },
+      clip,
     });
   }
   return resolved;
@@ -263,11 +297,14 @@ export function validateOverlayCoverage(
   manifest: ShellsManifest,
   overlays: OverlayManifest,
   zones: readonly LayoutZone[],
+  catches?: CatchesManifest | null,
 ): string[] {
   const missing: string[] = [];
   for (const zone of zones) {
     for (const edge of contactEdges(manifest, zone)) {
+      const target = zone.bodies[edge.bodyIndex];
       const caster = zone.bodies[edge.casterIndex];
+      if (catchFor(catches, target.shell, caster.shell)) continue;
       if (!isOverlayEnabled(overlays, caster.shell)) continue;
       if (!overlayDecalFor(overlays, caster.shell, edge.side)) {
         missing.push(`${zone.id}: ${caster.shell} ${edge.side}`);

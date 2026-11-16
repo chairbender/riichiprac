@@ -664,7 +664,7 @@
     "intermediateDir": "build/shells"
   },
   "overlay": {
-    "status": "Phase 3.5 follow-up (2026-11-16): contact-ao-band decals, enabled only for the human hand fan (overlay.enabledFamilies). Bands are baked from the committed body alpha, clipped by the compositor to the neighbour's bodyQuads polygon, and drawn between bodies. The face-up lying ponds/melds, top hand, side hands and walls are disabled because the bands read as smudges; the hand's right casts use a side override (sigma 2.5 / alpha 0.50) because the right half looked too wide at the left half's 4 / 0.35.",
+    "status": "Phase 3.5 follow-up (2026-11-16): synthetic contact-ao-band decals are the fallback path (only the human hand fan enabled) with a right-side override (sigma 2.5 / alpha 0.50). The human hand's active contact shadows are the target-space 3D catches in frontend/public/table/catches.json, baked by tools/render/bake_hand_catches.py (physical+AO, one per covered hand slot). The face-up lying ponds/melds, top hand, side hands and walls are disabled because the bands read as smudges.",
     "model": "contact-ao-band",
     "coreAlpha": 0.35,
     "sigmaPx1x": {
