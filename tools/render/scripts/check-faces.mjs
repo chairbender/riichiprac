@@ -45,6 +45,7 @@ const ATLAS_1X_BUDGET = 32 * 1024 * 1024;
 
 const failures = [];
 let checks = 0;
+const strictBudget = process.argv.includes('--strict-budget');
 
 function check(condition, label) {
   checks += 1;
@@ -58,6 +59,19 @@ function check(condition, label) {
 
 function note(message) {
   console.log(`INFO ${message}`);
+}
+
+/** Asset byte budgets are advisory during active development (AGENTS.md §1c). */
+function budget(condition, label) {
+  checks += 1;
+  if (condition) {
+    console.log(`PASS ${label}`);
+  } else if (strictBudget) {
+    failures.push(label);
+    console.log(`FAIL ${label}`);
+  } else {
+    console.log(`WARN ${label} (advisory; --strict-budget to fail)`);
+  }
 }
 
 function readJson(path) {
@@ -296,7 +310,7 @@ function checkBudgets() {
   const feltBytes = statSync(feltPath).size;
   const total =
     shellsBytes + manifestBytes + feltBytes + facesBytes + decalsBytes + decalsManifestBytes;
-  check(
+  budget(
     total <= TOTAL_BUDGET,
     `committed table assets are ${total} B (${(total / 1024 / 1024).toFixed(2)} MiB, limit 8 MiB)`,
   );
@@ -306,7 +320,7 @@ function checkBudgets() {
   // The @1x bodies of all 105 shells are the worst case if every zone is drawn.
   // The decal-based initial load is measured by check-decals.mjs.
   const initial = body1xBytes + feltBytes + manifestBytes + facesBytes;
-  check(
+  budget(
     initial <= INITIAL_LOAD_BUDGET,
     `initial hand + board @1x load is ${initial} B (${(initial / 1024 / 1024).toFixed(2)} MiB, limit 4 MiB)`,
   );

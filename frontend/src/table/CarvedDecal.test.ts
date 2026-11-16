@@ -39,6 +39,7 @@ function record(
       alphaPixels: 4,
       transparentFraction: 0,
       inkPixels: 4,
+      inkBBox: { left: 0, top: 0, right: 1, bottom: 1 },
       redPixels: 0,
       cornerAlpha: [0, 0, 0, 0],
     },

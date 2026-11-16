@@ -646,7 +646,10 @@ atlas page plan.
 The picked direction is **option A**: restore only the retired pipeline's
 carve → paint → light decal, as a **transparent carve/paint overlay** pasted
 into the current shells' `faceQuad`. The shell keeps its own lighting and face
-colour outside the recessed lip. The symbol stays upright in face-local space;
+colour outside the recessed lip. The **full upstream 300 × 400 glyph canvas** is
+mapped onto the inset face plate, matching the flat glyph's sizing; the earlier
+faceInset UV crop enlarged every symbol and cut the pinzu/manzu strokes that
+reach the canvas edge. The symbol stays upright in face-local space;
 the four images per face are four baked **light rotations** (`0/90/180/270`),
 chosen so the light lands top-left on screen after the shell's quad rotation.
 There is no per-slot fanning: a decal is shared by every slot with the same
@@ -714,8 +717,8 @@ PNG, 18–66% transparent, with its four corners transparent.
 
 **Full set (committed).** `5z` (haku) has no ink and is skipped: 36 faces × 5
 surface rotations = **180 decals** (36 upright + 144 lying). The full PNG bake
-is **9,077,995 B**; the shipped set is **AVIF q60 with alpha**, **1,651,011 B**
-across 180 files, plus `decals.json` (167,337 B). The manifest keeps the decode
+is **8,319,064 B**; the shipped set is **AVIF q60 with alpha**, **1,581,494 B**
+across 180 files, plus `decals.json` (189,282 B). The manifest keeps the decode
 measurements and decoded-RGBA sha256 for every encoded image. AVIF q60 was
 chosen over WebP (2.4 MB) to fit the budget without touching the decal size or
 the flat fallback.
@@ -723,9 +726,11 @@ the flat fallback.
 The redundant **@2x shadow sprites** were removed to make room: the runtime
 already draws group shadows from `shadowShape` (§10.12), and the @1x shadow
 sprites remain the checker/review reference. Committed table assets are
-**7,887,000 B (7.52 MiB)** of the 8 MiB limit; a decal-based initial @1x board
-is **3,882,230 B (3.70 MiB)** of the 4 MiB limit (the flat glyph PNGs remain
+**7,839,428 B (7.48 MiB)** of the 8 MiB limit; a decal-based initial @1x board
+is **3,834,658 B (3.66 MiB)** of the 4 MiB limit (the flat glyph PNGs remain
 build/fallback assets and are not fetched when decals cover every inked face).
+Byte budgets are **advisory during active development** (AGENTS.md §1c); they
+are measured, not a reason to shrink the art.
 
 **Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json` with a
 key of `${face}:${surface}:l${light}:s${symbol}`. `TileAtlasBuilder` selects the

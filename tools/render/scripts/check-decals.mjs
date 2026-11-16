@@ -47,6 +47,7 @@ const FACE_UP_SHELL_IDS = [
 
 const failures = [];
 let checks = 0;
+const strictBudget = process.argv.includes('--strict-budget');
 
 function check(condition, label) {
   checks += 1;
@@ -59,6 +60,22 @@ function check(condition, label) {
 
 function note(message) {
   console.log(`INFO ${message}`);
+}
+
+/**
+ * Asset byte budgets are advisory during active development (AGENTS.md §1c).
+ * Pass --strict-budget to make them fail.
+ */
+function budgetCheck(condition, label) {
+  checks += 1;
+  if (condition) {
+    console.log(`PASS ${label}`);
+  } else if (strictBudget) {
+    failures.push(label);
+    console.log(`FAIL ${label}`);
+  } else {
+    console.log(`WARN ${label} (advisory; --strict-budget to fail)`);
+  }
 }
 
 function readJson(path) {
@@ -135,6 +152,7 @@ async function checkManifest() {
   let totalBytes = 0;
   const byFaceSurface = new Map();
   const hashesByFaceSurface = new Map();
+  const bboxesByFaceSurface = new Map();
   for (const [key, record] of entries) {
     check(
       record.surface === 'upright' || record.surface === 'lying',
@@ -186,6 +204,7 @@ async function checkManifest() {
         record.measured?.inkPixels === stats.inkPixels &&
         record.measured?.redPixels === stats.redPixels &&
         JSON.stringify(record.measured?.alphaBBox) === JSON.stringify(stats.alphaBBox) &&
+        JSON.stringify(record.measured?.inkBBox) === JSON.stringify(stats.inkBBox) &&
         record.measured?.transparentFraction === stats.transparentFraction &&
         JSON.stringify(record.measured?.cornerAlpha) === JSON.stringify(stats.cornerAlpha),
       `${key} measured alpha/ink/bbox match the image`,
@@ -208,6 +227,15 @@ async function checkManifest() {
         stats.alphaBBox.bottom <= image.height - 1,
       `${key} carve is inside the decal frame`,
     );
+    const plate = { left: 4, top: 4, right: 154, bottom: 212 };
+    check(
+      stats.inkBBox !== null &&
+        stats.inkBBox.left >= plate.left - 1 &&
+        stats.inkBBox.top >= plate.top - 1 &&
+        stats.inkBBox.right <= plate.right + 1 &&
+        stats.inkBBox.bottom <= plate.bottom + 1,
+      `${key} paint is inside the face plate (${JSON.stringify(stats.inkBBox)})`,
+    );
     if (record.face === '5mr' || record.face === '5pr' || record.face === '5sr') {
       check(stats.redPixels > 1000, `${key} red five really is red (${stats.redPixels} px)`);
     }
@@ -216,13 +244,16 @@ async function checkManifest() {
     const hashes = hashesByFaceSurface.get(group) ?? new Set();
     hashes.add(record.sha256.decodedRgba);
     hashesByFaceSurface.set(group, hashes);
+    const bboxes = bboxesByFaceSurface.get(group) ?? [];
+    if (stats.inkBBox) bboxes.push(stats.inkBBox);
+    bboxesByFaceSurface.set(group, bboxes);
   }
 
   const spec = readJson(join(renderDir, 'decal-spec.json'));
   const budget = committed
     ? manifest.budget.bytes
     : (spec.output.buildBytesBudget ?? manifest.budget.bytes);
-  check(
+  budgetCheck(
     totalBytes <= budget,
     `decal assets total ${totalBytes} B (${committed ? 'committed' : 'build'} budget ${budget} B)`,
   );
@@ -242,6 +273,17 @@ async function checkManifest() {
       hashes.size === expected,
       `${group} light rotations are ${expected} distinct images (${hashes.size})`,
     );
+  }
+  for (const [group, bboxes] of bboxesByFaceSurface) {
+    if (bboxes.length < 2) continue;
+    for (const side of ['left', 'top', 'right', 'bottom']) {
+      const values = bboxes.map((bbox) => bbox[side]);
+      const spread = Math.max(...values) - Math.min(...values);
+      check(
+        spread <= 2,
+        `${group} ${side} edge is consistent across rotations (±${spread}px)`,
+      );
+    }
   }
   if (!committed) {
     note(`build manifest: ${byFaceSurface.size} face/surface groups, ${entries.length} decals`);
@@ -290,7 +332,7 @@ function checkBudgets() {
     statSync(join(tableDir, 'decals.json')).size;
   const feltBytes = statSync(join(tableDir, 'felt.png')).size;
   const total = shellsBytes + facesBytes + decalsBytes + manifestBytes + feltBytes;
-  check(
+  budgetCheck(
     total <= TOTAL_BUDGET,
     `committed table assets are ${total} B (${(total / 1024 / 1024).toFixed(2)} MiB, limit 8 MiB)`,
   );
@@ -298,7 +340,7 @@ function checkBudgets() {
   // decals. The flat glyph PNGs remain build/fallback assets and are not
   // fetched when every inked face has a carved decal.
   const initial = body1xBytes + feltBytes + manifestBytes + decalsBytes;
-  check(
+  budgetCheck(
     initial <= INITIAL_LOAD_BUDGET,
     `initial hand + board @1x load is ${initial} B (${(initial / 1024 / 1024).toFixed(2)} MiB, limit 4 MiB; flat glyphs are build-only)`,
   );

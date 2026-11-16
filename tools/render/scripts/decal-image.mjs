@@ -33,6 +33,10 @@ export function measureDecal(image) {
   let minY = image.height;
   let maxX = -1;
   let maxY = -1;
+  let inkMinX = image.width;
+  let inkMinY = image.height;
+  let inkMaxX = -1;
+  let inkMaxY = -1;
   for (let y = 0; y < image.height; y += 1) {
     for (let x = 0; x < image.width; x += 1) {
       const [r, g, b, a] = pixel(image, x, y);
@@ -44,7 +48,13 @@ export function measureDecal(image) {
       if (y > maxY) maxY = y;
       const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
       const saturation = Math.max(r, g, b) - Math.min(r, g, b);
-      if (a > 127 && (saturation > 24 || luma < 150)) inkPixels += 1;
+      if (a > 127 && (saturation > 24 || luma < 150)) {
+        inkPixels += 1;
+        if (x < inkMinX) inkMinX = x;
+        if (x > inkMaxX) inkMaxX = x;
+        if (y < inkMinY) inkMinY = y;
+        if (y > inkMaxY) inkMaxY = y;
+      }
       if (r > g + 40 && r > b + 40) redPixels += 1;
     }
   }
@@ -53,6 +63,10 @@ export function measureDecal(image) {
     height: image.height,
     alphaPixels,
     inkPixels,
+    inkBBox:
+      inkMaxX < 0
+        ? null
+        : { left: inkMinX, top: inkMinY, right: inkMaxX, bottom: inkMaxY },
     redPixels,
     alphaBBox: maxX < 0 ? null : { left: minX, top: minY, right: maxX, bottom: maxY },
     transparentFraction: Number((1 - alphaPixels / (image.width * image.height)).toFixed(5)),

@@ -557,7 +557,19 @@ def measure(rgba_u8: np.ndarray) -> dict:
     red = int(((rgb[..., 0] > rgb[..., 1] + 40) & (rgb[..., 0] > rgb[..., 2] + 40) & mask).sum())
     luma = 0.2126 * rgb[..., 0] + 0.7152 * rgb[..., 1] + 0.0722 * rgb[..., 2]
     saturation = rgb.max(axis=-1) - rgb.min(axis=-1)
-    ink = int((((saturation > 24) | (luma < 150)) & mask & (alpha > 0.5)).sum())
+    ink_mask = ((saturation > 24) | (luma < 150)) & mask & (alpha > 0.5)
+    ink = int(ink_mask.sum())
+    ink_ys, ink_xs = np.nonzero(ink_mask)
+    ink_bbox = (
+        {
+            "left": int(ink_xs.min()),
+            "top": int(ink_ys.min()),
+            "right": int(ink_xs.max()),
+            "bottom": int(ink_ys.max()),
+        }
+        if ink_xs.size
+        else None
+    )
     corners = [
         int(rgba_u8[0, 0, 3]),
         int(rgba_u8[0, width - 1, 3]),
@@ -573,6 +585,7 @@ def measure(rgba_u8: np.ndarray) -> dict:
         "alphaPixels": alpha_pixels,
         "transparentFraction": round(1.0 - alpha_pixels / (width * height), 5),
         "inkPixels": ink,
+        "inkBBox": ink_bbox,
         "redPixels": red,
         "cornerAlpha": corners,
     }
@@ -615,10 +628,12 @@ def bake_one(
     material = decal_material(shell_spec, decal_spec, symbol_path, field_path)
     half_w = tile["width"] / 2.0 - tile["faceInset"]
     half_h = tile["height"] / 2.0 - tile["faceInset"]
-    u0 = tile["faceInset"] / tile["width"]
-    u1 = 1.0 - u0
-    v0 = tile["faceInset"] / tile["height"]
-    v1 = 1.0 - v0
+    # Map the FULL upstream symbol canvas (300 x 400) onto the inset face
+    # plate. Cropping the glyph to the faceInset sub-rect (the old mapping)
+    # enlarged every symbol and cut the pinzu/manzu strokes that reach the
+    # canvas edge; the full canvas keeps the same relative size as the flat
+    # glyph and fits every face.
+    u0, v0, u1, v1 = 0.0, 0.0, 1.0, 1.0
     plane = build_carved_face(
         shell_spec,
         decal_spec,

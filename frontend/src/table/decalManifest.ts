@@ -35,6 +35,12 @@ export interface DecalStats {
   readonly alphaPixels: number;
   readonly transparentFraction: number;
   readonly inkPixels: number;
+  readonly inkBBox: {
+    readonly left: number;
+    readonly top: number;
+    readonly right: number;
+    readonly bottom: number;
+  } | null;
   readonly redPixels: number;
   readonly cornerAlpha: readonly number[];
 }
@@ -117,18 +123,19 @@ function rotation(value: unknown, field: string): DecalRotation {
 function parseStats(id: string, raw: unknown): DecalStats {
   if (typeof raw !== 'object' || raw === null) fail(`${id}.measured must be an object`);
   const m = raw as Record<string, unknown>;
-  const bboxRaw = m.alphaBBox;
-  let alphaBBox: DecalStats['alphaBBox'] = null;
-  if (bboxRaw !== null && bboxRaw !== undefined) {
-    if (typeof bboxRaw !== 'object') fail(`${id}.measured.alphaBBox must be an object or null`);
-    const b = bboxRaw as Record<string, unknown>;
-    alphaBBox = {
-      left: finite(b.left, `${id}.measured.alphaBBox.left`),
-      top: finite(b.top, `${id}.measured.alphaBBox.top`),
-      right: finite(b.right, `${id}.measured.alphaBBox.right`),
-      bottom: finite(b.bottom, `${id}.measured.alphaBBox.bottom`),
+  const parseBBox = (raw: unknown, field: string): DecalStats['alphaBBox'] => {
+    if (raw === null || raw === undefined) return null;
+    if (typeof raw !== 'object') fail(`${id}.measured.${field} must be an object or null`);
+    const b = raw as Record<string, unknown>;
+    return {
+      left: finite(b.left, `${id}.measured.${field}.left`),
+      top: finite(b.top, `${id}.measured.${field}.top`),
+      right: finite(b.right, `${id}.measured.${field}.right`),
+      bottom: finite(b.bottom, `${id}.measured.${field}.bottom`),
     };
-  }
+  };
+  const alphaBBox = parseBBox(m.alphaBBox, 'alphaBBox');
+  const inkBBox = parseBBox(m.inkBBox, 'inkBBox');
   const corners = m.cornerAlpha;
   if (!Array.isArray(corners)) fail(`${id}.measured.cornerAlpha must be an array`);
   return {
@@ -138,6 +145,7 @@ function parseStats(id: string, raw: unknown): DecalStats {
     alphaPixels: finite(m.alphaPixels, `${id}.measured.alphaPixels`),
     transparentFraction: finite(m.transparentFraction, `${id}.measured.transparentFraction`),
     inkPixels: finite(m.inkPixels, `${id}.measured.inkPixels`),
+    inkBBox,
     redPixels: finite(m.redPixels, `${id}.measured.redPixels`),
     cornerAlpha: corners.map((value, index) => finite(value, `${id}.measured.cornerAlpha[${index}]`)),
   };

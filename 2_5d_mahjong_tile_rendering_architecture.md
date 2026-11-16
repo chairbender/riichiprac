@@ -1102,13 +1102,14 @@ hand page at @2x is 1,240,200 px / 4.73 MiB and ~12 ms, so @2x remains available
 for a focused preview or a device with the headroom. The review sheets and
 `atlas-numbers.json` come from `frontend/scripts/review-atlas.ts`.
 
-**Budgets.** Committed table assets are **7,887,000 B** of the 8 MiB total limit
+**Budgets.** Committed table assets are **7,839,428 B** of the 8 MiB total limit
 (shells 4,351,264 + `shells.json` 553,571 + felt 559,465 + flat glyphs 576,938
-+ `faces.json` 27,414 + carved decals 1,651,011 + `decals.json` 167,337),
-leaving ~0.50 MB. A decal-based initial @1x board is **3,882,230 B** of the 4
++ `faces.json` 27,414 + carved decals 1,581,494 + `decals.json` 189,282),
+leaving ~0.55 MB. A decal-based initial @1x board is **3,834,658 B** of the 4
 MiB initial-load limit; the flat glyph PNGs are build/fallback assets and are
 not fetched when every inked face has a carved decal. The atlas is composed
-locally, not downloaded.
+locally, not downloaded. Byte budgets are advisory during active development
+(AGENTS.md §1c); they are measured, not a reason to shrink the art.
 
 **Carved decals (Phase 2b).** The flat glyphs above remain the Phase 2
 baseline and the fallback. Phase 2b restores the retired pipeline's carved,
@@ -1166,7 +1167,10 @@ plus a 4 px transparent safety ring, so the PNG is **158 × 216**, written with
 straight alpha. `facePlateRect` maps the inner 150 × 208 rect to the faceQuad.
 It contains the painted symbol, the recessed lip/fillet and cavity AO;
 everything outside the carve is transparent (four corners alpha 0, 18–66% of the
-image transparent in the spike). The symbol stays upright in face-local space.
+image transparent in the spike). The **full upstream 300 × 400 glyph canvas** is mapped to the inset face plate,
+matching the flat glyph's sizing; the earlier faceInset UV crop enlarged every
+symbol and cut the pinzu/manzu strokes at the canvas edge. The symbol stays
+upright in face-local space.
 `decal-spec.json` has separate **`lighting.upright`** (the approved parlour rig
 for the standing hand) and **`lighting.lying`** (the tunable rig for flat/pond
 tiles). `surfaceRotations` bakes one upright light rotation (`0`) and four lying
@@ -1213,12 +1217,12 @@ the shell face.
 **Numbers (committed).** The spike is 4 faces × (1 upright + 4 lying) = 20
 decals, 926,272 B PNG, ~1 min; `check-decals.mjs` reports 2,991 checks on the
 full committed set. The full set is 36 inked faces × 5 surface rotations =
-**180 decals** (5z is skipped): the PNG bake is 9,077,995 B, shipped as **AVIF
-q60 + alpha, 1,651,011 B**, plus `decals.json` 167,337 B. The redundant **@2x
+**180 decals** (5z is skipped): the PNG bake is 8,319,064 B, shipped as **AVIF
+q60 + alpha, 1,581,494 B**, plus `decals.json` 189,282 B. The redundant **@2x
 shadow sprites** were removed (the runtime uses `shadowShape` group layers; the
 @1x shadow sprite remains the checker/review reference), so committed table
-assets are **7,887,000 B (7.52 MiB)** of 8 MiB and a decal-based initial @1x
-board is **3,882,230 B (3.70 MiB)** of 4 MiB. The flat glyph PNGs remain
+assets are **7,839,428 B (7.48 MiB)** of 8 MiB and a decal-based initial @1x
+board is **3,834,658 B (3.66 MiB)** of 4 MiB. The flat glyph PNGs remain
 build/fallback assets and are not fetched by a decal board.
 
 **Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json` with a

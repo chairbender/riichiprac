@@ -2,7 +2,7 @@
   "version": 1,
   "name": "riichiprac 2.5D carved face decals",
   "purpose": "Bake the carved, painted, separately lit tile face decals that are pasted into the current shells' faceQuad. This restores only the retired pipeline's carve/paint/light decal step; it does not bring back the full-scene table, body sprites, fixed camera or scene manifest. The decal is a transparent carve/paint overlay (option A): the shell keeps its own lighting everywhere except the recessed lip and the paint.",
-  "status": "Phase 2b: carved face decals with separate upright (world-frame parlour) and lying (face-normal frame) light rigs. 180 decals (36 upright + 144 lying) are baked at 2x and committed as AVIF q60 with alpha. The lying rig is tuned with frontend/scripts/tune-carved.ts; the redundant @2x shadow sprites were removed to keep the committed table under 8 MiB.",
+  "status": "Phase 2b: carved face decals with separate upright (world-frame parlour) and lying (face-normal frame) light rigs. 180 decals (36 upright + 144 lying) are baked at 2x, with the full 300x400 glyph canvas mapped to the inset face plate so symbols keep the flat-glyph sizing and no pinzu/manzu strokes are cut. Committed as AVIF q60 with alpha. The redundant @2x shadow sprites were removed; byte budgets are advisory during development (AGENTS.md 1c).",
   "blender": {
     "requiredVersion": "4.5.9"
   },
@@ -18,7 +18,8 @@
     "height": 216,
     "paddingPixels": 4,
     "format": "8-bit RGBA PNG",
-    "notes": "The face plate is the inset face at @2x: 150 x 208 px (0.64 x 0.89 tile units, aspect 0.72). A 4 px transparent safety ring surrounds it, so a symbol that reaches the face edge is not clipped by the image border; the manifest's facePlateRect maps the inner 150 x 208 rect to the shell's faceQuad. The 90-degree rotation is not baked into the image: the symbol stays upright in face-local space and the shell's faceQuad applies the tile's rotation. The four images differ only in the baked light direction."
+    "notes": "The face plate is the inset face at @2x: 150 x 208 px (0.64 x 0.89 tile units, aspect 0.72). A 4 px transparent safety ring surrounds it, so a symbol that reaches the face edge is not clipped by the image border; the manifest's facePlateRect maps the inner 150 x 208 rect to the shell's faceQuad. The 90-degree rotation is not baked into the image: the symbol stays upright in face-local space and the shell's faceQuad applies the tile's rotation. The four images differ only in the baked light direction.",
+    "glyphMapping": "full 300x400 upstream glyph canvas -> inset face plate (no faceInset UV crop)"
   },
   "carve": {
     "depthFractionOfThickness": 0.03,

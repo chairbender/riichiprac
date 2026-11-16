@@ -31,7 +31,7 @@ while [ $# -gt 0 ]; do
       mode="${1#--}"
       shift
       ;;
-    --only | --rotations)
+    --only | --rotations | --surface)
       args+=("$1" "$2")
       shift 2
       ;;
@@ -40,7 +40,7 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     *)
-      echo "usage: $0 [--dry-run|--spike|--build|--bake|--check|--check-committed] [--only FACE] [--rotations N,N] [--verify-determinism]" >&2
+      echo "usage: $0 [--dry-run|--spike|--build|--bake|--check|--check-committed] [--only FACE] [--rotations N,N] [--surface upright|lying] [--verify-determinism]" >&2
       exit 2
       ;;
   esac
