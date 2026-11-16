@@ -127,7 +127,10 @@ pub const WALL_DRAWS: u16 = 70;
 const SEAT_NAMES: [&str; 4] = ["You", "Shimocha", "Toimen", "Kamicha"];
 
 /// Which choice a snapshot presents.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
+#[serde(rename_all = "snake_case")]
 pub enum DecisionKind {
     /// The actor has just drawn and may discard, declare Riichi, kan or win.
     SelfTurn,

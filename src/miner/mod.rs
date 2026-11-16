@@ -45,10 +45,20 @@ pub mod storage;
 
 pub use classifier::{classify_decision, classify_decision_with_mortal};
 pub use funnel::{FunnelCounter, FunnelStage};
+pub use label::calibration::{
+    CALIBRATION_SCHEMA, CALIBRATION_VERSION, CalibrationBreakpoint, CalibrationError,
+    ExpectedPointDiffs, POINT_UNITS, QPointCalibration,
+};
+pub use label::thresholds::{
+    Band, DEFAULT_CLOSE_CALL_PERCENTILE, DEFAULT_CONFIDENCE_PERCENTILE, DecisionFamily,
+    MIN_PERCENTILE_SAMPLES, PercentileConfig, PercentileCut, PercentileCuts, PercentileThresholds,
+    ThresholdError, TurnBucket, family_gap,
+};
 pub use label::{
     BookAgreement, BookConflict, BookLabel, CLASSIFIER_VERSION, LabelDisposition, LabelError,
-    LabelOptions, Labeler, ModelIdentity, ModelLabel, Q_UNITS, Q_UNITS_NOTE, RankedAction,
-    StateEvaluator, VALUE_UNITS, build_label, label_decision, safest_discard, state_hash,
+    LabelKind, LabelOptions, Labeler, ModelConsensus, ModelIdentity, ModelLabel, ModelVote,
+    Q_UNITS, Q_UNITS_NOTE, RankedAction, Stability, StateEvaluator, VALUE_UNITS, build_label,
+    label_decision, safest_discard, state_hash,
 };
 pub use licence::{LicenceError, LicenseInfo, allowed_data_licence, data_commercial_use_all};
 pub use provenance::{

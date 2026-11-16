@@ -1,4 +1,6 @@
 //! Mortal labeler (L1): batch native inference, Q values and the label cache.
+//! L2 adds book/Mortal agreement (`stable`/`contested`), optional multi-model
+//! votes, percentile-threshold hooks and optional versioned Q→point calibration.
 //!
 //! This is the native/mining side of the app's MIT Mortal inference. It runs
 //! the same [`MortalV4Model`] and the same masked softmax as the browser's
@@ -21,11 +23,21 @@
 //!   tiebreaker ([`crate::miner::classifier::classify_decision_with_mortal`]),
 //!   and the agreement computed by [`compare_action_set`] (the app's grading
 //!   rule, including `equivalent_tiles` and the Riichi second pass);
+//! - the derived `label_kind` (`book`/`contested`/`mortal`/`none`) and
+//!   `stability` (`stable`/`contested`/`unresolved`) from
+//!   [`agreement`], so a book/Mortal discrepancy is an explicit
+//!   contested drill rather than a silent preference for either side;
+//! - optional multi-model `consensus` votes (only with two or more checkpoints);
+//! - optional `calibration_version`/`expected_point_diffs` from
+//!   [`calibration`], which never overwrite the raw Q values;
 //! - the replay's generator identity when it differs from the labeler's.
 //!
 //! No field claims points. `q_gap_top2` is `q(best) - q(second)` and
 //! `q_gap_safe` is `q(best) - q(safest)` in the same model-utility units as the
-//! Q values; absolute Q values are only comparable within one position.
+//! Q values; absolute Q values are only comparable within one position. A point
+//! estimate exists only in the separate `expected_point_diffs` field, and only
+//! when a caller explicitly applied a versioned
+//! [`QPointCalibration`](self::calibration::QPointCalibration).
 //!
 //! # Cache
 //!
@@ -42,8 +54,11 @@
 //! This module uses only the crate's own Candle port. The Q values are the
 //! network's action logits; nothing links to Mortal's AGPL-3.0 library.
 
+pub mod agreement;
 pub mod cache;
+pub mod calibration;
 pub mod run;
+pub mod thresholds;
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -67,7 +82,11 @@ use crate::safety::SafetyFacts;
 use crate::state::{CorrectAction, GameState, TargetAction};
 
 use self::cache::{CacheLookup, LabelCache, LabelKey};
+use self::calibration::ExpectedPointDiffs;
 use super::MODEL_LABEL_SCHEMA;
+pub use agreement::{
+    Consensus, LabelKind, ModelConsensus, ModelVote, Stability, derive_label_kind, derive_stability,
+};
 
 /// Units for every Q value and Q gap; a difference is not a point difference.
 pub const Q_UNITS: &str = "model_utility";
@@ -283,6 +302,28 @@ pub struct ModelLabel {
     /// The book's unresolved disagreement, when it has one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub book_conflict: Option<BookConflict>,
+    /// What kind of drill the label produces (`book`, `contested`, `mortal`,
+    /// `none`). Missing on a pre-L2 label; [`Self::kind`] derives it in that
+    /// case.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_kind: Option<LabelKind>,
+    /// `stable`, `contested` or `unresolved` for a label with a book half.
+    /// Missing on a pre-L2 label; [`Self::stability`] derives it in that case.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stability: Option<Stability>,
+    /// Multi-model votes, present only when more than one checkpoint was
+    /// evaluated. `None` for the default one-model pass: one model is not a
+    /// consensus.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub consensus: Option<ModelConsensus>,
+    /// Id of the Q→point calibration used for [`Self::expected_point_diffs`].
+    /// Absent unless a calibration was explicitly applied.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calibration_version: Option<String>,
+    /// Point estimates derived from a versioned calibration. Absent by default;
+    /// the raw Q values beside it are never overwritten.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expected_point_diffs: Option<ExpectedPointDiffs>,
     /// The replay generator's identity, recorded only when it differs from the
     /// labeler's.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -296,6 +337,40 @@ impl ModelLabel {
     #[must_use]
     pub fn generator_differs(&self) -> bool {
         self.generator.is_some()
+    }
+
+    /// The label kind, derived from the book/model parts when a pre-L2 payload
+    /// did not store it.
+    #[must_use]
+    pub fn kind(&self) -> LabelKind {
+        self.label_kind
+            .unwrap_or_else(|| agreement::derive_label_kind(self))
+    }
+
+    /// The book/Mortal stability, derived from the book/model parts when a
+    /// pre-L2 payload did not store it.
+    #[must_use]
+    pub fn stability(&self) -> Option<Stability> {
+        self.stability.or_else(|| agreement::derive_stability(self))
+    }
+
+    /// Whether a candidate with this label may be shipped.
+    ///
+    /// A contested label is shippable as a dual verdict; an unresolved book
+    /// conflict is not, because the book has no answer to grade.
+    #[must_use]
+    pub fn is_shippable(&self) -> bool {
+        self.kind() != LabelKind::Unlabelled
+    }
+
+    /// The top-two gap used by [`thresholds`]: the Q gap when it exists, else
+    /// the probability margin. `None` when the position offers one legal action.
+    #[must_use]
+    pub fn top2_gap(&self) -> Option<f32> {
+        if self.ranking.len() < 2 {
+            return None;
+        }
+        self.q_gap_top2.or(Some(self.probability_margin))
     }
 }
 
@@ -627,7 +702,7 @@ fn assemble_label(
         .filter(|other| !identity.same_checkpoint(other))
         .cloned();
 
-    Ok(ModelLabel {
+    let mut label = ModelLabel {
         schema: MODEL_LABEL_SCHEMA.to_string(),
         version: super::JSON_SCHEMA_VERSION,
         classifier_version: classifier_version.to_string(),
@@ -649,9 +724,84 @@ fn assemble_label(
         q_values,
         book,
         book_conflict,
+        label_kind: None,
+        stability: None,
+        consensus: None,
+        calibration_version: None,
+        expected_point_diffs: None,
         generator,
         note: Q_UNITS_NOTE.to_string(),
-    })
+    };
+    refresh_agreement(&mut label);
+    Ok(label)
+}
+
+/// Fill in the derived agreement fields after the book half or a multi-model
+/// consensus changed.
+fn refresh_agreement(label: &mut ModelLabel) {
+    label.label_kind = Some(agreement::derive_label_kind(label));
+    label.stability = agreement::derive_stability(label);
+}
+
+/// Evaluate a state with more than one checkpoint and record every vote.
+///
+/// This is the optional multi-model path (replay-implementation-plan §5.3). The
+/// first evaluator is the primary labeler: its Q values, ranking, gaps and book
+/// comparison are the label, and the remaining checkpoints only contribute a
+/// [`ModelVote`] each. Two or more members produce a [`ModelConsensus`]; a
+/// disagreement marks the label `contested` rather than silently preferring the
+/// primary. With one evaluator this is exactly [`build_label`] and the consensus
+/// field stays absent — one checkpoint is never called an ensemble.
+///
+/// This path deliberately does not write the label cache: the L1 cache key is
+/// one checkpoint's identity, and a consensus needs a labeler-set key that no
+/// current pipeline uses. A multi-model pass is a separate analysis run.
+pub fn build_label_with_models(
+    evaluators: &[&dyn StateEvaluator],
+    snapshot: &DecisionSnapshot,
+    options: &LabelOptions,
+    classifier_version: &str,
+    generator: Option<&ModelIdentity>,
+) -> Result<ModelLabel, LabelError> {
+    let Some((primary, rest)) = evaluators.split_first() else {
+        return Err(LabelError::Evaluation(
+            "no labeler was supplied to the multi-model pass".to_string(),
+        ));
+    };
+    let primary_evaluation = primary.evaluate(&snapshot.state)?;
+    let mut label = assemble_label(
+        &snapshot.state,
+        snapshot,
+        &primary_evaluation,
+        primary.identity(),
+        options,
+        classifier_version,
+        generator,
+    )?;
+
+    if rest.is_empty() {
+        return Ok(label);
+    }
+
+    let mut votes = Vec::with_capacity(evaluators.len());
+    votes.push(agreement::vote_for(
+        primary.identity(),
+        &primary_evaluation,
+        &snapshot.state,
+        label.book.as_ref(),
+    ));
+    for evaluator in rest {
+        let evaluation = evaluator.evaluate(&snapshot.state)?;
+        votes.push(agreement::vote_for(
+            evaluator.identity(),
+            &evaluation,
+            &snapshot.state,
+            label.book.as_ref(),
+        ));
+    }
+    label.consensus = ModelConsensus::from_votes(votes);
+    refresh_agreement(&mut label);
+    Ok(label)
 }
 
 /// Turn a settled classifier label into the stored book half.

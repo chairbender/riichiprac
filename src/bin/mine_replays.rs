@@ -22,7 +22,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 
 use riichiprac::miner::label::run::{LabelRunOptions, LabelRunReport, run_label};
-use riichiprac::miner::{CLASSIFIER_VERSION, DataRoot};
+use riichiprac::miner::{CLASSIFIER_VERSION, DataRoot, QPointCalibration};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -55,6 +55,17 @@ enum Command {
         /// Mortal checkpoint (.safetensors).
         #[arg(long, value_name = "FILE")]
         weights: PathBuf,
+
+        /// Additional checkpoints for the optional multi-model vote pass,
+        /// comma separated. One checkpoint is the normal labeler and is not an
+        /// ensemble; a multi-model pass records each member's vote.
+        #[arg(long, value_name = "FILE,...", value_delimiter = ',')]
+        models: Vec<PathBuf>,
+
+        /// Versioned Q→point calibration (JSON). Point estimates are recorded
+        /// in a separate field and the raw Q values are never overwritten.
+        #[arg(long, value_name = "FILE")]
+        calibration: Option<PathBuf>,
 
         /// Replay directory (default: <data-dir>/replays).
         #[arg(long, value_name = "DIR")]
@@ -132,6 +143,8 @@ fn main() -> ExitCode {
     match cli.command {
         Command::Label {
             weights,
+            models,
+            calibration,
             replays,
             family,
             limit,
@@ -139,20 +152,34 @@ fn main() -> ExitCode {
             gamma,
             pts,
             json,
-        } => run_label_command(
-            &root,
-            &LabelRunOptions {
-                weights,
-                replays,
-                family,
-                limit,
-                classifier_version,
-                gamma,
-                pts,
-                label_options: Default::default(),
-            },
-            json,
-        ),
+        } => {
+            let calibration = match calibration {
+                Some(path) => match QPointCalibration::read(&path) {
+                    Ok(calibration) => Some(calibration),
+                    Err(err) => {
+                        eprintln!("mine_replays label: {err}");
+                        return ExitCode::from(2);
+                    }
+                },
+                None => None,
+            };
+            run_label_command(
+                &root,
+                &LabelRunOptions {
+                    weights,
+                    extra_models: models,
+                    replays,
+                    family,
+                    limit,
+                    classifier_version,
+                    gamma,
+                    pts,
+                    label_options: Default::default(),
+                    calibration,
+                },
+                json,
+            )
+        }
         command => {
             eprintln!(
                 "mine_replays {}: not implemented yet (data root: {})",
@@ -193,9 +220,21 @@ fn run_label_command(root: &DataRoot, options: &LabelRunOptions, json: bool) -> 
                 "  model: {} (sha256 {}), classifier {}",
                 report.model, report.model_sha256, report.classifier_version
             );
+            if report.labelers.len() > 1 {
+                println!("  multi-model votes: {}", report.labelers.join(", "));
+            }
+            if let Some(calibration) = &report.calibration {
+                println!("  Q->point calibration: {calibration}");
+            }
             println!(
-                "  book labels: {}, contested: {}, walker drops: {}",
-                report.book_labels, report.book_conflicts, report.decisions_dropped
+                "  book labels: {} ({} stable, {} contested); mortal-only: {}; \
+                 unresolved conflicts: {}; walker drops: {}",
+                report.book_labels,
+                report.stable,
+                report.contested,
+                report.mortal_only,
+                report.book_conflicts,
+                report.decisions_dropped
             );
             for error in &report.errors {
                 eprintln!("  error: {error}");
@@ -256,6 +295,10 @@ mod tests {
             "label",
             "--weights",
             "mortal_298k.safetensors",
+            "--models",
+            "other_a.safetensors,other_b.safetensors",
+            "--calibration",
+            "calibration.json",
             "--family",
             "mortal_mirror",
             "--limit",
@@ -270,6 +313,8 @@ mod tests {
         match cli.command {
             Command::Label {
                 weights,
+                models,
+                calibration,
                 family,
                 limit,
                 gamma,
@@ -278,11 +323,41 @@ mod tests {
                 ..
             } => {
                 assert_eq!(weights, PathBuf::from("mortal_298k.safetensors"));
+                assert_eq!(
+                    models,
+                    vec![
+                        PathBuf::from("other_a.safetensors"),
+                        PathBuf::from("other_b.safetensors")
+                    ]
+                );
+                assert_eq!(calibration, Some(PathBuf::from("calibration.json")));
                 assert_eq!(family.as_deref(), Some("mortal_mirror"));
                 assert_eq!(limit, Some(5));
                 assert_eq!(gamma, Some(0.99));
                 assert_eq!(pts, Some(vec![90.0, 45.0, 0.0, -135.0]));
                 assert!(json);
+            }
+            other => panic!("expected the label command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_single_model_label_run_has_no_extra_models_or_calibration() {
+        let cli = Cli::try_parse_from([
+            "mine_replays",
+            "label",
+            "--weights",
+            "mortal_298k.safetensors",
+        ])
+        .expect("label parses");
+        match cli.command {
+            Command::Label {
+                models,
+                calibration,
+                ..
+            } => {
+                assert!(models.is_empty(), "one checkpoint is the normal labeler");
+                assert!(calibration.is_none());
             }
             other => panic!("expected the label command, got {other:?}"),
         }

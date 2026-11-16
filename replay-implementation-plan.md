@@ -1525,6 +1525,23 @@ no gate depends on; tests.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-16, L2 branch).** Implemented in `src/miner/label/`:
+> `agreement.rs` derives `stability` (`stable`/`contested`/`unresolved`) and
+> `label_kind` (`book`/`contested`/`mortal`/`none`) from the book half and an
+> optional multi-model consensus; a discrepancy keeps the book answer and marks
+> the label `contested`, never silently preferring the model. Agreement is
+> `fuzz::compare_action_set`, the same rule as `generator::mortal_agreement`
+> (a test pins the two together). The shard run writes `label_kind`/
+> `label_source` onto the `decisions` row. `--models` accepts extra checkpoints
+> for the optional vote path (two or more members only; one model is never called
+> an ensemble; the path skips the single-model cache). `thresholds.rs` provides
+> per-family (`<decision_kind>/<turn_bucket>`) configurable close-call/confidence
+> percentiles with deterministic nearest-rank cuts as the S3 hook.
+> `calibration.rs` defines the separate versioned `riichiprac.q-point-calibration`
+> v1 mapping and an `expected_point_diffs` field derived from the raw Q values;
+> it is not in the cache key, so recalibrating a cached label runs no forward
+> pass, and no field claims points without an explicit calibration.
+
 #### Phase 5 — Selection
 
 ##### S1 — Triggers and family filters
