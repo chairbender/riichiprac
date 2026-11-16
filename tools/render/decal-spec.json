@@ -2,7 +2,7 @@
   "version": 1,
   "name": "riichiprac 2.5D carved face decals",
   "purpose": "Bake the carved, painted, separately lit tile face decals that are pasted into the current shells' faceQuad. This restores only the retired pipeline's carve/paint/light decal step; it does not bring back the full-scene table, body sprites, fixed camera or scene manifest. The decal is a transparent carve/paint overlay (option A): the shell keeps its own lighting everywhere except the recessed lip and the paint.",
-  "status": "Phase 2b: carve decals, 4 fixed light rotations, 2x face-local masters. Landed as a separate decal set; the flat glyphs remain the fallback until the user approves the carved look.",
+  "status": "Phase 2b: carved face decals with separate upright and lying light rigs. The upright parlour rig is unchanged and approved. The lying rig is the new tunable rig for flat tiles; it is previewed and adjusted with frontend/scripts/tune-carved.ts. No carved decal set is committed yet.",
   "blender": {
     "requiredVersion": "4.5.9"
   },
@@ -37,86 +37,184 @@
     "notes": "Ported unchanged from the retired full-scene pipeline (scene-spec.json at commit e39d92e) so the engraving keeps the look the user approved then. alphaRamp is the new transparent-overlay feather: the decal alpha ramps 0..1 over the first 8% of the carve transition, so the outer lip fades into the shell face instead of ending on a hard rectangle."
   },
   "lighting": {
-    "preset": "parlor",
-    "rotationConvention": "lightRotationDeg is a counter-clockwise rotation of the whole rig about the face normal. The atlas picks -screenRotationOfQuad so the baked light ends up top-left on screen after the shell quad rotates the decal. 0/90/180/270 is therefore a screen-locked carve light, not a rotating tile light.",
-    "world": {
-      "hex": "#b9c6d6",
-      "strength": 0.4
+    "upright": {
+      "preset": "parlor",
+      "rotationConvention": "lightRotationDeg is a counter-clockwise rotation of the whole rig about the face normal. The atlas picks -screenRotationOfQuad so the baked light ends up top-left on screen after the shell quad rotates the decal. 0/90/180/270 is therefore a screen-locked carve light, not a rotating tile light.",
+      "world": {
+        "hex": "#b9c6d6",
+        "strength": 0.4
+      },
+      "translation": {
+        "fromSlotY": -11.7,
+        "cameraDistance": 5.0,
+        "notes": "The retired parlor rig was tuned around the hand slot at y=-11.7. The canonical decal is at the origin, so the whole rig is translated by +11.7 in y. This preserves the old incidence angles instead of re-aiming the lights. The camera sits 5 units in front of the face, as in the retired decal rig."
+      },
+      "lights": [
+        {
+          "id": "tube-0",
+          "group": "tube",
+          "target": [
+            0,
+            -8.5,
+            0
+          ],
+          "azimuthDeg": 0,
+          "elevationDeg": 50,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "energyW": 85000,
+          "hex": "#fdf9f1"
+        },
+        {
+          "id": "tube-1",
+          "group": "tube",
+          "target": [
+            -2,
+            3,
+            0
+          ],
+          "azimuthDeg": 90,
+          "elevationDeg": 58,
+          "distance": 56,
+          "size": 40,
+          "sizeY": 2.5,
+          "rollDeg": 0,
+          "energyW": 65000,
+          "hex": "#fdf9f1"
+        },
+        {
+          "id": "bounce",
+          "group": "bounce",
+          "target": [
+            0,
+            -1,
+            0.3
+          ],
+          "azimuthDeg": 30,
+          "elevationDeg": 10,
+          "distance": 34,
+          "size": 42,
+          "sizeY": 27,
+          "rollDeg": 0,
+          "energyW": 2500,
+          "hex": "#cfe4d3"
+        },
+        {
+          "id": "rim",
+          "group": "rim",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "azimuthDeg": 170,
+          "elevationDeg": 45,
+          "distance": 40,
+          "size": 28,
+          "sizeY": 20,
+          "rollDeg": 0,
+          "energyW": 6000,
+          "hex": "#ffffff"
+        }
+      ]
     },
-    "translation": {
-      "fromSlotY": -11.7,
-      "cameraDistance": 5.0,
-      "notes": "The retired parlor rig was tuned around the hand slot at y=-11.7. The canonical decal is at the origin, so the whole rig is translated by +11.7 in y. This preserves the old incidence angles instead of re-aiming the lights. The camera sits 5 units in front of the face, as in the retired decal rig."
-    },
-    "lights": [
-      {
-        "id": "tube-0",
-        "group": "tube",
-        "target": [
-          0,
-          -8.5,
-          0
-        ],
-        "azimuthDeg": 0,
-        "elevationDeg": 50,
-        "distance": 56,
-        "size": 40,
-        "sizeY": 2.5,
-        "rollDeg": 0,
-        "energyW": 85000,
-        "hex": "#fdf9f1"
+    "lying": {
+      "preset": "lying-parlor",
+      "rotationConvention": "lightRotationDeg is a counter-clockwise rotation of the whole rig about the face normal. For a lying tile the key sits high over the table; the four rotations show the same room light hitting a tile turned 0/90/180/270 on the felt.",
+      "world": {
+        "hex": "#b9c6d6",
+        "strength": 0.4
       },
-      {
-        "id": "tube-1",
-        "group": "tube",
-        "target": [
-          -2,
-          3,
-          0
-        ],
-        "azimuthDeg": 90,
-        "elevationDeg": 58,
-        "distance": 56,
-        "size": 40,
-        "sizeY": 2.5,
-        "rollDeg": 0,
-        "energyW": 65000,
-        "hex": "#fdf9f1"
+      "translation": {
+        "fromSlotY": 0.0,
+        "cameraDistance": 5.0,
+        "notes": "The lying decal is rendered face-on in the canonical rig. This rig is defined in the decal's own frame with the key high over the face, so it reads as a room light coming down onto a horizontal tile. The four light rotations keep that room light fixed while the tile turns."
       },
-      {
-        "id": "bounce",
-        "group": "bounce",
-        "target": [
-          0,
-          -1,
-          0.3
-        ],
-        "azimuthDeg": 30,
-        "elevationDeg": 10,
-        "distance": 34,
-        "size": 42,
-        "sizeY": 27,
-        "rollDeg": 0,
-        "energyW": 2500,
-        "hex": "#cfe4d3"
-      },
-      {
-        "id": "rim",
-        "group": "rim",
-        "target": [
-          0,
-          0,
-          0
-        ],
-        "azimuthDeg": 170,
-        "elevationDeg": 45,
-        "distance": 40,
-        "size": 28,
-        "sizeY": 20,
-        "rollDeg": 0,
-        "energyW": 6000,
-        "hex": "#ffffff"
-      }
+      "lights": [
+        {
+          "id": "key",
+          "group": "key",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "azimuthDeg": 315,
+          "elevationDeg": 65,
+          "distance": 55,
+          "size": 22,
+          "sizeY": 18,
+          "rollDeg": 0,
+          "energyW": 90000,
+          "hex": "#fff4e4"
+        },
+        {
+          "id": "fill",
+          "group": "fill",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "azimuthDeg": 45,
+          "elevationDeg": 25,
+          "distance": 45,
+          "size": 30,
+          "sizeY": 24,
+          "rollDeg": 0,
+          "energyW": 12000,
+          "hex": "#dfe9ff"
+        },
+        {
+          "id": "bounce",
+          "group": "bounce",
+          "target": [
+            0,
+            0,
+            -0.4
+          ],
+          "azimuthDeg": 30,
+          "elevationDeg": 10,
+          "distance": 34,
+          "size": 42,
+          "sizeY": 27,
+          "rollDeg": 0,
+          "energyW": 2500,
+          "hex": "#cfe4d3"
+        },
+        {
+          "id": "rim",
+          "group": "rim",
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "azimuthDeg": 170,
+          "elevationDeg": 45,
+          "distance": 45,
+          "size": 28,
+          "sizeY": 20,
+          "rollDeg": 0,
+          "energyW": 6000,
+          "hex": "#ffffff"
+        }
+      ],
+      "tunable": true,
+      "tuner": "cd frontend && npm run tune:carved  # http://localhost:7458"
+    }
+  },
+  "surfaceRotations": {
+    "upright": [
+      0
+    ],
+    "lying": [
+      0,
+      90,
+      180,
+      270
     ]
   },
   "rotations": [
@@ -144,5 +242,9 @@
     "buildManifest": "build/decals.json",
     "bytesBudget": 2097152,
     "buildBytesBudget": 12582912
-  }
+  },
+  "surfaces": [
+    "upright",
+    "lying"
+  ]
 }

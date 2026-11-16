@@ -47,6 +47,36 @@ export const FACE_UP_SHELL_IDS = [
 
 export type FaceUpShellId = (typeof FACE_UP_SHELL_IDS)[number];
 
+/**
+ * The two carved-decal light rigs: `upright` for the standing hand and
+ * `lying` for the flat pond/meld shells. They share the carve geometry and
+ * paint; only the light rig (and therefore the carve highlights) differs.
+ */
+export type FaceSurface = 'upright' | 'lying';
+
+export const FACE_SURFACE_BY_SHELL: Readonly<Record<FaceUpShellId, FaceSurface>> = {
+  shell_hand_slot_00: 'upright',
+  shell_hand_slot_01: 'upright',
+  shell_hand_slot_02: 'upright',
+  shell_hand_slot_03: 'upright',
+  shell_hand_slot_04: 'upright',
+  shell_hand_slot_05: 'upright',
+  shell_hand_slot_06: 'upright',
+  shell_hand_slot_07: 'upright',
+  shell_hand_slot_08: 'upright',
+  shell_hand_slot_09: 'upright',
+  shell_hand_slot_10: 'upright',
+  shell_hand_slot_11: 'upright',
+  shell_hand_slot_12: 'upright',
+  shell_hand_slot_draw: 'upright',
+  shell_flat_upright: 'lying',
+  shell_flat_sideways: 'lying',
+};
+
+export function surfaceForShell(shell: FaceUpShellId): FaceSurface {
+  return FACE_SURFACE_BY_SHELL[shell];
+}
+
 /** Face-down wall shells. Bare: no glyph, no face variant, no atlas entry. */
 export const FACE_DOWN_SHELL_IDS = [
   'shell_wall_horizontal',

@@ -46,6 +46,7 @@ node tools/render/scripts/bake-faces.mjs   # bake the 37 face glyphs + faces.jso
 node tools/render/scripts/check-faces.mjs  # face glyph + atlas budget gate; no Blender/resvg
 bash tools/render/bake-decals.sh --spike   # carve/lit decal spike into build/decals (Blender)
 bash tools/render/bake-decals.sh --check   # validate the build decal manifest; no Blender
+cd frontend && npm run tune:carved         # lying-rig tuner at http://localhost:7458
 cd frontend && npm run atlas:review:carved # flat vs carved review sheets
 cd frontend && npm run atlas:review        # build the real atlas and write review sheets
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
@@ -166,10 +167,12 @@ its own regeneration, not mixed with CPU output.
 | `faces-spec.json` | yes | the 37 face glyphs: pinned upstream SVGs, 288 × 384 RGBA raster, red paint, output paths, byte budget |
 | `bake-faces.mjs` / `face-raster.mjs` | yes | resvg glyph baker and its single shared rasteriser (also used by `rasterize-face.mjs`) |
 | `check-faces.mjs` | yes | dependency-free face-glyph + committed-asset + atlas-budget gate (CI) |
-| `decal-spec.json` | yes | the carved decal contract: pin, 150 × 208 @2x raster, carve parameters, parlor light rig, rotations, outputs |
+| `decal-spec.json` | yes | the carved decal contract: pin, 158 × 216 @2x raster, carve parameters, separate upright/lying light rigs, surface rotations, outputs |
 | `bake_decals.py` | yes | Blender 4.5.9 carve/paint/light decal baker (imports the shell baker's helpers) |
 | `bake-decals.sh` | yes | one command for dry-run/spike/build/commit/check |
 | `check-decals.mjs` | yes | dependency-free carved-decal + budget gate (PNG) |
+| `../../frontend/scripts/tune-carved.ts` | yes | the lying-rig preview/tuner server |
+| `../../frontend/scripts/tune-carved.html` | yes | the tuner UI |
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
 | `bake_felt.py` | yes | deterministic stdlib PNG generator for the felt + vignette |
 | `bake-felt.sh` | yes | one-command felt regeneration |
@@ -631,7 +634,7 @@ the agent does not sign off its own render (AGENTS.md §6).
 ink, red fives, haku zero ink, transparent corners, the byte budgets and the
 atlas page plan.
 
-### Phase 2b: carved face decals (spike landed 2026-11-15)
+### Phase 2b: carved face decals (spike + lying tuner, 2026-11-15)
 
 The picked direction is **option A**: restore only the retired pipeline's
 carve → paint → light decal, as a **transparent carve/paint overlay** pasted
@@ -642,41 +645,59 @@ chosen so the light lands top-left on screen after the shell's quad rotation.
 There is no per-slot fanning: a decal is shared by every slot with the same
 light rotation.
 
+**Two light rigs.** `decal-spec.json` has separate `lighting.upright` (the
+approved parlour rig for the standing hand) and `lighting.lying` (the tunable
+rig for flat/pond tiles). `surfaceRotations` bakes one upright rotation (`0`)
+and four lying rotations (`0/90/180/270`). The upright rig is not touched by the
+lying tuner.
+
+**The lying tuner.** `cd frontend && npm run tune:carved` starts a local app at
+`http://localhost:7458`. It writes a temporary decal spec, runs the real Blender
+baker for the `1m` face with the lying rig at four light rotations, and
+composites each result onto the current `shell_flat_upright` through the real
+`TileAtlasBuilder` at @2x. A preview takes about **3 s** (48 samples, carve grid
+0.6, AO 4). "Apply lying params" writes only `lighting.lying` (and the shared
+carve controls) back to `decal-spec.json`. The four previews are the same flat
+tile under four light directions; the symbol stays upright so the carve
+highlights are what change.
+
 The baker is `bake_decals.py` + `decal-spec.json`; it imports the current shell
 baker's tile/material/render helpers and ports the retired carve math
 (`alpha_to_distance`, `bezier_profile`, `build_carved_face`). The carve
 parameters are unchanged from the retired pipeline (commit `e39d92e`). The
-parlor light rig is translated from its original hand slot at y=-11.7 to the
-canonical face and rotated per decal.
+upright parlour rig is translated from its original hand slot at y=-11.7 to the
+canonical face; the lying rig is defined in the face frame with a high key so
+it reads as room light on a horizontal tile.
 
 ```bash
 bash tools/render/bake-decals.sh --dry-run   # print the plan
-bash tools/render/bake-decals.sh --spike     # 4 faces x 4 light rotations -> build/decals
-bash tools/render/bake-decals.sh --build     # every inked face x 4 -> build/decals
+bash tools/render/bake-decals.sh --spike     # 4 faces x upright 1 + lying 4 -> build/decals
+bash tools/render/bake-decals.sh --build     # every inked face, both surfaces -> build/decals
 bash tools/render/bake-decals.sh --bake      # commit frontend/public/table/decals + decals.json
 bash tools/render/bake-decals.sh --check     # validate build/decals.json (no Blender)
 bash tools/render/bake-decals.sh --check-committed
+cd frontend && npm run tune:carved           # lying-rig tuner
+cd frontend && npm run atlas:review:carved   # flat vs carved review sheets
 ```
 
-**Spike (measured).** 4 faces (`1m`, `5p`, `7z`, `5mr`) × 4 light rotations =
-**16 decals at 158 × 216** (150 × 208 face plate + a 4 px transparent safety ring), **739,056 B** PNG, **54 s** wall (~2.2–3.4 s per
-decal) on the dev box. Each decal is 34–62 KB PNG, 18–66% transparent, with its
-four corners transparent. `check-decals.mjs` reports 312 checks on the spike
-and 2,656 on the full build.
+**Spike (measured).** 4 faces (`1m`, `5p`, `7z`, `5mr`) × (1 upright + 4 lying)
+= **20 decals at 158 × 216** (150 × 208 face plate + a 4 px transparent safety
+ring), **926,272 B** PNG, ~1 min wall on the dev box. Each decal is 34–62 KB
+PNG, 18–66% transparent, with its four corners transparent.
+`check-decals.mjs` reports 410 checks on the spike.
 
-**Full set (built, not committed).** `5z` (haku) has no ink and is skipped, so
-the catalogue is **36 faces × 4 = 144 decals**. The full PNG build is
-**7,109,639 B**, far over the 8 MiB committed budget. Encoding the same images:
-WebP q90 **1.79 MiB**, WebP q80 **1.48 MiB**, AVIF q60 **1.20 MiB**, AVIF q50
-**1.03 MiB**. Dropping the superseded flat glyphs from the shipped assets frees
-577 KB, so AVIF q60 all-4-rotations fits (about 8.13 MB total); keeping the flat
-glyphs only fits two rotations (the 16 current shells use 0° and 270°). The
-decision is pending the user's look and budget call; no decal set is committed
-yet. The decision is pending the user's look and
-budget call; no decal set is committed yet.
+**Full set.** `5z` (haku) has no ink and is skipped: 36 faces × 5 surface
+rotations = **180 decals** (36 upright + 144 lying). It has not been committed.
+At 2× the PNG build will be several MB, so the shipped format/scope decision
+(WebP/AVIF, dropping the superseded flat glyphs, or limiting the committed
+lying rotations to the ones the current shells use) is still pending the user's
+look and the 8 MiB budget. The all-light-rotation 144-decal PNG build measured
+7,109,639 B; AVIF q60 was 1.20 MiB for that set.
 
-**Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json`;
-`TileAtlasBuilder` takes an optional decal set, picks
+**Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json` with a
+key of `${face}:${surface}:l${light}:s${symbol}`. `TileAtlasBuilder` selects the
+surface from the shell (`upright` for the 14 hand slots, `lying` for
+`shell_flat_upright`/`shell_flat_sideways`), picks
 `lightRotationDeg = -screenRotationOfQuad(faceQuad)` and
 `symbolRotationDeg = faceRotationDeg - quadRotation`, loads the decal instead of
 the flat glyph, and still composites one `BakedTileSprite` per
@@ -686,10 +707,11 @@ per-frame compositing.
 
 **Review.** `cd frontend && npm run atlas:review:carved` writes under
 `tools/render/build/review/`:
-`carved-compare-4x.png` (spike faces, flat vs carved, 4×),
+`carved-compare-4x.png` (four faces, flat vs carved, 4×),
 `carved-variants-1x.png`, `carved-hand-fan-1x.png`, and
-`carved-numbers.json`. These are evidence for the user, not for the agent to
-sign off (AGENTS.md §6).
+`carved-numbers.json`. The lying tuner writes its four previews under
+`tools/render/build/tune/preview/`. These are evidence for the user, not for the
+agent to sign off (AGENTS.md §6).
 
 ### `shells.json` contract
 

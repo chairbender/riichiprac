@@ -29,9 +29,10 @@ import {
   FACE_UP_SHELL_IDS,
   TILE_FACE_IDS,
   faceVariantForShell,
+  surfaceForShell,
   tileRenderKey,
 } from './tiles';
-import type { FaceUpShellId, TileFaceId, TileRenderKey } from './tiles';
+import type { FaceSurface, FaceUpShellId, TileFaceId, TileRenderKey } from './tiles';
 import { faceHasInk } from './faceManifest';
 import type { FacesManifest } from './faceManifest';
 import { decalFor } from './decalManifest';
@@ -107,6 +108,7 @@ export interface BakedTileSprite {
   readonly glyphRotationDeg: 0 | 90 | 180 | 270;
   /** The carved decal used, or null when the flat glyph was composited. */
   readonly decalFile: string | null;
+  readonly decalSurface: FaceSurface | null;
   readonly decalLightRotationDeg: DecalRotation | null;
   readonly decalSymbolRotationDeg: DecalRotation | null;
 }
@@ -150,6 +152,14 @@ export interface TileAtlasBuilderOptions {
   readonly pixelRatio?: 1 | 2;
   /** Maximum page width in atlas px. Default 2048. */
   readonly maxPageWidthPx?: number;
+  /**
+   * Developer preview override: force every decal to this light rotation
+   * instead of the shell's own `-quadRotation`. The carved-decal tuner uses it
+   * to show the same flat tile under four light directions.
+   */
+  readonly forceDecalLightRotationDeg?: DecalRotation;
+  /** Developer preview override for the in-plate symbol rotation. */
+  readonly forceDecalSymbolRotationDeg?: DecalRotation;
 }
 
 export interface ShellPageResult {
@@ -308,10 +318,11 @@ export class TileAtlasBuilder {
   /** Prefer a carved decal for this shell/face, else the flat glyph. */
   private async sourceFor(
     face: TileFaceId,
+    surface: FaceSurface,
     lightRotationDeg: DecalRotation,
     symbolRotationDeg: DecalRotation,
   ): Promise<{ image: AtlasImage; decal: DecalRecord | null }> {
-    const record = decalFor(this.options.decals, face, lightRotationDeg, symbolRotationDeg);
+    const record = decalFor(this.options.decals, face, surface, lightRotationDeg, symbolRotationDeg);
     if (record) {
       return { image: await this.decal(record), decal: record };
     }
@@ -343,8 +354,11 @@ export class TileAtlasBuilder {
     const scale = this.pixelRatio;
     const variant = faceVariantForShell(shellId);
     const glyphRotationDeg = glyphRotationDegFor(shell);
-    const lightRotationDeg = decalLightRotationDegFor(shell);
-    const symbolRotationDeg = decalSymbolRotationDegFor(shell);
+    const surface = surfaceForShell(shellId);
+    const lightRotationDeg =
+      this.options.forceDecalLightRotationDeg ?? decalLightRotationDegFor(shell);
+    const symbolRotationDeg =
+      this.options.forceDecalSymbolRotationDeg ?? decalSymbolRotationDegFor(shell);
     const inkedFaces = TILE_FACE_IDS.filter((face) => faceHasInk(this.options.faces.faces[face]));
     const slots = atlasSlotCount(this.options.faces);
     const { width: pageWidth, height: pageHeight, columns } = planAtlasPage(
@@ -362,7 +376,7 @@ export class TileAtlasBuilder {
     );
     const [shellImage, ...sources] = await Promise.all([
       this.options.loadImage(shellUrl),
-      ...inkedFaces.map((face) => this.sourceFor(face, lightRotationDeg, symbolRotationDeg)),
+      ...inkedFaces.map((face) => this.sourceFor(face, surface, lightRotationDeg, symbolRotationDeg)),
     ]);
     assertSpriteSize(shell, shellImage, scale);
 
@@ -434,6 +448,7 @@ export class TileAtlasBuilder {
         faceRotationDeg: shell.faceRotationDeg,
         glyphRotationDeg,
         decalFile: entry?.decal?.textureFile ?? null,
+        decalSurface: entry?.decal ? surface : null,
         decalLightRotationDeg: entry?.decal ? lightRotationDeg : null,
         decalSymbolRotationDeg: entry?.decal ? symbolRotationDeg : null,
       };

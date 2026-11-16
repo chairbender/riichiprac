@@ -86,6 +86,8 @@ def parse_options(argv: list[str]) -> dict:
         "build": False,
         "only": None,
         "rotations": None,
+        "surface": None,
+        "spec": None,
         "verifyDeterminism": False,
     }
     index = 0
@@ -99,13 +101,17 @@ def parse_options(argv: list[str]) -> dict:
             options["build"] = True
         elif arg == "--verify-determinism":
             options["verifyDeterminism"] = True
-        elif arg in ("--only", "--rotations"):
+        elif arg in ("--only", "--rotations", "--surface", "--spec"):
             if index + 1 >= len(argv):
                 die(f"{arg} needs a value")
             value = argv[index + 1]
             index += 1
             if arg == "--only":
                 options["only"] = [part.strip() for part in value.split(",") if part.strip()]
+            elif arg == "--surface":
+                options["surface"] = [part.strip() for part in value.split(",") if part.strip()]
+            elif arg == "--spec":
+                options["spec"] = value
             else:
                 options["rotations"] = [int(part.strip()) for part in value.split(",") if part.strip()]
         else:
@@ -446,9 +452,10 @@ def build_decal_lights(
     scene: bpy.types.Scene,
     decal_spec: dict,
     light_rotation_deg: int,
+    surface: str,
 ) -> None:
-    """The retired parlor rig, translated to the canonical face and rotated."""
-    lighting = decal_spec["lighting"]
+    """The surface's light rig, translated to the canonical face and rotated."""
+    lighting = decal_spec["lighting"][surface]
     old_slot_y = float(lighting["translation"]["fromSlotY"])
     translate = Vector((0.0, -old_slot_y, 0.0))
     center = Vector((0.0, 0.0, 0.0))
@@ -486,6 +493,7 @@ def build_decal_camera(
     shell_spec: dict,
     decal_spec: dict,
     geometry: dict,
+    surface: str,
 ) -> bpy.types.Object:
     tile = shell_spec["tile"]
     camera_data = bpy.data.cameras.new("decal-camera")
@@ -494,7 +502,7 @@ def build_decal_camera(
     camera_data.clip_start = 0.1
     camera_data.clip_end = 200.0
     camera = new_object("decal-camera", camera_data)
-    distance = float(decal_spec["lighting"]["translation"].get("cameraDistance", 5.0))
+    distance = float(decal_spec["lighting"][surface]["translation"].get("cameraDistance", 5.0))
     target = Vector((0.0, 0.0, tile["height"] / 2.0))
     camera.location = Vector((0.0, -distance, tile["height"] / 2.0))
     aim(camera, target)
@@ -502,8 +510,8 @@ def build_decal_camera(
     return camera
 
 
-def build_decal_world(scene: bpy.types.Scene, decal_spec: dict) -> None:
-    world_spec = decal_spec["lighting"]["world"]
+def build_decal_world(scene: bpy.types.Scene, decal_spec: dict, surface: str) -> None:
+    world_spec = decal_spec["lighting"][surface]["world"]
     world = bpy.data.worlds.new("decal-world")
     world.use_nodes = True
     background = world.node_tree.nodes["Background"]
@@ -561,6 +569,7 @@ def bake_one(
     decal_spec: dict,
     faces_spec: dict,
     face: str,
+    surface: str,
     light_rotation_deg: int,
     symbol_rotation_deg: int,
     symbol_path: Path,
@@ -576,12 +585,15 @@ def bake_one(
     tile = shell_spec["tile"]
     scene = reset_scene()
     configure_render(scene, shell_spec)
-    build_decal_world(scene, decal_spec)
+    preview_samples = decal_spec.get("previewSamples")
+    if preview_samples:
+        scene.cycles.samples = int(preview_samples)
+    build_decal_world(scene, decal_spec, surface)
     scene.render.resolution_x = geometry["width"]
     scene.render.resolution_y = geometry["height"]
     scene.render.resolution_percentage = 100
-    build_decal_lights(scene, decal_spec, light_rotation_deg)
-    build_decal_camera(scene, shell_spec, decal_spec, geometry)
+    build_decal_lights(scene, decal_spec, light_rotation_deg, surface)
+    build_decal_camera(scene, shell_spec, decal_spec, geometry, surface)
 
     field_path = field_dir / f"{face}-field.png"
     field = carve_field(symbol_path, decal_spec, geometry, field_path)
@@ -612,13 +624,14 @@ def bake_one(
     decoded = quantize(rgba)
     measured = measure(decoded)
     log(
-        f"decal {face} l{light_rotation_deg} s{symbol_rotation_deg}: "
+        f"decal {face} {surface} l{light_rotation_deg} s{symbol_rotation_deg}: "
         f"{geometry['width']}x{geometry['height']}, "
         f"alpha {measured['alphaPixels']} px, ink {measured['inkPixels']} px, "
         f"{output_path.stat().st_size} B"
     )
     return {
         "face": face,
+        "surface": surface,
         "lightRotationDeg": light_rotation_deg,
         "symbolRotationDeg": symbol_rotation_deg,
         "textureFile": f"decals/{output_path.name}",
@@ -635,6 +648,7 @@ def verify_determinism(
     shell_spec: dict,
     decal_spec: dict,
     face: str,
+    surface: str,
     light_rotation_deg: int,
     symbol_rotation_deg: int,
     symbol_path: Path,
@@ -648,6 +662,7 @@ def verify_determinism(
         decal_spec,
         {},
         face,
+        surface,
         light_rotation_deg,
         symbol_rotation_deg,
         symbol_path,
@@ -667,7 +682,10 @@ def verify_determinism(
 
 def main(argv: list[str]) -> int:
     options = parse_options(argv)
-    decal_spec = read_json(RENDER_DIR / "decal-spec.json")
+    spec_path = Path(options["spec"]) if options.get("spec") else RENDER_DIR / "decal-spec.json"
+    if not spec_path.is_absolute():
+        spec_path = RENDER_DIR / spec_path
+    decal_spec = read_json(spec_path)
     shell_spec = read_json(RENDER_DIR / "shell-spec.json")
     faces_spec = read_json(RENDER_DIR / decal_spec["source"]["facesSpec"])
     check_blender_version(decal_spec)
@@ -695,10 +713,20 @@ def main(argv: list[str]) -> int:
         if missing:
             die(f"unknown face(s) {missing}")
         faces = options["only"]
-    rotations = options["rotations"] or list(decal_spec["rotations"])
-    if any(rotation % 90 != 0 for rotation in rotations):
-        die(f"rotations must be multiples of 90: {rotations}")
-    rotations = [normalize_rotation(rotation) for rotation in rotations]
+    surfaces = options["surface"] or list(decal_spec.get("surfaces", ["upright", "lying"]))
+    allowed_surfaces = list(decal_spec.get("surfaces", ["upright", "lying"]))
+    unknown = [surface for surface in surfaces if surface not in allowed_surfaces]
+    if unknown:
+        die(f"unknown surface(s) {unknown}; expected {allowed_surfaces}")
+    surface_rotations = {}
+    for surface in surfaces:
+        rotations = options["rotations"] or list(
+            decal_spec.get("surfaceRotations", {}).get(surface, decal_spec["rotations"])
+        )
+        if any(rotation % 90 != 0 for rotation in rotations):
+            die(f"{surface} rotations must be multiples of 90: {rotations}")
+        surface_rotations[surface] = [normalize_rotation(rotation) for rotation in rotations]
+    rotations = sorted({rotation for values in surface_rotations.values() for rotation in values})
     symbol_rotations = list(decal_spec.get("symbolRotations", [0]))
 
     symbol_dir = (RENDER_DIR / decal_spec["source"]["symbolDir"]).resolve()
@@ -717,18 +745,20 @@ def main(argv: list[str]) -> int:
         return 0
 
     plan = [
-        (face, rotation, symbol_rotation)
+        (face, surface, rotation, symbol_rotation)
         for face in faces
-        for rotation in rotations
+        for surface in surfaces
+        for rotation in surface_rotations[surface]
         for symbol_rotation in symbol_rotations
     ]
     log(
-        f"plan: {len(plan)} decals ({len(faces)} faces x {len(rotations)} light "
-        f"rotations x {len(symbol_rotations)} symbol rotations) -> {output_dir}"
+        f"plan: {len(plan)} decals ({len(faces)} faces; "
+        + ", ".join(f"{surface} {surface_rotations[surface]}" for surface in surfaces)
+        + f"; {len(symbol_rotations)} symbol rotations) -> {output_dir}"
     )
     if options["dryRun"]:
-        for face, rotation, symbol_rotation in plan:
-            log(f"  {face} light {rotation} symbol {symbol_rotation}")
+        for face, surface, rotation, symbol_rotation in plan:
+            log(f"  {face} {surface} light {rotation} symbol {symbol_rotation}")
         return 0
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -736,15 +766,16 @@ def main(argv: list[str]) -> int:
     field_dir.mkdir(parents=True, exist_ok=True)
     records: dict[str, dict] = {}
     total_bytes = 0
-    for index, (face, rotation, symbol_rotation) in enumerate(plan, start=1):
+    for index, (face, surface, rotation, symbol_rotation) in enumerate(plan, start=1):
         symbol_path = symbol_dir / f"{face}.png"
-        output_path = output_dir / f"{face}-l{rotation}.png"
-        log(f"[{index}/{len(plan)}] {face} light {rotation}")
+        output_path = output_dir / f"{face}-{surface}-l{rotation}.png"
+        log(f"[{index}/{len(plan)}] {face} {surface} light {rotation}")
         record = bake_one(
             shell_spec,
             decal_spec,
             faces_spec,
             face,
+            surface,
             rotation,
             symbol_rotation,
             symbol_path,
@@ -756,13 +787,14 @@ def main(argv: list[str]) -> int:
                 shell_spec,
                 decal_spec,
                 face,
+                surface,
                 rotation,
                 symbol_rotation,
                 symbol_path,
                 output_path,
                 field_dir,
             )
-        key = f"{face}:l{rotation}:s{symbol_rotation}"
+        key = f"{face}:{surface}:l{rotation}:s{symbol_rotation}"
         records[key] = record
         total_bytes += record["bytes"]
 
@@ -776,7 +808,8 @@ def main(argv: list[str]) -> int:
             "the tile's rotation. lightRotationDeg is the baked rig rotation, "
             "chosen so the light lands top-left on screen after that rotation. "
             "facePlateRect is the normalized sub-rect of the decal that maps to "
-            "the face plate; [0,0,1,1] means the whole image."
+            "the face plate; the 4 px safety ring is outside it. surface selects "
+            "the separate upright or lying light rig."
         ),
         "source": {
             "facesSpec": decal_spec["source"]["facesSpec"],
@@ -794,19 +827,26 @@ def main(argv: list[str]) -> int:
         },
         "carve": decal_spec["carve"],
         "lighting": {
-            "preset": decal_spec["lighting"]["preset"],
-            "rotationConvention": decal_spec["lighting"]["rotationConvention"],
-            "world": decal_spec["lighting"]["world"],
-            "translation": decal_spec["lighting"]["translation"],
-            "lights": decal_spec["lighting"]["lights"],
+            surface: {
+                "preset": decal_spec["lighting"][surface]["preset"],
+                "rotationConvention": decal_spec["lighting"][surface]["rotationConvention"],
+                "world": decal_spec["lighting"][surface]["world"],
+                "translation": decal_spec["lighting"][surface]["translation"],
+                "lights": decal_spec["lighting"][surface]["lights"],
+            }
+            for surface in surfaces
         },
+        "surfaces": surfaces,
+        "surfaceRotations": surface_rotations,
         "rotations": rotations,
         "symbolRotations": symbol_rotations,
         "budget": {"bytes": decal_spec["output"]["bytesBudget"]},
         "totals": {
             "decals": len(records),
             "faces": len(faces),
+            "surfaces": len(surfaces),
             "lightRotations": len(rotations),
+            "surfaceRotations": surface_rotations,
             "symbolRotations": len(symbol_rotations),
             "bytes": total_bytes,
         },

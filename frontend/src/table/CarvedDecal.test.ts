@@ -3,26 +3,27 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCanvas, loadImage as loadNapiImage } from '@napi-rs/canvas';
 import { describe, expect, it } from 'vitest';
-import type { DecalRecord, DecalRotation, DecalsManifest } from './decalManifest';
+import type { DecalRecord, DecalRotation, DecalSurface, DecalsManifest } from './decalManifest';
 import { decalKey, parseDecalsManifest } from './decalManifest';
 import { parseFacesManifest } from './faceManifest';
-import { decalLightRotationDegFor } from './shellManifest';
-import { parseShellsManifest } from './shellManifest';
+import { decalLightRotationDegFor, parseShellsManifest } from './shellManifest';
 import { TileAtlasBuilder } from './TileAtlasBuilder';
 import type { AtlasCanvas, AtlasImage } from './TileAtlasBuilder';
-import { tileRenderKey } from './tiles';
+import { surfaceForShell, tileRenderKey } from './tiles';
 
 const tableDir = fileURLToPath(new URL('../../public/table/', import.meta.url));
 const shells = parseShellsManifest(JSON.parse(readFileSync(join(tableDir, 'shells.json'), 'utf8')));
 const faces = parseFacesManifest(JSON.parse(readFileSync(join(tableDir, 'faces.json'), 'utf8')));
 
 function record(
+  surface: DecalSurface,
   light: DecalRotation,
   textureFile: string,
   symbol: DecalRotation = 0,
 ): DecalRecord {
   return {
     face: '1m',
+    surface,
     lightRotationDeg: light,
     symbolRotationDeg: symbol,
     textureFile,
@@ -47,12 +48,13 @@ function record(
 function manifest(records: DecalRecord[]): DecalsManifest {
   const decals: Record<string, DecalRecord> = {};
   for (const item of records) {
-    decals[decalKey(item.face, item.lightRotationDeg, item.symbolRotationDeg)] = item;
+    decals[decalKey(item.face, item.surface, item.lightRotationDeg, item.symbolRotationDeg)] = item;
   }
   return {
     version: 1,
     generatedBy: 'test',
     raster: { width: 2, height: 2, scale: 2, format: 'test' },
+    surfaces: ['upright', 'lying'],
     rotations: [0, 90, 180, 270],
     symbolRotations: [0],
     budgetBytes: 1024,
@@ -119,40 +121,50 @@ function builder(
 }
 
 describe('carved decals in the startup atlas', () => {
-  it('selects the decal by shell light rotation', async () => {
-    expect(decalLightRotationDegFor(shells.shells.shell_hand_slot_06)).toBe(0);
+  it('selects the separate upright and lying decal rigs by shell surface', async () => {
+    expect(surfaceForShell('shell_hand_slot_06')).toBe('upright');
+    expect(surfaceForShell('shell_flat_upright')).toBe('lying');
+    expect(surfaceForShell('shell_flat_sideways')).toBe('lying');
     expect(decalLightRotationDegFor(shells.shells.shell_flat_upright)).toBe(0);
     expect(decalLightRotationDegFor(shells.shells.shell_flat_sideways)).toBe(270);
 
     const upright = syntheticDecal('#00ff00', '#00ff00', true);
-    const sideways = syntheticDecal('#0000ff', '#0000ff', true);
+    const lying = syntheticDecal('#0000ff', '#0000ff', true);
+    const lying270 = syntheticDecal('#ff00ff', '#ff00ff', true);
     const decalSet = manifest([
-      record(0, 'decals/1m-l0.png'),
-      record(270, 'decals/1m-l270.png'),
+      record('upright', 0, 'decals/1m-upright-l0.png'),
+      record('lying', 0, 'decals/1m-lying-l0.png'),
+      record('lying', 270, 'decals/1m-lying-l270.png'),
     ]);
-    const atlas = await builder(decalSet, {
-      images: new Map<string, AtlasCanvas>([
-        [join(tableDir, 'decals/1m-l0.png'), upright],
-        [join(tableDir, 'decals/1m-l270.png'), sideways],
-      ]),
-    }).build(['shell_flat_upright', 'shell_flat_sideways']);
+    const images = new Map<string, AtlasCanvas>([
+      [join(tableDir, 'decals/1m-upright-l0.png'), upright],
+      [join(tableDir, 'decals/1m-lying-l0.png'), lying],
+      [join(tableDir, 'decals/1m-lying-l270.png'), lying270],
+    ]);
+    const atlas = await builder(decalSet, { images }).build([
+      'shell_hand_slot_06',
+      'shell_flat_upright',
+      'shell_flat_sideways',
+    ]);
 
-    const upSprite = atlas.sprites.get(tileRenderKey('shell_flat_upright', '1m'))!;
-    const sideSprite = atlas.sprites.get(tileRenderKey('shell_flat_sideways', '1m'))!;
-    expect(upSprite.decalFile).toBe('decals/1m-l0.png');
-    expect(upSprite.decalLightRotationDeg).toBe(0);
-    expect(sideSprite.decalFile).toBe('decals/1m-l270.png');
-    expect(sideSprite.decalLightRotationDeg).toBe(270);
-    expect(atlas.stats.decalSprites).toBe(2);
-    expect(atlas.stats.flatGlyphSprites).toBe(70);
+    const hand = atlas.sprites.get(tileRenderKey('shell_hand_slot_06', '1m'))!;
+    const flat = atlas.sprites.get(tileRenderKey('shell_flat_upright', '1m'))!;
+    const side = atlas.sprites.get(tileRenderKey('shell_flat_sideways', '1m'))!;
+    expect(hand.decalFile).toBe('decals/1m-upright-l0.png');
+    expect(hand.decalSurface).toBe('upright');
+    expect(flat.decalFile).toBe('decals/1m-lying-l0.png');
+    expect(flat.decalSurface).toBe('lying');
+    expect(side.decalFile).toBe('decals/1m-lying-l270.png');
+    expect(side.decalLightRotationDeg).toBe(270);
+    expect(atlas.stats.decalSprites).toBe(3);
   });
 
   it('composites the decal over the shell and keeps transparent pixels', async () => {
     // A fully solid green decal proves the decal is drawn over the shell.
     const green = syntheticDecal('#00ff00', '#00ff00', true);
-    const decalSet = manifest([record(0, 'decals/1m-l0.png')]);
+    const decalSet = manifest([record('lying', 0, 'decals/1m-lying-l0.png')]);
     const atlas = await builder(decalSet, {
-      images: new Map<string, AtlasCanvas>([[join(tableDir, 'decals/1m-l0.png'), green]]),
+      images: new Map<string, AtlasCanvas>([[join(tableDir, 'decals/1m-lying-l0.png'), green]]),
     }).build(['shell_flat_upright']);
     const page = atlas.pages[0];
     const sprite = atlas.sprites.get(tileRenderKey('shell_flat_upright', '1m'))!;
@@ -165,9 +177,9 @@ describe('carved decals in the startup atlas', () => {
 
     // Transparent left half: the ivory shell must show through.
     const half = syntheticDecal('#ff0000', '#ff0000', false);
-    const halfSet = manifest([record(0, 'decals/1m-l0.png')]);
+    const halfSet = manifest([record('lying', 0, 'decals/1m-lying-l0.png')]);
     const halfAtlas = await builder(halfSet, {
-      images: new Map<string, AtlasCanvas>([[join(tableDir, 'decals/1m-l0.png'), half]]),
+      images: new Map<string, AtlasCanvas>([[join(tableDir, 'decals/1m-lying-l0.png'), half]]),
     }).build(['shell_flat_upright']);
     const halfSprite = halfAtlas.sprites.get(tileRenderKey('shell_flat_upright', '1m'))!;
     const leftX = quad[0][0] + 0.25 * (quad[1][0] - quad[0][0]);
@@ -181,9 +193,9 @@ describe('carved decals in the startup atlas', () => {
   });
 
   it('falls back to the flat glyph, or throws when decals are required', async () => {
-    const decalSet = manifest([record(0, 'decals/1m-l0.png')]);
+    const decalSet = manifest([record('lying', 0, 'decals/1m-lying-l0.png')]);
     const green = syntheticDecal('#00ff00', '#00ff00', true);
-    const images = new Map<string, AtlasCanvas>([[join(tableDir, 'decals/1m-l0.png'), green]]);
+    const images = new Map<string, AtlasCanvas>([[join(tableDir, 'decals/1m-lying-l0.png'), green]]);
     const fallback = await builder(decalSet, { images }).build(['shell_flat_upright']);
     const twoMan = fallback.sprites.get(tileRenderKey('shell_flat_upright', '2m'))!;
     expect(twoMan.decalFile).toBeNull();
@@ -199,20 +211,21 @@ describe('carved decals in the startup atlas', () => {
       version: 1,
       generatedBy: 'test',
       raster: { width: 2, height: 2, scale: 2, format: 'png' },
+      surfaces: ['upright', 'lying'],
       rotations: [0, 90, 180, 270],
       symbolRotations: [0],
       budget: { bytes: 1024 },
       decals: {
-        '1m:l0:s0': record(0, 'decals/1m-l0.png'),
+        '1m:lying:l0:s0': record('lying', 0, 'decals/1m-lying-l0.png'),
       },
     };
     const parsed = parseDecalsManifest(raw);
-    expect(parsed.decals['1m:l0:s0'].lightRotationDeg).toBe(0);
-    expect(decalKey('1m', 270, 0)).toBe('1m:l270:s0');
+    expect(parsed.decals['1m:lying:l0:s0'].lightRotationDeg).toBe(0);
+    expect(decalKey('1m', 'lying', 270, 0)).toBe('1m:lying:l270:s0');
     expect(() =>
       parseDecalsManifest({
         ...raw,
-        decals: { '1m:l90:s0': record(0, 'decals/1m-l0.png') },
+        decals: { '1m:lying:l90:s0': record('lying', 0, 'decals/1m-lying-l0.png') },
       }),
     ).toThrow(/does not match/);
   });

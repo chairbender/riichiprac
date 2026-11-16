@@ -149,6 +149,12 @@ function checkManifest() {
     'decals.json light rotations are 0/90/180/270',
   );
   check(
+    Array.isArray(manifest.surfaces) &&
+      manifest.surfaces.includes('upright') &&
+      manifest.surfaces.includes('lying'),
+    `decals.json records both light rigs (${manifest.surfaces?.join('/')})`,
+  );
+  check(
     JSON.stringify(manifest.symbolRotations) === JSON.stringify([0]),
     'decals.json symbol rotations are [0]',
   );
@@ -164,8 +170,12 @@ function checkManifest() {
   const hashesByFace = new Map();
   for (const [key, record] of entries) {
     check(
-      key === `${record.face}:l${record.lightRotationDeg}:s${record.symbolRotationDeg}`,
-      `${key} key matches its face/rotations`,
+      record.surface === 'upright' || record.surface === 'lying',
+      `${key} surface is upright or lying (${record.surface})`,
+    );
+    check(
+      key === `${record.face}:${record.surface}:l${record.lightRotationDeg}:s${record.symbolRotationDeg}`,
+      `${key} key matches its face/surface/rotations`,
     );
     check(
       record.lightRotationDeg === 0 ||
@@ -176,8 +186,10 @@ function checkManifest() {
     );
     check(record.symbolRotationDeg === 0, `${key} symbolRotationDeg is 0`);
     check(
-      typeof record.textureFile === 'string' && record.textureFile.startsWith('decals/'),
-      `${key} textureFile is under decals/ (${record.textureFile})`,
+      typeof record.textureFile === 'string' &&
+        record.textureFile.startsWith('decals/') &&
+        record.textureFile.includes(`-${record.surface}-`),
+      `${key} textureFile names the surface (${record.textureFile})`,
     );
     check(
       rectMatches(record.facePlateRect),
@@ -233,10 +245,11 @@ function checkManifest() {
     if (record.face === '5mr' || record.face === '5pr' || record.face === '5sr') {
       check(stats.redPixels > 1000, `${key} red five really is red (${stats.redPixels} px)`);
     }
-    byFace.set(record.face, (byFace.get(record.face) ?? 0) + 1);
-    const hashes = hashesByFace.get(record.face) ?? new Set();
+    const faceSurface = `${record.face}:${record.surface}`;
+    byFace.set(faceSurface, (byFace.get(faceSurface) ?? 0) + 1);
+    const hashes = hashesByFace.get(faceSurface) ?? new Set();
     hashes.add(record.sha256.decodedRgba);
-    hashesByFace.set(record.face, hashes);
+    hashesByFace.set(faceSurface, hashes);
   }
 
   const spec = readJson(join(renderDir, 'decal-spec.json'));
@@ -254,25 +267,35 @@ function checkManifest() {
     rotationsSeen.size === 4,
     `the four light rotations are present (${[...rotationsSeen].sort().join('/')})`,
   );
-  for (const [face, hashes] of hashesByFace) {
-    check(hashes.size === 4, `${face} light rotations are four distinct renders (${hashes.size})`);
+  const surfaceRotations = manifest.surfaceRotations ?? {};
+  for (const [faceSurface, hashes] of hashesByFace) {
+    const surface = faceSurface.split(':')[1];
+    const expected = surfaceRotations[surface]?.length ?? 4;
+    check(
+      hashes.size === expected,
+      `${faceSurface} light rotations are ${expected} distinct renders (${hashes.size})`,
+    );
   }
   if (!committed) {
-    note(`spike/build manifest: ${byFace.size} faces, ${entries.length} decals`);
+    note(`spike/build manifest: ${byFace.size} face/surface groups, ${entries.length} decals`);
     return;
   }
   const facesManifest = readJson(checkFacesManifestPath);
   const inkedFaces = Object.entries(facesManifest.faces)
     .filter(([, face]) => (face.measured?.inkPixels ?? 0) > 0)
     .map(([id]) => id);
+  const expectedGroups = inkedFaces.length * (manifest.surfaces?.length ?? 2);
   check(
-    inkedFaces.every((face) => byFace.get(face) === 4),
-    `every inked face has four decals (${inkedFaces.length} faces)`,
+    [...byFace.keys()].length === expectedGroups,
+    `every inked face has both surface rigs (${expectedGroups} groups)`,
   );
-  check(
-    entries.length === inkedFaces.length * 4,
-    `committed decal count is ${inkedFaces.length * 4} (${entries.length})`,
-  );
+  for (const surface of manifest.surfaces ?? []) {
+    const expected = surfaceRotations[surface]?.length ?? 4;
+    check(
+      inkedFaces.every((face) => byFace.get(`${face}:${surface}`) === expected),
+      `every inked face has ${expected} ${surface} decals (${inkedFaces.length} faces)`,
+    );
+  }
 }
 
 function checkBudgets() {

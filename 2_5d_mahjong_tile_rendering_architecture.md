@@ -1150,7 +1150,7 @@ atlas-build emboss pass), not an unfinished step here.
    deliverable enumerated the three land families; a revealed dora indicator is
    a separate variant-family task, not a glyph swapped at draw time.
 
-## 12. Phase 2b: the carved face decals (spike 2026-11-15)
+## 12. Phase 2b: the carved face decals (2026-11-15)
 
 The user asked to keep the retired pipeline's **carve → paint → light** face
 decal, separate from the current shell/board lighting, and paste it onto the
@@ -1159,39 +1159,51 @@ sprites, scene manifest) are **not** restored. The chosen treatment is
 **option A**: a transparent carve/paint overlay, so the shell's own lighting and
 face colour remain outside the recessed lip.
 
-**Assets.** The decal is the inset face plate at **150 × 208** (@2x) plus a 4 px
-transparent safety ring, so the PNG is **158 × 216**, written with straight
-alpha. `facePlateRect` maps the inner 150 × 208 rect to the faceQuad, so a
-symbol that reaches the face edge is not clipped by the image border. It contains the painted symbol, the recessed lip/fillet and
-cavity AO; everything outside the carve is transparent (four corners alpha 0,
-18–66% of the image transparent in the spike). The symbol stays upright in
-face-local space; the four images per face are four baked **light rotations**
-(0/90/180/270), chosen so the light lands top-left on screen after the shell's
-`faceQuad` rotation. There is no per-slot fan: every hand slot with the same
-rotation shares the decal. `5z` has no ink and is skipped, so the full catalogue
-is 36 faces × 4 = **144 decals**.
+**Two light rigs.** The decal is the inset face plate at **150 × 208** (@2x)
+plus a 4 px transparent safety ring, so the PNG is **158 × 216**, written with
+straight alpha. `facePlateRect` maps the inner 150 × 208 rect to the faceQuad.
+It contains the painted symbol, the recessed lip/fillet and cavity AO;
+everything outside the carve is transparent (four corners alpha 0, 18–66% of the
+image transparent in the spike). The symbol stays upright in face-local space.
+`decal-spec.json` has separate **`lighting.upright`** (the approved parlour rig
+for the standing hand) and **`lighting.lying`** (the tunable rig for flat/pond
+tiles). `surfaceRotations` bakes one upright light rotation (`0`) and four lying
+rotations (`0/90/180/270`); the four lying images are the same tile under four
+light directions so the carve highlights change. There is no per-slot fan.
+
+**Lying tuner.** `cd frontend && npm run tune:carved` starts a local app at
+`http://localhost:7458`. It writes a temporary decal spec, runs the real Blender
+baker for the `1m` face with the lying rig at four light rotations, and
+composites each result onto the current `shell_flat_upright` through the real
+`TileAtlasBuilder` at @2x. A preview takes about **3 s** (48 samples, carve grid
+0.6, AO 4). "Apply lying params" writes only `lighting.lying` (and the shared
+carve controls) back to `decal-spec.json`; the upright rig is never touched.
+The four previews are the same flat tile under four light directions; the symbol
+stays upright so the carve highlights are what change.
 
 **Baker.** `tools/render/bake_decals.py` + `decal-spec.json`, Blender 4.5.9,
-Cycles CPU, 256 samples. It imports the current shell baker's tile/material/
-render helpers and ports the retired carve functions (`alpha_to_distance`,
-`bezier_profile`, `build_carved_face`) and parameters (depth 0.0121 × thickness,
-Bézier 0.6/0.8, transition 0.0107, paint edge 0.18, cavity AO). The retired
-parlor rig is translated from its original hand slot (y=-11.7) to the canonical
-face and rotated per decal. A new `alphaRamp` (0.08) feathers the outer lip into
-the shell face so the decal has no hard rectangle.
+Cycles CPU, 256 samples for a full bake. It imports the current shell baker's
+tile/material/render helpers and ports the retired carve functions
+(`alpha_to_distance`, `bezier_profile`, `build_carved_face`) and parameters
+(depth 0.0121 × thickness, Bézier 0.6/0.8, transition 0.0107, paint edge 0.18,
+cavity AO). The upright parlour rig is translated from its original hand slot
+(y=-11.7) to the canonical face; the lying rig is defined in the face frame
+with a high key so it reads as room light on a horizontal tile. `alphaRamp`
+(0.08) feathers the outer lip into the shell face.
 
-**Spike numbers.** 4 faces × 4 rotations = 16 decals, **739,056 B** PNG,
-**54 s** (~2.2–3.4 s each) on the dev box; `check-decals.mjs` reports 312
-checks on the spike. The full 144-decal PNG build (not committed) is
-**7,109,639 B**. WebP q90 is **1.79 MiB**, WebP q80 **1.48 MiB**, AVIF q60
-**1.20 MiB**, AVIF q50 **1.03 MiB**. Dropping the superseded flat glyphs from
-the shipped assets frees 577 KB, so AVIF q60 all-4-rotations fits (~8.13 MB
-total); keeping the flat glyphs only fits two rotations (0° and 270°). The
-user's look and budget call is pending; **no decal set is committed yet**. The user's look and
-budget call is pending; **no decal set is committed yet**.
+**Numbers.** The spike is 4 faces × (1 upright + 4 lying) = 20 decals,
+**926,272 B** PNG, ~1 min; `check-decals.mjs` reports 410 checks. The full set
+is 36 inked faces × 5 surface rotations = **180 decals** (5z is skipped). It is
+not committed. At 2× the PNG build is several MB, so the shipped format/scope
+decision is still pending: WebP/AVIF, dropping the superseded flat glyphs, or
+committing only the lying rotations the current shells use. The earlier
+all-light-rotation 144-decal PNG build measured 7,109,639 B; AVIF q60 was
+1.20 MiB for that set.
 
-**Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json`.
-`TileAtlasBuilder` takes an optional decal set, selects
+**Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json` with a
+key of `${face}:${surface}:l${light}:s${symbol}`. `TileAtlasBuilder` selects the
+surface from the shell (`upright` for the 14 hand slots, `lying` for
+`shell_flat_upright`/`shell_flat_sideways`), picks
 `lightRotationDeg = -screenRotationOfQuad(faceQuad)` and
 `symbolRotationDeg = faceRotationDeg - quadRotation`, loads the decal instead of
 the flat glyph, and still composites one `BakedTileSprite` per
@@ -1202,5 +1214,6 @@ compositing is added.
 **Review.** `cd frontend && npm run atlas:review:carved` writes
 `carved-compare-4x.png` (flat vs carved), `carved-variants-1x.png`,
 `carved-hand-fan-1x.png` and `carved-numbers.json` under
-`tools/render/build/review/`. The user signs off the look; the agent does not
-(AGENTS.md §6).
+`tools/render/build/review/`; the lying tuner writes
+`tools/render/build/tune/preview/preview-{0,90,180,270}.png`. The user signs off
+the look; the agent does not (AGENTS.md §6).

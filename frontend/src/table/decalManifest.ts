@@ -16,9 +16,12 @@
  *    families will add 180/270 variants later.
  */
 import { TILE_FACE_IDS, isTileFaceId } from './tiles';
-import type { TileFaceId } from './tiles';
+import type { FaceSurface, TileFaceId } from './tiles';
 
 export type DecalRotation = 0 | 90 | 180 | 270;
+
+/** The separate light rigs: standing hand vs flat/lying tile. */
+export type DecalSurface = FaceSurface;
 
 export interface DecalStats {
   readonly width: number;
@@ -38,6 +41,7 @@ export interface DecalStats {
 
 export interface DecalRecord {
   readonly face: TileFaceId;
+  readonly surface: DecalSurface;
   readonly lightRotationDeg: DecalRotation;
   readonly symbolRotationDeg: DecalRotation;
   /** `decals/<face>-l<rotation>.png` (or .webp/.avif once encoded). */
@@ -60,6 +64,7 @@ export interface DecalsManifest {
     readonly scale: number;
     readonly format: string;
   };
+  readonly surfaces: readonly DecalSurface[];
   readonly rotations: readonly DecalRotation[];
   readonly symbolRotations: readonly DecalRotation[];
   readonly budgetBytes: number;
@@ -68,20 +73,22 @@ export interface DecalsManifest {
 
 export function decalKey(
   face: TileFaceId,
+  surface: DecalSurface,
   lightRotationDeg: DecalRotation,
   symbolRotationDeg: DecalRotation,
 ): string {
-  return `${face}:l${lightRotationDeg}:s${symbolRotationDeg}`;
+  return `${face}:${surface}:l${lightRotationDeg}:s${symbolRotationDeg}`;
 }
 
 export function decalFor(
   manifest: DecalsManifest | null | undefined,
   face: TileFaceId,
+  surface: DecalSurface,
   lightRotationDeg: DecalRotation,
   symbolRotationDeg: DecalRotation,
 ): DecalRecord | null {
   if (!manifest) return null;
-  return manifest.decals[decalKey(face, lightRotationDeg, symbolRotationDeg)] ?? null;
+  return manifest.decals[decalKey(face, surface, lightRotationDeg, symbolRotationDeg)] ?? null;
 }
 
 function fail(message: string): never {
@@ -140,9 +147,15 @@ function parseDecal(key: string, raw: unknown): DecalRecord {
   const record = raw as Record<string, unknown>;
   const face = record.face;
   if (!isTileFaceId(face)) fail(`${key}.face is not a tile face`);
+  const surface = record.surface;
+  if (surface !== 'upright' && surface !== 'lying') {
+    fail(`${key}.surface must be upright or lying`);
+  }
   const light = rotation(record.lightRotationDeg, `${key}.lightRotationDeg`);
   const symbol = rotation(record.symbolRotationDeg, `${key}.symbolRotationDeg`);
-  if (decalKey(face, light, symbol) !== key) fail(`key ${key} does not match its face/rotations`);
+  if (decalKey(face, surface, light, symbol) !== key) {
+    fail(`key ${key} does not match its face/surface/rotations`);
+  }
   const textureFile = record.textureFile;
   if (typeof textureFile !== 'string' || !textureFile) fail(`${key}.textureFile must be a path`);
   const rect = record.facePlateRect;
@@ -164,6 +177,7 @@ function parseDecal(key: string, raw: unknown): DecalRecord {
   }
   return {
     face,
+    surface,
     lightRotationDeg: light,
     symbolRotationDeg: symbol,
     textureFile,
@@ -186,6 +200,14 @@ export function parseDecalsManifest(raw: unknown): DecalsManifest {
   const raster = doc.raster as Record<string, unknown>;
   const budget = doc.budget as Record<string, unknown> | undefined;
   if (!budget || typeof budget.bytes !== 'number') fail('budget.bytes must be a number');
+  const surfacesRaw = doc.surfaces;
+  if (!Array.isArray(surfacesRaw)) fail('surfaces must be an array');
+  const surfaces = surfacesRaw.map((value, index) => {
+    if (value !== 'upright' && value !== 'lying') {
+      fail(`surfaces[${index}] must be upright or lying`);
+    }
+    return value;
+  });
   const rotationsRaw = doc.rotations;
   if (!Array.isArray(rotationsRaw)) fail('rotations must be an array');
   const rotations = rotationsRaw.map((value, index) => rotation(value, `rotations[${index}]`));
@@ -209,6 +231,7 @@ export function parseDecalsManifest(raw: unknown): DecalsManifest {
       scale: positive(raster.scale, 'raster.scale'),
       format: typeof raster.format === 'string' ? raster.format : '',
     },
+    surfaces,
     rotations,
     symbolRotations,
     budgetBytes: finite(budget.bytes, 'budget.bytes'),
