@@ -155,7 +155,7 @@ Rules for the boundary:
 | 10 | Pack schema + publisher + audit | pack/manifest types, source/licence gate, hash/byte budget, atomic write | this repo, `src/miner/pack/` | `export/tenhou6.rs` for review only |
 | 11 | Frontend pack loader | manifest fetch, schema check, IndexedDB cache, picker integration, ARIA parity | this repo, `frontend/src/` | `services/weightLoader.ts`, `scenarios.ts`, `App.tsx` |
 | 12 | Review / validation harness | end-to-end pipeline test, review queue, funnel report | this repo + corpus repo | `verify_report`, `fuzz_scenarios`, `scenario-report` |
-| 13 | Corpus storage / ops | raw logs outside git, dataset card, DB, object storage | corpus repo + operator | hosting-plan pattern |
+| 13 | Corpus storage / ops | local data root + SQLite scenario DB + Google Drive backup via rclone; dataset card; no raw data in git | corpus repo + operator | §2.5 |
 
 ### 2.3 End-to-end pipeline
 
@@ -267,6 +267,100 @@ pub struct GameProvenance {
 `LicenseInfo` must carry, at minimum: licence id, attribution string,
 `data_commercial_use: bool`, and a source URL. Unknown or missing licence data
 fails the publisher.
+
+### 2.5 Storage and backup (local working copy + Google Drive)
+
+The miner never reads or writes its working data directly on a Google Drive
+mount. Google Drive is the durable backup and transport layer; the miner runs
+against a local data root, and rclone mirrors that root to Drive.
+
+**Local data root.** One configurable directory, default
+`~/riichiprac-data` (`RIICHI_DATA_DIR`):
+
+```text
+$RIICHI_DATA_DIR/
+├── replays/
+│   └── <family>/<replay_id>.jsonl.gz       # immutable raw self-play logs
+├── db/
+│   ├── miner.sqlite                        # operational scenario/candidate DB
+│   └── analytics.duckdb                    # optional derived analytics
+├── snapshots/
+│   └── miner-YYYYMMDD-HHMMSS.sqlite        # point-in-time DB snapshots
+├── packs/
+│   └── <pack-id>-<sha256-prefix>.json.gz   # generated static pack exports
+├── tmp/                                    # atomic-write staging
+└── logs/                                   # rclone/run logs
+```
+
+The data root is outside the repos; if an operator places it inside one, it must
+be gitignored. Raw logs, DBs, snapshots and generated packs are never committed
+to either repo. Only the runner code, schemas, match plans and small fixtures
+live in `riichiprac-corpus` / `riichiprac`.
+
+**Replay store.**
+
+- One gzipped mjai JSONL file per game, content-addressed by `replay_id`
+  (sha256 of the canonical raw log), under `replays/<family>/<replay_id>.jsonl.gz`.
+- The `replays` row stores the path **relative to the data root**, the byte
+  count and the sha256; never an absolute path or a username.
+- Logs are immutable. A regenerated game with a different hash is a new file,
+  not an overwrite; a seed mismatch is a reproducibility bug to investigate.
+- Google Drive mirror: `gdrive:riichiprac/replays/`.
+  `rclone copy --checksum --immutable "$RIICHI_DATA_DIR/replays" \
+  gdrive:riichiprac/replays`; `copy` never deletes, and `--immutable` prevents
+  accidental overwrite of a raw log.
+- Keep a `SHA256SUMS` / index manifest in the Drive folder for restore checks.
+
+**Scenario DB.**
+
+- `miner.sqlite` is the operational DB and the source of truth for candidate and
+  curated scenarios. It is a single file, transactional, and easy to snapshot.
+- Tables: `replays`, `corpus_runs`, `decisions`, `selected_scenarios`,
+  `variants`, `packs`, `backups`. `decisions.state_json` holds the complete
+  reconstructed `GameState`; `selected_scenarios` holds the curated rows that
+  will be exported; `packs` / `variants` hold pack and transform metadata.
+- `analytics.duckdb` / Parquet is optional and derived from `miner.sqlite`; it
+  is reproducible, so it is not the primary backup target.
+- Google Drive backup uses **snapshots**, not a copy of the live DB:
+  `sqlite3 "$RIICHI_DATA_DIR/db/miner.sqlite" "VACUUM INTO \
+  '$RIICHI_DATA_DIR/snapshots/miner-YYYYMMDD-HHMMSS.sqlite'"`, then
+  `rclone copy "$RIICHI_DATA_DIR/snapshots/" gdrive:riichiprac/db/`.
+  Keep the last N snapshots (for example 7 daily + 4 weekly); do not
+  `rclone sync` the snapshot directory with delete semantics.
+- Verify after upload with `rclone check`; periodically restore a snapshot,
+  run `PRAGMA integrity_check`, and compare replay hashes.
+- Never `rclone mount` Google Drive and point SQLite at it. WAL/locking on a
+  network mount is not a supported backup strategy.
+
+**Curated scenarios and packs.**
+
+- The DB is the source of truth; a pack is a deterministic **export** of
+  `selected_scenarios` + `variants` + provenance.
+- The app still loads static gzipped JSON packs, never SQLite or Google Drive.
+  Pack files are written under `$RIICHI_DATA_DIR/packs/`, audited, then
+  published to `frontend/public/scenarios/` or R2/HF with a same-origin
+  manifest.
+- The DB backup therefore preserves the exact curated rows needed to regenerate
+  a pack, while the pack remains the small runtime artifact.
+- Pack exports may also be copied to `gdrive:riichiprac/packs/` for convenience,
+  but they are reproducible from the DB and are not the backup source of truth.
+
+**Cadence and recovery.**
+
+- After each corpus run, labelling pass, selection pass or pack build: snapshot
+  the DB and rclone the replay folder and the new snapshot.
+- Recovery: restore `replays/` from Drive, restore the latest
+  `miner-*.sqlite` snapshot, run `PRAGMA integrity_check`, then verify a sample
+  of `replay_id` hashes. The DB can also be rebuilt from the raw corpus plus
+  `(model_sha256, classifier_version, transform_version)`.
+- Google Drive contains self-play data only: the source allowlist still applies,
+  and no third-party or human logs are stored there. rclone credentials and the
+  remote name live in the operator's rclone config, never in a repo.
+
+**Backup fields.** Add to `replays`, `packs` or a `backups` table:
+`storage_backend` (`local` / `gdrive`), `storage_path`, `backed_up_at`,
+`backup_sha256`, `last_verified_at`. `corpus_runs` records the run's local
+directory, Drive destination, replay count, snapshot name and rclone status.
 
 ---
 
@@ -421,7 +515,7 @@ A match plan is a small, reviewable document:
   "seat_schedule": "rotate_each_game",
   "seed_schedule": { "kind": "sequence", "start": 1000, "step": 1 },
   "seats": [ /* four AgentSpec objects; see §3.4 */ ],
-  "log_dir": "corpus/mixed/2026-11/mortal_mirror"
+  "log_dir": "replays/mortal_mirror"
 }
 ```
 
@@ -543,7 +637,7 @@ corpus path, never an absolute local path or a username.
   ],
   "log": {
     "format": "mjai",
-    "path": "corpus/mixed/2026-11/rule_baseline/000017.jsonl.gz",
+    "path": "replays/rule_baseline/<replay_id>.jsonl.gz",
     "bytes": 41234,
     "sha256": "sha256:..."
   },
@@ -588,8 +682,9 @@ has an unknown licence is rejected.
   count, no kuitan, sanma, local yaku, different starting score) is rejected for
   that corpus. Do not silently normalise a different game into the app's state.
 - **Raw logs.** Never commit raw corpus logs, weights or third-party data. Keep
-  curated packs small and source-addressed; keep the corpus on local disk/R2/HF
-  with a dataset card.
+  curated packs small and source-addressed. The raw corpus lives in the local
+  data root and is backed up to Google Drive via rclone; only curated packs go to
+  Pages/R2/HF. Keep a dataset card with the corpus.
 
 A pack's `source` block is the union of every contributing game's agents, not a
 per-scenario guess:
@@ -940,17 +1035,26 @@ later unit uses.
   `MatchPlan`, `CorpusId`, `ReplayId`.
 - Add the source allowlist (`ai_selfplay` only), typed rejection errors, an
   atomic write helper, and a funnel counter.
-- Define the candidate DB schema from strategy §4.2 (`replays`, `decisions`,
-  `packs`), extended with `family`, `match_plan_id`, `agents`, `trigger`,
-  `variant_of`, `transform_chain` and label/unit fields. SQLite for local
-  tracking, Parquet/DuckDB for analytics if needed.
+- Define the candidate/curated DB schema from strategy §4.2 (`replays`,
+  `corpus_runs`, `decisions`, `selected_scenarios`, `variants`, `packs`,
+  `backups`), extended with `family`, `match_plan_id`, `agents`, `trigger`,
+  `variant_of`, `transform_chain` and label/unit fields. SQLite is the
+  operational DB; Parquet/DuckDB is an optional derived analytics export.
+- Define the local data root (`RIICHI_DATA_DIR`) and its `replays/`, `db/`,
+  `snapshots/`, `packs/`, `tmp/` and `logs/` layout from §2.5; store relative
+  paths in the DB, never absolute host paths.
+- Define the rclone backup contract: Drive remote/folder names, append-only
+  raw-log copy, timestamped DB snapshots, `rclone check`, and a restore/integrity
+  test. Do not put rclone credentials in either repo.
 - Document the JSON schema names and versioning rule.
 - No `libriichi` dependency; no AGPL code in this repo.
 
-**Accepts.** Schema round-trip; the candidate DB schema creates/migrates on a
-fixture; allowlist rejects every other source; atomic write leaves no partial
-file on error; `cargo tree --features miner` contains no `libriichi`; default
-WASM check stays clean.
+**Accepts.** Schema round-trip; the DB schema creates/migrates on a fixture;
+the data-root layout and relative-path rule are tested; a SQLite `VACUUM INTO`
+snapshot passes `PRAGMA integrity_check`; the rclone backup/restore commands are
+documented and dry-run/checkable; allowlist rejects every other source; atomic
+write leaves no partial file on error; `cargo tree --features miner` contains no
+`libriichi`; default WASM check stays clean.
 
 **Depends on.** Nothing.
 
@@ -1044,13 +1148,19 @@ write.
   `isolated-first`, H3 `efficiency-safety` from §3.2. Reuse the hotseat `Policy`
   idea if practical; do not expand the shipped WASM hotseat into a full corpus
   engine.
-- Write `GameProvenance` per game and per seat; emit raw logs outside git.
+- Write `GameProvenance` per game and per seat; emit raw logs as
+  `$RIICHI_DATA_DIR/replays/<family>/<replay_id>.jsonl.gz` with relative paths
+  in the DB.
+- Add the rclone backup hook: after a shard, copy the immutable replay folder to
+  `gdrive:riichiprac/replays/` and record the result in `corpus_runs`.
 - Document the referee/protocol decision and what it guarantees.
 
 **Accepts.** H0 and H1 complete a kyoku; H2/H3 are config-selectable without
 changing the runner; the same seed produces the same log; every game has complete
-per-seat provenance; the source/licence gates pass; the logs parse through R1/R2;
-no weights or AGPL code are needed for the reference family.
+per-seat provenance; replay paths are content-addressed and relative; the source/
+licence gates pass; the logs parse through R1/R2; the rclone hook is dry-run/
+checkable against a fixture remote; no weights or AGPL code are needed for the
+reference family.
 
 **Depends on.** F1, R1, R2.
 
@@ -1233,15 +1343,21 @@ family alone.
 - A single corpus config listing enabled families, games, seat schedules, seed
   ranges and quotas.
 - Run all enabled families; produce a funnel report and per-family shortfalls.
-- Ingest into the candidate DB; validate through R1/R2; verify provenance rows.
+- Ingest into the scenario DB; validate through R1/R2; verify provenance rows.
+- Write the local data-root layout from §2.5; snapshot the DB with
+  `VACUUM INTO`, rclone the replay folder and snapshot to Google Drive, and
+  record the result in `corpus_runs` / `backups`.
 - Dataset card, storage layout, retention note; raw logs outside git.
 - Deterministic rerun of a small shard.
 
 **Accepts.** A configured 1k-game smoke corpus (or the agreed size) across
 families; 100 % parse; 0 invalid states; complete provenance; funnel counts match
-the per-family reports; quotas/shortfalls visible; dataset card; no raw logs or
-weights in git; no third-party source. 10k games is the scale target only after
-this smoke gate passes.
+the per-family reports; quotas/shortfalls visible; the replay folder and DB
+snapshot are present under the data root; `rclone check` passes against the
+configured Drive destination; a restored DB snapshot passes
+`PRAGMA integrity_check`; dataset card; no raw logs or weights in git; no
+third-party source. 10k games is the scale target only after this smoke gate
+passes.
 
 **Depends on.** C2–C7.
 
@@ -1539,15 +1655,19 @@ variants into a real, audited pack.
 
 **Scope.**
 
-- Read selected decisions + gated variants; emit `PackScenario` records with
-  provenance and transform chains.
+- Read selected decisions + gated variants from the DB (`selected_scenarios`,
+  `variants`); emit `PackScenario` records with provenance and transform chains.
+- Write the pack to `$RIICHI_DATA_DIR/packs/<pack-id>-<sha256-prefix>.json.gz`
+  and record it in `packs` / `pack_scenarios`; the DB is the source of truth, the
+  JSON file is the runtime export.
 - Apply family quotas, per-base caps, dedupe and the pack byte budget.
 - Re-run the audit and write the manifest atomically.
 - Emit a pack report: family mix, variant share, largest base share, byte size,
   licence/agent union.
 
 **Accepts.** A pack assembled from a real (or realistic fixture) selection;
-audit clean; quotas/caps/dedupe enforced; deterministic pack hash; pack report.
+audit clean; quotas/caps/dedupe enforced; deterministic pack hash; the DB rows
+and JSON export agree exactly; pack report.
 
 **Depends on.** P1a, S2, V2.
 
@@ -1561,12 +1681,15 @@ corpus.
 **Scope.**
 
 - Same-origin manifest + content-addressed packs under
-  `frontend/public/scenarios/`; keep total committed packs within the agreed
+  `frontend/public/scenarios/`; the bodies come from the audited exports in
+  `$RIICHI_DATA_DIR/packs/`. Keep total committed packs within the agreed
   budget (default 50 MB; move to R2/HF when larger). The AGENTS.md 8 MB
   committed-asset budget is already mostly consumed by the rendered-view
   shell/felt assets (~7.2 MB), so packs default to a lazy external source or a
   very small same-origin pack; do not assume pack bodies fit in the remaining
   repo budget.
+- Google Drive is a backup for the corpus/DB, **not** a runtime pack host; the
+  browser loads Pages/R2/HF, never Drive.
 - Optional R2/HF mirror; manifest stays same-origin; loader tries same-origin
   first.
 - GitHub Release asset path only as a CI copy step, because Release assets send
@@ -1773,6 +1896,17 @@ wasm-pack test --headless --chrome
 cd frontend && npm test && npm run build && npm run lint
 ```
 
+Storage/backup check (operator machine, when a Drive remote is configured):
+
+```bash
+STAMP=$(date +%s)
+SNAP="$RIICHI_DATA_DIR/snapshots/miner-check-$STAMP.sqlite"
+sqlite3 "$RIICHI_DATA_DIR/db/miner.sqlite" "VACUUM INTO '$SNAP'"
+sqlite3 "$SNAP" "PRAGMA integrity_check;"
+rclone check "$RIICHI_DATA_DIR/replays" gdrive:riichiprac/replays --checksum
+rclone copy "$SNAP" gdrive:riichiprac/db/
+```
+
 If the baseline `cargo fmt --check` is red on `main` for an unrelated file, fix
 or quarantine that separately; do not let it hide a real failure in a miner
 unit.
@@ -1807,6 +1941,7 @@ Which gate applies:
 | G8 Pack | schema; source/licence; legal answers; no spoilers; hash/byte budget; atomic write | P1a–P1b |
 | G9 Loader | vitest, build, lint; manifest/pack load; cache; ARIA parity | P3 |
 | G10 End-to-end | fixture pipeline in CI; deterministic pack hash; all gates have a failing test | Q1 |
+| G11 Storage/backup | local data-root layout; content-addressed replay paths; SQLite snapshot + `PRAGMA integrity_check`; `rclone check` against the configured Drive destination; restore sample | F1, C1, C8, Q1 |
 
 ### 7.3 Pack and loader gates
 
@@ -1857,6 +1992,7 @@ follow AGENTS.md §6 and `tools/render/README.md`.
 | 11 | Hosting budget | Pages is simple but has site/bandwidth limits; R2/HF are cheap and CORS-friendly | P2 |
 | 12 | Multi-step drills | They need a step engine and grading/history behavior; keep IDs now, ship later | P1a, P3 |
 | 13 | `mortal_298k` is a community checkpoint whose model card says it was trained on Tenhou hanchan data | This is a weights-provenance question, separate from the no-third-party-replay rule; review before commercial use | product owner; P1a licence gate |
+| 14 | Google Drive is backup, not a live database; rclone copy/delete semantics, quota and latency can lose or corrupt data | Use a local SQLite DB, `VACUUM INTO` snapshots, append-only `rclone copy --immutable` for replays, `rclone check` and a restore test; never mount Drive and point SQLite at it | F1, C8, Q1 |
 
 ---
 
@@ -1876,7 +2012,8 @@ The first pack (Q2) is done when all of these are true:
   are variants, or the pack report justifies a lower share; no single base
   dominates the pack;
 - the pack and manifest pass audit, hash/byte budgets, and the source/licence
-  gate;
+  gate; the source DB and replay folder are backed up to Google Drive and a
+  restore sample passes;
 - the frontend loads the manifest, fetches the pack lazily, caches it in
   IndexedDB, and grades with the existing WASM path; vitest/build/lint pass;
 - a human has reviewed the 100 candidates (and the user has signed off any
@@ -1892,6 +2029,9 @@ The first pack (Q2) is done when all of these are true:
   scenario families, pack format, existing-code appendix.
 - [`hosting-plan.md`](hosting-plan.md) — Pages/Release/HF pattern, CORS findings,
   weights licence boundary.
+- [rclone Google Drive](https://rclone.org/drive/) and
+  [SQLite `VACUUM INTO`](https://www.sqlite.org/lang_vacuum.html) — the backup
+  mechanics used by §2.5.
 - [`scenario-report-plan.md`](scenario-report-plan.md) — single-candidate report
   envelope, useful for the review queue.
 - [`scenario-fuzz-plan.md`](scenario-fuzz-plan.md),
