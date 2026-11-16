@@ -14,6 +14,7 @@
     "layout:review": "vite-node scripts/review-zone-layout.ts",
     "overlays:export": "vite-node scripts/export-overlays.ts",
     "overlays:review": "vite-node scripts/review-overlays.ts",
+    "experiment:review": "vite-node scripts/review-contact-shadow-experiment.ts",
     "tune:carved": "vite-node scripts/tune-carved.ts"
   },
   "dependencies": {

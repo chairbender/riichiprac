@@ -672,6 +672,7 @@
       "standing": 4
     },
     "tangentFadePx1x": 16,
+    "contourSmoothPx1x": 1.5,
     "supportSigma": 3,
     "contourAlpha": 0.5,
     "colorHex": "#0b1418",

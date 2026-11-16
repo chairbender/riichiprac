@@ -42,6 +42,7 @@ bash tools/render/bake-shells.sh --shadow-audition  # REF + A/B/C shadow sheet
 bash tools/render/bake-shells.sh --check   # shell + contact-shadow check; no Blender needed
 bash tools/render/bake-overlays.sh --bake  # bake the Phase 3.5 contact decals + check
 bash tools/render/bake-overlays.sh --check # contact decals + composed pixels; no Blender
+bash tools/render/bake-contact-shadow-experiment.sh  # 3D shadow-catch experiment; build-only
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
 node tools/render/scripts/preview-group-shadow.mjs  # merged vs per-tile group shadows; no Blender
 node tools/render/scripts/bake-faces.mjs   # bake the 37 face glyphs + faces.json (resvg)
@@ -1236,7 +1237,10 @@ WebGL and no per-frame lighting, and the group recipe is unchanged.
   `overlays/2x/`, plus `frontend/public/table/overlays.json`. A decal is an
   outward half-Gaussian from the caster body's opaque contour
   (`alpha(d) = coreAlpha * exp(-0.5 (d/sigma)^2)`), zero inside the body and
-  beyond `3σ`, faded at both tangential ends. Committed: `coreAlpha 0.35`,
+  beyond `3σ`, faded at both tangential ends. The contour is fitted to a smooth
+  line along the tangent (local smoothing fallback for a curved edge), because a
+  per-row band on the bevel staircase produced horizontal steps on the
+  neighbouring face; the fill still starts at the true contour. Committed: `coreAlpha 0.35`,
   `σ 6 px lying / 4 px standing`, fade 16 px, ink `#0b1418`. It is baked from
   the committed shell PNG alpha, **not** from `shadowShape` (the blob is 1.15×
   the body with a 40 px top trim and a 5/7 offset, so it would smear).
@@ -1246,7 +1250,7 @@ WebGL and no per-frame lighting, and the group recipe is unchanged.
   `(shell, side)` set, filtered by `overlay.enabledFamilies`. **Only the human
   hand fan is enabled** (`shell_hand_slot_`): the lying face-up ponds/melds read
   as smudges and are deliberately unchanged; the top hand, side hands and walls
-  are off too. The current bake is **13 hand decals, 20,272 B** across both
+  are off too. The current bake is **13 hand decals, 35,780 B** across both
   scales. The `right` casts use a side override (σ 2.5 px / α 0.50) because the
   right half looked too wide; the left casts stay σ 4 / α 0.35.
 - **Where they go:** `frontend/src/table/contactOverlays.ts` derives contacts
@@ -1257,9 +1261,10 @@ WebGL and no per-frame lighting, and the group recipe is unchanged.
 - **How it stays off the felt:** the compositor clips each decal to the
   neighbour's `bodyQuads` polygon (an inset hull in `overlays.json`), not to the
   advance box: an oblique side-wall or standing-hand body does not fill its box.
-- **Checks:** `node tools/render/scripts/check-overlays.mjs` runs 529
-  dependency-free checks (asset alpha/hash/shape, clip coverage, and a decoded-
-  pixel composition over the real felt). Every zone changes **0 felt pixels**;
+- **Checks:** `node tools/render/scripts/check-overlays.mjs` runs 555
+  dependency-free checks (asset alpha/hash/shape, tangential visible-band
+  smoothness, clip coverage, and a decoded-pixel composition over the real
+  felt). Every zone changes **0 felt pixels**;
   the four ponds are asserted to stay unshadowed (0 decals, 0 changes); the
   hand has 12 decals with mean Δluma 15.59 and max stacked alpha 0.49. The
   §10.12 seam kink stays below 0.05.
@@ -1273,6 +1278,38 @@ WebGL and no per-frame lighting, and the group recipe is unchanged.
   committed, thinner still), `pond-layouts-1x.png` (the disabled baseline),
   `overlay-zones-1x.png` and `overlay-decals-1x.png`. Visual sign-off is the
   user's (AGENTS.md §6).
+
+## Experiment: a 3D contact-shadow catch (build-only)
+
+The synthetic contact bands are a per-shell stamp. A physically caught shadow is
+a possible replacement, especially for the fan where every target/caster pair
+differs. This experiment does not ship anything.
+
+```bash
+bash tools/render/bake-contact-shadow-experiment.sh
+xdg-open tools/render/build/contact-shadow-experiment/contact-shadow-experiment-sheet.png
+cat tools/render/build/contact-shadow-experiment/contact-shadow-experiment-numbers.json
+```
+
+- **Geometry:** the hand shells are the same eye at the row centre with the tile
+  at its true row offset (`lateralOffsetUnits = -offsetUnits`). The experiment
+  places the target at the origin, the caster one 0.75-unit step along the row,
+  and uses the target's published shell camera. The target reference crop comes
+  out **byte-identical to the committed target body** (mean/max Δ 0), so the
+  pair scene, framing and crop are exact.
+- **Variants:** target-only vs target+caster with the caster invisible to the
+  camera but still casting → the physical overlay; and a separate emission
+  target with a Cycles AO node (distance 0.12) and no key/world → the contact AO
+  overlay. The sheet shows no overlay, the committed synthetic decal, the
+  physical catch, and physical+AO for the right pair (slot 11 from 10) and the
+  left pair (slot 2 from 3) at 3×.
+- **Outputs** are target-space straight-alpha ink (`#0b1418`) at 1x/2x, the same
+  size and anchor as the target shell texture, so a future compositor can draw
+  one after the target body. No committed assets or manifests change.
+- **Current numbers:** physical peak 1.0 / mean 0.50 (right) and 1.0 / 0.62
+  (left); AO peak 1.0 / mean 0.52 and 0.48; the right pair's synthetic peak is
+  0.5. The sheet is for the user's verdict (AGENTS.md §6); the tooling is
+  experimental and uncommitted.
 
 ## Legacy
 

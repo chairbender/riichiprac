@@ -43,6 +43,8 @@ export interface OverlayModel {
   readonly sigmaPx1x: { readonly lying: number; readonly standing: number };
   /** The band's alpha fades to zero over this many @1x px at each end. */
   readonly tangentFadePx1x: number;
+  /** Smoothing of the silhouette contour along the tangent (removes the staircase). */
+  readonly contourSmoothPx1x: number;
   /** The support extends this many sigma outward from the contour. */
   readonly supportSigma: number;
   readonly colorHex: string;
@@ -228,6 +230,7 @@ export function parseOverlayManifest(raw: unknown): OverlayManifest {
       standing: positive(sigmas.standing, 'model.sigmaPx1x.standing'),
     },
     tangentFadePx1x: nonNegative(model.tangentFadePx1x, 'model.tangentFadePx1x'),
+    contourSmoothPx1x: positive(model.contourSmoothPx1x, 'model.contourSmoothPx1x'),
     supportSigma: positive(model.supportSigma, 'model.supportSigma'),
     colorHex: typeof model.colorHex === 'string' ? model.colorHex : fail('model.colorHex'),
     sideOverrides,

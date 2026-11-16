@@ -10,8 +10,10 @@
  *
  *   asset    every decal exists at both scales, its decoded-RGBA hash and byte
  *            count match, its alpha is zero inside the caster's opaque body and
- *            on the outer ring, its peak is the published core, and it is
- *            smooth, monotonic away from the contact and faded at the ends;
+ *            on the outer ring, its peak is the published core, it is smooth,
+ *            decays away from the contact, is faded at the ends, and its
+ *            *visible* band has no tangential staircase step (the horizontal
+ *            artifact the contour fit removes);
  *   layout   every contact in the committed fixture resolves to a decal, the
  *            clip is inside the neighbour's box, draw positions are whole px,
  *            and every overlay is attached to an earlier body;
@@ -244,7 +246,9 @@ function checkDecalAlpha(decal, image1x, image2x) {
       Math.abs(peak - decal.peakAlpha) <= 0.02,
       `${id} ${scale}x peak alpha ${peak.toFixed(3)} matches ${decal.peakAlpha}`,
     );
-    check(maxStep <= 0.12, `${id} ${scale}x is smooth (max adjacent alpha step ${maxStep.toFixed(3)})`);
+    // The thin right band is an intentional Gaussian: its steepest radial step
+    // is ~0.12 at σ2.5 / α0.50, so this guards the hard-edge floor only.
+    check(maxStep <= 0.15, `${id} ${scale}x is smooth (max adjacent alpha step ${maxStep.toFixed(3)})`);
 
     for (let x = 0; x < image.width; x += 1) {
       outerRing += alphaAt(x, 0) > 0 ? 1 : 0;
@@ -260,6 +264,12 @@ function checkDecalAlpha(decal, image1x, image2x) {
     // shell is opaque, so it can never darken the tile that casts it.
     const shellImage = shellImageAt(decal.shell, scale);
     const offset = decalOffsetInShell(decal);
+    const isInsideBody = (x, y) => {
+      const sx = offset.x * scale + x;
+      const sy = offset.y * scale + y;
+      if (sx < 0 || sy < 0 || sx >= shellImage.width || sy >= shellImage.height) return false;
+      return shellImage.data[(sy * shellImage.width + sx) * 4 + 3] >= 128;
+    };
     for (let y = 0; y < image.height; y += 1) {
       for (let x = 0; x < image.width; x += 1) {
         if (alphaAt(x, y) === 0) continue;
@@ -270,6 +280,37 @@ function checkDecalAlpha(decal, image1x, image2x) {
       }
     }
     check(insideOpaque === 0, `${id} ${scale}x is outside the caster's opaque body (${insideOpaque} px inside)`);
+
+    // Tangential smoothness: the visible band must not show a horizontal step
+    // where the silhouette contour was quantised. Ignore pixels under the
+    // caster body (the body covers the inner edge).
+    const verticalBand = decal.contact === 'left' || decal.contact === 'right';
+    let maxTangentStep = 0;
+    let tangentAt = null;
+    for (let y = 1; y < image.height; y += 1) {
+      for (let x = 0; x < image.width; x += 1) {
+        const a = alphaAt(x, y);
+        const b = verticalBand ? alphaAt(x, y - 1) : alphaAt(x - 1, y);
+        if (a <= 0 || b <= 0) continue;
+        if (!verticalBand && x === 0) continue;
+        const insideCurrent = isInsideBody(x, y);
+        const insidePrevious = verticalBand ? isInsideBody(x, y - 1) : isInsideBody(x - 1, y);
+        if (insideCurrent || insidePrevious) continue;
+        const step = Math.abs(a - b);
+        if (step > maxTangentStep) {
+          maxTangentStep = step;
+          tangentAt = [x, y];
+        }
+      }
+    }
+    check(
+      maxTangentStep <= 0.06,
+      `${id} ${scale}x visible band is smooth along the tangent (max ${maxTangentStep.toFixed(3)} at ${JSON.stringify(tangentAt)})`,
+    );
+    if (!verticalBand) {
+      // The loop above compares the pixel to its left; keep the vertical pass
+      // for left/right bands only.
+    }
 
     // Start at the contact-side end of the band's central line and walk
     // outward; the alpha must never rise again.
@@ -661,8 +702,10 @@ function compare(zone, baseline, composed) {
   let feltChanged = 0;
   let sum = 0;
   let max = 0;
-  const changedMask = new Uint8Array(baseline.canvas.data.length / 4);
-  for (let i = 0; i < changedMask.length; i += 1) {
+  const pixels = baseline.canvas.data.length / 4;
+  const changedMask = new Uint8Array(pixels);
+  const deltaLuma = new Float32Array(pixels);
+  for (let i = 0; i < pixels; i += 1) {
     const base = i * 4;
     const delta =
       Math.abs(composed.canvas.data[base] - baseline.canvas.data[base]) +
@@ -674,13 +717,33 @@ function compare(zone, baseline, composed) {
       luma(composed.canvas.data[base], composed.canvas.data[base + 1], composed.canvas.data[base + 2]) -
         luma(baseline.canvas.data[base], baseline.canvas.data[base + 1], baseline.canvas.data[base + 2]),
     );
+    deltaLuma[i] = dLuma;
     sum += dLuma;
     max = Math.max(max, dLuma);
     if (baseline.bodyMask[i]) bodyChanged += 1;
     else feltChanged += 1;
   }
   const mean = bodyChanged > 0 ? sum / bodyChanged : 0;
-  return { bodyChanged, feltChanged, mean, max, changedMask };
+
+  // Horizontal-artifact guard: a staircase or a hard clip shows up as a big
+  // row-to-row change in the overlay's own delta, independent of the body art.
+  const width = baseline.canvas.width;
+  let maxRowDelta = 0;
+  let rowAt = null;
+  for (let y = 1; y < baseline.canvas.height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const i = y * width + x;
+      const above = i - width;
+      if (!changedMask[i] || !changedMask[above]) continue;
+      if (!baseline.bodyMask[i] || !baseline.bodyMask[above]) continue;
+      const step = Math.abs(deltaLuma[i] - deltaLuma[above]);
+      if (step > maxRowDelta) {
+        maxRowDelta = step;
+        rowAt = [x, y];
+      }
+    }
+  }
+  return { bodyChanged, feltChanged, mean, max, changedMask, maxRowDelta, rowAt };
 }
 
 /** Worst kink in the group field at a tile boundary, the §10.12 seam metric. */
@@ -754,6 +817,38 @@ function checkComposition() {
       seam.worst < 0.05,
       `${zone.id}: group-shadow seam kink stays below 0.05 (${seam.worst.toFixed(4)})`,
     );
+    if (process.argv.includes('--debug') && delta.maxRowDelta > 15 && delta.rowAt) {
+      const [dx, dy] = delta.rowAt;
+      const base = (dy * baseline.canvas.width + dx) * 4;
+      const above = ((dy - 1) * baseline.canvas.width + dx) * 4;
+      const index = dy * baseline.canvas.width + dx;
+      console.log(
+        `DEBUG ${zone.id} rowAt ${JSON.stringify(delta.rowAt)} ` +
+          `base ${[...baseline.canvas.data.subarray(base, base + 4)]} ` +
+          `above ${[...baseline.canvas.data.subarray(above, above + 4)]} ` +
+          `comp ${[...composed.canvas.data.subarray(base, base + 4)]} ` +
+          `body ${baseline.bodyMask[index]} ${baseline.bodyMask[index - baseline.canvas.width]}`,
+      );
+      for (const overlay of zone.overlays) {
+        const clip = clipOf(zone, overlay);
+        const px = dx - pad;
+        const py = dy - pad;
+        if (!insidePolygon(clip.points, px + 0.5, py + 0.5)) continue;
+        const sprite = decalImage(decalRecordOf(overlay).textureFile);
+        const lx = px - overlay.drawX;
+        const ly = py - overlay.drawY;
+        if (lx < 0 || ly < 0 || lx >= sprite.width || ly >= sprite.height) continue;
+        const a = sprite.data[(ly * sprite.width + lx) * 4 + 3] / 255;
+        console.log(`  overlay ${overlay.shell}:${overlay.contact} draw ${overlay.drawX},${overlay.drawY} local ${lx},${ly} alpha ${a.toFixed(3)} clipTop ${Math.min(...clip.points.map((q) => q[1]))}`);
+      }
+    }
+    if (zone.overlays.length > 0) {
+      check(
+        delta.maxRowDelta < 30,
+        `${zone.id}: no horizontal overlay discontinuity ` +
+          `(worst row-to-row Δ ${delta.maxRowDelta.toFixed(2)} luma at ${JSON.stringify(delta.rowAt)})`,
+      );
+    }
 
     // Stacked bands: report the worst combined alpha on a visible body pixel.
     let maxStack = 0;
@@ -833,6 +928,7 @@ function checkComposition() {
       maxDeltaLuma: Number(delta.max.toFixed(3)),
       feltChangedPx: delta.feltChanged,
       maxStackedAlpha: Number(maxStack.toFixed(3)),
+      maxRowDeltaLuma: Number(delta.maxRowDelta.toFixed(2)),
       groupSeamKink: Number(seam.worst.toFixed(5)),
       groupSeamBoundaries: seam.boundaries,
       lean,

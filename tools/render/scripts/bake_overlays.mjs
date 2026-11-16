@@ -79,6 +79,7 @@ const paramsFor = (shell, side) => {
   };
 };
 const FADE = overlaySpec.tangentFadePx1x;
+const CONTOUR_SMOOTH = overlaySpec.contourSmoothPx1x;
 const SUPPORT_SIGMA = overlaySpec.supportSigma;
 const CONTOUR_ALPHA = overlaySpec.contourAlpha;
 const INK = hexRgb(overlaySpec.colorHex);
@@ -333,11 +334,131 @@ function supportBox(silhouette, side, sigma) {
 }
 
 /**
+ * The silhouette contour along the tangent, plus a smooth fit of it. A tile's
+ * bevel produces a 1-3 px staircase in the integer contour; a per-row band
+ * turns every step into a horizontal discontinuity on the neighbouring face
+ * (worse on the narrower/darker right bands). The alpha uses the fitted line
+ * while the fill still starts at the *true* contour, so the body edge never
+ * leaves a bright unshadowed strip.
+ */
+function smoothContours(silhouette, side, sigma) {
+  const vertical = side === 'left' || side === 'right';
+  const length = vertical ? silhouette.height : silhouette.width;
+  const actual = new Float64Array(length);
+  const valid = new Uint8Array(length);
+  for (let line = 0; line < length; line += 1) {
+    let contour = -1;
+    if (vertical) {
+      if (side === 'left') {
+        for (let x = 0; x < silhouette.width; x += 1) {
+          if (silhouette.mask[line * silhouette.width + x]) {
+            contour = x;
+            break;
+          }
+        }
+      } else {
+        for (let x = silhouette.width - 1; x >= 0; x -= 1) {
+          if (silhouette.mask[line * silhouette.width + x]) {
+            contour = x;
+            break;
+          }
+        }
+      }
+    } else if (side === 'up') {
+      for (let y = 0; y < silhouette.height; y += 1) {
+        if (silhouette.mask[y * silhouette.width + line]) {
+          contour = y;
+          break;
+        }
+      }
+    } else {
+      for (let y = silhouette.height - 1; y >= 0; y -= 1) {
+        if (silhouette.mask[y * silhouette.width + line]) {
+          contour = y;
+          break;
+        }
+      }
+    }
+    if (contour >= 0) {
+      actual[line] = contour;
+      valid[line] = 1;
+    }
+  }
+
+  // Least-squares line through the straight part of the edge, excluding the
+  // rounded corners that the tangential fade covers anyway.
+  const margin = Math.min(32, Math.max(8, Math.round(length * 0.16)));
+  let sumX = 0;
+  let sumY = 0;
+  let sumXX = 0;
+  let sumXY = 0;
+  let count = 0;
+  for (let line = margin; line < length - margin; line += 1) {
+    if (!valid[line]) continue;
+    sumX += line;
+    sumY += actual[line];
+    sumXX += line * line;
+    sumXY += line * actual[line];
+    count += 1;
+  }
+  const slope =
+    count >= 4 && Math.abs(count * sumXX - sumX * sumX) > 1e-9
+      ? (count * sumXY - sumX * sumY) / (count * sumXX - sumX * sumX)
+      : 0;
+  const intercept = count > 0 ? (sumY - slope * sumX) / count : 0;
+  let residual = 0;
+  for (let line = margin; line < length - margin; line += 1) {
+    if (!valid[line]) continue;
+    residual += (slope * line + intercept - actual[line]) ** 2;
+  }
+  const rms = count > 0 ? Math.sqrt(residual / count) : 0;
+  const rmsLimit = Math.max(2.5, length * 0.025);
+
+  const fitted = new Float64Array(length);
+  for (let line = 0; line < length; line += 1) {
+    if (!valid[line]) continue;
+    // A straight tile edge gives a sub-pixel line; if the edge is genuinely
+    // curved, fall back to a local smoothing so the fit cannot drift.
+    fitted[line] = rms <= rmsLimit ? slope * line + intercept : actual[line];
+  }
+  if (rms > rmsLimit) {
+    const radius = Math.max(1, Math.ceil(3 * sigma));
+    const kernel = new Float64Array(2 * radius + 1);
+    let total = 0;
+    for (let i = -radius; i <= radius; i += 1) {
+      const weight = Math.exp(-0.5 * (i / sigma) ** 2);
+      kernel[i + radius] = weight;
+      total += weight;
+    }
+    for (let i = 0; i < kernel.length; i += 1) kernel[i] /= total;
+    const smoothed = new Float64Array(length);
+    for (let line = 0; line < length; line += 1) {
+      if (!valid[line]) continue;
+      let sum = 0;
+      let weightSum = 0;
+      for (let k = -radius; k <= radius; k += 1) {
+        const other = line + k;
+        if (other < 0 || other >= length || !valid[other]) continue;
+        const weight = kernel[k + radius];
+        sum += weight * actual[other];
+        weightSum += weight;
+      }
+      smoothed[line] = weightSum > 0 ? sum / weightSum : actual[line];
+    }
+    for (let line = 0; line < length; line += 1) {
+      if (valid[line]) fitted[line] = smoothed[line];
+    }
+  }
+
+  return { fitted, actual, valid, rms };
+}
+
+/**
  * Fill one band. `crop` is the support box in this image's pixel space; for the
  * 2x pass it is exactly 2x the 1x crop, so the two textures describe the same
  * rectangle. Returns straight-alpha RGBA.
  */
-function bandImage(image, silhouette, side, crop, sigma, fade, core) {
+function bandImage(image, silhouette, side, crop, sigma, fade, core, contourSmooth) {
   const data = Buffer.alloc(crop.width * crop.height * 4);
   const cutoff = SUPPORT_SIGMA * sigma;
   let peak = 0;
@@ -361,34 +482,22 @@ function bandImage(image, silhouette, side, crop, sigma, fade, core) {
     return Math.max(0, Math.min(1, Math.min(fromStart, fromEnd)));
   };
 
+  const { fitted, actual, valid } = smoothContours(silhouette, side, contourSmooth);
   if (side === 'up' || side === 'down') {
     for (let lx = 0; lx < crop.width; lx += 1) {
       const x = crop.x + lx;
       if (x < 0 || x >= silhouette.width) continue;
-      let contour = -1;
-      if (side === 'up') {
-        for (let y = 0; y < silhouette.height; y += 1) {
-          if (silhouette.mask[y * silhouette.width + x]) {
-            contour = y;
-            break;
-          }
-        }
-      } else {
-        for (let y = silhouette.height - 1; y >= 0; y -= 1) {
-          if (silhouette.mask[y * silhouette.width + x]) {
-            contour = y;
-            break;
-          }
-        }
-      }
-      if (contour < 0) continue;
+      if (!valid[x]) continue;
+      const contour = fitted[x];
+      const edge = actual[x];
       const t = tangent(x, silhouette.left, silhouette.right);
       if (t <= 0) continue;
       for (let ly = 0; ly < crop.height; ly += 1) {
         const y = crop.y + ly;
+        if (side === 'up' ? y >= edge : y <= edge) continue;
         const d = side === 'up' ? contour - y - 0.5 : y - contour - 0.5;
-        if (d <= 0 || d > cutoff) continue;
-        const alpha = core * Math.exp(-0.5 * (d / sigma) ** 2) * t;
+        if (d > cutoff) continue;
+        const alpha = core * Math.exp(-0.5 * (Math.max(0, d) / sigma) ** 2) * t;
         write(lx, ly, alpha);
       }
     }
@@ -396,30 +505,17 @@ function bandImage(image, silhouette, side, crop, sigma, fade, core) {
     for (let ly = 0; ly < crop.height; ly += 1) {
       const y = crop.y + ly;
       if (y < 0 || y >= silhouette.height) continue;
-      let contour = -1;
-      if (side === 'left') {
-        for (let x = 0; x < silhouette.width; x += 1) {
-          if (silhouette.mask[y * silhouette.width + x]) {
-            contour = x;
-            break;
-          }
-        }
-      } else {
-        for (let x = silhouette.width - 1; x >= 0; x -= 1) {
-          if (silhouette.mask[y * silhouette.width + x]) {
-            contour = x;
-            break;
-          }
-        }
-      }
-      if (contour < 0) continue;
+      if (!valid[y]) continue;
+      const contour = fitted[y];
+      const edge = actual[y];
       const t = tangent(y, silhouette.top, silhouette.bottom);
       if (t <= 0) continue;
       for (let lx = 0; lx < crop.width; lx += 1) {
         const x = crop.x + lx;
+        if (side === 'left' ? x >= edge : x <= edge) continue;
         const d = side === 'left' ? contour - x - 0.5 : x - contour - 0.5;
-        if (d <= 0 || d > cutoff) continue;
-        const alpha = core * Math.exp(-0.5 * (d / sigma) ** 2) * t;
+        if (d > cutoff) continue;
+        const alpha = core * Math.exp(-0.5 * (Math.max(0, d) / sigma) ** 2) * t;
         write(lx, ly, alpha);
       }
     }
@@ -514,7 +610,7 @@ for (const { shell: shellId, side } of targetList) {
     width: crop1xFinal.width * PIXEL_RATIO,
     height: crop1xFinal.height * PIXEL_RATIO,
   };
-  const band1x = bandImage(imageOf(shellId, 1), silhouette1x, side, crop1xFinal, sigma1x, FADE, core);
+  const band1x = bandImage(imageOf(shellId, 1), silhouette1x, side, crop1xFinal, sigma1x, FADE, core, CONTOUR_SMOOTH);
   const band2x = bandImage(
     imageOf(shellId, 2),
     silhouette2x,
@@ -523,6 +619,7 @@ for (const { shell: shellId, side } of targetList) {
     sigma2x,
     FADE * PIXEL_RATIO,
     core,
+    CONTOUR_SMOOTH * PIXEL_RATIO,
   );
 
   const base = `${shellId}--${side}`;
@@ -565,7 +662,7 @@ for (const { shell: shellId, side } of targetList) {
     writeFileSync(join(outputDir, file1x), png1x);
     writeFileSync(join(output2xDir, basename(file2x)), png2x);
     if (verifyDeterminism) {
-      const again = bandImage(imageOf(shellId, 1), silhouette1x, side, crop1x, sigma1x, FADE, core);
+      const again = bandImage(imageOf(shellId, 1), silhouette1x, side, crop1x, sigma1x, FADE, core, CONTOUR_SMOOTH);
       if (sha256(again.data) !== record.sha256.decodedRgba1x) {
         throw new Error(`${base} is not deterministic`);
       }
@@ -598,6 +695,7 @@ const manifest = {
     coreAlpha: CORE,
     sigmaPx1x: { lying: SIGMA.lying, standing: SIGMA.standing },
     tangentFadePx1x: FADE,
+    contourSmoothPx1x: CONTOUR_SMOOTH,
     supportSigma: SUPPORT_SIGMA,
     colorHex: overlaySpec.colorHex,
     sideOverrides: SIDE_OVERRIDES,
