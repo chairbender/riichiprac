@@ -1168,6 +1168,22 @@ the isolated tile shows the full side reveal and face skew; the labels print the
 camera, texture, body, projected face, eye distance and byte numbers. The sheet
 is a review artefact: it is not the layout engine.
 
+The runtime layout engine is `frontend/src/table/zoneLayout.ts` (Phase 3). Its
+test imports `group-layouts.mjs` and asserts that the engine reproduces the
+reference placements exactly, so the two cannot drift. To build the layout
+review sheet and its numbers:
+
+```bash
+cd frontend && npm run layout:review
+xdg-open ../tools/render/build/review/zone-layouts-1x.png
+cat ../tools/render/build/review/zone-layout-numbers.json
+```
+
+The sheet is real art (the @1x atlas and the face-down shell PNGs) at 1:1, with
+the zones normalised to `(0, 0)`. It is evidence for the user's eyes; the script
+prints the facts: fractional draw positions (must be 0), the face-anchor error,
+and hit boxes that are not the published advance box (must be 0).
+
 State the numbers the check already verified, then ask the user the questions
 only they can answer: does the hand fan read at 24 units, or does it need the
 14/18/40 alternatives; is the drawn tile still the same tile type; is the

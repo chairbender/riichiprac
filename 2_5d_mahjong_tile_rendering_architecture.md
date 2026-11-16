@@ -126,16 +126,20 @@ Configure an automated Blender script to render the canonical blank tile shells 
 - [x] **Task 2.3:** Store UV rects and layout metrics in a fast lookup map (`Map<TileRenderKey, BakedTileSprite>`, keyed by the same triple) so runtime frame rendering requires no dynamic face compositing or multi-pass shaders. The one dynamic pass is the shadow **group layer** (§10.12): one blur per zone over the hard shapes, rebuilt only when a tile in that zone moves. The atlas key is part of the shipped contract; adding a later variant (for example a lifted/hovered hand decal) is a new `faceVariant` entry, never a glyph swapped at draw time. Budget note: the variant dimension multiplies the composited sprites by the number of face-up shells rather than by the 37 raw glyphs; measure the packed atlas in Phase 2 against the committed-asset budget. Landed 2026-11-15: 684 keys, 18 pages, 30.25 MiB @1x, see §11.
 
 ### Phase 3: Coordinate System & Zone Layout Engine
-- [ ] **Task 3.1:** Implement the table layout engine strictly using `advanceWidth` and `advanceHeight` from `shells.json` (never `texWidth`/`texHeight`).
-- [ ] **Task 3.2:** When positioning a tile at logical board coordinate `(gridX, gridY)`, compute its actual draw position as:
+- [x] **Task 3.1:** Implement the table layout engine using the published tile axes: `gridStepPx` for tight rows and wall runs, `advanceWidth`/`advanceHeight` for the logical hit box (never `texWidth`/`texHeight`). Landed 2026-11-16 in `frontend/src/table/zoneLayout.ts`; see §13.
+- [x] **Task 3.2:** When positioning a tile, anchor the shell on its projected **face centre**, not its body-box left:
   ```text
-  drawX = gridX - shell.anchorX
-  drawY = gridY - shell.anchorY
+  gridX = faceX - (faceQuadCentreX - anchorX)
+  gridY = faceY - (faceQuadCentreY - anchorY)
+  drawX = round(gridX - shell.anchorX)
+  drawY = round(gridY - shell.anchorY)
   ```
-- [ ] **Task 3.3:** Implement zone-specific spacing rules:
-  - **Player Hand:** Sequential `advanceWidth` steps, plus a $+\text{0.35} \times \text{advanceWidth}$ gap before the newly drawn *tsumo* tile.
-  - **Discard Ponds:** 6 columns per row; advance X by `advanceWidth` and Y by `advanceHeight` (the lower tile's top AO rim will sit flush against the upper tile's bottom extrusion). When a *riichi* tile appears, advance X by the sideways shell's `advanceWidth` so subsequent tiles shift right cleanly.
-  - **Two-Tier Walls (`yama`):** Position the upper stack tile at `dx = 0` (or `-1px`), `dy = -wallStepY` relative to the bottom stack tile.
+  Body-box anchoring spreads a fan's right half because the outer slots carry a visible side reveal.
+- [x] **Task 3.3:** Implement zone-specific spacing rules:
+  - **Player Hand:** 13 face-centred slots at the centre slot's `gridStepPx.x`; the drawn *tsumo* tile is a separate shell at `handSlot.offsetUnits` +5.5125 (1.35 row steps).
+  - **Discard Ponds:** 6 columns; normal tiles advance by the normal shell's short axis (`gridStepPx.x`), rows by its long axis (`gridStepPx.y`). A *riichi* tile lies sideways and advances the row by the sideways shell's `gridStepPx.y` (104 px).
+  - **Two-Tier Walls (`yama`):** 17 stacks at the centre slot's `gridStepPx.x`; the upper tier is the lower tier's grid + `stackStepPx`, and the dora indicator is the face-up shell at its slot. Side-wall columns step down the published axis whose vector points down.
+
 
 ### Phase 4: Painter's Algorithm Renderer (Strict Draw Order)
 Because there is no Z-buffer, enforce a deterministic back-to-front draw order across and within every table zone:
@@ -1243,3 +1247,88 @@ compositing is added.
 `tools/render/build/review/`; the lying tuner writes
 `tools/render/build/tune/preview/flat-{0,90,180,270}.png`. The user signs off
 the look; the agent does not (AGENTS.md §6).
+
+## 13. Phase 3: the zone layout engine (landed 2026-11-16)
+
+Phase 3 turned the approved reference layouts in
+`tools/render/scripts/group-layouts.mjs` into the app's layout module,
+`frontend/src/table/zoneLayout.ts`. It is a pure geometry layer: it places
+shells and returns body/shadow lists in painter order, but it draws nothing.
+Phase 4 owns the compositor and the screen-space placement of the zones.
+
+**What the module publishes.** `layoutHand` (13 slots + drawn tile),
+`layoutTopHand`, `layoutMeld` (called tile turned sideways), `layoutPond`
+(6 columns, any number of rows, riichi tiles, all four seats), `layoutWall`
+(front/back, 17 stacks or a remaining run, per-slot dora) and `layoutSideWall`.
+Each returns a `LayoutZone` with:
+
+- `bodies` in painter order and `shadows` as the footprints to union (a wall
+  casts one per stack, from its lower tier);
+- `width`/`height` from the body + hard `shadowShape` bounds, normalised to
+  `(0, 0)`, plus `sigmaPx1x` and `blurPad = ceil(3σ)`;
+- a Task 4.1 `layer` (`1` top wall/hand, `2` side walls, `3` ponds, `4` bottom
+  wall, `5` side hands/melds, `6` bottom hand/melds) and a `shadowGroup`.
+
+**Decisions.**
+
+1. **Face-centre anchoring, not body-box left.** `gridX = faceX -
+   (faceQuadCentreX - anchorX)`. The outer fan slots carry a visible side
+   reveal, so body-box placement spreads the right half. The formula is tested
+   on every hand body and is the reference's own `faceAnchored`.
+2. **`gridStepPx` is the row and wall step; the advance box is the hit box.**
+   The task's original "advance width" wording is superseded by §8 decision 4.
+   `hitBox` is exactly `[gridX, gridY, advanceWidth, advanceHeight]`.
+3. **Draw positions are whole @1x px.** `drawX/drawY` are rounded after the
+   zone is normalised; `gridX/gridY` and the hit box stay fractional.
+4. **The hand's gap comes from the manifest.** The slot positions use each
+   shell's `handSlot.offsetUnits` over the 0.75-unit slot pitch, so the drawn
+   tile is 5.5125 units (1.35 × 67.96 = 91.75 px) after the 13th slot. The top
+   hand uses its own 67.55 px step and 13 bare blue-back shells.
+5. **Pond frames are per seat.** Columns step by the normal shell's short axis
+   (`gridStepPx.x`), rows by its long axis (`gridStepPx.y`). A turned tile (a
+   riichi discard or a called meld tile) advances by its long axis
+   (`gridStepPx.y`, 104 px on the bottom row) and shifts along the row toward
+   the player so the near body edge stays on the line: +7 px at the bottom.
+6. **Walls.** Front/back steps come from the centre slot (`slot_08`,
+   `gridStepPx.x` = 69.72/69.64); the upper tier is the lower tier's grid +
+   `stackStepPx`; the dora indicator selects the `_faceup` shell. Side walls
+   step down whichever published axis has the positive y component
+   (`(-6.91, 45.96)` left, `(6.91, 45.96)` right) and draw all bottom tiers
+   before the top tiers (Task 4.2).
+7. **Shadow groups follow the sigma, not just the seat.** All four walls share
+   `walls`; each pond is its own group. A hand (standing σ 5) and its melds
+   (lying σ 12) stay separate `seat-<side>-hand` / `seat-<side>-melds` groups:
+   one blur per group cannot apply both sigmas. Phase 4 can still choose to
+   treat them as one seat group if it picks a single sigma.
+8. **Dora shells stay bare.** The 34 per-slot dora shells are not in the Phase 2
+   atlas, so a dora tile has `face: null` even though the layout already selects
+   `shell_wall_*_faceup` / `shell_wall_side_*_faceup`. The deferred dora
+   variant family changes no position.
+
+**Verification.** `frontend/src/table/zoneLayout.test.ts` has 33 tests. The
+reference parity test imports `group-layouts.mjs` itself and compares all eight
+representative zones: identical width/height/sigma/pad, identical body ids and
+normalised grid positions in painter order, and identical shadow-footprint
+positions (the side wall's tiers are compared as a set because Task 4.2 orders
+all bottom tiers first).
+
+`cd frontend && npm run layout:review` writes
+`tools/render/build/review/zone-layouts-1x.png` and
+`zone-layout-numbers.json`. The committed run reports **8 zones / 248 tiles, 0
+fractional draw positions, max face-anchor error 1.14e-13 px, 0 hit boxes off
+the advance box**:
+
+| Zone | Size @1x | Bodies | Shadows |
+| :--- | :--- | ---: | ---: |
+| human hand, 13 | 902 × 122 | 13 | 13 |
+| human hand, 13 + draw | 994 × 123 | 14 | 14 |
+| top hand, 13 | 897 × 120 | 13 | 13 |
+| open meld, 3 | 238 × 127 | 3 | 3 |
+| pond row, 6 | 446 × 127 | 6 | 6 |
+| pond, 4 × 6 with riichi | 481 × 323 | 24 | 24 |
+| front wall, 17 stacks | 1222 × 166 | 34 | 17 |
+| left wall, 17 stacks | 247 × 884 | 34 | 17 |
+
+**Stop point.** No app view is wired and no zone is placed on screen yet. The
+felt, the shell/atlas assets and the shadow lab are unchanged. Phase 4 consumes
+these zones; Phase 5 adds the hover lift and hit-testing against `hitBox`.
