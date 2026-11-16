@@ -1568,6 +1568,38 @@ mod tests {
     }
 
     #[test]
+    fn a_riichi_ankan_with_an_unchanged_wait_is_a_legal_self_turn() {
+        let walk = walk(&fixtures::riichi_ankan_game());
+        assert!(walk.is_clean(), "{:?}", walk.skipped);
+
+        let ankan = walk
+            .decisions
+            .iter()
+            .find(|decision| decision.played.kan_kind == Some(KanKind::Ankan))
+            .expect("the fixture declares a closed quad");
+        assert_eq!(ankan.kind, DecisionKind::SelfTurn);
+        assert_eq!(ankan.seat, 0);
+        assert!(ankan.state.players[0].is_riichi);
+        assert_eq!(ankan.played.tile.as_deref(), Some("9m"));
+        assert_eq!(ankan.played.label, "Ankan 9m");
+        assert!(
+            ankan
+                .legal_actions
+                .iter()
+                .any(|action| same_action(action, &ankan.played)),
+            "a riichi ankan that keeps the wait must be legal: {:?}",
+            ankan.legal_actions
+        );
+        assert!(ankan.played_is_legal);
+        assert!(ankan.warnings.is_empty(), "{:?}", ankan.warnings);
+        // The snapshot is the position before the kan: thirteen concealed
+        // tiles, no melds yet, and the drawn fourth copy still active.
+        assert_eq!(ankan.state.players[0].hand.len(), 13);
+        assert!(ankan.state.players[0].melds.is_empty());
+        assert_eq!(ankan.state.players[0].draw.as_deref(), Some("9m"));
+    }
+
+    #[test]
     fn a_furiten_ron_is_triaged_instead_of_reconstructed() {
         let walk = walk(&fixtures::furiten_ron_game());
 
@@ -1615,7 +1647,12 @@ mod tests {
 
     #[test]
     fn every_fixture_snapshot_is_reachable_and_legal() {
-        let mut games = vec![fixtures::all_events_game(), fixtures::chankan_game()];
+        let mut games = vec![
+            fixtures::all_events_game(),
+            fixtures::chankan_game(),
+            fixtures::riichi_ankan_game(),
+        ];
+
         games.push(fixtures::exhaustive_game(1));
         games.push(fixtures::two_kyoku_game());
         games.extend(fixtures::synthetic_games(10));

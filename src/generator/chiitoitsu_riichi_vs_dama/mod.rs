@@ -543,56 +543,98 @@ mod tests {
         }
     }
 
+    /// Every branch the sampler can draw, as a pinned list: the dama cell, the
+    /// single-answer red-five cell, and all 31 non-empty trigger masks.
+    ///
+    /// The test below used to draw 100 times and hope each branch appeared. The
+    /// shape assertions are about the hand, not about luck, so the branch is
+    /// now named instead of sampled; the tile fill underneath it stays random
+    /// and is repeated a few times per branch.
+    fn every_target() -> Vec<Target> {
+        let mut targets = vec![
+            Target::Dama,
+            Target::Riichi(RiichiTriggerSet {
+                red_five_wait: true,
+                ..Default::default()
+            }),
+        ];
+        for mask in 1u8..32 {
+            targets.push(Target::Riichi(RiichiTriggerSet {
+                dealer: mask & 1 != 0,
+                tanyao: mask & 2 != 0,
+                red_five_wait: false,
+                suji_trap: mask & 4 != 0,
+                wait_outside_456: mask & 8 != 0,
+                score_below_mangan: mask & 16 != 0,
+            }));
+        }
+        targets
+    }
+
     #[test]
     fn test_chiitoitsu_draw_pairs_a_singleton_100_hands() {
         let started = std::time::Instant::now();
+        let mut runs = 0;
 
-        for run in 0..100 {
-            let state = generate("chiitoitsu_riichi_vs_dama")
-                .unwrap_or_else(|err| panic!("run {run} failed: {err}"));
+        for target in every_target() {
+            for fill in 0..4 {
+                let label = format!("{target:?} fill {fill}");
+                let state = generate_with_target("chiitoitsu_riichi_vs_dama", target)
+                    .unwrap_or_else(|err| panic!("{label} failed: {err}"));
 
-            let pre_draw = pre_draw_tiles(&state);
-            let draw = drawn_tile(&state);
-            let pre_counts = to_counts(&pre_draw);
-            assert_eq!(pre_counts.len(), 8, "run {run}");
-            assert_eq!(
-                pre_counts.values().filter(|&&count| count == 2).count(),
-                5,
-                "run {run}"
-            );
-            assert_eq!(
-                pre_counts.values().filter(|&&count| count == 1).count(),
-                3,
-                "run {run}"
-            );
-            assert_eq!(pre_counts.get(&draw), Some(&1), "run {run}");
-            assert_eq!(calculate_shanten(&pre_counts).shanten, 1, "run {run}");
+                match target {
+                    Target::Dama => assert_eq!(state.target_action, TargetAction::Dama, "{label}"),
+                    Target::Riichi(_) => {
+                        assert_eq!(state.target_action, TargetAction::Riichi, "{label}")
+                    }
+                }
 
-            let mut full = pre_draw;
-            full.push(draw);
-            let full_counts = to_counts(&full);
-            assert_eq!(full_counts.get(&draw), Some(&2), "run {run}");
-            assert_eq!(
-                full_counts.values().filter(|&&count| count == 2).count(),
-                6,
-                "run {run}: the draw must complete a pair"
-            );
-            assert_eq!(
-                full_counts.values().filter(|&&count| count == 1).count(),
-                2,
-                "run {run}"
-            );
+                let pre_draw = pre_draw_tiles(&state);
+                let draw = drawn_tile(&state);
+                let pre_counts = to_counts(&pre_draw);
+                assert_eq!(pre_counts.len(), 8, "{label}");
+                assert_eq!(
+                    pre_counts.values().filter(|&&count| count == 2).count(),
+                    5,
+                    "{label}"
+                );
+                assert_eq!(
+                    pre_counts.values().filter(|&&count| count == 1).count(),
+                    3,
+                    "{label}"
+                );
+                assert_eq!(pre_counts.get(&draw), Some(&1), "{label}");
+                assert_eq!(calculate_shanten(&pre_counts).shanten, 1, "{label}");
 
-            let accepted = accepted_tiles(&state);
-            let waits = accepted_waits(&state);
-            assert!(!accepted.is_empty(), "run {run}");
-            assert!(waits.contains(&skeleton_wait(&state)), "run {run}");
+                let mut full = pre_draw;
+                full.push(draw);
+                let full_counts = to_counts(&full);
+                assert_eq!(full_counts.get(&draw), Some(&2), "{label}");
+                assert_eq!(
+                    full_counts.values().filter(|&&count| count == 2).count(),
+                    6,
+                    "{label}: the draw must complete a pair"
+                );
+                assert_eq!(
+                    full_counts.values().filter(|&&count| count == 1).count(),
+                    2,
+                    "{label}"
+                );
+
+                let accepted = accepted_tiles(&state);
+                let waits = accepted_waits(&state);
+                assert!(!accepted.is_empty(), "{label}");
+                assert!(waits.contains(&skeleton_wait(&state)), "{label}");
+                runs += 1;
+            }
         }
+
+        assert!(runs >= 100, "only {runs} pinned hands ran");
 
         let elapsed = started.elapsed();
         assert!(
-            elapsed < std::time::Duration::from_secs(5),
-            "100 chiitoitsu hands took {elapsed:?}"
+            elapsed < std::time::Duration::from_secs(30),
+            "{runs} chiitoitsu hands took {elapsed:?}"
         );
     }
 

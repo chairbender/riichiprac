@@ -75,6 +75,12 @@ pub(crate) fn generate_with_target(
     category: &str,
     target: judgement::Conditions,
 ) -> Result<GameState, String> {
+    // The empty condition set is the bad-wait box's cell (`dama_bad_wait`).
+    // Refusing it here keeps every caller — including the pinned-situation
+    // sampler and the tests — on the cells this lesson owns.
+    if target == judgement::Conditions::default() {
+        return Err("the bad-wait box owns the empty condition set (dama_bad_wait)".to_string());
+    }
     generate_with_retries("riichi_judgement", 20_000, || {
         let skeleton = skeleton::build(target)?;
         board::build(category, &skeleton, target)

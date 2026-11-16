@@ -1300,6 +1300,21 @@ pub fn finalize_state(mut state: GameState) -> GameState {
     state
 }
 
+/// Generates a chiitoitsu puzzle with the Riichi branch pinned.
+///
+/// Tests that need the declaration would otherwise draw a few times and hope
+/// the coin flip lands on Riichi (or panic when it does not). The target names
+/// the branch the test is about; only the tile fill underneath it is random.
+#[cfg(test)]
+pub(crate) fn chiitoitsu_riichi_puzzle(category: &str) -> Result<GameState, String> {
+    let target =
+        chiitoitsu_riichi_vs_dama::Target::Riichi(chiitoitsu_riichi_vs_dama::RiichiTriggerSet {
+            dealer: true,
+            ..Default::default()
+        });
+    generate_reachable_candidate_for(category, Situation::Chiitoitsu(target)).map(finalize_state)
+}
+
 /// Standalone function for generating a 14-tile hand via 5-block theory.
 pub fn generate_random_hand() -> Vec<Tile> {
     block_theory::random_hand::generate()
@@ -1619,17 +1634,17 @@ mod tests {
 
     #[test]
     fn chiitoitsu_riichi_lessons_offer_the_declaration() {
-        for _ in 0..20 {
-            let state = generate_puzzle(ScenarioId::ChiitoitsuRiichiVsDama.as_str())
-                .expect("chiitoitsu lesson");
-            if state.correct_action.action_type() == CorrectActionType::Riichi {
-                assert!(
-                    state.can_riichi,
-                    "the book's Riichi answer must be an offerable declaration"
-                );
-                return;
-            }
-        }
-        panic!("no Riichi chiitoitsu lesson was generated");
+        // Pin the Riichi branch. The old loop drew up to 20 coin flips, so a
+        // correct generator still panicked with probability (1/2)^20.
+        let state = chiitoitsu_riichi_puzzle(ScenarioId::ChiitoitsuRiichiVsDama.as_str())
+            .expect("the pinned Riichi chiitoitsu lesson must generate");
+        assert_eq!(
+            state.correct_action.action_type(),
+            CorrectActionType::Riichi
+        );
+        assert!(
+            state.can_riichi,
+            "the book's Riichi answer must be an offerable declaration"
+        );
     }
 }

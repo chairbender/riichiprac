@@ -491,6 +491,68 @@ pub(crate) fn furiten_ron_game() -> Vec<EventKind> {
     ]
 }
 
+/// One kyoku whose accepted Riichi declares a closed quad with an unchanged
+/// wait.
+///
+/// Seat 0 riichis on its first draw holding `123m 456p 78s 22z 999m`, waiting on
+/// 6s/9s. It later draws the fourth 9m; the closed quad only takes tiles that
+/// were already a complete triplet, so the wait is still 6s/9s and the quad is
+/// the one kan a Riichi hand may still call. Seat 1 is in tenpai on 1m/4m with
+/// an East triplet, so the replacement draw (1m) is discarded and ronned; that
+/// ends the hand without a second full wall.
+pub(crate) fn riichi_ankan_game() -> Vec<EventKind> {
+    let hands = [
+        hand(&[
+            "1m", "2m", "3m", "4p", "5p", "6p", "7s", "8s", "S", "S", "9m", "9m", "9m",
+        ]),
+        hand(&[
+            "E", "E", "E", "1p", "2p", "3p", "4p", "5p", "6p", "9s", "9s", "2m", "3m",
+        ]),
+        hand(&[
+            "2m", "2m", "6p", "7p", "8p", "2s", "4s", "5s", "6s", "W", "W", "N", "N",
+        ]),
+        hand(&[
+            "1p", "2p", "3p", "5m", "6m", "7p", "8p", "9p", "P", "P", "F", "F", "8m",
+        ]),
+    ];
+    vec![
+        start_game(),
+        start_kyoku("E", "P", 1, 0, 0, 0, [25_000; 4], hands),
+        tsumo(0, "N"),
+        EventKind::Reach { actor: 0 },
+        dahai(0, "N", true),
+        EventKind::ReachAccepted { actor: 0 },
+        tsumo(1, "9p"),
+        dahai(1, "9p", true),
+        tsumo(2, "C"),
+        dahai(2, "C", true),
+        tsumo(3, "7m"),
+        dahai(3, "7m", true),
+        // The fourth 9m joins the closed triplet, and the wait stays 6s/9s.
+        tsumo(0, "9m"),
+        EventKind::Ankan {
+            actor: 0,
+            consumed: tiles::<4>(&["9m", "9m", "9m", "9m"]),
+        },
+        EventKind::Dora {
+            dora_marker: t("F"),
+        },
+        tsumo(0, "1m"),
+        dahai(0, "1m", true),
+        EventKind::Hora {
+            actor: 1,
+            target: 0,
+            pai: Some(t("1m")),
+            // Seat 1 takes the 1000-point stick seat 0 paid for its Riichi.
+            deltas: Some([-8_000, 9_000, 0, 0]),
+            scores: None,
+            ura_markers: None,
+        },
+        EventKind::EndKyoku,
+        EventKind::EndGame,
+    ]
+}
+
 pub(crate) fn two_kyoku_game() -> Vec<EventKind> {
     let mut events = vec![start_game()];
     events.extend(exhaustive_kyoku(1, (0, 1, 0, [25_000; 4])));

@@ -6479,43 +6479,62 @@ mod tests {
 
     #[test]
     fn riichi_judgement_rationale_follows_the_three_condition_rule() {
-        // The lesson now only draws the general rule's riichi cells; the dama
-        // cells are the later sections' lessons, each citing its own rule.
+        use crate::generator::riichi_judgement::{self, judgement::Conditions};
+
+        // Pin every cell of ch7:55-59's box instead of hoping a fixed number of
+        // random draws includes them. The empty condition set is the ch7
+        // bad-wait box's cell (`dama_bad_wait`), so this lesson only draws the
+        // seven non-empty cells; the tile fill under each pinned set is still
+        // random.
         let mut conditions_seen = [false; 3];
+        for extra_han in [false, true] {
+            for good_wait in [false, true] {
+                for dealer in [false, true] {
+                    let target = Conditions {
+                        extra_han,
+                        good_wait,
+                        dealer,
+                    };
+                    if !target.picks_riichi() {
+                        continue;
+                    }
+                    let state = crate::generator::finalize_state(
+                        riichi_judgement::generate_with_target("riichi_judgement", target)
+                            .unwrap_or_else(|err| panic!("{target:?}: {err}")),
+                    );
+                    let rationale = state.book_rationale.clone().expect("rationale");
 
-        for _ in 0..40 {
-            let state = generate_puzzle("riichi_judgement").expect("scenario must generate");
-            let rationale = state.book_rationale.clone().expect("rationale");
+                    assert_eq!(rationale.source.chapter, 7);
+                    assert!(
+                        rationale
+                            .caveats
+                            .iter()
+                            .any(|caveat| caveat.contains("not modelled")),
+                        "the lesson must say which ch7 dama cases it leaves out"
+                    );
+                    assert!(
+                        !state.riichi_triggers.is_empty(),
+                        "{target:?}: this lesson only answers riichi"
+                    );
+                    assert!(
+                        state.dama_reasons.is_empty(),
+                        "{target:?}: the dama cells belong to the later ch7 sections"
+                    );
+                    assert!(rationale.summary.contains("Declare Riichi"), "{target:?}");
+                    assert!(!rationale.rules.is_empty(), "{target:?}");
 
-            assert_eq!(rationale.source.chapter, 7);
-            assert!(
-                rationale
-                    .caveats
-                    .iter()
-                    .any(|caveat| caveat.contains("not modelled")),
-                "the lesson must say which ch7 dama cases it leaves out"
-            );
-            assert!(
-                !state.riichi_triggers.is_empty(),
-                "this lesson only answers riichi, so a condition must be cited"
-            );
-            assert!(
-                state.dama_reasons.is_empty(),
-                "the dama cells belong to the later ch7 sections"
-            );
-            assert!(rationale.summary.contains("Declare Riichi"));
-            assert!(!rationale.rules.is_empty());
-
-            for (index, trigger) in [
-                RiichiTrigger::HasExtraHan,
-                RiichiTrigger::GoodWait,
-                RiichiTrigger::Dealer,
-            ]
-            .into_iter()
-            .enumerate()
-            {
-                if state.riichi_triggers.contains(&trigger) {
-                    conditions_seen[index] = true;
+                    for (index, trigger) in [
+                        RiichiTrigger::HasExtraHan,
+                        RiichiTrigger::GoodWait,
+                        RiichiTrigger::Dealer,
+                    ]
+                    .into_iter()
+                    .enumerate()
+                    {
+                        if state.riichi_triggers.contains(&trigger) {
+                            conditions_seen[index] = true;
+                        }
+                    }
                 }
             }
         }

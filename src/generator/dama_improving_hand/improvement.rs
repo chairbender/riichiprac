@@ -73,11 +73,19 @@ impl Improvement {
     }
 
     /// Whether the hand meets the box's second clause through the big step.
+    ///
+    /// The improving-hand lesson deliberately builds only the count clause, so
+    /// this predicate is exercised by the improvement tests that pin the book's
+    /// kanchan example and by the classifier's situation label.
     pub(crate) fn has_big_step(&self) -> bool {
         !self.big_steps.is_empty()
     }
 
     /// Whether the box's improving-hand conditions hold for this hand.
+    ///
+    /// See [`Self::has_big_step`]: the lesson narrows the box to the count
+    /// clause; the classifier uses the full predicate as its oracle, because an
+    /// arbitrary replay hand may qualify through either clause.
     pub(crate) fn qualifies(&self) -> bool {
         self.kinds() >= MANY_IMPROVING_KINDS || self.has_big_step()
     }
