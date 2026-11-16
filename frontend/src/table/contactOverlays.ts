@@ -261,6 +261,19 @@ export function resolveContactOverlays(
       const catchKey = `${edge.bodyIndex}:${caster.shell}`;
       if (usedCatches.has(catchKey)) continue;
       usedCatches.add(catchKey);
+      // The catch is already target-space and its alpha is masked to the
+      // target's opaque body. Do not use the inset hull used for the synthetic
+      // bands: it would clip the shadow at the body edge and leave a bright
+      // sliver on the target's bottom/side face. The full advance box is safe.
+      const fullBox = {
+        ...neighbourBox,
+        points: [
+          [neighbourBox.x, neighbourBox.y] as const,
+          [neighbourBox.x + neighbourBox.width, neighbourBox.y] as const,
+          [neighbourBox.x + neighbourBox.width, neighbourBox.y + neighbourBox.height] as const,
+          [neighbourBox.x, neighbourBox.y + neighbourBox.height] as const,
+        ],
+      };
       resolved.push({
         bodyIndex: edge.bodyIndex,
         casterIndex: edge.casterIndex,
@@ -273,7 +286,7 @@ export function resolveContactOverlays(
         drawY: target.drawY,
         texWidth: catchRecord.texWidth,
         texHeight: catchRecord.texHeight,
-        clip,
+        clip: fullBox,
       });
       continue;
     }

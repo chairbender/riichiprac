@@ -1465,7 +1465,11 @@ distance 0.12 units, no key/world; the caster occludes the AO rays). The result
 is a straight-alpha ink overlay in the target's own texture coordinates, one per
 covered slot (12 hand + 12 top + 2 side = 26), published in `catches.json`; the
 compositor draws it at the target's `drawX/drawY`, after the target body and
-before the caster body. The synthetic bands (including the σ 2.5/α 0.50
+before the caster body, clipped to the target's **full advance box**, not the
+synthetic bands' inset `bodyQuads` hull. The catch is already masked to the
+target's opaque body; the inset hull clips the bevel at the body edge and leaves
+a bright sliver on the target's bottom/side face (the small light line at the
+bottom of the right-half hand's left face). The synthetic bands (including the σ 2.5/α 0.50
 right-side override) remain a fallback for any pair without a catch. The lying
 ponds/melds and walls stay disabled for now.
 
@@ -1574,9 +1578,9 @@ checks**:
   changes **zero felt pixels**; the group field is identical (it is the same
   object) and the §10.12 seam kink stays below 0.05. The **four ponds are
   asserted to stay unshadowed** (0 overlays, 0 changed pixels); the human hand
-  uses the 12 catches, with mean Δluma **16.67** on 5,801 changed body pixels
+  uses the 12 catches, with mean Δluma **17.96** on 7,637 changed body pixels
   and zero felt change. The top hand's 12 catches are drawn with mean Δluma
-  **5.78**; the side hands' catches with **3.60 / 1.77**. The disabled families
+  **7.70**; the side hands' catches with **3.41 / 1.69**. The disabled families
   are byte-identical to the no-overlay baseline.
 
 The review script (`cd frontend && npm run overlays:review`) writes

@@ -1291,9 +1291,12 @@ WebGL and no per-frame lighting, and the group recipe is unchanged.
   a catch alignment fix, not a layout-spacing change.
   `frontend/public/table/catches.json` publishes `target:caster` records; the
   compositor draws one at the target's `drawX/drawY`, after the target body and
-  before the caster body. `contactOverlays.ts` prefers a catch, skips farther
-  same-shell contacts (the side hand's L) and falls back to a synthetic band
-  only when no catch exists.
+  before the caster body, clipped to the target's **full advance box**. Do not
+  use the synthetic bands' inset `bodyQuads` hull for a catch: its alpha is
+  already masked to the target's opaque body, and the inset clips the bevel at
+  the body edge, leaving a bright sliver on the target's bottom/side face.
+  `contactOverlays.ts` prefers a catch, skips farther same-shell contacts (the
+  side hand's L) and falls back to a synthetic band only when no catch exists.
 - **Review:** `npm run overlays:review` writes `hand-layouts-1x.png` (the
   active sign-off: 1:1 hand plus left/centre/right seam crops with and without
   the catches), `overlay-decals-1x.png` (the 12 catches), `pond-layouts-1x.png`

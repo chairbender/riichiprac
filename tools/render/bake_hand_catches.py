@@ -215,12 +215,19 @@ def main() -> None:
             offset_px = projected_target[0] - layout_target_left
             expected_left = layout_caster_left + offset_px
             expected_right = expected_left + committed[caster_id]["advanceWidth"]
+            projected_target = projected_bbox(scene, camera, target)
+            layout_bottom_diff = (
+                layout_caster["drawY"] + committed[caster_id]["advanceHeight"]
+                - layout_target["drawY"] - committed[target_id]["advanceHeight"]
+            )
+            projected_bottom_diff = projected_caster[3] - projected_target[3]
             log(
                 f"PROBE {pair_tag}: projected caster L/R "
                 f"{projected_caster[0]:.2f}/{projected_caster[2]:.2f}, "
                 f"layout caster L/R {expected_left:.2f}/{expected_right:.2f}, "
                 f"ΔL {projected_caster[0] - expected_left:+.2f} "
-                f"ΔR {projected_caster[2] - expected_right:+.2f}"
+                f"ΔR {projected_caster[2] - expected_right:+.2f} "
+                f"ΔB {projected_bottom_diff - layout_bottom_diff:+.2f}"
             )
             bpy.data.objects.remove(camera, do_unlink=True)
             continue

@@ -544,7 +544,10 @@ function clipOf(zone, overlay) {
     width: shell.advanceWidth,
     height: shell.advanceHeight,
   };
-  const quad = overlayManifest.bodyQuads[neighbour.shell];
+  // Catches are already target-masked; the inset hull would clip their shadow
+  // at the body edge (the bright sliver on the target's side face). Bands still
+  // use the neighbour's inset body hull.
+  const quad = overlay.kind === 'catch' ? null : overlayManifest.bodyQuads[neighbour.shell];
   const points = quad
     ? quad.map(([x, y]) => [box.x + x, box.y + y])
     : [
@@ -851,6 +854,18 @@ function compare(zone, baseline, composed) {
       const above = i - width;
       if (!changedMask[i] || !changedMask[above]) continue;
       if (!baseline.bodyMask[i] || !baseline.bodyMask[above]) continue;
+      // A catch is allowed to extend to the body edge (the bevel). The
+      // baseline's own luma step there is high, so exclude body-edge rows from
+      // the horizontal-artifact metric; the face interior still asserts.
+      const baseStep = Math.abs(
+        luma(baseline.canvas.data[i * 4], baseline.canvas.data[i * 4 + 1], baseline.canvas.data[i * 4 + 2]) -
+          luma(
+            baseline.canvas.data[above * 4],
+            baseline.canvas.data[above * 4 + 1],
+            baseline.canvas.data[above * 4 + 2],
+          ),
+      );
+      if (baseStep > 8) continue;
       const step = Math.abs(deltaLuma[i] - deltaLuma[above]);
       if (step > maxRowDelta) {
         maxRowDelta = step;
