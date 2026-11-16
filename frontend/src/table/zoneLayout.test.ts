@@ -415,6 +415,38 @@ describe('pond zone', () => {
     }
   });
 
+  it('keeps every seat pond inside its local bounds with whole draw positions', () => {
+    const seats = ['bottom', 'right', 'top', 'left'] as const;
+    const expected = {
+      bottom: { normal: 'shell_flat_upright', turned: 'shell_flat_sideways' },
+      right: { normal: 'shell_flat_sideways', turned: 'shell_flat_upright_180' },
+      top: { normal: 'shell_flat_upright_180', turned: 'shell_flat_sideways_270' },
+      left: { normal: 'shell_flat_sideways_270', turned: 'shell_flat_upright' },
+    } as const;
+
+    for (const side of seats) {
+      const zone = layoutPond(manifest, { discards, side });
+      expect(zone.bodies, side).toHaveLength(24);
+      expect(zone.shadows[0].shell, side).toBe(expected[side].normal);
+      expect(zone.shadows[16].shell, side).toBe(expected[side].turned);
+      for (const tile of zone.bodies) {
+        const shell = manifest.shells[tile.shell];
+        const left = tile.gridX - shell.anchorX;
+        const top = tile.gridY - shell.anchorY;
+        expect(left, `${side} ${tile.shell} left`).toBeGreaterThanOrEqual(-0.5);
+        expect(top, `${side} ${tile.shell} top`).toBeGreaterThanOrEqual(-0.5);
+        expect(left + shell.texWidth, `${side} ${tile.shell} right`).toBeLessThanOrEqual(
+          zone.width + 0.5,
+        );
+        expect(top + shell.texHeight, `${side} ${tile.shell} bottom`).toBeLessThanOrEqual(
+          zone.height + 0.5,
+        );
+        expect(Number.isInteger(tile.drawX), `${side} ${tile.shell} drawX`).toBe(true);
+        expect(Number.isInteger(tile.drawY), `${side} ${tile.shell} drawY`).toBe(true);
+      }
+    }
+  });
+
   it('rotates the pond frame for each seat', () => {    const six = Array.from({ length: 12 }, (_, index) => ({
       face: FACES[index % FACES.length],
       riichi: index === 4,
