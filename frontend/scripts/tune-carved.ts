@@ -309,7 +309,8 @@ const server = http.createServer(async (request, response) => {
       return;
     }
     if (request.method === 'GET' && url.pathname.startsWith('/preview/')) {
-      const file = join(previewDir, url.pathname.slice('/preview/'.length));
+      const name = url.pathname.slice('/preview/'.length);
+      const file = join(previewDir, name.startsWith('preview-') ? name : `preview-${name}`);
       if (!existsSync(file)) {
         response.writeHead(404);
         response.end('render a preview first');
