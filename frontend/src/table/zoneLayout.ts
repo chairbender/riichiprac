@@ -458,8 +458,14 @@ function placeRow(
   const turnedStep = along(turned.gridStepPx.y, axes.right);
   const normalExtent = faceExtentAlong(normal, axes.right);
   const faceGap = normalStep - (normalExtent.max - normalExtent.min);
+  // The near-edge nudge keeps a horizontal row's body baseline straight. A
+  // side row is a vertical line on screen: shifting the narrower turned body
+  // along the row progression would push it off that line and into the next
+  // discard row, so the turned tile stays centred on the line.
   const nearOffset =
-    bodyFarEdgeAlong(normal, axes.down) - bodyFarEdgeAlong(turned, axes.down);
+    Math.abs(axes.down[1]) === 1
+      ? bodyFarEdgeAlong(normal, axes.down) - bodyFarEdgeAlong(turned, axes.down)
+      : 0;
 
   const placed: RawTile[] = [];
   let cursor = 0;

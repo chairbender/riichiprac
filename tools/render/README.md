@@ -1196,7 +1196,8 @@ and hit boxes that are not the published advance box (must be 0).
 `pond-layouts-1x.png` is the focused four-seat pond sheet: the same 24 discards
 and the row-2/column-4 riichi as the bottom, right, top and left ponds, each with
 its own normal/turned shells and frame. The bodies are drawn furthest depth line
-first and right-to-left within a line. The left/right ponds also carry the 1°
+first and right-to-left within a line; a turned riichi tile stays centred on its
+discard-row line. The left/right ponds also carry the 1°
 whole-zone lean (right −1°, left +1°) about the near body edge, drawn as one
 group transform; the JSON `ponds` block records every seat's size, step deltas,
 first/last body, lean pivot and rotation, and riichi body.

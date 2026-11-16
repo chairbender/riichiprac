@@ -303,9 +303,10 @@ describe('meld zone', () => {
     // along the column, so it advances 5.59 px beyond the nominal 55.15.
     expect(zone.shadows[1].faceY - zone.shadows[0].faceY).toBeCloseTo(-60.74, 9);
     expect(zone.shadows[2].faceY - called.faceY).toBeCloseTo(-59.85, 9);
-    // The turned tile is shorter along the row axis, so it shifts toward the
-    // player by the body-extent difference (106 - 72 = 34 px on screen x).
-    expect(called.faceX - normal.faceX).toBeCloseTo(34, 9);
+    // A vertical row keeps the turned tile centred on the row line; the
+    // side-row near-edge nudge is deliberately zero, so the narrower turned
+    // body does not push into the next discard row.
+    expect(called.faceX - normal.faceX).toBeCloseTo(0, 9);
   });
 });
 
@@ -516,6 +517,17 @@ describe('pond zone', () => {
     );
   });
 
+  it('centres the right pond riichi in its discard row', () => {
+    const zone = layoutPond(manifest, { discards, side: 'right' });
+    const rowNormal = zone.shadows[12]; // row 2, column 0
+    const riichi = zone.shadows[16]; // row 2, column 4
+    const nextRow = zone.shadows[18]; // row 3, column 0
+    const normalCentre = rowNormal.hitBox.x + rowNormal.hitBox.width / 2;
+    const riichiCentre = riichi.hitBox.x + riichi.hitBox.width / 2;
+    expect(riichiCentre).toBeCloseTo(normalCentre, 9);
+    expect(riichi.hitBox.x + riichi.hitBox.width).toBeLessThan(nextRow.hitBox.x);
+  });
+
   it('rotates the pond frame for each seat', () => {    const six = Array.from({ length: 12 }, (_, index) => ({
       face: FACES[index % FACES.length],
       riichi: index === 4,
@@ -528,8 +540,9 @@ describe('pond zone', () => {
     // The right player's columns run up the screen and the rows toward them.
     expect(right.shadows[1].faceY - right.shadows[0].faceY).toBeCloseTo(-55.15, 9);
     expect(right.shadows[6].faceX - right.shadows[0].faceX).toBeCloseTo(104, 9);
-    // The turned tile shifts toward the player by 106 - 72 = 34 px.
-    expect(right.shadows[4].faceX - right.shadows[0].faceX).toBeCloseTo(34, 9);
+    // The turned tile stays on the discard-row line; the side-row near-edge
+    // nudge is zero, so it does not push into the next discard row.
+    expect(right.shadows[4].faceX - right.shadows[0].faceX).toBeCloseTo(0, 9);
     // It is also wider along the column than the normal tile, so it advances
     // 5.59 px past the nominal 55.15 px column step.
     expect(right.shadows[5].faceY - right.shadows[4].faceY).toBeCloseTo(-59.85, 9);

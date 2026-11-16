@@ -1398,6 +1398,12 @@ rule is applied to the called tile in a meld and to every seat's pond frame
 `group-layouts.mjs` applies the same rule, so the parity test still compares the
 two implementations exactly; the test also asserts the riichi face gap directly.
 
+On a side pond the turned tile also stays on its discard-row line: the
+horizontal near-edge nudge (+7 px on the bottom row) is not applied to a vertical
+row, where it would push the narrower turned body into the next discard row. The
+right pond riichi is therefore centred on its row, while the column face gap
+still shifts it 5.59 px along the column.
+
 **Pond body order is a depth sort, not the logical row order.** The bottom and
 top ponds draw the logical row furthest from the viewer first (bottom row 0,
 top row 3); the side ponds draw the highest screen column first (right column 5,
