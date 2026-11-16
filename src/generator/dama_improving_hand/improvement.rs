@@ -73,11 +73,21 @@ impl Improvement {
     }
 
     /// Whether the hand meets the box's second clause through the big step.
+    ///
+    /// The improving-hand lesson deliberately builds only the count clause, so
+    /// this predicate is exercised by the improvement tests that pin the book's
+    /// kanchan example rather than by the generator.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(super) fn has_big_step(&self) -> bool {
         !self.big_steps.is_empty()
     }
 
     /// Whether the box's improving-hand conditions hold for this hand.
+    ///
+    /// See [`Self::has_big_step`]: the lesson narrows the box to the count
+    /// clause, and this full predicate stays as the oracle for the improvement
+    /// tests.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub(super) fn qualifies(&self) -> bool {
         self.kinds() >= MANY_IMPROVING_KINDS || self.has_big_step()
     }

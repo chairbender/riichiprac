@@ -6479,41 +6479,61 @@ mod tests {
 
     #[test]
     fn riichi_judgement_rationale_follows_the_three_condition_rule() {
-        let mut saw_riichi = false;
-        let mut saw_dama = false;
+        use crate::generator::riichi_judgement::{self, judgement::Conditions};
 
-        for _ in 0..40 {
-            let state = generate_puzzle("riichi_judgement").expect("scenario must generate");
-            let rationale = state.book_rationale.clone().expect("rationale");
+        // Pin every cell of ch7:55-59's box instead of hoping a fixed number of
+        // random draws includes both branches. The dama cell is weighted 2/24,
+        // so the old 40-draw loop missed it about 3.6% of the time and the test
+        // failed with no reproducible seed. The tile fill under each pinned
+        // condition set is still random.
+        for extra_han in [false, true] {
+            for good_wait in [false, true] {
+                for dealer in [false, true] {
+                    let target = Conditions {
+                        extra_han,
+                        good_wait,
+                        dealer,
+                    };
+                    let state = crate::generator::finalize_state(
+                        riichi_judgement::generate_with_target("riichi_judgement", target)
+                            .unwrap_or_else(|err| panic!("{target:?}: {err}")),
+                    );
+                    let rationale = state.book_rationale.clone().expect("rationale");
 
-            assert_eq!(rationale.source.chapter, 7);
-            assert!(
-                rationale
-                    .caveats
-                    .iter()
-                    .any(|caveat| caveat.contains("not modelled")),
-                "the lesson must say which ch7 dama cases it leaves out"
-            );
+                    assert_eq!(rationale.source.chapter, 7);
+                    assert!(
+                        rationale
+                            .caveats
+                            .iter()
+                            .any(|caveat| caveat.contains("not modelled")),
+                        "the lesson must say which ch7 dama cases it leaves out"
+                    );
 
-            if state.riichi_triggers.is_empty() {
-                saw_dama = true;
-                assert!(rationale.summary.contains("Stay in dama"));
-                assert_eq!(rationale.rules.len(), 3);
-                assert!(
-                    rationale
-                        .caveats
-                        .iter()
-                        .any(|caveat| caveat.contains("tsumo")),
-                    "a riichi-only dama hand can only win by tsumo"
-                );
-            } else {
-                saw_riichi = true;
-                assert!(rationale.summary.contains("Declare Riichi"));
-                assert!(!rationale.rules.is_empty());
+                    if target.picks_riichi() {
+                        assert!(
+                            !state.riichi_triggers.is_empty(),
+                            "{target:?}: the box picks Riichi"
+                        );
+                        assert!(rationale.summary.contains("Declare Riichi"), "{target:?}");
+                        assert!(!rationale.rules.is_empty(), "{target:?}");
+                    } else {
+                        assert!(
+                            state.riichi_triggers.is_empty(),
+                            "{target:?}: the box picks dama"
+                        );
+                        assert!(rationale.summary.contains("Stay in dama"), "{target:?}");
+                        assert_eq!(rationale.rules.len(), 3, "{target:?}");
+                        assert!(
+                            rationale
+                                .caveats
+                                .iter()
+                                .any(|caveat| caveat.contains("tsumo")),
+                            "a riichi-only dama hand can only win by tsumo"
+                        );
+                    }
+                }
             }
         }
-
-        assert!(saw_riichi && saw_dama);
     }
 
     #[test]

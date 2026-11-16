@@ -627,34 +627,32 @@ mod tests {
 
     #[test]
     fn riichi_agreement_requires_the_resolved_discard() {
-        for _ in 0..40 {
-            let state = generate_book_state("chiitoitsu_riichi_vs_dama");
-            let CorrectAction::Riichi { ref discard } = state.correct_action else {
-                continue;
-            };
-            let answer = discard.clone();
-            let mut evaluation = evaluation_with_top(&state, "Riichi");
-            evaluation.riichi_discard = Some(answer.clone());
-            assert_eq!(rejection_for(&state, &evaluation), None);
+        // Pin the Riichi branch: the old 40-draw loop skipped every dama hand
+        // and had a (1/2)^40 chance of panicking on a correct generator.
+        let state = crate::generator::chiitoitsu_riichi_puzzle("chiitoitsu_riichi_vs_dama")
+            .expect("the pinned Riichi chiitoitsu lesson must generate");
+        let CorrectAction::Riichi { ref discard } = state.correct_action else {
+            panic!("the pinned target must answer Riichi");
+        };
+        let answer = discard.clone();
+        let mut evaluation = evaluation_with_top(&state, "Riichi");
+        evaluation.riichi_discard = Some(answer.clone());
+        assert_eq!(rejection_for(&state, &evaluation), None);
 
-            let other = crate::ai::actions::legal_actions(&state)
-                .into_iter()
-                .filter(|info| info.kind == ActionKind::Discard)
-                .find_map(|info| info.tile.filter(|tile| *tile != answer))
-                .expect("another discard");
-            evaluation.riichi_discard = Some(other);
-            assert_eq!(
-                rejection_for(&state, &evaluation),
-                Some(AgreementRejection::Tile)
-            );
+        let other = crate::ai::actions::legal_actions(&state)
+            .into_iter()
+            .filter(|info| info.kind == ActionKind::Discard)
+            .find_map(|info| info.tile.filter(|tile| *tile != answer))
+            .expect("another discard");
+        evaluation.riichi_discard = Some(other);
+        assert_eq!(
+            rejection_for(&state, &evaluation),
+            Some(AgreementRejection::Tile)
+        );
 
-            // An unresolved second pass cannot contradict the declaration.
-            evaluation.riichi_discard = None;
-            assert_eq!(rejection_for(&state, &evaluation), None);
-
-            return;
-        }
-        panic!("no Riichi chiitoitsu lesson was generated");
+        // An unresolved second pass cannot contradict the declaration.
+        evaluation.riichi_discard = None;
+        assert_eq!(rejection_for(&state, &evaluation), None);
     }
 
     #[test]

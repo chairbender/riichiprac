@@ -28,8 +28,10 @@
 //!
 //! The improving kinds come out of the run extensions (the book's own example
 //! counts fourteen); the skeleton accepts a hand only when the computed count
-//! clears the box for **both** singles, because both discards are graded as the
-//! same answer.
+//! clears the six-kind clause for **both** singles, because both discards are
+//! graded as the same answer. The box's alternative three-han-step clause is a
+//! different case (ch7:660) and is not the question this lesson asks, so a hand
+//! that only qualifies through a big step is rejected.
 
 use agari::parse::to_counts;
 use agari::shanten::{calculate_shanten, calculate_ukeire};
@@ -270,11 +272,16 @@ pub(super) fn build() -> Result<Skeleton, String> {
             continue;
         }
 
+        // This lesson teaches the count clause, not the alternative
+        // three-han-step clause: the book's worked example counts fourteen
+        // kinds (ch7:723), and the tests below read the count directly. A hand
+        // that only clears the box through a big step would make each
+        // generated puzzle a different question, so it is rejected here
+        // rather than left for the sampler to land on.
         let improvement = improvement::count(&kept, round_wind, human_wind, &dora);
-        if !improvement.qualifies() {
+        if improvement.kinds() < ACCEPTED_KINDS {
             last_reason = format!(
-                "only {} improving kinds and no three-han step, the box needs \
-                 {ACCEPTED_KINDS}",
+                "only {} improving kinds, the lesson needs {ACCEPTED_KINDS}",
                 improvement.kinds()
             );
             continue;
@@ -286,9 +293,10 @@ pub(super) fn build() -> Result<Skeleton, String> {
         }
 
         let equivalent_improvement = improvement::count(&twin, round_wind, human_wind, &dora);
-        if !equivalent_improvement.qualifies() {
+        if equivalent_improvement.kinds() < ACCEPTED_KINDS {
             last_reason = format!(
-                "the twin has only {} improving kinds and no three-han step",
+                "the twin has only {} improving kinds, the lesson needs \
+                 {ACCEPTED_KINDS}",
                 equivalent_improvement.kinds()
             );
             continue;
