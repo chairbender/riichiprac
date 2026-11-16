@@ -203,12 +203,32 @@ pub fn evaluate_state(model: &MortalV4Model, state: &GameState) -> candle_core::
 /// When the model's top action is Riichi, this also runs the second pass and
 /// records the discard Mortal would declare on, so callers can grade and show
 /// the whole riichi-vs-dama decision rather than a tile-less action name.
+///
+/// This is the browser-facing path: it leaves [`ActionEvaluation::q_value`]
+/// unset, so the serialized payload is unchanged.
 pub fn evaluate_state_named(
     model: &MortalV4Model,
     state: &GameState,
     model_name: &str,
 ) -> candle_core::Result<Evaluation> {
     let mut evaluation = evaluate_state_with_options(model, state, model_name, &[])?;
+    attach_riichi_discard(model, state, model_name, &mut evaluation)?;
+    Ok(evaluation)
+}
+
+/// Run one evaluation that also keeps the raw per-action Q values.
+///
+/// Mining-only: the native labeler needs the network's Q values, not just their
+/// softmax, to record `q_gap_top2` / `q_gap_safe` in `model_utility` units
+/// (replay-strategy §6.5.2). The Riichi second pass runs exactly as in
+/// [`evaluate_state_named`], so top-1, ranking, probabilities and the declared
+/// discard are identical; only [`ActionEvaluation::q_value`] differs.
+pub fn evaluate_state_with_q_values(
+    model: &MortalV4Model,
+    state: &GameState,
+    model_name: &str,
+) -> candle_core::Result<Evaluation> {
+    let mut evaluation = evaluate_with_q_flag(model, state, model_name, &[], true)?;
     attach_riichi_discard(model, state, model_name, &mut evaluation)?;
     Ok(evaluation)
 }
@@ -263,11 +283,22 @@ pub fn evaluate_state_with_options(
     model_name: &str,
     forbidden: &[usize],
 ) -> candle_core::Result<Evaluation> {
+    evaluate_with_q_flag(model, state, model_name, forbidden, false)
+}
+
+/// Forward pass + masking, optionally keeping each action's raw Q value.
+fn evaluate_with_q_flag(
+    model: &MortalV4Model,
+    state: &GameState,
+    model_name: &str,
+    forbidden: &[usize],
+    record_q_values: bool,
+) -> candle_core::Result<Evaluation> {
     let observation = encode_v4_observation(state);
     let input = Tensor::from_vec(observation, (1, OBS_CHANNELS, TILE_KINDS), &Device::Cpu)?;
     let output = model.forward(&input)?;
     let flat = output.flatten_all()?.to_vec1::<f32>()?;
-    build_evaluation(state, &flat, model_name, forbidden)
+    build_evaluation(state, &flat, model_name, forbidden, record_q_values)
 }
 
 /// Split network outputs, mask illegal actions, and softmax the rest.
@@ -276,6 +307,7 @@ fn build_evaluation(
     outputs: &[f32],
     model_name: &str,
     forbidden: &[usize],
+    record_q_values: bool,
 ) -> candle_core::Result<Evaluation> {
     if outputs.len() != 1 + ACTION_SPACE {
         candle_core::bail!(
@@ -344,7 +376,11 @@ fn build_evaluation(
         .filter(|(index, _)| mask[*index])
         .filter_map(|(index, &probability)| {
             let info = info_by_index.get(&index)?.clone();
-            Some(ActionEvaluation { info, probability })
+            Some(ActionEvaluation {
+                info,
+                probability,
+                q_value: record_q_values.then(|| logits[index]),
+            })
         })
         .collect();
     evaluations.sort_by(|left, right| {
@@ -561,7 +597,7 @@ mod tests {
         outputs[1 + tile_index("9m").unwrap()] = 5.0;
         outputs[1 + 41] = 20.0;
 
-        let evaluation = build_evaluation(&state, &outputs, "test", &[]).unwrap();
+        let evaluation = build_evaluation(&state, &outputs, "test", &[], false).unwrap();
         let total: f32 = evaluation.evaluations.iter().map(|e| e.probability).sum();
         assert!((total - 1.0).abs() < 1e-5);
         assert!(
@@ -585,7 +621,7 @@ mod tests {
         let state = base_state();
         let outputs = vec![0.0f32; 1 + ACTION_SPACE];
         let mut second =
-            build_evaluation(&state, &outputs, "test", &[]).expect("uniform second pass");
+            build_evaluation(&state, &outputs, "test", &[], false).expect("uniform second pass");
 
         // The first legal action is a discard, so a uniform second pass resolves
         // to a concrete tile for the declaration.
@@ -620,10 +656,83 @@ mod tests {
         let state = base_state();
         let mut outputs = vec![0.0f32; 1 + ACTION_SPACE];
         outputs[1 + RIICHI_ACTION] = 10.0;
-        let evaluation = build_evaluation(&state, &outputs, "test", &[]).expect("riichi top");
+        let evaluation =
+            build_evaluation(&state, &outputs, "test", &[], false).expect("riichi top");
 
         assert_eq!(evaluation.recommended_action, "Riichi");
         assert_eq!(evaluation.riichi_discard, None);
+    }
+
+    #[test]
+    fn q_values_are_the_raw_logits_and_softmax_over_them_is_the_probability() {
+        let state = base_state();
+        let mut outputs = vec![0.0f32; 1 + ACTION_SPACE];
+        for (index, logit) in outputs[1..].iter_mut().enumerate() {
+            // Distinct, ordered logits so the legal mask's subset is the only
+            // thing that can tie.
+            *logit = index as f32 * 0.125 - 3.0;
+        }
+
+        let evaluation = build_evaluation(&state, &outputs, "test", &[], true)
+            .expect("q-value evaluation must build");
+        assert!(
+            evaluation
+                .evaluations
+                .iter()
+                .all(|scored| scored.q_value.is_some()),
+            "every scored action keeps its raw Q value"
+        );
+
+        let max_q = evaluation
+            .evaluations
+            .iter()
+            .map(|scored| scored.q_value.expect("q value"))
+            .fold(f32::NEG_INFINITY, f32::max);
+        let total: f32 = evaluation
+            .evaluations
+            .iter()
+            .map(|scored| (scored.q_value.expect("q value") - max_q).exp())
+            .sum();
+        for scored in &evaluation.evaluations {
+            let expected = (scored.q_value.expect("q value") - max_q).exp() / total;
+            assert!(
+                (scored.probability - expected).abs() < 1e-6,
+                "{}: probability {} is not softmax({})",
+                scored.info.action,
+                scored.probability,
+                scored.q_value.expect("q value")
+            );
+        }
+        // The top probability is the highest Q value: the ranking never changes.
+        let top_q = evaluation
+            .evaluations
+            .first()
+            .and_then(|scored| scored.q_value)
+            .expect("top action keeps its q value");
+        assert!((top_q - max_q).abs() < f32::EPSILON);
+
+        // The browser path stays byte-compatible: no Q value, no `q_value` key.
+        let plain =
+            build_evaluation(&state, &outputs, "test", &[], false).expect("plain evaluation");
+        assert!(
+            plain
+                .evaluations
+                .iter()
+                .all(|scored| scored.q_value.is_none())
+        );
+        assert_eq!(
+            plain.evaluations.len(),
+            evaluation.evaluations.len(),
+            "recording Q values never adds or drops an action"
+        );
+        let json = serde_json::to_value(&plain).expect("evaluation serializes");
+        assert!(
+            !json["evaluations"][0]
+                .as_object()
+                .expect("scored action object")
+                .contains_key("q_value"),
+            "the browser payload must not gain a q_value field: {json}"
+        );
     }
 
     #[test]

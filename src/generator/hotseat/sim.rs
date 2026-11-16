@@ -872,6 +872,7 @@ mod tests {
                 kan_kind: None,
             },
             probability,
+            q_value: None,
         };
         let evaluation = |top: ActionKind, rest: Vec<ActionKind>| Evaluation {
             model: "test".to_string(),

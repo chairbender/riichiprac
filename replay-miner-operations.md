@@ -1,7 +1,8 @@
-# Replay miner operations: data root, provenance, storage and replays (F1, R1, R2)
+# Replay miner operations: data root, provenance, storage, replays and labels (F1, R1, R2, L1)
 
-Status: implemented foundation (F1), replay reader/validator (R1) and walker /
-`GameState` reconstruction (R2) of
+Status: implemented foundation (F1), replay reader/validator (R1), the walker /
+`GameState` reconstruction (R2) and the native Mortal labeler with Q values and
+the label cache (L1) of
 [`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
 document is the operator contract for the native-only miner. It does not re-open
 the source decision: [`replay-strategy.md`](replay-strategy.md) §2 fixes AI
@@ -12,8 +13,12 @@ the local data root, the SQLite schema, atomic writes, a funnel counter and the
 CLI stubs. R1 adds the gzipped mjai reader and the structural replay validator in
 `src/replay/` plus its fixtures. R2 adds `src/replay/walk.rs`: the kyoku walker,
 the seat-normalised `GameState` snapshots, decision enumeration and the
-`tenhou6` reviewer export. Mortal inference, book classification, selection and
-the pack publisher remain L1, B1, S and P1a onward.
+`tenhou6` reviewer export. L1 adds `src/miner/label/`: native batch inference
+with the app's own MIT Candle port, the per-action Q values the browser drops,
+the `q_gap_top2`/`q_gap_safe` measurements, the book/Mortal label and the
+`model_labels` cache behind `mine_replays label`. Book classification (B1)
+already exists in `src/classifier/`; selection, transforms and the pack publisher
+remain S and P1a onward.
 
 ## Build boundary
 
@@ -38,7 +43,7 @@ reconstructed `GameState` with its own MIT inference.
 
 Enabling `miner` for `wasm32` is a compile error by design.
 
-## CLI surface (F1 stubs)
+## CLI surface
 
 ```text
 mine_replays [--data-dir DIR] <command>
@@ -46,15 +51,29 @@ mine_replays [--data-dir DIR] <command>
   corpus [report]   generate mixed-agent self-play corpora / report by family
   ingest            ingest and validate raw self-play logs
   extract           reconstruct decision points from validated logs
-  label             label candidates with book classifiers and Mortal
+  label             label reconstructed decisions with Mortal + book classifiers
   transform         generate label-preserving scenario variants
   pack              assemble, audit and export scenario packs
   audit             audit provenance, licences and pack integrity
   review            work the human review queue
 ```
 
-Each stub resolves the data root, reports the command it would run, and exits
-with code 2. A script cannot treat a stub as a successful run.
+`label` is implemented (L1); the other commands still resolve the data root,
+report the command they would run, and exit with code 2, so a script cannot
+treat a stub as a successful run.
+
+```bash
+cargo run --features miner --bin mine_replays -- label \
+  --weights frontend/public/models/mortal_298k.safetensors \
+  [--replays DIR] [--family NAME] [--limit N] \
+  [--classifier-version V] [--gamma F] [--pts a,b,c,d] [--json]
+```
+
+`label` walks every `$RIICHI_DATA_DIR/replays/<family>/*.jsonl.gz` replay (or
+`--replays`/`--family`), labels each R2 decision and writes the cache plus any
+existing `decisions` row. Exit code is 1 when a replay or decision failed and 2
+when the run could not start (missing weights/replay dir, DB error): a partial
+run is never reported as success. `--json` prints the machine-readable report.
 
 ## Data root
 
@@ -175,13 +194,14 @@ state model does not use it.
 
 `db/miner.sqlite` is the source of truth for candidate and curated scenarios.
 It is a single transactional SQLite file, created and migrated on open
-(`PRAGMA user_version = 1`).
+(`PRAGMA user_version = 2`).
 
 | Table | Purpose |
 | --- | --- |
 | `corpus_runs` | one generation run: plan, family, replay count, local/Drive dir, snapshot, rclone status |
 | `replays` | one immutable game: source, licence, rule profile, log path/bytes/hash, validation, agent roster, full provenance JSON |
 | `decisions` | one decision point: state hash/JSON, legal/played actions, trigger, book match, Mortal label, Q values (units `model_utility`), selection fields |
+| `model_labels` | L1 cache: status/attempts/label JSON per `(state_hash, model_sha256, classifier_version, options_hash)` |
 | `selected_scenarios` | curated rows: decision, pack, lesson, correct/accepted action, label fields, variant base, transform chain, provenance |
 | `variants` | transform output: base scenario, chain, seed, label-preserved flag, rejection reason |
 | `packs` | generated pack metadata: hash, bytes, count, source mix, licence, commercial flag, export path, DB snapshot |
@@ -473,10 +493,102 @@ walk.
   `cargo tree --features miner` contains no `libriichi`.
 - Visual sign-off is not involved in R2.
 
+## Mortal labeler contract (L1)
+
+Status: implemented. `src/miner/label/` labels a reconstructed `GameState` with
+the app's own MIT Candle port (`src/ai/model.rs`), never `libriichi`. The
+checkpoint is parsed and bound once per process (`Labeler::load`) and reused for
+every state in the shard; the forward pass is
+`evaluate_state_with_q_values`, which masks illegal actions exactly like the
+browser's `evaluate_state_named` and additionally keeps each action's raw Q
+value.
+
+### Label document (`riichiprac.model-label` v1)
+
+Stored as `decisions.label_json` and in the cache. It records:
+
+- `model`, `model_sha256`, optional `gamma`/`pts` (only when the operator
+  supplies them; the deployed `mortal_298k.safetensors` carries neither);
+- `q_units` and `value_units`, both `"model_utility"`, plus the note
+  `Q values are model utility, not points.`;
+- `expected_value`, `top_action`, `top_probability`, `probability_margin`, the
+  full `ranking` with per-action `q_value`, and the raw `q_values` map;
+- `q_gap_top2 = q(best) - q(second)` and
+  `q_gap_safe = q(best) - q(safest)`, where the safe action is chosen by
+  `safety::SafetyFacts` (the ch. 8 chart against every opponent in Riichi), not
+  by the model's preference, with the `safe_action` recorded;
+- `riichi_discard`, the second-pass discard when the model declares Riichi;
+- the book half: lesson, answer, accepted tiles, `resolution`
+  (`single`/`agreement`/`mortal_tiebreak`) and `agreement` from
+  `fuzz::compare_action_set` (including `equivalent_tiles` and the Riichi
+  second pass). A disagreement the model cannot settle is recorded as
+  `book_conflict` instead, never silently picked;
+- `generator` (model + hash) only when the replay's generator differs from the
+  labeler, taken from the `replays` row when ingest recorded it.
+
+No field claims points, and the Q values are never overwritten.
+
+### Cache and reruns
+
+`model_labels` is keyed by
+`(state_hash, model_sha256, classifier_version, options_hash)`. `state_hash` is
+the SHA-256 of the v4 observation, i.e. the model-visible position: scenario
+metadata, rationale and display-only metrics do not invalidate a cache entry,
+while the shanten/wait inputs the encoder reads do. `options_hash` is the hash of
+`LabelOptions` (`q_values`, `safe_gap`).
+
+- `status = 'ok'` with a decodable label is finished work: a rerun performs no
+  forward pass for that state (duplicate positions in one run share it too).
+- `status = 'failed'` stores `last_error` and increments `attempts`; a later run
+  retries it and records success. An unreadable cached payload is retried rather
+  than trusted.
+
+L1 also updates the `decisions` row when `extract` has created one
+(`mortal_top`, `mortal_top_prob`, `mortal_margin`, `mortal_ranking`,
+`q_values_json`, `q_units`, `labeler_model`, `labeler_model_sha256`,
+`classifier_version`, `label_json`). It deliberately leaves `label_kind`,
+`label_source` and `selection_reason` to L2/S2.
+
+### Parity
+
+`cargo test --features miner` includes a parity test that evaluates every
+decision of the committed fixture replay with both the browser path
+(`evaluate_state_named`) and the labeler and requires identical top-1 action,
+ranking order, probabilities, expected value and Riichi second-pass discard,
+with the Q values finite and `q_gap_top2` equal to the top-two Q difference.
+The test needs the gitignored checkpoint: set
+`RIICHI_MORTAL_WEIGHTS=/path/mortal_298k.safetensors` (or place
+`frontend/public/models/mortal_298k.safetensors`); without it the test prints an
+explicit skip message instead of passing silently. The same applies to the
+end-to-end shard test, which labels a fixture replay, asserts the `decisions`
+row, and asserts that a rerun is fully cached.
+
+## L1 acceptance evidence
+
+- `cargo test --features miner` covers: state-hash stability against metadata
+  re-stamping (and sensitivity to the real position), the `model_utility` units
+  and identity on every label, `q_gap_top2`/`probability_margin` arithmetic, the
+  softmax-over-Q consistency, the `safety::SafetyFacts` source of
+  `q_gap_safe`/`safe_action` (and its absence without a Riichi threat), the book
+  label and agreement/discrepancy outcomes from `compare_action_set`, call
+  mapping from `legal_actions`, generator identity recording only when it
+  differs, cache key coverage, cache skip/retry, replay discovery, the shard
+  limit, the `decisions` row write (including that selection columns are not
+  overwritten), a full rerun that evaluates nothing, and the weights-gated
+  parity and real-shard tests described above.
+- The browser payload is unchanged: `ActionEvaluation::q_value` is `None` on the
+  browser path and is skipped in JSON; a default-build test pins that the
+  `evaluations[*]` objects gain no `q_value` key.
+- `cargo clippy --all-targets --features miner -- -D warnings`,
+  `cargo check --target wasm32-unknown-unknown`, `cargo test --lib` and
+  `cargo tree --features miner` (no `libriichi`) stay clean.
+
+Visual sign-off is not involved in L1.
+
 ## F1 acceptance evidence
 
 - `cargo test --features miner` covers schema round-trips, DB create/migrate on a
-  fixture, the complete row insert across all seven tables, foreign keys, the
+  fixture, the complete row insert across all eight tables, foreign keys, the
   DB source `CHECK`, relative-path rules, snapshot + `PRAGMA integrity_check`,
   atomic-write failure cleanup, the source and licence allowlists, the funnel
   counter, and CLI parsing for all eight subcommands.

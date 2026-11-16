@@ -455,6 +455,7 @@ mod tests {
                 .map(|info| ActionEvaluation {
                     info: info.clone(),
                     probability: if info.action == action { 1.0 } else { 0.0 },
+                    q_value: None,
                 })
                 .collect(),
         }

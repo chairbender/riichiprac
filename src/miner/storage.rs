@@ -45,7 +45,7 @@ pub const RCLONE_REPLAYS_DIR: &str = "replays";
 pub const RCLONE_DB_DIR: &str = "db";
 
 /// Current SQLite schema version.
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// Tables created by [`SCHEMA_VERSION`], in dependency order.
 pub const MINER_TABLES: &[&str] = &[
@@ -56,6 +56,7 @@ pub const MINER_TABLES: &[&str] = &[
     "variants",
     "packs",
     "backups",
+    "model_labels",
 ];
 
 /// Typed storage failure.
@@ -715,7 +716,7 @@ pub fn plan_snapshot_backup(snapshot: &Path, remote: Option<&RemoteBackup>) -> B
     }
 }
 
-const MIGRATIONS: &[&str] = &[MIGRATION_1];
+const MIGRATIONS: &[&str] = &[MIGRATION_1, MIGRATION_2];
 
 const MIGRATION_1: &str = r#"
 PRAGMA foreign_keys = ON;
@@ -889,6 +890,35 @@ CREATE INDEX IF NOT EXISTS idx_decisions_family ON decisions(family);
 CREATE INDEX IF NOT EXISTS idx_decisions_pack ON decisions(pack_id);
 CREATE INDEX IF NOT EXISTS idx_selected_pack ON selected_scenarios(pack_id);
 CREATE INDEX IF NOT EXISTS idx_variants_base ON variants(base_scenario_id);
+"#;
+
+/// L1: the Mortal label cache.
+///
+/// One row per `(state_hash, model_sha256, classifier_version, options_hash)`.
+/// `status = 'ok'` with a `label_json` payload is finished work: a rerun skips
+/// it. `status = 'failed'` records the last error and is retried, so a transient
+/// failure never becomes permanent. `attempts` counts evaluation attempts.
+///
+/// The table is a cache, not the source of truth for a packed label: the
+/// `decisions` row keeps its own copy. Deleting it only costs one re-evaluation.
+const MIGRATION_2: &str = r#"
+-- L1 Mortal label cache. Keyed by the model-visible state, not by decision id:
+-- several decisions that present the same table position share one evaluation.
+CREATE TABLE IF NOT EXISTS model_labels (
+    state_hash          TEXT NOT NULL,
+    model_sha256        TEXT NOT NULL CHECK (length(model_sha256) = 64),
+    classifier_version  TEXT NOT NULL,
+    options_hash        TEXT NOT NULL CHECK (length(options_hash) = 64),
+    status              TEXT NOT NULL CHECK (status IN ('ok', 'failed')),
+    attempts            INTEGER NOT NULL DEFAULT 1 CHECK (attempts >= 1),
+    label_json          TEXT NULL,
+    last_error          TEXT NULL,
+    created_at          TEXT NOT NULL,
+    updated_at          TEXT NOT NULL,
+    PRIMARY KEY (state_hash, model_sha256, classifier_version, options_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_model_labels_status ON model_labels(status);
 "#;
 
 #[cfg(test)]

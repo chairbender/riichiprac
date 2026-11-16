@@ -68,6 +68,17 @@ pub struct ActionEvaluation {
     pub info: ActionInfo,
     /// Softmax probability over the legal actions.
     pub probability: f32,
+    /// Raw per-action Q value from the model's value head.
+    ///
+    /// Mortal is a DQN: the network emits one Q value per action and
+    /// `probability` is the softmax of those values over the legal mask. The
+    /// browser never needs the raw value, so the browser path leaves this
+    /// `None` and the field is skipped in JSON; the native miner labeler fills
+    /// it so it can store `q_values`, `q_gap_top2` and `q_gap_safe` in
+    /// `model_utility` units (replay-strategy §6.5.2, unit L1). A Q difference
+    /// is **not** a point difference.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub q_value: Option<f32>,
 }
 
 impl ActionEvaluation {
@@ -101,6 +112,7 @@ impl ActionEvaluation {
                 kan_kind: None,
             },
             probability,
+            q_value: None,
         }
     }
 }

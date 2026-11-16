@@ -1,15 +1,16 @@
-//! Stub entry point for the native-only replay miner.
+//! Entry point for the native-only replay miner.
 //!
-//! F1 creates the feature boundary and the subcommand surface; the commands
-//! themselves land in later units (R1 and after). Running a stub exits with
-//! code 2 and writes a "not implemented" line to stderr, so a script cannot
-//! mistake it for a completed run.
+//! F1 created the feature boundary and the subcommand surface; L1 implements
+//! `label` on top of the R2 walker and the F1 database. The remaining commands
+//! are still stubs: running one exits with code 2 and writes a "not implemented"
+//! line to stderr, so a script cannot mistake it for a completed run.
 //!
 //! Build and run:
 //!
 //! ```text
 //! cargo run --features miner --bin mine_replays -- --help
-//! cargo run --features miner --bin mine_replays -- corpus report
+//! cargo run --features miner --bin mine_replays -- label --weights \
+//!   frontend/public/models/mortal_298k.safetensors
 //! ```
 //!
 //! The data root is `--data-dir`, then `$RIICHI_DATA_DIR`, then
@@ -20,13 +21,14 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use riichiprac::miner::DataRoot;
+use riichiprac::miner::label::run::{LabelRunOptions, LabelRunReport, run_label};
+use riichiprac::miner::{CLASSIFIER_VERSION, DataRoot};
 
 #[derive(Debug, Parser)]
 #[command(
     name = "mine_replays",
     version,
-    about = "Riichi replay miner (native-only; F1 scaffold)"
+    about = "Riichi replay miner (native-only)"
 )]
 struct Cli {
     /// Data root. Defaults to $RIICHI_DATA_DIR or ~/riichiprac-data.
@@ -49,7 +51,39 @@ enum Command {
     /// Reconstruct decision points from validated logs.
     Extract,
     /// Label candidates with book classifiers and Mortal.
-    Label,
+    Label {
+        /// Mortal checkpoint (.safetensors).
+        #[arg(long, value_name = "FILE")]
+        weights: PathBuf,
+
+        /// Replay directory (default: <data-dir>/replays).
+        #[arg(long, value_name = "DIR")]
+        replays: Option<PathBuf>,
+
+        /// Label only this family sub-directory.
+        #[arg(long, value_name = "NAME")]
+        family: Option<String>,
+
+        /// Maximum replay files in this shard.
+        #[arg(long, value_name = "N")]
+        limit: Option<usize>,
+
+        /// Classifier generation recorded on every label.
+        #[arg(long, value_name = "V", default_value = CLASSIFIER_VERSION)]
+        classifier_version: String,
+
+        /// Reward discount the checkpoint was trained with, when known.
+        #[arg(long, value_name = "F32")]
+        gamma: Option<f32>,
+
+        /// Placement utility weights, comma separated, when known.
+        #[arg(long, value_name = "a,b,c,d", value_delimiter = ',')]
+        pts: Option<Vec<f32>>,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
     /// Generate label-preserving scenario variants.
     Transform,
     /// Assemble, audit and export scenario packs.
@@ -72,7 +106,7 @@ impl Command {
             Self::Corpus { .. } => "corpus",
             Self::Ingest => "ingest",
             Self::Extract => "extract",
-            Self::Label => "label",
+            Self::Label { .. } => "label",
             Self::Transform => "transform",
             Self::Pack => "pack",
             Self::Audit => "audit",
@@ -95,12 +129,93 @@ fn main() -> ExitCode {
         }
     };
 
-    eprintln!(
-        "mine_replays {}: not implemented in the F1 scaffold (data root: {})",
-        cli.command.name(),
-        root.root().display()
-    );
-    ExitCode::from(2)
+    match cli.command {
+        Command::Label {
+            weights,
+            replays,
+            family,
+            limit,
+            classifier_version,
+            gamma,
+            pts,
+            json,
+        } => run_label_command(
+            &root,
+            &LabelRunOptions {
+                weights,
+                replays,
+                family,
+                limit,
+                classifier_version,
+                gamma,
+                pts,
+                label_options: Default::default(),
+            },
+            json,
+        ),
+        command => {
+            eprintln!(
+                "mine_replays {}: not implemented yet (data root: {})",
+                command.name(),
+                root.root().display()
+            );
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn run_label_command(root: &DataRoot, options: &LabelRunOptions, json: bool) -> ExitCode {
+    match run_label(root, options) {
+        Ok(report) if json => {
+            match serde_json::to_string_pretty(&report) {
+                Ok(text) => println!("{text}"),
+                Err(err) => {
+                    eprintln!("mine_replays label: cannot serialise the report: {err}");
+                    return ExitCode::from(2);
+                }
+            }
+            label_exit_code(&report)
+        }
+        Ok(report) => {
+            println!(
+                "mine_replays label: {} replay(s) ({}, {} failed), {} decisions \
+                 ({} labelled, {} cached, {} retried, {} failed)",
+                report.replays_found,
+                report.replays_walked,
+                report.replays_failed,
+                report.decisions_seen,
+                report.decisions_labelled,
+                report.decisions_cached,
+                report.decisions_retried,
+                report.decisions_failed
+            );
+            println!(
+                "  model: {} (sha256 {}), classifier {}",
+                report.model, report.model_sha256, report.classifier_version
+            );
+            println!(
+                "  book labels: {}, contested: {}, walker drops: {}",
+                report.book_labels, report.book_conflicts, report.decisions_dropped
+            );
+            for error in &report.errors {
+                eprintln!("  error: {error}");
+            }
+            label_exit_code(&report)
+        }
+        Err(err) => {
+            eprintln!("mine_replays label: {err}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+/// A run with failures is not a success: exit 1 so a script notices.
+fn label_exit_code(report: &LabelRunReport) -> ExitCode {
+    if report.replays_failed + report.decisions_failed > 0 {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
 }
 
 #[cfg(test)]
@@ -119,7 +234,6 @@ mod tests {
             "corpus",
             "ingest",
             "extract",
-            "label",
             "transform",
             "pack",
             "audit",
@@ -128,6 +242,49 @@ mod tests {
             let cli = Cli::try_parse_from(["mine_replays", name])
                 .unwrap_or_else(|err| panic!("`{name}` must parse: {err}"));
             assert_eq!(cli.command.name(), name);
+        }
+    }
+
+    #[test]
+    fn label_requires_weights_and_parses_the_model_metadata() {
+        assert!(
+            Cli::try_parse_from(["mine_replays", "label"]).is_err(),
+            "the miner never guesses a checkpoint"
+        );
+        let cli = Cli::try_parse_from([
+            "mine_replays",
+            "label",
+            "--weights",
+            "mortal_298k.safetensors",
+            "--family",
+            "mortal_mirror",
+            "--limit",
+            "5",
+            "--gamma",
+            "0.99",
+            "--pts",
+            "90,45,0,-135",
+            "--json",
+        ])
+        .expect("label parses");
+        match cli.command {
+            Command::Label {
+                weights,
+                family,
+                limit,
+                gamma,
+                pts,
+                json,
+                ..
+            } => {
+                assert_eq!(weights, PathBuf::from("mortal_298k.safetensors"));
+                assert_eq!(family.as_deref(), Some("mortal_mirror"));
+                assert_eq!(limit, Some(5));
+                assert_eq!(gamma, Some(0.99));
+                assert_eq!(pts, Some(vec![90.0, 45.0, 0.0, -135.0]));
+                assert!(json);
+            }
+            other => panic!("expected the label command, got {other:?}"),
         }
     }
 
