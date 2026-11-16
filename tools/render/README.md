@@ -80,12 +80,12 @@ writes the committed assets.
 `--preview` is the fast loop. It renders only the `--only` shells under
 `tools/render/build/preview/` (never the committed paths), writes a partial
 preview manifest, and draws `preview-1x.png` plus a 4x zoom per shell. It skips
-the full 105-shell check, so a one- or two-shell change takes seconds instead of
+the full 107-shell check, so a one- or two-shell change takes seconds instead of
 the full bake. Use it while tuning a shell, then do a full `--bake` for the
 committed manifest and the full review sheets.
 
 `--bake` is the one command that regenerates the committed assets: it renders
-all 105 shells (ten base + 14 human-hand slots + 13 top-hand slots + 68
+all 107 shells (twelve base + 14 human-hand slots + 13 top-hand slots + 68
 front/back wall slots) at @1x and @2x with the
 pinned Blender at the current base scale, measures each render, writes
 `frontend/public/table/shells/*.png`, `shells/2x/*.png` and
@@ -192,7 +192,7 @@ its own regeneration, not mixed with CPU output.
 | `faces/` | yes | the 37 vendored public-domain symbol-only SVGs + provenance (`faces/SOURCE.md`) |
 | `../../frontend/public/table/felt.png` | yes | the committed full-screen felt raster |
 | `../../frontend/public/table/shells/` | yes | shell textures at @1x (`shell_*.png`) |
-| `../../frontend/public/table/shells/2x/` | yes | all 105 body shells at @2x (no @2x shadow sprites) |
+| `../../frontend/public/table/shells/2x/` | yes | all 107 body shells at @2x (no @2x shadow sprites) |
 | `../../frontend/public/table/shells.json` | yes | the published shell contract |
 | `../../frontend/public/table/faces/` | yes | the 37 committed face glyphs at 288 × 384 RGBA |
 | `../../frontend/public/table/faces.json` | yes | the published face-glyph contract |
@@ -258,10 +258,10 @@ stretched pattern. This decision is recorded in `felt-spec.json` under
 
 ## The committed bake (Phase 1c + the hand/wall fans)
 
-**105 shells** are baked, measured and committed at the Phase 1b base (the
-Phase 1 `@2x` size): the ten-shell base below (including the four flat river
-orientations), the 14-slot standing-hand fan, and the 68 front/back wall slot
-shells (17 slots × 2 walls × face-down/face-up).
+**107 shells** are baked, measured and committed at the Phase 1b base (the
+Phase 1 `@2x` size): the twelve-shell base below (including the four flat river
+orientations and the two side-hand backs), the 14-slot standing-hand fan, and
+the 68 front/back wall slot shells (17 slots × 2 walls × face-down/face-up).
 `shell-spec.json` carries each base shell's pose (Euler degrees), camera
 (azimuth/elevation + which local face is visible) and expected aspect, plus the
 compact `handSlots` and `wallSlots` blocks the baker expands into the slot
@@ -280,10 +280,19 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_left_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
 | `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
+| `shell_hand_side_left` | off-axis perspective | rotX 90°, rotZ 270° | el 45, 2 units inside / d10 | 67 × 102 | 71 × 106 / 163 × 168 | (−6.7, 45) / (9.05, 64.01) | — |
+| `shell_hand_side_right` | off-axis perspective | rotX 90°, rotZ 90° | el 45, 2 units inside / d10 | 67 × 102 | 71 × 106 / 163 × 168 | (6.2, 41.67) / (−9.05, 64.01) | — |
 
-All 105 shell bodies plus their @1x shadow references are **4,351,264 B**
+The two side-hand backs stand the tile up (`rotX 90`) and reuse the side-wall
+camera, one shell per side. The pose and camera are both mirrored (left
+`rotZ 270` / camera +2, right `rotZ 90` / camera −2) so both blue backs face the
+human. Their
+shadow is standing (σ 5) and needs a wider per-shell shadow box
+(`shadowPadding1x`), because the yawed base strip is wider than a hand fan's.
+
+All 107 shell bodies plus their @1x shadow references are **4,428,110 B**
 (budget 6,291,456 B); the @2x body textures are included, the redundant @2x
-shadow sprites were removed in Phase 2b. `shells.json` is **553,571 B** (budget
+shadow sprites were removed in Phase 2b. `shells.json` is **563,226 B** (budget
 614,400 B). The hand
 slots keep the 104 px body long axis (102 px measured); the human-hand centre
 body is 75 × 106 and its shadow 119 × 142, the drawn body 89 × 106 and its
@@ -1070,8 +1079,8 @@ PASS shell_hand_slot_draw handSlot kind is row/draw (draw)
 PASS shell_hand_slot_draw top edge carries the blue resin sliver (3,69,165)
 PASS shell_wall_front_slot_16 camera sits at the human's x (lateral -6.0 = -offset)
 PASS hand-fan-1x.png composites its tiles (284486 px)
-INFO shell textures total 4351264 B across 105 shells and 2 scales
-OK 6967 checks passed
+INFO shell textures total 4425492 B across 107 shells and 2 scales
+OK 7710 checks passed
 ```
 
 `--audition` additionally validates the hand fan calibration and its sheets; on
@@ -1102,7 +1111,7 @@ To review the shells, bake (or just regenerate the sheets) and open them:
 
 ```bash
 node tools/render/scripts/review-shells.mjs
-xdg-open tools/render/build/review/shells-row-1x.png      # the ten base shells, catalogue order
+xdg-open tools/render/build/review/shells-row-1x.png      # the twelve base shells, catalogue order
 xdg-open tools/render/build/review/discard-row-1x.png     # 6-tile row + isolated + riichi
 xdg-open tools/render/build/review/hand-stack-1x.png      # packed hand row + drawn tile + top hand
 xdg-open tools/render/build/review/hand-fan-1x.png        # exploded hand fan + top hand, numbered
@@ -1167,6 +1176,31 @@ row at 24 units. Every row is a packed six-tile run plus an isolated tile, so
 the isolated tile shows the full side reveal and face skew; the labels print the
 camera, texture, body, projected face, eye distance and byte numbers. The sheet
 is a review artefact: it is not the layout engine.
+
+The runtime layout engine is `frontend/src/table/zoneLayout.ts` (Phase 3). Its
+test imports `group-layouts.mjs` and asserts that the engine reproduces the
+reference placements exactly, so the two cannot drift. To build the layout
+review sheet and its numbers:
+
+```bash
+cd frontend && npm run layout:review
+xdg-open ../tools/render/build/review/zone-layouts-1x.png
+xdg-open ../tools/render/build/review/pond-layouts-1x.png
+cat ../tools/render/build/review/zone-layout-numbers.json
+```
+
+The sheet is real art (the @1x atlas and the face-down shell PNGs) at 1:1, with
+the zones normalised to `(0, 0)`. It is evidence for the user's eyes; the script
+prints the facts: fractional draw positions (must be 0), the face-anchor error,
+and hit boxes that are not the published advance box (must be 0).
+`pond-layouts-1x.png` is the focused four-seat pond sheet: the same 24 discards
+and the row-2/column-4 riichi as the bottom, right, top and left ponds, each with
+its own normal/turned shells and frame. The bodies are drawn furthest depth line
+first and right-to-left within a line; a turned riichi tile stays centred on its
+discard-row line. The left/right ponds also carry the 1°
+whole-zone lean (right −1°, left +1°) about the near body edge, drawn as one
+group transform; the JSON `ponds` block records every seat's size, step deltas,
+first/last body, lean pivot and rotation, and riichi body.
 
 State the numbers the check already verified, then ask the user the questions
 only they can answer: does the hand fan read at 24 units, or does it need the

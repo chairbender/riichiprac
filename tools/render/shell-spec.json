@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "riichiprac 2.5D shell baker",
-  "status": "Phase 1c refinement: per-slot front/back walls, per-slot standing hand, standing top hand and the darker silhouette-following shadow. The base scale, the eight-shell base catalogue, the 2-tile wall stack, the face-up dora shells and the side-wall lateral perspective are unchanged. The human hand is a 13-tile row plus a separate drawn-tile slot; the top hand is a dedicated 13-slot standing blue-back fan. Ponds and melds stay straight-on (azimuth 0) with four glyph orientations. The contact shadow is darker (peak 0.22) and follows the tile silhouette inside the body box, so the beveled corners are shadowed; its shape/falloff is the open calibration. Phase 2 landed the 37 face glyphs and the 16-shell startup atlas; layout and renderer are later phases.",
+  "status": "Phase 3b (2026-11-16): the twelve-shell base adds the left/right standing blue-back hand shells, one per side and reused down a single row; the 107-shell catalogue is otherwise the Phase 1c/1d/2/2b bake. The surface/side hand shells are bare, use the side-wall off-axis camera, and carry a wider standing shadow box. Phase 1c refinement: per-slot front/back walls, per-slot standing hand, standing top hand and the darker silhouette-following shadow. The base scale, the eight-shell base catalogue, the 2-tile wall stack, the face-up dora shells and the side-wall lateral perspective are unchanged. The human hand is a 13-tile row plus a separate drawn-tile slot; the top hand is a dedicated 13-slot standing blue-back fan. Ponds and melds stay straight-on (azimuth 0) with four glyph orientations. The contact shadow is darker (peak 0.22) and follows the tile silhouette inside the body box, so the beveled corners are shadowed; its shape/falloff is the open calibration. Phase 2 landed the 37 face glyphs and the 16-shell startup atlas; layout and renderer are later phases.",
   "bakeImplemented": true,
   "blender": {
     "requiredVersion": "4.5.9"
@@ -371,6 +371,62 @@
         }
       },
       "expectProjection": "landscape"
+    },
+    {
+      "id": "shell_hand_side_left",
+      "projection": "fixed-oblique",
+      "faceRotationDeg": 0,
+      "role": "left player's concealed hand tile; standing upright with the blue back to the human, reusing the left wall's off-axis perspective down a single 13-tile row. The pose is mirrored from the right shell (rotZ 270 vs 90) so the human sees the back, while the camera mirror keeps the side-wall read.",
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 270
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "faceLocalZ": "bottom",
+        "projection": "perspective",
+        "perspective": {
+          "lateralOffsetUnits": 2.0,
+          "distanceUnits": 10.0
+        }
+      },
+      "expectProjection": "portrait",
+      "shadowPadding1x": {
+        "top": 8,
+        "right": 52,
+        "bottom": 58,
+        "left": 44
+      }
+    },
+    {
+      "id": "shell_hand_side_right",
+      "projection": "fixed-oblique",
+      "faceRotationDeg": 0,
+      "role": "right player's concealed hand tile; standing upright with the blue back to the human, reusing the right wall's off-axis perspective down a single 13-tile row. The pose is mirrored from the left shell (rotZ 90 vs 270), with the camera mirror carrying the side-wall read.",
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 90
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "faceLocalZ": "bottom",
+        "projection": "perspective",
+        "perspective": {
+          "lateralOffsetUnits": -2.0,
+          "distanceUnits": 10.0
+        }
+      },
+      "expectProjection": "portrait",
+      "shadowPadding1x": {
+        "top": 8,
+        "right": 52,
+        "bottom": 58,
+        "left": 44
+      }
     }
   ],
   "audition": {
@@ -548,6 +604,12 @@
       ],
       "shell_wall_side_right": [
         "bare"
+      ],
+      "shell_hand_side_left": [
+        "bare"
+      ],
+      "shell_hand_side_right": [
+        "bare"
       ]
     },
     "note": "A variant id names the decal's perspective slot, not a camera angle. The face-up dora shells are the top tier of a wall stack, so their decals are their own perspective slots even where the projection matches a pond shell. Face-down wall shells are bare and contribute no atlas entries. The per-slot front/back dora shells are 34 further perspective slots (slotDora); the 14 hand slots are 14 more (handSlots).",
@@ -605,7 +667,7 @@
     "manifestBytes": 614400,
     "shellBytes": 262144,
     "totalShellBytes": 6291456,
-    "note": "The per-slot front/back wall fan, the per-slot hand fan, the separate body/shadow sprites and the larger diffuse rounded-rectangle shadow (sigma 12 px) multiply the catalogue (103 shells, each with a body and a shadow PNG at both scales). The committed shell budget is 6 MiB and the manifest budget 600 KiB (raised from 512 KiB when the per-shell `shadowShape` was added; it is the input that replaces the per-shell shadow sprite dependency for groups); a board loads only the slots it draws, and the total committed asset budget is still 8 MiB with an initial hand + board load under 4 MiB."
+    "note": "The per-slot front/back wall fan, the per-slot hand fan, the separate body/shadow sprites and the larger diffuse rounded-rectangle shadow (sigma 12 px) multiply the catalogue (107 shells, each with a body and a shadow PNG at both scales). The committed shell budget is 6 MiB and the manifest budget 600 KiB (raised from 512 KiB when the per-shell `shadowShape` was added; it is the input that replaces the per-shell shadow sprite dependency for groups); a board loads only the slots it draws, and the total committed asset budget is still 8 MiB with an initial hand + board load under 4 MiB."
   },
   "wallSlots": {
     "note": "The front/back walls are a fan of per-slot perspectives, not one shell. The tile directly in front of the human (slot 8 of 17) is straight on. Every other slot is seen from the human's eye, so the far-right tile shows its left side and the far-left tile shows its right side. The camera is the same off-axis perspective as the side walls; only its lateral offset and distance change. front = the bottom wall nearest the human; back = the top wall across the table. A slot's lateral offset is -(index - centreIndex) * stepUnits, i.e. the camera sits at the human's x on the centre line. The face-down and face-up dora shells share the slot's geometry; the back dora's glyph is rotated 180 so it reads for the far player.",

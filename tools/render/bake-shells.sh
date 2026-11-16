@@ -10,7 +10,7 @@
 #   bash tools/render/bake-shells.sh --check-audition  # validate the candidate matrix; needs no Blender
 #   bash tools/render/bake-shells.sh --bake     # bake 1x + 2x, build review sheets, then check
 #
-# --bake renders the 103 shells (eight base + 14 human-hand slots + 13 top-hand
+# --bake renders the 107 shells (twelve base + 14 human-hand slots + 13 top-hand
 # slots + 68 wall slots) as body + shadow sprites with the pinned Blender at the
 # current base scale,
 # writes frontend/public/table/shells/ (+ 2x/) and shells.json, regenerates the
@@ -19,7 +19,7 @@
 #
 # --preview is the fast loop: --preview --only <id> [--only <id>...] renders just
 # those shells under tools/render/build/preview/ (never the committed assets),
-# writes a preview manifest and a preview sheet, and skips the full 103-shell
+# writes a preview manifest and a preview sheet, and skips the full 107-shell
 # check. Use it while tuning one shell; do a full --bake when the set is right.
 #
 # --preview-shadow is the fastest loop: it reads the committed body PNG and its

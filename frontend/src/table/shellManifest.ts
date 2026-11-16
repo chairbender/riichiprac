@@ -10,8 +10,8 @@
  * texture is exactly `pixelRatio` times the resolution, so the atlas can draw
  * at 2x without changing logical layout.
  *
- * The 103-shell catalogue is not hard-coded here: the atlas consumes the
- * manifest, and the Phase 2 face-up subset lives in `tiles.ts`.
+ * The shell catalogue is not hard-coded here: the atlas consumes the manifest,
+ * and the Phase 2 face-up subset lives in `tiles.ts`.
  */
 import { isFaceUpShellId } from './tiles';
 import type { FaceUpShellId } from './tiles';
@@ -33,6 +33,49 @@ export interface ShellPose {
   readonly rotateXDeg: number;
   readonly rotateYDeg: number;
   readonly rotateZDeg: number;
+}
+
+/**
+ * The hard shadow footprint a shell casts, in @1x px relative to the tile's
+ * grid anchor. The group-shadow pass draws this rotated rounded rectangle at
+ * alpha 1, merges overlaps, then blurs the union once (§10.12).
+ */
+export interface ShadowShape {
+  readonly centrePx: PointPx;
+  readonly halfPx: PointPx;
+  readonly radiusPx: number;
+  readonly angleDeg: number;
+  readonly sigmaPx1x: number;
+  readonly coreAlpha: number;
+  readonly colorHex: string;
+  readonly lying: boolean;
+}
+
+/**
+ * The camera-slot metadata a fan row needs. `offsetUnits` is the slot's
+ * lateral offset from the row centre in tile widths, so the layout engine can
+ * derive the fan origin from the manifest instead of hard-coding slot tables.
+ */
+export interface SlotMeta {
+  readonly kind: string;
+  /** Row/draw/index; null for the drawn tile's slot. */
+  readonly index: number | null;
+  readonly offsetUnits: number;
+  readonly lateralOffsetUnits: number;
+  readonly distanceUnits: number;
+  readonly angleDeg: number;
+  readonly faceUp: boolean;
+}
+
+/** A front/back wall slot record. Front is the human side, back the far side. */
+export interface WallSlotMeta {
+  readonly wall: string;
+  readonly index: number | null;
+  readonly offsetUnits: number;
+  readonly lateralOffsetUnits: number;
+  readonly distanceUnits: number;
+  readonly angleDeg: number;
+  readonly faceUp: boolean;
 }
 
 export interface ShellStats {
@@ -58,6 +101,17 @@ export interface ShellStats {
   readonly faceQuadOrder: string;
   /** Projected tile axis steps in @1x px; use these for tight grids. */
   readonly gridStepPx: { readonly x: PointPx; readonly y: PointPx };
+  /** Upper-tier offset on a wall stack; present on the wall shells. */
+  readonly stackCount?: number;
+  readonly stackStepPx?: PointPx;
+  /** The human hand's slot camera record. */
+  readonly handSlot?: SlotMeta;
+  /** The top hand's slot camera record. */
+  readonly topHandSlot?: SlotMeta;
+  /** A front/back wall slot record. */
+  readonly wallSlot?: WallSlotMeta;
+  /** The hard footprint of the group shadow; every committed shell has one. */
+  readonly shadowShape: ShadowShape;
   readonly projection: string;
   readonly pose: ShellPose;
   /** Authoritative glyph/blue-back switch. False on the wall and top hand. */
@@ -114,6 +168,65 @@ function parseQuad(value: unknown, field: string): FaceQuad {
   if (!Array.isArray(value) || value.length !== 4) fail(`${field} must have four corners`);
   const corners = value.map((corner, index) => point(corner, `${field}[${index}]`));
   return [corners[0], corners[1], corners[2], corners[3]];
+}
+
+function objectOf(value: unknown, field: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    fail(`${field} must be an object`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function parseShadowShape(value: unknown, field: string): ShadowShape {
+  const shape = objectOf(value, field);
+  if (typeof shape.colorHex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(shape.colorHex)) {
+    fail(`${field}.colorHex must be #rrggbb`);
+  }
+  if (typeof shape.lying !== 'boolean') fail(`${field}.lying must be a boolean`);
+  const coreAlpha = finite(shape.coreAlpha, `${field}.coreAlpha`);
+  if (coreAlpha < 0 || coreAlpha > 1) fail(`${field}.coreAlpha must be 0..1`);
+  return {
+    centrePx: point(shape.centrePx, `${field}.centrePx`),
+    halfPx: point(shape.halfPx, `${field}.halfPx`),
+    radiusPx: nonNegative(shape.radiusPx, `${field}.radiusPx`),
+    angleDeg: finite(shape.angleDeg, `${field}.angleDeg`),
+    sigmaPx1x: nonNegative(shape.sigmaPx1x, `${field}.sigmaPx1x`),
+    coreAlpha,
+    colorHex: shape.colorHex,
+    lying: shape.lying,
+  };
+}
+
+function parseSlotFields(slot: Record<string, unknown>, field: string) {
+  if (typeof slot.faceUp !== 'boolean') fail(`${field}.faceUp must be a boolean`);
+  let index: number | null = null;
+  if (slot.index !== null && slot.index !== undefined) {
+    const number = finite(slot.index, `${field}.index`);
+    if (!Number.isInteger(number) || number < 0) fail(`${field}.index must be an integer`);
+    index = number;
+  }
+  return {
+    index,
+    offsetUnits: finite(slot.offsetUnits, `${field}.offsetUnits`),
+    lateralOffsetUnits: finite(slot.lateralOffsetUnits, `${field}.lateralOffsetUnits`),
+    distanceUnits: positive(slot.distanceUnits, `${field}.distanceUnits`),
+    angleDeg: finite(slot.angleDeg, `${field}.angleDeg`),
+    faceUp: slot.faceUp,
+  };
+}
+
+function parseSlot(value: unknown, field: string): SlotMeta {
+  const slot = objectOf(value, field);
+  if (typeof slot.kind !== 'string' || !slot.kind) fail(`${field}.kind must be a string`);
+  return { kind: slot.kind, ...parseSlotFields(slot, field) };
+}
+
+function parseWallSlot(value: unknown, field: string): WallSlotMeta {
+  const wall = objectOf(value, field);
+  if (wall.wall !== 'front' && wall.wall !== 'back') {
+    fail(`${field}.wall must be front or back`);
+  }
+  return { wall: wall.wall, ...parseSlotFields(wall, field) };
 }
 
 /** True when a shell shows its blue resin back, so no glyph belongs on it. */
@@ -206,6 +319,23 @@ function parseShell(id: string, raw: unknown): ShellStats {
   const pose = poseRaw as Record<string, unknown>;
   if (typeof shell.faceUp !== 'boolean') fail(`${id}.faceUp must be a boolean`);
 
+  let stackCount: number | undefined;
+  let stackStepPx: PointPx | undefined;
+  if (shell.stackStepPx !== undefined) {
+    stackStepPx = point(shell.stackStepPx, `${id}.stackStepPx`);
+    const count = positive(shell.stackCount, `${id}.stackCount`);
+    if (!Number.isInteger(count)) fail(`${id}.stackCount must be an integer`);
+    stackCount = count;
+  }
+  const handSlot =
+    shell.handSlot === undefined ? undefined : parseSlot(shell.handSlot, `${id}.handSlot`);
+  const topHandSlot =
+    shell.topHandSlot === undefined
+      ? undefined
+      : parseSlot(shell.topHandSlot, `${id}.topHandSlot`);
+  const wallSlot =
+    shell.wallSlot === undefined ? undefined : parseWallSlot(shell.wallSlot, `${id}.wallSlot`);
+
   const stats: ShellStats = {
     textureFile,
     textureFile2x,
@@ -228,6 +358,11 @@ function parseShell(id: string, raw: unknown): ShellStats {
       x: point(grid.x, `${id}.gridStepPx.x`),
       y: point(grid.y, `${id}.gridStepPx.y`),
     },
+    ...(stackCount === undefined ? {} : { stackCount, stackStepPx }),
+    ...(handSlot === undefined ? {} : { handSlot }),
+    ...(topHandSlot === undefined ? {} : { topHandSlot }),
+    ...(wallSlot === undefined ? {} : { wallSlot }),
+    shadowShape: parseShadowShape(shell.shadowShape, `${id}.shadowShape`),
     projection: typeof shell.projection === 'string' ? shell.projection : '',
     pose: {
       rotateXDeg: finite(pose.rotateXDeg, `${id}.pose.rotateXDeg`),
