@@ -1,8 +1,9 @@
-# Replay miner operations: data root, provenance, storage, replays and labels (F1, R1, R2, L1)
+# Replay miner operations: data root, provenance, storage, replays and labels (F1, R1, R2, L1, L2)
 
 Status: implemented foundation (F1), replay reader/validator (R1), the walker /
-`GameState` reconstruction (R2) and the native Mortal labeler with Q values and
-the label cache (L1) of
+`GameState` reconstruction (R2), the native Mortal labeler with Q values and
+the label cache (L1), and book/Mortal agreement with contested marking,
+percentile hooks and optional calibration (L2) of
 [`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
 document is the operator contract for the native-only miner. It does not re-open
 the source decision: [`replay-strategy.md`](replay-strategy.md) §2 fixes AI
@@ -16,9 +17,12 @@ the seat-normalised `GameState` snapshots, decision enumeration and the
 `tenhou6` reviewer export. L1 adds `src/miner/label/`: native batch inference
 with the app's own MIT Candle port, the per-action Q values the browser drops,
 the `q_gap_top2`/`q_gap_safe` measurements, the book/Mortal label and the
-`model_labels` cache behind `mine_replays label`. Book classification (B1)
-already exists in `src/classifier/`; selection, transforms and the pack publisher
-remain S and P1a onward.
+`model_labels` cache behind `mine_replays label`. L2 adds the
+`stable`/`contested`/`unresolved` agreement classification, the optional
+multi-model vote path, the per-family percentile-threshold hook and the optional
+versioned Q→point calibration, all in `src/miner/label/`. Book classification
+(B1) already exists in `src/classifier/`; selection, transforms and the pack
+publisher remain S and P1a onward.
 
 ## Build boundary
 
@@ -58,13 +62,14 @@ mine_replays [--data-dir DIR] <command>
   review            work the human review queue
 ```
 
-`label` is implemented (L1); the other commands still resolve the data root,
-report the command they would run, and exit with code 2, so a script cannot
-treat a stub as a successful run.
+`label` is implemented (L1 with the L2 agreement/calibration extensions); the
+other commands still resolve the data root, report the command they would run,
+and exit with code 2, so a script cannot treat a stub as a successful run.
 
 ```bash
 cargo run --features miner --bin mine_replays -- label \
   --weights frontend/public/models/mortal_298k.safetensors \
+  [--models OTHER.safetensors,...] [--calibration CAL.json] \
   [--replays DIR] [--family NAME] [--limit N] \
   [--classifier-version V] [--gamma F] [--pts a,b,c,d] [--json]
 ```
@@ -74,6 +79,13 @@ cargo run --features miner --bin mine_replays -- label \
 existing `decisions` row. Exit code is 1 when a replay or decision failed and 2
 when the run could not start (missing weights/replay dir, DB error): a partial
 run is never reported as success. `--json` prints the machine-readable report.
+
+`--models` names **additional** checkpoints for the optional multi-model vote
+pass; `--weights` is still the primary labeler. With no extra checkpoint the run
+is single-model, which is the normal path and is never described as an ensemble
+or a consensus. `--calibration` applies a versioned Q→point calibration (see
+"Q→point calibration" below); it is recomputed from the cached raw Q values, so
+changing it never re-runs the model.
 
 ## Data root
 
@@ -200,7 +212,7 @@ It is a single transactional SQLite file, created and migrated on open
 | --- | --- |
 | `corpus_runs` | one generation run: plan, family, replay count, local/Drive dir, snapshot, rclone status |
 | `replays` | one immutable game: source, licence, rule profile, log path/bytes/hash, validation, agent roster, full provenance JSON |
-| `decisions` | one decision point: state hash/JSON, legal/played actions, trigger, book match, Mortal label, Q values (units `model_utility`), selection fields |
+| `decisions` | one decision point: state hash/JSON, legal/played actions, trigger, book match, Mortal label, Q values (units `model_utility`), L2 `label_kind`/`label_source` agreement classification, selection fields |
 | `model_labels` | L1 cache: status/attempts/label JSON per `(state_hash, model_sha256, classifier_version, options_hash)` |
 | `selected_scenarios` | curated rows: decision, pack, lesson, correct/accepted action, label fields, variant base, transform chain, provenance |
 | `variants` | transform output: base scenario, chain, seed, label-preserved flag, rejection reason |
@@ -546,8 +558,9 @@ while the shanten/wait inputs the encoder reads do. `options_hash` is the hash o
 L1 also updates the `decisions` row when `extract` has created one
 (`mortal_top`, `mortal_top_prob`, `mortal_margin`, `mortal_ranking`,
 `q_values_json`, `q_units`, `labeler_model`, `labeler_model_sha256`,
-`classifier_version`, `label_json`). It deliberately leaves `label_kind`,
-`label_source` and `selection_reason` to L2/S2.
+`classifier_version`, `label_json`). L2 then writes `label_kind` and
+`label_source` from the agreement classification; `selection_reason` is left to
+S2.
 
 ### Parity
 
@@ -584,6 +597,118 @@ row, and asserts that a rerun is fully cached.
   `cargo tree --features miner` (no `libriichi`) stay clean.
 
 Visual sign-off is not involved in L1.
+
+## Book agreement, contested states and calibration (L2)
+
+Status: implemented. L2 turns L1's book half into an explicit agreement
+classification and adds the optional hooks below. It adds no model and no
+second opinion: with one `mortal_298k` checkpoint, a label is one model's view.
+
+### Agreement: `stable` vs `contested`
+
+A label carries two derived fields, in `label_json` and (for the kind) on the
+`decisions` row:
+
+| Field | Values | Meaning |
+| --- | --- | --- |
+| `stability` | `stable`, `contested`, `unresolved` | Do the book and the model name one answer? |
+| `label_kind` | `book`, `contested`, `mortal`, `none` | What would a drill grade? |
+
+Rules (`src/miner/label/agreement.rs`):
+
+- **Agreement is the app's comparison rule.** The book answer is compared with
+  the model by `fuzz::compare_action_set`, i.e. the same rule as
+  `generator::mortal_agreement`: `equivalent_tiles` count as the same answer and
+  a Riichi answer must match the evaluator's second-pass discard. A test pins
+  that `classifier::mortal_agrees` and `mortal_agreement::rejection_for` agree
+  on the same stamped state.
+- `stable` + `book`: the model's top action is the book answer.
+- `contested` + `contested`: the model prefers a different action. **The book
+  answer stays the answer**, the model's action is recorded beside it, and the
+  candidate may ship only as a dual-verdict drill (replay-strategy §5.2).
+- `unresolved` + `none`: the book rules disagree with each other and the model
+  agrees with none of them. The decision is not shippable.
+- A position no lesson recognises is `label_kind: mortal` with no `stability`:
+  there is no book perspective to agree or disagree with.
+- The Mortal tiebreak between two book lessons is already explicit in L1's
+  `resolution: mortal_tiebreak` plus the rejected lesson list; it is never a
+  silent choice. `book_conflict` remains the fail-closed case.
+
+`label_kind`/`label_source` are written onto the `decisions` row by the shard
+run (`book+mortal` for book and contested labels, `mortal` for Mortal-only,
+`none` for an unresolved conflict), so a book/Mortal disagreement is queryable
+instead of looking like an ordinary book label. `selection_reason` stays with
+S2.
+
+### Multi-model votes (optional, future)
+
+`mine_replays label --models OTHER.safetensors,...` evaluates additional
+checkpoints and records one `ModelVote` (identity, hash, top action,
+probability, margin, and whether it agrees with the book answer) per member.
+Two or more members produce a `ModelConsensus` with `unanimous`/`contested`;
+a split marks the label `contested`. With zero extras the field is absent and
+nothing is called an ensemble: one checkpoint is a label, not a consensus. The
+multi-model path deliberately does not use the single-model cache (its key would
+need the whole labeler set) and no gate or quota depends on it. The single-model
+labeler remains `mortal_298k`.
+
+A checkpoint mismatch is never hidden: L1 keeps `generator` when the replay's
+generator differs from the labeler, and every vote carries its own identity and
+SHA-256.
+
+### Percentile thresholds per decision family
+
+`src/miner/label/thresholds.rs` is the S3 hook, not a selector:
+
+- a family is `<decision_kind>/<turn_bucket>` (`turns 0–5`, `6–11`, `12+`, using
+  the longest river on the table), e.g. `self_turn/mid`;
+- `PercentileThresholds` holds the close-call and confidence percentiles
+  (defaults 10% / 90%), overridable per family in `PercentileConfig` (JSON). An
+  unknown family key is an error, not a silent default;
+- `PercentileCut` computes both cuts from a family's sample with the
+  order-independent nearest-rank method (`f32::total_cmp`); a family with fewer
+  than 8 usable values has no cuts, and `band()` returns `close`, `middle` or
+  `confident`;
+- `ModelLabel::top2_gap()` is `q_gap_top2`, falling back to the probability
+  margin when Q values were not recorded. `thresholds::family_gap(snapshot,
+  label)` joins a label to its family and gap, which is what S3 groups; no
+  absolute point threshold exists.
+
+### Q→point calibration
+
+`src/miner/label/calibration.rs` defines `riichiprac.q-point-calibration` v1: a
+separate, versioned document (`calibration_id`, method, fit provenance, units,
+and strictly increasing `(q_gap, point_diff)` breakpoints anchored at `(0, 0)`).
+`apply_calibration` derives `expected_point_diffs` (per action, in `points`)
+from the stored raw Q values and records `calibration_version` = the calibration
+id **beside** the Q values; it never changes `q_values`, the ranking or
+`q_gap_*`. A mapping clamps at its last breakpoint instead of extrapolating.
+
+No calibration ships. Without one, no label field claims points. Calibration is
+not part of the cache key: a cached raw label can be recalibrated with no
+forward pass, so changing the calibration never invalidates evaluations. A
+non-monotone, unanchored, non-finite, wrong-unit or wrong-version document is
+rejected at load.
+
+## L2 acceptance evidence
+
+- `cargo test --features miner` covers: `stable`/`contested`/`unresolved` and the
+  four label kinds (including a contested label keeping the book answer and
+  `json["stability"]`), a Mortal-only label having no stability, the
+  `mortal_agrees` ↔ `mortal_agreement::rejection_for` cross-check, consensus
+  only existing with two or more checkpoints, unanimous vs contested votes
+  (including red-five normalisation), `top2_gap` falling back to the probability
+  margin, percentile determinism and order-independence, nearest-rank cuts,
+  per-family config validation, small-family refusal, calibration validation
+  (schema/version/units/anchor/monotonicity), point estimates without touching
+  Q values, recalibrating a cached label with no forward pass, and the shard
+  writing `label_kind`/`label_source` and the recalibration/cache report.
+- The CLI parses `--models`/`--calibration`; a single-model run has neither.
+- `cargo clippy --all-targets --features miner -- -D warnings`,
+  `cargo check --target wasm32-unknown-unknown`, `cargo test --lib` and
+  `cargo tree --features miner` (no `libriichi`) stay clean.
+
+Visual sign-off is not involved in L2.
 
 ## F1 acceptance evidence
 

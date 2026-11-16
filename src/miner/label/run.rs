@@ -19,6 +19,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::Serialize;
 
+use super::calibration::QPointCalibration;
 use super::{
     LabelDisposition, LabelError, LabelOptions, ModelIdentity, ModelLabel, StateEvaluator,
     label_decision,
@@ -33,6 +34,12 @@ const REPLAY_SUFFIX: &str = ".jsonl.gz";
 pub struct LabelRunOptions {
     /// Checkpoint to load. Required: the miner never guesses a model.
     pub weights: PathBuf,
+    /// Additional checkpoints for the optional multi-model vote pass.
+    ///
+    /// Empty by default: one checkpoint is the normal labeler and is **not** a
+    /// consensus or an ensemble. A multi-model pass records each member's vote
+    /// and does not use the single-model label cache.
+    pub extra_models: Vec<PathBuf>,
     /// Replay directory. Defaults to `$RIICHI_DATA_DIR/replays`.
     pub replays: Option<PathBuf>,
     /// Label one family sub-directory only.
@@ -47,6 +54,11 @@ pub struct LabelRunOptions {
     pub pts: Option<Vec<f32>>,
     /// Optional analyses to record.
     pub label_options: LabelOptions,
+    /// Optional versioned Q→point calibration applied to every label.
+    ///
+    /// It is not part of the cache key: the point estimates are recomputed from
+    /// the cached raw Q values, so recalibrating never re-runs the model.
+    pub calibration: Option<QPointCalibration>,
 }
 
 impl LabelRunOptions {
@@ -55,6 +67,7 @@ impl LabelRunOptions {
     pub fn new(weights: impl Into<PathBuf>) -> Self {
         Self {
             weights: weights.into(),
+            extra_models: Vec::new(),
             replays: None,
             family: None,
             limit: None,
@@ -62,6 +75,7 @@ impl LabelRunOptions {
             gamma: None,
             pts: None,
             label_options: LabelOptions::default(),
+            calibration: None,
         }
     }
 }
@@ -73,8 +87,14 @@ pub struct LabelRunReport {
     pub model: String,
     /// Labeler checkpoint hash.
     pub model_sha256: String,
+    /// Every evaluated checkpoint, primary first. One entry on the normal pass.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub labelers: Vec<String>,
     /// Classifier generation.
     pub classifier_version: String,
+    /// Calibration id applied to this run, when one was.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calibration: Option<String>,
     /// Replay files the shard selected.
     pub replays_found: usize,
     /// Replays that walked cleanly.
@@ -95,16 +115,43 @@ pub struct LabelRunReport {
     pub decisions_failed: usize,
     /// Labels that carry a book match.
     pub book_labels: usize,
-    /// Book disagreements the model could not settle.
+    /// Book labels whose answer the model agrees with (`stable`).
+    pub stable: usize,
+    /// Book labels the model disagrees with (`contested`); shippable only as a
+    /// dual verdict.
+    pub contested: usize,
+    /// Labels with no book lesson (the model's action is the answer).
+    pub mortal_only: usize,
+    /// Book conflicts the model could not settle (`unresolved`); not shippable.
     pub book_conflicts: usize,
     /// First errors, in run order (bounded).
     pub errors: Vec<String>,
 }
 
-/// Label a replay shard with the checkpoint named in `options`.
+/// Label a replay shard with the checkpoint(s) named in `options`.
+///
+/// One checkpoint is the normal path. Additional `extra_models` switch to the
+/// optional multi-model vote pass, which records each member's identity and
+/// top action and marks a split table `contested`.
 pub fn run_label(root: &DataRoot, options: &LabelRunOptions) -> Result<LabelRunReport, LabelError> {
-    let labeler = super::Labeler::load(&options.weights, options.gamma, options.pts.clone())?;
-    run_shard(root, options, &labeler)
+    let primary = super::Labeler::load(&options.weights, options.gamma, options.pts.clone())?;
+    if options.extra_models.is_empty() {
+        return run_shard_models(root, options, &[&primary]);
+    }
+    let mut checkpoints = Vec::with_capacity(1 + options.extra_models.len());
+    checkpoints.push(primary);
+    for path in &options.extra_models {
+        checkpoints.push(super::Labeler::load(
+            path,
+            options.gamma,
+            options.pts.clone(),
+        )?);
+    }
+    let evaluators: Vec<&dyn StateEvaluator> = checkpoints
+        .iter()
+        .map(|labeler| labeler as &dyn StateEvaluator)
+        .collect();
+    run_shard_models(root, options, &evaluators)
 }
 
 /// Label a replay shard with an already-loaded evaluator.
@@ -116,6 +163,26 @@ pub fn run_shard(
     options: &LabelRunOptions,
     evaluator: &dyn StateEvaluator,
 ) -> Result<LabelRunReport, LabelError> {
+    run_shard_models(root, options, &[evaluator])
+}
+
+/// Label a replay shard with one or more already-loaded evaluators.
+///
+/// A single evaluator uses the L1 cache keyed by its identity. Two or more
+/// evaluators take the optional multi-model path: every checkpoint votes and the
+/// label records the consensus; that path deliberately skips the cache because
+/// its key would need the whole labeler set (no current pipeline uses it).
+pub fn run_shard_models(
+    root: &DataRoot,
+    options: &LabelRunOptions,
+    evaluators: &[&dyn StateEvaluator],
+) -> Result<LabelRunReport, LabelError> {
+    let Some(primary) = evaluators.first() else {
+        return Err(LabelError::Evaluation(
+            "no labeler was supplied to the shard run".to_string(),
+        ));
+    };
+    let primary: &dyn StateEvaluator = *primary;
     // Resolve the replay shard before opening the DB, so a mistyped `--replays`
     // path is a hard error rather than an empty, successful-looking run.
     let replays = options
@@ -128,12 +195,21 @@ pub fn run_shard(
     }
 
     let connection = open_miner_db(root)?;
-    let identity = evaluator.identity();
+    let identity = primary.identity();
     let cache = super::cache::LabelCache::new(&connection);
+    let single_model = evaluators.len() == 1;
     let mut report = LabelRunReport {
         model: identity.model.clone(),
         model_sha256: identity.model_sha256.clone(),
+        labelers: evaluators
+            .iter()
+            .map(|evaluator| evaluator.identity().model.clone())
+            .collect(),
         classifier_version: options.classifier_version.clone(),
+        calibration: options
+            .calibration
+            .as_ref()
+            .map(|calibration| calibration.calibration_id.clone()),
         replays_found: files.len(),
         ..LabelRunReport::default()
     };
@@ -153,38 +229,80 @@ pub fn run_shard(
 
         for decision in &walk.decisions {
             report.decisions_seen += 1;
-            match label_decision(
-                &cache,
-                evaluator,
-                decision,
-                &options.label_options,
-                &options.classifier_version,
-                generator.as_ref(),
-            ) {
-                Ok(disposition) => {
+            let labelled = if single_model {
+                label_decision(
+                    &cache,
+                    primary,
+                    decision,
+                    &options.label_options,
+                    &options.classifier_version,
+                    generator.as_ref(),
+                )
+                .map(|disposition| {
                     match &disposition {
                         LabelDisposition::Cached(_) => report.decisions_cached += 1,
                         LabelDisposition::Labelled(_) => report.decisions_labelled += 1,
                         LabelDisposition::Retried(_) => report.decisions_retried += 1,
                     }
-                    let label = disposition.label();
-                    if label.book.is_some() {
-                        report.book_labels += 1;
+                    disposition.into_label()
+                })
+            } else {
+                super::build_label_with_models(
+                    evaluators,
+                    decision,
+                    &options.label_options,
+                    &options.classifier_version,
+                    generator.as_ref(),
+                )
+                .inspect(|_| {
+                    report.decisions_labelled += 1;
+                })
+            };
+
+            let label = match labelled {
+                Ok(mut label) => {
+                    // Calibration is a pure function of the cached raw Q values:
+                    // apply it after the cache lookup so a recalibration never
+                    // invalidates a finished evaluation.
+                    if let Some(calibration) = &options.calibration
+                        && let Err(err) = label.apply_calibration(calibration)
+                    {
+                        report.decisions_failed += 1;
+                        record_error(&mut report, format!("{}: {err}", decision.decision_id));
+                        continue;
                     }
-                    if label.book_conflict.is_some() {
-                        report.book_conflicts += 1;
-                    }
-                    write_decision_label(&connection, &decision.decision_id, label)?;
+                    label
                 }
                 Err(err) => {
                     report.decisions_failed += 1;
                     record_error(&mut report, format!("{}: {err}", decision.decision_id));
+                    continue;
                 }
-            }
+            };
+
+            tally(&mut report, &label);
+            write_decision_label(&connection, &decision.decision_id, &label)?;
+            write_decision_classification(&connection, &decision.decision_id, &label)?;
         }
     }
 
     Ok(report)
+}
+
+/// Count the agreement outcome of one label for the shard report.
+fn tally(report: &mut LabelRunReport, label: &ModelLabel) {
+    if label.book.is_some() {
+        report.book_labels += 1;
+    }
+    if label.book_conflict.is_some() {
+        report.book_conflicts += 1;
+    }
+    match label.kind() {
+        super::agreement::LabelKind::Book => report.stable += 1,
+        super::agreement::LabelKind::Contested => report.contested += 1,
+        super::agreement::LabelKind::Mortal => report.mortal_only += 1,
+        super::agreement::LabelKind::Unlabelled => {}
+    }
 }
 
 /// Keep the report readable: a broken corpus can fail thousands of times.
@@ -217,8 +335,9 @@ fn generator_identity(
 
 /// Copy a label onto an existing `decisions` row.
 ///
-/// `label_kind`/`label_source`/`selection_reason` belong to selection (S2), not
-/// to L1, so they are left alone.
+/// `label_kind`/`label_source` are written by
+/// [`write_decision_classification`] (L2) and `selection_reason` belongs to
+/// selection (S2), so this L1 write leaves them alone.
 fn write_decision_label(
     connection: &Connection,
     decision_id: &str,
@@ -253,6 +372,26 @@ fn write_decision_label(
             label_json,
             decision_id
         ],
+    )?;
+    Ok(())
+}
+
+/// Record the L2 agreement classification on an existing `decisions` row.
+///
+/// `label_kind` uses the table's existing vocabulary (`book`, `contested`,
+/// `mortal`, `none`); `label_source` says which perspectives produced the
+/// answer (`book+mortal`, `mortal`, `none`). A book/Mortal discrepancy is
+/// therefore queryable as `contested` instead of looking like an ordinary book
+/// label. `selection_reason` stays with S2.
+fn write_decision_classification(
+    connection: &Connection,
+    decision_id: &str,
+    label: &ModelLabel,
+) -> Result<(), LabelError> {
+    let kind = label.kind();
+    connection.execute(
+        "UPDATE decisions SET label_kind = ?1, label_source = ?2 WHERE decision_id = ?3",
+        params![kind.as_str(), kind.source(), decision_id],
     )?;
     Ok(())
 }

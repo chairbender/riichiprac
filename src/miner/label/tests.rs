@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::Connection;
 
 use super::cache::{CacheLookup, LabelCache, LabelKey};
+use super::calibration::QPointCalibration;
 use super::*;
 use crate::ai::actions::legal_actions;
 use crate::ai::wasm_bridge::evaluate_state_named;
@@ -96,8 +97,17 @@ pub(super) struct CannedEvaluator {
 
 impl CannedEvaluator {
     pub(super) fn new(q: impl Fn(&ActionInfo) -> f32 + 'static) -> Self {
+        Self::with_identity(identity(), q)
+    }
+
+    /// A canned evaluator that reports a different checkpoint, for the
+    /// optional multi-model vote tests.
+    pub(super) fn with_identity(
+        identity: ModelIdentity,
+        q: impl Fn(&ActionInfo) -> f32 + 'static,
+    ) -> Self {
         Self {
-            identity: identity(),
+            identity,
             q: Box::new(q),
             fail: Cell::new(false),
             calls: Cell::new(0),
@@ -760,4 +770,367 @@ fn label_parity_with_evaluate_state_on_a_fixed_fixture() {
 
     assert!(checked > 0, "the fixture replay must produce decisions");
     println!("label parity checked on {checked} decisions");
+}
+
+// ---------------------------------------------------------------------------
+// L2: book agreement, contested states, multi-model votes and calibration.
+// ---------------------------------------------------------------------------
+
+/// A calibration fixture that maps a Q gap linearly to points.
+pub(super) fn calibration_fixture() -> QPointCalibration {
+    QPointCalibration {
+        schema: super::calibration::CALIBRATION_SCHEMA.to_string(),
+        version: super::calibration::CALIBRATION_VERSION,
+        calibration_id: "fixture-calibration".to_string(),
+        method: "fixture".to_string(),
+        fitted_at: "2026-11-16T00:00:00Z".to_string(),
+        source: None,
+        q_units: Q_UNITS.to_string(),
+        point_units: super::calibration::POINT_UNITS.to_string(),
+        breakpoints: vec![
+            super::calibration::CalibrationBreakpoint {
+                q_gap: 0.0,
+                point_diff: 0.0,
+            },
+            super::calibration::CalibrationBreakpoint {
+                q_gap: 1.0,
+                point_diff: 2_000.0,
+            },
+        ],
+    }
+}
+
+fn other_identity() -> ModelIdentity {
+    ModelIdentity {
+        model: "other_checkpoint.safetensors".to_string(),
+        model_sha256: "b".repeat(64),
+        gamma: None,
+        pts: None,
+    }
+}
+
+/// The first decision in the fixture with a book label, with its book answer.
+fn first_book_decision() -> Option<(DecisionSnapshot, String)> {
+    let replay = walk(&fixtures::all_events_game());
+    replay.decisions.iter().find_map(|snapshot| {
+        let matched = classify_decision(snapshot).ok().flatten()?;
+        Some((
+            snapshot.clone(),
+            mortal_action_for_correct(&matched.correct_action),
+        ))
+    })
+}
+
+#[test]
+fn a_label_records_book_stable_contested_and_mortal_only() {
+    let (snapshot, book_action) = first_book_decision().expect("the fixture has a book cell");
+
+    let agreeing = CannedEvaluator::new({
+        let book_action = book_action.clone();
+        move |info: &ActionInfo| {
+            if info.action == book_action {
+                0.0
+            } else {
+                -2.0
+            }
+        }
+    });
+    let label = build_label(
+        &agreeing,
+        &snapshot,
+        &LabelOptions::default(),
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("label builds");
+    assert_eq!(label.kind(), LabelKind::Book);
+    assert_eq!(label.stability(), Some(Stability::Stable));
+    assert!(label.is_shippable());
+    let json = serde_json::to_value(&label).expect("serializes");
+    assert_eq!(json["label_kind"], "book");
+    assert_eq!(json["stability"], "stable");
+
+    let disagreeing = CannedEvaluator::new({
+        let book_action = book_action.clone();
+        move |info: &ActionInfo| {
+            if info.action == book_action {
+                -2.0
+            } else {
+                0.0
+            }
+        }
+    });
+    let label = build_label(
+        &disagreeing,
+        &snapshot,
+        &LabelOptions::default(),
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("label builds");
+    assert_eq!(label.kind(), LabelKind::Contested);
+    assert_eq!(label.stability(), Some(Stability::Contested));
+    assert!(
+        label.is_shippable(),
+        "a contested drill ships as a dual verdict"
+    );
+    let json = serde_json::to_value(&label).expect("serializes");
+    assert_eq!(json["label_kind"], "contested");
+    assert_eq!(json["stability"], "contested");
+    // The book answer is still the book answer; the model's action is beside it.
+    let book = label.book.as_ref().expect("book half");
+    assert_eq!(
+        mortal_action_for_correct(&book.correct_action),
+        book_action,
+        "the disagreement must not replace the book answer"
+    );
+    assert_eq!(book.agreement.outcome, "discrepancy");
+
+    // A position no lesson recognises is a Mortal-only label, not a book one.
+    let replay = walk(&fixtures::exhaustive_game(5));
+    let unknown = replay
+        .decisions
+        .iter()
+        .find(|snapshot| classify_decision(snapshot).ok().flatten().is_none())
+        .expect("a decision with no book lesson");
+    let label = build_label(
+        &CannedEvaluator::new(|_| 0.0),
+        unknown,
+        &LabelOptions::default(),
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("label builds");
+    assert_eq!(label.kind(), LabelKind::Mortal);
+    assert_eq!(label.stability(), None);
+    assert!(label.is_shippable());
+}
+
+#[test]
+fn a_single_model_label_has_no_consensus_and_two_models_can_be_contested() {
+    let (snapshot, _) = first_book_decision().expect("the fixture has a book cell");
+
+    let single = CannedEvaluator::new(|_| 0.0);
+    let label = build_label(
+        &single,
+        &snapshot,
+        &LabelOptions::default(),
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("label builds");
+    assert!(
+        label.consensus.is_none(),
+        "one checkpoint is a label, never an ensemble"
+    );
+
+    // Two checkpoints that prefer opposite ends of the discard range.
+    let first = CannedEvaluator::with_identity(identity(), |info: &ActionInfo| {
+        -(info.tile_index.unwrap_or(99) as f32)
+    });
+    let second = CannedEvaluator::with_identity(other_identity(), |info: &ActionInfo| {
+        info.tile_index.unwrap_or(0) as f32
+    });
+    let label = build_label_with_models(
+        &[&first, &second],
+        &snapshot,
+        &LabelOptions::default(),
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("multi-model label builds");
+    let consensus = label.consensus.as_ref().expect("two members");
+    assert_eq!(consensus.members.len(), 2);
+    assert!(consensus.is_contested(), "opposite preferences must split");
+    assert_eq!(consensus.top_action, label.top_action);
+    // Every member's identity and hash is recorded: a checkpoint mismatch is
+    // never hidden behind "the model".
+    assert_eq!(consensus.members[0].model, identity().model);
+    assert_eq!(consensus.members[1].model, other_identity().model);
+    assert_ne!(
+        consensus.members[0].model_sha256,
+        consensus.members[1].model_sha256
+    );
+    assert_eq!(label.stability(), Some(Stability::Contested));
+    let json = serde_json::to_value(&label).expect("serializes");
+    assert_eq!(json["consensus"]["stability"], "contested");
+    assert_eq!(
+        json["consensus"]["members"]
+            .as_array()
+            .expect("members")
+            .len(),
+        2
+    );
+
+    // Two checkpoints with the same preference are unanimous.
+    let first = CannedEvaluator::with_identity(identity(), |info: &ActionInfo| {
+        -(info.tile_index.unwrap_or(0) as f32)
+    });
+    let second = CannedEvaluator::with_identity(other_identity(), |info: &ActionInfo| {
+        -(info.tile_index.unwrap_or(0) as f32)
+    });
+    let label = build_label_with_models(
+        &[&first, &second],
+        &snapshot,
+        &LabelOptions::default(),
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("multi-model label builds");
+    let consensus = label.consensus.as_ref().expect("two members");
+    assert_eq!(consensus.stability, Consensus::Unanimous);
+}
+
+#[test]
+fn calibration_adds_point_diffs_without_touching_the_q_values() {
+    let replay = walk(&fixtures::exhaustive_game(7));
+    let snapshot = &replay.decisions[0];
+    let evaluator = CannedEvaluator::new(|info| -(info.tile_index.unwrap_or(0) as f32) * 0.1);
+    let mut label = build_label(
+        &evaluator,
+        snapshot,
+        &LabelOptions::default(),
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("label builds");
+    let raw_q = label.q_values.clone();
+    let raw_ranking = label.ranking.clone();
+    let raw_gaps = (label.q_gap_top2, label.probability_margin);
+
+    label
+        .apply_calibration(&calibration_fixture())
+        .expect("calibrates");
+    assert_eq!(label.q_values, raw_q, "raw Q values are never overwritten");
+    assert_eq!(label.ranking, raw_ranking, "the ranking is not rewritten");
+    assert_eq!((label.q_gap_top2, label.probability_margin), raw_gaps);
+    assert_eq!(
+        label.calibration_version.as_deref(),
+        Some("fixture-calibration")
+    );
+    let diffs = label.expected_point_diffs.as_ref().expect("point diffs");
+    assert_eq!(diffs.diffs[&label.top_action], 0.0);
+    for (action, q) in &label.q_values {
+        let expected_gap = (label.q_values[&label.top_action] - q).max(0.0);
+        let expected = calibration_fixture().estimate(expected_gap);
+        assert_eq!(diffs.diffs[action], expected);
+    }
+    let json = serde_json::to_value(&label).expect("serializes");
+    assert_eq!(json["q_units"], "model_utility");
+    assert_eq!(json["expected_point_diffs"]["point_units"], "points");
+}
+
+#[test]
+fn the_cached_raw_label_can_be_recalibrated_without_another_forward_pass() {
+    let connection = memory_db();
+    let cache = LabelCache::new(&connection);
+    let evaluator = CannedEvaluator::new(|info| -(info.tile_index.unwrap_or(0) as f32) * 0.1);
+    let options = LabelOptions::default();
+    let replay = walk(&fixtures::exhaustive_game(7));
+    let snapshot = &replay.decisions[0];
+
+    let first = label_decision(
+        &cache,
+        &evaluator,
+        snapshot,
+        &options,
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("first label")
+    .into_label();
+    assert_eq!(evaluator.calls(), 1);
+    assert!(
+        first.expected_point_diffs.is_none(),
+        "the cache stores the raw label"
+    );
+
+    // A second run reuses the cache; calibration is applied to the raw copy.
+    let mut cached = label_decision(
+        &cache,
+        &evaluator,
+        snapshot,
+        &options,
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("cached label")
+    .into_label();
+    assert_eq!(evaluator.calls(), 1, "recalibration must not evaluate");
+    cached
+        .apply_calibration(&calibration_fixture())
+        .expect("calibrates");
+    let mut recalibrated = first.clone();
+    recalibrated
+        .apply_calibration(&calibration_fixture())
+        .expect("calibrates");
+    assert_eq!(cached, recalibrated);
+}
+
+#[test]
+fn the_percentile_hook_uses_the_q_gap_or_the_probability_margin() {
+    let replay = walk(&fixtures::exhaustive_game(7));
+    let snapshot = &replay.decisions[0];
+    let evaluator = CannedEvaluator::new(|info| -(info.tile_index.unwrap_or(0) as f32) * 0.1);
+    let label = build_label(
+        &evaluator,
+        snapshot,
+        &LabelOptions::default(),
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("label builds");
+    assert_eq!(label.top2_gap(), label.q_gap_top2);
+
+    let without_q = build_label(
+        &evaluator,
+        snapshot,
+        &LabelOptions {
+            q_values: false,
+            safe_gap: false,
+        },
+        CLASSIFIER_VERSION,
+        None,
+    )
+    .expect("label builds");
+    assert!(without_q.q_gap_top2.is_none());
+    assert_eq!(without_q.top2_gap(), Some(without_q.probability_margin));
+
+    // A sole legal action has no top-two gap at all.
+    let mut single = without_q.clone();
+    single.ranking.truncate(1);
+    assert_eq!(single.top2_gap(), None);
+}
+
+/// Book agreement must be the same comparison rule the generator uses:
+/// `classifier::mortal_agrees` and `generator::mortal_agreement::rejection_for`
+/// cannot disagree about the same stamped state.
+#[test]
+fn book_agreement_matches_the_generators_mortal_agreement_rule() {
+    use crate::classifier::{classify_unique, mortal_agrees};
+    use crate::generator::mortal_agreement::rejection_for;
+
+    let mut found = None;
+    for lesson in crate::classifier::registered_lessons().take(6) {
+        let Ok(state) = crate::generator::generate_puzzle(lesson.as_str()) else {
+            continue;
+        };
+        if let Ok(Some(matched)) = classify_unique(&state) {
+            found = Some((state, matched));
+            break;
+        }
+    }
+    let (state, matched) = found.expect("the fixture corpus has a recognised book state");
+
+    for (tile, weight) in [("Discard_1z", 2.0_f32), ("Discard_9s", -2.0_f32)] {
+        let evaluation = canned_evaluation(&state, &identity(), &|info: &ActionInfo| {
+            if info.action == tile { weight } else { 0.0 }
+        });
+        let stamped = matched.clone().stamp(state.clone());
+        assert_eq!(
+            mortal_agrees(&state, &matched, &evaluation),
+            rejection_for(&stamped, &evaluation).is_none(),
+            "the two agreement rules must agree for {tile}"
+        );
+    }
 }
