@@ -271,8 +271,9 @@ fails the publisher.
 ### 2.5 Storage and backup (local working copy + Google Drive)
 
 The miner never reads or writes its working data directly on a Google Drive
-mount. Google Drive is the durable backup and transport layer; the miner runs
-against a local data root, and rclone mirrors that root to Drive.
+mount. The initial pipeline writes only to a local data root; **Google Drive
+backup via rclone is a separate operator task and is not a code dependency**.
+When it is configured, rclone copies the local root to Drive.
 
 **Local data root.** One configurable directory, default
 `~/riichiprac-data` (`RIICHI_DATA_DIR`):
@@ -305,10 +306,11 @@ live in `riichiprac-corpus` / `riichiprac`.
   count and the sha256; never an absolute path or a username.
 - Logs are immutable. A regenerated game with a different hash is a new file,
   not an overwrite; a seed mismatch is a reproducibility bug to investigate.
-- Google Drive mirror: `gdrive:riichiprac/replays/`.
-  `rclone copy --checksum --immutable "$RIICHI_DATA_DIR/replays" \
-  gdrive:riichiprac/replays`; `copy` never deletes, and `--immutable` prevents
-  accidental overwrite of a raw log.
+- Optional Google Drive backup (separate operator task): `gdrive:riichiprac/replays/`.
+  When configured, `rclone copy --checksum --immutable \
+  "$RIICHI_DATA_DIR/replays" gdrive:riichiprac/replays`; `copy` never deletes,
+  and `--immutable` prevents accidental overwrite of a raw log. The miner must
+  still run with no rclone remote configured.
 - Keep a `SHA256SUMS` / index manifest in the Drive folder for restore checks.
 
 **Scenario DB.**
@@ -321,12 +323,14 @@ live in `riichiprac-corpus` / `riichiprac`.
   will be exported; `packs` / `variants` hold pack and transform metadata.
 - `analytics.duckdb` / Parquet is optional and derived from `miner.sqlite`; it
   is reproducible, so it is not the primary backup target.
-- Google Drive backup uses **snapshots**, not a copy of the live DB:
+- Optional Google Drive backup uses **snapshots**, not a copy of the live DB:
   `sqlite3 "$RIICHI_DATA_DIR/db/miner.sqlite" "VACUUM INTO \
-  '$RIICHI_DATA_DIR/snapshots/miner-YYYYMMDD-HHMMSS.sqlite'"`, then
+  '$RIICHI_DATA_DIR/snapshots/miner-YYYYMMDD-HHMMSS.sqlite'"`, then, when the
+  operator has configured rclone,
   `rclone copy "$RIICHI_DATA_DIR/snapshots/" gdrive:riichiprac/db/`.
   Keep the last N snapshots (for example 7 daily + 4 weekly); do not
-  `rclone sync` the snapshot directory with delete semantics.
+  `rclone sync` the snapshot directory with delete semantics. The local snapshot
+  and `PRAGMA integrity_check` are required even without Drive.
 - Verify after upload with `rclone check`; periodically restore a snapshot,
   run `PRAGMA integrity_check`, and compare replay hashes.
 - Never `rclone mount` Google Drive and point SQLite at it. WAL/locking on a
@@ -348,14 +352,16 @@ live in `riichiprac-corpus` / `riichiprac`.
 **Cadence and recovery.**
 
 - After each corpus run, labelling pass, selection pass or pack build: snapshot
-  the DB and rclone the replay folder and the new snapshot.
-- Recovery: restore `replays/` from Drive, restore the latest
+  the DB locally. If a Drive remote is configured, also copy the replay folder
+  and the new snapshot.
+- Recovery: restore `replays/` from the local copy or Drive, restore the latest
   `miner-*.sqlite` snapshot, run `PRAGMA integrity_check`, then verify a sample
   of `replay_id` hashes. The DB can also be rebuilt from the raw corpus plus
   `(model_sha256, classifier_version, transform_version)`.
-- Google Drive contains self-play data only: the source allowlist still applies,
-  and no third-party or human logs are stored there. rclone credentials and the
-  remote name live in the operator's rclone config, never in a repo.
+- The Drive backup contains self-play data only: the source allowlist still
+  applies, and no third-party or human logs are stored there. rclone credentials
+  and the remote name live in the operator's rclone config, never in a repo.
+  Until the separate rclone task is done, local-only operation is expected.
 
 **Backup fields.** Add to `replays`, `packs` or a `backups` table:
 `storage_backend` (`local` / `gdrive`), `storage_path`, `backed_up_at`,
@@ -1051,10 +1057,10 @@ later unit uses.
 
 **Accepts.** Schema round-trip; the DB schema creates/migrates on a fixture;
 the data-root layout and relative-path rule are tested; a SQLite `VACUUM INTO`
-snapshot passes `PRAGMA integrity_check`; the rclone backup/restore commands are
-documented and dry-run/checkable; allowlist rejects every other source; atomic
-write leaves no partial file on error; `cargo tree --features miner` contains no
-`libriichi`; default WASM check stays clean.
+snapshot passes `PRAGMA integrity_check`; the optional rclone backup/restore
+commands are documented and no-op when no remote is configured; allowlist rejects
+every other source; atomic write leaves no partial file on error; `cargo tree
+--features miner` contains no `libriichi`; default WASM check stays clean.
 
 **Depends on.** Nothing.
 
@@ -1151,15 +1157,17 @@ write.
 - Write `GameProvenance` per game and per seat; emit raw logs as
   `$RIICHI_DATA_DIR/replays/<family>/<replay_id>.jsonl.gz` with relative paths
   in the DB.
-- Add the rclone backup hook: after a shard, copy the immutable replay folder to
-  `gdrive:riichiprac/replays/` and record the result in `corpus_runs`.
+- Add the optional rclone backup hook: after a shard, copy the immutable replay
+  folder to `gdrive:riichiprac/replays/` **if** a remote is configured; record
+  the result in `corpus_runs`. A missing remote is a normal local-only run, not
+  an error.
 - Document the referee/protocol decision and what it guarantees.
 
 **Accepts.** H0 and H1 complete a kyoku; H2/H3 are config-selectable without
 changing the runner; the same seed produces the same log; every game has complete
 per-seat provenance; replay paths are content-addressed and relative; the source/
-licence gates pass; the logs parse through R1/R2; the rclone hook is dry-run/
-checkable against a fixture remote; no weights or AGPL code are needed for the
+licence gates pass; the logs parse through R1/R2; the backup hook is optional and
+no-ops when no remote is configured; no weights or AGPL code are needed for the
 reference family.
 
 **Depends on.** F1, R1, R2.
@@ -1345,19 +1353,20 @@ family alone.
 - Run all enabled families; produce a funnel report and per-family shortfalls.
 - Ingest into the scenario DB; validate through R1/R2; verify provenance rows.
 - Write the local data-root layout from §2.5; snapshot the DB with
-  `VACUUM INTO`, rclone the replay folder and snapshot to Google Drive, and
-  record the result in `corpus_runs` / `backups`.
+  `VACUUM INTO` and record the snapshot in `corpus_runs` / `backups`. If the
+  separate rclone task is configured, also copy the replay folder and snapshot
+  to Google Drive; otherwise record `skipped`.
 - Dataset card, storage layout, retention note; raw logs outside git.
 - Deterministic rerun of a small shard.
 
 **Accepts.** A configured 1k-game smoke corpus (or the agreed size) across
 families; 100 % parse; 0 invalid states; complete provenance; funnel counts match
 the per-family reports; quotas/shortfalls visible; the replay folder and DB
-snapshot are present under the data root; `rclone check` passes against the
-configured Drive destination; a restored DB snapshot passes
-`PRAGMA integrity_check`; dataset card; no raw logs or weights in git; no
-third-party source. 10k games is the scale target only after this smoke gate
-passes.
+snapshot are present under the data root; a restored DB snapshot passes
+`PRAGMA integrity_check`; when the separate rclone task is configured,
+`rclone check` passes, otherwise the run records `skipped` and local-only
+operation is valid; dataset card; no raw logs or weights in git; no third-party
+source. 10k games is the scale target only after this smoke gate passes.
 
 **Depends on.** C2–C7.
 
@@ -1896,13 +1905,15 @@ wasm-pack test --headless --chrome
 cd frontend && npm test && npm run build && npm run lint
 ```
 
-Storage/backup check (operator machine, when a Drive remote is configured):
+Storage/backup check (operator machine; rclone lines only after the separate
+rclone task is configured):
 
 ```bash
 STAMP=$(date +%s)
 SNAP="$RIICHI_DATA_DIR/snapshots/miner-check-$STAMP.sqlite"
 sqlite3 "$RIICHI_DATA_DIR/db/miner.sqlite" "VACUUM INTO '$SNAP'"
 sqlite3 "$SNAP" "PRAGMA integrity_check;"
+# Optional, after the rclone task:
 rclone check "$RIICHI_DATA_DIR/replays" gdrive:riichiprac/replays --checksum
 rclone copy "$SNAP" gdrive:riichiprac/db/
 ```
@@ -1941,7 +1952,7 @@ Which gate applies:
 | G8 Pack | schema; source/licence; legal answers; no spoilers; hash/byte budget; atomic write | P1a–P1b |
 | G9 Loader | vitest, build, lint; manifest/pack load; cache; ARIA parity | P3 |
 | G10 End-to-end | fixture pipeline in CI; deterministic pack hash; all gates have a failing test | Q1 |
-| G11 Storage/backup | local data-root layout; content-addressed replay paths; SQLite snapshot + `PRAGMA integrity_check`; `rclone check` against the configured Drive destination; restore sample | F1, C1, C8, Q1 |
+| G11 Storage/backup | local data-root layout; content-addressed replay paths; SQLite snapshot + `PRAGMA integrity_check`; when the separate rclone task is configured, `rclone check` and a restore sample; otherwise `skipped` | F1, C1, C8, Q1 |
 
 ### 7.3 Pack and loader gates
 
@@ -2012,8 +2023,8 @@ The first pack (Q2) is done when all of these are true:
   are variants, or the pack report justifies a lower share; no single base
   dominates the pack;
 - the pack and manifest pass audit, hash/byte budgets, and the source/licence
-  gate; the source DB and replay folder are backed up to Google Drive and a
-  restore sample passes;
+  gate; the source DB and replay folder have a local snapshot/restore check, and
+  a Drive copy when the separate rclone task is configured;
 - the frontend loads the manifest, fetches the pack lazily, caches it in
   IndexedDB, and grades with the existing WASM path; vitest/build/lint pass;
 - a human has reviewed the 100 candidates (and the user has signed off any

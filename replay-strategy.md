@@ -507,18 +507,20 @@ Do not try to serve full replays to the browser. Separate the data by purpose:
 
 | Tier | Contents | Size (planning estimate) | Where it lives | Shipped? |
 | --- | --- | --- | --- | --- |
-| **Raw corpus** | self-play gzipped mjai JSONL per game, plus a small metadata row | ~20–60 KB/game compressed; 10k games ≈ 0.3–0.6 GB; 100k ≈ 3–6 GB | Local data root (`RIICHI_DATA_DIR/replays/`), mirrored to Google Drive via rclone; never git | no |
-| **Scenario DB** | one row per decision point, with state hash, reconstructed `GameState`, labels, scores, provenance; curated rows and pack metadata in the same DB | ~2–10 KB/decision; a 10k-game corpus has millions of decisions | Local SQLite (`RIICHI_DATA_DIR/db/miner.sqlite`); timestamped snapshots backed up to Google Drive; optional DuckDB/Parquet analytics derived from it | no |
+| **Raw corpus** | self-play gzipped mjai JSONL per game, plus a small metadata row | ~20–60 KB/game compressed; 10k games ≈ 0.3–0.6 GB; 100k ≈ 3–6 GB | Local data root (`RIICHI_DATA_DIR/replays/`); optional Google Drive backup via rclone; never git | no |
+| **Scenario DB** | one row per decision point, with state hash, reconstructed `GameState`, labels, scores, provenance; curated rows and pack metadata in the same DB | ~2–10 KB/decision; a 10k-game corpus has millions of decisions | Local SQLite (`RIICHI_DATA_DIR/db/miner.sqlite`); local snapshots, optional Drive copies; optional DuckDB/Parquet analytics derived from it | no |
 | **Curated packs** | selected, validated, deduplicated scenarios in app format | ~5–15 KB/scenario raw; 1k ≈ 5–15 MB; 10k ≈ 50–150 MB (gzip roughly halves it) | Exported from the DB; Pages same-origin, HF, or R2 | yes, lazily |
 
 The existing app already has a strict initial-load budget (AGENTS.md: initial
 hand + board ≤ 4 MB, total assets ≤ 8 MB). Never load the whole corpus or all
 packs at startup. Load a manifest, then one pack on demand.
 
-**Storage rule:** local working copy, Google Drive backup. Do not run the miner
-against a Drive mount and do not put a live SQLite file on Drive. Replays are
-immutable and content-addressed; the DB is snapshotted with `VACUUM INTO` and
-uploaded as timestamped files, never as a live copy.
+**Storage rule:** local working copy first. Google Drive backup via rclone is a
+separate operator task and is **not** a code dependency; the miner must run
+local-only. Do not run the miner against a Drive mount and do not put a live
+SQLite file on Drive. Replays are immutable and content-addressed; the DB is
+snapshotted locally with `VACUUM INTO` and, when the operator has configured
+rclone, uploaded as timestamped files, never as a live copy.
 
 ### 4.2 Schema sketch
 
@@ -683,11 +685,12 @@ Measured on 2026-11-14 with `Origin: https://chairbender.github.io`:
    (`packs/<pack-id>-<sha256-prefix>.json.gz`), fetched on demand and cached in
    IndexedDB. Content-addressed names avoid stale caches without custom headers.
 4. Keep the raw corpus and DB out of git. Store them under a local data root
-   (`RIICHI_DATA_DIR/replays`, `RIICHI_DATA_DIR/db`) and mirror them to Google
-   Drive with rclone: append-only replay copy, timestamped `VACUUM INTO` DB
-   snapshots, `rclone check` after upload. Drive is backup/transport, not a
-   runtime host and not a live SQLite mount. If a corpus is ever made public for
-   reproducibility, publish a curated export on R2/HF with a dataset card and
+   (`RIICHI_DATA_DIR/replays`, `RIICHI_DATA_DIR/db`). The initial pipeline writes
+   local-only; a separate operator task may mirror the folder to Google Drive
+   with rclone (append-only replay copy, timestamped `VACUUM INTO` DB snapshots,
+   `rclone check`). Drive is backup/transport, not a runtime host and not a live
+   SQLite mount. If a corpus is ever made public for reproducibility, publish a
+   curated export on R2/HF with a dataset card and
    licence notice rather than opening the Drive folder.
 
 **When packs grow beyond the Pages budget:**
@@ -715,12 +718,14 @@ complexity are all worse than the options above.
   is a hard rejection, not a warning.
 - **Strip identities.** Self-play has no player identities to begin with; never
   add names, account ids, chat or IPs from any other source.
-- **Backup and restore.** Raw replays are immutable and content-addressed; copy
-  them to Google Drive with `rclone copy --checksum --immutable` (copy never
-  deletes; no sync with delete semantics for the immutable corpus). The DB is
-  snapshotted with `VACUUM INTO` and uploaded as timestamped files, never as a
-  live copy. Verify with `rclone check`, restore a sample, and run
-  `PRAGMA integrity_check`; a backup is not trusted until a restore passes.
+- **Backup and restore (optional operator task).** Raw replays are immutable and
+  content-addressed; when rclone is configured, copy them to Google Drive with
+  `rclone copy --checksum --immutable` (copy never deletes; no sync with delete
+  semantics for the immutable corpus). The DB is snapshotted locally with
+  `VACUUM INTO`; a configured backup uploads timestamped files, never a live
+  copy. Verify with `rclone check`, restore a sample, and run
+  `PRAGMA integrity_check`; local-only operation is valid until the separate
+  rclone task is done.
 - **Retention.** Raw self-play logs are reproducible from `(seed, model,
   code)`; keep them only as long as the candidate DB needs them. Keep the last N
   DB snapshots (for example 7 daily + 4 weekly). Curated packs are small and can
@@ -1413,7 +1418,7 @@ cargo run --release --features miner --bin mine_replays -- \
   --quota-per-book-section 50 --out "$RIICHI_DATA_DIR/packs" \
   --max-bytes 50000000
 
-# Snapshot the DB and copy replays + snapshot to Google Drive.
+# Snapshot the DB; optionally copy replays + snapshot to Google Drive.
 cargo run --release --features miner --bin mine_replays -- \
   backup --db "$RIICHI_DATA_DIR/db/miner.sqlite" \
   --replays "$RIICHI_DATA_DIR/replays" \
@@ -1457,14 +1462,14 @@ The agent specification's operational advice is worth keeping:
   analytics DB. Rerunning a corpus skips finished work and retries only
   failures. This is cheaper and simpler than rebuilding the whole candidate
   table.
-- **Use `rclone` only for our self-play corpus and DB snapshots.** It is the
-  backup/transport path to the operator's Google Drive, not an ingestion path
-  for third-party records. Keep a local data root; `rclone copy --checksum
-  --immutable` the immutable replay folder (never sync with delete semantics),
-  and upload timestamped `VACUUM INTO` DB snapshots with `rclone copy` +
-  `rclone check`. Never mount Drive and point SQLite at it. The source allowlist
-  still runs at ingest and at publish, and rclone credentials stay outside both
-  repos.
+- **Use `rclone` only as an optional backup for our self-play corpus and DB
+  snapshots.** The miner writes local-only and must not require rclone. When the
+  operator has configured it, copy the immutable replay folder (`rclone copy
+  --checksum --immutable`, never sync with delete semantics) and timestamped
+  `VACUUM INTO` DB snapshots, then `rclone check`. Never mount Drive and point
+  SQLite at it. It is not an ingestion path for third-party records; the source
+  allowlist still runs at ingest and publish, and rclone credentials stay outside
+  both repos.
 - **Log the funnel.** Count raw events → trigger hits → reconstructed states →
   valid states → classifier matches → Mortal labels → selected → packed. A
   run that silently drops 99.9% of candidates is not a success until the
@@ -1499,7 +1504,7 @@ The miner's tests should be a mixture of unit, fixture and integration tests:
 | Source gate | any `source.kind` other than `ai_selfplay` refuses to pack; missing provenance/licence refuses |
 | Storage layout | data root created; replay paths are content-addressed and relative; DB/raw logs are gitignored |
 | DB snapshot/restore | `VACUUM INTO` snapshot passes `PRAGMA integrity_check`; restored sample replay hashes match |
-| Drive backup | append-only replay copy and snapshot copy pass `rclone check`; credentials are outside both repos |
+| Drive backup (optional) | when the separate rclone task is configured, append-only replay copy and snapshot copy pass `rclone check`; otherwise local-only is valid and recorded as skipped |
 | DB→pack export | `selected_scenarios`/`variants`/`packs` rows and the exported JSON pack agree exactly |
 | Size budget | manifest + selected packs ≤ configured bytes |
 | Frontend smoke | a pack loads through the same import path and renders (vitest; no visual judgement) |
@@ -1530,7 +1535,7 @@ are.
 | --- | --- | --- |
 | **0. Policy** | This document; data-licence/provenance schema; source allowlist | Source allowlist is exactly `ai_selfplay`; any other source is rejected |
 | **1. Parser + state** | `replay` module: mjai reader for self-play logs, replay walker, `GameState` reconstruction, `validate_reachable_state` integration, tenhou6 exporter for review | 1-kyoku fixture and 100 self-play games round-trip; all states valid |
-| **2. Self-play corpus** | Separate Mortal `libriichi::arena` runner with a pluggable agent protocol; mixed-family plans (M1 Mortal mirror, M2 sampling sweep, M3 Akochan tactics, M4 Akochan vs Mortal if feasible, M5 heterogeneous table if feasible, M6 heuristic baseline); 1k-game smoke corpus; dataset card; local data root + Google Drive rclone backup | Every family report has per-game agent identity/config/sampling (including temperature)/seed provenance; 1k logs parse; 0 invalid states; licence/provenance complete; replay copy and DB snapshot pass `rclone check` and a restore test |
+| **2. Self-play corpus** | Separate Mortal `libriichi::arena` runner with a pluggable agent protocol; mixed-family plans (M1 Mortal mirror, M2 sampling sweep, M3 Akochan tactics, M4 Akochan vs Mortal if feasible, M5 heterogeneous table if feasible, M6 heuristic baseline); 1k-game smoke corpus; dataset card; local data root + Google Drive rclone backup | Every family report has per-game agent identity/config/sampling (including temperature)/seed provenance; 1k logs parse; 0 invalid states; licence/provenance complete; local replay folder + DB snapshot/integrity pass; when the separate rclone task is configured, backup/check and restore also pass |
 | **3. Book classifiers** | `matches()` for the broad lessons; generated-state tests; near-miss tests | Every classifier passes generated/near-miss tests; answers legal |
 | **4. Mortal labeler** | Native batch labeler; per-action Q values; caching; book agreement filter; optional future multi-model support; Q-unit calibration | Reproducible labels; parity with `evaluate_state`; Q units documented; no re-eval on rerun |
 | **5. Selector** | Trigger families; interestingness rubric; family quotas; dedupe; review report | A 100-scenario hand-reviewed smoke pack with no duplicates/invalids |
