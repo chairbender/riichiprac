@@ -280,17 +280,19 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_left_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
 | `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
-| `shell_hand_side_left` | off-axis perspective | rotX 90°, rotZ 90° | el 45, 2 units inside / d10 | 63 × 102 | 67 × 106 / 111 × 142 | (−6.2, 41.67) / (9.05, 64.01) | — |
-| `shell_hand_side_right` | off-axis perspective | rotX 90°, rotZ 90° | el 45, 2 units inside / d10 | 67 × 102 | 71 × 106 / 115 × 142 | (6.2, 41.67) / (−9.05, 64.01) | — |
+| `shell_hand_side_left` | off-axis perspective | rotX 90°, rotZ 270° | el 45, 2 units inside / d10 | 67 × 102 | 71 × 106 / 163 × 168 | (−6.7, 45) / (9.05, 64.01) | — |
+| `shell_hand_side_right` | off-axis perspective | rotX 90°, rotZ 90° | el 45, 2 units inside / d10 | 67 × 102 | 71 × 106 / 163 × 168 | (6.2, 41.67) / (−9.05, 64.01) | — |
 
 The two side-hand backs stand the tile up (`rotX 90`) and reuse the side-wall
-camera, one shell per side, mirrored only by the camera lateral offset. Their
+camera, one shell per side. The pose and camera are both mirrored (left
+`rotZ 270` / camera +2, right `rotZ 90` / camera −2) so both blue backs face the
+human. Their
 shadow is standing (σ 5) and needs a wider per-shell shadow box
 (`shadowPadding1x`), because the yawed base strip is wider than a hand fan's.
 
-All 107 shell bodies plus their @1x shadow references are **4,425,492 B**
+All 107 shell bodies plus their @1x shadow references are **4,428,110 B**
 (budget 6,291,456 B); the @2x body textures are included, the redundant @2x
-shadow sprites were removed in Phase 2b. `shells.json` is **563,225 B** (budget
+shadow sprites were removed in Phase 2b. `shells.json` is **563,226 B** (budget
 614,400 B). The hand
 slots keep the 104 px body long axis (102 px measured); the human-hand centre
 body is 75 × 106 and its shadow 119 × 142, the drawn body 89 × 106 and its

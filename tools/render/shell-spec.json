@@ -376,11 +376,11 @@
       "id": "shell_hand_side_left",
       "projection": "fixed-oblique",
       "faceRotationDeg": 0,
-      "role": "left player's concealed hand tile; standing upright with the blue back to the human, reusing the left wall's off-axis perspective down a single 13-tile row (same pose as the right shell; the mirrored camera is the only difference, exactly like the side walls)",
+      "role": "left player's concealed hand tile; standing upright with the blue back to the human, reusing the left wall's off-axis perspective down a single 13-tile row. The pose is mirrored from the right shell (rotZ 270 vs 90) so the human sees the back, while the camera mirror keeps the side-wall read.",
       "pose": {
         "rotateXDeg": 90,
         "rotateYDeg": 0,
-        "rotateZDeg": 90
+        "rotateZDeg": 270
       },
       "camera": {
         "azimuthDeg": 0,
@@ -404,7 +404,7 @@
       "id": "shell_hand_side_right",
       "projection": "fixed-oblique",
       "faceRotationDeg": 0,
-      "role": "right player's concealed hand tile; standing upright with the blue back to the human, reusing the right wall's off-axis perspective down a single 13-tile row (same pose as the left shell; the mirrored camera is the only difference, exactly like the side walls)",
+      "role": "right player's concealed hand tile; standing upright with the blue back to the human, reusing the right wall's off-axis perspective down a single 13-tile row. The pose is mirrored from the left shell (rotZ 90 vs 270), with the camera mirror carrying the side-wall read.",
       "pose": {
         "rotateXDeg": 90,
         "rotateYDeg": 0,

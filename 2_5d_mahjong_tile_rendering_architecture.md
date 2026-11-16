@@ -1327,7 +1327,7 @@ the advance box**:
 | human hand, 13 | 902 × 122 | 13 | 13 |
 | human hand, 13 + draw | 994 × 123 | 14 | 14 |
 | top hand, 13 | 897 × 120 | 13 | 13 |
-| left side hand, 13 | 182 × 641 | 13 | 13 |
+| left side hand, 13 | 194 × 684 | 13 | 13 |
 | right side hand, 13 | 188 × 644 | 13 | 13 |
 | open meld, 3 | 238 × 127 | 3 | 3 |
 | pond row, 6 | 446 × 127 | 6 | 6 |
@@ -1347,15 +1347,16 @@ The Phase 3 review found two gaps, both closed in the same session.
 
 The catalogue had no shell for the left or right player's concealed hand. They
 are the side-wall read applied to a standing tile: one shell per side reused
-down a single 13-tile row, not a per-slot fan. The pose is `rotX 90, rotZ 90`
-(standing, blue back to the human) with the side wall's off-axis perspective
-(`el 45`, lateral ±2 units inside, distance 10). The two shells are identical in
-pose; like the side walls, the mirrored camera is the only difference.
+down a single 13-tile row, not a per-slot fan. The pose is `rotX 90` with `rotZ 270` on the left and `rotZ 90` on the right
+(standing, blue back to the human), with the side wall's off-axis perspective
+(`el 45`, lateral ±2 units inside, distance 10). The poses are mirrored like the
+side walls' cameras, so both blue backs face the human while each keeps its own
+side-wall read.
 
 | Shell | Body | Texture | gridStepPx x / y | Shadow |
 | :--- | :--- | :--- | :--- | :--- |
-| `shell_hand_side_left` | 63 × 102 | 67 × 106 / 134 × 212 @2x | (−6.2, 41.67) / (9.05, 64.01) | 111 × 142, standing σ 5 |
-| `shell_hand_side_right` | 67 × 102 | 71 × 106 / 142 × 212 @2x | (6.2, 41.67) / (−9.05, 64.01) | 115 × 142, standing σ 5 |
+| `shell_hand_side_left` | 67 × 102 | 71 × 106 / 142 × 212 @2x | (−6.7, 45) / (9.05, 64.01) | 163 × 168, standing σ 5 |
+| `shell_hand_side_right` | 67 × 102 | 71 × 106 / 142 × 212 @2x | (6.2, 41.67) / (−9.05, 64.01) | 163 × 168, standing σ 5 |
 
 The standing shadow is a rounded rectangle fitted to the yawed base strip; a
 vertical face is forced to `lying: false` rather than trusting the footprint
@@ -1366,15 +1367,15 @@ the shadowed blue family, like the top hand, not the bright face-down wall blue.
 They are bare and add no atlas key; `FACE_DOWN_SHELL_IDS` now lists them.
 
 The layout engine gets `layoutSideHand(manifest, { side, count })`: the row
-steps by the shell's projected short axis (`gridStepPx.x`, 41.67 px down the
-screen) from the far tile to the near one, reuses the shell, and reports a
+steps by the shell's projected short axis (`gridStepPx.x`: 45 px down the
+screen on the left, 41.67 px on the right) from the far tile to the near one, reuses the shell, and reports a
 standing shadow group (`seat-left-hand` / `seat-right-hand`, layer 5). The
-committed representative rows are 182 × 641 (left) and 188 × 644 (right).
+committed representative rows are 194 × 684 (left) and 188 × 644 (right).
 
 **Catalogue counts.** Two base shells were added, so the committed catalogue is
 **107 shells**: twelve base + 14 human-hand slots + 13 top-hand slots + 68 wall
-slots. Textures total **4,425,492 B** (budget 6,291,456 B); `shells.json` is
-**563,225 B** (budget 614,400 B); `check-shells.mjs` reports **7,710 checks
+slots. Textures total **4,428,110 B** (budget 6,291,456 B); `shells.json` is
+**563,226 B** (budget 614,400 B); `check-shells.mjs` reports **7,710 checks
 passed**.
 
 ### 14.2 The pond riichi face clearance
