@@ -1974,7 +1974,11 @@ impl Validator {
         self.round = kyoku.round_wind * 4 + kyoku.oya;
         self.oya = kyoku.oya;
         self.honba = kyoku.honba;
-        self.last_reaches = kyoku.reaches;
+        // `kyotaku_next` already contains every *accepted* stick from this
+        // hand. Only a declaration made on the final discard (which an
+        // exhaustive draw never accepts) is still unpaid and must be counted
+        // once more here.
+        self.last_reaches = kyoku.reaches.saturating_sub(kyoku.accepts);
         self.last_outcome = Some(outcome);
         Ok(())
     }
@@ -2453,6 +2457,71 @@ mod tests {
         assert_eq!(second.honba, 1);
         assert_eq!(second.oya, 1);
         assert_eq!(second.start_scores, [25_000; 4]);
+    }
+
+    #[test]
+    fn an_accepted_riichi_carries_one_stick_into_the_next_kyoku() {
+        // Regression: the carried kyotaku already contains every accepted
+        // stick. Only a declaration made on the final discard is still unpaid,
+        // so a naive `last_reaches = reaches` double-counts an accepted riichi
+        // after an exhaustive draw.
+        //
+        // The exhaustive fixture may call; pick a seat that never calls in this
+        // hand, because a riichi player cannot call.
+        let (mut first, seat) = (10_u64..200)
+            .find_map(|seed| {
+                let events = fixtures::exhaustive_kyoku(seed, (0, 1, 0, [25_000; 4]));
+                let callers: Vec<u8> = events
+                    .iter()
+                    .filter_map(|event| match event {
+                        EventKind::Chi { actor, .. }
+                        | EventKind::Pon { actor, .. }
+                        | EventKind::Daiminkan { actor, .. } => Some(*actor),
+                        _ => None,
+                    })
+                    .collect();
+                let seat = (0..4_u8).find(|seat| !callers.contains(seat))?;
+                Some((events, seat))
+            })
+            .expect("some exhaustive fixture leaves a seat without a call");
+        let tsumo = first
+            .iter()
+            .position(|event| matches!(event, EventKind::Tsumo { actor, .. } if *actor == seat))
+            .expect("the chosen seat draws");
+        first.insert(tsumo + 1, EventKind::Reach { actor: seat });
+        first.insert(tsumo + 3, EventKind::ReachAccepted { actor: seat });
+
+        let mut scores = [25_000; 4];
+        scores[usize::from(seat)] -= 1_000;
+        let ryukyoku = first.len() - 2;
+        let EventKind::Ryukyoku {
+            scores: recorded, ..
+        } = &mut first[ryukyoku]
+        else {
+            panic!("the exhaustive fixture ends with ryukyoku");
+        };
+        *recorded = Some(scores);
+
+        let mut second = fixtures::exhaustive_kyoku(32, (1, 2, 1, scores));
+        let EventKind::StartKyoku {
+            kyotaku,
+            scores: header,
+            ..
+        } = &mut second[0]
+        else {
+            panic!("a kyoku starts with start_kyoku");
+        };
+        *kyotaku = 1;
+        *header = scores;
+
+        let mut events = vec![fixtures::start_game()];
+        events.extend(first);
+        events.extend(second);
+        events.push(EventKind::EndGame);
+
+        let summary = validate(&events).expect("one accepted riichi leaves one stick");
+        assert_eq!(summary.kyoku[0].reaches, 1);
+        assert_eq!(summary.kyoku[1].kyotaku, 1);
     }
 
     #[test]
