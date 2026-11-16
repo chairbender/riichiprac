@@ -124,18 +124,10 @@ def normalize_rotation(value: int) -> int:
     return (int(value) // 90 * 90) % 360
 
 
-def rotate_about_z(point: Vector, center: Vector, angle_deg: float) -> Vector:
-    angle = math.radians(angle_deg)
-    delta = point - center
-    cos_a = math.cos(angle)
-    sin_a = math.sin(angle)
-    return center + Vector(
-        (
-            delta.x * cos_a - delta.y * sin_a,
-            delta.x * sin_a + delta.y * cos_a,
-            delta.z,
-        )
-    )
+def rotate_about_axis(point: Vector, center: Vector, axis: Vector, angle_deg: float) -> Vector:
+    """Rotate a point about an arbitrary axis through ``center``."""
+    rotation = Matrix.Rotation(math.radians(angle_deg), 4, axis.normalized())
+    return center + rotation @ (point - center)
 
 
 # --------------------------------------------------------------------------- #
@@ -450,15 +442,22 @@ def stand_face_plane(obj: bpy.types.Object, shell_spec: dict) -> None:
 
 def build_decal_lights(
     scene: bpy.types.Scene,
+    shell_spec: dict,
     decal_spec: dict,
     light_rotation_deg: int,
     surface: str,
 ) -> None:
     """The surface's light rig, translated to the canonical face and rotated."""
     lighting = decal_spec["lighting"][surface]
+    tile = shell_spec["tile"]
     old_slot_y = float(lighting["translation"]["fromSlotY"])
     translate = Vector((0.0, -old_slot_y, 0.0))
-    center = Vector((0.0, 0.0, 0.0))
+    # The decal face stands at world y=0, facing the camera at -Y. Rotate the
+    # rig around the FACE NORMAL, not world Z: a world-Z rotation sends the key
+    # behind a vertical face at 90/180 and leaves the carving flat. The face
+    # normal is -Y after stand_face_plane.
+    axis = Vector((0.0, -1.0, 0.0))
+    center = Vector((0.0, 0.0, tile["height"] / 2.0))
     for entry in lighting["lights"]:
         data = bpy.data.lights.new(entry["id"], "AREA")
         data.shape = "RECTANGLE"
@@ -477,8 +476,8 @@ def build_decal_lights(
             )
         )
         location = target + direction * entry["distance"]
-        target = rotate_about_z(target, center, light_rotation_deg)
-        location = rotate_about_z(location, center, light_rotation_deg)
+        target = rotate_about_axis(target, center, axis, light_rotation_deg)
+        location = rotate_about_axis(location, center, axis, light_rotation_deg)
         obj = new_object(entry["id"], data)
         obj.location = location
         aim(obj, target)
@@ -592,7 +591,7 @@ def bake_one(
     scene.render.resolution_x = geometry["width"]
     scene.render.resolution_y = geometry["height"]
     scene.render.resolution_percentage = 100
-    build_decal_lights(scene, decal_spec, light_rotation_deg, surface)
+    build_decal_lights(scene, shell_spec, decal_spec, light_rotation_deg, surface)
     build_decal_camera(scene, shell_spec, decal_spec, geometry, surface)
 
     field_path = field_dir / f"{face}-field.png"
