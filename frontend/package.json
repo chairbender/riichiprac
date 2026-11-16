@@ -15,6 +15,8 @@
     "overlays:export": "vite-node scripts/export-overlays.ts",
     "overlays:review": "vite-node scripts/review-overlays.ts",
     "experiment:review": "vite-node scripts/review-contact-shadow-experiment.ts",
+    "lying:samples": "vite-node scripts/export-lying-samples.ts",
+    "lying:review": "vite-node scripts/review-lying-samples.ts",
     "tune:carved": "vite-node scripts/tune-carved.ts"
   },
   "dependencies": {

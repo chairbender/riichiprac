@@ -44,6 +44,7 @@ bash tools/render/bake-overlays.sh --bake  # bake the Phase 3.5 contact decals +
 bash tools/render/bake-overlays.sh --check # contact decals + composed pixels; no Blender
 bash tools/render/bake-hand-catches.sh        # production 3D hand catches + check
 bash tools/render/bake-contact-shadow-experiment.sh  # 3D shadow-catch experiment; build-only
+bash tools/render/bake-lying-samples.sh          # lying-family catch samples; build-only
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
 node tools/render/scripts/preview-group-shadow.mjs  # merged vs per-tile group shadows; no Blender
 node tools/render/scripts/bake-faces.mjs   # bake the 37 face glyphs + faces.json (resvg)
@@ -1302,6 +1303,25 @@ WebGL and no per-frame lighting, and the group recipe is unchanged.
   the catches), `overlay-decals-1x.png` (the 12 catches), `pond-layouts-1x.png`
   (the disabled baseline) and `overlay-zones-1x.png`. Visual sign-off is the
   user's (AGENTS.md §6).
+
+## Lying-family catch samples (build-only)
+
+The hand catches are proven; the lying families are sampled before a mass bake.
+`bash tools/render/bake-lying-samples.sh` builds two samples from the real
+layout (`frontend/scripts/export-lying-samples.ts`) and renders them with the
+target's published camera:
+
+- **bottom pond** — target `6p` at row 2 col 2 with the **below (`3s`) and left
+  (`5p`)** casters;
+- **front wall** — target lower slot `08` with its **own upper** and the
+  **adjacent uppers** slots 07/09.
+
+Each sample gets physical, contact-AO and combined target-space overlays; the
+hidden casters are edge-aligned to the drawn caster sprites. The sheet is
+`tools/render/build/lying-samples/lying-samples-sheet.png` (3× on the target plus
+casters); the report is `lying-samples-report.json`. Nothing here is committed;
+the target reference must be byte-identical to the committed body. This sample
+is the sign-off gate for the pond/meld and wall catch matrix.
 
 ## Experiment: a 3D contact-shadow catch (build-only)
 
