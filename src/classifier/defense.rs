@@ -26,23 +26,26 @@
 //! equally safe; those ties are listed as `equivalent_tiles`, exactly as the
 //! generators record them.
 //!
-//! # The bottom two rows belong to the fallback
+//! # The bottom two rows overlap — Mortal decides
 //!
 //! ch. 8's fallback list ("What to discard when you get stuck") starts where
 //! the chapter can no longer identify a safe tile. `CC` (a plain non-suji
-//! terminal) and `C` (a late one-chance tile) are exactly those rows, so the
-//! chart family stops at `B` and `defense_stuck_heuristic` owns `CC`/`C`. The
-//! two families therefore never overlap.
+//! terminal) and `C` (a late one-chance tile) are exactly those rows. The chart
+//! family still ranks them (the generator's `non_suji` theme answers with a
+//! `CC` terminal), so `defense_safety_chart` accepts a `CC` answer *and*
+//! `defense_stuck_heuristic` accepts the same board when its fallback list picks
+//! a `CC`/`C` tile.
 //!
-//! `defense_safety_chart`'s generator has a `non_suji` theme that answers with a
-//! `CC` terminal. Under this split that board is the fallback's row, so the
-//! chart recogniser refuses it and `defense_stuck_heuristic` may label it with
-//! the fallback list's pick instead — the one documented place where a shipped
-//! generator's answer is not reproduced. The alternative (letting both lessons
-//! claim a `CC` board) lets the chart pick one tile and the fallback another on
-//! the same visible table, which is a contradictory drill and cannot ship. The
-//! generator's own module doc lists its themes as genbutsu, suji, no-chance and
-//! honor rows, so the `non_suji` theme is the outlier.
+//! On such a board the two rules can name **different** tiles: the chart says
+//! "the least dangerous tile is this `CC` terminal", the fallback says "discard
+//! the pair / the tile outside the early discards / avoid dora". That
+//! disagreement is settled exactly like ch. 7: by Mortal. Both recognisers
+//! return their match, and
+//! [`crate::classifier::classify_with_mortal`] keeps the lesson whose answer the
+//! model's top action agrees with. Without an evaluation the state is a
+//! [`crate::classifier::Conflict`] and is not shipped. Above `CC` only the chart
+//! matches; below it only the fallback does (`defense_safety_chart` stops at
+//! `CC`, the lowest row its generator can answer).
 
 use std::collections::HashMap;
 
@@ -210,13 +213,10 @@ pub fn defense_safety_chart(state: &GameState) -> Option<Match> {
         return None;
     }
     let read = view.facts.read(view.safest().first().copied()?);
-    // ch. 8's chart "identifies" the rows above the bottom two: genbutsu, a
-    // no-chance tile, a suji, an honor ranked by its visible copies, or a
-    // one-chance tile. `CC` (a plain non-suji terminal) and `C` (a late
-    // one-chance tile) are where the chapter says nothing is identified, and
-    // its fallback list takes over — that is the `defense_stuck_heuristic`
-    // lesson's board, not a chart answer.
-    if read.rank.order() >= SafetyRank::Cc.order() {
+    // The chart lesson answers down to `CC` (its `non_suji` theme). `C` and the
+    // rows below it are the fallback lesson's territory, so a board whose best
+    // tile is worse than `CC` is not a chart answer.
+    if read.rank.order() > SafetyRank::Cc.order() {
         return None;
     }
     let (answer, equivalents) = answer_set(&view, &read)?;
@@ -356,8 +356,8 @@ pub fn defense_stuck_heuristic(state: &GameState) -> Option<Match> {
     }
     let (choice, _) = view.facts.stuck_choice(&tiles, &counts, &view.turn.dora)?;
     // The generator's own cell: the fallback's unique pick is a `CC` or `C`
-    // tile. The chart's best available row is at most `CC` here (checked
-    // above), so this recogniser and the chart family never overlap.
+    // tile. A `CC` board can also be the chart's `non_suji` answer; when the two
+    // name different tiles, Mortal settles it.
     if !matches!(view.facts.rank(choice), SafetyRank::Cc | SafetyRank::C) {
         return None;
     }
@@ -418,25 +418,8 @@ mod tests {
     fn the_safety_chart_recognises_its_own_lesson() {
         for _ in 0..20 {
             let state = generated("defense_safety_chart");
-            let Some(matched) = defense_safety_chart(&state) else {
-                // The generator's `non_suji` theme answers with a plain
-                // non-suji terminal (`CC`), the bottom row the chapter does not
-                // identify. It is the documented carve-out: the fallback lesson
-                // owns that row, so this recogniser refuses it.
-                let view = view(&state).expect("a defense read");
-                let best = view
-                    .tiles()
-                    .iter()
-                    .map(|tile| view.facts.rank(*tile).order())
-                    .min()
-                    .expect("a hand");
-                assert_eq!(
-                    best,
-                    SafetyRank::Cc.order(),
-                    "only the bottom-row theme may be refused"
-                );
-                continue;
-            };
+            let matched = defense_safety_chart(&state)
+                .unwrap_or_else(|| panic!("a safety-chart board must classify as itself"));
             matched.validate(&state).expect("the answer must be legal");
             assert_eq!(matched.answer_set(), {
                 let mut expected = state.equivalent_tiles.clone();

@@ -106,44 +106,14 @@ fn every_opted_in_policy_explains_itself() {
     }
 }
 
-/// The safety-chart generator's `non_suji` theme answers with a plain
-/// non-suji terminal (`CC`), the bottom row ch. 8 does not identify. That board
-/// belongs to the fallback lesson's row, so `defense_safety_chart` refuses it
-/// (see `classifier::defense`'s module note). The shared test allows exactly
-/// that documented refusal and nothing else.
-fn documented_bottom_row_refusal(lesson: ScenarioId, state: &GameState) -> bool {
-    if lesson != ScenarioId::DefenseSafetyChart {
-        return false;
-    }
-    let Some(turn) = support::turn(state) else {
-        return false;
-    };
-    let Some(threat) = support::sole_riichi_threat(state) else {
-        return false;
-    };
-    let Some(facts) = crate::safety::SafetyFacts::from_state(state, threat) else {
-        return false;
-    };
-    turn.hand
-        .iter()
-        .map(|tile| facts.rank(*tile).order())
-        .min()
-        .is_some_and(|best| best >= crate::safety::SafetyRank::Cc.order())
-}
-
 #[test]
 fn every_generated_b1_state_classifies_as_its_own_lesson() {
     for &lesson in B1_LESSONS {
         for run in 0..3 {
             let state = generated(lesson);
-            let Some(matched) = classify(&state, lesson) else {
-                assert!(
-                    documented_bottom_row_refusal(lesson, &state),
-                    "{} run {run}: did not classify as itself",
-                    lesson.as_str()
-                );
-                continue;
-            };
+            let matched = classify(&state, lesson).unwrap_or_else(|| {
+                panic!("{} run {run}: did not classify as itself", lesson.as_str())
+            });
             matched.validate(&state).unwrap_or_else(|err| {
                 panic!("{} run {run}: illegal answer: {err}", lesson.as_str())
             });
@@ -235,15 +205,13 @@ fn is_ch7_lesson(lesson: ScenarioId) -> bool {
     )
 }
 
-/// True when the only disagreement is inside the ch. 7 riichi/dama family.
+/// True when the disagreement is the ch. 7 general-rule / dama-section overlap.
 ///
 /// The general three-condition rule and the chapter's later dama sections can
 /// read the same hand as riichi or dama (the bad-wait box's 3+ live cell, the
 /// genbutsu wait, the expensive hand, the improving hand). Both the shipped
 /// `riichi_judgement` and the shipped `dama_*` lessons exist for those cells, so
-/// the recognisers mirror both and the framework reports the disagreement
-/// instead of picking one. No conflict crosses a lesson family: the defense and
-/// push/fold recognisers all agree with each other.
+/// the recognisers mirror both and Mortal settles the label.
 fn is_documented_ch7_conflict(matches: &[Match]) -> bool {
     matches.len() >= 2
         && matches.iter().all(|matched| is_ch7_lesson(matched.lesson))
@@ -252,8 +220,31 @@ fn is_documented_ch7_conflict(matches: &[Match]) -> bool {
             .all(|other| matches[0].same_answer(other))
 }
 
+/// True when the disagreement is the ch. 8 bottom-row overlap.
+///
+/// A `CC` board can be the chart's `non_suji` answer and also the fallback
+/// lesson's board; the two rules can name different tiles, and Mortal settles
+/// it. No other pair of defense lessons can disagree.
+fn is_documented_defense_conflict(matches: &[Match]) -> bool {
+    matches.len() >= 2
+        && matches.iter().all(|matched| {
+            matches!(
+                matched.lesson,
+                ScenarioId::DefenseSafetyChart | ScenarioId::DefenseStuckHeuristic
+            )
+        })
+        && !matches[1..]
+            .iter()
+            .all(|other| matches[0].same_answer(other))
+}
+
+/// Any disagreement the framework knows how to arbitrate with Mortal.
+fn is_documented_conflict(matches: &[Match]) -> bool {
+    is_documented_ch7_conflict(matches) || is_documented_defense_conflict(matches)
+}
+
 #[test]
-fn no_two_recognisers_disagree_except_inside_the_ch7_family() {
+fn no_two_recognisers_disagree_outside_the_arbitrated_families() {
     for &lesson in B1_LESSONS {
         for _ in 0..3 {
             let state = generated(lesson);
@@ -264,7 +255,7 @@ fn no_two_recognisers_disagree_except_inside_the_ch7_family() {
             let first = &matches[0];
             let agree = matches[1..].iter().all(|other| first.same_answer(other));
             assert!(
-                agree || is_documented_ch7_conflict(&matches),
+                agree || is_documented_conflict(&matches),
                 "{}: conflicting answers from {:?}",
                 lesson.as_str(),
                 matches
@@ -296,16 +287,10 @@ fn classify_unique_is_ok_for_every_generated_b1_state() {
                         .validate(&state)
                         .expect("a unique label must be legal");
                 }
-                Ok(None) => {
-                    assert!(
-                        documented_bottom_row_refusal(lesson, &state),
-                        "{} did not classify at all",
-                        lesson.as_str()
-                    );
-                }
+                Ok(None) => panic!("{} did not classify at all", lesson.as_str()),
                 Err(conflict) => {
                     assert!(
-                        is_documented_ch7_conflict(&conflict.matches),
+                        is_documented_conflict(&conflict.matches),
                         "{}: unexpected conflict: {conflict}",
                         lesson.as_str()
                     );
@@ -426,7 +411,7 @@ fn a_model_that_agrees_with_neither_keeps_the_conflict() {
 
     let conflict = classify_with_mortal(&state, &evaluation)
         .expect_err("neither book rule is what Mortal plays");
-    assert!(is_documented_ch7_conflict(&conflict.matches));
+    assert!(is_documented_conflict(&conflict.matches));
     // The model-free path agrees with the model-free fallback.
     assert_eq!(
         classify_unique(&state)
@@ -496,6 +481,60 @@ fn mortal_agreement_uses_the_equivalents_and_the_riichi_discard() {
             discard == "1z" || !mortal_agrees(&riichi, &matched, &other),
             "a different second-pass discard is a disagreement"
         );
+    }
+}
+
+/// A generated stuck board where the chart and the fallback name different
+/// tiles.
+fn defense_conflict_state() -> GameState {
+    for _ in 0..160 {
+        let state = generated(ScenarioId::DefenseStuckHeuristic);
+        if is_documented_defense_conflict(&classify_all(&state)) {
+            return state;
+        }
+    }
+    panic!("the generators must produce a bottom-row disagreement");
+}
+
+#[test]
+fn mortal_breaks_a_defense_bottom_row_disagreement() {
+    let state = defense_conflict_state();
+    let matches = classify_all(&state);
+    assert_eq!(matches.len(), 2);
+    let chart = matches
+        .iter()
+        .find(|matched| matched.lesson == ScenarioId::DefenseSafetyChart)
+        .expect("the chart match")
+        .clone();
+    let fallback = matches
+        .iter()
+        .find(|matched| matched.lesson == ScenarioId::DefenseStuckHeuristic)
+        .expect("the fallback match")
+        .clone();
+    assert!(!chart.same_answer(&fallback));
+
+    for (chosen, rejected) in [
+        (chart.clone(), fallback.lesson),
+        (fallback.clone(), chart.lesson),
+    ] {
+        let evaluation = evaluation_for(
+            &format!(
+                "Discard_{}",
+                chosen.correct_action.tile().expect("a fold answer")
+            ),
+            None,
+        );
+        let label = classify_with_mortal(&state, &evaluation)
+            .expect("Mortal distinguishes the two tiles")
+            .expect("a label");
+        assert_eq!(label.matched, chosen);
+        assert_eq!(
+            label.resolution,
+            Resolution::MortalTiebreak {
+                rejected: vec![rejected]
+            }
+        );
+        label.matched.validate(&state).expect("a legal answer");
     }
 }
 

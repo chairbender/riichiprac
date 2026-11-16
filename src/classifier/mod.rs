@@ -84,10 +84,11 @@
 //! - [`classify_unique`] is the model-free fallback and reports a [`Conflict`]
 //!   for any disagreement.
 //!
-//! The disagreement never crosses a lesson family: the ch. 8 push/fold and
-//! defense recognisers all agree with each other by construction (see
-//! [`defense`]'s bottom-row note). The test suite pins the ch. 7 disagreement,
-//! both Mortal outcomes, and proves nothing else conflicts.
+//! The only other shipped overlap is ch. 8's bottom row: a `CC` board can be
+//! the safety chart's `non_suji` answer and the fallback lesson's board, and
+//! the two can name different tiles (see [`defense`]'s bottom-row note). It is
+//! settled by the same rule. The test suite pins both families' disagreements,
+//! both Mortal outcomes, and proves no other pair of recognisers disagrees.
 
 pub mod defense;
 pub mod push_fold;

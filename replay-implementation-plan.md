@@ -1415,13 +1415,12 @@ R2 for replay states.
 > `Conflict`. `src/miner/classifier.rs` mirrors both paths for the walker
 > (`classify_decision`, `classify_decision_with_mortal`).
 >
-> Two label overlaps are documented and pinned by tests: (a) inside ch. 7, the
-> general rule and the later `dama_*` sections can disagree — settled by Mortal
-> as above; (b) in ch. 8, `defense_safety_chart` stops above `CC` and the
-> fallback lesson owns `CC`/`C`, so the chart generator's `non_suji` theme
-> (`CC`) is refused and may be labelled by the fallback instead. The lesson
-> owners still need to settle which shipped answer each of those cells keeps
-> before S2 selects from these families.
+> Two label overlaps are documented and pinned by tests, both settled by the
+> same Mortal rule: (a) inside ch. 7, the general rule and the later `dama_*`
+> sections can disagree; (b) in ch. 8, a `CC` board can be the safety chart's
+> `non_suji` answer and also the fallback lesson's board, and the two can name
+> different tiles. Both recognisers return their match and Mortal picks the
+> label; without an evaluation the state is a `Conflict` and is not shipped.
 
 ##### B2 — Classifier batch 2
 
