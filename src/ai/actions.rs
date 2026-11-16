@@ -403,17 +403,26 @@ fn is_terminal_or_honor(tile: Tile) -> bool {
 }
 
 /// Closed-kong / added-kong candidates for a self turn.
+///
+/// A declared Riichi may still call a closed quad, but only one that leaves the
+/// winning tiles unchanged: Riichi locks the hand's wait, so the quad must take
+/// four tiles the hand was not waiting to use. An added kan (and, of course, a
+/// claimed quad) stays unavailable, because a Riichi hand is closed.
 fn self_turn_kans(state: &GameState, player: &PlayerState) -> Vec<(String, KanKind)> {
-    if player.is_riichi {
-        return Vec::new();
-    }
-
     let counts = tile_counts(&concealed_tiles(player));
     let mut kans = Vec::new();
     for (tile, &count) in &counts {
-        if count == 4 {
-            kans.push((tile.clone(), KanKind::Ankan));
+        if count != 4 {
+            continue;
         }
+        if player.is_riichi && !riichi_ankan_keeps_wait(player, tile) {
+            continue;
+        }
+        kans.push((tile.clone(), KanKind::Ankan));
+    }
+
+    if player.is_riichi {
+        return kans;
     }
 
     for meld in &player.melds {
@@ -435,6 +444,53 @@ fn self_turn_kans(state: &GameState, player: &PlayerState) -> Vec<(String, KanKi
     }
 
     kans
+}
+
+/// Whether a closed quad preserves a declared Riichi hand's wait.
+///
+/// A Riichi hand must discard the tile it draws, so the only closed quad it may
+/// still call is one that leaves the hand waiting on exactly the same tiles. The
+/// wait before the kan is the concealed hand of the last discard (the active
+/// draw is not part of it) plus the melds already called. The quad then takes
+/// four copies out of the fourteen concealed tiles, and its replacement draw is
+/// the tile the player discards, so the hand that remains is those ten tiles
+/// plus the new closed meld. Both shapes must be tenpai on the same tiles.
+fn riichi_ankan_keeps_wait(player: &PlayerState, tile: &str) -> bool {
+    let melds = player.melds.len();
+    if !is_tenpai_with_melds(&player.hand, melds) {
+        return false;
+    }
+
+    let mut after = concealed_tiles(player);
+    let mut removed = 0usize;
+    after.retain(|held| {
+        if held == tile && removed < 4 {
+            removed += 1;
+            false
+        } else {
+            true
+        }
+    });
+    if removed != 4 || !is_tenpai_with_melds(&after, melds + 1) {
+        return false;
+    }
+
+    let mut before_waits = waits_for(&player.hand, melds);
+    let mut after_waits = waits_for(&after, melds + 1);
+    before_waits.sort_unstable();
+    before_waits.dedup();
+    after_waits.sort_unstable();
+    after_waits.dedup();
+    before_waits == after_waits
+}
+
+/// Tenpai for a hand of `13 - 3 * melds` concealed tiles plus its called melds.
+fn is_tenpai_with_melds(hand: &[String], melds: usize) -> bool {
+    let tiles: Vec<Tile> = hand
+        .iter()
+        .filter_map(|tile| parse_tile_code(tile))
+        .collect();
+    calculate_shanten_with_melds(&to_counts(&tiles), melds as u8).shanten == 0
 }
 
 /// Chi options for a claimed tile. Mortal defines the type relative to the
@@ -758,6 +814,81 @@ mod tests {
         state.players[0].melds.clear();
         state.players[0].is_riichi = true;
         assert!(!riichi_is_legal(&state));
+    }
+
+    #[test]
+    fn a_riichi_ankan_that_keeps_the_wait_is_legal() {
+        // 999m is an already-complete triplet and the drawn fourth copy only
+        // joins it, so the 6s/9s wait is unchanged.
+        let mut state = base_state(&[
+            "1m", "2m", "3m", "4p", "5p", "6p", "7s", "8s", "2z", "2z", "9m", "9m", "9m",
+        ]);
+        state.players[0].is_riichi = true;
+        state.players[0].draw = Some("9m".to_string());
+
+        let actions = legal_actions(&state);
+        let kan = actions
+            .iter()
+            .find(|info| info.kind == ActionKind::Kan)
+            .expect("a riichi hand may complete its own closed triplet");
+        assert_eq!(kan.kan_kind, Some(KanKind::Ankan));
+        assert_eq!(kan.tile.as_deref(), Some("9m"));
+        assert_eq!(kan.label, "Ankan 9m");
+    }
+
+    #[test]
+    fn a_riichi_ankan_that_changes_the_wait_is_illegal() {
+        // 44m is the pair and the third copy completes 345m, so the 13-tile
+        // hand waits on 6s/9s. Removing all four 4m strands 3m 5m and loses the
+        // tenpai, so the quad must not be offered.
+        let mut state = base_state(&[
+            "3m", "4m", "4m", "4m", "5m", "4p", "5p", "6p", "7s", "8s", "9s", "9s", "9s",
+        ]);
+        state.players[0].is_riichi = true;
+        state.players[0].draw = Some("4m".to_string());
+
+        let actions = legal_actions(&state);
+        assert!(
+            !actions.iter().any(|info| info.kind == ActionKind::Kan),
+            "a quad that changes a riichi wait is illegal: {actions:?}"
+        );
+    }
+
+    #[test]
+    fn a_closed_quad_is_offered_without_riichi() {
+        let mut state = base_state(&[
+            "1m", "2m", "3m", "4p", "5p", "6p", "7s", "8s", "2z", "2z", "9m", "9m", "9m",
+        ]);
+        state.players[0].draw = Some("9m".to_string());
+
+        let actions = legal_actions(&state);
+        assert!(
+            actions.iter().any(|info| info.kind == ActionKind::Kan
+                && info.kan_kind == Some(KanKind::Ankan)
+                && info.tile.as_deref() == Some("9m")),
+            "{actions:?}"
+        );
+    }
+
+    #[test]
+    fn a_riichi_hand_never_offers_an_added_kan() {
+        // A riichi hand is closed, so it cannot hold a pon to add to. The model
+        // still refuses the added kan when a reconstructed state carries both
+        // flags.
+        let mut state = base_state(&["1m", "2m", "3m", "4p", "5p", "6p", "7s", "8s", "1z", "2z"]);
+        state.players[0].melds = vec![CalledMeld {
+            meld_type: MeldType::Pon,
+            tiles: vec!["1z".to_string(); 3],
+            called_from: Some(1),
+        }];
+        state.players[0].is_riichi = true;
+        state.players[0].draw = Some("1z".to_string());
+
+        let actions = legal_actions(&state);
+        assert!(
+            !actions.iter().any(|info| info.kind == ActionKind::Kan),
+            "a riichi hand must not offer a kakan: {actions:?}"
+        );
     }
 
     #[test]
