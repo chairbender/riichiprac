@@ -14,9 +14,21 @@
     "check:audition": "node scripts/check-shells.mjs --audition",
     "review": "node scripts/review-shells.mjs",
     "felt": "bash bake-felt.sh",
-    "rasterize": "node scripts/rasterize-face.mjs"
+    "rasterize": "node scripts/rasterize-face.mjs",
+    "faces": "node scripts/bake-faces.mjs",
+    "faces:verify": "node scripts/bake-faces.mjs --verify-determinism",
+    "check:faces": "node scripts/check-faces.mjs",
+    "decals": "bash bake-decals.sh --bake",
+    "decals:build": "bash bake-decals.sh --build",
+    "decals:spike": "bash bake-decals.sh --spike",
+    "check:decals": "node scripts/check-decals.mjs",
+    "decals:encode": "node scripts/encode-decals.mjs --format avif --quality 60",
+    "check:decals:committed": "node scripts/check-decals.mjs --committed"
   },
   "dependencies": {
     "@resvg/resvg-js": "2.6.2"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^1.1.1"
   }
 }

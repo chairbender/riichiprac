@@ -90,6 +90,8 @@ DEFAULT_SPEC = SPEC_DIR / "shell-spec.json"
 BASE_SHELL_IDS = (
     "shell_flat_upright",
     "shell_flat_sideways",
+    "shell_flat_upright_180",
+    "shell_flat_sideways_270",
     "shell_wall_horizontal",
     "shell_wall_horizontal_faceup",
     "shell_wall_side_left",
@@ -1520,18 +1522,6 @@ def bake_shell(
             float(scale_2x),
         )
     )
-    shadow_2x_rgba = blob_shadow(
-        shadow_width * scale_2x,
-        shadow_height * scale_2x,
-        contact_local,
-        shadow,
-        scale_2x,
-        body_centre,
-        body_half,
-        lying,
-    )
-    shadow_2x = quantize(frame_fade(shadow_2x_rgba, float(scale_2x)))
-
     # faceQuad is measured on the @1x frame so it lands in the @1x texture's
     # coordinate space, which is the manifest's coordinate space.
     set_resolution(scene, framing["resolution1x"][0], framing["resolution1x"][1])
@@ -1562,7 +1552,6 @@ def bake_shell(
     encode_png(output_dir / texture_name, body_1x)
     encode_png(output_dir_2x / texture_name, body_2x)
     encode_png(output_dir / shadow_name, shadow_1x)
-    encode_png(output_dir_2x / shadow_name, shadow_2x)
 
     centre_x = sum(point[0] for point in quad) / 4.0
     centre_y = sum(point[1] for point in quad) / 4.0
@@ -1587,7 +1576,6 @@ def bake_shell(
         "textureFile": f"shells/{texture_name}",
         "textureFile2x": f"shells/2x/{texture_name}",
         "shadowTextureFile": f"shells/{shadow_name}",
-        "shadowTextureFile2x": f"shells/2x/{shadow_name}",
         "shadowTexWidth": int(shadow_width),
         "shadowTexHeight": int(shadow_height),
         "shadowAnchorX": int(shadow_pads["left"]),
@@ -1714,8 +1702,7 @@ def bake_shell(
             ),
             "bytes1x": int((output_dir / texture_name).stat().st_size)
             + int((output_dir / shadow_name).stat().st_size),
-            "bytes2x": int((output_dir_2x / texture_name).stat().st_size)
-            + int((output_dir_2x / shadow_name).stat().st_size),
+            "bytes2x": int((output_dir_2x / texture_name).stat().st_size),
         },
     }
     if record_hashes:
@@ -1725,7 +1712,6 @@ def bake_shell(
         }
         record["shadowSha256"] = {
             "decodedRgba1x": rgba_sha256(shadow_1x),
-            "decodedRgba2x": rgba_sha256(shadow_2x),
         }
     log(
         f"{shell['id']}: body {body_width}x{body_height} + shadow "
@@ -1981,7 +1967,6 @@ def bake_audition(
             record["textureFile"] = f"candidates/1x/{shell['id']}.png"
             record["textureFile2x"] = f"candidates/2x/{shell['id']}.png"
             record["shadowTextureFile"] = f"candidates/1x/{shell['id']}-shadow.png"
-            record["shadowTextureFile2x"] = f"candidates/2x/{shell['id']}-shadow.png"
             record["candidate"] = {
                 "candidateId": candidate["candidateId"],
                 "label": candidate["label"],
@@ -2147,7 +2132,6 @@ def bake_shadow_audition(
             record["textureFile"] = f"shadows/{variant_id}/1x/{shell_id}.png"
             record["textureFile2x"] = f"shadows/{variant_id}/2x/{shell_id}.png"
             record["shadowTextureFile"] = f"shadows/{variant_id}/1x/{shell_id}-shadow.png"
-            record["shadowTextureFile2x"] = f"shadows/{variant_id}/2x/{shell_id}-shadow.png"
             record["shadowVariant"] = {
                 "id": variant_id,
                 "label": variant["label"],

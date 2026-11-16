@@ -40,7 +40,7 @@
     "targetLongAxisPx1x": 104,
     "shadowContract": {
       "phase": "1d-blob",
-      "note": "Phase 1d: the shadow is a synthetic translucent-black blob, not a Cycles catcher. A lying/upright tile gets a rounded rectangle matching the body's long/short sides: rectScale x the body box, plus rectPaddingPx1x, with a corner radius of cornerRadiusFraction x the short half-axis. The top edge is then trimmed by topTrimPx1x while the bottom/left/right edges stay fixed, so the shadow does not spill above the tile (light from above/behind). A standing/tilted tile keeps a capsule at its base. The shape is filled at core alpha 0.60 and blurred with a separable Gaussian (sigma 12 px for lying, 4 px for standing), so the lying edge is very soft. The review/runtime shadow pass unions overlapping blobs with a per-pixel max so adjacent tiles do not double-darken. The body carries the tile only.",
+      "note": "Phase 1d: the shadow is a synthetic translucent-black blob, not a Cycles catcher. A lying/upright tile gets a rounded rectangle matching the body's long/short sides: rectScale x the body box, plus rectPaddingPx1x, with a corner radius of cornerRadiusFraction x the short half-axis. The top edge is then trimmed by topTrimPx1x while the bottom/left/right edges stay fixed, so the shadow does not spill above the tile (light from above/behind). A standing tile gets the same rounded rectangle fitted to its projected base strip (standingRectScale, standingRectPaddingPx1x, standingCornerRadiusFraction) and rotated with the base's axes. The shape is filled at core alpha 0.60 and blurred with a separable Gaussian (sigma 12 px for lying, 5 px for standing). The baker publishes the hard shape as shadowShape; the group recipe draws every placed tile's shape at alpha 1, blurs the union once, and fills it at core alpha. The per-shell sprite is that shape rendered alone. The body carries the tile only.",
       "extentPx1x": {
         "right": [
           3,
@@ -121,7 +121,7 @@
       "shell_flat_upright": {
         "projectionWidthUnits": 0.75,
         "projectionHeightUnits": 1.123795,
-        "pixelsPerUnit2x": 185.087201,
+        "pixelsPerUnit2x": 185.087182,
         "orthoScale": 1.642469,
         "resolution2x": [
           236,
@@ -146,10 +146,38 @@
           147
         ]
       },
+      "shell_flat_upright_180": {
+        "projectionWidthUnits": 0.75,
+        "projectionHeightUnits": 1.123795,
+        "pixelsPerUnit2x": 185.087172,
+        "orthoScale": 1.642469,
+        "resolution2x": [
+          236,
+          304
+        ],
+        "resolution1x": [
+          118,
+          152
+        ]
+      },
+      "shell_flat_sideways_270": {
+        "projectionWidthUnits": 1.0,
+        "projectionHeightUnits": 0.947018,
+        "pixelsPerUnit2x": 208.0,
+        "orthoScale": 1.461538,
+        "resolution2x": [
+          304,
+          294
+        ],
+        "resolution1x": [
+          152,
+          147
+        ]
+      },
       "shell_wall_horizontal": {
         "projectionWidthUnits": 0.75,
         "projectionHeightUnits": 1.123795,
-        "pixelsPerUnit2x": 185.087191,
+        "pixelsPerUnit2x": 185.087172,
         "orthoScale": 1.642469,
         "resolution2x": [
           236,
@@ -163,7 +191,7 @@
       "shell_wall_horizontal_faceup": {
         "projectionWidthUnits": 0.75,
         "projectionHeightUnits": 1.123795,
-        "pixelsPerUnit2x": 185.087201,
+        "pixelsPerUnit2x": 185.087182,
         "orthoScale": 1.642469,
         "resolution2x": [
           236,
@@ -1864,7 +1892,6 @@
       "textureFile": "shells/shell_flat_upright.png",
       "textureFile2x": "shells/2x/shell_flat_upright.png",
       "shadowTextureFile": "shells/shell_flat_upright-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_flat_upright-shadow.png",
       "shadowTexWidth": 160,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -1972,7 +1999,7 @@
         "faceLocalZ": "top",
         "projection": "orthographic",
         "orthoScale": 1.642469,
-        "pixelsPerUnit2x": 185.087201,
+        "pixelsPerUnit2x": 185.087182,
         "resolution1x": [
           118,
           152
@@ -2043,23 +2070,21 @@
             31
           ]
         },
-        "bytes1x": 14242,
-        "bytes2x": 37739
+        "bytes1x": 14234,
+        "bytes2x": 22355
       },
       "sha256": {
-        "decodedRgba1x": "6821b015bc6319b8d05ae5c2410f09b7b6a9d448ad57c63a300cbcca5c9d8b97",
-        "decodedRgba2x": "6e52c392eeb7a18535762abe55b9239f91068c872a4222ade75373893d758960"
+        "decodedRgba1x": "544d6d1400f65cdb0e34b4b38a0a6784cffe59f0f3697501b2f011ca9d0d7a5c",
+        "decodedRgba2x": "59f436aec76de650d4cef73f703dc75769a5ca26bd0e19b0d5b6966416cfa441"
       },
       "shadowSha256": {
-        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820",
-        "decodedRgba2x": "b6118081701231779e6efb6e72fb25d7f32127c10a562a2f3890cac859915f76"
+        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820"
       }
     },
     "shell_flat_sideways": {
       "textureFile": "shells/shell_flat_sideways.png",
       "textureFile2x": "shells/2x/shell_flat_sideways.png",
       "shadowTextureFile": "shells/shell_flat_sideways-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_flat_sideways-shadow.png",
       "shadowTexWidth": 194,
       "shadowTexHeight": 155,
       "shadowAnchorX": 38,
@@ -2151,7 +2176,7 @@
         ],
         "y": [
           104.0,
-          0.0
+          -0.0
         ]
       },
       "projection": "low-angle-top-down",
@@ -2238,23 +2263,407 @@
             32
           ]
         },
-        "bytes1x": 16042,
-        "bytes2x": 43801
+        "bytes1x": 16048,
+        "bytes2x": 28165
       },
       "sha256": {
-        "decodedRgba1x": "428e049a32ed324682944b45dec5b4eb5e350c4f0db9df5fb462d81518c79f3a",
-        "decodedRgba2x": "26bec369de1be1774d382b4a5002ae8edfd1d9b51a8a2cbb233069d7f339d646"
+        "decodedRgba1x": "de3d2675a61bc24eb5b4b595d22bd3f518ac4381067da5479c2dc0be1f9a0730",
+        "decodedRgba2x": "a9827502587408d629d53e0a932b952cb5b583c0a71fee1678b94b101a6592c0"
       },
       "shadowSha256": {
-        "decodedRgba1x": "a9c19720ba61f18db15008655e870bdffa6b508d9a7d0dafc7b700496650525b",
-        "decodedRgba2x": "28239b63b7aa49c6c77712548cf59db158bcda5708f09626b6b7cf201ab12e79"
+        "decodedRgba1x": "a9c19720ba61f18db15008655e870bdffa6b508d9a7d0dafc7b700496650525b"
+      }
+    },
+    "shell_flat_upright_180": {
+      "textureFile": "shells/shell_flat_upright_180.png",
+      "textureFile2x": "shells/2x/shell_flat_upright_180.png",
+      "shadowTextureFile": "shells/shell_flat_upright_180-shadow.png",
+      "shadowTexWidth": 160,
+      "shadowTexHeight": 162,
+      "shadowAnchorX": 38,
+      "shadowAnchorY": 6,
+      "shadowOffsetPx": [
+        0,
+        0
+      ],
+      "shadowPadding": {
+        "top": 6,
+        "right": 50,
+        "bottom": 54,
+        "left": 38
+      },
+      "texWidth": 76,
+      "texHeight": 106,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 72,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 2,
+        "bottom": 2,
+        "left": 2
+      },
+      "shadowBlob": {
+        "model": "blob",
+        "shape": "rounded-rect",
+        "sigmaPx1x": 12.0,
+        "standingSigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
+        "offsetPx1x": [
+          5,
+          7
+        ],
+        "rectScale": 1.15,
+        "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
+        "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
+        "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.0,
+          78.0
+        ],
+        "halfPx": [
+          49.4,
+          46.65
+        ],
+        "radiusPx": 13.995,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "faceRotationDeg": 180,
+      "faceQuad": [
+        [
+          67.61,
+          62.84
+        ],
+        [
+          8.39,
+          62.84
+        ],
+        [
+          8.39,
+          4.6
+        ],
+        [
+          67.61,
+          4.6
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          69.41,
+          -0.0
+        ],
+        "y": [
+          0.0,
+          65.44
+        ]
+      },
+      "projection": "low-angle-top-down",
+      "faceUp": true,
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 180
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "faceLocalZ": "top",
+        "projection": "orthographic",
+        "orthoScale": 1.642469,
+        "pixelsPerUnit2x": 185.087172,
+        "resolution1x": [
+          118,
+          152
+        ],
+        "resolution2x": [
+          236,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 33,
+          "top": 0,
+          "right": 43,
+          "bottom": 48
+        },
+        "alphaPeak1x": {
+          "left": 0.4392,
+          "top": 0.0,
+          "right": 0.5569,
+          "bottom": 0.5843
+        },
+        "alphaMass1x": {
+          "left": 398.114,
+          "top": 0.0,
+          "right": 755.722,
+          "bottom": 956.984
+        },
+        "shadowMaxAlpha": 0.6,
+        "contactQuadPx": [
+          [
+            108.7,
+            43.56
+          ],
+          [
+            108.7,
+            109.0
+          ],
+          [
+            39.3,
+            43.56
+          ],
+          [
+            39.3,
+            109.0
+          ]
+        ],
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          223,
+          220,
+          216
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            223,
+            220,
+            217
+          ],
+          "bottom": [
+            0,
+            8,
+            31
+          ]
+        },
+        "bytes1x": 14241,
+        "bytes2x": 22364
+      },
+      "sha256": {
+        "decodedRgba1x": "1083f56339583b3f015a35cbf303a13d79cd110f3eb8233218f6ff73d7cc9d1f",
+        "decodedRgba2x": "ad9adb9508eef10a87122c87cf5b0027bf058da4aa7eb17a06cd76f5a975eb33"
+      },
+      "shadowSha256": {
+        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820"
+      }
+    },
+    "shell_flat_sideways_270": {
+      "textureFile": "shells/shell_flat_sideways_270.png",
+      "textureFile2x": "shells/2x/shell_flat_sideways_270.png",
+      "shadowTextureFile": "shells/shell_flat_sideways_270-shadow.png",
+      "shadowTexWidth": 194,
+      "shadowTexHeight": 155,
+      "shadowAnchorX": 38,
+      "shadowAnchorY": 6,
+      "shadowOffsetPx": [
+        0,
+        0
+      ],
+      "shadowPadding": {
+        "top": 6,
+        "right": 50,
+        "bottom": 54,
+        "left": 38
+      },
+      "texWidth": 110,
+      "texHeight": 99,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 106,
+      "advanceHeight": 95,
+      "padding": {
+        "top": 2,
+        "right": 2,
+        "bottom": 2,
+        "left": 2
+      },
+      "shadowBlob": {
+        "model": "blob",
+        "shape": "rounded-rect",
+        "sigmaPx1x": 12.0,
+        "standingSigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
+        "offsetPx1x": [
+          5,
+          7
+        ],
+        "rectScale": 1.15,
+        "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
+        "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
+        "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          58.0,
+          74.5
+        ],
+        "halfPx": [
+          68.95,
+          42.625
+        ],
+        "radiusPx": 12.787,
+        "angleDeg": 0.0,
+        "sigmaPx1x": 12.0,
+        "coreAlpha": 0.6,
+        "colorHex": "#0b1418",
+        "lying": true
+      },
+      "faceRotationDeg": 270,
+      "faceQuad": [
+        [
+          101.28,
+          4.3
+        ],
+        [
+          101.28,
+          51.36
+        ],
+        [
+          8.72,
+          51.36
+        ],
+        [
+          8.72,
+          4.3
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          0.0,
+          55.15
+        ],
+        "y": [
+          104.0,
+          0.0
+        ]
+      },
+      "projection": "low-angle-top-down",
+      "faceUp": true,
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 270
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "faceLocalZ": "top",
+        "projection": "orthographic",
+        "orthoScale": 1.461538,
+        "pixelsPerUnit2x": 208.0,
+        "resolution1x": [
+          152,
+          147
+        ],
+        "resolution2x": [
+          304,
+          294
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 36,
+          "top": 0,
+          "right": 46,
+          "bottom": 47
+        },
+        "alphaPeak1x": {
+          "left": 0.4863,
+          "top": 0.0,
+          "right": 0.5725,
+          "bottom": 0.5804
+        },
+        "alphaMass1x": {
+          "left": 439.827,
+          "top": 0.0,
+          "right": 777.286,
+          "bottom": 1383.733
+        },
+        "shadowMaxAlpha": 0.6,
+        "contactQuadPx": [
+          [
+            39.0,
+            47.59
+          ],
+          [
+            143.0,
+            47.59
+          ],
+          [
+            39.0,
+            102.74
+          ],
+          [
+            143.0,
+            102.74
+          ]
+        ],
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          223,
+          220,
+          216
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            224,
+            220,
+            216
+          ],
+          "bottom": [
+            0,
+            8,
+            32
+          ]
+        },
+        "bytes1x": 16045,
+        "bytes2x": 28171
+      },
+      "sha256": {
+        "decodedRgba1x": "9cd3218e5c5b1be47be68dab3e54ce833f5a8d2a06eac689ddf823328fcaf8d2",
+        "decodedRgba2x": "4f4c279a8bdef2c389fe8bf1593fdb68d4295f644c099603eedfeb5be22ef2f9"
+      },
+      "shadowSha256": {
+        "decodedRgba1x": "a9c19720ba61f18db15008655e870bdffa6b508d9a7d0dafc7b700496650525b"
       }
     },
     "shell_wall_horizontal": {
       "textureFile": "shells/shell_wall_horizontal.png",
       "textureFile2x": "shells/2x/shell_wall_horizontal.png",
       "shadowTextureFile": "shells/shell_wall_horizontal-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_horizontal-shadow.png",
       "shadowTexWidth": 160,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -2368,7 +2777,7 @@
         "faceLocalZ": "bottom",
         "projection": "orthographic",
         "orthoScale": 1.642469,
-        "pixelsPerUnit2x": 185.087191,
+        "pixelsPerUnit2x": 185.087172,
         "resolution1x": [
           118,
           152
@@ -2439,23 +2848,21 @@
             75
           ]
         },
-        "bytes1x": 15163,
-        "bytes2x": 40409
+        "bytes1x": 15164,
+        "bytes2x": 25017
       },
       "sha256": {
-        "decodedRgba1x": "44b2845ab66ef0e9f540e08ca8dc16e761af1f8b0b667b95b9188f51c3b95d19",
-        "decodedRgba2x": "7b4793f9bd90c0a75a8dddccb11a3d9283cf517916015facf9861e7a448a4b9f"
+        "decodedRgba1x": "6a7a53ca8dc303b60143e47ba8b39684e35d441306bc74ac3d5ae052db2e0087",
+        "decodedRgba2x": "b0c2814b969301508be900a96d1c67e8b30f00f229511076531a8a6e9843fe7c"
       },
       "shadowSha256": {
-        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820",
-        "decodedRgba2x": "b6118081701231779e6efb6e72fb25d7f32127c10a562a2f3890cac859915f76"
+        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820"
       }
     },
     "shell_wall_horizontal_faceup": {
       "textureFile": "shells/shell_wall_horizontal_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_horizontal_faceup.png",
       "shadowTextureFile": "shells/shell_wall_horizontal_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_horizontal_faceup-shadow.png",
       "shadowTexWidth": 160,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -2569,7 +2976,7 @@
         "faceLocalZ": "top",
         "projection": "orthographic",
         "orthoScale": 1.642469,
-        "pixelsPerUnit2x": 185.087201,
+        "pixelsPerUnit2x": 185.087182,
         "resolution1x": [
           118,
           152
@@ -2640,23 +3047,21 @@
             31
           ]
         },
-        "bytes1x": 14242,
-        "bytes2x": 37739
+        "bytes1x": 14234,
+        "bytes2x": 22355
       },
       "sha256": {
-        "decodedRgba1x": "6821b015bc6319b8d05ae5c2410f09b7b6a9d448ad57c63a300cbcca5c9d8b97",
-        "decodedRgba2x": "6e52c392eeb7a18535762abe55b9239f91068c872a4222ade75373893d758960"
+        "decodedRgba1x": "544d6d1400f65cdb0e34b4b38a0a6784cffe59f0f3697501b2f011ca9d0d7a5c",
+        "decodedRgba2x": "59f436aec76de650d4cef73f703dc75769a5ca26bd0e19b0d5b6966416cfa441"
       },
       "shadowSha256": {
-        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820",
-        "decodedRgba2x": "b6118081701231779e6efb6e72fb25d7f32127c10a562a2f3890cac859915f76"
+        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820"
       }
     },
     "shell_wall_side_left": {
       "textureFile": "shells/shell_wall_side_left.png",
       "textureFile2x": "shells/2x/shell_wall_side_left.png",
       "shadowTextureFile": "shells/shell_wall_side_left-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_side_left-shadow.png",
       "shadowTexWidth": 192,
       "shadowTexHeight": 145,
       "shadowAnchorX": 38,
@@ -2846,22 +3251,20 @@
           ]
         },
         "bytes1x": 16981,
-        "bytes2x": 46885
+        "bytes2x": 31458
       },
       "sha256": {
         "decodedRgba1x": "e2b5d8c62eeff4c7d2f0edde10c9ec108d44d655202882c885e98d817c23c5b0",
-        "decodedRgba2x": "8764fbb7de7afcd86062e71fb676ea6ab006bb1de75da119cc0e91f801e7b8ca"
+        "decodedRgba2x": "b9d789dc4ad3e100414898efc9f437ee2526606bd3c992332411a291808ceb01"
       },
       "shadowSha256": {
-        "decodedRgba1x": "bb663d1e22164c7053402cba4adc9408e0ac93cf55d2368efc9099222c1043b0",
-        "decodedRgba2x": "b9100adda47fff2f10e6a7e795cfd6c3a66e142bfa27503b9fa23b12c75a696d"
+        "decodedRgba1x": "bb663d1e22164c7053402cba4adc9408e0ac93cf55d2368efc9099222c1043b0"
       }
     },
     "shell_wall_side_left_faceup": {
       "textureFile": "shells/shell_wall_side_left_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_side_left_faceup.png",
       "shadowTextureFile": "shells/shell_wall_side_left_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_side_left_faceup-shadow.png",
       "shadowTexWidth": 192,
       "shadowTexHeight": 145,
       "shadowAnchorX": 38,
@@ -3051,22 +3454,20 @@
           ]
         },
         "bytes1x": 15482,
-        "bytes2x": 42601
+        "bytes2x": 27176
       },
       "sha256": {
         "decodedRgba1x": "5466b4f5bb366addcbddd045589fc201b20a43964b571cd611fec8fd9866812e",
-        "decodedRgba2x": "4899644a497ad743592b51b7668d12368eff173bc8da817bf3ca4ec8f461e294"
+        "decodedRgba2x": "af049992527a5aa5700f869a4b33e73363c15b471aa8932ce604d7d531da1e2d"
       },
       "shadowSha256": {
-        "decodedRgba1x": "bb663d1e22164c7053402cba4adc9408e0ac93cf55d2368efc9099222c1043b0",
-        "decodedRgba2x": "b9100adda47fff2f10e6a7e795cfd6c3a66e142bfa27503b9fa23b12c75a696d"
+        "decodedRgba1x": "bb663d1e22164c7053402cba4adc9408e0ac93cf55d2368efc9099222c1043b0"
       }
     },
     "shell_wall_side_right": {
       "textureFile": "shells/shell_wall_side_right.png",
       "textureFile2x": "shells/2x/shell_wall_side_right.png",
       "shadowTextureFile": "shells/shell_wall_side_right-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_side_right-shadow.png",
       "shadowTexWidth": 192,
       "shadowTexHeight": 145,
       "shadowAnchorX": 38,
@@ -3255,23 +3656,21 @@
             75
           ]
         },
-        "bytes1x": 16039,
-        "bytes2x": 44437
+        "bytes1x": 16040,
+        "bytes2x": 29007
       },
       "sha256": {
-        "decodedRgba1x": "3a7294b61fb1e31080ae14a542e9bd576fb9d80b88d5ff2eb4907686fc87b98f",
-        "decodedRgba2x": "ea7edbc2f7e03a9895ced431d266995c9092109d1fbf4f6060923cb469964d29"
+        "decodedRgba1x": "f6a8ba6a46fcd28d45bdd9beea4eded61a252e9e9f5d2059e6a6211a1d0a7a5a",
+        "decodedRgba2x": "af06ca4c82714001c9aa1f997f8535ce642041f7a9826b6733bc13ae4a7a6f25"
       },
       "shadowSha256": {
-        "decodedRgba1x": "bb663d1e22164c7053402cba4adc9408e0ac93cf55d2368efc9099222c1043b0",
-        "decodedRgba2x": "b9100adda47fff2f10e6a7e795cfd6c3a66e142bfa27503b9fa23b12c75a696d"
+        "decodedRgba1x": "bb663d1e22164c7053402cba4adc9408e0ac93cf55d2368efc9099222c1043b0"
       }
     },
     "shell_wall_side_right_faceup": {
       "textureFile": "shells/shell_wall_side_right_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_side_right_faceup.png",
       "shadowTextureFile": "shells/shell_wall_side_right_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_side_right_faceup-shadow.png",
       "shadowTexWidth": 192,
       "shadowTexHeight": 145,
       "shadowAnchorX": 38,
@@ -3460,23 +3859,21 @@
             32
           ]
         },
-        "bytes1x": 15427,
-        "bytes2x": 42742
+        "bytes1x": 15431,
+        "bytes2x": 27310
       },
       "sha256": {
-        "decodedRgba1x": "ef955901ea7ba4914c3e79596d3a3003ba629af30e6f8347b65aad2f50eb95b7",
-        "decodedRgba2x": "fb82c70ef17f6cad87afcf333bb0432b57442d65b17a08d7ac6b4769d937fecb"
+        "decodedRgba1x": "14a9edd12114cde0f3ef0440f303a0d780c6f2bc580c38a645a75884a88696dc",
+        "decodedRgba2x": "c55b1252b0593f7411d4bf9dbba6f22ed4a3552061e9625809edddd6d16ab393"
       },
       "shadowSha256": {
-        "decodedRgba1x": "bb663d1e22164c7053402cba4adc9408e0ac93cf55d2368efc9099222c1043b0",
-        "decodedRgba2x": "b9100adda47fff2f10e6a7e795cfd6c3a66e142bfa27503b9fa23b12c75a696d"
+        "decodedRgba1x": "bb663d1e22164c7053402cba4adc9408e0ac93cf55d2368efc9099222c1043b0"
       }
     },
     "shell_hand_slot_00": {
       "textureFile": "shells/shell_hand_slot_00.png",
       "textureFile2x": "shells/2x/shell_hand_slot_00.png",
       "shadowTextureFile": "shells/shell_hand_slot_00-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_00-shadow.png",
       "shadowTexWidth": 130,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -3668,23 +4065,21 @@
             98
           ]
         },
-        "bytes1x": 13767,
-        "bytes2x": 38631
+        "bytes1x": 13770,
+        "bytes2x": 29891
       },
       "sha256": {
-        "decodedRgba1x": "2c66632bd13e788d01b449d2394e7e3ef4bf8a5d805847ca442260fc1a9e6f84",
-        "decodedRgba2x": "119d59021eb6891c0efdcaed1f17ce4119a3cf617c5f730bdfcb33ec43130641"
+        "decodedRgba1x": "485c621733177b14e230c9f1f79c768cd2b322ff848d75475986411e7f350b0a",
+        "decodedRgba2x": "ddbbb746dfcd4ce23b5956f7b21c00fa41fbb0494419e036813360ca86fac37a"
       },
       "shadowSha256": {
-        "decodedRgba1x": "3329538d0546fd4b23b5d87547b5e2ad02f6291af2f103e7352a74a340d7b1fb",
-        "decodedRgba2x": "7e7162b9a165c1251e5e6e96f8471bf473e5ddc73f8e0d82ba507b75700740bc"
+        "decodedRgba1x": "3329538d0546fd4b23b5d87547b5e2ad02f6291af2f103e7352a74a340d7b1fb"
       }
     },
     "shell_hand_slot_01": {
       "textureFile": "shells/shell_hand_slot_01.png",
       "textureFile2x": "shells/2x/shell_hand_slot_01.png",
       "shadowTextureFile": "shells/shell_hand_slot_01-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_01-shadow.png",
       "shadowTexWidth": 128,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -3877,22 +4272,20 @@
           ]
         },
         "bytes1x": 13587,
-        "bytes2x": 38071
+        "bytes2x": 29307
       },
       "sha256": {
         "decodedRgba1x": "edd97ade3ff747287a0fac88656f92a3b0ea1a1f617ed17a9568cbdcc1b58f1d",
-        "decodedRgba2x": "0fcb7b45657b41b54a77d10e88308afffad6309ac4d09a56e58a0bb63806f42d"
+        "decodedRgba2x": "7c38ad0a5affbc0b337202079a7cdf85d01cd13d0968cfa16a9fd19697e861c5"
       },
       "shadowSha256": {
-        "decodedRgba1x": "3d0b5906d34da73569ea0c964f6a671f36b0dc5a1d3ee39e4e29402243e8a584",
-        "decodedRgba2x": "f3b2a34ca195045342e0d104ffaa7376d70ac07a454d01729bc18610254291eb"
+        "decodedRgba1x": "3d0b5906d34da73569ea0c964f6a671f36b0dc5a1d3ee39e4e29402243e8a584"
       }
     },
     "shell_hand_slot_02": {
       "textureFile": "shells/shell_hand_slot_02.png",
       "textureFile2x": "shells/2x/shell_hand_slot_02.png",
       "shadowTextureFile": "shells/shell_hand_slot_02-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_02-shadow.png",
       "shadowTexWidth": 126,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -4084,23 +4477,21 @@
             99
           ]
         },
-        "bytes1x": 12984,
-        "bytes2x": 37143
+        "bytes1x": 12981,
+        "bytes2x": 28964
       },
       "sha256": {
-        "decodedRgba1x": "7e8007f7e87237ce3c4002b06d12023707de471e21986e622157ae0851e3fceb",
-        "decodedRgba2x": "4a0a2dc43e96f098169ce802075b85513ba08c8b045f511b171b376094fe73cc"
+        "decodedRgba1x": "b53d1840e263e43ab671266c36ae77ec91a3cafd630232c9e12167df810b0456",
+        "decodedRgba2x": "3cf94cc7ca76493c372be0923adfb29eabe79b407c6df4d6e7d0db4d0392a7c0"
       },
       "shadowSha256": {
-        "decodedRgba1x": "370c7c91b35843afb240316eb45fa773cd21b2a328a1be723a30cd4cbd27211d",
-        "decodedRgba2x": "0f8961778842f6597133149bfa586b51ce3532f186d0b52105c0cef070068f0e"
+        "decodedRgba1x": "370c7c91b35843afb240316eb45fa773cd21b2a328a1be723a30cd4cbd27211d"
       }
     },
     "shell_hand_slot_03": {
       "textureFile": "shells/shell_hand_slot_03.png",
       "textureFile2x": "shells/2x/shell_hand_slot_03.png",
       "shadowTextureFile": "shells/shell_hand_slot_03-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_03-shadow.png",
       "shadowTexWidth": 123,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -4292,23 +4683,21 @@
             99
           ]
         },
-        "bytes1x": 12601,
-        "bytes2x": 36239
+        "bytes1x": 12595,
+        "bytes2x": 28257
       },
       "sha256": {
-        "decodedRgba1x": "7f38edfbfc10c21c2fef641d0d85698d106f9bed937d30f919c23fb86e9a07ca",
-        "decodedRgba2x": "30c2d1120be58521c2d06a81aa9e438a001bbb53ebe21943b9140d6fc1f09d10"
+        "decodedRgba1x": "560adddda2dae81bd887abe1d0ce142f1a3f6415a5514f36db40abbcfc4d4dd7",
+        "decodedRgba2x": "ca994dca0bfb8be778a1f718a6e76c9ee2fbcb73ac71bae9226522d62b615e6c"
       },
       "shadowSha256": {
-        "decodedRgba1x": "54e202b3f2736af60113ce66345ddde044ba361f3abc6eb0d433ed6414758969",
-        "decodedRgba2x": "058263a1da23353b39fa0ac711631e2e6b75c5572634d0dd9a9394276fae4471"
+        "decodedRgba1x": "54e202b3f2736af60113ce66345ddde044ba361f3abc6eb0d433ed6414758969"
       }
     },
     "shell_hand_slot_04": {
       "textureFile": "shells/shell_hand_slot_04.png",
       "textureFile2x": "shells/2x/shell_hand_slot_04.png",
       "shadowTextureFile": "shells/shell_hand_slot_04-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_04-shadow.png",
       "shadowTexWidth": 121,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -4500,23 +4889,21 @@
             99
           ]
         },
-        "bytes1x": 12367,
-        "bytes2x": 35326
+        "bytes1x": 12372,
+        "bytes2x": 27495
       },
       "sha256": {
-        "decodedRgba1x": "95e6710690a26e9678a97ea0a0920e167feb6810b22ced14671a27aa26159952",
-        "decodedRgba2x": "c3e1d9d19a504efd75bf233234d8cb38bd6ba133bc75a75cd7dfe38014a78056"
+        "decodedRgba1x": "e6edd79999b9403705c94476a12d6560582c3b9e040dc3df96d8d2595decf6bd",
+        "decodedRgba2x": "8b51635fef125bc3cdb4cd4c07edd0f204986324cb1c7d6b6c7609e298e1a081"
       },
       "shadowSha256": {
-        "decodedRgba1x": "9ed4bc3bb84ce09fe550df4914c573fe2e8174d32a41980c4230f37b34ac0f84",
-        "decodedRgba2x": "439315ad4ba10c7a12c04742136bd29cbb3e6c2f529591d3642b374887314424"
+        "decodedRgba1x": "9ed4bc3bb84ce09fe550df4914c573fe2e8174d32a41980c4230f37b34ac0f84"
       }
     },
     "shell_hand_slot_05": {
       "textureFile": "shells/shell_hand_slot_05.png",
       "textureFile2x": "shells/2x/shell_hand_slot_05.png",
       "shadowTextureFile": "shells/shell_hand_slot_05-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_05-shadow.png",
       "shadowTexWidth": 120,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -4709,22 +5096,20 @@
           ]
         },
         "bytes1x": 11717,
-        "bytes2x": 33940
+        "bytes2x": 26541
       },
       "sha256": {
         "decodedRgba1x": "b94b46c9a658e80c8f63c1b50d2a15e27e30555311313e2e609bee64d858f66a",
-        "decodedRgba2x": "56623461ca83e9b95cbb50179728a70acb7c613800dabb9dbcf71247222b62c2"
+        "decodedRgba2x": "94f410c24bcb914d1d036d57820d15a81be94c27a13c30d350533ae191740fb0"
       },
       "shadowSha256": {
-        "decodedRgba1x": "d85c364bee04592a2be57ecdf84066ad70acb9852273f6b7f5183c64494d83c7",
-        "decodedRgba2x": "bade07a22745b4070f0cf2ac3f411c953710cdb740da66623b17a8bde6f77d97"
+        "decodedRgba1x": "d85c364bee04592a2be57ecdf84066ad70acb9852273f6b7f5183c64494d83c7"
       }
     },
     "shell_hand_slot_06": {
       "textureFile": "shells/shell_hand_slot_06.png",
       "textureFile2x": "shells/2x/shell_hand_slot_06.png",
       "shadowTextureFile": "shells/shell_hand_slot_06-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_06-shadow.png",
       "shadowTexWidth": 119,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -4916,23 +5301,21 @@
             98
           ]
         },
-        "bytes1x": 10216,
-        "bytes2x": 32159
+        "bytes1x": 10219,
+        "bytes2x": 25496
       },
       "sha256": {
-        "decodedRgba1x": "002b0d20e5dfcb3cdcefe2554d72481477642e891c3edfd4a80d713046259e20",
-        "decodedRgba2x": "f17043d65daa3f0221c2dea0e09460ea9378e78c055ec3802c396c524bb9e451"
+        "decodedRgba1x": "5eb063de4d14ecc5718e95475be5a1881aa9b7b225a5cfcf4e8a4c9318f0e59a",
+        "decodedRgba2x": "6ec8d6b2b50374284fd8bfbacb0ca480acd2653955b9d91917b0d8f03e1c317d"
       },
       "shadowSha256": {
-        "decodedRgba1x": "8bf167433347d1f1c2611620788f0b5ae1860f9447cd9d6c3909f90ec7c6cf07",
-        "decodedRgba2x": "2290f06f957dd596e23dd52bf287e8181a40e462bdb2abac8eabf85c4448a101"
+        "decodedRgba1x": "8bf167433347d1f1c2611620788f0b5ae1860f9447cd9d6c3909f90ec7c6cf07"
       }
     },
     "shell_hand_slot_07": {
       "textureFile": "shells/shell_hand_slot_07.png",
       "textureFile2x": "shells/2x/shell_hand_slot_07.png",
       "shadowTextureFile": "shells/shell_hand_slot_07-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_07-shadow.png",
       "shadowTexWidth": 120,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -5124,23 +5507,21 @@
             99
           ]
         },
-        "bytes1x": 11900,
-        "bytes2x": 34447
+        "bytes1x": 11901,
+        "bytes2x": 27030
       },
       "sha256": {
-        "decodedRgba1x": "ea08101c93e571e9e8559749cc9c21dfd925e9975c639eede9c19184d0ebde33",
-        "decodedRgba2x": "e7cdcddaaf35312f6b531f71f8a69f47347a36fe0f7023c1c78c27889fbb923f"
+        "decodedRgba1x": "e7eea10c7b7438a87028e182c9462e9d5428775940759a3274bae5359841aeef",
+        "decodedRgba2x": "d78536840d15f467af9ad469d4387890175783a417ee35b6f9a19243be4a4c4e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1522795a93b31aed79617542bd280ba011a9112a40135669f6e2847d54358e42",
-        "decodedRgba2x": "da6d0516b2fdadbb6697fe23b323c74149f55c288d82efc4aef6da7a6251b102"
+        "decodedRgba1x": "1522795a93b31aed79617542bd280ba011a9112a40135669f6e2847d54358e42"
       }
     },
     "shell_hand_slot_08": {
       "textureFile": "shells/shell_hand_slot_08.png",
       "textureFile2x": "shells/2x/shell_hand_slot_08.png",
       "shadowTextureFile": "shells/shell_hand_slot_08-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_08-shadow.png",
       "shadowTexWidth": 121,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -5332,23 +5713,21 @@
             98
           ]
         },
-        "bytes1x": 12571,
-        "bytes2x": 35951
+        "bytes1x": 12570,
+        "bytes2x": 27983
       },
       "sha256": {
-        "decodedRgba1x": "733742c4abf7e4f3c1512e22904511b87004c7980913264bdb1d48cdc7a73c49",
-        "decodedRgba2x": "4ff9c139131bc6336a5bea3a2547c680d039bec0973ff6ec0448b7c272d86c15"
+        "decodedRgba1x": "429b9725be7108f2b594c479cd367d53d533d0d435c19fd4cc9bc893cee9837a",
+        "decodedRgba2x": "8d4d9facac69b4c1b0a2066fcc590370808e4e3c0621a42dc2a110c6c668c11e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "6385a9f8c9247b05aadc2de9845883ca110c862d367fa3e04c9921f8dcebbd9d",
-        "decodedRgba2x": "f5cc40def0bf440a35c4a568e4041c433ec1f00fe83a84d15a365be43e5ddc64"
+        "decodedRgba1x": "6385a9f8c9247b05aadc2de9845883ca110c862d367fa3e04c9921f8dcebbd9d"
       }
     },
     "shell_hand_slot_09": {
       "textureFile": "shells/shell_hand_slot_09.png",
       "textureFile2x": "shells/2x/shell_hand_slot_09.png",
       "shadowTextureFile": "shells/shell_hand_slot_09-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_09-shadow.png",
       "shadowTexWidth": 123,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -5541,22 +5920,20 @@
           ]
         },
         "bytes1x": 12943,
-        "bytes2x": 36918
+        "bytes2x": 28793
       },
       "sha256": {
         "decodedRgba1x": "140021399fe23f2cfbbd7dab0cc32c1933353fc63a58908e05e8d44b46c515e2",
-        "decodedRgba2x": "1e681c87aef25624e14d75ee75337f03d192b27168f1da99477849d9c0c8b200"
+        "decodedRgba2x": "fc47c381af65613f12d40e1890aa1239c984c8f3e89dba3888e9240b077d18a0"
       },
       "shadowSha256": {
-        "decodedRgba1x": "a1a09e82ab09dbbbf67c6f5af3936c6c503926a2f315188825190eed804c07d5",
-        "decodedRgba2x": "97fd750702941566c6b93c5d8367bfd01e03633f066e9f3c2c047040ec265bf0"
+        "decodedRgba1x": "a1a09e82ab09dbbbf67c6f5af3936c6c503926a2f315188825190eed804c07d5"
       }
     },
     "shell_hand_slot_10": {
       "textureFile": "shells/shell_hand_slot_10.png",
       "textureFile2x": "shells/2x/shell_hand_slot_10.png",
       "shadowTextureFile": "shells/shell_hand_slot_10-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_10-shadow.png",
       "shadowTexWidth": 126,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -5748,23 +6125,21 @@
             99
           ]
         },
-        "bytes1x": 13262,
-        "bytes2x": 37973
+        "bytes1x": 13265,
+        "bytes2x": 29630
       },
       "sha256": {
-        "decodedRgba1x": "3ae32a0d9342b0814518fd78dc7348aafe616953be6c0e6b3bb49cd9a54da7e2",
-        "decodedRgba2x": "4fceafd1c0a9862b356fc269c84fa86dbfa44b6b4b9a1b1ed80b0412d6b9f39d"
+        "decodedRgba1x": "6fa584d904934be5c78369087e10d1d33b7721dcc083f612dbf8ab14539b0933",
+        "decodedRgba2x": "bb9601e622d52ce0752d73220d18cfbb3018eb2d26ca88d93df2771d83aee557"
       },
       "shadowSha256": {
-        "decodedRgba1x": "b06eb1c13fdfdee414fcf907fb1a20edfd635d39deaaf34a0d414d2a065921b3",
-        "decodedRgba2x": "e97234d0e226804247dbc32ef9666a9067087959247aa1767cdc1046aa039a65"
+        "decodedRgba1x": "b06eb1c13fdfdee414fcf907fb1a20edfd635d39deaaf34a0d414d2a065921b3"
       }
     },
     "shell_hand_slot_11": {
       "textureFile": "shells/shell_hand_slot_11.png",
       "textureFile2x": "shells/2x/shell_hand_slot_11.png",
       "shadowTextureFile": "shells/shell_hand_slot_11-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_11-shadow.png",
       "shadowTexWidth": 128,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -5956,23 +6331,21 @@
             99
           ]
         },
-        "bytes1x": 14010,
-        "bytes2x": 38715
+        "bytes1x": 14011,
+        "bytes2x": 29915
       },
       "sha256": {
-        "decodedRgba1x": "42ff2b4a699ed500a788a767c2c6f8f4f5ec84fad88c4d74dcc6b9f5a787ee74",
-        "decodedRgba2x": "7e55261f5f2d41f7dfc93cf4202652bf411a901eb62d16bf71b9a3f884dbea24"
+        "decodedRgba1x": "42906762068b12587758dd4fe1eeccf7efb221ea870e4a67eff5a2df68261cd9",
+        "decodedRgba2x": "63f38c9c7ff2e5994236b9efa02ee396e3519d1f476d7f3cd7c67a6ceb22d2b6"
       },
       "shadowSha256": {
-        "decodedRgba1x": "e2549ec7064a8d7d43ffe9e9f0ccab36ebadc2fea83c327e38616ba2ffa58487",
-        "decodedRgba2x": "e142bbb4870c076019c69d967b5249ff05d0b2953a171203a25a84c25af7ed30"
+        "decodedRgba1x": "e2549ec7064a8d7d43ffe9e9f0ccab36ebadc2fea83c327e38616ba2ffa58487"
       }
     },
     "shell_hand_slot_12": {
       "textureFile": "shells/shell_hand_slot_12.png",
       "textureFile2x": "shells/2x/shell_hand_slot_12.png",
       "shadowTextureFile": "shells/shell_hand_slot_12-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_12-shadow.png",
       "shadowTexWidth": 130,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -6164,23 +6537,21 @@
             99
           ]
         },
-        "bytes1x": 14033,
-        "bytes2x": 39564
+        "bytes1x": 14029,
+        "bytes2x": 30828
       },
       "sha256": {
-        "decodedRgba1x": "0ae5de55965533d9b8638ebe35ffb2f52053eb18ad3e7d4f48271fe5a7524906",
-        "decodedRgba2x": "534f676113ad08598fef9f0f6967db1e5a0ad57b195fe6914705c20f35208ed2"
+        "decodedRgba1x": "8d42e9247e25fd4ec69f52bffe8810a9f7d0ca354ed9a4968c07604186954df3",
+        "decodedRgba2x": "b80577b668763f0e4147301de7cbf6e70493c05a38770a1baf15de64a95993e7"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5258d3a028f19268730d25a17f9108e4dba1e68ac14f226a1e0632b8827df669",
-        "decodedRgba2x": "329683dd2ee246c04387b6389587ccce5b2d2e8ac1926b66d8ff3bac03a6285c"
+        "decodedRgba1x": "5258d3a028f19268730d25a17f9108e4dba1e68ac14f226a1e0632b8827df669"
       }
     },
     "shell_hand_slot_draw": {
       "textureFile": "shells/shell_hand_slot_draw.png",
       "textureFile2x": "shells/2x/shell_hand_slot_draw.png",
       "shadowTextureFile": "shells/shell_hand_slot_draw-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_slot_draw-shadow.png",
       "shadowTexWidth": 133,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -6372,23 +6743,21 @@
             99
           ]
         },
-        "bytes1x": 14363,
-        "bytes2x": 40041
+        "bytes1x": 14364,
+        "bytes2x": 31043
       },
       "sha256": {
-        "decodedRgba1x": "e4bab24b5cda3831e1f46b426dc03f686727accf15e0fd2799bc97197ab27183",
-        "decodedRgba2x": "ee8591cbc2db030b9f2be9d98a1f13f1d948afd087bc41a8d7ba5b3f75f65654"
+        "decodedRgba1x": "ec04c69578a22a26c2c08b2a619de1a796533b7e3be6346fbf2229987f2249d6",
+        "decodedRgba2x": "f08d10325541472e8d9779c46f99081cd5038cfa87ad2f9ad1d909418a00fd0c"
       },
       "shadowSha256": {
-        "decodedRgba1x": "ac0c6cf3e6a0e02ce7a396bc19068237b604380c62c315d89ab6970d6c164f72",
-        "decodedRgba2x": "993efaf67603283484ce73f459f3bfae97146db71ed0f02e77f26d7fe7bf70e6"
+        "decodedRgba1x": "ac0c6cf3e6a0e02ce7a396bc19068237b604380c62c315d89ab6970d6c164f72"
       }
     },
     "shell_hand_top_slot_00": {
       "textureFile": "shells/shell_hand_top_slot_00.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_00.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_00-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_00-shadow.png",
       "shadowTexWidth": 122,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -6580,23 +6949,21 @@
             41
           ]
         },
-        "bytes1x": 12051,
-        "bytes2x": 34369
+        "bytes1x": 12049,
+        "bytes2x": 26272
       },
       "sha256": {
-        "decodedRgba1x": "94441645370ded7ba6f2f85b77b83b045aa2f8827837ca2d7d94931ea579f022",
-        "decodedRgba2x": "6584e0573f1fee419e9de337308b20128161c0081ced478362696e76415aef19"
+        "decodedRgba1x": "abc9605bbae3c477a7fd65ae6af3270c18fbfef535190478e0ef2f5b5742cdad",
+        "decodedRgba2x": "87f1a888751bbb56615447d058d3271f8e43212d4a39d0b95a3e7cd51539cd0e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "964489348033a314d2d9d7c4634d94fda02e383b9437126f76bf12249492e738",
-        "decodedRgba2x": "66fc6dc5c5b27f8cf2759c89bbc482dd45f74037ab4108cb43a5bce2a05c717d"
+        "decodedRgba1x": "964489348033a314d2d9d7c4634d94fda02e383b9437126f76bf12249492e738"
       }
     },
     "shell_hand_top_slot_01": {
       "textureFile": "shells/shell_hand_top_slot_01.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_01.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_01-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_01-shadow.png",
       "shadowTexWidth": 121,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -6789,22 +7156,20 @@
           ]
         },
         "bytes1x": 11745,
-        "bytes2x": 33590
+        "bytes2x": 25775
       },
       "sha256": {
-        "decodedRgba1x": "47b26aca2c0870faaa39fa33b71f72bae66897036988455b5560d482321fa627",
-        "decodedRgba2x": "a112f65ab8ff1669f1beb5096bef1be4e4c0276a48cdd09e21b17b11232ea202"
+        "decodedRgba1x": "257f8978ab807f62ec831746f5c4f71d78605eee19b5320a77bfb05529e1234a",
+        "decodedRgba2x": "3585f4e29717b67d2271fb21c3aa6d89112a7931df622f38c82cda1e80805096"
       },
       "shadowSha256": {
-        "decodedRgba1x": "3698a4a4b9ad66fc114ba302c4c8517d630f26d4761e1a36107a9114f06765e9",
-        "decodedRgba2x": "87b273c1a887e70515e785aef87521109bed6226328a3692e0ea49dc99ce766c"
+        "decodedRgba1x": "3698a4a4b9ad66fc114ba302c4c8517d630f26d4761e1a36107a9114f06765e9"
       }
     },
     "shell_hand_top_slot_02": {
       "textureFile": "shells/shell_hand_top_slot_02.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_02.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_02-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_02-shadow.png",
       "shadowTexWidth": 120,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -6997,22 +7362,20 @@
           ]
         },
         "bytes1x": 11445,
-        "bytes2x": 33138
+        "bytes2x": 25414
       },
       "sha256": {
         "decodedRgba1x": "123040b38f65db7c6d72ae35266353aaeb1c0a00dafea40a738264c948c9ede2",
-        "decodedRgba2x": "17807da057d03ddb2f00c3b9b93d12d9db09df12d32c40a90793c503ace064f3"
+        "decodedRgba2x": "c7188b778f3d0711bffc022984bcb1f4ae35e5d7ba1c7d8b24646ad7044d2665"
       },
       "shadowSha256": {
-        "decodedRgba1x": "fca72dd611ce2c2f0c69d4dad9b8706ebf33a176ce27e9c550e1e72067965989",
-        "decodedRgba2x": "bf8f6e8ab0d0bc68634b113cf7d481addc370001b3c98c535d988ef69337efbd"
+        "decodedRgba1x": "fca72dd611ce2c2f0c69d4dad9b8706ebf33a176ce27e9c550e1e72067965989"
       }
     },
     "shell_hand_top_slot_03": {
       "textureFile": "shells/shell_hand_top_slot_03.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_03.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_03-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_03-shadow.png",
       "shadowTexWidth": 119,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -7204,23 +7567,21 @@
             41
           ]
         },
-        "bytes1x": 10795,
-        "bytes2x": 32650
+        "bytes1x": 10797,
+        "bytes2x": 25114
       },
       "sha256": {
-        "decodedRgba1x": "3671f89842dea152536d8de71a0d0c54c5111bbdd297260e9cc0b64f0c6c8475",
-        "decodedRgba2x": "f6326c5ff2900a788b7ac287d18475dcac9623e29860254061922ed0bb986255"
+        "decodedRgba1x": "39090f5896e24a6c0a009ebd5708af20b4d3d1d8d455be5d38166a633a894169",
+        "decodedRgba2x": "c1816fc388814ac4a6256c44452ffdf82b3da7ace15ba7fc81c51568127287f5"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1b2516628b6ea8bc2a39bafb49f21cd43fd8425d5b84537c714d66654feddde7",
-        "decodedRgba2x": "b689cd1899b1ee8002f814896117f175742bb493cd44e40db932c2de1ab37666"
+        "decodedRgba1x": "1b2516628b6ea8bc2a39bafb49f21cd43fd8425d5b84537c714d66654feddde7"
       }
     },
     "shell_hand_top_slot_04": {
       "textureFile": "shells/shell_hand_top_slot_04.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_04.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_04-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_04-shadow.png",
       "shadowTexWidth": 119,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -7412,23 +7773,21 @@
             41
           ]
         },
-        "bytes1x": 10701,
-        "bytes2x": 31782
+        "bytes1x": 10703,
+        "bytes2x": 24330
       },
       "sha256": {
-        "decodedRgba1x": "a586dd8107a03891b5cdbbe128658f3c494d793ab581c137ab5acb9d7e20fde2",
+        "decodedRgba1x": "128a5647d08e1268ee3dfaace666023aa20098d8687376520970ce2a21c8eff3",
         "decodedRgba2x": "4dfb84c527d8279437c970b5754936c56144d24754f6a45142318782064f2da5"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1073f3d94f364d6ff247abcb0f0f9acbee2adab036ced3d35a9b673a0c8de37c",
-        "decodedRgba2x": "a2f49d69263ba6f81032e3f0b0a58664ce3b747c98ee2ccc4c3e5e6e521b877f"
+        "decodedRgba1x": "1073f3d94f364d6ff247abcb0f0f9acbee2adab036ced3d35a9b673a0c8de37c"
       }
     },
     "shell_hand_top_slot_05": {
       "textureFile": "shells/shell_hand_top_slot_05.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_05.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_05-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_05-shadow.png",
       "shadowTexWidth": 119,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -7621,22 +7980,20 @@
           ]
         },
         "bytes1x": 10454,
-        "bytes2x": 30647
+        "bytes2x": 23410
       },
       "sha256": {
-        "decodedRgba1x": "753319b71de720468a73405cc10949b6719277a470f0f8a3510cfedb9b796a05",
+        "decodedRgba1x": "dc679c5ae8241fa873f757770e19ef99db922cbc46ee96047550ba52fbd584d3",
         "decodedRgba2x": "f6ba3dfdea3542b8e9d351e674f0aa07f0898856b4aa04d94cc23f78f8c53232"
       },
       "shadowSha256": {
-        "decodedRgba1x": "3eeb0d7ac5630031b5a5da3553e9da20280ba1d77cdc3e2aba3f6af5a584f3b7",
-        "decodedRgba2x": "bd565bd61395d73090e8c77407223855ccb71295e7311ca50c969e54f0ac20fb"
+        "decodedRgba1x": "3eeb0d7ac5630031b5a5da3553e9da20280ba1d77cdc3e2aba3f6af5a584f3b7"
       }
     },
     "shell_hand_top_slot_06": {
       "textureFile": "shells/shell_hand_top_slot_06.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_06.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_06-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_06-shadow.png",
       "shadowTexWidth": 118,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -7828,23 +8185,21 @@
             40
           ]
         },
-        "bytes1x": 10241,
-        "bytes2x": 29742
+        "bytes1x": 10238,
+        "bytes2x": 23258
       },
       "sha256": {
-        "decodedRgba1x": "07d5d4893c65b41005fd2a6db717c81a6adf2fba7775abe53c447b287dd34d76",
-        "decodedRgba2x": "022866ba91888f083900d398367a958e8ac01727a75663fbfe43fde87a5e129d"
+        "decodedRgba1x": "0be14b6de9065df9ce9933f5743a1a1c3fcc8c780d5680b591d5cf6a5ac11995",
+        "decodedRgba2x": "4f031d414a55acdd9fdbbd159e3b10dc4a66ad3aa20f94f1c0e708098eae81a2"
       },
       "shadowSha256": {
-        "decodedRgba1x": "42a77aba6f4c5adf024c53fb0a0703891b0f1ae65040f7e151e4ab47615539ba",
-        "decodedRgba2x": "a6e9aef0f0f3dd20960904dd39d16d1834bf9c87711671b04d413904ad745816"
+        "decodedRgba1x": "42a77aba6f4c5adf024c53fb0a0703891b0f1ae65040f7e151e4ab47615539ba"
       }
     },
     "shell_hand_top_slot_07": {
       "textureFile": "shells/shell_hand_top_slot_07.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_07.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_07-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_07-shadow.png",
       "shadowTexWidth": 119,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -8037,22 +8392,20 @@
           ]
         },
         "bytes1x": 10713,
-        "bytes2x": 31015
+        "bytes2x": 23751
       },
       "sha256": {
         "decodedRgba1x": "46e241fdf050e2d2435f9dfb12b6bda141060e4cf568bdd2bb0ee77cdbac5d98",
-        "decodedRgba2x": "567ee6b00288d365f159eb334510a6e3ca21bdf0640c32a110f0dd33d770f8b4"
+        "decodedRgba2x": "0c406c4a285cecc65d86c34a0875095e4e86118f39a3ad298d2ba466f5028e7b"
       },
       "shadowSha256": {
-        "decodedRgba1x": "9c9f53361f9dfee40509171994870607616f3a95fcef2fb819a0ed5e56596056",
-        "decodedRgba2x": "4b6cc51dc7fcf1ed32573d03f5a9032bb88527cba348df85ccf9c57d255b957d"
+        "decodedRgba1x": "9c9f53361f9dfee40509171994870607616f3a95fcef2fb819a0ed5e56596056"
       }
     },
     "shell_hand_top_slot_08": {
       "textureFile": "shells/shell_hand_top_slot_08.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_08.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_08-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_08-shadow.png",
       "shadowTexWidth": 119,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -8245,22 +8598,20 @@
           ]
         },
         "bytes1x": 11056,
-        "bytes2x": 32151
+        "bytes2x": 24669
       },
       "sha256": {
         "decodedRgba1x": "1bb203b192e950ce78841e4263ea823bb89fd0076b7ffbab467f93ca7843e7f2",
-        "decodedRgba2x": "d0ef5aaf4177bcfad2088350e34cbe6f12aaa8e0d1923dd332f2d66f4a0dc16e"
+        "decodedRgba2x": "aaea1fd53cefb82a7476329b14826d07424c6d165931b33b6c1fff24d2a24cb4"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1323b7152c36710e363b3c7f82406c4e9a4e19cd6084315650ac48a2014be661",
-        "decodedRgba2x": "d528a104d60119c18ac1e52b06e49061bdcb01d37599270155827a3fb50bb536"
+        "decodedRgba1x": "1323b7152c36710e363b3c7f82406c4e9a4e19cd6084315650ac48a2014be661"
       }
     },
     "shell_hand_top_slot_09": {
       "textureFile": "shells/shell_hand_top_slot_09.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_09.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_09-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_09-shadow.png",
       "shadowTexWidth": 119,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -8453,22 +8804,20 @@
           ]
         },
         "bytes1x": 10878,
-        "bytes2x": 32763
+        "bytes2x": 25171
       },
       "sha256": {
         "decodedRgba1x": "11a77a5534d6d001b6c8aaf2c7bfe0493430d59d285e8b207df12e360e186b06",
-        "decodedRgba2x": "346dd34ff386b26a3633989745939bae18feec521917c7d8e93c240c2755c30b"
+        "decodedRgba2x": "2ed68c9f267f2a7a547df634ece040fa37e08a4eb5d763afe80eebd4ffcf4ce8"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5adaffbca415528c48489cbb8efe77d7c3cf447fe0c1a608ae8de59d2fe7b360",
-        "decodedRgba2x": "175237a69bf1491ef06b35415c040ac931f3cef588e67881fbfa1e2c4cdffc6e"
+        "decodedRgba1x": "5adaffbca415528c48489cbb8efe77d7c3cf447fe0c1a608ae8de59d2fe7b360"
       }
     },
     "shell_hand_top_slot_10": {
       "textureFile": "shells/shell_hand_top_slot_10.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_10.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_10-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_10-shadow.png",
       "shadowTexWidth": 120,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -8661,22 +9010,20 @@
           ]
         },
         "bytes1x": 11429,
-        "bytes2x": 33320
+        "bytes2x": 25514
       },
       "sha256": {
         "decodedRgba1x": "576c1eb9f16e61d3f3d6c99c9049699ffdc6cd50493e7f527f2714c8481bc97f",
-        "decodedRgba2x": "3cba2e41ef98164c0602810cebb2ea505343c842cc6efb05099e5fc8de42575c"
+        "decodedRgba2x": "91070372e3796f30edcda2437790969c88e3686125f251c86d4b9385cf916421"
       },
       "shadowSha256": {
-        "decodedRgba1x": "a19713ad2c31e450dc7e995404d06547ff6a05e32e48833351bbc89b2fa04e60",
-        "decodedRgba2x": "4d0dacf1085fc4e52ecb9f58e547c63c508285f92551f0f18b1ec99c1dbdc1e4"
+        "decodedRgba1x": "a19713ad2c31e450dc7e995404d06547ff6a05e32e48833351bbc89b2fa04e60"
       }
     },
     "shell_hand_top_slot_11": {
       "textureFile": "shells/shell_hand_top_slot_11.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_11.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_11-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_11-shadow.png",
       "shadowTexWidth": 121,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -8868,23 +9215,21 @@
             41
           ]
         },
-        "bytes1x": 11763,
-        "bytes2x": 33777
+        "bytes1x": 11765,
+        "bytes2x": 25877
       },
       "sha256": {
-        "decodedRgba1x": "5fa0ae6546cd55d67083535f6494d6058e631acc69ddc3404dc26039c417c7bd",
-        "decodedRgba2x": "09b9541643ce4963bc75cdf3f1b3cbcac23525bc8fd562005fbf1904272ca310"
+        "decodedRgba1x": "0a03b1bb871fb513490167666e3d2fb3288e262bc586267c23352b421da625ec",
+        "decodedRgba2x": "a931d1110f0c2d234cba30a488a25b7d02cfa4e46f5599950508cc5d1aa78f4c"
       },
       "shadowSha256": {
-        "decodedRgba1x": "9f8187c79ec4a54e54f0fc5aaa5e6bf4f09e1f5345d414527029dcfe53412cf4",
-        "decodedRgba2x": "6d3b5afdf1e3d08a620a6c03fbc9af530477dba168574f2f6ef722f167a7fbcf"
+        "decodedRgba1x": "9f8187c79ec4a54e54f0fc5aaa5e6bf4f09e1f5345d414527029dcfe53412cf4"
       }
     },
     "shell_hand_top_slot_12": {
       "textureFile": "shells/shell_hand_top_slot_12.png",
       "textureFile2x": "shells/2x/shell_hand_top_slot_12.png",
       "shadowTextureFile": "shells/shell_hand_top_slot_12-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_hand_top_slot_12-shadow.png",
       "shadowTexWidth": 122,
       "shadowTexHeight": 142,
       "shadowAnchorX": 18,
@@ -9076,23 +9421,21 @@
             41
           ]
         },
-        "bytes1x": 12093,
-        "bytes2x": 34392
+        "bytes1x": 12092,
+        "bytes2x": 26154
       },
       "sha256": {
-        "decodedRgba1x": "622d5a6a02db85c6e8526153659ca8ba3207e0ba09ba4da76306ded37a08030d",
-        "decodedRgba2x": "9cd316f03e4544f1ca16b6426af71dad9abc80b0dfbf0f791ccb6add6241edb1"
+        "decodedRgba1x": "0b7b3ee60af7183b7ead5cf738df40108a70ffb102880440a80677370da7715a",
+        "decodedRgba2x": "b0b37ea59ce06a2e52e8eec172f85f9c6c39813441dfdf4bdb04347ec18a545a"
       },
       "shadowSha256": {
-        "decodedRgba1x": "0dfa31fe31ea6ce299df430d37f39cea630d85da0c92ead666c89e0303e72f5a",
-        "decodedRgba2x": "4db6d9ab97f7dca3ca1cba93424bc3617209f413835237cb41b4739424ed2eb3"
+        "decodedRgba1x": "0dfa31fe31ea6ce299df430d37f39cea630d85da0c92ead666c89e0303e72f5a"
       }
     },
     "shell_wall_front_slot_00": {
       "textureFile": "shells/shell_wall_front_slot_00.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_00.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_00-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_00-shadow.png",
       "shadowTexWidth": 169,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -9291,22 +9634,20 @@
           ]
         },
         "bytes1x": 17076,
-        "bytes2x": 46037
+        "bytes2x": 30749
       },
       "sha256": {
-        "decodedRgba1x": "8a01b9a9fb43556959c04f32078e2ea9a567e3a1bffe688ae131928f1fadbfb1",
-        "decodedRgba2x": "55b45c336db8421d8f37494a12ee31d88321b922afed7331d33319053bad8e85"
+        "decodedRgba1x": "432519f3e68c59d960ead23ab80c593a6ebfa1c7a324282653147f495fc739b0",
+        "decodedRgba2x": "50505f17716ec41dd198bacd959ced0e58a83b69361eb1aec4b458761295d343"
       },
       "shadowSha256": {
-        "decodedRgba1x": "c533aba51a4d86a287cae2b473ab288fd590eb97d0a3214bb2deb12030c3d62b",
-        "decodedRgba2x": "13bcdae23d29d79ea98e7acb52b51c91f77b256a666cae5511bf75432ee6fe0e"
+        "decodedRgba1x": "c533aba51a4d86a287cae2b473ab288fd590eb97d0a3214bb2deb12030c3d62b"
       }
     },
     "shell_wall_front_slot_01": {
       "textureFile": "shells/shell_wall_front_slot_01.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_01.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_01-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_01-shadow.png",
       "shadowTexWidth": 167,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -9504,23 +9845,21 @@
             75
           ]
         },
-        "bytes1x": 16937,
-        "bytes2x": 45808
+        "bytes1x": 16935,
+        "bytes2x": 30276
       },
       "sha256": {
-        "decodedRgba1x": "8a55cc53ab575f4b48a26b5faf4317a1308bafe314d0d62e7df101baba2e84ae",
-        "decodedRgba2x": "ee3ba97145e87ddc4f9c90820ec3e711d16081ea1e8682e67971ae459c389a93"
+        "decodedRgba1x": "62d236288dc925300b534594e709dd02744848115c36ad80ae9c7a5adfb5932b",
+        "decodedRgba2x": "31bcbd49480dc39c70e9e298196b318e28079603eb8256a086fac8ad9a7f0e4d"
       },
       "shadowSha256": {
-        "decodedRgba1x": "593a8a0c3f2e19394076e8155942bb7112b9dd1d70f8fa745c9b7effeea9a1c1",
-        "decodedRgba2x": "e009d8c298f41168da6380787e12d20bea8ac9a296d9bfd3194af5a7f6b1b034"
+        "decodedRgba1x": "593a8a0c3f2e19394076e8155942bb7112b9dd1d70f8fa745c9b7effeea9a1c1"
       }
     },
     "shell_wall_front_slot_02": {
       "textureFile": "shells/shell_wall_front_slot_02.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_02.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_02-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_02-shadow.png",
       "shadowTexWidth": 166,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -9719,22 +10058,20 @@
           ]
         },
         "bytes1x": 16875,
-        "bytes2x": 45003
+        "bytes2x": 29578
       },
       "sha256": {
-        "decodedRgba1x": "ab0d9d03362bec79ccfbff8d9f7de627e277a780e3cb7220be797b212272bc66",
-        "decodedRgba2x": "06420f5c0b187e01911f931899c6727136f53a16e2b925bfd707dc8c7f224c84"
+        "decodedRgba1x": "441d8b690e2f867e95eeee647c65fde3de3fd7280a1a11142ecb809cfc649754",
+        "decodedRgba2x": "afa8f1c62aac45eef4520b05777af6d72ef9080c93361b6315adee7413ba2fc5"
       },
       "shadowSha256": {
-        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321",
-        "decodedRgba2x": "7e25f99773fc70e2faca415b97fbe8e4ff515cd4a0ea838015b2920f47945fa2"
+        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321"
       }
     },
     "shell_wall_front_slot_03": {
       "textureFile": "shells/shell_wall_front_slot_03.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_03.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_03-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_03-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -9932,23 +10269,21 @@
             75
           ]
         },
-        "bytes1x": 16515,
-        "bytes2x": 44514
+        "bytes1x": 16513,
+        "bytes2x": 29214
       },
       "sha256": {
-        "decodedRgba1x": "b4f7433e16d2afb82183080ce4df7282f5ae50f44aef49ff438fd6d6cd1fde3a",
-        "decodedRgba2x": "d3b0f003b26af411db82206391150ddb263ea63488f54462fdbaf97d509df650"
+        "decodedRgba1x": "388056bd77b50f4debce6e630bcadcc12f36e42f6cb9605fc2d8dea264c4f624",
+        "decodedRgba2x": "42f8380eb492aca628c53fd90f16ce102b0016305da3cc930cc9c76033ca0262"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_front_slot_04": {
       "textureFile": "shells/shell_wall_front_slot_04.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_04.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_04-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_04-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -10146,23 +10481,21 @@
             75
           ]
         },
-        "bytes1x": 16360,
-        "bytes2x": 43945
+        "bytes1x": 16358,
+        "bytes2x": 28643
       },
       "sha256": {
-        "decodedRgba1x": "1269f8061a6f009774d228a6c8e2664e1547190b0d6a23f63e0b5c50e875362d",
-        "decodedRgba2x": "7ae55f27ec8efa1aa45b6b998972acf7b265384e90c099df28a5a063c20342f3"
+        "decodedRgba1x": "61c70766ab816c66457154d832a6c4e70e0e1b2a0920c48eec668108ef669392",
+        "decodedRgba2x": "1a2b0c0ea348bfa0dcc9b20f082294996ff5672c7aec6ac193b5a9806a3de590"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_front_slot_05": {
       "textureFile": "shells/shell_wall_front_slot_05.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_05.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_05-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_05-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -10361,22 +10694,20 @@
           ]
         },
         "bytes1x": 16035,
-        "bytes2x": 43606
+        "bytes2x": 28149
       },
       "sha256": {
-        "decodedRgba1x": "8539f976c3b200b2c0e446858fa358316faaed98e1739458e1fdb3f941b66757",
-        "decodedRgba2x": "4e7921e75906f8e5c94cf25be3a7f77787f3276018e047afa908bd2cc65aef77"
+        "decodedRgba1x": "326df218ecff390e614f818af382bb910be1e8de865d4a972dd61e55f001aab6",
+        "decodedRgba2x": "fcacfd8f9d90d3ec938439b4320b4c4c94cccec69fb86354320f70827b2cdb61"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_front_slot_06": {
       "textureFile": "shells/shell_wall_front_slot_06.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_06.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_06-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_06-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -10574,23 +10905,21 @@
             75
           ]
         },
-        "bytes1x": 15637,
-        "bytes2x": 42964
+        "bytes1x": 15634,
+        "bytes2x": 27490
       },
       "sha256": {
-        "decodedRgba1x": "7f2f73e3aad14c0a28479a5a5d246938f595d54555c9b4ccb579b232190dbf0a",
-        "decodedRgba2x": "f0b97ec6a10f5f9d2cc0528413ee17c2c7b3fdd61bd8ed7c6bad411aadad62ab"
+        "decodedRgba1x": "1eed3b4142bc71d2c29c8d91ea306994560931ac5f68748a7936bbc447bc7cb9",
+        "decodedRgba2x": "83e46942746b9cc9764c2290063cc579f19ffcdd188f87f6124d0af5c0f3c435"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_front_slot_07": {
       "textureFile": "shells/shell_wall_front_slot_07.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_07.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_07-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_07-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -10788,23 +11117,21 @@
             75
           ]
         },
-        "bytes1x": 15401,
-        "bytes2x": 41940
+        "bytes1x": 15402,
+        "bytes2x": 26471
       },
       "sha256": {
-        "decodedRgba1x": "14281c7cd3776049f0772e670b06596d4b2c20d8a59d0948f2fc9752c9091bc4",
-        "decodedRgba2x": "c0bfbe470b8ea33c8eb88b210a00f9497a24896ba40f4a8881d72183496b6d0a"
+        "decodedRgba1x": "b2f79894318fb59203955449596ae10f9763d4447b6796209b52f7af88d4fe9c",
+        "decodedRgba2x": "3f67b602b2ecc5c36478dc52841ab01d9555ecda09745b19dc5954f70afe2edf"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_front_slot_08": {
       "textureFile": "shells/shell_wall_front_slot_08.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_08.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_08-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_08-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -11002,23 +11329,21 @@
             75
           ]
         },
-        "bytes1x": 14881,
-        "bytes2x": 41093
+        "bytes1x": 14882,
+        "bytes2x": 25626
       },
       "sha256": {
-        "decodedRgba1x": "facf226e9f288bb3dbc82b6988c0136edfb430009a484076447d6aaf35fc1c53",
-        "decodedRgba2x": "db68d85cdb066f5c24e35d2bc884b6a6435a7b8228ab9c5a5625244f44ac0976"
+        "decodedRgba1x": "2fb4947c26389e5e2c6eb92f3fbb7f5b29eb7c5a1ad5dbb61ae9bc09788c9dd5",
+        "decodedRgba2x": "cfed69c9afba6919cf171213d206eb0d1af19a3a2064f3552418ab4bfd307b35"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_front_slot_09": {
       "textureFile": "shells/shell_wall_front_slot_09.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_09.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_09-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_09-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -11217,22 +11542,20 @@
           ]
         },
         "bytes1x": 15343,
-        "bytes2x": 42104
+        "bytes2x": 26636
       },
       "sha256": {
-        "decodedRgba1x": "2c0ed4a0e46945666fd47ac302f70828766fbff8b3064464685aab0ddf19e1bf",
-        "decodedRgba2x": "7014a164d6d2fb7cd72c973530c82d1030fdcbb6976d593bbb28186623c92e32"
+        "decodedRgba1x": "cf4e7089d897fdd71989ae6d6c0a3a2b40a735909284405136f503647a7818ba",
+        "decodedRgba2x": "cabeb5716daa2b12a3b7e3a1c8fd3abde6a883a93b9678053b0079a5bc05875d"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_front_slot_10": {
       "textureFile": "shells/shell_wall_front_slot_10.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_10.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_10-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_10-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -11430,23 +11753,21 @@
             75
           ]
         },
-        "bytes1x": 15550,
-        "bytes2x": 42708
+        "bytes1x": 15548,
+        "bytes2x": 27247
       },
       "sha256": {
-        "decodedRgba1x": "bff8099b9adb10aeacc4485a5760a83a8891c2f8e263ce3c52926db18df9e278",
-        "decodedRgba2x": "60c7cdfb35f279cbd6a480c8571c82088f09a2eff111c1bc77b1b6bc79ad7f67"
+        "decodedRgba1x": "92b2fbe779073f503cbc2cff9ce0464035f0c33d9bc41726d8ed1c7e661b6fad",
+        "decodedRgba2x": "8e882d682ac22ac928078523ee3a56d208624c0aaa20187549c98b397b022d53"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_front_slot_11": {
       "textureFile": "shells/shell_wall_front_slot_11.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_11.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_11-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_11-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -11645,22 +11966,20 @@
           ]
         },
         "bytes1x": 15942,
-        "bytes2x": 43393
+        "bytes2x": 27935
       },
       "sha256": {
         "decodedRgba1x": "d91ffdacdd773345574198cfdbed59cf6d3d11be037ab7e8fc548ef645e3012b",
-        "decodedRgba2x": "4828bb67d5deaf401dcd028b24ed310570f55e39728834961fbc5f957dfaf843"
+        "decodedRgba2x": "c5b493ec7b7b016f27438532bb841d2344ccc4baee06b78fa3f33f58df8cbbf5"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_front_slot_12": {
       "textureFile": "shells/shell_wall_front_slot_12.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_12.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_12-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_12-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -11859,22 +12178,20 @@
           ]
         },
         "bytes1x": 16195,
-        "bytes2x": 43672
+        "bytes2x": 28371
       },
       "sha256": {
         "decodedRgba1x": "2d4dca044879921be3b166ed7e4075201dc23ee88225840f6968f3e22265d2f1",
-        "decodedRgba2x": "d5c4862c7419fe6091675629d2f48e11d6c392fc45837eedfcab37c55eef333e"
+        "decodedRgba2x": "0161ab2bf1e85e571c944901dc5d25a398ac509d4cbc0e8e1b9e25c9e4c0761e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_front_slot_13": {
       "textureFile": "shells/shell_wall_front_slot_13.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_13.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_13-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_13-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -12073,22 +12390,20 @@
           ]
         },
         "bytes1x": 16352,
-        "bytes2x": 43698
+        "bytes2x": 28396
       },
       "sha256": {
         "decodedRgba1x": "6c1c68cfca6580c9fa61e3fb4bd0939ba9d46f4d7121cfb5cc146471c861fde9",
-        "decodedRgba2x": "01916b747da25b57a01e81d2f49b04228c30dc10b08b8b9da1320817d6bd911a"
+        "decodedRgba2x": "96318bb42186c4f46c6927e280cb387921c6b679e70022215f7cb03f95cfc3eb"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_front_slot_14": {
       "textureFile": "shells/shell_wall_front_slot_14.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_14.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_14-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_14-shadow.png",
       "shadowTexWidth": 166,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -12287,22 +12602,20 @@
           ]
         },
         "bytes1x": 16584,
-        "bytes2x": 44131
+        "bytes2x": 28705
       },
       "sha256": {
         "decodedRgba1x": "ae7d5883bbb86231e113e9d06b1ccc8459abc085e4832730100c1e4350ce5692",
-        "decodedRgba2x": "fdb6d35df8df7399a640b0c6d7940beafdef87432c2ce1191ca4f14958e32217"
+        "decodedRgba2x": "361f025a3154868afada1b20246f32d1c09a1dc4567b9a4668b1df15afb7825d"
       },
       "shadowSha256": {
-        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321",
-        "decodedRgba2x": "7e25f99773fc70e2faca415b97fbe8e4ff515cd4a0ea838015b2920f47945fa2"
+        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321"
       }
     },
     "shell_wall_front_slot_15": {
       "textureFile": "shells/shell_wall_front_slot_15.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_15.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_15-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_15-shadow.png",
       "shadowTexWidth": 167,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -12500,23 +12813,21 @@
             75
           ]
         },
-        "bytes1x": 16543,
-        "bytes2x": 44631
+        "bytes1x": 16538,
+        "bytes2x": 29109
       },
       "sha256": {
-        "decodedRgba1x": "dd40103715f72528a20c1e3cdb241b803f4d38ab3575234ad777d233ac111ecc",
-        "decodedRgba2x": "5c85ab7b5d5a2efcd0568cd49fb35ac4c65d2c5fc99781cd7c4953da79b2bbed"
+        "decodedRgba1x": "d9abf98b9fbe4cca6880e585a9b9b5d283db1a1a323d1f662bca75d98079f69b",
+        "decodedRgba2x": "512dbd6a7cbe7bade91bfcc885400a3438f89759ffae4e2e72b8a70581c630a0"
       },
       "shadowSha256": {
-        "decodedRgba1x": "593a8a0c3f2e19394076e8155942bb7112b9dd1d70f8fa745c9b7effeea9a1c1",
-        "decodedRgba2x": "e009d8c298f41168da6380787e12d20bea8ac9a296d9bfd3194af5a7f6b1b034"
+        "decodedRgba1x": "593a8a0c3f2e19394076e8155942bb7112b9dd1d70f8fa745c9b7effeea9a1c1"
       }
     },
     "shell_wall_front_slot_16": {
       "textureFile": "shells/shell_wall_front_slot_16.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_16.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_16-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_16-shadow.png",
       "shadowTexWidth": 169,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -12714,23 +13025,21 @@
             75
           ]
         },
-        "bytes1x": 16702,
-        "bytes2x": 44631
+        "bytes1x": 16705,
+        "bytes2x": 29338
       },
       "sha256": {
-        "decodedRgba1x": "ec22ce985dd4f116ffb185b269a512bb7df483782670b75512d95b475a84b306",
-        "decodedRgba2x": "149ba10755fc908d038c1b71c5dbf35bdde42d7b1f0743cad7f1bdf6e71a83bc"
+        "decodedRgba1x": "e1cc0a5515984448420db60778c043c10bc6a5ee034143f4b2be6ff9795995bb",
+        "decodedRgba2x": "776c3ea63824e94f396805db99ebc4caabb396af31c23c433c424e22f7b1c5e7"
       },
       "shadowSha256": {
-        "decodedRgba1x": "c533aba51a4d86a287cae2b473ab288fd590eb97d0a3214bb2deb12030c3d62b",
-        "decodedRgba2x": "13bcdae23d29d79ea98e7acb52b51c91f77b256a666cae5511bf75432ee6fe0e"
+        "decodedRgba1x": "c533aba51a4d86a287cae2b473ab288fd590eb97d0a3214bb2deb12030c3d62b"
       }
     },
     "shell_wall_front_slot_00_faceup": {
       "textureFile": "shells/shell_wall_front_slot_00_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_00_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_00_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_00_faceup-shadow.png",
       "shadowTexWidth": 169,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -12929,22 +13238,20 @@
           ]
         },
         "bytes1x": 15760,
-        "bytes2x": 41728
+        "bytes2x": 26433
       },
       "sha256": {
         "decodedRgba1x": "31457619aee3a9390f0af1114688aab9f1a310a1ff1e3f0056befff1ba0e4b66",
-        "decodedRgba2x": "3b61fd11cd3585ec7f74f60a733d5f2be1fed77725440ff1652167b1b762b4df"
+        "decodedRgba2x": "601d258e381ec9de43e65be00a50bef3aacd0313380a0fc6849c0f804e6b30d5"
       },
       "shadowSha256": {
-        "decodedRgba1x": "c533aba51a4d86a287cae2b473ab288fd590eb97d0a3214bb2deb12030c3d62b",
-        "decodedRgba2x": "13bcdae23d29d79ea98e7acb52b51c91f77b256a666cae5511bf75432ee6fe0e"
+        "decodedRgba1x": "c533aba51a4d86a287cae2b473ab288fd590eb97d0a3214bb2deb12030c3d62b"
       }
     },
     "shell_wall_front_slot_01_faceup": {
       "textureFile": "shells/shell_wall_front_slot_01_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_01_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_01_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_01_faceup-shadow.png",
       "shadowTexWidth": 167,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -13142,23 +13449,21 @@
             31
           ]
         },
-        "bytes1x": 15755,
-        "bytes2x": 41783
+        "bytes1x": 15756,
+        "bytes2x": 26249
       },
       "sha256": {
-        "decodedRgba1x": "5a1f59f90332b7f97dbe695decbff7fa0801bbdb6c7d06796956e1e40e5b5ccd",
-        "decodedRgba2x": "3f5d96d691e1eca938e047404ef69f7319637dd7310380d0675d653341b53ba0"
+        "decodedRgba1x": "27339416248bcf1e9e75340067161a405958435911de68dd9f43cd8b1986c451",
+        "decodedRgba2x": "968d68134998e306a7a70e2cbd86e674f023a8323f8948bcc69eb7b4335baa6e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "593a8a0c3f2e19394076e8155942bb7112b9dd1d70f8fa745c9b7effeea9a1c1",
-        "decodedRgba2x": "e009d8c298f41168da6380787e12d20bea8ac9a296d9bfd3194af5a7f6b1b034"
+        "decodedRgba1x": "593a8a0c3f2e19394076e8155942bb7112b9dd1d70f8fa745c9b7effeea9a1c1"
       }
     },
     "shell_wall_front_slot_02_faceup": {
       "textureFile": "shells/shell_wall_front_slot_02_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_02_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_02_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_02_faceup-shadow.png",
       "shadowTexWidth": 166,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -13357,22 +13662,20 @@
           ]
         },
         "bytes1x": 15785,
-        "bytes2x": 41458
+        "bytes2x": 26035
       },
       "sha256": {
         "decodedRgba1x": "e73404c9e81a4568d2c704155aaca98834dc8cefb2fe5fc41c145fda4f1a07d7",
-        "decodedRgba2x": "1e73f9677e95845e0c347dd0a7047313b10bcac3e1e8d1c4f3d54fbfdc593639"
+        "decodedRgba2x": "a779a5696cf16a012258049891ccdc674b70bef7910151472c309732a8d403f4"
       },
       "shadowSha256": {
-        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321",
-        "decodedRgba2x": "7e25f99773fc70e2faca415b97fbe8e4ff515cd4a0ea838015b2920f47945fa2"
+        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321"
       }
     },
     "shell_wall_front_slot_03_faceup": {
       "textureFile": "shells/shell_wall_front_slot_03_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_03_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_03_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_03_faceup-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -13570,23 +13873,21 @@
             31
           ]
         },
-        "bytes1x": 15531,
-        "bytes2x": 41089
+        "bytes1x": 15530,
+        "bytes2x": 25790
       },
       "sha256": {
-        "decodedRgba1x": "4f6df6c5b89ebf59bbab1f8cacb720ee37e8c1c62aae50c6ff6e950fb9ee57d8",
-        "decodedRgba2x": "19850c376245be2333f45d5cfb4ecc10df94d1db7e33f66ed5ea2ed10070d3c6"
+        "decodedRgba1x": "d10b90aef48e2ed9239540afe712aadaba4704bda36793fca8d0e0a4da89f40f",
+        "decodedRgba2x": "ae38a94338a830ad61be086fc3abb7cff75133b4220a0bdf3c8ff710c67d1586"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_front_slot_04_faceup": {
       "textureFile": "shells/shell_wall_front_slot_04_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_04_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_04_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_04_faceup-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -13785,22 +14086,20 @@
           ]
         },
         "bytes1x": 15476,
-        "bytes2x": 40916
+        "bytes2x": 25621
       },
       "sha256": {
         "decodedRgba1x": "0c015b964f4603d0e9c44d35b7077dd6967681ff50a98b027ca81bc0873bcf94",
-        "decodedRgba2x": "36face81af296a958206c59781b85e8203aea49a79ea1512a15441364daed399"
+        "decodedRgba2x": "2c0b34c985098a858f479ca2e0451ef58fd9dd6cc5c1f2ecaf50b723aa3d3e9e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_front_slot_05_faceup": {
       "textureFile": "shells/shell_wall_front_slot_05_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_05_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_05_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_05_faceup-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -13999,22 +14298,20 @@
           ]
         },
         "bytes1x": 15290,
-        "bytes2x": 40626
+        "bytes2x": 25163
       },
       "sha256": {
         "decodedRgba1x": "d6f67962ffa1bcc406fc4c37593a1c8a476c1a9e0c57f417bc75c6e5feb1e2fa",
-        "decodedRgba2x": "e23b363c6062594b484649b5af41b6da69991551155f1b798ab20f83ef8e6fc4"
+        "decodedRgba2x": "2d268bc8992a78c86a330f7ae85c21169fd4f31427c744535364fce7a5979fce"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_front_slot_06_faceup": {
       "textureFile": "shells/shell_wall_front_slot_06_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_06_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_06_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_06_faceup-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -14212,23 +14509,21 @@
             31
           ]
         },
-        "bytes1x": 14842,
-        "bytes2x": 40045
+        "bytes1x": 14837,
+        "bytes2x": 24579
       },
       "sha256": {
-        "decodedRgba1x": "e4c41797a4a79831f82633d1fcbe30bc5ea7d8b6968995dbc97cdc147137e49b",
-        "decodedRgba2x": "5ea529309073a60084ef0a96d4c17383abf926017976f1e645ca2490410bd7ec"
+        "decodedRgba1x": "e944198e951a3cfe0e99a7bdd832a96b6c653e4f5b83ad63e5fabecb281aa657",
+        "decodedRgba2x": "5d3f03db2a4b3af85c3f114601095870f0ff1e93426d64f198552586159bcda9"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_front_slot_07_faceup": {
       "textureFile": "shells/shell_wall_front_slot_07_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_07_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_07_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_07_faceup-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -14427,22 +14722,20 @@
           ]
         },
         "bytes1x": 14501,
-        "bytes2x": 39301
+        "bytes2x": 23831
       },
       "sha256": {
-        "decodedRgba1x": "750f61f6c50e2c292687f79ccdecaea7b745be6ff643263d6332e843bd63fb1a",
-        "decodedRgba2x": "06de330d46b38beb7e7adee027e5104bcedcad5ca4fa6913e5b4c4e72d0c376a"
+        "decodedRgba1x": "05b15cf5bdd4cd91562559e0017b47895c5271bf9f1a4980ab78379c08e37b12",
+        "decodedRgba2x": "38af5a109ddf02594896f015d387bc78ca2ff612f425213ba80fe6ad62f2edb9"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_front_slot_08_faceup": {
       "textureFile": "shells/shell_wall_front_slot_08_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_08_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_08_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_08_faceup-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -14640,23 +14933,21 @@
             31
           ]
         },
-        "bytes1x": 14265,
-        "bytes2x": 38380
+        "bytes1x": 14264,
+        "bytes2x": 22911
       },
       "sha256": {
-        "decodedRgba1x": "7782d0a71c997f2745f3e57dbb253d848b386314acd527e69c0bcaa03ee290e9",
-        "decodedRgba2x": "7f7c572fb9f5ba63f0dbe3edefab7bebb1791492feac313cd2ea5568d5e3e856"
+        "decodedRgba1x": "b6e6d3af27a0b796c6b6a235ad179c45f8a6ed0817eb87113bc1f3017a68ef13",
+        "decodedRgba2x": "2f6db2ba67bfff8d146a5200d2b3673f561486339b9163852aba2725f83c08d1"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_front_slot_09_faceup": {
       "textureFile": "shells/shell_wall_front_slot_09_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_09_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_09_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_09_faceup-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -14855,22 +15146,20 @@
           ]
         },
         "bytes1x": 14569,
-        "bytes2x": 39568
+        "bytes2x": 24101
       },
       "sha256": {
-        "decodedRgba1x": "9ebf50fa12b9e9d87ad57558ebb86d2f624a71e06f11d40c762036c69e6dd8b3",
-        "decodedRgba2x": "9550c7c05359e7600f9eb299d3016d6562689b964fa71c0bd33c096efe44404a"
+        "decodedRgba1x": "98e34aff7aed3d891b260baa282e3004502934ee8eb8af10d99ac2ce0d3ad63e",
+        "decodedRgba2x": "4739712de92832c2d21aabaf5647f233c4db1c620081504a75702fd07b3abb93"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_front_slot_10_faceup": {
       "textureFile": "shells/shell_wall_front_slot_10_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_10_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_10_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_10_faceup-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -15069,22 +15358,20 @@
           ]
         },
         "bytes1x": 14942,
-        "bytes2x": 40241
+        "bytes2x": 24774
       },
       "sha256": {
-        "decodedRgba1x": "6cc0af200f1c889a90b89761a4b2118e290328c0920b932ac269b50dd17a19a6",
-        "decodedRgba2x": "face2c7d6e324e654c8552bd7674a2aa91f42306259d8dd5c46a29796bd960a3"
+        "decodedRgba1x": "f2f9985ee73ae45661b5ea4a06de700aafdaeb24ab4fc03a1400707c806f466b",
+        "decodedRgba2x": "468be8d1fdc4d0b1a226f0cd9ef280e131cf67104c7b81e913161bd5b60f2586"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_front_slot_11_faceup": {
       "textureFile": "shells/shell_wall_front_slot_11_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_11_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_11_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_11_faceup-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -15283,22 +15570,20 @@
           ]
         },
         "bytes1x": 15273,
-        "bytes2x": 40916
+        "bytes2x": 25453
       },
       "sha256": {
         "decodedRgba1x": "1c06d9cc6e8c980756a5b99c61abaee586095918c0c9666bd97aed246509202a",
-        "decodedRgba2x": "68495f4baec74db79da9bf6d4e2fd1b853402bb99b4acd825df1e41eac2bfba7"
+        "decodedRgba2x": "a14c6bb65d160388fa5f20e5c3a1f5a6ca9838e46ac4f0057ea583e6ced3be7e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_front_slot_12_faceup": {
       "textureFile": "shells/shell_wall_front_slot_12_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_12_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_12_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_12_faceup-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -15497,22 +15782,20 @@
           ]
         },
         "bytes1x": 15521,
-        "bytes2x": 41038
+        "bytes2x": 25738
       },
       "sha256": {
-        "decodedRgba1x": "5434bac2409f7952141abd333a7c57844f01e9de9fffb8c9c5e8b3f0650f484a",
-        "decodedRgba2x": "a148713ebbebc7c44ddc7bb5ea5373f3893835c64a62c7154c304b48a216e97d"
+        "decodedRgba1x": "89446d333b6db365eefb9426063bc3730f8588caeadc3f4e677aafaab949270e",
+        "decodedRgba2x": "87d891c0dc4f32b394e24e0468b140545972866b72958dd9cf6c24dd054283ae"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_front_slot_13_faceup": {
       "textureFile": "shells/shell_wall_front_slot_13_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_13_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_13_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_13_faceup-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -15711,22 +15994,20 @@
           ]
         },
         "bytes1x": 15640,
-        "bytes2x": 41318
+        "bytes2x": 26024
       },
       "sha256": {
         "decodedRgba1x": "255e7ca19347ba15dd12d7acb456b68a1abeb59f3977d682ba0c8cb4b598719b",
-        "decodedRgba2x": "c7d96de73a364773ad0602a010521c0c94183d15c28c63e402771de6cfecd2db"
+        "decodedRgba2x": "5e5e3eec4f7fdfb09556b15c49e46e445753b918f0346d97a66b742007fbda45"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_front_slot_14_faceup": {
       "textureFile": "shells/shell_wall_front_slot_14_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_14_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_14_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_14_faceup-shadow.png",
       "shadowTexWidth": 166,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -15924,23 +16205,21 @@
             31
           ]
         },
-        "bytes1x": 15907,
-        "bytes2x": 41823
+        "bytes1x": 15905,
+        "bytes2x": 26404
       },
       "sha256": {
-        "decodedRgba1x": "b8e42abc96c4257268fd220a8d5fcd39cc048527c2e76f27faa2d9302bd40c11",
-        "decodedRgba2x": "d9508bb2507c515f5f18804c74f791e6ec4a64f152bc30f70d6f23cdb23428fe"
+        "decodedRgba1x": "75c2f5399b32139c6fc2b7728ba83bed6c76a6b44a3c41ea66949b8ba0b631a2",
+        "decodedRgba2x": "77f7fca17446f8ece064bf1ea93b2c52590beafdf54f60b8da4ee2c53e046e6a"
       },
       "shadowSha256": {
-        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321",
-        "decodedRgba2x": "7e25f99773fc70e2faca415b97fbe8e4ff515cd4a0ea838015b2920f47945fa2"
+        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321"
       }
     },
     "shell_wall_front_slot_15_faceup": {
       "textureFile": "shells/shell_wall_front_slot_15_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_15_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_15_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_15_faceup-shadow.png",
       "shadowTexWidth": 167,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -16138,23 +16417,21 @@
             31
           ]
         },
-        "bytes1x": 15871,
-        "bytes2x": 42241
+        "bytes1x": 15869,
+        "bytes2x": 26718
       },
       "sha256": {
-        "decodedRgba1x": "589de3a4f49d2994ef239870984bc8269aa068140fa3ed0d3bb026224fdb8d7a",
-        "decodedRgba2x": "43d167948b69bb9fb8bbbdbde0c42b522b832291368f2a6b5e7be314ca2e2496"
+        "decodedRgba1x": "c2c64a82efb76a6439afdb0577abbc242465bc400fd727913e3fec7452de2dc0",
+        "decodedRgba2x": "931d244c03d42ae43afd6b246da495b69aa8e0f8003f341a4414115b2c799c36"
       },
       "shadowSha256": {
-        "decodedRgba1x": "593a8a0c3f2e19394076e8155942bb7112b9dd1d70f8fa745c9b7effeea9a1c1",
-        "decodedRgba2x": "e009d8c298f41168da6380787e12d20bea8ac9a296d9bfd3194af5a7f6b1b034"
+        "decodedRgba1x": "593a8a0c3f2e19394076e8155942bb7112b9dd1d70f8fa745c9b7effeea9a1c1"
       }
     },
     "shell_wall_front_slot_16_faceup": {
       "textureFile": "shells/shell_wall_front_slot_16_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_front_slot_16_faceup.png",
       "shadowTextureFile": "shells/shell_wall_front_slot_16_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_front_slot_16_faceup-shadow.png",
       "shadowTexWidth": 169,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -16353,22 +16630,20 @@
           ]
         },
         "bytes1x": 15891,
-        "bytes2x": 42280
+        "bytes2x": 26976
       },
       "sha256": {
         "decodedRgba1x": "83d1c2b6de9eb9d917f41463cc3b0adb40510a67d3957cd737acdf728c665285",
-        "decodedRgba2x": "3ee42c3a8a50e1e0ac5a32510750da2fef22bd12974f380823748f4526cd5150"
+        "decodedRgba2x": "62c403e0a6188fc8e270242c1ac5aee2aa5ffd2ba48a5fdb1ddfb9b50aea018e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "c533aba51a4d86a287cae2b473ab288fd590eb97d0a3214bb2deb12030c3d62b",
-        "decodedRgba2x": "13bcdae23d29d79ea98e7acb52b51c91f77b256a666cae5511bf75432ee6fe0e"
+        "decodedRgba1x": "c533aba51a4d86a287cae2b473ab288fd590eb97d0a3214bb2deb12030c3d62b"
       }
     },
     "shell_wall_back_slot_00": {
       "textureFile": "shells/shell_wall_back_slot_00.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_00.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_00-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_00-shadow.png",
       "shadowTexWidth": 166,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -16566,23 +16841,21 @@
             75
           ]
         },
-        "bytes1x": 16871,
-        "bytes2x": 45270
+        "bytes1x": 16869,
+        "bytes2x": 29855
       },
       "sha256": {
-        "decodedRgba1x": "f01d4453345338a435d0d4f379abd0da3d38f5d05ab3d4090c4ac01ca0ac627b",
-        "decodedRgba2x": "9dac25dcfc934c429e6b8f6fce563bbc549ecc100bd97393b1274da4e441f856"
+        "decodedRgba1x": "967f1d1fe02fa2c91f6fa5e229bbe4361e02d2a4cd5bcb8eb6d35f9ea40777df",
+        "decodedRgba2x": "16cbcb1f580836246a53eb800cb1b9cac5d0d67ccaf40b4f1db7c085436cf0ae"
       },
       "shadowSha256": {
-        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321",
-        "decodedRgba2x": "7e25f99773fc70e2faca415b97fbe8e4ff515cd4a0ea838015b2920f47945fa2"
+        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321"
       }
     },
     "shell_wall_back_slot_01": {
       "textureFile": "shells/shell_wall_back_slot_01.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_01.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_01-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_01-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -16780,23 +17053,21 @@
             75
           ]
         },
-        "bytes1x": 16545,
-        "bytes2x": 44547
+        "bytes1x": 16546,
+        "bytes2x": 29240
       },
       "sha256": {
-        "decodedRgba1x": "e13498704cb17119219e14183f879cb7f7e4d04fa286e5409c7e77edf9c5babc",
-        "decodedRgba2x": "30bdcb4f42952379f91da495f91227bd7ad920fd4365de3977690cd5ef441477"
+        "decodedRgba1x": "26a8827dc856701e90d6176a56fcba9928cceba42ccf57ae61ed2e79cc0df905",
+        "decodedRgba2x": "4b5d0b541316fc6807065e00bd148884b870520b23b35ad74be647ec16593562"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_back_slot_02": {
       "textureFile": "shells/shell_wall_back_slot_02.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_02.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_02-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_02-shadow.png",
       "shadowTexWidth": 164,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -16995,22 +17266,20 @@
           ]
         },
         "bytes1x": 16368,
-        "bytes2x": 44285
+        "bytes2x": 28836
       },
       "sha256": {
         "decodedRgba1x": "52b3ea0c63775f68617a2b75b4f7c0380e65494da54f3621b841d23ab6bfae15",
-        "decodedRgba2x": "bf23752b354db25994696ade9868136132f93b3f7cffee1b80b042092ece62b2"
+        "decodedRgba2x": "d405dc87bae485ffeb27a054a8b012f3e6b482e1b5b5c62d9ca24fe16c2df60f"
       },
       "shadowSha256": {
-        "decodedRgba1x": "02a2fb70b0fe81aca923abae1474f6a25a6c9b9ef4af2a4706106c973277d934",
-        "decodedRgba2x": "78ebca288d288d94b261b601913803f6cae3dfdc34e781d0f6f31b06369db3c7"
+        "decodedRgba1x": "02a2fb70b0fe81aca923abae1474f6a25a6c9b9ef4af2a4706106c973277d934"
       }
     },
     "shell_wall_back_slot_03": {
       "textureFile": "shells/shell_wall_back_slot_03.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_03.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_03-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_03-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -17209,22 +17478,20 @@
           ]
         },
         "bytes1x": 16179,
-        "bytes2x": 43827
+        "bytes2x": 28368
       },
       "sha256": {
         "decodedRgba1x": "d2f7706e781aec39310cebc72bf502cb633db5c7fd0fddb2f5d862038da69e8f",
-        "decodedRgba2x": "ea5f2173f89cbd53f64e94693a645f2876a4c23b5a8f922f5c9af4e60ee977a5"
+        "decodedRgba2x": "04f24fb90c70fbc3ad8aa00660689e3a201cab1733e598788b0b3983e84b1b6b"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_back_slot_04": {
       "textureFile": "shells/shell_wall_back_slot_04.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_04.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_04-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_04-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -17422,23 +17689,21 @@
             75
           ]
         },
-        "bytes1x": 16055,
-        "bytes2x": 43698
+        "bytes1x": 16054,
+        "bytes2x": 28240
       },
       "sha256": {
-        "decodedRgba1x": "2eb7ddeef0d2b27811dfced8f17098f704c6374d1bc0186ba3ed6b9f9319c1f6",
-        "decodedRgba2x": "710e7463bf702ad0036092cc0efb7f560c60bc299577e7089f1b1ee02b1a6e9f"
+        "decodedRgba1x": "efde594ecfe903bc15ecd894b5c9f8dcdc97d52a2df7c0b424f878fc82b58d89",
+        "decodedRgba2x": "9b0245477a1bae488ea8becb9fdfb5777bf9274ba43fb0795cacf37df3a7164d"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_back_slot_05": {
       "textureFile": "shells/shell_wall_back_slot_05.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_05.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_05-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_05-shadow.png",
       "shadowTexWidth": 162,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -17636,23 +17901,21 @@
             75
           ]
         },
-        "bytes1x": 15956,
-        "bytes2x": 43005
+        "bytes1x": 15959,
+        "bytes2x": 27734
       },
       "sha256": {
-        "decodedRgba1x": "51e2d74939b5b6079e842becdc87ce5b4f44c6583f3359518044e7b895d7ec83",
-        "decodedRgba2x": "eb87fc8ca260355d3ce89be09143f7ed519780050a0ada3dcad8c314c8b950d2"
+        "decodedRgba1x": "114cf2442bac5502e70a289e799c5ac1c34c4400896490472249e2579cf95925",
+        "decodedRgba2x": "6ca1c92504b610f3e208471f9bbee2a3dacd25f6922db6dde931424b463e0b6c"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf",
-        "decodedRgba2x": "64ff326d28bdcc73d9ec0db5e8f0a0af0dff9e783cd8d9c44485accf21a00b38"
+        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf"
       }
     },
     "shell_wall_back_slot_06": {
       "textureFile": "shells/shell_wall_back_slot_06.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_06.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_06-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_06-shadow.png",
       "shadowTexWidth": 162,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -17850,23 +18113,21 @@
             75
           ]
         },
-        "bytes1x": 15742,
-        "bytes2x": 42504
+        "bytes1x": 15737,
+        "bytes2x": 27232
       },
       "sha256": {
-        "decodedRgba1x": "8bc3ee72411c1d720c7eaf65d3c0cf9f8950380c5edaae3c34b6f3394483c23b",
-        "decodedRgba2x": "a447bd37adaa209bf490febf26f81d3955c57e9a0f4d009736b0d71481bbafe8"
+        "decodedRgba1x": "776eeefe05e2ff1a212acd002728fe7651a9a980dcc62da97ff43e695d9da411",
+        "decodedRgba2x": "0c0137cc30e963c19d55e07a2cd96d619e3ac2a90102dfde2ca368ac8c552abb"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf",
-        "decodedRgba2x": "64ff326d28bdcc73d9ec0db5e8f0a0af0dff9e783cd8d9c44485accf21a00b38"
+        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf"
       }
     },
     "shell_wall_back_slot_07": {
       "textureFile": "shells/shell_wall_back_slot_07.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_07.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_07-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_07-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -18065,22 +18326,20 @@
           ]
         },
         "bytes1x": 15284,
-        "bytes2x": 41671
+        "bytes2x": 26215
       },
       "sha256": {
         "decodedRgba1x": "622b74502201395781e5d624763d8c12cea2317a7e3a550b8322608e374c0913",
-        "decodedRgba2x": "0cbcd7eb43823e33d4927e74867afefd28237f1f9cd6cd33181c4c259ec56424"
+        "decodedRgba2x": "acf19e0e95a76dc6387a44337f68fbbd4aeb763acf8cf6c95d95576661c719cf"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_back_slot_08": {
       "textureFile": "shells/shell_wall_back_slot_08.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_08.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_08-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_08-shadow.png",
       "shadowTexWidth": 160,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -18279,22 +18538,20 @@
           ]
         },
         "bytes1x": 15204,
-        "bytes2x": 40913
+        "bytes2x": 25538
       },
       "sha256": {
         "decodedRgba1x": "d8444b5bbd9b3e5e7e49fbebc01e017021200662e5f0b42b7643b9fc8eda729c",
-        "decodedRgba2x": "004acc908fbab6bbba790efad26bc57339274fa0c8c90299fed44d778a3949a4"
+        "decodedRgba2x": "82ecf1d237554eed0e44982bf7fd51adb2c61a592143187e9eee1d8fcf8da58c"
       },
       "shadowSha256": {
-        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820",
-        "decodedRgba2x": "b6118081701231779e6efb6e72fb25d7f32127c10a562a2f3890cac859915f76"
+        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820"
       }
     },
     "shell_wall_back_slot_09": {
       "textureFile": "shells/shell_wall_back_slot_09.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_09.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_09-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_09-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -18493,22 +18750,20 @@
           ]
         },
         "bytes1x": 15226,
-        "bytes2x": 41652
+        "bytes2x": 26192
       },
       "sha256": {
-        "decodedRgba1x": "d77f525b07b716900faa5ebe7fcac0e7b1401d3bf514e4bead2c5313cc1e0f41",
-        "decodedRgba2x": "02b34cc2adec19508ba6a3adfcb00f9bf1cbf4ea361eec4e275a9389453c50c5"
+        "decodedRgba1x": "ad33d938a02450a3682b758cb148e73ce151908bb073ae0b38adf8f5d5a6497d",
+        "decodedRgba2x": "2d7dd5971a87c230463a4a45892b552b18aed0a2b78fb76d396b5ae22c472fe6"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_back_slot_10": {
       "textureFile": "shells/shell_wall_back_slot_10.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_10.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_10-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_10-shadow.png",
       "shadowTexWidth": 162,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -18707,22 +18962,20 @@
           ]
         },
         "bytes1x": 15699,
-        "bytes2x": 42305
+        "bytes2x": 27033
       },
       "sha256": {
         "decodedRgba1x": "653563656a66d9a1a07781e6bf8a38dbb7d553da8bcc904f1daf77348b3ee852",
-        "decodedRgba2x": "a0bd18363ac20a460b895c98a31e0a8f22cafad2b79fcafbdfe5b04402810700"
+        "decodedRgba2x": "00424da0b5fd4469205aaf63561c2ce590b42d282e3d416bf7f4cadf5482dcc8"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf",
-        "decodedRgba2x": "64ff326d28bdcc73d9ec0db5e8f0a0af0dff9e783cd8d9c44485accf21a00b38"
+        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf"
       }
     },
     "shell_wall_back_slot_11": {
       "textureFile": "shells/shell_wall_back_slot_11.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_11.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_11-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_11-shadow.png",
       "shadowTexWidth": 162,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -18921,22 +19174,20 @@
           ]
         },
         "bytes1x": 15895,
-        "bytes2x": 42928
+        "bytes2x": 27659
       },
       "sha256": {
         "decodedRgba1x": "1529f63c1e1a560ff5cb8613c0293e6cce4465747687456d7de7991b9a9fead5",
-        "decodedRgba2x": "509d717a6bd9a2cc7557638d51e6eb90aa8b1d563648549e154f4b6c95004615"
+        "decodedRgba2x": "754ee85d814abc50d289e848a7d640c386be4201667ffcf94ec9a26254bb05b1"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf",
-        "decodedRgba2x": "64ff326d28bdcc73d9ec0db5e8f0a0af0dff9e783cd8d9c44485accf21a00b38"
+        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf"
       }
     },
     "shell_wall_back_slot_12": {
       "textureFile": "shells/shell_wall_back_slot_12.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_12.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_12-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_12-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -19135,22 +19386,20 @@
           ]
         },
         "bytes1x": 15969,
-        "bytes2x": 43517
+        "bytes2x": 28049
       },
       "sha256": {
         "decodedRgba1x": "41734aa2ebcd2adce37968a9457d400c63a1b07fcceb1a4d7276489777e2bcaf",
-        "decodedRgba2x": "bec05e7654d8814f26fab70fcd507ab322432fbac857f30f1be7709b393a6c7b"
+        "decodedRgba2x": "f2327cee27428bbe20e3c755f54b1d8bfe3c94c43cd0d30a0045d339e31b2b4c"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_back_slot_13": {
       "textureFile": "shells/shell_wall_back_slot_13.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_13.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_13-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_13-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -19348,23 +19597,21 @@
             75
           ]
         },
-        "bytes1x": 16050,
-        "bytes2x": 43563
+        "bytes1x": 16051,
+        "bytes2x": 28100
       },
       "sha256": {
-        "decodedRgba1x": "1196caa3b660a4edf0bca58666c7d0cc0fb670a12608785b8919b40108016c63",
-        "decodedRgba2x": "739c1da70ec1b08e2d2f5a73c81338fecd95ff094dcd75a5136d043e60edeb7f"
+        "decodedRgba1x": "3e88197827bc2457be68404bab609dcf0841fe741e7ab286916fbb708ca9302f",
+        "decodedRgba2x": "bd2d96bd2b546bba49ba109372404ea13130c9223ed7df5b620b17899d0246d8"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_back_slot_14": {
       "textureFile": "shells/shell_wall_back_slot_14.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_14.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_14-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_14-shadow.png",
       "shadowTexWidth": 164,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -19563,22 +19810,20 @@
           ]
         },
         "bytes1x": 16230,
-        "bytes2x": 43864
+        "bytes2x": 28410
       },
       "sha256": {
         "decodedRgba1x": "4a250995b2ec560fff6a9d128f0e7ba5badf4d38889e6520e217300a8236b951",
-        "decodedRgba2x": "1699c7ec9faa39838e4ab19f8c34e0f96e83c2851fade7841fa09f95ea419a13"
+        "decodedRgba2x": "2da62076a2a3e060909615675917ce77773d00cdbf0ace0c92106e9e6c69bf7b"
       },
       "shadowSha256": {
-        "decodedRgba1x": "02a2fb70b0fe81aca923abae1474f6a25a6c9b9ef4af2a4706106c973277d934",
-        "decodedRgba2x": "78ebca288d288d94b261b601913803f6cae3dfdc34e781d0f6f31b06369db3c7"
+        "decodedRgba1x": "02a2fb70b0fe81aca923abae1474f6a25a6c9b9ef4af2a4706106c973277d934"
       }
     },
     "shell_wall_back_slot_15": {
       "textureFile": "shells/shell_wall_back_slot_15.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_15.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_15-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_15-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -19777,22 +20022,20 @@
           ]
         },
         "bytes1x": 16383,
-        "bytes2x": 43933
+        "bytes2x": 28632
       },
       "sha256": {
-        "decodedRgba1x": "7ae369bb0e8fdbfda0a6301f2f1b213df8e9c8b319c36c0d4f34b7f01a554e81",
-        "decodedRgba2x": "09b4c8757276dece19682ef2c110e4a75d7056ca403af7d369320520ce84eb89"
+        "decodedRgba1x": "8f5637f9662155e48c9d171e3502cce6bf916bf0a3ffa5041ea5eeb1d2e9969c",
+        "decodedRgba2x": "b0b164fcd336923ce0550522f5b3f87e6bdff7979b241c601cbaa4ae7984fc2c"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_back_slot_16": {
       "textureFile": "shells/shell_wall_back_slot_16.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_16.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_16-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_16-shadow.png",
       "shadowTexWidth": 166,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -19990,23 +20233,21 @@
             75
           ]
         },
-        "bytes1x": 16608,
-        "bytes2x": 44219
+        "bytes1x": 16616,
+        "bytes2x": 28792
       },
       "sha256": {
-        "decodedRgba1x": "4e70d9069edc1d9e507ddf31e9fd74f9f7ec343ecbbc3f6dc55bacb1b9c68c7e",
-        "decodedRgba2x": "9ffb0b5b489436aefd3f985c3d71c8e197a9e9ad0add39989e3496dc673aac6a"
+        "decodedRgba1x": "b2ce34c276f76e39aa49decdff115b0685f43bac8dbcfbe8752026d32e2b07b4",
+        "decodedRgba2x": "24894fdbf36370bcd3f75a2b2aac090c5bf019683db7de49f0b853bd3de6692e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321",
-        "decodedRgba2x": "7e25f99773fc70e2faca415b97fbe8e4ff515cd4a0ea838015b2920f47945fa2"
+        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321"
       }
     },
     "shell_wall_back_slot_00_faceup": {
       "textureFile": "shells/shell_wall_back_slot_00_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_00_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_00_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_00_faceup-shadow.png",
       "shadowTexWidth": 166,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -20205,22 +20446,20 @@
           ]
         },
         "bytes1x": 15721,
-        "bytes2x": 41357
+        "bytes2x": 25939
       },
       "sha256": {
-        "decodedRgba1x": "b6c08f635f71c3c67a369defdd8e7f40fe2cca0bc89c0da399e24541dd51f1de",
-        "decodedRgba2x": "e12815b239f52212fbf678456bbb761630dc945ea343b6d662710e9aa39ab2c3"
+        "decodedRgba1x": "1dbbcc40bd456ab1006280f9446975fdeeddcd2f3b854f195aab5918aac90010",
+        "decodedRgba2x": "cbf92a3037f519e3abcca8fffcba1198536c7771c412badfe3b262774c66e179"
       },
       "shadowSha256": {
-        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321",
-        "decodedRgba2x": "7e25f99773fc70e2faca415b97fbe8e4ff515cd4a0ea838015b2920f47945fa2"
+        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321"
       }
     },
     "shell_wall_back_slot_01_faceup": {
       "textureFile": "shells/shell_wall_back_slot_01_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_01_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_01_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_01_faceup-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -20419,22 +20658,20 @@
           ]
         },
         "bytes1x": 15511,
-        "bytes2x": 41229
+        "bytes2x": 25930
       },
       "sha256": {
         "decodedRgba1x": "9ad7a4b9a58dc49dd27f48679393e4c47442e9d34e216b0693fd1e3f4dd4ca86",
-        "decodedRgba2x": "42dcf63575acca8af8f8f0c27b79695de291fd1dccc354f8e406a22a028580da"
+        "decodedRgba2x": "cb1d6bbae4fa434ef842d2ece3f7963aac7ce4b5640d57c7f51d3cb9e16a8209"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_back_slot_02_faceup": {
       "textureFile": "shells/shell_wall_back_slot_02_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_02_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_02_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_02_faceup-shadow.png",
       "shadowTexWidth": 164,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -20632,23 +20869,21 @@
             31
           ]
         },
-        "bytes1x": 15462,
-        "bytes2x": 41236
+        "bytes1x": 15463,
+        "bytes2x": 25783
       },
       "sha256": {
-        "decodedRgba1x": "aebd84b5d77a4590db8696abd43e630749a210d9638337e0963cc71bdb683d4b",
-        "decodedRgba2x": "360c8e8927896a6a2109b461f22307c0e837422b49c357760062ff855f09e96a"
+        "decodedRgba1x": "f2cc970f589f95b5b0469d135e2537d7a469837f43d34f48f8209579abd1a1ab",
+        "decodedRgba2x": "7f110ff02a8c9a21d00d3d72c0fc0a3582023cb7dcf4ccc1c28bba8d602ffed5"
       },
       "shadowSha256": {
-        "decodedRgba1x": "02a2fb70b0fe81aca923abae1474f6a25a6c9b9ef4af2a4706106c973277d934",
-        "decodedRgba2x": "78ebca288d288d94b261b601913803f6cae3dfdc34e781d0f6f31b06369db3c7"
+        "decodedRgba1x": "02a2fb70b0fe81aca923abae1474f6a25a6c9b9ef4af2a4706106c973277d934"
       }
     },
     "shell_wall_back_slot_03_faceup": {
       "textureFile": "shells/shell_wall_back_slot_03_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_03_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_03_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_03_faceup-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -20846,23 +21081,21 @@
             31
           ]
         },
-        "bytes1x": 15346,
-        "bytes2x": 40840
+        "bytes1x": 15354,
+        "bytes2x": 25387
       },
       "sha256": {
-        "decodedRgba1x": "15e0e7e57ecb4d22344161dab7557cce82371e7a52a6bf637cff7c7343451934",
-        "decodedRgba2x": "36275b39395a62f0d34d1c24d8d1ca803a10b6844bc5b098cdefb51d0cf05fa0"
+        "decodedRgba1x": "4a002175b549c52d99829a3238a50c2b5bb010283d9808dbb878a5bb2042753f",
+        "decodedRgba2x": "31e81e8c4199049891aadd2bee57a25e63d80a05b65ed5d23936f98efba4f5e2"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_back_slot_04_faceup": {
       "textureFile": "shells/shell_wall_back_slot_04_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_04_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_04_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_04_faceup-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -21060,23 +21293,21 @@
             31
           ]
         },
-        "bytes1x": 15235,
-        "bytes2x": 40778
+        "bytes1x": 15236,
+        "bytes2x": 25320
       },
       "sha256": {
-        "decodedRgba1x": "b57a7b49e72e3ce1d181dbc9e3a6cc9d2bbecefcfacaacf80677da59d6536910",
-        "decodedRgba2x": "3de2c6ca6ccdb9dcd0703d39eeb53772cef71a27b6bd3efc82fa244be6233580"
+        "decodedRgba1x": "bad7ce814945ef9e9398aa2805d47f5e6c3494ec8d166c481cb20daae4f0110a",
+        "decodedRgba2x": "f5b00b61f69addb66f20dd96fa94a73d433de75396e8e6f6b601dd659c215acb"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_back_slot_05_faceup": {
       "textureFile": "shells/shell_wall_back_slot_05_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_05_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_05_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_05_faceup-shadow.png",
       "shadowTexWidth": 162,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -21274,23 +21505,21 @@
             31
           ]
         },
-        "bytes1x": 15125,
-        "bytes2x": 40223
+        "bytes1x": 15130,
+        "bytes2x": 24957
       },
       "sha256": {
-        "decodedRgba1x": "3b4fbd2cbfe35c26e7b65dc4296a84433e35a7d017ee357a83edd48e79bd586d",
-        "decodedRgba2x": "71938be5b00aa11087b85166ff56b91ff0828e9fb99f494f0d007a1aeb488155"
+        "decodedRgba1x": "1f70cacd0e3e6ef54398502efa1aa3f38fce5796675a74fc9663c3c37f633175",
+        "decodedRgba2x": "b4673c1cf2342c7d7dc195be26281730e07351d3813cfd0a4c1b7af533146f2e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf",
-        "decodedRgba2x": "64ff326d28bdcc73d9ec0db5e8f0a0af0dff9e783cd8d9c44485accf21a00b38"
+        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf"
       }
     },
     "shell_wall_back_slot_06_faceup": {
       "textureFile": "shells/shell_wall_back_slot_06_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_06_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_06_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_06_faceup-shadow.png",
       "shadowTexWidth": 162,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -21488,23 +21717,21 @@
             31
           ]
         },
-        "bytes1x": 14899,
-        "bytes2x": 39801
+        "bytes1x": 14904,
+        "bytes2x": 24531
       },
       "sha256": {
-        "decodedRgba1x": "9ccf11cf5f354f765702d76c219b8f7023fca134557ab09090b2ae831a8b6866",
-        "decodedRgba2x": "39afa812dccc15107f0c5703aad4b8ba9fbe0dccb87991a6e3f98b093c94d318"
+        "decodedRgba1x": "125223d8f41486d7ce2085c21fd438ff68e55aa966758a85b6b3cab7da58e23c",
+        "decodedRgba2x": "3e8488e533c6f1241d2b7ef5e86134215a026ee265f38d9ce4e23930b06e8f8f"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf",
-        "decodedRgba2x": "64ff326d28bdcc73d9ec0db5e8f0a0af0dff9e783cd8d9c44485accf21a00b38"
+        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf"
       }
     },
     "shell_wall_back_slot_07_faceup": {
       "textureFile": "shells/shell_wall_back_slot_07_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_07_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_07_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_07_faceup-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -21703,22 +21930,20 @@
           ]
         },
         "bytes1x": 14500,
-        "bytes2x": 38909
+        "bytes2x": 23443
       },
       "sha256": {
-        "decodedRgba1x": "9c0c2e956b05e0515235ab01de82d099b9b960bceac8662d59cecc5601db07c5",
-        "decodedRgba2x": "a2b0331e2ee88932c36096a61f288e2d935563815ce7a746291c1eca3a723241"
+        "decodedRgba1x": "4a4bfd5a237ffe4ad2cfb9ffbb5e8f0d2602a6b84554778264441bfca38947e3",
+        "decodedRgba2x": "176a304649cad4c67436ba43ec9bfa7688972e0669be84aa94c04a21514917f9"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_back_slot_08_faceup": {
       "textureFile": "shells/shell_wall_back_slot_08_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_08_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_08_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_08_faceup-shadow.png",
       "shadowTexWidth": 160,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -21916,23 +22141,21 @@
             31
           ]
         },
-        "bytes1x": 14299,
-        "bytes2x": 38405
+        "bytes1x": 14298,
+        "bytes2x": 23032
       },
       "sha256": {
-        "decodedRgba1x": "94a413b9a467548d58d6b9e516b7e0cf3051dc3702b18f032bcb1b697269e708",
-        "decodedRgba2x": "e705488f81638fb90c65bab79172079d6846c0b2ebb91bf0b94cecc83ef3c869"
+        "decodedRgba1x": "11f5872cc0c7fb4ac8cf1451e8ae816f7ed4121ecc67c2e941f818e0cc6b6d5d",
+        "decodedRgba2x": "f5a8bccf8b7a0705696f446ef2e492574cf63dc85575daba9d447fd862950450"
       },
       "shadowSha256": {
-        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820",
-        "decodedRgba2x": "b6118081701231779e6efb6e72fb25d7f32127c10a562a2f3890cac859915f76"
+        "decodedRgba1x": "9cbe800a578bc42003e0faba61534a25cf53d9220c2f06d559c3042ebe294820"
       }
     },
     "shell_wall_back_slot_09_faceup": {
       "textureFile": "shells/shell_wall_back_slot_09_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_09_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_09_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_09_faceup-shadow.png",
       "shadowTexWidth": 161,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -22130,23 +22353,21 @@
             31
           ]
         },
-        "bytes1x": 14519,
-        "bytes2x": 39156
+        "bytes1x": 14518,
+        "bytes2x": 23692
       },
       "sha256": {
-        "decodedRgba1x": "2c287ab337df25b012be35aa0f6e08e359338a045754bf8b09305d146fa15402",
-        "decodedRgba2x": "61dc4740537b14128a1b79c8c6ac50bda61f86e1bc07497fc15c37a971b44717"
+        "decodedRgba1x": "41b1272b9d14c3947937e5ab3f8354095c9016e01d256d9fa08975fcc9d7d610",
+        "decodedRgba2x": "4fe2bc7b06ec78e4d568fcf796f03270b4347683c7c69174deb43cf6237331be"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3",
-        "decodedRgba2x": "c533b9fbf592d1035fc353d625d46c7068b524d6854902a68c29354a0eb1dd30"
+        "decodedRgba1x": "5277dcf356d9365ee275203457f788d988d8b89df908029aea49ebf9c4338ff3"
       }
     },
     "shell_wall_back_slot_10_faceup": {
       "textureFile": "shells/shell_wall_back_slot_10_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_10_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_10_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_10_faceup-shadow.png",
       "shadowTexWidth": 162,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -22344,23 +22565,21 @@
             31
           ]
         },
-        "bytes1x": 15018,
-        "bytes2x": 39829
+        "bytes1x": 15019,
+        "bytes2x": 24560
       },
       "sha256": {
-        "decodedRgba1x": "fa4afd5f810cb0f69ec1c9cb9565083e39ad90c537477c05a5c1045cd82e9015",
-        "decodedRgba2x": "b2101c91e416075c64cd81aef21bca1473a836685b8fffcf69face8501eee319"
+        "decodedRgba1x": "d4cc135aacfda7eff23c8a6505192debb81f80f67d3e2acdb14d535b91344a7b",
+        "decodedRgba2x": "13718ad3b4c4bfa43eedbb6cac4b8eae8012dca5d3e053e56257a21369245694"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf",
-        "decodedRgba2x": "64ff326d28bdcc73d9ec0db5e8f0a0af0dff9e783cd8d9c44485accf21a00b38"
+        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf"
       }
     },
     "shell_wall_back_slot_11_faceup": {
       "textureFile": "shells/shell_wall_back_slot_11_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_11_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_11_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_11_faceup-shadow.png",
       "shadowTexWidth": 162,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -22559,22 +22778,20 @@
           ]
         },
         "bytes1x": 15212,
-        "bytes2x": 40302
+        "bytes2x": 25030
       },
       "sha256": {
         "decodedRgba1x": "10913e843fad0f4e62c41ff65233b46406f23d9aedbce97a99ab7c3bd9dd2e43",
-        "decodedRgba2x": "65209c213a8e236bcb6a79043acf413c12134316e39865389c7eb8bd4a8dea9c"
+        "decodedRgba2x": "08a8f0a031cd329a7f7c5d906cfa52ca85074e4e729e1c8d32a8a462b46213d1"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf",
-        "decodedRgba2x": "64ff326d28bdcc73d9ec0db5e8f0a0af0dff9e783cd8d9c44485accf21a00b38"
+        "decodedRgba1x": "1ceee1a664764de34bc56740b953684c2a0fc46727e00056dfb06a4019757caf"
       }
     },
     "shell_wall_back_slot_12_faceup": {
       "textureFile": "shells/shell_wall_back_slot_12_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_12_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_12_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_12_faceup-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -22772,23 +22989,21 @@
             31
           ]
         },
-        "bytes1x": 15241,
-        "bytes2x": 40819
+        "bytes1x": 15244,
+        "bytes2x": 25358
       },
       "sha256": {
-        "decodedRgba1x": "46d0dbe2bb10ec4cc7dbec1d27f41558b1fca40f94b1035b7e98e8de93c0b57d",
-        "decodedRgba2x": "416b3e74e20d9319095393d0c0c1b2121ccd43f66a7378dd61870fee89be1b96"
+        "decodedRgba1x": "3e78f9d36f21a9d21da428a18a4d49d445bc30110baba5a2270d9dc1855349ea",
+        "decodedRgba2x": "166b92a84be542f351165975b76deeb2e04f34a1aa893a36d2ce446ec2e1cfd1"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_back_slot_13_faceup": {
       "textureFile": "shells/shell_wall_back_slot_13_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_13_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_13_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_13_faceup-shadow.png",
       "shadowTexWidth": 163,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -22987,22 +23202,20 @@
           ]
         },
         "bytes1x": 15356,
-        "bytes2x": 41058
+        "bytes2x": 25602
       },
       "sha256": {
-        "decodedRgba1x": "f3ae0aa884cc228a4f5be1386406459096b7fcba0b9cc993c3c1aee009b32508",
-        "decodedRgba2x": "0b1a6391b33b098359d1fc123a89c1b31d5d505d069f3bbaa25cfe3579bac778"
+        "decodedRgba1x": "4dca6408a5e782c16de13276c2a2147f529e74725711f9883b02d24056c11ada",
+        "decodedRgba2x": "8e10f62b06469fa498f796754c06ea92076c9d9fcacb6e32edc811f6a21bf372"
       },
       "shadowSha256": {
-        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9",
-        "decodedRgba2x": "fc0bcd7e111c28c440391daa82ca0c23610460663a24e603b735472ec0bcc32b"
+        "decodedRgba1x": "28c4a98f5934a0e73e585cfe565d424a51f18cf1c558dde6ba75bec774e875d9"
       }
     },
     "shell_wall_back_slot_14_faceup": {
       "textureFile": "shells/shell_wall_back_slot_14_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_14_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_14_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_14_faceup-shadow.png",
       "shadowTexWidth": 164,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -23201,22 +23414,20 @@
           ]
         },
         "bytes1x": 15494,
-        "bytes2x": 41321
+        "bytes2x": 25869
       },
       "sha256": {
         "decodedRgba1x": "3a07fa5e802a7d12d09cb1aa6a6921dab3332e3d2096a1a25f276f3e3d9ef45f",
-        "decodedRgba2x": "c1f127f8b88eb2d0dc2fd9ce36738c6a05303f1aff8a84dd65e5cbaa0fe89f01"
+        "decodedRgba2x": "42fb4e8d6d32f48b1865dc34fa74fcf6bf785c928702651f18709b78bd92d8a5"
       },
       "shadowSha256": {
-        "decodedRgba1x": "02a2fb70b0fe81aca923abae1474f6a25a6c9b9ef4af2a4706106c973277d934",
-        "decodedRgba2x": "78ebca288d288d94b261b601913803f6cae3dfdc34e781d0f6f31b06369db3c7"
+        "decodedRgba1x": "02a2fb70b0fe81aca923abae1474f6a25a6c9b9ef4af2a4706106c973277d934"
       }
     },
     "shell_wall_back_slot_15_faceup": {
       "textureFile": "shells/shell_wall_back_slot_15_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_15_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_15_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_15_faceup-shadow.png",
       "shadowTexWidth": 165,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -23415,22 +23626,20 @@
           ]
         },
         "bytes1x": 15723,
-        "bytes2x": 41483
+        "bytes2x": 26183
       },
       "sha256": {
-        "decodedRgba1x": "12aec8aaafddc3ef81d691bee9c2ae32a0bf089bf7a851873848972717a232e3",
-        "decodedRgba2x": "3660af9760536a8602b57f2acc58015972aedde543783e2920e628a2b6b766dc"
+        "decodedRgba1x": "b325cbb97fd7e13a5d77cbf4f292bfd0c64cba3937962d0e1b0bdbb90144e9ac",
+        "decodedRgba2x": "d1cf2cea2068c09516606d3a2e38ec018afc3e54e29225612609d70328428ec1"
       },
       "shadowSha256": {
-        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5",
-        "decodedRgba2x": "24840d16261eee0af128bb627b894789428da18de67b54d883bdae157a10a171"
+        "decodedRgba1x": "5672dca793eb2c22e1aa16c0fa7422183cac37db2f2d641766adc29a8248f1c5"
       }
     },
     "shell_wall_back_slot_16_faceup": {
       "textureFile": "shells/shell_wall_back_slot_16_faceup.png",
       "textureFile2x": "shells/2x/shell_wall_back_slot_16_faceup.png",
       "shadowTextureFile": "shells/shell_wall_back_slot_16_faceup-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_wall_back_slot_16_faceup-shadow.png",
       "shadowTexWidth": 166,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -23628,16 +23837,15 @@
             31
           ]
         },
-        "bytes1x": 15879,
-        "bytes2x": 41802
+        "bytes1x": 15883,
+        "bytes2x": 26381
       },
       "sha256": {
-        "decodedRgba1x": "fc64cb24747a95dad79b50b2c661935b0356995cbd61c81fc5d55cc8c751a56f",
-        "decodedRgba2x": "e7152b16688917b951a42ecb2446e49a82098cb5787f7b2d749c8f31085629be"
+        "decodedRgba1x": "719f8ff380d842bd0b8d06f9ca2c33c59a71403669ccf5bf1cf9c5ee2d0f48d0",
+        "decodedRgba2x": "1d9ace74eea3cc01b32a85d8f545e6c407681909314f72561b9b368ba2b4a2f1"
       },
       "shadowSha256": {
-        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321",
-        "decodedRgba2x": "7e25f99773fc70e2faca415b97fbe8e4ff515cd4a0ea838015b2920f47945fa2"
+        "decodedRgba1x": "0803d82454bb2b9544fc1dc83d4f5a24fcabbade7f97e6d0902ef628bb6a0321"
       }
     }
   }

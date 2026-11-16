@@ -42,6 +42,13 @@ bash tools/render/bake-shells.sh --shadow-audition  # REF + A/B/C shadow sheet
 bash tools/render/bake-shells.sh --check   # integrity check; no Blender needed
 bash tools/render/bake-shells.sh --check-audition  # validate the calibration; no Blender
 node tools/render/scripts/preview-group-shadow.mjs  # merged vs per-tile group shadows; no Blender
+node tools/render/scripts/bake-faces.mjs   # bake the 37 face glyphs + faces.json (resvg)
+node tools/render/scripts/check-faces.mjs  # face glyph + atlas budget gate; no Blender/resvg
+bash tools/render/bake-decals.sh --spike   # carve/lit decal spike into build/decals (Blender)
+bash tools/render/bake-decals.sh --check   # validate the build decal manifest; no Blender
+cd frontend && npm run tune:carved         # lying-rig tuner at http://localhost:7458
+cd frontend && npm run atlas:review:carved # flat vs carved review sheets
+cd frontend && npm run atlas:review        # build the real atlas and write review sheets
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
 ```
@@ -73,12 +80,12 @@ writes the committed assets.
 `--preview` is the fast loop. It renders only the `--only` shells under
 `tools/render/build/preview/` (never the committed paths), writes a partial
 preview manifest, and draws `preview-1x.png` plus a 4x zoom per shell. It skips
-the full 103-shell check, so a one- or two-shell change takes seconds instead of
+the full 105-shell check, so a one- or two-shell change takes seconds instead of
 the full bake. Use it while tuning a shell, then do a full `--bake` for the
 committed manifest and the full review sheets.
 
 `--bake` is the one command that regenerates the committed assets: it renders
-all 103 shells (eight base + 14 human-hand slots + 13 top-hand slots + 68
+all 105 shells (ten base + 14 human-hand slots + 13 top-hand slots + 68
 front/back wall slots) at @1x and @2x with the
 pinned Blender at the current base scale, measures each render, writes
 `frontend/public/table/shells/*.png`, `shells/2x/*.png` and
@@ -113,13 +120,16 @@ python3 tools/render/bake_felt.py --spec tools/render/felt-spec.json
 Face glyphs are rasterised with the pinned resvg rasteriser:
 
 ```bash
+node tools/render/scripts/bake-faces.mjs          # all 37 glyphs + faces.json
 node tools/render/scripts/rasterize-face.mjs \
-  tools/render/faces/Regular-Man1-symbol.svg build/faces/1m.png --width 300
+  tools/render/faces/Regular-Man1.svg build/faces/1m.png --width 300
 ```
 
-It needs `npm ci` in `tools/render` once (the directory is gitignored). The
-2.5D runtime will composite these 2D glyphs into each shell's `faceQuad`; tile
-art is never rasterised in the browser.
+`bake-faces.mjs` needs `npm ci` in `tools/render` once (the directory is
+gitignored); `check-faces.mjs` needs nothing but Node. `check-decals.mjs` needs
+`@napi-rs/canvas` to decode the committed AVIF/WebP decals. The 2.5D runtime
+composites these 2D glyphs into each shell's `faceQuad` in a startup atlas; tile
+art is never rasterised in the browser. See "Phase 2" below.
 
 ## Toolchain (pinned, outside the repo)
 
@@ -128,6 +138,7 @@ art is never rasterised in the browser.
 | Blender | **4.5.9 LTS** | `~/.local/opt/blender-4.5.9/blender` (or `BLENDER=...`) | tile mesh, lights, shell renders |
 | Node | ≥ 18 | system `node` | the integrity check and resvg scripts |
 | `@resvg/resvg-js` | **2.6.2** | `tools/render/node_modules` (installed, gitignored) | rasterising face SVGs |
+| `@napi-rs/canvas` | **1.1.1** | `tools/render/node_modules` (installed, gitignored) | AVIF/WebP decal encoding and the decal integrity check |
 | Python | 3.10+ | system `python3` | the procedural felt generator |
 
 Blender is a portable Linux build installed outside every task worktree. The
@@ -155,6 +166,17 @@ its own regeneration, not mixed with CPU output.
 | `shell-spec.json` | yes | the shell-baker source of truth: Blender pin, CPU-Cycles/AgX settings, jansou tile proportions, bevel `0.055 / 6`, the one-material white/blue split, top-left key + ambient fill, the nine-shell base catalogue and the wallSlots fan, output paths, budgets |
 | `bake_shells.py` | yes | Blender entry point: version check, tile mesh/material, lights, shell catalogue validation, dry-run plan, Phase 1 render loop |
 | `bake-shells.sh` | yes | one command; resolves the pinned Blender, or runs `--check` with no Blender |
+| `faces-spec.json` | yes | the 37 face glyphs: pinned upstream SVGs, 288 × 384 RGBA raster, red paint, output paths, byte budget |
+| `bake-faces.mjs` / `face-raster.mjs` | yes | resvg glyph baker and its single shared rasteriser (also used by `rasterize-face.mjs`) |
+| `check-faces.mjs` | yes | dependency-free face-glyph + committed-asset + atlas-budget gate (CI) |
+| `decal-spec.json` | yes | the carved decal contract: pin, 158 × 216 @2x raster, carve parameters, separate upright/lying light rigs, surface rotations, outputs |
+| `bake_decals.py` | yes | Blender 4.5.9 carve/paint/light decal baker (imports the shell baker's helpers) |
+| `bake-decals.sh` | yes | one command for dry-run/spike/build/commit/check |
+| `encode-decals.mjs` | yes | PNG → AVIF/WebP encoder for the committed decal set, with decoded measurements/hashes |
+| `decal-image.mjs` | yes | Node Canvas decode + decal measurement shared by the encoder and checker |
+| `check-decals.mjs` | yes | Node Canvas carved-decal (AVIF/WebP/PNG) + committed budget gate (CI) |
+| `../../frontend/scripts/tune-carved.ts` | yes | the lying-rig preview/tuner server |
+| `../../frontend/scripts/tune-carved.html` | yes | the tuner UI |
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
 | `bake_felt.py` | yes | deterministic stdlib PNG generator for the felt + vignette |
 | `bake-felt.sh` | yes | one-command felt regeneration |
@@ -167,11 +189,17 @@ its own regeneration, not mixed with CPU output.
 | `scripts/review-shells.mjs` | yes | lays the baked shells out with the manifest's own steps into review sheets; `--audition` writes the labelled candidate sheets |
 | `scripts/label-font.mjs` | yes | dependency-free 5×7 bitmap font for the candidate sheets' printed parameters |
 | `scripts/rasterize-face.mjs` | yes | vendored face SVG → PNG glyph (resvg) |
-| `faces/` | yes | vendored public-domain symbol-only SVG + provenance (`faces/SOURCE.md`) |
+| `faces/` | yes | the 37 vendored public-domain symbol-only SVGs + provenance (`faces/SOURCE.md`) |
 | `../../frontend/public/table/felt.png` | yes | the committed full-screen felt raster |
 | `../../frontend/public/table/shells/` | yes | shell textures at @1x (`shell_*.png`) |
-| `../../frontend/public/table/shells/2x/` | yes | all 77 shells at @2x |
+| `../../frontend/public/table/shells/2x/` | yes | all 105 body shells at @2x (no @2x shadow sprites) |
 | `../../frontend/public/table/shells.json` | yes | the published shell contract |
+| `../../frontend/public/table/faces/` | yes | the 37 committed face glyphs at 288 × 384 RGBA |
+| `../../frontend/public/table/faces.json` | yes | the published face-glyph contract |
+| `../../frontend/public/table/decals/` | yes | the 180 committed AVIF q60 carved decals |
+| `../../frontend/public/table/decals.json` | yes | the published carved-decal contract |
+| `../../frontend/src/table/` | yes | the runtime `TileAtlasBuilder` / `TileAtlas` / manifests, not part of this pipeline |
+| `../../frontend/scripts/review-atlas.ts` | yes | builds the real atlas with Node Canvas and writes the review sheets |
 | `node_modules/`, `build/` | no | installed dependencies and throwaway review output |
 | `build/review/candidates/` | no | Phase 1b candidate textures at the new base (`1x/`, `2x/`) |
 | `build/review/shell-candidates.json` | no | Phase 1b candidate manifest (same record shape as `shells.json`) |
@@ -230,9 +258,10 @@ stretched pattern. This decision is recorded in `felt-spec.json` under
 
 ## The committed bake (Phase 1c + the hand/wall fans)
 
-Ninety shells are baked, measured and committed at the Phase 1b base (the Phase 1
-`@2x` size): the eight-shell base below, the 14-slot standing-hand fan, and the
-68 front/back wall slot shells (17 slots × 2 walls × face-down/face-up).
+**105 shells** are baked, measured and committed at the Phase 1b base (the
+Phase 1 `@2x` size): the ten-shell base below (including the four flat river
+orientations), the 14-slot standing-hand fan, and the 68 front/back wall slot
+shells (17 slots × 2 walls × face-down/face-up).
 `shell-spec.json` carries each base shell's pose (Euler degrees), camera
 (azimuth/elevation + which local face is visible) and expected aspect, plus the
 compact `handSlots` and `wallSlots` blocks the baker expands into the slot
@@ -243,6 +272,8 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `shell_flat_upright` | low-angle top-down | — | az 0 / el 45 | 72 × 102 | 76 × 106 / 104 × 136 | (69.4, 0) / (0, 65.44) | — |
 | `shell_flat_sideways` | low-angle top-down | rotZ 90° | az 0 / el 45 | 106 × 95 | 110 × 99 / 138 × 129 | (0, 55.15) / (104, 0) | — |
+| `shell_flat_upright_180` | low-angle top-down | rotZ 180° | az 0 / el 45 | 72 × 102 | 76 × 106 / 160 × 162 | (69.41, 0) / (0, 65.44) | — |
+| `shell_flat_sideways_270` | low-angle top-down | rotZ 270° | az 0 / el 45 | 106 × 95 | 110 × 99 / 194 × 155 | (0, 55.15) / (104, 0) | — |
 | `shell_wall_horizontal` | low-angle top-down | rotX 180° | az 0 / el 45 | 72 × 102 | 76 × 106 / 104 × 136 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
 | `shell_wall_horizontal_faceup` | low-angle top-down | — | az 0 / el 45 | 72 × 102 | 76 × 106 / 104 × 136 | (69.4, 0) / (0, 65.44) | (0, −38.56) |
 | `shell_wall_side_left` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
@@ -250,17 +281,14 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 
-The eight base PNGs are **459,971 B** (123,618 @1x + 336,353 @2x). The 14 hand
-slots add **695,439 B**, the 13 top-hand slots **568,700 B** and the 68 wall
-slots **3,929,429 B**, so all 103 **body + shadow** pairs are **5,653,539 B** (1,515,854 @1x +
-4,137,685 @2x; budget 6,291,456 B); the largest
-single shell is 63,866 B (@1x + @2x, ceiling 262,144 B). `shells.json` is
-**561,793 B** (budget 614,400 B; raised when `shadowShape` was added). The hand
+All 105 shell bodies plus their @1x shadow references are **4,351,264 B**
+(budget 6,291,456 B); the @2x body textures are included, the redundant @2x
+shadow sprites were removed in Phase 2b. `shells.json` is **553,571 B** (budget
+614,400 B). The hand
 slots keep the 104 px body long axis (102 px measured); the human-hand centre
 body is 75 × 106 and its shadow 119 × 142, the drawn body 89 × 106 and its
-shadow 133 × 142. The
-budgets were raised for the fans; a board loads only the slots it draws, so the
-initial load stays well under the 4 MiB limit.
+shadow 133 × 142. The budgets were raised for the fans; a board loads only the
+slots it draws, so the initial load stays well under the 4 MiB limit.
 
 **Why the projections are what they are.**
 
@@ -525,6 +553,205 @@ slot's eye to 24 / 32 / 56 units (front) and 36 / 46 / 72 (back), keeping the
 lateral offset, so the amount of side reveal can be picked without rotating any
 tile. The committed values are the physical distances.
 
+### Phase 2: face glyphs and the startup atlas (landed 2026-11-15)
+
+The runtime is `frontend/src/table/`: `tiles.ts` (face ids, the 18-shell
+face-up catalogue and the `(shell, faceVariant, face)` key), `shellManifest.ts`
+and `faceManifest.ts` (validating parsers), `TileAtlasBuilder.ts` (the startup
+compositor) and `TileAtlas.ts` (the `Map<TileRenderKey, BakedTileSprite>` and
+the single `blitTileSprite` draw call). Nothing in this directory is bundled;
+the pipeline only produces the committed PNGs and manifests.
+
+**The glyph masters.** 37 RGBA PNGs at 288 × 384 (34 standard faces + the three
+red fives; blank has no asset) are rasterised from the vendored public-domain
+symbol-only SVGs at pinned commit
+`f37d6cc2557498d23f13eb3e955e0e44e5c863ff`. The masters are
+**perspective-neutral**: one flat glyph per face, not one per shell. They total
+**576,938 B** against a 1,310,720 B budget; `faces.json` records each glyph's
+decoded-RGBA sha256, ink bbox/counts and upstream provenance. 288 px is 2.07x
+the longest @2x face axis (185.1 px), so the atlas only ever downsamples the
+master. Haku (`5z`) bakes with zero ink by design (a white dragon is a blank
+face) and shares the shell's bare atlas slot.
+
+**No carved/lit decal.** The carve → paint → light process belonged to the
+retired full-scene pipeline (`rendered-table-plan.md`, retired 2026-11-13): it
+recessed the symbol into a subdivided face plate, lit it once per orientation
+and composited a baked decal. The active architecture replaced that with
+**flat, perspective-neutral glyph masters**: the shell already carries the baked
+lighting and bevel, and the glyph is colour-on-transparent ink mapped into
+`faceQuad`. There is no carve geometry, no per-orientation decal render and no
+specular line on the paint in Phase 2. Adding a carved or embossed treatment
+later is a visual decision that needs its own spec; it is not a leftover step in
+this pipeline.
+
+**The face variants.** A variant names a perspective slot, not a camera angle:
+`standing-front-00..12` + `standing-front-draw` for the 14 `shell_hand_slot_*`
+shells, `flat-topdown` for `shell_flat_upright`, and `flat-rot90` for
+`shell_flat_sideways` plus the 180/270 river shells. That is **18 face-up shells**,
+38 face ids each, so the atlas resolves **684 keys**: 648 glyph keys + 36 bare
+keys (blank and haku share
+one bare slot per page). The face-down wall shells (`shell_wall_horizontal`,
+`shell_wall_side_left`, `shell_wall_side_right`) are bare: no glyph, no variant,
+no atlas entry.
+
+**The startup atlas.** `TileAtlasBuilder` composes one offscreen Canvas 2D page
+per face-up shell, once at init: every shell body first, then each glyph clipped
+to the published `faceQuad`. A page holds 37 slots (36 inked + 1 bare) at
+2048 px maximum width. Numbers from `check-faces.mjs` and the Node Canvas
+review run:
+
+| | @1x (runtime default) | @2x (opt-in) |
+| :--- | :--- | :--- |
+| Pages | 18 | 18 |
+| Pixels | 7,929,168 | 27,575,784 |
+| RGBA | **30.25 MiB** | **105.19 MiB** |
+| Build (Node Canvas) | ~33–44 ms for all 16 | ~12 ms for one hand page |
+
+The loader defaults to @1x and refuses an @2x atlas above `maxRgbaBytes`
+(48 MiB), because an all-@2x atlas costs 105 MiB of decoded canvas. @2x remains
+available (`pixelRatio: 2`) for a single-shell preview or a device with the
+memory headroom. The 34 per-slot dora shells are the next face-variant family
+(§10.5 of the architecture); they would add 14,424,056 px / 55.02 MiB at @1x
+and are deliberately **not** built by this task.
+
+**Glyph rotation.** `faceQuad` is published in face-local corner order, so
+mapping the glyph's corners onto it already applies the shell's rotation:
+`shell_flat_sideways`'s first edge points up the screen, which is the 90°
+counter-clockwise read. `faceRotationDeg` is the *desired on-screen* rotation,
+and `glyphRotationDegFor` subtracts the quad's own rotation to get the extra
+in-plate rotation. It is 0 for every Phase 2 shell; the follow-up dora families
+need 180 (back wall) and 270 (side wall) and the builder already implements
+that path. The builder clips to the quad and fits an affine to three corners,
+so the small trapezoid keystone on the perspective hand faces is clipped inside
+the plate rather than spilling onto the bevel.
+
+**Budgets (measured).** Committed table assets are **7,500,843 B** of the 8 MiB
+total limit (shells 5,765,417 + `shells.json` 571,609 + felt 559,465 + glyphs
+576,938 + `faces.json` 27,414), leaving ~1.0 MB. A full board's @1x bodies +
+felt + both manifests + glyphs is **2,658,858 B** of the 4 MiB initial-load
+limit; the atlas is composed locally from those requests, not downloaded.
+
+**Review.** `cd frontend && npm run atlas:review` builds the real atlas with
+Node Canvas and writes under `tools/render/build/review/`:
+`atlas-variants-1x.png` (the three variants, every face, at discard size),
+`atlas-all-faces-1x.png`, one sheet per shell, `atlas-hand-06-2x.png` (the
+crispness check), and `atlas-numbers.json`. Those are evidence for the user;
+the agent does not sign off its own render (AGENTS.md §6).
+`node tools/render/scripts/check-faces.mjs` is the CI gate: glyph hashes and
+ink, red fives, haku zero ink, transparent corners, the byte budgets and the
+atlas page plan.
+
+### Phase 2b: carved face decals (spike + lying tuner, 2026-11-15)
+
+The picked direction is **option A**: restore only the retired pipeline's
+carve → paint → light decal, as a **transparent carve/paint overlay** pasted
+into the current shells' `faceQuad`. The shell keeps its own lighting and face
+colour outside the recessed lip. The **full upstream 300 × 400 glyph canvas** is
+mapped onto the inset face plate, matching the flat glyph's sizing; the earlier
+faceInset UV crop enlarged every symbol and cut the pinzu/manzu strokes that
+reach the canvas edge. The symbol stays upright in face-local space;
+the four images per face are four baked **light rotations** (`0/90/180/270`),
+chosen so the light lands top-left on screen after the shell's quad rotation.
+There is no per-slot fanning: a decal is shared by every slot with the same
+light rotation.
+
+**Two light rigs.** `decal-spec.json` has separate `lighting.upright` (the
+approved parlour rig for the standing hand) and `lighting.lying` (the tunable
+rig for flat/pond tiles). `surfaceRotations` bakes one upright rotation (`0`)
+and four lying rotations (`0/90/180/270`). The upright rig is not touched by the
+lying tuner.
+
+**The lying tuner.** `cd frontend && npm run tune:carved` starts a local app at
+`http://localhost:7458` (set `HOST=0.0.0.0` to use it from a phone on the
+tailnet). It writes a temporary decal spec, runs the real Blender baker for the
+`1m` face with the lying rig at four light rotations, and composites each result
+onto the real, properly rotated river shell at @2x. A preview takes about
+**3 s** (48 samples, carve grid 0.6, AO 4). "Apply lying params" writes only
+`lighting.lying` (and the shared carve controls) back to `decal-spec.json`.
+
+The four previews are the four discard rivers, one shell each:
+
+| Panel | Shell | Tile |
+| --- | --- | --- |
+| bottom river · 0° | `shell_flat_upright` | 0° |
+| right river · 90° | `shell_flat_sideways` | 90° |
+| top river · 180° | `shell_flat_upright_180` | 180° |
+| left river · 270° | `shell_flat_sideways_270` | 270° |
+
+The shell bodies are rendered once by the existing shell baker with the
+existing shell/table lighting; the sliders never touch them. The decal rig is
+defined in the **face-normal frame** (`frame: "face-normal"`): `aroundDeg`
+rotates the light around the tile's face normal (0 = tile-up, 90 = right,
+180 = down, 270 = left) and `tiltDeg` is the angle from the normal (0 =
+head-on, 90 = grazing, 180 = behind). The atlas adds `-quadRotation` so the
+room light stays fixed while the tile turns. Rotating around the face normal
+(not world Z) is what keeps all four orientations equally lit; a world-Z
+rotation sends the key behind the vertical decal face at 90/180 and makes those
+carvings read flat.
+
+The baker is `bake_decals.py` + `decal-spec.json`; it imports the current shell
+baker's tile/material/render helpers and ports the retired carve math
+(`alpha_to_distance`, `bezier_profile`, `build_carved_face`). The carve
+parameters are unchanged from the retired pipeline (commit `e39d92e`). The
+upright parlour rig is translated from its original hand slot at y=-11.7 to the
+canonical face; the lying rig is expressed in the face-normal frame so it reads
+as room light on a horizontal tile.
+
+```bash
+bash tools/render/bake-decals.sh --dry-run   # print the plan
+bash tools/render/bake-decals.sh --spike     # 4 faces x upright 1 + lying 4 -> build/decals
+bash tools/render/bake-decals.sh --build     # every inked face, both surfaces -> build/decals
+bash tools/render/bake-decals.sh --bake      # PNG bake, encode AVIF, commit decals.json, check
+bash tools/render/bake-decals.sh --check     # validate build/decals.json (needs Node Canvas)
+bash tools/render/bake-decals.sh --check-committed
+cd tools/render && npm run decals:encode     # re-encode the PNG bake to AVIF q60
+cd frontend && npm run tune:carved           # lying-rig tuner
+cd frontend && npm run atlas:review:carved   # flat vs carved review sheets
+```
+
+**Spike (measured).** 4 faces (`1m`, `5p`, `7z`, `5mr`) × (1 upright + 4 lying)
+= **20 decals at 158 × 216** (150 × 208 face plate + a 4 px transparent safety
+ring), **926,272 B** PNG, ~1 min wall on the dev box. Each decal is 34–62 KB
+PNG, 18–66% transparent, with its four corners transparent.
+`check-decals.mjs` reports 410 checks on the spike.
+
+**Full set (committed).** `5z` (haku) has no ink and is skipped: 36 faces × 5
+surface rotations = **180 decals** (36 upright + 144 lying). The full PNG bake
+is **8,319,064 B**; the shipped set is **AVIF q60 with alpha**, **1,581,494 B**
+across 180 files, plus `decals.json` (189,282 B). The manifest keeps the decode
+measurements and decoded-RGBA sha256 for every encoded image. AVIF q60 was
+chosen over WebP (2.4 MB) to fit the budget without touching the decal size or
+the flat fallback.
+
+The redundant **@2x shadow sprites** were removed to make room: the runtime
+already draws group shadows from `shadowShape` (§10.12), and the @1x shadow
+sprites remain the checker/review reference. Committed table assets are
+**7,839,428 B (7.48 MiB)** of the 8 MiB limit; a decal-based initial @1x board
+is **3,834,658 B (3.66 MiB)** of the 4 MiB limit (the flat glyph PNGs remain
+build/fallback assets and are not fetched when decals cover every inked face).
+Byte budgets are **advisory during active development** (AGENTS.md §1c); they
+are measured, not a reason to shrink the art.
+
+**Runtime.** `frontend/src/table/decalManifest.ts` parses `decals.json` with a
+key of `${face}:${surface}:l${light}:s${symbol}`. `TileAtlasBuilder` selects the
+surface from the shell (`upright` for the 14 hand slots, `lying` for
+`shell_flat_upright`, `shell_flat_sideways`, `shell_flat_upright_180` and
+`shell_flat_sideways_270`), picks
+`lightRotationDeg = -screenRotationOfQuad(faceQuad)` and
+`symbolRotationDeg = faceRotationDeg - quadRotation`, loads the decal instead of
+the flat glyph, and still composites one `BakedTileSprite` per
+`(shell, variant, face)`. Missing decals fall back to the flat glyph (tests and
+the spike); `requireDecals: true` makes a missing decal a hard error. No
+per-frame compositing.
+
+**Review.** `cd frontend && npm run atlas:review:carved` writes under
+`tools/render/build/review/`:
+`carved-compare-4x.png` (four faces, flat vs carved, 4×),
+`carved-variants-1x.png`, `carved-hand-fan-1x.png`, and
+`carved-numbers.json`. The lying tuner writes its four previews under
+`tools/render/build/tune/preview/`. These are evidence for the user, not for the
+agent to sign off (AGENTS.md §6).
+
 ### `shells.json` contract
 
 `frontend/public/table/shells.json` holds one record per shell id. This is a
@@ -542,7 +769,6 @@ real record (values from the committed bake):
       "textureFile": "shells/shell_flat_upright.png",
       "textureFile2x": "shells/2x/shell_flat_upright.png",
       "shadowTextureFile": "shells/shell_flat_upright-shadow.png",
-      "shadowTextureFile2x": "shells/2x/shell_flat_upright-shadow.png",
       "shadowTexWidth": 160,
       "shadowTexHeight": 162,
       "shadowAnchorX": 38,
@@ -598,8 +824,9 @@ real record (values from the committed bake):
 Fields the runtime and the checker rely on:
 
 - `textureFile` / `textureFile2x` — the @1x and @2x **body** PNGs, both under `shells/`.
-- `shadowTextureFile` / `shadowTextureFile2x` — the separate **blob** sprites.
-  They have their own, larger box and anchor (`shadowTexWidth/Height`,
+- `shadowTextureFile` — the @1x **blob** reference sprite (the @2x shadow sprite
+  was removed; the runtime uses `shadowShape`). It has its own, larger box and
+  anchor (`shadowTexWidth/Height`,
   `shadowAnchorX/Y`, `shadowPadding`). `shadowOffsetPx` is `[0,0]`;
   `shadowBlob` records the model, sigma, core alpha, offset and whether the tile
   is lying (rounded rect covers the body, top edge trimmed) or standing (rounded
@@ -786,7 +1013,7 @@ committed reference is 24 units. The output is gitignored:
 ones (both scales, the base long axis, the blob contract, the perspective
 trapezoid, `faceQuad` and `gridStepPx`, `stackStepPx`, hashes) plus the sheets'
 printed-text and composited-tile pixel checks; the full run reports **8,057
-checks**. The committed bake alone reports **7,878** (including the review-sheet
+checks**. The committed bake alone reports **7,592** (including the review-sheet
 pixels when the sheets are present and the `shadowShape` raster check on every
 shell).
 
@@ -843,14 +1070,14 @@ PASS shell_hand_slot_draw handSlot kind is row/draw (draw)
 PASS shell_hand_slot_draw top edge carries the blue resin sliver (3,69,165)
 PASS shell_wall_front_slot_16 camera sits at the human's x (lateral -6.0 = -offset)
 PASS hand-fan-1x.png composites its tiles (284486 px)
-INFO shell textures total 4509233 B across 103 shells and 2 scales
+INFO shell textures total 4351264 B across 105 shells and 2 scales
 OK 6967 checks passed
 ```
 
 `--audition` additionally validates the hand fan calibration and its sheets; on
 the current output it reports `OK 8,057 checks passed` on the last candidate
 matrix (the committed checks plus the candidate and sheet checks; a re-run adds
-the `shadowShape` checks). The committed-only run is 7,878.
+the `shadowShape` checks). The committed-only run is 7,592.
 
 
 The symmetry tolerance is 6%, not 2%: the vignette is geometrically symmetric,
@@ -875,7 +1102,7 @@ To review the shells, bake (or just regenerate the sheets) and open them:
 
 ```bash
 node tools/render/scripts/review-shells.mjs
-xdg-open tools/render/build/review/shells-row-1x.png      # the eight base shells, catalogue order
+xdg-open tools/render/build/review/shells-row-1x.png      # the ten base shells, catalogue order
 xdg-open tools/render/build/review/discard-row-1x.png     # 6-tile row + isolated + riichi
 xdg-open tools/render/build/review/hand-stack-1x.png      # packed hand row + drawn tile + top hand
 xdg-open tools/render/build/review/hand-fan-1x.png        # exploded hand fan + top hand, numbered
@@ -900,6 +1127,23 @@ difference is the body's own bevel shading; the shadow union sits under the
 bodies and does not touch the neighbour's face), and the isolated tile's shadow
 reads 54.6 against bare felt 66.8. The blob strength is still a visual call for
 the user.
+
+To review the Phase 2 glyphs and the startup atlas, build the real atlas and
+open the sheets (they are gitignored review output):
+
+```bash
+cd frontend && npm run atlas:review
+xdg-open ../tools/render/build/review/atlas-variants-1x.png   # the three variants at discard size
+xdg-open ../tools/render/build/review/atlas-all-faces-1x.png  # all 16 shells
+xdg-open ../tools/render/build/review/atlas-shell_hand_slot_06-2x.png
+node ../tools/render/scripts/check-faces.mjs                  # the numbers
+```
+
+`atlas-numbers.json` in the same directory has every page's pixels and RGBA
+bytes. The question for the user is whether the glyphs are crisp and legible at
+discard size on each variant, whether the sideways `flat-rot90` read is right,
+and whether the hand glyphs sit correctly inside the face plate. Compare against
+the stacked/top-down views, not against another agent-generated screenshot.
 
 To review the blob softness/opacity/offset, run `--shadow-audition` (above) and
 open `build/review/shadow-candidates.png`. It shows the REF row plus A/B/C, each

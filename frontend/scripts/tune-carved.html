@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Carved decal tuner — lying rig</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1713;
+        --panel: #12211a;
+        --line: #24382f;
+        --text: #e8f1ec;
+        --muted: #8fb2a4;
+        --accent: #57b98b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font: 13px/1.45 "Fira Sans", "DejaVu Sans", system-ui, sans-serif;
+      }
+      header {
+        padding: 16px 22px 12px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      header h1 { margin: 0; font-size: 19px; letter-spacing: 0.2px; }
+      header p { margin: 0; color: var(--muted); }
+      main {
+        display: grid;
+        grid-template-columns: minmax(330px, 430px) minmax(420px, 1fr);
+        gap: 20px;
+        padding: 18px 22px 40px;
+        align-items: start;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px 14px;
+        margin-bottom: 14px;
+      }
+      section h2 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 90px 1fr 76px;
+        gap: 8px;
+        align-items: center;
+        margin: 6px 0;
+      }
+      .row label { color: var(--muted); font-size: 12px; }
+      .row input[type="range"] { width: 100%; accent-color: var(--accent); }
+      .row input[type="number"] {
+        width: 100%;
+        background: #0b1510;
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 3px 5px;
+        font: inherit;
+      }
+      .light-group { margin-bottom: 10px; }
+      .light-group h3 {
+        margin: 0 0 4px;
+        font-size: 12px;
+        color: var(--text);
+        font-weight: 600;
+      }
+      .buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      button {
+        background: var(--accent);
+        color: #07130d;
+        border: 0;
+        border-radius: 5px;
+        padding: 8px 14px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+      }
+      button:disabled { opacity: 0.5; cursor: wait; }
+      #status { color: var(--muted); min-height: 20px; margin-top: 8px; }
+      #log {
+        color: var(--muted);
+        font: 11px/1.4 ui-monospace, monospace;
+        white-space: pre-wrap;
+        max-height: 120px;
+        overflow: auto;
+        margin-top: 6px;
+      }
+      .previews {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        gap: 14px;
+      }
+      .preview {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .preview h2 { margin: 0 0 2px; font-size: 12px; color: var(--text); }
+      .preview p { margin: 0 0 8px; color: var(--muted); font-size: 11px; }
+      .preview img {
+        width: 100%;
+        height: auto;
+        display: block;
+        background: #0b1510;
+        border-radius: 4px;
+        image-rendering: auto;
+      }
+      .note { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Carved decal tuner — lying light rig</h1>
+      <p>Blender 4.5.9 · face <code id="face"></code> · the upright rig is not touched</p>
+    </header>
+    <main>
+      <div>
+        <section>
+          <h2>Lying light rig</h2>
+          <p class="note">
+            The four previews are the four face-up river shells, properly rotated,
+            with the carved decal. The shell bodies use the existing shell lighting;
+            these sliders only change the lying decal rig. “Around tile” rotates the
+            light around the tile’s face normal; “tilt from normal” is 0 head-on to
+            180 behind. All lying decals share these parameters.
+          </p>
+          <div id="light-controls"></div>
+          <div class="row">
+            <label for="worldStrength">World</label>
+            <input id="worldStrength" type="range" min="0" max="2" step="0.05" />
+            <input id="worldStrength-n" type="number" min="0" max="2" step="0.05" />
+          </div>
+        </section>
+        <section>
+          <h2>Carve / paint (shared)</h2>
+          <div id="carve-controls"></div>
+        </section>
+        <section>
+          <h2>Preview speed</h2>
+          <div id="speed-controls"></div>
+          <div class="buttons">
+            <button id="render">Render preview</button>
+            <button id="apply" class="secondary">Apply lying params</button>
+          </div>
+          <div id="status"></div>
+          <div id="log"></div>
+        </section>
+      </div>
+      <div class="previews" id="previews"></div>
+    </main>
+    <script>
+      const LIGHT_FIELDS = [
+        { id: 'key', label: 'Key', fields: [
+          ['aroundDeg', 'around tile', 0, 360, 1],
+          ['tiltDeg', 'tilt from normal', 0, 180, 1],
+          ['energyW', 'power W', 0, 200000, 500],
+          ['size', 'width', 2, 80, 1],
+          ['sizeY', 'height', 1, 80, 1],
+        ]},
+        { id: 'fill', label: 'Fill', fields: [
+          ['aroundDeg', 'around tile', 0, 360, 1],
+          ['tiltDeg', 'tilt from normal', 0, 180, 1],
+          ['energyW', 'power W', 0, 120000, 500],
+          ['size', 'width', 2, 80, 1],
+          ['sizeY', 'height', 1, 80, 1],
+        ]},
+        { id: 'bounce', label: 'Bounce', fields: [
+          ['aroundDeg', 'around tile', 0, 360, 1],
+          ['tiltDeg', 'tilt from normal', 0, 180, 1],
+          ['energyW', 'power W', 0, 60000, 100],
+          ['size', 'width', 2, 80, 1],
+          ['sizeY', 'height', 1, 80, 1],
+        ]},
+        { id: 'rim', label: 'Rim', fields: [
+          ['aroundDeg', 'around tile', 0, 360, 1],
+          ['tiltDeg', 'tilt from normal', 0, 180, 1],
+          ['energyW', 'power W', 0, 60000, 100],
+        ]},
+      ];
+      const CARVE_FIELDS = [
+        ['depth', 'depth', 0, 0.03, 0.0005],
+        ['topSpread', 'top fillet', 0, 1, 0.01],
+        ['bottomSpread', 'bottom fillet', 0, 1, 0.01],
+        ['blurMm', 'blur mm', 0.02, 0.6, 0.01],
+        ['transitionMm', 'transition mm', 0.02, 1.6, 0.02],
+        ['paintEdge', 'paint edge', 0, 1, 0.01],
+        ['occlusionStrength', 'AO strength', 0, 1, 0.01],
+        ['occlusionDistance', 'AO distance', 0.01, 2, 0.01],
+      ];
+      const SPEED_FIELDS = [
+        ['samples', 'samples', 8, 128, 4],
+        ['gridScale', 'carve grid', 0.3, 1, 0.05],
+        ['occlusionSamples', 'AO samples', 1, 16, 1],
+      ];
+
+      const state = { params: null };
+
+      function row(parent, path, label, min, max, step, value) {
+        const wrap = document.createElement('div');
+        wrap.className = 'row';
+        const name = document.createElement('label');
+        name.textContent = label;
+        const range = document.createElement('input');
+        range.type = 'range';
+        range.min = min; range.max = max; range.step = step; range.value = value;
+        const number = document.createElement('input');
+        number.type = 'number';
+        number.min = min; number.max = max; number.step = step; number.value = value;
+        range.dataset.path = path;
+        number.dataset.path = path;
+        range.addEventListener('input', () => { number.value = range.value; });
+        number.addEventListener('input', () => { range.value = number.value; });
+        wrap.append(name, range, number);
+        parent.append(wrap);
+        return { range, number };
+      }
+
+      function getPath(obj, path) {
+        return path.split('.').reduce((value, key) => value?.[key], obj);
+      }
+      function setPath(obj, path, value) {
+        const keys = path.split('.');
+        let cursor = obj;
+        for (const key of keys.slice(0, -1)) {
+          if (typeof cursor[key] !== 'object' || cursor[key] === null) cursor[key] = {};
+          cursor = cursor[key];
+        }
+        cursor[keys[keys.length - 1]] = value;
+      }
+
+      function buildControls(params) {
+        const lights = document.getElementById('light-controls');
+        lights.innerHTML = '';
+        for (const group of LIGHT_FIELDS) {
+          const block = document.createElement('div');
+          block.className = 'light-group';
+          const title = document.createElement('h3');
+          title.textContent = group.label;
+          block.append(title);
+          for (const [key, label, min, max, step] of group.fields) {
+            const value = params.lights?.[group.id]?.[key] ?? (min + max) / 2;
+            row(block, `lights.${group.id}.${key}`, label, min, max, step, value);
+          }
+          lights.append(block);
+        }
+        const world = document.getElementById('worldStrength');
+        const worldN = document.getElementById('worldStrength-n');
+        world.value = params.worldStrength;
+        worldN.value = params.worldStrength;
+        world.oninput = () => { worldN.value = world.value; };
+        worldN.oninput = () => { world.value = worldN.value; };
+
+        const carve = document.getElementById('carve-controls');
+        carve.innerHTML = '';
+        for (const [key, label, min, max, step] of CARVE_FIELDS) {
+          row(carve, key, label, min, max, step, params[key]);
+        }
+        const speed = document.getElementById('speed-controls');
+        speed.innerHTML = '';
+        for (const [key, label, min, max, step] of SPEED_FIELDS) {
+          row(speed, key, label, min, max, step, params[key]);
+        }
+      }
+
+      function collect() {
+        const params = JSON.parse(JSON.stringify(state.params));
+        for (const input of document.querySelectorAll('input[data-path]')) {
+          if (input.type === 'range') continue;
+          setPath(params, input.dataset.path, Number(input.value));
+        }
+        params.worldStrength = Number(document.getElementById('worldStrength-n').value);
+        return params;
+      }
+
+      function renderPreviews(previews) {
+        const host = document.getElementById('previews');
+        host.innerHTML = '';
+        for (const preview of previews) {
+          const card = document.createElement('div');
+          card.className = 'preview';
+          const h = document.createElement('h2');
+          h.textContent = preview.label ?? String(preview.rotation);
+          const p = document.createElement('p');
+          p.textContent = `${preview.shell ?? 'flat shell'} · shell lighting unchanged, carved decal @2x`;
+          const img = document.createElement('img');
+          img.alt = h.textContent;
+          img.src = preview.url;
+          card.append(h, p, img);
+          host.append(card);
+        }
+      }
+
+      async function loadState() {
+        const response = await fetch('/api/state');
+        const data = await response.json();
+        state.params = data.params;
+        document.getElementById('face').textContent = data.face;
+        buildControls(data.params);
+        renderPreviews(data.previews);
+        if (!data.blenderFound) {
+          document.getElementById('status').textContent = `Blender not found at ${data.blender}`;
+        } else if (!data.shellsReady) {
+          document.getElementById('status').textContent = 'Rendering the four shell orientations once…';
+        }
+      }
+
+      document.getElementById('render').onclick = async () => {
+        const button = document.getElementById('render');
+        const status = document.getElementById('status');
+        button.disabled = true;
+        status.textContent = 'Rendering four light directions…';
+        try {
+          const response = await fetch('/api/render', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(collect()),
+          });
+          const data = await response.json();
+          if (!data.ok) throw new Error(data.error ?? 'render failed');
+          status.textContent = `Rendered in ${data.elapsed}s`;
+          document.getElementById('log').textContent = (data.log ?? []).join('\n');
+          renderPreviews(data.previews);
+          await loadStateValuesOnly();
+        } catch (error) {
+          status.textContent = String(error.message ?? error);
+        } finally {
+          button.disabled = false;
+        }
+      };
+
+      async function loadStateValuesOnly() {
+        const response = await fetch('/api/state');
+        const data = await response.json();
+        state.params = data.params;
+      }
+
+      document.getElementById('apply').onclick = async () => {
+        const status = document.getElementById('status');
+        try {
+          const response = await fetch('/api/apply', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(collect()),
+          });
+          const data = await response.json();
+          if (!data.ok) throw new Error(data.error ?? 'apply failed');
+          status.textContent = 'Applied lying params to decal-spec.json';
+        } catch (error) {
+          status.textContent = String(error.message ?? error);
+        }
+      };
+
+      loadState();
+    </script>
+  </body>
+</html>

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "riichiprac 2.5D shell baker",
-  "status": "Phase 1c refinement: per-slot front/back walls, per-slot standing hand, standing top hand and the darker silhouette-following shadow. The base scale, the eight-shell base catalogue, the 2-tile wall stack, the face-up dora shells and the side-wall lateral perspective are unchanged. The human hand is a 13-tile row plus a separate drawn-tile slot; the top hand is a dedicated 13-slot standing blue-back fan. Ponds and melds stay straight-on (azimuth 0) with four glyph orientations. The contact shadow is darker (peak 0.22) and follows the tile silhouette inside the body box, so the beveled corners are shadowed; its shape/falloff is the open calibration. Faces, atlas, layout and renderer are still later phases.",
+  "status": "Phase 1c refinement: per-slot front/back walls, per-slot standing hand, standing top hand and the darker silhouette-following shadow. The base scale, the eight-shell base catalogue, the 2-tile wall stack, the face-up dora shells and the side-wall lateral perspective are unchanged. The human hand is a 13-tile row plus a separate drawn-tile slot; the top hand is a dedicated 13-slot standing blue-back fan. Ponds and melds stay straight-on (azimuth 0) with four glyph orientations. The contact shadow is darker (peak 0.22) and follows the tile silhouette inside the body box, so the beveled corners are shadowed; its shape/falloff is the open calibration. Phase 2 landed the 37 face glyphs and the 16-shell startup atlas; layout and renderer are later phases.",
   "bakeImplemented": true,
   "blender": {
     "requiredVersion": "4.5.9"
@@ -55,7 +55,10 @@
         "coatRoughness": 0.1
       },
       "paint": {
-        "material": "engraving paint (runtime face glyphs)",
+        "material": "flat face paint (runtime 2D glyphs; also the carved decal paint)",
+        "roughness": 0.16,
+        "coat": 0.35,
+        "coatRoughness": 0.1,
         "red": "#a60c0c",
         "redBase": "#b93c3c"
       }
@@ -205,6 +208,40 @@
         "rotateXDeg": 0,
         "rotateYDeg": 0,
         "rotateZDeg": 90
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "faceLocalZ": "top"
+      },
+      "expectProjection": "landscape"
+    },
+    {
+      "id": "shell_flat_upright_180",
+      "projection": "low-angle-top-down",
+      "faceRotationDeg": 180,
+      "role": "face-up discards from the top river: the same straight-on camera and screen lighting as shell_flat_upright, with the tile rotated 180 about Z",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 180
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "faceLocalZ": "top"
+      },
+      "expectProjection": "portrait"
+    },
+    {
+      "id": "shell_flat_sideways_270",
+      "projection": "low-angle-top-down",
+      "faceRotationDeg": 270,
+      "role": "face-up discards from the left river: the same straight-on camera and screen lighting as shell_flat_sideways, with the tile rotated 270 about Z",
+      "pose": {
+        "rotateXDeg": 0,
+        "rotateYDeg": 0,
+        "rotateZDeg": 270
       },
       "camera": {
         "azimuthDeg": 0,
@@ -483,7 +520,7 @@
     }
   },
   "faceVariants": {
-    "status": "Plan only for Phase 2 (updated 2026-11-14 after the hand fan). Not implemented, not baked. The atlas is keyed by (shellType, faceVariant, tileFace), so a shell can host more than one pre-rasterised decal treatment.",
+    "status": "Landed 2026-11-15 for the three landed families: standing-front-00..12 + draw (14 hand slots), flat-topdown (shell_flat_upright) and flat-rot90 (shell_flat_sideways). The 37 glyph masters and the startup atlas are committed; see the architecture doc \u00a711 and tools/render/README.md. The per-slot dora families below remain the next face-variant task.",
     "atlasKey": "(shellType, faceVariant, tileFace)",
     "faceUpShells": {
       "shell_flat_upright": [

@@ -90,6 +90,16 @@ jobs:
       - name: Verify rendered-view assets
         run: node tools/render/scripts/check-shells.mjs
 
+      - name: Verify face glyphs and the atlas budget
+        run: node tools/render/scripts/check-faces.mjs
+
+      - name: Install render pipeline dependencies
+        working-directory: tools/render
+        run: npm ci
+
+      - name: Verify carved decals and the committed asset budget
+        run: node tools/render/scripts/check-decals.mjs --committed
+
       - name: Configure Pages
         uses: actions/configure-pages@v6
 

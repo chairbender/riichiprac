@@ -25,6 +25,21 @@ The full text of *Riichi Book 1* is checked out locally at:
 * When a scenario's teaching constraint is ambiguous, the book wins over any assumption in
   this file. Cite the chapter and the specific rule in the scenario's doc comment/report.
 
+## 1c. Asset size / memory budget policy (2026-11-16)
+
+**Do not optimize for the committed-asset (8 MB) or initial-load (4 MB) byte
+budgets during active development.** Visual quality and correctness come first.
+Do not reduce decal resolution, compression quality, variant count, shell
+detail, or delete assets (for example shadow sprites or fallback faces) to make
+a byte budget pass unless the user explicitly asks for an optimization pass.
+
+- Measure and record asset sizes, but treat over-budget numbers as information,
+  not a reason to change the art or the feature scope.
+- Budget checks are advisory during development. A separate, explicit
+  optimization task may later decide what to trade; do not pre-empt it.
+- This overrides any older instruction or check that treats those budgets as a
+  hard acceptance criterion.
+
 ## 2. Core Architecture: Constraint Satisfaction Problem (CSP)
 **CRITICAL RULE:** Do NOT attempt to build an "AI" or "Oracle" that generates a random hand and then calculates the best move. 
 The app is a **Constraint Satisfaction Generator**:

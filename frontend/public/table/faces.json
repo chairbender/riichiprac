@@ -1,0 +1,1027 @@
+{
+  "version": 1,
+  "generatedBy": "tools/render/scripts/bake-faces.mjs",
+  "coordinateSpace": "Each textureFile is an RGBA PNG of the glyph on a transparent background. The atlas maps its full [0,0,width,height] rect onto the shell faceQuad in faceQuadOrder (face-local top-left, top-right, bottom-right, bottom-left), so the glyph is placed on the tile face, then resolved to the published faceRotationDeg on screen. Width/height here are source pixels; the atlas draws them at shell-texture scale, not at these dimensions.",
+  "source": {
+    "repo": "https://github.com/SakaiTaka23/riichi-mahjong-tiles",
+    "path": "Regular/regular",
+    "commit": "f37d6cc2557498d23f13eb3e955e0e44e5c863ff",
+    "variant": "regular symbol-only SVG, 300 x 400 viewBox, transparent background",
+    "license": "CC0 1.0 public domain (upstream README: 'All assets are in the public domain')",
+    "notes": "The upstream Regular-Blank.svg is a red question mark, not an empty tile face, so it is deliberately not vendored. Haku (5z) is a real face: its symbol-only SVG rasterises to zero ink because a white dragon has no printed symbol."
+  },
+  "raster": {
+    "width": 288,
+    "height": 384,
+    "format": "8-bit RGBA PNG",
+    "shapeRendering": 2,
+    "paint": {
+      "redBase": "#b93c3c",
+      "red": "#a60c0c"
+    }
+  },
+  "blank": {
+    "face": "blank",
+    "reason": "An empty tile face is the bare shell; no glyph is composited."
+  },
+  "budget": {
+    "bytes": 1310720
+  },
+  "totals": {
+    "faces": 37,
+    "glyphAssets": 37,
+    "bytes": 576938
+  },
+  "faces": {
+    "1m": {
+      "textureFile": "faces/1m.png",
+      "sourceSvg": "faces/Regular-Man1.svg",
+      "upstreamPath": "Regular/regular/Regular-Man1.svg",
+      "kind": "number",
+      "suit": "man",
+      "rank": 1,
+      "redFillsRecoloured": 12,
+      "bytes": 9625,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 26045,
+        "inkFraction": 0.2355,
+        "opaquePixels": 23812,
+        "redPixels": 20659,
+        "inkBBox": {
+          "left": 36,
+          "top": 47,
+          "right": 250,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "a5dcffa17e5bb678ccd84f2168cc92025af65cdfd7e6b61452a48b79869d4233"
+      }
+    },
+    "2m": {
+      "textureFile": "faces/2m.png",
+      "sourceSvg": "faces/Regular-Man2.svg",
+      "upstreamPath": "Regular/regular/Regular-Man2.svg",
+      "kind": "number",
+      "suit": "man",
+      "rank": 2,
+      "redFillsRecoloured": 12,
+      "bytes": 10197,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 28354,
+        "inkFraction": 0.2564,
+        "opaquePixels": 25864,
+        "redPixels": 20659,
+        "inkBBox": {
+          "left": 36,
+          "top": 17,
+          "right": 260,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "1f6940f04bd2b5e60bbbeb14dd2a313e95a056c287dd40d9f01bc86c2d73ada8"
+      }
+    },
+    "3m": {
+      "textureFile": "faces/3m.png",
+      "sourceSvg": "faces/Regular-Man3.svg",
+      "upstreamPath": "Regular/regular/Regular-Man3.svg",
+      "kind": "number",
+      "suit": "man",
+      "rank": 3,
+      "redFillsRecoloured": 12,
+      "bytes": 10823,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 30736,
+        "inkFraction": 0.2779,
+        "opaquePixels": 28000,
+        "redPixels": 20659,
+        "inkBBox": {
+          "left": 36,
+          "top": 1,
+          "right": 251,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "7e53b22376c66c36600421f6b22257f1bc24966bcf1c85925b8a4e57201ff327"
+      }
+    },
+    "4m": {
+      "textureFile": "faces/4m.png",
+      "sourceSvg": "faces/Regular-Man4.svg",
+      "upstreamPath": "Regular/regular/Regular-Man4.svg",
+      "kind": "number",
+      "suit": "man",
+      "rank": 4,
+      "redFillsRecoloured": 12,
+      "bytes": 11858,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 33025,
+        "inkFraction": 0.2986,
+        "opaquePixels": 30226,
+        "redPixels": 20659,
+        "inkBBox": {
+          "left": 23,
+          "top": 13,
+          "right": 262,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "dc90d36b075a0766de3f7a1047251d840cad9019ddd94c9ee883a1728e575982"
+      }
+    },
+    "5m": {
+      "textureFile": "faces/5m.png",
+      "sourceSvg": "faces/Regular-Man5.svg",
+      "upstreamPath": "Regular/regular/Regular-Man5.svg",
+      "kind": "number",
+      "suit": "man",
+      "rank": 5,
+      "redFillsRecoloured": 12,
+      "bytes": 12238,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 33141,
+        "inkFraction": 0.2997,
+        "opaquePixels": 30230,
+        "redPixels": 20659,
+        "inkBBox": {
+          "left": 26,
+          "top": 3,
+          "right": 253,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "6b9188876192e40e5757002a6ce61f8bbe8cb62256ca7d65739d851cefc02074"
+      }
+    },
+    "6m": {
+      "textureFile": "faces/6m.png",
+      "sourceSvg": "faces/Regular-Man6.svg",
+      "upstreamPath": "Regular/regular/Regular-Man6.svg",
+      "kind": "number",
+      "suit": "man",
+      "rank": 6,
+      "redFillsRecoloured": 12,
+      "bytes": 11509,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 30417,
+        "inkFraction": 0.275,
+        "opaquePixels": 27638,
+        "redPixels": 20659,
+        "inkBBox": {
+          "left": 30,
+          "top": 4,
+          "right": 250,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "057217162ae24cc7f43495bc129e59e9a13d8ef74a380a959b51eb4e42167401"
+      }
+    },
+    "7m": {
+      "textureFile": "faces/7m.png",
+      "sourceSvg": "faces/Regular-Man7.svg",
+      "upstreamPath": "Regular/regular/Regular-Man7.svg",
+      "kind": "number",
+      "suit": "man",
+      "rank": 7,
+      "redFillsRecoloured": 12,
+      "bytes": 10940,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 29068,
+        "inkFraction": 0.2628,
+        "opaquePixels": 26527,
+        "redPixels": 20659,
+        "inkBBox": {
+          "left": 36,
+          "top": 3,
+          "right": 250,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "d74634dc374f497753bc79d4ba11a0d105c8d94cc6dbbf303ee1974ae1b399da"
+      }
+    },
+    "8m": {
+      "textureFile": "faces/8m.png",
+      "sourceSvg": "faces/Regular-Man8.svg",
+      "upstreamPath": "Regular/regular/Regular-Man8.svg",
+      "kind": "number",
+      "suit": "man",
+      "rank": 8,
+      "redFillsRecoloured": 12,
+      "bytes": 10675,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 27245,
+        "inkFraction": 0.2464,
+        "opaquePixels": 24817,
+        "redPixels": 20659,
+        "inkBBox": {
+          "left": 35,
+          "top": 17,
+          "right": 258,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "7422502f8ad5910bb8baf3a764949fa5a7e66bf3715de293b2dc2d8c62a4dbff"
+      }
+    },
+    "9m": {
+      "textureFile": "faces/9m.png",
+      "sourceSvg": "faces/Regular-Man9.svg",
+      "upstreamPath": "Regular/regular/Regular-Man9.svg",
+      "kind": "number",
+      "suit": "man",
+      "rank": 9,
+      "redFillsRecoloured": 12,
+      "bytes": 11704,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 29721,
+        "inkFraction": 0.2687,
+        "opaquePixels": 27041,
+        "redPixels": 20659,
+        "inkBBox": {
+          "left": 36,
+          "top": 6,
+          "right": 250,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "d2e37893cc45304d6d15b314d0ecc9c8312897f4e5e8e9c52fda090f7e1c7c54"
+      }
+    },
+    "1p": {
+      "textureFile": "faces/1p.png",
+      "sourceSvg": "faces/Regular-Pin1.svg",
+      "upstreamPath": "Regular/regular/Regular-Pin1.svg",
+      "kind": "number",
+      "suit": "pin",
+      "rank": 1,
+      "redFillsRecoloured": 10,
+      "bytes": 29264,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 63268,
+        "inkFraction": 0.5721,
+        "opaquePixels": 62431,
+        "redPixels": 6725,
+        "inkBBox": {
+          "left": 2,
+          "top": 50,
+          "right": 285,
+          "bottom": 333
+        }
+      },
+      "sha256": {
+        "decodedRgba": "bf9a4c0263ffb0d42b34de82b309c93b491e472c69008e3af97e86e6b725e5e0"
+      }
+    },
+    "2p": {
+      "textureFile": "faces/2p.png",
+      "sourceSvg": "faces/Regular-Pin2.svg",
+      "upstreamPath": "Regular/regular/Regular-Pin2.svg",
+      "kind": "number",
+      "suit": "pin",
+      "rank": 2,
+      "redFillsRecoloured": 4,
+      "bytes": 19269,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 46312,
+        "inkFraction": 0.4188,
+        "opaquePixels": 45288,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 58,
+          "top": 9,
+          "right": 229,
+          "bottom": 374
+        }
+      },
+      "sha256": {
+        "decodedRgba": "cab936988fd9de8bab349d89c8713b6b7a72716792445b95c9a7d1a7ce1fb1a7"
+      }
+    },
+    "3p": {
+      "textureFile": "faces/3p.png",
+      "sourceSvg": "faces/Regular-Pin3.svg",
+      "upstreamPath": "Regular/regular/Regular-Pin3.svg",
+      "kind": "number",
+      "suit": "pin",
+      "rank": 3,
+      "redFillsRecoloured": 6,
+      "bytes": 15792,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 32912,
+        "inkFraction": 0.2976,
+        "opaquePixels": 31867,
+        "redPixels": 3919,
+        "inkBBox": {
+          "left": 13,
+          "top": 13,
+          "right": 274,
+          "bottom": 370
+        }
+      },
+      "sha256": {
+        "decodedRgba": "574b9e7b4cb0388f8632f12afdf240d74db6c1c2c2e624f4332b13b0fffd9bb0"
+      }
+    },
+    "4p": {
+      "textureFile": "faces/4p.png",
+      "sourceSvg": "faces/Regular-Pin4.svg",
+      "upstreamPath": "Regular/regular/Regular-Pin4.svg",
+      "kind": "number",
+      "suit": "pin",
+      "rank": 4,
+      "redFillsRecoloured": 4,
+      "bytes": 18960,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 43902,
+        "inkFraction": 0.397,
+        "opaquePixels": 42504,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 16,
+          "top": 27,
+          "right": 271,
+          "bottom": 355
+        }
+      },
+      "sha256": {
+        "decodedRgba": "dd40b62540032e08303ac72b153d0fae67f3d9e9185a0267aeb0169fa279ab88"
+      }
+    },
+    "5p": {
+      "textureFile": "faces/5p.png",
+      "sourceSvg": "faces/Regular-Pin5.svg",
+      "upstreamPath": "Regular/regular/Regular-Pin5.svg",
+      "kind": "number",
+      "suit": "pin",
+      "rank": 5,
+      "redFillsRecoloured": 6,
+      "bytes": 23536,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 54879,
+        "inkFraction": 0.4962,
+        "opaquePixels": 53125,
+        "redPixels": 3927,
+        "inkBBox": {
+          "left": 16,
+          "top": 27,
+          "right": 271,
+          "bottom": 355
+        }
+      },
+      "sha256": {
+        "decodedRgba": "a2a86fcbec116be62f990daa0424070e1275ad6c86e9b8c209a934eae1228d02"
+      }
+    },
+    "6p": {
+      "textureFile": "faces/6p.png",
+      "sourceSvg": "faces/Regular-Pin6.svg",
+      "upstreamPath": "Regular/regular/Regular-Pin6.svg",
+      "kind": "number",
+      "suit": "pin",
+      "rank": 6,
+      "redFillsRecoloured": 12,
+      "bytes": 21727,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 58585,
+        "inkFraction": 0.5297,
+        "opaquePixels": 57249,
+        "redPixels": 15706,
+        "inkBBox": {
+          "left": 37,
+          "top": 12,
+          "right": 250,
+          "bottom": 371
+        }
+      },
+      "sha256": {
+        "decodedRgba": "3161ff940ad6ecdb26df8e3dfb2eeb271e8cee4ed27ad75bb96ab0d108dddcd3"
+      }
+    },
+    "7p": {
+      "textureFile": "faces/7p.png",
+      "sourceSvg": "faces/Regular-Pin7.svg",
+      "upstreamPath": "Regular/regular/Regular-Pin7.svg",
+      "kind": "number",
+      "suit": "pin",
+      "rank": 7,
+      "redFillsRecoloured": 12,
+      "bytes": 25581,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 66254,
+        "inkFraction": 0.5991,
+        "opaquePixels": 64938,
+        "redPixels": 15716,
+        "inkBBox": {
+          "left": 6,
+          "top": 2,
+          "right": 281,
+          "bottom": 380
+        }
+      },
+      "sha256": {
+        "decodedRgba": "422b044a024472e9bf77329bfdb746dd7138f89ef9035ded4d14112f2ef57b5a"
+      }
+    },
+    "8p": {
+      "textureFile": "faces/8p.png",
+      "sourceSvg": "faces/Regular-Pin8.svg",
+      "upstreamPath": "Regular/regular/Regular-Pin8.svg",
+      "kind": "number",
+      "suit": "pin",
+      "rank": 8,
+      "redFillsRecoloured": 4,
+      "bytes": 29861,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 73982,
+        "inkFraction": 0.669,
+        "opaquePixels": 72578,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 35,
+          "top": 4,
+          "right": 252,
+          "bottom": 379
+        }
+      },
+      "sha256": {
+        "decodedRgba": "d50e691d97e8405aaec9db59f43a1fb88aeba9b554538eb0bb0ff7bc5fd0849e"
+      }
+    },
+    "9p": {
+      "textureFile": "faces/9p.png",
+      "sourceSvg": "faces/Regular-Pin9.svg",
+      "upstreamPath": "Regular/regular/Regular-Pin9.svg",
+      "kind": "number",
+      "suit": "pin",
+      "rank": 9,
+      "redFillsRecoloured": 10,
+      "bytes": 32209,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 86917,
+        "inkFraction": 0.7859,
+        "opaquePixels": 84874,
+        "redPixels": 11785,
+        "inkBBox": {
+          "left": 1,
+          "top": 1,
+          "right": 286,
+          "bottom": 382
+        }
+      },
+      "sha256": {
+        "decodedRgba": "167025d33b53997f3d01b46dc0188eadbb38243c19cb2537a34c55d6a9eb196b"
+      }
+    },
+    "1s": {
+      "textureFile": "faces/1s.png",
+      "sourceSvg": "faces/Regular-Sou1.svg",
+      "upstreamPath": "Regular/regular/Regular-Sou1.svg",
+      "kind": "number",
+      "suit": "sou",
+      "rank": 1,
+      "redFillsRecoloured": 6,
+      "bytes": 28192,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 54541,
+        "inkFraction": 0.4932,
+        "opaquePixels": 51760,
+        "redPixels": 3478,
+        "inkBBox": {
+          "left": 4,
+          "top": 7,
+          "right": 283,
+          "bottom": 379
+        }
+      },
+      "sha256": {
+        "decodedRgba": "81fd9085123176a1f2c45f531bedb549ed21dbc827db24ffd8800dca93886f07"
+      }
+    },
+    "2s": {
+      "textureFile": "faces/2s.png",
+      "sourceSvg": "faces/Regular-Sou2.svg",
+      "upstreamPath": "Regular/regular/Regular-Sou2.svg",
+      "kind": "number",
+      "suit": "sou",
+      "rank": 2,
+      "redFillsRecoloured": 4,
+      "bytes": 7808,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 21655,
+        "inkFraction": 0.1958,
+        "opaquePixels": 20805,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 103,
+          "top": 4,
+          "right": 184,
+          "bottom": 381
+        }
+      },
+      "sha256": {
+        "decodedRgba": "85daf42762377ac8cf416630e8bb2aef91c4392f3aec41b2197efce061dcd2b2"
+      }
+    },
+    "3s": {
+      "textureFile": "faces/3s.png",
+      "sourceSvg": "faces/Regular-Sou3.svg",
+      "upstreamPath": "Regular/regular/Regular-Sou3.svg",
+      "kind": "number",
+      "suit": "sou",
+      "rank": 3,
+      "redFillsRecoloured": 4,
+      "bytes": 10437,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 32545,
+        "inkFraction": 0.2943,
+        "opaquePixels": 31207,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 7,
+          "top": 4,
+          "right": 283,
+          "bottom": 381
+        }
+      },
+      "sha256": {
+        "decodedRgba": "d29a7e51dfed2d0a1a835a1a1494df8ee825c5f6a63114a65082cd113c0b8969"
+      }
+    },
+    "4s": {
+      "textureFile": "faces/4s.png",
+      "sourceSvg": "faces/Regular-Sou4.svg",
+      "upstreamPath": "Regular/regular/Regular-Sou4.svg",
+      "kind": "number",
+      "suit": "sou",
+      "rank": 4,
+      "redFillsRecoloured": 4,
+      "bytes": 12597,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 43533,
+        "inkFraction": 0.3936,
+        "opaquePixels": 41607,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 28,
+          "top": 4,
+          "right": 258,
+          "bottom": 381
+        }
+      },
+      "sha256": {
+        "decodedRgba": "408c222f83344811468867d8cf5b3cccbc1ecf541a4a7d8e0c8f9055b6046d27"
+      }
+    },
+    "5s": {
+      "textureFile": "faces/5s.png",
+      "sourceSvg": "faces/Regular-Sou5.svg",
+      "upstreamPath": "Regular/regular/Regular-Sou5.svg",
+      "kind": "number",
+      "suit": "sou",
+      "rank": 5,
+      "redFillsRecoloured": 11,
+      "bytes": 16346,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 54258,
+        "inkFraction": 0.4906,
+        "opaquePixels": 51998,
+        "redPixels": 9176,
+        "inkBBox": {
+          "left": 7,
+          "top": 4,
+          "right": 283,
+          "bottom": 381
+        }
+      },
+      "sha256": {
+        "decodedRgba": "5df0e99f65728c29fa4e9dda0f7e023577909d4b818cc0930b0fa5c33ef52112"
+      }
+    },
+    "6s": {
+      "textureFile": "faces/6s.png",
+      "sourceSvg": "faces/Regular-Sou6.svg",
+      "upstreamPath": "Regular/regular/Regular-Sou6.svg",
+      "kind": "number",
+      "suit": "sou",
+      "rank": 6,
+      "redFillsRecoloured": 4,
+      "bytes": 17045,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 65086,
+        "inkFraction": 0.5885,
+        "opaquePixels": 62404,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 7,
+          "top": 4,
+          "right": 283,
+          "bottom": 381
+        }
+      },
+      "sha256": {
+        "decodedRgba": "b2d8f45e34c4cda0211b5f49552de7c3a18ca716067b5d8dae77480a2ab8e97d"
+      }
+    },
+    "7s": {
+      "textureFile": "faces/7s.png",
+      "sourceSvg": "faces/Regular-Sou7.svg",
+      "upstreamPath": "Regular/regular/Regular-Sou7.svg",
+      "kind": "number",
+      "suit": "sou",
+      "rank": 7,
+      "redFillsRecoloured": 11,
+      "bytes": 14864,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 43336,
+        "inkFraction": 0.3919,
+        "opaquePixels": 40989,
+        "redPixels": 5350,
+        "inkBBox": {
+          "left": 10,
+          "top": 6,
+          "right": 276,
+          "bottom": 375
+        }
+      },
+      "sha256": {
+        "decodedRgba": "b540e89a877442773ee179279db4cd97a394fe8ec8fd3130200b24db42dd1725"
+      }
+    },
+    "8s": {
+      "textureFile": "faces/8s.png",
+      "sourceSvg": "faces/Regular-Sou8.svg",
+      "upstreamPath": "Regular/regular/Regular-Sou8.svg",
+      "kind": "number",
+      "suit": "sou",
+      "rank": 8,
+      "redFillsRecoloured": 4,
+      "bytes": 17906,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 66916,
+        "inkFraction": 0.6051,
+        "opaquePixels": 64855,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 5,
+          "top": 4,
+          "right": 283,
+          "bottom": 379
+        }
+      },
+      "sha256": {
+        "decodedRgba": "faaf8f8109a9bed32a7f560c772dc3b147886c4bd7bcdd85edf1822dfade9b6c"
+      }
+    },
+    "9s": {
+      "textureFile": "faces/9s.png",
+      "sourceSvg": "faces/Regular-Sou9.svg",
+      "upstreamPath": "Regular/regular/Regular-Sou9.svg",
+      "kind": "number",
+      "suit": "sou",
+      "rank": 9,
+      "redFillsRecoloured": 25,
+      "bytes": 19897,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 55710,
+        "inkFraction": 0.5037,
+        "opaquePixels": 52681,
+        "redPixels": 16038,
+        "inkBBox": {
+          "left": 10,
+          "top": 6,
+          "right": 276,
+          "bottom": 375
+        }
+      },
+      "sha256": {
+        "decodedRgba": "63df4f9c9849706c07ac1866eda81ab2e9c9b28f37a092b7af4b709863b315da"
+      }
+    },
+    "5mr": {
+      "textureFile": "faces/5mr.png",
+      "sourceSvg": "faces/Regular-Man5-Dora.svg",
+      "upstreamPath": "Regular/regular/Regular-Man5-Dora.svg",
+      "kind": "number",
+      "suit": "man",
+      "rank": 5,
+      "red": true,
+      "redFillsRecoloured": 20,
+      "bytes": 13874,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 34328,
+        "inkFraction": 0.3104,
+        "opaquePixels": 31303,
+        "redPixels": 34328,
+        "inkBBox": {
+          "left": 26,
+          "top": 3,
+          "right": 253,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "9399250cd98895bc2c89494e2892db31ba80ad611031ecb685993679ffcceb8e"
+      }
+    },
+    "5pr": {
+      "textureFile": "faces/5pr.png",
+      "sourceSvg": "faces/Regular-Pin5-Dora.svg",
+      "upstreamPath": "Regular/regular/Regular-Pin5-Dora.svg",
+      "kind": "number",
+      "suit": "pin",
+      "rank": 5,
+      "red": true,
+      "redFillsRecoloured": 20,
+      "bytes": 23787,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 56061,
+        "inkFraction": 0.5069,
+        "opaquePixels": 54195,
+        "redPixels": 45079,
+        "inkBBox": {
+          "left": 16,
+          "top": 27,
+          "right": 271,
+          "bottom": 355
+        }
+      },
+      "sha256": {
+        "decodedRgba": "6fc4a9dbe97f244ef589e367fed5e76d1abfa4f9b5ec30e4ac145f371f82eaee"
+      }
+    },
+    "5sr": {
+      "textureFile": "faces/5sr.png",
+      "sourceSvg": "faces/Regular-Sou5-Dora.svg",
+      "upstreamPath": "Regular/regular/Regular-Sou5-Dora.svg",
+      "kind": "number",
+      "suit": "sou",
+      "rank": 5,
+      "red": true,
+      "redFillsRecoloured": 40,
+      "bytes": 17443,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 55443,
+        "inkFraction": 0.5013,
+        "opaquePixels": 53068,
+        "redPixels": 46952,
+        "inkBBox": {
+          "left": 7,
+          "top": 4,
+          "right": 283,
+          "bottom": 381
+        }
+      },
+      "sha256": {
+        "decodedRgba": "9f6ff8a7a33511890ff09ae9139a8c74789a716c288811b353f1ee57fb74d883"
+      }
+    },
+    "1z": {
+      "textureFile": "faces/1z.png",
+      "sourceSvg": "faces/Regular-Ton.svg",
+      "upstreamPath": "Regular/regular/Regular-Ton.svg",
+      "kind": "honour",
+      "honour": "east",
+      "redFillsRecoloured": 4,
+      "bytes": 10506,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 28763,
+        "inkFraction": 0.2601,
+        "opaquePixels": 26547,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 9,
+          "top": 6,
+          "right": 278,
+          "bottom": 377
+        }
+      },
+      "sha256": {
+        "decodedRgba": "d40e779b9b3f6492d8e98419345df4c8d833dfe29b0be62cc6f55fd2d4eb7392"
+      }
+    },
+    "2z": {
+      "textureFile": "faces/2z.png",
+      "sourceSvg": "faces/Regular-Nan.svg",
+      "upstreamPath": "Regular/regular/Regular-Nan.svg",
+      "kind": "honour",
+      "honour": "south",
+      "redFillsRecoloured": 4,
+      "bytes": 11656,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 31923,
+        "inkFraction": 0.2887,
+        "opaquePixels": 29571,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 22,
+          "top": 21,
+          "right": 265,
+          "bottom": 362
+        }
+      },
+      "sha256": {
+        "decodedRgba": "aa55d552a68ec67a38cbb3bba9fef024312a17c92b9b6b24365983e5c1ada9dd"
+      }
+    },
+    "3z": {
+      "textureFile": "faces/3z.png",
+      "sourceSvg": "faces/Regular-Shaa.svg",
+      "upstreamPath": "Regular/regular/Regular-Shaa.svg",
+      "kind": "honour",
+      "honour": "west",
+      "redFillsRecoloured": 4,
+      "bytes": 9767,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 28199,
+        "inkFraction": 0.255,
+        "opaquePixels": 26181,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 22,
+          "top": 59,
+          "right": 265,
+          "bottom": 324
+        }
+      },
+      "sha256": {
+        "decodedRgba": "4d5401b4fd182fcf3f13295f28f558db165306e3df12ede9c313c8d68f8e7e59"
+      }
+    },
+    "4z": {
+      "textureFile": "faces/4z.png",
+      "sourceSvg": "faces/Regular-Pei.svg",
+      "upstreamPath": "Regular/regular/Regular-Pei.svg",
+      "kind": "honour",
+      "honour": "north",
+      "redFillsRecoloured": 4,
+      "bytes": 8956,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 22584,
+        "inkFraction": 0.2042,
+        "opaquePixels": 20893,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 9,
+          "top": 56,
+          "right": 279,
+          "bottom": 309
+        }
+      },
+      "sha256": {
+        "decodedRgba": "f92eaa533ed136f99cd1c674ee71cc29a3b04988ac948d46cbeeb9e4e74bd0d9"
+      }
+    },
+    "5z": {
+      "textureFile": "faces/5z.png",
+      "sourceSvg": "faces/Regular-Haku.svg",
+      "upstreamPath": "Regular/regular/Regular-Haku.svg",
+      "kind": "honour",
+      "honour": "haku",
+      "redFillsRecoloured": 4,
+      "bytes": 1232,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 0,
+        "inkFraction": 0,
+        "opaquePixels": 0,
+        "redPixels": 0,
+        "inkBBox": null
+      },
+      "sha256": {
+        "decodedRgba": "ecdd54e7af52d8ca757fa4f6b58884c0d8b5c487abeebdf23a4008a3b1b810bf"
+      }
+    },
+    "6z": {
+      "textureFile": "faces/6z.png",
+      "sourceSvg": "faces/Regular-Hatsu.svg",
+      "upstreamPath": "Regular/regular/Regular-Hatsu.svg",
+      "kind": "honour",
+      "honour": "hatsu",
+      "redFillsRecoloured": 4,
+      "bytes": 11945,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 29571,
+        "inkFraction": 0.2674,
+        "opaquePixels": 26727,
+        "redPixels": 0,
+        "inkBBox": {
+          "left": 2,
+          "top": 42,
+          "right": 285,
+          "bottom": 326
+        }
+      },
+      "sha256": {
+        "decodedRgba": "5c456be0e52261cd3f365af317bd8006b37b1b7959b88b05ca41d76d96b3b100"
+      }
+    },
+    "7z": {
+      "textureFile": "faces/7z.png",
+      "sourceSvg": "faces/Regular-Chun.svg",
+      "upstreamPath": "Regular/regular/Regular-Chun.svg",
+      "kind": "honour",
+      "honour": "chun",
+      "redFillsRecoloured": 6,
+      "bytes": 6912,
+      "measured": {
+        "width": 288,
+        "height": 384,
+        "inkPixels": 22061,
+        "inkFraction": 0.1995,
+        "opaquePixels": 20695,
+        "redPixels": 22061,
+        "inkBBox": {
+          "left": 34,
+          "top": 2,
+          "right": 258,
+          "bottom": 381
+        }
+      },
+      "sha256": {
+        "decodedRgba": "dceec76473e8aabc03931a0b78582567fb2b0c966df0bcf38edd6e82601e1178"
+      }
+    }
+  }
+}
