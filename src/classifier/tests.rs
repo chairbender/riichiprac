@@ -315,6 +315,190 @@ fn classify_unique_is_ok_for_every_generated_b1_state() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Mortal as the tiebreaker.
+// ---------------------------------------------------------------------------
+
+use crate::ai::wasm_bridge::{ActionEvaluation, Evaluation};
+
+/// A minimal evaluation whose top action is `top`, from the state's point of
+/// view. Only the action name participates in agreement, so the probability
+/// list is a formality.
+fn evaluation_for(top: &str, riichi_discard: Option<&str>) -> Evaluation {
+    Evaluation {
+        model: "mortal_298k.safetensors".to_string(),
+        expected_value: 0.0,
+        recommended_action: top.to_string(),
+        riichi_discard: riichi_discard.map(str::to_string),
+        evaluations: vec![ActionEvaluation::from_parts(top, "discard", None, 1.0)],
+    }
+}
+
+/// The model's top action that agrees with one match, as an evaluation.
+fn evaluation_agreeing_with(matched: &Match) -> Evaluation {
+    match &matched.correct_action {
+        CorrectAction::Riichi { discard } => evaluation_for("Riichi", Some(discard.as_str())),
+        other => evaluation_for(
+            &format!(
+                "Discard_{}",
+                other.tile().expect("a ch7 match names a discard")
+            ),
+            None,
+        ),
+    }
+}
+
+/// A generated state where the general rule and the bad-wait box disagree.
+fn ch7_conflict_state() -> GameState {
+    for _ in 0..160 {
+        let state = generated(ScenarioId::RiichiJudgement);
+        let (Some(general), Some(boxed)) = (
+            classify(&state, ScenarioId::RiichiJudgement),
+            classify(&state, ScenarioId::DamaBadWait),
+        ) else {
+            continue;
+        };
+        if !general.same_answer(&boxed) {
+            return state;
+        }
+    }
+    panic!("the generators must produce a ch7 disagreement");
+}
+
+#[test]
+fn mortal_breaks_a_ch7_disagreement_toward_the_general_rule() {
+    let state = ch7_conflict_state();
+    let general = classify(&state, ScenarioId::RiichiJudgement).expect("the general rule");
+    let boxed = classify(&state, ScenarioId::DamaBadWait).expect("the bad-wait box");
+    assert!(!general.same_answer(&boxed));
+
+    let evaluation = evaluation_agreeing_with(&general);
+    let label = classify_with_mortal(&state, &evaluation)
+        .expect("Mortal distinguishes the two answers")
+        .expect("a label");
+    assert_eq!(label.matched, general);
+    assert_eq!(
+        label.resolution,
+        Resolution::MortalTiebreak {
+            rejected: vec![ScenarioId::DamaBadWait]
+        }
+    );
+    label.matched.validate(&state).expect("a legal answer");
+}
+
+#[test]
+fn mortal_breaks_a_ch7_disagreement_toward_the_exception() {
+    let state = ch7_conflict_state();
+    let general = classify(&state, ScenarioId::RiichiJudgement).expect("the general rule");
+    let boxed = classify(&state, ScenarioId::DamaBadWait).expect("the bad-wait box");
+
+    let evaluation = evaluation_agreeing_with(&boxed);
+    let label = classify_with_mortal(&state, &evaluation)
+        .expect("Mortal distinguishes the two answers")
+        .expect("a label");
+    assert_eq!(label.matched, boxed);
+    assert_eq!(
+        label.resolution,
+        Resolution::MortalTiebreak {
+            rejected: vec![ScenarioId::RiichiJudgement]
+        }
+    );
+    label.matched.validate(&state).expect("a legal answer");
+    assert_ne!(label.matched, general);
+}
+
+#[test]
+fn a_model_that_agrees_with_neither_keeps_the_conflict() {
+    let state = ch7_conflict_state();
+    let matches = classify_all(&state);
+    let answers: Vec<String> = matches
+        .iter()
+        .flat_map(|matched| matched.answer_set())
+        .collect();
+    let other = support::turn(&state)
+        .expect("a turn")
+        .hand
+        .iter()
+        .map(ToString::to_string)
+        .find(|tile| !answers.contains(tile))
+        .expect("a hand tile that is not an answer");
+    let evaluation = evaluation_for(&format!("Discard_{other}"), None);
+
+    let conflict = classify_with_mortal(&state, &evaluation)
+        .expect_err("neither book rule is what Mortal plays");
+    assert!(is_documented_ch7_conflict(&conflict.matches));
+    // The model-free path agrees with the model-free fallback.
+    assert_eq!(
+        classify_unique(&state)
+            .expect_err("the disagreement stands")
+            .lessons(),
+        conflict.lessons()
+    );
+}
+
+#[test]
+fn a_single_match_needs_no_tiebreak() {
+    let state = generated(ScenarioId::DefenseStuckHeuristic);
+    let Some(matched) = classify(&state, ScenarioId::DefenseStuckHeuristic) else {
+        return;
+    };
+    if classify_all(&state).len() != 1 {
+        return;
+    }
+    let evaluation = evaluation_for("Pass", None);
+    let label = classify_with_mortal(&state, &evaluation)
+        .expect("one match is not a disagreement")
+        .expect("a label");
+    assert_eq!(label.matched, matched);
+    assert_eq!(label.resolution, Resolution::Single);
+}
+
+#[test]
+fn agreeing_matches_resolve_without_asking_the_model() {
+    // The push/fold fold cell and the safety chart grade the same safe tile;
+    // an evaluation that agrees with nothing extra must not disturb that.
+    let state = generated(ScenarioId::DefenseSafetyChart);
+    let matches = classify_all(&state);
+    if matches.len() < 2
+        || !matches[1..]
+            .iter()
+            .all(|other| matches[0].same_answer(other))
+    {
+        return;
+    }
+    let evaluation = evaluation_for("Pass", None);
+    let label = classify_with_mortal(&state, &evaluation)
+        .expect("agreeing matches are not a conflict")
+        .expect("a label");
+    assert_eq!(label.resolution, Resolution::Agreement);
+    assert!(label.matched.same_answer(&matches[0]));
+}
+
+#[test]
+fn mortal_agreement_uses_the_equivalents_and_the_riichi_discard() {
+    let state = generated(ScenarioId::DamaImprovingHand);
+    let matched = classify(&state, ScenarioId::DamaImprovingHand).expect("the lesson");
+    for equivalent in &matched.equivalent_tiles {
+        let evaluation = evaluation_for(&format!("Discard_{equivalent}"), None);
+        assert!(
+            mortal_agrees(&state, &matched, &evaluation),
+            "an equivalent discard is agreement"
+        );
+    }
+
+    let riichi = generated(ScenarioId::RiichiJudgement);
+    let matched = classify(&riichi, ScenarioId::RiichiJudgement).expect("the lesson");
+    if let CorrectAction::Riichi { discard } = &matched.correct_action {
+        let agreeing = evaluation_for("Riichi", Some(discard.as_str()));
+        assert!(mortal_agrees(&riichi, &matched, &agreeing));
+        let other = evaluation_for("Riichi", Some("1z"));
+        assert!(
+            discard == "1z" || !mortal_agrees(&riichi, &matched, &other),
+            "a different second-pass discard is a disagreement"
+        );
+    }
+}
+
 #[test]
 fn a_lesson_without_a_classifier_is_not_recognised() {
     assert!(classifier(ScenarioId::SanshokuPursuit).is_none());

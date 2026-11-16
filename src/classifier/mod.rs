@@ -67,12 +67,27 @@
 //!   cell (both are "specific" exceptions the book does not rank).
 //!
 //! Each recogniser mirrors its shipped lesson, so [`classify_all`] can return
-//! two ch. 7 matches with different answers. [`classify_unique`] reports a
-//! [`Conflict`] rather than picking one, and the miner must not ship those
-//! states until the lesson owners settle the cell. The disagreement never
-//! crosses a lesson family: the ch. 8 push/fold and defense recognisers all
-//! agree with each other by construction (see [`defense`]'s bottom-row note).
-//! The test suite pins the ch. 7 disagreement and proves nothing else conflicts.
+//! two ch. 7 matches with different answers.
+//!
+//! # Mortal is the tiebreaker
+//!
+//! When the book disagrees with itself, the label is **the lesson whose answer
+//! Mortal's top action agrees with** (the model's `recommended_action` is the
+//! match's `correct_action` or one of its `equivalent_tiles`):
+//!
+//! - [`classify_with_mortal`] does exactly that and records the decision as
+//!   [`Resolution::MortalTiebreak`] with the rejected lessons. This is the
+//!   miner's path whenever an evaluation exists.
+//! - If no match, or more than one, agrees with the model, the disagreement
+//!   stays a [`Conflict`]: the model cannot arbitrate what it does not
+//!   distinguish, so the state is not shipped.
+//! - [`classify_unique`] is the model-free fallback and reports a [`Conflict`]
+//!   for any disagreement.
+//!
+//! The disagreement never crosses a lesson family: the ch. 8 push/fold and
+//! defense recognisers all agree with each other by construction (see
+//! [`defense`]'s bottom-row note). The test suite pins the ch. 7 disagreement,
+//! both Mortal outcomes, and proves nothing else conflicts.
 
 pub mod defense;
 pub mod push_fold;
@@ -80,6 +95,8 @@ pub mod riichi;
 
 pub(crate) mod support;
 
+use crate::ai::wasm_bridge::Evaluation;
+use crate::fuzz::{FuzzOutcome, compare_action_set};
 use crate::generator::ScenarioId;
 use crate::state::{
     CorrectAction, CorrectActionType, DamaReason, GameState, RiichiTrigger, TargetAction,
@@ -359,9 +376,9 @@ pub fn classify(state: &GameState, lesson: ScenarioId) -> Option<Match> {
 /// Run every registered recogniser, in precedence order.
 ///
 /// More than one lesson can match the same state (see the module docs on the
-/// known ch. 7 conflict, and on a defense board that is also a fastest-tile
-/// ranking drill). Callers that need a single label must use
-/// [`classify_unique`].
+/// known ch. 7 disagreement, and on a defense board that is also a
+/// fastest-tile ranking drill). Callers that need a single label must use
+/// [`classify_with_mortal`] (preferred) or [`classify_unique`].
 pub fn classify_all(state: &GameState) -> Vec<Match> {
     CLASSIFIERS
         .iter()
@@ -393,6 +410,48 @@ impl std::fmt::Display for Conflict {
     }
 }
 
+/// How a label was settled when more than one book rule matched.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Resolution {
+    /// Only one lesson matched.
+    Single,
+    /// Several lessons matched and all grade the same answer; the label is the
+    /// first in registry order.
+    Agreement,
+    /// Several lessons disagreed and Mortal's top action agreed with exactly
+    /// one of them, which became the label.
+    MortalTiebreak {
+        /// The lessons Mortal did not agree with, in precedence order.
+        rejected: Vec<ScenarioId>,
+    },
+}
+
+/// A settled label plus how it was settled.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Label {
+    pub matched: Match,
+    pub resolution: Resolution,
+}
+
+/// True when Mortal's top action is this match's book answer.
+///
+/// "Agreeing" uses the app's own comparison rule
+/// ([`crate::fuzz::compare_action_set`]): the model's recommendation must be
+/// the match's `correct_action` or one of its `equivalent_tiles`, with a Riichi
+/// answer also matching the evaluator's second-pass discard. The evaluation must
+/// have been produced from this same state.
+pub fn mortal_agrees(state: &GameState, matched: &Match, evaluation: &Evaluation) -> bool {
+    let legal = crate::ai::actions::legal_action_mask(state);
+    compare_action_set(
+        &matched.correct_action,
+        &matched.equivalent_tiles,
+        evaluation,
+        &legal,
+    )
+    .outcome
+        == FuzzOutcome::Agrees
+}
+
 /// The single label for a state, or a [`Conflict`] when the book rules disagree.
 ///
 /// - No classifier matches: `Ok(None)`.
@@ -401,6 +460,10 @@ impl std::fmt::Display for Conflict {
 ///   ambiguous, the answer is not).
 /// - Several match different answers: `Err(Conflict)` — fail closed; the miner
 ///   must not pick one.
+///
+/// The miner should prefer [`classify_with_mortal`], which settles exactly that
+/// last case with the model's top action (see the module docs). This function is
+/// the model-free fallback for when no evaluation is available.
 pub fn classify_unique(state: &GameState) -> Result<Option<Match>, Conflict> {
     let mut matches = classify_all(state);
     match matches.len() {
@@ -412,6 +475,65 @@ pub fn classify_unique(state: &GameState) -> Result<Option<Match>, Conflict> {
                 Ok(Some(matches.remove(0)))
             } else {
                 Err(Conflict { matches })
+            }
+        }
+    }
+}
+
+/// The single label for a state, using Mortal as the tiebreaker.
+///
+/// This is [`classify_unique`] plus the selection rule the miner uses when the
+/// book disagrees with itself: if the matching lessons grade different answers,
+/// the label is the lesson whose answer Mortal's top action agrees with
+/// ([`mortal_agrees`]). If no match, or more than one, agrees with the model,
+/// the disagreement stays a [`Conflict`] — the model cannot arbitrate what it
+/// does not distinguish.
+///
+/// `evaluation` must be the model's evaluation of `state` itself; the legal
+/// mask is taken from `state` and the comparison uses the app's grading rule
+/// (including `equivalent_tiles` and the Riichi second-pass discard).
+pub fn classify_with_mortal(
+    state: &GameState,
+    evaluation: &Evaluation,
+) -> Result<Option<Label>, Conflict> {
+    let mut matches = classify_all(state);
+    match matches.len() {
+        0 => Ok(None),
+        1 => Ok(Some(Label {
+            matched: matches.remove(0),
+            resolution: Resolution::Single,
+        })),
+        _ => {
+            if matches[1..]
+                .iter()
+                .all(|other| matches[0].same_answer(other))
+            {
+                return Ok(Some(Label {
+                    matched: matches.remove(0),
+                    resolution: Resolution::Agreement,
+                }));
+            }
+
+            let agreed: Vec<usize> = matches
+                .iter()
+                .enumerate()
+                .filter(|(_, matched)| mortal_agrees(state, matched, evaluation))
+                .map(|(index, _)| index)
+                .collect();
+            match agreed.as_slice() {
+                [only] => {
+                    let rejected = matches
+                        .iter()
+                        .enumerate()
+                        .filter(|(index, _)| index != only)
+                        .map(|(_, matched)| matched.lesson)
+                        .collect();
+                    Ok(Some(Label {
+                        matched: matches.swap_remove(*only),
+                        resolution: Resolution::MortalTiebreak { rejected },
+                    }))
+                }
+                _ => Err(Conflict { matches }),
             }
         }
     }

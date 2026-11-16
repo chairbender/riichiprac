@@ -41,7 +41,7 @@ pub mod provenance;
 pub mod source;
 pub mod storage;
 
-pub use classifier::classify_decision;
+pub use classifier::{classify_decision, classify_decision_with_mortal};
 pub use funnel::{FunnelCounter, FunnelStage};
 pub use licence::{LicenceError, LicenseInfo, allowed_data_licence, data_commercial_use_all};
 pub use provenance::{

@@ -16,7 +16,8 @@
 //! 0 and fills the derived hand fields, but most random self-play positions do
 //! not satisfy any book lesson. `Ok(None)` is the common, expected answer.
 
-use crate::classifier::{self, Conflict, Match};
+use crate::ai::wasm_bridge::Evaluation;
+use crate::classifier::{self, Conflict, Label, Match};
 use crate::replay::walk::DecisionSnapshot;
 
 /// Classify one reconstructed decision.
@@ -33,6 +34,28 @@ pub fn classify_decision(snapshot: &DecisionSnapshot) -> Result<Option<Match>, C
         return Ok(None);
     }
     classifier::classify_unique(&snapshot.state)
+}
+
+/// Classify one reconstructed decision with Mortal as the tiebreaker.
+///
+/// This is the miner's preferred path whenever the L1 labeler has an
+/// [`Evaluation`] for the snapshot: when two book lessons read the same visible
+/// position differently, the label is the lesson whose answer the model's top
+/// action agrees with (see [`crate::classifier::classify_with_mortal`]). The
+/// returned [`Label`] carries the [`crate::classifier::Resolution`] so the
+/// candidate row can record `selection_reason: "mortal_tiebreak"`.
+///
+/// `evaluation` must be the model's evaluation of the snapshot's own state.
+/// With no evaluation, use [`classify_decision`], which fails closed on a
+/// disagreement.
+pub fn classify_decision_with_mortal(
+    snapshot: &DecisionSnapshot,
+    evaluation: &Evaluation,
+) -> Result<Option<Label>, Conflict> {
+    if snapshot.furiten {
+        return Ok(None);
+    }
+    classifier::classify_with_mortal(&snapshot.state, evaluation)
 }
 
 #[cfg(test)]
@@ -115,6 +138,55 @@ mod tests {
             let first = classify_decision(decision);
             let second = classify_decision(decision);
             assert_eq!(first, second, "decision {} flipped", decision.decision_id);
+        }
+    }
+
+    #[test]
+    fn the_mortal_path_keeps_every_model_free_label() {
+        use crate::ai::wasm_bridge::{ActionEvaluation, Evaluation};
+
+        // A deliberately unhelpful evaluation: it agrees with no book answer.
+        // Where the model-free path already has a label, the tiebreak must not
+        // change it; where it is a conflict, the tiebreak fails closed too.
+        let evaluation = Evaluation {
+            model: "mortal_298k.safetensors".to_string(),
+            expected_value: 0.0,
+            recommended_action: "Pass".to_string(),
+            riichi_discard: None,
+            evaluations: vec![ActionEvaluation::from_parts("Pass", "pass", None, 1.0)],
+        };
+
+        let replay = walk(&fixtures::all_events_game());
+        for decision in &replay.decisions {
+            let plain = classify_decision(decision);
+            let with_mortal = classify_decision_with_mortal(decision, &evaluation);
+            match (plain, with_mortal) {
+                (Ok(Some(matched)), Ok(Some(label))) => {
+                    assert_eq!(label.matched, matched, "{}", decision.decision_id);
+                    assert!(
+                        matches!(
+                            label.resolution,
+                            crate::classifier::Resolution::Single
+                                | crate::classifier::Resolution::Agreement
+                        ),
+                        "decision {}: unexplained tiebreak {:?}",
+                        decision.decision_id,
+                        label.resolution
+                    );
+                }
+                (Ok(None), Ok(None)) => {}
+                (Err(conflict), Err(other)) => assert_eq!(conflict.lessons(), other.lessons()),
+                // A model-free conflict can stay a conflict; it must never
+                // become a different label just because an evaluation exists.
+                (Err(conflict), Ok(None) | Ok(Some(_))) => panic!(
+                    "decision {}: the model-free conflict vanished: {conflict}",
+                    decision.decision_id
+                ),
+                (left, right) => panic!(
+                    "decision {}: model-free {:?} vs mortal {:?}",
+                    decision.decision_id, left, right
+                ),
+            }
         }
     }
 

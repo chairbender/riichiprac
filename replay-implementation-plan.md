@@ -1406,14 +1406,22 @@ R2 for replay states.
 > feature because the B1 gate is the default app gate. `Match` carries the
 > plan's five fields plus the trigger/reason lists and pre-answer note the
 > shipped rationale needs, and `Match::stamp` writes them onto a state through
-> `finalize_state`. Two label overlaps are documented and pinned by tests:
-> (a) inside ch. 7, the general rule and the later `dama_*` sections can read the
-> same hand differently — `classify_unique` reports a `Conflict` and the miner
-> rejects the state (never picks a side); (b) in ch. 8, `defense_safety_chart`
-> stops above `CC` and the fallback lesson owns `CC`/`C`, so the chart
-> generator's `non_suji` theme (`CC`) is refused and may be labelled by the
-> fallback instead. The lesson owners should settle which shipped answer each
-> cell keeps before S2 selects from these families.
+> `finalize_state`. When two book rules read the same visible state differently,
+> **Mortal is the tiebreaker**: `classify_with_mortal` keeps the lesson whose
+> answer the model's top action agrees with (the app's existing
+> `compare_action_set` rule, including `equivalent_tiles` and the Riichi
+> second-pass discard) and records `Resolution::MortalTiebreak { rejected }` for
+> provenance. Without an evaluation, `classify_unique` fails closed with a
+> `Conflict`. `src/miner/classifier.rs` mirrors both paths for the walker
+> (`classify_decision`, `classify_decision_with_mortal`).
+>
+> Two label overlaps are documented and pinned by tests: (a) inside ch. 7, the
+> general rule and the later `dama_*` sections can disagree — settled by Mortal
+> as above; (b) in ch. 8, `defense_safety_chart` stops above `CC` and the
+> fallback lesson owns `CC`/`C`, so the chart generator's `non_suji` theme
+> (`CC`) is refused and may be labelled by the fallback instead. The lesson
+> owners still need to settle which shipped answer each of those cells keeps
+> before S2 selects from these families.
 
 ##### B2 — Classifier batch 2
 
