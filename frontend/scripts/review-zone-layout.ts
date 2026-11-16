@@ -23,7 +23,7 @@ import { TileAtlas } from '../src/table/TileAtlas';
 import type { AtlasCanvas, AtlasImage } from '../src/table/TileAtlasBuilder';
 import { isFaceUpShellId, tileRenderKey } from '../src/table/tiles';
 import type { FaceUpShellId } from '../src/table/tiles';
-import { faceCentreOf, representativeZones } from '../src/table/zoneLayout';
+import { faceCentreOf, layoutSideHand, representativeZones } from '../src/table/zoneLayout';
 import type { LayoutZone, PlacedTile } from '../src/table/zoneLayout';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -96,7 +96,11 @@ interface Panel {
   height: number;
 }
 
-const zones = representativeZones(manifest);
+const zones = [
+  ...representativeZones(manifest),
+  layoutSideHand(manifest, { side: 'left' }),
+  layoutSideHand(manifest, { side: 'right' }),
+];
 const panels: Panel[] = zones.map((zone) => ({
   zone,
   width: Math.max(1, zone.width),

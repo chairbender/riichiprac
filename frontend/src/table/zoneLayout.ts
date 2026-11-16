@@ -136,6 +136,12 @@ export interface TopHandLayoutOptions {
   readonly faces: readonly TileFaceId[];
 }
 
+export interface SideHandLayoutOptions {
+  readonly side: 'left' | 'right';
+  /** Concealed tiles; 13 is the full row. */
+  readonly count?: number;
+}
+
 export interface MeldLayoutOptions {
   readonly faces: readonly TileFaceId[];
   readonly side?: TableSide;
@@ -387,10 +393,35 @@ interface RowItem {
   readonly riichi?: boolean;
 }
 
+interface FaceExtent {
+  readonly min: number;
+  readonly max: number;
+}
+
+/**
+ * The projected face plate extent along a screen axis, relative to the face
+ * centre. A turned tile is wider along the row, so the row keeps its normal
+ * face-to-face gap by shifting the turned tile instead of letting the tile to
+ * its left clip the visible face.
+ */
+function faceExtentAlong(shell: ShellStats, axis: PointPx): FaceExtent {
+  const centre = faceCentreOf(shell);
+  let min = Infinity;
+  let max = -Infinity;
+  for (const [x, y] of shell.faceQuad) {
+    const projection = (x - centre[0]) * axis[0] + (y - centre[1]) * axis[1];
+    min = Math.min(min, projection);
+    max = Math.max(max, projection);
+  }
+  return { min, max };
+}
+
 /**
  * Lay a row across the seat's view. The normal shell steps by `gridStepPx.x`
  * (the projected short axis); a turned tile steps by `gridStepPx.y` (its long
  * axis now lies along the row), which is the reference's 104 px Riichi advance.
+ * A turned tile's face is wider along the row, so it is placed after the
+ * previous face with the row's normal face gap; the next tile keeps its slot.
  */
 function placeRow(
   manifest: ShellsManifest,
@@ -402,21 +433,30 @@ function placeRow(
   const axes = SEAT_AXES[side];
   const normalStep = along(normal.gridStepPx.x, axes.right);
   const turnedStep = along(turned.gridStepPx.y, axes.right);
+  const normalExtent = faceExtentAlong(normal, axes.right);
+  const faceGap = normalStep - (normalExtent.max - normalExtent.min);
   const nearOffset =
     bodyFarEdgeAlong(normal, axes.down) - bodyFarEdgeAlong(turned, axes.down);
 
   const placed: RawTile[] = [];
   let cursor = 0;
+  let previous: { readonly position: number; readonly extent: FaceExtent } | null = null;
   for (const item of items) {
     const isTurned = item.turned === true;
     const shellId = isTurned ? turnedId : normalId;
     const shell = isTurned ? turned : normal;
+    const extent = isTurned ? faceExtentAlong(turned, axes.right) : normalExtent;
+    const processPosition: number =
+      isTurned && previous
+        ? previous.position + previous.extent.max + faceGap - extent.min
+        : cursor;
     const near = isTurned ? nearOffset : 0;
-    const faceX = startFace[0] + axes.right[0] * cursor + axes.down[0] * near;
-    const faceY = startFace[1] + axes.right[1] * cursor + axes.down[1] * near;
+    const faceX = startFace[0] + axes.right[0] * processPosition + axes.down[0] * near;
+    const faceY = startFace[1] + axes.right[1] * processPosition + axes.down[1] * near;
     placed.push(
       placeAtFace(shellId, shell, item.face, faceX, faceY, false, item.riichi === true),
     );
+    previous = { position: processPosition, extent };
     cursor += isTurned ? turnedStep : normalStep;
   }
   return placed;
@@ -637,9 +677,40 @@ export function layoutTopHand(
   });
 }
 
+/**
+ * A side player's concealed hand: one standing blue-back shell reused down a
+ * single row, exactly like a side-wall column but upright. The row steps by the
+ * shell's projected short axis and runs toward the viewer.
+ */
+export function layoutSideHand(
+  manifest: ShellsManifest,
+  options: SideHandLayoutOptions,
+): LayoutZone {
+  const baseId = `shell_hand_side_${options.side}`;
+  const base = shellOf(manifest, baseId);
+  const count = options.count ?? HAND_ROW_SLOTS;
+  if (count < 1 || count > HAND_ROW_SLOTS) {
+    throw new Error(
+      `zone layout: side hand ${options.side} holds 1..${HAND_ROW_SLOTS} tiles, got ${count}`,
+    );
+  }
+  const axis = base.gridStepPx.x;
+  const step: PointPx = axis[1] < 0 ? [-axis[0], -axis[1]] : axis;
+  const tiles = Array.from({ length: count }, (_, index) =>
+    placeAtFace(baseId, base, null, index * step[0], index * step[1]),
+  );
+  return finishZone(manifest, {
+    id: `hand-${options.side}`,
+    kind: 'hand',
+    side: options.side,
+    bodies: tiles,
+    shadows: tiles,
+    sigmaShell: baseId,
+  });
+}
+
 /** An open meld: the same face-up row, with the called tile lying sideways. */
-export function layoutMeld(manifest: ShellsManifest, options: MeldLayoutOptions): LayoutZone {
-  const side = options.side ?? 'bottom';
+export function layoutMeld(manifest: ShellsManifest, options: MeldLayoutOptions): LayoutZone {  const side = options.side ?? 'bottom';
   const calledIndex = options.calledIndex ?? null;
   const row = placeRow(
     manifest,

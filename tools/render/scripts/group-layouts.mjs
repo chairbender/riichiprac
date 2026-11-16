@@ -20,6 +20,24 @@ const faceCentre = (entry) => [
   entry.faceQuad.reduce((sum, point) => sum + point[1], 0) / 4,
 ];
 
+/**
+ * A shell's face plate extent along a screen axis, relative to its face
+ * centre. A turned tile is wider along the row, so the pond keeps the same
+ * face-to-face gap by shifting it instead of letting it clip under the tile to
+ * its left.
+ */
+const faceExtent = (entry, axis) => {
+  const centre = faceCentre(entry);
+  let min = Infinity;
+  let max = -Infinity;
+  for (const [x, y] of entry.faceQuad) {
+    const projection = (x - centre[0]) * axis[0] + (y - centre[1]) * axis[1];
+    min = Math.min(min, projection);
+    max = Math.max(max, projection);
+  }
+  return { min, max };
+};
+
 const pad2 = (index) => String(index).padStart(2, '0');
 
 const entryOf = (shells, id) => {
@@ -90,17 +108,30 @@ function pondZone(shells, options) {
   const stepX = upright.gridStepPx.x[0];
   const stepY = upright.gridStepPx.y[1];
   const sidewaysStep = sideways.gridStepPx.y[0];
+  const uprightExtent = faceExtent(upright, [1, 0]);
+  const sidewaysExtent = faceExtent(sideways, [1, 0]);
+  const faceGap = stepX - (uprightExtent.max - uprightExtent.min);
   const rowsOfTiles = [];
   for (let row = 0; row < rows; row += 1) {
     const rowTiles = [];
     let faceX = 0;
+    let previous = null;
     for (let column = 0; column < columns; column += 1) {
       const isRiichi = riichi && riichi.row === row && riichi.column === column;
       const entry = isRiichi ? sideways : upright;
       const shellId = isRiichi ? 'shell_flat_sideways' : 'shell_flat_upright';
+      const extent = isRiichi ? sidewaysExtent : uprightExtent;
+      // The face centres keep the normal face-to-face gap. Without this a
+      // sideways tile starts its wider face left of the cursor and the tile to
+      // its left clips the visible face.
+      const placedX =
+        isRiichi && previous
+          ? previous.faceX + previous.extent.max + faceGap - extent.min
+          : faceX;
       const drop = isRiichi ? upright.advanceHeight - sideways.advanceHeight : 0;
-      const position = [faceX, row * stepY + drop];
+      const position = [placedX, row * stepY + drop];
       rowTiles.push({ id: shellId, ...faceAnchored(entry, position) });
+      previous = { faceX: placedX, extent };
       faceX += isRiichi ? sidewaysStep : stepX;
     }
     rowsOfTiles.push(rowTiles);

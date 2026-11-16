@@ -81,11 +81,13 @@ export function surfaceForShell(shell: FaceUpShellId): FaceSurface {
   return FACE_SURFACE_BY_SHELL[shell];
 }
 
-/** Face-down wall shells. Bare: no glyph, no face variant, no atlas entry. */
+/** Face-down wall/hand shells. Bare: no glyph, no face variant, no atlas entry. */
 export const FACE_DOWN_SHELL_IDS = [
   'shell_wall_horizontal',
   'shell_wall_side_left',
   'shell_wall_side_right',
+  'shell_hand_side_left',
+  'shell_hand_side_right',
 ] as const;
 
 /**

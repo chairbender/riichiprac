@@ -317,7 +317,7 @@ function checkBudgets() {
 
   // The flat-glyph board loads one body per drawn shell at @1x, the felt, both
   // manifests and the 37 glyph masters. Shadows are group shapes, not sprites.
-  // The @1x bodies of all 105 shells are the worst case if every zone is drawn.
+  // The @1x bodies of all 107 shells are the worst case if every zone is drawn.
   // The decal-based initial load is measured by check-decals.mjs.
   const initial = body1xBytes + feltBytes + manifestBytes + facesBytes;
   budget(

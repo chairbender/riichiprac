@@ -17,6 +17,7 @@ import {
   layoutHand,
   layoutMeld,
   layoutPond,
+  layoutSideHand,
   layoutSideWall,
   layoutTopHand,
   layoutWall,
@@ -51,6 +52,18 @@ const byShell = (zone: LayoutZone, shell: string): PlacedTile => {
   const tile = zone.bodies.find((body) => body.shell === shell);
   if (!tile) throw new Error(`no ${shell} in ${zone.id}`);
   return tile;
+};
+
+const faceSpan = (
+  tile: PlacedTile,
+  axis: readonly [number, number],
+): { readonly min: number; readonly max: number } => {
+  const shell = manifest.shells[tile.shell];
+  const centre = faceCentreOf(shell);
+  const projections = shell.faceQuad.map(
+    ([x, y]) => (x - centre[0]) * axis[0] + (y - centre[1]) * axis[1],
+  );
+  return { min: Math.min(...projections), max: Math.max(...projections) };
 };
 
 describe('fan helpers', () => {
@@ -200,6 +213,42 @@ describe('top hand zone', () => {
   });
 });
 
+describe('side hand zone', () => {
+  it('lays a single upright row down each side with one reused shell', () => {
+    const left = layoutSideHand(manifest, { side: 'left' });
+    expect(left.id).toBe('hand-left');
+    expect(left.layer).toBe(ZONE_LAYER.sideHandsAndMelds);
+    expect(left.shadowGroup).toBe('seat-left-hand');
+    expect(left.sigmaPx1x).toBe(5);
+    expect(left.blurPad).toBe(15);
+    expect(left.bodies).toHaveLength(13);
+    expect(left.shadows).toHaveLength(13);
+    expect(left.bodies.every((tile) => tile.shell === 'shell_hand_side_left')).toBe(true);
+    expect(left.bodies.every((tile) => tile.face === null)).toBe(true);
+    expect(left.shadows[1].faceX - left.shadows[0].faceX).toBeCloseTo(-6.2, 9);
+    expect(left.shadows[1].faceY - left.shadows[0].faceY).toBeCloseTo(41.67, 9);
+    expect(left.shadows[12].faceY - left.shadows[0].faceY).toBeCloseTo(12 * 41.67, 9);
+    expect(left.bodies[0].hitBox.width).toBe(
+      manifest.shells['shell_hand_side_left'].advanceWidth,
+    );
+
+    const right = layoutSideHand(manifest, { side: 'right' });
+    expect(right.id).toBe('hand-right');
+    expect(right.layer).toBe(ZONE_LAYER.sideHandsAndMelds);
+    expect(right.shadowGroup).toBe('seat-right-hand');
+    expect(right.bodies.every((tile) => tile.shell === 'shell_hand_side_right')).toBe(true);
+    expect(right.shadows[1].faceX - right.shadows[0].faceX).toBeCloseTo(6.2, 9);
+    expect(right.shadows[1].faceY - right.shadows[0].faceY).toBeCloseTo(41.67, 9);
+  });
+
+  it('accepts a shorter row and rejects more than 13 tiles', () => {
+    const short = layoutSideHand(manifest, { side: 'left', count: 10 });
+    expect(short.bodies).toHaveLength(10);
+    expect(short.shadows).toHaveLength(10);
+    expect(() => layoutSideHand(manifest, { side: 'left', count: 14 })).toThrow();
+  });
+});
+
 describe('meld zone', () => {
   it('draws a straight meld right-to-left and keeps the advance hit box', () => {
     const zone = layoutMeld(manifest, { faces: ['1m', '2m', '3m'] });
@@ -226,8 +275,11 @@ describe('meld zone', () => {
     expect(called.faceY - zone.shadows[0].faceY).toBeCloseTo(7, 9);
     expect(called.hitBox.width).toBe(106);
     expect(called.hitBox.height).toBe(95);
-    // The next tile advances by the turned shell's long axis.
-    expect(zone.shadows[2].faceX - called.faceX).toBeCloseTo(104, 9);
+    // The next tile keeps the nominal 104 px slot; the called tile moves
+    // forward by (92.56 - 59.22) / 2 = 16.67 px so its wider face keeps the
+    // row's normal face gap instead of clipping under the tile to its left.
+    expect(called.faceX - zone.shadows[0].faceX).toBeCloseTo(86.08, 9);
+    expect(zone.shadows[2].faceX - called.faceX).toBeCloseTo(87.33, 9);
   });
 
   it('uses the right seat’s sideways family and its frame', () => {
@@ -241,9 +293,10 @@ describe('meld zone', () => {
     expect(normal.shell).toBe('shell_flat_sideways');
     expect(called.shell).toBe('shell_flat_upright_180');
     // The right player's columns step up the screen; the normal short axis is
-    // 55.15 px and a turned long axis is 65.44 px.
-    expect(zone.shadows[1].faceY - zone.shadows[0].faceY).toBeCloseTo(-55.15, 9);
-    expect(zone.shadows[2].faceY - called.faceY).toBeCloseTo(-65.44, 9);
+    // 55.15 px and a turned long axis is 65.44 px. The turned face is wider
+    // along the column, so it advances 5.59 px beyond the nominal 55.15.
+    expect(zone.shadows[1].faceY - zone.shadows[0].faceY).toBeCloseTo(-60.74, 9);
+    expect(zone.shadows[2].faceY - called.faceY).toBeCloseTo(-59.85, 9);
     // The turned tile is shorter along the row axis, so it shifts toward the
     // player by the body-extent difference (106 - 72 = 34 px on screen x).
     expect(called.faceX - normal.faceX).toBeCloseTo(34, 9);
@@ -280,11 +333,28 @@ describe('pond zone', () => {
     expect(riichi.hitBox.width).toBe(106);
     expect(riichi.hitBox.height).toBe(95);
     expect(riichi.faceY - zone.shadows[12].faceY).toBeCloseTo(7, 9);
-    expect(zone.shadows[17].faceX - riichi.faceX).toBeCloseTo(104, 9);
+    // The riichi face is 92.56 px wide against the row's 59.22 px normal face;
+    // the extra 16.67 px keeps the normal face gap and clears the left tile.
+    expect(zone.shadows[17].faceX - riichi.faceX).toBeCloseTo(87.33, 9);
   });
 
-  it('draws rows top-to-bottom and each row right-to-left', () => {
+  it('leaves the riichi face clear of the tile to its left', () => {
     const zone = layoutPond(manifest, { discards });
+    const previous = zone.shadows[15];
+    const riichi = zone.shadows[16];
+    const previousRight = previous.faceX + faceSpan(previous, [1, 0]).max;
+    const riichiLeft = riichi.faceX + faceSpan(riichi, [1, 0]).min;
+    // The faces keep the row's normal 69.41 - 59.22 = 10.19 px gap.
+    expect(riichiLeft - previousRight).toBeCloseTo(10.19, 6);
+    // The bodies still tuck under the neighbour's bevel; only the face is clear.
+    const previousShell = manifest.shells[previous.shell];
+    const riichiShell = manifest.shells[riichi.shell];
+    const previousBodyRight = previous.gridX - previousShell.anchorX + previousShell.texWidth;
+    const riichiBodyLeft = riichi.gridX - riichiShell.anchorX;
+    expect(riichiBodyLeft).toBeLessThan(previousBodyRight);
+  });
+
+  it('draws rows top-to-bottom and each row right-to-left', () => {    const zone = layoutPond(manifest, { discards });
     const rows = Array.from({ length: 4 }, (_, row) =>
       zone.bodies.slice(row * POND_COLUMNS, (row + 1) * POND_COLUMNS),
     );
@@ -323,21 +393,23 @@ describe('pond zone', () => {
     expect(right.shadows[6].faceX - right.shadows[0].faceX).toBeCloseTo(104, 9);
     // The turned tile shifts toward the player by 106 - 72 = 34 px.
     expect(right.shadows[4].faceX - right.shadows[0].faceX).toBeCloseTo(34, 9);
-    expect(right.shadows[5].faceY - right.shadows[4].faceY).toBeCloseTo(-65.44, 9);
+    // It is also wider along the column than the normal tile, so it advances
+    // 5.59 px past the nominal 55.15 px column step.
+    expect(right.shadows[5].faceY - right.shadows[4].faceY).toBeCloseTo(-59.85, 9);
 
     const top = layoutPond(manifest, { discards: six, side: 'top' });
     expect(top.shadows[0].shell).toBe('shell_flat_upright_180');
     expect(top.shadows[4].shell).toBe('shell_flat_sideways_270');
     expect(top.shadows[1].faceX - top.shadows[0].faceX).toBeCloseTo(-69.41, 9);
     expect(top.shadows[6].faceY - top.shadows[0].faceY).toBeCloseTo(-65.44, 9);
-    expect(top.shadows[5].faceX - top.shadows[4].faceX).toBeCloseTo(-104, 9);
+    expect(top.shadows[5].faceX - top.shadows[4].faceX).toBeCloseTo(-87.33, 9);
 
     const left = layoutPond(manifest, { discards: six, side: 'left' });
     expect(left.shadows[0].shell).toBe('shell_flat_sideways_270');
     expect(left.shadows[4].shell).toBe('shell_flat_upright');
     expect(left.shadows[1].faceY - left.shadows[0].faceY).toBeCloseTo(55.15, 9);
     expect(left.shadows[6].faceX - left.shadows[0].faceX).toBeCloseTo(-104, 9);
-    expect(left.shadows[5].faceY - left.shadows[4].faceY).toBeCloseTo(65.44, 9);
+    expect(left.shadows[5].faceY - left.shadows[4].faceY).toBeCloseTo(59.85, 9);
   });
 });
 

@@ -1288,7 +1288,11 @@ Each returns a `LayoutZone` with:
    (`gridStepPx.x`), rows by its long axis (`gridStepPx.y`). A turned tile (a
    riichi discard or a called meld tile) advances by its long axis
    (`gridStepPx.y`, 104 px on the bottom row) and shifts along the row toward
-   the player so the near body edge stays on the line: +7 px at the bottom.
+   the player so the near body edge stays on the line: +7 px at the bottom. It
+   is also placed after the **previous face** with the row's normal face gap,
+   because a sideways face is 92.56 px wide against the normal 59.22 px; without
+   that 16.67 px face shift the tile to the left clipped the riichi's face. The
+   next tile keeps its nominal slot.
 6. **Walls.** Front/back steps come from the centre slot (`slot_08`,
    `gridStepPx.x` = 69.72/69.64); the upper tier is the lower tier's grid +
    `stackStepPx`; the dora indicator selects the `_faceup` shell. Side walls
@@ -1314,7 +1318,7 @@ all bottom tiers first).
 
 `cd frontend && npm run layout:review` writes
 `tools/render/build/review/zone-layouts-1x.png` and
-`zone-layout-numbers.json`. The committed run reports **8 zones / 248 tiles, 0
+`zone-layout-numbers.json`. The committed run reports **10 zones / 300 tiles, 0
 fractional draw positions, max face-anchor error 1.14e-13 px, 0 hit boxes off
 the advance box**:
 
@@ -1323,6 +1327,8 @@ the advance box**:
 | human hand, 13 | 902 × 122 | 13 | 13 |
 | human hand, 13 + draw | 994 × 123 | 14 | 14 |
 | top hand, 13 | 897 × 120 | 13 | 13 |
+| left side hand, 13 | 182 × 641 | 13 | 13 |
+| right side hand, 13 | 188 × 644 | 13 | 13 |
 | open meld, 3 | 238 × 127 | 3 | 3 |
 | pond row, 6 | 446 × 127 | 6 | 6 |
 | pond, 4 × 6 with riichi | 481 × 323 | 24 | 24 |
@@ -1332,3 +1338,63 @@ the advance box**:
 **Stop point.** No app view is wired and no zone is placed on screen yet. The
 felt, the shell/atlas assets and the shadow lab are unchanged. Phase 4 consumes
 these zones; Phase 5 adds the hover lift and hit-testing against `hitBox`.
+
+## 14. Phase 3b: the side-hand backs and the riichi face clearance (landed 2026-11-16)
+
+The Phase 3 review found two gaps, both closed in the same session.
+
+### 14.1 The left/right concealed hand shells
+
+The catalogue had no shell for the left or right player's concealed hand. They
+are the side-wall read applied to a standing tile: one shell per side reused
+down a single 13-tile row, not a per-slot fan. The pose is `rotX 90, rotZ 90`
+(standing, blue back to the human) with the side wall's off-axis perspective
+(`el 45`, lateral ±2 units inside, distance 10). The two shells are identical in
+pose; like the side walls, the mirrored camera is the only difference.
+
+| Shell | Body | Texture | gridStepPx x / y | Shadow |
+| :--- | :--- | :--- | :--- | :--- |
+| `shell_hand_side_left` | 63 × 102 | 67 × 106 / 134 × 212 @2x | (−6.2, 41.67) / (9.05, 64.01) | 111 × 142, standing σ 5 |
+| `shell_hand_side_right` | 67 × 102 | 71 × 106 / 142 × 212 @2x | (6.2, 41.67) / (−9.05, 64.01) | 115 × 142, standing σ 5 |
+
+The standing shadow is a rounded rectangle fitted to the yawed base strip; a
+vertical face is forced to `lying: false` rather than trusting the footprint
+heuristic (the side hands' projected strip is wide enough to fool it). The yawed
+shape needs a wider shadow box than the hand fan, so the two shells publish a
+per-shell `shadowPadding1x` (8/52/58/44) and the baker uses it. Their backs are
+the shadowed blue family, like the top hand, not the bright face-down wall blue.
+They are bare and add no atlas key; `FACE_DOWN_SHELL_IDS` now lists them.
+
+The layout engine gets `layoutSideHand(manifest, { side, count })`: the row
+steps by the shell's projected short axis (`gridStepPx.x`, 41.67 px down the
+screen) from the far tile to the near one, reuses the shell, and reports a
+standing shadow group (`seat-left-hand` / `seat-right-hand`, layer 5). The
+committed representative rows are 182 × 641 (left) and 188 × 644 (right).
+
+**Catalogue counts.** Two base shells were added, so the committed catalogue is
+**107 shells**: twelve base + 14 human-hand slots + 13 top-hand slots + 68 wall
+slots. Textures total **4,425,492 B** (budget 6,291,456 B); `shells.json` is
+**563,225 B** (budget 614,400 B); `check-shells.mjs` reports **7,710 checks
+passed**.
+
+### 14.2 The pond riichi face clearance
+
+The reference pond advanced the row by the sideways shell's long axis but placed
+the turned face's *centre* at the next cursor. A sideways face is 92.56 px wide
+against the normal 59.22 px, so its left edge started 16.67 px inside the tile
+to its left's face and the left tile (drawn last) clipped it.
+
+The row now places every tile by its **face plate**, not by a bare cursor:
+the turned tile starts after the previous face plus the row's normal face gap
+(`normalStep − normalFaceExtent`), and the next normal tile keeps the nominal
+slot. On the bottom pond that is a **+16.67 px** shift of the riichi tile, which
+leaves the normal **10.19 px** face gap on both sides while the bodies still
+tuck under the neighbours' bevels (the expected adjacent-tile read). The same
+rule is applied to the called tile in a meld and to every seat's pond frame
+(right +5.59 px along its column, top/left mirrored). The reference
+`group-layouts.mjs` applies the same rule, so the parity test still compares the
+two implementations exactly; the test also asserts the riichi face gap directly.
+
+**Deferred.** The tile-to-tile overlay shadow is still the next polish step: the
+few visible slivers where two tiles touch are not shadowed because the group
+blob is unioned under both bodies. Phase 3.5 records that work.

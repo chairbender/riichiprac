@@ -52,7 +52,7 @@ Usage (normally through ``bake-shells.sh``, which resolves the pinned Blender):
         --python tools/render/bake_shells.py -- --audition
 
 A dry run builds the tile, material and lights, prints the shell plan, and
-writes nothing. ``--bake`` renders the 103 shells, writes both scales and the
+writes nothing. ``--bake`` renders the 107 shells, writes both scales and the
 manifest (body + shadow). ``--preview`` with ``--only`` renders just those shells under
 ``build/preview/``. ``--shadow-audition`` renders the REF plus the spec's
 ``shadowAudition`` variants on the flat, wall and hand shells under
@@ -98,6 +98,8 @@ BASE_SHELL_IDS = (
     "shell_wall_side_left_faceup",
     "shell_wall_side_right",
     "shell_wall_side_right_faceup",
+    "shell_hand_side_left",
+    "shell_hand_side_right",
 )
 
 
@@ -1475,8 +1477,13 @@ def bake_shell(
 
     contact_body = [(x - bx0, y - by0) for x, y in contact_px]
     body_half = (advance_width * 0.5, advance_height * 0.5)
-    lying = contact_is_lying(contact_body, body_half)
-    shadow_pads = (
+    # A vertical face is always a standing tile, whatever the projected base
+    # strip looks like: the side hands are yawed, so their contact quad is wide
+    # enough to fool the footprint heuristic.
+    lying = False if shell["pose"]["rotateXDeg"] == 90 else contact_is_lying(
+        contact_body, body_half
+    )
+    shadow_pads = shell.get("shadowPadding1x") or (
         shadow["padding1x"]
         if lying
         else shadow.get("standingPadding1x", shadow["padding1x"])

@@ -58,6 +58,8 @@ const BASE_SHELL_IDS = [
   'shell_wall_side_left_faceup',
   'shell_wall_side_right',
   'shell_wall_side_right_faceup',
+  'shell_hand_side_left',
+  'shell_hand_side_right',
 ];
 
 // The standing hand and the front/back walls are fans of per-slot shells
@@ -129,8 +131,9 @@ function canonicalShellIds(spec) {
 
 const isWall = (id) => id.startsWith('shell_wall_');
 const isTopHandSlot = (id) => id.startsWith('shell_hand_top_slot_');
-const isFaceUp = (id) => !isTopHandSlot(id) && (!isWall(id) || id.endsWith('_faceup'));
-const isFaceDown = (id) => isTopHandSlot(id) || (isWall(id) && !id.endsWith('_faceup'));
+const isSideHand = (id) => id.startsWith('shell_hand_side_');
+const isFaceUp = (id) => !isTopHandSlot(id) && !isSideHand(id) && (!isWall(id) || id.endsWith('_faceup'));
+const isFaceDown = (id) => isTopHandSlot(id) || isSideHand(id) || (isWall(id) && !id.endsWith('_faceup'));
 const isHandSlot = (id) => id.startsWith('shell_hand_slot_');
 const isVerticalFace = (shell) => shell?.pose?.rotateXDeg === 90;
 // Phase 1c shadow contract, in @1x px / alpha. The committed bake and every
@@ -981,10 +984,12 @@ function checkShellsManifest(spec) {
       `${id} shadow sprite uses the same grid position (${JSON.stringify(shell.shadowOffsetPx)})`,
     );
     const shadowPadding = shell.shadowPadding ?? {};
+    const authoredShell = spec.shells.find((entry) => entry.id === id);
     const specShadowPadding =
-      shell.shadowBlob?.lying === true
+      authoredShell?.shadowPadding1x ??
+      (shell.shadowBlob?.lying === true
         ? spec.bake.shadow.padding1x
-        : spec.bake.shadow.standingPadding1x ?? spec.bake.shadow.padding1x;
+        : spec.bake.shadow.standingPadding1x ?? spec.bake.shadow.padding1x);
     check(
       ['left', 'top', 'right', 'bottom'].every(
         (side) => shadowPadding[side] === specShadowPadding[side],
@@ -1071,7 +1076,9 @@ function checkShellsManifest(spec) {
       }
       check(Math.abs(area) / 2 > 100, `${id} faceQuad has a real area (${(Math.abs(area) / 2).toFixed(1)} px²)`);
       if (perspective) {
-        checkPerspectiveQuad(id, quad, isVerticalFace(shell));
+        // A bare side-hand shell is deliberately yawed, so its visible back
+        // quad has no table-parallel edge pair; it carries no glyph.
+        if (!isSideHand(id)) checkPerspectiveQuad(id, quad, isVerticalFace(shell));
       } else {
         // A projected rectangle is a parallelogram: both diagonals share a midpoint.
         const first = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2];
@@ -1125,12 +1132,21 @@ function checkShellsManifest(spec) {
         perspective
           ? Math.abs((a ?? 1e9) - b) <= 0.08 * Math.hypot(...axis)
           : Math.abs((a ?? 1e9) - b) <= 0.25;
-      check(
-        close(step.x?.[0], expected.x[0], expected.x) && close(step.x?.[1], expected.x[1], expected.x) &&
-          close(step.y?.[0], expected.y[0], expected.y) && close(step.y?.[1], expected.y[1], expected.y),
-        `${id} gridStepPx follows from faceQuad ` +
-          `(x ${step.x?.join(',')}, y ${step.y?.join(',')})`,
-      );
+      if (isSideHand(id)) {
+        // A yawed standing back's quad is not the tile's face plane; the
+        // published step is measured from the tile axes instead.
+        check(
+          Array.isArray(step.x) && Array.isArray(step.y),
+          `${id} publishes a measured gridStepPx`,
+        );
+      } else {
+        check(
+          close(step.x?.[0], expected.x[0], expected.x) && close(step.x?.[1], expected.x[1], expected.x) &&
+            close(step.y?.[0], expected.y[0], expected.y) && close(step.y?.[1], expected.y[1], expected.y),
+          `${id} gridStepPx follows from faceQuad ` +
+            `(x ${step.x?.join(',')}, y ${step.y?.join(',')})`,
+        );
+      }
       const axisX = Math.hypot(step.x?.[0] ?? 0, step.x?.[1] ?? 0);
       const axisY = Math.hypot(step.y?.[0] ?? 0, step.y?.[1] ?? 0);
       check(
@@ -1339,6 +1355,14 @@ function checkShellsManifest(spec) {
       check(
         face[2] >= face[0] + 20 && face[2] >= face[1] + 10,
         `${id} face is shadowed blue resin (${face.join(',')})`,
+      );
+    } else if (isSideHand(id)) {
+      // The side hands are the same vertical blue back, yawed 90 degrees. The
+      // left camera sees it more grazing than the right, so it is the shadowed
+      // blue family, not the bright face-down top.
+      check(
+        face[2] >= face[0] + 20 && face[2] >= face[1] + 10,
+        `${id} side-hand back is blue resin (${face.join(',')})`,
       );
     } else if (isFaceDown(id)) {
       check(

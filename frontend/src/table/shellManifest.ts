@@ -10,8 +10,8 @@
  * texture is exactly `pixelRatio` times the resolution, so the atlas can draw
  * at 2x without changing logical layout.
  *
- * The 103-shell catalogue is not hard-coded here: the atlas consumes the
- * manifest, and the Phase 2 face-up subset lives in `tiles.ts`.
+ * The shell catalogue is not hard-coded here: the atlas consumes the manifest,
+ * and the Phase 2 face-up subset lives in `tiles.ts`.
  */
 import { isFaceUpShellId } from './tiles';
 import type { FaceUpShellId } from './tiles';

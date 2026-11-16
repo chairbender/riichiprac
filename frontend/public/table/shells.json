@@ -270,6 +270,40 @@
           135
         ]
       },
+      "shell_hand_side_left": {
+        "projection": "perspective",
+        "lensMm": 374.4585,
+        "shiftX": -1.299051,
+        "shiftY": 0.269711,
+        "lateralOffsetUnits": 2.0,
+        "distanceUnits": 10.0,
+        "pixelsPerUnit2x": 129.293829,
+        "resolution2x": [
+          222,
+          304
+        ],
+        "resolution1x": [
+          111,
+          152
+        ]
+      },
+      "shell_hand_side_right": {
+        "projection": "perspective",
+        "lensMm": 361.4337,
+        "shiftX": 1.683806,
+        "shiftY": 0.26033,
+        "lateralOffsetUnits": -2.0,
+        "distanceUnits": 10.0,
+        "pixelsPerUnit2x": 129.293835,
+        "resolution2x": [
+          230,
+          304
+        ],
+        "resolution1x": [
+          115,
+          152
+        ]
+      },
       "shell_hand_slot_00": {
         "projection": "perspective",
         "lensMm": 658.0646,
@@ -3868,6 +3902,400 @@
       },
       "shadowSha256": {
         "decodedRgba1x": "bb663d1e22164c7053402cba4adc9408e0ac93cf55d2368efc9099222c1043b0"
+      }
+    },
+    "shell_hand_side_left": {
+      "textureFile": "shells/shell_hand_side_left.png",
+      "textureFile2x": "shells/2x/shell_hand_side_left.png",
+      "shadowTextureFile": "shells/shell_hand_side_left-shadow.png",
+      "shadowTexWidth": 159,
+      "shadowTexHeight": 168,
+      "shadowAnchorX": 44,
+      "shadowAnchorY": 8,
+      "shadowOffsetPx": [
+        0,
+        0
+      ],
+      "shadowPadding": {
+        "top": 8,
+        "right": 52,
+        "bottom": 58,
+        "left": 44
+      },
+      "texWidth": 67,
+      "texHeight": 106,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 63,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 2,
+        "bottom": 2,
+        "left": 2
+      },
+      "shadowBlob": {
+        "model": "blob",
+        "shape": "rounded-rect",
+        "sigmaPx1x": 12.0,
+        "standingSigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
+        "offsetPx1x": [
+          5,
+          7
+        ],
+        "rectScale": 1.15,
+        "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
+        "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
+        "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          41.418,
+          88.344
+        ],
+        "halfPx": [
+          42.917,
+          36.942
+        ],
+        "radiusPx": 12.93,
+        "angleDeg": -22.0042,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          3.39,
+          44.42
+        ],
+        [
+          9.15,
+          7.56
+        ],
+        [
+          16.55,
+          61.57
+        ],
+        [
+          11.29,
+          98.53
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          -6.2,
+          41.67
+        ],
+        "y": [
+          9.05,
+          64.01
+        ]
+      },
+      "projection": "fixed-oblique",
+      "faceUp": false,
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 90
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "faceLocalZ": "bottom",
+        "projection": "perspective",
+        "lensMm": 374.4585,
+        "shiftX": -1.299051,
+        "shiftY": 0.269711,
+        "lateralOffsetUnits": 2.0,
+        "distanceUnits": 10.0,
+        "pixelsPerUnit2x": 129.293829,
+        "resolution1x": [
+          111,
+          152
+        ],
+        "resolution2x": [
+          222,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 18,
+          "top": 0,
+          "right": 38,
+          "bottom": 43
+        },
+        "alphaPeak1x": {
+          "left": 0.5451,
+          "top": 0.0,
+          "right": 0.6,
+          "bottom": 0.6
+        },
+        "alphaMass1x": {
+          "left": 120.435,
+          "top": 0.0,
+          "right": 639.769,
+          "bottom": 905.11
+        },
+        "shadowMaxAlpha": 0.6,
+        "contactQuadPx": [
+          [
+            53.29,
+            111.0
+          ],
+          [
+            102.32,
+            111.0
+          ],
+          [
+            59.42,
+            67.69
+          ],
+          [
+            106.64,
+            67.69
+          ]
+        ],
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          0,
+          8,
+          31
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            198,
+            202,
+            211
+          ],
+          "bottom": [
+            32,
+            48,
+            66
+          ]
+        },
+        "bytes1x": 13056,
+        "bytes2x": 22867
+      },
+      "sha256": {
+        "decodedRgba1x": "e06e0f0e573d723fb808d7fd8fbb8af2859e0f3e80ca90da4a0e2bad3c66fcf1",
+        "decodedRgba2x": "2a42c7745e72c3edb9bdb6d4b793b86b3df17b9f49ebba5c548e22a993d608b6"
+      },
+      "shadowSha256": {
+        "decodedRgba1x": "d968f4c280991e5d7b105678fbfe780e42abe6ec70213e9eca7a6a63f01b8553"
+      }
+    },
+    "shell_hand_side_right": {
+      "textureFile": "shells/shell_hand_side_right.png",
+      "textureFile2x": "shells/2x/shell_hand_side_right.png",
+      "shadowTextureFile": "shells/shell_hand_side_right-shadow.png",
+      "shadowTexWidth": 163,
+      "shadowTexHeight": 168,
+      "shadowAnchorX": 44,
+      "shadowAnchorY": 8,
+      "shadowOffsetPx": [
+        0,
+        0
+      ],
+      "shadowPadding": {
+        "top": 8,
+        "right": 52,
+        "bottom": 58,
+        "left": 44
+      },
+      "texWidth": 71,
+      "texHeight": 106,
+      "anchorX": 2,
+      "anchorY": 2,
+      "advanceWidth": 67,
+      "advanceHeight": 102,
+      "padding": {
+        "top": 2,
+        "right": 2,
+        "bottom": 2,
+        "left": 2
+      },
+      "shadowBlob": {
+        "model": "blob",
+        "shape": "rounded-rect",
+        "sigmaPx1x": 12.0,
+        "standingSigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
+        "offsetPx1x": [
+          5,
+          7
+        ],
+        "rectScale": 1.15,
+        "rectPaddingPx1x": 8,
+        "standingRectScale": 1.2,
+        "standingRectPaddingPx1x": 3,
+        "cornerRadiusFraction": 0.3,
+        "standingCornerRadiusFraction": 0.35,
+        "topTrimPx1x": 40,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "shadowShape": {
+        "model": "hard-rounded-rect",
+        "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
+        "centrePx": [
+          32.265,
+          88.344
+        ],
+        "halfPx": [
+          44.557,
+          37.319
+        ],
+        "radiusPx": 13.062,
+        "angleDeg": 25.5711,
+        "sigmaPx1x": 5.0,
+        "coreAlpha": 0.6,
+        "colorHex": "#0b1418",
+        "lying": false
+      },
+      "faceRotationDeg": 0,
+      "faceQuad": [
+        [
+          16.17,
+          44.42
+        ],
+        [
+          10.41,
+          7.56
+        ],
+        [
+          3.01,
+          61.57
+        ],
+        [
+          8.26,
+          98.53
+        ]
+      ],
+      "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
+      "gridStepPx": {
+        "x": [
+          6.2,
+          41.67
+        ],
+        "y": [
+          -9.05,
+          64.01
+        ]
+      },
+      "projection": "fixed-oblique",
+      "faceUp": false,
+      "pose": {
+        "rotateXDeg": 90,
+        "rotateYDeg": 0,
+        "rotateZDeg": 90
+      },
+      "camera": {
+        "azimuthDeg": 0,
+        "elevationDeg": 45,
+        "faceLocalZ": "bottom",
+        "projection": "perspective",
+        "lensMm": 361.4337,
+        "shiftX": 1.683806,
+        "shiftY": 0.26033,
+        "lateralOffsetUnits": -2.0,
+        "distanceUnits": 10.0,
+        "pixelsPerUnit2x": 129.293835,
+        "resolution1x": [
+          115,
+          152
+        ],
+        "resolution2x": [
+          230,
+          304
+        ]
+      },
+      "measured": {
+        "alphaExtent1x": {
+          "left": 30,
+          "top": 0,
+          "right": 27,
+          "bottom": 45
+        },
+        "alphaPeak1x": {
+          "left": 0.6,
+          "top": 0.0,
+          "right": 0.6,
+          "bottom": 0.6
+        },
+        "alphaMass1x": {
+          "left": 350.294,
+          "top": 0.0,
+          "right": 295.18,
+          "bottom": 1010.863
+        },
+        "shadowMaxAlpha": 0.6,
+        "contactQuadPx": [
+          [
+            50.26,
+            111.0
+          ],
+          [
+            99.29,
+            111.0
+          ],
+          [
+            44.14,
+            67.69
+          ],
+          [
+            91.36,
+            67.69
+          ]
+        ],
+        "solidInset1x": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "faceSampleRgb": [
+          16,
+          52,
+          102
+        ],
+        "edgeSamplesRgb": {
+          "top": [
+            187,
+            194,
+            208
+          ],
+          "bottom": [
+            37,
+            54,
+            71
+          ]
+        },
+        "bytes1x": 13614,
+        "bytes2x": 24691
+      },
+      "sha256": {
+        "decodedRgba1x": "1831fd5bd6c4e961d57474cc73fe9940ed233fb5e5a83b671abdcb4b80e5aeea",
+        "decodedRgba2x": "0e90c0333eb93d63cbeebb6ef74f0901a910fb7f8f09283c84e24da2de9d9ea5"
+      },
+      "shadowSha256": {
+        "decodedRgba1x": "1f06c82867f1360a7ac8bf21db106630c9df834f15543a2f1ac9c7fea3262f0e"
       }
     },
     "shell_hand_slot_00": {
