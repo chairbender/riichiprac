@@ -7,6 +7,13 @@ the related capture `261112-1826` ("Real riichi game database as a scenario
 source"), and incorporates the separate autonomous-miner agent specification
 reviewed on 2026-11-14.
 
+Implementation breakdown: [`replay-implementation-plan.md`](replay-implementation-plan.md)
+turns this design into architecture components, an ordered unit sequence and a
+proposed command-center task slice. Two stages there are normative requirements,
+not options: mixed-agent corpora (§3.3 below) and scenario permutation (§5.9
+below). It also corrects the model inventory: the 4.1a/b/c/3.0 Mortal networks
+are online-service only; the one local checkpoint is `mortal_298k`.
+
 > ## Decision (2026-11-14): AI self-play is the only replay source
 >
 > **We will not acquire, ingest, redistribute, or ship any third-party replay
@@ -21,9 +28,9 @@ reviewed on 2026-11-14.
 > offline**, using Mortal (AGPL-3.0) and, where useful, Akochan as a second
 > policy under its non-commercial output terms. The resulting games are ours to
 > curate and publish as scenario packs. This also gives us direct control over
-> the skill level, style and error distribution of the play: strong networks for
-> correct lines, weaker/human-like networks for realistic mistakes, and fixed
-> seeds for reproducibility.
+> the skill level, style and error distribution of the play: the Mortal
+> checkpoint for strong lines, Akochan and heuristic policies for genuinely
+> different play and realistic mistakes, and fixed seeds for reproducibility.
 >
 > **Consequences, all reflected below:**
 >
@@ -77,13 +84,16 @@ Tenhou, Mahjong Soul, or any other third-party human replay corpus.**
    corpus we own, strong labels, and direct control over skill level and error
    distribution. Mortal is open source (AGPL-3.0) and its `libriichi` emulator
    can play and dump mjai logs; the documentation claims up to 40,000
-   hanchans/hour on a high-end desktop. We can run strong networks (4.1b/4.1c)
-   for correct lines and a weaker, more human-like network (3.0) for realistic
-   mistakes, keep all of it out of the shipped app, and reproduce a corpus from
-   seeds. Akochan is a useful second opinion / diversity source under its own
-   non-commercial output terms. The app already has an MIT Rust reimplementation
-   of Mortal v4 inference (`src/ai/`), so labelling a reconstructed `GameState`
-   does not require linking AGPL code into the app.
+   hanchans/hour on a high-end desktop. We can run the one available
+   `mortal_298k` checkpoint with different sampling settings for correct lines, Akochan
+   as a genuinely different policy, and heuristic baselines for cheap mistakes,
+   keep all of it out of the shipped app, and reproduce a corpus from seeds. The
+   4.1/3.0 ladder is an online-service set of networks whose weights are not
+   released, so it is not a local corpus source. Akochan is a useful second
+   opinion / diversity source under its own non-commercial output terms. The app
+   already has an MIT Rust reimplementation of Mortal v4 inference (`src/ai/`), so
+   labelling a reconstructed `GameState` does not require linking AGPL code into
+   the app.
 
 3. **The deliverable is a small, curated, static scenario pack — not a huge
    replay database.** The app is a client-side trainer. Ship a manifest plus
@@ -356,17 +366,29 @@ publishes only curated scenario packs with `source.kind: "ai_selfplay"`.
 
 | AI | Code licence | Weights | Runs offline? | Self-play logs? | Verdict for us |
 | --- | --- | --- | --- | --- | --- |
-| **Mortal** (`Equim-chan/Mortal`) | **AGPL-3.0** | AGPL-3.0 checkpoints (e.g. `VoidShine/mortal-298k`) | yes, Rust `libriichi` + Python/Candle inference; CPU or GPU | yes: `libriichi::arena` has `OneVsThree` / `TwoVsTwo` and a `log_dir` that dumps gzipped mjai JSON logs | **Primary engine.** Strong, fast, open, and already the app's evaluator. Keep it offline and out of the shipped MIT binary. |
+| **Mortal** (`Equim-chan/Mortal`) | **AGPL-3.0** | the community `VoidShine/mortal-298k` checkpoint is the one we have; upstream 4.1/3.0 weights are not released | yes, Rust `libriichi` + Python/Candle inference; CPU or GPU | yes: `libriichi::arena` has `OneVsThree` / `TwoVsTwo` and a `log_dir` that dumps gzipped mjai JSON logs | **Primary engine.** Strong, fast, open, and already the app's evaluator. Keep it offline and out of the shipped MIT binary. |
 | **Akochan** (`critter-mj/akochan`) | custom Japanese terms (not OSI) | includes its own AI | yes, C++ | yes: `system.exe test <begin> <end>` with `setup_match.json` | Useful second opinion / diversity. Output reuse is allowed for non-commercial use **with attribution**; modification/redistribution is restricted. Do not make it the only source if the app might ever be commercial. |
 | **Kanachan** (`Cryolite/kanachan`) | no `LICENSE` file in the repo (all rights reserved by default) | no trained models shipped | yes, but needs Mahjong Soul data | not a turnkey bot | Not a practical source. |
 | **NAGA** (Dwango) | proprietary | proprietary | no (service) | no | Cannot run offline or ship. |
 | **Suphx** (Microsoft Research) | paper only | no public code/weights | no | no | Not usable. |
-| **Mortal 3.0** | same AGPL project | AGPL | yes | yes | The mjai.ekyu.moe UI labels it "more human-like, but the weakest". Excellent for generating realistic mistakes to mine. |
-| **Mortal 4.1a/b/c** | same AGPL project | AGPL | yes | yes | 4.1b (balanced) as the labeller; 4.1c (aggressive) as a contrasting opponent. |
+| **Mortal online networks** (4.1a/b/c, 4.0, 3.0) | same AGPL project | **not downloadable**; used by the online review service | no (service only) | no | Do **not** plan a corpus around them. They are perspectives on <https://mjai.ekyu.moe>, not local engines. |
 
 Other engines exist (forks, research simulators, `MjaiLogEngine`, `tsumogiri`
 baselines). Before using one, check its licence and whether it can dump logs;
 a strong engine with no log output is not useful here.
+
+**Availability correction (2026-11-15).** The upstream Mortal documentation's
+"Okay cool now give me the weights!" section points at the author's post, whose
+latest update (2022-08-19) says there is currently no plan to release the trained
+model. The 4.1a/b/c, 4.0 and 3.0 names are networks used by the online review
+service at <https://mjai.ekyu.moe>, not downloadable checkpoints. The one Mortal
+checkpoint we can run is the community `VoidShine/mortal-298k`
+(`mortal_298k.safetensors`), already used by this app. Its model card says it was
+trained on Tenhou hanchan data; that is a weights-provenance question separate
+from the no-third-party-replay decision, and should be reviewed before commercial
+use. Treat the 4.1/3.0 ladder as unavailable offline unless a checkpoint is
+explicitly obtained; the corpus recipe below is written for **one Mortal snapshot
++ Akochan + heuristic baselines**, not a fleet of Mortal generations.
 
 ### 3.2 Mortal is the practical workhorse
 
@@ -392,46 +414,63 @@ means:
   is the easiest, but it is AGPL. Keep that tool separate from the app: a
   separate repository, a separate binary invoked as a subprocess, or at minimum
   a clearly isolated optional tool with its own licence notice. Do not link it
-  into the MIT library that ships to WASM.
+  into the MIT library that ships to WASM. The corpus repo (`riichiprac-corpus`)
+  is **private by default**; making it public is a later decision, not part of
+  this plan.
 
 ### 3.3 A corpus recipe that produces both correct lines and mistakes
 
-The most valuable self-play corpus is not four clones of the strongest network.
-It is a mix:
+The most valuable self-play corpus is not four clones of one strong policy.
+It is a mix, but the available engines constrain what we can actually run:
 
-| Match-up | What it gives us |
+| Match-up / family | What it gives us |
 | --- | --- |
-| 4.1b vs 4.1b | high-quality lines; book-aligned states; stable Mortal labels |
-| 4.1c vs 4.1b | aggressive/defensive contrast; contested states; close calls |
-| 3.0 vs 4.1b | "human-like" weaker play; blunders; the state before a mistake is a teaching scenario |
-| Akochan vs Mortal | a genuinely different policy; more diversity; second-opinion labels |
-| 4.1a/4.1b/4.1c mixed | network disagreement; only ship a label when the ensemble is stable, or label the disagreement as "contested" |
+| `mortal_298k` vs itself (M1) | high-quality lines; book-aligned states; stable labels; low policy diversity |
+| `mortal_298k` sampling/seat sweep (M2) | wider state coverage and mild sampling variation; the **same policy**, not a different AI |
+| Akochan vs Akochan, tactic sweep (M3) | a genuinely different rule-based policy; style contrast; mistakes |
+| Akochan vs `mortal_298k` (M4), only if a cross-engine bridge is feasible; otherwise a corpus-level M3+M1 mix | cross-policy contested states; style contrast |
+| Mortal + Akochan + heuristic table (M5), only if the bridge is feasible | multi-policy table texture |
+| heuristic/tsumogiri baseline (M6): H0 tsumogiri, H1 random-legal, H2 isolated-first, H3 efficiency-safety | deterministic fixtures, cheap mistakes, a weak ablation baseline; H0/H1 are fixtures only |
+
+> **Status (2026-11-15): this is a first-class pipeline requirement, with a
+> corrected model inventory.** The implementation plan (§3, families M1–M6 and
+> corpus units C2–C7) makes each family a separately gated corpus product with
+> its own quota, report and acceptance criteria. M1/M2 are the one
+> `mortal_298k` checkpoint with different sampling settings and are **not** policy
+> variety; M3–M6 provide the actual variety. The corpus runner must accept
+> pluggable agents/policies, including non-neural rule/heuristic engines such as
+> Akochan, and record per-game agent identity, configuration, sampling
+> (including temperature-like knobs) and seeds. A family that is disabled or
+> short is visible in the corpus report.
 
 Practical defaults:
 
-- **Labeller:** 4.1b (balanced) for book agreement and default "best" labels;
-  optionally an ensemble of 4.1a/b/c for confidence.
-- **Generator:** 4.1c or 4.1b for strong games; 3.0 for mistake mining.
-- **Temperature:** 1.0 for self-play diversity; argmax for labels. Record the
-  temperature in provenance.
+- **Labeller:** `mortal_298k`, the only checkpoint we have, for book agreement
+  and default "best" labels. Do not claim an ensemble; there is one model.
+- **Generator:** `mortal_298k` with sampled self-play
+  (`boltzmann_epsilon` > 0); Akochan for a different policy; heuristic/tsumogiri
+  for deterministic or weak baselines.
+- **Sampling:** use a sampled profile for self-play diversity; argmax for labels.
+  Record `boltzmann_epsilon` / `boltzmann_temp` / `top_p` and the model hash in
+  provenance.
 - **Seeds:** record the seed pair used by `libriichi::arena` so a game can be
   reproduced.
 - **Rule set:** Tenhou standard four-player hanchan, because that is what
   Mortal's emulator and the app's model were built for. Do not assume sanma or
   non-standard local rules work without validation.
-- **Volume:** start with 10,000 hanchans (a few hundred MB compressed), mine
-  candidates, then scale only if the hit rate is too low. 10k games at the
-  advertised rate is roughly 15 minutes of self-play; storage is the bigger
-  constraint.
+- **Volume:** start with a 1k-game smoke corpus, then 10,000 hanchans if the hit
+  rate justifies it. 10k games at the advertised rate is roughly 15 minutes of
+  self-play; storage is the bigger constraint.
+- **Do not name 4.1a/b/c, 4.0 or 3.0 in a match plan.** They are online-service
+  networks, not local checkpoints; a plan that names them should fail at engine
+  startup.
 
 **Model identity is not interchangeable.** The 4.1a/b/c and 3.0 names are the
-mjai-reviewer/Mortal ladder; the app currently ships `mortal_298k.safetensors`
-and binds it with `src/ai/model.rs`. Before mixing generations from one network
-with labels from another, verify the observation/action space and convert the
-checkpoint through `scripts/convert_weights.py`. If a 4.1 checkpoint is not
-drop-in compatible, use 4.1 externally for generation and the app's 298k model
-for in-app labels, and record both model identities in provenance. Do not
-assume a 4.1 network file will load just because the name looks similar.
+mjai-reviewer/Mortal online ladder, not weights we can load. The app ships
+`mortal_298k.safetensors` and binds it with `src/ai/model.rs`. If another
+checkpoint is ever obtained, verify the observation/action space and convert it
+through `scripts/convert_weights.py`; record both model identities in provenance.
+Do not assume a 4.1 network file will load just because the name looks similar.
 
 ### 3.4 Licensing of AI-generated logs
 
@@ -468,17 +507,27 @@ Do not try to serve full replays to the browser. Separate the data by purpose:
 
 | Tier | Contents | Size (planning estimate) | Where it lives | Shipped? |
 | --- | --- | --- | --- | --- |
-| **Raw corpus** | self-play gzipped mjai JSONL per game, plus a small metadata row | ~20–60 KB/game compressed; 10k games ≈ 0.3–0.6 GB; 100k ≈ 3–6 GB | Object storage (R2/HF) or local disk; never git | no |
-| **Candidate DB** | one row per decision point, with state hash, reconstructed `GameState`, labels, scores, provenance | ~2–10 KB/decision; a 10k-game corpus has millions of decisions | DuckDB/Parquet/SQLite offline | no |
-| **Curated packs** | selected, validated, deduplicated scenarios in app format | ~5–15 KB/scenario raw; 1k ≈ 5–15 MB; 10k ≈ 50–150 MB (gzip roughly halves it) | Pages same-origin, HF, or R2 | yes, lazily |
+| **Raw corpus** | self-play gzipped mjai JSONL per game, plus a small metadata row | ~20–60 KB/game compressed; 10k games ≈ 0.3–0.6 GB; 100k ≈ 3–6 GB | Local data root (`RIICHI_DATA_DIR/replays/`); optional Google Drive backup via rclone; never git | no |
+| **Scenario DB** | one row per decision point, with state hash, reconstructed `GameState`, labels, scores, provenance; curated rows and pack metadata in the same DB | ~2–10 KB/decision; a 10k-game corpus has millions of decisions | Local SQLite (`RIICHI_DATA_DIR/db/miner.sqlite`); local snapshots, optional Drive copies; optional DuckDB/Parquet analytics derived from it | no |
+| **Curated packs** | selected, validated, deduplicated scenarios in app format | ~5–15 KB/scenario raw; 1k ≈ 5–15 MB; 10k ≈ 50–150 MB (gzip roughly halves it) | Exported from the DB; Pages same-origin, HF, or R2 | yes, lazily |
 
 The existing app already has a strict initial-load budget (AGENTS.md: initial
 hand + board ≤ 4 MB, total assets ≤ 8 MB). Never load the whole corpus or all
 packs at startup. Load a manifest, then one pack on demand.
 
+**Storage rule:** local working copy first. Google Drive backup via rclone is a
+separate operator task and is **not** a code dependency; the miner must run
+local-only. Do not run the miner against a Drive mount and do not put a live
+SQLite file on Drive. Replays are immutable and content-addressed; the DB is
+snapshotted locally with `VACUUM INTO` and, when the operator has configured
+rclone, uploaded as timestamped files, never as a live copy.
+
 ### 4.2 Schema sketch
 
-Use a small relational/columnar schema offline; use JSON packs at runtime.
+Use a small relational schema offline; use JSON packs at runtime. SQLite
+(`RIICHI_DATA_DIR/db/miner.sqlite`) is the operational DB and the source of truth
+for candidate and curated scenarios. DuckDB/Parquet is an optional analytics
+export, not the backup target.
 
 **`replays`**
 
@@ -490,13 +539,16 @@ attribution        TEXT NOT NULL      -- Mortal/Akochan model + project credit
 format             TEXT NOT NULL      -- 'mjai' for the corpus
 rule               TEXT NOT NULL      -- 4p-hanchan (the supported rule set)
 generated_at       TEXT NOT NULL
-model              TEXT NOT NULL      -- e.g. mortal-4.1b, mortal-3.0
+model              TEXT NOT NULL      -- e.g. mortal-298k, akochan-<ver>, heuristic-v1
 model_sha256       TEXT NOT NULL
 seed               TEXT NOT NULL
-log_path           TEXT NOT NULL
+log_path           TEXT NOT NULL      -- relative to RIICHI_DATA_DIR
 log_bytes          INTEGER NOT NULL
 validation_status  TEXT NOT NULL      -- ok / bad / partial
 ingested_at        TEXT NOT NULL
+storage_backend    TEXT NOT NULL      -- local / gdrive
+backed_up_at       TEXT NULL          -- null until the replay folder copy/check passes
+backup_sha256      TEXT NULL          -- rclone check / manifest hash
 ```
 
 **`decisions`**
@@ -525,6 +577,32 @@ selection_reason   TEXT
 pack_id            TEXT NULL
 ```
 
+**`selected_scenarios`**
+
+```text
+scenario_id        TEXT PRIMARY KEY   -- stable curated id
+decision_id        TEXT REFERENCES decisions
+pack_id            TEXT NULL          -- assigned during pack assembly
+lesson_id          TEXT NOT NULL
+correct_action     JSON NOT NULL
+accepted           JSON NOT NULL
+variant_of         TEXT NULL          -- base scenario id
+transform_chain    JSON NULL
+label_check        JSON NULL
+provenance         JSON NOT NULL
+```
+
+**`variants`**
+
+```text
+variant_id         TEXT PRIMARY KEY
+base_scenario_id   TEXT REFERENCES selected_scenarios
+transform_chain    JSON NOT NULL
+transform_seed     TEXT NOT NULL
+label_preserved    BOOLEAN NOT NULL
+rejection_reason   TEXT NULL
+```
+
 **`packs`**
 
 ```text
@@ -537,6 +615,35 @@ scenario_count     INTEGER
 source_mix         JSON
 licence            TEXT
 published_at       TEXT
+export_path        TEXT              -- RIICHI_DATA_DIR/packs/<pack-id>-<sha>.json.gz
+db_backup_id       TEXT NULL         -- snapshot that contains this pack's rows
+```
+
+**`corpus_runs`**
+
+```text
+run_id             TEXT PRIMARY KEY
+match_plan_id      TEXT
+started_at         TEXT
+finished_at        TEXT
+replay_count       INTEGER
+local_dir          TEXT              -- relative to RIICHI_DATA_DIR
+gdrive_dir         TEXT              -- e.g. riichiprac/replays
+db_snapshot        TEXT NULL
+rclone_status      TEXT              -- ok / failed / skipped
+```
+
+**`backups`**
+
+```text
+backup_id          TEXT PRIMARY KEY
+kind               TEXT              -- replay_copy / db_snapshot
+path               TEXT              -- local snapshot/replay path
+sha256             TEXT
+bytes              INTEGER
+created_at         TEXT
+rclone_remote      TEXT
+verified_at        TEXT NULL
 ```
 
 For analytics, export `decisions` to Parquet and query with DuckDB. For a
@@ -554,6 +661,7 @@ classifier_version)`.
 | **jsDelivr** (GitHub-backed) | CDN, file/repo limits | `*` (measured) | small public assets | not for large data; cache/purge behaviour |
 | **Hugging Face Hub** | public storage best-effort; private 100 GB; paid beyond; 500 GB/file hard, <200 GB recommended; <100k files/repo | `*` / origin echo (measured on `resolve` and CDN) | full corpus + candidate datasets + optional pack mirror | storage policy can change; public-repo "best effort"; not a transactional DB |
 | **Cloudflare R2** | 10 GB-month free, 1M Class A / 10M Class B ops, zero egress | configurable | raw corpus / pack CDN / fallback | setup + account; 10 GB cap on free tier; CORS rules must be configured |
+| **Google Drive** (rclone) | personal quota; not a CDN | not a browser host | durable backup/transport for raw replays and DB snapshots | never a live SQLite mount; rclone copy/delete semantics; restore checks required |
 | **Backblaze B2** | 10 GB free, egress allowance | configurable | corpus backup | egress rules |
 
 Measured on 2026-11-14 with `Origin: https://chairbender.github.io`:
@@ -570,14 +678,20 @@ Measured on 2026-11-14 with `Origin: https://chairbender.github.io`:
 **Default (small, cheap, matches the current app):**
 
 1. Commit only a **manifest** and a small number of curated packs to the repo,
-   under `frontend/public/scenarios/`. Keep the total under ~50 MB.
+   under `frontend/public/scenarios/`. The pack bodies are exported from the
+   DB's `packs`/`selected_scenarios` rows. Keep the total under ~50 MB.
 2. The manifest is same-origin and tiny (<100 KB), so startup is unaffected.
 3. Each pack is a gzipped JSON file, content-addressed
    (`packs/<pack-id>-<sha256-prefix>.json.gz`), fetched on demand and cached in
    IndexedDB. Content-addressed names avoid stale caches without custom headers.
-4. Keep the raw corpus and candidate DB out of git. If they need to be public
-   for reproducibility, put them on R2 (10 GB free, zero egress) or HF
-   (best-effort public storage), with a dataset card and licence notice.
+4. Keep the raw corpus and DB out of git. Store them under a local data root
+   (`RIICHI_DATA_DIR/replays`, `RIICHI_DATA_DIR/db`). The initial pipeline writes
+   local-only; a separate operator task may mirror the folder to Google Drive
+   with rclone (append-only replay copy, timestamped `VACUUM INTO` DB snapshots,
+   `rclone check`). Drive is backup/transport, not a runtime host and not a live
+   SQLite mount. If a corpus is ever made public for reproducibility, publish a
+   curated export on R2/HF with a dataset card and
+   licence notice rather than opening the Drive folder.
 
 **When packs grow beyond the Pages budget:**
 
@@ -604,9 +718,18 @@ complexity are all worse than the options above.
   is a hard rejection, not a warning.
 - **Strip identities.** Self-play has no player identities to begin with; never
   add names, account ids, chat or IPs from any other source.
+- **Backup and restore (optional operator task).** Raw replays are immutable and
+  content-addressed; when rclone is configured, copy them to Google Drive with
+  `rclone copy --checksum --immutable` (copy never deletes; no sync with delete
+  semantics for the immutable corpus). The DB is snapshotted locally with
+  `VACUUM INTO`; a configured backup uploads timestamped files, never a live
+  copy. Verify with `rclone check`, restore a sample, and run
+  `PRAGMA integrity_check`; local-only operation is valid until the separate
+  rclone task is done.
 - **Retention.** Raw self-play logs are reproducible from `(seed, model,
-  code)`; keep them only as long as the candidate DB needs them. Curated packs
-  are small and can be kept forever.
+  code)`; keep them only as long as the candidate DB needs them. Keep the last N
+  DB snapshots (for example 7 daily + 4 weekly). Curated packs are small and can
+  be kept forever.
 
 ---
 
@@ -661,13 +784,13 @@ a complete self-play game instead of a random construction.
 
 ### 5.4 Mistake mining: weak agent vs strong label
 
-Run a weaker/human-like agent (Mortal 3.0, or Akochan with a different tactic)
-against a strong one. At each decision, compare the weak agent's played action
-with the strong model's top action. A large gap is a "blunder" candidate: the
-position before the bad move is the drill, and the strong model supplies the
-answer.
+Run Akochan with a different tactic (or a heuristic baseline) against the Mortal
+checkpoint. At each decision, compare the weaker policy's played action with the
+Mortal top action. A large gap is a "blunder" candidate: the position before the
+bad move is the drill, and the Mortal checkpoint supplies the answer.
 
-- **Answer source:** strong model (4.1b), optionally confirmed by an ensemble.
+- **Answer source:** the one `mortal_298k` checkpoint. Do not claim an ensemble;
+  there is one model.
 - **Why it is valuable:** it is the closest we can get to "a human made a
   mistake here" without using human data, and it produces a natural teaching
   moment ("what should you have done?").
@@ -774,6 +897,16 @@ Do **not** transform river order, scores, turn number or dora count unless the
 lesson explicitly says those do not matter. A transformation is only valid if
 the classifier/label still passes after it; otherwise reject the variant.
 
+> **Status (2026-11-15): this is a required generator stage, not a later
+> nice-to-have.** It is pipeline stage [8] in
+> [`replay-implementation-plan.md`](replay-implementation-plan.md) §4 (units
+> V1–V2), after base selection and before pack assembly, with a
+> label-preservation gate and a per-lesson `TransformPolicy`. Every shipped
+> variant must re-run the classifier/label after transforming and is rejected if
+> the lesson breaks. "Seat rotation" above is the reconstruction's normalisation;
+> a seat *variant* should permute the opponents relative to the actor, because
+> rotating all four and re-normalising the actor is a no-op.
+
 ### 5.10 Not in scope: third-party or human replay corpora
 
 Bring-your-own-replay and human-expert-line scenarios are **not part of this
@@ -795,7 +928,7 @@ this document.
 | Book + Mortal | book | classifier + Mortal agreement | yes | core curriculum, realistic tables |
 | Contested | book | classifier + Mortal disagreement | yes | advanced judgement, review |
 | Mortal best | Mortal | confidence filter | no | coverage, calls/kans, realistic texture |
-| Mistake mining | strong Mortal | weak-vs-strong gap | sometimes | teaching moments, common errors |
+| Mistake mining | `mortal_298k` label | Akochan/heuristic vs Mortal gap | sometimes | teaching moments, common errors |
 | Close call | Mortal | top-2 margin | sometimes | advanced discrimination |
 | Speed vs value | book/Mortal | 1-shanten, divergent plans | sometimes | efficiency vs hand value |
 | Table reading / defense | book/Mortal | safety chart + hidden threat | yes | messy rivers |
@@ -981,11 +1114,12 @@ Tests:
 
 Reuse `ai::wasm_bridge::evaluate_state_named(&model, &state, model_name)` with a
 native `MortalV4Model` loaded once. Pin the exact checkpoint (hash and model
-name) in every label; the app's current `mortal_298k.safetensors` and an upstream
-4.1 network are different evaluators even when they share an architecture
-family. If the app cannot load the network used for generation, either convert
-it and prove parity with `evaluate_state`, or label with the app's model and use
-the generation network only as an opponent. For each candidate:
+name) in every label. The only checkpoint we have is
+`mortal_298k.safetensors`; the 4.1/3.0 names are online-service networks, not
+local files. If another checkpoint is ever obtained, verify its observation/
+action space and convert it through `scripts/convert_weights.py`, then prove
+parity with `evaluate_state`; record both identities in provenance. Do not assume
+a 4.1 file will load. For each candidate:
 
 - **Top action:** `evaluation.recommended_action`.
 - **Ranking:** `evaluation.evaluations`, sorted by probability.
@@ -1000,9 +1134,10 @@ the generation network only as an opponent. For each candidate:
   the lesson's accepted set (`correct_action` + `equivalent_tiles`), compared on
   the full action (a riichi declaration includes its discard). This is the same
   rule as `generator::mortal_agreement`.
-- **Ensemble:** optionally evaluate with several networks (4.1a/b/c). If they
-  disagree, either reject or mark the scenario "contested"; do not silently
-  pick one.
+- **Multi-model (optional, future):** if another checkpoint is obtained, evaluate
+  with each and record the votes. With one model there is no ensemble; never
+  call a single model's output "ensemble stable". If members disagree, mark the
+  scenario "contested" or reject it; do not silently pick one.
 
 Performance:
 
@@ -1151,9 +1286,9 @@ a manifest, integrity metadata and a real `GameState` inside. Example
   },
   "source": {
     "kind": "ai_selfplay",
-    "corpus_id": "mortal-4.1b-4.1c-selfplay-2026-11",
+    "corpus_id": "mortal298k-akochan-mixed-2026-11",
     "licence": "CC-BY-4.0",
-    "attribution": "Games generated with Mortal 4.1b/4.1c (AGPL-3.0). Scenario pack CC BY 4.0.",
+    "attribution": "Games generated with Mortal 298k (AGPL-3.0) and Akochan (non-commercial, attribution). Scenario pack CC BY 4.0.",
     "redistributable": true
   },
   "scenarios": [
@@ -1187,7 +1322,7 @@ a manifest, integrity metadata and a real `GameState` inside. Example
       },
       "played": {
         "kind": "ai",
-        "agent": "mortal-3.0",
+        "agent": "akochan-<ver>",
         "action": "Discard_5m",
         "mortal_probability": 0.03
       },
@@ -1260,30 +1395,38 @@ Why this shape:
 A native binary, not shipped:
 
 ```bash
-# Ingest the self-play mjai corpus (no third-party logs).
+# Ingest the self-play mjai corpus (no third-party logs) into the local DB.
 cargo run --release --features miner --bin mine_replays -- \
-  ingest --input corpus/selfplay --db miner.duckdb --out corpus/mjai
+  ingest --input "$RIICHI_DATA_DIR/replays" \
+  --db "$RIICHI_DATA_DIR/db/miner.sqlite"
 
-# Walk the corpus and extract candidate decision states.
+# Walk the corpus and extract candidate decision states into the scenario DB.
 cargo run --release --features miner --bin mine_replays -- \
-  extract --db miner.duckdb --out candidates.parquet
+  extract --db "$RIICHI_DATA_DIR/db/miner.sqlite"
 
 # Classify against the book and label with Mortal.
 cargo run --release --features miner --bin mine_replays -- \
-  label --candidates candidates.parquet --db miner.duckdb \
+  label --db "$RIICHI_DATA_DIR/db/miner.sqlite" \
   --weights frontend/public/models/mortal_298k.safetensors \
   --model-name mortal_298k.safetensors \
   --classifiers all --agreement
 
-# Select per family/quota, dedupe, transform, and write packs.
+# Select per family/quota, dedupe, transform, and write pack exports.
 cargo run --release --features miner --bin mine_replays -- \
-  pack --db miner.duckdb --family book,contested,mistake,close_call,speed_value \
-  --quota-per-book-section 50 --out frontend/public/scenarios \
+  pack --db "$RIICHI_DATA_DIR/db/miner.sqlite" \
+  --family book,contested,mistake,close_call,speed_value \
+  --quota-per-book-section 50 --out "$RIICHI_DATA_DIR/packs" \
   --max-bytes 50000000
+
+# Snapshot the DB; optionally copy replays + snapshot to Google Drive.
+cargo run --release --features miner --bin mine_replays -- \
+  backup --db "$RIICHI_DATA_DIR/db/miner.sqlite" \
+  --replays "$RIICHI_DATA_DIR/replays" \
+  --remote gdrive:riichiprac
 
 # Audit a pack without publishing.
 cargo run --release --features miner --bin mine_replays -- \
-  audit --manifest frontend/public/scenarios/manifest.json --strict
+  audit --manifest "$RIICHI_DATA_DIR/packs/manifest.json" --strict
 ```
 
 Flags that matter:
@@ -1297,6 +1440,10 @@ Flags that matter:
 - `--q-gap-percentile 10` (close-call selection in model units, not points);
 - `--calibration <file>` (optional Q→point-equity calibration);
 - `--seed` for transforms;
+- `--db <path>` (operational SQLite; default
+  `$RIICHI_DATA_DIR/db/miner.sqlite`);
+- `--out <dir>` (pack export directory; default `$RIICHI_DATA_DIR/packs`);
+- `--remote <rclone:path>` and `--replays <dir>` for the backup command;
 - `--json` for machine-readable summaries;
 - `--dry-run` for a report without writing packs.
 
@@ -1308,16 +1455,21 @@ The agent specification's operational advice is worth keeping:
   at a time; expose `--batch-size` and `--max-parallel`; pause between shards
   if the machine is shared. A GPU run should not compete with the app's dev
   server or an interactive session.
-- **Track processed work in SQLite.** Keep a small local DB (separate from the
-  analytics DB) with `processed_replays(replay_id, sha256, status, attempts,
-  last_error, updated_at)` and `processed_decisions(decision_id, state_hash,
-  model_sha256, classifier_version, status)`. Rerunning a corpus skips finished
-  work and retries only failures. This is cheaper and simpler than rebuilding
-  the whole candidate table.
-- **Use `rclone` only for the self-play corpus.** It is a convenient way to
-  move generated mjai logs between the operator's own machines; it is not an
-  ingestion path for third-party records. The source allowlist still runs at
-  ingest and at publish.
+- **Track processed work in the operational SQLite DB.** Keep
+  `processed_replays(replay_id, sha256, status, attempts, last_error,
+  updated_at)` and `processed_decisions(decision_id, state_hash, model_sha256,
+  classifier_version, status)` alongside the scenario tables, not in the derived
+  analytics DB. Rerunning a corpus skips finished work and retries only
+  failures. This is cheaper and simpler than rebuilding the whole candidate
+  table.
+- **Use `rclone` only as an optional backup for our self-play corpus and DB
+  snapshots.** The miner writes local-only and must not require rclone. When the
+  operator has configured it, copy the immutable replay folder (`rclone copy
+  --checksum --immutable`, never sync with delete semantics) and timestamped
+  `VACUUM INTO` DB snapshots, then `rclone check`. Never mount Drive and point
+  SQLite at it. It is not an ingestion path for third-party records; the source
+  allowlist still runs at ingest and publish, and rclone credentials stay outside
+  both repos.
 - **Log the funnel.** Count raw events → trigger hits → reconstructed states →
   valid states → classifier matches → Mortal labels → selected → packed. A
   run that silently drops 99.9% of candidates is not a success until the
@@ -1350,6 +1502,10 @@ The miner's tests should be a mixture of unit, fixture and integration tests:
 | Pack semantics | every `correct_action` is legal; `accepted` contains it; state/category agree |
 | Dedupe | identical states collapse; transformed states do not collide |
 | Source gate | any `source.kind` other than `ai_selfplay` refuses to pack; missing provenance/licence refuses |
+| Storage layout | data root created; replay paths are content-addressed and relative; DB/raw logs are gitignored |
+| DB snapshot/restore | `VACUUM INTO` snapshot passes `PRAGMA integrity_check`; restored sample replay hashes match |
+| Drive backup (optional) | when the separate rclone task is configured, append-only replay copy and snapshot copy pass `rclone check`; otherwise local-only is valid and recorded as skipped |
+| DB→pack export | `selected_scenarios`/`variants`/`packs` rows and the exported JSON pack agree exactly |
 | Size budget | manifest + selected packs ≤ configured bytes |
 | Frontend smoke | a pack loads through the same import path and renders (vitest; no visual judgement) |
 
@@ -1379,12 +1535,19 @@ are.
 | --- | --- | --- |
 | **0. Policy** | This document; data-licence/provenance schema; source allowlist | Source allowlist is exactly `ai_selfplay`; any other source is rejected |
 | **1. Parser + state** | `replay` module: mjai reader for self-play logs, replay walker, `GameState` reconstruction, `validate_reachable_state` integration, tenhou6 exporter for review | 1-kyoku fixture and 100 self-play games round-trip; all states valid |
-| **2. Self-play corpus** | Separate Mortal `libriichi::arena` runner; 1k-game smoke corpus; dataset card; storage plan | 1k logs parse; 0 invalid states; licence/provenance complete |
+| **2. Self-play corpus** | Separate Mortal `libriichi::arena` runner with a pluggable agent protocol; mixed-family plans (M1 Mortal mirror, M2 sampling sweep, M3 Akochan tactics, M4 Akochan vs Mortal if feasible, M5 heterogeneous table if feasible, M6 heuristic baseline); 1k-game smoke corpus; dataset card; local data root + Google Drive rclone backup | Every family report has per-game agent identity/config/sampling (including temperature)/seed provenance; 1k logs parse; 0 invalid states; licence/provenance complete; local replay folder + DB snapshot/integrity pass; when the separate rclone task is configured, backup/check and restore also pass |
 | **3. Book classifiers** | `matches()` for the broad lessons; generated-state tests; near-miss tests | Every classifier passes generated/near-miss tests; answers legal |
-| **4. Mortal labeler** | Native batch labeler; per-action Q values; caching; agreement filter; ensemble option; Q-unit calibration | Reproducible labels; parity with `evaluate_state`; Q units documented; no re-eval on rerun |
-| **5. Selector** | Trigger families; interestingness rubric; family quotas; dedupe; transforms; review report | A 100-scenario hand-reviewed smoke pack with no duplicates/invalids |
-| **6. Pack + publish** | Pack/manifest schema; audit; Pages/R2/HF publisher; loader smoke test | Pack loads in the app; hash/byte budgets pass; licence gate passes |
-| **7. Frontend loader** | Separate task: manifest fetch, IndexedDB cache, picker integration, ARIA parity | `vitest` + build; no visual judgement from the agent |
+| **4. Mortal labeler** | Native batch labeler; per-action Q values; caching; book agreement filter; optional future multi-model support; Q-unit calibration | Reproducible labels; parity with `evaluate_state`; Q units documented; no re-eval on rerun |
+| **5. Selector** | Trigger families; interestingness rubric; family quotas; dedupe; review report | A 100-scenario hand-reviewed smoke pack with no duplicates/invalids |
+| **6. Permutation** | Required stage: seat/suit/rank/wind/red-five variants; per-lesson `TransformPolicy`; re-run classifier/label; reject broken variants; caps/dedupe | Every shipped variant is label-preserving; invalid variants rejected; variant report and caps pass |
+| **7. Pack + publish** | Pack/manifest schema; audit; Pages/R2/HF publisher; loader smoke test | Pack loads in the app; hash/byte budgets pass; licence gate passes |
+| **8. Frontend loader** | Separate task: manifest fetch, IndexedDB cache, picker integration, ARIA parity | `vitest` + build; no visual judgement from the agent |
+
+The implementation plan splits phases 2 and 5 into separate per-family and
+per-transform units; [`replay-implementation-plan.md`](replay-implementation-plan.md)
+§5 is the authoritative build order and gate list. Do not start the permutation
+stage before the classifier/labeler are stable: a variant gate on top of an
+unstable label ships plausible-looking but wrong drills.
 
 Do not start Phase 5 before Phase 3/4 are stable: a selector on top of an
 unstable classifier produces plausible-looking but wrong drills.
@@ -1463,13 +1626,15 @@ single scalar hide a licence failure or an ambiguous answer.
 The task specifically asks for ways to find interesting scenarios that do not
 line up exactly with book lessons. These are the strongest:
 
-1. **Model-vs-model blunder mining.** Use a weaker/human-like agent (Mortal 3.0,
-   Akochan with a different tactic) and a strong labeller (4.1b). The gap is a
-   mistake; the position before it is a drill. This is the closest thing to
-   "real human error" without human data.
-2. **Model disagreement.** 4.1a/b/c or Mortal vs Akochan disagree. Either ship
-   as "contested" with both lines, or use the disagreement to find states where
-   the "obvious" move is not obvious.
+1. **Model-vs-model blunder mining.** Use Akochan with a different tactic, or a
+   heuristic baseline, against the `mortal_298k` labeller. The gap is a mistake;
+   the position before it is a drill. This is the closest thing to "real human
+   error" without human data.
+2. **Policy disagreement.** Mortal vs Akochan disagree (same table if the bridge
+   is feasible; otherwise compare across corpus games). Either ship as
+   "contested" with both lines, or use the disagreement to find states where the
+   "obvious" move is not obvious. Do not call sampling variants of the one
+   Mortal checkpoint a model disagreement.
 3. **Close calls.** Top-2 actions within a small margin. These train judgement
    and are naturally hard; label them as close rather than pretending there is a
    unique best.
@@ -1507,7 +1672,8 @@ line up exactly with book lessons. These are the strongest:
 - **Rarity as value.** A one-in-a-million state is not automatically useful.
   Prefer common patterns that transfer.
 - **Mortal worship.** Mortal is a strong policy, not ground truth. Prefer book
-  agreement, ensemble agreement, or explicitly label a Mortal-only drill.
+  agreement, or explicitly label a Mortal-only drill. With one checkpoint there
+  is no ensemble to appeal to.
 - **Spoiler leakage.** A provenance line that says "the wait was 3p" ruins the
   drill. Keep provenance about the game, not the answer.
 - **Duplication.** Ten seat rotations of the same state are not ten scenarios.
@@ -1545,15 +1711,18 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
    tenhou6 exporter for mjai-reviewer. This is the highest-risk,
    highest-leverage piece.
 3. **Build the self-play corpus runner separately:** Mortal `libriichi::arena`
-   with 4.1b/4.1c/3.0; dump mjai logs; store them outside the app repo. If the
-   AGPL link is a concern, keep it in a separate repo or invoke it as a
-   subprocess.
+   with the one `mortal_298k` checkpoint, plus Akochan and heuristic/reference
+   policies; dump mjai logs to the local data root and back them up to Google
+   Drive with rclone. The runner code lives in a **private** corpus repo outside
+   the app repo; the raw logs do not live in that repo. If the AGPL link is a
+   concern, keep it in the private repo or invoke it as a subprocess.
 4. **Add book classifiers** for the broad lessons, starting with Riichi/dama,
    push/fold, defense safety, suji trap, pinfu head, honitsu and the call/kan
    lessons. Test them against the existing generators.
 5. **Add the native Mortal labeler** using the app's existing `MortalV4Model`;
-   expose per-action Q values, cache by state/model/classifier hash, support an
-   ensemble, and calibrate Q gaps before any point-denominated copy.
+   expose per-action Q values, cache by state/model/classifier hash, and
+   calibrate Q gaps before any point-denominated copy. With one checkpoint there
+   is no ensemble to run; multi-model support is optional and future-only.
 6. **Ship one small pack** (for example 100 ch. 8 defense scenarios) through a
    lazy-loaded manifest, and measure load size, cache behaviour, answer
    accuracy and user feedback before scaling.
@@ -1563,24 +1732,29 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
 ### 8.2 Open questions for the product owner
 
 1. **How do we make self-play varied and human-like enough?** The decision is
-   self-play only; the remaining question is the recipe (network mix,
-   temperature, weak-agent frequency, seed schedule), not the source.
-2. **What is the primary interestingness target?** Book-aligned drills,
+   self-play only; the remaining question is the recipe (Akochan/heuristic
+   frequency, sampling, seat schedule, seed schedule), not the source. With
+   one Mortal checkpoint, the Mortal ladder is not a variety lever.
+2. **Do we want more neural policies?** If so, the options are to obtain
+   permission/weights, train our own checkpoint (a separate, large project), or
+   add another open engine. None is assumed by this plan.
+3. **What is the primary interestingness target?** Book-aligned drills,
    mistake mining, close calls, speed vs value, or coverage? The pack mix and UI
    copy differ.
-3. **Data licence:** CC BY 4.0 for packs (attribution, simple) vs CC0 (maximum
+4. **Data licence:** CC BY 4.0 for packs (attribution, simple) vs CC0 (maximum
    reuse) vs MIT (code-style, awkward for data)? The app code stays MIT; the
    data needs its own file.
-4. **Hosting:** Pages-only for a small pack, or R2/HF from the start for the
-   full corpus? Pages is simplest; R2 is cheap and CORS-friendly.
-5. **Ship Mortal labels?** Precomputed labels make packs useful without the
+5. **Pack hosting:** Pages-only for small packs, or R2/HF for pack bodies?
+   The raw corpus and SQLite DB live locally and back up to Google Drive; Drive
+   is not a pack host. Pages is simplest; R2 is cheap and CORS-friendly.
+6. **Ship Mortal labels?** Precomputed labels make packs useful without the
    43 MB weights, but they can go stale and they spoil the answer in the JSON.
    Recompute on load is cleaner but requires weights. A hybrid is possible.
-6. **How much human review?** A 100-scenario pack can be hand-reviewed; 10,000
+7. **How much human review?** A 100-scenario pack can be hand-reviewed; 10,000
    cannot without a review tool. What is the budget?
-7. **Multi-step drills now or later?** Single snapshots reuse the current UI;
+8. **Multi-step drills now or later?** Single snapshots reuse the current UI;
    sequences need a step engine and new grading/history behavior.
-8. **Do we need point-denominated EV copy?** Q values are model utility. If the
+9. **Do we need point-denominated EV copy?** Q values are model utility. If the
    UI or explanations must say "a 400-point decision", we need a calibrated
    Q→point mapping and a validation set; otherwise use margins/percentiles.
 
@@ -1592,6 +1766,8 @@ as AGENTS.md §6: do not let the agent's own taste sign off the work.
   self-play only; the licensing analysis is the reason, not a menu.
 - It does not claim Mortal is ground truth. It is a strong policy and one
   perspective, which is why the app already shows book and Mortal side by side.
+- It does not assume the 4.1/3.0 Mortal weights are available offline. Those are
+  online-service networks; the only local checkpoint is `mortal_298k`.
 - It does not claim the size/performance numbers are measured. They are planning
   estimates; the first smoke corpus should replace them with real numbers.
 - It does not implement the miner, the pack loader or any frontend change. It is
@@ -1616,7 +1792,7 @@ At a glance:
 | Scope | end-to-end: sources, licensing, scenario design, hosting, miner | one autonomous miner's execution recipe | end-to-end plan with a concrete miner recipe |
 | Source/licensing | detailed; self-play recommended | not addressed; "personal storage" logs assumed | **self-play only**; any other source rejected |
 | State model | full `GameState` + app validation | thin `board_state` | full `GameState`, prototype fields as metadata |
-| Label source | book + Mortal, contested option | Mortal optimal vs played | book + Mortal + self-play agent/weak-agent/ensemble |
+| Label source | book + Mortal, contested option | Mortal optimal vs played | book + Mortal + Akochan/heuristic agent; no neural ensemble with one checkpoint |
 | Value units | probabilities + scalar value | per-action EV in points | raw Q values + probability; calibrated points only if needed |
 | Triggers | broad families, no hard windows | defensive/offensive triggers | concrete triggers as recall filters with quotas |
 | Output | pack + manifest schema | compact prototype JSON | pack schema with `GameState`; field mapping in 9.3 |
@@ -1726,8 +1902,17 @@ Checked 2026-11-14:
 - mjai format standardisation: <https://github.com/Cryolite/mjai> (replay vs
   in-game mode; event names; hub-format rationale).
 - Mortal: <https://github.com/Equim-chan/Mortal> (AGPL-3.0; emulator; mjai;
-  `libriichi::arena`; 40K hanchans/hour claim; weights AGPL).
-- Mortal docs: <https://mortal.ekyu.moe/>.
+  `libriichi::arena`; 40K hanchans/hour claim; available checkpoint AGPL-3.0).
+- Mortal docs and the "weights" statement:
+  <https://mortal.ekyu.moe/> (the "Okay cool now give me the weights!" section
+  points at the author's post below); the online service lists the 4.1a/b/c,
+  4.0 and 3.0 networks at <https://mjai.ekyu.moe/>.
+- Mortal author's weights post:
+  <https://gist.github.com/Equim-chan/cf3f01735d5d98f1e7be02e94b288c56>
+  (2022-08-19 update: no current plan to release the trained model).
+- Available community checkpoint:
+  <https://huggingface.co/VoidShine/mortal-298k> (`mortal_298k.pth`, AGPL-3.0;
+  model card says it was trained on Tenhou hanchan data).
 - Mortal's `q_values` metadata and example outputs:
   <https://github.com/Equim-chan/Mortal/blob/main/docs/src/user/docker.md>
   (the `-1.19`-style values that show Q values are model utility, not points).
@@ -1761,6 +1946,10 @@ Checked 2026-11-14:
 - Hugging Face pricing: <https://huggingface.co/pricing>.
 - Cloudflare R2 pricing: <https://developers.cloudflare.com/r2/pricing/>
   (10 GB free, zero egress).
+- rclone Google Drive backend: <https://rclone.org/drive/>
+  (backup/transport; not a live database host).
+- SQLite `VACUUM INTO`: <https://www.sqlite.org/lang_vacuum.html>
+  (consistent DB snapshot without copying a live WAL).
 - Existing app docs: `hosting-plan.md`, `mortal-validation.md`,
   `scenario-fuzz-plan.md`, `scenario-report-plan.md`, `ai-scenario-plan.md`,
   `README.md`.
