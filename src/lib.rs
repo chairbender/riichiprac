@@ -8,6 +8,8 @@ pub mod generator;
 #[cfg(feature = "miner")]
 pub mod miner;
 pub mod rationale;
+#[cfg(feature = "miner")]
+pub mod replay;
 pub mod report;
 pub mod rng;
 pub mod safety;

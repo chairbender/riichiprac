@@ -1,20 +1,22 @@
-# Replay miner operations: data root, provenance and storage (F1)
+# Replay miner operations: data root, provenance, storage and replays (F1, R1)
 
-Status: implemented foundation (F1 of
-[`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3). This
+Status: implemented foundation (F1) and replay reader/validator (R1) of
+[`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
 document is the operator contract for the native-only miner. It does not re-open
 the source decision: [`replay-strategy.md`](replay-strategy.md) §2 fixes AI
 self-play as the only replay source.
 
 F1 creates the feature boundary, provenance types, source/licence/rule gates,
 the local data root, the SQLite schema, atomic writes, a funnel counter and the
-CLI stubs. It implements no replay parser, no Mortal inference and no pack
-publisher; those are R1, R2, L1 and P1a onward.
+CLI stubs. R1 adds the gzipped mjai reader and the structural replay validator in
+`src/replay/` plus its fixtures. Mortal inference, `GameState` reconstruction and
+the pack publisher remain R2, L1 and P1a onward.
 
 ## Build boundary
 
-The miner is native-only. `src/miner/` and `src/bin/mine_replays.rs` are behind
-the `miner` Cargo feature; the binary declares `required-features = ["miner"]`.
+The miner is native-only. `src/miner/`, `src/replay/` and
+`src/bin/mine_replays.rs` are behind the `miner` Cargo feature; the binary
+declares `required-features = ["miner"]`.
 
 ```bash
 # Shipped app target: no miner modules, no native dependencies, WASM-clean.
@@ -255,6 +257,83 @@ curated rows are what the backup protects.
 it over the target and syncs the directory. On any error the old target remains
 untouched and the temp file is removed. It is used for logs, snapshots metadata,
 manifests and pack exports; generated images/assets are not part of F1.
+
+## Replay format and validation contract (R1)
+
+Status: implemented. `src/replay/` reads gzipped mjai JSONL and rejects a
+structurally impossible game before R2 reconstructs anything.
+
+### Accepted input
+
+- One complete game, one JSON object per line, gzip-compressed. The ingestion
+  entry point is `ReplayReader::read_path`; it requires the gzip magic and
+  rejects a plain file behind a `.jsonl.gz` name.
+- Events: `start_game` (optional, first), `start_kyoku`, `tsumo`, `dahai`,
+  `chi`, `pon`, `daiminkan`, `ankan`, `kakan`, `dora`, `reach`,
+  `reach_accepted`, `hora`, `ryukyoku`, `end_kyoku`, `end_game`.
+- Deliberate narrowings of the mjai schema: four seats only; `start_kyoku`
+  must carry `scores` and four 13-tile `tehais`; `?` is rejected because a
+  replay has no hidden tiles. `hora` and `ryukyoku` accept the union of fields
+  the common writers emit (`pai`, `deltas`, `scores`, `ura_markers`, `reason`,
+  `tehais`); absent optional fields are tolerated.
+- Rejected: `hello`, `join`, `none`, unknown events, and any
+  Tenhou/Mahjong Soul/Riichi City/Hime document. There is no third-party
+  parser in this path.
+
+### Structural rules
+
+- A game starts at E1 with 25 000 each and ends with `end_game`. Every kyoku is
+  `start_kyoku` … `(hora|ryukyoku)` … `end_kyoku`.
+- Turn order: the dealer draws first; after a discard the next seat may call or
+  draw; after chi/pon the caller discards; after a kan its owner draws the
+  replacement. `tsumogiri=true` must name the tile just drawn.
+- Calls: only the open discard can be claimed; chi only by the seat on the
+  discarder's left; the consumed tiles are held; chi is a run, pon/daiminkan a
+  triplet/four-of-a-kind, kakan upgrades an existing pon; a riichi seat cannot
+  call (an ankan is allowed; R2 checks that the wait is unchanged).
+- Ledger: 52 tiles are dealt and every draw adds one; hands + melds + rivers
+  must equal `52 + draws` at `end_kyoku`. Each seat holds `13 - 3·melds`
+  concealed tiles (`14 - 3·melds` while holding a draw). No fifth copy of a
+  tile and no second red five of a suit, including the dead-wall indicators.
+- Wall: 70 live draws. A kan's replacement draw is a `tsumo` and counts as one
+  draw (the dead wall is replenished from the live wall), so an exhaustive draw
+  ends at exactly 70. R2's `tiles_remaining` is `70 - tsumo_events`.
+- Dora: the `start_kyoku` marker plus one new `dora` per **completed** kan
+  (`1 + revealed kan dora`). A robbed kakan never reveals its indicator. A
+  pending indicator must appear before the kan's owner next discards; a
+  chankan `hora` may end the hand first.
+- Chankan: a `hora` immediately after an `ankan` or `kakan` is accepted, with
+  the declared tile as the winning tile.
+- Scores: `Σscores + 1000·kyotaku == 100 000` at every kyoku boundary, and the
+  next `start_kyoku` scores equal the previous result after riichi deductions
+  and deltas. A dealer win repeats the round; a non-dealer win advances it; an
+  abortive draw repeats it; an exhaustive draw may repeat or advance because
+  tenpai is not in the record.
+- Yaku, waits, furiten and point values are not validated here. A `hora`
+  without `deltas`/`scores` is accepted structurally; R2 owns the label.
+
+### Fixtures
+
+- `testdata/replays/one_kyoku_hora.jsonl` — one kyoku with chi, pon,
+  daiminkan, ankan, kakan, three kan dora, a riichi declaration/acceptance and
+  a ron with ura markers; every event kind except `ryukyoku`.
+- `testdata/replays/one_kyoku_ryukyoku.jsonl` — a 70-draw exhaustive draw.
+- Both are generated by `src/replay/fixtures.rs` (test-only). The
+  `committed_fixtures_are_current` test fails if code and files drift;
+  regenerate with
+  `cargo test --features miner regenerate_committed_fixtures -- --ignored`.
+
+## R1 acceptance evidence
+
+- `cargo test --features miner` covers the tile mapping including red fives,
+  every event shape, line-numbered parse errors, the expected event list of the
+  1-kyoku fixture, a typed error for every malformed fixture, the tile ledger,
+  the 70-draw wall, the score/kyotaku chain, a chankan, an abortive draw, a
+  two-kyoku game, gzip path ingestion and 100 synthetic games.
+- `cargo clippy --all-targets --features miner -- -D warnings` and
+  `cargo check --target wasm32-unknown-unknown` stay clean;
+  `cargo tree --features miner` contains no `libriichi`.
+- Visual sign-off is not involved in R1.
 
 ## F1 acceptance evidence
 
