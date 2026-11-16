@@ -75,6 +75,18 @@ pub(super) fn build_board(
         )
         .ok_or_else(|| "Deck exhausted drawing the human river".to_string())?;
 
+    // The answer tile must still look live. If an opponent has already
+    // discarded it the player has that information in front of them, and the
+    // tile the drill asks them to throw away reads as one somebody else has
+    // already let go of. Applies to every variant, including the 1-away hands
+    // that have no wait check of their own.
+    let answer = skeleton.answer_tile.to_string();
+    for player in &deal.players {
+        if player.discards.iter().any(|discard| discard.tile == answer) {
+            return Err("The answer tile is visible in an opponent river".to_string());
+        }
+    }
+
     match skeleton.variant {
         Variant::ReadyDrop => {
             // The book's ready-hand comparison is three live tiles against two.

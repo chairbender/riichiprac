@@ -493,10 +493,10 @@ fn clean_state(hand: &[&str], draw: &str) -> GameState {
     state.players[0].red_fives.clear();
     state.players[0].discards.clear();
     state.players[0].melds.clear();
-    for seat in 1..4 {
-        state.players[seat].discards.clear();
-        state.players[seat].melds.clear();
-        state.players[seat].red_fives.clear();
+    for player in state.players.iter_mut().skip(1) {
+        player.discards.clear();
+        player.melds.clear();
+        player.red_fives.clear();
     }
     state.dora_indicators.clear();
     state.ura_dora_indicators.clear();

@@ -395,6 +395,8 @@ mod tests {
 
     /// The reweighting is the point of the task: an isolated condition should
     /// dominate the draw, because those are the cases the book's box teaches.
+    /// Seeded replay needs `rng::seed`, which only exists off `wasm32`.
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn single_condition_sets_dominate_the_draw() {
         let single_weight: u32 = TARGET_WEIGHTS[1..=3].iter().sum();

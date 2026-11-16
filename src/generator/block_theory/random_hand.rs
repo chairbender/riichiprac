@@ -29,6 +29,9 @@ pub fn generate() -> Vec<Tile> {
     // Blocks 2 to 5: 4 Melds (Mentsu) - either sequence (shuntsu) or triplet (koutsu)
     for _ in 0..4 {
         let want_sequence = gen_bool(0.65);
+        // The arms are deliberately mirrored, not identical: both calls mutate the
+        // deck, so short-circuit order decides which shape is tried first.
+        #[allow(clippy::if_same_then_else)]
         let meld_formed = if want_sequence {
             try_add_sequence(&mut hand, &mut deck) || try_add_triplet(&mut hand, &mut deck)
         } else {

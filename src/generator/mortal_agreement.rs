@@ -1000,6 +1000,8 @@ mod tests {
 
     /// The point of the task: a filter that rejects every candidate refills
     /// under one drawn situation instead of redrawing it.
+    /// Seeded replay needs `rng::seed`, which only exists off `wasm32`.
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn one_request_pins_one_situation_across_every_candidate() {
         crate::rng::seed(0x5117_0001);
@@ -1024,6 +1026,8 @@ mod tests {
     }
 
     /// A seeded run reproduces the whole table, not just its parameter set.
+    /// Seeded replay needs `rng::seed`, which only exists off `wasm32`.
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn a_seeded_request_replays_the_same_puzzle() {
         crate::rng::seed(0xc0ff_ee01);

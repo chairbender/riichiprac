@@ -75,6 +75,9 @@ pub(super) fn build_skeleton() -> Result<RyanmenSkeleton, String> {
         // Two completed sets, either sequences or triplets.
         let mut concealed_tiles = Vec::with_capacity(11);
         for _ in 0..2 {
+            // The arms are deliberately mirrored, not identical: both calls mutate
+            // the deck, so short-circuit order decides which shape is tried first.
+            #[allow(clippy::if_same_then_else)]
             let added = if gen_bool(0.65) {
                 try_add_sequence(&mut concealed_tiles, &mut deck)
                     || try_add_triplet(&mut concealed_tiles, &mut deck)

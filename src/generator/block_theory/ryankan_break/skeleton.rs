@@ -111,6 +111,9 @@ pub(super) fn build_skeleton() -> Result<RyankanBreakSkeleton, String> {
 
         // The second completed set, in the third suit.
         let mut concealed_tiles = Vec::with_capacity(11);
+        // The arms are deliberately mirrored, not identical: both calls mutate the
+        // deck, so short-circuit order decides which shape is tried first.
+        #[allow(clippy::if_same_then_else)]
         let added = if gen_bool(0.6) {
             try_add_run(&mut concealed_tiles, &mut deck, set_suit)
                 || try_add_triplet(&mut concealed_tiles, &mut deck, set_suit)

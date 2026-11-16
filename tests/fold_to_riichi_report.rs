@@ -5,6 +5,7 @@
 //! all have to name a fold without inventing any new vocabulary. These run on
 //! the host target because the browser-target suite (`tests/wasm_tests.rs`)
 //! cannot be executed without a wasm host.
+#![cfg(not(target_arch = "wasm32"))]
 
 use riichiprac::{
     build_scenario_report, generate_puzzle, grade_answer_json, parse_scenario_report,
