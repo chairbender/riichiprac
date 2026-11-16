@@ -1,5 +1,5 @@
 mod board;
-mod skeleton;
+pub(crate) mod skeleton;
 mod triggers;
 
 use crate::generator::support::retry::generate_with_retries;

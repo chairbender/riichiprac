@@ -70,6 +70,7 @@ pub fn push_or_fold(state: &GameState) -> Option<Match> {
             equivalent_tiles: equivalents,
             riichi_triggers: Vec::new(),
             dama_reasons: Vec::new(),
+            shouminkan_triggers: Vec::new(),
             scenario_note: Some(push_note(&turn)),
         });
     }
@@ -94,6 +95,7 @@ pub fn push_or_fold(state: &GameState) -> Option<Match> {
         equivalent_tiles: Vec::new(),
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
+        shouminkan_triggers: Vec::new(),
         scenario_note: Some(push_note(&turn)),
     })
 }

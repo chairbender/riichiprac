@@ -4,7 +4,7 @@
 //! a hand that satisfies a lesson's constraints. The replay miner needs the
 //! inverse — given a reconstructed [`GameState`], does it satisfy a lesson, and
 //! what is the answer? This module is that inverse (replay-strategy §6.4,
-//! implementation unit B1).
+//! implementation units B1 and B2).
 //!
 //! # The contract
 //!
@@ -46,10 +46,21 @@
 //! # Where the predicates live
 //!
 //! The B1/B2 recognisers share one state reading ([`support`]) and one
-//! transform contract, and the B1 gate runs on the **default** app build (not
-//! the `miner` feature), so they live in this module rather than beside each
-//! constructor. They still call each lesson's own judgement helpers instead of
-//! re-implementing the book rule.
+//! transform contract, and the classifier gate runs on the **default** app
+//! build (not the `miner` feature), so they live in this module rather than
+//! beside each constructor. They still call each lesson's own judgement helpers
+//! instead of re-implementing the book rule.
+//!
+//! # Two decision shapes
+//!
+//! B1's lessons are all closed self-turn discard decisions, and [`support::turn`]
+//! is that view. B2 adds the ch. 9 reaction and kan decisions: a Pon/Chi/Kan
+//! offer ([`crate::state::DecisionContext::ReactToDiscard`]) and an open or
+//! concealed quad on the player's own turn. Those recognisers read the hand
+//! through their own tile lists and the state's `call_offer`/`melds` instead of
+//! `turn`, and [`Match::validate`] grades every
+//! answer against the state's own [`crate::ai::actions::legal_actions`] list, so
+//! a Kan or Pass answer is checked exactly like a discard.
 //!
 //! # ch. 7 sections can disagree on arbitrary states
 //!
@@ -89,20 +100,26 @@
 //! settled by the same rule. The test suite pins both families' disagreements,
 //! both Mortal outcomes, and proves no other pair of recognisers disagrees.
 
+pub mod call;
 pub mod defense;
+pub mod honitsu;
+pub mod kan;
+pub mod pinfu;
 pub mod push_fold;
 pub mod riichi;
+pub mod suji;
+pub mod wind;
 
 pub(crate) mod support;
 
 use crate::ai::wasm_bridge::Evaluation;
+use crate::decision::ActionKind;
 use crate::fuzz::{FuzzOutcome, compare_action_set};
 use crate::generator::ScenarioId;
 use crate::state::{
-    CorrectAction, CorrectActionType, DamaReason, GameState, RiichiTrigger, TargetAction,
+    CorrectAction, CorrectActionType, DamaReason, GameState, RiichiTrigger, ShouminkanTrigger,
+    TargetAction,
 };
-
-use support::turn;
 
 /// What a classifier concluded about one state.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -123,6 +140,8 @@ pub struct Match {
     pub riichi_triggers: Vec<RiichiTrigger>,
     /// The ch. 7 dama reasons the rationale is built from.
     pub dama_reasons: Vec<DamaReason>,
+    /// The ch. 9 Added Kan triggers the rationale is built from.
+    pub shouminkan_triggers: Vec<ShouminkanTrigger>,
     /// Pre-answer copy the lesson needs on screen (answer-free facts only).
     pub scenario_note: Option<String>,
 }
@@ -145,37 +164,69 @@ impl Match {
 
     /// Re-check the answer against the state it came from.
     ///
-    /// Fails when the answer names no tile, when the tile (or an equivalent) is
-    /// not in the displayed hand, or when a Riichi answer is not legal on this
-    /// table. This is the invariant every classifier must keep: a match is a
-    /// legal, clickable answer on the state that produced it.
+    /// The answer must be one the state's own legal-action list offers: a
+    /// discard (or the discard under a Riichi/dama/fold answer) has to be a
+    /// legal hand discard, a Kan has to be one of the offered kans, and a Pass
+    /// has to be a legal reaction. That covers the closed self-turn lessons and
+    /// the ch. 9 reaction/kan lessons with one rule, and it never depends on the
+    /// lesson's own fields. Equivalents must be legal discards too. This is the
+    /// invariant every classifier must keep: a match is a legal, clickable
+    /// answer on the state that produced it.
     pub fn validate(&self, state: &GameState) -> Result<(), MatchError> {
-        let turn = turn(state).ok_or(MatchError::NotASelfTurn)?;
-        let Some(tile) = self.correct_action.tile() else {
-            return Err(MatchError::NoAnswerTile);
+        let legal = crate::ai::actions::legal_actions(state);
+        let discard_is_legal = |tile: &str| {
+            legal
+                .iter()
+                .any(|info| info.kind == ActionKind::Discard && info.tile.as_deref() == Some(tile))
         };
-        if !turn.hand.iter().any(|held| held.to_string() == tile) {
-            return Err(MatchError::AnswerNotInHand(tile.to_string()));
+
+        match &self.correct_action {
+            CorrectAction::Riichi { discard } => {
+                if !legal.iter().any(|info| info.kind == ActionKind::Riichi) {
+                    return Err(MatchError::RiichiNotLegal);
+                }
+                if !discard_is_legal(discard) {
+                    return Err(MatchError::AnswerNotInHand(discard.clone()));
+                }
+            }
+            CorrectAction::Dama { discard }
+            | CorrectAction::Fold { discard }
+            | CorrectAction::Discard { tile: discard } => {
+                if !discard_is_legal(discard) {
+                    return Err(MatchError::AnswerNotInHand(discard.clone()));
+                }
+            }
+            CorrectAction::Kan { tile } => {
+                if !legal
+                    .iter()
+                    .any(|info| info.kind == ActionKind::Kan && info.tile.as_deref() == Some(tile))
+                {
+                    return Err(MatchError::KanNotLegal(tile.clone()));
+                }
+            }
+            CorrectAction::Pass => {
+                if !legal.iter().any(|info| info.kind == ActionKind::Pass) {
+                    return Err(MatchError::PassNotLegal);
+                }
+            }
+            other => return Err(MatchError::UnsupportedAnswer(other.action_type())),
         }
+
         for equivalent in &self.equivalent_tiles {
-            if !turn.hand.iter().any(|held| held.to_string() == *equivalent) {
+            if !discard_is_legal(equivalent) {
                 return Err(MatchError::EquivalentNotInHand(equivalent.clone()));
             }
         }
-        if self.equivalent_tiles.iter().any(|other| other == tile) {
+        if let Some(tile) = self.correct_action.tile()
+            && self.equivalent_tiles.iter().any(|other| other == tile)
+        {
             return Err(MatchError::AnswerRepeatsEquivalent);
         }
-        match self.correct_action.action_type() {
-            CorrectActionType::Riichi => {
-                if state.tiles_remaining < 4 || state.players[0].score < 1_000 {
-                    return Err(MatchError::RiichiNotLegal);
-                }
-            }
-            CorrectActionType::Dama | CorrectActionType::Fold | CorrectActionType::Discard => {}
-            other => return Err(MatchError::UnsupportedAnswer(other)),
-        }
         if let Some(situation) = &self.situation
-            && situation.contains(tile)
+            && self
+                .correct_action
+                .tile()
+                .is_some_and(|tile| situation.contains(tile))
         {
             return Err(MatchError::Spoiler(situation.clone()));
         }
@@ -186,9 +237,11 @@ impl Match {
     ///
     /// The lesson's answer vocabulary and trigger/reason lists are replaced, so
     /// a mined state never carries the generator's constructor facts or another
-    /// lesson's rationale. Derived hand metrics (`tiles`, `shanten`, `ukeire`)
-    /// are left as the caller supplied them: the replay walker computes them
-    /// when it reconstructs the snapshot.
+    /// lesson's rationale. The decision context and the offered call are left
+    /// as the state supplied them: a ch. 9 call/Kan lesson's offer is part of
+    /// its question, not part of its answer. Derived hand metrics (`tiles`,
+    /// `shanten`, `ukeire`) are left as the caller supplied them: the replay
+    /// walker computes them when it reconstructs the snapshot.
     pub fn stamp(self, mut state: GameState) -> GameState {
         state.category = self.lesson.as_str().to_string();
         state.target_action = self.target_action;
@@ -196,8 +249,7 @@ impl Match {
         state.equivalent_tiles = self.equivalent_tiles;
         state.riichi_triggers = self.riichi_triggers;
         state.dama_reasons = self.dama_reasons;
-        state.shouminkan_triggers = Vec::new();
-        state.call_offer = None;
+        state.shouminkan_triggers = self.shouminkan_triggers;
         state.ai_decision = None;
         state.scenario_note = self.scenario_note;
         crate::generator::finalize_state(state)
@@ -289,6 +341,13 @@ pub struct LessonClassifier {
 /// drill is also a "safest discard" board, and the slower-hand betaori lesson is
 /// also a defense board, so the narrower rule is listed first.
 pub const CLASSIFIERS: &[LessonClassifier] = &[
+    // ch. 7/ch. 8 suji-trap family. It refines the bad-wait box's dama cell,
+    // which defers to it, so it comes first.
+    LessonClassifier {
+        lesson: ScenarioId::SujiTrapRiichi,
+        policy: suji::POLICY,
+        matches: suji::suji_trap_riichi,
+    },
     // ch. 7 riichi/dama family.
     LessonClassifier {
         lesson: ScenarioId::DamaBadWait,
@@ -360,6 +419,43 @@ pub const CLASSIFIERS: &[LessonClassifier] = &[
         lesson: ScenarioId::DefenseSafetyChart,
         policy: defense::POLICY,
         matches: defense::defense_safety_chart,
+    },
+    // ch. 5 shape/value family.
+    LessonClassifier {
+        lesson: ScenarioId::PinfuHead,
+        policy: pinfu::POLICY,
+        matches: pinfu::pinfu_head,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::HonitsuDecision,
+        policy: honitsu::POLICY,
+        matches: honitsu::honitsu_decision,
+    },
+    // ch. 9 call, kan and seating family.
+    LessonClassifier {
+        lesson: ScenarioId::MeldOrNot,
+        policy: call::MELD_POLICY,
+        matches: call::meld_or_not,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::DaiminkanDecision,
+        policy: call::DAIMINKAN_POLICY,
+        matches: call::daiminkan_decision,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::AnkanDecision,
+        policy: kan::POLICY,
+        matches: kan::ankan_decision,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::ShouminkanDecision,
+        policy: kan::POLICY,
+        matches: kan::shouminkan_decision,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::WindDiscardOrder,
+        policy: wind::POLICY,
+        matches: wind::wind_discard_order,
     },
 ];
 
@@ -556,15 +652,19 @@ pub enum MatchError {
     NotASelfTurn,
     /// The answer has no tile to click.
     NoAnswerTile,
-    /// The named tile is not in the displayed hand.
+    /// The named tile is not a legal hand discard.
     AnswerNotInHand(String),
-    /// An equivalent tile is not in the displayed hand.
+    /// An equivalent tile is not a legal hand discard.
     EquivalentNotInHand(String),
     /// The named tile is listed as its own equivalent.
     AnswerRepeatsEquivalent,
     /// A Riichi answer the table's rules do not allow.
     RiichiNotLegal,
-    /// A B1 classifier returned an answer vocabulary it does not own.
+    /// The named kan is not one of the state's legal kans.
+    KanNotLegal(String),
+    /// A Pass answer on a state that offers no pass.
+    PassNotLegal,
+    /// A classifier returned an answer vocabulary it does not own.
     UnsupportedAnswer(CorrectActionType),
     /// The situation label names the answer.
     Spoiler(String),
@@ -575,13 +675,15 @@ impl std::fmt::Display for MatchError {
         match self {
             Self::NotASelfTurn => f.write_str("state is not a closed self-turn discard decision"),
             Self::NoAnswerTile => f.write_str("the answer names no tile"),
-            Self::AnswerNotInHand(tile) => write!(f, "answer {tile} is not in the hand"),
+            Self::AnswerNotInHand(tile) => write!(f, "answer {tile} is not a legal discard"),
             Self::EquivalentNotInHand(tile) => {
-                write!(f, "equivalent {tile} is not in the hand")
+                write!(f, "equivalent {tile} is not a legal discard")
             }
             Self::AnswerRepeatsEquivalent => f.write_str("the answer is its own equivalent"),
             Self::RiichiNotLegal => f.write_str("Riichi is not legal on this table"),
-            Self::UnsupportedAnswer(kind) => write!(f, "unsupported B1 answer family {kind:?}"),
+            Self::KanNotLegal(tile) => write!(f, "kan {tile} is not a legal kan on this table"),
+            Self::PassNotLegal => f.write_str("passing is not a legal action on this table"),
+            Self::UnsupportedAnswer(kind) => write!(f, "unsupported answer family {kind:?}"),
             Self::Spoiler(label) => write!(f, "the situation label names the answer: {label}"),
         }
     }

@@ -143,6 +143,12 @@ pub fn riichi_judgement(state: &GameState) -> Option<Match> {
 pub fn dama_bad_wait(state: &GameState) -> Option<Match> {
     let turn = support::turn(state)?;
     let candidates = support::candidates(&turn)?;
+    // The immediate-suji-trap lesson is a refinement of this box's dama cell:
+    // when a trap discard exists, ch7:512 makes the declaration right and the
+    // box must not also call the hand dama.
+    if super::suji::trap_cell(state, &candidates).is_some() {
+        return None;
+    }
     let (verdict, chosen, equivalents) = unanimity_index(&turn, &candidates, |_, kept| {
         if !is_book_tenpai(kept) {
             return None;
@@ -415,6 +421,7 @@ fn declaration_match(
         equivalent_tiles: equivalents,
         riichi_triggers: hints.triggers,
         dama_reasons: hints.reasons,
+        shouminkan_triggers: Vec::new(),
         scenario_note,
     }
 }

@@ -27,7 +27,7 @@
 //! Deck cards: 1463255782615, 1463256320218, 1463256486957, 1463256846829.
 
 mod board;
-mod skeleton;
+pub(crate) mod skeleton;
 
 use crate::generator::support::retry::generate_with_retries;
 use crate::state::GameState;

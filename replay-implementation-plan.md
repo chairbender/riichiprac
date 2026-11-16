@@ -1446,6 +1446,36 @@ the near-miss set; transform policy declared.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-16, B2 branch).** Recognisers live beside B1 in
+> `src/classifier/`: `suji.rs`, `pinfu.rs`, `honitsu.rs`, `call.rs` (meld/Pon and
+> open quad), `kan.rs` (concealed and added quad) and `wind.rs`. All six files
+> are on the default app build and share B1's `support`, `Match` and registry.
+> `Match::validate` now grades every answer against the state's own
+> `legal_actions` list, so a **Kan** or **Pass** answer is checked exactly like a
+> discard, and `Match::stamp` preserves the decision context and `call_offer`
+> (a ch. 9 call's offer is part of its question, not its answer). `Match` also
+> carries the recomputed `shouminkan_triggers` so a mined kakan state keeps the
+> book rationale.
+>
+> Cell overlaps were settled rather than left to Mortal: (a) `suji_trap_riichi`
+> refines the bad-wait box's **dama** cell, so `dama_bad_wait` defers to it — a
+> trap state can never also be labelled dama; (b) `honitsu_decision` refuses an
+> opening hand, a hand with a discard into tenpai, and any table with a call or
+> Riichi, so the ch. 7 and ch. 8 families own those states (the generated
+> honitsu boards are quiet mid-hand plans); (c) the concealed-quad decline owns
+> the floating-tile case and takes the throw with the highest floating-line
+> acceptance, so it cannot steal a justified quad; (d) `pinfu_head` and
+> `wind_discard_order` are opening-turn-only, and `honitsu_decision` is
+> mid-turn-only, which keeps the three disjoint. Generated states now enumerate
+> as disjoint in the framework test.
+>
+> Transform policies follow §4.5: `pinfu_head` and `wind_discard_order` declare
+> their denials (red-five for pinfu; seat and wind for the seating tip) with
+> notes, and the other B2 families opt in only through the recompute gate. The
+> gate covers `cargo fmt --check`, `cargo test --lib`, the classifier
+> positive/near-miss/legal/rotation tests (G4), `cargo clippy --lib --tests`,
+> the `miner` seam tests, and `cargo check --target wasm32-unknown-unknown`.
+
 ##### B3 — Shape/block-theory classifiers
 
 **Goal.** Extend recognition to arbitrary-state shape/efficiency comparisons.

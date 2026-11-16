@@ -38,7 +38,7 @@ mod heads;
 use crate::generator::support::retry::generate_with_retries;
 use crate::state::GameState;
 
-pub(crate) use heads::{can_be_pinfu_head, wind_from_honor};
+pub(crate) use heads::{can_be_pinfu_head, is_value_honor, wind_from_honor};
 
 /// Generates a first-turn pinfu hand whose answer is its lone value honor.
 pub fn generate(category: &str) -> Result<GameState, String> {

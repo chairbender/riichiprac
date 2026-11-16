@@ -165,6 +165,7 @@ fn fold_match(
         equivalent_tiles: equivalents,
         riichi_triggers: Vec::new(),
         dama_reasons: Vec::new(),
+        shouminkan_triggers: Vec::new(),
         scenario_note: None,
     }
 }
