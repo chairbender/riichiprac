@@ -112,6 +112,7 @@ pub(crate) use support::completion::{best_completion, side_wait_routes};
 pub use support::completion::{is_perfect_one_away, perfect_one_away_shape};
 pub use support::deck::ALL_TILES;
 pub use support::format::format_hand_compact;
+pub use support::state_validation::validate_reachable_state;
 pub(crate) use yaku::sanshoku_pursuit::{SanshokuFacts, facts as sanshoku_facts};
 
 /// The ch. 3 skipping-shape counts, shared by the lesson and its rationale.

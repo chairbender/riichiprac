@@ -1,6 +1,7 @@
-# Replay miner operations: data root, provenance, storage and replays (F1, R1)
+# Replay miner operations: data root, provenance, storage and replays (F1, R1, R2)
 
-Status: implemented foundation (F1) and replay reader/validator (R1) of
+Status: implemented foundation (F1), replay reader/validator (R1) and walker /
+`GameState` reconstruction (R2) of
 [`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
 document is the operator contract for the native-only miner. It does not re-open
 the source decision: [`replay-strategy.md`](replay-strategy.md) §2 fixes AI
@@ -9,8 +10,10 @@ self-play as the only replay source.
 F1 creates the feature boundary, provenance types, source/licence/rule gates,
 the local data root, the SQLite schema, atomic writes, a funnel counter and the
 CLI stubs. R1 adds the gzipped mjai reader and the structural replay validator in
-`src/replay/` plus its fixtures. Mortal inference, `GameState` reconstruction and
-the pack publisher remain R2, L1 and P1a onward.
+`src/replay/` plus its fixtures. R2 adds `src/replay/walk.rs`: the kyoku walker,
+the seat-normalised `GameState` snapshots, decision enumeration and the
+`tenhou6` reviewer export. Mortal inference, book classification, selection and
+the pack publisher remain L1, B1, S and P1a onward.
 
 ## Build boundary
 
@@ -324,7 +327,6 @@ structurally impossible game before R2 reconstructs anything.
   `cargo test --features miner regenerate_committed_fixtures -- --ignored`.
 
 ## R1 acceptance evidence
-
 - `cargo test --features miner` covers the tile mapping including red fives,
   every event shape, line-numbered parse errors, the expected event list of the
   1-kyoku fixture, a typed error for every malformed fixture, the tile ledger,
@@ -334,6 +336,142 @@ structurally impossible game before R2 reconstructs anything.
   `cargo check --target wasm32-unknown-unknown` stay clean;
   `cargo tree --features miner` contains no `libriichi`.
 - Visual sign-off is not involved in R1.
+
+## Replay walker and `GameState` reconstruction contract (R2)
+
+Status: implemented. `src/replay/walk.rs` turns a replay R1 accepted into the
+app's own `GameState` at every decision point. It never decides the answer: the
+book classifiers (B1/B2) and the Mortal labeler (L1) attach the lesson and the
+model answer later. The catch-all module docs are in `src/replay/walk.rs`.
+
+### API
+
+```rust
+use riichiprac::miner::provenance::ReplayId;
+use riichiprac::replay::{walk_path, walk_replay};
+
+// Path form: reads, validates, hashes the raw bytes into the replay id.
+let walk = walk_path(std::path::Path::new("replays/m1/<id>.jsonl.gz"))?;
+assert!(walk.is_clean(), "{:?}", walk.skipped);
+
+// In-memory form: re-runs `validate_game`, then walks.
+let walk = walk_replay(&file, ReplayId::from_bytes(&raw_gz_bytes))?;
+for decision in &walk.decisions {
+    let _ = &decision.state;      // serialises as the app's GameState
+    let _ = &decision.legal_actions;
+    let _ = &decision.played;     // the recorded action, as an ActionInfo
+    let _ = &decision.decision_id;
+    let export = decision.review_export(); // tenhou.net/6 for a human reviewer
+}
+```
+
+`ReplayWalk` carries `decisions`, `skipped`, `warnings`, `events` and
+`kyoku_count`. A decision that fails a reconstruction check is **never**
+emitted; it lands in `skipped` with the event, seat, kind and reason.
+
+### Where a snapshot is taken
+
+| Resolving event | `DecisionKind` | `DecisionContext` |
+| --- | --- | --- |
+| `dahai` right after that seat's `tsumo` | `self_turn` | `SelfTurn` |
+| `reach` | `self_turn` | `SelfTurn` |
+| `ankan`, `kakan` | `self_turn` | `SelfTurn` |
+| `hora` by the drawing seat | `self_turn` | `SelfTurn` |
+| `chi`, `pon`, `daiminkan` | `call` | `ReactToDiscard` + `call_offer` |
+| `hora` on a discard (ron) | `react_discard` | `ReactToDiscard` |
+| `hora` on a just-declared kan | `react_kan` | `ReactToKan` |
+
+Not decisions in this model: a `dahai` that follows the seat's own call (the app
+has no "discard without a draw" context, and the call question is already the
+graded one) and `ryukyoku` (the mjai event has no actor, so an abortive draw
+cannot be attributed). The decision id is
+`sha256(replay_id, kyoku_index, event_index)` with bare lowercase hex, where
+`kyoku_index` is the 0-based kyoku ordinal in the game; `start_kyoku.kyoku`
+repeats every round and is not unique.
+
+### Normalisation and derived fields
+
+Every snapshot rotates the table so the actor is `players[0]`: hands, draws,
+rivers, melds, `called_from`, scores, winds, `current_turn` and the reaction
+`from` move together; the round wind, the dealer derivation
+(`dealer_seat(players[0].wind)`) and the river indices stay consistent. Seat 0
+is the human (`You`), seats 1–3 are `Shimocha`, `Toimen`, `Kamicha`.
+
+Filled from the replay and the app's own helpers:
+
+- `hand_string`, `tiles`, `shanten`, `is_agari`, `decompositions_count`,
+  `ukeire_tiles`, `ukeire_total` from `generator::evaluate_hand` on the
+  concealed tiles (hand plus draw), the generators' open-hand convention;
+- `can_riichi` and `book_rationale` stamped by `generator::finalize_state`;
+- `dora_indicators` only as revealed at the decision (a kan dora is a later
+  `dora` event; a robbed kan reveals none);
+- `tiles_remaining = 70 - tsumo events in the kyoku` (a kan's replacement draw
+  is one of the 70, matching R1's wall rule);
+- red fives out of band in `red_fives`, with the plain tile in `hand`/`tiles`;
+- `riichi_sticks` from the kyoku's kyotaku plus accepted declarations, and
+  scores with each accepted declaration's 1000-point payment;
+- `call_offer` on a call decision (Pon, Chi or the open quad).
+
+Deliberately **not** filled:
+
+- `ura_dora_indicators` on the state. The record only reveals the ura when the
+  kyoku ends, so they are stored on `DecisionSnapshot::ura_dora_indicators` for
+  post-answer display and copied into a clone only for the reviewer export.
+- `category` (`replay_<kind>`), `target_action` (`Call` for a call, otherwise
+  `Best`) and `correct_action` (the recorded action) are **provisional**: R2
+  never decides the answer, but `GameState` requires the fields. B1/L1 replace
+  them; do not ship them as answers.
+- Furiten is not a `GameState` field. The snapshot records the actor's waits and
+  whether its own river already contains one (permanent furiten). Temporary
+  furiten leaves no event and is not reconstructed.
+
+### Triaged rejections
+
+`ReplayWalk::skipped` is the triage path; a rejection is a reconstruction bug
+(fix the walker) or a documented validator gap, never something to bypass.
+
+| Case | Handling |
+| --- | --- |
+| ankan robbed by kokushi | The reachability validator's chankan check accepts only an **open** four-tile kan, so the `react_kan` snapshot is skipped. `ReplayWalk::skipped` names the seat and the validator's reason. |
+| a ron by a permanently furiten player | `GameState` cannot represent furiten and such a ron is not a legal game; the decision is skipped with a reason naming the wait and the river. |
+| the record plays an action the app's legal set refuses | The decision is kept, `played_is_legal` is `false`, and a warning is recorded. The app's yaku set and the engine's can disagree on a ron; a corpus reviewer decides. |
+| a `hora` with no winning tile at all | A warning names the event; no decision is emitted. |
+
+The structural fixture corpus (the hand-scripted game, the exhaustive draw, two
+kyokus, the robbed kakan, the furiten ron and 100 synthetic games) produces zero
+reachability skips and every recorded action is in the app's legal set.
+
+### Reviewer export
+
+`DecisionSnapshot::review_export()` reuses `src/export/tenhou6.rs` (the same
+tile-id/naki mapping as the app's export) with the record's ura indicators
+attached, so a position can be loaded at <https://mjai.ekyu.moe>. tenhou6 stays
+an output; the walker never reads it. The writer only covers East/South rounds,
+and a reaction state now carries a future draw in its tail so the log parses; a
+state the writer cannot represent returns its typed error instead of failing the
+walk.
+
+## R2 acceptance evidence
+
+- `cargo test --features miner` covers: the first decision of the hand-scripted
+  game is the dealer's draw before the discard (hand, draw, dora, wall, round);
+  the red-five identity stays out of band; a chi is rotated with the caller at
+  seat 0 and its `call_offer`; a riichi decision precedes its discard and the
+  discard is not a second decision; a ron is a `ReactToDiscard` with waits and no
+  draw; a robbed kakan is a `ReactToKan`; a robbed ankan is skipped with its
+  reason; a furiten ron is skipped with its reason; every decision kind is
+  reached; every fixture snapshot passes `validate_reachable_state` and its
+  played action is legal; 100 synthetic games produce zero invalid states; the
+  wall count only shrinks and ends at 0; the kan dora appears only from its own
+  event; the ura indicators are stored but never in the state; the reviewer log
+  is loadable and reports the replay's wall; a live kyoku rotated by any shift
+  normalises to the identical table; a four-meld hand still reconstructs;
+  rerunning the same replay is deterministic; decision ids are position- and
+  content-addressed.
+- `cargo clippy --all-targets --features miner -- -D warnings` and
+  `cargo check --target wasm32-unknown-unknown` stay clean;
+  `cargo tree --features miner` contains no `libriichi`.
+- Visual sign-off is not involved in R2.
 
 ## F1 acceptance evidence
 

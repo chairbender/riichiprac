@@ -22,6 +22,8 @@
 //! - [`validate`] checks the whole game: event order, actor/seat consistency,
 //!   call legality, the 136-tile ledger, the 70-draw wall (a kan's replacement
 //!   draw counts as one of them), dora timing, and the score/kyotaku chain.
+//! - [`walk`] reconstructs the app's [`crate::state::GameState`] at every
+//!   decision point of a validated replay, normalised so the actor is seat 0.
 //!
 //! # Scope boundary
 //!
@@ -36,6 +38,7 @@
 pub mod mjai;
 pub mod tile;
 pub mod validate;
+pub mod walk;
 
 #[cfg(test)]
 mod fixtures;
@@ -49,4 +52,8 @@ pub use validate::{
     CallError, CallErrorKind, EventOrderError, EventOrderKind, GameSummary, KyokuResultSummary,
     KyokuSummary, LedgerError, LedgerErrorKind, ReplayError, ScoreError, ScoreErrorKind, WallError,
     WallErrorKind, read_and_validate_path, validate_game,
+};
+pub use walk::{
+    DecisionKind, DecisionSnapshot, ReplayWalk, SkippedDecision, WALL_DRAWS, WalkError,
+    decision_id, walk_path, walk_replay,
 };

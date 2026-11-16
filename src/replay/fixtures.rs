@@ -285,30 +285,37 @@ pub(crate) fn exhaustive_kyoku(seed: u64, header: (u8, u8, u8, [i32; 4])) -> Vec
 
         let mut from = actor;
         let mut open = discarded;
-        while let Some((caller, consumed)) = choose_call(&mut rng, &hands, from, open) {
-            let claim = match consumed.len() {
-                2 if caller == (from + 1) % 4 && is_run_tiles(open, &consumed) => EventKind::Chi {
-                    actor: caller,
-                    target: from,
-                    pai: open,
-                    consumed: [consumed[0], consumed[1]],
-                },
-                2 => EventKind::Pon {
-                    actor: caller,
-                    target: from,
-                    pai: open,
-                    consumed: [consumed[0], consumed[1]],
-                },
-                _ => unreachable!("the fixture only builds chi and pon"),
-            };
-            remove_from_hand(&mut hands[usize::from(caller)], &consumed);
-            events.push(claim);
-            let discard = hands[usize::from(caller)]
-                .pop()
-                .expect("a calling hand still has a tile to discard");
-            events.push(dahai(caller, &discard.mjai_name(), false));
-            from = caller;
-            open = discard;
+        // The last draw's discard cannot be called: the wall is empty, so no
+        // hand continues past it. The app's `legal_actions` refuses the call, so
+        // a synthetic game must not contain one either.
+        if draws < 70 {
+            while let Some((caller, consumed)) = choose_call(&mut rng, &hands, from, open) {
+                let claim = match consumed.len() {
+                    2 if caller == (from + 1) % 4 && is_run_tiles(open, &consumed) => {
+                        EventKind::Chi {
+                            actor: caller,
+                            target: from,
+                            pai: open,
+                            consumed: [consumed[0], consumed[1]],
+                        }
+                    }
+                    2 => EventKind::Pon {
+                        actor: caller,
+                        target: from,
+                        pai: open,
+                        consumed: [consumed[0], consumed[1]],
+                    },
+                    _ => unreachable!("the fixture only builds chi and pon"),
+                };
+                remove_from_hand(&mut hands[usize::from(caller)], &consumed);
+                events.push(claim);
+                let discard = hands[usize::from(caller)]
+                    .pop()
+                    .expect("a calling hand still has a tile to discard");
+                events.push(dahai(caller, &discard.mjai_name(), false));
+                from = caller;
+                open = discard;
+            }
         }
         next_draw = (from + 1) % 4;
     }
@@ -332,7 +339,158 @@ pub(crate) fn exhaustive_game(seed: u64) -> Vec<EventKind> {
     events
 }
 
-/// Two exhaustive-draw kyokus that advance from E1 to E2 at honba 1.
+/// One kyoku that ends in a chankan.
+///
+/// Seat 2 holds two 5s, pons seat 0's third and draws the fourth copy, so the
+/// added kan offers the tile to seat 1, whose `3s 4s` ryanmen wait plus the
+/// chun triplet already holds a yaku. The ron is the only event that can end
+/// this hand, which is what the walker's `ReactToKan` snapshot needs.
+pub(crate) fn chankan_game() -> Vec<EventKind> {
+    let hands = [
+        hand(&[
+            "5s", "1m", "1m", "1m", "9p", "9p", "2s", "6s", "7s", "E", "E", "S", "S",
+        ]),
+        hand(&[
+            "1m", "2m", "3m", "4p", "5p", "6p", "C", "C", "C", "3s", "4s", "N", "N",
+        ]),
+        hand(&[
+            "5s", "5s", "2m", "2m", "8p", "8p", "9s", "9s", "W", "W", "P", "P", "F",
+        ]),
+        hand(&[
+            "7m", "8m", "1p", "2p", "2p", "3p", "3p", "6m", "9m", "9m", "F", "N", "S",
+        ]),
+    ];
+    vec![
+        start_game(),
+        start_kyoku("E", "8s", 1, 0, 0, 0, [25_000; 4], hands),
+        tsumo(0, "1s"),
+        dahai(0, "5s", false),
+        EventKind::Pon {
+            actor: 2,
+            target: 0,
+            pai: t("5s"),
+            consumed: tiles::<2>(&["5s", "5s"]),
+        },
+        dahai(2, "F", false),
+        tsumo(3, "S"),
+        dahai(3, "S", true),
+        tsumo(0, "6m"),
+        dahai(0, "6m", true),
+        tsumo(1, "7p"),
+        dahai(1, "7p", true),
+        tsumo(2, "5s"),
+        EventKind::Kakan {
+            actor: 2,
+            pai: t("5s"),
+            consumed: tiles::<3>(&["5s", "5s", "5s"]),
+        },
+        EventKind::Hora {
+            actor: 1,
+            target: 2,
+            pai: Some(t("5s")),
+            deltas: Some([0, 8_000, -8_000, 0]),
+            scores: None,
+            ura_markers: None,
+        },
+        EventKind::EndKyoku,
+        EventKind::EndGame,
+    ]
+}
+
+/// One kyoku that ends in a chankan on an **ankan** (the kokushi robbery).
+///
+/// Seat 2 is dealt all four `P`, declares a closed quad on its first turn, and
+/// seat 1 robs it with a thirteen-orphans wait on `P`. The app's reachability
+/// validator only accepts an open four-tile kan as a chankan source, so this
+/// game exercises the walker's triage path: the decision must be recorded as a
+/// skip with the validator's reason, never emitted.
+pub(crate) fn ankan_chankan_game() -> Vec<EventKind> {
+    let hands = [
+        hand(&[
+            "3s", "4s", "5s", "6s", "7s", "8s", "2s", "4p", "5p", "6p", "7p", "8p", "C",
+        ]),
+        hand(&[
+            "1m", "9m", "1p", "9p", "1s", "9s", "E", "S", "W", "N", "F", "C", "C",
+        ]),
+        hand(&[
+            "P", "P", "P", "P", "2m", "3m", "4m", "5m", "6m", "7m", "8m", "2p", "3p",
+        ]),
+        hand(&[
+            "1m", "9m", "1p", "9p", "1s", "9s", "E", "S", "W", "N", "F", "C", "2p",
+        ]),
+    ];
+    vec![
+        start_game(),
+        start_kyoku("E", "F", 1, 0, 0, 0, [25_000; 4], hands),
+        tsumo(0, "3m"),
+        dahai(0, "3m", true),
+        tsumo(1, "S"),
+        dahai(1, "S", true),
+        tsumo(2, "9p"),
+        EventKind::Ankan {
+            actor: 2,
+            consumed: tiles::<4>(&["P", "P", "P", "P"]),
+        },
+        EventKind::Hora {
+            actor: 1,
+            target: 2,
+            pai: Some(t("P")),
+            deltas: Some([0, 8_000, -8_000, 0]),
+            scores: None,
+            ura_markers: None,
+        },
+        EventKind::EndKyoku,
+        EventKind::EndGame,
+    ]
+}
+
+/// One kyoku whose ron is impossible: the winner is in furiten.
+///
+/// Seat 1 is in tenpai on `2s 5s`, discards its own `5s` early (which makes it
+/// permanently furiten), and is then recorded as ronning seat 0's second `5s`.
+/// No legal game contains that ron, and `GameState` has no furiten field, so the
+/// walker must triage the decision instead of reconstructing it.
+pub(crate) fn furiten_ron_game() -> Vec<EventKind> {
+    let hands = [
+        hand(&[
+            "5s", "5s", "7m", "8m", "9m", "1p", "2p", "3p", "7p", "8p", "9p", "6s", "7s",
+        ]),
+        hand(&[
+            "1m", "2m", "3m", "4p", "5p", "6p", "C", "C", "C", "3s", "4s", "N", "N",
+        ]),
+        hand(&[
+            "2m", "2m", "6m", "7m", "8m", "1s", "2s", "3s", "4s", "6s", "7s", "8s", "9s",
+        ]),
+        hand(&[
+            "1m", "3m", "9p", "1p", "2p", "4p", "6p", "8p", "E", "E", "S", "S", "W",
+        ]),
+    ];
+    vec![
+        start_game(),
+        start_kyoku("E", "F", 1, 0, 0, 0, [25_000; 4], hands),
+        tsumo(0, "9m"),
+        dahai(0, "5s", false),
+        tsumo(1, "5s"),
+        dahai(1, "5s", true),
+        tsumo(2, "9s"),
+        dahai(2, "9s", true),
+        tsumo(3, "W"),
+        dahai(3, "W", true),
+        tsumo(0, "1p"),
+        dahai(0, "5s", false),
+        EventKind::Hora {
+            actor: 1,
+            target: 0,
+            pai: Some(t("5s")),
+            deltas: Some([-8_000, 8_000, 0, 0]),
+            scores: None,
+            ura_markers: None,
+        },
+        EventKind::EndKyoku,
+        EventKind::EndGame,
+    ]
+}
+
 pub(crate) fn two_kyoku_game() -> Vec<EventKind> {
     let mut events = vec![start_game()];
     events.extend(exhaustive_kyoku(1, (0, 1, 0, [25_000; 4])));
