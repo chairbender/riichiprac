@@ -169,35 +169,31 @@ scene is pinned to **CPU Cycles** (`scene.device`): the determinism rule assumes
 CPU sampling. A GPU device samples differently, so a GPU regeneration would be
 its own regeneration, not mixed with CPU output.
 
-## Whole-table calibration reference (not a runtime asset)
+## Whole-table model + slot anchors (not a runtime asset)
 
-`bake-table-reference.sh` builds one Blender scene of the complete table — four
-17-stack two-tier walls (136 tiles), four full 6×3 ponds (72 discards), four
-13-tile concealed hands (52), the human's drawn tile, one 3-tile meld per seat
-(12), and a flat felt plane — and renders it from one locked camera at
-**2880 × 1800 @1x** (from a transient 5760 × 3600 @2x master). The committed
-output is `reference/full-board-1x.png`, one 2× crop per element family under
-`reference/crops-2x/`, and `reference/table-reference.json` with the camera,
-every tile placement, the measured projection metrics and decoded-RGB hashes
-for every render. `reference/index.html` is a static contact page.
+`bake-table-reference.sh` builds the complete table in Blender — a 700 mm
+playable mat, a raised rim/frame, a recessed centre compass/score well, four
+17-stack two-tier wall runs (136 tiles), four full 6×3 ponds (72), four 13-tile
+hands (52) plus the human's drawn tile, and one open meld per seat **outside the
+wall on the player's right** (12) — and renders it for placement review. It also
+builds the **`SlotAnchors`** collection: 293 named `Empty`s (136 walls, 88
+rivers including overflow, 16 meld slots, 53 hand slots), each at the tile body
+centre with the tile pose, a `{zone:seat:index}` custom-property set, and the
+12-float local/world face quad that a later export projects with
+`world_to_camera_view`. The machine-readable dump is
+`reference/slot-anchors.json`.
 
-The camera is the **weak perspective** candidate: 45° elevation (the pond/wall
-shells' own elevation), 140 mm, eye at (0, −86.08, 86.43), which holds the
-near/far tile scale spread to **1.125×** and the run-length ratio to **1.085**
-while a centre pond tile still projects at ~100 px — the 104 px shell scale.
-45° is also the elevation at which the two-tier wall does not occlude the near
-pond row; the bake asserts that with 1,025 visible-surface ray probes (0
-occluded) and the checker re-derives the clearance inequality from the plan.
-Orthographic and physical-eye candidates exist as `--audition` comparisons.
-The sun is tuned so the bare 5z face (221, 218, 214) and the blue wall back
-(1, 64, 159) measure the shipped shells' recorded colours (223, 220, 216 and
-3, 68, 165).
+Adjacent tiles carry a 0.2–0.5 mm clearance (0.3 mm target, pond columns 0.2 mm
+so the four inner rows clear at the corners) and no tile bodies intersect; the
+south hand is reclined 12°. The bake measures 360 adjacent pairs, reports
+0.2–0.3 mm, and proves 0 intersections. The camera and sun are inherited from
+the previous calibration reference; **perspective and lighting are a separate
+Task 2**, so this render is for placement, not a lighting verdict. See
+[`TABLE-REFERENCE.md`](TABLE-REFERENCE.md) for the naming scheme, the face-quad
+contract, the resolved ambiguities and the full check list.
 
-This is **calibration-only**: nothing under `frontend/public` is written and the
-runtime never reads it. It exists so a follow-up task can replace one element
-family with a 2.5D piece and compare the hybrid against the same table. See
-[`TABLE-REFERENCE.md`](TABLE-REFERENCE.md) for the camera rationale, the
-per-family comparison guide, the manifest and the full check list.
+This is development-only: nothing under `frontend/public` is written and the
+runtime never reads it.
 
 ## Directory layout
 

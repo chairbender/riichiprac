@@ -34,6 +34,8 @@ import {
   lineAngleError,
   measureScene,
   projectPoint,
+  rimFrameMetrics,
+  tileBoxCorners,
 } from './table-camera.mjs';
 
 const renderDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -54,6 +56,13 @@ const check = (condition, message) => {
   if (!condition) fail(message);
   return condition;
 };
+const checkEqual = (label, left, right) => {
+  checks += 1;
+  if (JSON.stringify(left) !== JSON.stringify(right)) {
+    fail(`${label}: ${JSON.stringify(left)} != ${JSON.stringify(right)}`);
+  }
+};
+
 const near = (left, right, tolerance, label) =>
   check(
     Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) <= tolerance,
@@ -99,7 +108,7 @@ check(resolution2x[0] === resolution1x[0] * 2 && resolution2x[1] === resolution1
 const proportions = shellSpec.tile.proportionsMm;
 const thicknessUnits = proportions.thickness / proportions.height;
 const wallHeight = spec.table.wall.tiers * thicknessUnits;
-const pondOuter = Math.max(...spec.table.pond.rowRadiiUnits) + spec.table.pond.rowPitchUnits / 2;
+const pondOuter = Math.max(...spec.table.pond.rowRadiiUnits) + shellSpec.tile.heightUnits / 2;
 const wallInner = spec.table.wall.radiusUnits - spec.table.wall.tileDepthUnits / 2;
 check(pondOuter < wallInner,
   `pond outer edge ${pondOuter} is inside the wall inner edge ${wallInner}`);
@@ -206,6 +215,174 @@ check(manifest.lightingSamples?.face?.tile === spec.faces.sampleTileId,
   `sample tile is ${spec.faces.sampleTileId}`);
 
 // --------------------------------------------------------------------------- //
+// Slot anchors, spacing and the table surface
+// --------------------------------------------------------------------------- //
+const anchorSummary = manifest.slotAnchors;
+if (!check(Boolean(anchorSummary), 'manifest publishes the slot-anchor summary')) {
+  process.exit(1);
+}
+const anchorPath = join(referenceDir, anchorSummary.file);
+if (!check(existsSync(anchorPath), `slot anchors exist at ${anchorSummary.file}`)) {
+  process.exit(1);
+}
+const anchorBytes = readFileSync(anchorPath);
+checkEqual('slot anchor bytes', anchorSummary.bytes, statSync(anchorPath).size);
+checkEqual(
+  'slot anchor sha256',
+  anchorSummary.sha256,
+  createHash('sha256').update(anchorBytes).digest('hex'),
+);
+const anchorDoc = JSON.parse(anchorBytes.toString('utf8'));
+checkEqual('slot anchor collection', anchorDoc.collection, spec.anchors.collection);
+checkEqual('slot anchor total', anchorDoc.total, spec.anchors.counts.total);
+checkEqual('slot anchor occupied', anchorDoc.occupied, 273);
+for (const [zone, expected] of Object.entries({ wall: 136, river: 88, meld: 16, hand: 53 })) {
+  checkEqual(`slot anchor ${zone} count`, anchorDoc.counts[zone], expected);
+}
+const anchorNames = new Set();
+const anchorZones = { wall: 0, river: 0, meld: 0, hand: 0 };
+const anchorOccupied = { wall: 0, river: 0, meld: 0, hand: 0 };
+const patterns = {
+  wall: /^wall_(south|east|north|west)_\d{2}_[01]$/,
+  river: /^river_(south|east|north|west)_[0-2]_\d{1,2}$/,
+  meld: /^meld_(south|east|north|west)_[0-3]$/,
+  hand: /^hand_(south|east|north|west)_\d{2}$/,
+};
+const halfPlateX = manifest.scene.dimensions.width / 2 - shellSpec.tile.faceInset;
+const halfPlateY = manifest.scene.dimensions.height / 2 - shellSpec.tile.faceInset;
+const halfPlateZ = manifest.scene.dimensions.thickness / 2;
+const plateLocal = [
+  -halfPlateX, halfPlateY, halfPlateZ,
+  halfPlateX, halfPlateY, halfPlateZ,
+  halfPlateX, -halfPlateY, halfPlateZ,
+  -halfPlateX, -halfPlateY, halfPlateZ,
+];
+for (const anchor of anchorDoc.anchors) {
+  check(!anchorNames.has(anchor.name), `duplicate anchor name ${anchor.name}`);
+  anchorNames.add(anchor.name);
+  check(Boolean(patterns[anchor.zone]), `anchor ${anchor.name} has a known zone`);
+  check(patterns[anchor.zone]?.test(anchor.name) === true,
+    `anchor ${anchor.name} matches the naming scheme`);
+  anchorZones[anchor.zone] += 1;
+  checkEqual(`anchor ${anchor.name} quad order`, anchor.faceQuadOrder, 'TL,TR,BR,BL');
+  checkEqual(`anchor ${anchor.name} local quad length`, anchor.faceQuadLocal.length, 12);
+  for (let index = 0; index < 12; index += 1) {
+    near(anchor.faceQuadLocal[index], plateLocal[index], 1e-6,
+      `anchor ${anchor.name} faceQuadLocal[${index}]`);
+  }
+  for (let corner = 0; corner < 4; corner += 1) {
+    for (const axis of [0, 1, 2]) {
+      const world = [0, 1, 2].reduce(
+        (sum, other) => sum + anchor.rotation[axis * 3 + other] * anchor.faceQuadLocal[corner * 3 + other],
+        anchor.origin[axis],
+      );
+      near(world, anchor.faceQuadWorld[corner * 3 + axis], 1e-5,
+        `anchor ${anchor.name} faceQuadWorld[${corner}][${axis}]`);
+    }
+  }
+  if (anchor.occupied) {
+    anchorOccupied[anchor.zone] += 1;
+    const tile = tiles.find((entry) => entry.id === anchor.tileId);
+    if (!check(Boolean(tile), `anchor ${anchor.name} tile ${anchor.tileId} exists`)) continue;
+    checkEqual(`anchor ${anchor.name} tile face`, anchor.tileFace, tile.face);
+    for (const axis of [0, 1, 2]) {
+      near(anchor.rotation[axis], tile.rotation[axis], 1e-6, `anchor ${anchor.name} rotation`);
+      const centre = tile.origin[axis] +
+        tile.rotation[axis * 3 + 2] * (tile.dimensions.thickness / 2);
+      near(anchor.origin[axis], centre, 1e-5, `anchor ${anchor.name} centre axis ${axis}`);
+    }
+  } else {
+    checkEqual(`anchor ${anchor.name} empty tileId`, anchor.tileId, null);
+    checkEqual(`anchor ${anchor.name} empty face`, anchor.tileFace, null);
+  }
+}
+for (const zone of Object.keys(anchorZones)) {
+  checkEqual(`anchor zone total ${zone}`, anchorZones[zone], anchorDoc.counts[zone]);
+}
+checkEqual('anchor occupied totals', JSON.stringify(anchorOccupied),
+  JSON.stringify({ wall: 136, river: 72, meld: 12, hand: 53 }));
+checkEqual('empty anchor count', anchorDoc.total - anchorDoc.occupied, 20);
+
+const aabbOf = (tile) => {
+  const corners = tileBoxCorners(tile);
+  return {
+    minimum: [0, 1, 2].map((axis) => Math.min(...corners.map((corner) => corner[axis]))),
+    maximum: [0, 1, 2].map((axis) => Math.max(...corners.map((corner) => corner[axis]))),
+  };
+};
+const aabbGap = (left, right) => Math.hypot(
+  ...[0, 1, 2].map((axis) =>
+    Math.max(0, left.minimum[axis] - right.maximum[axis],
+      right.minimum[axis] - left.maximum[axis]),
+  ),
+);
+const aabbOverlap = (left, right) => [0, 1, 2].every(
+  (axis) =>
+    left.minimum[axis] < right.maximum[axis] - 1e-7 &&
+    right.minimum[axis] < left.maximum[axis] - 1e-7,
+);
+const boxes = new Map(tiles.map((tile) => [tile.id, aabbOf(tile)]));
+const adjacent = [];
+const pushAdjacent = (group, key) => {
+  const ordered = [...group].sort((a, b) => key(a) - key(b));
+  for (let index = 0; index + 1 < ordered.length; index += 1) {
+    adjacent.push([ordered[index].id, ordered[index + 1].id]);
+  }
+};
+for (const seat of ['bottom', 'right', 'top', 'left']) {
+  for (const tier of [0, 1]) {
+    pushAdjacent(walls.filter((tile) => tile.seat === seat && tile.cell.tier === tier),
+      (tile) => tile.cell.slot);
+  }
+  for (let slot = 0; slot < 17; slot += 1) {
+    adjacent.push([
+      `wall-${seat}-slot-${String(slot).padStart(2, '0')}-t0`,
+      `wall-${seat}-slot-${String(slot).padStart(2, '0')}-t1`,
+    ]);
+  }
+  for (let row = 0; row < 3; row += 1) {
+    pushAdjacent(ponds.filter((tile) => tile.seat === seat && tile.cell.row === row),
+      (tile) => tile.cell.column);
+  }
+  for (let column = 0; column < 6; column += 1) {
+    pushAdjacent(ponds.filter((tile) => tile.seat === seat && tile.cell.column === column),
+      (tile) => tile.cell.row);
+  }
+  pushAdjacent(hands.filter((tile) => tile.seat === seat), (tile) => tile.cell.slot);
+  pushAdjacent(melds.filter((tile) => tile.seat === seat), (tile) => tile.cell.column);
+}
+const gaps = adjacent.map(([left, right]) => aabbGap(boxes.get(left), boxes.get(right)));
+const minGap = Math.min(...gaps) * 28;
+const maxGap = Math.max(...gaps) * 28;
+checkEqual('adjacent clearance pairs', gaps.length, 360);
+check(minGap >= 0.2 - 1e-4 && maxGap <= 0.5 + 1e-4,
+  `adjacent clearance ${minGap.toFixed(4)}..${maxGap.toFixed(4)} mm inside 0.2..0.5`);
+near(manifest.clearance.minGapMm, minGap, 1e-3, 'manifest minimum clearance');
+near(manifest.clearance.maxGapMm, maxGap, 1e-3, 'manifest maximum clearance');
+let intersections = 0;
+const tileIds = [...boxes.keys()];
+for (let left = 0; left < tileIds.length; left += 1) {
+  for (let right = left + 1; right < tileIds.length; right += 1) {
+    if (aabbOverlap(boxes.get(tileIds[left]), boxes.get(tileIds[right]))) intersections += 1;
+  }
+}
+checkEqual('tile body intersections', intersections, 0);
+checkEqual('manifest clearance target', manifest.clearance.targetMm, 0.3);
+
+// Table surface: 700 mm mat, raised rim, recessed compass well.
+checkEqual('playing mat size', spec.table.playingMat.sizeUnits * 28, spec.table.playingMat.sizeMm);
+check(spec.table.playingMat.sizeUnits === 25, 'playing mat is 700 mm square');
+checkEqual('rim outer half', spec.table.rim.outerHalfUnits,
+  spec.table.rim.innerHalfUnits + spec.table.rim.widthUnits);
+check(spec.table.compassWell.plateZUnits < 0, 'compass plate is recessed below the mat');
+for (const key of ['left', 'top', 'right', 'bottom']) {
+  near(rimFrameMetrics(camera1x, spec).marginsPx[key],
+    manifest.metrics.rimFrame.marginsPx[key], 1e-3, `rim frame margin ${key}`);
+}
+check(Math.min(...Object.values(rimFrameMetrics(camera1x, spec).marginsPx)) >= 0,
+  'the complete mat and rim are inside the @1x frame');
+
+// --------------------------------------------------------------------------- //
 // Renders
 // --------------------------------------------------------------------------- //
 const hashOf = (image) =>
@@ -289,6 +466,11 @@ for (const key of ['front', 'back', 'left', 'right']) {
     1e-6,
     `run angle error ${key} derivation`,
   );
+}
+
+for (const key of ['left', 'top', 'right', 'bottom']) {
+  near(metrics.rimFrame.marginsPx[key], manifest.metrics.rimFrame.marginsPx[key], 1e-3,
+    `rim frame margin ${key}`);
 }
 
 const limits = spec.camera.checks;

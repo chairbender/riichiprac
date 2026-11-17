@@ -1,192 +1,151 @@
-# Whole-table 3D reference (calibration only)
+# Whole-table 3D model + slot anchors
 
-A single Blender scene of the complete table and one locked perspective, used to
-calibrate the opt-in 2.5D rendered view. **It is not a runtime asset and not a
-dependency**: nothing under `frontend/public` is written by this pipeline, and the
-Phase 4 compositor never reads it. The reference exists so a follow-up task can
-replace one element family with a 2.5D piece and compare the hybrid against the
-same physical table.
+A Blender model of the complete Riichi table and one named `Empty` for every
+tile slot. It is a **development/calibration model**: nothing under
+`frontend/public` is written and the runtime never reads it.
 
-Status: geometry, camera and lighting are verified by scripted checks
-(§ *Checks*). The **visual sign-off is the user's**, per `AGENTS.md` §6; no agent
-has judged the renders by eye.
+**Scope note (2026-11-17):** this task is the table model and the anchor bank.
+The perspective and lighting are inherited from the earlier calibration
+reference and are **not** tuned here; a separate Task 2 sets those up. The
+render in this task exists so placement can be eyeballed, not for a lighting
+sign-off.
 
-- Spec: `tools/render/table-reference-spec.json`
-- Scene builder: `tools/render/bake_table_reference.py` (Blender 4.5.9)
-- Publisher / checker: `tools/render/scripts/table-reference.mjs`,
-  `tools/render/scripts/check-table-reference.mjs`
-- Renders + manifest: `tools/render/reference/`
+- Scene + camera + anchor spec: [`table-reference-spec.json`](table-reference-spec.json)
+- Blender generator: [`bake_table_reference.py`](bake_table_reference.py)
+- Entry point: [`bake-table-reference.sh`](bake-table-reference.sh)
+- Published model: [`reference/`](reference/) — board, element crops,
+  `slot-anchors.json`, `table-reference.json`, contact page
+- Integrity gate: [`scripts/check-table-reference.mjs`](scripts/check-table-reference.mjs)
 
 ## Commands
 
 ```bash
-bash tools/render/bake-table-reference.sh --dry-run   # build the scene, print the camera metrics
-bash tools/render/bake-table-reference.sh --bake      # @2x master -> board + 17 crops + manifest + check
-bash tools/render/bake-table-reference.sh --audition  # ortho / weak / physical boards at @1x
-bash tools/render/bake-table-reference.sh --check     # spec + files + hashes + projection metrics; no Blender
+bash tools/render/bake-table-reference.sh --dry-run   # build + validate; print the model's metrics
+bash tools/render/bake-table-reference.sh --bake      # render the @2x master, publish, check
+bash tools/render/bake-table-reference.sh --check     # spec/anchors/clearance/files gate; no Blender
 ```
 
-`--bake` takes about 8 minutes on this 14-core box: one 5760 × 3600 CPU Cycles
-render at 32 samples + OIDN, then a 2×2 box downsample to the @1x board and
-integer crops from the same master. Blender is pinned to **4.5.9 LTS** at
-`~/.local/opt/blender-4.5.9/blender` (or `BLENDER=...`); `--check` needs only
-Node. An audition render is ~45 s per candidate at 720 px.
+Blender is pinned to 4.5.9 LTS at `~/.local/opt/blender-4.5.9/blender` (present
+in this environment). `--check` needs only Node.
 
-## Scene contents
+## The table model
 
-1 unit = the 28 mm tile height (the same scale as `shell-spec.json`); 1 = 0.75
-wide, 0.58929 thick. The human sits at −Y, +Z is up.
+1 unit = 28 mm (the shell baker's tile scale). 273 tile bodies + the table.
 
-| Element | Plan | Tiles |
-| --- | --- | --- |
-| four wall runs | ring radius 7.0, 17 touching stacks × 0.75 pitch, 1.0 deep, two tiers, every tile face-down (blue up) | 136 |
-| four ponds | 6 × 3 filled rows at radii 4.6 / 3.6 / 2.6; row 0 is nearest that player | 72 |
-| four concealed hands | 13 standing tiles, blue back to the table centre, at radius 10.6 | 52 |
-| human drawn tile | standing, +5.5125 after the row (the compositor's +0.35 advance gap) | 1 |
-| four open melds | 3 tiles at radius 5.4, seat's right; two upright + the called tile sideways | 12 |
-| felt | one flat cloth plane at z = 0 (`#1a5038`) | — |
-
-Total **273 tiles**. The scene is a visual calibration target, not a legal game
-state: glyphs come from a seeded shuffle and may repeat more than four times.
-
-Tile bodies are built by the shell baker's own `build_tile` (same proportions,
-same 0.055 / 6-segment bevel, same one-material white/blue gate), so the
-reference body cannot drift from the shipped shells. The face glyph is the same
-perspective-neutral PNG the runtime atlas uses, composited on a thin transparent
-plane 0.0006 units above the white plate inside the bevel — *not* the carved
-decal. 5z (haku) has zero ink and gets no plane; it is the bare lighting sample.
-
-## The locked camera
-
-| Property | Value |
+| Element | Model |
 | --- | --- |
-| Mode | perspective (weak), no roll, no shift |
-| Target | (0, 0, 0.35) |
-| Eye | (0, −86.082565, 86.432565) |
-| Elevation | **45.0°** |
-| Lens / sensor | 140 mm / 36 mm, horizontal fit |
-| Distance to target | 121.7391 units |
-| Pixels per unit at the target | 92.0 @1x |
-| Frames | **2880 × 1800 @1x**, 5760 × 3600 @2x master |
-| Lighting | sun 6.6 W/m², 12° angular size, az 315° / el 55° (screen-space top-left), + `#3b4a5c` world at 1.0 |
+| Playing mat | 700 mm × 700 mm (25 × 25 units), cloth `#1a5038`, top at z = 0 |
+| Rim | raised outer frame outside the mat: 25 mm wide (0.9 units), 9.8 mm high (0.35 units), dark wood |
+| Compass/score well | 4.0-unit recessed square at the centre (0.06 deep), dark plate + brass ring, all below z = 0 so it cannot occlude a pond |
+| Walls | four runs × 17 stacks × 2 face-down tiles (blue up), pitch 0.760714 units, tier step 0.6, ring radius 7.0 |
+| Ponds | four 6 × 3 filled rivers (72 discards), column pitch 0.757143 (0.2 mm gap), row pitch 1.010714 (0.3 mm gap), row radii 4.81 / 3.799286 / 2.788571 |
+| Hands | four 13-tile standing rows; the human's (south) row is reclined 12° backward about its far bottom edge, the other three are upright blue-back rows; human also has the drawn-tile slot at +5.580536 (intentional tsumogiri gap) |
+| Melds | one 3-tile open pon per seat **outside the wall ring, on the table edge to the player's right** (rod radius 10.6, x from 6.1): two upright tiles + the called tile sideways; a fourth anchor slot per seat is the kan extension |
+| Felt/room | dark floor plane at z = −0.08 outside the rim |
 
-Why this is 2.5D-compatible, in numbers (all recomputed by the checker from the
-recorded placements):
+The tile mesh, bevel and white/blue material gate come from `bake_shells.py`,
+so the tile body is the shipped shell body. The bevel is therefore the shell's
+0.055 units (1.54 mm). The task brief suggested 0.8–1.2 mm; that would desync the
+model from the shipped shells and the shell `faceQuad`, so it is left as the
+shell value. Face glyphs are the flat 2D masters on a plane inside the plate
+bevel, not carved decals.
 
-| Measure | Value | Reading |
-| --- | --- | --- |
-| projected pond tile body (4 seats) | **106.2 / 94.8 / 100.7 / 94.3 px** | centre tiles sit next to the compositor's 104 px @1x shells |
-| near/far scale spread | **1.125×** | a weak perspective: the four edges read as one table, not four stamps |
-| front / back run length | 1220.1 / 1125.0 px (**1.085×**) | the near wall is 8.5 % longer; orthographic would be 1.000×, the physical eye 1.34× |
-| left / right run length | 1220.1 / 1125.0 px (**1.085×**) | true mirror of the near/far pair |
-| run angle error | **0.00°** on all four | level camera, no roll; the wall lines are horizontal/vertical |
-| bottom / top hand size | **0.999×** | the standing hands read at the same size |
-| outer front-wall lateral reveal | **4.34°** | each zone still shows a real side face |
-| frame margin | **98.9 px** minimum (@1x) | the whole table plus felt fits with air |
-| pinhole vs Blender | **0.0016 px** | the recorded camera is the rendered camera |
+### Clearance
 
-The elevation is **45°** because that is the level at which the two-tier wall
-cannot swallow the near pond row: the pond outer edge is at 5.1, the wall inner
-edge at 6.5 (clearance 1.4 units), the wall is 1.179 units tall, and
-`tan 45° × 1.4 = 1.4 > 1.179`. At 33.7° the wall hides the near rows. The bake
-proves it with **1,025 ray probes on every visible surface** (279 tiles minus the
-68 legitimately covered lower wall tiers, 5 probes each): **0 occluded**. The
-checker re-derives the clearance inequality from the spec, so a plan edit that
-reintroduces the occlusion fails without Blender.
+Adjacent tiles in walls, rivers and hands have **0.2–0.5 mm** clearance, and no
+two tile bodies intersect. The model's target is 0.3 mm; pond columns are 0.2 mm
+so the four inner pond rows clear each other at the corners. The bake measures
+**360 adjacent pairs**, reports **0.2000–0.3000 mm**, and proves **0
+intersecting pairs** with an AABB sweep over all 273 tiles. `--check` repeats the
+measurement from the published placements. (The drawn tile is deliberately
+separated by 7.4 mm — the tsumogiri gap — not part of the 0.2–0.5 mm row rule.)
 
-45° is also the elevation the pond and wall shells are baked at, which is why a
-centre pond tile lands at ~100 px — the same size class as the 104 px @1x shell.
-The compositor deliberately presents a stronger per-zone fan (its front outer
-wall slot is 8.37°, derived from the physical eye at y = −47.8); that is a
-presentation choice, not a reference error, and is what the per-zone comparison
-records.
+## Slot anchors
 
-### Camera candidates
+Every valid tile position is an Empty in the dedicated Blender collection
+**`SlotAnchors`**, at the tile's 3D body centre with the tile's pose. The model
+has **293 anchors**, of which **273 are occupied** by the reference tiles and
+20 are reserved (16 row-2 river overflow slots, 4 kan-extension meld slots).
 
-`--audition` renders all three at @1x under
-`tools/render/build/reference/audition/`:
+| Zone | Naming | Anchors | Occupied |
+| --- | --- | --- | --- |
+| walls | `wall_{seat}_{stack:02d}_{layer}` | 136 (4 × 17 × 2) | 136 |
+| rivers | `river_{seat}_{row}_{col}` (row 0..2, col 0..5, overflow 6..9) | 88 (4 × 22) | 72 |
+| melds | `meld_{seat}_{slot}` (slot 0..3) | 16 (4 × 4) | 12 |
+| hands | `hand_{seat}_{index:02d}` (00..12; south also 13 for the drawn tile) | 53 | 53 |
+| **total** | | **293** | **273** |
 
-| Candidate | What it is | Why it is not the committed framing |
-| --- | --- | --- |
-| `ortho` | orthographic, 45°, 31.3043-unit width | zero lateral reveal: every zone becomes a flat stamp |
-| **`weak`** (chosen) | 140 mm, 121.74 units, 45° | — |
-| `physical` | 65 mm, 57.44 units, 45° (the retired v1 eye distance) | 1.34× near/far size spread; the near hand dominates the board |
+Seats are `south` (the human/bottom), `east` (right), `north` (top) and `west`
+(left).
 
-Switching candidates is `--camera <name>` plus a `camera.chosen` edit; the
-publisher refuses a master baked with a different candidate, and the manifest
-records the candidate so a hybrid comparison can never mix framings silently.
+### Face quads
 
-## Renders and hashes
+Every anchor carries the four corners of the glyph face plate:
 
-Committed under `tools/render/reference/`:
+- Anchor-local space: `+x` = tile right, `+y` = glyph top, `+z` = out of the
+  painted face; the anchor is at the tile body centre.
+- Corners are **TL, TR, BR, BL** at
+  `x = ±(width/2 − faceInset)`, `y = ±(height/2 − faceInset)`,
+  `z = +thickness/2`, with `faceInset = 0.055` units (the shell bevel inset), so
+  the quad is the same plate the runtime atlas maps a glyph onto.
+- Stored as Blender custom properties on each Empty: `faceQuadLocal` and
+  `faceQuadWorld` (flat 12 floats each) plus `faceQuadOrder = "TL,TR,BR,BL"`.
+- Also published machine-readable in [`reference/slot-anchors.json`](reference/slot-anchors.json)
+  with each anchor's `name`, `zone`, `seat`, `index`, `tileId`, `tileFace`,
+  `occupied`, `origin`, `rotation` (row-major 3×3), `faceQuadLocal`,
+  `faceQuadWorld` and `extra` (overflow/kan flags). The file also records the
+  camera.
 
-| File | Size | Notes |
-| --- | --- | --- |
-| `full-board-1x.png` | 2880 × 1800, 2,986,711 B | sha256 `cbe4129bfde92ae6989fa4cf3f830da3e77b5d0825f70bafe5724754b5141b62` |
-| `crops-2x/*.png` (17) | 6,206,553 B total | one 2× crop per element family |
-| `table-reference.json` | 145,567 B | camera (both scales), every tile placement, crop rects, metrics, hashes |
-| `index.html` | — | static contact page for the renders |
+For a follow-up projection export: `world = anchor.matrix_world @ Vector(corner)`
+for each local corner (or read `faceQuadWorld`), then project with
+`world_to_camera_view`.
 
-Crops: `wall-front` 2522 × 352, `wall-back` 2328 × 331, `wall-left` /
-`wall-right` 346 × 1871, `pond-bottom` 912 × 541, `pond-top` 876 × 508,
-`pond-right` / `pond-left` 629 × 720, `hand-bottom` 1984 × 274, `hand-top`
-1752 × 255, `hand-left` / `hand-right` 292 × 1457, `meld-bottom` 538 × 272,
-`meld-right` 249 × 445, `meld-top` 509 × 256, `meld-left` 257 × 474,
-`drawn-tile` 215 × 274. Every crop records its rect, tile ids, byte size and the
-sha256 of its decoded RGB pixels in the manifest.
+## Camera and lighting (inherited, not tuned here)
 
-The committed set is **9,338,831 B**. Asset budgets are advisory during active
-development (`AGENTS.md` §1c); this is a developer reference, not shipped art.
+The renders use the reference's locked weak-perspective camera: 45° elevation,
+140 mm / 36 mm, eye `(0, −86.0826, 86.4326)`, target `(0, 0, 0.35)`, 2880 × 2112
+@1x from one 5760 × 4224 @2x master. The sun/ambient rig is the earlier
+reference's. **Task 2 owns the perspective and lighting calibration**; do not
+read this task's render as a lighting verdict. The camera exists to show the
+placement and to keep the model in the same space as the previous reference.
 
-## Checks
+## Published renders and checks
 
-`bash tools/render/bake-table-reference.sh --check` → **619 checks, 0 failures**:
+`bash tools/render/bake-table-reference.sh --bake` writes the full board @1x,
+one @2x crop per element family, `table-reference.json` (camera, every tile
+placement, metrics, decoded-RGB hashes) and `slot-anchors.json`, then runs the
+dependency-free gate:
 
-- spec self-consistency (chosen candidate, both resolutions, all 17 families,
-  the pond/wall clearance and elevation inequality);
-- manifest camera equals the spec candidate resolved by the shared pinhole
-  (`table-camera.mjs`), and the bake's pinhole matched Blender to 0.0016 px;
-- every PNG exists, decodes as 8-bit RGB, has the declared dimensions and byte
-  size, and its decoded-pixel sha256 matches the manifest;
-- the full inventory and poses (136 wall tiles face-down in 17 two-tile stacks
-  per run; 72 pond discards face-up; 52 standing concealed tiles + 1 drawn;
-  12 meld tiles with exactly one called tile sideways per seat);
-- every crop rect is exactly the projected family bounds + 28 px @2x, is inside
-  the frame, and matches its file's pixels;
-- every metric recomputes from the camera + placements and passes its threshold
-  (scale spread ≤ 1.18, run ratio ≤ 1.22, run angle error ≤ 0.05°, pond tile
-  88–116 px, margin ≥ 24 px);
-- **lighting matches the shipped shells**: the bare 5z face measures
-  **[221, 218, 214]** against `shell_flat_upright`'s recorded **[223, 220, 216]**;
-  the face-down wall back measures **[1, 64, 159]** against
-  `shell_wall_horizontal`'s **[3, 68, 165]** (tolerances 14 luma / 42 face
-  channels / 55 blue channels).
+- spec + camera consistency, the full 136/72/52/12/1 tile inventory and poses;
+- every anchor's name, zone, count, unique name, body-centre origin, rotation,
+  and the 12-float face plate in local and world space;
+- clearance 0.2–0.5 mm for the 360 adjacent pairs and **0** intersecting tile
+  bodies;
+- every render's dimensions, bytes and decoded-pixel hash;
+- the table surface facts (700 mm mat, rim outside the mat, recessed well) and
+  the rim inside the frame;
+- the earlier reference's lighting samples (informational for this task; they
+  tie the render to the shipped shells).
 
-## How a follow-up task uses it
+The near rim is inside the new 2880 × 2112 frame; the board shows the whole
+mat and rim with an 88 px bottom margin. The committed reference set is
+regenerated by the bake; the tile crops are at 2× the board.
 
-1. Pick the family crop (`crops-2x/<family>-2x.png`) and the same family's
-   composited 2.5D zone at the same scale; the @1x board is 2880 × 1800 and a
-   centre pond tile is ~100 px, so a composited zone scaled 2× is close to the
-   crop.
-2. Compare body geometry first (silhouette, projected thickness, side reveal,
-   bevel), then the glyph read, then the shadow direction. The reference's
-   shadows are physical Cycles shadows from the top-left sun; the compositor's
-   are the synthetic down-right blob. Shadow shape is a deliberate 2.5D
-   shortcut, not a defect to match.
-3. To replace one family, change the spec/plan **and re-bake**; never hand-edit a
-   render. The manifest's hashes make drift visible.
+## Ambiguities resolved in this model
 
-## Known limits
-
-- No dora indicators, no rails/compass/apron geometry, no felt vignette: the
-  task's scene list plus one felt plane. The runtime's compass, rails and
-  full-screen felt raster are compositor concerns.
-- The tile multiset is not legal (a full pond + full wall + hands would need
-  more than 136 tiles); faces are seeded for visual variety.
-- Glyphs are the flat 2D masters on a plane, not carved/embossed paint; the
-  reference is about the shell silhouette and the glyph's read, not the decal
-  carve.
-- One camera cannot reproduce the compositor's four per-zone camera families.
-  The reference is deliberately the *weakest* perspective that still reveals
-  every zone, so the divergence from the stronger compositor fans is a recorded
-  presentation decision, not an unexplained mismatch.
+- **Bevel**: the brief says 0.8–1.2 mm; the shipped shell body uses 1.54 mm
+  (0.055 units). Kept the shell value so the model and shells agree.
+- **Overflow rivers**: the brief says "row 2 for columns 6+" without a count;
+  four extra columns (6..9) fit before the west/east wall at this table size.
+  They are anchors only (no tiles) because a fully occupied overflow row would
+  run into the neighbouring pond.
+- **Melds**: the brief says "corner slots ... for chii, pon, kan and kita". One
+  4-slot meld row per seat is modelled outside the wall on the player's right;
+  the reference pon occupies 3 slots and the fourth is the kan extension. Only
+  one such row is present per seat.
+- **Kita**: a 3-player rule; no separate tile is modelled, the meld row's slots
+  are the generic declaration area.
+- **Hand tilt**: the brief names the player's standing hand, so only the south
+  hand is reclined 12°; the three opponents' back rows stay upright.
+- **Empty slots**: 20 anchors have no body (river overflow, kan extension); they
+  still carry a full face quad.

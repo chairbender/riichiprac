@@ -230,6 +230,67 @@ for (const [name, sample] of Object.entries(geometry.lightingSamples ?? {})) {
   }
 }
 
+const anchors = geometry.anchors ?? [];
+const tilesById = new Map(tiles.map((tile) => [tile.id, tile]));
+const flatten = (quad) => quad.flat().map((value) => Number(value.toFixed(6)));
+for (const anchor of anchors) {
+  if (!anchor.occupied) continue;
+  const tile = tilesById.get(anchor.tileId);
+  if (!tile) fail(`anchor ${anchor.name} references missing tile ${anchor.tileId}`);
+  const bodyCentre = tile.origin.map((value, axis) => {
+    const local = [0, 0, tile.dimensions.thickness / 2];
+    const rotated = [
+      tile.rotation[0] * local[0] + tile.rotation[1] * local[1] + tile.rotation[2] * local[2],
+      tile.rotation[3] * local[0] + tile.rotation[4] * local[1] + tile.rotation[5] * local[2],
+      tile.rotation[6] * local[0] + tile.rotation[7] * local[1] + tile.rotation[8] * local[2],
+    ];
+    return value + rotated[axis];
+  });
+  for (const axis of [0, 1, 2]) {
+    if (Math.abs(anchor.origin[axis] - bodyCentre[axis]) > 1e-5) {
+      fail(`anchor ${anchor.name} origin does not match the tile body centre`);
+    }
+  }
+}
+const anchorsFile = {
+  version: 1,
+  generatedBy: 'tools/render/scripts/table-reference.mjs',
+  source: 'tools/render/bake_table_reference.py',
+  collection: geometry.anchorCollection,
+  convention: {
+    anchor: 'Empty at the tile body centre (tile units, 1 unit = 28 mm), rotation = the tile pose (row-major 3x3).',
+    faceQuadLocal:
+      '12 floats: 4 corners TL, TR, BR, BL in anchor-local units (+x tile right, +y glyph top, +z out of the painted face), at z = +thickness/2, inside the bevel inset.',
+    faceQuadWorld: 'the same 4 corners in world space.',
+    occupied:
+      'true when the anchor currently holds a reference tile; overflow/kan-extension anchors are false and carry a face quad without a body.',
+  },
+  camera: { camera2x, camera1x, resolution1x, resolution2x },
+  counts: geometry.anchorCounts,
+  total: anchors.length,
+  occupied: anchors.filter((anchor) => anchor.occupied).length,
+  clearance: geometry.clearance,
+  anchors: anchors.map((anchor) => ({
+    name: anchor.name,
+    zone: anchor.zone,
+    seat: anchor.seat,
+    index: anchor.index,
+    occupied: anchor.occupied,
+    tileId: anchor.tileId,
+    tileFace: anchor.tileFace,
+    origin: anchor.origin,
+    rotation: anchor.rotation,
+    faceQuadLocal: flatten(anchor.faceQuadLocal),
+    faceQuadWorld: flatten(anchor.faceQuadWorld),
+    faceQuadOrder: anchor.faceQuadOrder,
+    extra: anchor.extra ?? {},
+  })),
+};
+const anchorsPath = join(outDir, 'slot-anchors.json');
+writeFileSync(anchorsPath, `${JSON.stringify(anchorsFile, null, 1)}\n`);
+const anchorBytes = statSync(anchorsPath).size;
+const anchorSha = createHash('sha256').update(readFileSync(anchorsPath)).digest('hex');
+
 const manifest = {
   version: 1,
   generatedBy: 'tools/render/scripts/table-reference.mjs',
@@ -262,6 +323,17 @@ const manifest = {
   },
   metrics,
   lightingSamples: geometry.lightingSamples,
+  tableProps: geometry.tableProps,
+  clearance: geometry.clearance,
+  slotAnchors: {
+    file: 'slot-anchors.json',
+    collection: geometry.anchorCollection,
+    counts: geometry.anchorCounts,
+    total: anchors.length,
+    occupied: anchors.filter((anchor) => anchor.occupied).length,
+    bytes: anchorBytes,
+    sha256: anchorSha,
+  },
   renders: {
     fullBoard1x: { file: boardFile, ...boardRecord, scale: 1 },
     crops2x: crops,

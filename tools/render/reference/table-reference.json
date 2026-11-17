@@ -28,7 +28,7 @@
   "pixelsPerUnitAtTarget": 183.99999928648342,
   "resolution": [
    5760,
-   3600
+   4224
   ]
  },
  "camera1x": {
@@ -54,22 +54,22 @@
   "pixelsPerUnitAtTarget": 91.99999964324171,
   "resolution": [
    2880,
-   1800
+   2112
   ]
  },
  "resolution1x": [
   2880,
-  1800
+  2112
  ],
  "resolution2x": [
   5760,
-  3600
+  4224
  ],
  "hashConvention": "sha256 over \"<width>x<height>x<channels>:\" followed by the decoded RGB(A) bytes, at the file's own resolution. Bytes are the committed PNG file size.",
  "masterDownsample": "box-2x2",
- "projectionDeltaPx": 0.001623,
+ "projectionDeltaPx": 0.001403,
  "visibility": {
-  "samples": 1025,
+  "samples": 787,
   "occluded": 0,
   "details": []
  },
@@ -96,44 +96,47 @@
   "wall": {
    "radiusUnits": 7,
    "stacksPerRun": 17,
-   "stackPitchUnits": 0.75,
-   "stackCentreSpanUnits": 12,
+   "stackPitchUnits": 0.760714286,
    "tileDepthUnits": 1,
    "tiers": 2,
-   "note": "Each run is 17 touching stacks, tile long axis perpendicular to the wall, two tiles high, every tile face-down (blue up). The ring radius is the wall centre line used by the baked front/back wall fans (eye y -47.8, wall centre y -/+7.0)."
+   "note": "Each run is 17 stacks with a 0.3 mm gap (pitch 0.760714), two face-down tiles high with a 0.3 mm tier gap, ring radius 7.0. Corners keep a small clearance, so no wall tiles intersect.",
+   "tierStepUnits": 0.6,
+   "stackSpanUnits": 12.932142857
   },
   "pond": {
    "columns": 6,
    "rows": 3,
-   "columnPitchUnits": 0.75,
-   "rowPitchUnits": 1,
+   "columnPitchUnits": 0.757142857,
+   "rowPitchUnits": 1.010714286,
    "rowRadiiUnits": [
-    4.6,
-    3.6,
-    2.6
+    4.81,
+    3.799286,
+    2.788571
    ],
-   "columnCentreOffsetUnits": 1.875,
-   "note": "18 discards per pond in three 6-wide rows. Row 0 is nearest the discarding player (radius 4.6) and the rows advance toward the table centre. The pond outer edge (5.1) leaves a 1.4-unit gap to the wall inner edge, so the two-tier wall does not occlude the near row at the reference elevation. The tile long axis points along the seat's away axis, so the glyph reads for the seat."
+   "columnCentreOffsetUnits": 1.892857142,
+   "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg. Four overflow anchors continue row 2 at columns 6..9 (reserved; no tiles).",
+   "overflowColumns": 6
   },
   "hand": {
    "backRadiusUnits": 10.6,
    "count": 13,
-   "pitchUnits": 0.75,
-   "drawnOffsetUnits": 5.5125,
-   "note": "A standing 13-tile row with the blue back to the table centre and the face to the seat; the human also gets the separated drawn tile at +5.5125 (the compositor's +0.35 advance gap after the 13th tile)."
+   "pitchUnits": 0.760714286,
+   "drawnOffsetUnits": 5.576785714,
+   "note": "A standing 13-tile row with a 0.3 mm gap. The human's (south) hand is reclined 12 deg backward about its far bottom edge, blue back to the table centre; the other three hands are upright back rows. The human also gets a separate 14th draw slot at +5.5805 (the intentional tsumogiri gap, not the 0.3 mm row clearance); opponents have 13 anchors.",
+   "tiltDeg": 12,
+   "slotsPerSeat": 14,
+   "drawnGapUnits": 0.2625
   },
   "meld": {
-   "rowRadiusUnits": 5.4,
-   "startXUnits": 2.6,
+   "note": "One four-slot meld row per seat OUTSIDE the wall ring, on the table edge at the hand's radius 10.6, to the right of the player's hand (x from 6.1, clear of the drawn tile at x 5.58). Slots 0 and 1 are upright (0.75 wide), slot 2 is the called tile lying sideways (1.0 wide) and slot 3 is the kan extension; the modelled pon occupies slots 0-2 and slot 3 is an anchor only.",
+   "rowRadiusUnits": 10.6,
+   "startXUnits": 6.1,
    "uprightTiles": 2,
    "calledTiles": 1,
-   "note": "One open pon per seat inside the wall ring, beside the pond and on the seat's right (row radius 5.4, x from 2.6). The two upright tiles are 0.75 wide along the row; the called tile lies sideways (1.0 along the row)."
-  },
-  "felt": {
-   "halfExtentUnits": 60,
-   "baseColorHex": "#1a5038",
-   "roughness": 0.92,
-   "note": "One flat cloth plane, no rail/compass/apron geometry. The runtime's full-screen felt raster and vignette belong to the compositor; the reference exists to compare tile bodies, not the background."
+   "slots": 4,
+   "uprightWidthUnits": 0.760714286,
+   "calledWidthUnits": 1.010714286,
+   "calledGapUnits": 0.010714286
   }
  },
  "scene": {
@@ -155,7 +158,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -6,
+     -6.085714,
      -7,
      0.589286
     ],
@@ -188,9 +191,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -6,
+     -6.085714,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -221,7 +224,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -5.25,
+     -5.325,
      -7,
      0.589286
     ],
@@ -254,9 +257,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -5.25,
+     -5.325,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -287,7 +290,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -4.5,
+     -4.564286,
      -7,
      0.589286
     ],
@@ -320,9 +323,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -4.5,
+     -4.564286,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -353,7 +356,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -3.75,
+     -3.803571,
      -7,
      0.589286
     ],
@@ -386,9 +389,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -3.75,
+     -3.803571,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -419,7 +422,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -3,
+     -3.042857,
      -7,
      0.589286
     ],
@@ -452,9 +455,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -3,
+     -3.042857,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -485,7 +488,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -2.25,
+     -2.282143,
      -7,
      0.589286
     ],
@@ -518,9 +521,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -2.25,
+     -2.282143,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -551,7 +554,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -1.5,
+     -1.521429,
      -7,
      0.589286
     ],
@@ -584,9 +587,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -1.5,
+     -1.521429,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -617,7 +620,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -0.75,
+     -0.760714,
      -7,
      0.589286
     ],
@@ -650,9 +653,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -0.75,
+     -0.760714,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -718,7 +721,7 @@
     "origin": [
      0,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -749,7 +752,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     0.75,
+     0.760714,
      -7,
      0.589286
     ],
@@ -782,9 +785,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     0.75,
+     0.760714,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -815,7 +818,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     1.5,
+     1.521429,
      -7,
      0.589286
     ],
@@ -848,9 +851,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     1.5,
+     1.521429,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -881,7 +884,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     2.25,
+     2.282143,
      -7,
      0.589286
     ],
@@ -914,9 +917,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     2.25,
+     2.282143,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -947,7 +950,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     3,
+     3.042857,
      -7,
      0.589286
     ],
@@ -980,9 +983,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     3,
+     3.042857,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -1013,7 +1016,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     3.75,
+     3.803571,
      -7,
      0.589286
     ],
@@ -1046,9 +1049,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     3.75,
+     3.803571,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -1079,7 +1082,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     4.5,
+     4.564286,
      -7,
      0.589286
     ],
@@ -1112,9 +1115,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     4.5,
+     4.564286,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -1145,7 +1148,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     5.25,
+     5.325,
      -7,
      0.589286
     ],
@@ -1178,9 +1181,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     5.25,
+     5.325,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -1211,7 +1214,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     6,
+     6.085714,
      -7,
      0.589286
     ],
@@ -1244,9 +1247,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     6,
+     6.085714,
      -7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      1,
@@ -1277,8 +1280,8 @@
     "face": "5z",
     "pose": "lying-faceup",
     "origin": [
-     -1.875,
-     -4.6,
+     -1.892857,
+     -4.81,
      0
     ],
     "rotation": [
@@ -1310,8 +1313,8 @@
     "face": "5p",
     "pose": "lying-faceup",
     "origin": [
-     -1.125,
-     -4.6,
+     -1.135714,
+     -4.81,
      0
     ],
     "rotation": [
@@ -1343,8 +1346,8 @@
     "face": "5p",
     "pose": "lying-faceup",
     "origin": [
-     -0.375,
-     -4.6,
+     -0.378571,
+     -4.81,
      0
     ],
     "rotation": [
@@ -1376,8 +1379,8 @@
     "face": "8s",
     "pose": "lying-faceup",
     "origin": [
-     0.375,
-     -4.6,
+     0.378571,
+     -4.81,
      0
     ],
     "rotation": [
@@ -1409,8 +1412,8 @@
     "face": "4s",
     "pose": "lying-faceup",
     "origin": [
-     1.125,
-     -4.6,
+     1.135714,
+     -4.81,
      0
     ],
     "rotation": [
@@ -1442,8 +1445,8 @@
     "face": "6z",
     "pose": "lying-faceup",
     "origin": [
-     1.875,
-     -4.6,
+     1.892857,
+     -4.81,
      0
     ],
     "rotation": [
@@ -1475,8 +1478,8 @@
     "face": "3s",
     "pose": "lying-faceup",
     "origin": [
-     -1.875,
-     -3.6,
+     -1.892857,
+     -3.799286,
      0
     ],
     "rotation": [
@@ -1508,8 +1511,8 @@
     "face": "5sr",
     "pose": "lying-faceup",
     "origin": [
-     -1.125,
-     -3.6,
+     -1.135714,
+     -3.799286,
      0
     ],
     "rotation": [
@@ -1541,8 +1544,8 @@
     "face": "1m",
     "pose": "lying-faceup",
     "origin": [
-     -0.375,
-     -3.6,
+     -0.378571,
+     -3.799286,
      0
     ],
     "rotation": [
@@ -1574,8 +1577,8 @@
     "face": "6z",
     "pose": "lying-faceup",
     "origin": [
-     0.375,
-     -3.6,
+     0.378571,
+     -3.799286,
      0
     ],
     "rotation": [
@@ -1607,8 +1610,8 @@
     "face": "4p",
     "pose": "lying-faceup",
     "origin": [
-     1.125,
-     -3.6,
+     1.135714,
+     -3.799286,
      0
     ],
     "rotation": [
@@ -1640,8 +1643,8 @@
     "face": "1m",
     "pose": "lying-faceup",
     "origin": [
-     1.875,
-     -3.6,
+     1.892857,
+     -3.799286,
      0
     ],
     "rotation": [
@@ -1673,8 +1676,8 @@
     "face": "7z",
     "pose": "lying-faceup",
     "origin": [
-     -1.875,
-     -2.6,
+     -1.892857,
+     -2.788571,
      0
     ],
     "rotation": [
@@ -1706,8 +1709,8 @@
     "face": "6z",
     "pose": "lying-faceup",
     "origin": [
-     -1.125,
-     -2.6,
+     -1.135714,
+     -2.788571,
      0
     ],
     "rotation": [
@@ -1739,8 +1742,8 @@
     "face": "5sr",
     "pose": "lying-faceup",
     "origin": [
-     -0.375,
-     -2.6,
+     -0.378571,
+     -2.788571,
      0
     ],
     "rotation": [
@@ -1772,8 +1775,8 @@
     "face": "6s",
     "pose": "lying-faceup",
     "origin": [
-     0.375,
-     -2.6,
+     0.378571,
+     -2.788571,
      0
     ],
     "rotation": [
@@ -1805,8 +1808,8 @@
     "face": "6z",
     "pose": "lying-faceup",
     "origin": [
-     1.125,
-     -2.6,
+     1.135714,
+     -2.788571,
      0
     ],
     "rotation": [
@@ -1838,8 +1841,8 @@
     "face": "7p",
     "pose": "lying-faceup",
     "origin": [
-     1.875,
-     -2.6,
+     1.892857,
+     -2.788571,
      0
     ],
     "rotation": [
@@ -1871,20 +1874,20 @@
     "face": "5sr",
     "pose": "standing",
     "origin": [
-     -4.5,
-     -10.6,
-     0.5
+     -4.564286,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -1903,20 +1906,20 @@
     "face": "7z",
     "pose": "standing",
     "origin": [
-     -3.75,
-     -10.6,
-     0.5
+     -3.803571,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -1935,20 +1938,20 @@
     "face": "1z",
     "pose": "standing",
     "origin": [
-     -3,
-     -10.6,
-     0.5
+     -3.042857,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -1967,20 +1970,20 @@
     "face": "5pr",
     "pose": "standing",
     "origin": [
-     -2.25,
-     -10.6,
-     0.5
+     -2.282143,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -1999,20 +2002,20 @@
     "face": "5s",
     "pose": "standing",
     "origin": [
-     -1.5,
-     -10.6,
-     0.5
+     -1.521429,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -2031,20 +2034,20 @@
     "face": "5pr",
     "pose": "standing",
     "origin": [
-     -0.75,
-     -10.6,
-     0.5
+     -0.760714,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -2064,19 +2067,19 @@
     "pose": "standing",
     "origin": [
      0,
-     -10.6,
-     0.5
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -2095,20 +2098,20 @@
     "face": "3m",
     "pose": "standing",
     "origin": [
-     0.75,
-     -10.6,
-     0.5
+     0.760714,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -2127,20 +2130,20 @@
     "face": "6p",
     "pose": "standing",
     "origin": [
-     1.5,
-     -10.6,
-     0.5
+     1.521429,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -2159,20 +2162,20 @@
     "face": "5sr",
     "pose": "standing",
     "origin": [
-     2.25,
-     -10.6,
-     0.5
+     2.282143,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -2191,20 +2194,20 @@
     "face": "1z",
     "pose": "standing",
     "origin": [
-     3,
-     -10.6,
-     0.5
+     3.042857,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -2223,20 +2226,20 @@
     "face": "8s",
     "pose": "standing",
     "origin": [
-     3.75,
-     -10.6,
-     0.5
+     3.803571,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -2255,20 +2258,20 @@
     "face": "3z",
     "pose": "standing",
     "origin": [
-     4.5,
-     -10.6,
-     0.5
+     4.564286,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -2287,8 +2290,8 @@
     "face": "8m",
     "pose": "lying-faceup",
     "origin": [
-     2.975,
-     -5.4,
+     6.480357,
+     -10.6,
      0
     ],
     "rotation": [
@@ -2320,8 +2323,8 @@
     "face": "3z",
     "pose": "lying-faceup",
     "origin": [
-     3.725,
-     -5.4,
+     7.241071,
+     -10.6,
      0
     ],
     "rotation": [
@@ -2353,8 +2356,8 @@
     "face": "5p",
     "pose": "lying-faceup",
     "origin": [
-     4.6,
-     -5.4,
+     8.126785,
+     -10.6,
      0
     ],
     "rotation": [
@@ -2387,7 +2390,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -6,
+     -6.085715,
      0.589286
     ],
     "rotation": [
@@ -2420,8 +2423,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -6,
-     1.178571
+     -6.085715,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -2453,7 +2456,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -5.25,
+     -5.325,
      0.589286
     ],
     "rotation": [
@@ -2486,8 +2489,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -5.25,
-     1.178571
+     -5.325,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -2519,7 +2522,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -4.5,
+     -4.564286,
      0.589286
     ],
     "rotation": [
@@ -2552,8 +2555,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -4.5,
-     1.178571
+     -4.564286,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -2585,7 +2588,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -3.75,
+     -3.803572,
      0.589286
     ],
     "rotation": [
@@ -2618,8 +2621,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -3.75,
-     1.178571
+     -3.803572,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -2651,7 +2654,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -3,
+     -3.042858,
      0.589286
     ],
     "rotation": [
@@ -2684,8 +2687,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -3,
-     1.178571
+     -3.042858,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -2717,7 +2720,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -2.25,
+     -2.282143,
      0.589286
     ],
     "rotation": [
@@ -2750,8 +2753,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -2.25,
-     1.178571
+     -2.282143,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -2783,7 +2786,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -1.5,
+     -1.521429,
      0.589286
     ],
     "rotation": [
@@ -2816,8 +2819,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -1.5,
-     1.178571
+     -1.521429,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -2849,7 +2852,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -0.750001,
+     -0.760715,
      0.589286
     ],
     "rotation": [
@@ -2882,8 +2885,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     -0.750001,
-     1.178571
+     -0.760715,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -2949,7 +2952,7 @@
     "origin": [
      7,
      -0.000001,
-     1.178571
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -2981,7 +2984,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     0.749999,
+     0.760714,
      0.589286
     ],
     "rotation": [
@@ -3014,8 +3017,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     0.749999,
-     1.178571
+     0.760714,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -3047,7 +3050,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     1.5,
+     1.521428,
      0.589286
     ],
     "rotation": [
@@ -3080,8 +3083,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     1.5,
-     1.178571
+     1.521428,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -3113,7 +3116,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     2.25,
+     2.282142,
      0.589286
     ],
     "rotation": [
@@ -3146,8 +3149,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     2.25,
-     1.178571
+     2.282142,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -3179,7 +3182,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     3,
+     3.042857,
      0.589286
     ],
     "rotation": [
@@ -3212,8 +3215,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     3,
-     1.178571
+     3.042857,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -3245,7 +3248,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     3.75,
+     3.803571,
      0.589286
     ],
     "rotation": [
@@ -3278,8 +3281,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     3.75,
-     1.178571
+     3.803571,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -3311,7 +3314,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     4.5,
+     4.564285,
      0.589286
     ],
     "rotation": [
@@ -3344,8 +3347,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     4.5,
-     1.178571
+     4.564285,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -3377,7 +3380,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     5.25,
+     5.324999,
      0.589286
     ],
     "rotation": [
@@ -3410,8 +3413,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     5.25,
-     1.178571
+     5.324999,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -3443,7 +3446,7 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     6,
+     6.085714,
      0.589286
     ],
     "rotation": [
@@ -3476,8 +3479,8 @@
     "pose": "lying-facedown",
     "origin": [
      7,
-     6,
-     1.178571
+     6.085714,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -3508,8 +3511,8 @@
     "face": "3p",
     "pose": "lying-faceup",
     "origin": [
-     4.6,
-     -1.875,
+     4.81,
+     -1.892858,
      0
     ],
     "rotation": [
@@ -3541,8 +3544,8 @@
     "face": "6p",
     "pose": "lying-faceup",
     "origin": [
-     4.6,
-     -1.125,
+     4.81,
+     -1.135715,
      0
     ],
     "rotation": [
@@ -3574,8 +3577,8 @@
     "face": "1m",
     "pose": "lying-faceup",
     "origin": [
-     4.6,
-     -0.375,
+     4.81,
+     -0.378572,
      0
     ],
     "rotation": [
@@ -3607,8 +3610,8 @@
     "face": "1m",
     "pose": "lying-faceup",
     "origin": [
-     4.6,
-     0.375,
+     4.81,
+     0.378571,
      0
     ],
     "rotation": [
@@ -3640,8 +3643,8 @@
     "face": "5p",
     "pose": "lying-faceup",
     "origin": [
-     4.6,
-     1.125,
+     4.81,
+     1.135714,
      0
     ],
     "rotation": [
@@ -3673,8 +3676,8 @@
     "face": "8s",
     "pose": "lying-faceup",
     "origin": [
-     4.6,
-     1.875,
+     4.81,
+     1.892857,
      0
     ],
     "rotation": [
@@ -3706,8 +3709,8 @@
     "face": "5z",
     "pose": "lying-faceup",
     "origin": [
-     3.6,
-     -1.875,
+     3.799286,
+     -1.892857,
      0
     ],
     "rotation": [
@@ -3739,8 +3742,8 @@
     "face": "2p",
     "pose": "lying-faceup",
     "origin": [
-     3.6,
-     -1.125,
+     3.799286,
+     -1.135715,
      0
     ],
     "rotation": [
@@ -3772,8 +3775,8 @@
     "face": "4p",
     "pose": "lying-faceup",
     "origin": [
-     3.6,
-     -0.375,
+     3.799286,
+     -0.378572,
      0
     ],
     "rotation": [
@@ -3805,8 +3808,8 @@
     "face": "9m",
     "pose": "lying-faceup",
     "origin": [
-     3.6,
-     0.375,
+     3.799286,
+     0.378571,
      0
     ],
     "rotation": [
@@ -3838,8 +3841,8 @@
     "face": "7p",
     "pose": "lying-faceup",
     "origin": [
-     3.6,
-     1.125,
+     3.799286,
+     1.135714,
      0
     ],
     "rotation": [
@@ -3871,8 +3874,8 @@
     "face": "5mr",
     "pose": "lying-faceup",
     "origin": [
-     3.6,
-     1.875,
+     3.799286,
+     1.892857,
      0
     ],
     "rotation": [
@@ -3904,8 +3907,8 @@
     "face": "5pr",
     "pose": "lying-faceup",
     "origin": [
-     2.6,
-     -1.875,
+     2.788571,
+     -1.892857,
      0
     ],
     "rotation": [
@@ -3937,8 +3940,8 @@
     "face": "7p",
     "pose": "lying-faceup",
     "origin": [
-     2.6,
-     -1.125,
+     2.788571,
+     -1.135715,
      0
     ],
     "rotation": [
@@ -3970,8 +3973,8 @@
     "face": "8s",
     "pose": "lying-faceup",
     "origin": [
-     2.6,
-     -0.375,
+     2.788571,
+     -0.378572,
      0
     ],
     "rotation": [
@@ -4003,8 +4006,8 @@
     "face": "8m",
     "pose": "lying-faceup",
     "origin": [
-     2.6,
-     0.375,
+     2.788571,
+     0.378571,
      0
     ],
     "rotation": [
@@ -4036,8 +4039,8 @@
     "face": "2p",
     "pose": "lying-faceup",
     "origin": [
-     2.6,
-     1.125,
+     2.788571,
+     1.135714,
      0
     ],
     "rotation": [
@@ -4069,8 +4072,8 @@
     "face": "6m",
     "pose": "lying-faceup",
     "origin": [
-     2.6,
-     1.875,
+     2.788571,
+     1.892857,
      0
     ],
     "rotation": [
@@ -4103,7 +4106,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     -4.500001,
+     -4.564287,
      0.5
     ],
     "rotation": [
@@ -4135,7 +4138,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     -3.750001,
+     -3.803572,
      0.5
     ],
     "rotation": [
@@ -4167,7 +4170,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     -3.000001,
+     -3.042858,
      0.5
     ],
     "rotation": [
@@ -4199,7 +4202,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     -2.250001,
+     -2.282144,
      0.5
     ],
     "rotation": [
@@ -4231,7 +4234,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     -1.500001,
+     -1.521429,
      0.5
     ],
     "rotation": [
@@ -4263,7 +4266,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     -0.750001,
+     -0.760715,
      0.5
     ],
     "rotation": [
@@ -4327,7 +4330,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     0.749999,
+     0.760713,
      0.5
     ],
     "rotation": [
@@ -4359,7 +4362,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     1.499999,
+     1.521428,
      0.5
     ],
     "rotation": [
@@ -4391,7 +4394,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     2.249999,
+     2.282142,
      0.5
     ],
     "rotation": [
@@ -4423,7 +4426,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     2.999999,
+     3.042856,
      0.5
     ],
     "rotation": [
@@ -4455,7 +4458,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     3.749999,
+     3.803571,
      0.5
     ],
     "rotation": [
@@ -4487,7 +4490,7 @@
     "pose": "standing-back",
     "origin": [
      10.6,
-     4.499999,
+     4.564285,
      0.5
     ],
     "rotation": [
@@ -4518,8 +4521,8 @@
     "face": "5p",
     "pose": "lying-faceup",
     "origin": [
-     5.4,
-     2.974999,
+     10.600001,
+     6.480356,
      0
     ],
     "rotation": [
@@ -4551,8 +4554,8 @@
     "face": "2z",
     "pose": "lying-faceup",
     "origin": [
-     5.400001,
-     3.724999,
+     10.600001,
+     7.24107,
      0
     ],
     "rotation": [
@@ -4584,8 +4587,8 @@
     "face": "5p",
     "pose": "lying-faceup",
     "origin": [
-     5.400001,
-     4.599999,
+     10.600001,
+     8.126784,
      0
     ],
     "rotation": [
@@ -4617,7 +4620,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     6,
+     6.085715,
      7,
      0.589286
     ],
@@ -4650,9 +4653,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     6,
+     6.085715,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -4683,7 +4686,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     5.25,
+     5.325,
      7,
      0.589286
     ],
@@ -4716,9 +4719,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     5.25,
+     5.325,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -4749,7 +4752,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     4.5,
+     4.564286,
      7,
      0.589286
     ],
@@ -4782,9 +4785,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     4.5,
+     4.564286,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -4815,7 +4818,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     3.750001,
+     3.803572,
      7,
      0.589286
     ],
@@ -4848,9 +4851,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     3.750001,
+     3.803572,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -4881,7 +4884,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     3.000001,
+     3.042858,
      7,
      0.589286
     ],
@@ -4914,9 +4917,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     3.000001,
+     3.042858,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -4947,7 +4950,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     2.250001,
+     2.282144,
      7,
      0.589286
     ],
@@ -4980,9 +4983,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     2.250001,
+     2.282144,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5013,7 +5016,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     1.500001,
+     1.521429,
      7,
      0.589286
     ],
@@ -5046,9 +5049,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     1.500001,
+     1.521429,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5079,7 +5082,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     0.750001,
+     0.760715,
      7,
      0.589286
     ],
@@ -5112,9 +5115,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     0.750001,
+     0.760715,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5180,7 +5183,7 @@
     "origin": [
      0.000001,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5211,7 +5214,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -0.749999,
+     -0.760714,
      7,
      0.589286
     ],
@@ -5244,9 +5247,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -0.749999,
+     -0.760714,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5277,7 +5280,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -1.499999,
+     -1.521428,
      7,
      0.589286
     ],
@@ -5310,9 +5313,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -1.499999,
+     -1.521428,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5343,7 +5346,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -2.249999,
+     -2.282142,
      7,
      0.589286
     ],
@@ -5376,9 +5379,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -2.249999,
+     -2.282142,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5409,7 +5412,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -2.999999,
+     -3.042856,
      7,
      0.589286
     ],
@@ -5442,9 +5445,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -2.999999,
+     -3.042856,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5475,7 +5478,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -3.749999,
+     -3.803571,
      7,
      0.589286
     ],
@@ -5508,9 +5511,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -3.749999,
+     -3.803571,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5541,7 +5544,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -4.5,
+     -4.564285,
      7,
      0.589286
     ],
@@ -5574,9 +5577,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -4.5,
+     -4.564285,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5607,7 +5610,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -5.25,
+     -5.324999,
      7,
      0.589286
     ],
@@ -5640,9 +5643,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -5.25,
+     -5.324999,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5673,7 +5676,7 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -6,
+     -6.085714,
      7,
      0.589286
     ],
@@ -5706,9 +5709,9 @@
     "face": null,
     "pose": "lying-facedown",
     "origin": [
-     -6,
+     -6.085714,
      7,
-     1.178571
+     1.189286
     ],
     "rotation": [
      -1,
@@ -5739,8 +5742,8 @@
     "face": "5z",
     "pose": "lying-faceup",
     "origin": [
-     1.875,
-     4.6,
+     1.892858,
+     4.81,
      0
     ],
     "rotation": [
@@ -5772,8 +5775,8 @@
     "face": "1m",
     "pose": "lying-faceup",
     "origin": [
-     1.125,
-     4.6,
+     1.135715,
+     4.81,
      0
     ],
     "rotation": [
@@ -5805,8 +5808,8 @@
     "face": "9s",
     "pose": "lying-faceup",
     "origin": [
-     0.375,
-     4.6,
+     0.378572,
+     4.81,
      0
     ],
     "rotation": [
@@ -5838,8 +5841,8 @@
     "face": "8m",
     "pose": "lying-faceup",
     "origin": [
-     -0.375,
-     4.6,
+     -0.378571,
+     4.81,
      0
     ],
     "rotation": [
@@ -5871,8 +5874,8 @@
     "face": "3p",
     "pose": "lying-faceup",
     "origin": [
-     -1.125,
-     4.6,
+     -1.135714,
+     4.81,
      0
     ],
     "rotation": [
@@ -5904,8 +5907,8 @@
     "face": "3s",
     "pose": "lying-faceup",
     "origin": [
-     -1.875,
-     4.6,
+     -1.892857,
+     4.81,
      0
     ],
     "rotation": [
@@ -5937,8 +5940,8 @@
     "face": "1s",
     "pose": "lying-faceup",
     "origin": [
-     1.875,
-     3.6,
+     1.892858,
+     3.799286,
      0
     ],
     "rotation": [
@@ -5970,8 +5973,8 @@
     "face": "1z",
     "pose": "lying-faceup",
     "origin": [
-     1.125,
-     3.6,
+     1.135715,
+     3.799286,
      0
     ],
     "rotation": [
@@ -6003,8 +6006,8 @@
     "face": "7p",
     "pose": "lying-faceup",
     "origin": [
-     0.375,
-     3.6,
+     0.378572,
+     3.799286,
      0
     ],
     "rotation": [
@@ -6036,8 +6039,8 @@
     "face": "7s",
     "pose": "lying-faceup",
     "origin": [
-     -0.375,
-     3.6,
+     -0.378571,
+     3.799286,
      0
     ],
     "rotation": [
@@ -6069,8 +6072,8 @@
     "face": "7s",
     "pose": "lying-faceup",
     "origin": [
-     -1.125,
-     3.6,
+     -1.135714,
+     3.799286,
      0
     ],
     "rotation": [
@@ -6102,8 +6105,8 @@
     "face": "8m",
     "pose": "lying-faceup",
     "origin": [
-     -1.875,
-     3.6,
+     -1.892857,
+     3.799286,
      0
     ],
     "rotation": [
@@ -6135,8 +6138,8 @@
     "face": "3z",
     "pose": "lying-faceup",
     "origin": [
-     1.875,
-     2.6,
+     1.892857,
+     2.788571,
      0
     ],
     "rotation": [
@@ -6168,8 +6171,8 @@
     "face": "5pr",
     "pose": "lying-faceup",
     "origin": [
-     1.125,
-     2.6,
+     1.135715,
+     2.788571,
      0
     ],
     "rotation": [
@@ -6201,8 +6204,8 @@
     "face": "8m",
     "pose": "lying-faceup",
     "origin": [
-     0.375,
-     2.6,
+     0.378572,
+     2.788571,
      0
     ],
     "rotation": [
@@ -6234,8 +6237,8 @@
     "face": "2s",
     "pose": "lying-faceup",
     "origin": [
-     -0.375,
-     2.6,
+     -0.378571,
+     2.788571,
      0
     ],
     "rotation": [
@@ -6267,8 +6270,8 @@
     "face": "7s",
     "pose": "lying-faceup",
     "origin": [
-     -1.125,
-     2.6,
+     -1.135714,
+     2.788571,
      0
     ],
     "rotation": [
@@ -6300,8 +6303,8 @@
     "face": "8s",
     "pose": "lying-faceup",
     "origin": [
-     -1.875,
-     2.6,
+     -1.892857,
+     2.788571,
      0
     ],
     "rotation": [
@@ -6333,7 +6336,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     4.500001,
+     4.564287,
      10.6,
      0.5
     ],
@@ -6365,7 +6368,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     3.750001,
+     3.803572,
      10.6,
      0.5
     ],
@@ -6397,7 +6400,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     3.000001,
+     3.042858,
      10.6,
      0.5
     ],
@@ -6429,7 +6432,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     2.250001,
+     2.282144,
      10.6,
      0.5
     ],
@@ -6461,7 +6464,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     1.500001,
+     1.52143,
      10.6,
      0.5
     ],
@@ -6493,7 +6496,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     0.750001,
+     0.760715,
      10.6,
      0.5
     ],
@@ -6557,7 +6560,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     -0.749999,
+     -0.760713,
      10.6,
      0.5
     ],
@@ -6589,7 +6592,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     -1.499999,
+     -1.521428,
      10.6,
      0.5
     ],
@@ -6621,7 +6624,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     -2.249999,
+     -2.282142,
      10.6,
      0.5
     ],
@@ -6653,7 +6656,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     -2.999999,
+     -3.042856,
      10.6,
      0.5
     ],
@@ -6685,7 +6688,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     -3.749999,
+     -3.803571,
      10.6,
      0.5
     ],
@@ -6717,7 +6720,7 @@
     "face": null,
     "pose": "standing-back",
     "origin": [
-     -4.499999,
+     -4.564285,
      10.6,
      0.5
     ],
@@ -6749,8 +6752,8 @@
     "face": "7z",
     "pose": "lying-faceup",
     "origin": [
-     -2.974999,
-     5.400001,
+     -6.480356,
+     10.600001,
      0
     ],
     "rotation": [
@@ -6782,8 +6785,8 @@
     "face": "6p",
     "pose": "lying-faceup",
     "origin": [
-     -3.724999,
-     5.400001,
+     -7.24107,
+     10.600001,
      0
     ],
     "rotation": [
@@ -6815,8 +6818,8 @@
     "face": "5z",
     "pose": "lying-faceup",
     "origin": [
-     -4.599999,
-     5.400001,
+     -8.126784,
+     10.600001,
      0
     ],
     "rotation": [
@@ -6849,7 +6852,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     6,
+     6.085714,
      0.589286
     ],
     "rotation": [
@@ -6882,8 +6885,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     6,
-     1.178571
+     6.085714,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -6915,7 +6918,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     5.25,
+     5.324999,
      0.589286
     ],
     "rotation": [
@@ -6948,8 +6951,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     5.25,
-     1.178571
+     5.324999,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -6981,7 +6984,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     4.5,
+     4.564285,
      0.589286
     ],
     "rotation": [
@@ -7014,8 +7017,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     4.5,
-     1.178571
+     4.564285,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7047,7 +7050,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     3.75,
+     3.803571,
      0.589286
     ],
     "rotation": [
@@ -7080,8 +7083,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     3.75,
-     1.178571
+     3.803571,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7113,7 +7116,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     3,
+     3.042857,
      0.589286
     ],
     "rotation": [
@@ -7146,8 +7149,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     3,
-     1.178571
+     3.042857,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7179,7 +7182,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     2.25,
+     2.282142,
      0.589286
     ],
     "rotation": [
@@ -7212,8 +7215,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     2.25,
-     1.178571
+     2.282142,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7245,7 +7248,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     1.5,
+     1.521428,
      0.589286
     ],
     "rotation": [
@@ -7278,8 +7281,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     1.5,
-     1.178571
+     1.521428,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7311,7 +7314,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     0.749999,
+     0.760714,
      0.589286
     ],
     "rotation": [
@@ -7344,8 +7347,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     0.749999,
-     1.178571
+     0.760714,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7411,7 +7414,7 @@
     "origin": [
      -7,
      -0.000001,
-     1.178571
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7443,7 +7446,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -0.750001,
+     -0.760715,
      0.589286
     ],
     "rotation": [
@@ -7476,8 +7479,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -0.750001,
-     1.178571
+     -0.760715,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7509,7 +7512,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -1.5,
+     -1.521429,
      0.589286
     ],
     "rotation": [
@@ -7542,8 +7545,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -1.5,
-     1.178571
+     -1.521429,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7575,7 +7578,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -2.25,
+     -2.282143,
      0.589286
     ],
     "rotation": [
@@ -7608,8 +7611,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -2.25,
-     1.178571
+     -2.282143,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7641,7 +7644,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -3,
+     -3.042858,
      0.589286
     ],
     "rotation": [
@@ -7674,8 +7677,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -3,
-     1.178571
+     -3.042858,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7707,7 +7710,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -3.75,
+     -3.803572,
      0.589286
     ],
     "rotation": [
@@ -7740,8 +7743,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -3.75,
-     1.178571
+     -3.803572,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7773,7 +7776,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -4.5,
+     -4.564286,
      0.589286
     ],
     "rotation": [
@@ -7806,8 +7809,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -4.5,
-     1.178571
+     -4.564286,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7839,7 +7842,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -5.25,
+     -5.325,
      0.589286
     ],
     "rotation": [
@@ -7872,8 +7875,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -5.25,
-     1.178571
+     -5.325,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7905,7 +7908,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -6,
+     -6.085715,
      0.589286
     ],
     "rotation": [
@@ -7938,8 +7941,8 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -6,
-     1.178571
+     -6.085715,
+     1.189286
     ],
     "rotation": [
      7.5e-8,
@@ -7970,8 +7973,8 @@
     "face": "7p",
     "pose": "lying-faceup",
     "origin": [
-     -4.6,
-     1.875,
+     -4.81,
+     1.892857,
      0
     ],
     "rotation": [
@@ -8003,8 +8006,8 @@
     "face": "4m",
     "pose": "lying-faceup",
     "origin": [
-     -4.6,
-     1.125,
+     -4.81,
+     1.135714,
      0
     ],
     "rotation": [
@@ -8036,8 +8039,8 @@
     "face": "1m",
     "pose": "lying-faceup",
     "origin": [
-     -4.6,
-     0.375,
+     -4.81,
+     0.378571,
      0
     ],
     "rotation": [
@@ -8069,8 +8072,8 @@
     "face": "5m",
     "pose": "lying-faceup",
     "origin": [
-     -4.6,
-     -0.375,
+     -4.81,
+     -0.378572,
      0
     ],
     "rotation": [
@@ -8102,8 +8105,8 @@
     "face": "8s",
     "pose": "lying-faceup",
     "origin": [
-     -4.6,
-     -1.125,
+     -4.81,
+     -1.135715,
      0
     ],
     "rotation": [
@@ -8135,8 +8138,8 @@
     "face": "6p",
     "pose": "lying-faceup",
     "origin": [
-     -4.6,
-     -1.875,
+     -4.81,
+     -1.892858,
      0
     ],
     "rotation": [
@@ -8168,8 +8171,8 @@
     "face": "2m",
     "pose": "lying-faceup",
     "origin": [
-     -3.6,
-     1.875,
+     -3.799286,
+     1.892857,
      0
     ],
     "rotation": [
@@ -8201,8 +8204,8 @@
     "face": "3p",
     "pose": "lying-faceup",
     "origin": [
-     -3.6,
-     1.125,
+     -3.799286,
+     1.135714,
      0
     ],
     "rotation": [
@@ -8234,8 +8237,8 @@
     "face": "2m",
     "pose": "lying-faceup",
     "origin": [
-     -3.6,
-     0.375,
+     -3.799286,
+     0.378571,
      0
     ],
     "rotation": [
@@ -8267,8 +8270,8 @@
     "face": "7p",
     "pose": "lying-faceup",
     "origin": [
-     -3.6,
-     -0.375,
+     -3.799286,
+     -0.378572,
      0
     ],
     "rotation": [
@@ -8300,8 +8303,8 @@
     "face": "3s",
     "pose": "lying-faceup",
     "origin": [
-     -3.6,
-     -1.125,
+     -3.799286,
+     -1.135715,
      0
     ],
     "rotation": [
@@ -8333,8 +8336,8 @@
     "face": "3s",
     "pose": "lying-faceup",
     "origin": [
-     -3.6,
-     -1.875,
+     -3.799286,
+     -1.892857,
      0
     ],
     "rotation": [
@@ -8366,8 +8369,8 @@
     "face": "5p",
     "pose": "lying-faceup",
     "origin": [
-     -2.6,
-     1.875,
+     -2.788571,
+     1.892857,
      0
     ],
     "rotation": [
@@ -8399,8 +8402,8 @@
     "face": "6s",
     "pose": "lying-faceup",
     "origin": [
-     -2.6,
-     1.125,
+     -2.788571,
+     1.135714,
      0
     ],
     "rotation": [
@@ -8432,8 +8435,8 @@
     "face": "5sr",
     "pose": "lying-faceup",
     "origin": [
-     -2.6,
-     0.375,
+     -2.788571,
+     0.378571,
      0
     ],
     "rotation": [
@@ -8465,8 +8468,8 @@
     "face": "4m",
     "pose": "lying-faceup",
     "origin": [
-     -2.6,
-     -0.375,
+     -2.788571,
+     -0.378572,
      0
     ],
     "rotation": [
@@ -8498,8 +8501,8 @@
     "face": "8s",
     "pose": "lying-faceup",
     "origin": [
-     -2.6,
-     -1.125,
+     -2.788571,
+     -1.135715,
      0
     ],
     "rotation": [
@@ -8531,8 +8534,8 @@
     "face": "2s",
     "pose": "lying-faceup",
     "origin": [
-     -2.6,
-     -1.875,
+     -2.788571,
+     -1.892857,
      0
     ],
     "rotation": [
@@ -8565,7 +8568,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     4.499999,
+     4.564285,
      0.5
     ],
     "rotation": [
@@ -8597,7 +8600,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     3.749999,
+     3.803571,
      0.5
     ],
     "rotation": [
@@ -8629,7 +8632,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     2.999999,
+     3.042856,
      0.5
     ],
     "rotation": [
@@ -8661,7 +8664,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     2.249999,
+     2.282142,
      0.5
     ],
     "rotation": [
@@ -8693,7 +8696,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     1.499999,
+     1.521428,
      0.5
     ],
     "rotation": [
@@ -8725,7 +8728,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     0.749999,
+     0.760713,
      0.5
     ],
     "rotation": [
@@ -8789,7 +8792,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     -0.750001,
+     -0.760715,
      0.5
     ],
     "rotation": [
@@ -8821,7 +8824,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     -1.500001,
+     -1.521429,
      0.5
     ],
     "rotation": [
@@ -8853,7 +8856,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     -2.250001,
+     -2.282144,
      0.5
     ],
     "rotation": [
@@ -8885,7 +8888,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     -3.000001,
+     -3.042858,
      0.5
     ],
     "rotation": [
@@ -8917,7 +8920,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     -3.750001,
+     -3.803572,
      0.5
     ],
     "rotation": [
@@ -8949,7 +8952,7 @@
     "pose": "standing-back",
     "origin": [
      -10.6,
-     -4.500001,
+     -4.564287,
      0.5
     ],
     "rotation": [
@@ -8980,8 +8983,8 @@
     "face": "7s",
     "pose": "lying-faceup",
     "origin": [
-     -5.4,
-     -2.975,
+     -10.599999,
+     -6.480358,
      0
     ],
     "rotation": [
@@ -9013,8 +9016,8 @@
     "face": "1z",
     "pose": "lying-faceup",
     "origin": [
-     -5.4,
-     -3.725,
+     -10.599999,
+     -7.241072,
      0
     ],
     "rotation": [
@@ -9046,8 +9049,8 @@
     "face": "8m",
     "pose": "lying-faceup",
     "origin": [
-     -5.4,
-     -4.6,
+     -10.599999,
+     -8.126786,
      0
     ],
     "rotation": [
@@ -9079,20 +9082,20 @@
     "face": "1m",
     "pose": "standing",
     "origin": [
-     5.5125,
-     -10.6,
-     0.5
+     5.576786,
+     -10.496044,
+     0.489074
     ],
     "rotation": [
      1,
      0,
      0,
      0,
-     7.5e-8,
-     -1,
+     0.207911775,
+     -0.978147626,
      0,
-     1,
-     7.5e-8
+     0.978147626,
+     0.207911775
     ],
     "dimensions": {
      "width": 0.75,
@@ -9107,16 +9110,16 @@
  },
  "metrics": {
   "pondTileSizePx": [
-   106.1541,
-   94.7586,
-   100.7123,
-   94.3356
+   106.3127,
+   94.9038,
+   100.5693,
+   94.4755
   ],
-  "scaleSpread": 1.125281,
-  "frontRunLengthPx": 1220.128,
-  "backRunLengthPx": 1124.973,
-  "leftRunLengthPx": 1220.128,
-  "rightRunLengthPx": 1124.973,
+  "scaleSpread": 1.125293,
+  "frontRunLengthPx": 1237.559,
+  "backRunLengthPx": 1141.044,
+  "leftRunLengthPx": 1237.559,
+  "rightRunLengthPx": 1141.044,
   "frontBackRunRatio": 1.084584,
   "leftRightRunRatio": 1.084584,
   "runAnglesDeg": {
@@ -9131,21 +9134,37 @@
    "left": 0,
    "right": 0
   },
-  "bottomTopHandRatio": 0.999118,
-  "frontOuterRevealDeg": 4.3387,
+  "bottomTopHandRatio": 1.216764,
+  "frontOuterRevealDeg": 4.6743,
   "tableBoundsPx": {
-   "left": 376.46,
-   "top": 174.24,
-   "right": 2503.54,
-   "bottom": 1701.11
+   "left": 369.98,
+   "top": 330.24,
+   "right": 2503.96,
+   "bottom": 1850.47
   },
   "frameMarginsPx": {
-   "left": 376.46,
-   "top": 174.24,
-   "right": 376.46,
-   "bottom": 98.89
+   "left": 369.98,
+   "top": 330.24,
+   "right": 376.04,
+   "bottom": 261.53
   },
-  "minFrameMarginPx": 98.888
+  "minFrameMarginPx": 261.527,
+  "rimFrame": {
+   "matHalfUnits": 12.5,
+   "rimOuterHalfUnits": 13.4,
+   "boundsPx": {
+    "left": 103.15,
+    "top": 247.23,
+    "right": 2776.85,
+    "bottom": 2023.85
+   },
+   "marginsPx": {
+    "left": 103.15,
+    "top": 247.23,
+    "right": 103.15,
+    "bottom": 88.15
+   }
+  }
  },
  "lightingSamples": {
   "face": {
@@ -9156,8 +9175,8 @@
     0.589286
    ],
    "pixel1x": [
-    1262.511,
-    1191.885
+    1260.596,
+    1362.326
    ],
    "sampleRadiusPx1x": 3,
    "shell": "shell_flat_upright",
@@ -9172,20 +9191,85 @@
    ],
    "pixel1x": [
     1440,
-    1320.666
+    1475.963
    ],
    "sampleRadiusPx1x": 3,
    "shell": "shell_wall_horizontal"
   }
  },
+ "tableProps": {
+  "mat": {
+   "sizeUnits": 25,
+   "sizeMm": 700,
+   "thicknessUnits": 0.06,
+   "topZUnits": 0,
+   "note": "700 mm x 700 mm playable mat, built as a square ring with a 4.0-unit compass well in the centre; the mat top is z = 0.",
+   "baseColorHex": "#1a5038",
+   "roughness": 0.92
+  },
+  "rim": {
+   "innerHalfUnits": 12.5,
+   "widthUnits": 0.9,
+   "heightUnits": 0.35,
+   "colorHex": "#3a2a1e",
+   "roughness": 0.45,
+   "note": "Raised outer frame around the 700 mm mat, 0.9 units (25 mm) wide and 0.35 units (9.8 mm) high.",
+   "outerHalfUnits": 13.4
+  },
+  "floor": {
+   "halfExtentUnits": 60,
+   "zUnits": -0.08,
+   "colorHex": "#141a1d",
+   "roughness": 0.9,
+   "note": "Dark floor under the mat/rim, replacing the old full-bleed felt plane."
+  },
+  "compassWell": {
+   "halfUnits": 2,
+   "depthUnits": 0.06,
+   "plateHalfUnits": 1.7,
+   "plateZUnits": -0.055,
+   "plateColorHex": "#20262b",
+   "ringOuterUnits": 1.5,
+   "ringInnerUnits": 1.36,
+   "ringZUnits": -0.052,
+   "ringColorHex": "#8a7440",
+   "note": "Recessed centre compass/score well: a 4.0-unit square hole in the mat, a dark floor at -0.06, a near-black plate and a brass ring. Everything is below z = 0, so it cannot occlude a pond or a wall."
+  }
+ },
+ "clearance": {
+  "targetMm": 0.3,
+  "rangeMm": [
+   0.2,
+   0.5
+  ],
+  "adjacentPairs": 360,
+  "minGapMm": 0.2,
+  "maxGapMm": 0.3,
+  "intersectingPairs": 0,
+  "tiles": 273
+ },
+ "slotAnchors": {
+  "file": "slot-anchors.json",
+  "collection": "SlotAnchors",
+  "counts": {
+   "wall": 136,
+   "river": 88,
+   "hand": 53,
+   "meld": 16
+  },
+  "total": 293,
+  "occupied": 273,
+  "bytes": 216785,
+  "sha256": "238aedcaad54aa86d5299ebcd4b2052ac684391368d50e4b6094d3ab53e9f6ce"
+ },
  "renders": {
   "fullBoard1x": {
    "file": "full-board-1x.png",
-   "bytes": 2986711,
+   "bytes": 3629873,
    "width": 2880,
-   "height": 1800,
+   "height": 2112,
    "channels": 3,
-   "sha256": "cbe4129bfde92ae6989fa4cf3f830da3e77b5d0825f70bafe5724754b5141b62",
+   "sha256": "e076b92960306952dcbcf1ec000296f7a165349965551d11ae2cb989a6bd1174",
    "scale": 1
   },
   "crops2x": {
@@ -9230,16 +9314,16 @@
      "wall-bottom-slot-16-t1"
     ],
     "rect2x": {
-     "x": 1619,
-     "y": 2542,
-     "width": 2522,
-     "height": 352
+     "x": 1602,
+     "y": 2853,
+     "width": 2556,
+     "height": 353
     },
-    "bytes": 639914,
-    "width": 2522,
-    "height": 352,
+    "bytes": 662137,
+    "width": 2556,
+    "height": 353,
     "channels": 3,
-    "sha256": "fdeb295be256fe64853a10bb89d94645948902228a9c96c32d46dd7d30ea50fe"
+    "sha256": "fef089ce30a5fa0c5d0143095e51e4e2dabed5610f299cdd6586ff627e0b63a1"
    },
    "wall-back": {
     "file": "crops-2x/wall-back-2x.png",
@@ -9282,16 +9366,16 @@
      "wall-top-slot-16-t1"
     ],
     "rect2x": {
-     "x": 1716,
-     "y": 728,
-     "width": 2328,
-     "height": 331
+     "x": 1701,
+     "y": 1039,
+     "width": 2358,
+     "height": 332
     },
-    "bytes": 592717,
-    "width": 2328,
-    "height": 331,
+    "bytes": 609005,
+    "width": 2358,
+    "height": 332,
     "channels": 3,
-    "sha256": "583808563cf57c2fdc6388a113dd2b89eeba1fcdfa69536dacb1cce70dff61ad"
+    "sha256": "ef822e91e49552631be865e39c0def77aae7bc352ff6948f3a6c33322cbdea37"
    },
    "wall-left": {
     "file": "crops-2x/wall-left-2x.png",
@@ -9334,16 +9418,16 @@
      "wall-left-slot-16-t1"
     ],
     "rect2x": {
-     "x": 1411,
-     "y": 864,
-     "width": 346,
-     "height": 1871
+     "x": 1410,
+     "y": 1164,
+     "width": 348,
+     "height": 1895
     },
-    "bytes": 512040,
-    "width": 346,
-    "height": 1871,
+    "bytes": 515475,
+    "width": 348,
+    "height": 1895,
     "channels": 3,
-    "sha256": "4c9b45c1e94e393786a17cf2bf8156b328ffb5d67a7d0566654d8b0a7baec14e"
+    "sha256": "dff37159b7103bad5c955230f0a4243b95580c8a843d880187e2619f816d9a47"
    },
    "wall-right": {
     "file": "crops-2x/wall-right-2x.png",
@@ -9386,16 +9470,16 @@
      "wall-right-slot-16-t1"
     ],
     "rect2x": {
-     "x": 4003,
-     "y": 864,
-     "width": 346,
-     "height": 1871
+     "x": 4002,
+     "y": 1164,
+     "width": 348,
+     "height": 1895
     },
-    "bytes": 532394,
-    "width": 346,
-    "height": 1871,
+    "bytes": 543289,
+    "width": 348,
+    "height": 1895,
     "channels": 3,
-    "sha256": "90eca1f8fa77d7091640e08500c05ef4ef3f8d5d00c3e25df66877cdc940a618"
+    "sha256": "4ec2de5d7b5220a3332904d71f9136e06eb1b252940af6fd2b10409f437d9eff"
    },
    "pond-bottom": {
     "file": "crops-2x/pond-bottom-2x.png",
@@ -9422,16 +9506,16 @@
      "pond-bottom-25"
     ],
     "rect2x": {
-     "x": 2424,
-     "y": 2017,
-     "width": 912,
-     "height": 541
+     "x": 2420,
+     "y": 2354,
+     "width": 920,
+     "height": 545
     },
-    "bytes": 503924,
-    "width": 912,
-    "height": 541,
+    "bytes": 532444,
+    "width": 920,
+    "height": 545,
     "channels": 3,
-    "sha256": "d0e9f893f9f145c9fd726812be0f9956e0f4b37e0831a400226a1677f42afdfa"
+    "sha256": "259ae092d017efe563bc1fad870d026218ae395a943611aba0b5ba02ea9c1dd6"
    },
    "pond-right": {
     "file": "crops-2x/pond-right-2x.png",
@@ -9458,16 +9542,16 @@
      "pond-right-25"
     ],
     "rect2x": {
-     "x": 3232,
-     "y": 1451,
-     "width": 629,
-     "height": 720
+     "x": 3266,
+     "y": 1761,
+     "width": 634,
+     "height": 724
     },
-    "bytes": 498807,
-    "width": 629,
-    "height": 720,
+    "bytes": 506793,
+    "width": 634,
+    "height": 724,
     "channels": 3,
-    "sha256": "35a676d1c9b7e737435180b29f28a173f9b0b7e0d75eb7e147adba21fc2baebe"
+    "sha256": "c71990d0c9f7d05e04e2697aacc8fed28fd516796e2fb7520fee9b84772d387a"
    },
    "pond-top": {
     "file": "crops-2x/pond-top-2x.png",
@@ -9494,16 +9578,16 @@
      "pond-top-25"
     ],
     "rect2x": {
-     "x": 2442,
-     "y": 1096,
-     "width": 876,
-     "height": 508
+     "x": 2439,
+     "y": 1382,
+     "width": 882,
+     "height": 510
     },
-    "bytes": 469628,
-    "width": 876,
-    "height": 508,
+    "bytes": 477682,
+    "width": 882,
+    "height": 510,
     "channels": 3,
-    "sha256": "bf4c74354540247b3099c423e5fb5c398ef63b3b9693ccf0cf459491229c4aa9"
+    "sha256": "1d849a9a3b0cf9b9c6fb072ddbfc7ed9bbc946949eb8b6b2bf5d00c478cc89b4"
    },
    "pond-left": {
     "file": "crops-2x/pond-left-2x.png",
@@ -9530,16 +9614,16 @@
      "pond-left-25"
     ],
     "rect2x": {
-     "x": 1899,
-     "y": 1451,
-     "width": 629,
-     "height": 720
+     "x": 1860,
+     "y": 1761,
+     "width": 634,
+     "height": 724
     },
-    "bytes": 482971,
-    "width": 629,
-    "height": 720,
+    "bytes": 491214,
+    "width": 634,
+    "height": 724,
     "channels": 3,
-    "sha256": "eeeffe9be503bcf838ea8b370ddf33717823d96c749873a8b0b5189a6fb87d63"
+    "sha256": "8d8f2b413fd5fec731f7b80fa2cf6a770d661375a1c95c235715c338bd4ee578"
    },
    "hand-bottom": {
     "file": "crops-2x/hand-bottom-2x.png",
@@ -9561,16 +9645,16 @@
      "hand-bottom-12"
     ],
     "rect2x": {
-     "x": 1888,
-     "y": 3157,
-     "width": 1984,
-     "height": 274
+     "x": 1876,
+     "y": 3441,
+     "width": 2008,
+     "height": 284
     },
-    "bytes": 496957,
-    "width": 1984,
-    "height": 274,
+    "bytes": 546439,
+    "width": 2008,
+    "height": 284,
     "channels": 3,
-    "sha256": "9d8f0d93fdeb789f02d2bcc476575695ebb72285e7cad663a0ed42d7d651536e"
+    "sha256": "a8e4c1f59fa12147618d448299518a6c73d592e4c9bdd5ad82e019f8c4c8edbe"
    },
    "hand-top": {
     "file": "crops-2x/hand-top-2x.png",
@@ -9592,16 +9676,16 @@
      "hand-top-12"
     ],
     "rect2x": {
-     "x": 2004,
-     "y": 320,
-     "width": 1752,
+     "x": 1992,
+     "y": 632,
+     "width": 1776,
      "height": 255
     },
-    "bytes": 260498,
-    "width": 1752,
+    "bytes": 275992,
+    "width": 1776,
     "height": 255,
     "channels": 3,
-    "sha256": "34020209676ea390ed48c19ac9bf4720d8453a99ef0e2c03bc26e1fb67c5ac52"
+    "sha256": "b37ba79dd083b0d6e1569209cb137ceea528e163cf0d5adf6f3c18cdab4a1f84"
    },
    "hand-left": {
     "file": "crops-2x/hand-left-2x.png",
@@ -9624,15 +9708,15 @@
     ],
     "rect2x": {
      "x": 724,
-     "y": 1070,
+     "y": 1374,
      "width": 292,
-     "height": 1457
+     "height": 1474
     },
-    "bytes": 323209,
+    "bytes": 328765,
     "width": 292,
-    "height": 1457,
+    "height": 1474,
     "channels": 3,
-    "sha256": "6766c8f855e654fd51f4c7331644c1c08a95721616d0089fd5adefddd2311a89"
+    "sha256": "8700f2d9f1d5f2d8afa0b59ff453f80731edc14ada1aa59e79f8a2ce4a0c1b56"
    },
    "hand-right": {
     "file": "crops-2x/hand-right-2x.png",
@@ -9655,15 +9739,15 @@
     ],
     "rect2x": {
      "x": 4744,
-     "y": 1070,
+     "y": 1374,
      "width": 292,
-     "height": 1457
+     "height": 1474
     },
-    "bytes": 335440,
+    "bytes": 344887,
     "width": 292,
-    "height": 1457,
+    "height": 1474,
     "channels": 3,
-    "sha256": "68e2c6871f31c6195f47f1bf9b6acdc8c2a7b34ea2c700bbfee7c5551e75e88f"
+    "sha256": "b57deaa0e0f19cad06ce854083ceaf61d698ed4049ebabcb7673deb7e743b8d5"
    },
    "meld-bottom": {
     "file": "crops-2x/meld-bottom-2x.png",
@@ -9675,16 +9759,16 @@
      "meld-bottom-2"
     ],
     "rect2x": {
-     "x": 3343,
-     "y": 2397,
-     "width": 538,
-     "height": 272
+     "x": 4042,
+     "y": 3448,
+     "width": 564,
+     "height": 281
     },
-    "bytes": 127793,
-    "width": 538,
-    "height": 272,
+    "bytes": 145665,
+    "width": 564,
+    "height": 281,
     "channels": 3,
-    "sha256": "497b43ebca96aeae24883236f428a0f3df75221d871df3a9cce5d9c8d83a450a"
+    "sha256": "8129ad15e7ea8edc9f40515a463904ccacb55ea5ae38e2a7a907d6732f899ef8"
    },
    "meld-right": {
     "file": "crops-2x/meld-right-2x.png",
@@ -9696,16 +9780,16 @@
      "meld-right-2"
     ],
     "rect2x": {
-     "x": 3730,
-     "y": 1096,
-     "width": 249,
-     "height": 445
+     "x": 4628,
+     "y": 984,
+     "width": 256,
+     "height": 435
     },
-    "bytes": 127819,
-    "width": 249,
-    "height": 445,
+    "bytes": 112619,
+    "width": 256,
+    "height": 435,
     "channels": 3,
-    "sha256": "62818c6cc300c447d3bdb4b1ccddbb970190c85d1eb00840273db876973463d8"
+    "sha256": "2a839b5f82237bc5b6c5e94b2b7a714038ccc4ea67a9f20ef46e0fa3bf56ff5f"
    },
    "meld-top": {
     "file": "crops-2x/meld-top-2x.png",
@@ -9717,16 +9801,16 @@
      "meld-top-2"
     ],
     "rect2x": {
-     "x": 1938,
-     "y": 998,
-     "width": 509,
-     "height": 256
+     "x": 1351,
+     "y": 696,
+     "width": 504,
+     "height": 249
     },
-    "bytes": 119633,
-    "width": 509,
-    "height": 256,
+    "bytes": 101890,
+    "width": 504,
+    "height": 249,
     "channels": 3,
-    "sha256": "7498a022c17677c75e0cec3ee96becbbcdb28db78321a81e05504883822ce886"
+    "sha256": "6dc9163e11aa7d345e83c6f1d00c42a305d2acbab0d9b402e230206346dec154"
    },
    "meld-left": {
     "file": "crops-2x/meld-left-2x.png",
@@ -9738,16 +9822,16 @@
      "meld-left-2"
     ],
     "rect2x": {
-     "x": 1738,
-     "y": 2084,
-     "width": 257,
-     "height": 474
+     "x": 711,
+     "y": 2876,
+     "width": 275,
+     "height": 491
     },
-    "bytes": 129850,
-    "width": 257,
-    "height": 474,
+    "bytes": 129667,
+    "width": 275,
+    "height": 491,
     "channels": 3,
-    "sha256": "7762603ecb550028b0a4b30a2bd139dc5a75090292d7d262417696b7cd37e5a1"
+    "sha256": "3e3b6c2d7971eaaa451ccb4d3f159c522236eaf81369949f7fcee8eef733d5d5"
    },
    "drawn-tile": {
     "file": "crops-2x/drawn-tile-2x.png",
@@ -9757,16 +9841,16 @@
      "hand-bottom-draw"
     ],
     "rect2x": {
-     "x": 3857,
-     "y": 3157,
+     "x": 3869,
+     "y": 3441,
      "width": 215,
-     "height": 274
+     "height": 284
     },
-    "bytes": 52959,
+    "bytes": 61437,
     "width": 215,
-    "height": 274,
+    "height": 284,
     "channels": 3,
-    "sha256": "c101ecba596fff061498b24fd3bad03c470a5864c19d9ddb3f98309e8aeef864"
+    "sha256": "188257308190db84a3625df4bde3166a99512ae82cfe89738e9194128b4a2456"
    }
   }
  },

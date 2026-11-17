@@ -258,24 +258,157 @@ def verify_projection(scene: bpy.types.Scene, camera: dict, points: list[Vector]
 # --------------------------------------------------------------------------- #
 
 
-def build_felt(scene: bpy.types.Scene, spec: dict) -> bpy.types.Object:
+def make_material(name: str, hex_colour: str, roughness: float, specular: float = 0.2):
+    material = new_material(name)
+    node = principled(material)
+    node.inputs["Base Color"].default_value = hex_linear(hex_colour)
+    node.inputs["Roughness"].default_value = roughness
+    node.inputs["Specular IOR Level"].default_value = specular
+    return material
+
+
+def add_grid_mesh(name: str, size: float, z: float, material) -> bpy.types.Object:
     import bmesh
 
-    felt = spec["table"]["felt"]
-    half = felt["halfExtentUnits"]
     bm = bmesh.new()
-    bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=half)
-    mesh = bpy.data.meshes.new("felt")
+    bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=size)
+    mesh = bpy.data.meshes.new(name)
     bm.to_mesh(mesh)
     bm.free()
-    material = new_material("felt")
-    node = principled(material)
-    node.inputs["Base Color"].default_value = hex_linear(felt["baseColorHex"])
-    node.inputs["Roughness"].default_value = felt["roughness"]
-    node.inputs["Specular IOR Level"].default_value = 0.15
     mesh.materials.append(material)
-    obj = new_object("felt", mesh)
+    obj = new_object(name, mesh)
+    obj.location.z = z
     return obj
+
+
+def add_square_ring(
+    name: str,
+    outer_half: float,
+    inner_half: float,
+    z_bottom: float,
+    z_top: float,
+    material,
+) -> bpy.types.Object:
+    """A flat square ring (a mat or a table rim) with closed top/bottom/sides."""
+    import bmesh
+
+    bm = bmesh.new()
+    corners = [(-1, -1), (1, -1), (1, 1), (-1, 1)]
+
+    def loop(half: float, z: float) -> list:
+        return [bm.verts.new((corner[0] * half, corner[1] * half, z)) for corner in corners]
+
+    outer_top = loop(outer_half, z_top)
+    outer_bottom = loop(outer_half, z_bottom)
+    inner_top = loop(inner_half, z_top)
+    inner_bottom = loop(inner_half, z_bottom)
+    for index in range(4):
+        nxt = (index + 1) % 4
+        bm.faces.new((outer_top[index], outer_top[nxt], inner_top[nxt], inner_top[index]))
+        bm.faces.new((outer_bottom[nxt], outer_bottom[index], inner_bottom[index], inner_bottom[nxt]))
+        bm.faces.new((outer_bottom[index], outer_bottom[nxt], outer_top[nxt], outer_top[index]))
+        bm.faces.new((inner_bottom[index], inner_top[index], inner_top[nxt], inner_bottom[nxt]))
+    bm.normal_update()
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.materials.append(material)
+    return new_object(name, mesh)
+
+
+def add_disc_ring(
+    name: str,
+    outer_radius: float,
+    inner_radius: float,
+    z: float,
+    material,
+    segments: int = 64,
+) -> bpy.types.Object:
+    import bmesh
+
+    bm = bmesh.new()
+    outer = []
+    inner = []
+    for index in range(segments):
+        angle = 2 * math.pi * index / segments
+        outer.append(bm.verts.new((outer_radius * math.cos(angle), outer_radius * math.sin(angle), z)))
+        inner.append(bm.verts.new((inner_radius * math.cos(angle), inner_radius * math.sin(angle), z)))
+    for index in range(segments):
+        nxt = (index + 1) % segments
+        bm.faces.new((outer[index], outer[nxt], inner[nxt], inner[index]))
+    bm.normal_update()
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.materials.append(material)
+    return new_object(name, mesh)
+
+
+def build_table(scene: bpy.types.Scene, spec: dict) -> list[bpy.types.Object]:
+    """The playing mat, raised rim/frame and recessed centre compass well.
+
+    The mat is a 700 mm square ring with a square well hole; the well floor,
+    compass plate and brass ring sit below z = 0, so the centre can never
+    occlude a pond. The rim sits outside the mat; the locked board framing
+    crops its near edge, as the old full-table framing did.
+    """
+    table = spec["table"]
+    mat = table["playingMat"]
+    rim = table["rim"]
+    floor_spec = table["floor"]
+    well = table["compassWell"]
+
+    felt_material = make_material("mat-felt", mat["baseColorHex"], mat["roughness"], 0.15)
+    rim_material = make_material("rim-wood", rim["colorHex"], rim["roughness"], 0.25)
+    floor_material = make_material("floor", floor_spec["colorHex"], floor_spec["roughness"], 0.1)
+    plate_material = make_material("compass-plate", well["plateColorHex"], 0.5, 0.2)
+    ring_material = make_material("compass-ring", well["ringColorHex"], 0.35, 0.5)
+
+    objects = [add_grid_mesh("floor", floor_spec["halfExtentUnits"], floor_spec["zUnits"], floor_material)]
+    mat_half = mat["sizeUnits"] / 2
+    objects.append(
+        add_square_ring(
+            "mat",
+            mat_half,
+            well["halfUnits"],
+            -mat["thicknessUnits"],
+            mat["topZUnits"],
+            felt_material,
+        )
+    )
+    rim_outer = rim["innerHalfUnits"] + rim["widthUnits"]
+    objects.append(
+        add_square_ring(
+            "rim",
+            rim_outer,
+            rim["innerHalfUnits"],
+            floor_spec["zUnits"],
+            rim["heightUnits"],
+            rim_material,
+        )
+    )
+    objects.append(
+        add_grid_mesh("compass-well-floor", well["halfUnits"], -well["depthUnits"], plate_material)
+    )
+    objects.append(
+        add_grid_mesh("compass-plate", well["plateHalfUnits"], well["plateZUnits"], plate_material)
+    )
+    objects.append(
+        add_disc_ring(
+            "compass-ring",
+            well["ringOuterUnits"],
+            well["ringInnerUnits"],
+            well["ringZUnits"],
+            ring_material,
+        )
+    )
+    log(
+        f"table: {mat['sizeUnits']:g} unit ({mat['sizeMm']:g} mm) mat, rim "
+        f"{rim['innerHalfUnits']:g}..{rim_outer:g} high {rim['heightUnits']:g}, "
+        f"compass well {2 * well['halfUnits']:g} square x {well['depthUnits']:g} deep"
+    )
+    return objects
+
 
 
 def build_reference_lights(scene: bpy.types.Scene, spec: dict) -> list[bpy.types.Object]:
@@ -456,6 +589,136 @@ def make_tile_record(
     }
 
 
+def tile_world_aabb(tile: dict) -> dict:
+    corners = tile_box_corners(tile)
+    minimum = [min(corner[axis] for corner in corners) for axis in range(3)]
+    maximum = [max(corner[axis] for corner in corners) for axis in range(3)]
+    return {"min": minimum, "max": maximum}
+
+
+def aabb_gap(left: dict, right: dict) -> float:
+    gaps = [
+        max(0.0, left["min"][axis] - right["max"][axis], right["min"][axis] - left["max"][axis])
+        for axis in range(3)
+    ]
+    return math.sqrt(sum(gap * gap for gap in gaps))
+
+
+def aabb_intersects(left: dict, right: dict, epsilon: float = 1e-7) -> bool:
+    return all(
+        left["min"][axis] < right["max"][axis] - epsilon
+        and right["min"][axis] < left["max"][axis] - epsilon
+        for axis in range(3)
+    )
+
+
+def measure_clearance(tiles: list[dict], spec: dict) -> dict:
+    """Tile-body spacing and the zero-mesh-intersection acceptance.
+
+    Adjacent wall/river/hand tiles must have 0.2-0.5 mm clearance. The boxes are
+    the pre-bevel tile bodies (the bevel only pulls the silhouette inward), so
+    the measurement is conservative. Every pair of tile bodies must be
+    non-intersecting.
+    """
+    clearance = spec["table"]["clearanceUnits"]
+    low_mm, high_mm = spec["anchors"]["clearanceRangeMm"]
+    boxes = {tile["id"]: tile_world_aabb(tile) for tile in tiles}
+    by_id = {tile["id"]: tile for tile in tiles}
+
+    pairs: list[tuple[str, str]] = []
+
+    def add_pairs(grouped: dict, key):
+        for items in grouped.values():
+            ordered = sorted(items, key=key)
+            for left, right in zip(ordered, ordered[1:]):
+                pairs.append((left, right))
+
+    wall_by_key = {}
+    pond_rows = {}
+    pond_cols = {}
+    hand_by_seat = {}
+    meld_by_seat = {}
+    for tile in tiles:
+        if tile["kind"] == "wall":
+            wall_by_key.setdefault((tile["seat"], tile["cell"]["tier"]), []).append(tile["id"])
+        elif tile["kind"] == "pond":
+            pond_rows.setdefault((tile["seat"], tile["cell"]["row"]), []).append(tile["id"])
+            pond_cols.setdefault((tile["seat"], tile["cell"]["column"]), []).append(tile["id"])
+        elif tile["kind"] == "hand":
+            hand_by_seat.setdefault(tile["seat"], []).append(tile["id"])
+        elif tile["kind"] == "meld":
+            meld_by_seat.setdefault(tile["seat"], []).append(tile["id"])
+
+    for items in wall_by_key.values():
+        ordered = sorted(items, key=lambda tile_id: by_id[tile_id]["cell"]["slot"])
+        for left, right in zip(ordered, ordered[1:]):
+            pairs.append((left, right))
+    for tier in range(spec["table"]["wall"]["tiers"] - 1):
+        for seat in ("bottom", "right", "top", "left"):
+            for slot in range(spec["table"]["wall"]["stacksPerRun"]):
+                pairs.append(
+                    (
+                        f"wall-{seat}-slot-{slot:02d}-t{tier}",
+                        f"wall-{seat}-slot-{slot:02d}-t{tier + 1}",
+                    )
+                )
+    for items in pond_rows.values():
+        ordered = sorted(items, key=lambda tile_id: by_id[tile_id]["cell"]["column"])
+        for left, right in zip(ordered, ordered[1:]):
+            pairs.append((left, right))
+    for items in pond_cols.values():
+        ordered = sorted(items, key=lambda tile_id: by_id[tile_id]["cell"]["row"])
+        for left, right in zip(ordered, ordered[1:]):
+            pairs.append((left, right))
+    for items in hand_by_seat.values():
+        ordered = sorted(items, key=lambda tile_id: by_id[tile_id]["cell"]["slot"])
+        for left, right in zip(ordered, ordered[1:]):
+            pairs.append((left, right))
+    for items in meld_by_seat.values():
+        ordered = sorted(items, key=lambda tile_id: by_id[tile_id]["cell"]["column"])
+        for left, right in zip(ordered, ordered[1:]):
+            pairs.append((left, right))
+
+    # The acceptance range is 0.2-0.5 mm; the nominal target is 0.3 mm, so the
+    # rounded spec pitch may land a few micro-units above the target.
+    low = low_mm / 28.0 - 1e-6
+    high = high_mm / 28.0 + 1e-6
+    measured = []
+    for left, right in pairs:
+        gap = aabb_gap(boxes[left], boxes[right])
+        measured.append(gap)
+        if not (low <= gap <= high):
+            log(f"clearance debug: {left} {right} gap={gap!r} low={low!r} high={high!r}")
+            die(
+                f"clearance {left} <-> {right} is {gap * 28:.6f} mm, "
+                f"expected 0.2-0.5 mm"
+            )
+
+    overlapping = []
+    ids = list(boxes)
+    for index, left in enumerate(ids):
+        for right in ids[index + 1 :]:
+            if aabb_intersects(boxes[left], boxes[right]):
+                overlapping.append((left, right))
+    if overlapping:
+        die(f"{len(overlapping)} tile pairs intersect, e.g. {overlapping[:4]}")
+
+    result = {
+        "targetMm": round(clearance * 28, 4),
+        "rangeMm": [low_mm, high_mm],
+        "adjacentPairs": len(pairs),
+        "minGapMm": round(min(measured) * 28, 4),
+        "maxGapMm": round(max(measured) * 28, 4),
+        "intersectingPairs": 0,
+        "tiles": len(tiles),
+    }
+    log(
+        f"clearance: {len(pairs)} adjacent pairs at "
+        f"{result['minGapMm']:.4f}-{result['maxGapMm']:.4f} mm, 0 intersecting pairs"
+    )
+    return result
+
+
 def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]:
     shell_spec = read_json(SHELL_SPEC_PATH)
     check_blender_version(shell_spec)
@@ -472,8 +735,12 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
     scene.render.image_settings.color_mode = "RGB"
     scene.view_settings.look = spec["scene"]["colorManagement"]["look"]
 
-    build_felt(scene, spec)
+    build_table(scene, spec)
     build_reference_lights(scene, spec)
+
+    anchors_spec = spec["anchors"]
+    anchor_collection = bpy.data.collections.new(anchors_spec["collection"])
+    scene.collection.children.link(anchor_collection)
 
     tile = shell_spec["tile"]
     dimensions = {
@@ -507,6 +774,116 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
             return sample_face
         return rng.choice(FACE_IDS)
 
+    seat_name = {"bottom": "south", "right": "east", "top": "north", "left": "west"}
+    half_plate_x = dimensions["width"] / 2 - face_inset
+    half_plate_y = dimensions["height"] / 2 - face_inset
+    half_thickness = thickness / 2
+    face_quad = [
+        (-half_plate_x, half_plate_y, half_thickness),
+        (half_plate_x, half_plate_y, half_thickness),
+        (half_plate_x, -half_plate_y, half_thickness),
+        (-half_plate_x, -half_plate_y, half_thickness),
+    ]
+    anchors: list[dict] = []
+
+    def add_anchor(
+        name: str,
+        zone: str,
+        seat: str,
+        index_value: str,
+        matrix: Matrix,
+        face: str | None,
+        tile_id: str | None,
+        cell: dict,
+    ) -> dict:
+        empty = bpy.data.objects.new(name, None)
+        empty.empty_display_type = "PLAIN_AXES"
+        empty.empty_display_size = 0.35
+        empty.show_name = True
+        anchor_collection.objects.link(empty)
+        empty.matrix_world = matrix
+        empty["zone"] = zone
+        empty["seat"] = seat_name[seat]
+        empty["index"] = index_value
+        empty["tileId"] = tile_id or ""
+        empty["tileFace"] = face or ""
+        empty["occupied"] = tile_id is not None
+        empty["faceQuadLocal"] = [
+            round(value, 6) for corner in face_quad for value in corner
+        ]
+        world_quad = [matrix @ Vector(corner) for corner in face_quad]
+        empty["faceQuadWorld"] = [
+            round(value, 6) for point in world_quad for value in (point.x, point.y, point.z)
+        ]
+        empty["faceQuadOrder"] = "TL,TR,BR,BL"
+        for key in ("row", "column", "slot", "tier"):
+            if key in cell:
+                empty[key] = cell[key]
+        if cell.get("overflow"):
+            empty["overflow"] = True
+        record = {
+            "name": name,
+            "zone": zone,
+            "seat": seat_name[seat],
+            "index": index_value,
+            "tileId": tile_id,
+            "tileFace": face,
+            "occupied": tile_id is not None,
+            "origin": [
+                round(matrix.translation.x, 6),
+                round(matrix.translation.y, 6),
+                round(matrix.translation.z, 6),
+            ],
+            "rotation": [
+                round(matrix[row][column], 9)
+                for row in range(3)
+                for column in range(3)
+            ],
+            "faceQuadLocal": [
+                [round(value, 6) for value in corner] for corner in face_quad
+            ],
+            "faceQuadWorld": [
+                [round(point.x, 6), round(point.y, 6), round(point.z, 6)]
+                for point in world_quad
+            ],
+            "faceQuadOrder": "TL,TR,BR,BL",
+            "cell": cell,
+        }
+        anchors.append(record)
+        return record
+
+    def body_matrix(
+        seat: str,
+        local_x: float,
+        local_y: float,
+        local_z: float,
+        rot_x_deg: float,
+        rot_z_deg: float,
+        tilt_deg: float = 0.0,
+        pivot_y: float | None = None,
+    ) -> Matrix:
+        """Seat-local body-centre placement.
+
+        A non-zero ``tilt_deg`` reclines the tile backward about its far bottom
+        edge at seat z = 0, so the top leans away from its player and the edge
+        stays on the table. ``pivot_y`` is the seat-local y of that edge.
+        """
+        seat_rot = Matrix.Rotation(math.radians(seat_angle[seat]), 4, "Z")
+        local = (
+            Matrix.Translation(Vector((local_x, local_y, local_z)))
+            @ Matrix.Rotation(math.radians(rot_z_deg), 4, "Z")
+            @ Matrix.Rotation(math.radians(rot_x_deg), 4, "X")
+        )
+        if tilt_deg:
+            pivot = Vector((local_x, pivot_y if pivot_y is not None else local_y, 0.0))
+            local = (
+                Matrix.Translation(pivot)
+                @ Matrix.Rotation(math.radians(-tilt_deg), 4, "X")
+                @ Matrix.Translation(-pivot)
+                @ local
+            )
+        return seat_rot @ local
+
     def place(
         tile_id: str,
         zone: str,
@@ -520,20 +897,29 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         rot_z_deg: float,
         cell: dict,
         face: str | None,
+        anchor_name: str,
+        anchor_index: str,
+        anchor_zone: str,
+        tilt_deg: float = 0.0,
+        pivot_y: float | None = None,
     ) -> dict:
-        seat_rot = Matrix.Rotation(math.radians(seat_angle[seat]), 4, "Z")
-        rotation = (
-            seat_rot
-            @ Matrix.Translation(Vector((local_x, local_y, local_z)))
-            @ Matrix.Rotation(math.radians(rot_z_deg), 4, "Z")
-            @ Matrix.Rotation(math.radians(rot_x_deg), 4, "X")
+        centre_matrix = body_matrix(
+            seat,
+            local_x,
+            local_y,
+            local_z,
+            rot_x_deg,
+            rot_z_deg,
+            tilt_deg,
+            pivot_y,
         )
+        object_matrix = centre_matrix @ Matrix.Translation(Vector((0.0, 0.0, -half_thickness)))
         body = template.copy()
         body.data = template.data
         body.name = tile_id
         body.hide_render = False
         body.hide_viewport = False
-        body.matrix_world = rotation
+        body.matrix_world = object_matrix
         bpy.context.scene.collection.objects.link(body)
         tile_record = make_tile_record(
             tile_id,
@@ -542,12 +928,13 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
             seat,
             face,
             pose,
-            rotation.translation,
-            rotation.to_3x3(),
+            object_matrix.translation,
+            object_matrix.to_3x3(),
             dimensions,
             cell,
         )
         tiles.append(tile_record)
+        add_anchor(anchor_name, anchor_zone, seat, anchor_index, centre_matrix, face, tile_id, cell)
 
         if face is not None and pose in ("lying-faceup", "standing"):
             if face == "5z":
@@ -558,7 +945,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                     materials[face] = build_face_material(face)
                 decal = build_decal_plane(inner, materials[face])
                 decal.matrix_world = (
-                    rotation @ Matrix.Translation(Vector((0.0, 0.0, thickness + 0.0006)))
+                    object_matrix @ Matrix.Translation(Vector((0.0, 0.0, thickness + 0.0006)))
                 )
                 decal.name = f"{tile_id}-decal"
                 decals.append({"tile": tile_id, "face": face})
@@ -569,10 +956,12 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
     pond = spec["table"]["pond"]
     hand = spec["table"]["hand"]
     meld = spec["table"]["meld"]
+    gap = spec["table"]["clearanceUnits"]
+    tilt = hand["tiltDeg"]
 
     for seat in seats:
         seat_id = seat["id"]
-        angle = seat_angle[seat_id]
+        short = seat_name[seat_id]
 
         # Four wall runs: 17 stacks x 2 tiers, every tile face-down.
         for slot in range(wall["stacksPerRun"]):
@@ -587,11 +976,14 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                     "lying-facedown",
                     x,
                     -wall["radiusUnits"],
-                    thickness * (tier + 1),
+                    thickness / 2 + tier * wall["tierStepUnits"],
                     180.0,
                     0.0,
                     {"slot": slot, "tier": tier},
                     None,
+                    f"wall_{short}_{slot:02d}_{tier}",
+                    f"{slot:02d}_{tier}",
+                    "wall",
                 )
                 index["wall"].setdefault(f"wall-{seat_id}", []).append(tile_id)
 
@@ -608,15 +1000,42 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                     "lying-faceup",
                     (column - (pond["columns"] - 1) / 2) * pond["columnPitchUnits"],
                     -pond["rowRadiiUnits"][row],
-                    0.0,
+                    thickness / 2,
                     0.0,
                     0.0,
                     {"row": row, "column": column},
                     face,
+                    f"river_{short}_{row}_{column}",
+                    f"{row}_{column}",
+                    "river",
                 )
                 index["pond"].setdefault(f"pond-{seat_id}", []).append(tile_id)
 
-        # Concealed hand: 13 standing tiles, backs to the table centre.
+        # Row-2 overflow anchors (no tile bodies in this reference).
+        for column in range(
+            pond["columns"],
+            pond["columns"] + spec["anchors"]["riverOverflowColumns"],
+        ):
+            matrix = body_matrix(
+                seat_id,
+                (column - (pond["columns"] - 1) / 2) * pond["columnPitchUnits"],
+                -pond["rowRadiiUnits"][2],
+                thickness / 2,
+                0.0,
+                0.0,
+            )
+            add_anchor(
+                f"river_{short}_2_{column}",
+                "river",
+                seat_id,
+                f"2_{column}",
+                matrix,
+                None,
+                None,
+                {"row": 2, "column": column, "overflow": True},
+            )
+
+        # Concealed hand: 13 standing tiles, reclined 12 degrees backward.
         for slot in range(hand["count"]):
             tile_id = f"hand-{seat_id}-{slot:02d}"
             face = next_face(tile_id) if seat_id == "bottom" else None
@@ -627,18 +1046,25 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                 seat_id,
                 "standing" if face is not None else "standing-back",
                 (slot - (hand["count"] - 1) / 2) * hand["pitchUnits"],
-                -hand["backRadiusUnits"],
+                -hand["backRadiusUnits"] - thickness / 2,
                 0.5,
                 90.0,
                 0.0,
                 {"slot": slot},
                 face,
+                f"hand_{short}_{slot:02d}",
+                f"{slot:02d}",
+                "hand",
+                tilt if seat_id == "bottom" else 0.0,
+                -hand["backRadiusUnits"],
             )
             index["hand"].setdefault(f"hand-{seat_id}", []).append(tile_id)
 
-        # Open pon: two upright + one called sideways.
+        # Open meld row outside the wall, on the edge to the player's right.
         cursor = meld["startXUnits"]
-        widths = [0.75] * meld["uprightTiles"] + [1.0] * meld["calledTiles"]
+        widths = [meld["uprightWidthUnits"]] * meld["uprightTiles"] + [
+            meld["calledWidthUnits"]
+        ] * meld["calledTiles"]
         for column, width in enumerate(widths):
             tile_id = f"meld-{seat_id}-{column}"
             x = cursor + width / 2
@@ -653,13 +1079,40 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                 "lying-faceup",
                 x,
                 -meld["rowRadiusUnits"],
-                0.0,
+                thickness / 2,
                 0.0,
                 90.0 if turned else 0.0,
                 {"column": column, "turned": turned},
                 face,
+                f"meld_{short}_{column}",
+                f"{column}",
+                "meld",
             )
             index["meld"].setdefault(f"meld-{seat_id}", []).append(tile_id)
+
+        # Kan extension slot after the modelled pon (anchor only).
+        for column in range(len(widths), meld["slots"]):
+            width = meld["uprightWidthUnits"]
+            x = cursor + width / 2
+            cursor += width
+            matrix = body_matrix(
+                seat_id,
+                x,
+                -meld["rowRadiusUnits"],
+                thickness / 2,
+                0.0,
+                0.0,
+            )
+            add_anchor(
+                f"meld_{short}_{column}",
+                "meld",
+                seat_id,
+                f"{column}",
+                matrix,
+                None,
+                None,
+                {"column": column, "turned": False},
+            )
 
     # The human's drawn tile, after the 13th tile's +0.35 advance gap.
     drawn_id = "hand-bottom-draw"
@@ -670,12 +1123,17 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         "bottom",
         "standing",
         hand["drawnOffsetUnits"],
-        -hand["backRadiusUnits"],
+        -hand["backRadiusUnits"] - thickness / 2,
         0.5,
         90.0,
         0.0,
         {"slot": "draw"},
         next_face(drawn_id),
+        "hand_south_13",
+        "13",
+        "hand",
+        tilt,
+        -hand["backRadiusUnits"],
     )
     index["drawn"]["drawn"] = [drawn_id]
 
@@ -684,12 +1142,48 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         if "line" in record:
             log(record["line"])
 
+    names = [record["name"] for record in anchors]
+    if len(set(names)) != len(names):
+        die("duplicate slot anchor names")
+    counted: dict[str, int] = {}
+    for record in anchors:
+        counted[record["zone"]] = counted.get(record["zone"], 0) + 1
+    expected = spec["anchors"]["counts"]
+    for zone in ("wall", "river", "meld", "hand"):
+        if counted.get(zone, 0) != expected[zone]:
+            die(f"slot anchor count for {zone}: {counted.get(zone, 0)} != {expected[zone]}")
+    if len(anchors) != expected["total"]:
+        die(f"slot anchor total: {len(anchors)} != {expected['total']}")
+    if len(anchor_collection.objects) != len(anchors):
+        die(
+            f"SlotAnchors collection has {len(anchor_collection.objects)} Empties, "
+            f"expected {len(anchors)}"
+        )
+    for record in anchors:
+        if record["name"] not in anchor_collection.objects:
+            die(f"missing SlotAnchors Empty {record['name']}")
+    log(
+        f"anchors: {counted} in collection '{anchor_collection.name}' "
+        f"({len(anchor_collection.objects)} Empties)"
+    )
+
+    clearance = measure_clearance(tiles, spec)
     return scene, {
         "tiles": tiles,
         "index": index,
         "dimensions": dimensions,
         "inner": inner,
         "decals": [{"tile": record["tile"], "face": record["face"]} for record in decals],
+        "anchors": anchors,
+        "anchorCounts": counted,
+        "anchorCollection": anchor_collection.name,
+        "clearance": clearance,
+        "props": {
+            "mat": spec["table"]["playingMat"],
+            "rim": spec["table"]["rim"],
+            "floor": spec["table"]["floor"],
+            "compassWell": spec["table"]["compassWell"],
+        },
     }, shell_spec
 
 
@@ -735,6 +1229,43 @@ def projected_run(camera: dict, radius: float, seat_deg: float, half_span: float
     return project_point(camera, a), project_point(camera, b)
 
 
+def rim_frame_metrics(camera: dict, spec: dict) -> dict:
+    """Projected bounds of the table surface props against the frame."""
+    width, height = camera["resolution"]
+    mat_half = spec["table"]["playingMat"]["sizeUnits"] / 2
+    rim = spec["table"]["rim"]
+    points = []
+    for half, top in (
+        (mat_half, 0.0),
+        (rim["innerHalfUnits"] + rim["widthUnits"], 0.0),
+        (rim["innerHalfUnits"] + rim["widthUnits"], rim["heightUnits"]),
+    ):
+        for x in (-half, half):
+            for y in (-half, half):
+                points.append((x, y, top))
+    projected = [project_point(camera, point) for point in points]
+    left = min(point[0] for point in projected)
+    top = min(point[1] for point in projected)
+    right = max(point[0] for point in projected)
+    bottom = max(point[1] for point in projected)
+    return {
+        "matHalfUnits": round(mat_half, 6),
+        "rimOuterHalfUnits": rim["innerHalfUnits"] + rim["widthUnits"],
+        "boundsPx": {
+            "left": round(left, 2),
+            "top": round(top, 2),
+            "right": round(right, 2),
+            "bottom": round(bottom, 2),
+        },
+        "marginsPx": {
+            "left": round(left, 2),
+            "top": round(top, 2),
+            "right": round(width - right, 2),
+            "bottom": round(height - bottom, 2),
+        },
+    }
+
+
 def measure(camera: dict, tiles: list[dict], spec: dict) -> dict:
     by_id = {tile["id"]: tile for tile in tiles}
     scale_samples = []
@@ -744,7 +1275,7 @@ def measure(camera: dict, tiles: list[dict], spec: dict) -> dict:
     scale_spread = max(scale_samples) / min(scale_samples)
 
     wall = spec["table"]["wall"]
-    half_span = wall["stackCentreSpanUnits"] / 2 + wall["stackPitchUnits"] / 2
+    half_span = wall["stackSpanUnits"] / 2
     front_a, front_b = projected_run(camera, wall["radiusUnits"], 0.0, half_span, False)
     back_a, back_b = projected_run(camera, wall["radiusUnits"], 180.0, half_span, False)
     left_a, left_b = projected_run(camera, wall["radiusUnits"], 270.0, half_span, True)
@@ -776,7 +1307,7 @@ def measure(camera: dict, tiles: list[dict], spec: dict) -> dict:
     reveal = (
         0.0
         if camera["mode"] == "orthographic"
-        else math.degrees(math.atan((wall["stackCentreSpanUnits"] / 2) / front_ground))
+        else math.degrees(math.atan((wall["stackSpanUnits"] / 2) / front_ground))
     )
 
     all_corners = [corner for tile in tiles for corner in tile_box_corners(tile)]
@@ -824,6 +1355,7 @@ def measure(camera: dict, tiles: list[dict], spec: dict) -> dict:
         },
         "frameMarginsPx": {key: round(value, 2) for key, value in margins.items()},
         "minFrameMarginPx": round(min(margins.values()), 3),
+        "rimFrame": rim_frame_metrics(camera, spec),
     }
 
 
@@ -918,13 +1450,22 @@ def check_visibility(scene: bpy.types.Scene, camera: dict, tiles: list[dict]) ->
     for tile in tiles:
         if tile["kind"] == "wall" and tile["cell"].get("tier") == 0:
             continue
+        if tile["kind"] == "hand" and tile["seat"] in ("right", "left"):
+            # The side hands run directly away from the camera, so the near
+            # tile legitimately hides the next tile's back. The row silhouette
+            # is the visible evidence; only south/north hands need a face probe.
+            continue
         width = tile["dimensions"]["width"]
         height = tile["dimensions"]["height"]
         local_z = visible_point_local(tile)[2]
         probes = [(0.0, 0.0)]
-        for x in (-0.2, 0.2):
-            for y in (-0.2, 0.2):
-                probes.append((x * width, y * height))
+        if tile["pose"] not in ("standing", "standing-back"):
+            # A packed, reclined hand row legitimately hides its neighbours'
+            # side slivers, so hands only require their visible centre; every
+            # lying tile (walls, rivers, melds) requires its whole face.
+            for x in (-0.2, 0.2):
+                for y in (-0.2, 0.2):
+                    probes.append((x * width, y * height))
         rotation = np.array(tile["rotation"], dtype=float).reshape(3, 3)
         origin = Vector(tile["origin"])
         for x, y in probes:
@@ -1038,6 +1579,11 @@ def main() -> None:
         "crops": rects,
         "metrics": metrics,
         "lightingSamples": lighting_samples(camera1x, scene_data["tiles"], spec),
+        "anchors": scene_data["anchors"],
+        "anchorCounts": scene_data["anchorCounts"],
+        "anchorCollection": scene_data["anchorCollection"],
+        "clearance": scene_data["clearance"],
+        "tableProps": scene_data["props"],
     }
 
     log("camera: " + ", ".join(

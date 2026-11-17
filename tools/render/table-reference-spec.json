@@ -50,47 +50,96 @@
         "rotateZDeg": 270
       }
     ],
-    "felt": {
-      "halfExtentUnits": 60.0,
-      "baseColorHex": "#1a5038",
-      "roughness": 0.92,
-      "note": "One flat cloth plane, no rail/compass/apron geometry. The runtime's full-screen felt raster and vignette belong to the compositor; the reference exists to compare tile bodies, not the background."
-    },
     "wall": {
       "radiusUnits": 7.0,
       "stacksPerRun": 17,
-      "stackPitchUnits": 0.75,
-      "stackCentreSpanUnits": 12.0,
+      "stackPitchUnits": 0.760714286,
       "tileDepthUnits": 1.0,
       "tiers": 2,
-      "note": "Each run is 17 touching stacks, tile long axis perpendicular to the wall, two tiles high, every tile face-down (blue up). The ring radius is the wall centre line used by the baked front/back wall fans (eye y -47.8, wall centre y -/+7.0)."
+      "note": "Each run is 17 stacks with a 0.3 mm gap (pitch 0.760714), two face-down tiles high with a 0.3 mm tier gap, ring radius 7.0. Corners keep a small clearance, so no wall tiles intersect.",
+      "tierStepUnits": 0.6,
+      "stackSpanUnits": 12.932142857
     },
     "pond": {
       "columns": 6,
       "rows": 3,
-      "columnPitchUnits": 0.75,
-      "rowPitchUnits": 1.0,
+      "columnPitchUnits": 0.757142857,
+      "rowPitchUnits": 1.010714286,
       "rowRadiiUnits": [
-        4.6,
-        3.6,
-        2.6
+        4.81,
+        3.799286,
+        2.788571
       ],
-      "columnCentreOffsetUnits": 1.875,
-      "note": "18 discards per pond in three 6-wide rows. Row 0 is nearest the discarding player (radius 4.6) and the rows advance toward the table centre. The pond outer edge (5.1) leaves a 1.4-unit gap to the wall inner edge, so the two-tier wall does not occlude the near row at the reference elevation. The tile long axis points along the seat's away axis, so the glyph reads for the seat."
+      "columnCentreOffsetUnits": 1.892857142,
+      "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg. Four overflow anchors continue row 2 at columns 6..9 (reserved; no tiles).",
+      "overflowColumns": 6
     },
     "hand": {
       "backRadiusUnits": 10.6,
       "count": 13,
-      "pitchUnits": 0.75,
-      "drawnOffsetUnits": 5.5125,
-      "note": "A standing 13-tile row with the blue back to the table centre and the face to the seat; the human also gets the separated drawn tile at +5.5125 (the compositor's +0.35 advance gap after the 13th tile)."
+      "pitchUnits": 0.760714286,
+      "drawnOffsetUnits": 5.576785714,
+      "note": "A standing 13-tile row with a 0.3 mm gap. The human's (south) hand is reclined 12 deg backward about its far bottom edge, blue back to the table centre; the other three hands are upright back rows. The human also gets a separate 14th draw slot at +5.5805 (the intentional tsumogiri gap, not the 0.3 mm row clearance); opponents have 13 anchors.",
+      "tiltDeg": 12.0,
+      "slotsPerSeat": 14,
+      "drawnGapUnits": 0.2625
     },
     "meld": {
-      "rowRadiusUnits": 5.4,
-      "startXUnits": 2.6,
+      "note": "One four-slot meld row per seat OUTSIDE the wall ring, on the table edge at the hand's radius 10.6, to the right of the player's hand (x from 6.1, clear of the drawn tile at x 5.58). Slots 0 and 1 are upright (0.75 wide), slot 2 is the called tile lying sideways (1.0 wide) and slot 3 is the kan extension; the modelled pon occupies slots 0-2 and slot 3 is an anchor only.",
+      "rowRadiusUnits": 10.6,
+      "startXUnits": 6.1,
       "uprightTiles": 2,
       "calledTiles": 1,
-      "note": "One open pon per seat inside the wall ring, beside the pond and on the seat's right (row radius 5.4, x from 2.6). The two upright tiles are 0.75 wide along the row; the called tile lies sideways (1.0 along the row)."
+      "slots": 4,
+      "uprightWidthUnits": 0.760714286,
+      "calledWidthUnits": 1.010714286,
+      "calledGapUnits": 0.010714286
+    },
+    "clearanceMm": 0.3,
+    "clearanceUnits": 0.010714286,
+    "playingMat": {
+      "sizeUnits": 25.0,
+      "sizeMm": 700,
+      "thicknessUnits": 0.06,
+      "topZUnits": 0.0,
+      "note": "700 mm x 700 mm playable mat, built as a square ring with a 4.0-unit compass well in the centre; the mat top is z = 0.",
+      "baseColorHex": "#1a5038",
+      "roughness": 0.92
+    },
+    "rim": {
+      "innerHalfUnits": 12.5,
+      "widthUnits": 0.9,
+      "heightUnits": 0.35,
+      "colorHex": "#3a2a1e",
+      "roughness": 0.45,
+      "note": "Raised outer frame around the 700 mm mat, 0.9 units (25 mm) wide and 0.35 units (9.8 mm) high.",
+      "outerHalfUnits": 13.4
+    },
+    "floor": {
+      "halfExtentUnits": 60.0,
+      "zUnits": -0.08,
+      "colorHex": "#141a1d",
+      "roughness": 0.9,
+      "note": "Dark floor under the mat/rim, replacing the old full-bleed felt plane."
+    },
+    "compassWell": {
+      "halfUnits": 2.0,
+      "depthUnits": 0.06,
+      "plateHalfUnits": 1.7,
+      "plateZUnits": -0.055,
+      "plateColorHex": "#20262b",
+      "ringOuterUnits": 1.5,
+      "ringInnerUnits": 1.36,
+      "ringZUnits": -0.052,
+      "ringColorHex": "#8a7440",
+      "note": "Recessed centre compass/score well: a 4.0-unit square hole in the mat, a dark floor at -0.06, a near-black plate and a brass ring. Everything is below z = 0, so it cannot occlude a pond or a wall."
+    },
+    "body": {
+      "halfExtentUnits": 13.4,
+      "depthUnits": 0.9,
+      "colorHex": "#2b1d14",
+      "roughness": 0.55,
+      "note": "Slab under the mat and rim; its top is just below z=0 so the mat is the tile contact plane."
     }
   },
   "camera": {
@@ -99,15 +148,15 @@
     "output": {
       "resolution1x": [
         2880,
-        1800
+        2112
       ],
       "resolution2x": [
         5760,
-        3600
+        4224
       ],
       "masterPath": "build/reference/master-2x.png",
       "masterDownsample": "box-2x2",
-      "note": "@1x is the shell scale: a centre pond tile's projected long axis is ~100 px, the same ballpark as shells.json's 104 px base, so a comparison crop is roughly 1:1 with the compositor's @1x sprites. The 2x master is rendered once and both the 1x board and the 2x crops are derived from it."
+      "note": "@1x is the shell scale: a centre pond tile's projected long axis is ~100 px, the same ballpark as shells.json's 104 px base. The 700 mm mat plus its raised rim needs a taller frame than the felt-only scene, so the board is 2880x2112 (1.364:1) from one 5760x4224 @2x master; the eye, lens, elevation and scale are unchanged. The 2x master is rendered once and both the 1x board and the 2x crops are derived from it."
     },
     "candidates": {
       "ortho": {
@@ -336,6 +385,59 @@
           "bottom"
         ]
       }
+    ]
+  },
+  "anchors": {
+    "collection": "SlotAnchors",
+    "type": "Empty (PLAIN_AXES, display size 0.35)",
+    "naming": {
+      "wall": "wall_{seat}_{stack:02d}_{layer}  (layer 0 bottom, 1 top)",
+      "river": "river_{seat}_{row}_{col}  (row 0..2, col 0..5 plus row-2 overflow cols 6..9)",
+      "meld": "meld_{seat}_{slot}  (slot 0..3)",
+      "hand": "hand_{seat}_{index:02d}  (index 00..12; south also has 13 for the drawn tile)"
+    },
+    "seats": [
+      "south",
+      "east",
+      "north",
+      "west"
+    ],
+    "counts": {
+      "wall": 136,
+      "river": 88,
+      "meld": 16,
+      "hand": 53,
+      "total": 293
+    },
+    "riverOverflowColumns": 4,
+    "faceQuad": {
+      "space": "anchor-local tile units: +x = tile right, +y = glyph top, +z = out of the painted face; the anchor is at the tile's 3D centre",
+      "order": "top-left, top-right, bottom-right, bottom-left (glyph image top is +y)",
+      "corners": "x = +/- (width/2 - faceInset), y = +/- (height/2 - faceInset), z = +thickness/2, with faceInset = 0.055 units (the shell bevel inset)",
+      "storage": "flat 12-float Blender custom property `faceQuadLocal` on each Empty, plus the published tools/render/reference/slot-anchors.json dump"
+    },
+    "customProperties": [
+      "zone",
+      "seat",
+      "index",
+      "tileId",
+      "tileFace",
+      "occupied",
+      "faceQuadLocal",
+      "faceQuadWorld",
+      "faceQuadOrder",
+      "row",
+      "column",
+      "slot",
+      "tier",
+      "overflow"
+    ],
+    "note": "Every valid tile position is an Empty in the SlotAnchors collection, named wall_{seat}_{stack}_{layer}, river_{seat}_{row}_{col}, meld_{seat}_{slot} or hand_{seat}_{index}. Anchors are at the tile body centre with the tile pose. Occupied anchors hold the 273 reference tiles; the 20 empty anchors are the 16 row-2 overflow slots and 4 kan-extension meld slots. Each anchor carries zone/seat/index/tileId/tileFace/occupied, the flat faceQuadLocal and faceQuadWorld (12 floats, TL/TR/BR/BL) and faceQuadOrder as Blender custom properties; the same records are published in reference/slot-anchors.json. Project anchor.matrix_world @ Vector(faceQuadLocal corner) for Task 3.",
+    "anchorDisplaySize": 0.25,
+    "clearanceMm": 0.3,
+    "clearanceRangeMm": [
+      0.2,
+      0.5
     ]
   }
 }

@@ -1623,112 +1623,36 @@ the A/B record. Visual sign-off is the user's (AGENTS.md §6).
   The catches are target-space, so they carry the target's own bevel and edge
   exactly; the synthetic per-caster stamp remains the fallback.
 
-## 16. Whole-table 3D reference: the calibration scene (2026-11-17)
+## 16. Whole-table 3D model + slot anchors (2026-11-17)
 
-A single Blender scene of the complete table now exists as a **calibration
-target only**. It is not a runtime asset: it writes nothing under
-`frontend/public`, the Phase 4 compositor never reads it, and it does not
-replace any shell, layout, shadow or atlas decision in this document. It exists
-so a follow-up task can replace one element family with a 2.5D piece and compare
-the hybrid against one physical table instead of judging the piece in isolation.
+The whole table now exists as a Blender model for placement review, plus a
+complete `SlotAnchors` Empty bank for the later projection export. It is
+**development-only**: nothing under `frontend/public` is written and the runtime
+never reads it. Perspective and lighting are inherited from the earlier
+calibration reference; a separate Task 2 sets those up, so this section covers
+the model and anchors, not a lighting decision.
 
-- Tooling: `tools/render/table-reference-spec.json`,
-  `tools/render/bake_table_reference.py`,
-  `tools/render/bake-table-reference.sh`,
-  `tools/render/scripts/table-reference.mjs`,
-  `tools/render/scripts/check-table-reference.mjs`.
-- Renders + manifest: `tools/render/reference/` (`full-board-1x.png` at
-  2880 × 1800, one @2x crop per element family, `table-reference.json`,
-  `index.html`).
-- Calibration note: `tools/render/TABLE-REFERENCE.md`.
+- The 700 mm mat, raised rim/frame and recessed compass/score well are built
+  from the spec (`tools/render/table-reference-spec.json`); the mat is a square
+  ring around the well so the well can sit below z = 0.
+- Four 17-stack two-tier walls (136 face-down tiles), four 6×3 ponds (72), four
+  13-tile hands (52) plus the human's drawn tile, and one open meld per seat
+  (12, **outside the wall on the player's right**). The human's hand is reclined
+  12°; the opponents' back rows are upright.
+- Adjacent tiles have 0.2–0.5 mm clearance (0.3 mm target, 0.2 mm pond column
+  pitch) and no tile bodies intersect: 360 adjacent pairs measured, 0
+  intersections.
+- `SlotAnchors` holds 293 Empties: `wall_{seat}_{stack:02d}_{layer}` (136),
+  `river_{seat}_{row}_{col}` (88, incl. row-2 overflow), `meld_{seat}_{slot}`
+  (16, incl. the kan extension) and `hand_{seat}_{index:02d}` (53, incl.
+  south_13 for the drawn tile). Each anchor is at the tile body centre with the
+  tile pose, carries `zone/seat/index/tileId/tileFace/occupied` and the face
+  plate as `faceQuadLocal`/`faceQuadWorld` (12 floats, TL/TR/BR/BL; +y glyph
+  top; z = +thickness/2, inset by the bevel), and is published in
+  `tools/render/reference/slot-anchors.json`. Task 3 projects
+  `anchor.matrix_world @ Vector(faceQuadLocal corner)`.
+- The bake's checks cover the anchor names/counts/poses/face quads, the
+  clearance and intersection contract, the 273-tile inventory, the render
+  hashes and the table-surface facts. The earlier lighting samples remain as
+  information, not this task's acceptance.
 
-The scene contains the four 17-stack two-tier walls (136 tiles), four full 6×3
-ponds (72), four 13-tile concealed hands (52), the human's drawn tile (1), one
-open 3-tile meld per seat (12) and one flat felt plane: **273 tiles**. The tile
-body, bevel and white/blue material gate come from `bake_shells.py`, so the
-reference body is the shipped body. Face plates carry the same perspective-
-neutral glyph masters the runtime atlas draws (flat overlay planes, not the
-carved decal).
-
-**The camera is one weak perspective at 45° elevation**: 140 mm, eye
-`(0, −86.083, 86.433)`, target `(0, 0, 0.35)`, 121.739 units, 2880 × 1800 @1x
-from a 5760 × 3600 @2x master. 45° is the pond/wall shells' own elevation, so a
-centre pond tile projects at **~100 px**, the 104 px @1x shell scale. The
-measured spread across the four pond centres is **1.125×**, the front/back and
-left/right run-length ratios **1.085×**, the run-angle errors **0.00°**, and the
-bottom/top hand ratio **0.999**: one table, not four stamps, but with a real
-**4.34°** lateral reveal at the outer front-wall slot. The alternatives —
-orthographic (no reveal) and the 65 mm physical eye (1.34× spread) — are
-`--audition` candidates only.
-
-The elevation is not cosmetic: at a lower camera the two-tier wall physically
-occludes the near pond row. The plan keeps the pond outer edge at 5.1 and the
-wall inner edge at 6.5; the bake ray-casts the visible surface of every tile
-(1,025 probes) and fails on any occlusion, and the checker re-derives the
-`tan(elevation) × clearance > wall height` inequality from the spec. The sun is
-tuned so the bare 5z face and the blue wall back measure the shipped shells'
-recorded colours (221/218/214 vs 223/220/216; 1/64/159 vs 3/68/165).
-
-Deliberate divergences from this document's per-zone cameras are recorded in
-`TABLE-REFERENCE.md`: the compositor's front-wall fan is stronger (8.37° vs the
-reference's 4.34°), the hand shells use el 28° and the top hand a 60-unit eye,
-and the reference's shadows are physical sun shadows rather than the synthetic
-blob. Those are presentation choices, not defects to "fix" against the
-reference. Visual acceptance of the reference is the user's (AGENTS.md §6).
-
----
-
-## 16. Whole-table 3D reference (calibration only, 2026-11-17)
-
-A single Blender scene of the complete table now exists as a **calibration
-target** for the 2.5D pieces. It is not a runtime asset: it writes nothing under
-`frontend/public`, the Phase 4 compositor never reads it, and it does not change
-any of the committed shells, decals, felt, layouts or draw order above. Its
-purpose is the next round of work: replace one element family with a 2.5D piece
-and compare the hybrid against the same physical table.
-
-- Scene + camera: `tools/render/table-reference-spec.json`,
-  `tools/render/bake_table_reference.py`, entry point
-  `tools/render/bake-table-reference.sh`.
-- Published renders and the manifest: `tools/render/reference/`
-  (`full-board-1x.png` 2880 × 1800, one @2x crop per element family,
-  `table-reference.json` with the camera, every tile placement, metrics and
-  decoded-RGB hashes, plus `index.html`).
-- Calibration note and comparison guide: `tools/render/TABLE-REFERENCE.md`.
-- Gate: `node tools/render/scripts/check-table-reference.mjs` (619 checks, no
-  Blender).
-
-Scene: four 17-stack two-tier wall runs (136 tiles, face-down), four full 6 × 3
-ponds (72 face-up), four 13-tile concealed hands (52) plus the human's drawn
-tile, one open meld per seat (12, one called tile sideways), and a flat felt
-plane — 273 bodies. The tile mesh, bevel, proportions and white/blue gate are
-imported from the shell baker, so the reference body cannot drift from the
-shipped shells.
-
-The locked camera is **weak perspective, 45° elevation, 140 mm, 121.74 units,
-eye (0, −86.08, 86.43)**, at 2880 × 1800 @1x. Measured: pond centre tiles
-106.2 / 94.8 / 100.7 / 94.3 px (near/far spread 1.125×), front/back run ratio
-1.085×, run angle error 0.00°, bottom/top hand size ratio 0.999, outer
-front-wall reveal 4.34°, frame margin 98.9 px. That is the 2.5D compromise made
-explicit: a centre pond tile is the shells' ~104 px scale and the four edges
-read as one table, while each zone still shows a real side face.
-
-45° is required, not decorative: at a lower eye the two-tier wall physically
-occludes the near pond row. The plan's 1.4-unit pond/wall gap clears a 1.179-unit
-wall at 45°; the bake ray-casts every visible tile surface (1,025 probes, 0
-occluded) and the checker re-derives the inequality from the spec.
-
-Lighting is one distant sun at the shell bake's screen-space top-left direction
-(az 315°, el 55°, 6.6 W/m², 12° angular size) plus the `#3b4a5c` world fill. It
-is tuned so the bare 5z face measures **221, 218, 214** against
-`shell_flat_upright`'s **223, 220, 216**, and the blue wall back **1, 64, 159**
-against `shell_wall_horizontal`'s **3, 68, 165**.
-
-Deliberate divergences from the compositor, recorded for any hybrid comparison:
-the reference's front-wall outer reveal is 4.34° (the shells' per-slot fan is
-8.37°, derived from the physical eye at y = −47.8); the standing hand is viewed
-at 45° here versus the hand shells' 28°; shadows are physical sun shadows, not
-the synthetic blob; there are no rails, compass, apron, dora indicators or
-carved face decals. Compare body silhouettes, face quads, side reveals, glyph
-orientation and contact, not shadow softness. Visual sign-off remains the
-user's (`AGENTS.md` §6).

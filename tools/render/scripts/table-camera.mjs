@@ -201,7 +201,7 @@ export function measureScene(camera, tiles, spec) {
   const scaleSpread = Math.max(...pondSizes) / Math.min(...pondSizes);
 
   const wall = spec.table.wall;
-  const halfSpan = wall.stackCentreSpanUnits / 2 + wall.stackPitchUnits / 2;
+  const halfSpan = wall.stackSpanUnits / 2;
   const [frontA, frontB] = projectedRun(camera, wall.radiusUnits, 0, halfSpan, false);
   const [backA, backB] = projectedRun(camera, wall.radiusUnits, 180, halfSpan, false);
   const [leftA, leftB] = projectedRun(camera, wall.radiusUnits, 270, halfSpan, true);
@@ -224,7 +224,7 @@ export function measureScene(camera, tiles, spec) {
   const reveal =
     camera.mode === 'orthographic'
       ? 0
-      : (Math.atan(wall.stackCentreSpanUnits / 2 / frontGround) * 180) / Math.PI;
+      : (Math.atan(wall.stackSpanUnits / 2 / frontGround) * 180) / Math.PI;
 
   let left = Infinity;
   let top = Infinity;
@@ -282,6 +282,47 @@ export function measureScene(camera, tiles, spec) {
       bottom: Number(margins.bottom.toFixed(2)),
     },
     minFrameMarginPx: Number(Math.min(...Object.values(margins)).toFixed(3)),
+    rimFrame: rimFrameMetrics(camera, spec),
+  };
+}
+
+export function rimFrameMetrics(camera, spec) {
+  const [width, height] = camera.resolution;
+  const matHalf = spec.table.playingMat.sizeUnits / 2;
+  const rim = spec.table.rim;
+  const rimOuter = rim.innerHalfUnits + rim.widthUnits;
+  const points = [];
+  for (const [half, top] of [
+    [matHalf, 0],
+    [rimOuter, 0],
+    [rimOuter, rim.heightUnits],
+  ]) {
+    for (const x of [-half, half]) {
+      for (const y of [-half, half]) {
+        points.push([x, y, top]);
+      }
+    }
+  }
+  const projected = points.map((point) => projectPoint(camera, point));
+  const left = Math.min(...projected.map((point) => point[0]));
+  const top = Math.min(...projected.map((point) => point[1]));
+  const right = Math.max(...projected.map((point) => point[0]));
+  const bottom = Math.max(...projected.map((point) => point[1]));
+  return {
+    matHalfUnits: matHalf,
+    rimOuterHalfUnits: rimOuter,
+    boundsPx: {
+      left: Number(left.toFixed(2)),
+      top: Number(top.toFixed(2)),
+      right: Number(right.toFixed(2)),
+      bottom: Number(bottom.toFixed(2)),
+    },
+    marginsPx: {
+      left: Number(left.toFixed(2)),
+      top: Number(top.toFixed(2)),
+      right: Number((width - right).toFixed(2)),
+      bottom: Number((height - bottom).toFixed(2)),
+    },
   };
 }
 
