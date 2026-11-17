@@ -1051,6 +1051,99 @@ def shadow_decal_material(max_alpha: float, falloff: float, edge_fade: float) ->
     return material
 
 
+def edge_profile(nodes, links, source, edge: float, sigma: float, inside_sign: float):
+    """A one-sided blurred edge: 0.5 at the edge, 1 inside, 0 outside over 2 sigma."""
+    offset = nodes.new("ShaderNodeMath")
+    offset.operation = "SUBTRACT"
+    offset.inputs[1].default_value = edge
+    links.new(source, offset.inputs[0])
+    distance = offset.outputs[0]
+    if inside_sign < 0:
+        negate = nodes.new("ShaderNodeMath")
+        negate.operation = "MULTIPLY"
+        negate.inputs[1].default_value = -1.0
+        links.new(offset.outputs[0], negate.inputs[0])
+        distance = negate.outputs[0]
+    ramp = nodes.new("ShaderNodeMapRange")
+    ramp.interpolation_type = "SMOOTHSTEP"
+    ramp.clamp = True
+    ramp.inputs["From Min"].default_value = -2.0 * sigma
+    ramp.inputs["From Max"].default_value = 2.0 * sigma
+    ramp.inputs["To Min"].default_value = 0.0
+    ramp.inputs["To Max"].default_value = 1.0
+    links.new(distance, ramp.inputs["Value"])
+    return ramp.outputs["Result"]
+
+
+def blurred_footprint_material(
+    x0: float,
+    x1: float,
+    edge_y: float,
+    sigma: float,
+    max_alpha: float,
+) -> bpy.types.Material:
+    """A Gaussian-like blurred rounded rectangle under the hand's footprint.
+
+    This is the render-time analogue of the retired UI recipe: the contact
+    rectangle blurred once, drawn under the object. The alpha is 0.5*maxAlpha at
+    the footprint's front and end edges and falls to zero over 2 sigma outside,
+    so the shadow emerges at the tile's front edge and wraps around the left and
+    right ends instead of starting inside the row. The plane is only built south
+    of the front edge, so nothing spills behind the tiles.
+    """
+    material = new_material("hand-shadow-blob")
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    principled = nodes["Principled BSDF"]
+    principled.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+    principled.inputs["Roughness"].default_value = 1.0
+    principled.inputs["Specular IOR Level"].default_value = 0.0
+    coordinates = nodes.new("ShaderNodeTexCoord")
+    separate = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(coordinates.outputs["Object"], separate.inputs["Vector"])
+    left = edge_profile(nodes, links, separate.outputs["X"], x0, sigma, 1.0)
+    right = edge_profile(nodes, links, separate.outputs["X"], x1, sigma, -1.0)
+    south = edge_profile(nodes, links, separate.outputs["Y"], edge_y, sigma, 1.0)
+    alpha = None
+    for source in (left, right, south):
+        multiply = nodes.new("ShaderNodeMath")
+        multiply.operation = "MULTIPLY"
+        if alpha is None:
+            multiply.inputs[0].default_value = max_alpha
+        else:
+            links.new(alpha, multiply.inputs[0])
+        links.new(source, multiply.inputs[1])
+        alpha = multiply.outputs[0]
+    links.new(alpha, principled.inputs["Alpha"])
+    return material
+
+
+def add_shadow_plane(
+    name: str,
+    x0: float,
+    x1: float,
+    y_north: float,
+    y_south: float,
+    z: float,
+    material: bpy.types.Material,
+) -> bpy.types.Object:
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(
+        [(x0, y_north, z), (x1, y_north, z), (x1, y_south, z), (x0, y_south, z)],
+        [],
+        [(0, 1, 2, 3)],
+    )
+    mesh.materials.append(material)
+    obj = new_object(name, mesh)
+    obj.visible_camera = True
+    obj.visible_shadow = False
+    obj.visible_diffuse = False
+    obj.visible_glossy = False
+    obj.visible_transmission = False
+    obj.visible_volume_scatter = False
+    return obj
+
+
 def add_shadow_strip(
     name: str,
     x0: float,
@@ -1128,6 +1221,10 @@ def apply_hand_shadow_cheat(spec: dict, rig: dict, tiles: list[dict]) -> dict | 
         return apply_gradient_decal_shadow(
             spec, rig, shadow, hand, radius, tiles, bodies, decals
         )
+    if mode == "blurredFootprint":
+        return apply_blurred_footprint_shadow(
+            spec, rig, shadow, hand, radius, tiles, bodies, decals
+        )
     die(f"hand shadow cheat: unknown mode {mode!r}")
 
 
@@ -1203,6 +1300,95 @@ def apply_physical_caster_shadow(
         f"hand shadow cheat: {len(bodies) + len(decals)} hand objects hidden from shadows, "
         f"{len(casters)} casters at the {shadow['physicalTiltDeg']:g} deg physical pose"
         + (f"; {len(fills)} fills do not see the casters" if fills else "")
+    )
+    return record
+
+
+def apply_blurred_footprint_shadow(
+    spec: dict,
+    rig: dict,
+    shadow: dict,
+    hand: dict,
+    radius: float,
+    tiles: list[dict],
+    bodies: list[bpy.types.Object],
+    decals: list[bpy.types.Object],
+) -> dict:
+    """The retired UI recipe in the reference scene: a blurred contact rectangle.
+
+    One plane per hand group (the 13-tile row and the drawn tile) spans the
+    group's footprint plus a 2.5 sigma margin. Its alpha is a blurred rounded
+    rectangle: 0.5*maxAlpha at the footprint's front and end edges, 1 inside,
+    0 two sigma outside. The visible result is a soft shadow that starts at the
+    tile's front edge and wraps around the row's left and right ends, with no
+    spill behind the tiles and no shadow rays.
+    """
+    thickness = tiles[0]["dimensions"]["thickness"]
+    tilt = math.radians(hand["tiltDeg"])
+    pitch = math.radians(rig["camera"]["elevationDeg"])
+    front_edge = radius + math.cos(tilt) * thickness
+    edge_height = math.sin(tilt) * thickness
+    edge_line = front_edge - edge_height / math.tan(pitch)
+    sigma = float(shadow["sigmaUnits"])
+    max_alpha = float(shadow["maxAlpha"])
+    z = float(shadow.get("zUnits", 0.0025))
+    margin = 2.5 * sigma
+    y_north = -edge_line
+    y_south = -(edge_line + margin)
+    bottom = [tile for tile in tiles if tile["seat"] == "bottom" and tile["kind"] in ("hand", "drawn")]
+    groups = [
+        [tile for tile in bottom if tile["kind"] == "hand"],
+        [tile for tile in bottom if tile["kind"] == "drawn"],
+    ]
+    planes = []
+    group_records = []
+    for group in groups:
+        if not group:
+            continue
+        half = group[0]["dimensions"]["width"] / 2
+        xs = [tile["origin"][0] for tile in group]
+        x0, x1 = min(xs) - half, max(xs) + half
+        material = blurred_footprint_material(x0, x1, y_north, sigma, max_alpha)
+        planes.append(
+            add_shadow_plane(
+                f"hand-shadow-blob-{len(planes)}",
+                x0 - margin,
+                x1 + margin,
+                y_north,
+                y_south,
+                z,
+                material,
+            )
+        )
+        group_records.append(
+            {
+                "x0": round(x0, 4),
+                "x1": round(x1, 4),
+                "widthUnits": round(x1 - x0, 4),
+                "edgeRadiusUnits": round(edge_line, 4),
+            }
+        )
+    record = {
+        "mode": shadow["mode"],
+        "cheatedTiltDeg": hand["tiltDeg"],
+        "playerHandRadiusUnits": radius,
+        "frontEdgeRadiusUnits": round(front_edge, 4),
+        "edgeHeightUnits": round(edge_height, 4),
+        "edgeLineRadiusUnits": round(edge_line, 4),
+        "sigmaUnits": sigma,
+        "maxAlpha": max_alpha,
+        "falloff": "gaussian-like smoothstep over 2 sigma",
+        "groups": group_records,
+        "hiddenObjects": len(bodies) + len(decals),
+        "handBodies": len(bodies),
+        "handDecals": len(decals),
+        "objects": len(planes),
+        "note": shadow.get("note"),
+    }
+    log(
+        f"hand shadow blob: {len(planes)} blurred-footprint planes, edge line {edge_line:.3f} "
+        f"(front edge {front_edge:.3f}), sigma {sigma:.3f} units, max alpha {max_alpha:g}, "
+        f"over {len(bodies) + len(decals)} hidden hand objects"
     )
     return record
 

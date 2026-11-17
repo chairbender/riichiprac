@@ -192,3 +192,27 @@ measured on the rendered pixels. Calibration only.</p>
       <tr><th>transparent pixels</th><td>6.87%</td></tr>
     </table>
   </section>
+
+  <section>
+    <h2>v8-shadow-blurred-footprint — v8 blurred-footprint hand shadow (take A + Gaussian blob)</h2>
+    <p>Take A (v5) rebuilt with the retired UI shadow recipe: a rounded contact rectangle, blurred once, drawn under the hand. One plane per hand group spans its footprint plus a 2.5 sigma margin; the alpha is 0.5*maxAlpha at the footprint's front and end edges and falls to zero two sigma outside. That puts the shadow's first visible pixels exactly on the front edge and wraps it around the row's left and right ends, fixing the strip's horizontal fade-in. No shadow rays, so the wall behind stays clean.</p>
+    <figure>
+      <a href="v8-shadow-blurred-footprint-1x.png"><img src="v8-shadow-blurred-footprint-1x.png" alt="v8-shadow-blurred-footprint"></a>
+      <figcaption>1920×1080 RGBA · 2,622,895 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>physical-pose caster (undefined casters)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.754 × felt · 0.754 → 0.885 → 0.973 → 1.012 → 1</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>6.87%</td></tr>
+    </table>
+  </section>

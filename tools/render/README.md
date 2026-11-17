@@ -246,6 +246,10 @@ the visible gradient emerges from the front edge, with no shadow rays at all.
 **v5 / v6 / v7** are three longer, stronger takes on that gradient (0.55 / 0.65 /
 0.42 units, 50 / 40 / 65 % max alpha) that lift the framing 19 px so the gradient
 finishes on lit felt; they are for choosing a preference.
+**v8-shadow-blurred-footprint** rebuilds the chosen take A as the retired UI
+recipe: a contact rectangle blurred once (σ 0.30 units, 0.5 alpha at the edge),
+one plane per hand group, so the shadow starts at the leftmost tile's edge and
+wraps around both ends (0.887 / 0.865 × felt) with nothing on the wall.
 
 The **hand cheat** in v2 reclines the player's hand further than is physical, so
 the near bottom edge floats and the real cast shadow is not the production

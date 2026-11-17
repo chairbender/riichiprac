@@ -779,6 +779,27 @@ export function rigLightingSamples(camera, tiles, spec, shellSpec, rig = spec.ri
           offsetUnits: offset,
         };
       }
+      // Just outside the row's left and right ends: does the shadow wrap?
+      const row = tiles.filter((tile) => tile.seat === 'bottom' && tile.kind === 'hand');
+      if (row.length) {
+        const half = row[0].dimensions.width / 2;
+        const xs = row.map((tile) => tile.origin[0]);
+        for (const [name, x] of [
+          ['handWrapLeft', Math.min(...xs) - half - 0.08],
+          ['handWrapRight', Math.max(...xs) + half + 0.08],
+        ]) {
+          const world = [x, -(startRadius + shadowProbes.offsetsUnits[0]), 0];
+          const [px, py] = projectPoint(camera, world);
+          samples[name] = {
+            kind: 'point',
+            tile: null,
+            world: world.map((value) => round(value, 6)),
+            pixel: [round(px, 3), round(py, 3)],
+            radiusPx: shadowProbes.radiusPx ?? 1,
+            offsetUnits: shadowProbes.offsetsUnits[0],
+          };
+        }
+      }
     }
   }
 

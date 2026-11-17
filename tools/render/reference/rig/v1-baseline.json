@@ -10550,6 +10550,56 @@
     "pixels": 9
    }
   },
+  "handWrapLeft": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    -5.019286,
+    -11.173602,
+    0
+   ],
+   "pixel": [
+    669.389,
+    1010.211
+   ],
+   "radiusPx": 1,
+   "offsetUnits": 0.1,
+   "measured": {
+    "rgb": [
+     6.3,
+     54.4,
+     35.3
+    ],
+    "alpha": 255,
+    "luma": 42.8,
+    "pixels": 9
+   }
+  },
+  "handWrapRight": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    5.019286,
+    -11.173602,
+    0
+   ],
+   "pixel": [
+    1250.611,
+    1010.211
+   ],
+   "radiusPx": 1,
+   "offsetUnits": 0.1,
+   "measured": {
+    "rgb": [
+     5.4,
+     51,
+     32.6
+    ],
+    "alpha": 255,
+    "luma": 40,
+    "pixels": 9
+   }
+  },
   "wallFace0": {
    "kind": "point",
    "tile": null,
@@ -10756,6 +10806,10 @@
    1
   ],
   "handShadowMinLumaFactor": 0.302,
+  "handWrapLumaFactors": {
+   "left": 0.748,
+   "right": 0.699
+  },
   "handBaseRadiusUnits": {
    "bottom": 10.6,
    "top": 10.6,

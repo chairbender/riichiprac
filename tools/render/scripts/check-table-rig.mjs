@@ -229,6 +229,29 @@ function checkVariant(manifest, file) {
         near(record.deltaDeg, table.hand.tiltDeg - shadowCheat.physicalTiltDeg, 1e-6, `${id} shadow normal delta`);
         check(record.casters >= 13, `${id} shadow casters ${record.casters} >= 13`);
         checkEqual(`${id} shadow fills`, record.fillLights, rig.lighting.fills.map((fill) => fill.id));
+      } else if (shadowCheat.mode === 'blurredFootprint') {
+        near(record.sigmaUnits, shadowCheat.sigmaUnits, 1e-9, `${id} blob sigma`);
+        near(record.maxAlpha, shadowCheat.maxAlpha, 1e-9, `${id} blob max alpha`);
+        check(record.objects >= 2, `${id} blob has ${record.objects} planes`);
+        check(record.sigmaUnits > 0, `${id} blob sigma is positive`);
+        check(
+          Math.abs(record.edgeLineRadiusUnits -
+            (record.frontEdgeRadiusUnits -
+              record.edgeHeightUnits / Math.tan((cameraSpec.elevationDeg * Math.PI) / 180))) <= 1e-3,
+          `${id} blob edge line is the front-edge silhouette on the mat`,
+        );
+        // The row group must span exactly the row's tiles, so the wrap is
+        // centred on the end tiles.
+        const row = (manifest.scene?.tiles ?? []).filter((tile) => tile.seat === 'bottom' && tile.kind === 'hand');
+        const half = row[0].dimensions.width / 2;
+        const xs = row.map((tile) => tile.origin[0]);
+        const x0 = Number((Math.min(...xs) - half).toFixed(4));
+        const x1 = Number((Math.max(...xs) + half).toFixed(4));
+        const group = record.groups?.[0];
+        if (check(Boolean(group), `${id} blob records its row group`)) {
+          near(group.x0, x0, 1e-3, `${id} blob row group left edge`);
+          near(group.x1, x1, 1e-3, `${id} blob row group right edge`);
+        }
       } else if (shadowCheat.mode === 'gradientDecal') {
         near(record.maxAlpha, shadowCheat.maxAlpha, 1e-9, `${id} decal max alpha`);
         near(record.lengthUnits, shadowCheat.lengthUnits, 1e-9, `${id} decal length`);
@@ -529,6 +552,27 @@ function checkVariant(manifest, file) {
         minFactor >= limits.handShadowMinLumaFactor,
         `${id} the under-hand shadow is subtle (darkest ${minFactor.toFixed(2)} x felt ` +
           `>= ${limits.handShadowMinLumaFactor})`,
+      );
+    }
+    if (Number.isFinite(limits.handWrapMaxLumaFactor)) {
+      const wrap = {
+        left: measured.handWrapLeft ? measured.handWrapLeft.luma / shadowLumas[shadowLumas.length - 1] : null,
+        right: measured.handWrapRight ? measured.handWrapRight.luma / shadowLumas[shadowLumas.length - 1] : null,
+      };
+      checkEqual(`${id} manifest hand wrap factors`, manifest.facts.handWrapLumaFactors, {
+        left: wrap.left === null ? null : Number(wrap.left.toFixed(3)),
+        right: wrap.right === null ? null : Number(wrap.right.toFixed(3)),
+      });
+      check(
+        wrap.left !== null && wrap.right !== null &&
+          wrap.left <= limits.handWrapMaxLumaFactor && wrap.right <= limits.handWrapMaxLumaFactor,
+        `${id} the shadow wraps around both row ends ` +
+          `(${wrap.left?.toFixed(2)} / ${wrap.right?.toFixed(2)} <= ${limits.handWrapMaxLumaFactor})`,
+      );
+      check(
+        Math.abs(wrap.left - wrap.right) <= limits.handWrapSymmetryTolerance,
+        `${id} the wrap is symmetric (${Math.abs(wrap.left - wrap.right).toFixed(3)} ` +
+          `<= ${limits.handWrapSymmetryTolerance})`,
       );
     }
     if (Number.isFinite(limits.handShadowFadeUnits)) {

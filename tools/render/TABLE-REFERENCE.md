@@ -13,8 +13,9 @@ first rig, `v2-compact` the first experiment (bigger, hands/melds pulled in to
 the wall, a readability cheat on the player's hand, dimmer key), and
 `v3-hand-shadow` moves only the player's hand a further half tile back, and
 `v4-shadow-decal` replaces the shadow with a soft gradient that emerges from the
-tile's front edge, and `v5`–`v7` are three longer/stronger takes on that
-gradient for choosing a preference. The
+tile's front edge, `v5`–`v7` are three longer/stronger takes on it, and
+`v8-shadow-blurred-footprint` rebuilds the chosen take A as the retired UI
+recipe (a blurred contact rectangle) so the shadow wraps around the row ends. The
 placement board below stays at its own 2880 × 2112 framing for plan review. See
 [The 2.5D rig](#the-25d-rig-task-2).
 
@@ -289,6 +290,26 @@ every take to the "no black rectangle" floor: max alpha ≤ 0.75, the darkest
 visible felt ≥ 0.4× the local felt, a monotonic fade (5 % noise tolerance) and
 lit felt by the variant's fade distance.
 
+### v8-shadow-blurred-footprint (experiment, 2026-11-17)
+
+Take A's look, rebuilt as the shadow recipe the retired UI was going to use: a
+**contact rectangle blurred once**, drawn under the hand. The strip's horizontal
+fade-in is gone — the shadow now starts right at the leftmost tile's edge and
+wraps around both ends like the wall in front of the player.
+
+| Parameter | v8 |
+| --- | --- |
+| Shape | one plane per hand group (13-tile row, drawn tile); the contact rect is the group's **width × the tile's projected depth**, with the **edge line at 9.4336** (the mat point that projects at the tile's front edge; geometric front edge 9.7514) |
+| Blur | 0.5 × maxAlpha at the front and end edges, smoothstep over ±2σ with **σ = 0.30 units** (~22 px), 0 outside; the plane starts at the edge line, so nothing spills behind the tiles |
+| Opacity | `maxAlpha 0.95` → ~0.48 opacity at the front edge |
+| Measured | front-edge felt **0.72×** the lit felt, back to lit by ~0.45 units; **left/right end wrap 0.887 / 0.865** (symmetric to 0.022); wall behind the hand **0.7** dip |
+| Shadow rays | none |
+
+The gate now also checks the wrap: both end probes must be visibly darker than
+the lit felt (≤ 0.97×) and within 0.08 of each other, and the row group's x span
+must match the row's tiles exactly, so the blur is centred on the end tiles
+rather than fading inside them.
+
 ### What still needs the user
 
 The numbers say the geometry, framing, shadowing and exposure are what was
@@ -299,11 +320,12 @@ xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, wi
 bash tools/render/bake-table-reference.sh --check
 ```
 
-The open question is which shadow take to keep: v4 (0.32 u, 13 % dark), v5 (0.55 u,
-30 % dark), v6 (0.65 u, softly 27 % dark) or v7 (0.42 u, 30 % dark but firmer at
-the edge). Compare them on the A/B page, then the chosen one becomes the
-production setting and the others can be pruned. The 40° recline and the 203
-discard face are unchanged.
+The open question is whether **v8** is the keeper: take A's length and weight,
+but as a blurred contact footprint that starts at the leftmost tile's edge and
+wraps around both ends. If it is, it becomes the production shadow setting (the
+runtime does the same thing with a blurred rounded rectangle under the hand) and
+the other takes can be pruned. The 40° recline and the 203 discard face are
+unchanged.
 
 ## Published renders and checks
 

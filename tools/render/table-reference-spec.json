@@ -805,6 +805,29 @@
           "handShadowFadeUnits": 0.45,
           "handShadowFadeFactor": 0.92
         }
+      },
+      "v8-shadow-blurred-footprint": {
+        "order": 8,
+        "extends": "v5-shadow-wash",
+        "label": "v8 blurred-footprint hand shadow (take A + Gaussian blob)",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "Take A (v5) rebuilt with the retired UI shadow recipe: a rounded contact rectangle, blurred once, drawn under the hand. One plane per hand group spans its footprint plus a 2.5 sigma margin; the alpha is 0.5*maxAlpha at the footprint's front and end edges and falls to zero two sigma outside. That puts the shadow's first visible pixels exactly on the front edge and wraps it around the row's left and right ends, fixing the strip's horizontal fade-in. No shadow rays, so the wall behind stays clean.",
+        "handShadow": {
+          "mode": "blurredFootprint",
+          "sigmaUnits": 0.3,
+          "maxAlpha": 0.95,
+          "zUnits": 0.0025,
+          "note": "A blurred footprint: the contact rectangle (the row's 13-tile width x the tile's projected depth) with a Gaussian-like smoothstep edge over 2 sigma and 0.5 alpha at the edge. sigma 0.30 units (~22 px) gives the ~0.5-unit visible fade of take A; maxAlpha 0.95 puts ~0.48 opacity at the tile's front edge and a visible wrap at the row ends."
+        },
+        "checks": {
+          "handShadowMaxDarkening": 1.0,
+          "handShadowMinLumaFactor": 0.4,
+          "handShadowFadeUnits": 0.6,
+          "handShadowFadeFactor": 0.92,
+          "handWrapSymmetryTolerance": 0.08,
+          "handWrapMaxLumaFactor": 0.97
+        }
       }
     }
   },
