@@ -37,7 +37,7 @@ pub fn is_sha256_hex(value: &str) -> bool {
     raw.len() == 64 && raw.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
-fn is_slug(value: &str) -> bool {
+pub(crate) fn is_slug(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 96
         && value != "."

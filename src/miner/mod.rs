@@ -39,6 +39,7 @@ pub mod classifier;
 pub mod funnel;
 pub mod label;
 pub mod licence;
+pub mod pack;
 pub mod provenance;
 pub mod source;
 pub mod storage;
@@ -62,6 +63,19 @@ pub use label::{
     label_decision, safest_discard, state_hash,
 };
 pub use licence::{LicenceError, LicenseInfo, allowed_data_licence, data_commercial_use_all};
+pub use pack::{
+    AuditOptions, AuditReport, DEFAULT_MAX_MANIFEST_BYTES, DEFAULT_MAX_PACK_BYTES,
+    DEFAULT_MAX_SCENARIOS, FindingSeverity, GAMES_FILE_NAME, LabelCheck, LabelCheckKind,
+    MANIFEST_FILE_NAME, MANIFEST_SCHEMA, ManifestEntry, PACK_SCHEMA, PACK_VERSION, Pack, PackAgent,
+    PackAudit, PackAuditContext, PackBook, PackBudget, PackBytes, PackCounterfactual, PackError,
+    PackFinding, PackFindingCode, PackGenerator, PackId, PackInterestingness, PackManifest,
+    PackMortal, PackPlayed, PackProvenance, PackRankedAction, PackReport, PackScenario, PackSource,
+    PackValidation, PlayedKind, PublishProfile, PublishedPack, ScenarioKey, accepted_for,
+    audit_pack, audit_pack_dir, audit_summary, decode_pack, encode_games, encode_pack,
+    find_spoiler, fixture_games, fixture_pack, load_games, load_manifest, pack_file_name,
+    pack_report, publish_pack, read_manifest_or_default, read_pack, render_pack_report,
+    upsert_manifest_entry, write_games_atomic, write_manifest_atomic,
+};
 pub use provenance::{
     AgentKind, AgentSpec, CorpusId, GameProvenance, GeneratorInfo, IdError, LogRef, MatchPlan,
     MatchPlanId, ProvenanceError, ReplayId, RuleProfile, SeedSchedule, ValidationStatus,
@@ -72,7 +86,7 @@ pub use storage::{
     BackupCommand, BackupOutcome, DATA_DIR_ENV, DataRoot, MINER_DB_RELATIVE_PATH, MINER_TABLES,
     RCLONE_REMOTE_ENV, RemoteBackup, SCHEMA_VERSION, SnapshotInfo, StorageError, migrate,
     open_miner_db, plan_replay_backup, plan_snapshot_backup, row_counts, snapshot_database,
-    utc_stamp, validate_relative_path, write_atomic,
+    utc_iso8601, utc_stamp, validate_relative_path, write_atomic,
 };
 
 /// Schema name for one generated game's provenance record.

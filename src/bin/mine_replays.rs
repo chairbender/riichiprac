@@ -16,13 +16,19 @@
 //! The data root is `--data-dir`, then `$RIICHI_DATA_DIR`, then
 //! `$HOME/riichiprac-data`; see [`riichiprac::miner::DataRoot`].
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::time::SystemTime;
 
 use clap::{Parser, Subcommand};
 
 use riichiprac::miner::label::run::{LabelRunOptions, LabelRunReport, run_label};
-use riichiprac::miner::{CLASSIFIER_VERSION, DataRoot, QPointCalibration};
+use riichiprac::miner::{
+    AuditOptions, CLASSIFIER_VERSION, DataRoot, GAMES_FILE_NAME, MANIFEST_FILE_NAME, PackAudit,
+    PackAuditContext, PackBudget, PackError, PackFinding, PackFindingCode, PublishProfile,
+    QPointCalibration, audit_pack_dir, audit_summary, fixture_games, fixture_pack, load_manifest,
+    pack_report, publish_pack, read_pack, render_pack_report, utc_iso8601, write_games_atomic,
+};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -98,11 +104,62 @@ enum Command {
     /// Generate label-preserving scenario variants.
     Transform,
     /// Assemble, audit and export scenario packs.
-    Pack,
+    Pack {
+        #[command(subcommand)]
+        action: Option<PackAction>,
+    },
     /// Audit provenance, licences and pack integrity.
-    Audit,
+    Audit {
+        /// Manifest to audit (default: <data-dir>/packs/manifest.json).
+        #[arg(long, value_name = "FILE")]
+        manifest: Option<PathBuf>,
+
+        /// Game provenance JSONL (default: games.jsonl beside the manifest).
+        #[arg(long, value_name = "FILE")]
+        games: Option<PathBuf>,
+
+        /// Fail on warnings as well as errors.
+        #[arg(long)]
+        strict: bool,
+
+        /// Audit for a commercial redistribution profile.
+        #[arg(long)]
+        commercial: bool,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
     /// Work the human review queue.
     Review,
+}
+
+#[derive(Debug, Subcommand)]
+enum PackAction {
+    /// Publish the built-in fixture pack, manifest and provenance rows.
+    Fixture {
+        /// Output directory (default: <data-dir>/packs).
+        #[arg(long, value_name = "DIR")]
+        out: Option<PathBuf>,
+
+        /// Pack body byte ceiling (default: 50 MB).
+        #[arg(long, value_name = "N")]
+        max_bytes: Option<u64>,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Print the pack report for every manifest entry.
+    Report {
+        /// Manifest to report on (default: <data-dir>/packs/manifest.json).
+        #[arg(long, value_name = "FILE")]
+        manifest: Option<PathBuf>,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -119,8 +176,8 @@ impl Command {
             Self::Extract => "extract",
             Self::Label { .. } => "label",
             Self::Transform => "transform",
-            Self::Pack => "pack",
-            Self::Audit => "audit",
+            Self::Pack { .. } => "pack",
+            Self::Audit { .. } => "audit",
             Self::Review => "review",
         }
     }
@@ -180,6 +237,14 @@ fn main() -> ExitCode {
                 json,
             )
         }
+        Command::Pack { action } => run_pack_command(&root, action),
+        Command::Audit {
+            manifest,
+            games,
+            strict,
+            commercial,
+            json,
+        } => run_audit_command(&root, manifest, games, strict, commercial, json),
         command => {
             eprintln!(
                 "mine_replays {}: not implemented yet (data root: {})",
@@ -188,6 +253,234 @@ fn main() -> ExitCode {
             );
             ExitCode::from(2)
         }
+    }
+}
+
+fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
+    let Some(action) = action else {
+        eprintln!("mine_replays pack: choose `fixture` or `report`");
+        return ExitCode::from(2);
+    };
+    match action {
+        PackAction::Fixture {
+            out,
+            max_bytes,
+            json,
+        } => run_pack_fixture(root, out, max_bytes, json),
+        PackAction::Report { manifest, json } => run_pack_report(root, manifest, json),
+    }
+}
+
+fn run_pack_fixture(
+    root: &DataRoot,
+    out: Option<PathBuf>,
+    max_bytes: Option<u64>,
+    json: bool,
+) -> ExitCode {
+    let dir = out.unwrap_or_else(|| root.packs_dir());
+    let budget = max_bytes.map_or_else(PackBudget::default, PackBudget::with_max_bytes);
+    let now = utc_iso8601(SystemTime::now());
+    let pack = match fixture_pack(&now) {
+        Ok(pack) => pack,
+        Err(err) => {
+            eprintln!("mine_replays pack fixture: {err}");
+            return ExitCode::from(2);
+        }
+    };
+    let games = fixture_games();
+    let context = PackAuditContext::new(&games).with_budget(budget);
+
+    // The audit reads the provenance source; write it before publishing so the
+    // command leaves a directory that `audit` can re-check on its own.
+    if let Err(err) = write_games_atomic(&dir, &games) {
+        eprintln!("mine_replays pack fixture: {err}");
+        return ExitCode::from(2);
+    }
+    match publish_pack(&dir, &pack, &context, &now) {
+        Ok(published) => {
+            let report = pack_report(&pack, published.entry.bytes, &budget);
+            if json {
+                let payload = serde_json::json!({
+                    "path": published.path.display().to_string(),
+                    "manifest": published.manifest_path.display().to_string(),
+                    "games": dir.join(GAMES_FILE_NAME).display().to_string(),
+                    "entry": published.entry,
+                    "report": report,
+                });
+                match serde_json::to_string_pretty(&payload) {
+                    Ok(text) => println!("{text}"),
+                    Err(err) => {
+                        eprintln!("mine_replays pack fixture: cannot serialise the report: {err}");
+                        return ExitCode::from(2);
+                    }
+                }
+            } else {
+                println!(
+                    "mine_replays pack fixture: wrote {} ({} bytes)",
+                    published.path.display(),
+                    published.entry.bytes
+                );
+                for line in render_pack_report(&report) {
+                    println!("  {line}");
+                }
+                println!("  manifest: {}", published.manifest_path.display());
+                println!("  provenance: {}", dir.join(GAMES_FILE_NAME).display());
+            }
+            ExitCode::SUCCESS
+        }
+        Err(PackError::AuditFailed(audit)) => {
+            eprintln!("mine_replays pack fixture: the fixture pack failed its own audit");
+            print_pack_findings(&audit);
+            ExitCode::from(1)
+        }
+        Err(err) => {
+            eprintln!("mine_replays pack fixture: {err}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn run_pack_report(root: &DataRoot, manifest: Option<PathBuf>, json: bool) -> ExitCode {
+    let path = manifest.unwrap_or_else(|| root.packs_dir().join(MANIFEST_FILE_NAME));
+    let manifest = match load_manifest(&path) {
+        Ok(manifest) => manifest,
+        Err(err) => {
+            eprintln!("mine_replays pack report: {err}");
+            return ExitCode::from(2);
+        }
+    };
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    let budget = PackBudget::default();
+    let mut reports = Vec::new();
+    let mut errors = 0usize;
+    for entry in &manifest.packs {
+        let pack_path = dir.join(&entry.path);
+        match read_pack(&pack_path) {
+            Ok(pack) => reports.push(pack_report(&pack, entry.bytes, &budget)),
+            Err(err) => {
+                eprintln!("mine_replays pack report: {err}");
+                errors += 1;
+            }
+        }
+    }
+    if json {
+        let payload = serde_json::json!({
+            "manifest": path.display().to_string(),
+            "packs": reports,
+        });
+        match serde_json::to_string_pretty(&payload) {
+            Ok(text) => println!("{text}"),
+            Err(err) => {
+                eprintln!("mine_replays pack report: cannot serialise the report: {err}");
+                return ExitCode::from(2);
+            }
+        }
+    } else if reports.is_empty() {
+        println!(
+            "mine_replays pack report: {} lists no packs",
+            path.display()
+        );
+    } else {
+        for report in &reports {
+            for line in render_pack_report(report) {
+                println!("{line}");
+            }
+        }
+    }
+    if errors > 0 {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn run_audit_command(
+    root: &DataRoot,
+    manifest: Option<PathBuf>,
+    games: Option<PathBuf>,
+    strict: bool,
+    commercial: bool,
+    json: bool,
+) -> ExitCode {
+    let path = manifest.unwrap_or_else(|| root.packs_dir().join(MANIFEST_FILE_NAME));
+    let dir = path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .to_path_buf();
+    let options = AuditOptions {
+        profile: if commercial {
+            PublishProfile::Commercial
+        } else {
+            PublishProfile::NonCommercial
+        },
+        strict,
+        budget: PackBudget::default(),
+    };
+    let report = match audit_pack_dir(&dir, games.as_deref(), &options) {
+        Ok(report) => report,
+        Err(err) => {
+            eprintln!("mine_replays audit: {err}");
+            return ExitCode::from(2);
+        }
+    };
+
+    if json {
+        match serde_json::to_string_pretty(&report) {
+            Ok(text) => println!("{text}"),
+            Err(err) => {
+                eprintln!("mine_replays audit: cannot serialise the report: {err}");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        println!(
+            "mine_replays audit: {} ({} bytes manifest, {} pack(s){})",
+            report.manifest,
+            report.manifest_bytes,
+            report.packs.len(),
+            if report.strict { ", strict" } else { "" }
+        );
+        for finding in &report.findings {
+            print_finding(finding);
+        }
+        for audit in &report.packs {
+            print_pack_findings(audit);
+        }
+        let failures = report.failures().len();
+        if failures == 0 {
+            println!("  clean");
+        } else {
+            println!("  {failures} failure(s)");
+        }
+    }
+
+    if report.is_clean() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    }
+}
+
+fn print_pack_findings(audit: &PackAudit) {
+    if audit.findings.is_empty() {
+        println!("  {}", audit_summary(audit));
+        return;
+    }
+    println!("  {}", audit_summary(audit));
+    for finding in &audit.findings {
+        print_finding(finding);
+    }
+}
+
+fn print_finding(finding: &PackFinding) {
+    let severity = match finding.severity {
+        riichiprac::miner::FindingSeverity::Error => "error",
+        riichiprac::miner::FindingSeverity::Warning => "warning",
+    };
+    let code: PackFindingCode = finding.code;
+    match &finding.scenario {
+        Some(scenario) => eprintln!("    {severity} [{code:?}] {scenario}: {}", finding.detail),
+        None => eprintln!("    {severity} [{code:?}] {}", finding.detail),
     }
 }
 
@@ -380,6 +673,84 @@ mod tests {
                 action: Some(CorpusAction::Report)
             }
         ));
+    }
+
+    #[test]
+    fn pack_and_audit_options_parse() {
+        let cli = Cli::try_parse_from([
+            "mine_replays",
+            "pack",
+            "fixture",
+            "--out",
+            "/tmp/riichiprac-packs",
+            "--max-bytes",
+            "1024",
+            "--json",
+        ])
+        .expect("pack fixture parses");
+        match cli.command {
+            Command::Pack {
+                action:
+                    Some(PackAction::Fixture {
+                        out,
+                        max_bytes,
+                        json,
+                    }),
+            } => {
+                assert_eq!(out, Some(PathBuf::from("/tmp/riichiprac-packs")));
+                assert_eq!(max_bytes, Some(1024));
+                assert!(json);
+            }
+            other => panic!("expected pack fixture, got {other:?}"),
+        }
+
+        let cli = Cli::try_parse_from([
+            "mine_replays",
+            "pack",
+            "report",
+            "--manifest",
+            "manifest.json",
+            "--json",
+        ])
+        .expect("pack report parses");
+        match cli.command {
+            Command::Pack {
+                action: Some(PackAction::Report { manifest, json }),
+            } => {
+                assert_eq!(manifest, Some(PathBuf::from("manifest.json")));
+                assert!(json);
+            }
+            other => panic!("expected pack report, got {other:?}"),
+        }
+
+        let cli = Cli::try_parse_from([
+            "mine_replays",
+            "audit",
+            "--manifest",
+            "manifest.json",
+            "--games",
+            "games.jsonl",
+            "--strict",
+            "--commercial",
+            "--json",
+        ])
+        .expect("audit parses");
+        match cli.command {
+            Command::Audit {
+                manifest,
+                games,
+                strict,
+                commercial,
+                json,
+            } => {
+                assert_eq!(manifest, Some(PathBuf::from("manifest.json")));
+                assert_eq!(games, Some(PathBuf::from("games.jsonl")));
+                assert!(strict);
+                assert!(commercial);
+                assert!(json);
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
     }
 
     #[test]
