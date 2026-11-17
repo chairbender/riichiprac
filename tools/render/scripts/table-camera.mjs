@@ -688,10 +688,10 @@ export function rigMetrics(camera, tiles, spec, shellSpec) {
  * ~3.5 px wide at 1920, so they are averaged over the projected face polygon
  * instead of a window that would spill onto the felt.
  */
-export function rigLightingSamples(camera, tiles, spec, shellSpec) {
+export function rigLightingSamples(camera, tiles, spec, shellSpec, rig = spec.rig) {
   const byId = new Map(tiles.map((tile) => [tile.id, tile]));
   const thickness = tiles[0].dimensions.thickness;
-  const rigSamples = spec.rig?.samples ?? {};
+  const rigSamples = rig?.samples ?? {};
   const point = (tileId, localPoint, radiusPx) => {
     const tile = byId.get(tileId);
     if (!tile) throw new Error(`rig sample: no tile ${tileId}`);

@@ -83,7 +83,7 @@ if (image.channels !== 4) {
 
 const tiles = bake.scene.tiles;
 const metrics = rigMetrics(camera, tiles, spec, shellSpec);
-const samples = rigLightingSamples(camera, tiles, spec, shellSpec);
+const samples = rigLightingSamples(camera, tiles, spec, shellSpec, rig);
 const measured = measureRigSamples(image, samples);
 const coverage = alphaCoverage(image);
 

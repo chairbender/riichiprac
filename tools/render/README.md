@@ -241,9 +241,11 @@ luma. **v3-hand-shadow** (experiment): the player's hand alone moves back to 9.3
 is replaced by a shadow-only caster at the 12° physical pose (the fills are
 light-linked away from it), so there is nothing on the wall behind the hand.
 **v4-shadow-decal** (experiment) keeps v3's spacing and replaces that caster with
-a fake soft gradient decal: a 0.32-unit strip whose hidden near edge sits under
-the tile so the visible gradient emerges from the front edge, about 13 % dark at
-the edge and back to lit felt within ~0.2 units, with no shadow rays at all.
+a fake soft gradient decal: a strip whose hidden near edge sits under the tile so
+the visible gradient emerges from the front edge, with no shadow rays at all.
+**v5 / v6 / v7** are three longer, stronger takes on that gradient (0.55 / 0.65 /
+0.42 units, 50 / 40 / 65 % max alpha) that lift the framing 19 px so the gradient
+finishes on lit felt; they are for choosing a preference.
 
 The **hand cheat** in v2 reclines the player's hand further than is physical, so
 the near bottom edge floats and the real cast shadow is not the production

@@ -691,6 +691,120 @@
           "handShadowFadeUnits": 0.32,
           "handShadowFadeFactor": 0.92
         }
+      },
+      "v5-shadow-wash": {
+        "order": 5,
+        "extends": "v4-shadow-decal",
+        "label": "v5 shadow wash \u2014 0.55 units, alpha 0.50",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "Shadow take A: a medium-long, evenly fading wash. About 0.55 units (15 mm) of gradient, roughly 45 % dark at the visible edge, back to lit felt before the frame edge. This is the 'a bit longer, clearly visible' reading of v4.",
+        "camera": {
+          "shiftY": -0.03,
+          "note": "Shadow take: the framing lifts 19 px (Shift Y -0.03 instead of -0.02) so the longer gradient has lit felt below it and never reaches the frame edge. Everything else is v4."
+        },
+        "samples": {
+          "handShadow": {
+            "offsetsUnits": [
+              0.12,
+              0.28,
+              0.44,
+              0.6,
+              0.75
+            ]
+          }
+        },
+        "handShadow": {
+          "mode": "gradientDecal",
+          "lengthUnits": 0.55,
+          "maxAlpha": 0.5,
+          "falloff": 1.0,
+          "edgeFade": 0.03,
+          "zUnits": 0.0025,
+          "note": "Shadow take: the same hidden-start gradient as v4, longer and more visible."
+        },
+        "checks": {
+          "handShadowMaxDarkening": 0.75,
+          "handShadowMinLumaFactor": 0.4,
+          "handShadowFadeUnits": 0.58,
+          "handShadowFadeFactor": 0.92
+        }
+      },
+      "v6-shadow-long-faint": {
+        "order": 6,
+        "extends": "v4-shadow-decal",
+        "label": "v6 long faint shadow \u2014 0.65 units, alpha 0.40",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "Shadow take B: the longest and softest. About 0.65 units (18 mm), a light even haze (about 35 % dark at the edge) that fades slowly. This is the most diffuse take and the least 'contact shadow'.",
+        "camera": {
+          "shiftY": -0.03,
+          "note": "Shadow take: the framing lifts 19 px (Shift Y -0.03 instead of -0.02) so the longer gradient has lit felt below it and never reaches the frame edge. Everything else is v4."
+        },
+        "samples": {
+          "handShadow": {
+            "offsetsUnits": [
+              0.12,
+              0.28,
+              0.44,
+              0.6,
+              0.75
+            ]
+          }
+        },
+        "handShadow": {
+          "mode": "gradientDecal",
+          "lengthUnits": 0.65,
+          "maxAlpha": 0.4,
+          "falloff": 0.7,
+          "edgeFade": 0.03,
+          "zUnits": 0.0025,
+          "note": "Shadow take: the same hidden-start gradient as v4, longer and more visible."
+        },
+        "checks": {
+          "handShadowMaxDarkening": 0.75,
+          "handShadowMinLumaFactor": 0.4,
+          "handShadowFadeUnits": 0.68,
+          "handShadowFadeFactor": 0.92
+        }
+      },
+      "v7-shadow-deep": {
+        "order": 7,
+        "extends": "v4-shadow-decal",
+        "label": "v7 deep contact shadow \u2014 0.42 units, alpha 0.65",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "Shadow take C: the deepest but shortest. About 0.42 units (12 mm), roughly 55 % dark at the visible edge and dropping quickly, so it reads as a firmer contact shadow rather than a wash.",
+        "camera": {
+          "shiftY": -0.03,
+          "note": "Shadow take: the framing lifts 19 px (Shift Y -0.03 instead of -0.02) so the longer gradient has lit felt below it and never reaches the frame edge. Everything else is v4."
+        },
+        "samples": {
+          "handShadow": {
+            "offsetsUnits": [
+              0.12,
+              0.28,
+              0.44,
+              0.6,
+              0.75
+            ]
+          }
+        },
+        "handShadow": {
+          "mode": "gradientDecal",
+          "lengthUnits": 0.42,
+          "maxAlpha": 0.65,
+          "falloff": 1.4,
+          "edgeFade": 0.03,
+          "zUnits": 0.0025,
+          "note": "Shadow take: the same hidden-start gradient as v4, longer and more visible."
+        },
+        "checks": {
+          "handShadowMaxDarkening": 0.75,
+          "handShadowMinLumaFactor": 0.4,
+          "handShadowFadeUnits": 0.45,
+          "handShadowFadeFactor": 0.92
+        }
       }
     }
   },

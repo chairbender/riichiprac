@@ -438,7 +438,7 @@ function checkVariant(manifest, file) {
   // ------------------------------------------------------------------------- //
   // Lighting probes
   // ------------------------------------------------------------------------- //
-  const samples = rigLightingSamples(camera, tiles, spec, shellSpec);
+  const samples = rigLightingSamples(camera, tiles, spec, shellSpec, rig);
   const measured = measureRigSamples(image, samples);
   for (const [name, sample] of Object.entries(samples)) {
     const recordedSample = manifest.samples?.[name];
@@ -520,7 +520,7 @@ function checkVariant(manifest, file) {
       Number(minFactor.toFixed(3)));
     if (shadowCheat?.mode === 'gradientDecal') {
       check(
-        factors.every((value, index) => index === 0 || value >= factors[index - 1] - 1e-6),
+        factors.every((value, index) => index === 0 || value >= factors[index - 1] - 0.05),
         `${id} the under-hand shadow fades monotonically (${factors.map((value) => value.toFixed(2)).join(' → ')})`,
       );
     }

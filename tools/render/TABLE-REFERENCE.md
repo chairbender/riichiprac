@@ -13,7 +13,8 @@ first rig, `v2-compact` the first experiment (bigger, hands/melds pulled in to
 the wall, a readability cheat on the player's hand, dimmer key), and
 `v3-hand-shadow` moves only the player's hand a further half tile back, and
 `v4-shadow-decal` replaces the shadow with a soft gradient that emerges from the
-tile's front edge. The
+tile's front edge, and `v5`–`v7` are three longer/stronger takes on that
+gradient for choosing a preference. The
 placement board below stays at its own 2880 × 2112 framing for plan review. See
 [The 2.5D rig](#the-25d-rig-task-2).
 
@@ -268,6 +269,26 @@ The gate enforces: the decal starts under the tile, `maxAlpha` ≤ 0.45, the
 darkest visible felt ≥ 0.7× the local felt, the shadow is gone (≥ 0.92×) by 0.34
 units, the gradient is monotonic, and the wall dip stays under 15.
 
+### Shadow takes (v5–v7, 2026-11-17)
+
+v4's gradient was judged barely visible, so three takes extend v4 with a longer,
+stronger decal. Each lifts the framing 19 px (Shift Y −0.03 instead of −0.02) so
+the longer gradient finishes on lit felt instead of reaching the frame edge; the
+hand bottom margin goes 28.6 → 47.8 px. v4 itself is untouched for comparison.
+
+| Variant | Length | Max alpha | Falloff | Darkest visible (× felt) | Back to lit felt |
+| --- | --- | --- | --- | --- | --- |
+| **v4** (reference) | 0.32 u / 9 mm | 0.30 | 1.2 | 0.867 | ~0.34 u |
+| **v5 shadow wash** | 0.55 u / 15 mm | 0.50 | 1.0 | 0.702 | ~0.55 u |
+| **v6 long faint** | 0.65 u / 18 mm | 0.40 | 0.7 | 0.733 | ~0.70 u |
+| **v7 deep contact** | 0.42 u / 12 mm | 0.65 | 1.4 | 0.70 | ~0.40 u |
+
+All four share the hidden start under the tile, the front-edge emergence, no
+shadow rays and a clean wall behind the hand (dip 0.7–0.8 luma). The gate holds
+every take to the "no black rectangle" floor: max alpha ≤ 0.75, the darkest
+visible felt ≥ 0.4× the local felt, a monotonic fade (5 % noise tolerance) and
+lit felt by the variant's fade distance.
+
 ### What still needs the user
 
 The numbers say the geometry, framing, shadowing and exposure are what was
@@ -278,11 +299,11 @@ xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, wi
 bash tools/render/bake-table-reference.sh --check
 ```
 
-Questions only the user can answer for v4: does the under-hand gradient now read
-as a soft, subtle shadow coming out of the tile's front edge, with no black
-rectangle and nothing on the wall? Is about 13 % darkening at the edge too
-subtle (raise `maxAlpha`), and is 0.32 units the right length? Is the 40° recline
-and the 203 discard face still right?
+The open question is which shadow take to keep: v4 (0.32 u, 13 % dark), v5 (0.55 u,
+30 % dark), v6 (0.65 u, softly 27 % dark) or v7 (0.42 u, 30 % dark but firmer at
+the edge). Compare them on the A/B page, then the chosen one becomes the
+production setting and the others can be pruned. The 40° recline and the 203
+discard face are unchanged.
 
 ## Published renders and checks
 
