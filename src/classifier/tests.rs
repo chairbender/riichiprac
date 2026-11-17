@@ -3,7 +3,7 @@
 //! Per-lesson positive and near-miss tests live beside each recogniser. This
 //! module holds the properties that are about the *framework*:
 //!
-//! - every generated B1 lesson state classifies, and its match validates;
+//! - every generated B1/B2 lesson state classifies, and its match validates;
 //! - no two recognisers ever disagree about the answer (the one pinned ch. 7
 //!   conflict excepted);
 //! - classification is deterministic and does not read the state's own answer;
@@ -17,8 +17,8 @@ use super::*;
 use crate::generator::{ScenarioId, generate_puzzle};
 use crate::state::{CorrectAction, GameState};
 
-/// Every B1 lesson, with its generator id.
-const B1_LESSONS: &[ScenarioId] = &[
+/// Every lesson with a registered recogniser (B1's broad batch plus B2's).
+const BOOK_LESSONS: &[ScenarioId] = &[
     ScenarioId::RiichiJudgement,
     ScenarioId::DamaBadWait,
     ScenarioId::DamaGenbutsuWait,
@@ -33,6 +33,15 @@ const B1_LESSONS: &[ScenarioId] = &[
     ScenarioId::KabeDoubleOneChance,
     ScenarioId::KabeSujiDefense,
     ScenarioId::DefenseStuckHeuristic,
+    // B2.
+    ScenarioId::SujiTrapRiichi,
+    ScenarioId::PinfuHead,
+    ScenarioId::HonitsuDecision,
+    ScenarioId::MeldOrNot,
+    ScenarioId::AnkanDecision,
+    ScenarioId::ShouminkanDecision,
+    ScenarioId::DaiminkanDecision,
+    ScenarioId::WindDiscardOrder,
 ];
 
 fn generated(lesson: ScenarioId) -> GameState {
@@ -51,8 +60,8 @@ fn state_answer_set(state: &GameState) -> Vec<String> {
 }
 
 #[test]
-fn every_b1_lesson_is_registered() {
-    for &lesson in B1_LESSONS {
+fn every_book_lesson_is_registered() {
+    for &lesson in BOOK_LESSONS {
         assert!(
             classifier(lesson).is_some(),
             "{} has no classifier",
@@ -107,8 +116,8 @@ fn every_opted_in_policy_explains_itself() {
 }
 
 #[test]
-fn every_generated_b1_state_classifies_as_its_own_lesson() {
-    for &lesson in B1_LESSONS {
+fn every_generated_book_state_classifies_as_its_own_lesson() {
+    for &lesson in BOOK_LESSONS {
         for run in 0..3 {
             let state = generated(lesson);
             let matched = classify(&state, lesson).unwrap_or_else(|| {
@@ -138,7 +147,7 @@ fn every_generated_b1_state_classifies_as_its_own_lesson() {
 fn classification_never_depends_on_the_states_own_answer() {
     // Overwrite the answer and trigger fields with nonsense; the recogniser must
     // still return the book answer it recomputes.
-    for &lesson in B1_LESSONS {
+    for &lesson in BOOK_LESSONS {
         let state = generated(lesson);
         let mut stripped = state.clone();
         stripped.correct_action = CorrectAction::pass();
@@ -158,7 +167,7 @@ fn classification_never_depends_on_the_states_own_answer() {
 
 #[test]
 fn classification_is_deterministic() {
-    for &lesson in B1_LESSONS {
+    for &lesson in BOOK_LESSONS {
         let state = generated(lesson);
         let first = classify_all(&state);
         let second = classify_all(&state);
@@ -170,7 +179,7 @@ fn classification_is_deterministic() {
 fn stamping_replaces_the_lessons_answer_and_reclassifies_the_same() {
     // Stamp a match onto another lesson's table: the lesson's answer vocabulary
     // must be replaced, and the stamped table must classify the same way.
-    for &lesson in B1_LESSONS {
+    for &lesson in BOOK_LESSONS {
         let state = generated(lesson);
         let Some(matched) = classify(&state, lesson) else {
             continue;
@@ -183,8 +192,14 @@ fn stamping_replaces_the_lessons_answer_and_reclassifies_the_same() {
         assert_eq!(stamped.target_action, matched.target_action);
         assert_eq!(stamped.riichi_triggers, matched.riichi_triggers);
         assert_eq!(stamped.dama_reasons, matched.dama_reasons);
-        assert!(stamped.shouminkan_triggers.is_empty());
-        assert!(stamped.call_offer.is_none());
+        assert_eq!(stamped.shouminkan_triggers, matched.shouminkan_triggers);
+        assert_eq!(
+            stamped.call_offer,
+            state.call_offer,
+            "{}: the offered call is part of the question, not the answer",
+            lesson.as_str()
+        );
+        assert_eq!(stamped.decision, state.decision);
         assert!(stamped.ai_decision.is_none());
 
         let restamped = classify(&stamped, lesson)
@@ -245,7 +260,7 @@ fn is_documented_conflict(matches: &[Match]) -> bool {
 
 #[test]
 fn generated_states_only_disagree_on_the_ch8_bottom_row() {
-    for &lesson in B1_LESSONS {
+    for &lesson in BOOK_LESSONS {
         for _ in 0..3 {
             let state = generated(lesson);
             let matches = classify_all(&state);
@@ -277,8 +292,8 @@ fn generated_states_only_disagree_on_the_ch8_bottom_row() {
 }
 
 #[test]
-fn classify_unique_is_ok_for_every_generated_b1_state() {
-    for &lesson in B1_LESSONS {
+fn classify_unique_is_ok_for_every_generated_book_state() {
+    for &lesson in BOOK_LESSONS {
         for _ in 0..3 {
             let state = generated(lesson);
             match classify_unique(&state) {
@@ -542,7 +557,7 @@ fn a_lesson_without_a_classifier_is_not_recognised() {
         )
         .is_none()
     );
-    assert!(transform_policy(ScenarioId::MeldOrNot).is_none());
+    assert!(transform_policy(ScenarioId::ChiitoitsuRiichiVsDama).is_none());
 }
 
 // ---------------------------------------------------------------------------
@@ -612,7 +627,7 @@ fn rotation_round_trips_to_the_same_table() {
 
 #[test]
 fn classification_is_rotation_invariant_after_seat_normalisation() {
-    for &lesson in B1_LESSONS {
+    for &lesson in BOOK_LESSONS {
         let state = generated(lesson);
         let original = classify_all(&state);
         for steps in 1..4 {
@@ -636,6 +651,49 @@ fn classification_is_rotation_invariant_after_seat_normalisation() {
                 "{}: an unnormalised table must not classify",
                 lesson.as_str()
             );
+        }
+    }
+}
+
+/// B2's batch: the eight lessons B2 registered, each generated enough times to
+/// catch the rare table (the trap's plain discard can carry extra han, a quad's
+/// floating line can tie) where a shared rule would mislabel.
+#[test]
+fn b2_generated_states_never_disagree_across_lessons() {
+    let b2 = &[
+        ScenarioId::SujiTrapRiichi,
+        ScenarioId::PinfuHead,
+        ScenarioId::HonitsuDecision,
+        ScenarioId::MeldOrNot,
+        ScenarioId::AnkanDecision,
+        ScenarioId::ShouminkanDecision,
+        ScenarioId::DaiminkanDecision,
+        ScenarioId::WindDiscardOrder,
+    ];
+    for &lesson in b2 {
+        for run in 0..12 {
+            let state = generated(lesson);
+            let matched = classify(&state, lesson)
+                .unwrap_or_else(|| panic!("{}: run {run} did not classify", lesson.as_str()));
+            matched
+                .validate(&state)
+                .unwrap_or_else(|err| panic!("{}: run {run} illegal: {err}", lesson.as_str()));
+            assert_eq!(
+                matched.answer_set(),
+                state_answer_set(&state),
+                "{}: run {run} accepted tiles",
+                lesson.as_str()
+            );
+            let all = classify_all(&state);
+            for other in &all {
+                assert!(
+                    other.lesson == lesson || other.same_answer(&matched),
+                    "{}: run {run} also matched {:?} with {:?}",
+                    lesson.as_str(),
+                    other.lesson,
+                    other.answer_set()
+                );
+            }
         }
     }
 }

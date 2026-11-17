@@ -334,6 +334,24 @@ pub(crate) fn increment(counts: &mut HashMap<Tile, u8>, tile: Tile) {
     *counts.entry(tile).or_insert(0) += 1;
 }
 
+/// Parse a list of state tile codes, or `None` when one does not parse.
+pub(crate) fn parse_codes<'a>(codes: impl IntoIterator<Item = &'a String>) -> Option<Vec<Tile>> {
+    codes
+        .into_iter()
+        .map(|code| Tile::try_from(code.as_str()).ok())
+        .collect()
+}
+
+/// True when the table is the human's opening turn: the human has not
+/// discarded yet and no calls or declarations have happened anywhere.
+pub(crate) fn is_opening_turn(state: &GameState, turn: &Turn) -> bool {
+    turn.turn == 1
+        && state.current_turn == 0
+        && state.players.iter().all(|player| {
+            player.melds.is_empty() && !player.is_riichi && player.discards.len() <= 1
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

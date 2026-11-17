@@ -49,7 +49,7 @@
 
 mod board;
 mod skeleton;
-mod value;
+pub(crate) mod value;
 
 use agari::tile::Tile;
 
@@ -169,7 +169,7 @@ pub(crate) fn facts(state: &GameState) -> Option<Facts> {
 /// Every hand holds at least five tiles of the honitsu suit and at most four of
 /// either other suit, so the best-represented suit is the plan's suit without
 /// having to trust a note.
-fn honitsu_suit(tiles: &[Tile]) -> Option<agari::tile::Suit> {
+pub(crate) fn honitsu_suit(tiles: &[Tile]) -> Option<agari::tile::Suit> {
     let mut best: Option<(agari::tile::Suit, usize)> = None;
     for suit in value::SUITS {
         let count = tiles
