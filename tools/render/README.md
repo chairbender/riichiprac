@@ -1249,11 +1249,10 @@ WebGL and no per-frame lighting, and the group recipe is unchanged.
 - **Which decals exist:** `cd frontend && npm run overlays:export -- --sides`
   runs every supported composition (5,877 zones) and writes
   `build/overlays-sides.json`; `bake_overlays.mjs` bakes exactly that
-  `(shell, side)` set, filtered by `overlay.enabledFamilies`. The lying face-up
-  ponds/melds read as smudges and are deliberately unchanged; the top hand,
-  side hands and walls are off too. **The human hand now uses the 3D catches
-  below**, so the 13 synthetic hand bands (35,780 B) are the fallback rather
-  than the active path. The fallback's `right` casts use a side override
+  `(shell, side)` set, filtered by `overlay.enabledFamilies`. The synthetic
+  bands are now only the fallback for a pair without a 3-D catch: the human
+  hand, top hand, side hands, ponds, melds and walls all use the catches below.
+  The 13 synthetic hand bands (35,780 B) keep their `right` side override
   (σ 2.5 px / α 0.50).
 - **Where they go:** `frontend/src/table/contactOverlays.ts` derives contacts
   from the Phase 3 painter order. For each earlier body A and later caster B,
