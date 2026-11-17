@@ -3334,6 +3334,21 @@
   container-type: inline-size;
 }
 
+/*
+ * Fit inside the felt area in both axes when container queries are available.
+ * The `56dvh` fallback above assumes the table gets most of the viewport; a
+ * short landscape phone does not, and the board would be clipped vertically.
+ */
+@supports (height: 1cqh) {
+  .rendered-table {
+    container-type: size;
+  }
+
+  .rendered-board {
+    width: min(100%, calc(var(--board-ratio, 1.4) * 100cqh));
+  }
+}
+
 .rendered-canvas {
   display: block;
   width: 100%;
