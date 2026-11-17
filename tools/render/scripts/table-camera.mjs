@@ -779,31 +779,37 @@ export function rigLightingSamples(camera, tiles, spec, shellSpec, rig = spec.ri
           offsetUnits: offset,
         };
       }
-      // Just outside the row's left and right ends: does the shadow wrap?
-      const row = tiles.filter((tile) => tile.seat === 'bottom' && tile.kind === 'hand');
-      if (row.length) {
-        const half = row[0].dimensions.width / 2;
-        const xs = row.map((tile) => tile.origin[0]);
-        const lastOffset = shadowProbes.offsetsUnits[shadowProbes.offsetsUnits.length - 1];
-        for (const [name, x] of [
-          ['handWrapLeft', Math.min(...xs) - half - 0.08],
-          ['handWrapRight', Math.max(...xs) + half + 0.08],
-        ]) {
-          // The wrap probe and a local felt reference at the same x, so the
-          // shadow's darkening is measured without the felt's own left-right
-          // lighting variation.
-          for (const [suffix, offset] of [['', shadowProbes.offsetsUnits[0]], ['Ref', lastOffset]]) {
-            const world = [x, -(startRadius + offset), 0];
-            const [px, py] = projectPoint(camera, world);
-            samples[`${name}${suffix}`] = {
-              kind: 'point',
-              tile: null,
-              world: world.map((value) => round(value, 6)),
-              pixel: [round(px, 3), round(py, 3)],
-              radiusPx: shadowProbes.radiusPx ?? 1,
-              offsetUnits: offset,
-            };
-          }
+      // Just outside the whole hand's outer ends (left of the row, right of the
+      // drawn tile), plus the same x north of the edge line: does the shadow
+      // wrap in every direction, and does each group keep its own blob?
+      const bottom = tiles.filter(
+        (tile) => tile.seat === 'bottom' && (tile.kind === 'hand' || tile.kind === 'drawn'),
+      );
+      if (bottom.length) {
+        const first = shadowProbes.offsetsUnits[0];
+        const last = shadowProbes.offsetsUnits[shadowProbes.offsetsUnits.length - 1];
+        // 0.12 outside the end tiles: clear of their bevels, inside the widened
+        // and blurred shadow.
+        const left = Math.min(...bottom.map((tile) => tile.origin[0] - tile.dimensions.width / 2)) - 0.12;
+        const right = Math.max(...bottom.map((tile) => tile.origin[0] + tile.dimensions.width / 2)) + 0.12;
+        const probes = [
+          ['handWrapLeft', left, startRadius + first],
+          ['handWrapLeftRef', left, startRadius + last],
+          ['handWrapLeftNorth', left, startRadius - 0.15],
+          ['handWrapRight', right, startRadius + first],
+          ['handWrapRightRef', right, startRadius + last],
+          ['handWrapRightNorth', right, startRadius - 0.15],
+        ];
+        for (const [name, x, radius] of probes) {
+          const world = [x, -radius, 0];
+          const [px, py] = projectPoint(camera, world);
+          samples[name] = {
+            kind: 'point',
+            tile: null,
+            world: world.map((value) => round(value, 6)),
+            pixel: [round(px, 3), round(py, 3)],
+            radiusPx: shadowProbes.radiusPx ?? 1,
+          };
         }
       }
     }

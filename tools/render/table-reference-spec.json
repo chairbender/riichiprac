@@ -806,42 +806,30 @@
           "handShadowFadeFactor": 0.92
         }
       },
-      "v8-shadow-blurred-footprint": {
-        "order": 8,
+      "v10-shadow-split-blobs": {
+        "order": 10,
         "extends": "v5-shadow-wash",
-        "label": "v8 blurred-footprint hand shadow (take A + Gaussian blob)",
+        "label": "v10 split blobs, blurred on all four edges",
         "date": "2026-11-17",
         "strictScene": false,
-        "note": "Take A (v5) rebuilt with the retired UI shadow recipe: a rounded contact rectangle, blurred once, drawn under the hand. One plane per hand group spans its footprint plus a 2.5 sigma margin; the alpha is 0.5*maxAlpha at the footprint's front and end edges and falls to zero two sigma outside. That puts the shadow's first visible pixels exactly on the front edge and wraps it around the row's left and right ends, fixing the strip's horizontal fade-in. No shadow rays, so the wall behind stays clean.",
+        "note": "Take A (v5) rebuilt with the retired UI shadow recipe, then corrected: the contact rectangle is blurred on all four edges (v9's hard north cut left a sharp line past the end tiles), each group widens only outward (the row's left, the drawn tile's right) so the tsumogiri gap keeps the drawn tile's blob separate, and the row/drawn planes are staggered to stop them z-fighting. Same spacing, framing, lighting and hand cheat as v5.",
         "handShadow": {
           "mode": "blurredFootprint",
-          "sigmaUnits": 0.3,
+          "sigmaUnits": 0.28,
           "maxAlpha": 0.95,
+          "spreadUnits": 0.15,
+          "depthUnits": 0.5,
           "zUnits": 0.0025,
-          "note": "A blurred footprint: the contact rectangle (the row's 13-tile width x the tile's projected depth) with a Gaussian-like smoothstep edge over 2 sigma and 0.5 alpha at the edge. sigma 0.30 units (~22 px) gives the ~0.5-unit visible fade of take A; maxAlpha 0.95 puts ~0.48 opacity at the tile's front edge and a visible wrap at the row ends."
+          "note": "A rounded contact rectangle blurred once on all four edges: sigma 0.28 across the depth (take A's long fade) and 0.12 across x, so the row and the drawn tile stay separate at the tsumogiri gap instead of merging. Each group widens only outward (row left / drawn right) by 0.15 units and extends 0.5 units north under the tiles, so the wrap is soft in every direction and never a hard line.",
+          "sigmaXUnits": 0.12
         },
         "checks": {
           "handShadowMaxDarkening": 1.0,
           "handShadowMinLumaFactor": 0.4,
           "handShadowFadeUnits": 0.6,
           "handShadowFadeFactor": 0.92,
-          "handWrapMaxLumaFactor": 0.97
-        }
-      },
-      "v9-shadow-widened": {
-        "order": 9,
-        "extends": "v8-shadow-blurred-footprint",
-        "label": "v9 blurred footprint + widened shadow",
-        "date": "2026-11-17",
-        "strictScene": false,
-        "note": "v8's blur only fades at the footprint's edges; the shadow should visibly extend a little past the end tiles. v9 widens the contact rectangle by 0.15 units on each side (the retired UI recipe's oversized shadow rect) before the blur, so the wrap starts outside the tiles instead of at their edges. Same take A weight, length, framing and silhouette; no shadow rays.",
-        "handShadow": {
-          "mode": "blurredFootprint",
-          "sigmaUnits": 0.3,
-          "maxAlpha": 0.95,
-          "spreadUnits": 0.15,
-          "zUnits": 0.0025,
-          "note": "The contact rectangle is widened by spreadUnits (0.15 units, 4 mm) at each end before the blur, so the blurred shadow extends past the row's and drawn tile's end edges. The front edge line is unchanged."
+          "handWrapMaxLumaFactor": 0.97,
+          "handWrapNorthMaxLumaFactor": 0.97
         }
       }
     }

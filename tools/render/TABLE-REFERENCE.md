@@ -14,9 +14,9 @@ the wall, a readability cheat on the player's hand, dimmer key), and
 `v3-hand-shadow` moves only the player's hand a further half tile back, and
 `v4-shadow-decal` replaces the shadow with a soft gradient that emerges from the
 tile's front edge, `v5`–`v7` are three longer/stronger takes on it, and
-`v8-shadow-blurred-footprint` rebuilds the chosen take A as the retired UI
-recipe (a blurred contact rectangle), and `v9-shadow-widened` widens that
-footprint so the shadow extends past the end tiles. The
+`v10-shadow-split-blobs` rebuilds the chosen take A as the retired UI recipe: a
+blurred contact rectangle per hand group, spread past the outer ends, with the
+drawn tile keeping its own blob. The
 placement board below stays at its own 2880 × 2112 framing for plan review. See
 [The 2.5D rig](#the-25d-rig-task-2).
 
@@ -291,47 +291,31 @@ every take to the "no black rectangle" floor: max alpha ≤ 0.75, the darkest
 visible felt ≥ 0.4× the local felt, a monotonic fade (5 % noise tolerance) and
 lit felt by the variant's fade distance.
 
-### v8-shadow-blurred-footprint (experiment, 2026-11-17)
+### v10-shadow-split-blobs (experiment, 2026-11-17)
 
 Take A's look, rebuilt as the shadow recipe the retired UI was going to use: a
-**contact rectangle blurred once**, drawn under the hand. The strip's horizontal
-fade-in is gone — the shadow now starts right at the leftmost tile's edge and
-wraps around both ends like the wall in front of the player.
+**contact rectangle blurred once** on all four edges, drawn under the hand, one
+blob per group.
 
-| Parameter | v8 |
+| Parameter | v10 |
 | --- | --- |
-| Shape | one plane per hand group (13-tile row, drawn tile); the contact rect is the group's **width × the tile's projected depth**, with the **edge line at 9.4336** (the mat point that projects at the tile's front edge; geometric front edge 9.7514) |
-| Blur | 0.5 × maxAlpha at the front and end edges, smoothstep over ±2σ with **σ = 0.30 units** (~22 px), 0 outside; the plane starts at the edge line, so nothing spills behind the tiles |
-| Opacity | `maxAlpha 0.95` → ~0.48 opacity at the front edge |
-| Measured | front-edge felt **0.72×** the lit felt, back to lit by ~0.45 units; **left/right end wrap 0.887 / 0.865** (symmetric to 0.022); wall behind the hand **0.7** dip |
+| Shape | one plane per hand group (13-tile row, drawn tile); each group's rect is its contact footprint, **widened only outward** by 0.15 units (the row's left end, the drawn tile's right end) and extended 0.5 units north under the tiles |
+| Blur | all four edges; **σ 0.28 across the depth** (take A's ~0.45-unit fade) and **σ 0.12 across x**, so the row and the drawn tile stay separate at the tsumogiri gap; 0.5 × maxAlpha on the edges |
+| Opacity | `maxAlpha 0.95` → ~0.48 at the visible edge |
+| Measured | front edge **0.76×** the lit felt, lit again by ~0.45 units; outer-end wrap **0.868× / 0.871×** the local felt; north-of-the-edge wrap **0.713× / 0.649×** (the blur fades in every direction, so there is no hard line past the tiles); the tsumogiri gap stays lit (46–48 luma) between the row's 37–40 and the drawn tile's own blob; wall behind the hand **0.7** dip |
 | Shadow rays | none |
 
-The gate now also checks the wrap: both end probes must be visibly darker than
-the lit felt (≤ 0.97×) and within 0.08 of each other, and the row group's x span
-must match the row's tiles exactly, so the blur is centred on the end tiles
-rather than fading inside them.
+Two previous attempts are folded in here (and not kept): trimming the plane at
+the front edge left a **hard north line** past the end tiles, and giving both
+groups the same spread made the row and drawn blobs merge. The four-edge blur
+plus outward-only spread and a narrower x sigma fix both.
 
-### v9-shadow-widened (experiment, 2026-11-17)
+The gate asserts each group's rect is its tiles' span widened **only** on the
+outward side by the declared spread, that the decal is wider than the object,
+that the shadow wraps around both outer ends and also fades north of the edge
+line there, and that the front fade is monotonic and subtle.
 
-v8's blur faded at the footprint's edges, so the wrap only existed as the outer
-half of the blur and the right side read as stopping at the tiles. v9 widens the
-contact rectangle by **0.15 units (4 mm) at each end before the blur** — the
-retired UI recipe's oversized shadow rectangle — so the shadow extends past the
-end tiles instead of beginning at their edges.
-
-| Parameter | v9 |
-| --- | --- |
-| Rect | tiles + **0.15 units each side** (row 9.88 → 10.18; drawn tile 0.75 → 1.05) |
-| Blur / opacity | σ 0.30 units, `maxAlpha 0.95`, front edge line unchanged |
-| Measured | front-edge felt **0.754×**, lit again by ~0.45 units; just outside the row ends **0.875× / 0.768×** the local felt (the right also carries the drawn tile's blob); wall behind the hand **0.7** dip |
-| Artifact fixed | the row's and drawn tile's decal planes were coplanar and **z-fought**, so one won per pixel and a bright notch appeared at the row's right end. They are now staggered by 0.0008 units. |
-
-The gate checks that each group's decal rect is exactly its tiles' span widened
-by the declared spread, so "wider than the object" is asserted, not just aimed
-at. The end probes compare against a local felt probe at the same x, so the
-felt's own left-right lighting variation does not masquerade as wrap.
-
-### What still needs the user
+### What still needs the user### What still needs the user
 
 The numbers say the geometry, framing, shadowing and exposure are what was
 asked; only the user can sign off the *look* (AGENTS.md §6).
@@ -341,12 +325,13 @@ xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, wi
 bash tools/render/bake-table-reference.sh --check
 ```
 
-The open question is whether **v9** is the keeper: take A's length and weight,
-drawn as a widened, blurred contact rectangle that starts at the leftmost tile's
-edge and extends past both ends. If it is, it becomes the production shadow
-setting (the runtime does the same thing: a rounded rectangle under the hand,
-scaled a little past the contact footprint, blurred once) and the other takes
-can be pruned. The 40° recline and the 203 discard face are unchanged.
+The open question is whether **v10** is the keeper: take A's length and weight,
+drawn as one blurred contact rectangle per hand group that extends past the outer
+ends, fades in every direction and leaves the drawn tile its own blob. If it is,
+it becomes the production shadow setting (the runtime does the same thing: a
+rounded rectangle under each group, scaled a little past the contact footprint,
+blurred once) and the other takes can be pruned. The 40° recline and the 203
+discard face are unchanged.
 
 ## Published renders and checks
 

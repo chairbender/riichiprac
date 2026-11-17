@@ -248,6 +248,9 @@ function checkVariant(manifest, file) {
         );
         const spread = Number(record.spreadUnits ?? 0);
         check(spread >= 0, `${id} blob spread is non-negative (${spread})`);
+        const bottomGroups = ['hand', 'drawn'].filter(
+          (kind) => bottom.some((tile) => tile.kind === kind),
+        ).length;
         for (const [index, kind] of ['hand', 'drawn'].entries()) {
           const groupTiles = bottom.filter((tile) => tile.kind === kind);
           if (!groupTiles.length) continue;
@@ -259,8 +262,15 @@ function checkVariant(manifest, file) {
           if (!check(Boolean(group), `${id} blob records its ${kind} group`)) continue;
           near(group.tileX0, tileX0, 1e-3, `${id} blob ${kind} tile left edge`);
           near(group.tileX1, tileX1, 1e-3, `${id} blob ${kind} tile right edge`);
-          near(group.x0, tileX0 - spread, 1e-3, `${id} blob ${kind} shadow left edge is widened`);
-          near(group.x1, tileX1 + spread, 1e-3, `${id} blob ${kind} shadow right edge is widened`);
+          const spreadLeft = Number(group.spreadLeftUnits ?? 0);
+          const spreadRight = Number(group.spreadRightUnits ?? 0);
+          near(group.x0, tileX0 - spreadLeft, 1e-3, `${id} blob ${kind} shadow left edge is widened outward`);
+          near(group.x1, tileX1 + spreadRight, 1e-3, `${id} blob ${kind} shadow right edge is widened outward`);
+          // Only the outermost sides widen; the tsumogiri gap keeps each group
+          // on its own tile edges, so the drawn tile's blob stays its own.
+          checkEqual(`${id} blob ${kind} spreads outward only`,
+            [spreadLeft > 0, spreadRight > 0],
+            [index === 0 && spread > 0, index === bottomGroups - 1 && spread > 0]);
         }
       } else if (shadowCheat.mode === 'gradientDecal') {
         near(record.maxAlpha, shadowCheat.maxAlpha, 1e-9, `${id} decal max alpha`);
@@ -580,9 +590,29 @@ function checkVariant(manifest, file) {
       check(
         wrap.left !== null && wrap.right !== null &&
           wrap.left <= limits.handWrapMaxLumaFactor && wrap.right <= limits.handWrapMaxLumaFactor,
-        `${id} the shadow wraps around both row ends ` +
+        `${id} the shadow wraps around both outer ends ` +
           `(${wrap.left?.toFixed(2)} / ${wrap.right?.toFixed(2)} <= ${limits.handWrapMaxLumaFactor})`,
       );
+      if (Number.isFinite(limits.handWrapNorthMaxLumaFactor)) {
+        const north = {
+          left: measured.handWrapLeftNorth && measured.handWrapLeftRef
+            ? measured.handWrapLeftNorth.luma / measured.handWrapLeftRef.luma
+            : null,
+          right: measured.handWrapRightNorth && measured.handWrapRightRef
+            ? measured.handWrapRightNorth.luma / measured.handWrapRightRef.luma
+            : null,
+        };
+        checkEqual(`${id} manifest hand wrap north factors`, manifest.facts.handWrapNorthLumaFactors, {
+          left: north.left === null ? null : Number(north.left.toFixed(3)),
+          right: north.right === null ? null : Number(north.right.toFixed(3)),
+        });
+        check(
+          north.left !== null && north.right !== null &&
+            north.left <= limits.handWrapNorthMaxLumaFactor && north.right <= limits.handWrapNorthMaxLumaFactor,
+          `${id} the shadow also softens north of the ends, so there is no hard line ` +
+            `(${north.left?.toFixed(2)} / ${north.right?.toFixed(2)} <= ${limits.handWrapNorthMaxLumaFactor})`,
+        );
+      }
       // No symmetry gate: the drawn tile sits just beyond the row's right end,
       // so that side legitimately carries its own blob as well.
     }

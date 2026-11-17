@@ -166,6 +166,14 @@ const facts = {
       ? Number((measured.handWrapRight.luma / measured.handWrapRightRef.luma).toFixed(3))
       : null,
   },
+  handWrapNorthLumaFactors: {
+    left: measured.handWrapLeftNorth && measured.handWrapLeftRef
+      ? Number((measured.handWrapLeftNorth.luma / measured.handWrapLeftRef.luma).toFixed(3))
+      : null,
+    right: measured.handWrapRightNorth && measured.handWrapRightRef
+      ? Number((measured.handWrapRightNorth.luma / measured.handWrapRightRef.luma).toFixed(3))
+      : null,
+  },
   handBaseRadiusUnits: handBases,
   playerHandBackOffsetUnits: playerHandBackOffset,
   sideOverMat: Number(

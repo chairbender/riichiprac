@@ -246,13 +246,12 @@ the visible gradient emerges from the front edge, with no shadow rays at all.
 **v5 / v6 / v7** are three longer, stronger takes on that gradient (0.55 / 0.65 /
 0.42 units, 50 / 40 / 65 % max alpha) that lift the framing 19 px so the gradient
 finishes on lit felt; they are for choosing a preference.
-**v8-shadow-blurred-footprint** rebuilds the chosen take A as the retired UI
-recipe: a contact rectangle blurred once (σ 0.30 units, 0.5 alpha at the edge),
-one plane per hand group, so the shadow starts at the leftmost tile's edge and
-wraps around both ends. **v9-shadow-widened** widens that rectangle by 0.15 units
-at each end before the blur (the UI recipe's oversized rect), so the wrap extends
-past the end tiles (0.875 / 0.768 × the local felt), and staggers the row and
-drawn-tile decal planes to kill a z-fight notch at the row's right end.
+**v10-shadow-split-blobs** rebuilds the chosen take A as the retired UI shadow
+recipe: one blurred contact rectangle per hand group, all four edges blurred
+(σ 0.28 across the depth, 0.12 across x), each group widened only outward by
+0.15 units and extended 0.5 units north under the tiles. The shadow therefore
+extends past the outer ends, fades in every direction past the tiles (no hard
+line), and the tsumogiri gap keeps the drawn tile's own blob separate.
 
 The **hand cheat** in v2 reclines the player's hand further than is physical, so
 the near bottom edge floats and the real cast shadow is not the production

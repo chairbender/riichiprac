@@ -1078,18 +1078,19 @@ def edge_profile(nodes, links, source, edge: float, sigma: float, inside_sign: f
 def blurred_footprint_material(
     x0: float,
     x1: float,
-    edge_y: float,
-    sigma: float,
+    y_south: float,
+    depth: float,
+    sigma_x: float,
+    sigma_y: float,
     max_alpha: float,
 ) -> bpy.types.Material:
     """A Gaussian-like blurred rounded rectangle under the hand's footprint.
 
     This is the render-time analogue of the retired UI recipe: the contact
-    rectangle blurred once, drawn under the object. The alpha is 0.5*maxAlpha at
-    the footprint's front and end edges and falls to zero over 2 sigma outside,
-    so the shadow emerges at the tile's front edge and wraps around the left and
-    right ends instead of starting inside the row. The plane is only built south
-    of the front edge, so nothing spills behind the tiles.
+    rectangle blurred once, drawn under the object. All four edges are blurred
+    (the north edge sits under the tiles, so it is hidden in the row and fades
+    softly past the end tiles instead of leaving a hard line). The alpha is
+    0.5*maxAlpha at every footprint edge, 1 inside and 0 two sigma outside.
     """
     material = new_material("hand-shadow-blob")
     nodes = material.node_tree.nodes
@@ -1101,11 +1102,15 @@ def blurred_footprint_material(
     coordinates = nodes.new("ShaderNodeTexCoord")
     separate = nodes.new("ShaderNodeSeparateXYZ")
     links.new(coordinates.outputs["Object"], separate.inputs["Vector"])
-    left = edge_profile(nodes, links, separate.outputs["X"], x0, sigma, 1.0)
-    right = edge_profile(nodes, links, separate.outputs["X"], x1, sigma, -1.0)
-    south = edge_profile(nodes, links, separate.outputs["Y"], edge_y, sigma, 1.0)
+    y_north = y_south + depth
+    profiles = [
+        edge_profile(nodes, links, separate.outputs["X"], x0, sigma_x, 1.0),
+        edge_profile(nodes, links, separate.outputs["X"], x1, sigma_x, -1.0),
+        edge_profile(nodes, links, separate.outputs["Y"], y_south, sigma_y, 1.0),
+        edge_profile(nodes, links, separate.outputs["Y"], y_north, sigma_y, -1.0),
+    ]
     alpha = None
-    for source in (left, right, south):
+    for source in profiles:
         multiply = nodes.new("ShaderNodeMath")
         multiply.operation = "MULTIPLY"
         if alpha is None:
@@ -1316,12 +1321,14 @@ def apply_blurred_footprint_shadow(
 ) -> dict:
     """The retired UI recipe in the reference scene: a blurred contact rectangle.
 
-    One plane per hand group (the 13-tile row and the drawn tile) spans the
-    group's footprint plus a 2.5 sigma margin. Its alpha is a blurred rounded
-    rectangle: 0.5*maxAlpha at the footprint's front and end edges, 1 inside,
-    0 two sigma outside. The visible result is a soft shadow that starts at the
-    tile's front edge and wraps around the row's left and right ends, with no
-    spill behind the tiles and no shadow rays.
+    One plane per hand group (the 13-tile row and the drawn tile). Each group's
+    shadow rectangle is its contact footprint, widened outward (away from the
+    other group) by ``spreadUnits`` so the wrap extends past the outer end
+    tiles, and extended ``depthUnits`` north under the tiles. All four edges are
+    blurred, so the shadow wraps in every direction and the groups stay separate
+    at the tsumogiri gap. The rectangle is drawn at 0.5*maxAlpha on its edges
+    and fades to zero two sigma outside; the plane starts at the south edge and
+    only extends outward, with no shadow rays.
     """
     thickness = tiles[0]["dimensions"]["thickness"]
     tilt = math.radians(hand["tiltDeg"])
@@ -1330,37 +1337,40 @@ def apply_blurred_footprint_shadow(
     edge_height = math.sin(tilt) * thickness
     edge_line = front_edge - edge_height / math.tan(pitch)
     sigma = float(shadow["sigmaUnits"])
+    sigma_x = float(shadow.get("sigmaXUnits", sigma))
     max_alpha = float(shadow["maxAlpha"])
     spread = float(shadow.get("spreadUnits", 0.0))
+    depth = float(shadow.get("depthUnits", 0.5))
     z = float(shadow.get("zUnits", 0.0025))
     margin = 2.5 * sigma
-    y_north = -edge_line
-    y_south = -(edge_line + margin)
+    y_south = -edge_line
+    y_north = y_south + depth
     bottom = [tile for tile in tiles if tile["seat"] == "bottom" and tile["kind"] in ("hand", "drawn")]
     groups = [
         [tile for tile in bottom if tile["kind"] == "hand"],
         [tile for tile in bottom if tile["kind"] == "drawn"],
     ]
+    groups = [group for group in groups if group]
     planes = []
     group_records = []
-    for group in groups:
-        if not group:
-            continue
+    for index, group in enumerate(groups):
         half = group[0]["dimensions"]["width"] / 2
         xs = [tile["origin"][0] for tile in group]
         tile_x0, tile_x1 = min(xs) - half, max(xs) + half
-        # The shadow footprint is deliberately a little larger than the object
-        # (the retired UI recipe's oversized rect), so the wrap reads past the
-        # end tiles rather than only fading at their edges.
-        x0, x1 = tile_x0 - spread, tile_x1 + spread
-        material = blurred_footprint_material(x0, x1, y_north, sigma, max_alpha)
+        # Widen only the outward side of each group: the row's left end and the
+        # drawn tile's right end. The tsumogiri gap stays between them, so the
+        # drawn tile keeps its own blob instead of merging into the row's.
+        spread_left = spread if index == 0 else 0.0
+        spread_right = spread if index == len(groups) - 1 else 0.0
+        x0, x1 = tile_x0 - spread_left, tile_x1 + spread_right
+        material = blurred_footprint_material(x0, x1, y_south, depth, sigma_x, sigma, max_alpha)
         planes.append(
             add_shadow_plane(
                 f"hand-shadow-blob-{len(planes)}",
                 x0 - margin,
                 x1 + margin,
-                y_north,
-                y_south,
+                y_north + margin,
+                y_south - margin,
                 # Coplanar translucent planes z-fight and one of them wins per
                 # pixel, which shows up as a bright notch where the row's and
                 # the drawn tile's blobs overlap. Stagger them by a hair.
@@ -1374,6 +1384,8 @@ def apply_blurred_footprint_shadow(
                 "x1": round(x1, 4),
                 "tileX0": round(tile_x0, 4),
                 "tileX1": round(tile_x1, 4),
+                "spreadLeftUnits": round(spread_left, 4),
+                "spreadRightUnits": round(spread_right, 4),
                 "widthUnits": round(x1 - x0, 4),
                 "tileWidthUnits": round(tile_x1 - tile_x0, 4),
                 "edgeRadiusUnits": round(edge_line, 4),
@@ -1387,9 +1399,11 @@ def apply_blurred_footprint_shadow(
         "edgeHeightUnits": round(edge_height, 4),
         "edgeLineRadiusUnits": round(edge_line, 4),
         "sigmaUnits": sigma,
+        "sigmaXUnits": sigma_x,
         "maxAlpha": max_alpha,
         "spreadUnits": spread,
-        "falloff": "gaussian-like smoothstep over 2 sigma",
+        "depthUnits": depth,
+        "falloff": "gaussian-like smoothstep on all four edges, 2 sigma",
         "groups": group_records,
         "hiddenObjects": len(bodies) + len(decals),
         "handBodies": len(bodies),
@@ -1399,8 +1413,9 @@ def apply_blurred_footprint_shadow(
     }
     log(
         f"hand shadow blob: {len(planes)} blurred-footprint planes, edge line {edge_line:.3f} "
-        f"(front edge {front_edge:.3f}), sigma {sigma:.3f} units, max alpha {max_alpha:g}, "
-        f"spread {spread:.3f} units, over {len(bodies) + len(decals)} hidden hand objects"
+        f"(front edge {front_edge:.3f}), sigma {sigma:.3f}/{sigma_x:.3f} x, max alpha {max_alpha:g}, "
+        f"spread {spread:.3f} outward, depth {depth:.3f} north, "
+        f"over {len(bodies) + len(decals)} hidden hand objects"
     )
     return record
 

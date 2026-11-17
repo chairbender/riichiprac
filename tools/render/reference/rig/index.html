@@ -194,11 +194,11 @@ measured on the rendered pixels. Calibration only.</p>
   </section>
 
   <section>
-    <h2>v8-shadow-blurred-footprint — v8 blurred-footprint hand shadow (take A + Gaussian blob)</h2>
-    <p>Take A (v5) rebuilt with the retired UI shadow recipe: a rounded contact rectangle, blurred once, drawn under the hand. One plane per hand group spans its footprint plus a 2.5 sigma margin; the alpha is 0.5*maxAlpha at the footprint's front and end edges and falls to zero two sigma outside. That puts the shadow's first visible pixels exactly on the front edge and wraps it around the row's left and right ends, fixing the strip's horizontal fade-in. No shadow rays, so the wall behind stays clean.</p>
+    <h2>v10-shadow-split-blobs — v10 split blobs, blurred on all four edges</h2>
+    <p>Take A (v5) rebuilt with the retired UI shadow recipe, then corrected: the contact rectangle is blurred on all four edges (v9's hard north cut left a sharp line past the end tiles), each group widens only outward (the row's left, the drawn tile's right) so the tsumogiri gap keeps the drawn tile's blob separate, and the row/drawn planes are staggered to stop them z-fighting. Same spacing, framing, lighting and hand cheat as v5.</p>
     <figure>
-      <a href="v8-shadow-blurred-footprint-1x.png"><img src="v8-shadow-blurred-footprint-1x.png" alt="v8-shadow-blurred-footprint"></a>
-      <figcaption>1920×1080 RGBA · 2,623,342 B ·
+      <a href="v10-shadow-split-blobs-1x.png"><img src="v10-shadow-split-blobs-1x.png" alt="v10-shadow-split-blobs"></a>
+      <figcaption>1920×1080 RGBA · 2,622,670 B ·
       2026-11-17</figcaption>
     </figure>
     <table>
@@ -207,31 +207,7 @@ measured on the rendered pixels. Calibration only.</p>
       <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
       <tr><th>hand shadow</th><td>physical-pose caster (undefined casters)</td></tr>
       <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
-      <tr><th>under-hand shadow (darkest / fade)</th><td>0.754 × felt · 0.754 → 0.885 → 0.973 → 1.012 → 1</td></tr>
-      <tr><th>light key</th><td>6000 W</td></tr>
-      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
-      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
-      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
-      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
-      <tr><th>transparent pixels</th><td>6.87%</td></tr>
-    </table>
-  </section>
-
-  <section>
-    <h2>v9-shadow-widened — v9 blurred footprint + widened shadow</h2>
-    <p>v8's blur only fades at the footprint's edges; the shadow should visibly extend a little past the end tiles. v9 widens the contact rectangle by 0.15 units on each side (the retired UI recipe's oversized shadow rect) before the blur, so the wrap starts outside the tiles instead of at their edges. Same take A weight, length, framing and silhouette; no shadow rays.</p>
-    <figure>
-      <a href="v9-shadow-widened-1x.png"><img src="v9-shadow-widened-1x.png" alt="v9-shadow-widened"></a>
-      <figcaption>1920×1080 RGBA · 2,622,990 B ·
-      2026-11-17</figcaption>
-    </figure>
-    <table>
-      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
-      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
-      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
-      <tr><th>hand shadow</th><td>physical-pose caster (undefined casters)</td></tr>
-      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
-      <tr><th>under-hand shadow (darkest / fade)</th><td>0.754 × felt · 0.754 → 0.885 → 0.973 → 1.012 → 1</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.76 × felt · 0.76 → 0.897 → 0.986 → 1.01 → 1</td></tr>
       <tr><th>light key</th><td>6000 W</td></tr>
       <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
       <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
