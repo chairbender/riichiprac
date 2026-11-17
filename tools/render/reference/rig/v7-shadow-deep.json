@@ -10934,6 +10934,7 @@
    1
   ],
   "handShadowMinLumaFactor": 0.7,
+  "shadowMargins": {},
   "handWrapLumaFactors": {
    "left": 1.022,
    "right": 1.008

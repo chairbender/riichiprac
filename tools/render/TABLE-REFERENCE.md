@@ -16,7 +16,9 @@ the wall, a readability cheat on the player's hand, dimmer key), and
 tile's front edge, `v5`–`v7` are three longer/stronger takes on it, and
 `v10-shadow-split-blobs` rebuilds the chosen take A as the retired UI recipe: a
 blurred contact rectangle per hand group; `v11-shadow-inner-offset` widens the
-row's right end too and offsets the whole blob slightly forward. The
+row's right end too and offsets the whole blob slightly forward;
+`v12-shadow-symmetric` unions the hand row and the drawn tile into one footprint
+so the shadow is exactly symmetric. The
 placement board below stays at its own 2880 × 2112 framing for plan review. See
 [The 2.5D rig](#the-25d-rig-task-2).
 
@@ -332,6 +334,28 @@ The tsumogiri gap is now narrower, so the dip between the row's and drawn tile's
 blobs is small (≈ 41 vs 34 luma) rather than a fully lit gap; that is the trade
 for extending the row's shadow past its edge.
 
+### v12-shadow-symmetric (experiment, 2026-11-17)
+
+v11's separate rects overlapped and **double-darkened** the tsumogiri gap, the
+drawn tile's blob sat 0.14 units off-centre to its right, and the whole hand's
+outer margins were 0.15 left / 0.28 right. v12 applies the retired UI **group**
+recipe: union the zone's footprints, blur once.
+
+| Parameter | v12 |
+| --- | --- |
+| Shape | **one union footprint** for the whole hand (row + drawn tile), 0.18 units of spread at both outer ends, 0.06 units forward offset, north edge 0.5 units under the tiles |
+| Blur | all four edges, σ 0.28 depth / 0.10 x, `maxAlpha 0.95` |
+| Margins (analytic) | **0.18 / 0.18** on the row, **0.18 / 0.18** on the drawn tile, whole-hand outer margins **0.18 / 0.18**, both centres 0 offset |
+| Rendered pairs (luma, symmetric points) | drawn tile 33/34 · 34/33 · 34/34 · 34/35; whole-hand ends 34/34 · 38/37 · 42/42 · 48/46 |
+| Wrap / wall | outer-end wrap 0.785× / 0.795× the local felt; wall behind the hand 0.7 dip |
+
+Because the zone is unioned, the drawn tile's shadow is part of the hand's
+shadow instead of a separate blob — that is what removes the double-darkened
+overlap and lets the margins be exactly symmetric. The gate now asserts, for
+variants that declare it, that every group's left and right margins are equal,
+the shadow is centred on its tiles, the whole hand's outer margins match, and
+the rendered wrap factors on both ends match within 0.06.
+
 ### What still needs the user### What still needs the user
 
 The numbers say the geometry, framing, shadowing and exposure are what was
@@ -342,13 +366,12 @@ xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, wi
 bash tools/render/bake-table-reference.sh --check
 ```
 
-The open question is whether **v11** is the keeper: take A's length and weight,
-one blurred contact rectangle per hand group, widened past both of the row's ends
-and further past the drawn tile, offset slightly forward, with no hard line. If
-it is, it becomes the production shadow setting (the runtime does the same thing:
-a rounded rectangle under each group, scaled a little past the contact footprint
-and offset down a hair, blurred once) and the other takes can be pruned. The 40°
-recline and the 203 discard face are unchanged.
+The open question is whether **v12** is the keeper: take A's length and weight,
+one union footprint for the hand zone (row + drawn tile) blurred once, exactly
+symmetric margins, offset slightly forward, with no hard line. If it is, it
+becomes the production shadow setting (the runtime does the same thing: union the
+zone's contact rectangles, offset them down a hair, blur once) and the other
+takes can be pruned. The 40° recline and the 203 discard face are unchanged.
 
 ## Published renders and checks
 

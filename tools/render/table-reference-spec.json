@@ -868,6 +868,42 @@
           "handWrapMaxLumaFactor": 0.97,
           "handWrapNorthMaxLumaFactor": 0.97
         }
+      },
+      "v12-shadow-symmetric": {
+        "order": 12,
+        "extends": "v11-shadow-inner-offset",
+        "label": "v12 symmetric per-group shadows, drawn tile centred",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "The v11 shadow double-darkened where the row's and drawn tile's decals overlapped, and the drawn tile's blob was visibly off-centre. v12 applies the retired UI group recipe: the hand row and the drawn tile are unioned into one footprint and blurred once, so there is no overlap darkening and the shadow is symmetric around the whole hand (0.18 units at both outer ends). The drawn tile's shadow is part of the same union rather than a separate off-centre blob; the tsumogiri gap gets shadow like the rest of the union, as the UI recipe does.",
+        "handShadow": {
+          "mode": "blurredFootprint",
+          "sigmaUnits": 0.28,
+          "sigmaXUnits": 0.1,
+          "maxAlpha": 0.95,
+          "spreadUnits": 0.18,
+          "spreads": {
+            "hand": {
+              "left": 0.18,
+              "right": 0.18
+            }
+          },
+          "offsetYUnits": 0.06,
+          "depthUnits": 0.5,
+          "zUnits": 0.0025,
+          "note": "One blurred contact rectangle per group, all four edges (sigma 0.28 depth / 0.10 x), 0.5 alpha on every edge, spread 0.18 on every end so each group's shadow is symmetric around its tiles, the whole rect 0.06 units south, and the north edge 0.5 units under the tiles.",
+          "unionGroups": true
+        },
+        "checks": {
+          "handShadowMaxDarkening": 1.0,
+          "handShadowMinLumaFactor": 0.4,
+          "handShadowFadeUnits": 0.6,
+          "handShadowFadeFactor": 0.92,
+          "handWrapMaxLumaFactor": 0.97,
+          "handWrapNorthMaxLumaFactor": 0.97,
+          "handWrapSymmetryTolerance": 0.06,
+          "symmetricGroups": true
+        }
       }
     }
   },

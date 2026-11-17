@@ -255,7 +255,10 @@ line), and the tsumogiri gap keeps the drawn tile's own blob separate.
 **v11-shadow-inner-offset** widens the hand row's right end too (0.15 both ends),
 pushes the drawn tile's blob 0.28 units past the hand, narrows the x blur to
 0.10, and offsets the whole footprint 0.06 units forward so the shadow does not
-sit perfectly centred on the tiles.
+sit perfectly centred on the tiles. **v12-shadow-symmetric** applies the UI group
+recipe instead: the hand row and the drawn tile are unioned into one footprint
+and blurred once, so the tsumogiri gap is not double-darkened and the shadow is
+exactly symmetric (0.18 units at both outer ends, drawn tile centred).
 
 The **hand cheat** in v2 reclines the player's hand further than is physical, so
 the near bottom edge floats and the real cast shadow is not the production

@@ -1355,6 +1355,11 @@ def apply_blurred_footprint_shadow(
         [tile for tile in bottom if tile["kind"] == "drawn"],
     ]
     groups = [group for group in groups if group]
+    if shadow.get("unionGroups"):
+        # The retired UI group recipe: union the zone's footprints, blur once.
+        # The hand row and the drawn tile become one symmetric shadow with no
+        # double-darkened overlap in the tsumogiri gap.
+        groups = [bottom]
     planes = []
     group_records = []
     for index, group in enumerate(groups):
@@ -1365,7 +1370,8 @@ def apply_blurred_footprint_shadow(
         # shadow passes the last tile), while the drawn tile keeps its gap side
         # at its tile edge and widens only outward. A variant may override each
         # side through `spreads`.
-        entry = spreads.get(group[0]["kind"], {})
+        kind = "hand" if shadow.get("unionGroups") else group[0]["kind"]
+        entry = spreads.get(kind, {})
         spread_left = float(entry.get("left", spread))
         spread_right = float(entry.get("right", spread))
         x0, x1 = tile_x0 - spread_left, tile_x1 + spread_right
@@ -1386,6 +1392,7 @@ def apply_blurred_footprint_shadow(
         )
         group_records.append(
             {
+                "kind": kind,
                 "x0": round(x0, 4),
                 "x1": round(x1, 4),
                 "tileX0": round(tile_x0, 4),
@@ -1412,6 +1419,7 @@ def apply_blurred_footprint_shadow(
         "offsetYUnits": offset,
         "depthUnits": depth,
         "falloff": "gaussian-like smoothstep on all four edges, 2 sigma",
+        "unionGroups": bool(shadow.get("unionGroups")),
         "groups": group_records,
         "hiddenObjects": len(bodies) + len(decals),
         "handBodies": len(bodies),

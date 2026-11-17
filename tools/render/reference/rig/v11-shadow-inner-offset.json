@@ -10969,6 +10969,18 @@
    1
   ],
   "handShadowMinLumaFactor": 0.698,
+  "shadowMargins": {
+   "hand": {
+    "leftUnits": 0.15,
+    "rightUnits": 0.15,
+    "centreOffsetUnits": 0
+   },
+   "drawn": {
+    "leftUnits": 0,
+    "rightUnits": 0.28,
+    "centreOffsetUnits": 0.14
+   }
+  },
   "handWrapLumaFactors": {
    "left": 0.818,
    "right": 0.71

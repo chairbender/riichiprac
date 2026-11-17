@@ -137,6 +137,8 @@ const shadowFactors = shadowReference
   ? shadowLumas.map((value) => (value === null ? null : Number((value / shadowReference).toFixed(3))))
   : [];
 
+const manifestShadowGroups = (entry) => entry?.groups ?? [];
+
 const facts = {
   faceLuma: luma('face'),
   blueLuma: luma('blue'),
@@ -158,6 +160,13 @@ const facts = {
   handShadowMinLumaFactor: shadowFactors.length
     ? Math.min(...shadowFactors.filter((value) => value !== null))
     : null,
+  shadowMargins: Object.fromEntries(
+    (manifestShadowGroups(bake.handShadowCheat)).map((group, index) => [index === 0 ? 'hand' : 'drawn', {
+      leftUnits: Number((group.tileX0 - group.x0).toFixed(4)),
+      rightUnits: Number((group.x1 - group.tileX1).toFixed(4)),
+      centreOffsetUnits: Number((((group.x0 + group.x1) / 2) - ((group.tileX0 + group.tileX1) / 2)).toFixed(4)),
+    }]),
+  ),
   handWrapLumaFactors: {
     left: measured.handWrapLeft && measured.handWrapLeftRef
       ? Number((measured.handWrapLeft.luma / measured.handWrapLeftRef.luma).toFixed(3))
@@ -286,6 +295,7 @@ const settingsRows = (entry) => {
         : 'real'}</td></tr>
       <tr><th>wall behind the hand (dip)</th><td>${entry.facts?.wallFaceDip ?? '?'} luma</td></tr>
       <tr><th>under-hand shadow (darkest / fade)</th><td>${entry.facts?.handShadowMinLumaFactor ?? '?'} × felt · ${entry.facts?.handShadowLumaFactors?.join(' → ') ?? ''}</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>${Object.entries(entry.facts?.shadowMargins ?? {}).map(([group, value]) => `${group}: ${value.leftUnits} / ${value.rightUnits} / ${value.centreOffsetUnits}`).join(' · ') || '—'}</td></tr>
       <tr><th>light key</th><td>${entry.lighting?.lights?.[0]?.energyW ?? '?'} W</td></tr>
       <tr><th>tile size (hand face width)</th><td>${entry.metrics?.hand?.rows?.[6]?.topWidthPx ?? '?'} px</td></tr>
       <tr><th>hand face / discard luma</th><td>${entry.facts?.handFaceLuma} / ${entry.facts?.faceLuma}</td></tr>

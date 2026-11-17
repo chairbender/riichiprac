@@ -239,7 +239,7 @@ function checkVariant(manifest, file) {
         );
         near(record.maxAlpha, shadowCheat.maxAlpha, 1e-9, `${id} blob max alpha`);
         near(record.offsetYUnits ?? 0, shadowCheat.offsetYUnits ?? 0, 1e-9, `${id} blob forward offset`);
-        check(record.objects >= 2, `${id} blob has ${record.objects} planes`);
+        check(record.objects >= (shadowCheat.unionGroups ? 1 : 2), `${id} blob has ${record.objects} planes`);
         check(record.sigmaUnits > 0 && (record.sigmaXUnits ?? record.sigmaUnits) > 0,
           `${id} blob sigmas are positive`);
         check(
@@ -254,7 +254,37 @@ function checkVariant(manifest, file) {
         const bottom = (manifest.scene?.tiles ?? []).filter(
           (tile) => tile.seat === 'bottom' && (tile.kind === 'hand' || tile.kind === 'drawn'),
         );
-        for (const [index, kind] of ['hand', 'drawn'].entries()) {
+        if (shadowCheat.unionGroups) {
+          // The UI group recipe: one union footprint for the whole hand. It must
+          // span every hand tile plus the declared spreads and be wider than the
+          // tiles, i.e. symmetric around the whole hand.
+          const minX = Number(Math.min(...bottom.map(
+            (tile) => tile.origin[0] - tile.dimensions.width / 2,
+          )).toFixed(4));
+          const maxX = Number(Math.max(...bottom.map(
+            (tile) => tile.origin[0] + tile.dimensions.width / 2,
+          )).toFixed(4));
+          const group = record.groups?.[0];
+          if (check(Boolean(group), `${id} union blob records its group`)) {
+            near(group.tileX0, minX, 1e-3, `${id} union blob hand left edge`);
+            near(group.tileX1, maxX, 1e-3, `${id} union blob drawn right edge`);
+            const spreadLeft = Number(group.spreadLeftUnits ?? 0);
+            const spreadRight = Number(group.spreadRightUnits ?? 0);
+            near(group.x0, minX - spreadLeft, 1e-3, `${id} union blob shadow left edge`);
+            near(group.x1, maxX + spreadRight, 1e-3, `${id} union blob shadow right edge`);
+            check(
+              group.widthUnits > group.tileWidthUnits,
+              `${id} union blob shadow is wider than the hand ` +
+                `(${group.widthUnits} > ${group.tileWidthUnits})`,
+            );
+            const declared = shadowCheat.spreads?.hand;
+            if (declared) {
+              near(spreadLeft, declared.left ?? 0, 1e-9, `${id} union blob declared left spread`);
+              near(spreadRight, declared.right ?? 0, 1e-9, `${id} union blob declared right spread`);
+            }
+          }
+        }
+        for (const [index, kind] of (shadowCheat.unionGroups ? [] : ['hand', 'drawn']).entries()) {
           const groupTiles = bottom.filter((tile) => tile.kind === kind);
           if (!groupTiles.length) continue;
           const half = groupTiles[0].dimensions.width / 2;
@@ -279,6 +309,32 @@ function checkVariant(manifest, file) {
           if (declared) {
             near(spreadLeft, declared.left ?? 0, 1e-9, `${id} blob ${kind} declared left spread`);
             near(spreadRight, declared.right ?? 0, 1e-9, `${id} blob ${kind} declared right spread`);
+          }
+        }
+        if (limits.symmetricGroups) {
+          // Every group's shadow must be symmetric around its own tiles and
+          // centred on them, and the whole hand's outer margins must match.
+          const groups = record.groups ?? [];
+          for (const [index, group] of groups.entries()) {
+            const leftMargin = group.tileX0 - group.x0;
+            const rightMargin = group.x1 - group.tileX1;
+            check(
+              Math.abs(leftMargin - rightMargin) <= 1e-3,
+              `${id} group ${index} shadow is symmetric (L ${leftMargin.toFixed(3)} vs R ${rightMargin.toFixed(3)})`,
+            );
+            const centreOffset = (group.x0 + group.x1) / 2 - (group.tileX0 + group.tileX1) / 2;
+            check(
+              Math.abs(centreOffset) <= 1e-3,
+              `${id} group ${index} shadow is centred (offset ${centreOffset.toFixed(3)})`,
+            );
+          }
+          if (groups.length >= 2) {
+            const leftOuter = groups[0].tileX0 - groups[0].x0;
+            const rightOuter = groups[groups.length - 1].x1 - groups[groups.length - 1].tileX1;
+            check(
+              Math.abs(leftOuter - rightOuter) <= 1e-3,
+              `${id} whole-hand outer shadow margins match (${leftOuter.toFixed(3)} vs ${rightOuter.toFixed(3)})`,
+            );
           }
         }
       } else if (shadowCheat.mode === 'gradientDecal') {
@@ -602,6 +658,13 @@ function checkVariant(manifest, file) {
         `${id} the shadow wraps around both outer ends ` +
           `(${wrap.left?.toFixed(2)} / ${wrap.right?.toFixed(2)} <= ${limits.handWrapMaxLumaFactor})`,
       );
+      if (Number.isFinite(limits.handWrapSymmetryTolerance)) {
+        check(
+          wrap.left !== null && wrap.right !== null &&
+            Math.abs(wrap.left - wrap.right) <= limits.handWrapSymmetryTolerance,
+          `${id} the rendered wrap is symmetric (${wrap.left?.toFixed(3)} vs ${wrap.right?.toFixed(3)})`,
+        );
+      }
       if (Number.isFinite(limits.handWrapNorthMaxLumaFactor)) {
         const north = {
           left: measured.handWrapLeftNorth && measured.handWrapLeftRef
