@@ -56,6 +56,7 @@ class FakeContext {
 
   save(): void {}
   restore(): void {}
+  scale(): void {}
   translate(): void {}
   rotate(): void {}
   beginPath(): void {}

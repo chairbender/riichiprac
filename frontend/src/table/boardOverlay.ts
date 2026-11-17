@@ -47,6 +47,8 @@ export interface BoardHitZone {
   readonly y: number;
   readonly width: number;
   readonly height: number;
+  /** Uniform zone scale; width/height are already scaled for display. */
+  readonly scale: number;
   readonly rotationDeg: number;
   readonly pivotX: number;
   readonly pivotY: number;
@@ -220,6 +222,7 @@ function hitZone(
     y: placement.y,
     width: zone.width,
     height: zone.height,
+    scale: placement.scale,
     rotationDeg: zone.rotationDeg,
     pivotX: zone.pivotX,
     pivotY: zone.pivotY,

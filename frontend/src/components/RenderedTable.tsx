@@ -51,8 +51,8 @@ function zoneStyle(zone: BoardHitZone, board: Board): CSSProperties {
   const style: CSSProperties = {
     left: percent(zone.x, board.width),
     top: percent(zone.y, board.height),
-    width: percent(zone.width, board.width),
-    height: percent(zone.height, board.height),
+    width: percent(zone.width * zone.scale, board.width),
+    height: percent(zone.height * zone.scale, board.height),
   };
   if (zone.rotationDeg !== 0) {
     style.transform = `rotate(${zone.rotationDeg}deg)`;
@@ -65,6 +65,8 @@ function zoneStyle(zone: BoardHitZone, board: Board): CSSProperties {
 }
 
 function tileStyle(tile: BoardHitZone['tiles'][number], zone: BoardHitZone): CSSProperties {
+  // The zone container is scaled; percentages relative to its scaled width
+  // are the same as relative to the native width, so no extra scale factor.
   return {
     left: percent(tile.x - zone.x, zone.width),
     top: percent(tile.y - zone.y, zone.height),

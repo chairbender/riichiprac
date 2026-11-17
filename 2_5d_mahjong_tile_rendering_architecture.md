@@ -1699,10 +1699,11 @@ looks flat, it is the display size, not a flat-glyph fallback.
 **Review follow-ups (2026-11-16).** The rendered pass exposed five layout
 issues, fixed here:
 
-1. The wall is a full 17-stack ring on every side. The side walls tuck **46 px
+1. The wall is a full 17-stack ring on every side. The side walls tuck **80 px
    under the front/back wall ends** at the corners, and their bottom tile edges
    sit **exactly on the front wall's bottom edge**. The front wall is painted
-   after the side walls and covers the join.
+   after the side walls and covers the join. The **back wall is scaled to 0.95**
+   as a distance cue; the front wall stays at 1.0.
 2. The side-pond lean is **removed**; every pond is straight
    (`SIDE_POND_LEAN_DEG = 0`). Z rotations at 1/3/5° all read as tipping.
 3. The side hands use the published per-side camera axis: left `(−6.7, 45)`,
@@ -1717,6 +1718,12 @@ issues, fixed here:
    published lying sigma of 12; on a 1200 px run the 12 px tail read as a hard
    edge. The **side-hand groups also use 20 px** (the second review's request;
    their published standing sigma is 5). The bottom/top hand groups stay at 5.
+
+**Distance scaling.** The human's bottom pond is the reference at 1.0. The
+three far ponds (top, left, right) draw at **0.9**, and the back wall at
+**0.95**; their bodies, shadow footprints and hit boxes use the same scale.
+The side walls and front wall stay at 1.0. This is a presentation scale on the
+composed zone, not a new shell or a per-tile reposition.
 
 The face-up tiles use the carved decal atlas (648 decal sprites, 0 flat glyphs;
 a `1p` sprite differs from its flat twin by a mean 17.3 luma). The review still
@@ -1742,11 +1749,9 @@ of the two side-hand shadows/catches: task **261116-2217, "2.5D polish: re-bake
 left/right hand shells with weaker perspective"**, is **started** in its own
 worktree/session.
 
-The front/back wall runs measure **1201.35 px** (front, bottom) and **1195.8 px**
-(back, top) body width at @1x: the back is already 5.5 px smaller. Swapping the
-two shell families would put the nearer/larger front shells at the top, so it
-would make the top longer, not shorter. A visibly smaller back would need a
-deliberate scale (about 0.97), which is a separate visual decision.
+The front/back wall runs measure **1201.35 px** (front, bottom) at 1.0 and
+**1136.0 px** (back, top) at 0.95 after the distance scale: the back is now
+about 65 px (5.4%) smaller, which is the requested cue.
 
 **Caching.** `update()` returns the zone/group ids it rebuilt. A second update
 with the same board rebuilds nothing; changing one pond body rebuilds that pond
@@ -1779,7 +1784,7 @@ grade when it changes. No game logic moved into React: the view only reads
 
 **Verification.**
 
-- `cd frontend && npx vitest run` — **21 files / 264 tests**, including 32
+- `cd frontend && npx vitest run` — **21 files / 265 tests**, including 33
   board-layout tests (global layer order, fan/pond/wall tier order, advance-box
   hit boxes, non-overlapping shadow-group bounds, compass geometry, group
   sigmas) and 8 compositor tests (composite order, one blur per group, cache
@@ -1796,10 +1801,10 @@ grade when it changes. No game logic moved into React: the view only reads
   (`build/review/pond-lean-lab-4x.png`) for the open visual pick.
 - `cd frontend && npm run board:review` writes
   `tools/render/build/review/rendered-board-1x.png` and
-  `rendered-board-numbers.json`. The committed fixture reports **2325 × 1398 px
+  `rendered-board-numbers.json`. The committed fixture reports **2257 × 1377 px
   @1x, 14 zones, 11 shadow groups (walls and side hands at sigma 20), 212
   bodies, 144 hard shapes, 193 contact decals, 153 preloaded textures, 648
-  decal sprites, 921,538 opaque body pixels and 641,827 shadow pixels, with 0 non-transparent pixels on the outer 4 px
+  decal sprites, 892,275 opaque body pixels and 613,992 shadow pixels, with 0 non-transparent pixels on the outer 4 px
   edge**; the painter order is the 11 group layers
   then `wall-back`, `hand-top`, `wall-side-left`, `wall-side-right`,
   `pond-bottom`, `pond-right`, `pond-top`, `pond-left`, `wall-front`,

@@ -221,14 +221,14 @@ describe('board geometry', () => {
         result.height - BOARD_MARGIN + 0.01,
       );
       for (const tile of placement.zone.bodies) {
-        expect(placement.x + tile.hitBox.x).toBeGreaterThanOrEqual(0);
-        expect(placement.y + tile.hitBox.y).toBeGreaterThanOrEqual(0);
-        expect(placement.x + tile.hitBox.x + tile.hitBox.width).toBeLessThanOrEqual(
-          result.width,
-        );
-        expect(placement.y + tile.hitBox.y + tile.hitBox.height).toBeLessThanOrEqual(
-          result.height,
-        );
+        const left = placement.x + tile.hitBox.x * placement.scale;
+        const top = placement.y + tile.hitBox.y * placement.scale;
+        const right = left + tile.hitBox.width * placement.scale;
+        const bottom = top + tile.hitBox.height * placement.scale;
+        expect(left).toBeGreaterThanOrEqual(0);
+        expect(top).toBeGreaterThanOrEqual(0);
+        expect(right).toBeLessThanOrEqual(result.width);
+        expect(bottom).toBeLessThanOrEqual(result.height);
       }
     }
     for (const group of result.groups) {
@@ -247,6 +247,18 @@ describe('board geometry', () => {
     expect(result.compass.y).toBeGreaterThan(0);
     expect(result.compass.x + result.compass.width).toBeLessThan(result.width);
     expect(result.compass.y + result.compass.height).toBeLessThan(result.height);
+  });
+
+  it('scales the three far ponds and the back wall', () => {
+    const result = board();
+    expect(zone(result, 'pond-bottom').scale).toBe(1);
+    for (const side of ['top', 'left', 'right'] as const) {
+      expect(zone(result, `pond-${side}`).scale).toBe(0.9);
+    }
+    expect(zone(result, 'wall-back').scale).toBe(0.95);
+    expect(zone(result, 'wall-front').scale).toBe(1);
+    expect(zone(result, 'wall-side-left').scale).toBe(1);
+    expect(zone(result, 'wall-side-right').scale).toBe(1);
   });
 
   it('keeps every pond straight', () => {
@@ -317,10 +329,12 @@ describe('board geometry', () => {
       let right = -Infinity;
       let bottom = -Infinity;
       for (const tile of placement.zone.bodies) {
-        left = Math.min(left, placement.x + tile.hitBox.x);
-        top = Math.min(top, placement.y + tile.hitBox.y);
-        right = Math.max(right, placement.x + tile.hitBox.x + tile.hitBox.width);
-        bottom = Math.max(bottom, placement.y + tile.hitBox.y + tile.hitBox.height);
+        const tileLeft = placement.x + tile.hitBox.x * placement.scale;
+        const tileTop = placement.y + tile.hitBox.y * placement.scale;
+        left = Math.min(left, tileLeft);
+        top = Math.min(top, tileTop);
+        right = Math.max(right, tileLeft + tile.hitBox.width * placement.scale);
+        bottom = Math.max(bottom, tileTop + tile.hitBox.height * placement.scale);
       }
       return { x: left, y: top, right, bottom };
     };

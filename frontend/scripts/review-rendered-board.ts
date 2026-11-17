@@ -194,8 +194,9 @@ const numbers = {
     side: placement.zone.side,
     x: placement.x,
     y: placement.y,
-    width: placement.zone.width,
-    height: placement.zone.height,
+    width: placement.zone.width * placement.scale,
+    height: placement.zone.height * placement.scale,
+    scale: placement.scale,
     rotationDeg: placement.zone.rotationDeg,
     bodies: placement.zone.bodies.length,
     shadows: placement.zone.shadows.length,
@@ -205,10 +206,12 @@ const numbers = {
       let right = -Infinity;
       let bottom = -Infinity;
       for (const tile of placement.zone.bodies) {
-        left = Math.min(left, placement.x + tile.hitBox.x);
-        top = Math.min(top, placement.y + tile.hitBox.y);
-        right = Math.max(right, placement.x + tile.hitBox.x + tile.hitBox.width);
-        bottom = Math.max(bottom, placement.y + tile.hitBox.y + tile.hitBox.height);
+        const tileLeft = placement.x + tile.hitBox.x * placement.scale;
+        const tileTop = placement.y + tile.hitBox.y * placement.scale;
+        left = Math.min(left, tileLeft);
+        top = Math.min(top, tileTop);
+        right = Math.max(right, tileLeft + tile.hitBox.width * placement.scale);
+        bottom = Math.max(bottom, tileTop + tile.hitBox.height * placement.scale);
       }
       return { x: left, y: top, width: right - left, height: bottom - top };
     })(),

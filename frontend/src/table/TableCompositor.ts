@@ -171,14 +171,18 @@ export function drawZoneLayer(
   createCanvas: CreateBoardCanvas,
 ): ZoneLayer {
   const { zone } = placement;
-  const pad = placement.rotationPad;
+  const scale = placement.scale;
+  // `rotationPad` is already scaled; the drawing transform works in the
+  // zone's native local coordinates, so recover the native pad.
+  const pad = scale === 0 ? placement.rotationPad : placement.rotationPad / scale;
   const canvas = createCanvas(
-    Math.max(1, zone.width + pad * 2),
-    Math.max(1, zone.height + pad * 2),
+    Math.max(1, Math.ceil((zone.width + pad * 2) * scale)),
+    Math.max(1, Math.ceil((zone.height + pad * 2) * scale)),
   );
   const context = contextOf(canvas);
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
+  context.scale(scale, scale);
   if (zone.rotationDeg !== 0) {
     context.translate(pad + zone.pivotX, pad + zone.pivotY);
     context.rotate((zone.rotationDeg * Math.PI) / 180);
@@ -223,7 +227,7 @@ export function drawZoneLayer(
   });
 
   context.restore();
-  return { canvas, x: placement.x - pad, y: placement.y - pad };
+  return { canvas, x: placement.x - placement.rotationPad, y: placement.y - placement.rotationPad };
 }
 
 function zoneSignature(
@@ -235,6 +239,7 @@ function zoneSignature(
     placement.id,
     placement.x,
     placement.y,
+    placement.scale,
     placement.rotationPad,
     zone.rotationDeg,
     zone.pivotX,

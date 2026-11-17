@@ -59,8 +59,12 @@ export const BOARD_MARGIN = 28;
 export const BOARD_GAP = 28;
 /** Extra gap around the centre compartment so pond shadow bounds clear. */
 const POND_GAP = 56;
-/** The side walls tuck 46 px under the front/back wall ends at the corners. */
-const WALL_CORNER_OVERLAP = 46;
+/** The side walls tuck under the front/back wall ends at the corners. */
+const WALL_CORNER_OVERLAP = 80;
+/** The three far ponds draw slightly smaller than the human's pond. */
+const POND_DISTANCE_SCALE = 0.9;
+/** The back wall is farther away; shrink it slightly as a distance cue. */
+const BACK_WALL_SCALE = 0.95;
 /**
  * The wall run is a very long band; the published lying sigma (12) reads as a
  * hard edge at that length. The 2026-11-16 review asked for the same soft read
@@ -99,6 +103,8 @@ export interface BoardZone {
   /** Top-left of the zone's unrotated local box, in board px. */
   readonly x: number;
   readonly y: number;
+  /** Uniform scale applied to the whole zone (1 = native @1x). */
+  readonly scale: number;
   /**
    * Transparent margin a lean needs so a rotated body is not clipped by its
    * own offscreen layer. Zero for an unrotated zone.
@@ -212,9 +218,15 @@ export function wallStartIndex(stacks: number): number {
 }
 
 /** Transparent margin a whole-zone lean needs around its local box. */
-function rotationPadOf(zone: LayoutZone): number {
+function rotationPadOf(zone: LayoutZone, scale: number): number {
   if (zone.rotationDeg === 0) return 0;
-  return Math.ceil(Math.abs(Math.sin(rad(zone.rotationDeg))) * Math.hypot(zone.width, zone.height)) + 2;
+  return (
+    Math.ceil(
+      Math.abs(Math.sin(rad(zone.rotationDeg))) *
+        Math.hypot(zone.width, zone.height) *
+        scale,
+    ) + 2
+  );
 }
 
 interface BodyInsets {
@@ -242,21 +254,30 @@ function bodyInsets(zone: LayoutZone): BodyInsets | null {
   return { left, top, right, bottom, width: right - left, height: bottom - top };
 }
 
-function placeZone(zone: LayoutZone, x: number, y: number): BoardZone {
+function placeZone(zone: LayoutZone, x: number, y: number, scale = 1): BoardZone {
   // Composite positions are whole @1x px; the zone's internal grid and hit box
   // stay fractional. A half-pixel blit would anti-alias every tile edge.
   const px = Math.round(x);
   const py = Math.round(y);
-  const pivotX = px + zone.pivotX;
-  const pivotY = py + zone.pivotY;
+  const pivotX = px + zone.pivotX * scale;
+  const pivotY = py + zone.pivotY * scale;
   return {
     id: zone.id,
     zone,
     layer: zone.layer,
     x: px,
     y: py,
-    rotationPad: rotationPadOf(zone),
-    bounds: rotatedRectBounds(px, py, zone.width, zone.height, zone.rotationDeg, pivotX, pivotY),
+    scale,
+    rotationPad: rotationPadOf(zone, scale),
+    bounds: rotatedRectBounds(
+      px,
+      py,
+      zone.width * scale,
+      zone.height * scale,
+      zone.rotationDeg,
+      pivotX,
+      pivotY,
+    ),
   };
 }
 
@@ -395,15 +416,16 @@ function buildShadowGroups(
 
     for (const member of members) {
       const { zone } = member;
-      const pivotX = member.x + zone.pivotX;
-      const pivotY = member.y + zone.pivotY;
+      const scale = member.scale;
+      const pivotX = member.x + zone.pivotX * scale;
+      const pivotY = member.y + zone.pivotY * scale;
       for (const tile of zone.shadows) {
         const shell = manifest.shells[tile.shell];
         if (!shell) continue;
         const shape: ShadowShape = shell.shadowShape;
         const [centreX, centreY] = rotatePoint(
-          member.x + tile.gridX + shape.centrePx[0],
-          member.y + tile.gridY + shape.centrePx[1],
+          member.x + (tile.gridX + shape.centrePx[0]) * scale,
+          member.y + (tile.gridY + shape.centrePx[1]) * scale,
           pivotX,
           pivotY,
           zone.rotationDeg,
@@ -411,9 +433,9 @@ function buildShadowGroups(
         shapes.push({
           centreX,
           centreY,
-          halfX: shape.halfPx[0],
-          halfY: shape.halfPx[1],
-          radiusPx: shape.radiusPx,
+          halfX: shape.halfPx[0] * scale,
+          halfY: shape.halfPx[1] * scale,
+          radiusPx: shape.radiusPx * scale,
           angleDeg: shadowAngleFor(zone, shape),
         });
         sigmaPx1x = shape.sigmaPx1x;
@@ -538,23 +560,41 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
     pondZones.set(side, layoutPond(manifest, { discards, side }));
   }
 
+  const zoneWidth = (zone: BoardZone): number => zone.zone.width * zone.scale;
+  const zoneHeight = (zone: BoardZone): number => zone.zone.height * zone.scale;
+
   const ponds = new Map<TableSide, BoardZone>();
   for (const side of TABLE_SIDES) {
     const zone = pondZones.get(side);
     if (!zone) continue;
-    let x = -zone.width / 2;
-    let y = -zone.height / 2;
+    const scale = side === 'bottom' ? 1 : POND_DISTANCE_SCALE;
+    const width = zone.width * scale;
+    const height = zone.height * scale;
+    let x = -width / 2;
+    let y = -height / 2;
     if (side === 'bottom') y = half + POND_GAP;
-    if (side === 'top') y = -half - POND_GAP - zone.height;
-    if (side === 'left') x = -half - POND_GAP - zone.width;
+    if (side === 'top') y = -half - POND_GAP - height;
+    if (side === 'left') x = -half - POND_GAP - width;
     if (side === 'right') x = half + POND_GAP;
-    ponds.set(side, placeZone(zone, x, y));
+    ponds.set(side, placeZone(zone, x, y, scale));
   }
 
-  const rightOf = (zone: BoardZone | undefined, fallback: number): number =>
-    zone ? zone.x + zone.zone.width : fallback;
-  const bottomOf = (zone: BoardZone | undefined, fallback: number): number =>
-    zone ? zone.y + zone.zone.height : fallback;
+  const rightOf = (zone: BoardZone | undefined, fallback = 0): number =>
+    zone ? zone.x + zoneWidth(zone) : fallback;
+  const bottomOf = (zone: BoardZone | undefined, fallback = 0): number =>
+    zone ? zone.y + zoneHeight(zone) : fallback;
+  const bodyEdges = (
+    placement: BoardZone,
+  ): { left: number; right: number; bottom: number; width: number } | null => {
+    const insets = bodyInsets(placement.zone);
+    if (!insets) return null;
+    return {
+      left: placement.x + insets.left * placement.scale,
+      right: placement.x + insets.right * placement.scale,
+      bottom: placement.y + insets.bottom * placement.scale,
+      width: insets.width * placement.scale,
+    };
+  };
 
   // Walls: all four share one shadow group and form a ring. The front/back
   // walls are centred over their ponds; the side walls sit just outside their
@@ -566,12 +606,13 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
     const topAnchor = topPond ? topPond.y : -half - BOARD_GAP;
     const backPlacement = placeZone(
       back,
-      -back.width / 2,
-      topAnchor - BOARD_GAP - back.height,
+      (-back.width * BACK_WALL_SCALE) / 2,
+      topAnchor - BOARD_GAP - back.height * BACK_WALL_SCALE,
+      BACK_WALL_SCALE,
     );
     const front = layoutWall(manifest, { wall: 'front', count: stacks, startIndex });
     const bottomPond = ponds.get('bottom');
-    const bottomAnchor = bottomPond ? bottomPond.y + bottomPond.zone.height : half + BOARD_GAP;
+    const bottomAnchor = bottomPond ? bottomOf(bottomPond) : half + BOARD_GAP;
     const frontPlacement = placeZone(
       front,
       -front.width / 2,
@@ -580,23 +621,11 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
     walls.set('top', backPlacement);
     walls.set('bottom', frontPlacement);
 
-    const backInsets = bodyInsets(back);
-    const frontInsets = bodyInsets(front);
-    if (!backInsets || !frontInsets) {
-      // A bodyless wall cannot happen with a real manifest; leave the ring out.
-      walls.set('top', backPlacement);
-      walls.set('bottom', frontPlacement);
-    } else {
-      walls.set('top', backPlacement);
-      walls.set('bottom', frontPlacement);
-      const ringBodyLeft = Math.min(
-        backPlacement.x + backInsets.left,
-        frontPlacement.x + frontInsets.left,
-      );
-      const ringBodyRight = Math.max(
-        backPlacement.x + backInsets.right,
-        frontPlacement.x + frontInsets.right,
-      );
+    const backBody = bodyEdges(backPlacement);
+    const frontBody = bodyEdges(frontPlacement);
+    if (backBody && frontBody) {
+      const ringBodyLeft = Math.min(backBody.left, frontBody.left);
+      const ringBodyRight = Math.max(backBody.right, frontBody.right);
       const left = layoutSideWall(manifest, {
         side: 'left',
         count: stacks,
@@ -610,8 +639,7 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
       const leftInsets = bodyInsets(left);
       const rightInsets = bodyInsets(right);
       if (leftInsets && rightInsets) {
-        const frontBodyBottom = frontPlacement.y + frontInsets.bottom;
-        const sideBodyBottom = frontBodyBottom - SIDE_WALL_BOTTOM_GAP;
+        const sideBodyBottom = frontBody.bottom - SIDE_WALL_BOTTOM_GAP;
         walls.set(
           'left',
           placeZone(
@@ -661,7 +689,7 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
     const wall = walls.get(side);
     const pond = ponds.get(side);
     if (side === 'bottom') {
-      const anchor = wall ? wall.y + wall.zone.height : pond ? pond.y + pond.zone.height : half;
+      const anchor = wall ? wall.y + zoneHeight(wall) : pond ? bottomOf(pond) : half;
       hands.set(side, placeZone(zone, -zone.width / 2, anchor + BOARD_GAP));
     } else if (side === 'top') {
       const anchor = wall ? wall.y : pond ? pond.y : -half;
@@ -670,7 +698,7 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
       const anchor = wall ? wall.x : pond ? pond.x : -half;
       hands.set(side, placeZone(zone, anchor - BOARD_GAP - zone.width, -zone.height / 2));
     } else {
-      const anchor = wall ? wall.x + wall.zone.width : pond ? pond.x + pond.zone.width : half;
+      const anchor = wall ? wall.x + zoneWidth(wall) : pond ? rightOf(pond, half) : half;
       hands.set(side, placeZone(zone, anchor + BOARD_GAP, -zone.height / 2));
     }
   }
