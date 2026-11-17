@@ -42,6 +42,7 @@ pub mod licence;
 pub mod provenance;
 pub mod source;
 pub mod storage;
+pub mod transform;
 
 pub use classifier::{classify_decision, classify_decision_with_mortal};
 pub use funnel::{FunnelCounter, FunnelStage};

@@ -219,30 +219,7 @@ fn all_same(tiles: &[String]) -> bool {
 /// kan. Those boards are accepted without a witness.
 fn validate_meld_claims(state: &GameState) -> Result<(), String> {
     for (source, player) in state.players.iter().enumerate() {
-        // Claims this seat has to answer for: (claiming seat, claimable tiles).
-        let mut claims: Vec<(usize, Vec<&str>)> = Vec::new();
-        for caller in &state.players {
-            let held = copies_held_by(caller);
-            for meld in &caller.melds {
-                if meld.called_from != Some(source) {
-                    continue;
-                }
-                let claimable = claimable_tiles(meld);
-                if claimable.is_empty() {
-                    return Err(format!(
-                        "seat {} has an empty {:?} meld",
-                        caller.seat, meld.meld_type
-                    ));
-                }
-                if claimable
-                    .iter()
-                    .all(|tile| held.get(tile).copied().unwrap_or(0) >= 4)
-                {
-                    continue;
-                }
-                claims.push((caller.seat, claimable));
-            }
-        }
+        let claims = claims_on(state, source, true)?;
         if claims.is_empty() {
             continue;
         }
@@ -266,6 +243,84 @@ fn validate_meld_claims(state: &GameState) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+/// Which river entries of each seat are the record of a tile a call took.
+///
+/// A called tile is written twice in the app's state: in the caller's meld and in
+/// the source's river (see [`validate_meld_claims`]). Anything counting the
+/// table's physical tiles — the permutation engine's ledger, for instance — must
+/// skip the river record or it counts the claimed tile twice. Returns one flag
+/// per river entry, per seat.
+///
+/// A malformed meld (an empty claimable set) contributes no record here;
+/// [`validate_reachable_state`] is what rejects it.
+///
+/// The miner's tile ledger is the only caller, so the app build does not compile
+/// it.
+#[cfg(feature = "miner")]
+pub(crate) fn claim_records(state: &GameState) -> Vec<Vec<bool>> {
+    let mut records: Vec<Vec<bool>> = state
+        .players
+        .iter()
+        .map(|player| vec![false; player.discards.len()])
+        .collect();
+    for (source, player) in state.players.iter().enumerate() {
+        let Ok(claims) = claims_on(state, source, false) else {
+            continue;
+        };
+        if claims.is_empty() {
+            continue;
+        }
+        let river: Vec<&str> = player
+            .discards
+            .iter()
+            .map(|discard| discard.tile.as_str())
+            .collect();
+        let mut used = vec![false; river.len()];
+        if assign_claims(&claims, &river, &mut used, 0) {
+            records[source] = used;
+        }
+    }
+    records
+}
+
+/// The claims one seat's river has to back: (claiming seat, claimable tiles).
+///
+/// `require_witness` keeps the validator's rule that a caller whose own meld and
+/// concealed hand already hold all four copies needs no river witness; the ledger
+/// wants the claim either way, because the river entry it may still show is a
+/// record of the same physical tile.
+fn claims_on(
+    state: &GameState,
+    source: usize,
+    require_witness: bool,
+) -> Result<Vec<(usize, Vec<&str>)>, String> {
+    let mut claims: Vec<(usize, Vec<&str>)> = Vec::new();
+    for caller in &state.players {
+        let held = copies_held_by(caller);
+        for meld in &caller.melds {
+            if meld.called_from != Some(source) {
+                continue;
+            }
+            let claimable = claimable_tiles(meld);
+            if claimable.is_empty() {
+                return Err(format!(
+                    "seat {} has an empty {:?} meld",
+                    caller.seat, meld.meld_type
+                ));
+            }
+            if require_witness
+                && claimable
+                    .iter()
+                    .all(|tile| held.get(tile).copied().unwrap_or(0) >= 4)
+            {
+                continue;
+            }
+            claims.push((caller.seat, claimable));
+        }
+    }
+    Ok(claims)
 }
 
 /// The kinds a meld could have taken off another seat's discard.

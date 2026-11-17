@@ -111,7 +111,7 @@ use crate::generator::validate_reachable_state;
 use crate::miner::provenance::{ReplayId, sha256_hex};
 use crate::state::{
     CallOffer, CalledMeld, CorrectAction, DecisionContext, DiscardTile, GameState, MeldType,
-    PlayerState, TargetAction, Wind,
+    PlayerState, SEAT_NAMES, TargetAction, Wind,
 };
 
 use super::mjai::{EventKind, MjaiEvent, ParseError, ReplayFile, ReplayReader};
@@ -121,10 +121,6 @@ use super::validate::{ReplayError, validate_game};
 /// Live-wall draws in one kyoku. A kan's replacement draw is one of them, which
 /// is exactly how R1 counts the wall.
 pub const WALL_DRAWS: u16 = 70;
-
-/// The app's seat names after normalisation: the actor at seat 0, then the
-/// right, across and left players, matching every generator's table.
-const SEAT_NAMES: [&str; 4] = ["You", "Shimocha", "Toimen", "Kamicha"];
 
 /// Which choice a snapshot presents.
 #[derive(
