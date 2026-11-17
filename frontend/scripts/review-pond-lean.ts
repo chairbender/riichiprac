@@ -6,12 +6,12 @@
  * Renders one right-hand pond at 4x with the four candidate reads:
  *
  *   straight        no lean
- *   z-centre        the current production transform: whole-zone Z rotation
- *                   about the pond body centre
- *   z-near          whole-zone Z rotation about the near (bottom) edge
- *   shear           upright tile sprites on a sheared grid: the top shifts
+ *   z-centre        the current production transform: a subtle -1° whole-zone
+ *                   Z rotation about the pond body centre
+ *   z-near          the same -1° rotation about the near (bottom) edge
+ *   shear           upright tile sprites on a -1° sheared grid: the top shifts
  *                   toward the centre, the bottom stays put
- *   z-opposite      the same centre rotation in the other direction
+ *   z-opposite      the same centre rotation in the other direction (+1°)
  *
  * The sheet writes `tools/render/build/review/pond-lean-lab-4x.png` under the
  * gitignored build tree. Shadows are omitted so the row orientation is the only
@@ -117,10 +117,10 @@ function shearedBody(degrees: number): ReturnType<typeof drawZoneLayer> {
 
 const variants = [
   { label: 'straight (no lean)', layer: leanZone(base, 0).layer },
-  { label: 'z-centre (current, −5°)', layer: leanZone(base, -5).layer },
-  { label: 'z-near (bottom edge, −5°)', layer: leanZone(base, -5, base.height).layer },
-  { label: 'shear (upright sprites, top −5°)', layer: shearedBody(-5) },
-  { label: 'z opposite (centre, +5°)', layer: leanZone(base, 5).layer },
+  { label: 'z-centre (current, −1°)', layer: leanZone(base, -1).layer },
+  { label: 'z-near (bottom edge, −1°)', layer: leanZone(base, -1, base.height).layer },
+  { label: 'shear (upright sprites, top −1°)', layer: shearedBody(-1) },
+  { label: 'z opposite (centre, +1°)', layer: leanZone(base, 1).layer },
 ];
 
 const labelHeight = 34;

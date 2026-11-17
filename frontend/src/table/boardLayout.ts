@@ -68,10 +68,11 @@ const WALL_JOIN_GAP = 2;
  */
 const WALL_SHADOW_SIGMA_PX = 20;
 /**
- * The side wall columns sit one wall-tile width lower than the geometric
- * centre; the review asked for the nudge so the ring's corners read level.
+ * The side-wall bottom edge sits a quarter of a wall tile above the front
+ * wall's bottom edge. The front wall paints over the side walls, so the corner
+ * reads as one continuous ring instead of an optical step.
  */
-const SIDE_WALL_Y_OFFSET = 46;
+const SIDE_WALL_BOTTOM_GAP = 12;
 /**
  * The side hands reuse one shell down a long row, and their standing sigma (5)
  * leaves a thin hard band. The review asked for the same soft read as the
@@ -609,12 +610,14 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
       const leftInsets = bodyInsets(left);
       const rightInsets = bodyInsets(right);
       if (leftInsets && rightInsets) {
+        const frontBodyBottom = frontPlacement.y + frontInsets.bottom;
+        const sideBodyBottom = frontBodyBottom - SIDE_WALL_BOTTOM_GAP;
         walls.set(
           'left',
           placeZone(
             left,
             ringBodyLeft - WALL_JOIN_GAP - leftInsets.width - leftInsets.left,
-            -left.height / 2 + SIDE_WALL_Y_OFFSET,
+            sideBodyBottom - leftInsets.bottom,
           ),
         );
         walls.set(
@@ -622,7 +625,7 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
           placeZone(
             right,
             ringBodyRight + WALL_JOIN_GAP - rightInsets.left,
-            -right.height / 2 + SIDE_WALL_Y_OFFSET,
+            sideBodyBottom - rightInsets.bottom,
           ),
         );
       }

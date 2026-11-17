@@ -1415,13 +1415,13 @@ logical row and column and sorts on the seat's depth key (`row` for front/back,
 `-row` for top, `-column` for right, `column` for left), then descending screen
 x. A vertical meld row follows the same far-to-near rule (top tile first).
 
-**Side-pond lean.** The left and right ponds carry a **5° whole-zone
-rotation** about the centre of the pond body: right `−5°`, left `+5°`, so the
+**Side-pond lean.** The left and right ponds carry a subtle **1° whole-zone
+Z rotation** about the centre of the pond body: right `−1°`, left `+1°`, so the
 top of the row turns toward the table centre while the pond still reads as one
-flat object (the top edge shifts about **35 px** inward on the committed
-450 × 406 rows). The original 1° read as straight and the bottom-edge pivot read
-as tipping up; the 2026-11-16 review moved to the centre pivot and 5°. It is a
-group transform of
+flat object (the top edge shifts about **7 px** inward on the committed
+450 × 406 rows). The bottom-edge pivot read as tipping up and 3–5° read as a
+tilt; the 2026-11-16 review settled on the centre pivot at 1°. It is a group
+transform of
 the composed pond (shadow layer + bodies), not a per-tile reposition or a new
 sprite; every tile, face and shadow stays the baked asset. `layoutPond` publishes
 `rotationDeg`/`pivotX`/`pivotY`; the grid positions and hit boxes remain in the
@@ -1701,13 +1701,11 @@ looks flat, it is the display size, not a flat-glyph fallback.
 issues, fixed here:
 
 1. The wall is a full 17-stack ring on every side. The side walls are placed
-   just outside the front/back wall ends (2 px between body boxes) and one
-   wall-tile width (46 px) lower than the geometric centre, so the four runs
-   form a level ring instead of clipping through each other.
-2. The side-pond lean keeps §14's inward sign and increases the magnitude:
-   right `−5°`, left `+5°`, with the pivot moved to the pond body centre. The
-   review found the bottom-edge pivot read as tipping up rather than lying
-   flat; a sign flip was also tried and reverted.
+   just outside the front/back wall ends (2 px between body boxes) and their
+   bottom edges sit **12 px (about a quarter tile) above the front wall's bottom
+   edge**. The front wall is painted after the side walls and covers the join.
+2. The side-pond lean is a subtle **1°** centre Z rotation: right `−1°`, left
+   `+1°`. The bottom-edge pivot read as tipping up, and 3–5° read as a tilt.
 3. The side hands use the published per-side camera axis: left `(−6.7, 45)`,
    right `(6.2, 41.67)`. Zeroing or flipping the drift made the left row worse.
    The apparent staircase is the shadow, not the bodies: the side-hand shadow
@@ -1731,20 +1729,19 @@ The blue-back side hands' **per-shell 3D catches** still use the pre-alignment
 row offset; re-baking them is a Blender follow-up. The group shadow, which is
 what the rendered view actually draws under the hand, is aligned.
 
-**Open visual decisions.** The side-pond lean is the one unresolved look. The
-production transform is a true 2D Z rotation about the pond body centre
-(`rotationDeg`/`pivotX`/`pivotY`), at 5°. `cd frontend && npm run pond:review`
-writes `build/review/pond-lean-lab-4x.png` with straight, Z-centre, Z-near,
-shear-with-upright-sprites and opposite-sign variants so the user can pick the
-read; a shear keeps the top/bottom tile edges horizontal and may be what reads
-as "flat on the table" while still leaning the row.
+**Pond lean.** The production transform is a true 2D Z rotation about the pond
+body centre (`rotationDeg`/`pivotX`/`pivotY`), at 1°. `cd frontend && npm run
+pond:review` keeps the isolated lab (`build/review/pond-lean-lab-4x.png`) with
+straight, Z-centre, Z-near, shear-with-upright-sprites and opposite-sign
+variants; it is a record now that -1° is chosen.
 
 The left/right hand rows still reuse one shell down 13 tiles. The stronger
 side-hand perspective makes the far end of each face narrower, so identical
 shells cannot make the fronts line up; the backs only look aligned. That needs a
 new shell capture with a weaker (closer to isometric) perspective and a re-bake
-of the two side-hand shadows/catches: follow-up task **261116-2217, "2.5D
-polish: re-bake left/right hand shells with weaker perspective"**.
+of the two side-hand shadows/catches: task **261116-2217, "2.5D polish: re-bake
+left/right hand shells with weaker perspective"**, is **started** in its own
+worktree/session.
 
 The front/back wall runs measure **1201.35 px** (front, bottom) and **1195.8 px**
 (back, top) body width at @1x: the back is already 5.5 px smaller. Swapping the
@@ -1783,7 +1780,7 @@ grade when it changes. No game logic moved into React: the view only reads
 
 **Verification.**
 
-- `cd frontend && npx vitest run` — **21 files / 262 tests**, including 31
+- `cd frontend && npx vitest run` — **21 files / 263 tests**, including 31
   board-layout tests (global layer order, fan/pond/wall tier order, advance-box
   hit boxes, non-overlapping shadow-group bounds, compass geometry, group
   sigmas) and 8 compositor tests (composite order, one blur per group, cache
@@ -1803,7 +1800,7 @@ grade when it changes. No game logic moved into React: the view only reads
   `rendered-board-numbers.json`. The committed fixture reports **2421 × 1398 px
   @1x, 14 zones, 11 shadow groups (walls and side hands at sigma 20), 212
   bodies, 144 hard shapes, 193 contact decals, 153 preloaded textures, 648
-  decal sprites, 922,167 opaque body pixels and 647,658 shadow pixels, with 0 non-transparent pixels on the outer 4 px
+  decal sprites, 922,142 opaque body pixels and 654,337 shadow pixels, with 0 non-transparent pixels on the outer 4 px
   edge**; the painter order is the 11 group layers
   then `wall-back`, `hand-top`, `wall-side-left`, `wall-side-right`,
   `pond-bottom`, `pond-right`, `pond-top`, `pond-left`, `wall-front`,

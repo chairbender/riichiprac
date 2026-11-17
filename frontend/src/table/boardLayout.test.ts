@@ -273,6 +273,25 @@ describe('board geometry', () => {
     }
   });
 
+  it('lines the side wall bottoms a quarter tile above the front wall', () => {
+    const result = board();
+    const bottom = (id: string): number => {
+      const placement = zone(result, id);
+      return Math.max(
+        ...placement.zone.bodies.map(
+          (tile) => placement.y + tile.hitBox.y + tile.hitBox.height,
+        ),
+      );
+    };
+    const front = bottom('wall-front');
+    expect(bottom('wall-side-left')).toBeCloseTo(front - 12, 0);
+    expect(bottom('wall-side-right')).toBeCloseTo(front - 12, 0);
+    // The front wall is painted after the side walls, so it covers the join.
+    const order = result.zones.map((entry) => entry.id);
+    expect(order.indexOf('wall-front')).toBeGreaterThan(order.indexOf('wall-side-left'));
+    expect(order.indexOf('wall-front')).toBeGreaterThan(order.indexOf('wall-side-right'));
+  });
+
   it('leaves the separate shadow groups without overlapping bodies', () => {
     const result = board();
     // Each pond and each seat group blurs on its own. Their padded shadow
