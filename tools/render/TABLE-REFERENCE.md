@@ -15,8 +15,8 @@ the wall, a readability cheat on the player's hand, dimmer key), and
 `v4-shadow-decal` replaces the shadow with a soft gradient that emerges from the
 tile's front edge, `v5`–`v7` are three longer/stronger takes on it, and
 `v10-shadow-split-blobs` rebuilds the chosen take A as the retired UI recipe: a
-blurred contact rectangle per hand group, spread past the outer ends, with the
-drawn tile keeping its own blob. The
+blurred contact rectangle per hand group; `v11-shadow-inner-offset` widens the
+row's right end too and offsets the whole blob slightly forward. The
 placement board below stays at its own 2880 × 2112 framing for plan review. See
 [The 2.5D rig](#the-25d-rig-task-2).
 
@@ -315,6 +315,23 @@ outward side by the declared spread, that the decal is wider than the object,
 that the shadow wraps around both outer ends and also fades north of the edge
 line there, and that the front fade is monotonic and subtle.
 
+### v11-shadow-inner-offset (experiment, 2026-11-17)
+
+v10 only widened the outermost sides, so the hand row's shadow still stopped at
+its right edge, and the blob sat perfectly centred on the tiles. v11 gives each
+group its own spreads and nudges the whole footprint forward:
+
+| Parameter | v11 |
+| --- | --- |
+| Spreads | hand row **0.15 both ends** (its right shadow now passes the last tile); drawn tile **0 left / 0.28 right** (well past the hand); gap-facing sides stay at the tile edges |
+| Blur | σ 0.28 depth / **0.10 x**, all four edges, 0.5 × maxAlpha on the edges |
+| Forward offset | the whole rect is shifted **0.06 units south**, so the shadow no longer surrounds the tiles perfectly evenly |
+| Measured | row's right shadow reaches ~0.26 units past the tile edge; drawn tile's reaches ~0.4 past the hand; outer-end wrap 0.818× / 0.710× the local felt; north-of-the-edge wrap 0.684× / 0.429×; front edge ~0.70×, lit by ~0.5 units; wall dip 0.7 |
+
+The tsumogiri gap is now narrower, so the dip between the row's and drawn tile's
+blobs is small (≈ 41 vs 34 luma) rather than a fully lit gap; that is the trade
+for extending the row's shadow past its edge.
+
 ### What still needs the user### What still needs the user
 
 The numbers say the geometry, framing, shadowing and exposure are what was
@@ -325,13 +342,13 @@ xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, wi
 bash tools/render/bake-table-reference.sh --check
 ```
 
-The open question is whether **v10** is the keeper: take A's length and weight,
-drawn as one blurred contact rectangle per hand group that extends past the outer
-ends, fades in every direction and leaves the drawn tile its own blob. If it is,
-it becomes the production shadow setting (the runtime does the same thing: a
-rounded rectangle under each group, scaled a little past the contact footprint,
-blurred once) and the other takes can be pruned. The 40° recline and the 203
-discard face are unchanged.
+The open question is whether **v11** is the keeper: take A's length and weight,
+one blurred contact rectangle per hand group, widened past both of the row's ends
+and further past the drawn tile, offset slightly forward, with no hard line. If
+it is, it becomes the production shadow setting (the runtime does the same thing:
+a rounded rectangle under each group, scaled a little past the contact footprint
+and offset down a hair, blurred once) and the other takes can be pruned. The 40°
+recline and the 203 discard face are unchanged.
 
 ## Published renders and checks
 

@@ -216,3 +216,27 @@ measured on the rendered pixels. Calibration only.</p>
       <tr><th>transparent pixels</th><td>6.87%</td></tr>
     </table>
   </section>
+
+  <section>
+    <h2>v11-shadow-inner-offset — v11 shadow: inner-right extended, offset forward</h2>
+    <p>v10's row shadow stopped at the row's right edge. v11 gives each group its own spreads: the hand row widens both ends by 0.15 units (so its right shadow passes the last tile), the drawn tile widens only outward (0.28 units, well past the hand) and keeps its gap side at its tile edge, so the tsumogiri gap still dips between the two blobs. The whole footprint is offset 0.06 units forward (south) so the shadow does not look like it surrounds the tiles perfectly evenly; the x blur is 0.10.</p>
+    <figure>
+      <a href="v11-shadow-inner-offset-1x.png"><img src="v11-shadow-inner-offset-1x.png" alt="v11-shadow-inner-offset"></a>
+      <figcaption>1920×1080 RGBA · 2,622,189 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>physical-pose caster (undefined casters)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.698 × felt · 0.698 → 0.848 → 0.957 → 1.006 → 1</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>6.87%</td></tr>
+    </table>
+  </section>

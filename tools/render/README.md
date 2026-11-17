@@ -252,6 +252,10 @@ recipe: one blurred contact rectangle per hand group, all four edges blurred
 0.15 units and extended 0.5 units north under the tiles. The shadow therefore
 extends past the outer ends, fades in every direction past the tiles (no hard
 line), and the tsumogiri gap keeps the drawn tile's own blob separate.
+**v11-shadow-inner-offset** widens the hand row's right end too (0.15 both ends),
+pushes the drawn tile's blob 0.28 units past the hand, narrows the x blur to
+0.10, and offsets the whole footprint 0.06 units forward so the shadow does not
+sit perfectly centred on the tiles.
 
 The **hand cheat** in v2 reclines the player's hand further than is physical, so
 the near bottom edge floats and the real cast shadow is not the production

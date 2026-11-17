@@ -1340,10 +1340,14 @@ def apply_blurred_footprint_shadow(
     sigma_x = float(shadow.get("sigmaXUnits", sigma))
     max_alpha = float(shadow["maxAlpha"])
     spread = float(shadow.get("spreadUnits", 0.0))
+    spreads = shadow.get("spreads") or {}
+    offset = float(shadow.get("offsetYUnits", 0.0))
     depth = float(shadow.get("depthUnits", 0.5))
     z = float(shadow.get("zUnits", 0.0025))
     margin = 2.5 * sigma
-    y_south = -edge_line
+    # Offset the whole footprint a little forward (south): the shadow should not
+    # look like it surrounds the tiles perfectly evenly.
+    y_south = -edge_line - offset
     y_north = y_south + depth
     bottom = [tile for tile in tiles if tile["seat"] == "bottom" and tile["kind"] in ("hand", "drawn")]
     groups = [
@@ -1357,11 +1361,13 @@ def apply_blurred_footprint_shadow(
         half = group[0]["dimensions"]["width"] / 2
         xs = [tile["origin"][0] for tile in group]
         tile_x0, tile_x1 = min(xs) - half, max(xs) + half
-        # Widen only the outward side of each group: the row's left end and the
-        # drawn tile's right end. The tsumogiri gap stays between them, so the
-        # drawn tile keeps its own blob instead of merging into the row's.
-        spread_left = spread if index == 0 else 0.0
-        spread_right = spread if index == len(groups) - 1 else 0.0
+        # Per-group spreads: the hand row widens both of its ends (so its right
+        # shadow passes the last tile), while the drawn tile keeps its gap side
+        # at its tile edge and widens only outward. A variant may override each
+        # side through `spreads`.
+        entry = spreads.get(group[0]["kind"], {})
+        spread_left = float(entry.get("left", spread))
+        spread_right = float(entry.get("right", spread))
         x0, x1 = tile_x0 - spread_left, tile_x1 + spread_right
         material = blurred_footprint_material(x0, x1, y_south, depth, sigma_x, sigma, max_alpha)
         planes.append(
@@ -1402,6 +1408,8 @@ def apply_blurred_footprint_shadow(
         "sigmaXUnits": sigma_x,
         "maxAlpha": max_alpha,
         "spreadUnits": spread,
+        "spreads": spreads,
+        "offsetYUnits": offset,
         "depthUnits": depth,
         "falloff": "gaussian-like smoothstep on all four edges, 2 sigma",
         "groups": group_records,
@@ -1414,7 +1422,8 @@ def apply_blurred_footprint_shadow(
     log(
         f"hand shadow blob: {len(planes)} blurred-footprint planes, edge line {edge_line:.3f} "
         f"(front edge {front_edge:.3f}), sigma {sigma:.3f}/{sigma_x:.3f} x, max alpha {max_alpha:g}, "
-        f"spread {spread:.3f} outward, depth {depth:.3f} north, "
+f"spreads {spreads or spread}, offset {offset:.3f} south, "
+        f"depth {depth:.3f} north, "
         f"over {len(bodies) + len(decals)} hidden hand objects"
     )
     return record

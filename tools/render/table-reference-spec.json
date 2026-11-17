@@ -831,6 +831,43 @@
           "handWrapMaxLumaFactor": 0.97,
           "handWrapNorthMaxLumaFactor": 0.97
         }
+      },
+      "v11-shadow-inner-offset": {
+        "order": 11,
+        "extends": "v10-shadow-split-blobs",
+        "label": "v11 shadow: inner-right extended, offset forward",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "v10's row shadow stopped at the row's right edge. v11 gives each group its own spreads: the hand row widens both ends by 0.15 units (so its right shadow passes the last tile), the drawn tile widens only outward (0.28 units, well past the hand) and keeps its gap side at its tile edge, so the tsumogiri gap still dips between the two blobs. The whole footprint is offset 0.06 units forward (south) so the shadow does not look like it surrounds the tiles perfectly evenly; the x blur is 0.10.",
+        "handShadow": {
+          "mode": "blurredFootprint",
+          "sigmaUnits": 0.28,
+          "sigmaXUnits": 0.1,
+          "maxAlpha": 0.95,
+          "spreadUnits": 0.15,
+          "offsetYUnits": 0.06,
+          "depthUnits": 0.5,
+          "zUnits": 0.0025,
+          "note": "One blurred contact rectangle per group, all four edges (sigma 0.28 depth / 0.10 x), 0.5 alpha on every edge. Spreads per group: hand row 0.15 both ends, drawn tile 0 left / 0.28 right; the whole rect is offset 0.06 units south and its north edge sits 0.5 units under the tiles.",
+          "spreads": {
+            "hand": {
+              "left": 0.15,
+              "right": 0.15
+            },
+            "drawn": {
+              "left": 0.0,
+              "right": 0.28
+            }
+          }
+        },
+        "checks": {
+          "handShadowMaxDarkening": 1.0,
+          "handShadowMinLumaFactor": 0.4,
+          "handShadowFadeUnits": 0.6,
+          "handShadowFadeFactor": 0.92,
+          "handWrapMaxLumaFactor": 0.97,
+          "handWrapNorthMaxLumaFactor": 0.97
+        }
       }
     }
   },

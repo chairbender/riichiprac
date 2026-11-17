@@ -231,26 +231,29 @@ function checkVariant(manifest, file) {
         checkEqual(`${id} shadow fills`, record.fillLights, rig.lighting.fills.map((fill) => fill.id));
       } else if (shadowCheat.mode === 'blurredFootprint') {
         near(record.sigmaUnits, shadowCheat.sigmaUnits, 1e-9, `${id} blob sigma`);
+        near(
+          record.sigmaXUnits ?? record.sigmaUnits,
+          shadowCheat.sigmaXUnits ?? shadowCheat.sigmaUnits,
+          1e-9,
+          `${id} blob x sigma`,
+        );
         near(record.maxAlpha, shadowCheat.maxAlpha, 1e-9, `${id} blob max alpha`);
+        near(record.offsetYUnits ?? 0, shadowCheat.offsetYUnits ?? 0, 1e-9, `${id} blob forward offset`);
         check(record.objects >= 2, `${id} blob has ${record.objects} planes`);
-        check(record.sigmaUnits > 0, `${id} blob sigma is positive`);
+        check(record.sigmaUnits > 0 && (record.sigmaXUnits ?? record.sigmaUnits) > 0,
+          `${id} blob sigmas are positive`);
         check(
           Math.abs(record.edgeLineRadiusUnits -
             (record.frontEdgeRadiusUnits -
               record.edgeHeightUnits / Math.tan((cameraSpec.elevationDeg * Math.PI) / 180))) <= 1e-3,
           `${id} blob edge line is the front-edge silhouette on the mat`,
         );
-        // Each group's blur must be centred on its tiles' span, and the decal
-        // rect must be wider than the tiles by the declared spread, so the
-        // shadow extends past the object's ends rather than stopping at them.
+        // Each group's decal rect must be its tiles' span plus the declared
+        // spreads, and wider than the tiles, so "past the object's edge" is
+        // asserted rather than aimed at.
         const bottom = (manifest.scene?.tiles ?? []).filter(
           (tile) => tile.seat === 'bottom' && (tile.kind === 'hand' || tile.kind === 'drawn'),
         );
-        const spread = Number(record.spreadUnits ?? 0);
-        check(spread >= 0, `${id} blob spread is non-negative (${spread})`);
-        const bottomGroups = ['hand', 'drawn'].filter(
-          (kind) => bottom.some((tile) => tile.kind === kind),
-        ).length;
         for (const [index, kind] of ['hand', 'drawn'].entries()) {
           const groupTiles = bottom.filter((tile) => tile.kind === kind);
           if (!groupTiles.length) continue;
@@ -264,13 +267,19 @@ function checkVariant(manifest, file) {
           near(group.tileX1, tileX1, 1e-3, `${id} blob ${kind} tile right edge`);
           const spreadLeft = Number(group.spreadLeftUnits ?? 0);
           const spreadRight = Number(group.spreadRightUnits ?? 0);
-          near(group.x0, tileX0 - spreadLeft, 1e-3, `${id} blob ${kind} shadow left edge is widened outward`);
-          near(group.x1, tileX1 + spreadRight, 1e-3, `${id} blob ${kind} shadow right edge is widened outward`);
-          // Only the outermost sides widen; the tsumogiri gap keeps each group
-          // on its own tile edges, so the drawn tile's blob stays its own.
-          checkEqual(`${id} blob ${kind} spreads outward only`,
-            [spreadLeft > 0, spreadRight > 0],
-            [index === 0 && spread > 0, index === bottomGroups - 1 && spread > 0]);
+          check(spreadLeft >= 0 && spreadRight >= 0, `${id} blob ${kind} spreads are non-negative`);
+          near(group.x0, tileX0 - spreadLeft, 1e-3, `${id} blob ${kind} shadow left edge`);
+          near(group.x1, tileX1 + spreadRight, 1e-3, `${id} blob ${kind} shadow right edge`);
+          check(
+            group.widthUnits > group.tileWidthUnits,
+            `${id} blob ${kind} shadow is wider than its tiles ` +
+              `(${group.widthUnits} > ${group.tileWidthUnits})`,
+          );
+          const declared = shadowCheat.spreads?.[kind];
+          if (declared) {
+            near(spreadLeft, declared.left ?? 0, 1e-9, `${id} blob ${kind} declared left spread`);
+            near(spreadRight, declared.right ?? 0, 1e-9, `${id} blob ${kind} declared right spread`);
+          }
         }
       } else if (shadowCheat.mode === 'gradientDecal') {
         near(record.maxAlpha, shadowCheat.maxAlpha, 1e-9, `${id} decal max alpha`);
