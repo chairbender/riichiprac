@@ -1040,3 +1040,29 @@ fn a_malformed_table_is_not_evaluated() {
         "{report:?}"
     );
 }
+
+#[test]
+fn label_triggers_stay_silent_without_percentile_cuts() {
+    let quiet = base_state(QUIET_HAND, 3);
+    let snap = with_played(snapshot(quiet, DecisionKind::SelfTurn), discard("9m"));
+    let label = label("Discard_1m", "Discard_9m", 2.0, 0.0, 0.0);
+    let report = evaluate_with_label(
+        &snap,
+        &label,
+        &LabelCuts::empty(),
+        &TriggerConfig::default(),
+    );
+    assert!(
+        !report.fired(TriggerKind::CloseCall),
+        "no close band means no close call: {report:?}"
+    );
+    assert!(
+        !report.fired(TriggerKind::Blunder),
+        "no confidence cut means no blunder: {report:?}"
+    );
+    assert!(
+        !report.has_any(),
+        "neither label-derived trigger may be guessed: {report:?}"
+    );
+    assert!(report.families.contains(&Family::MortalBest));
+}
