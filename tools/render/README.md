@@ -177,7 +177,8 @@ playable mat, a raised rim/frame, a recessed centre compass/score well, four
 has the 7-stack dead wall with a break and a face-up dora), four full 6×3 ponds
 (72, each with one riichi discard turned to the player's right), four 13-tile
 hands (52) plus the human's drawn tile, and one open meld per seat **outside the
-wall on the player's right** (12) — and renders it for placement review. It also
+wall on the player's right** (12; the called tile's near edge is flush with the
+uprights) — and renders it for placement review. It also
 builds the **`SlotAnchors`** collection: 293 named `Empty`s (136 wall slots,
 132 occupied, 88
 rivers including overflow, 16 meld slots, 53 hand slots), each at the tile body

@@ -262,6 +262,44 @@ for (const seat of ['bottom', 'right', 'top', 'left']) {
     `wall ${seat}: slot 16 tier 1 is empty`);
 }
 
+// The turned called tile and the riichi discard must have their near edge
+// (the player-facing bottom edge) flush with the upright tiles in the same row.
+const awayVector = (seat) => {
+  const angle = (spec.table.seats.find((entry) => entry.id === seat).rotateZDeg * Math.PI) / 180;
+  return [-Math.sin(angle), Math.cos(angle)];
+};
+const nearEdge = (tile, halfDepth, away) =>
+  tile.origin[0] * away[0] + tile.origin[1] * away[1] - halfDepth;
+for (const seat of ['bottom', 'right', 'top', 'left']) {
+  const away = awayVector(seat);
+  const seatMelds = melds.filter(seatOf(seat)).sort((a, b) => a.cell.column - b.cell.column);
+  const uprightMeld = seatMelds.filter((tile) => tile.cell.turned !== true);
+  const turnedMeld = seatMelds.find((tile) => tile.cell.turned === true);
+  check(Boolean(turnedMeld), `meld ${seat}: a turned called tile exists`);
+  if (turnedMeld && uprightMeld.length) {
+    const uprightNear = nearEdge(uprightMeld[0], uprightMeld[0].dimensions.height / 2, away);
+    near(
+      nearEdge(turnedMeld, turnedMeld.dimensions.width / 2, away),
+      uprightNear,
+      1e-6,
+      `meld ${seat}: turned tile bottom edge aligns with the upright row`,
+    );
+  }
+  const riichi = ponds.find((tile) => tile.seat === seat && tile.cell.riichi === true);
+  const rowUpright = ponds.filter(
+    (tile) => tile.seat === seat && tile.cell.row === 1 && tile.cell.riichi !== true,
+  );
+  if (riichi && rowUpright.length) {
+    const uprightNear = nearEdge(rowUpright[0], rowUpright[0].dimensions.height / 2, away);
+    near(
+      nearEdge(riichi, riichi.dimensions.width / 2, away),
+      uprightNear,
+      1e-6,
+      `riichi ${seat}: turned tile bottom edge aligns with its row`,
+    );
+  }
+}
+
 check(manifest.visibility?.occluded === 0,
   `visibility: 0 of ${manifest.visibility?.samples} probes occluded`);
 check(manifest.lightingSamples?.face?.tile === spec.faces.sampleTileId,

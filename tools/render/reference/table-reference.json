@@ -2344,7 +2344,7 @@
     "pose": "lying-faceup",
     "origin": [
      8.126785,
-     -10.6,
+     -10.725,
      0
     ],
     "rotation": [
@@ -4543,7 +4543,7 @@
     "face": "5p",
     "pose": "lying-faceup",
     "origin": [
-     10.600001,
+     10.725001,
      8.126784,
      0
     ],
@@ -6744,7 +6744,7 @@
     "pose": "lying-faceup",
     "origin": [
      -8.126784,
-     10.600001,
+     10.725001,
      0
     ],
     "rotation": [
@@ -8944,7 +8944,7 @@
     "face": "8m",
     "pose": "lying-faceup",
     "origin": [
-     -10.599999,
+     -10.724999,
      -8.126786,
      0
     ],
@@ -9032,13 +9032,13 @@
   "bottomTopHandRatio": 1.216764,
   "frontOuterRevealDeg": 4.6743,
   "tableBoundsPx": {
-   "left": 369.98,
+   "left": 363.36,
    "top": 330.24,
    "right": 2503.96,
    "bottom": 1850.47
   },
   "frameMarginsPx": {
-   "left": 369.98,
+   "left": 363.36,
    "top": 330.24,
    "right": 376.04,
    "bottom": 261.53
@@ -9158,17 +9158,17 @@
   },
   "total": 293,
   "occupied": 269,
-  "bytes": 216860,
-  "sha256": "2dd0b7a7562026c1ab18123cc409bb1c3bea9f49b37adc57bf386d7c48f3450e"
+  "bytes": 216866,
+  "sha256": "e1163529e1d8061e68e4fc257a009f7c11e3cf237c354ba7827c8c5020f1e491"
  },
  "renders": {
   "fullBoard1x": {
    "file": "full-board-1x.png",
-   "bytes": 3647277,
+   "bytes": 3647216,
    "width": 2880,
    "height": 2112,
    "channels": 3,
-   "sha256": "564d35abcd8207ec9319794bad5133800f9d13f05bde375a62ab5ac38f48701d",
+   "sha256": "16871a40f35679c6491211c46ed91e65846873a2fee5c81b9337ea57566eb540",
    "scale": 1
   },
   "crops2x": {
@@ -9217,11 +9217,11 @@
      "width": 2551,
      "height": 353
     },
-    "bytes": 679170,
+    "bytes": 679202,
     "width": 2551,
     "height": 353,
     "channels": 3,
-    "sha256": "bb704ba1316f0828f7db1efe72e9d7f3e3a0184c7e95ce15fb50fd51445bce1e"
+    "sha256": "8e2595f81679145000e58c04d405a2f14f6fd95933130486694bd4165cb25154"
    },
    "wall-back": {
     "file": "crops-2x/wall-back-2x.png",
@@ -9268,11 +9268,11 @@
      "width": 2355,
      "height": 332
     },
-    "bytes": 602167,
+    "bytes": 602141,
     "width": 2355,
     "height": 332,
     "channels": 3,
-    "sha256": "427fbfff5413c2310313035986c955b87756d6e9ee20c4ba82fb7910f99db1c7"
+    "sha256": "df285e3501fd4cb1fb30ed7ed3ed1e816dac2e46da11fd9baad7dcbe70d24db6"
    },
    "wall-left": {
     "file": "crops-2x/wall-left-2x.png",
@@ -9319,11 +9319,11 @@
      "width": 347,
      "height": 1966
     },
-    "bytes": 550902,
+    "bytes": 550869,
     "width": 347,
     "height": 1966,
     "channels": 3,
-    "sha256": "6b45856c5fda756cd8de427155ecda749cca580ec7f610dafc12ec4c16b64d7f"
+    "sha256": "6c36995cc922a03e02cb05cbc3c514404a7281432d44904bbdc63831a9048cab"
    },
    "wall-right": {
     "file": "crops-2x/wall-right-2x.png",
@@ -9370,11 +9370,11 @@
      "width": 348,
      "height": 1817
     },
-    "bytes": 523127,
+    "bytes": 522987,
     "width": 348,
     "height": 1817,
     "channels": 3,
-    "sha256": "f79f1f32e5e4a4a7a2f3571efb879447bba4033c6ef609117dd477358394e1c3"
+    "sha256": "b65d8f43ee5b99fff3a8998a7934e43f58ec72537bd6ab5a221cca3a5907d038"
    },
    "pond-bottom": {
     "file": "crops-2x/pond-bottom-2x.png",
@@ -9406,11 +9406,11 @@
      "width": 965,
      "height": 545
     },
-    "bytes": 565609,
+    "bytes": 565601,
     "width": 965,
     "height": 545,
     "channels": 3,
-    "sha256": "0c39c03935bf711b59532c103d66ee18ad5f6c587eb5709ba7eb104ebed3f1d5"
+    "sha256": "e8989c14b2f72fc9d19601598d4aaeed2fae8d891b8fa9dcb77deb4910998640"
    },
    "pond-right": {
     "file": "crops-2x/pond-right-2x.png",
@@ -9442,11 +9442,11 @@
      "width": 634,
      "height": 756
     },
-    "bytes": 523307,
+    "bytes": 523324,
     "width": 634,
     "height": 756,
     "channels": 3,
-    "sha256": "cd2e3a35e2371b17485b4d58db537a62414f3f6e069353962f6f48da07b39e1c"
+    "sha256": "4d50416928e5c9e6b35d0b7ed0bd904c6a0bd00de8f7508b6107181a47e9bab4"
    },
    "pond-top": {
     "file": "crops-2x/pond-top-2x.png",
@@ -9478,11 +9478,11 @@
      "width": 925,
      "height": 510
     },
-    "bytes": 501163,
+    "bytes": 501135,
     "width": 925,
     "height": 510,
     "channels": 3,
-    "sha256": "a29019db283521c4e1723a6ac4ce0253a89404d380dc5e066ee4cd12a51e088f"
+    "sha256": "2410d2a2d6009596265115682cb02bddd1df2b49fc341e8be20963dcef67e541"
    },
    "pond-left": {
     "file": "crops-2x/pond-left-2x.png",
@@ -9514,11 +9514,11 @@
      "width": 634,
      "height": 758
     },
-    "bytes": 516491,
+    "bytes": 516501,
     "width": 634,
     "height": 758,
     "channels": 3,
-    "sha256": "da361eeab382585e3c5823506eb2f676257ebd2917dfb8f3a8f694d7d2bea93b"
+    "sha256": "5aa8cc4d0fdfdfd952565f3993cf7a84251c2e8da6a60add643a721b3c202a80"
    },
    "hand-bottom": {
     "file": "crops-2x/hand-bottom-2x.png",
@@ -9545,11 +9545,11 @@
      "width": 2008,
      "height": 284
     },
-    "bytes": 546412,
+    "bytes": 546366,
     "width": 2008,
     "height": 284,
     "channels": 3,
-    "sha256": "b7ba60e67ac7253c6cd48d8dac5351963f8b9aadcc895c4ea322267c253213f3"
+    "sha256": "020ae0812aee1e423751122fd77d9aec9218dedb3b2ef263bfa3921033de89e0"
    },
    "hand-top": {
     "file": "crops-2x/hand-top-2x.png",
@@ -9576,11 +9576,11 @@
      "width": 1776,
      "height": 255
     },
-    "bytes": 276079,
+    "bytes": 276272,
     "width": 1776,
     "height": 255,
     "channels": 3,
-    "sha256": "00f2a3c766bbb80b2124366e961fae5721b0ffdc55b7cbd8ca8c4896af4ba103"
+    "sha256": "e147a792631cb420617b9be15ded4be2400542f5c76eade62c03e28ca7a1dcce"
    },
    "hand-left": {
     "file": "crops-2x/hand-left-2x.png",
@@ -9607,11 +9607,11 @@
      "width": 292,
      "height": 1474
     },
-    "bytes": 329426,
+    "bytes": 329394,
     "width": 292,
     "height": 1474,
     "channels": 3,
-    "sha256": "f315f6555bec3238bc76b58c8b8b95516425f615951687044b419292089d07fc"
+    "sha256": "c4bcb04e0cd6dc71e78a1c86bd92574d65ef76437e0cffe41bbf601e1a927cbd"
    },
    "hand-right": {
     "file": "crops-2x/hand-right-2x.png",
@@ -9638,11 +9638,11 @@
      "width": 292,
      "height": 1474
     },
-    "bytes": 344889,
+    "bytes": 344611,
     "width": 292,
     "height": 1474,
     "channels": 3,
-    "sha256": "b3a095b3bceb8523cbee59f368fe07b0012e6ba6dfd3bcfff1889495823eea08"
+    "sha256": "ac4dd4782b81e080fea94b45d4f19c85dc587a84c5aaaeb2948dc2a3d382beb9"
    },
    "meld-bottom": {
     "file": "crops-2x/meld-bottom-2x.png",
@@ -9656,14 +9656,14 @@
     "rect2x": {
      "x": 4042,
      "y": 3448,
-     "width": 564,
+     "width": 566,
      "height": 281
     },
-    "bytes": 145515,
-    "width": 564,
+    "bytes": 143408,
+    "width": 566,
     "height": 281,
     "channels": 3,
-    "sha256": "58b985d35686b112cb4fc36578f4bf29d5b79f1997f6bbc787495708c472528a"
+    "sha256": "f45430914fad206b2cc06e942b3446452848b18d5305886a89d1fe21fde8cc01"
    },
    "meld-right": {
     "file": "crops-2x/meld-right-2x.png",
@@ -9680,11 +9680,11 @@
      "width": 256,
      "height": 435
     },
-    "bytes": 112556,
+    "bytes": 111634,
     "width": 256,
     "height": 435,
     "channels": 3,
-    "sha256": "87b17bf85ff74efda9c111963e41bbe0c24ea875a16312e363b45a18b1944874"
+    "sha256": "30e717e6755cda214f592eaa6665cc769f52137eed5a74e7eaad7e5e748c68c3"
    },
    "meld-top": {
     "file": "crops-2x/meld-top-2x.png",
@@ -9696,16 +9696,16 @@
      "meld-top-2"
     ],
     "rect2x": {
-     "x": 1351,
+     "x": 1352,
      "y": 696,
-     "width": 504,
+     "width": 503,
      "height": 249
     },
-    "bytes": 102226,
-    "width": 504,
+    "bytes": 103645,
+    "width": 503,
     "height": 249,
     "channels": 3,
-    "sha256": "f41550e70b2d0174b9804f358cec09c05763669c21619aa65b6ed5d61933c047"
+    "sha256": "100fe50b5e81488bb46d10d1eade4b8d2bbb25c22b219837dd084ad297679608"
    },
    "meld-left": {
     "file": "crops-2x/meld-left-2x.png",
@@ -9717,16 +9717,16 @@
      "meld-left-2"
     ],
     "rect2x": {
-     "x": 711,
+     "x": 698,
      "y": 2876,
-     "width": 275,
+     "width": 288,
      "height": 491
     },
-    "bytes": 129376,
-    "width": 275,
+    "bytes": 133306,
+    "width": 288,
     "height": 491,
     "channels": 3,
-    "sha256": "4cfeee8b349f54a46e57ac70745d781137efc3ed8fe38ab51f7edfbcacbf5dfc"
+    "sha256": "d7b5aabcd63d107cfe0aeb7ce8b851ec0a6bece5e6b8a551d4949ecc73e69304"
    },
    "drawn-tile": {
     "file": "crops-2x/drawn-tile-2x.png",
@@ -9741,11 +9741,11 @@
      "width": 215,
      "height": 284
     },
-    "bytes": 61354,
+    "bytes": 61368,
     "width": 215,
     "height": 284,
     "channels": 3,
-    "sha256": "14788d9af4ba73093e5eb140985124b337b96eb7c44df31f72cbc52f92378720"
+    "sha256": "4352c515c16c77347dab642c68be1cd371cf8407cec54a62f4b6f1cabbfb5497"
    }
   }
  },

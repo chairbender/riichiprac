@@ -1641,7 +1641,7 @@ the model and anchors, not a lighting decision.
   indicator (`1z`) at slot 4. Four 6×3 ponds (72), each with one riichi
   discard at row 1 column 5 turned 90° to the seat's right; four 13-tile hands
   (52) plus the human's drawn tile; one open meld per seat (12, **outside the
-  wall on the player's right**). The human's hand is reclined 12°.
+  wall on the player's right**, called tile flush with the uprights' bottom edge). The human's hand is reclined 12°.
 - Adjacent tiles have 0.2–0.5 mm clearance (0.3 mm target, 0.2 mm pond column
   pitch) and no tile bodies intersect: 346 adjacent pairs measured, 0
   intersections. The dead-wall break (14.3 mm) and the turned riichi tile's

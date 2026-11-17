@@ -1156,6 +1156,15 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
             cursor += width
             face = next_face(tile_id)
             turned = column >= meld["uprightTiles"]
+            y = -meld["rowRadiusUnits"]
+            if turned:
+                # The called tile lies sideways (0.75 units deep) and must keep
+                # its near edge flush with the upright tiles' bottom edge, the
+                # same near-edge alignment as the riichi discard.
+                y = -(
+                    meld["rowRadiusUnits"]
+                    + (dimensions["height"] - dimensions["width"]) / 2
+                )
             place(
                 tile_id,
                 f"meld-{seat_id}",
@@ -1163,7 +1172,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                 seat_id,
                 "lying-faceup",
                 x,
-                -meld["rowRadiusUnits"],
+                y,
                 thickness / 2,
                 0.0,
                 90.0 if turned else 0.0,

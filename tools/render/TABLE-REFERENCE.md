@@ -40,7 +40,7 @@ in this environment). `--check` needs only Node.
 | Walls | four runs × 17 stacks × 2 tiers (blue up), pitch 0.760714, tier step 0.6, ring radius 7.0. The west (left) run has the **7-stack dead wall** at slots 0–6 with a 0.5-unit break after slot 6; the dora indicator is the face-up top tile at slot 4 (`1z`). Every run has only the **bottom tile at slot 16** (the draw end), so the wall is 132 tiles. |
 | Ponds | four 6 × 3 filled rivers (72 discards), column pitch 0.757143 (0.2 mm gap), row pitch 1.010714 (0.3 mm gap), row radii 4.81 / 3.799286 / 2.788571. Each pond has one **riichi discard** at row 1, column 5, turned 90° to the seat's right; it is shifted after the previous tile and its near edge is aligned to the row baseline. |
 | Hands | four 13-tile standing rows; the human's (south) row is reclined 12° backward about its far bottom edge, the other three are upright blue-back rows; human also has the drawn-tile slot at +5.580536 (intentional tsumogiri gap) |
-| Melds | one 3-tile open pon per seat **outside the wall ring, on the table edge to the player's right** (rod radius 10.6, x from 6.1): two upright tiles + the called tile sideways; a fourth anchor slot per seat is the kan extension |
+| Melds | one 3-tile open pon per seat **outside the wall ring, on the table edge to the player's right** (rod radius 10.6, x from 6.1): two upright tiles + the called tile sideways with its near edge flush with the uprights' bottom edge (the same near-edge rule as the riichi discard); a fourth anchor slot per seat is the kan extension |
 | Felt/room | dark floor plane at z = −0.08 outside the rim |
 
 The tile mesh, bevel and white/blue material gate come from `bake_shells.py`,
