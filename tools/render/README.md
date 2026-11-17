@@ -57,6 +57,9 @@ cd frontend && npm run atlas:review:carved # flat vs carved review sheets
 cd frontend && npm run atlas:review        # build the real atlas and write review sheets
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
+bash tools/render/bake-table-reference.sh  # dry run: build the whole-table reference scene, print camera metrics
+bash tools/render/bake-table-reference.sh --bake  # whole-table reference: @2x render -> 1x board + 2x crops + manifest + check
+bash tools/render/bake-table-reference.sh --check # whole-table reference integrity gate; no Blender
 ```
 
 The group-shadow lab is a static page; serve the repo root and open it:
@@ -166,6 +169,36 @@ scene is pinned to **CPU Cycles** (`scene.device`): the determinism rule assumes
 CPU sampling. A GPU device samples differently, so a GPU regeneration would be
 its own regeneration, not mixed with CPU output.
 
+## Whole-table calibration reference (not a runtime asset)
+
+`bake-table-reference.sh` builds one Blender scene of the complete table — four
+17-stack two-tier walls (136 tiles), four full 6×3 ponds (72 discards), four
+13-tile concealed hands (52), the human's drawn tile, one 3-tile meld per seat
+(12), and a flat felt plane — and renders it from one locked camera at
+**2880 × 1800 @1x** (from a transient 5760 × 3600 @2x master). The committed
+output is `reference/full-board-1x.png`, one 2× crop per element family under
+`reference/crops-2x/`, and `reference/table-reference.json` with the camera,
+every tile placement, the measured projection metrics and decoded-RGB hashes
+for every render. `reference/index.html` is a static contact page.
+
+The camera is the **weak perspective** candidate: 45° elevation (the pond/wall
+shells' own elevation), 140 mm, eye at (0, −86.08, 86.43), which holds the
+near/far tile scale spread to **1.125×** and the run-length ratio to **1.085**
+while a centre pond tile still projects at ~100 px — the 104 px shell scale.
+45° is also the elevation at which the two-tier wall does not occlude the near
+pond row; the bake asserts that with 1,025 visible-surface ray probes (0
+occluded) and the checker re-derives the clearance inequality from the plan.
+Orthographic and physical-eye candidates exist as `--audition` comparisons.
+The sun is tuned so the bare 5z face (221, 218, 214) and the blue wall back
+(1, 64, 159) measure the shipped shells' recorded colours (223, 220, 216 and
+3, 68, 165).
+
+This is **calibration-only**: nothing under `frontend/public` is written and the
+runtime never reads it. It exists so a follow-up task can replace one element
+family with a 2.5D piece and compare the hybrid against the same table. See
+[`TABLE-REFERENCE.md`](TABLE-REFERENCE.md) for the camera rationale, the
+per-family comparison guide, the manifest and the full check list.
+
 ## Directory layout
 
 | Path | Committed | Purpose |
@@ -187,6 +220,14 @@ its own regeneration, not mixed with CPU output.
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
 | `bake_felt.py` | yes | deterministic stdlib PNG generator for the felt + vignette |
 | `bake-felt.sh` | yes | one-command felt regeneration |
+| `table-reference-spec.json` | yes | the whole-table calibration reference: table plan, camera candidates, sun rig, crop families, render sizes, thresholds |
+| `bake_table_reference.py` | yes | Blender 4.5.9 whole-table scene builder, pinhole/visibility assertions and @2x master render |
+| `bake-table-reference.sh` | yes | dry-run / audition / bake / check for the whole-table reference |
+| `TABLE-REFERENCE.md` | yes | the reference's calibration note: scene, chosen perspective, metrics, how to compare |
+| `scripts/table-camera.mjs` | yes | shared reference pinhole, tile-corner projection, metrics and crop rects |
+| `scripts/table-reference.mjs` | yes | publishes the 1x board, 2x crops, manifest and contact page from the master |
+| `scripts/check-table-reference.mjs` | yes | dependency-free reference spec/scene/render/hash/projection/lighting gate (CI) |
+| `reference/` | yes | committed calibration renders (`full-board-1x.png`, `crops-2x/`, `table-reference.json`, `index.html`) |
 | `scripts/check-shells.mjs` | yes | dependency-free spec + PNG + `shells.json` integrity check (CI gate); `--audition` validates the candidate matrix and its labelled sheets |
 | `scripts/png.mjs` | yes | dependency-free PNG decode/encode + sprite compositor shared by the checker and the review sheets |
 | `scripts/shadow-group.mjs` | yes | the hard shadow footprint per shell and the group field (`merged` union-then-blur vs `perTile` blur-then-max); browser-safe |

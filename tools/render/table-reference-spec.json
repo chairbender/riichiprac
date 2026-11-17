@@ -1,0 +1,341 @@
+{
+  "version": 1,
+  "name": "riichiprac whole-table 3D reference",
+  "status": "Calibration-only. One authoritative Blender scene of the complete table, for comparing the opt-in 2.5D compositor's pieces against a single physical perspective. It is not a runtime dependency, it does not replace the compositor, and nothing under frontend/public is written by this pipeline.",
+  "blender": {
+    "requiredVersion": "4.5.9"
+  },
+  "sourceOfTruth": {
+    "tileGeometryAndMaterials": "shell-spec.json's tile/scene/lighting blocks",
+    "shells": "frontend/public/table/shells.json (measured face/back colours and body sizes the reference is checked against)",
+    "faces": "frontend/public/table/faces/<id>.png (the same perspective-neutral glyph masters the runtime atlas uses)",
+    "note": "The reference imports the shell baker's tile mesh, one-material white/blue gate and tile proportions, so the reference body cannot drift from the shipped shells."
+  },
+  "scene": {
+    "engine": "CYCLES",
+    "device": "CPU",
+    "samples": 32,
+    "useAdaptiveSampling": true,
+    "adaptiveThreshold": 0.01,
+    "denoise": true,
+    "denoiser": "OPENIMAGEDENOISE",
+    "filmTransparent": false,
+    "resolutionPercentage": 100,
+    "colorManagement": {
+      "displayDevice": "sRGB",
+      "viewTransform": "AgX",
+      "look": "AgX - Medium High Contrast",
+      "exposure": 0,
+      "gamma": 1
+    }
+  },
+  "table": {
+    "units": "tile units: 1 unit = the 28 mm tile height, the same scale as shell-spec.json (0.75 wide, 0.58929 thick)",
+    "origin": "table centre at (0, 0, 0); the human sits on -Y; +Z is up",
+    "seats": [
+      {
+        "id": "bottom",
+        "rotateZDeg": 0
+      },
+      {
+        "id": "right",
+        "rotateZDeg": 90
+      },
+      {
+        "id": "top",
+        "rotateZDeg": 180
+      },
+      {
+        "id": "left",
+        "rotateZDeg": 270
+      }
+    ],
+    "felt": {
+      "halfExtentUnits": 60.0,
+      "baseColorHex": "#1a5038",
+      "roughness": 0.92,
+      "note": "One flat cloth plane, no rail/compass/apron geometry. The runtime's full-screen felt raster and vignette belong to the compositor; the reference exists to compare tile bodies, not the background."
+    },
+    "wall": {
+      "radiusUnits": 7.0,
+      "stacksPerRun": 17,
+      "stackPitchUnits": 0.75,
+      "stackCentreSpanUnits": 12.0,
+      "tileDepthUnits": 1.0,
+      "tiers": 2,
+      "note": "Each run is 17 touching stacks, tile long axis perpendicular to the wall, two tiles high, every tile face-down (blue up). The ring radius is the wall centre line used by the baked front/back wall fans (eye y -47.8, wall centre y -/+7.0)."
+    },
+    "pond": {
+      "columns": 6,
+      "rows": 3,
+      "columnPitchUnits": 0.75,
+      "rowPitchUnits": 1.0,
+      "rowRadiiUnits": [
+        4.6,
+        3.6,
+        2.6
+      ],
+      "columnCentreOffsetUnits": 1.875,
+      "note": "18 discards per pond in three 6-wide rows. Row 0 is nearest the discarding player (radius 4.6) and the rows advance toward the table centre. The pond outer edge (5.1) leaves a 1.4-unit gap to the wall inner edge, so the two-tier wall does not occlude the near row at the reference elevation. The tile long axis points along the seat's away axis, so the glyph reads for the seat."
+    },
+    "hand": {
+      "backRadiusUnits": 10.6,
+      "count": 13,
+      "pitchUnits": 0.75,
+      "drawnOffsetUnits": 5.5125,
+      "note": "A standing 13-tile row with the blue back to the table centre and the face to the seat; the human also gets the separated drawn tile at +5.5125 (the compositor's +0.35 advance gap after the 13th tile)."
+    },
+    "meld": {
+      "rowRadiusUnits": 5.4,
+      "startXUnits": 2.6,
+      "uprightTiles": 2,
+      "calledTiles": 1,
+      "note": "One open pon per seat inside the wall ring, beside the pond and on the seat's right (row radius 5.4, x from 2.6). The two upright tiles are 0.75 wide along the row; the called tile lies sideways (1.0 along the row)."
+    }
+  },
+  "camera": {
+    "chosen": "weak",
+    "note": "One perspective camera for the whole table at the pond/wall shells' 45 deg elevation, so a centre pond tile projects to the same ~103 px body long axis as the 104 px @1x shells. 'weak' is the committed framing: a long lens at more than twice the physical eye distance, which keeps the near/far tile scale spread close to the compositor's deliberately uniform scale while each zone still shows a real lateral reveal. It is the 2.5D compromise made explicit.",
+    "output": {
+      "resolution1x": [
+        2880,
+        1800
+      ],
+      "resolution2x": [
+        5760,
+        3600
+      ],
+      "masterPath": "build/reference/master-2x.png",
+      "masterDownsample": "box-2x2",
+      "note": "@1x is the shell scale: a centre pond tile's projected long axis is ~100 px, the same ballpark as shells.json's 104 px base, so a comparison crop is roughly 1:1 with the compositor's @1x sprites. The 2x master is rendered once and both the 1x board and the 2x crops are derived from it."
+    },
+    "candidates": {
+      "ortho": {
+        "mode": "orthographic",
+        "elevationDeg": 45.0,
+        "target": [
+          0.0,
+          0.0,
+          0.35
+        ],
+        "eyeDistanceUnits": 121.7391,
+        "orthoScaleUnits": 31.3043,
+        "note": "No convergence and no lateral reveal at all. The audit case: it proves how much of the table read is the elevation plus thickness rather than perspective."
+      },
+      "weak": {
+        "mode": "perspective",
+        "elevationDeg": 45.0,
+        "target": [
+          0.0,
+          0.0,
+          0.35
+        ],
+        "lensMm": 140.0,
+        "sensorWidthMm": 36.0,
+        "sensorFit": "HORIZONTAL",
+        "pixelsPerUnitAtTarget": 92.0,
+        "distanceUnits": 121.7391,
+        "eye": [
+          0.0,
+          -86.082565,
+          86.432565
+        ],
+        "shiftX": 0.0,
+        "shiftY": 0.0,
+        "clipStart": 1.0,
+        "clipEnd": 600.0
+      },
+      "physical": {
+        "mode": "perspective",
+        "elevationDeg": 45.0,
+        "target": [
+          0.0,
+          0.0,
+          0.35
+        ],
+        "lensMm": 65.0,
+        "sensorWidthMm": 36.0,
+        "sensorFit": "HORIZONTAL",
+        "distanceUnits": 57.4391,
+        "eye": [
+          0.0,
+          -40.6224,
+          40.9724
+        ],
+        "shiftX": 0.0,
+        "shiftY": 0.0,
+        "clipStart": 1.0,
+        "clipEnd": 600.0,
+        "note": "A strong-perspective audit case: 65 mm at the physical eye distance (57.4 units), 45 deg elevation. It shows the largest near/far size spread and the strongest lateral reveal."
+      }
+    },
+    "checks": {
+      "maxScaleSpread": 1.18,
+      "maxRunLengthRatio": 1.22,
+      "maxRunAngleErrorDeg": 0.05,
+      "minFrameMarginPx1x": 24,
+      "tileSizePx1x": {
+        "min": 88.0,
+        "max": 116.0
+      },
+      "sampleFaceLumaTolerance": 14,
+      "sampleFaceChannelTolerance": 42,
+      "sampleBlueChannelTolerance": 55
+    }
+  },
+  "lighting": {
+    "convention": "One global key at the shell bake's screen-space top-left reference direction (azimuth 315 fronts -X/-Y, elevation 55), but as a distant sun so the whole table is lit evenly instead of the near corner being several stops brighter than the far one. Shadows fall down-right on screen, matching the compositor's blob offset. The sun strength is tuned so a bare 5z (haku) face measures the shipped shell's face colour.",
+    "key": {
+      "type": "SUN",
+      "azimuthDeg": 315,
+      "elevationDeg": 55,
+      "distance": 55,
+      "angleDeg": 12.0,
+      "energyWPerM2": 6.6,
+      "hex": "#fff7ea"
+    },
+    "world": {
+      "hex": "#3b4a5c",
+      "strength": 1.0
+    }
+  },
+  "faces": {
+    "mode": "planar-overlay",
+    "note": "The glyph masters are composited onto a thin transparent plane 0.001 units above the white plate, exactly the flat 2D glyph the runtime atlas draws, not the carved decal. 5z (haku) has zero ink and gets no plane, which makes it the bare lighting sample tile.",
+    "sampleFace": "5z",
+    "sampleTileId": "pond-bottom-00",
+    "decalInsetUnits": 0.055
+  },
+  "content": {
+    "doraIndicators": 0,
+    "note": "Every wall stack is face-down. The scene is a visual calibration target, not a legal game state: tile faces are drawn from a seeded shuffle and may repeat more than four times.",
+    "seed": 20261116
+  },
+  "renders": {
+    "fullBoard1x": "full-board-1x.png",
+    "crops2xDir": "crops-2x",
+    "manifest": "table-reference.json",
+    "cropMarginPx2x": 28,
+    "cropFamilies": [
+      {
+        "id": "wall-front",
+        "kind": "wall",
+        "seats": [
+          "bottom"
+        ]
+      },
+      {
+        "id": "wall-back",
+        "kind": "wall",
+        "seats": [
+          "top"
+        ]
+      },
+      {
+        "id": "wall-left",
+        "kind": "wall",
+        "seats": [
+          "left"
+        ]
+      },
+      {
+        "id": "wall-right",
+        "kind": "wall",
+        "seats": [
+          "right"
+        ]
+      },
+      {
+        "id": "pond-bottom",
+        "kind": "pond",
+        "seats": [
+          "bottom"
+        ]
+      },
+      {
+        "id": "pond-right",
+        "kind": "pond",
+        "seats": [
+          "right"
+        ]
+      },
+      {
+        "id": "pond-top",
+        "kind": "pond",
+        "seats": [
+          "top"
+        ]
+      },
+      {
+        "id": "pond-left",
+        "kind": "pond",
+        "seats": [
+          "left"
+        ]
+      },
+      {
+        "id": "hand-bottom",
+        "kind": "hand",
+        "seats": [
+          "bottom"
+        ]
+      },
+      {
+        "id": "hand-top",
+        "kind": "hand",
+        "seats": [
+          "top"
+        ]
+      },
+      {
+        "id": "hand-left",
+        "kind": "hand",
+        "seats": [
+          "left"
+        ]
+      },
+      {
+        "id": "hand-right",
+        "kind": "hand",
+        "seats": [
+          "right"
+        ]
+      },
+      {
+        "id": "meld-bottom",
+        "kind": "meld",
+        "seats": [
+          "bottom"
+        ]
+      },
+      {
+        "id": "meld-right",
+        "kind": "meld",
+        "seats": [
+          "right"
+        ]
+      },
+      {
+        "id": "meld-top",
+        "kind": "meld",
+        "seats": [
+          "top"
+        ]
+      },
+      {
+        "id": "meld-left",
+        "kind": "meld",
+        "seats": [
+          "left"
+        ]
+      },
+      {
+        "id": "drawn-tile",
+        "kind": "drawn",
+        "seats": [
+          "bottom"
+        ]
+      }
+    ]
+  }
+}
