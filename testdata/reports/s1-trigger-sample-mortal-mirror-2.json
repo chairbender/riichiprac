@@ -1,0 +1,152 @@
+{
+  "schema": "riichiprac.candidate-trigger",
+  "version": 1,
+  "generated_at": "20261117-061344",
+  "replays_found": 2,
+  "replays_walked": 2,
+  "replays_failed": 0,
+  "decisions_seen": 1210,
+  "decisions_dropped": 0,
+  "decisions_triggered": 944,
+  "family_filtered_out": 0,
+  "labelled_decisions": 1210,
+  "unlabelled_decisions": 0,
+  "label_source": "cache",
+  "label_models": [
+    "mortal_298k.safetensors (afb911473ac8)"
+  ],
+  "decision_rows_updated": 0,
+  "triggers": [
+    {
+      "trigger": "book",
+      "fired": 176,
+      "measured": 176,
+      "target": 177,
+      "true_positive": 176,
+      "precision": 1.0,
+      "recall": 0.9943502824858758,
+      "basis": "book label (settled, else model-free)"
+    },
+    {
+      "trigger": "defensive_riichi",
+      "fired": 177,
+      "measured": 177,
+      "target": 166,
+      "true_positive": 112,
+      "precision": 0.632768361581921,
+      "recall": 0.6746987951807228,
+      "basis": "ch.7/ch.8 book label"
+    },
+    {
+      "trigger": "offensive_architecture",
+      "fired": 23,
+      "measured": 23,
+      "target": 7,
+      "true_positive": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "basis": "ch.4/ch.5 book label; non-book speed/value not labelled"
+    },
+    {
+      "trigger": "call_kan",
+      "fired": 57,
+      "measured": 57,
+      "target": 1,
+      "true_positive": 1,
+      "precision": 0.017543859649122806,
+      "recall": 1.0,
+      "basis": "ch.9 book label; non-book calls not labelled"
+    },
+    {
+      "trigger": "score_placement",
+      "fired": 899,
+      "measured": 899,
+      "target": 1210,
+      "true_positive": 899,
+      "precision": 1.0,
+      "recall": 0.7429752066115702,
+      "basis": "any shippable label"
+    },
+    {
+      "trigger": "close_call",
+      "fired": 121,
+      "measured": 121,
+      "target": 121,
+      "true_positive": 121,
+      "precision": 1.0,
+      "recall": 1.0,
+      "basis": "label-derived (exact by construction)"
+    },
+    {
+      "trigger": "blunder",
+      "fired": 10,
+      "measured": 10,
+      "target": 10,
+      "true_positive": 10,
+      "precision": 1.0,
+      "recall": 1.0,
+      "basis": "label-derived (exact by construction)"
+    }
+  ],
+  "families": [
+    {
+      "family": "book",
+      "candidates": 177
+    },
+    {
+      "family": "contested",
+      "candidates": 75
+    },
+    {
+      "family": "mortal_best",
+      "candidates": 1033
+    },
+    {
+      "family": "mistake",
+      "candidates": 10
+    },
+    {
+      "family": "close_call",
+      "candidates": 121
+    },
+    {
+      "family": "speed_value",
+      "candidates": 23
+    },
+    {
+      "family": "coverage",
+      "candidates": 177
+    },
+    {
+      "family": "table_read",
+      "candidates": 177
+    },
+    {
+      "family": "placement",
+      "candidates": 899
+    },
+    {
+      "family": "multi_step",
+      "candidates": 0
+    }
+  ],
+  "replay_families": [
+    [
+      "mortal_mirror",
+      {
+        "replays": 2,
+        "decisions": 1210,
+        "triggered": 944,
+        "trigger_hits": {
+          "blunder": 10,
+          "book": 176,
+          "call_kan": 57,
+          "close_call": 121,
+          "defensive_riichi": 177,
+          "offensive_architecture": 23,
+          "score_placement": 899
+        }
+      }
+    ]
+  ]
+}
