@@ -1368,11 +1368,11 @@ They are bare and add no atlas key; `FACE_DOWN_SHELL_IDS` now lists them.
 
 The layout engine gets `layoutSideHand(manifest, { side, count })`: the row
 reuses the shell from the far tile to the near one and reports a standing shadow
-group (`seat-left-hand` / `seat-right-hand`, layer 5). Phase 4 mirrors the x
-component of `gridStepPx.x` on the left (the two slot cameras are mirrored), so
-the repeated tile edges line up instead of staircasing: the committed rows step
-`(+6.7, 45)` and `(+6.2, 41.67)`, and their representative sizes are 194 × 684
-(left) and 188 × 644 (right).
+group (`seat-left-hand` / `seat-right-hand`, layer 5). The committed rows step
+by the published camera axis, `(−6.7, 45)` on the left and `(6.2, 41.67)` on the
+right; the representative sizes are 194 × 684 (left) and 188 × 644 (right).
+The row's visible staircase came from the axis-aligned shadow, not the body
+positions; the shadow shape now turns with the row normal.
 
 **Catalogue counts.** Two base shells were added, so the committed catalogue is
 **107 shells**: twelve base + 14 human-hand slots + 13 top-hand slots + 68 wall
@@ -1415,12 +1415,13 @@ logical row and column and sorts on the seat's depth key (`row` for front/back,
 `-row` for top, `-column` for right, `column` for left), then descending screen
 x. A vertical meld row follows the same far-to-near rule (top tile first).
 
-**Side-pond lean.** The left and right ponds carry a **3° whole-zone
-rotation** about the centre of their near (bottom) body edge: right `−3°`, left
-`+3°`, so the far end leans toward the table centre (the top edge shifts about
-**20 px** inward on the committed 450 × 406 rows). The original 1° read as
-straight; the 2026-11-16 review increased the magnitude and kept the inward
-sign. It is a group transform of
+**Side-pond lean.** The left and right ponds carry a **5° whole-zone
+rotation** about the centre of the pond body: right `−5°`, left `+5°`, so the
+top of the row turns toward the table centre while the pond still reads as one
+flat object (the top edge shifts about **35 px** inward on the committed
+450 × 406 rows). The original 1° read as straight and the bottom-edge pivot read
+as tipping up; the 2026-11-16 review moved to the centre pivot and 5°. It is a
+group transform of
 the composed pond (shadow layer + bodies), not a per-tile reposition or a new
 sprite; every tile, face and shadow stays the baked asset. `layoutPond` publishes
 `rotationDeg`/`pivotX`/`pivotY`; the grid positions and hit boxes remain in the
@@ -1696,7 +1697,7 @@ decal sprites and 0 flat glyph sprites**, and a `1p` sprite differs from its
 flat-glyph twin by a mean 17.3 luma (max ~200) inside the face plate. If a tile
 looks flat, it is the display size, not a flat-glyph fallback.
 
-**Review follow-ups (2026-11-16).** The rendered pass exposed four layout
+**Review follow-ups (2026-11-16).** The rendered pass exposed five layout
 issues, fixed here:
 
 1. The wall is a full 17-stack ring on every side. The side walls are placed
@@ -1704,13 +1705,13 @@ issues, fixed here:
    wall-tile width (46 px) lower than the geometric centre, so the four runs
    form a level ring instead of clipping through each other.
 2. The side-pond lean keeps §14's inward sign and increases the magnitude:
-   right `−3°`, left `+3°`. A review flip was tried and reverted; it read as
-   leaning outward, and 1° read as straight.
-3. The side hands' row mirrors the x component of `gridStepPx.x` on the left
-   (the two slot cameras are mirrored) so the repeated tile edges line up
-   instead of staircasing. Dropping the drift entirely made the sawtooth worse.
-   `TableCompositor.test.ts` measures the actual body alpha edges and requires a
-   line residual below 1.6 px on both outer edges of both rows.
+   right `−5°`, left `+5°`, with the pivot moved to the pond body centre. The
+   review found the bottom-edge pivot read as tipping up rather than lying
+   flat; a sign flip was also tried and reverted.
+3. The side hands use the published per-side camera axis: left `(−6.7, 45)`,
+   right `(6.2, 41.67)`. Zeroing or flipping the drift made the left row worse.
+   The apparent staircase is the shadow, not the bodies: the side-hand shadow
+   shapes now turn with the row normal.
 4. The side-wall and side-hand hard shapes are turned with their rows (side
    walls: the column normal, ±8.55°; side hands: the row normal, about −8.5°),
    so `blur(union)` is a long smooth band. The scripted edge scan requires a max
@@ -1761,12 +1762,11 @@ grade when it changes. No game logic moved into React: the view only reads
 
 **Verification.**
 
-- `cd frontend && npx vitest run` — **21 files / 263 tests**, including 31
+- `cd frontend && npx vitest run` — **21 files / 262 tests**, including 31
   board-layout tests (global layer order, fan/pond/wall tier order, advance-box
   hit boxes, non-overlapping shadow-group bounds, compass geometry, group
-  sigmas) and 9 compositor tests (composite order, one blur per group, cache
-  granularity, a reference-alpha pixel comparison, the side-wall edge scan and
-the side-hand edge fits) and 7 rendered-table
+  sigmas) and 8 compositor tests (composite order, one blur per group, cache
+  granularity, a reference-alpha pixel comparison, and the side-wall edge scan) and 7 rendered-table
   DOM/ARIA tests (seat and zone names, one hit box per body, the claim
   marker, compass labels, the Rendered option).
 - `npx tsc --noEmit -p tsconfig.app.json`, `npm run lint`, `npm run build` all
@@ -1780,7 +1780,7 @@ the side-hand edge fits) and 7 rendered-table
   `rendered-board-numbers.json`. The committed fixture reports **2421 × 1398 px
   @1x, 14 zones, 11 shadow groups (walls and side hands at sigma 20), 212
   bodies, 144 hard shapes, 193 contact decals, 153 preloaded textures, 648
-  decal sprites, 919,810 opaque body pixels and 649,909 shadow pixels, with 0 non-transparent pixels on the outer 4 px
+  decal sprites, 922,167 opaque body pixels and 647,658 shadow pixels, with 0 non-transparent pixels on the outer 4 px
   edge**; the painter order is the 11 group layers
   then `wall-back`, `hand-top`, `wall-side-left`, `wall-side-right`,
   `pond-bottom`, `pond-right`, `pond-top`, `pond-left`, `wall-front`,

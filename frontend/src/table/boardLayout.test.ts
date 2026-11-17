@@ -392,7 +392,7 @@ describe('group shadows', () => {
     expect(
       result.groups
         .filter((group) => group.id === 'seat-left-hand' || group.id === 'seat-right-hand')
-        .every((group) => group.shapes.every((shape) => shape.angleDeg < -5)),
+        .every((group) => group.shapes.every((shape) => Math.abs(shape.angleDeg) > 5)),
     ).toBe(true);
   });
 

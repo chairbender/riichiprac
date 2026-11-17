@@ -231,7 +231,7 @@ describe('side hand zone', () => {
     expect(left.shadows).toHaveLength(13);
     expect(left.bodies.every((tile) => tile.shell === 'shell_hand_side_left')).toBe(true);
     expect(left.bodies.every((tile) => tile.face === null)).toBe(true);
-    expect(left.shadows[1].faceX - left.shadows[0].faceX).toBeCloseTo(6.7, 9);
+    expect(left.shadows[1].faceX - left.shadows[0].faceX).toBeCloseTo(-6.7, 9);
     expect(left.shadows[1].faceY - left.shadows[0].faceY).toBeCloseTo(45, 9);
     expect(left.shadows[12].faceY - left.shadows[0].faceY).toBeCloseTo(12 * 45, 9);
     expect(left.bodies[0].hitBox.width).toBe(
@@ -506,7 +506,7 @@ describe('pond zone', () => {
     for (const zone of [right, left]) {
       const bounds = bodyBounds(zone);
       expect(zone.pivotX).toBeCloseTo((bounds.leftX + bounds.rightX) / 2, 9);
-      expect(zone.pivotY).toBeCloseTo(bounds.bottomY, 9);
+      expect(zone.pivotY).toBeCloseTo((bounds.topY + bounds.bottomY) / 2, 9);
     }
 
     // The lean is a render transform, not a per-tile repositioning.

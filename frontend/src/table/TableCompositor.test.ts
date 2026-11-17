@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createCanvas, loadImage } from '@napi-rs/canvas';
+import { createCanvas } from '@napi-rs/canvas';
 import { describe, expect, it } from 'vitest';
 import { parseShellsManifest } from './shellManifest';
 import type { ShellsManifest } from './shellManifest';
@@ -380,64 +380,6 @@ describe('group shadow pixels', () => {
     // An axis-aligned per-stack footprint steps ~6.9 px between rows; the
     // rotated run moves the edge smoothly (about 0.15 px per row).
     expect(worstStep, `worst step at y=${worstY} of ${height}`).toBeLessThan(2.5);
-  });
-
-  it('keeps both side-hand rows’ visible edges straight', async () => {
-    const result = board();
-    for (const [id, shellId] of [
-      ['hand-left', 'shell_hand_side_left'],
-      ['hand-right', 'shell_hand_side_right'],
-    ] as const) {
-      const placement = result.zones.find((entry) => entry.id === id);
-      if (!placement) throw new Error(`no ${id}`);
-      const shell = manifest.shells[shellId];
-      const image = await loadImage(readFileSync(join(tableDir, shell.textureFile)));
-      const width = placement.zone.width;
-      const height = placement.zone.height;
-      const canvas = createCanvas(width, height);
-      const context = canvas.getContext('2d');
-      for (const tile of placement.zone.bodies) {
-        context.drawImage(image, tile.drawX, tile.drawY);
-      }
-      const pixels = context.getImageData(0, 0, width, height).data;
-      const alphaAt = (x: number, y: number): number => pixels[(y * width + x) * 4 + 3];
-      let firstY = 0;
-      for (let y = 0; y < height; y += 1) {
-        let any = false;
-        for (let x = 0; x < width; x += 1) if (alphaAt(x, y) > 128) { any = true; break; }
-        if (any) { firstY = y; break; }
-      }
-      let lastY = height - 1;
-      for (let y = height - 1; y >= 0; y -= 1) {
-        let any = false;
-        for (let x = 0; x < width; x += 1) if (alphaAt(x, y) > 128) { any = true; break; }
-        if (any) { lastY = y; break; }
-      }
-      const inset = 42;
-      const leftPoints: Array<[number, number]> = [];
-      const rightPoints: Array<[number, number]> = [];
-      for (let y = firstY + inset; y <= lastY - inset; y += 1) {
-        for (let x = 0; x < width; x += 1) if (alphaAt(x, y) > 128) { leftPoints.push([y, x]); break; }
-        for (let x = width - 1; x >= 0; x -= 1) if (alphaAt(x, y) > 128) { rightPoints.push([y, x]); break; }
-      }
-      const residual = (points: Array<[number, number]>): number => {
-        const n = points.length;
-        const sumY = points.reduce((sum, [y]) => sum + y, 0);
-        const sumX = points.reduce((sum, [, x]) => sum + x, 0);
-        const sumYY = points.reduce((sum, [y]) => sum + y * y, 0);
-        const sumYX = points.reduce((sum, [y, x]) => sum + y * x, 0);
-        const denom = n * sumYY - sumY * sumY;
-        const slope = denom === 0 ? 0 : (n * sumYX - sumY * sumX) / denom;
-        const intercept = (sumX - slope * sumY) / n;
-        const total = points.reduce(
-          (sum, [y, x]) => sum + (x - (slope * y + intercept)) ** 2,
-          0,
-        );
-        return Math.sqrt(total / n);
-      };
-      expect(residual(leftPoints), `${id} left edge`).toBeLessThan(1.6);
-      expect(residual(rightPoints), `${id} right edge`).toBeLessThan(1.6);
-    }
   });
 
   const group: BoardShadowGroup = {

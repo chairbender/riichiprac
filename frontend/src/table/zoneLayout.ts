@@ -57,10 +57,11 @@ export const HAND_CENTRE_INDEX = 6;
  * The whole-zone lean of each side pond, in screen degrees. Positive is
  * clockwise. It is a group transform of the composed pond (shadow + bodies),
  * not a per-tile position change or a new sprite. The 2026-11-16 review asked
- * for a stronger read than the original 1°, so 3° is the approved value; the
- * direction is still right `−3°`, left `+3°` (far end toward the centre).
+ * for a stronger read than the original 1°, so 5° is the approved value; the
+ * direction is still right `−5°`, left `+5°` (far end toward the centre). The
+ * pivot is the pond body centre so the whole object reads as lying flat.
  */
-export const SIDE_POND_LEAN_DEG = 3;
+export const SIDE_POND_LEAN_DEG = 5;
 
 /**
  * Architecture Task 4.1's global paint order. Felt is layer 0 and is not a
@@ -631,7 +632,9 @@ function finishZone(manifest: ShellsManifest, seed: ZoneSeed): LayoutZone {
     blurPad: Math.ceil(3 * sigmaPx1x),
     rotationDeg,
     pivotX: rotationDeg && hasBodies ? (bodyLeft + bodyRight) / 2 - left : 0,
-    pivotY: rotationDeg && hasBodies ? bodyBottom - top : 0,
+    // A whole-zone lean turns the pond about its own centre, so it reads as a
+    // flat object rotated on the table rather than one edge being pinned.
+    pivotY: rotationDeg && hasBodies ? (bodyTop + bodyBottom) / 2 - top : 0,
   };
 }
 
@@ -755,13 +758,11 @@ export function layoutSideHand(
     );
   }
   const axis = base.gridStepPx.x;
-  // The left and right hand cameras are mirrored. Stepping by the published x
-  // drift leaves one side's repeated edges off; mirroring the x component on
-  // the left makes both rows' visible edges collinear.
-  const step: PointPx = [
-    options.side === 'left' ? -axis[0] : axis[0],
-    Math.abs(axis[1]),
-  ];
+  // The row reuses the published camera axis: the left row drifts left, the
+  // right row right. The two cameras are mirrored, so this keeps the tile
+  // edges lined up; an earlier attempt to zero or flip the drift made the left
+  // row staircase while the right stayed correct.
+  const step: PointPx = [axis[0], Math.abs(axis[1])];
   const tiles = Array.from({ length: count }, (_, index) =>
     placeAtFace(baseId, base, null, index * step[0], index * step[1]),
   );

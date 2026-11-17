@@ -646,9 +646,9 @@
    "height": 406,
    "sigmaPx1x": 12,
    "blurPad": 36,
-   "rotationDeg": -3,
+   "rotationDeg": -5,
    "pivotX": 219.95,
-   "pivotY": 385.03999999999996,
+   "pivotY": 192.51999999999998,
    "bodies": [
     {
      "shell": "shell_flat_sideways",
@@ -1899,9 +1899,9 @@
    "height": 406,
    "sigmaPx1x": 12,
    "blurPad": 36,
-   "rotationDeg": 3,
+   "rotationDeg": 5,
    "pivotX": 219.95,
-   "pivotY": 385.03999999999996,
+   "pivotY": 192.51999999999998,
    "bodies": [
     {
      "shell": "shell_flat_sideways_270",
@@ -3764,32 +3764,32 @@
    "bodies": [
     {
      "shell": "shell_hand_side_left",
-     "drawX": 10,
+     "drawX": 90,
      "drawY": 0
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 16,
+     "drawX": 83,
      "drawY": 45
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 23,
+     "drawX": 77,
      "drawY": 90
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 30,
+     "drawX": 70,
      "drawY": 135
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 36,
+     "drawX": 63,
      "drawY": 180
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 43,
+     "drawX": 56,
      "drawY": 225
     },
     {
@@ -3799,99 +3799,99 @@
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 56,
+     "drawX": 43,
      "drawY": 315
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 63,
+     "drawX": 36,
      "drawY": 360
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 70,
+     "drawX": 30,
      "drawY": 405
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 77,
+     "drawX": 23,
      "drawY": 450
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 83,
+     "drawX": 16,
      "drawY": 495
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 90,
+     "drawX": 10,
      "drawY": 540
     }
    ],
    "shadows": [
     {
      "shell": "shell_hand_side_left",
-     "gridX": 11.565662690976254,
+     "gridX": 91.96566269097625,
      "gridY": 2
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 18.265662690976256,
+     "gridX": 85.26566269097624,
      "gridY": 47
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 24.965662690976252,
+     "gridX": 78.56566269097624,
      "gridY": 92
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 31.665662690976255,
+     "gridX": 71.86566269097625,
      "gridY": 137
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 38.36566269097625,
+     "gridX": 65.16566269097625,
      "gridY": 182
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 45.065662690976254,
+     "gridX": 58.465662690976245,
      "gridY": 227
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 51.76566269097626,
+     "gridX": 51.76566269097624,
      "gridY": 272
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 58.46566269097625,
+     "gridX": 45.06566269097624,
      "gridY": 317
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 65.16566269097626,
+     "gridX": 38.36566269097625,
      "gridY": 362
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 71.86566269097625,
+     "gridX": 31.665662690976234,
      "gridY": 407
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 78.56566269097625,
+     "gridX": 24.965662690976245,
      "gridY": 452
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 85.26566269097626,
+     "gridX": 18.265662690976228,
      "gridY": 497
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 91.96566269097626,
+     "gridX": 11.56566269097624,
      "gridY": 542
     }
    ],
@@ -3965,7 +3965,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 10,
+     "drawX": 90,
      "drawY": 0,
      "texWidth": 71,
      "texHeight": 106
@@ -3977,7 +3977,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 16,
+     "drawX": 83,
      "drawY": 45,
      "texWidth": 71,
      "texHeight": 106
@@ -3989,7 +3989,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 23,
+     "drawX": 77,
      "drawY": 90,
      "texWidth": 71,
      "texHeight": 106
@@ -4001,7 +4001,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 30,
+     "drawX": 70,
      "drawY": 135,
      "texWidth": 71,
      "texHeight": 106
@@ -4013,7 +4013,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 36,
+     "drawX": 63,
      "drawY": 180,
      "texWidth": 71,
      "texHeight": 106
@@ -4025,7 +4025,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 43,
+     "drawX": 56,
      "drawY": 225,
      "texWidth": 71,
      "texHeight": 106
@@ -4049,7 +4049,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 56,
+     "drawX": 43,
      "drawY": 315,
      "texWidth": 71,
      "texHeight": 106
@@ -4061,7 +4061,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 63,
+     "drawX": 36,
      "drawY": 360,
      "texWidth": 71,
      "texHeight": 106
@@ -4073,7 +4073,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 70,
+     "drawX": 30,
      "drawY": 405,
      "texWidth": 71,
      "texHeight": 106
@@ -4085,7 +4085,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 77,
+     "drawX": 23,
      "drawY": 450,
      "texWidth": 71,
      "texHeight": 106
@@ -4097,7 +4097,7 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 83,
+     "drawX": 16,
      "drawY": 495,
      "texWidth": 71,
      "texHeight": 106
