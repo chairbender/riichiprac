@@ -1367,13 +1367,12 @@ the shadowed blue family, like the top hand, not the bright face-down wall blue.
 They are bare and add no atlas key; `FACE_DOWN_SHELL_IDS` now lists them.
 
 The layout engine gets `layoutSideHand(manifest, { side, count })`: the row
-steps by the projected thickness (the y component of `gridStepPx.x`: 45 px down
-the screen on the left, 41.67 px on the right) from the far tile to the near one,
-reuses the shell, and reports a standing shadow group (`seat-left-hand` /
-`seat-right-hand`, layer 5). The x drift in that axis describes the slot camera;
-reusing one shell down the row makes it a visible staircase, so Phase 4 drops it
-and keeps a flush vertical column. The committed representative rows are
-113 × 684 (left) and 113 × 644 (right).
+reuses the shell from the far tile to the near one and reports a standing shadow
+group (`seat-left-hand` / `seat-right-hand`, layer 5). Phase 4 mirrors the x
+component of `gridStepPx.x` on the left (the two slot cameras are mirrored), so
+the repeated tile edges line up instead of staircasing: the committed rows step
+`(+6.7, 45)` and `(+6.2, 41.67)`, and their representative sizes are 194 × 684
+(left) and 188 × 644 (right).
 
 **Catalogue counts.** Two base shells were added, so the committed catalogue is
 **107 shells**: twelve base + 14 human-hand slots + 13 top-hand slots + 68 wall
@@ -1417,10 +1416,11 @@ logical row and column and sorts on the seat's depth key (`row` for front/back,
 x. A vertical meld row follows the same far-to-near rule (top tile first).
 
 **Side-pond lean.** The left and right ponds carry a **1° whole-zone
-rotation** about the centre of their near (bottom) body edge. The Phase 4 review
-reversed the original sign: right `+1°`, left `−1°`, so the far/top end leans
-away from the table centre and the near edge reads as tucked in. It is a group
-transform of
+rotation** about the centre of their near (bottom) body edge: right `−1°`, left
+`+1°`, so the far end leans toward the table centre (the top edge shifts
+**6.72 px** inward on the committed 450 × 406 rows). The 2026-11-16 review
+flipped and then restored this sign; the original inward lean is the approved
+one. It is a group transform of
 the composed pond (shadow layer + bodies), not a per-tile reposition or a new
 sprite; every tile, face and shadow stays the baked asset. `layoutPond` publishes
 `rotationDeg`/`pivotX`/`pivotY`; the grid positions and hit boxes remain in the
@@ -1696,26 +1696,37 @@ decal sprites and 0 flat glyph sprites**, and a `1p` sprite differs from its
 flat-glyph twin by a mean 17.3 luma (max ~200) inside the face plate. If a tile
 looks flat, it is the display size, not a flat-glyph fallback.
 
-**Review follow-ups (2026-11-16).** The first rendered pass exposed four layout
+**Review follow-ups (2026-11-16).** The rendered pass exposed four layout
 issues, fixed here:
 
-1. The wall is a full 17-stack ring on every side (above).
-2. The side-pond lean sign is reversed from §14: right `+1°`, left `−1°`, the
-   user's visual choice for the vanishing-point read. It remains a group
-   transform of the composed pond.
-3. The side hands are a flush vertical column. The published side-hand axis has
-   a small x drift from the slot camera; reusing one shell down the row made a
-   staircase, so the row step is the projected thickness only. The side-hand
-   group shadow shape is axis-aligned so its union is a smooth band.
+1. The wall is a full 17-stack ring on every side, and the side walls are placed
+   just outside the front/back wall ends (2 px between body boxes) so the four
+   runs form a ring instead of clipping through each other.
+2. The side-pond lean keeps §14's original sign: right `−1°`, left `+1°`, the
+   far end leaning toward the table centre. A review flip was tried and
+   reverted; it read as leaning outward.
+3. The side hands' row mirrors the x component of `gridStepPx.x` on the left
+   (the two slot cameras are mirrored) so the repeated tile edges line up
+   instead of staircasing. Dropping the drift entirely made the sawtooth worse.
+   `TableCompositor.test.ts` measures the actual body alpha edges and requires a
+   line residual below 1.6 px on both outer edges of both rows.
 4. The side-wall and side-hand hard shapes are turned with their rows (side
-   walls: the column normal, ±8.55°; side hands: 0°). A per-stack axis-aligned
-   rectangle made the wall's blur edge a 6.9 px staircase; the turned union is a
-   long smooth band and the scripted edge scan reports a max step under 2.5 px
-   away from the rounded caps.
+   walls: the column normal, ±8.55°; side hands: the row normal, about −8.5°),
+   so `blur(union)` is a long smooth band. The scripted edge scan requires a max
+   step below 2.5 px away from the rounded caps.
+5. The shared `walls` group uses a **20 px** blur override rather than the
+   published lying sigma of 12; on a 1200 px run the 12 px tail read as a hard
+   edge. The other groups keep their published sigmas.
+
+The face-up tiles use the carved decal atlas (648 decal sprites, 0 flat glyphs;
+a `1p` sprite differs from its flat twin by a mean 17.3 luma). The review still
+found the relief too flat at the board's display scale, especially the pinzu
+dots; that is the follow-up task **261116-2115, "2.5D polish: stronger carved
+lighting for face-up decals"**, not a runtime fallback.
 
 The blue-back side hands' **per-shell 3D catches** still use the pre-alignment
 row offset; re-baking them is a Blender follow-up. The group shadow, which is
-what the rendered view actually draws under the hand, is already aligned.
+what the rendered view actually draws under the hand, is aligned.
 
 **Caching.** `update()` returns the zone/group ids it rebuilt. A second update
 with the same board rebuilds nothing; changing one pond body rebuilds that pond
@@ -1748,11 +1759,12 @@ grade when it changes. No game logic moved into React: the view only reads
 
 **Verification.**
 
-- `cd frontend && npx vitest run` — **21 files / 262 tests**, including 31
+- `cd frontend && npx vitest run` — **21 files / 263 tests**, including 31
   board-layout tests (global layer order, fan/pond/wall tier order, advance-box
   hit boxes, non-overlapping shadow-group bounds, compass geometry, group
-  sigmas) and 8 compositor tests (composite order, one blur per group, cache
-  granularity, a reference-alpha pixel comparison, and the side-wall edge scan) and 7 rendered-table
+  sigmas) and 9 compositor tests (composite order, one blur per group, cache
+  granularity, a reference-alpha pixel comparison, the side-wall edge scan and
+the side-hand edge fits) and 7 rendered-table
   DOM/ARIA tests (seat and zone names, one hit box per body, the claim
   marker, compass labels, the Rendered option).
 - `npx tsc --noEmit -p tsconfig.app.json`, `npm run lint`, `npm run build` all
@@ -1763,16 +1775,17 @@ grade when it changes. No game logic moved into React: the view only reads
   and pond families.
 - `cd frontend && npm run board:review` writes
   `tools/render/build/review/rendered-board-1x.png` and
-  `rendered-board-numbers.json`. The committed fixture reports **1666 × 1398 px
-  @1x, 14 zones, 11 shadow groups, 212 bodies, 144 hard shapes, 193 contact
-  decals, 153 preloaded textures, 648 decal sprites, 886,188 opaque body pixels
-  and 459,153 shadow pixels, with 0 non-transparent pixels on the outer 4 px
+  `rendered-board-numbers.json`. The committed fixture reports **2376 × 1398 px
+  @1x, 14 zones, 11 shadow groups (walls at sigma 20), 212 bodies, 144 hard
+  shapes, 193 contact decals, 153 preloaded textures, 648 decal sprites,
+  919,965 opaque body pixels and 571,741 shadow pixels, with 0 non-transparent pixels on the outer 4 px
   edge**; the painter order is the 11 group layers
   then `wall-back`, `hand-top`, `wall-side-left`, `wall-side-right`,
   `pond-bottom`, `pond-right`, `pond-top`, `pond-left`, `wall-front`,
   `hand-left`, `melds-right-0`, `hand-right`, `melds-bottom-0`,
   `hand-bottom`; the second update rebuilds 0 zones and 0 groups. The
-  textures are dominated by the per-slot wall shells (36 stacks × 2 tiers); a
+  textures are dominated by the per-slot wall shells (four sides × 17 stacks ×
+  two tiers); a
   board loads only the slots it draws. Byte budgets are advisory (AGENTS.md
   §1c).
 - **Visual sign-off is the user's** (AGENTS.md §6). Open

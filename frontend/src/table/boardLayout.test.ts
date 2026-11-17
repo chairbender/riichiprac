@@ -251,8 +251,8 @@ describe('board geometry', () => {
 
   it('publishes the pond lean on the side ponds only', () => {
     const result = board();
-    expect(zone(result, 'pond-left').zone.rotationDeg).toBe(-1);
-    expect(zone(result, 'pond-right').zone.rotationDeg).toBe(1);
+    expect(zone(result, 'pond-left').zone.rotationDeg).toBe(1);
+    expect(zone(result, 'pond-right').zone.rotationDeg).toBe(-1);
     expect(zone(result, 'pond-bottom').zone.rotationDeg).toBe(0);
     expect(zone(result, 'pond-top').zone.rotationDeg).toBe(0);
     expect(zone(result, 'pond-left').rotationPad).toBeGreaterThan(0);
@@ -349,7 +349,12 @@ describe('group shadows', () => {
       );
       expect(group.shapes).toHaveLength(expected);
       const first = members[0].zone.shadows[0];
-      expect(group.sigmaPx1x).toBe(manifest.shells[first.shell].shadowShape.sigmaPx1x);
+      if (group.id === 'walls') {
+        // The long wall run uses a wider visual blur than the published shell.
+        expect(group.sigmaPx1x).toBeGreaterThanOrEqual(20);
+      } else {
+        expect(group.sigmaPx1x).toBe(manifest.shells[first.shell].shadowShape.sigmaPx1x);
+      }
       expect(group.coreAlpha).toBe(manifest.shells[first.shell].shadowShape.coreAlpha);
       expect(group.colorHex).toBe(manifest.shells[first.shell].shadowShape.colorHex);
       expect(group.pad).toBe(Math.ceil(3 * group.sigmaPx1x) + 2);
@@ -362,7 +367,7 @@ describe('group shadows', () => {
     expect(group('seat-bottom-hand')?.sigmaPx1x).toBe(5);
     expect(group('seat-bottom-melds')?.sigmaPx1x).toBe(12);
     expect(group('pond-bottom')?.sigmaPx1x).toBe(12);
-    expect(group('walls')?.sigmaPx1x).toBe(12);
+    expect(group('walls')?.sigmaPx1x).toBe(20);
   });
 
   it('rotates side-wall and side-hand shadow shapes with their rows', () => {
@@ -383,7 +388,7 @@ describe('group shadows', () => {
     expect(leftShapes?.every((shape) => Math.abs(shape.angleDeg - 8.55) < 0.1)).toBe(true);
     expect(rightShapes?.every((shape) => Math.abs(shape.angleDeg + 8.55) < 0.1)).toBe(true);
     const hands = result.groups.find((group) => group.id === 'seat-left-hand');
-    expect(hands?.shapes.every((shape) => Math.abs(shape.angleDeg) < 1e-9)).toBe(true);
+    expect(hands?.shapes.every((shape) => Math.abs(shape.angleDeg + 8.46) < 0.15)).toBe(true);
   });
 
   it('rotates a leaning pond’s shapes, not its body placements', () => {
@@ -392,7 +397,7 @@ describe('group shadows', () => {
     const first = right?.shapes[0];
     const tile = zone(result, 'pond-right').zone.shadows[0];
     const base = manifest.shells[tile.shell].shadowShape;
-    expect(first?.angleDeg).toBeCloseTo(base.angleDeg + 1, 10);
+    expect(first?.angleDeg).toBeCloseTo(base.angleDeg - 1, 10);
   });
 });
 

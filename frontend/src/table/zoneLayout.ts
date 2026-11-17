@@ -753,11 +753,13 @@ export function layoutSideHand(
     );
   }
   const axis = base.gridStepPx.x;
-  // The row is a flush vertical column: every reused shell sits at the same
-  // screen x. The published axis carries a small x drift from the slot camera,
-  // which stacks 13 tile copies into a visible staircase; the row step is the
-  // projected thickness (the y component) only.
-  const step: PointPx = [0, Math.abs(axis[1])];
+  // The left and right hand cameras are mirrored. Stepping by the published x
+  // drift makes one side's repeated tile edges run as a staircase; mirroring
+  // the x component on the left makes both rows' visible edges collinear.
+  const step: PointPx = [
+    options.side === 'left' ? -axis[0] : axis[0],
+    Math.abs(axis[1]),
+  ];
   const tiles = Array.from({ length: count }, (_, index) =>
     placeAtFace(baseId, base, null, index * step[0], index * step[1]),
   );
@@ -858,11 +860,11 @@ export function layoutPond(manifest: ShellsManifest, options: PondLayoutOptions)
     .map((entry) => entry.tile);
 
   const lean = options.leanDeg ?? SIDE_POND_LEAN_DEG;
-  // The lean direction is the 2026-11-16 review's choice: the right pond
-  // angles left and the left pond angles right, so their near edges tuck
-  // toward the centre. It is a visual trick, not a perspective derivation.
+  // Right pond −1°, left +1°: the far end leans toward the table centre. The
+  // 2026-11-16 review confirmed this original sign (the flip read as leaning
+  // outward).
   const rotationDeg =
-    lean === 0 ? 0 : side === 'right' ? lean : side === 'left' ? -lean : 0;
+    lean === 0 ? 0 : side === 'right' ? -lean : side === 'left' ? lean : 0;
 
   return finishZone(manifest, {
     id: `pond-${side}`,

@@ -59,6 +59,14 @@ export const BOARD_MARGIN = 28;
 export const BOARD_GAP = 28;
 /** Extra gap around the centre compartment so pond shadow bounds clear. */
 const POND_GAP = 56;
+/** The side walls sit just outside the front/back wall ends, forming a ring. */
+const WALL_JOIN_GAP = 2;
+/**
+ * The wall run is a very long band; the published lying sigma (12) reads as a
+ * hard edge at that length. The 2026-11-16 review asked for the same soft read
+ * as the hand shadows, so the shared wall group blurs wider.
+ */
+const WALL_SHADOW_SIGMA_PX = 20;
 /** The reserved centre compartment (compass) side, in @1x px. */
 export const COMPASS_SIZE = 180;
 
@@ -197,6 +205,31 @@ function rotationPadOf(zone: LayoutZone): number {
   return Math.ceil(Math.abs(Math.sin(rad(zone.rotationDeg))) * Math.hypot(zone.width, zone.height)) + 2;
 }
 
+interface BodyInsets {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The opaque body box inside a zone's local space (the wall body edges). */
+function bodyInsets(zone: LayoutZone): BodyInsets | null {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  for (const tile of zone.bodies) {
+    left = Math.min(left, tile.gridX);
+    top = Math.min(top, tile.gridY);
+    right = Math.max(right, tile.gridX + tile.hitBox.width);
+    bottom = Math.max(bottom, tile.gridY + tile.hitBox.height);
+  }
+  if (!Number.isFinite(left)) return null;
+  return { left, top, right, bottom, width: right - left, height: bottom - top };
+}
+
 function placeZone(zone: LayoutZone, x: number, y: number): BoardZone {
   // Composite positions are whole @1x px; the zone's internal grid and hit box
   // stay fractional. A half-pixel blit would anti-alias every tile edge.
@@ -306,23 +339,21 @@ function normalizeShadowAngle(degrees: number): number {
  * the repeated axis-aligned rectangles make a staircase instead of one long
  * blur band. The rotated pond lean is added on top.
  */
-function shadowAngleFor(
-  manifest: ShellsManifest,
-  zone: LayoutZone,
-  shape: ShadowShape,
-): number {
-  if (zone.kind === 'wall' && (zone.side === 'left' || zone.side === 'right')) {
-    const step = zone.shadows[0]
-      ? manifest.shells[zone.shadows[0].shell]?.gridStepPx.x
-      : undefined;
-    if (step) {
-      return normalizeShadowAngle(
-        (Math.atan2(step[1], step[0]) * 180) / Math.PI + 90 + zone.rotationDeg,
-      );
+function shadowAngleFor(zone: LayoutZone, shape: ShadowShape): number {
+  if (
+    (zone.kind === 'wall' || zone.kind === 'hand') &&
+    (zone.side === 'left' || zone.side === 'right')
+  ) {
+    const [first, second] = zone.shadows;
+    if (first && second) {
+      const dx = second.gridX - first.gridX;
+      const dy = second.gridY - first.gridY;
+      if (dx !== 0 || dy !== 0) {
+        return normalizeShadowAngle(
+          (Math.atan2(dy, dx) * 180) / Math.PI + 90 + zone.rotationDeg,
+        );
+      }
     }
-  }
-  if (zone.kind === 'hand' && (zone.side === 'left' || zone.side === 'right')) {
-    return normalizeShadowAngle(zone.rotationDeg);
   }
   return shape.angleDeg + zone.rotationDeg;
 }
@@ -371,7 +402,7 @@ function buildShadowGroups(
           halfX: shape.halfPx[0],
           halfY: shape.halfPx[1],
           radiusPx: shape.radiusPx,
-          angleDeg: shadowAngleFor(manifest, zone, shape),
+          angleDeg: shadowAngleFor(zone, shape),
         });
         sigmaPx1x = shape.sigmaPx1x;
         coreAlpha = shape.coreAlpha;
@@ -382,6 +413,8 @@ function buildShadowGroups(
     if (shapes.length === 0) continue;
     const bounds = unionBounds(shapes.map(shadowShapeBounds));
     if (!bounds) continue;
+    const sigma =
+      groupId === 'walls' ? Math.max(sigmaPx1x, WALL_SHADOW_SIGMA_PX) : sigmaPx1x;
     const originX = Math.floor(bounds.x);
     const originY = Math.floor(bounds.y);
     const width = Math.max(1, Math.ceil(bounds.x + bounds.width) - originX);
@@ -392,8 +425,8 @@ function buildShadowGroups(
       y: originY,
       width,
       height,
-      pad: Math.ceil(3 * sigmaPx1x) + 2,
-      sigmaPx1x,
+      pad: Math.ceil(3 * sigma) + 2,
+      sigmaPx1x: sigma,
       coreAlpha,
       colorHex,
       shapes: shapes.map((shape) => ({
@@ -507,36 +540,78 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
   const bottomOf = (zone: BoardZone | undefined, fallback: number): number =>
     zone ? zone.y + zone.zone.height : fallback;
 
-  // Walls: all four share one shadow group and sit between pond and hand.
-  const wallZone = (side: TableSide): BoardZone | undefined => {
-    if (stacks === 0) return undefined;
-    if (side === 'top') {
-      const zone = layoutWall(manifest, { wall: 'back', count: stacks, startIndex });
-      const below = ponds.get('top');
-      const anchor = below ? below.y : -half - BOARD_GAP;
-      return placeZone(zone, -zone.width / 2, anchor - BOARD_GAP - zone.height);
-    }
-    if (side === 'bottom') {
-      const zone = layoutWall(manifest, { wall: 'front', count: stacks, startIndex });
-      const above = ponds.get('bottom');
-      const anchor = above ? above.y + above.zone.height : half + BOARD_GAP;
-      return placeZone(zone, -zone.width / 2, anchor + BOARD_GAP);
-    }
-    const zone = layoutSideWall(manifest, { side: side === 'left' ? 'left' : 'right', count: stacks, startIndex });
-    if (side === 'left') {
-      const east = ponds.get('left');
-      const anchor = east ? east.x : -half - BOARD_GAP;
-      return placeZone(zone, anchor - BOARD_GAP - zone.width, -zone.height / 2);
-    }
-    const west = ponds.get('right');
-    const anchor = west ? west.x + west.zone.width : half + BOARD_GAP;
-    return placeZone(zone, anchor + BOARD_GAP, -zone.height / 2);
-  };
-
+  // Walls: all four share one shadow group and form a ring. The front/back
+  // walls are centred over their ponds; the side walls sit just outside their
+  // x ends, so the four runs meet at the corners instead of clipping through.
   const walls = new Map<TableSide, BoardZone>();
-  for (const side of TABLE_SIDES) {
-    const wall = wallZone(side);
-    if (wall) walls.set(side, wall);
+  if (stacks > 0) {
+    const back = layoutWall(manifest, { wall: 'back', count: stacks, startIndex });
+    const topPond = ponds.get('top');
+    const topAnchor = topPond ? topPond.y : -half - BOARD_GAP;
+    const backPlacement = placeZone(
+      back,
+      -back.width / 2,
+      topAnchor - BOARD_GAP - back.height,
+    );
+    const front = layoutWall(manifest, { wall: 'front', count: stacks, startIndex });
+    const bottomPond = ponds.get('bottom');
+    const bottomAnchor = bottomPond ? bottomPond.y + bottomPond.zone.height : half + BOARD_GAP;
+    const frontPlacement = placeZone(
+      front,
+      -front.width / 2,
+      bottomAnchor + BOARD_GAP,
+    );
+    walls.set('top', backPlacement);
+    walls.set('bottom', frontPlacement);
+
+    const backInsets = bodyInsets(back);
+    const frontInsets = bodyInsets(front);
+    if (!backInsets || !frontInsets) {
+      // A bodyless wall cannot happen with a real manifest; leave the ring out.
+      walls.set('top', backPlacement);
+      walls.set('bottom', frontPlacement);
+    } else {
+      walls.set('top', backPlacement);
+      walls.set('bottom', frontPlacement);
+      const ringBodyLeft = Math.min(
+        backPlacement.x + backInsets.left,
+        frontPlacement.x + frontInsets.left,
+      );
+      const ringBodyRight = Math.max(
+        backPlacement.x + backInsets.right,
+        frontPlacement.x + frontInsets.right,
+      );
+      const left = layoutSideWall(manifest, {
+        side: 'left',
+        count: stacks,
+        startIndex,
+      });
+      const right = layoutSideWall(manifest, {
+        side: 'right',
+        count: stacks,
+        startIndex,
+      });
+      const leftInsets = bodyInsets(left);
+      const rightInsets = bodyInsets(right);
+      if (leftInsets && rightInsets) {
+        walls.set(
+          'left',
+          placeZone(
+            left,
+            ringBodyLeft - WALL_JOIN_GAP - leftInsets.width - leftInsets.left,
+            -left.height / 2,
+          ),
+        );
+        walls.set(
+          'right',
+          placeZone(
+            right,
+            ringBodyRight + WALL_JOIN_GAP - rightInsets.left,
+            -right.height / 2,
+          ),
+        );
+      }
+    }
   }
 
   // Hands outside the wall ring; the drawn tile is part of the human's zone.

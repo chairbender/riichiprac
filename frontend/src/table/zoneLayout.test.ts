@@ -231,7 +231,7 @@ describe('side hand zone', () => {
     expect(left.shadows).toHaveLength(13);
     expect(left.bodies.every((tile) => tile.shell === 'shell_hand_side_left')).toBe(true);
     expect(left.bodies.every((tile) => tile.face === null)).toBe(true);
-    expect(left.shadows[1].faceX - left.shadows[0].faceX).toBeCloseTo(0, 9);
+    expect(left.shadows[1].faceX - left.shadows[0].faceX).toBeCloseTo(6.7, 9);
     expect(left.shadows[1].faceY - left.shadows[0].faceY).toBeCloseTo(45, 9);
     expect(left.shadows[12].faceY - left.shadows[0].faceY).toBeCloseTo(12 * 45, 9);
     expect(left.bodies[0].hitBox.width).toBe(
@@ -243,7 +243,7 @@ describe('side hand zone', () => {
     expect(right.layer).toBe(ZONE_LAYER.sideHandsAndMelds);
     expect(right.shadowGroup).toBe('seat-right-hand');
     expect(right.bodies.every((tile) => tile.shell === 'shell_hand_side_right')).toBe(true);
-    expect(right.shadows[1].faceX - right.shadows[0].faceX).toBeCloseTo(0, 9);
+    expect(right.shadows[1].faceX - right.shadows[0].faceX).toBeCloseTo(6.2, 9);
     expect(right.shadows[1].faceY - right.shadows[0].faceY).toBeCloseTo(41.67, 9);
   });
 
@@ -486,8 +486,8 @@ describe('pond zone', () => {
     const top = zones[2];
     const left = zones[3];
     expect([bottom.rotationDeg, top.rotationDeg]).toEqual([0, 0]);
-    expect(right.rotationDeg).toBe(SIDE_POND_LEAN_DEG);
-    expect(left.rotationDeg).toBe(-SIDE_POND_LEAN_DEG);
+    expect(right.rotationDeg).toBe(-SIDE_POND_LEAN_DEG);
+    expect(left.rotationDeg).toBe(SIDE_POND_LEAN_DEG);
 
     const bodyBounds = (zone: LayoutZone) => {
       let leftX = Infinity;
