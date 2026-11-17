@@ -56,9 +56,21 @@
       "stackPitchUnits": 0.760714286,
       "tileDepthUnits": 1.0,
       "tiers": 2,
-      "note": "Each run is 17 stacks with a 0.3 mm gap (pitch 0.760714), two face-down tiles high with a 0.3 mm tier gap, ring radius 7.0. Corners keep a small clearance, so no wall tiles intersect.",
+      "note": "Each run is 17 stacks with a 0.3 mm gap (pitch 0.760714), two face-down tiles high with a 0.3 mm tier gap, ring radius 7.0. Corners keep a small clearance, so no wall tiles intersect. Every wall has one tile missing on the top tier at slot 16 (the draw end); the bottom tile remains. The draw end is the close side of the left wall, the left of the top wall, the far side of the right wall and the right of the close wall (clockwise drawing).",
       "tierStepUnits": 0.6,
-      "stackSpanUnits": 12.932142857
+      "stackSpanUnits": 12.932142857,
+      "deadWall": {
+        "seat": "left",
+        "stacks": 7,
+        "breakAfterSlot": 6,
+        "breakGapUnits": 0.5,
+        "doraSlot": 4,
+        "doraTier": 1,
+        "doraFace": "1z",
+        "note": "The west (left) wall has the 7-stack dead wall at slots 0..6 with a 0.5-unit break after slot 6; the live wall is slots 7..16. The dora indicator is the face-up top tile at slot 4. The dead-wall seats use the same wall_seat_stack_layer anchors."
+      },
+      "drawEndSlot": 16,
+      "drawEndTiers": 1
     },
     "pond": {
       "columns": 6,
@@ -72,7 +84,13 @@
       ],
       "columnCentreOffsetUnits": 1.892857142,
       "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg. Four overflow anchors continue row 2 at columns 6..9 (reserved; no tiles).",
-      "overflowColumns": 6
+      "overflowColumns": 6,
+      "riichi": {
+        "row": 1,
+        "column": 5,
+        "turnDeg": -90,
+        "note": "One riichi discard per pond, the last tile of row 1; rotated 90 deg to the declaring player's right (glyph top to the seat's right). The turned tile is wider along the row, so it is shifted after the previous tile and marked turned."
+      }
     },
     "hand": {
       "backRadiusUnits": 10.6,
@@ -438,6 +456,19 @@
     "clearanceRangeMm": [
       0.2,
       0.5
-    ]
+    ],
+    "occupied": {
+      "wall": 132,
+      "river": 72,
+      "meld": 12,
+      "hand": 53,
+      "total": 269
+    },
+    "empty": {
+      "wallDrawn": 4,
+      "riverOverflow": 16,
+      "meldKan": 4,
+      "total": 24
+    }
   }
 }

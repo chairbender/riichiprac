@@ -159,23 +159,34 @@ const ponds = groups('pond');
 const hands = groups('hand');
 const melds = groups('meld');
 const drawn = groups('drawn');
-check(walls.length === 4 * 17 * 2, `wall tiles: ${walls.length} (expected 136)`);
+check(walls.length === 4 * 33, `wall tiles: ${walls.length} (expected 132)`);
 check(ponds.length === 4 * 18, `pond tiles: ${ponds.length} (expected 72)`);
 check(hands.length === 4 * 13, `hand tiles: ${hands.length} (expected 52)`);
 check(melds.length === 4 * 3, `meld tiles: ${melds.length} (expected 12)`);
 check(drawn.length === 1, `drawn tiles: ${drawn.length} (expected 1)`);
-check(tiles.length === 136 + 72 + 52 + 12 + 1, `total tiles: ${tiles.length} (expected 273)`);
+check(tiles.length === 132 + 72 + 52 + 12 + 1, `total tiles: ${tiles.length} (expected 269)`);
 
 const faceSet = new Set(Object.keys(faces.faces));
 for (const seat of ['bottom', 'right', 'top', 'left']) {
   const seatWalls = walls.filter(seatOf(seat));
-  check(seatWalls.length === 34, `wall ${seat}: 34 tiles`);
-  for (const tier of [0, 1]) {
-    check(seatWalls.filter((tile) => tile.cell.tier === tier).length === 17,
-      `wall ${seat} tier ${tier}: 17 stacks`);
+  check(seatWalls.length === 33, `wall ${seat}: 33 tiles (one drawn) `);
+  check(seatWalls.filter((tile) => tile.cell.tier === 0).length === 17,
+    `wall ${seat} tier 0: 17 tiles`);
+  check(seatWalls.filter((tile) => tile.cell.tier === 1).length === 16,
+    `wall ${seat} tier 1: 16 tiles (slot 16 drawn)`);
+  const doraTiles = seatWalls.filter((tile) => tile.pose === 'lying-faceup');
+  if (seat === 'left') {
+    check(doraTiles.length === 1, 'left wall: one face-up dora indicator');
+  } else {
+    check(doraTiles.length === 0, `wall ${seat}: all tiles face-down`);
   }
-  check(seatWalls.every((tile) => tile.pose === 'lying-facedown' && tile.face === null),
-    `wall ${seat}: every tile face-down and bare`);
+  check(
+    seatWalls.every((tile) =>
+      tile.pose === 'lying-facedown' ? tile.face === null : true),
+    `wall ${seat}: face-down tiles are bare`,
+  );
+  check(!seatWalls.some((tile) => tile.cell.tier === 1 && tile.cell.slot === 16),
+    `wall ${seat}: slot 16 tier 1 is drawn`);
   check(new Set(seatWalls.map((tile) => tile.cell.slot)).size === 17,
     `wall ${seat}: 17 distinct slots`);
 
@@ -209,6 +220,48 @@ for (const seat of ['bottom', 'right', 'top', 'left']) {
 }
 check(drawn[0].pose === 'standing' && faceSet.has(drawn[0].face),
   'drawn tile stands face-up with a real glyph');
+
+// Riichi discard per pond: row 1, last column, turned 90 degrees to the seat's right.
+const riichiSpec = spec.table.pond.riichi;
+checkEqual('riichi row', riichiSpec.row, 1);
+checkEqual('riichi column', riichiSpec.column, spec.table.pond.columns - 1);
+for (const seat of ['bottom', 'right', 'top', 'left']) {
+  const seatPond = ponds.filter(seatOf(seat));
+  const riichi = seatPond.filter((tile) => tile.cell.riichi === true);
+  checkEqual(`riichi discards ${seat}`, riichi.length, 1);
+  if (riichi.length !== 1) continue;
+  const tile = riichi[0];
+  checkEqual(`riichi id ${seat}`, tile.id, `pond-${seat}-${riichiSpec.row}${riichiSpec.column}`);
+  checkEqual(`riichi turned ${seat}`, tile.cell.turned, true);
+  checkEqual(`riichi pose ${seat}`, tile.pose, 'lying-faceup');
+  check(faceSet.has(tile.face), `riichi face ${seat} is a real glyph`);
+  const seatAngle = spec.table.seats.find((entry) => entry.id === seat).rotateZDeg;
+  const angle = ((seatAngle + riichiSpec.turnDeg) * Math.PI) / 180;
+  const expected = [Math.cos(angle), -Math.sin(angle), 0, Math.sin(angle), Math.cos(angle), 0, 0, 0, 1];
+  for (let index = 0; index < 9; index += 1) {
+    near(tile.rotation[index], expected[index], 1e-6, `riichi rotation ${seat}[${index}]`);
+  }
+}
+
+// Dead wall on the left run + the dora indicator.
+const dead = spec.table.wall.deadWall;
+checkEqual('dead wall seat', dead.seat, 'left');
+checkEqual('dead wall stacks', dead.stacks, 7);
+checkEqual('dead wall break after slot', dead.breakAfterSlot, 6);
+checkEqual('dora slot', dead.doraSlot, 4);
+checkEqual('dora face', dead.doraFace, '1z');
+const doraTile = walls.find((tile) => tile.cell.dora === true);
+check(Boolean(doraTile), 'a wall dora indicator exists');
+if (doraTile) {
+  checkEqual('dora tile id', doraTile.id, `wall-${dead.seat}-slot-${String(dead.doraSlot).padStart(2, '0')}-t${dead.doraTier}`);
+  checkEqual('dora pose', doraTile.pose, 'lying-faceup');
+  checkEqual('dora face', doraTile.face, dead.doraFace);
+}
+for (const seat of ['bottom', 'right', 'top', 'left']) {
+  check(!walls.some((tile) => tile.seat === seat && tile.cell.tier === 1 && tile.cell.slot === 16),
+    `wall ${seat}: slot 16 tier 1 is empty`);
+}
+
 check(manifest.visibility?.occluded === 0,
   `visibility: 0 of ${manifest.visibility?.samples} probes occluded`);
 check(manifest.lightingSamples?.face?.tile === spec.faces.sampleTileId,
@@ -235,7 +288,7 @@ checkEqual(
 const anchorDoc = JSON.parse(anchorBytes.toString('utf8'));
 checkEqual('slot anchor collection', anchorDoc.collection, spec.anchors.collection);
 checkEqual('slot anchor total', anchorDoc.total, spec.anchors.counts.total);
-checkEqual('slot anchor occupied', anchorDoc.occupied, 273);
+checkEqual('slot anchor occupied', anchorDoc.occupied, 269);
 for (const [zone, expected] of Object.entries({ wall: 136, river: 88, meld: 16, hand: 53 })) {
   checkEqual(`slot anchor ${zone} count`, anchorDoc.counts[zone], expected);
 }
@@ -300,8 +353,16 @@ for (const zone of Object.keys(anchorZones)) {
   checkEqual(`anchor zone total ${zone}`, anchorZones[zone], anchorDoc.counts[zone]);
 }
 checkEqual('anchor occupied totals', JSON.stringify(anchorOccupied),
-  JSON.stringify({ wall: 136, river: 72, meld: 12, hand: 53 }));
-checkEqual('empty anchor count', anchorDoc.total - anchorDoc.occupied, 20);
+  JSON.stringify({ wall: 132, river: 72, meld: 12, hand: 53 }));
+checkEqual('empty anchor count', anchorDoc.total - anchorDoc.occupied, 24);
+const emptyWallAnchors = anchorDoc.anchors.filter(
+  (anchor) => anchor.zone === 'wall' && !anchor.occupied,
+);
+checkEqual('empty wall anchors', emptyWallAnchors.length, 4);
+for (const seat of ['south', 'east', 'north', 'west']) {
+  check(emptyWallAnchors.some((anchor) => anchor.name === `wall_${seat}_16_1`),
+    `wall ${seat}: slot 16 tier 1 anchor exists and is empty`);
+}
 
 const aabbOf = (tile) => {
   const corners = tileBoxCorners(tile);
@@ -323,6 +384,7 @@ const aabbOverlap = (left, right) => [0, 1, 2].every(
 );
 const boxes = new Map(tiles.map((tile) => [tile.id, aabbOf(tile)]));
 const adjacent = [];
+const farRiichi = [];
 const pushAdjacent = (group, key) => {
   const ordered = [...group].sort((a, b) => key(a) - key(b));
   for (let index = 0; index + 1 < ordered.length; index += 1) {
@@ -331,22 +393,42 @@ const pushAdjacent = (group, key) => {
 };
 for (const seat of ['bottom', 'right', 'top', 'left']) {
   for (const tier of [0, 1]) {
-    pushAdjacent(walls.filter((tile) => tile.seat === seat && tile.cell.tier === tier),
-      (tile) => tile.cell.slot);
+    const ordered = walls
+      .filter((tile) => tile.seat === seat && tile.cell.tier === tier)
+      .sort((a, b) => a.cell.slot - b.cell.slot);
+    for (let index = 0; index + 1 < ordered.length; index += 1) {
+      if (seat === 'left' && ordered[index].cell.slot === 6 && ordered[index + 1].cell.slot === 7) {
+        continue;
+      }
+      adjacent.push([ordered[index].id, ordered[index + 1].id]);
+    }
   }
   for (let slot = 0; slot < 17; slot += 1) {
-    adjacent.push([
-      `wall-${seat}-slot-${String(slot).padStart(2, '0')}-t0`,
-      `wall-${seat}-slot-${String(slot).padStart(2, '0')}-t1`,
-    ]);
+    const lower = `wall-${seat}-slot-${String(slot).padStart(2, '0')}-t0`;
+    const upper = `wall-${seat}-slot-${String(slot).padStart(2, '0')}-t1`;
+    if (!boxes.has(lower) || !boxes.has(upper)) continue;
+    adjacent.push([lower, upper]);
   }
   for (let row = 0; row < 3; row += 1) {
     pushAdjacent(ponds.filter((tile) => tile.seat === seat && tile.cell.row === row),
       (tile) => tile.cell.column);
   }
   for (let column = 0; column < 6; column += 1) {
-    pushAdjacent(ponds.filter((tile) => tile.seat === seat && tile.cell.column === column),
-      (tile) => tile.cell.row);
+    const ordered = ponds
+      .filter((tile) => tile.seat === seat && tile.cell.column === column)
+      .sort((a, b) => a.cell.row - b.cell.row);
+    for (let index = 0; index + 1 < ordered.length; index += 1) {
+      const left = ordered[index];
+      const right = ordered[index + 1];
+      const riichiLeft = left.cell.riichi === true;
+      const riichiRight = right.cell.riichi === true;
+      const other = riichiLeft ? right : left;
+      if ((riichiLeft || riichiRight) && other.cell.row > riichiSpec.row) {
+        farRiichi.push([left.id, right.id]);
+        continue;
+      }
+      adjacent.push([left.id, right.id]);
+    }
   }
   pushAdjacent(hands.filter((tile) => tile.seat === seat), (tile) => tile.cell.slot);
   pushAdjacent(melds.filter((tile) => tile.seat === seat), (tile) => tile.cell.column);
@@ -354,7 +436,7 @@ for (const seat of ['bottom', 'right', 'top', 'left']) {
 const gaps = adjacent.map(([left, right]) => aabbGap(boxes.get(left), boxes.get(right)));
 const minGap = Math.min(...gaps) * 28;
 const maxGap = Math.max(...gaps) * 28;
-checkEqual('adjacent clearance pairs', gaps.length, 360);
+checkEqual('adjacent clearance pairs', gaps.length, manifest.clearance.adjacentPairs);
 check(minGap >= 0.2 - 1e-4 && maxGap <= 0.5 + 1e-4,
   `adjacent clearance ${minGap.toFixed(4)}..${maxGap.toFixed(4)} mm inside 0.2..0.5`);
 near(manifest.clearance.minGapMm, minGap, 1e-3, 'manifest minimum clearance');
@@ -368,6 +450,24 @@ for (let left = 0; left < tileIds.length; left += 1) {
 }
 checkEqual('tile body intersections', intersections, 0);
 checkEqual('manifest clearance target', manifest.clearance.targetMm, 0.3);
+
+// Dead-wall break and the turned riichi tile's far-side gap.
+const breakGaps = [];
+for (const tier of [0, 1]) {
+  const left = boxes.get(`wall-left-slot-06-t${tier}`);
+  const right = boxes.get(`wall-left-slot-07-t${tier}`);
+  if (left && right) breakGaps.push(aabbGap(left, right) * 28);
+}
+near(Math.max(...breakGaps), (dead.breakGapUnits + spec.table.clearanceUnits) * 28, 1e-3,
+  'dead-wall break gap');
+near(manifest.clearance.deadWallBreakMm, Math.max(...breakGaps), 1e-3,
+  'manifest dead-wall break gap');
+const farGaps = farRiichi.map(([left, right]) => aabbGap(boxes.get(left), boxes.get(right)) * 28);
+check(farGaps.length > 0, 'the turned riichi tile has a far-side row pair');
+near(manifest.clearance.riichiFarGapMm, Math.min(...farGaps), 1e-3,
+  'manifest riichi far-side gap');
+check(Math.min(...farGaps) > 0.5,
+  `turned riichi far-side gap ${Math.min(...farGaps).toFixed(2)} mm is the wider turned-tile gap`);
 
 // Table surface: 700 mm mat, raised rim, recessed compass well.
 checkEqual('playing mat size', spec.table.playingMat.sizeUnits * 28, spec.table.playingMat.sizeMm);

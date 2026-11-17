@@ -649,26 +649,44 @@ def measure_clearance(tiles: list[dict], spec: dict) -> dict:
         elif tile["kind"] == "meld":
             meld_by_seat.setdefault(tile["seat"], []).append(tile["id"])
 
+    dead = spec["table"]["wall"]["deadWall"]
+    break_ids = {
+        (
+            f"wall-{dead['seat']}-slot-{dead['breakAfterSlot']:02d}-t{tier}",
+            f"wall-{dead['seat']}-slot-{dead['breakAfterSlot'] + 1:02d}-t{tier}",
+        )
+        for tier in range(spec["table"]["wall"]["tiers"])
+    }
     for items in wall_by_key.values():
         ordered = sorted(items, key=lambda tile_id: by_id[tile_id]["cell"]["slot"])
         for left, right in zip(ordered, ordered[1:]):
+            if (left, right) in break_ids:
+                continue
             pairs.append((left, right))
     for tier in range(spec["table"]["wall"]["tiers"] - 1):
         for seat in ("bottom", "right", "top", "left"):
             for slot in range(spec["table"]["wall"]["stacksPerRun"]):
-                pairs.append(
-                    (
-                        f"wall-{seat}-slot-{slot:02d}-t{tier}",
-                        f"wall-{seat}-slot-{slot:02d}-t{tier + 1}",
-                    )
-                )
+                left = f"wall-{seat}-slot-{slot:02d}-t{tier}"
+                right = f"wall-{seat}-slot-{slot:02d}-t{tier + 1}"
+                if left in boxes and right in boxes:
+                    pairs.append((left, right))
     for items in pond_rows.values():
         ordered = sorted(items, key=lambda tile_id: by_id[tile_id]["cell"]["column"])
         for left, right in zip(ordered, ordered[1:]):
             pairs.append((left, right))
+    riichi_ids = {
+        tile["id"] for tile in tiles if tile.get("cell", {}).get("riichi")
+    }
+    riichi_row = spec["table"]["pond"]["riichi"]["row"]
+    far_riichi_pairs = []
     for items in pond_cols.values():
         ordered = sorted(items, key=lambda tile_id: by_id[tile_id]["cell"]["row"])
         for left, right in zip(ordered, ordered[1:]):
+            if left in riichi_ids or right in riichi_ids:
+                other = right if left in riichi_ids else left
+                if by_id[other]["cell"]["row"] > riichi_row:
+                    far_riichi_pairs.append((left, right))
+                    continue
             pairs.append((left, right))
     for items in hand_by_seat.values():
         ordered = sorted(items, key=lambda tile_id: by_id[tile_id]["cell"]["slot"])
@@ -688,10 +706,19 @@ def measure_clearance(tiles: list[dict], spec: dict) -> dict:
         gap = aabb_gap(boxes[left], boxes[right])
         measured.append(gap)
         if not (low <= gap <= high):
-            log(f"clearance debug: {left} {right} gap={gap!r} low={low!r} high={high!r}")
             die(
                 f"clearance {left} <-> {right} is {gap * 28:.6f} mm, "
                 f"expected 0.2-0.5 mm"
+            )
+    break_gaps = []
+    for left, right in break_ids:
+        if left in boxes and right in boxes:
+            break_gaps.append(aabb_gap(boxes[left], boxes[right]))
+    expected_break = spec["table"]["wall"]["deadWall"]["breakGapUnits"] + clearance
+    for gap in break_gaps:
+        if abs(gap - expected_break) > 1e-5:
+            die(
+                f"dead-wall break gap {gap:.6f} != {expected_break:.6f} units"
             )
 
     overlapping = []
@@ -711,6 +738,13 @@ def measure_clearance(tiles: list[dict], spec: dict) -> dict:
         "maxGapMm": round(max(measured) * 28, 4),
         "intersectingPairs": 0,
         "tiles": len(tiles),
+        "deadWallBreakMm": round((max(break_gaps) if break_gaps else 0.0) * 28, 4),
+        "deadWallBreakPairs": len(break_gaps),
+        "riichiFarGapMm": round(
+            min((aabb_gap(boxes[left], boxes[right]) for left, right in far_riichi_pairs),
+                default=0.0) * 28, 4
+        ),
+        "riichiFarPairs": len(far_riichi_pairs),
     }
     log(
         f"clearance: {len(pairs)} adjacent pairs at "
@@ -963,34 +997,85 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         seat_id = seat["id"]
         short = seat_name[seat_id]
 
-        # Four wall runs: 17 stacks x 2 tiers, every tile face-down.
+        # Four wall runs: 17 stacks x 2 tiers. The west run has the 7-stack
+        # dead wall with a small break; every run has a one-tile draw end at
+        # slot 16; the dead wall's dora indicator is face-up on the top tier.
+        dead = wall["deadWall"]
         for slot in range(wall["stacksPerRun"]):
             x = (slot - (wall["stacksPerRun"] - 1) / 2) * wall["stackPitchUnits"]
+            if seat_id == dead["seat"] and slot > dead["breakAfterSlot"]:
+                x += dead["breakGapUnits"]
             for tier in range(wall["tiers"]):
+                cell = {"slot": slot, "tier": tier}
+                anchor_name = f"wall_{short}_{slot:02d}_{tier}"
+                anchor_index = f"{slot:02d}_{tier}"
+                if slot == wall["drawEndSlot"] and tier >= wall["drawEndTiers"]:
+                    cell["drawn"] = True
+                    matrix = body_matrix(
+                        seat_id,
+                        x,
+                        -wall["radiusUnits"],
+                        thickness / 2 + tier * wall["tierStepUnits"],
+                        180.0,
+                        0.0,
+                    )
+                    add_anchor(
+                        anchor_name, "wall", seat_id, anchor_index,
+                        matrix, None, None, cell,
+                    )
+                    continue
+                is_dora = (
+                    seat_id == dead["seat"]
+                    and slot == dead["doraSlot"]
+                    and tier == dead["doraTier"]
+                )
+                if is_dora:
+                    cell["dora"] = True
+                face = dead["doraFace"] if is_dora else None
                 tile_id = f"wall-{seat_id}-slot-{slot:02d}-t{tier}"
                 place(
                     tile_id,
                     f"wall-{seat_id}",
                     "wall",
                     seat_id,
-                    "lying-facedown",
+                    "lying-faceup" if is_dora else "lying-facedown",
                     x,
                     -wall["radiusUnits"],
                     thickness / 2 + tier * wall["tierStepUnits"],
-                    180.0,
+                    0.0 if is_dora else 180.0,
                     0.0,
-                    {"slot": slot, "tier": tier},
-                    None,
-                    f"wall_{short}_{slot:02d}_{tier}",
-                    f"{slot:02d}_{tier}",
+                    cell,
+                    face,
+                    anchor_name,
+                    anchor_index,
                     "wall",
                 )
                 index["wall"].setdefault(f"wall-{seat_id}", []).append(tile_id)
 
-        # Pond: 3 filled rows of 6.
+        # Pond: 3 filled rows of 6, with one riichi discard turned 90 degrees
+        # to the declaring player's right. It is the last tile of row 1; a
+        # turned tile is one unit long along the row, so it is placed after
+        # the previous tile's face with the normal gap.
+        riichi = pond["riichi"]
+        if riichi["column"] != pond["columns"] - 1:
+            die("the riichi discard must be the last column of its pond row")
         for row in range(pond["rows"]):
             for column in range(pond["columns"]):
                 tile_id = f"pond-{seat_id}-{row}{column}"
+                cell = {"row": row, "column": column}
+                x = (column - (pond["columns"] - 1) / 2) * pond["columnPitchUnits"]
+                y = -pond["rowRadiiUnits"][row]
+                rot_z = 0.0
+                if row == riichi["row"] and column == riichi["column"]:
+                    previous_right = (
+                        (column - 1 - (pond["columns"] - 1) / 2) * pond["columnPitchUnits"]
+                        + dimensions["width"] / 2
+                    )
+                    x = previous_right + gap + dimensions["height"] / 2
+                    y = -(pond["rowRadiiUnits"][row] + (dimensions["height"] - dimensions["width"]) / 2)
+                    rot_z = riichi["turnDeg"]
+                    cell["riichi"] = True
+                    cell["turned"] = True
                 face = next_face(tile_id)
                 place(
                     tile_id,
@@ -998,12 +1083,12 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                     "pond",
                     seat_id,
                     "lying-faceup",
-                    (column - (pond["columns"] - 1) / 2) * pond["columnPitchUnits"],
-                    -pond["rowRadiiUnits"][row],
+                    x,
+                    y,
                     thickness / 2,
                     0.0,
-                    0.0,
-                    {"row": row, "column": column},
+                    rot_z,
+                    cell,
                     face,
                     f"river_{short}_{row}_{column}",
                     f"{row}_{column}",
@@ -1154,6 +1239,17 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
             die(f"slot anchor count for {zone}: {counted.get(zone, 0)} != {expected[zone]}")
     if len(anchors) != expected["total"]:
         die(f"slot anchor total: {len(anchors)} != {expected['total']}")
+    occupied_expected = spec["anchors"]["occupied"]
+    occupied: dict[str, int] = {}
+    for record in anchors:
+        if record["occupied"]:
+            occupied[record["zone"]] = occupied.get(record["zone"], 0) + 1
+    for zone in ("wall", "river", "meld", "hand"):
+        if occupied.get(zone, 0) != occupied_expected[zone]:
+            die(f"occupied {zone} anchors: {occupied.get(zone, 0)} != {occupied_expected[zone]}")
+    empty_count = sum(1 for record in anchors if not record["occupied"])
+    if empty_count != spec["anchors"]["empty"]["total"]:
+        die(f"empty anchors: {empty_count} != {spec['anchors']['empty']['total']}")
     if len(anchor_collection.objects) != len(anchors):
         die(
             f"SlotAnchors collection has {len(anchor_collection.objects)} Empties, "
@@ -1163,8 +1259,8 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         if record["name"] not in anchor_collection.objects:
             die(f"missing SlotAnchors Empty {record['name']}")
     log(
-        f"anchors: {counted} in collection '{anchor_collection.name}' "
-        f"({len(anchor_collection.objects)} Empties)"
+        f"anchors: {counted} ({occupied} occupied, {empty_count} empty) in "
+        f"'{anchor_collection.name}' ({len(anchor_collection.objects)} Empties)"
     )
 
     clearance = measure_clearance(tiles, spec)

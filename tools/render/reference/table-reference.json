@@ -67,9 +67,9 @@
  ],
  "hashConvention": "sha256 over \"<width>x<height>x<channels>:\" followed by the decoded RGB(A) bytes, at the file's own resolution. Bytes are the committed PNG file size.",
  "masterDownsample": "box-2x2",
- "projectionDeltaPx": 0.001403,
+ "projectionDeltaPx": 0.001692,
  "visibility": {
-  "samples": 787,
+  "samples": 767,
   "occluded": 0,
   "details": []
  },
@@ -99,9 +99,21 @@
    "stackPitchUnits": 0.760714286,
    "tileDepthUnits": 1,
    "tiers": 2,
-   "note": "Each run is 17 stacks with a 0.3 mm gap (pitch 0.760714), two face-down tiles high with a 0.3 mm tier gap, ring radius 7.0. Corners keep a small clearance, so no wall tiles intersect.",
+   "note": "Each run is 17 stacks with a 0.3 mm gap (pitch 0.760714), two face-down tiles high with a 0.3 mm tier gap, ring radius 7.0. Corners keep a small clearance, so no wall tiles intersect. Every wall has one tile missing on the top tier at slot 16 (the draw end); the bottom tile remains. The draw end is the close side of the left wall, the left of the top wall, the far side of the right wall and the right of the close wall (clockwise drawing).",
    "tierStepUnits": 0.6,
-   "stackSpanUnits": 12.932142857
+   "stackSpanUnits": 12.932142857,
+   "deadWall": {
+    "seat": "left",
+    "stacks": 7,
+    "breakAfterSlot": 6,
+    "breakGapUnits": 0.5,
+    "doraSlot": 4,
+    "doraTier": 1,
+    "doraFace": "1z",
+    "note": "The west (left) wall has the 7-stack dead wall at slots 0..6 with a 0.5-unit break after slot 6; the live wall is slots 7..16. The dora indicator is the face-up top tile at slot 4. The dead-wall seats use the same wall_seat_stack_layer anchors."
+   },
+   "drawEndSlot": 16,
+   "drawEndTiers": 1
   },
   "pond": {
    "columns": 6,
@@ -115,7 +127,13 @@
    ],
    "columnCentreOffsetUnits": 1.892857142,
    "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg. Four overflow anchors continue row 2 at columns 6..9 (reserved; no tiles).",
-   "overflowColumns": 6
+   "overflowColumns": 6,
+   "riichi": {
+    "row": 1,
+    "column": 5,
+    "turnDeg": -90,
+    "note": "One riichi discard per pond, the last tile of row 1; rotated 90 deg to the declaring player's right (glyph top to the seat's right). The turned tile is wider along the row, so it is shifted after the previous tile and marked turned."
+   }
   },
   "hand": {
    "backRadiusUnits": 10.6,
@@ -1240,39 +1258,6 @@
     }
    },
    {
-    "id": "wall-bottom-slot-16-t1",
-    "zone": "wall-bottom",
-    "kind": "wall",
-    "seat": "bottom",
-    "face": null,
-    "pose": "lying-facedown",
-    "origin": [
-     6.085714,
-     -7,
-     1.189286
-    ],
-    "rotation": [
-     1,
-     0,
-     0,
-     0,
-     -1,
-     -8.7e-8,
-     0,
-     8.7e-8,
-     -1
-    ],
-    "dimensions": {
-     "width": 0.75,
-     "height": 1,
-     "thickness": 0.589286
-    },
-    "cell": {
-     "slot": 16,
-     "tier": 1
-    }
-   },
-   {
     "id": "pond-bottom-00",
     "zone": "pond-bottom",
     "kind": "pond",
@@ -1643,16 +1628,16 @@
     "face": "1m",
     "pose": "lying-faceup",
     "origin": [
-     1.892857,
-     -3.799286,
+     2.021429,
+     -3.924286,
      0
     ],
     "rotation": [
+     -4.4e-8,
      1,
      0,
-     0,
-     0,
-     1,
+     -1,
+     -4.4e-8,
      0,
      0,
      0,
@@ -1665,7 +1650,9 @@
     },
     "cell": {
      "row": 1,
-     "column": 5
+     "column": 5,
+     "riichi": true,
+     "turned": true
     }
    },
    {
@@ -3471,39 +3458,6 @@
     }
    },
    {
-    "id": "wall-right-slot-16-t1",
-    "zone": "wall-right",
-    "kind": "wall",
-    "seat": "right",
-    "face": null,
-    "pose": "lying-facedown",
-    "origin": [
-     7,
-     6.085714,
-     1.189286
-    ],
-    "rotation": [
-     7.5e-8,
-     1,
-     8.7e-8,
-     1,
-     -7.5e-8,
-     0,
-     0,
-     8.7e-8,
-     -1
-    ],
-    "dimensions": {
-     "width": 0.75,
-     "height": 1,
-     "thickness": 0.589286
-    },
-    "cell": {
-     "slot": 16,
-     "tier": 1
-    }
-   },
-   {
     "id": "pond-right-00",
     "zone": "pond-right",
     "kind": "pond",
@@ -3874,16 +3828,16 @@
     "face": "5mr",
     "pose": "lying-faceup",
     "origin": [
-     3.799286,
-     1.892857,
+     3.924286,
+     2.021428,
      0
     ],
     "rotation": [
-     7.5e-8,
-     -1,
-     0,
      1,
-     7.5e-8,
+     1.19e-7,
+     0,
+     -1.19e-7,
+     1,
      0,
      0,
      0,
@@ -3896,7 +3850,9 @@
     },
     "cell": {
      "row": 1,
-     "column": 5
+     "column": 5,
+     "riichi": true,
+     "turned": true
     }
    },
    {
@@ -5702,39 +5658,6 @@
     }
    },
    {
-    "id": "wall-top-slot-16-t1",
-    "zone": "wall-top",
-    "kind": "wall",
-    "seat": "top",
-    "face": null,
-    "pose": "lying-facedown",
-    "origin": [
-     -6.085714,
-     7,
-     1.189286
-    ],
-    "rotation": [
-     -1,
-     8.7e-8,
-     0,
-     8.7e-8,
-     1,
-     8.7e-8,
-     0,
-     8.7e-8,
-     -1
-    ],
-    "dimensions": {
-     "width": 0.75,
-     "height": 1,
-     "thickness": 0.589286
-    },
-    "cell": {
-     "slot": 16,
-     "tier": 1
-    }
-   },
-   {
     "id": "pond-top-00",
     "zone": "pond-top",
     "kind": "pond",
@@ -6105,16 +6028,16 @@
     "face": "8m",
     "pose": "lying-faceup",
     "origin": [
-     -1.892857,
-     3.799286,
+     -2.021428,
+     3.924286,
      0
     ],
     "rotation": [
+     1.31e-7,
      -1,
-     -8.7e-8,
      0,
-     8.7e-8,
-     -1,
+     1,
+     1.31e-7,
      0,
      0,
      0,
@@ -6127,7 +6050,9 @@
     },
     "cell": {
      "row": 1,
-     "column": 5
+     "column": 5,
+     "riichi": true,
+     "turned": true
     }
    },
    {
@@ -7145,23 +7070,23 @@
     "zone": "wall-left",
     "kind": "wall",
     "seat": "left",
-    "face": null,
-    "pose": "lying-facedown",
+    "face": "1z",
+    "pose": "lying-faceup",
     "origin": [
      -7,
      3.042857,
-     1.189286
+     0.6
     ],
     "rotation": [
      7.5e-8,
+     1,
+     0,
      -1,
-     -8.7e-8,
-     -1,
-     -7.5e-8,
+     7.5e-8,
      0,
      0,
-     8.7e-8,
-     -1
+     0,
+     1
     ],
     "dimensions": {
      "width": 0.75,
@@ -7170,7 +7095,8 @@
     },
     "cell": {
      "slot": 4,
-     "tier": 1
+     "tier": 1,
+     "dora": true
     }
    },
    {
@@ -7314,7 +7240,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     0.760714,
+     0.260714,
      0.589286
     ],
     "rotation": [
@@ -7347,7 +7273,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     0.760714,
+     0.260714,
      1.189286
     ],
     "rotation": [
@@ -7380,7 +7306,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -0.000001,
+     -0.500001,
      0.589286
     ],
     "rotation": [
@@ -7413,7 +7339,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -0.000001,
+     -0.500001,
      1.189286
     ],
     "rotation": [
@@ -7446,7 +7372,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -0.760715,
+     -1.260715,
      0.589286
     ],
     "rotation": [
@@ -7479,7 +7405,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -0.760715,
+     -1.260715,
      1.189286
     ],
     "rotation": [
@@ -7512,7 +7438,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -1.521429,
+     -2.021429,
      0.589286
     ],
     "rotation": [
@@ -7545,7 +7471,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -1.521429,
+     -2.021429,
      1.189286
     ],
     "rotation": [
@@ -7578,7 +7504,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -2.282143,
+     -2.782143,
      0.589286
     ],
     "rotation": [
@@ -7611,7 +7537,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -2.282143,
+     -2.782143,
      1.189286
     ],
     "rotation": [
@@ -7644,7 +7570,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -3.042858,
+     -3.542858,
      0.589286
     ],
     "rotation": [
@@ -7677,7 +7603,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -3.042858,
+     -3.542858,
      1.189286
     ],
     "rotation": [
@@ -7710,7 +7636,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -3.803572,
+     -4.303572,
      0.589286
     ],
     "rotation": [
@@ -7743,7 +7669,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -3.803572,
+     -4.303572,
      1.189286
     ],
     "rotation": [
@@ -7776,7 +7702,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -4.564286,
+     -5.064286,
      0.589286
     ],
     "rotation": [
@@ -7809,7 +7735,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -4.564286,
+     -5.064286,
      1.189286
     ],
     "rotation": [
@@ -7842,7 +7768,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -5.325,
+     -5.825,
      0.589286
     ],
     "rotation": [
@@ -7875,7 +7801,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -5.325,
+     -5.825,
      1.189286
     ],
     "rotation": [
@@ -7908,7 +7834,7 @@
     "pose": "lying-facedown",
     "origin": [
      -7,
-     -6.085715,
+     -6.585715,
      0.589286
     ],
     "rotation": [
@@ -7930,39 +7856,6 @@
     "cell": {
      "slot": 16,
      "tier": 0
-    }
-   },
-   {
-    "id": "wall-left-slot-16-t1",
-    "zone": "wall-left",
-    "kind": "wall",
-    "seat": "left",
-    "face": null,
-    "pose": "lying-facedown",
-    "origin": [
-     -7,
-     -6.085715,
-     1.189286
-    ],
-    "rotation": [
-     7.5e-8,
-     -1,
-     -8.7e-8,
-     -1,
-     -7.5e-8,
-     0,
-     0,
-     8.7e-8,
-     -1
-    ],
-    "dimensions": {
-     "width": 0.75,
-     "height": 1,
-     "thickness": 0.589286
-    },
-    "cell": {
-     "slot": 16,
-     "tier": 1
     }
    },
    {
@@ -8336,16 +8229,16 @@
     "face": "3s",
     "pose": "lying-faceup",
     "origin": [
-     -3.799286,
-     -1.892857,
+     -3.924286,
+     -2.021429,
      0
     ],
     "rotation": [
-     7.5e-8,
-     1,
-     0,
      -1,
-     7.5e-8,
+     3.2e-8,
+     0,
+     -3.2e-8,
+     -1,
      0,
      0,
      0,
@@ -8358,7 +8251,9 @@
     },
     "cell": {
      "row": 1,
-     "column": 5
+     "column": 5,
+     "riichi": true,
+     "turned": true
     }
    },
    {
@@ -9242,11 +9137,15 @@
    0.2,
    0.5
   ],
-  "adjacentPairs": 360,
+  "adjacentPairs": 346,
   "minGapMm": 0.2,
   "maxGapMm": 0.3,
   "intersectingPairs": 0,
-  "tiles": 273
+  "tiles": 269,
+  "deadWallBreakMm": 14.3,
+  "deadWallBreakPairs": 2,
+  "riichiFarGapMm": 7.3,
+  "riichiFarPairs": 4
  },
  "slotAnchors": {
   "file": "slot-anchors.json",
@@ -9258,18 +9157,18 @@
    "meld": 16
   },
   "total": 293,
-  "occupied": 273,
-  "bytes": 216785,
-  "sha256": "238aedcaad54aa86d5299ebcd4b2052ac684391368d50e4b6094d3ab53e9f6ce"
+  "occupied": 269,
+  "bytes": 216860,
+  "sha256": "2dd0b7a7562026c1ab18123cc409bb1c3bea9f49b37adc57bf386d7c48f3450e"
  },
  "renders": {
   "fullBoard1x": {
    "file": "full-board-1x.png",
-   "bytes": 3629873,
+   "bytes": 3647277,
    "width": 2880,
    "height": 2112,
    "channels": 3,
-   "sha256": "e076b92960306952dcbcf1ec000296f7a165349965551d11ae2cb989a6bd1174",
+   "sha256": "564d35abcd8207ec9319794bad5133800f9d13f05bde375a62ab5ac38f48701d",
    "scale": 1
   },
   "crops2x": {
@@ -9310,20 +9209,19 @@
      "wall-bottom-slot-14-t1",
      "wall-bottom-slot-15-t0",
      "wall-bottom-slot-15-t1",
-     "wall-bottom-slot-16-t0",
-     "wall-bottom-slot-16-t1"
+     "wall-bottom-slot-16-t0"
     ],
     "rect2x": {
      "x": 1602,
      "y": 2853,
-     "width": 2556,
+     "width": 2551,
      "height": 353
     },
-    "bytes": 662137,
-    "width": 2556,
+    "bytes": 679170,
+    "width": 2551,
     "height": 353,
     "channels": 3,
-    "sha256": "fef089ce30a5fa0c5d0143095e51e4e2dabed5610f299cdd6586ff627e0b63a1"
+    "sha256": "bb704ba1316f0828f7db1efe72e9d7f3e3a0184c7e95ce15fb50fd51445bce1e"
    },
    "wall-back": {
     "file": "crops-2x/wall-back-2x.png",
@@ -9362,20 +9260,19 @@
      "wall-top-slot-14-t1",
      "wall-top-slot-15-t0",
      "wall-top-slot-15-t1",
-     "wall-top-slot-16-t0",
-     "wall-top-slot-16-t1"
+     "wall-top-slot-16-t0"
     ],
     "rect2x": {
-     "x": 1701,
+     "x": 1704,
      "y": 1039,
-     "width": 2358,
+     "width": 2355,
      "height": 332
     },
-    "bytes": 609005,
-    "width": 2358,
+    "bytes": 602167,
+    "width": 2355,
     "height": 332,
     "channels": 3,
-    "sha256": "ef822e91e49552631be865e39c0def77aae7bc352ff6948f3a6c33322cbdea37"
+    "sha256": "427fbfff5413c2310313035986c955b87756d6e9ee20c4ba82fb7910f99db1c7"
    },
    "wall-left": {
     "file": "crops-2x/wall-left-2x.png",
@@ -9414,20 +9311,19 @@
      "wall-left-slot-14-t1",
      "wall-left-slot-15-t0",
      "wall-left-slot-15-t1",
-     "wall-left-slot-16-t0",
-     "wall-left-slot-16-t1"
+     "wall-left-slot-16-t0"
     ],
     "rect2x": {
-     "x": 1410,
+     "x": 1411,
      "y": 1164,
-     "width": 348,
-     "height": 1895
+     "width": 347,
+     "height": 1966
     },
-    "bytes": 515475,
-    "width": 348,
-    "height": 1895,
+    "bytes": 550902,
+    "width": 347,
+    "height": 1966,
     "channels": 3,
-    "sha256": "dff37159b7103bad5c955230f0a4243b95580c8a843d880187e2619f816d9a47"
+    "sha256": "6b45856c5fda756cd8de427155ecda749cca580ec7f610dafc12ec4c16b64d7f"
    },
    "wall-right": {
     "file": "crops-2x/wall-right-2x.png",
@@ -9466,20 +9362,19 @@
      "wall-right-slot-14-t1",
      "wall-right-slot-15-t0",
      "wall-right-slot-15-t1",
-     "wall-right-slot-16-t0",
-     "wall-right-slot-16-t1"
+     "wall-right-slot-16-t0"
     ],
     "rect2x": {
      "x": 4002,
-     "y": 1164,
+     "y": 1242,
      "width": 348,
-     "height": 1895
+     "height": 1817
     },
-    "bytes": 543289,
+    "bytes": 523127,
     "width": 348,
-    "height": 1895,
+    "height": 1817,
     "channels": 3,
-    "sha256": "4ec2de5d7b5220a3332904d71f9136e06eb1b252940af6fd2b10409f437d9eff"
+    "sha256": "f79f1f32e5e4a4a7a2f3571efb879447bba4033c6ef609117dd477358394e1c3"
    },
    "pond-bottom": {
     "file": "crops-2x/pond-bottom-2x.png",
@@ -9508,14 +9403,14 @@
     "rect2x": {
      "x": 2420,
      "y": 2354,
-     "width": 920,
+     "width": 965,
      "height": 545
     },
-    "bytes": 532444,
-    "width": 920,
+    "bytes": 565609,
+    "width": 965,
     "height": 545,
     "channels": 3,
-    "sha256": "259ae092d017efe563bc1fad870d026218ae395a943611aba0b5ba02ea9c1dd6"
+    "sha256": "0c39c03935bf711b59532c103d66ee18ad5f6c587eb5709ba7eb104ebed3f1d5"
    },
    "pond-right": {
     "file": "crops-2x/pond-right-2x.png",
@@ -9543,15 +9438,15 @@
     ],
     "rect2x": {
      "x": 3266,
-     "y": 1761,
+     "y": 1729,
      "width": 634,
-     "height": 724
+     "height": 756
     },
-    "bytes": 506793,
+    "bytes": 523307,
     "width": 634,
-    "height": 724,
+    "height": 756,
     "channels": 3,
-    "sha256": "c71990d0c9f7d05e04e2697aacc8fed28fd516796e2fb7520fee9b84772d387a"
+    "sha256": "cd2e3a35e2371b17485b4d58db537a62414f3f6e069353962f6f48da07b39e1c"
    },
    "pond-top": {
     "file": "crops-2x/pond-top-2x.png",
@@ -9578,16 +9473,16 @@
      "pond-top-25"
     ],
     "rect2x": {
-     "x": 2439,
+     "x": 2396,
      "y": 1382,
-     "width": 882,
+     "width": 925,
      "height": 510
     },
-    "bytes": 477682,
-    "width": 882,
+    "bytes": 501163,
+    "width": 925,
     "height": 510,
     "channels": 3,
-    "sha256": "1d849a9a3b0cf9b9c6fb072ddbfc7ed9bbc946949eb8b6b2bf5d00c478cc89b4"
+    "sha256": "a29019db283521c4e1723a6ac4ce0253a89404d380dc5e066ee4cd12a51e088f"
    },
    "pond-left": {
     "file": "crops-2x/pond-left-2x.png",
@@ -9617,13 +9512,13 @@
      "x": 1860,
      "y": 1761,
      "width": 634,
-     "height": 724
+     "height": 758
     },
-    "bytes": 491214,
+    "bytes": 516491,
     "width": 634,
-    "height": 724,
+    "height": 758,
     "channels": 3,
-    "sha256": "8d8f2b413fd5fec731f7b80fa2cf6a770d661375a1c95c235715c338bd4ee578"
+    "sha256": "da361eeab382585e3c5823506eb2f676257ebd2917dfb8f3a8f694d7d2bea93b"
    },
    "hand-bottom": {
     "file": "crops-2x/hand-bottom-2x.png",
@@ -9650,11 +9545,11 @@
      "width": 2008,
      "height": 284
     },
-    "bytes": 546439,
+    "bytes": 546412,
     "width": 2008,
     "height": 284,
     "channels": 3,
-    "sha256": "a8e4c1f59fa12147618d448299518a6c73d592e4c9bdd5ad82e019f8c4c8edbe"
+    "sha256": "b7ba60e67ac7253c6cd48d8dac5351963f8b9aadcc895c4ea322267c253213f3"
    },
    "hand-top": {
     "file": "crops-2x/hand-top-2x.png",
@@ -9681,11 +9576,11 @@
      "width": 1776,
      "height": 255
     },
-    "bytes": 275992,
+    "bytes": 276079,
     "width": 1776,
     "height": 255,
     "channels": 3,
-    "sha256": "b37ba79dd083b0d6e1569209cb137ceea528e163cf0d5adf6f3c18cdab4a1f84"
+    "sha256": "00f2a3c766bbb80b2124366e961fae5721b0ffdc55b7cbd8ca8c4896af4ba103"
    },
    "hand-left": {
     "file": "crops-2x/hand-left-2x.png",
@@ -9712,11 +9607,11 @@
      "width": 292,
      "height": 1474
     },
-    "bytes": 328765,
+    "bytes": 329426,
     "width": 292,
     "height": 1474,
     "channels": 3,
-    "sha256": "8700f2d9f1d5f2d8afa0b59ff453f80731edc14ada1aa59e79f8a2ce4a0c1b56"
+    "sha256": "f315f6555bec3238bc76b58c8b8b95516425f615951687044b419292089d07fc"
    },
    "hand-right": {
     "file": "crops-2x/hand-right-2x.png",
@@ -9743,11 +9638,11 @@
      "width": 292,
      "height": 1474
     },
-    "bytes": 344887,
+    "bytes": 344889,
     "width": 292,
     "height": 1474,
     "channels": 3,
-    "sha256": "b57deaa0e0f19cad06ce854083ceaf61d698ed4049ebabcb7673deb7e743b8d5"
+    "sha256": "b3a095b3bceb8523cbee59f368fe07b0012e6ba6dfd3bcfff1889495823eea08"
    },
    "meld-bottom": {
     "file": "crops-2x/meld-bottom-2x.png",
@@ -9764,11 +9659,11 @@
      "width": 564,
      "height": 281
     },
-    "bytes": 145665,
+    "bytes": 145515,
     "width": 564,
     "height": 281,
     "channels": 3,
-    "sha256": "8129ad15e7ea8edc9f40515a463904ccacb55ea5ae38e2a7a907d6732f899ef8"
+    "sha256": "58b985d35686b112cb4fc36578f4bf29d5b79f1997f6bbc787495708c472528a"
    },
    "meld-right": {
     "file": "crops-2x/meld-right-2x.png",
@@ -9785,11 +9680,11 @@
      "width": 256,
      "height": 435
     },
-    "bytes": 112619,
+    "bytes": 112556,
     "width": 256,
     "height": 435,
     "channels": 3,
-    "sha256": "2a839b5f82237bc5b6c5e94b2b7a714038ccc4ea67a9f20ef46e0fa3bf56ff5f"
+    "sha256": "87b17bf85ff74efda9c111963e41bbe0c24ea875a16312e363b45a18b1944874"
    },
    "meld-top": {
     "file": "crops-2x/meld-top-2x.png",
@@ -9806,11 +9701,11 @@
      "width": 504,
      "height": 249
     },
-    "bytes": 101890,
+    "bytes": 102226,
     "width": 504,
     "height": 249,
     "channels": 3,
-    "sha256": "6dc9163e11aa7d345e83c6f1d00c42a305d2acbab0d9b402e230206346dec154"
+    "sha256": "f41550e70b2d0174b9804f358cec09c05763669c21619aa65b6ed5d61933c047"
    },
    "meld-left": {
     "file": "crops-2x/meld-left-2x.png",
@@ -9827,11 +9722,11 @@
      "width": 275,
      "height": 491
     },
-    "bytes": 129667,
+    "bytes": 129376,
     "width": 275,
     "height": 491,
     "channels": 3,
-    "sha256": "3e3b6c2d7971eaaa451ccb4d3f159c522236eaf81369949f7fcee8eef733d5d5"
+    "sha256": "4cfeee8b349f54a46e57ac70745d781137efc3ed8fe38ab51f7edfbcacbf5dfc"
    },
    "drawn-tile": {
     "file": "crops-2x/drawn-tile-2x.png",
@@ -9846,11 +9741,11 @@
      "width": 215,
      "height": 284
     },
-    "bytes": 61437,
+    "bytes": 61354,
     "width": 215,
     "height": 284,
     "channels": 3,
-    "sha256": "188257308190db84a3625df4bde3166a99512ae82cfe89738e9194128b4a2456"
+    "sha256": "14788d9af4ba73093e5eb140985124b337b96eb7c44df31f72cbc52f92378720"
    }
   }
  },

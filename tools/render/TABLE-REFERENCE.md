@@ -30,15 +30,15 @@ in this environment). `--check` needs only Node.
 
 ## The table model
 
-1 unit = 28 mm (the shell baker's tile scale). 273 tile bodies + the table.
+1 unit = 28 mm (the shell baker's tile scale). 269 tile bodies + the table.
 
 | Element | Model |
 | --- | --- |
 | Playing mat | 700 mm × 700 mm (25 × 25 units), cloth `#1a5038`, top at z = 0 |
 | Rim | raised outer frame outside the mat: 25 mm wide (0.9 units), 9.8 mm high (0.35 units), dark wood |
 | Compass/score well | 4.0-unit recessed square at the centre (0.06 deep), dark plate + brass ring, all below z = 0 so it cannot occlude a pond |
-| Walls | four runs × 17 stacks × 2 face-down tiles (blue up), pitch 0.760714 units, tier step 0.6, ring radius 7.0 |
-| Ponds | four 6 × 3 filled rivers (72 discards), column pitch 0.757143 (0.2 mm gap), row pitch 1.010714 (0.3 mm gap), row radii 4.81 / 3.799286 / 2.788571 |
+| Walls | four runs × 17 stacks × 2 tiers (blue up), pitch 0.760714, tier step 0.6, ring radius 7.0. The west (left) run has the **7-stack dead wall** at slots 0–6 with a 0.5-unit break after slot 6; the dora indicator is the face-up top tile at slot 4 (`1z`). Every run has only the **bottom tile at slot 16** (the draw end), so the wall is 132 tiles. |
+| Ponds | four 6 × 3 filled rivers (72 discards), column pitch 0.757143 (0.2 mm gap), row pitch 1.010714 (0.3 mm gap), row radii 4.81 / 3.799286 / 2.788571. Each pond has one **riichi discard** at row 1, column 5, turned 90° to the seat's right; it is shifted after the previous tile and its near edge is aligned to the row baseline. |
 | Hands | four 13-tile standing rows; the human's (south) row is reclined 12° backward about its far bottom edge, the other three are upright blue-back rows; human also has the drawn-tile slot at +5.580536 (intentional tsumogiri gap) |
 | Melds | one 3-tile open pon per seat **outside the wall ring, on the table edge to the player's right** (rod radius 10.6, x from 6.1): two upright tiles + the called tile sideways; a fourth anchor slot per seat is the kan extension |
 | Felt/room | dark floor plane at z = −0.08 outside the rim |
@@ -55,25 +55,28 @@ bevel, not carved decals.
 Adjacent tiles in walls, rivers and hands have **0.2–0.5 mm** clearance, and no
 two tile bodies intersect. The model's target is 0.3 mm; pond columns are 0.2 mm
 so the four inner pond rows clear each other at the corners. The bake measures
-**360 adjacent pairs**, reports **0.2000–0.3000 mm**, and proves **0
-intersecting pairs** with an AABB sweep over all 273 tiles. `--check` repeats the
-measurement from the published placements. (The drawn tile is deliberately
-separated by 7.4 mm — the tsumogiri gap — not part of the 0.2–0.5 mm row rule.)
+**346 adjacent pairs**, reports **0.2000–0.3000 mm**, and proves **0
+intersecting pairs** with an AABB sweep over all 269 tiles. Three intentional
+exceptions are recorded separately: the dead-wall **break** is 14.3 mm, the
+turned riichi tile's far-side row gap is 7.3 mm (its 0.75-unit depth), and the
+drawn tile is 7.4 mm from the hand row (the tsumogiri gap). `--check` repeats
+the measurement from the published placements.
 
 ## Slot anchors
 
 Every valid tile position is an Empty in the dedicated Blender collection
 **`SlotAnchors`**, at the tile's 3D body centre with the tile's pose. The model
-has **293 anchors**, of which **273 are occupied** by the reference tiles and
-20 are reserved (16 row-2 river overflow slots, 4 kan-extension meld slots).
+has **293 anchors**, of which **269 are occupied** by the reference tiles and
+24 are reserved (16 row-2 river overflow slots, 4 kan-extension meld slots,
+4 drawn top-tier wall slots).
 
 | Zone | Naming | Anchors | Occupied |
 | --- | --- | --- | --- |
-| walls | `wall_{seat}_{stack:02d}_{layer}` | 136 (4 × 17 × 2) | 136 |
+| walls | `wall_{seat}_{stack:02d}_{layer}` | 136 (4 × 17 × 2) | 132 (4 drawn tops) |
 | rivers | `river_{seat}_{row}_{col}` (row 0..2, col 0..5, overflow 6..9) | 88 (4 × 22) | 72 |
 | melds | `meld_{seat}_{slot}` (slot 0..3) | 16 (4 × 4) | 12 |
 | hands | `hand_{seat}_{index:02d}` (00..12; south also 13 for the drawn tile) | 53 | 53 |
-| **total** | | **293** | **273** |
+| **total** | | **293** | **269** |
 
 Seats are `south` (the human/bottom), `east` (right), `north` (top) and `west`
 (left).
@@ -116,10 +119,12 @@ one @2x crop per element family, `table-reference.json` (camera, every tile
 placement, metrics, decoded-RGB hashes) and `slot-anchors.json`, then runs the
 dependency-free gate:
 
-- spec + camera consistency, the full 136/72/52/12/1 tile inventory and poses;
+- spec + camera consistency, the full 132/72/52/12/1 tile inventory and poses
+  (dead wall, dora, draw ends, riichi discards);
 - every anchor's name, zone, count, unique name, body-centre origin, rotation,
   and the 12-float face plate in local and world space;
-- clearance 0.2–0.5 mm for the 360 adjacent pairs and **0** intersecting tile
+- clearance 0.2–0.5 mm for the 346 adjacent pairs, the 14.3 mm dead-wall break
+  and the 7.3 mm turned-riichi gap, and **0** intersecting tile
   bodies;
 - every render's dimensions, bytes and decoded-pixel hash;
 - the table surface facts (700 mm mat, rim outside the mat, recessed well) and

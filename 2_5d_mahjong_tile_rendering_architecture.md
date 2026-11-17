@@ -1635,14 +1635,19 @@ the model and anchors, not a lighting decision.
 - The 700 mm mat, raised rim/frame and recessed compass/score well are built
   from the spec (`tools/render/table-reference-spec.json`); the mat is a square
   ring around the well so the well can sit below z = 0.
-- Four 17-stack two-tier walls (136 face-down tiles), four 6×3 ponds (72), four
-  13-tile hands (52) plus the human's drawn tile, and one open meld per seat
-  (12, **outside the wall on the player's right**). The human's hand is reclined
-  12°; the opponents' back rows are upright.
+- Four 17-stack two-tier walls: 132 tiles, because every run has only the
+  bottom tile at slot 16 (the draw end). The west (left) run carries the
+  7-stack dead wall at slots 0–6 with a 0.5-unit break and a face-up dora
+  indicator (`1z`) at slot 4. Four 6×3 ponds (72), each with one riichi
+  discard at row 1 column 5 turned 90° to the seat's right; four 13-tile hands
+  (52) plus the human's drawn tile; one open meld per seat (12, **outside the
+  wall on the player's right**). The human's hand is reclined 12°.
 - Adjacent tiles have 0.2–0.5 mm clearance (0.3 mm target, 0.2 mm pond column
-  pitch) and no tile bodies intersect: 360 adjacent pairs measured, 0
-  intersections.
-- `SlotAnchors` holds 293 Empties: `wall_{seat}_{stack:02d}_{layer}` (136),
+  pitch) and no tile bodies intersect: 346 adjacent pairs measured, 0
+  intersections. The dead-wall break (14.3 mm) and the turned riichi tile's
+  far-side row gap (7.3 mm) are recorded exceptions.
+- `SlotAnchors` holds 293 Empties, 269 occupied and 24 reserved:
+  `wall_{seat}_{stack:02d}_{layer}` (136, 4 empty drawn tops),
   `river_{seat}_{row}_{col}` (88, incl. row-2 overflow), `meld_{seat}_{slot}`
   (16, incl. the kan extension) and `hand_{seat}_{index:02d}` (53, incl.
   south_13 for the drawn tile). Each anchor is at the tile body centre with the
@@ -1652,7 +1657,7 @@ the model and anchors, not a lighting decision.
   `tools/render/reference/slot-anchors.json`. Task 3 projects
   `anchor.matrix_world @ Vector(faceQuadLocal corner)`.
 - The bake's checks cover the anchor names/counts/poses/face quads, the
-  clearance and intersection contract, the 273-tile inventory, the render
+  clearance and intersection contract, the 269-tile inventory, the render
   hashes and the table-surface facts. The earlier lighting samples remain as
   information, not this task's acceptance.
 
