@@ -646,7 +646,7 @@
    "height": 406,
    "sigmaPx1x": 12,
    "blurPad": 36,
-   "rotationDeg": -1,
+   "rotationDeg": -3,
    "pivotX": 219.95,
    "pivotY": 385.03999999999996,
    "bodies": [
@@ -1899,7 +1899,7 @@
    "height": 406,
    "sigmaPx1x": 12,
    "blurPad": 36,
-   "rotationDeg": 1,
+   "rotationDeg": 3,
    "pivotX": 219.95,
    "pivotY": 385.03999999999996,
    "bodies": [

@@ -1415,12 +1415,12 @@ logical row and column and sorts on the seat's depth key (`row` for front/back,
 `-row` for top, `-column` for right, `column` for left), then descending screen
 x. A vertical meld row follows the same far-to-near rule (top tile first).
 
-**Side-pond lean.** The left and right ponds carry a **1° whole-zone
-rotation** about the centre of their near (bottom) body edge: right `−1°`, left
-`+1°`, so the far end leans toward the table centre (the top edge shifts
-**6.72 px** inward on the committed 450 × 406 rows). The 2026-11-16 review
-flipped and then restored this sign; the original inward lean is the approved
-one. It is a group transform of
+**Side-pond lean.** The left and right ponds carry a **3° whole-zone
+rotation** about the centre of their near (bottom) body edge: right `−3°`, left
+`+3°`, so the far end leans toward the table centre (the top edge shifts about
+**20 px** inward on the committed 450 × 406 rows). The original 1° read as
+straight; the 2026-11-16 review increased the magnitude and kept the inward
+sign. It is a group transform of
 the composed pond (shadow layer + bodies), not a per-tile reposition or a new
 sprite; every tile, face and shadow stays the baked asset. `layoutPond` publishes
 `rotationDeg`/`pivotX`/`pivotY`; the grid positions and hit boxes remain in the
@@ -1537,7 +1537,7 @@ This is the complete matrix; the four ponds differ exactly as §10.10 predicted:
 | Front / back wall fans | inner slot horizontally; upper tier down | `left` / `right` / `down` |
 | Side wall columns | next stack down; upper tier down | `up`, `down` |
 
-The **side-pond 1° lean** is a single group transform around
+The **side-pond 3° lean** is a single group transform around
 `rotationDeg/pivotX/pivotY`; the decals are baked and drawn in the same local
 unrotated frame as the bodies, inside that transform. The grid positions and hit
 boxes stay in local space, exactly as Phase 3 publishes them.
@@ -1667,7 +1667,7 @@ share one `walls` shadow group. Hands sit outside the wall ring; the bottom hand
 is drawn last (Task 4.1 layer 6). Melds sit beside their seat's hand on that
 player's right, outside the ring: the compact ring has no inside lane wide
 enough for a lying meld, and a player's calls read correctly next to their own
-hand. A side pond keeps its approved 1° whole-zone lean; `buildBoard` rotates
+hand. A side pond keeps its approved 3° whole-zone lean; `buildBoard` rotates
 its shadow shapes and publishes a `rotationPad`, and the compositor rotates the
 body layer by the same transform.
 
@@ -1699,12 +1699,13 @@ looks flat, it is the display size, not a flat-glyph fallback.
 **Review follow-ups (2026-11-16).** The rendered pass exposed four layout
 issues, fixed here:
 
-1. The wall is a full 17-stack ring on every side, and the side walls are placed
-   just outside the front/back wall ends (2 px between body boxes) so the four
-   runs form a ring instead of clipping through each other.
-2. The side-pond lean keeps §14's original sign: right `−1°`, left `+1°`, the
-   far end leaning toward the table centre. A review flip was tried and
-   reverted; it read as leaning outward.
+1. The wall is a full 17-stack ring on every side. The side walls are placed
+   just outside the front/back wall ends (2 px between body boxes) and one
+   wall-tile width (46 px) lower than the geometric centre, so the four runs
+   form a level ring instead of clipping through each other.
+2. The side-pond lean keeps §14's inward sign and increases the magnitude:
+   right `−3°`, left `+3°`. A review flip was tried and reverted; it read as
+   leaning outward, and 1° read as straight.
 3. The side hands' row mirrors the x component of `gridStepPx.x` on the left
    (the two slot cameras are mirrored) so the repeated tile edges line up
    instead of staircasing. Dropping the drift entirely made the sawtooth worse.
@@ -1716,7 +1717,8 @@ issues, fixed here:
    step below 2.5 px away from the rounded caps.
 5. The shared `walls` group uses a **20 px** blur override rather than the
    published lying sigma of 12; on a 1200 px run the 12 px tail read as a hard
-   edge. The other groups keep their published sigmas.
+   edge. The **side-hand groups also use 20 px** (the second review's request;
+   their published standing sigma is 5). The bottom/top hand groups stay at 5.
 
 The face-up tiles use the carved decal atlas (648 decal sprites, 0 flat glyphs;
 a `1p` sprite differs from its flat twin by a mean 17.3 luma). The review still
@@ -1775,10 +1777,10 @@ the side-hand edge fits) and 7 rendered-table
   and pond families.
 - `cd frontend && npm run board:review` writes
   `tools/render/build/review/rendered-board-1x.png` and
-  `rendered-board-numbers.json`. The committed fixture reports **2376 × 1398 px
-  @1x, 14 zones, 11 shadow groups (walls at sigma 20), 212 bodies, 144 hard
-  shapes, 193 contact decals, 153 preloaded textures, 648 decal sprites,
-  919,965 opaque body pixels and 571,741 shadow pixels, with 0 non-transparent pixels on the outer 4 px
+  `rendered-board-numbers.json`. The committed fixture reports **2421 × 1398 px
+  @1x, 14 zones, 11 shadow groups (walls and side hands at sigma 20), 212
+  bodies, 144 hard shapes, 193 contact decals, 153 preloaded textures, 648
+  decal sprites, 919,810 opaque body pixels and 649,909 shadow pixels, with 0 non-transparent pixels on the outer 4 px
   edge**; the painter order is the 11 group layers
   then `wall-back`, `hand-top`, `wall-side-left`, `wall-side-right`,
   `pond-bottom`, `pond-right`, `pond-top`, `pond-left`, `wall-front`,

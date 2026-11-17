@@ -67,6 +67,17 @@ const WALL_JOIN_GAP = 2;
  * as the hand shadows, so the shared wall group blurs wider.
  */
 const WALL_SHADOW_SIGMA_PX = 20;
+/**
+ * The side wall columns sit one wall-tile width lower than the geometric
+ * centre; the review asked for the nudge so the ring's corners read level.
+ */
+const SIDE_WALL_Y_OFFSET = 46;
+/**
+ * The side hands reuse one shell down a long row, and their standing sigma (5)
+ * leaves a thin hard band. The review asked for the same soft read as the
+ * human hand's group, so the two side-hand groups blur wider.
+ */
+const SIDE_HAND_SHADOW_SIGMA_PX = 20;
 /** The reserved centre compartment (compass) side, in @1x px. */
 export const COMPASS_SIZE = 180;
 
@@ -414,7 +425,11 @@ function buildShadowGroups(
     const bounds = unionBounds(shapes.map(shadowShapeBounds));
     if (!bounds) continue;
     const sigma =
-      groupId === 'walls' ? Math.max(sigmaPx1x, WALL_SHADOW_SIGMA_PX) : sigmaPx1x;
+      groupId === 'walls'
+        ? Math.max(sigmaPx1x, WALL_SHADOW_SIGMA_PX)
+        : groupId === 'seat-left-hand' || groupId === 'seat-right-hand'
+          ? Math.max(sigmaPx1x, SIDE_HAND_SHADOW_SIGMA_PX)
+          : sigmaPx1x;
     const originX = Math.floor(bounds.x);
     const originY = Math.floor(bounds.y);
     const width = Math.max(1, Math.ceil(bounds.x + bounds.width) - originX);
@@ -599,7 +614,7 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
           placeZone(
             left,
             ringBodyLeft - WALL_JOIN_GAP - leftInsets.width - leftInsets.left,
-            -left.height / 2,
+            -left.height / 2 + SIDE_WALL_Y_OFFSET,
           ),
         );
         walls.set(
@@ -607,7 +622,7 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
           placeZone(
             right,
             ringBodyRight + WALL_JOIN_GAP - rightInsets.left,
-            -right.height / 2,
+            -right.height / 2 + SIDE_WALL_Y_OFFSET,
           ),
         );
       }

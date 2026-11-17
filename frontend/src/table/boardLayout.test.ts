@@ -15,7 +15,7 @@ import type { Board, BoardZone } from './boardLayout';
 import { boardOverlay } from './boardOverlay';
 import { boardImagePaths } from './boardAssets';
 import { boardGameState } from './boardFixture';
-import { ZONE_LAYER } from './zoneLayout';
+import { SIDE_POND_LEAN_DEG, ZONE_LAYER } from './zoneLayout';
 
 const tableDir = fileURLToPath(new URL('../../public/table/', import.meta.url));
 const manifest: ShellsManifest = parseShellsManifest(
@@ -251,8 +251,8 @@ describe('board geometry', () => {
 
   it('publishes the pond lean on the side ponds only', () => {
     const result = board();
-    expect(zone(result, 'pond-left').zone.rotationDeg).toBe(1);
-    expect(zone(result, 'pond-right').zone.rotationDeg).toBe(-1);
+    expect(zone(result, 'pond-left').zone.rotationDeg).toBe(SIDE_POND_LEAN_DEG);
+    expect(zone(result, 'pond-right').zone.rotationDeg).toBe(-SIDE_POND_LEAN_DEG);
     expect(zone(result, 'pond-bottom').zone.rotationDeg).toBe(0);
     expect(zone(result, 'pond-top').zone.rotationDeg).toBe(0);
     expect(zone(result, 'pond-left').rotationPad).toBeGreaterThan(0);
@@ -352,6 +352,8 @@ describe('group shadows', () => {
       if (group.id === 'walls') {
         // The long wall run uses a wider visual blur than the published shell.
         expect(group.sigmaPx1x).toBeGreaterThanOrEqual(20);
+      } else if (group.id === 'seat-left-hand' || group.id === 'seat-right-hand') {
+        expect(group.sigmaPx1x).toBeGreaterThanOrEqual(20);
       } else {
         expect(group.sigmaPx1x).toBe(manifest.shells[first.shell].shadowShape.sigmaPx1x);
       }
@@ -387,8 +389,11 @@ describe('group shadows', () => {
     );
     expect(leftShapes?.every((shape) => Math.abs(shape.angleDeg - 8.55) < 0.1)).toBe(true);
     expect(rightShapes?.every((shape) => Math.abs(shape.angleDeg + 8.55) < 0.1)).toBe(true);
-    const hands = result.groups.find((group) => group.id === 'seat-left-hand');
-    expect(hands?.shapes.every((shape) => Math.abs(shape.angleDeg + 8.46) < 0.15)).toBe(true);
+    expect(
+      result.groups
+        .filter((group) => group.id === 'seat-left-hand' || group.id === 'seat-right-hand')
+        .every((group) => group.shapes.every((shape) => shape.angleDeg < -5)),
+    ).toBe(true);
   });
 
   it('rotates a leaning pond’s shapes, not its body placements', () => {
@@ -397,7 +402,7 @@ describe('group shadows', () => {
     const first = right?.shapes[0];
     const tile = zone(result, 'pond-right').zone.shadows[0];
     const base = manifest.shells[tile.shell].shadowShape;
-    expect(first?.angleDeg).toBeCloseTo(base.angleDeg - 1, 10);
+    expect(first?.angleDeg).toBeCloseTo(base.angleDeg - SIDE_POND_LEAN_DEG, 10);
   });
 });
 

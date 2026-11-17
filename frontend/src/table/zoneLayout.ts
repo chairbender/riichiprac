@@ -56,9 +56,11 @@ export const HAND_CENTRE_INDEX = 6;
 /**
  * The whole-zone lean of each side pond, in screen degrees. Positive is
  * clockwise. It is a group transform of the composed pond (shadow + bodies),
- * not a per-tile position change or a new sprite.
+ * not a per-tile position change or a new sprite. The 2026-11-16 review asked
+ * for a stronger read than the original 1°, so 3° is the approved value; the
+ * direction is still right `−3°`, left `+3°` (far end toward the centre).
  */
-export const SIDE_POND_LEAN_DEG = 1;
+export const SIDE_POND_LEAN_DEG = 3;
 
 /**
  * Architecture Task 4.1's global paint order. Felt is layer 0 and is not a
@@ -754,8 +756,8 @@ export function layoutSideHand(
   }
   const axis = base.gridStepPx.x;
   // The left and right hand cameras are mirrored. Stepping by the published x
-  // drift makes one side's repeated tile edges run as a staircase; mirroring
-  // the x component on the left makes both rows' visible edges collinear.
+  // drift leaves one side's repeated edges off; mirroring the x component on
+  // the left makes both rows' visible edges collinear.
   const step: PointPx = [
     options.side === 'left' ? -axis[0] : axis[0],
     Math.abs(axis[1]),
@@ -860,9 +862,9 @@ export function layoutPond(manifest: ShellsManifest, options: PondLayoutOptions)
     .map((entry) => entry.tile);
 
   const lean = options.leanDeg ?? SIDE_POND_LEAN_DEG;
-  // Right pond −1°, left +1°: the far end leans toward the table centre. The
-  // 2026-11-16 review confirmed this original sign (the flip read as leaning
-  // outward).
+  // Right pond inward (counter-clockwise), left pond inward (clockwise); the
+  // far end leans toward the table centre. 2026-11-16: 3° is the approved
+  // magnitude; the trial flip was reverted.
   const rotationDeg =
     lean === 0 ? 0 : side === 'right' ? -lean : side === 'left' ? lean : 0;
 

@@ -11,6 +11,7 @@ import type { ShellsManifest } from '../table/shellManifest';
 import { buildBoard } from '../table/boardLayout';
 import { boardOverlay } from '../table/boardOverlay';
 import { boardGameState } from '../table/boardFixture';
+import { SIDE_POND_LEAN_DEG } from '../table/zoneLayout';
 
 const tableDir = fileURLToPath(new URL('../../public/table/', import.meta.url));
 const manifest: ShellsManifest = parseShellsManifest(
@@ -79,8 +80,8 @@ describe('rendered table hit layer', () => {
   it('leans the side ponds as one group transform', () => {
     const html = markup();
     expect(html).toContain('data-zone="pond-right"');
-    expect(html).toContain('transform:rotate(-1deg)');
-    expect(html).toContain('transform:rotate(1deg)');
+    expect(html).toContain(`transform:rotate(-${SIDE_POND_LEAN_DEG}deg)`);
+    expect(html).toContain(`transform:rotate(${SIDE_POND_LEAN_DEG}deg)`);
   });
 
   it('marks the claiming discard without changing the rest', () => {
