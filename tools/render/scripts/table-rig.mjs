@@ -128,6 +128,15 @@ const playerHandBackOffset = handBases.bottom !== undefined && otherBases.length
   ? Number((handBases.bottom - otherBases.reduce((sum, value) => sum + value, 0) / otherBases.length).toFixed(4))
   : null;
 
+const shadowKeys = Object.keys(measured)
+  .filter((name) => name.startsWith('handShadow'))
+  .sort((a, b) => Number(a.slice('handShadow'.length)) - Number(b.slice('handShadow'.length)));
+const shadowLumas = shadowKeys.map((name) => measured[name]?.luma ?? null);
+const shadowReference = shadowLumas.length ? shadowLumas[shadowLumas.length - 1] : null;
+const shadowFactors = shadowReference
+  ? shadowLumas.map((value) => (value === null ? null : Number((value / shadowReference).toFixed(3))))
+  : [];
+
 const facts = {
   faceLuma: luma('face'),
   blueLuma: luma('blue'),
@@ -144,6 +153,11 @@ const facts = {
   matLuma: luma('mat'),
   wallFaceLumas: wallLumas,
   wallFaceDip: wallDip,
+  handShadowLumas: shadowLumas,
+  handShadowLumaFactors: shadowFactors,
+  handShadowMinLumaFactor: shadowFactors.length
+    ? Math.min(...shadowFactors.filter((value) => value !== null))
+    : null,
   handBaseRadiusUnits: handBases,
   playerHandBackOffsetUnits: playerHandBackOffset,
   sideOverMat: Number(
@@ -249,8 +263,13 @@ const settingsRows = (entry) => {
       <tr><th>camera</th><td>${cam.lensMm} mm · pitch ${cam.elevationDeg}° · ${cam.distanceUnits.toFixed(3)} units · Shift Y ${cam.shiftY}</td></tr>
       <tr><th>hand / meld radius</th><td>${hand.backRadiusUnits ?? '?'} / ${entry.layout?.meld?.rowRadiusUnits ?? '?'} units${hand.backRadiusUnitsBySeat?.bottom && hand.backRadiusUnitsBySeat.bottom !== hand.backRadiusUnits ? ` (player hand ${hand.backRadiusUnitsBySeat.bottom})` : ''}</td></tr>
       <tr><th>hand tilt</th><td>${hand.tiltDeg ?? '?'}°${entry.handLightingCheat ? ` (shaded as ${entry.handLightingCheat.physicalTiltDeg}°)` : ''}</td></tr>
-      <tr><th>hand shadow</th><td>${entry.handShadow ? `physical-pose caster (${entry.handShadow.casters} casters)` : 'real'}</td></tr>
+      <tr><th>hand shadow</th><td>${entry.handShadow
+        ? (entry.handShadow.mode === 'gradientDecal'
+          ? `gradient decal (${entry.handShadow.strips} strips, max alpha ${entry.handShadow.maxAlpha}, ${entry.handShadow.lengthUnits} units)`
+          : `physical-pose caster (${entry.handShadow.casters} casters)`)
+        : 'real'}</td></tr>
       <tr><th>wall behind the hand (dip)</th><td>${entry.facts?.wallFaceDip ?? '?'} luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>${entry.facts?.handShadowMinLumaFactor ?? '?'} × felt · ${entry.facts?.handShadowLumaFactors?.join(' → ') ?? ''}</td></tr>
       <tr><th>light key</th><td>${entry.lighting?.lights?.[0]?.energyW ?? '?'} W</td></tr>
       <tr><th>tile size (hand face width)</th><td>${entry.metrics?.hand?.rows?.[6]?.topWidthPx ?? '?'} px</td></tr>
       <tr><th>hand face / discard luma</th><td>${entry.facts?.handFaceLuma} / ${entry.facts?.faceLuma}</td></tr>

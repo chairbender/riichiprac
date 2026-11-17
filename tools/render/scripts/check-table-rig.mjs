@@ -216,18 +216,41 @@ function checkVariant(manifest, file) {
     const record = manifest.handShadow;
     if (check(Boolean(record), `${id} records the hand shadow cheat`)) {
       checkEqual(`${id} shadow mode`, record.mode, shadowCheat.mode);
-      near(record.physicalTiltDeg, shadowCheat.physicalTiltDeg, 1e-9, `${id} shadow physical tilt`);
       near(record.cheatedTiltDeg, table.hand.tiltDeg, 1e-9, `${id} shadow cheated tilt`);
-      near(record.deltaDeg, table.hand.tiltDeg - shadowCheat.physicalTiltDeg, 1e-6, `${id} shadow normal delta`);
-      check(record.casters >= 13, `${id} shadow casters ${record.casters} >= 13`);
       check(record.hiddenObjects >= 26, `${id} ${record.hiddenObjects} hand objects hidden from shadows`);
-      checkEqual(`${id} shadow fills`, record.fillLights, rig.lighting.fills.map((fill) => fill.id));
       near(
         record.playerHandRadiusUnits,
         table.hand.backRadiusUnitsBySeat?.bottom ?? table.hand.backRadiusUnits,
         1e-9,
-        `${id} shadow caster uses the player-hand radius`,
+        `${id} shadow uses the player-hand radius`,
       );
+      if (shadowCheat.mode === 'physicalPoseCaster') {
+        near(record.physicalTiltDeg, shadowCheat.physicalTiltDeg, 1e-9, `${id} shadow physical tilt`);
+        near(record.deltaDeg, table.hand.tiltDeg - shadowCheat.physicalTiltDeg, 1e-6, `${id} shadow normal delta`);
+        check(record.casters >= 13, `${id} shadow casters ${record.casters} >= 13`);
+        checkEqual(`${id} shadow fills`, record.fillLights, rig.lighting.fills.map((fill) => fill.id));
+      } else if (shadowCheat.mode === 'gradientDecal') {
+        near(record.maxAlpha, shadowCheat.maxAlpha, 1e-9, `${id} decal max alpha`);
+        near(record.lengthUnits, shadowCheat.lengthUnits, 1e-9, `${id} decal length`);
+        check(record.objects >= 2, `${id} decal has ${record.objects} strips`);
+        check(
+          record.maxAlpha <= limits.handShadowMaxDarkening,
+          `${id} decal is subtle (max alpha ${record.maxAlpha} <= ${limits.handShadowMaxDarkening})`,
+        );
+        check(
+          record.startRadiusUnits < record.frontEdgeRadiusUnits,
+          `${id} decal starts under the tile (${record.startRadiusUnits} < ${record.frontEdgeRadiusUnits})`,
+        );
+        near(
+          record.startRadiusUnits,
+          record.frontEdgeRadiusUnits -
+            record.edgeHeightUnits / Math.tan((cameraSpec.elevationDeg * Math.PI) / 180),
+          1e-3,
+          `${id} decal start is the front-edge silhouette projected onto the mat`,
+        );
+      } else {
+        fail(`${id} unknown shadow mode ${shadowCheat.mode}`);
+      }
     }
   } else {
     checkEqual(`${id} no hand shadow cheat`, manifest.handShadow, null);
@@ -481,6 +504,52 @@ function checkVariant(manifest, file) {
       `${id} nothing is cast on the wall behind the hand (dip ${wallDip?.toFixed(1)} ` +
         `<= ${limits.wallShadowDipMaxLuma})`,
     );
+  }
+
+  const shadowLumas = Object.keys(measured)
+    .filter((name) => name.startsWith('handShadow'))
+    .sort((a, b) => Number(a.slice('handShadow'.length)) - Number(b.slice('handShadow'.length)))
+    .map((name) => measured[name]?.luma ?? null);
+  if (shadowLumas.length >= 3 && shadowLumas.every((value) => value !== null)) {
+    const reference = shadowLumas[shadowLumas.length - 1];
+    const factors = shadowLumas.map((value) => value / reference);
+    const minFactor = Math.min(...factors);
+    checkEqual(`${id} manifest shadow luma factors`, manifest.facts.handShadowLumaFactors,
+      factors.map((value) => Number(value.toFixed(3))));
+    checkEqual(`${id} manifest shadow luma minimum`, manifest.facts.handShadowMinLumaFactor,
+      Number(minFactor.toFixed(3)));
+    if (shadowCheat?.mode === 'gradientDecal') {
+      check(
+        factors.every((value, index) => index === 0 || value >= factors[index - 1] - 1e-6),
+        `${id} the under-hand shadow fades monotonically (${factors.map((value) => value.toFixed(2)).join(' → ')})`,
+      );
+    }
+    if (Number.isFinite(limits.handShadowMinLumaFactor)) {
+      check(
+        minFactor >= limits.handShadowMinLumaFactor,
+        `${id} the under-hand shadow is subtle (darkest ${minFactor.toFixed(2)} x felt ` +
+          `>= ${limits.handShadowMinLumaFactor})`,
+      );
+    }
+    if (Number.isFinite(limits.handShadowFadeUnits)) {
+      const probe = Object.entries(samples)
+        .filter(([name]) => name.startsWith('handShadow'))
+        .map(([, sample]) => sample)
+        .sort((a, b) => a.offsetUnits - b.offsetUnits)
+        .find((sample) => sample.offsetUnits >= limits.handShadowFadeUnits);
+      if (check(Boolean(probe), `${id} has a probe at the fade distance`)) {
+        const index = Object.keys(samples)
+          .filter((name) => name.startsWith('handShadow'))
+          .sort((a, b) => Number(a.slice('handShadow'.length)) - Number(b.slice('handShadow'.length)))
+          .indexOf(Object.keys(samples).find((name) => samples[name] === probe));
+        const factor = factors[index];
+        check(
+          factor >= limits.handShadowFadeFactor,
+          `${id} the shadow is gone by ${limits.handShadowFadeUnits} units ` +
+            `(${factor.toFixed(2)} >= ${limits.handShadowFadeFactor})`,
+        );
+      }
+    }
   }
 
   checkedVariants.push({ id, metrics, face, blue, handFace, mat, coverage, cameraSpec, rig });

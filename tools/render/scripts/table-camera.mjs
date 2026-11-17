@@ -752,6 +752,36 @@ export function rigLightingSamples(camera, tiles, spec, shellSpec) {
       radiusPx: 3,
     },
   };
+  // Felt probes south of the player's hand front edge, for the fake under-hand
+  // shadow: where it starts, how dark it is, and how fast it fades.
+  const shadowProbes = rigSamples.handShadow;
+  if (shadowProbes) {
+    const bottomHand = tiles
+      .filter((tile) => tile.seat === 'bottom' && tile.kind === 'hand')
+      .sort((a, b) => Math.abs(a.origin[0]) - Math.abs(b.origin[0]))[0];
+    if (bottomHand) {
+      const radial = (corner) => -corner[1];
+      let front = tileBoxCorners(bottomHand)[0];
+      for (const corner of tileBoxCorners(bottomHand)) {
+        if (radial(corner) > radial(front)) front = corner;
+      }
+      const startRadius = radial(front) -
+        front[2] / Math.tan((camera.elevationDeg * Math.PI) / 180);
+      for (const [index, offset] of shadowProbes.offsetsUnits.entries()) {
+        const world = [0, -(startRadius + offset), 0];
+        const [px, py] = projectPoint(camera, world);
+        samples[`handShadow${index}`] = {
+          kind: 'point',
+          tile: null,
+          world: world.map((value) => round(value, 6)),
+          pixel: [round(px, 3), round(py, 3)],
+          radiusPx: shadowProbes.radiusPx ?? 1,
+          offsetUnits: offset,
+        };
+      }
+    }
+  }
+
   // The south wall's outer face, inside and outside the player's hand span;
   // the shadow cheat's "nothing on the wall behind" fact.
   const wall = rigSamples.southWallFace;

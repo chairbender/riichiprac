@@ -10425,6 +10425,131 @@
     "pixels": 49
    }
   },
+  "handShadow0": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    0,
+    -11.173602,
+    0
+   ],
+   "pixel": [
+    960,
+    1010.211
+   ],
+   "radiusPx": 1,
+   "offsetUnits": 0.1,
+   "measured": {
+    "rgb": [
+     0.9,
+     22.4,
+     14.3
+    ],
+    "alpha": 255,
+    "luma": 17.3,
+    "pixels": 9
+   }
+  },
+  "handShadow1": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    0,
+    -11.253602,
+    0
+   ],
+   "pixel": [
+    960,
+    1014.14
+   ],
+   "radiusPx": 1,
+   "offsetUnits": 0.18,
+   "measured": {
+    "rgb": [
+     4.6,
+     48.4,
+     31.3
+    ],
+    "alpha": 255,
+    "luma": 37.9,
+    "pixels": 9
+   }
+  },
+  "handShadow2": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    0,
+    -11.333602,
+    0
+   ],
+   "pixel": [
+    960,
+    1018.076
+   ],
+   "radiusPx": 1,
+   "offsetUnits": 0.26,
+   "measured": {
+    "rgb": [
+     7.2,
+     58.6,
+     38.2
+    ],
+    "alpha": 255,
+    "luma": 46.2,
+    "pixels": 9
+   }
+  },
+  "handShadow3": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    0,
+    -11.413602,
+    0
+   ],
+   "pixel": [
+    960,
+    1022.018
+   ],
+   "radiusPx": 1,
+   "offsetUnits": 0.34,
+   "measured": {
+    "rgb": [
+     8.8,
+     65.2,
+     42.3
+    ],
+    "alpha": 255,
+    "luma": 51.6,
+    "pixels": 9
+   }
+  },
+  "handShadow4": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    0,
+    -11.523602,
+    0
+   ],
+   "pixel": [
+    960,
+    1027.447
+   ],
+   "radiusPx": 1,
+   "offsetUnits": 0.45,
+   "measured": {
+    "rgb": [
+     11,
+     72,
+     47.2
+    ],
+    "alpha": 255,
+    "luma": 57.2,
+    "pixels": 9
+   }
+  },
   "wallFace0": {
    "kind": "point",
    "tile": null,
@@ -10616,6 +10741,21 @@
    93
   ],
   "wallFaceDip": 6.8,
+  "handShadowLumas": [
+   17.3,
+   37.9,
+   46.2,
+   51.6,
+   57.2
+  ],
+  "handShadowLumaFactors": [
+   0.302,
+   0.663,
+   0.808,
+   0.902,
+   1
+  ],
+  "handShadowMinLumaFactor": 0.302,
   "handBaseRadiusUnits": {
    "bottom": 10.6,
    "top": 10.6,
@@ -10813,6 +10953,17 @@
     "z": 0.1,
     "radiusPx": 1,
     "note": "A row of probes on the south wall's outer vertical face at z = 0.1, inside and outside the player's hand span (the hand covers |x| <= 5). The hand's fill shadow on this wall is the give-away the shadow cheat removes, so the checker compares the centre probe with the two end probes: a uniform row (small dip) means nothing is cast on the wall. Informational for variants without the cheat."
+   },
+   "handShadow": {
+    "offsetsUnits": [
+     0.1,
+     0.18,
+     0.26,
+     0.34,
+     0.45
+    ],
+    "radiusPx": 1,
+    "note": "Felt probes south of the player's hand's front edge, on the mat at x = 0: 50, 150, 250, 400 and 600 thousandths of a unit from the tile's front edge. The last is the local lit-felt reference; a gradient shadow must stay above a floor at the closest probe and be essentially gone by the fade distance. Informational for variants without a decal."
    }
   },
   "checks": {

@@ -239,17 +239,21 @@ tile content, every tile inside, tiles 1.29× linear larger, discard face 203.3
 luma. **v3-hand-shadow** (experiment): the player's hand alone moves back to 9.3
 (half a tile height), the camera refits to 60.5 units, and the hand's own shadow
 is replaced by a shadow-only caster at the 12° physical pose (the fills are
-light-linked away from it), so there is nothing on the wall behind the hand and
-the under-hand shadow is a normally seated tile's.
+light-linked away from it), so there is nothing on the wall behind the hand.
+**v4-shadow-decal** (experiment) keeps v3's spacing and replaces that caster with
+a fake soft gradient decal: a 0.32-unit strip whose hidden near edge sits under
+the tile so the visible gradient emerges from the front edge, about 13 % dark at
+the edge and back to lit felt within ~0.2 units, with no shadow rays at all.
 
 The **hand cheat** in v2 reclines the player's hand further than is physical, so
 the near bottom edge floats and the real cast shadow is not the production
 shadow (the runtime uses a blob). To keep the light on it looking physical, the
 hand bodies and decals shade with their normals rotated back by the extra 28°
 about world X: the key and fills land exactly as on the 12° pose, and the gate
-enforces hand/discard luma ≤ 0.7 (measured 0.589; without the correction the 40°
-hand reads 178.8 instead of 119.8). The silhouette keeps the cheat; the shading
-does not.
+enforces hand/discard luma ≤ 0.7 (measured 0.589 in v2; without the correction the 40°
+hand reads 178.8 instead of 119.8). v4 uses that shading plus a fake soft
+gradient shadow (see above). The silhouette keeps the cheat; the shading and the
+shadow do not.
 
 The v1 rig reproduces the shipped shells' face `[223, 220, 216]` and blue
 `[3, 68, 165]` within a few levels. See `TABLE-REFERENCE.md` for the parameter

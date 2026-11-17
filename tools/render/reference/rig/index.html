@@ -39,6 +39,7 @@ measured on the rendered pixels. Calibration only.</p>
       <tr><th>hand tilt</th><td>12°</td></tr>
       <tr><th>hand shadow</th><td>real</td></tr>
       <tr><th>wall behind the hand (dip)</th><td>6.8 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.302 × felt · 0.302 → 0.663 → 0.808 → 0.902 → 1</td></tr>
       <tr><th>light key</th><td>9000 W</td></tr>
       <tr><th>tile size (hand face width)</th><td>37.4223 px</td></tr>
       <tr><th>hand face / discard luma</th><td>137.9 / 217.2</td></tr>
@@ -62,6 +63,7 @@ measured on the rendered pixels. Calibration only.</p>
       <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
       <tr><th>hand shadow</th><td>real</td></tr>
       <tr><th>wall behind the hand (dip)</th><td>45.4 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.08 × felt · 0.08 → 0.091 → 0.123 → 0.557 → 1</td></tr>
       <tr><th>light key</th><td>6000 W</td></tr>
       <tr><th>tile size (hand face width)</th><td>48.4233 px</td></tr>
       <tr><th>hand face / discard luma</th><td>119.8 / 203.3</td></tr>
@@ -85,9 +87,34 @@ measured on the rendered pixels. Calibration only.</p>
       <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
       <tr><th>hand shadow</th><td>physical-pose caster (14 casters)</td></tr>
       <tr><th>wall behind the hand (dip)</th><td>4.3 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.324 × felt · 0.324 → 0.336 → 0.34 → 0.373 → 1</td></tr>
       <tr><th>light key</th><td>6000 W</td></tr>
       <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
       <tr><th>hand face / discard luma</th><td>105.5 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>28.5725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>7.17%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v4-shadow-decal — v4 soft gradient hand shadow</h2>
+    <p>v4 keeps v3's spacing (the player's hand at 9.3) and replaces the rendered physical-pose caster with a fake soft gradient decal: the v3 caster read as hard black rectangles that started at the rear edge where the tile balances. The decal is a straight-alpha black strip laid on the mat whose darkest point is hidden under the tile and whose visible gradient begins right at the tile's front edge, as if the tile sat upright and level, then fades to nothing within a third of a tile height. It casts no shadow rays, so the wall behind stays clean.</p>
+    <figure>
+      <a href="v4-shadow-decal-1x.png"><img src="v4-shadow-decal-1x.png" alt="v4-shadow-decal"></a>
+      <figcaption>1920×1080 RGBA · 2,623,462 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.02</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>gradient decal (2 strips, max alpha 0.3, 0.32 units)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.8 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.867 × felt · 0.867 → 0.917 → 0.971 → 0.994 → 1</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.6 / 203.2</td></tr>
       <tr><th>hand bottom margin</th><td>28.5725 px</td></tr>
       <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
       <tr><th>transparent pixels</th><td>7.17%</td></tr>

@@ -430,6 +430,17 @@
         "z": 0.1,
         "radiusPx": 1,
         "note": "A row of probes on the south wall's outer vertical face at z = 0.1, inside and outside the player's hand span (the hand covers |x| <= 5). The hand's fill shadow on this wall is the give-away the shadow cheat removes, so the checker compares the centre probe with the two end probes: a uniform row (small dip) means nothing is cast on the wall. Informational for variants without the cheat."
+      },
+      "handShadow": {
+        "offsetsUnits": [
+          0.1,
+          0.18,
+          0.26,
+          0.34,
+          0.45
+        ],
+        "radiusPx": 1,
+        "note": "Felt probes south of the player's hand's front edge, on the mat at x = 0: 50, 150, 250, 400 and 600 thousandths of a unit from the tile's front edge. The last is the local lit-felt reference; a gradient shadow must stay above a floor at the closest probe and be essentially gone by the fade distance. Informational for variants without a decal."
       }
     },
     "checks": {
@@ -654,6 +665,31 @@
         },
         "lightingCheat": {
           "note": "v3: the hand's geometry keeps the 40 deg cheat so the faces read, and every hand material still shades as the 12 deg physical pose. Unlike v2, the cast shadow is now also the physical pose's (rig.variants['v3-hand-shadow'].handShadow), so the shading and the shadow both read as a normally seated tile."
+        }
+      },
+      "v4-shadow-decal": {
+        "order": 4,
+        "extends": "v3-hand-shadow",
+        "label": "v4 soft gradient hand shadow",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "v4 keeps v3's spacing (the player's hand at 9.3) and replaces the rendered physical-pose caster with a fake soft gradient decal: the v3 caster read as hard black rectangles that started at the rear edge where the tile balances. The decal is a straight-alpha black strip laid on the mat whose darkest point is hidden under the tile and whose visible gradient begins right at the tile's front edge, as if the tile sat upright and level, then fades to nothing within a third of a tile height. It casts no shadow rays, so the wall behind stays clean.",
+        "handShadow": {
+          "mode": "gradientDecal",
+          "lengthUnits": 0.32,
+          "maxAlpha": 0.3,
+          "falloff": 1.2,
+          "edgeFade": 0.03,
+          "zUnits": 0.0025,
+          "imageWidth": 512,
+          "imageHeight": 128,
+          "note": "A short gradient strip per hand group (the 13-tile row and the drawn tile). startRadius = frontEdge - edgeHeight/tan(pitch) so the hard near edge sits under the tile and the first visible pixels are already part of the falloff. maxAlpha 0.3 keeps the darkest visible mat at ~70% of the lit felt; the falloff (1-v)^1.2 returns to lit felt inside 0.32 units (~9 mm)."
+        },
+        "checks": {
+          "handShadowMaxDarkening": 0.45,
+          "handShadowMinLumaFactor": 0.7,
+          "handShadowFadeUnits": 0.32,
+          "handShadowFadeFactor": 0.92
         }
       }
     }

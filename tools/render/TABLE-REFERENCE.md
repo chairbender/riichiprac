@@ -11,8 +11,9 @@ and lighting calibration and ships it as a separate `--rig` mode of the same
 scene and placements. It is variant-based (A/B): `v1-baseline` is the saved
 first rig, `v2-compact` the first experiment (bigger, hands/melds pulled in to
 the wall, a readability cheat on the player's hand, dimmer key), and
-`v3-hand-shadow` moves only the player's hand a further half tile back and makes
-its shadow read as a normally seated tile. The
+`v3-hand-shadow` moves only the player's hand a further half tile back, and
+`v4-shadow-decal` replaces the shadow with a soft gradient that emerges from the
+tile's front edge. The
 placement board below stays at its own 2880 × 2112 framing for plan review. See
 [The 2.5D rig](#the-25d-rig-task-2).
 
@@ -240,6 +241,33 @@ the three light-linked fills), and the gate enforces: the player's hand base is
 exactly 0.5 units behind the other hands, the caster tilt is the physical 12°,
 and the wall dip stays under 15 luma.
 
+### v4-shadow-decal (experiment, 2026-11-17)
+
+v4 keeps v3's spacing exactly (the player's hand at 9.3, camera at 60.5) and
+replaces the rendered physical-pose caster, which read as hard black rectangles
+and started at the *rear* edge where the tile balances, with a **fake soft
+gradient shadow**.
+
+| Parameter | v4 |
+| --- | --- |
+| Shadow | straight-alpha black strip on the mat; **2 strips** (the 13-tile row and the drawn tile), no shadow rays |
+| Start | radius **9.4336**, i.e. 0.317 units *under* the tile, so its hard near edge is hidden and the visible gradient begins at the tile's front edge (front edge 9.7514, edge height 0.3788) |
+| Shape | `maxAlpha 0.3`, length **0.32 units** (9 mm), falloff `(1-v)^1.2`, x ends faded over 3 % |
+| Measured | darkest visible felt **0.867×** the lit felt at 0.10 units from the edge; back to **0.994×** by 0.34 units; wall behind the hand **0.8** dip; hand face 117.6 luma |
+
+The decal is pure darkening (a black roughness-1 surface whose alpha is a UV
+gradient), so it cannot go solid black the way the caster's shadow core did: the
+darkest visible pixels are about 13 % below the local felt, and the gradient has
+returned to lit felt within ~0.2 units (≈ 12 px at 1920). Because it casts no
+shadow rays, nothing appears on the wall behind the hand, and the hand's own
+cast shadow stays off. The hand face reads **117.6** in v4 rather than v3's 105.5
+because v3's casters were also blocking fill light on the hand's face; with them
+gone the physical-pose shading is the full read.
+
+The gate enforces: the decal starts under the tile, `maxAlpha` ≤ 0.45, the
+darkest visible felt ≥ 0.7× the local felt, the shadow is gone (≥ 0.92×) by 0.34
+units, the gradient is monotonic, and the wall dip stays under 15.
+
 ### What still needs the user
 
 The numbers say the geometry, framing, shadowing and exposure are what was
@@ -250,13 +278,11 @@ xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, wi
 bash tools/render/bake-table-reference.sh --check
 ```
 
-Questions only the user can answer for v3: is the 0.5-unit step back on the
-player's hand right, and is the hand-to-wall gap now what you wanted? Does the
-under-hand shadow read as short and diffuse like the wall's, or should it be
-shorter still (the caster height is the knob) or lighter? Is the wall behind the
-hand clean enough? Does the hand face at 105.5 luma still read (the physical-pose
-lighting is dimmer than the cheat's 178.8)? Is the 40° recline right, and is the
-203 discard face the right dimming?
+Questions only the user can answer for v4: does the under-hand gradient now read
+as a soft, subtle shadow coming out of the tile's front edge, with no black
+rectangle and nothing on the wall? Is about 13 % darkening at the edge too
+subtle (raise `maxAlpha`), and is 0.32 units the right length? Is the 40° recline
+and the 203 discard face still right?
 
 ## Published renders and checks
 

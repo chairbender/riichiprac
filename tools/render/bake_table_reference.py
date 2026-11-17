@@ -145,7 +145,12 @@ def resolve_variant(spec: dict, variant_id: str | None) -> tuple[str, dict, dict
     chain = variant_chain(rig, chosen)
     merged: dict = {}
     for _, entry in chain:
+        shadow_override = entry.get("handShadow")
         merged = deep_merge(merged, {key: value for key, value in entry.items() if key != "extends"})
+        # The shadow block is a strategy, not a bag of settings: a variant that
+        # declares one replaces its ancestor's instead of merging into it.
+        if shadow_override is not None:
+            merged["handShadow"] = shadow_override
     resolved = dict(rig)
     for key in RIG_MERGE_KEYS:
         if key in rig:
@@ -984,32 +989,119 @@ def apply_hand_lighting_cheat(spec: dict, rig: dict) -> dict | None:
     return record
 
 
-def apply_hand_shadow_cheat(spec: dict, rig: dict) -> dict | None:
-    """Give the cheated player's hand a physical-pose shadow, not its own.
+def shadow_decal_material(max_alpha: float, falloff: float, edge_fade: float) -> bpy.types.Material:
+    """Pure darkening: a black, roughness-1 surface whose alpha is a UV gradient.
 
-    The 40 deg readability cheat would cast a tall shadow under the hand and a
-    hand-shaped shadow up the wall behind it (the near fill sees the hand from
-    the south). So the hand bodies and decals stop casting shadows entirely, and
-    each hand tile gets a shadow-only duplicate at the *physical* 12 deg pose;
-    that caster is invisible to the camera and to light/GI (it only blocks
-    shadow rays). The fills are light-linked to a blocker collection that omits
-    the casters, so only the key casts the physical shadow: a short, diffuse
-    band like the one in front of the wall, with nothing on the wall behind.
+    Alpha is strongest at the strip's near edge (v = 0, hidden under the tile),
+    falls off across the strip and is zero at both x ends. Building it from math
+    nodes keeps the ramp exact at any resolution, with no image to sample.
+    """
+    material = new_material("hand-shadow-decal")
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    principled = nodes["Principled BSDF"]
+    principled.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+    principled.inputs["Roughness"].default_value = 1.0
+    principled.inputs["Specular IOR Level"].default_value = 0.0
+    uv = nodes.new("ShaderNodeUVMap")
+    separate = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(uv.outputs["UV"], separate.inputs["Vector"])
+
+    one_minus_y = nodes.new("ShaderNodeMath")
+    one_minus_y.operation = "SUBTRACT"
+    one_minus_y.inputs[0].default_value = 1.0
+    links.new(separate.outputs["Y"], one_minus_y.inputs[1])
+    power = nodes.new("ShaderNodeMath")
+    power.operation = "POWER"
+    power.inputs[1].default_value = falloff
+    links.new(one_minus_y.outputs[0], power.inputs[0])
+
+    left = nodes.new("ShaderNodeMath")
+    left.operation = "DIVIDE"
+    left.use_clamp = True
+    left.inputs[1].default_value = edge_fade
+    links.new(separate.outputs["X"], left.inputs[0])
+    right = nodes.new("ShaderNodeMath")
+    right.operation = "DIVIDE"
+    right.use_clamp = True
+    right.inputs[1].default_value = edge_fade
+    invert = nodes.new("ShaderNodeMath")
+    invert.operation = "SUBTRACT"
+    invert.inputs[0].default_value = 1.0
+    links.new(separate.outputs["X"], invert.inputs[1])
+    links.new(invert.outputs[0], right.inputs[0])
+    edge = nodes.new("ShaderNodeMath")
+    edge.operation = "MINIMUM"
+    links.new(left.outputs[0], edge.inputs[0])
+    links.new(right.outputs[0], edge.inputs[1])
+    edge_power = nodes.new("ShaderNodeMath")
+    edge_power.operation = "POWER"
+    edge_power.inputs[1].default_value = 0.8
+    links.new(edge.outputs[0], edge_power.inputs[0])
+
+    combined = nodes.new("ShaderNodeMath")
+    combined.operation = "MULTIPLY"
+    links.new(power.outputs[0], combined.inputs[0])
+    links.new(edge_power.outputs[0], combined.inputs[1])
+    scaled = nodes.new("ShaderNodeMath")
+    scaled.operation = "MULTIPLY"
+    scaled.inputs[1].default_value = max_alpha
+    links.new(combined.outputs[0], scaled.inputs[0])
+    links.new(scaled.outputs[0], principled.inputs["Alpha"])
+    return material
+
+
+def add_shadow_strip(
+    name: str,
+    x0: float,
+    x1: float,
+    y_start: float,
+    y_end: float,
+    z: float,
+    material: bpy.types.Material,
+) -> bpy.types.Object:
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(
+        [(x0, y_start, z), (x1, y_start, z), (x1, y_end, z), (x0, y_end, z)],
+        [],
+        [(0, 1, 2, 3)],
+    )
+    uv = mesh.uv_layers.new(name="UVMap")
+    for loop, coordinate in zip(mesh.loops, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]):
+        uv.data[loop.index].uv = coordinate
+    mesh.materials.append(material)
+    obj = new_object(name, mesh)
+    obj.visible_camera = True
+    obj.visible_shadow = False
+    obj.visible_diffuse = False
+    obj.visible_glossy = False
+    obj.visible_transmission = False
+    obj.visible_volume_scatter = False
+    return obj
+
+
+def apply_hand_shadow_cheat(spec: dict, rig: dict, tiles: list[dict]) -> dict | None:
+    """Give the cheated player's hand a fake, seated-tile shadow.
+
+    The 40 deg readability cheat floats the tile's front (near) bottom edge
+    above the table, so its own shadow starts at the *rear* edge where it
+    balances and climbs the wall behind it. Both give the trick away. The hand's
+    bodies and decals therefore stop casting shadows entirely, and one of two
+    fake shadows goes under the row:
+
+    - ``physicalPoseCaster``: a shadow-only duplicate at the 12 deg physical
+      pose, with the fills light-linked so only the key casts it (v3).
+    - ``gradientDecal`` (v4): a short, soft, straight-alpha gradient strip laid
+      on the mat. Its darkest point is hidden under the tile and the visible
+      gradient begins right at the tile's front edge, as if the tile sat upright
+      and level there, fading out within a third of a tile height. No shadow
+      rays at all, so the wall behind stays clean.
     """
     shadow = rig.get("handShadow")
     if not shadow:
         return None
-    if shadow.get("mode") != "physicalPoseCaster":
-        die(f"hand shadow cheat: unknown mode {shadow.get('mode')!r}")
-    cheat = rig.get("lightingCheat")
-    if cheat and abs(float(cheat["physicalTiltDeg"]) - float(shadow["physicalTiltDeg"])) > 1e-9:
-        die("hand shadow cheat: physicalTiltDeg disagrees with the lighting cheat")
     hand = spec["table"]["hand"]
-    cheated = math.radians(hand["tiltDeg"])
-    physical = math.radians(shadow["physicalTiltDeg"])
-    delta = cheated - physical
     radius = hand.get("backRadiusUnitsBySeat", {}).get("bottom", hand["backRadiusUnits"])
-
     bodies = [
         obj for obj in bpy.data.objects
         if obj.type == "MESH"
@@ -1024,11 +1116,36 @@ def apply_hand_shadow_cheat(spec: dict, rig: dict) -> dict | None:
     ]
     if not bodies:
         die("hand shadow cheat: found no south-hand bodies")
-
-    # The cheated hand stops casting entirely (no key shadow, no fill shadow).
     for obj in bodies + decals:
         obj.visible_shadow = False
 
+    mode = shadow.get("mode")
+    if mode == "physicalPoseCaster":
+        return apply_physical_caster_shadow(
+            spec, rig, shadow, hand, radius, bodies, decals
+        )
+    if mode == "gradientDecal":
+        return apply_gradient_decal_shadow(
+            spec, rig, shadow, hand, radius, tiles, bodies, decals
+        )
+    die(f"hand shadow cheat: unknown mode {mode!r}")
+
+
+def apply_physical_caster_shadow(
+    spec: dict,
+    rig: dict,
+    shadow: dict,
+    hand: dict,
+    radius: float,
+    bodies: list[bpy.types.Object],
+    decals: list[bpy.types.Object],
+) -> dict:
+    cheat = rig.get("lightingCheat")
+    if cheat and abs(float(cheat["physicalTiltDeg"]) - float(shadow["physicalTiltDeg"])) > 1e-9:
+        die("hand shadow cheat: physicalTiltDeg disagrees with the lighting cheat")
+    cheated = math.radians(hand["tiltDeg"])
+    physical = math.radians(shadow["physicalTiltDeg"])
+    delta = cheated - physical
     caster_collection = bpy.data.collections.new("HandShadowCasters")
     bpy.context.scene.collection.children.link(caster_collection)
     casters = []
@@ -1059,9 +1176,7 @@ def apply_hand_shadow_cheat(spec: dict, rig: dict) -> dict | None:
         bpy.context.scene.collection.children.link(blocker_collection)
         caster_set = set(casters)
         for obj in bpy.context.scene.objects:
-            if obj in caster_set:
-                continue
-            if obj.type in {"LIGHT", "CAMERA"}:
+            if obj in caster_set or obj.type in {"LIGHT", "CAMERA"}:
                 continue
             blocker_collection.objects.link(obj)
         for entry in rig["lighting"]["fills"]:
@@ -1088,6 +1203,85 @@ def apply_hand_shadow_cheat(spec: dict, rig: dict) -> dict | None:
         f"hand shadow cheat: {len(bodies) + len(decals)} hand objects hidden from shadows, "
         f"{len(casters)} casters at the {shadow['physicalTiltDeg']:g} deg physical pose"
         + (f"; {len(fills)} fills do not see the casters" if fills else "")
+    )
+    return record
+
+
+def apply_gradient_decal_shadow(
+    spec: dict,
+    rig: dict,
+    shadow: dict,
+    hand: dict,
+    radius: float,
+    tiles: list[dict],
+    bodies: list[bpy.types.Object],
+    decals: list[bpy.types.Object],
+) -> dict:
+    thickness = tiles[0]["dimensions"]["thickness"]
+    tilt = math.radians(hand["tiltDeg"])
+    pitch = math.radians(rig["camera"]["elevationDeg"])
+    front_edge = radius + math.cos(tilt) * thickness
+    edge_height = math.sin(tilt) * thickness
+    # The mat point that projects at the tile's front-edge silhouette: pull the
+    # decal's start north under the tile by edgeHeight / tan(pitch) so its hard
+    # near edge is hidden by the tile and the visible gradient begins right at
+    # the tile's front edge.
+    start_radius = front_edge - edge_height / math.tan(pitch)
+    length = float(shadow["lengthUnits"])
+    max_alpha = float(shadow["maxAlpha"])
+    z = float(shadow.get("zUnits", 0.0025))
+    material = shadow_decal_material(
+        max_alpha,
+        float(shadow.get("falloff", 1.2)),
+        float(shadow.get("edgeFade", 0.03)),
+    )
+    bottom = [tile for tile in tiles if tile["seat"] == "bottom" and tile["kind"] in ("hand", "drawn")]
+    groups = [
+        [tile for tile in bottom if tile["kind"] == "hand"],
+        [tile for tile in bottom if tile["kind"] == "drawn"],
+    ]
+    strips = []
+    for group in groups:
+        if not group:
+            continue
+        half = group[0]["dimensions"]["width"] / 2
+        xs = [tile["origin"][0] for tile in group]
+        x0, x1 = min(xs) - half, max(xs) + half
+        y_start = -start_radius
+        strips.append(
+            add_shadow_strip(
+                f"hand-shadow-strip-{len(strips)}",
+                x0,
+                x1,
+                y_start,
+                y_start - length,
+                z,
+                material,
+            )
+        )
+    record = {
+        "mode": shadow["mode"],
+        "physicalTiltDeg": shadow.get("physicalTiltDeg"),
+        "cheatedTiltDeg": hand["tiltDeg"],
+        "playerHandRadiusUnits": radius,
+        "frontEdgeRadiusUnits": round(front_edge, 4),
+        "edgeHeightUnits": round(edge_height, 4),
+        "startRadiusUnits": round(start_radius, 4),
+        "lengthUnits": length,
+        "maxAlpha": max_alpha,
+        "falloff": float(shadow.get("falloff", 1.2)),
+        "edgeFade": float(shadow.get("edgeFade", 0.03)),
+        "hiddenObjects": len(bodies) + len(decals),
+        "handBodies": len(bodies),
+        "handDecals": len(decals),
+        "strips": len(strips),
+        "objects": len(strips),
+        "note": shadow.get("note"),
+    }
+    log(
+        f"hand shadow decal: {len(strips)} gradient strips, start {start_radius:.3f} units "
+        f"(front edge {front_edge:.3f}), {length:.3f} units long, max alpha {max_alpha:g}, "
+        f"over {len(bodies) + len(decals)} hidden hand objects"
     )
     return record
 
@@ -1660,7 +1854,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
     )
 
     hand_lighting_cheat = apply_hand_lighting_cheat(spec, spec["rig"]) if rig_mode else None
-    hand_shadow_cheat = apply_hand_shadow_cheat(spec, spec["rig"]) if rig_mode else None
+    hand_shadow_cheat = apply_hand_shadow_cheat(spec, spec["rig"], tiles) if rig_mode else None
 
     clearance = measure_clearance(tiles, spec)
     return scene, {

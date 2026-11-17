@@ -48,13 +48,16 @@ export function resolveRigVariant(spec, requested) {
   const rig = spec.rig;
   const id = requested ?? rig.defaultVariant;
   const chain = variantChain(rig, id);
-  const variant = chain.reduce(
-    (merged, entry) => deepMerge(
+  const variant = chain.reduce((merged, entry) => {
+    const next = deepMerge(
       merged,
       Object.fromEntries(Object.entries(entry).filter(([key]) => key !== 'extends')),
-    ),
-    {},
-  );
+    );
+    // The shadow block is a strategy, not a bag of settings: a variant that
+    // declares one replaces its ancestor's instead of merging into it.
+    if (entry.handShadow) next.handShadow = entry.handShadow;
+    return next;
+  }, {});
   variant.extends = chain[chain.length - 1].extends ?? null;
   const resolved = { ...rig };
   for (const key of RIG_MERGE_KEYS) {
