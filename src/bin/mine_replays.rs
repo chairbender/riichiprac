@@ -22,7 +22,10 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 
 use riichiprac::miner::label::run::{LabelRunOptions, LabelRunReport, run_label};
-use riichiprac::miner::{CLASSIFIER_VERSION, DataRoot, QPointCalibration};
+use riichiprac::miner::{
+    CLASSIFIER_VERSION, DataRoot, FamilyFilter, QPointCalibration, TriggerConfig, TriggerFilter,
+    TriggerSampleOptions, TriggerSampleReport, run_trigger_sample,
+};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -91,6 +94,38 @@ enum Command {
         #[arg(long, value_name = "a,b,c,d", value_delimiter = ',')]
         pts: Option<Vec<f32>>,
 
+        /// Only label decisions whose cheap trigger fires. Comma separated:
+        /// book, defensive_riichi, offensive_architecture, call_kan,
+        /// score_placement. Label-derived triggers are rejected here.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        trigger: Vec<String>,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Report cheap candidate triggers and their family precision/recall.
+    Triggers {
+        /// Replay directory (default: <data-dir>/replays).
+        #[arg(long, value_name = "DIR")]
+        replays: Option<PathBuf>,
+
+        /// Read only this family sub-directory.
+        #[arg(long, value_name = "NAME")]
+        family: Option<String>,
+
+        /// Maximum replay files in the sample.
+        #[arg(long, value_name = "N")]
+        limit: Option<usize>,
+
+        /// Only count these candidate families.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        families: Vec<String>,
+
+        /// Do not write trigger reasons onto decisions rows.
+        #[arg(long)]
+        dry_run: bool,
+
         /// Machine-readable report.
         #[arg(long)]
         json: bool,
@@ -118,6 +153,7 @@ impl Command {
             Self::Ingest => "ingest",
             Self::Extract => "extract",
             Self::Label { .. } => "label",
+            Self::Triggers { .. } => "triggers",
             Self::Transform => "transform",
             Self::Pack => "pack",
             Self::Audit => "audit",
@@ -151,6 +187,7 @@ fn main() -> ExitCode {
             classifier_version,
             gamma,
             pts,
+            trigger,
             json,
         } => {
             let calibration = match calibration {
@@ -162,6 +199,13 @@ fn main() -> ExitCode {
                     }
                 },
                 None => None,
+            };
+            let trigger_filter = match TriggerFilter::parse(&trigger) {
+                Ok(filter) => filter,
+                Err(err) => {
+                    eprintln!("mine_replays label: {err}");
+                    return ExitCode::from(2);
+                }
             };
             run_label_command(
                 &root,
@@ -176,6 +220,37 @@ fn main() -> ExitCode {
                     pts,
                     label_options: Default::default(),
                     calibration,
+                    trigger_filter,
+                    trigger_config: TriggerConfig::default(),
+                },
+                json,
+            )
+        }
+        Command::Triggers {
+            replays,
+            family,
+            limit,
+            families,
+            dry_run,
+            json,
+        } => {
+            let families = match FamilyFilter::parse(&families) {
+                Ok(filter) => filter,
+                Err(err) => {
+                    eprintln!("mine_replays triggers: {err}");
+                    return ExitCode::from(2);
+                }
+            };
+            run_triggers_command(
+                &root,
+                &TriggerSampleOptions {
+                    replays,
+                    family,
+                    limit,
+                    config: TriggerConfig::default(),
+                    families,
+                    percentiles: Default::default(),
+                    dry_run,
                 },
                 json,
             )
@@ -236,6 +311,19 @@ fn run_label_command(root: &DataRoot, options: &LabelRunOptions, json: bool) -> 
                 report.book_conflicts,
                 report.decisions_dropped
             );
+            if report.decisions_triggered > 0 || report.decisions_filtered_out > 0 {
+                let hits: Vec<String> = report
+                    .trigger_hits
+                    .iter()
+                    .map(|(trigger, count)| format!("{trigger}={count}"))
+                    .collect();
+                println!(
+                    "  triggers: {} decision(s) hit [{}]; {} filtered out before the model",
+                    report.decisions_triggered,
+                    hits.join(", "),
+                    report.decisions_filtered_out
+                );
+            }
             for error in &report.errors {
                 eprintln!("  error: {error}");
             }
@@ -251,6 +339,37 @@ fn run_label_command(root: &DataRoot, options: &LabelRunOptions, json: bool) -> 
 /// A run with failures is not a success: exit 1 so a script notices.
 fn label_exit_code(report: &LabelRunReport) -> ExitCode {
     if report.replays_failed + report.decisions_failed > 0 {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn run_triggers_command(root: &DataRoot, options: &TriggerSampleOptions, json: bool) -> ExitCode {
+    match run_trigger_sample(root, options) {
+        Ok(report) if json => {
+            match serde_json::to_string_pretty(&report) {
+                Ok(text) => println!("{text}"),
+                Err(err) => {
+                    eprintln!("mine_replays triggers: cannot serialise the report: {err}");
+                    return ExitCode::from(2);
+                }
+            }
+            trigger_exit_code(&report)
+        }
+        Ok(report) => {
+            print!("{}", report.human_summary());
+            trigger_exit_code(&report)
+        }
+        Err(err) => {
+            eprintln!("mine_replays triggers: {err}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn trigger_exit_code(report: &TriggerSampleReport) -> ExitCode {
+    if report.replays_failed > 0 {
         ExitCode::from(1)
     } else {
         ExitCode::SUCCESS
@@ -274,6 +393,7 @@ mod tests {
             "ingest",
             "extract",
             "transform",
+            "triggers",
             "pack",
             "audit",
             "review",
@@ -307,6 +427,8 @@ mod tests {
             "0.99",
             "--pts",
             "90,45,0,-135",
+            "--trigger",
+            "book,call",
             "--json",
         ])
         .expect("label parses");
@@ -319,6 +441,7 @@ mod tests {
                 limit,
                 gamma,
                 pts,
+                trigger,
                 json,
                 ..
             } => {
@@ -335,9 +458,47 @@ mod tests {
                 assert_eq!(limit, Some(5));
                 assert_eq!(gamma, Some(0.99));
                 assert_eq!(pts, Some(vec![90.0, 45.0, 0.0, -135.0]));
+                assert_eq!(trigger, vec!["book".to_string(), "call".to_string()]);
                 assert!(json);
             }
             other => panic!("expected the label command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn the_trigger_report_command_parses_its_sample_options() {
+        let cli = Cli::try_parse_from([
+            "mine_replays",
+            "triggers",
+            "--replays",
+            "/data/replays",
+            "--family",
+            "mortal_mirror",
+            "--limit",
+            "3",
+            "--families",
+            "book,table-read",
+            "--dry-run",
+            "--json",
+        ])
+        .expect("triggers parses");
+        match cli.command {
+            Command::Triggers {
+                replays,
+                family,
+                limit,
+                families,
+                dry_run,
+                json,
+            } => {
+                assert_eq!(replays, Some(PathBuf::from("/data/replays")));
+                assert_eq!(family.as_deref(), Some("mortal_mirror"));
+                assert_eq!(limit, Some(3));
+                assert_eq!(families, vec!["book".to_string(), "table-read".to_string()]);
+                assert!(dry_run);
+                assert!(json);
+            }
+            other => panic!("expected the triggers command, got {other:?}"),
         }
     }
 

@@ -424,3 +424,44 @@ fn a_multi_model_pass_records_each_vote_and_skips_the_single_model_cache() {
         .expect("cache rows");
     assert_eq!(cache_rows, 0);
 }
+
+#[test]
+fn a_trigger_prefilter_skips_the_forward_pass_for_untriggered_decisions() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let root = DataRoot::new(temp.path().join("data")).expect("data root");
+    write_replay(&root, "mortal_mirror", &fixtures::all_events_game());
+
+    let evaluator = CannedEvaluator::new(|info| -(info.tile_index.unwrap_or(0) as f32) * 0.1);
+    let mut options = LabelRunOptions::new("unused.safetensors");
+    assert!(
+        options.trigger_filter.is_none(),
+        "the default labels every decision"
+    );
+    options.trigger_filter = Some(
+        crate::miner::trigger::TriggerFilter::only([crate::miner::trigger::TriggerKind::Book])
+            .expect("a cheap filter"),
+    );
+
+    let report = run_shard(&root, &options, &evaluator).expect("filtered shard run");
+    assert!(report.decisions_triggered > 0, "the fixture has book cells");
+    assert!(
+        report.decisions_filtered_out > 0,
+        "the fixture is mostly not a book cell"
+    );
+    assert_eq!(
+        report.decisions_triggered + report.decisions_filtered_out,
+        report.decisions_seen
+    );
+    assert_eq!(
+        evaluator.calls(),
+        report.decisions_labelled,
+        "only triggered decisions reach the forward pass"
+    );
+    assert!(evaluator.calls() < report.decisions_seen);
+    assert_eq!(report.decisions_failed, 0, "errors: {:?}", report.errors);
+    assert_eq!(
+        report.trigger_hits.get("book").copied(),
+        Some(report.decisions_triggered),
+        "every triggered decision is a book hit in this filter"
+    );
+}

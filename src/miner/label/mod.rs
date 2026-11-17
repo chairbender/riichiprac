@@ -146,6 +146,9 @@ pub enum LabelError {
     /// The replay directory is missing.
     #[error("replay directory `{0}` does not exist")]
     MissingReplays(String),
+    /// A cheap-trigger report failed to evaluate or write (S1).
+    #[error(transparent)]
+    Trigger(#[from] crate::miner::trigger::TriggerError),
 }
 
 /// The model's identity, hash and the utility configuration it was trained on.
