@@ -195,13 +195,14 @@ looks). The committed bake reports:
 
 | Criterion | Measured |
 | --- | --- |
-| Side-wall inner vertical faces visible | 3.80 px wide (minimum over both runs); probe luma **121.0 / 118.6** against **61.0** felt |
+| Side-wall inner vertical faces visible | 3.80 px wide (minimum over both runs); probe luma **121.0 / 118.6** against **69.1** felt |
 | Runs converge above the frame | both inner-face lines meet the +Y vanishing point at `(960.0, −4265.4)`, **0.096 px** from it; the point is above the top edge |
 | South hand centre straight-on | slot 06 inner side **0.34 px** (≤ 0.6 px) |
 | Outer hand shows its inner thickness | slots 00 / 12: **3.81 px** (≥ 3 px), growing outward monotonically |
 | No inward trapezoidal lean | every south-hand plate edge leans **outward** 0 … **2.27 px** (a 50° pitch cannot give parallel verticals; the plan's ceiling is 2.5 px) |
 | Framing | rim margins 164.6 / 164.6 / 16.3 px (left / right / top); hand bottom 73.5 px; all 269 tiles inside |
 | Lit face / blue back / hand face | **217.2** / blue−red **152.0** / **137.9** luma |
+| Felt probe | `(0, 6, 0)` open felt, **69.1** luma |
 | Film transparent | **26.8 %** transparent pixels, opaque table, corners alpha 0 |
 
 ### What still needs the user

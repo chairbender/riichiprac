@@ -10359,23 +10359,23 @@
    "kind": "point",
    "tile": null,
    "world": [
-    -4,
-    -6,
+    0,
+    6,
     0
    ],
    "pixel": [
-    739.04,
-    767.925
+    960,
+    283.376
    ],
    "radiusPx": 3,
    "measured": {
     "rgb": [
-     6.3,
-     67.3,
-     160.2
+     16.8,
+     86.1,
+     54.7
     ],
     "alpha": 255,
-    "luma": 61,
+    "luma": 69.1,
     "pixels": 49
    }
   }
@@ -10390,8 +10390,8 @@
    "right": 118.6,
    "min": 118.6
   },
-  "matLuma": 61,
-  "sideOverMat": 57.6
+  "matLuma": 69.1,
+  "sideOverMat": 49.5
  },
  "alpha": {
   "transparentPct": 26.76,
@@ -10559,11 +10559,11 @@
     "wall-right-slot-08-t0"
    ],
    "matWorldPoint": [
-    -4,
-    -6,
+    0,
+    6,
     0
    ],
-   "note": "Pixel probes for the lighting facts. The pond's 5z face (the faces.sampleTileId) and the wall's blue back are the same probes the placement reference uses, so the rig can be compared with the shipped shells. hand-bottom-06 is forced to 5z in the rig scene only, giving a known blank ivory hand face (the near-fill read). The side probes sit at the centre of each side wall's inner vertical face; matWorldPoint is open felt between the south pond and the south wall, clear of tile shadows."
+   "note": "Pixel probes for the lighting facts. The pond's 5z face (the faces.sampleTileId) and the wall's blue back are the same probes the placement reference uses, so the rig can be compared with the shipped shells. hand-bottom-06 is forced to 5z in the rig scene only, giving a known blank ivory hand face (the near-fill read). The side probes average the pixels inside each side wall's projected inner vertical face (a single pixel would spill at 3.8 px wide). matWorldPoint is open felt between the north pond and the north wall: the north wall stands farther from the camera, so it cannot occlude the probe, and the point is clear of tile shadows (the near strip behind the south wall is occluded by the wall's own top at a 50 deg pitch)."
   },
   "checks": {
    "lensMmRange": [
