@@ -50,6 +50,7 @@ pub mod source;
 pub mod storage;
 pub mod transform;
 pub mod trigger;
+pub mod variant;
 
 pub use classifier::{classify_decision, classify_decision_with_mortal};
 pub use funnel::{FunnelCounter, FunnelStage};
@@ -66,7 +67,7 @@ pub use label::{
     BookAgreement, BookConflict, BookLabel, CLASSIFIER_VERSION, LabelDisposition, LabelError,
     LabelKind, LabelOptions, Labeler, ModelConsensus, ModelIdentity, ModelLabel, ModelVote,
     Q_UNITS, Q_UNITS_NOTE, RankedAction, Stability, StateEvaluator, VALUE_UNITS, build_label,
-    label_decision, safest_discard, state_hash,
+    build_label_for_state, label_decision, label_state, safest_discard, state_hash,
 };
 pub use licence::{LicenceError, LicenseInfo, allowed_data_licence, data_commercial_use_all};
 pub use pack::{

@@ -106,6 +106,9 @@ pub struct ReviewItem {
     pub label_model: String,
     /// Decision kind (`self_turn`, `call`, ...).
     pub decision_kind: String,
+    /// Event index of the decision inside its replay, for pack provenance.
+    #[serde(default)]
+    pub event_index: u64,
     /// Table turn.
     pub turn: usize,
     /// Turn bucket (`early`, `mid`, `late`).
@@ -154,6 +157,7 @@ impl ReviewItem {
             label_stability: candidate.label.stability.clone(),
             label_model: candidate.label.model.clone(),
             decision_kind: candidate.kind.as_str().to_string(),
+            event_index: u64::try_from(candidate.event_index).unwrap_or(u64::MAX),
             turn: candidate.turn,
             turn_bucket: candidate.turn_bucket.as_str().to_string(),
             exact_hash: candidate.exact_hash.clone(),

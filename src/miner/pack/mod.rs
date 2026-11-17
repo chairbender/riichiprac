@@ -85,7 +85,7 @@ pub mod write;
 mod tests;
 
 pub use audit::{AuditOptions, AuditReport, audit_pack_dir};
-pub use check::{PASS_ANSWER, accepted_for, find_spoiler};
+pub use check::{PASS_ANSWER, accepted_for, find_spoiler, is_tile_code, spoiler_tokens};
 pub use fixture::{FIXTURE_CORPUS_ID, FIXTURE_PACK_ID, fixture_games, fixture_pack};
 pub use gate::{
     FindingSeverity, PackAudit, PackAuditContext, PackFinding, PackFindingCode, PublishProfile,

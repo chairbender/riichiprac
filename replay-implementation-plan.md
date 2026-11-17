@@ -1922,6 +1922,76 @@ label-preserving; report.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-17, V2 branch).** The stage lives in `src/miner/variant/`:
+> `base` (the pack-shaped base and its label), `plan` (deterministic chain
+> drawing under the lesson policy), `gate` (the §4.4 label-preservation gate),
+> `stage` (yield, disable, dedupe, caps and pack assembly), `report` (the
+> `riichiprac.variant-report` v1 document and the reviewer's yield policy),
+> `rehearsal` (the 100-base §4.7 set) and `run` (the `transform` command). The
+> L1 labeler gained `label_state`, which labels a bare transformed `GameState`
+> through the same `model_labels` cache. `ReviewItem` gained an additive
+> `event_index` so a base's pack provenance records the real decision index.
+>
+> **Policy.** A book/contested/mistake base uses its classifier's
+> `TransformPolicy`; a Mortal-only base uses `VariantConfig::mortal_policy`
+> (default deny for every family, §4.5). `plan_for` draws non-identity chains
+> deterministically from `sha256(seed|base|attempt)`: one family per attempt
+> first, then two distinct composed families, so no RNG state is involved and a
+> test pins an exact chain. Every family gets at least one attempt per base, so
+> its yield is measured even when the base reaches its variant target early.
+>
+> **Gate.** Apply → `finalize_state` → reachability → tile ledger → label
+> re-run → stamp → reachability/legality. A no-op chain (for example a red-five
+> normalisation on a state with no red five) is rejected as `transform_noop`,
+> not counted as a variant. Book: same lesson, same answer type, the
+> inverse-mapped answer and the whole accepted set must equal the base's.
+> Contested: the book half plus the model's inverse-mapped top-1. Mortal: the
+> inverse-mapped top-1, plus the L2 percentile band when the family has cuts
+> (a close call that becomes obvious is rejected). Mistake: the book half plus
+> the forward-mapped played action still being wrong. Every failure is a stable
+> code and nothing is hand-edited.
+>
+> **Volume.** Every shipped variant carries `variant_of`, `transform_chain`,
+> `transform_seed` (also on `provenance`, checked against the chain by P1a) and
+> `label_check`. The stage measures per-`(lesson, family)` yield before the caps,
+> withdraws a pair below `min_yield` (default 50 %) unless a `--yield-policy`
+> file opts it back in, then dedupes exact state hashes and applies the smaller
+> of `max_per_base` (default 8) and `max_pack_share` (default 20 % of
+> `pack_size`). The report carries attempts/preserves/rejections per pair, the
+> disabled pairs, every cap truncation, the variant share, the largest base
+> share and the shipped families. `build_pack` refuses a variant with no
+> preserved `label_check`, no chain, no seed or no base before the P1a gate even
+> runs; `transform --pack` then publishes through `publish_pack`.
+>
+> **Finding: `wind_relabel` is disabled almost everywhere.** The engine's wind
+> rotation rotates the round wind and every seat wind, but
+> `validate_reachable_state` derives the dealer from the actor's seat wind
+> (`dealer_seat(players[0].wind)`), which a rotation moves while the rivers stay
+> put. The rehearsal measured every wind/lesson pair below 50 % (mostly 0 %), so
+> the default stage disables them all. That is the §4.7 rule working, not a V2
+> bug; a future policy/validator change can re-enable a pair through the yield
+> policy after review.
+>
+> **Evidence.** 49 V2 tests (plus one ignored 100-base acceptance test): the
+> §4.7 checklist, every shipped variant's reachability/ledger/answer/spoiler/
+> provenance, reproducibility, a threshold-disabled pair, a reviewer override,
+> both cap causes, duplicate-base and commuting-chain dedupe, the wind-order
+> deny, honitsu/suji-trap suit survival, pinfu-head rank re-run, the absent
+> sanshoku/ittsu/placement fail-closed cases, red-five denial and no-op
+> rejection, a Mortal labeler requirement/flip/stable-cache/band-change case, DB
+> persistence of bases/variants/rejections, the pack gate refusing an ungated or
+> baseless variant, the runner's files/dry-run/publish path, and the 100-base
+> rehearsal audit. The rehearsal (`transform --rehearsal 100 --pack`) shipped
+> 265 variants from 100 bases: 3 families (`suit_perm` 135, `rank_mirror` 87,
+> `seat_perm` 43), 78 disabled pairs, no base above 4 of the 8 cap, and a clean
+> P1a audit of the 365-scenario pack. The report is
+> [`testdata/reports/v2-variant-report.json`](testdata/reports/v2-variant-report.json)
+> and the write-up [`variants-v2-sample.md`](variants-v2-sample.md). Gates:
+> `cargo test --lib` (745), `cargo test --features miner` (1081),
+> `cargo clippy --all-targets --features miner -- -D warnings`,
+> `cargo fmt --check` and `cargo check --target wasm32-unknown-unknown`. No wasm
+> behaviour changed and no visual output is involved.
+
 #### Phase 7 — Pack and publish
 
 ##### P1a — Pack/manifest schema, audit and fixture publisher

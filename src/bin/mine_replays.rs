@@ -23,15 +23,22 @@ use std::time::SystemTime;
 
 use clap::{Parser, Subcommand};
 
+use riichiprac::miner::label::Labeler;
+use riichiprac::miner::label::cache::LabelCache;
 use riichiprac::miner::label::run::{LabelRunOptions, LabelRunReport, run_label};
+use riichiprac::miner::variant::{
+    DEFAULT_MAX_PER_BASE, DEFAULT_MIN_YIELD, DEFAULT_PACK_SHARE, DEFAULT_TRANSFORM_SEED,
+    DEFAULT_VARIANTS_PER_BASE, VariantLabeler, VariantRunOptions, YieldPolicy, run_variants,
+};
 use riichiprac::miner::{
     AuditOptions, CLASSIFIER_VERSION, DEFAULT_PACK_SIZE, DataRoot, FamilyFilter, GAMES_FILE_NAME,
     MANIFEST_FILE_NAME, PackAudit, PackAuditContext, PackBudget, PackError, PackFinding,
     PackFindingCode, PublishProfile, QPointCalibration, ReviewOptions, SelectionConfig,
     SelectionOptions, TriggerConfig, TriggerFilter, TriggerSampleOptions, TriggerSampleReport,
     audit_pack_dir, audit_summary, fixture_games, fixture_pack, latest_pack, load_manifest,
-    pack_report, publish_pack, read_pack, read_queue, render_pack_report, review_queue,
-    run_selection, run_trigger_sample, selection_paths, utc_iso8601, write_games_atomic,
+    open_miner_db, pack_report, publish_pack, read_pack, read_queue, render_pack_report,
+    review_queue, run_selection, run_trigger_sample, selection_paths, utc_iso8601,
+    write_games_atomic,
 };
 
 #[derive(Debug, Parser)]
@@ -176,7 +183,75 @@ enum Command {
         json: bool,
     },
     /// Generate label-preserving scenario variants.
-    Transform,
+    Transform {
+        /// Review queue to transform. Defaults to the latest `select` run.
+        #[arg(long, value_name = "FILE")]
+        queue: Option<PathBuf>,
+
+        /// Build N generated book bases instead of reading a review queue.
+        #[arg(long, value_name = "N")]
+        rehearsal: Option<usize>,
+
+        /// Pack id. Defaults to the queue's pack id, or a rehearsal stamp.
+        #[arg(long, value_name = "ID")]
+        pack_id: Option<String>,
+
+        /// Variants to keep per base.
+        #[arg(
+            long,
+            value_name = "N",
+            default_value_t = DEFAULT_VARIANTS_PER_BASE
+        )]
+        variants: usize,
+
+        /// Maximum variants one base may contribute.
+        #[arg(
+            long,
+            value_name = "N",
+            default_value_t = DEFAULT_MAX_PER_BASE
+        )]
+        max_per_base: usize,
+
+        /// Maximum share of the pack one base may occupy.
+        #[arg(long, value_name = "F32", default_value_t = DEFAULT_PACK_SHARE)]
+        share: f32,
+
+        /// Pack size the per-base share is measured against.
+        #[arg(long, value_name = "N", default_value_t = DEFAULT_PACK_SIZE)]
+        pack_size: usize,
+
+        /// Minimum yield a transform/lesson pair needs to stay enabled.
+        #[arg(long, value_name = "F32", default_value_t = DEFAULT_MIN_YIELD)]
+        min_yield: f32,
+
+        /// Seed the transform parameters are drawn from.
+        #[arg(long, value_name = "TEXT", default_value_t = DEFAULT_TRANSFORM_SEED.to_string())]
+        seed: String,
+
+        /// Reviewer yield-policy file (keeps low-yield pairs enabled).
+        #[arg(long, value_name = "FILE")]
+        yield_policy: Option<PathBuf>,
+
+        /// Mortal checkpoint for the label re-run (needed for Mortal-only bases).
+        #[arg(long, value_name = "FILE")]
+        weights: Option<PathBuf>,
+
+        /// Output directory (default: reviews/<pack-id>/variants).
+        #[arg(long, value_name = "DIR")]
+        out: Option<PathBuf>,
+
+        /// Assemble and publish a pack through the P1a gate.
+        #[arg(long)]
+        pack: bool,
+
+        /// Do not write the report, the variant files or a pack.
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
     /// Assemble, audit and export scenario packs.
     Pack {
         #[command(subcommand)]
@@ -290,7 +365,7 @@ impl Command {
             Self::Extract => "extract",
             Self::Label { .. } => "label",
             Self::Triggers { .. } => "triggers",
-            Self::Transform => "transform",
+            Self::Transform { .. } => "transform",
             Self::Pack { .. } => "pack",
             Self::Audit { .. } => "audit",
             Self::Select { .. } => "select",
@@ -391,6 +466,53 @@ fn main() -> ExitCode {
                 },
                 json,
             )
+        }
+        Command::Transform {
+            queue,
+            rehearsal,
+            pack_id,
+            variants,
+            max_per_base,
+            share,
+            pack_size,
+            min_yield,
+            seed,
+            yield_policy,
+            weights,
+            out,
+            pack,
+            dry_run,
+            json,
+        } => {
+            let mut config = riichiprac::miner::variant::VariantConfig {
+                variants_per_base: variants,
+                max_per_base,
+                max_pack_share: share,
+                pack_size,
+                min_yield,
+                transform_seed: seed,
+                ..Default::default()
+            };
+            if let Some(path) = &yield_policy {
+                match YieldPolicy::read(path) {
+                    Ok(policy) => config.pair_overrides = policy.pairs,
+                    Err(err) => {
+                        eprintln!("mine_replays transform: {err}");
+                        return ExitCode::from(2);
+                    }
+                }
+            }
+            let options = VariantRunOptions {
+                queue,
+                rehearsal,
+                pack_id,
+                config,
+                out,
+                publish: pack,
+                persist: rehearsal.is_none(),
+                dry_run,
+            };
+            run_transform_command(&root, &options, weights, json)
         }
         Command::Pack { action } => run_pack_command(&root, action),
         Command::Audit {
@@ -689,6 +811,78 @@ fn print_finding(finding: &PackFinding) {
 
 fn utc_stamp_now() -> String {
     riichiprac::miner::utc_stamp(std::time::SystemTime::now())
+}
+
+fn run_transform_command(
+    root: &DataRoot,
+    options: &VariantRunOptions,
+    weights: Option<PathBuf>,
+    json: bool,
+) -> ExitCode {
+    let connection = match open_miner_db(root) {
+        Ok(connection) => connection,
+        Err(err) => {
+            eprintln!("mine_replays transform: {err}");
+            return ExitCode::from(2);
+        }
+    };
+    let loaded = match &weights {
+        Some(path) => match Labeler::load(path, None, None) {
+            Ok(labeler) => Some(labeler),
+            Err(err) => {
+                eprintln!("mine_replays transform: {err}");
+                return ExitCode::from(2);
+            }
+        },
+        None => None,
+    };
+    let cache = LabelCache::new(&connection);
+    let labeler = loaded.as_ref().map(|evaluator| VariantLabeler {
+        evaluator,
+        cache: &cache,
+        options: Default::default(),
+    });
+    match run_variants(root, options, labeler.as_ref()) {
+        Ok(outcome) if json => {
+            match serde_json::to_string_pretty(&outcome.report) {
+                Ok(text) => println!("{text}"),
+                Err(err) => {
+                    eprintln!("mine_replays transform: cannot serialise the report: {err}");
+                    return ExitCode::from(2);
+                }
+            }
+            transform_exit_code(&outcome.report)
+        }
+        Ok(outcome) => {
+            for line in outcome.report.human_summary() {
+                println!("{line}");
+            }
+            println!("  variants: {}", outcome.paths.variants.display());
+            println!("  rejected: {}", outcome.paths.rejected.display());
+            println!("  report: {}", outcome.paths.report.display());
+            if let Some(published) = &outcome.published {
+                println!(
+                    "  pack: {} ({} bytes)",
+                    published.path.display(),
+                    published.entry.bytes
+                );
+                println!("  manifest: {}", published.manifest_path.display());
+            }
+            transform_exit_code(&outcome.report)
+        }
+        Err(err) => {
+            eprintln!("mine_replays transform: {err}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn transform_exit_code(report: &riichiprac::miner::variant::VariantReport) -> ExitCode {
+    if report.is_clean() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    }
 }
 
 fn run_select_command(root: &DataRoot, options: &SelectionOptions, json: bool) -> ExitCode {

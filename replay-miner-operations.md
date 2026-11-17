@@ -1,11 +1,11 @@
-# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers and selection (F1, R1, R2, L1, L2, S1, S2)
+# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers, selection and variants (F1, R1, R2, L1, L2, S1, S2, V2)
 
 Status: implemented foundation (F1), replay reader/validator (R1), the walker /
 `GameState` reconstruction (R2), the native Mortal labeler with Q values and
 the label cache (L1), book/Mortal agreement with contested marking,
 percentile hooks and optional calibration (L2), the cheap candidate triggers with
-family filters (S1), and the hard gates, ranking, quotas, dedupe, held-out QA
-and review queue (S2) of
+family filters (S1), the hard gates, ranking, quotas, dedupe, held-out QA and
+review queue (S2), and the label-preserving variant stage (V2) of
 [`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
 document is the operator contract for the native-only miner. It does not re-open
 the source decision: [`replay-strategy.md`](replay-strategy.md) §2 fixes AI
@@ -30,9 +30,11 @@ mapping and filter, and the corpus sample precision/recall report. S2 adds
 signals and composite score, family quotas with section/kind/turn diversity
 caps, exact and visible-info dedupe, the deterministic held-out QA split, and
 the JSONL review queue that embeds a single-candidate
-`riichiprac.scenario-report`. Book classification (B1/B2/B3) already exists in
-`src/classifier/`; S3's selectors, the transforms and the pack publisher remain
-S3 and P1a onward.
+`riichiprac.scenario-report`. V2 adds `src/miner/variant/`: the per-lesson
+transform policy, the label-preservation gate, the yield/disable/dedupe/cap
+stage, the `riichiprac.variant-report` and the pack assembly path. Book
+classification (B1/B2/B3) already exists in `src/classifier/`; S3's selectors and
+the full curator/publisher (P1b–P3) remain.
 
 ## Build boundary
 
@@ -75,10 +77,10 @@ mine_replays [--data-dir DIR] <command>
 ```
 
 `label` (L1 with the L2 agreement/calibration extensions), `triggers` (S1),
-`select` and `review` (S2), and `pack fixture`, `pack report` and `audit` (P1a)
-are implemented. The remaining commands still resolve the data root, report the
-command they would run, and exit with code 2, so a script cannot treat a stub as
-a successful run.
+`select` and `review` (S2), `transform` (V2), and `pack fixture`, `pack report`
+and `audit` (P1a) are implemented. The remaining commands still resolve the data
+root, report the command they would run, and exit with code 2, so a script cannot
+treat a stub as a successful run.
 
 ```bash
 cargo run --features miner --bin mine_replays -- label \
@@ -879,7 +881,7 @@ is a SHA-256 over the literal visible table (actor hand/draw, every meld and
 river, dora, scores, round, decision context). Opponent concealed hands are
 excluded; tile codes are never canonicalised, so a suit-permuted variant has a
 different fingerprint and is not mistaken for its base (V1 records the explicit
-`variant_of` lineage and V2 caps variants per base).
+`variant_of` lineage; V2 expands, gates and caps the variants per base).
 
 ### Held-out QA and the funnel
 
@@ -930,6 +932,199 @@ trainee payload from the selected scenarios.
 
 Visual sign-off is not involved in S2.
 
+## Variants: label-preservation gate and pipeline stage (V2)
+
+Implemented in `src/miner/variant/`. This is stage 8 of the pipeline
+(`replay-implementation-plan.md` §4): after selection and before pack assembly,
+each selected base scenario is expanded into drill variants that teach the same
+lesson. A variant is never hand-edited: it ships only when the transformed state
+is legal and its label survives a full re-run.
+
+```text
+selected bases (review queue)
+        │  per-lesson TransformPolicy (§4.5)
+        ▼
+  planned chain ──► V1 apply ──► finalize_state
+        │                              │
+        │                  reachability + tile ledger + legal answer
+        │                              │
+        │                 label-preservation gate (§4.4)
+        │        book      contested      mortal        mistake
+        │     lesson +    book + top-1   top-1 + L2    played action
+        │     answer set                 margin band    still a mistake
+        ▼                              │
+  reject with a stable code ◄──────────┘
+        │
+        ▼
+  per-pair yield ──► disable < 50 % pairs ──► dedupe ──► per-base/per-pack caps
+        │
+        ▼
+  gated PackScenarios ──► build_pack ──► P1a gate ──► publish
+```
+
+### CLI
+
+```bash
+# Real run: the latest select run's queue (or --queue FILE), book bases only.
+cargo run --features miner --bin mine_replays -- transform \
+  [--queue FILE] [--pack-id ID] [--variants N] [--max-per-base N] \
+  [--share F] [--pack-size N] [--min-yield F] [--seed TEXT] \
+  [--yield-policy FILE] [--weights MORTAL.safetensors] \
+  [--out DIR] [--pack] [--dry-run] [--json]
+
+# The §4.7 rehearsal: generated book puzzles, no corpus or checkpoint.
+cargo run --release --features miner --bin mine_replays -- \
+  --data-dir /tmp/riichi-rehearsal transform --rehearsal 100 --pack
+```
+
+`--weights` is required for Mortal-only bases (and for the book tiebreak that a
+contested base needs); a book base runs without it. `--yield-policy` is the
+reviewer's decision file: a pair the stage disabled stays disabled unless an
+entry says `enabled: true`. The queue reader skips held-out QA items and
+reviewer-rejected items; a pending item is transformed (P1b still refuses to
+ship a pack with a pending disposition). `--pack` assembles the bases and the
+gated variants and publishes through P1a, which re-runs the
+source/licence, provenance, answer, spoiler and variant-honesty gate; a
+rehearsal supplies P1a's fixture provenance, so it needs no corpus.
+
+### Outputs
+
+```text
+$RIICHI_DATA_DIR/reviews/<pack-id>/variants/
+  variant-report.json   riichiprac.variant-report v1
+  variants.jsonl        one gated PackScenario per line (answer-bearing; review-side)
+  rejected.jsonl        every attempted chain that did not ship, with its code
+$RIICHI_DATA_DIR/packs/ …                        only with --pack (P1a body + manifest)
+selected_scenarios / variants                    queue runs, DB rows for P1b
+```
+
+The variant files are review artifacts and are never published. `--dry-run`
+writes neither the files nor the pack, and `--pack` with `--dry-run` is refused.
+
+### Policy
+
+The opt-in lives on the classifier (V1's `TransformPolicy`), because the lesson
+is what declares its own invariance; §4.5's matrix is the starting point and the
+gate, not the table, decides. A label with no lesson (Mortal-only) uses
+`VariantConfig::mortal_policy`, which defaults to **deny everywhere**: the
+catalogue rule is "a missing opt-in loses volume, a wrong opt-in ships a broken
+drill". The planner draws non-identity chains deterministically from
+`sha256(seed|base|attempt)`; the first attempts are one family each, then two
+distinct composed families. Every allowed family is attempted at least once per
+base, so a family's yield is measured even when the base reaches its variant
+target early.
+
+### Decisions worth knowing
+
+- **Cache key.** The model labels are cached through L1's existing
+  `(state_hash, model_sha256, classifier_version, options_hash)` key. The
+  transform chain is not in the key: the model sees the transformed state, so
+  two chains that produce the same state must share one evaluation, and adding
+  the chain would only fragment the cache. The chain is recorded on the variant.
+- **Furiten.** The gate passes the base's permanent-furiten value (the walker
+  rejects a furiten decision before it is ever selected). Every catalogue
+  transform relabels the actor's river and waits together, so the flag is
+  invariant; a furiten base never becomes a book drill by relabelling.
+- **Seed.** `transform_seed` lives in the `riichiprac.scenario-transforms`
+  document and is copied to `provenance.transform_seed` for consumers that do
+  not parse the chain; P1a rejects a variant whose two copies disagree.
+- **Label kinds.** A book base is checked against its classifier; a contested
+  base against both halves; a Mortal base against the model; a mistake base adds
+  the forward-mapped played action. A base with no label kind (`none`) is not
+  transformed at all.
+
+### Gate
+
+- **Apply and recompute.** V1 `apply` fails closed on an impossible table (a chi
+  that stops coming from kamicha, a red-five answer). `finalize_state` refreshes
+  the derived fields.
+- **State checks.** `validate_reachable_state`, the V1 `TileLedger` (no fifth
+  copy) and the legal-answer check run on the transformed state.
+- **Book.** The classifier must still name the same lesson; the inverse-mapped
+  answer type, named answer and **whole accepted set** must equal the base's.
+  A book re-run that leaves a conflict the model cannot settle is rejected.
+- **Contested.** The book half plus the model's top-1 must both survive.
+- **Mortal.** The model's top-1 must inverse-map to the base top-1. When the
+  base's decision family has L2 percentile cuts, the top-two gap must stay in
+  the same band: a close call that becomes obvious is a different drill.
+- **Mistake.** The book half plus the recorded played action, forward-mapped, is
+  still not the answer.
+- **No-op.** A chain that leaves the state unchanged (typically a red-five
+  normalisation on a state with no red five) is rejected as `transform_noop`.
+- **Spoiler.** The assembled scenario runs P1a's `find_spoiler` before it can
+  ship.
+
+Every rejection has a stable code (`state_unreachable`, `tile_ledger`,
+`transform_rejected`, `transform_noop`, `lesson_missing`, `lesson_changed`,
+`label_conflict`, `answer_changed`, `answer_set_changed`, `top1_changed`,
+`margin_band_changed`, `mistake_resolved`, `answer_illegal`, `duplicate_state`,
+`spoiler`, `labeler_required`, …), which is what the yield report counts.
+
+### Yield, disable, dedupe and caps
+
+The report counts attempts/preserves/rejections per `(lesson, transform family)`.
+A composed chain counts once under each family it contains. A pair below
+`min_yield` (default 50 %) is disabled **for this run**: its preserved variants
+are withdrawn before the caps, and the pair is listed with its ratio. Reviewer
+overrides can keep it enabled (`--yield-policy`) or disable it explicitly.
+Exact model-visible state hashes collapse, including against the base states.
+The effective per-base cap is `min(max_per_base (8), floor(max_pack_share (20 %)
+× pack_size))`, so a share binds first in a small pack; every truncation is in
+`cap_limited` with its cause. The report also carries the variant share, the
+largest single-base share, the shipped families and the label cache activity.
+
+### Storage and pack integration
+
+A queue run upserts each base into `selected_scenarios` and each attempt into
+`variants` (`label_preserved` 0/1 with the rejection reason), and a shipped
+variant also gets a `selected_scenarios` row with `variant_of`,
+`transform_chain` and `label_check`. The pack scenario copies the seed onto
+`provenance.transform_seed` (the chain document also carries it); P1a's audit
+rejects a variant with no seed or with a seed that disagrees with the chain.
+P1b can rebuild the transformed state by applying the recorded chain to the base
+decision's state, so the DB stores references and provenance, not a second copy
+of every table. `build_pack` refuses a variant with a missing/failed
+`label_check`, no chain, no seed or a base outside the pack, and the P1a gate
+re-checks the same fields.
+
+### Known finding: the wind rotation is disabled
+
+`wind_relabel` measured below 50 % for every lesson in the 100-base rehearsal
+(mostly 0 %). The engine rotates the round wind and all seat winds, but the
+reachability validator derives the dealer from the actor's seat wind
+(`dealer_seat(players[0].wind)`), which the rotation changes while the rivers
+stay put; most rotated tables are therefore not a legal discard timeline. V2's
+job is to measure and fail closed, which it does: the pairs are disabled by
+default until a policy/validator review opts them back in. The rehearsal's
+`state_unreachable` rejections are almost all this case plus genuine seat
+permutations whose river counts no longer fit a legal order.
+
+### V2 acceptance evidence
+
+- `cargo test --features miner` covers the §4.7 checklist and the §4.8 cases:
+  every shipped variant reachable/ledger-clean/legal/spoiler-free and carrying
+  `variant_of`/`transform_chain`/`transform_seed`/`label_check`; reproducible
+  draws; threshold-disabled and reviewer-overridden pairs; both cap causes;
+  duplicate-base and commuting-chain dedupe; wind-order denial; honitsu and
+  suji-trap suit survival; pinfu-head rank re-runs; the absent
+  sanshoku/ittsu/placement lessons failing closed; red-five denial and no-op
+  rejection; Mortal labeler-required/top-1-flip/stable-cache/band-change cases;
+  DB persistence; the pack gate refusing an ungated or baseless variant; and the
+  runner's files, dry run and published pack.
+- The 100-base rehearsal is
+  [`variants-v2-sample.md`](variants-v2-sample.md) with its machine-readable
+  report at [`testdata/reports/v2-variant-report.json`](testdata/reports/v2-variant-report.json):
+  100 bases → 590 attempts → 284 preserved → 265 shipped (3 families:
+  `suit_perm` 135, `rank_mirror` 87, `seat_perm` 43), 78 disabled pairs, 19
+  withdrawn, no base above 4 of the 8 cap, a 365-scenario pack (72.6 % variants)
+  and a clean P1a audit. `cargo test --features miner`'s ignored
+  `a_hundred_base_rehearsal_meets_the_acceptance_gate` runs the same check.
+- `cargo clippy --all-targets --features miner -- -D warnings`, `cargo fmt
+  --check`, `cargo test --lib` and `cargo check --target wasm32-unknown-unknown`
+  stay clean. No wasm behaviour changed.
+
+Visual sign-off is not involved in V2.
+
 ## Scenario pack format, gate and audit (P1a)
 
 Implemented in `src/miner/pack/`. This is the executable form of the pack half
@@ -948,8 +1143,9 @@ The body is `replay-strategy.md` §6.7's shape extended with a complete
 `source.agents` union (each contributor's `agent_id`, `kind`, `engine`,
 `engine_version`, `weights_sha256`, licence and attribution),
 `provenance.variant_of`, `provenance.transform_chain` (the V1
-`riichiprac.scenario-transforms` document), `provenance.label_check`,
-`played.agent` and `data_commercial_use` on the manifest entry. Every scenario
+`riichiprac.scenario-transforms` document), `provenance.transform_seed`,
+`provenance.label_check`, `played.agent` and `data_commercial_use` on the
+manifest entry. Every scenario
 carries the complete `GameState` plus its own `correct_action`/`accepted`; the
 audit recomputes the state's copy and rejects a mismatch. A single candidate is
 reviewed through the existing `scenario-report` path (it takes the same
@@ -974,7 +1170,7 @@ parse error rather than a gate warning.
 | legal answer | the answer is on `ai::actions::legal_actions`; a Riichi answer names a legal discard; a `Pass` answer has a `call_offer`; equivalents are legal discards; `accepted` is exactly the answer plus `equivalent_tiles`, sorted |
 | reachable state | `validate_reachable_state`; the build record says `state_valid`, `answer_recomputed` and `visible_info_only` |
 | no spoiler | title, prompt, pre-answer note, book label, provenance labels and selection tags print no answer or tenpai-wait tile code; a visibly offered call tile is not a wait |
-| variant honesty | a transform chain validates, `provenance.transforms` matches it, and a variant carries `label_check.preserved = true` |
+| variant honesty | a transform chain validates, `provenance.transforms` matches it, and a variant carries `label_check.preserved = true` (V2 emits exactly this record; the audit re-checks it) |
 | budget | encoded gzip body within `max_bytes` (default 50 MB), scenario count within `max_scenarios` (2000), manifest within 512 KiB |
 | manifest integrity | entry path is safe and content-addressed, hash/bytes/scenario count match the body, and convenience metadata drift is a strict-mode warning |
 

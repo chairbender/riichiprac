@@ -556,20 +556,73 @@ pub fn label_decision(
     classifier_version: &str,
     generator: Option<&ModelIdentity>,
 ) -> Result<LabelDisposition, LabelError> {
-    let key = LabelKey::new(
+    through_cache(
+        cache,
         &snapshot.state,
         evaluator.identity(),
-        classifier_version,
         options,
-    );
+        classifier_version,
+        || evaluate_and_label(evaluator, snapshot, options, classifier_version, generator),
+    )
+}
 
+/// Label one bare state through the cache, with no replay snapshot.
+///
+/// The label-preservation gate (V2) has a transformed [`GameState`] and no
+/// `DecisionSnapshot`: the model and the book classifiers only read the state,
+/// so the replay metadata is not part of a label. `furiten` is the walker's
+/// permanent-furiten flag for the base position, which a transform preserves
+/// (the actor's river and waits are relabelled together); a caller that does not
+/// have it must pass the base's value, never a guess.
+///
+/// The cache key is the same L1 key: the transformed state's model-visible hash,
+/// the checkpoint, the classifier version and the options. The transform chain
+/// is recorded on the variant, not in the key: the model sees the transformed
+/// state, so two chains that produce the same state must share one evaluation.
+pub fn label_state(
+    cache: &LabelCache<'_>,
+    evaluator: &dyn StateEvaluator,
+    state: &GameState,
+    furiten: bool,
+    options: &LabelOptions,
+    classifier_version: &str,
+    generator: Option<&ModelIdentity>,
+) -> Result<LabelDisposition, LabelError> {
+    through_cache(
+        cache,
+        state,
+        evaluator.identity(),
+        options,
+        classifier_version,
+        || {
+            build_label_for_state(
+                evaluator,
+                state,
+                furiten,
+                options,
+                classifier_version,
+                generator,
+            )
+        },
+    )
+}
+
+/// The cache lookup/miss/retry protocol shared by both entry points.
+fn through_cache(
+    cache: &LabelCache<'_>,
+    state: &GameState,
+    identity: &ModelIdentity,
+    options: &LabelOptions,
+    classifier_version: &str,
+    build: impl FnOnce() -> Result<ModelLabel, LabelError>,
+) -> Result<LabelDisposition, LabelError> {
+    let key = LabelKey::new(state, identity, classifier_version, options);
     let lookup = cache.lookup(&key)?;
     if let CacheLookup::Hit(label) = &lookup {
         return Ok(LabelDisposition::Cached(label.as_ref().clone()));
     }
     let retrying = matches!(lookup, CacheLookup::Failed { .. });
-
-    match evaluate_and_label(evaluator, snapshot, options, classifier_version, generator) {
+    match build() {
         Ok(label) => {
             cache.record_success(&key, &label)?;
             Ok(if retrying {
@@ -599,18 +652,41 @@ pub fn build_label(
     classifier_version: &str,
     generator: Option<&ModelIdentity>,
 ) -> Result<ModelLabel, LabelError> {
-    let identity = evaluator.identity();
-    let evaluation = evaluator.evaluate(&snapshot.state)?;
-    let label = assemble_label(
+    build_label_for_state(
+        evaluator,
         &snapshot.state,
-        snapshot,
+        snapshot.furiten,
+        options,
+        classifier_version,
+        generator,
+    )
+}
+
+/// Evaluate a bare state and build its complete label document.
+///
+/// This is [`build_label`] for a caller that has a [`GameState`] and no replay
+/// snapshot: the V2 label-preservation gate labels a transformed state, which
+/// no replay recorded. `furiten` replaces `DecisionSnapshot::furiten`; see
+/// [`label_state`].
+pub fn build_label_for_state(
+    evaluator: &dyn StateEvaluator,
+    state: &GameState,
+    furiten: bool,
+    options: &LabelOptions,
+    classifier_version: &str,
+    generator: Option<&ModelIdentity>,
+) -> Result<ModelLabel, LabelError> {
+    let identity = evaluator.identity();
+    let evaluation = evaluator.evaluate(state)?;
+    assemble_label(
+        state,
+        furiten,
         &evaluation,
         identity,
         options,
         classifier_version,
         generator,
-    )?;
-    Ok(label)
+    )
 }
 
 fn evaluate_and_label(
@@ -626,7 +702,7 @@ fn evaluate_and_label(
 /// Build the label document from one evaluation (no forward pass).
 fn assemble_label(
     state: &GameState,
-    snapshot: &DecisionSnapshot,
+    furiten: bool,
     evaluation: &Evaluation,
     identity: &ModelIdentity,
     options: &LabelOptions,
@@ -685,8 +761,12 @@ fn assemble_label(
         _ => (None, None),
     };
 
-    let (book, book_conflict) =
-        match crate::miner::classifier::classify_decision_with_mortal(snapshot, evaluation) {
+    let (book, book_conflict) = if furiten {
+        // The walker's permanent-furiten policy: a furiten decision is never a
+        // book drill, whatever a classifier might read from the tiles.
+        (None, None)
+    } else {
+        match crate::classifier::classify_with_mortal(state, evaluation) {
             Ok(Some(label)) => (Some(book_label(state, evaluation, label)), None),
             Ok(None) => (None, None),
             Err(conflict) => (
@@ -699,7 +779,8 @@ fn assemble_label(
                         .collect(),
                 }),
             ),
-        };
+        }
+    };
 
     let generator = generator
         .filter(|other| !identity.same_checkpoint(other))
@@ -774,7 +855,7 @@ pub fn build_label_with_models(
     let primary_evaluation = primary.evaluate(&snapshot.state)?;
     let mut label = assemble_label(
         &snapshot.state,
-        snapshot,
+        snapshot.furiten,
         &primary_evaluation,
         primary.identity(),
         options,
