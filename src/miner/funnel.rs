@@ -26,12 +26,20 @@ pub enum FunnelStage {
     DecisionPoints,
     /// Candidates whose trigger fired.
     TriggerHits,
+    /// Decisions reconstructed into a candidate (S2).
+    Reconstructed,
     /// Candidates a book classifier matched.
     BookMatches,
     /// Candidates labelled by Mortal.
     MortalLabelled,
+    /// Candidates that passed the non-dedupe hard gates (S2).
+    GatePassed,
+    /// Candidates kept out of the pack for QA (S2).
+    HeldOut,
     /// Scenarios selected for a pack.
     Selected,
+    /// Scenarios written into an assembled pack (P1b).
+    Packed,
 }
 
 /// A monotonic count of successful stages plus rejection reasons.
@@ -124,16 +132,20 @@ impl FunnelCounter {
     /// Counts in pipeline order, including zero-valued stages.
     #[must_use]
     pub fn stages(&self) -> Vec<(FunnelStage, u64)> {
-        const ALL: [FunnelStage; 9] = [
+        const ALL: [FunnelStage; 13] = [
             FunnelStage::GamesRequested,
             FunnelStage::GamesGenerated,
             FunnelStage::GamesParsed,
             FunnelStage::GamesValid,
             FunnelStage::DecisionPoints,
             FunnelStage::TriggerHits,
+            FunnelStage::Reconstructed,
             FunnelStage::BookMatches,
             FunnelStage::MortalLabelled,
+            FunnelStage::GatePassed,
+            FunnelStage::HeldOut,
             FunnelStage::Selected,
+            FunnelStage::Packed,
         ];
         ALL.iter()
             .map(|stage| (*stage, self.count(*stage)))
@@ -165,7 +177,12 @@ mod tests {
 
         let stages = funnel.stages();
         assert_eq!(stages.first(), Some(&(FunnelStage::GamesRequested, 1000)));
-        assert_eq!(stages.last(), Some(&(FunnelStage::Selected, 0)));
+        assert_eq!(stages.last(), Some(&(FunnelStage::Packed, 0)));
+        assert!(
+            stages
+                .iter()
+                .any(|(stage, _)| *stage == FunnelStage::GatePassed)
+        );
         assert!(!funnel.is_empty());
     }
 

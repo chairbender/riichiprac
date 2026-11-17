@@ -1,6 +1,6 @@
 //! Verdict derivation and answer auditing for imported reports.
 
-use crate::state::CorrectAction;
+use crate::state::{CorrectAction, CorrectActionType};
 use crate::verdict;
 
 use super::model::{ReportVerdict, ReportedAction};
@@ -24,6 +24,27 @@ pub fn answer_tile_visible(table: &crate::state::GameState, answer: &ReportedAct
     if answer.tile.is_empty() {
         return true;
     }
+    // A model drill can name a call or a winning tile. That tile is the offered
+    // discard or the winning tile, so it belongs on the table, not in the
+    // actor's hand. Only a discard-family answer is checked against the hand; a
+    // pass that names a tile is still malformed.
+    match answer.action {
+        CorrectActionType::Riichi
+        | CorrectActionType::Dama
+        | CorrectActionType::Fold
+        | CorrectActionType::Discard => {}
+        CorrectActionType::Best => {
+            let discard = answer.action_name.as_deref().is_some_and(|name| {
+                let name = crate::ai::finalize::normalize_mortal_action(name);
+                name.starts_with("Discard_") || name == "Riichi"
+            });
+            if !discard {
+                return true;
+            }
+        }
+        CorrectActionType::Kan | CorrectActionType::Call => return true,
+        CorrectActionType::Pass => return false,
+    }
 
     let Some(human) = table.players.iter().find(|player| player.is_human) else {
         return false;
@@ -36,10 +57,34 @@ pub fn answer_tile_visible(table: &crate::state::GameState, answer: &ReportedAct
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::CorrectActionType;
 
     fn answer(action: CorrectActionType, tile: &str) -> ReportedAction {
         ReportedAction::new(action, tile)
+    }
+
+    #[test]
+    fn a_drill_call_or_win_tile_is_not_a_hand_tile() {
+        let table = crate::fixtures::mock_table::generate("mock_table").expect("fixture");
+        for name in ["Pon", "Chi_Low", "Agari", "Kan"] {
+            assert!(
+                answer_tile_visible(
+                    &table,
+                    &answer(CorrectActionType::Best, "not-in-hand").with_action_name(name)
+                ),
+                "a `{name}` answer's tile is on the table, not in the hand"
+            );
+        }
+        assert!(
+            !answer_tile_visible(
+                &table,
+                &answer(CorrectActionType::Best, "not-in-hand").with_action_name("Discard_3p")
+            ),
+            "a drill discard must name a hand tile"
+        );
+        assert!(!answer_tile_visible(
+            &table,
+            &answer(CorrectActionType::Best, "not-in-hand").with_action_name("Riichi")
+        ));
     }
 
     #[test]

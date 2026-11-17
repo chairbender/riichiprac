@@ -1,9 +1,10 @@
 //! Entry point for the native-only replay miner.
 //!
 //! F1 created the feature boundary and the subcommand surface; L1 implements
-//! `label` on top of the R2 walker and the F1 database. The remaining commands
-//! are still stubs: running one exits with code 2 and writes a "not implemented"
-//! line to stderr, so a script cannot mistake it for a completed run.
+//! `label` on top of the R2 walker and the F1 database, S1 implements `triggers`
+//! and S2 implements `select` and `review`. The remaining commands are still
+//! stubs: running one exits with code 2 and writes a "not implemented" line to
+//! stderr, so a script cannot mistake it for a completed run.
 //!
 //! Build and run:
 //!
@@ -23,8 +24,10 @@ use clap::{Parser, Subcommand};
 
 use riichiprac::miner::label::run::{LabelRunOptions, LabelRunReport, run_label};
 use riichiprac::miner::{
-    CLASSIFIER_VERSION, DataRoot, FamilyFilter, QPointCalibration, TriggerConfig, TriggerFilter,
-    TriggerSampleOptions, TriggerSampleReport, run_trigger_sample,
+    CLASSIFIER_VERSION, DEFAULT_PACK_SIZE, DataRoot, FamilyFilter, QPointCalibration,
+    ReviewOptions, SelectionConfig, SelectionOptions, TriggerConfig, TriggerFilter,
+    TriggerSampleOptions, TriggerSampleReport, latest_pack, read_queue, review_queue,
+    run_selection, run_trigger_sample, selection_paths,
 };
 
 #[derive(Debug, Parser)]
@@ -136,8 +139,86 @@ enum Command {
     Pack,
     /// Audit provenance, licences and pack integrity.
     Audit,
+    /// Select a balanced, deduplicated review queue from a replay shard.
+    Select {
+        /// Replay directory (default: <data-dir>/replays).
+        #[arg(long, value_name = "DIR")]
+        replays: Option<PathBuf>,
+
+        /// Read only this family sub-directory.
+        #[arg(long, value_name = "NAME")]
+        family: Option<String>,
+
+        /// Maximum replay files in the shard.
+        #[arg(long, value_name = "N")]
+        limit: Option<usize>,
+
+        /// Pack id and review-directory name. Defaults to `s2-<UTC stamp>`.
+        #[arg(long, value_name = "ID")]
+        pack_id: Option<String>,
+
+        /// Pack size (scenarios to select).
+        #[arg(long, value_name = "N", default_value_t = DEFAULT_PACK_SIZE)]
+        size: usize,
+
+        /// Share of the pack kept out for held-out QA (0 disables).
+        #[arg(long, value_name = "F32")]
+        held_out_share: Option<f32>,
+
+        /// Salt for the deterministic held-out split.
+        #[arg(long, value_name = "TEXT")]
+        seed: Option<String>,
+
+        /// Build and report without writing the queue or the report.
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
     /// Work the human review queue.
-    Review,
+    Review {
+        /// Queue file. Defaults to the last `select` run's queue.
+        #[arg(long, value_name = "FILE")]
+        queue: Option<PathBuf>,
+
+        /// Pack id under <data-dir>/reviews/ to review.
+        #[arg(long, value_name = "ID")]
+        pack: Option<String>,
+
+        /// Review the held-out QA queue instead of the pack queue.
+        #[arg(long)]
+        held_out: bool,
+
+        /// Queue ids to accept.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        accept: Vec<String>,
+
+        /// Queue ids to reject.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        reject: Vec<String>,
+
+        /// Note recorded on every new disposition.
+        #[arg(long, value_name = "TEXT")]
+        note: Option<String>,
+
+        /// List every item with its verdict.
+        #[arg(long)]
+        list: bool,
+
+        /// Print one item's embedded `riichiprac.scenario-report` and exit.
+        #[arg(long, value_name = "QUEUE_ID")]
+        show: Option<String>,
+
+        /// Validate and report without writing dispositions.
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -157,7 +238,8 @@ impl Command {
             Self::Transform => "transform",
             Self::Pack => "pack",
             Self::Audit => "audit",
-            Self::Review => "review",
+            Self::Select { .. } => "select",
+            Self::Review { .. } => "review",
         }
     }
 }
@@ -255,6 +337,54 @@ fn main() -> ExitCode {
                 json,
             )
         }
+        Command::Select {
+            replays,
+            family,
+            limit,
+            pack_id,
+            size,
+            held_out_share,
+            seed,
+            dry_run,
+            json,
+        } => {
+            let mut config = SelectionConfig {
+                pack_size: size,
+                ..SelectionConfig::default()
+            };
+            config.pack_id = pack_id.unwrap_or_else(|| format!("s2-{}", utc_stamp_now()));
+            if let Some(share) = held_out_share {
+                config.held_out_share = share;
+            }
+            if let Some(seed) = seed {
+                config.held_out_salt = seed;
+            }
+            run_select_command(
+                &root,
+                &SelectionOptions {
+                    replays,
+                    family,
+                    limit,
+                    config,
+                    dry_run,
+                },
+                json,
+            )
+        }
+        Command::Review {
+            queue,
+            pack,
+            held_out,
+            accept,
+            reject,
+            note,
+            list,
+            show,
+            dry_run,
+            json,
+        } => run_review_command(
+            &root, queue, pack, held_out, &accept, &reject, note, list, show, dry_run, json,
+        ),
         command => {
             eprintln!(
                 "mine_replays {}: not implemented yet (data root: {})",
@@ -264,6 +394,142 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+fn utc_stamp_now() -> String {
+    riichiprac::miner::utc_stamp(std::time::SystemTime::now())
+}
+
+fn run_select_command(root: &DataRoot, options: &SelectionOptions, json: bool) -> ExitCode {
+    match run_selection(root, options) {
+        Ok(outcome) if json => {
+            match serde_json::to_string_pretty(&outcome.report) {
+                Ok(text) => println!("{text}"),
+                Err(err) => {
+                    eprintln!("mine_replays select: cannot serialise the report: {err}");
+                    return ExitCode::from(2);
+                }
+            }
+            selection_exit_code(&outcome.report)
+        }
+        Ok(outcome) => {
+            println!("{}", outcome.report.human_summary());
+            selection_exit_code(&outcome.report)
+        }
+        Err(err) => {
+            eprintln!("mine_replays select: {err}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn selection_exit_code(report: &riichiprac::miner::SelectionReport) -> ExitCode {
+    if report.replays_failed > 0 || !report.errors.is_empty() {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_review_command(
+    root: &DataRoot,
+    queue: Option<PathBuf>,
+    pack: Option<String>,
+    held_out: bool,
+    accept: &[String],
+    reject: &[String],
+    note: Option<String>,
+    list: bool,
+    show: Option<String>,
+    dry_run: bool,
+    json: bool,
+) -> ExitCode {
+    let path = match resolve_queue(root, queue, pack, held_out) {
+        Ok(path) => path,
+        Err(message) => {
+            eprintln!("mine_replays review: {message}");
+            return ExitCode::from(2);
+        }
+    };
+    if let Some(id) = show {
+        return match read_queue(&path) {
+            Ok(queue) => match queue.items.iter().find(|item| item.queue_id == id) {
+                Some(item) => match serde_json::to_string_pretty(&item.review) {
+                    Ok(text) => {
+                        println!("{text}");
+                        ExitCode::SUCCESS
+                    }
+                    Err(err) => {
+                        eprintln!("mine_replays review: cannot serialise the report: {err}");
+                        ExitCode::from(2)
+                    }
+                },
+                None => {
+                    eprintln!("mine_replays review: `{id}` is not in {}", path.display());
+                    ExitCode::from(2)
+                }
+            },
+            Err(err) => {
+                eprintln!("mine_replays review: {err}");
+                ExitCode::from(2)
+            }
+        };
+    }
+    let report = match review_queue(&ReviewOptions {
+        queue: path,
+        accept: accept.to_vec(),
+        reject: reject.to_vec(),
+        note,
+        dry_run,
+    }) {
+        Ok(report) => report,
+        Err(err) => {
+            eprintln!("mine_replays review: {err}");
+            return ExitCode::from(2);
+        }
+    };
+    if json {
+        match serde_json::to_string_pretty(&report) {
+            Ok(text) => println!("{text}"),
+            Err(err) => {
+                eprintln!("mine_replays review: cannot serialise the report: {err}");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        print!("{}", report.human_summary(list));
+    }
+    if report.invalid > 0 {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn resolve_queue(
+    root: &DataRoot,
+    queue: Option<PathBuf>,
+    pack: Option<String>,
+    held_out: bool,
+) -> Result<PathBuf, String> {
+    if let Some(path) = queue {
+        return Ok(path);
+    }
+    let pack = match pack {
+        Some(pack) => pack,
+        None => latest_pack(root)
+            .map_err(|err| err.to_string())?
+            .ok_or_else(|| {
+                "no selection run found; run `select` first or pass --queue/--pack".to_string()
+            })?,
+    };
+    let paths = selection_paths(root, &pack);
+    Ok(if held_out {
+        paths.held_out
+    } else {
+        paths.queue
+    })
 }
 
 fn run_label_command(root: &DataRoot, options: &LabelRunOptions, json: bool) -> ExitCode {
@@ -392,6 +658,7 @@ mod tests {
             "corpus",
             "ingest",
             "extract",
+            "select",
             "transform",
             "triggers",
             "pack",
@@ -541,6 +808,101 @@ mod tests {
                 action: Some(CorpusAction::Report)
             }
         ));
+    }
+
+    #[test]
+    fn the_select_command_parses_its_options() {
+        let cli = Cli::try_parse_from([
+            "mine_replays",
+            "select",
+            "--replays",
+            "/data/replays",
+            "--family",
+            "mortal_mirror",
+            "--limit",
+            "3",
+            "--pack-id",
+            "s2-smoke",
+            "--size",
+            "40",
+            "--held-out-share",
+            "0.2",
+            "--seed",
+            "qa-a",
+            "--dry-run",
+            "--json",
+        ])
+        .expect("select parses");
+        match cli.command {
+            Command::Select {
+                replays,
+                family,
+                limit,
+                pack_id,
+                size,
+                held_out_share,
+                seed,
+                dry_run,
+                json,
+            } => {
+                assert_eq!(replays, Some(PathBuf::from("/data/replays")));
+                assert_eq!(family.as_deref(), Some("mortal_mirror"));
+                assert_eq!(limit, Some(3));
+                assert_eq!(pack_id.as_deref(), Some("s2-smoke"));
+                assert_eq!(size, 40);
+                assert_eq!(held_out_share, Some(0.2));
+                assert_eq!(seed.as_deref(), Some("qa-a"));
+                assert!(dry_run);
+                assert!(json);
+            }
+            other => panic!("expected the select command, got {other:?}"),
+        }
+        let defaults = Cli::try_parse_from(["mine_replays", "select"]).expect("defaults parse");
+        match defaults.command {
+            Command::Select { size, .. } => assert_eq!(size, DEFAULT_PACK_SIZE),
+            other => panic!("expected the select command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn the_review_command_parses_its_options() {
+        let cli = Cli::try_parse_from([
+            "mine_replays",
+            "review",
+            "--pack",
+            "s2-smoke",
+            "--held-out",
+            "--accept",
+            "s2-smoke-001,s2-smoke-002",
+            "--reject",
+            "s2-smoke-003",
+            "--note",
+            "ambiguous",
+            "--list",
+        ])
+        .expect("review parses");
+        match cli.command {
+            Command::Review {
+                pack,
+                held_out,
+                accept,
+                reject,
+                note,
+                list,
+                ..
+            } => {
+                assert_eq!(pack.as_deref(), Some("s2-smoke"));
+                assert!(held_out);
+                assert_eq!(
+                    accept,
+                    vec!["s2-smoke-001".to_string(), "s2-smoke-002".to_string()]
+                );
+                assert_eq!(reject, vec!["s2-smoke-003".to_string()]);
+                assert_eq!(note.as_deref(), Some("ambiguous"));
+                assert!(list);
+            }
+            other => panic!("expected the review command, got {other:?}"),
+        }
     }
 
     #[test]

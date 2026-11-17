@@ -1,10 +1,11 @@
-# Replay miner operations: data root, provenance, storage, replays, labels and candidate triggers (F1, R1, R2, L1, L2, S1)
+# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers and selection (F1, R1, R2, L1, L2, S1, S2)
 
 Status: implemented foundation (F1), replay reader/validator (R1), the walker /
 `GameState` reconstruction (R2), the native Mortal labeler with Q values and
 the label cache (L1), book/Mortal agreement with contested marking,
-percentile hooks and optional calibration (L2), and the cheap candidate
-triggers with family filters (S1) of
+percentile hooks and optional calibration (L2), the cheap candidate triggers with
+family filters (S1), and the hard gates, ranking, quotas, dedupe, held-out QA
+and review queue (S2) of
 [`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
 document is the operator contract for the native-only miner. It does not re-open
 the source decision: [`replay-strategy.md`](replay-strategy.md) §2 fixes AI
@@ -24,9 +25,14 @@ multi-model vote path, the per-family percentile-threshold hook and the optional
 versioned Q→point calibration, all in `src/miner/label/`. S1 adds
 `src/miner/trigger/`: the model-free defensive/offensive/book/call/score
 triggers, the label-derived close-call/blunder triggers, the candidate-family
-mapping and filter, and the corpus sample precision/recall report. Book
-classification (B1/B2/B3) already exists in `src/classifier/`; the remaining
-selection stages, transforms and the pack publisher remain S2/S3 and P1a onward.
+mapping and filter, and the corpus sample precision/recall report. S2 adds
+`src/miner/select/`: the eight hard gates from replay-strategy §7.1, the §7.2
+signals and composite score, family quotas with section/kind/turn diversity
+caps, exact and visible-info dedupe, the deterministic held-out QA split, and
+the JSONL review queue that embeds a single-candidate
+`riichiprac.scenario-report`. Book classification (B1/B2/B3) already exists in
+`src/classifier/`; S3's selectors, the transforms and the pack publisher remain
+S3 and P1a onward.
 
 ## Build boundary
 
@@ -61,16 +67,17 @@ mine_replays [--data-dir DIR] <command>
   extract           reconstruct decision points from validated logs
   label             label reconstructed decisions with Mortal + book classifiers
   triggers          report cheap candidate triggers and family precision/recall
+  select            gate, rank, quota and dedupe a review queue
   transform         generate label-preserving scenario variants
   pack              assemble, audit and export scenario packs
   audit             audit provenance, licences and pack integrity
   review            work the human review queue
 ```
 
-`label` (L1 with the L2 agreement/calibration extensions) and `triggers` (S1)
-are implemented. The other commands still resolve the data root, report the
-command they would run, and exit with code 2, so a script cannot treat a stub as
-a successful run.
+`label` (L1 with the L2 agreement/calibration extensions), `triggers` (S1),
+`select` and `review` (S2) are implemented. The other commands still resolve the
+data root, report the command they would run, and exit with code 2, so a script
+cannot treat a stub as a successful run.
 
 ```bash
 cargo run --features miner --bin mine_replays -- label \
@@ -122,6 +129,36 @@ The trigger codes are `book:<section>` (`book:ch8.4`), `defensive_riichi`,
 `decisions.trigger_detail` holds the full `riichiprac.candidate-trigger` v1 JSON,
 so selection can read every reason and the candidate families.
 
+```bash
+cargo run --release --features miner --bin mine_replays -- select \
+  [--replays DIR] [--family NAME] [--limit N] \
+  [--pack-id ID] [--size N] [--held-out-share F] [--seed TEXT] \
+  [--dry-run] [--json]
+
+cargo run --release --features miner --bin mine_replays -- review \
+  [--queue FILE | --pack ID] [--held-out] \
+  [--accept ID,...] [--reject ID,...] [--note TEXT] \
+  [--list] [--show QUEUE_ID] [--dry-run] [--json]
+```
+
+`select` walks the shard, reads labels from the DB cache (never a forward pass),
+applies the eight gates, ranks the survivors, and writes
+`reviews/<pack-id>/review-queue.jsonl`, `held-out.jsonl`,
+`selection-report.json` and `reviews/LATEST`. `--size` defaults to 100 and
+`--pack-id` defaults to `s2-<UTC stamp>`; `--held-out-share` defaults to 0.10.
+`--dry-run` builds and reports without writing, and exit code 1 means a replay
+failed or a review item could not be built. S2 does not assemble a pack: the
+funnel's `packed` row stays `0`.
+
+`review` resolves the queue from `--queue`, else `--pack`, else the last
+`select` run's `reviews/LATEST`. It re-parses every embedded report through
+`riichiprac.scenario-report` (which recomputes the derived fields and never
+trusts a saved verdict), appends `--accept`/`--reject` verdicts to
+`dispositions.jsonl`, and reports pending/accepted/rejected counts. `--show`
+prints one item's report; `--list` lists every item; `--dry-run` writes no
+dispositions. A queue is never rewritten: the disposition log is append-only and
+the latest verdict per item wins.
+
 ## Data root
 
 Default: `$RIICHI_DATA_DIR`, else `$HOME/riichiprac-data`. The root lives
@@ -138,6 +175,13 @@ $RIICHI_DATA_DIR/
 │   └── miner-YYYYMMDD-HHMMSS.sqlite        # VACUUM INTO snapshots
 ├── packs/
 │   └── <pack-id>-<sha256-prefix>.json.gz   # generated pack exports
+├── reviews/
+│   ├── LATEST                              # pack id of the last select run
+│   └── <pack-id>/
+│       ├── review-queue.jsonl              # selected candidates, one report per line
+│       ├── held-out.jsonl                  # QA split, never packed
+│       ├── dispositions.jsonl              # append-only reviewer verdicts
+│       └── selection-report.json           # funnel, gates, quotas, dedupe, samples
 ├── tmp/                                    # atomic-write staging
 └── logs/                                   # run and backup logs
 ```
@@ -174,6 +218,14 @@ Every serialised miner document carries `schema` and `version`.
 | `riichiprac.scenario-transforms` | `SCENARIO_TRANSFORMS_SCHEMA` | transform chain |
 | `riichiprac.scenario-pack` | `SCENARIO_PACK_SCHEMA` | shipped scenario pack |
 | `riichiprac.scenario-pack-manifest` | `SCENARIO_PACK_MANIFEST_SCHEMA` | pack manifest |
+| `riichiprac.model-label` | `MODEL_LABEL_SCHEMA` | one Mortal label (L1) |
+| `riichiprac.candidate-trigger` | `TRIGGER_SCHEMA` | one candidate's trigger report (S1) |
+| `riichiprac.selection-report` | `SELECTION_SCHEMA` | one selection run's report (S2) |
+| `riichiprac.review-item` | `REVIEW_SCHEMA` | one review-queue line (S2) |
+| `riichiprac.review-disposition` | `DISPOSITION_SCHEMA` | one reviewer verdict (S2) |
+
+The review item embeds the app's own `riichiprac.scenario-report` v2 for that
+single candidate, so the existing report importer validates it unchanged.
 
 A match plan stores `rule_profile` as a `RuleProfile` object (not just a profile
 name) so the exact red-five/kuitan/starting-score/return/uma/kan-dora settings
@@ -744,6 +796,138 @@ rejected at load.
   `cargo tree --features miner` (no `libriichi`) stay clean.
 
 Visual sign-off is not involved in L2.
+
+## Selection: gates, quotas, dedupe and the review queue (S2)
+
+Status: implemented in `src/miner/select/`. Replay-strategy §6.6 makes selection
+a quota problem rather than one sort, §7.1 separates hard gates from ranking, and
+§7.5 keeps a human in the loop. The pipeline is:
+
+```text
+decisions -> gates 1-6, 8 -> valid candidates -> held-out QA split
+                                               -> novelty + composite score
+                                               -> family buckets
+                                               -> quotas + section/kind/turn caps
+                                               -> gate 7 (dedupe) during fill
+                                               -> review-queue.jsonl
+```
+
+### Hard gates (§7.1)
+
+| # | Gate | What it checks |
+| --- | --- | --- |
+| 1 | `reachable` | four seats, a non-empty legal set, and (for a hand-built candidate) `validate_reachable_state`; the walker already dropped unreachable decisions |
+| 2 | `answer_defined` | a shippable label, no unresolved `book_conflict`, a non-empty accepted set for a book answer, and at least two legal actions for a Mortal-only drill |
+| 3 | `answer_legal` | the answer is a legal discard/Riichi/Kan/Pass/call on this state, and every accepted equivalent is a legal discard |
+| 4 | `visible_information` | the model-visible hash is unchanged when opponent concealed hands are removed; the legal set survives the redaction; a discard answer is in the actor's visible hand |
+| 5 | `label_confidence` | a book answer is exact; a Mortal-only answer needs the family's L2 confidence band, or the configured top-1 probability/margin fallback when the family has fewer than eight samples |
+| 6 | `provenance` | `source = ai_selfplay`, an allowlisted data licence, a validated `GameProvenance` and a publishable validation summary |
+| 7 | `duplicate` | exact state hash and visible-info fingerprint are both new (applied during the fill) |
+| 8 | `spoiler` | the pre-answer texts (lesson label/description, situation note, selection reason, provenance line) contain no accepted answer tile and no wait tile |
+
+Gates fail closed and short-circuit in that order, so the report's per-gate
+counts are first failures and add up to the funnel's `valid` row. Gate 7 lives in
+`dedupe.rs` because it depends on what the pack already holds.
+
+### Ranking signals (§7.2)
+
+Every signal is `0.0..=1.0`; `ScoreWeights::score` is their weighted mean, with
+the §7.2 defaults `0.25/0.15/0.15/0.15/0.15/0.10/0.05` and configurable weights.
+
+- `book_match`: a cited book answer (0/1).
+- `label_confidence`: percentile rank of the top-two gap inside the decision
+  family, falling back to the pooled sample and then to `top_probability`.
+- `counterfactual_tension`: one minus that rank, plus one minus the safe-gap
+  rank when `q_gap_safe` exists.
+- `stakes`: a documented visible-state proxy (`score_leverage`, `hand_value`,
+  `threat`); never a point claim.
+- `discrimination`: the played-action gap's percentile rank, or the thin-gap
+  fallback when the record played the model's top action.
+- `novelty`: inverse frequency of the book section, decision kind and turn
+  bucket in the valid pool (coverage, not rarity for its own sake).
+- `realism`: a clean walk and publishable provenance, reduced per reconstruction
+  warning.
+
+The score ranks **within** a family after the gates; it never rescues a
+candidate that failed one.
+
+### Quotas, caps and the relaxed fill
+
+`QuotaConfig` holds family shares (`book` 0.30, `coverage` 0.15,
+`mortal_best`/`mistake`/`close_call` 0.10, `speed_value` 0.08,
+`table_read` 0.07, `contested`/`placement` 0.05, `multi_step` 0.00) and the
+diversity shares (book section 0.20, decision kind 0.60, turn bucket 0.60).
+Shares become integer quotas by largest remainder and caps by ceiling. The fill
+is round-robin, deepest deficit first, so one rich family cannot starve a scarce
+one.
+
+A cap is a "do not let this bucket crowd out the others" rule, not a reason to
+ship a short pack. If slots remain and every remaining candidate sits in a bucket
+that has met its cap, the selector relaxes the cap rather than leave the slot
+empty; under-quota families are repaired first, then the best remaining
+candidates fill the rest. The report records `relaxed_fill` and `cap_relaxed`,
+the per-bucket `relaxed` count, and a shortfall reason per family
+(`no_candidates`, `shared_with_other_families`, `cap_limited`, `exhausted`,
+`pack_full`). A family is never silently substituted.
+
+### Dedupe
+
+`exact_state_hash` is the L1 cache key (the SHA-256 of the v4 observation), so
+the selector and labeler agree on "the same position". `visible_info_fingerprint`
+is a SHA-256 over the literal visible table (actor hand/draw, every meld and
+river, dora, scores, round, decision context). Opponent concealed hands are
+excluded; tile codes are never canonicalised, so a suit-permuted variant has a
+different fingerprint and is not mistaken for its base (V1 records the explicit
+`variant_of` lineage and V2 caps variants per base).
+
+### Held-out QA and the funnel
+
+The held-out split takes `ceil(held_out_share * pack_size)` candidates (default
+10 of a 100 pack) in a deterministic `sha256(salt, exact_hash)` order, dedupes
+them among themselves and removes them from the pack pool. It is reproducible;
+changing `--seed` re-draws it deliberately.
+
+The selection report carries the ordered funnel `raw (replays requested) →
+generated (always 0 for a selection run) → parsed → games_valid → decisions →
+trigger → reconstructed → classified → labelled → valid → held_out → selected →
+packed (always 0; P1b owns the pack)`. Gates run after labelling because gate 5
+reads the label, so `valid` follows `labelled` rather than preceding it.
+
+### Review queue
+
+Each `review-queue.jsonl` line is a `riichiprac.review-item` v1 with the
+answer-free selection metadata plus a complete `riichiprac.scenario-report` for
+that one candidate. The report is built by the existing `report::build_report`:
+the walker snapshot is re-stamped with the label's answer (book lesson and target
+action, or the Mortal action vocabulary), the AI block is reconstructed from the
+cached ranking, and the note records the selection reason and the fragment
+hashes. The reviewer therefore sees the table, the graded answer, the book
+rationale and the Mortal ranking in the same document the app's importer
+validates. The queue contains the answer and is never published; P1b emits the
+trainee payload from the selected scenarios.
+
+### S2 acceptance evidence
+
+- `cargo test --features miner` covers a positive and a near-miss negative for
+  every gate, the redaction test that removes opponent hands, quota balance and
+  shortfalls, section/kind caps plus the relaxed fill, exact and near dedupe, the
+  deterministic held-out split, novelty ordering, the partial-share open fill,
+  the JSONL item round-trip through `parse_report`, append-only dispositions and
+  the latest verdict winning, a dry run writing nothing, and a full shard run
+  that writes the queue, the held-out set, the report and `LATEST` and then
+  re-reads the queue through `review`.
+- The corpus acceptance sample is [`selection-s2-sample.md`](selection-s2-sample.md)
+  with its machine-readable report at
+  [`testdata/reports/s2-selection-sample.json`](testdata/reports/s2-selection-sample.json):
+  a 100-scenario queue from four `mortal_mirror` games, 0 duplicates, 0 invalid
+  reports, a 10-item held-out set and a balanced family mix. Human review of
+  those 100 items is the remaining step; S2 ships the queue, not a verdict on
+  whether a position teaches.
+- `cargo clippy --all-targets --features miner -- -D warnings`,
+  `cargo check --target wasm32-unknown-unknown`, `cargo test --lib` and
+  `cargo tree --features miner` (no `libriichi`) stay clean.
+
+Visual sign-off is not involved in S2.
 
 ## F1 acceptance evidence
 

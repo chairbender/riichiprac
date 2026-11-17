@@ -582,7 +582,7 @@ fn chapter_of_lesson(lesson: &str) -> Option<u8> {
         .map(|book| book.chapter)
 }
 
-fn load_label(
+pub(crate) fn load_label(
     connection: &Connection,
     decision_id: &str,
     state_hash: &str,
