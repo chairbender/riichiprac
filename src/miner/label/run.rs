@@ -14,6 +14,7 @@
 //! The weights are loaded once per process ([`super::Labeler::load`]) and reused
 //! for every state in the shard.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use rusqlite::{Connection, OptionalExtension, params};
@@ -25,6 +26,9 @@ use super::{
     label_decision,
 };
 use crate::miner::storage::{DataRoot, open_miner_db};
+use crate::miner::trigger::{
+    TriggerConfig, TriggerFilter, TriggerReport, evaluate_cheap, record_triggers,
+};
 
 /// Only corpus replay files are walked; the R1 reader has its own decode bounds.
 const REPLAY_SUFFIX: &str = ".jsonl.gz";
@@ -59,6 +63,15 @@ pub struct LabelRunOptions {
     /// It is not part of the cache key: the point estimates are recomputed from
     /// the cached raw Q values, so recalibrating never re-runs the model.
     pub calibration: Option<QPointCalibration>,
+    /// Cheap-trigger prefilter. `None` labels every decision.
+    ///
+    /// With a filter, a decision whose cheap triggers do not fire is skipped
+    /// **before** the forward pass, which is S1's "no model pass for cheap
+    /// filters". The reason columns record only the triggers this run evaluated;
+    /// an unfiltered `mine_replays triggers` pass records every trigger.
+    pub trigger_filter: Option<TriggerFilter>,
+    /// Thresholds used by the cheap triggers recorded on this run.
+    pub trigger_config: TriggerConfig,
 }
 
 impl LabelRunOptions {
@@ -76,6 +89,8 @@ impl LabelRunOptions {
             pts: None,
             label_options: LabelOptions::default(),
             calibration: None,
+            trigger_filter: None,
+            trigger_config: TriggerConfig::default(),
         }
     }
 }
@@ -113,6 +128,13 @@ pub struct LabelRunReport {
     pub decisions_retried: usize,
     /// Decisions whose evaluation failed this run.
     pub decisions_failed: usize,
+    /// Decisions where at least one cheap trigger fired.
+    pub decisions_triggered: usize,
+    /// Decisions a trigger prefilter kept out of the forward pass.
+    pub decisions_filtered_out: usize,
+    /// Cheap-trigger fires per trigger family, in report order.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub trigger_hits: BTreeMap<String, usize>,
     /// Labels that carry a book match.
     pub book_labels: usize,
     /// Book labels whose answer the model agrees with (`stable`).
@@ -229,6 +251,15 @@ pub fn run_shard_models(
 
         for decision in &walk.decisions {
             report.decisions_seen += 1;
+            let triggers = cheap_triggers(decision, options);
+            tally_triggers(&mut report, &triggers);
+            // Record the reason on an extracted row even when the filter keeps
+            // the decision out of the model pass. A missing row changes nothing.
+            record_triggers(&connection, &decision.decision_id, &triggers)?;
+            if options.trigger_filter.is_some() && !triggers.has_any() {
+                report.decisions_filtered_out += 1;
+                continue;
+            }
             let labelled = if single_model {
                 label_decision(
                     &cache,
@@ -287,6 +318,30 @@ pub fn run_shard_models(
     }
 
     Ok(report)
+}
+
+/// The cheap triggers for one decision, narrowed to the prefilter's set.
+fn cheap_triggers(
+    decision: &crate::replay::walk::DecisionSnapshot,
+    options: &LabelRunOptions,
+) -> TriggerReport {
+    match &options.trigger_filter {
+        Some(filter) => filter.report(decision, &options.trigger_config),
+        None => evaluate_cheap(decision, &options.trigger_config),
+    }
+}
+
+/// Count one decision's trigger report for the shard summary.
+fn tally_triggers(report: &mut LabelRunReport, triggers: &TriggerReport) {
+    if triggers.has_any() {
+        report.decisions_triggered += 1;
+    }
+    for hit in &triggers.hits {
+        *report
+            .trigger_hits
+            .entry(hit.trigger.as_str().to_string())
+            .or_insert(0) += 1;
+    }
 }
 
 /// Count the agreement outcome of one label for the shard report.
@@ -397,7 +452,10 @@ fn write_decision_classification(
 }
 
 /// Every replay file in one family directory, or in all of them.
-fn discover_replays(replays_dir: &Path, family: Option<&str>) -> Result<Vec<PathBuf>, LabelError> {
+pub(crate) fn discover_replays(
+    replays_dir: &Path,
+    family: Option<&str>,
+) -> Result<Vec<PathBuf>, LabelError> {
     if !replays_dir.is_dir() {
         return Err(LabelError::MissingReplays(
             replays_dir.display().to_string(),

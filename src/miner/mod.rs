@@ -21,6 +21,7 @@
 //! | [`SCENARIO_PACK_SCHEMA`] | `riichiprac.scenario-pack` | a shipped scenario pack |
 //! | [`SCENARIO_PACK_MANIFEST_SCHEMA`] | `riichiprac.scenario-pack-manifest` | the pack manifest |
 //! | [`MODEL_LABEL_SCHEMA`] | `riichiprac.model-label` | one Mortal label (L1) |
+//! | [`TRIGGER_SCHEMA`] | `riichiprac.candidate-trigger` | one candidate's trigger report (S1) |
 //!
 //! The versioning rule is **additive within a version**: new optional fields
 //! use `#[serde(default)]` so older files still parse, and unknown fields are
@@ -44,6 +45,7 @@ pub mod provenance;
 pub mod source;
 pub mod storage;
 pub mod transform;
+pub mod trigger;
 
 pub use classifier::{classify_decision, classify_decision_with_mortal};
 pub use funnel::{FunnelCounter, FunnelStage};
@@ -87,6 +89,16 @@ pub use storage::{
     RCLONE_REMOTE_ENV, RemoteBackup, SCHEMA_VERSION, SnapshotInfo, StorageError, migrate,
     open_miner_db, plan_replay_backup, plan_snapshot_backup, row_counts, snapshot_database,
     utc_iso8601, utc_stamp, validate_relative_path, write_atomic,
+};
+pub use trigger::families::{Family, FamilyFilter, families_for};
+pub use trigger::report::{
+    FamilyStats, ReplayFamilyStats, TriggerSampleOptions, TriggerSampleReport, TriggerStats,
+    run_trigger_sample,
+};
+pub use trigger::{
+    LabelCuts, TRIGGER_SCHEMA, TRIGGER_VERSION, TriggerConfig, TriggerError, TriggerFilter,
+    TriggerHit, TriggerKind, TriggerReport, blunder_hit, close_call_hit, evaluate_cheap,
+    evaluate_selected, evaluate_with_label, played_gap, record_triggers,
 };
 
 /// Schema name for one generated game's provenance record.

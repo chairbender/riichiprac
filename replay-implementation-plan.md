@@ -1655,6 +1655,52 @@ tests.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-17, S1 branch).** Implemented in `src/miner/trigger/`:
+> `mod.rs` (the seven triggers, `TriggerReport`, `TriggerFilter`,
+> `LabelCuts`, the `decisions.trigger`/`trigger_detail` write),
+> `families.rs` (the strategy's ten candidate families, trigger→family
+> mapping and `FamilyFilter`) and `report.rs` (the corpus sample report and
+> precision/recall table). `mine_replays triggers` walks a replay shard
+> model-free, evaluates every trigger, reads labels from `decisions.label_json`
+> or the L1 `model_labels` cache (never a forward pass), and writes the reasons
+> onto existing `decisions` rows. `mine_replays label --trigger ...` uses the
+> five cheap triggers as a pre-model filter and records the same reasons, so a
+> filtered-out decision never reaches the forward pass.
+>
+> The cheap set is `defensive_riichi`, `offensive_architecture`, `book`,
+> `call_kan` and `score_placement`. The label-derived set is `close_call` and
+> `blunder`: they band a cached label's top-two gap and played-action gap with
+> the L2 percentile cuts, and stay silent when the sample has no cuts. A book
+> hit records `book:<section>` (`book:ch8.3`, `book:ch8.4`, ...) plus the
+> lesson id; the defensive hit records the Riichi seats, actor shanten, the safe
+> tiles and their mechanism, and the tenpai threat seats; the offensive hit
+> records the table turn and the two plans' tiles, ukeire and worst value;
+> score records all-last/honba/sticks/spread. The report never names the answer.
+>
+> Fixtures pin positive and near-miss negatives for every trigger (a quiet
+> board fires nothing; a no-safe Riichi board, an out-of-window 1-shanten hand,
+> a no-divergence hand, a non-tenpai threat, a late/early turn and label
+> boundaries all decline). The fixture set has precision 1.00 / recall 1.00 for
+> every trigger over its constrained cases.
+>
+> Corpus sample (`selection-trigger-sample.md`): two `mortal_mirror` games,
+> 1,210 decisions, all labelled with the cached `mortal_298k` labels;
+> `book` 176 fired / 177 book labels (precision 1.00, recall 0.99),
+> `defensive_riichi` 177 fired / 166 ch.7–8 labels (0.63 / 0.67),
+> `call_kan` 57 fired / 1 ch.9 label (0.02 / 1.00),
+> `offensive_architecture` 23 fired / 7 ch.4–5 labels (0.00 / 0.00; its target
+> family is the not-yet-labelled speed/value family, so the book-label basis
+> understates it), `score_placement` 899 fired / 1,210 shippable labels
+> (1.00 / 0.74), and the label-derived `close_call` 121 / `blunder` 10. The
+> report says which basis each row uses, so a low book-label precision on a
+> non-book family is visible rather than hidden.
+>
+> Residuals: `call_kan`'s book-label precision is low by design (most calls are
+> Mortal-only candidates; S2 balances them), the defensive window misses some
+> ch.7/ch.8 cells (0.67 recall is the measured cost of the 0–2-shanten,
+> safe-tile and tenpai-threat conditions), and `close_call`/`blunder` need an
+> L2 percentile sample before they can fire; S3 owns the final thresholds.
+
 ##### S2 — Interestingness, quotas, dedupe and review queue
 
 **Goal.** Select a balanced, legal, non-duplicated candidate set.

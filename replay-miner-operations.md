@@ -1,9 +1,10 @@
-# Replay miner operations: data root, provenance, storage, replays and labels (F1, R1, R2, L1, L2)
+# Replay miner operations: data root, provenance, storage, replays, labels and candidate triggers (F1, R1, R2, L1, L2, S1)
 
 Status: implemented foundation (F1), replay reader/validator (R1), the walker /
 `GameState` reconstruction (R2), the native Mortal labeler with Q values and
-the label cache (L1), and book/Mortal agreement with contested marking,
-percentile hooks and optional calibration (L2) of
+the label cache (L1), book/Mortal agreement with contested marking,
+percentile hooks and optional calibration (L2), and the cheap candidate
+triggers with family filters (S1) of
 [`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
 document is the operator contract for the native-only miner. It does not re-open
 the source decision: [`replay-strategy.md`](replay-strategy.md) §2 fixes AI
@@ -20,9 +21,12 @@ the `q_gap_top2`/`q_gap_safe` measurements, the book/Mortal label and the
 `model_labels` cache behind `mine_replays label`. L2 adds the
 `stable`/`contested`/`unresolved` agreement classification, the optional
 multi-model vote path, the per-family percentile-threshold hook and the optional
-versioned Q→point calibration, all in `src/miner/label/`. Book classification
-(B1) already exists in `src/classifier/`; selection, transforms and the pack
-publisher remain S and P1a onward.
+versioned Q→point calibration, all in `src/miner/label/`. S1 adds
+`src/miner/trigger/`: the model-free defensive/offensive/book/call/score
+triggers, the label-derived close-call/blunder triggers, the candidate-family
+mapping and filter, and the corpus sample precision/recall report. Book
+classification (B1/B2/B3) already exists in `src/classifier/`; the remaining
+selection stages, transforms and the pack publisher remain S2/S3 and P1a onward.
 
 ## Build boundary
 
@@ -56,14 +60,15 @@ mine_replays [--data-dir DIR] <command>
   ingest            ingest and validate raw self-play logs
   extract           reconstruct decision points from validated logs
   label             label reconstructed decisions with Mortal + book classifiers
+  triggers          report cheap candidate triggers and family precision/recall
   transform         generate label-preserving scenario variants
   pack              assemble, audit and export scenario packs
   audit             audit provenance, licences and pack integrity
   review            work the human review queue
 ```
 
-`label` is implemented (L1 with the L2 agreement/calibration extensions);
-`pack fixture`, `pack report` and `audit` are implemented (P1a). The remaining
+`label` (L1 with the L2 agreement/calibration extensions), `triggers` (S1) and
+`pack fixture`, `pack report` and `audit` (P1a) are implemented. The remaining
 commands still resolve the data root, report the command they would run, and
 exit with code 2, so a script cannot treat a stub as a successful run.
 
@@ -72,7 +77,8 @@ cargo run --features miner --bin mine_replays -- label \
   --weights frontend/public/models/mortal_298k.safetensors \
   [--models OTHER.safetensors,...] [--calibration CAL.json] \
   [--replays DIR] [--family NAME] [--limit N] \
-  [--classifier-version V] [--gamma F] [--pts a,b,c,d] [--json]
+  [--classifier-version V] [--gamma F] [--pts a,b,c,d] \
+  [--trigger book,defensive_riichi,...] [--json]
 ```
 
 `label` walks every `$RIICHI_DATA_DIR/replays/<family>/*.jsonl.gz` replay (or
@@ -87,6 +93,34 @@ is single-model, which is the normal path and is never described as an ensemble
 or a consensus. `--calibration` applies a versioned Q→point calibration (see
 "Q→point calibration" below); it is recomputed from the cached raw Q values, so
 changing it never re-runs the model.
+
+`--trigger` is the S1 cheap prefilter: a decision whose selected trigger does not
+fire is skipped **before** the forward pass. The accepted names are `book`,
+`defensive_riichi`, `offensive_architecture`, `call_kan` and `score_placement`
+(the strategy's short forms `defensive`, `offensive`, `call` and `score` are
+aliases). `close_call` and `blunder` are rejected here: they read a model label,
+so they cannot decide whether a model pass is needed. The trigger reasons are
+written onto an existing `decisions` row even for a filtered-out decision.
+
+```bash
+cargo run --features miner --bin mine_replays -- triggers \
+  [--replays DIR] [--family NAME] [--limit N] [--families LIST] \
+  [--dry-run] [--json]
+```
+
+`triggers` walks the shard, evaluates every model-free trigger plus the
+label-derived triggers when a cached label exists, reads labels from
+`decisions.label_json` then the `model_labels` cache (never a forward pass), and
+prints one row per trigger with fired/measured/target counts, precision/recall
+and the evidence basis. It never inserts a `decisions` row; with no extracted
+row it still reports, and `--dry-run` skips the trigger-column writes. The
+committed acceptance sample is [`selection-trigger-sample.md`](selection-trigger-sample.md).
+
+The trigger codes are `book:<section>` (`book:ch8.4`), `defensive_riichi`,
+`offensive_architecture`, `call_kan`, `score_placement`, `close_call` and
+`blunder`. `decisions.trigger` holds the most specific code and
+`decisions.trigger_detail` holds the full `riichiprac.candidate-trigger` v1 JSON,
+so selection can read every reason and the candidate families.
 
 ## Data root
 
