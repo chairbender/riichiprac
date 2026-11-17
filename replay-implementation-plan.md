@@ -1730,6 +1730,58 @@ licence gates pass; no single family crowding out the others.
 
 **CC slice.** `worktree` / `riichiprac`; the human review itself is `none`.
 
+> **Status (2026-11-17, S2 branch).** Implemented in `src/miner/select/`: `mod.rs`
+> (config, compact `Candidate`, pure `plan_selection`, novelty and the relaxed
+> fill), `gate.rs` (the eight §7.1 gates), `score.rs` (the §7.2 signals and
+> composite), `quota.rs` (largest-remainder family quotas and diversity caps),
+> `dedupe.rs` (exact state hash + literal visible-info fingerprint), `review.rs`
+> (the JSONL item, dispositions and the review runner) and `run.rs` (the
+> three-pass shard runner).
+>
+> `mine_replays select` walks a shard twice — once for the per-family gap
+> sample, once to evaluate triggers, run the gates and keep compact candidates —
+> then re-walks only the replays that hold a selected or held-out decision to
+> build its review report. Labels come from `decisions.label_json` or the L1
+> `model_labels` cache; no forward pass runs. `mine_replays review` resolves the
+> queue from `--queue`, `--pack` or `reviews/LATEST`, re-validates every embedded
+> `riichiprac.scenario-report` through the existing importer, appends
+> accept/reject dispositions and reports what is still pending.
+>
+> Gate 4 is a concrete redaction test: the model-visible hash and the legal set
+> are unchanged when every opponent's concealed hand is removed, and a discard
+> answer is in the actor's own hand. Gate 5 is percentile-first (the L2 family
+> confidence band) with a probability fallback only when the family has fewer
+> than eight samples. Gate 8 checks the emitted pre-answer text for accepted
+> answer and wait tiles; it is a floor, not a substitute for the human review.
+>
+> Quotas are per family plus section/kind/turn caps. A cap is a crowding-out
+> rule, not a short-pack rule: if every remaining candidate sits in a capped-out
+> bucket, the selector relaxes the cap, repairs under-quota families first and
+> records `cap_relaxed`/`relaxed_fill`; a family that still falls short reports
+> `no_candidates`, `shared_with_other_families`, `cap_limited`, `exhausted` or
+> `pack_full` rather than substituting.
+>
+> Corpus sample (`selection-s2-sample.md`, report at
+> `testdata/reports/s2-selection-sample.json`): the S1 sample's two
+> `mortal_mirror` games (1,210 decisions, all labelled, 177 book labels, 944
+> triggered, 1,015 valid candidates, 10 held out); a 100-scenario queue with 0
+> exact or near duplicates, 100/100 embedded reports re-validating, and the
+> family mix `book` 31, `coverage` 15, `mortal_best` 10, `close_call` 10,
+> `mistake` 9, `speed_value` 8, `table_read` 7, `contested` 5, `placement` 5.
+> Gates rejected 3 unresolved book conflicts and 192 unconfident Mortal labels;
+> no source, licence, legality, visible-info or spoiler failure occurred on this
+> corpus. 26 scenarios were selected beyond a diversity cap because the
+> remaining pool had no candidate inside it; the report records that, and the
+> `self_turn` kind (86/100) is the measured mix of this two-game corpus, not a
+> hidden default.
+>
+> Residuals: the human review of the 100-item queue is the remaining acceptance
+> step (the plan's own `none` slice), `mistake`'s one-scenario shortfall on this
+> two-game sample is a corpus-size effect (nine candidates for a quota of ten),
+> and P1b must refuse to pack a queue with a pending item or an invalid embedded
+> report. S3 still owns the close-call,
+> speed-vs-value and blunder *selectors*; S2 only ranks their trigger hits.
+
 ##### S3 — Close-call, speed-vs-value and blunder selectors
 
 **Goal.** Implement the non-book families with concrete, non-guessed logic.

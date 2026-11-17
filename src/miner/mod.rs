@@ -22,6 +22,9 @@
 //! | [`SCENARIO_PACK_MANIFEST_SCHEMA`] | `riichiprac.scenario-pack-manifest` | the pack manifest |
 //! | [`MODEL_LABEL_SCHEMA`] | `riichiprac.model-label` | one Mortal label (L1) |
 //! | [`TRIGGER_SCHEMA`] | `riichiprac.candidate-trigger` | one candidate's trigger report (S1) |
+//! | [`SELECTION_SCHEMA`] | `riichiprac.selection-report` | one selection run's report (S2) |
+//! | [`REVIEW_SCHEMA`] | `riichiprac.review-item` | one review-queue line (S2) |
+//! | [`DISPOSITION_SCHEMA`] | `riichiprac.review-disposition` | one reviewer verdict (S2) |
 //!
 //! The versioning rule is **additive within a version**: new optional fields
 //! use `#[serde(default)]` so older files still parse, and unknown fields are
@@ -42,6 +45,7 @@ pub mod label;
 pub mod licence;
 pub mod pack;
 pub mod provenance;
+pub mod select;
 pub mod source;
 pub mod storage;
 pub mod transform;
@@ -82,6 +86,26 @@ pub use provenance::{
     AgentKind, AgentSpec, CorpusId, GameProvenance, GeneratorInfo, IdError, LogRef, MatchPlan,
     MatchPlanId, ProvenanceError, ReplayId, RuleProfile, SeedSchedule, ValidationStatus,
     ValidationSummary,
+};
+pub use select::dedupe::{
+    DedupeSet, VISIBLE_FINGERPRINT_VERSION, exact_state_hash, visible_info_fingerprint,
+};
+pub use select::gate::{GateFailure, GateInput, GateKind, check_answer_legal, contains_token};
+pub use select::quota::{QuotaCaps, QuotaConfig};
+pub use select::report::{DedupeStats, GateStats, HeldOutStats, SelectionReport};
+pub use select::review::{
+    DISPOSITION_SCHEMA, DispositionVerdict, REVIEW_SCHEMA, REVIEW_VERSION, ReviewDisposition,
+    ReviewItem, ReviewOptions, ReviewQueue, ReviewReport, read_queue, review_queue,
+    write_dispositions,
+};
+pub use select::run::{
+    SelectionOptions, SelectionOutcome, SelectionPaths, latest_pack, run_selection, selection_paths,
+};
+pub use select::score::{ScoreWeights, Signals, percentile_rank};
+pub use select::{
+    BucketQuotaRow, Candidate, DEFAULT_HELD_OUT_SALT, DEFAULT_HELD_OUT_SHARE, DEFAULT_PACK_SIZE,
+    FamilyQuotaRow, SELECTION_SCHEMA, SELECTION_VERSION, SelectionConfig, SelectionError,
+    SelectionPlan, plan_selection,
 };
 pub use source::{SourceError, SourceGate, SourceKind};
 pub use storage::{

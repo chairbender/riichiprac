@@ -200,6 +200,15 @@ impl DataRoot {
         self.root.join("packs")
     }
 
+    /// `$RIICHI_DATA_DIR/reviews`, the selection review queues.
+    ///
+    /// Kept out of `packs/` because a queue is not a pack: it embeds the answer
+    /// for the human reviewer and must never be published.
+    #[must_use]
+    pub fn reviews_dir(&self) -> PathBuf {
+        self.root.join("reviews")
+    }
+
     /// `$RIICHI_DATA_DIR/tmp`, the atomic-write staging directory.
     #[must_use]
     pub fn tmp_dir(&self) -> PathBuf {
@@ -225,6 +234,7 @@ impl DataRoot {
             self.db_dir(),
             self.snapshots_dir(),
             self.packs_dir(),
+            self.reviews_dir(),
             self.tmp_dir(),
             self.logs_dir(),
         ] {
@@ -963,6 +973,7 @@ mod tests {
             root.db_dir(),
             root.snapshots_dir(),
             root.packs_dir(),
+            root.reviews_dir(),
             root.tmp_dir(),
             root.logs_dir(),
         ] {
