@@ -1,0 +1,3277 @@
+{
+  "version": 1,
+  "generatedBy": "tools/render/bake_lying_catches.py",
+  "publishedBy": "tools/render/scripts/commit-lying-catches.mjs",
+  "model": "target-space-3d-catch",
+  "combination": "physical+ao",
+  "coordinateSpace": "The texture is the target shell texture in @1x px: draw it at the target drawX/drawY, after the target body and before its casters, clipped to the full target advance box.",
+  "catches": {
+    "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45": {
+      "id": "lying-0032",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 104,
+          "dy": 45
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0032.png",
+      "textureFile2x": "overlays/lying/2x/lying-0032.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2283,
+      "supportPx": 623,
+      "sha256": {
+        "decodedRgba1x": "9851b0092bcba1de6d94b62d7986b0f27c0b9d78d8d3e2afc234e10e62eed57c",
+        "decodedRgba2x": "f92d4df87681ca70392d503ff47a1b0190fe013578f72704f392518d72737ed6"
+      },
+      "bytes1x": 909,
+      "bytes2x": 2779
+    },
+    "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0037",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": -10
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 104,
+          "dy": 45
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 56
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0037.png",
+      "textureFile2x": "overlays/lying/2x/lying-0037.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6086,
+      "supportPx": 4757,
+      "sha256": {
+        "decodedRgba1x": "2556c7ae6a48e1b6d442affb7ef7540884e9170246c5daca51c3584dbd87a335",
+        "decodedRgba2x": "e44593325934f7497392d8d113c6936c479d82d0fba16c13c412d2455d13ed78"
+      },
+      "bytes1x": 3101,
+      "bytes2x": 10374
+    },
+    "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0033",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,45|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 104,
+          "dy": 45
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 56
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0033.png",
+      "textureFile2x": "overlays/lying/2x/lying-0033.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6267,
+      "supportPx": 4564,
+      "sha256": {
+        "decodedRgba1x": "f690b517dfa32f3512618b7667977453dca27d1e6bf5b5aa733e9373ed7045b3",
+        "decodedRgba2x": "27354695f8d246f86126f59bf9310149c58a8744fa0fa5441f7f88e45e740ac2"
+      },
+      "bytes1x": 2960,
+      "bytes2x": 9514
+    },
+    "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,55": {
+      "id": "lying-0027",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 104,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0027.png",
+      "textureFile2x": "overlays/lying/2x/lying-0027.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1717,
+      "supportPx": 560,
+      "sha256": {
+        "decodedRgba1x": "2052835ca7c8af8075f14bea654f5b76e976b79931e586401606459427aaa990",
+        "decodedRgba2x": "94e7859a8ab0b1d628df54c9dad77240667bb962d68301eaeffbde35cd034ebd"
+      },
+      "bytes1x": 807,
+      "bytes2x": 2407
+    },
+    "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,65": {
+      "id": "lying-0028",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|left:shell_flat_sideways_270@104,65",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "left",
+          "dx": 104,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0028.png",
+      "textureFile2x": "overlays/lying/2x/lying-0028.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1707,
+      "supportPx": 44,
+      "sha256": {
+        "decodedRgba1x": "629c926f295506a8b49b1af95329a8bde3c8280a90cb2b75a45b4ac14be24224",
+        "decodedRgba2x": "96274e379f96cc06c5f6d825e1bc34577b614bcc762383a06034b7ea0e058bf8"
+      },
+      "bytes1x": 344,
+      "bytes2x": 953
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10": {
+      "id": "lying-0035",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": -10
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0035.png",
+      "textureFile2x": "overlays/lying/2x/lying-0035.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.1111,
+      "supportPx": 324,
+      "sha256": {
+        "decodedRgba1x": "98c5312ef086b57c8908eec2f2d12eed9c8ed93476e775e92203346f0ef4cbfa",
+        "decodedRgba2x": "084a816338868ee31f7b4fa471121a834a2939b848a74f19827f9ee7399f148f"
+      },
+      "bytes1x": 655,
+      "bytes2x": 2487
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0029",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,-10|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": -10
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0029.png",
+      "textureFile2x": "overlays/lying/2x/lying-0029.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6893,
+      "supportPx": 4746,
+      "sha256": {
+        "decodedRgba1x": "1c4b18dfcac4bb095165e6baf80e41f33dc669ec2e12b9797c11138e85ac77c0",
+        "decodedRgba2x": "6564ce1b5ebdda12e2f7fec733853feedd42b8cb2d8dcd6df09f0aa725a12a16"
+      },
+      "bytes1x": 2894,
+      "bytes2x": 9356
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0": {
+      "id": "lying-0034",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0034.png",
+      "textureFile2x": "overlays/lying/2x/lying-0034.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2871,
+      "supportPx": 450,
+      "sha256": {
+        "decodedRgba1x": "bdad4b4bd0d849e958e97e10b691dc2e590f317499814a22905fe5ae39938415",
+        "decodedRgba2x": "81ff771eae3b343f568b7fb6de95c85cb90ff08786392405247dedc57e445513"
+      },
+      "bytes1x": 815,
+      "bytes2x": 3440
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0026",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,0|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0026.png",
+      "textureFile2x": "overlays/lying/2x/lying-0026.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7057,
+      "supportPx": 4766,
+      "sha256": {
+        "decodedRgba1x": "e1b5e883b058004689e98aaedafc7796b4d9193976b1b3b966d5230cff8f9c13",
+        "decodedRgba2x": "908e3169d15102bfc014aaafd3fd2360b12461ab3515dd7ffecccc3d905be373"
+      },
+      "bytes1x": 2873,
+      "bytes2x": 9446
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10": {
+      "id": "lying-0036",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": 10
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0036.png",
+      "textureFile2x": "overlays/lying/2x/lying-0036.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3233,
+      "supportPx": 1615,
+      "sha256": {
+        "decodedRgba1x": "ddb12140007bdd7a819896627cc060d25ff1ec761f473b7a661b58f802362f00",
+        "decodedRgba2x": "368cfa75e8fb5e8a1977115a34885e2648b071cac1068990106ef89c21fed303"
+      },
+      "bytes1x": 1957,
+      "bytes2x": 6641
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0031",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,10|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": 10
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0031.png",
+      "textureFile2x": "overlays/lying/2x/lying-0031.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.728,
+      "supportPx": 4763,
+      "sha256": {
+        "decodedRgba1x": "a5c763ad87ade61928d1ee59255bd476fe3a17999632b0a7f2db9c09640dbd37",
+        "decodedRgba2x": "ed29b4fc9d4d896e4dbf5ecdb8f5f2fda49fd43738bb5924fb696a7e4aa37000"
+      },
+      "bytes1x": 2552,
+      "bytes2x": 8332
+    },
+    "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,65|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0030",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|right:shell_flat_sideways_270@-104,65|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        },
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "right",
+          "dx": -104,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0030.png",
+      "textureFile2x": "overlays/lying/2x/lying-0030.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7103,
+      "supportPx": 4547,
+      "sha256": {
+        "decodedRgba1x": "7f4021d4c848a7226be2ac1d448045e3dc3308fd57e0de59720e04c189cfe492",
+        "decodedRgba2x": "d6b852f6d69c6ef1c566300ad7e1e139139d69f6963c5cf202041ad2de0f527a"
+      },
+      "bytes1x": 2698,
+      "bytes2x": 8612
+    },
+    "shell_flat_sideways_270|left|up:shell_flat_sideways_270@0,55": {
+      "id": "lying-0025",
+      "target": "shell_flat_sideways_270",
+      "zoneSide": "left",
+      "signature": "shell_flat_sideways_270|left|up:shell_flat_sideways_270@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways_270",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0025.png",
+      "textureFile2x": "overlays/lying/2x/lying-0025.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7106,
+      "supportPx": 4556,
+      "sha256": {
+        "decodedRgba1x": "cdccd50574b3070bb5ed019a1ab2798f9d1591600160fb0f0bce73b5234a2d84",
+        "decodedRgba2x": "5c4b8a2198b49f6c5765dc5f9646c22ae1807d2448d15a34258db423c9893a85"
+      },
+      "bytes1x": 2704,
+      "bytes2x": 8548
+    },
+    "shell_flat_sideways|right|left:shell_flat_sideways@104,45|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55": {
+      "id": "lying-0015",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|left:shell_flat_sideways@104,45|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "left",
+          "dx": 104,
+          "dy": 45
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 56
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0015.png",
+      "textureFile2x": "overlays/lying/2x/lying-0015.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6257,
+      "supportPx": 4772,
+      "sha256": {
+        "decodedRgba1x": "680e40279f46280675a4485fced69a5655a66f116d9190660c529592fcb84cc3",
+        "decodedRgba2x": "f82c7b9fc6049115be86cfad1e693ee1686ad14d82c3110b896dae1aae08d6b9"
+      },
+      "bytes1x": 3110,
+      "bytes2x": 10444
+    },
+    "shell_flat_sideways|right|left:shell_flat_sideways@104,45|up:shell_flat_sideways@0,55": {
+      "id": "lying-0013",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|left:shell_flat_sideways@104,45|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "left",
+          "dx": 104,
+          "dy": 45
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 56
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0013.png",
+      "textureFile2x": "overlays/lying/2x/lying-0013.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6268,
+      "supportPx": 4563,
+      "sha256": {
+        "decodedRgba1x": "aa68b7e1a5c5f5d9001293a698469c82d25df86e9f07bd7f5c7003f08aa5e889",
+        "decodedRgba2x": "a82671154ed4155a9c083a8daa37f36a89c39308554c1e01d0b69ae5cee2d23b"
+      },
+      "bytes1x": 2952,
+      "bytes2x": 9527
+    },
+    "shell_flat_sideways|right|right:shell_flat_sideways@-104,-10|up:shell_flat_sideways@0,55": {
+      "id": "lying-0011",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,-10|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": -10
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0011.png",
+      "textureFile2x": "overlays/lying/2x/lying-0011.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6894,
+      "supportPx": 4745,
+      "sha256": {
+        "decodedRgba1x": "7ef004128c6b16f510b11299710378eb4cd2d19b7c1a5cb3f003116dbbd64a7a",
+        "decodedRgba2x": "41c7bfe2247ecd64917b0a21af505fe54b8fed4c4e5eedf598b0a1236e1d3f65"
+      },
+      "bytes1x": 2893,
+      "bytes2x": 9361
+    },
+    "shell_flat_sideways|right|right:shell_flat_sideways@-104,0": {
+      "id": "lying-0009",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,0",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0009.png",
+      "textureFile2x": "overlays/lying/2x/lying-0009.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2871,
+      "supportPx": 450,
+      "sha256": {
+        "decodedRgba1x": "bdad4b4bd0d849e958e97e10b691dc2e590f317499814a22905fe5ae39938415",
+        "decodedRgba2x": "721f521a879da70c5ef45af6b8b57bc0f00bd04df0f91eea81926a6595b85c3a"
+      },
+      "bytes1x": 815,
+      "bytes2x": 3440
+    },
+    "shell_flat_sideways|right|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55": {
+      "id": "lying-0010",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,0|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0010.png",
+      "textureFile2x": "overlays/lying/2x/lying-0010.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7058,
+      "supportPx": 4765,
+      "sha256": {
+        "decodedRgba1x": "ed542f95ccbd72a1255210e12ec83f334ad3dd7eb2a7469fde595f37f8ee0ae7",
+        "decodedRgba2x": "52e513602a6a58e150f72178f994e19d43776aac110aa0df911ef3240adc29d0"
+      },
+      "bytes1x": 2871,
+      "bytes2x": 9452
+    },
+    "shell_flat_sideways|right|right:shell_flat_sideways@-104,10|up:shell_flat_sideways@0,55": {
+      "id": "lying-0014",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,10|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": 10
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0014.png",
+      "textureFile2x": "overlays/lying/2x/lying-0014.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7283,
+      "supportPx": 4761,
+      "sha256": {
+        "decodedRgba1x": "900e2657818c0a2ee7f43fd33e4bc2827727fd4be4dd8e7d2448a43f60efbd74",
+        "decodedRgba2x": "772abb0e9e4d00a0bd20e24685815d0cd1cc7fcae657053b6f49351838507467"
+      },
+      "bytes1x": 2548,
+      "bytes2x": 8331
+    },
+    "shell_flat_sideways|right|right:shell_flat_sideways@-104,55|up:shell_flat_sideways@0,55": {
+      "id": "lying-0012",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|right:shell_flat_sideways@-104,55|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        },
+        {
+          "shell": "shell_flat_sideways",
+          "side": "right",
+          "dx": -104,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0012.png",
+      "textureFile2x": "overlays/lying/2x/lying-0012.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7335,
+      "supportPx": 4563,
+      "sha256": {
+        "decodedRgba1x": "9000a681c0f7fb3cb448e4277d75cf1c657ad656573bc83fac0e7f02ae0223d0",
+        "decodedRgba2x": "3c854092362999413ebba3835807de61a90fe64ca743ced1412890ae46876b01"
+      },
+      "bytes1x": 2714,
+      "bytes2x": 8685
+    },
+    "shell_flat_sideways|right|up:shell_flat_sideways@0,55": {
+      "id": "lying-0008",
+      "target": "shell_flat_sideways",
+      "zoneSide": "right",
+      "signature": "shell_flat_sideways|right|up:shell_flat_sideways@0,55",
+      "casters": [
+        {
+          "shell": "shell_flat_sideways",
+          "side": "up",
+          "dx": 0,
+          "dy": 55
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0008.png",
+      "textureFile2x": "overlays/lying/2x/lying-0008.png",
+      "texWidth": 110,
+      "texHeight": 99,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7108,
+      "supportPx": 4555,
+      "sha256": {
+        "decodedRgba1x": "a1ab8f10c0852848c465e84787ea975b6a8c0138e9f5049e4c126528a7a979a7",
+        "decodedRgba2x": "33398d0fdb022bdf324ca1e46a23dcfcc007fce2ec83a696b21a04b52fe7859e"
+      },
+      "bytes1x": 2697,
+      "bytes2x": 8548
+    },
+    "shell_flat_upright_180|top|left:shell_flat_upright_180@35,65|up:shell_flat_upright_180@35,65": {
+      "id": "lying-0024",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|left:shell_flat_upright_180@35,65|up:shell_flat_upright_180@35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "left",
+          "dx": 35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0024.png",
+      "textureFile2x": "overlays/lying/2x/lying-0024.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.6642,
+      "supportPx": 1832,
+      "sha256": {
+        "decodedRgba1x": "eee59084ffe7c0c12d8e6624af5e7c471284b8214d35813edd6e6e80ff313c95",
+        "decodedRgba2x": "91f52743b4ae5d8a80d676c71b501220ec35621d4e2f39d9bad892173c8b2f86"
+      },
+      "bytes1x": 1038,
+      "bytes2x": 2979
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@-35,65": {
+      "id": "lying-0020",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@-35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": -35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0020.png",
+      "textureFile2x": "overlays/lying/2x/lying-0020.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5955,
+      "supportPx": 2520,
+      "sha256": {
+        "decodedRgba1x": "e7578d339002a424e8a664cbeadbab3784b818ed228f5ed196daeaeda0546ff6",
+        "decodedRgba2x": "882b584d9c4670f0dd88773b0743a660a80c247d314746f976f6abadb07b7b22"
+      },
+      "bytes1x": 1737,
+      "bytes2x": 5104
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@35,65": {
+      "id": "lying-0021",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-35,65|up:shell_flat_upright_180@35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -34,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0021.png",
+      "textureFile2x": "overlays/lying/2x/lying-0021.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7935,
+      "supportPx": 2797,
+      "sha256": {
+        "decodedRgba1x": "03d44c606581e741c2817b8d92e70371aae957a4beb55dc7f3dc2d20446f87d2",
+        "decodedRgba2x": "8baefbae95b3639f00effffdd8febdc3e4cb0f6a26027d2de4c8fd1b6fcb3f4f"
+      },
+      "bytes1x": 1276,
+      "bytes2x": 3589
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0": {
+      "id": "lying-0016",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0016.png",
+      "textureFile2x": "overlays/lying/2x/lying-0016.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2536,
+      "supportPx": 494,
+      "sha256": {
+        "decodedRgba1x": "c352b34e7d2d161ec0705d9cc95f6ad5064f1cf1b38f5f513b9937afcdd48afc",
+        "decodedRgba2x": "7b91bec0600f52f2498ae8de9dbcc1ef7b4ea1ba8321025b5a3d5ff56e075f93"
+      },
+      "bytes1x": 867,
+      "bytes2x": 2004
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65": {
+      "id": "lying-0022",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@-35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": -35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0022.png",
+      "textureFile2x": "overlays/lying/2x/lying-0022.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5313,
+      "supportPx": 2780,
+      "sha256": {
+        "decodedRgba1x": "5ac664db8d15149f1bac0cb67ab210c5657650d15aede5ca7552a969a0d7a680",
+        "decodedRgba2x": "da73e9447bb9c43ac00b937b81a50e62b7717602c92afaeb3b3a42c20c1f1fd2"
+      },
+      "bytes1x": 2184,
+      "bytes2x": 6298
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@0,65": {
+      "id": "lying-0019",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0019.png",
+      "textureFile2x": "overlays/lying/2x/lying-0019.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7243,
+      "supportPx": 3070,
+      "sha256": {
+        "decodedRgba1x": "627f83e0358773c464821d47fdf0bba7713bd897970af6e6ff1a06a5adfcb410",
+        "decodedRgba2x": "83626e52a4fb7acc737fe15eb1a10e95156d00cafaf89b5cd527622504b24703"
+      },
+      "bytes1x": 1686,
+      "bytes2x": 5045
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@35,65": {
+      "id": "lying-0023",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,0|up:shell_flat_upright_180@35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0023.png",
+      "textureFile2x": "overlays/lying/2x/lying-0023.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5584,
+      "supportPx": 2167,
+      "sha256": {
+        "decodedRgba1x": "8f707f43f0eb19a0d0a1eac4ef7d4aed23631c37886a1829328dc01fc709cc67",
+        "decodedRgba2x": "31417d3947896730d6a014caad78381a1c34bbba97100ff6ab98833dcdb594e6"
+      },
+      "bytes1x": 1763,
+      "bytes2x": 5141
+    },
+    "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,65|up:shell_flat_upright_180@0,65": {
+      "id": "lying-0017",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|right:shell_flat_upright_180@-69,65|up:shell_flat_upright_180@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "right",
+          "dx": -69,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0017.png",
+      "textureFile2x": "overlays/lying/2x/lying-0017.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7653,
+      "supportPx": 2823,
+      "sha256": {
+        "decodedRgba1x": "6f05c8fa3fbc438d856760779a0b336a389751cbca834f96dbfd4656426e2f92",
+        "decodedRgba2x": "13a19c04a83a491b7d8dca39cb2fe0ddd0ba5a03e34674c5f1bd123b35b96a93"
+      },
+      "bytes1x": 1485,
+      "bytes2x": 4187
+    },
+    "shell_flat_upright_180|top|up:shell_flat_upright_180@0,65": {
+      "id": "lying-0018",
+      "target": "shell_flat_upright_180",
+      "zoneSide": "top",
+      "signature": "shell_flat_upright_180|top|up:shell_flat_upright_180@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright_180",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0018.png",
+      "textureFile2x": "overlays/lying/2x/lying-0018.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7408,
+      "supportPx": 2810,
+      "sha256": {
+        "decodedRgba1x": "8d634c8cb9dcb16f9fc2c2ebfec82b433fb913f82697ca6c71a7167db51f65ff",
+        "decodedRgba2x": "1f8742eeadc19f4d944921e1b406527a486284b36e7da2cae368c42ecda8cb56"
+      },
+      "bytes1x": 1467,
+      "bytes2x": 4251
+    },
+    "shell_flat_upright|bottom|left:shell_flat_upright@35,65|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65": {
+      "id": "lying-0006",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|left:shell_flat_upright@35,65|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "left",
+          "dx": 35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0006.png",
+      "textureFile2x": "overlays/lying/2x/lying-0006.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5985,
+      "supportPx": 2234,
+      "sha256": {
+        "decodedRgba1x": "21a16f645bc6700db44b83dab5d5665061feea9adb21565c536cdd8cb0459861",
+        "decodedRgba2x": "747809a27bca0ca0fb3fcea696b6014cba861dba44c58deb5afa9968d91b4c87"
+      },
+      "bytes1x": 1461,
+      "bytes2x": 4228
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-35,65|up:shell_flat_upright@-35,65": {
+      "id": "lying-0004",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-35,65|up:shell_flat_upright@-35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": -35,
+          "dy": 65
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0004.png",
+      "textureFile2x": "overlays/lying/2x/lying-0004.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5956,
+      "supportPx": 2520,
+      "sha256": {
+        "decodedRgba1x": "413eaf6c0e3f592394caea3ffe8c5de468d0c1f6f7923e054fd2c5940b40ebab",
+        "decodedRgba2x": "20f9584c6a8c081e0d982e6bd8b2a15b945cd6699dfb87c1fa5de925f09b4316"
+      },
+      "bytes1x": 1733,
+      "bytes2x": 5116
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0": {
+      "id": "lying-0001",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0001.png",
+      "textureFile2x": "overlays/lying/2x/lying-0001.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2531,
+      "supportPx": 495,
+      "sha256": {
+        "decodedRgba1x": "6c238651073c959f897fffb456e7c57cee323db94ffed5cde34c2068eba5acb2",
+        "decodedRgba2x": "750713dac1096d26d94f350ab94f729e5c03f93afc08c996abbb05d17f64d3ae"
+      },
+      "bytes1x": 868,
+      "bytes2x": 1995
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@-35,65": {
+      "id": "lying-0005",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@-35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": -35,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0005.png",
+      "textureFile2x": "overlays/lying/2x/lying-0005.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5313,
+      "supportPx": 2780,
+      "sha256": {
+        "decodedRgba1x": "57b852c68d50ff1650cc9637a244ce8d642c019ca9ed85d16e24ce80073db604",
+        "decodedRgba2x": "1592d35e4fee7be97eb070f4a759f977b6a898a467d4e04050efc258db5ac9a8"
+      },
+      "bytes1x": 2191,
+      "bytes2x": 6287
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@0,65": {
+      "id": "lying-0003",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0003.png",
+      "textureFile2x": "overlays/lying/2x/lying-0003.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7112,
+      "supportPx": 3078,
+      "sha256": {
+        "decodedRgba1x": "d979e9e75acd24da3868b0190928db0dd1f88cb024a5afb1bc65e25ed32515d4",
+        "decodedRgba2x": "08647ac62cb9447a319858a9d4272d70e0157d0fda1e512f6704ff14ef0ac6db"
+      },
+      "bytes1x": 1702,
+      "bytes2x": 4935
+    },
+    "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65": {
+      "id": "lying-0007",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|right:shell_flat_upright@-69,0|up:shell_flat_upright@35,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 34,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0007.png",
+      "textureFile2x": "overlays/lying/2x/lying-0007.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5462,
+      "supportPx": 2217,
+      "sha256": {
+        "decodedRgba1x": "749ce1af46e41ed9b0dfe08944e95ed4aa36b60cc4ed518438274ace2caac820",
+        "decodedRgba2x": "c6c76b00329c2ed0c94296a5e756dd3de1029b56a586a25e78071b1b3613f99a"
+      },
+      "bytes1x": 1807,
+      "bytes2x": 5039
+    },
+    "shell_flat_upright|bottom|up:shell_flat_upright@0,65": {
+      "id": "lying-0002",
+      "target": "shell_flat_upright",
+      "zoneSide": "bottom",
+      "signature": "shell_flat_upright|bottom|up:shell_flat_upright@0,65",
+      "casters": [
+        {
+          "shell": "shell_flat_upright",
+          "side": "up",
+          "dx": 0,
+          "dy": 65
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0002.png",
+      "textureFile2x": "overlays/lying/2x/lying-0002.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7408,
+      "supportPx": 2810,
+      "sha256": {
+        "decodedRgba1x": "8d634c8cb9dcb16f9fc2c2ebfec82b433fb913f82697ca6c71a7167db51f65ff",
+        "decodedRgba2x": "bdfc67bce402362becea4a504b9ea502ed0d941bd6ff43a09cced9fcda60b1c8"
+      },
+      "bytes1x": 1467,
+      "bytes2x": 4247
+    },
+    "shell_wall_back_slot_00|tier0": {
+      "id": "lying-0071",
+      "target": "shell_wall_back_slot_00",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_00|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_01",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_00",
+          "side": "down",
+          "dx": -3,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0071.png",
+      "textureFile2x": "overlays/lying/2x/lying-0071.png",
+      "texWidth": 82,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9264,
+      "supportPx": 5256,
+      "sha256": {
+        "decodedRgba1x": "d965d1d713e7125ea3c828fb2b12f200c37f24cfb412bd25032be4b36c63c5d4",
+        "decodedRgba2x": "55953964c8cffe0b4d99cf6bc2632001bea27fdc9d821f20fab0e5f4930c2376"
+      },
+      "bytes1x": 1445,
+      "bytes2x": 3930
+    },
+    "shell_wall_back_slot_00|tier1": {
+      "id": "lying-0088",
+      "target": "shell_wall_back_slot_00",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_00|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_01",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0088.png",
+      "textureFile2x": "overlays/lying/2x/lying-0088.png",
+      "texWidth": 82,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4802,
+      "supportPx": 801,
+      "sha256": {
+        "decodedRgba1x": "a0452340ec1c2b953ac3bdf321936320d3b2c2911bcc647d597e2cdf61450828",
+        "decodedRgba2x": "66febea644b902fc5059fd814643d7268e635724ea9c543df82a6217e9c15078"
+      },
+      "bytes1x": 1090,
+      "bytes2x": 3119
+    },
+    "shell_wall_back_slot_01|tier0": {
+      "id": "lying-0073",
+      "target": "shell_wall_back_slot_01",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_01|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_02",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_01",
+          "side": "down",
+          "dx": -3,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0073.png",
+      "textureFile2x": "overlays/lying/2x/lying-0073.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9293,
+      "supportPx": 5208,
+      "sha256": {
+        "decodedRgba1x": "fd7574bf790951085f7f138e793e8ba6e2a7a3f6d226698e35a3e588a0460f2f",
+        "decodedRgba2x": "ffc2d3b674ca417cbef1ee6c12f739d16eba01b91df5080661b70b65c9cf1ad8"
+      },
+      "bytes1x": 1396,
+      "bytes2x": 3916
+    },
+    "shell_wall_back_slot_01|tier1": {
+      "id": "lying-0090",
+      "target": "shell_wall_back_slot_01",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_01|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_02",
+          "side": "left",
+          "dx": 71,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0090.png",
+      "textureFile2x": "overlays/lying/2x/lying-0090.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4422,
+      "supportPx": 841,
+      "sha256": {
+        "decodedRgba1x": "600775bd5ad02128905bbedaca8ff11fb044d3c75befaf34f143a6c1602ddf89",
+        "decodedRgba2x": "ebbc27d1d6c080b5f3f6d7763e21b687bd5dcd25380df832e0d1e31fabf64d51"
+      },
+      "bytes1x": 1467,
+      "bytes2x": 4007
+    },
+    "shell_wall_back_slot_02|tier0": {
+      "id": "lying-0075",
+      "target": "shell_wall_back_slot_02",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_02|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_03",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_02",
+          "side": "down",
+          "dx": -2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0075.png",
+      "textureFile2x": "overlays/lying/2x/lying-0075.png",
+      "texWidth": 80,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9243,
+      "supportPx": 5164,
+      "sha256": {
+        "decodedRgba1x": "37f473bdd4857c35c37143043681a72eee04756cb6d835efae9570b5f2b508d5",
+        "decodedRgba2x": "5fc9d8bd2c19ce9ade5783b0b884f86440e4a4a7465a499af26caaf1df3108c2"
+      },
+      "bytes1x": 1431,
+      "bytes2x": 3904
+    },
+    "shell_wall_back_slot_02|tier1": {
+      "id": "lying-0092",
+      "target": "shell_wall_back_slot_02",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_02|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_03",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0092.png",
+      "textureFile2x": "overlays/lying/2x/lying-0092.png",
+      "texWidth": 80,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4396,
+      "supportPx": 726,
+      "sha256": {
+        "decodedRgba1x": "8fc7e8d2966fb5090596afcd4213ca18cfeabb464b11c8573a49a45acb4abd57",
+        "decodedRgba2x": "08e7e53b9ec4a12908fefa8e3359f67db9c1b1123047e4acb8cbccf8970db7a5"
+      },
+      "bytes1x": 1088,
+      "bytes2x": 3005
+    },
+    "shell_wall_back_slot_03|tier0": {
+      "id": "lying-0077",
+      "target": "shell_wall_back_slot_03",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_03|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_04",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_03",
+          "side": "down",
+          "dx": -2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0077.png",
+      "textureFile2x": "overlays/lying/2x/lying-0077.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9251,
+      "supportPx": 5144,
+      "sha256": {
+        "decodedRgba1x": "b620380e6670bd1474b41c88a0b297a51fcee52f8e22c2445c55759f7f0f71ab",
+        "decodedRgba2x": "068ae1b4703014b1e87c50ccdcdc2b1cbdc523d7e2451146d363edeb19b8b704"
+      },
+      "bytes1x": 1414,
+      "bytes2x": 3824
+    },
+    "shell_wall_back_slot_03|tier1": {
+      "id": "lying-0094",
+      "target": "shell_wall_back_slot_03",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_03|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_04",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0094.png",
+      "textureFile2x": "overlays/lying/2x/lying-0094.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4151,
+      "supportPx": 664,
+      "sha256": {
+        "decodedRgba1x": "4bbd5e5a62c6b948ed42e13325a25e44426fb1a9a2ac32e9cd2f87c5a876b2cb",
+        "decodedRgba2x": "903840bd3f60e02f5befd69b5843c0e92e301dc769a62dc2c1de05cf6294b5f5"
+      },
+      "bytes1x": 1038,
+      "bytes2x": 2968
+    },
+    "shell_wall_back_slot_04|tier0": {
+      "id": "lying-0079",
+      "target": "shell_wall_back_slot_04",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_04|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_05",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_04",
+          "side": "down",
+          "dx": -2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0079.png",
+      "textureFile2x": "overlays/lying/2x/lying-0079.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.924,
+      "supportPx": 5121,
+      "sha256": {
+        "decodedRgba1x": "5d1d205c0481f030576a542dcaefa0314c62ab190bc146234468b2319ca8dca8",
+        "decodedRgba2x": "c46e3e2cf8ba9e93061fa7226397a17e50bee47637c25bd7138059b5b73168f1"
+      },
+      "bytes1x": 1446,
+      "bytes2x": 3812
+    },
+    "shell_wall_back_slot_04|tier1": {
+      "id": "lying-0096",
+      "target": "shell_wall_back_slot_04",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_04|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_05",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0096.png",
+      "textureFile2x": "overlays/lying/2x/lying-0096.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3759,
+      "supportPx": 628,
+      "sha256": {
+        "decodedRgba1x": "235bcdb5efa746cadba6d557a4037b3c044a9c514d9399ffe305990447dfeec0",
+        "decodedRgba2x": "1230d998b97fdf3e6827f6e18714a25479d6a0f070bdbd68eb3354921a939454"
+      },
+      "bytes1x": 1032,
+      "bytes2x": 3024
+    },
+    "shell_wall_back_slot_05|tier0": {
+      "id": "lying-0081",
+      "target": "shell_wall_back_slot_05",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_05|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_06",
+          "side": "left",
+          "dx": 69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_05",
+          "side": "down",
+          "dx": -2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0081.png",
+      "textureFile2x": "overlays/lying/2x/lying-0081.png",
+      "texWidth": 78,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9252,
+      "supportPx": 5072,
+      "sha256": {
+        "decodedRgba1x": "eb240df44c0d90b689ea27de68186ca14a112af19efad2baf2f2a2ffb0ac615e",
+        "decodedRgba2x": "8db30c78ac366f5d4a04e9405b9e71148b03024a107fa89941b5c2f5345cb78e"
+      },
+      "bytes1x": 1352,
+      "bytes2x": 3711
+    },
+    "shell_wall_back_slot_05|tier1": {
+      "id": "lying-0098",
+      "target": "shell_wall_back_slot_05",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_05|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_06",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0098.png",
+      "textureFile2x": "overlays/lying/2x/lying-0098.png",
+      "texWidth": 78,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3396,
+      "supportPx": 611,
+      "sha256": {
+        "decodedRgba1x": "6b6e9e77a648b98aab32d6ce3b6c0127f2105be24aea9448bd4a09752a98f94f",
+        "decodedRgba2x": "9f1dbaddd733bc41d95cd9b480266ccb36ed8f3062b09eaae75bb65d11e18c0b"
+      },
+      "bytes1x": 1083,
+      "bytes2x": 2860
+    },
+    "shell_wall_back_slot_06|tier0": {
+      "id": "lying-0083",
+      "target": "shell_wall_back_slot_06",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_06|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_07",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_06",
+          "side": "down",
+          "dx": -1,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0083.png",
+      "textureFile2x": "overlays/lying/2x/lying-0083.png",
+      "texWidth": 78,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9251,
+      "supportPx": 5029,
+      "sha256": {
+        "decodedRgba1x": "3b8da3a75a6ceb82b7781bdaa4fa7c271a73be564dc0574ca8d8225462ed190e",
+        "decodedRgba2x": "8cd87250d1559b3ec5c0aec9be3bbe3a32d21af0dc6a5673ca2a4be4b4fd055d"
+      },
+      "bytes1x": 1349,
+      "bytes2x": 3624
+    },
+    "shell_wall_back_slot_06|tier1": {
+      "id": "lying-0100",
+      "target": "shell_wall_back_slot_06",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_06|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_07",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0100.png",
+      "textureFile2x": "overlays/lying/2x/lying-0100.png",
+      "texWidth": 78,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.334,
+      "supportPx": 505,
+      "sha256": {
+        "decodedRgba1x": "c898c7d4fdac29c07662009def2852168065004026104307d7f055da3f805646",
+        "decodedRgba2x": "8b27f308f7a53bcb5d0e650ce0d89c90dfdd8700bd9b8fefdbc88395f2eb64ac"
+      },
+      "bytes1x": 833,
+      "bytes2x": 3096
+    },
+    "shell_wall_back_slot_07|tier0": {
+      "id": "lying-0085",
+      "target": "shell_wall_back_slot_07",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_07|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_08",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_07",
+          "side": "down",
+          "dx": -1,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0085.png",
+      "textureFile2x": "overlays/lying/2x/lying-0085.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.924,
+      "supportPx": 5029,
+      "sha256": {
+        "decodedRgba1x": "ab75d46f53119a893919682a4f977f932e3f1d809cafa1e87d7b07ff8772c3a7",
+        "decodedRgba2x": "64c862ad9229e6c0fd9f585ff4bc810b58a2e116c0d908da140ab436cd19ded3"
+      },
+      "bytes1x": 1287,
+      "bytes2x": 3593
+    },
+    "shell_wall_back_slot_07|tier1": {
+      "id": "lying-0102",
+      "target": "shell_wall_back_slot_07",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_07|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_08",
+          "side": "left",
+          "dx": 71,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0102.png",
+      "textureFile2x": "overlays/lying/2x/lying-0102.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2529,
+      "supportPx": 545,
+      "sha256": {
+        "decodedRgba1x": "c5f777b4c71640339c9d0f70b03cfce90e0fb77f7a9dafc4b2b0b105ae840d04",
+        "decodedRgba2x": "032607cb4d12358fa17e77887a84d19728dd581681bbd01e34a46e101bb108d8"
+      },
+      "bytes1x": 877,
+      "bytes2x": 3069
+    },
+    "shell_wall_back_slot_08|tier0": {
+      "id": "lying-0087",
+      "target": "shell_wall_back_slot_08",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_08|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_08",
+          "side": "down",
+          "dx": 0,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0087.png",
+      "textureFile2x": "overlays/lying/2x/lying-0087.png",
+      "texWidth": 76,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9136,
+      "supportPx": 4927,
+      "sha256": {
+        "decodedRgba1x": "16bdfdd95df6438f896c54b7876a68da14b6f944bed8b9f07460fe8557368b8d",
+        "decodedRgba2x": "fa84b50a117b0f72e2a8c0886226e3d7953ea57f554a5ff9fd446ff9c1c68009"
+      },
+      "bytes1x": 1352,
+      "bytes2x": 3588
+    },
+    "shell_wall_back_slot_09|tier0": {
+      "id": "lying-0086",
+      "target": "shell_wall_back_slot_09",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_09|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_08",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_09",
+          "side": "down",
+          "dx": 0,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0086.png",
+      "textureFile2x": "overlays/lying/2x/lying-0086.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.924,
+      "supportPx": 5068,
+      "sha256": {
+        "decodedRgba1x": "a0aa7956b279c836f87fe31491d1be4fce78164ca931c996581ae4931369f75e",
+        "decodedRgba2x": "bf57787f70345f4b0511209605536e02f758f818b2083fa3a3da1ee1e794072f"
+      },
+      "bytes1x": 1513,
+      "bytes2x": 4205
+    },
+    "shell_wall_back_slot_09|tier1": {
+      "id": "lying-0103",
+      "target": "shell_wall_back_slot_09",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_09|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_08",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0103.png",
+      "textureFile2x": "overlays/lying/2x/lying-0103.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3491,
+      "supportPx": 556,
+      "sha256": {
+        "decodedRgba1x": "0fde36286cc4fc5a8a0d9dc44a9fab0e62e8bdb8601d3dc89c0d3df019679d75",
+        "decodedRgba2x": "e48bc4a93a062dd632cbb5316ca74da24ff34c3c651a8664f136fda25f856966"
+      },
+      "bytes1x": 1033,
+      "bytes2x": 2891
+    },
+    "shell_wall_back_slot_10|tier0": {
+      "id": "lying-0084",
+      "target": "shell_wall_back_slot_10",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_10|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_09",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_10",
+          "side": "down",
+          "dx": 1,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0084.png",
+      "textureFile2x": "overlays/lying/2x/lying-0084.png",
+      "texWidth": 78,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9224,
+      "supportPx": 5067,
+      "sha256": {
+        "decodedRgba1x": "368aee5f360ba133b06b79cc3956252522946c1dbce3b3b35faaaf986dd5a166",
+        "decodedRgba2x": "e243c87a4d4a1de95283f1d557172de51a337e8e8bd9f87dc41eb741e99305d0"
+      },
+      "bytes1x": 1629,
+      "bytes2x": 4395
+    },
+    "shell_wall_back_slot_10|tier1": {
+      "id": "lying-0101",
+      "target": "shell_wall_back_slot_10",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_10|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_09",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0101.png",
+      "textureFile2x": "overlays/lying/2x/lying-0101.png",
+      "texWidth": 78,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3186,
+      "supportPx": 585,
+      "sha256": {
+        "decodedRgba1x": "f4e940c9515643f148c5fda2219e0ed1d52e0d1db7e3fe4c313f2924c4d4a582",
+        "decodedRgba2x": "f13c8dda892d00bd4a47a11156804e2caf0e7bc4746b743d984ef0a7a06c75ba"
+      },
+      "bytes1x": 1203,
+      "bytes2x": 3539
+    },
+    "shell_wall_back_slot_11|tier0": {
+      "id": "lying-0082",
+      "target": "shell_wall_back_slot_11",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_11|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_10",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_11",
+          "side": "down",
+          "dx": 1,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0082.png",
+      "textureFile2x": "overlays/lying/2x/lying-0082.png",
+      "texWidth": 78,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.929,
+      "supportPx": 5124,
+      "sha256": {
+        "decodedRgba1x": "6648330c8b5ad507bef8820a18940b2d5b1bc8c5b9a3d7e6c8c8057f0ceeb5c4",
+        "decodedRgba2x": "757ba2ba448e8a630c80f2baba52f5e331647b6a286494936414914a99d32c7b"
+      },
+      "bytes1x": 1632,
+      "bytes2x": 4345
+    },
+    "shell_wall_back_slot_11|tier1": {
+      "id": "lying-0099",
+      "target": "shell_wall_back_slot_11",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_11|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_10",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0099.png",
+      "textureFile2x": "overlays/lying/2x/lying-0099.png",
+      "texWidth": 78,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4141,
+      "supportPx": 648,
+      "sha256": {
+        "decodedRgba1x": "6d89800ab80155fc093143803cb52f4c1b734ce496f30bb8e9e44527c83864bc",
+        "decodedRgba2x": "17c96025cd37f8f70ba6e10bcecf37b39ab5014a81fc8c928a538ca8a9882445"
+      },
+      "bytes1x": 1197,
+      "bytes2x": 3416
+    },
+    "shell_wall_back_slot_12|tier0": {
+      "id": "lying-0080",
+      "target": "shell_wall_back_slot_12",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_12|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_11",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_12",
+          "side": "down",
+          "dx": 1,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0080.png",
+      "textureFile2x": "overlays/lying/2x/lying-0080.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9326,
+      "supportPx": 5151,
+      "sha256": {
+        "decodedRgba1x": "0f71376c3c977a7078d19309da9071509cd975e1d9aeaa1d03a316780f1deb99",
+        "decodedRgba2x": "976489572f01814847ad174a02d7a98a7f1fbb85954d1d1e0e06ba3a6d287003"
+      },
+      "bytes1x": 1630,
+      "bytes2x": 4577
+    },
+    "shell_wall_back_slot_12|tier1": {
+      "id": "lying-0097",
+      "target": "shell_wall_back_slot_12",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_12|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_11",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0097.png",
+      "textureFile2x": "overlays/lying/2x/lying-0097.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4297,
+      "supportPx": 667,
+      "sha256": {
+        "decodedRgba1x": "4316f62be1f25c4b2c2a81c189ae9714bed86d619658c67cbcdd3311c1db8478",
+        "decodedRgba2x": "9eebbec77fea209ca86caacc5404d5c7149bd61d0bfdd869d3913f99a5fcd12c"
+      },
+      "bytes1x": 1240,
+      "bytes2x": 3555
+    },
+    "shell_wall_back_slot_13|tier0": {
+      "id": "lying-0078",
+      "target": "shell_wall_back_slot_13",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_13|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_12",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_13",
+          "side": "down",
+          "dx": 2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0078.png",
+      "textureFile2x": "overlays/lying/2x/lying-0078.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9213,
+      "supportPx": 5188,
+      "sha256": {
+        "decodedRgba1x": "97743e170d15cc404a3b869477a3582a179036343d57814b9927c4103a561f0f",
+        "decodedRgba2x": "5ade3f4a3e08c7ef316344955c8759222bef77e008029e8fdd33d6aa5d1fd067"
+      },
+      "bytes1x": 1781,
+      "bytes2x": 4923
+    },
+    "shell_wall_back_slot_13|tier1": {
+      "id": "lying-0095",
+      "target": "shell_wall_back_slot_13",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_13|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_12",
+          "side": "right",
+          "dx": -71,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0095.png",
+      "textureFile2x": "overlays/lying/2x/lying-0095.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4195,
+      "supportPx": 738,
+      "sha256": {
+        "decodedRgba1x": "4b1e9cb0f88590c7fc9a61468599f651049e62a2cb6cb7533b00a118551e2e09",
+        "decodedRgba2x": "d8886abe2edb1c9a6fbfb97fe491c761e17d30fbdcac5719e9a2194f1c368e9e"
+      },
+      "bytes1x": 1465,
+      "bytes2x": 4265
+    },
+    "shell_wall_back_slot_14|tier0": {
+      "id": "lying-0076",
+      "target": "shell_wall_back_slot_14",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_14|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_13",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_14",
+          "side": "down",
+          "dx": 2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0076.png",
+      "textureFile2x": "overlays/lying/2x/lying-0076.png",
+      "texWidth": 80,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9228,
+      "supportPx": 5236,
+      "sha256": {
+        "decodedRgba1x": "f21a26b8b00dc2ed212c73998fa2f462b3ee63ee5bacca639de618be306aa018",
+        "decodedRgba2x": "505769c55307fb6fd8ef94db1791aa2cd959903566ce0cc3ee591ae54035d0f5"
+      },
+      "bytes1x": 1773,
+      "bytes2x": 4822
+    },
+    "shell_wall_back_slot_14|tier1": {
+      "id": "lying-0093",
+      "target": "shell_wall_back_slot_14",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_14|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_13",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0093.png",
+      "textureFile2x": "overlays/lying/2x/lying-0093.png",
+      "texWidth": 80,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4794,
+      "supportPx": 728,
+      "sha256": {
+        "decodedRgba1x": "91109e68e2c5a1ad58b104d465f793b8c58f24e1b47bc9b6395e5643227d4597",
+        "decodedRgba2x": "e35b7e5114b2b9b87687814530b117c7ced02dab6b1d3fff13533b9706778c1d"
+      },
+      "bytes1x": 1233,
+      "bytes2x": 3594
+    },
+    "shell_wall_back_slot_15|tier0": {
+      "id": "lying-0074",
+      "target": "shell_wall_back_slot_15",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_15|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_14",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_15",
+          "side": "down",
+          "dx": 2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0074.png",
+      "textureFile2x": "overlays/lying/2x/lying-0074.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9308,
+      "supportPx": 5265,
+      "sha256": {
+        "decodedRgba1x": "f8f210f4aa5ad059f563c578fc120495ee264bfef0424a62932810d4010039ba",
+        "decodedRgba2x": "0ae7024c56e0c0311c41a344e63bb0c5a58ad53a0c045b6d850e33523096c3cf"
+      },
+      "bytes1x": 1732,
+      "bytes2x": 4826
+    },
+    "shell_wall_back_slot_15|tier1": {
+      "id": "lying-0091",
+      "target": "shell_wall_back_slot_15",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_15|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_14",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0091.png",
+      "textureFile2x": "overlays/lying/2x/lying-0091.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4969,
+      "supportPx": 790,
+      "sha256": {
+        "decodedRgba1x": "f5a3ad92793ef316b7dcd9e2ec0b451b856586d4feab3f3e145305bcd626fe4f",
+        "decodedRgba2x": "182b49131c968307c1e7f41baf7e5eda2e405e42e5c9405b1eede05ebf17163d"
+      },
+      "bytes1x": 1261,
+      "bytes2x": 3767
+    },
+    "shell_wall_back_slot_16|tier0": {
+      "id": "lying-0072",
+      "target": "shell_wall_back_slot_16",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_16|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_15",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_back_slot_16",
+          "side": "down",
+          "dx": 3,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0072.png",
+      "textureFile2x": "overlays/lying/2x/lying-0072.png",
+      "texWidth": 82,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9215,
+      "supportPx": 5298,
+      "sha256": {
+        "decodedRgba1x": "4cdba73efc4847ff2d2e4714257ee89b03461d6c14b0c15c3f2c5973eb3aea3d",
+        "decodedRgba2x": "2054a04ea11241ed4d30b477b535bb2c87d502c8e70ef2e41aa2fae6397f4176"
+      },
+      "bytes1x": 1810,
+      "bytes2x": 5150
+    },
+    "shell_wall_back_slot_16|tier1": {
+      "id": "lying-0089",
+      "target": "shell_wall_back_slot_16",
+      "zoneSide": "wall-back",
+      "signature": "shell_wall_back_slot_16|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_back_slot_15",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0089.png",
+      "textureFile2x": "overlays/lying/2x/lying-0089.png",
+      "texWidth": 82,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4895,
+      "supportPx": 918,
+      "sha256": {
+        "decodedRgba1x": "bd4e45c6595a903f8ece4cdf27ecd1f8a49a065c21269be49afb723abbca4ab2",
+        "decodedRgba2x": "b095c4b59ccf751c2907024901fb0f854364cd3f428fece7e27d44a28ea57aa6"
+      },
+      "bytes1x": 1616,
+      "bytes2x": 4621
+    },
+    "shell_wall_front_slot_00|tier0": {
+      "id": "lying-0038",
+      "target": "shell_wall_front_slot_00",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_00|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_01",
+          "side": "left",
+          "dx": 71,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_00",
+          "side": "down",
+          "dx": -4,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0038.png",
+      "textureFile2x": "overlays/lying/2x/lying-0038.png",
+      "texWidth": 85,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9265,
+      "supportPx": 5369,
+      "sha256": {
+        "decodedRgba1x": "2c5328ca982acaae881de351e803599975cbd1dcd1c6669ee8c5764fbefd1784",
+        "decodedRgba2x": "7d243798f8bfb4f5b8f40b219a7141ccee958b5fa8fca2d318f63e385a5db010"
+      },
+      "bytes1x": 1621,
+      "bytes2x": 4623
+    },
+    "shell_wall_front_slot_00|tier1": {
+      "id": "lying-0055",
+      "target": "shell_wall_front_slot_00",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_00|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_01",
+          "side": "left",
+          "dx": 71,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0055.png",
+      "textureFile2x": "overlays/lying/2x/lying-0055.png",
+      "texWidth": 85,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4831,
+      "supportPx": 1031,
+      "sha256": {
+        "decodedRgba1x": "7428b30b36a0143db68c92b1bbd2dbba1982ec1e611296e4a81ed054b7f0dfbb",
+        "decodedRgba2x": "ba853298302a8e60119f1abac14233e57b6a13baba65b9a6042a4599862ac321"
+      },
+      "bytes1x": 1524,
+      "bytes2x": 4276
+    },
+    "shell_wall_front_slot_01|tier0": {
+      "id": "lying-0040",
+      "target": "shell_wall_front_slot_01",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_01|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_02",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_01",
+          "side": "down",
+          "dx": -4,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0040.png",
+      "textureFile2x": "overlays/lying/2x/lying-0040.png",
+      "texWidth": 83,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9319,
+      "supportPx": 5311,
+      "sha256": {
+        "decodedRgba1x": "3a5f9d397391d969381017bec238313bba4e9c5e132b40a642f59dab204ab0a6",
+        "decodedRgba2x": "b924bb30388142634a7d22364b95a4c36d56bd6e91b01647b8977c9a3fe77a4d"
+      },
+      "bytes1x": 1422,
+      "bytes2x": 3901
+    },
+    "shell_wall_front_slot_01|tier1": {
+      "id": "lying-0057",
+      "target": "shell_wall_front_slot_01",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_01|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_02",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0057.png",
+      "textureFile2x": "overlays/lying/2x/lying-0057.png",
+      "texWidth": 83,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5126,
+      "supportPx": 888,
+      "sha256": {
+        "decodedRgba1x": "79cc9d1dbdffb0e790234666302e5fe4d6a31d3e2f35673e843e8c32ef4f0050",
+        "decodedRgba2x": "7845640db4555c463db465568ea78c11eff719be0c1adc560f8fbc6b948df337"
+      },
+      "bytes1x": 1123,
+      "bytes2x": 3309
+    },
+    "shell_wall_front_slot_02|tier0": {
+      "id": "lying-0042",
+      "target": "shell_wall_front_slot_02",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_02|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_03",
+          "side": "left",
+          "dx": 69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_02",
+          "side": "down",
+          "dx": -4,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0042.png",
+      "textureFile2x": "overlays/lying/2x/lying-0042.png",
+      "texWidth": 82,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9376,
+      "supportPx": 5244,
+      "sha256": {
+        "decodedRgba1x": "0278fc55352343b93f9ed99a5cc03740798b2c6f1c6a5081b0d06fb6a69e11c7",
+        "decodedRgba2x": "351cc84b38b3b4bbe566554a03c2ff829e0b3e0ca127fff4603105a86d985af9"
+      },
+      "bytes1x": 1330,
+      "bytes2x": 3636
+    },
+    "shell_wall_front_slot_02|tier1": {
+      "id": "lying-0059",
+      "target": "shell_wall_front_slot_02",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_02|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_03",
+          "side": "left",
+          "dx": 71,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0059.png",
+      "textureFile2x": "overlays/lying/2x/lying-0059.png",
+      "texWidth": 82,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4076,
+      "supportPx": 1043,
+      "sha256": {
+        "decodedRgba1x": "cd2d8c4009712367a30bf1c7fa707275f1ac836789c54fdbbf06ae47ca9b4e95",
+        "decodedRgba2x": "145d880b6472f129b5fd5772635455501e8ba0bcd75162bc2ca713b2d758d063"
+      },
+      "bytes1x": 1712,
+      "bytes2x": 3786
+    },
+    "shell_wall_front_slot_03|tier0": {
+      "id": "lying-0044",
+      "target": "shell_wall_front_slot_03",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_03|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_04",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_03",
+          "side": "down",
+          "dx": -2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0044.png",
+      "textureFile2x": "overlays/lying/2x/lying-0044.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9238,
+      "supportPx": 5203,
+      "sha256": {
+        "decodedRgba1x": "d2011accab6b29eafa9fa73616cf25f90b28eaf6d6c91f87db36d9a1833d8811",
+        "decodedRgba2x": "1ba3ccbe0ed9756a6983bd0887b98d50f77fafc0bd08988f208b7b7884431e1c"
+      },
+      "bytes1x": 1432,
+      "bytes2x": 4013
+    },
+    "shell_wall_front_slot_03|tier1": {
+      "id": "lying-0061",
+      "target": "shell_wall_front_slot_03",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_03|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_04",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0061.png",
+      "textureFile2x": "overlays/lying/2x/lying-0061.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4494,
+      "supportPx": 762,
+      "sha256": {
+        "decodedRgba1x": "8c0765fc04d1fde0f8750c2eea21e58a79e8be1dba25a99d1decf3566b508f53",
+        "decodedRgba2x": "4d755b82e811185f4109797a85eb27ea29a4ee6abbcec0cda399b824e7fd9102"
+      },
+      "bytes1x": 1095,
+      "bytes2x": 2952
+    },
+    "shell_wall_front_slot_04|tier0": {
+      "id": "lying-0046",
+      "target": "shell_wall_front_slot_04",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_04|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_05",
+          "side": "left",
+          "dx": 71,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_04",
+          "side": "down",
+          "dx": -2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0046.png",
+      "textureFile2x": "overlays/lying/2x/lying-0046.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9274,
+      "supportPx": 5163,
+      "sha256": {
+        "decodedRgba1x": "c80daca90b4d15847caa0958fd81e87a4d3ae30a767c08317ef467d14999a02c",
+        "decodedRgba2x": "e9a989fb23c2d900ddb5b811b3b441e3ebd92b510f5e05d24a3633139c28f6dd"
+      },
+      "bytes1x": 1424,
+      "bytes2x": 3849
+    },
+    "shell_wall_front_slot_04|tier1": {
+      "id": "lying-0063",
+      "target": "shell_wall_front_slot_04",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_04|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_05",
+          "side": "left",
+          "dx": 71,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0063.png",
+      "textureFile2x": "overlays/lying/2x/lying-0063.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4483,
+      "supportPx": 649,
+      "sha256": {
+        "decodedRgba1x": "f4da3d3e43572b2dc71cdffea100cc45bd5f798793d9bbe5c69c0aa315873d17",
+        "decodedRgba2x": "4c9759286ac189e8f3ba2b31941cd3f92a14f5ec6f5d76f28db9d70317a35055"
+      },
+      "bytes1x": 996,
+      "bytes2x": 3017
+    },
+    "shell_wall_front_slot_05|tier0": {
+      "id": "lying-0048",
+      "target": "shell_wall_front_slot_05",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_05|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_06",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_05",
+          "side": "down",
+          "dx": -2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0048.png",
+      "textureFile2x": "overlays/lying/2x/lying-0048.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9237,
+      "supportPx": 5122,
+      "sha256": {
+        "decodedRgba1x": "95096d9479fb6fa178d4dcb72e0e56c419f403ce4bb6551bcacbd0bf4ed6cde5",
+        "decodedRgba2x": "d372b50d6f3ccffbb00ba3920df8ebe072d83853507cb5f286d404f05d4c3d5b"
+      },
+      "bytes1x": 1440,
+      "bytes2x": 3826
+    },
+    "shell_wall_front_slot_05|tier1": {
+      "id": "lying-0065",
+      "target": "shell_wall_front_slot_05",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_05|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_06",
+          "side": "left",
+          "dx": 71,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0065.png",
+      "textureFile2x": "overlays/lying/2x/lying-0065.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3729,
+      "supportPx": 710,
+      "sha256": {
+        "decodedRgba1x": "0823df76e95c80dd2bc5d7dda4d3a4e107b13c831c5c38c746ac9cecb55fd09e",
+        "decodedRgba2x": "5c277833e4c1c4d7e238a869ee43f68761e082cb90df272f1f5ca3b24e2d0046"
+      },
+      "bytes1x": 1333,
+      "bytes2x": 3474
+    },
+    "shell_wall_front_slot_06|tier0": {
+      "id": "lying-0050",
+      "target": "shell_wall_front_slot_06",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_06|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_07",
+          "side": "left",
+          "dx": 69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_06",
+          "side": "down",
+          "dx": -1,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0050.png",
+      "textureFile2x": "overlays/lying/2x/lying-0050.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9221,
+      "supportPx": 5053,
+      "sha256": {
+        "decodedRgba1x": "ccba43474a2395c9f143845b0d0f74384f94026501cb5aab8da88a2db25d9649",
+        "decodedRgba2x": "1d48fc631a10ccb109db94b5787cf8230815a0e453e02adfe0aec6eaa26ba64a"
+      },
+      "bytes1x": 1332,
+      "bytes2x": 3739
+    },
+    "shell_wall_front_slot_06|tier1": {
+      "id": "lying-0067",
+      "target": "shell_wall_front_slot_06",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_06|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_07",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0067.png",
+      "textureFile2x": "overlays/lying/2x/lying-0067.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3218,
+      "supportPx": 588,
+      "sha256": {
+        "decodedRgba1x": "63d6d21c1d3fce255afefd5668a775c0befe1dfa3692f557e6f2af01d064479e",
+        "decodedRgba2x": "43d5816671d5cb2ccd24ca011237e4332fcb4296b9c3078652b08d28f662d910"
+      },
+      "bytes1x": 1049,
+      "bytes2x": 2894
+    },
+    "shell_wall_front_slot_07|tier0": {
+      "id": "lying-0052",
+      "target": "shell_wall_front_slot_07",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_07|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_08",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_07",
+          "side": "down",
+          "dx": 0,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0052.png",
+      "textureFile2x": "overlays/lying/2x/lying-0052.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9167,
+      "supportPx": 5028,
+      "sha256": {
+        "decodedRgba1x": "70b07face86e2a1018f8fef3bbc40f75bd8044d94b4a986d31a58689b945ae61",
+        "decodedRgba2x": "96c1243eb3353cc5d08b17ab4cd9c248f15f87c742ba31d580291e940283cbe0"
+      },
+      "bytes1x": 1373,
+      "bytes2x": 3856
+    },
+    "shell_wall_front_slot_07|tier1": {
+      "id": "lying-0069",
+      "target": "shell_wall_front_slot_07",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_07|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_08",
+          "side": "left",
+          "dx": 70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0069.png",
+      "textureFile2x": "overlays/lying/2x/lying-0069.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2979,
+      "supportPx": 550,
+      "sha256": {
+        "decodedRgba1x": "0d57fa8b9c21d12449154a0c5716901ce86058f4addff44787ecf067f7d450af",
+        "decodedRgba2x": "388f302a02659439786ded1877895cd51db3903203067c2e165b149acd882c4a"
+      },
+      "bytes1x": 947,
+      "bytes2x": 3605
+    },
+    "shell_wall_front_slot_08|tier0": {
+      "id": "lying-0054",
+      "target": "shell_wall_front_slot_08",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_08|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_08",
+          "side": "down",
+          "dx": 0,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0054.png",
+      "textureFile2x": "overlays/lying/2x/lying-0054.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9297,
+      "supportPx": 4846,
+      "sha256": {
+        "decodedRgba1x": "03ccdaeb3705e4a0540b6903d04de5e163d6198f9f209dd5442df0b53399a42d",
+        "decodedRgba2x": "81f20445ca5caf87e1b00e313d312d77b2e9760f754c89036a20f047d634b365"
+      },
+      "bytes1x": 1238,
+      "bytes2x": 3546
+    },
+    "shell_wall_front_slot_09|tier0": {
+      "id": "lying-0053",
+      "target": "shell_wall_front_slot_09",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_09|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_08",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_09",
+          "side": "down",
+          "dx": 1,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0053.png",
+      "textureFile2x": "overlays/lying/2x/lying-0053.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9146,
+      "supportPx": 5099,
+      "sha256": {
+        "decodedRgba1x": "2a491073d45959369c84674ec4e7613eff410ef5880becb579e3ae8e2eca8cd9",
+        "decodedRgba2x": "2904d30ba0818acfafb6dc3f2b5bdc61af9f31901e92a8eac6713b6d8e759fef"
+      },
+      "bytes1x": 1621,
+      "bytes2x": 4429
+    },
+    "shell_wall_front_slot_09|tier1": {
+      "id": "lying-0070",
+      "target": "shell_wall_front_slot_09",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_09|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_08",
+          "side": "right",
+          "dx": -71,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0070.png",
+      "textureFile2x": "overlays/lying/2x/lying-0070.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3276,
+      "supportPx": 606,
+      "sha256": {
+        "decodedRgba1x": "39bf038dd85c5614d243836b138177965e483cfb321ebf74acbf565ca2facb45",
+        "decodedRgba2x": "930a35c195a8af1ef24ae0edca64ee50035d817377b9c73d8d95348472d01c6b"
+      },
+      "bytes1x": 1238,
+      "bytes2x": 3041
+    },
+    "shell_wall_front_slot_10|tier0": {
+      "id": "lying-0051",
+      "target": "shell_wall_front_slot_10",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_10|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_09",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_10",
+          "side": "down",
+          "dx": 1,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0051.png",
+      "textureFile2x": "overlays/lying/2x/lying-0051.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9249,
+      "supportPx": 5104,
+      "sha256": {
+        "decodedRgba1x": "df9dcb0f8c1e4832ee3ce5ae7c48cbb0305fe125d55c128a728b586b5f35e3dc",
+        "decodedRgba2x": "8f0858eb249451895173eaf846dc5bc37968e5f29a676b265f9a3299216f85cc"
+      },
+      "bytes1x": 1615,
+      "bytes2x": 4457
+    },
+    "shell_wall_front_slot_10|tier1": {
+      "id": "lying-0068",
+      "target": "shell_wall_front_slot_10",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_10|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_09",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0068.png",
+      "textureFile2x": "overlays/lying/2x/lying-0068.png",
+      "texWidth": 77,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4077,
+      "supportPx": 600,
+      "sha256": {
+        "decodedRgba1x": "6bc0b02f93e2b0d9fe876c6f8405758ba94d4c89792a897692ee644054e93730",
+        "decodedRgba2x": "0ac18663edf0b828759b87d8be7e2bee789cc04ce307110c09dd3cb76f8568d6"
+      },
+      "bytes1x": 1111,
+      "bytes2x": 3284
+    },
+    "shell_wall_front_slot_11|tier0": {
+      "id": "lying-0049",
+      "target": "shell_wall_front_slot_11",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_11|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_10",
+          "side": "right",
+          "dx": -68,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_11",
+          "side": "down",
+          "dx": 2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0049.png",
+      "textureFile2x": "overlays/lying/2x/lying-0049.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9215,
+      "supportPx": 5147,
+      "sha256": {
+        "decodedRgba1x": "13572e86c398765e81fd9564386fc13b11325db4320f0f2dd2c4dde2290b6080",
+        "decodedRgba2x": "71a208d4513d4139e3a1f5ab145ce66ce3acab913d134dc72fcb97cce54b0070"
+      },
+      "bytes1x": 1761,
+      "bytes2x": 4874
+    },
+    "shell_wall_front_slot_11|tier1": {
+      "id": "lying-0066",
+      "target": "shell_wall_front_slot_11",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_11|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_10",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0066.png",
+      "textureFile2x": "overlays/lying/2x/lying-0066.png",
+      "texWidth": 79,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.3865,
+      "supportPx": 728,
+      "sha256": {
+        "decodedRgba1x": "85eb7cd85230c0e850dc103b5400aba44fdc5d5af33abc7b9f4dbaa5ca3e7000",
+        "decodedRgba2x": "2ea0d68290a66fff77ae789e9403c4866f14c8fe92ff09a4060ca1769fd4b88a"
+      },
+      "bytes1x": 1475,
+      "bytes2x": 3835
+    },
+    "shell_wall_front_slot_12|tier0": {
+      "id": "lying-0047",
+      "target": "shell_wall_front_slot_12",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_12|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_11",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_12",
+          "side": "down",
+          "dx": 2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0047.png",
+      "textureFile2x": "overlays/lying/2x/lying-0047.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9232,
+      "supportPx": 5184,
+      "sha256": {
+        "decodedRgba1x": "a524f72a3214e57f626da86ab17d07aa1620209ff76675bf90c002dd876c1220",
+        "decodedRgba2x": "a6efa0f97159cead4880a77e0defdcab75848e540e7a4861062308e390627c52"
+      },
+      "bytes1x": 1752,
+      "bytes2x": 4908
+    },
+    "shell_wall_front_slot_12|tier1": {
+      "id": "lying-0064",
+      "target": "shell_wall_front_slot_12",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_12|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_11",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0064.png",
+      "textureFile2x": "overlays/lying/2x/lying-0064.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4333,
+      "supportPx": 727,
+      "sha256": {
+        "decodedRgba1x": "86b1bf46adcbb5410f4623fd97fac96fb01a91daa38e5fddef74f2b4728d955f",
+        "decodedRgba2x": "28c73f777c6c0c7ad7366c4cf8aff2b6cd301e60d61b8bd356453b529d6c75e8"
+      },
+      "bytes1x": 1253,
+      "bytes2x": 3633
+    },
+    "shell_wall_front_slot_13|tier0": {
+      "id": "lying-0045",
+      "target": "shell_wall_front_slot_13",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_13|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_12",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_13",
+          "side": "down",
+          "dx": 2,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0045.png",
+      "textureFile2x": "overlays/lying/2x/lying-0045.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9306,
+      "supportPx": 5246,
+      "sha256": {
+        "decodedRgba1x": "181d2a284abc2fd963f39de44cc0538f2e5d11e65e90902a1c17065f0ff41b6a",
+        "decodedRgba2x": "388e2ff4163d21483cd459b949cb9452a55d16e4903b51d496a287c05d5d0fb8"
+      },
+      "bytes1x": 1734,
+      "bytes2x": 4717
+    },
+    "shell_wall_front_slot_13|tier1": {
+      "id": "lying-0062",
+      "target": "shell_wall_front_slot_13",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_13|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_12",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0062.png",
+      "textureFile2x": "overlays/lying/2x/lying-0062.png",
+      "texWidth": 81,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4887,
+      "supportPx": 793,
+      "sha256": {
+        "decodedRgba1x": "a5061b511166710cd1469c2d7155e187ac7b1ed252753f1b4fbd4c72322b3ed2",
+        "decodedRgba2x": "7d98955556a252b322b523d69ac7b322d5ac66a051a1e0cde60e28f46a5c3bc3"
+      },
+      "bytes1x": 1280,
+      "bytes2x": 3738
+    },
+    "shell_wall_front_slot_14|tier0": {
+      "id": "lying-0043",
+      "target": "shell_wall_front_slot_14",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_14|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_13",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_14",
+          "side": "down",
+          "dx": 3,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0043.png",
+      "textureFile2x": "overlays/lying/2x/lying-0043.png",
+      "texWidth": 82,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9246,
+      "supportPx": 5281,
+      "sha256": {
+        "decodedRgba1x": "1a952e72f21fe4dd70f35b4569128123c8b6b0120e53e406ace35149cb07fc9b",
+        "decodedRgba2x": "7130a8ffc1828111413b9489619566bd504cdfaddee648e2dd42a967a382397b"
+      },
+      "bytes1x": 1764,
+      "bytes2x": 5016
+    },
+    "shell_wall_front_slot_14|tier1": {
+      "id": "lying-0060",
+      "target": "shell_wall_front_slot_14",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_14|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_13",
+          "side": "right",
+          "dx": -70,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0060.png",
+      "textureFile2x": "overlays/lying/2x/lying-0060.png",
+      "texWidth": 82,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4765,
+      "supportPx": 914,
+      "sha256": {
+        "decodedRgba1x": "c3191c3b982408a2f341d25fd493909bf3f5f8a855e9947b458f5b3f709726b9",
+        "decodedRgba2x": "abd55fcce5e4de2301a51103f5ae56c6ca620b523fab4f3027bf8602d31900cb"
+      },
+      "bytes1x": 1579,
+      "bytes2x": 4541
+    },
+    "shell_wall_front_slot_15|tier0": {
+      "id": "lying-0041",
+      "target": "shell_wall_front_slot_15",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_15|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_14",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_15",
+          "side": "down",
+          "dx": 3,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0041.png",
+      "textureFile2x": "overlays/lying/2x/lying-0041.png",
+      "texWidth": 83,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9281,
+      "supportPx": 5347,
+      "sha256": {
+        "decodedRgba1x": "98d07528e11cb1139a3757a5d2b8ba82667debf6dd24c96bec09ba1c07ca0fc2",
+        "decodedRgba2x": "fe4d15af09b0a384fd41902d841aade398179cec0d0889f942756391b6e2de9e"
+      },
+      "bytes1x": 1800,
+      "bytes2x": 4885
+    },
+    "shell_wall_front_slot_15|tier1": {
+      "id": "lying-0058",
+      "target": "shell_wall_front_slot_15",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_15|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_14",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0058.png",
+      "textureFile2x": "overlays/lying/2x/lying-0058.png",
+      "texWidth": 83,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.5205,
+      "supportPx": 943,
+      "sha256": {
+        "decodedRgba1x": "eaa8dcc97efdc6d40fa02c608f23ba07f40e1ee29f876784e564a0bb7b5dc43b",
+        "decodedRgba2x": "bceeee008b992655c1e1aea8759e247b28a4308dfbfe28f8dc9b43b39958dec5"
+      },
+      "bytes1x": 1418,
+      "bytes2x": 3990
+    },
+    "shell_wall_front_slot_16|tier0": {
+      "id": "lying-0039",
+      "target": "shell_wall_front_slot_16",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_16|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_15",
+          "side": "right",
+          "dx": -68,
+          "dy": 0
+        },
+        {
+          "shell": "shell_wall_front_slot_16",
+          "side": "down",
+          "dx": 4,
+          "dy": -39
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0039.png",
+      "textureFile2x": "overlays/lying/2x/lying-0039.png",
+      "texWidth": 85,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.9231,
+      "supportPx": 5410,
+      "sha256": {
+        "decodedRgba1x": "e956c86a32eec1e61989981a15219a442be5f5f4c3a921df0c4f091d5929bb5c",
+        "decodedRgba2x": "ff44081e13685984da93d2633c20e0218a5e9a95f1073ff943f8d37a8390142b"
+      },
+      "bytes1x": 1841,
+      "bytes2x": 5064
+    },
+    "shell_wall_front_slot_16|tier1": {
+      "id": "lying-0056",
+      "target": "shell_wall_front_slot_16",
+      "zoneSide": "wall-front",
+      "signature": "shell_wall_front_slot_16|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_front_slot_15",
+          "side": "right",
+          "dx": -69,
+          "dy": 0
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0056.png",
+      "textureFile2x": "overlays/lying/2x/lying-0056.png",
+      "texWidth": 85,
+      "texHeight": 106,
+      "peakAlpha": 1,
+      "meanAlpha": 0.4997,
+      "supportPx": 1097,
+      "sha256": {
+        "decodedRgba1x": "d42b7b84e5eb01f587e3ae68da760263659936c11e5a66d25611dfab5eef3680",
+        "decodedRgba2x": "a480a0aba80c701f1755cffa5a27f41b949482acdbda0b3c6cbe153401bb6c9e"
+      },
+      "bytes1x": 1738,
+      "bytes2x": 4873
+    },
+    "shell_wall_side_left|tier0": {
+      "id": "lying-0104",
+      "target": "shell_wall_side_left",
+      "zoneSide": "left",
+      "signature": "shell_wall_side_left|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_side_left",
+          "side": "right",
+          "dx": -12,
+          "dy": 6
+        },
+        {
+          "shell": "shell_wall_side_left",
+          "side": "up",
+          "dx": -12,
+          "dy": 6
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0104.png",
+      "textureFile2x": "overlays/lying/2x/lying-0104.png",
+      "texWidth": 108,
+      "texHeight": 89,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2529,
+      "supportPx": 4000,
+      "sha256": {
+        "decodedRgba1x": "fe83a83c00b4e51a6d9ea87ca6f1b1a2406c109aca758167e1a79e3841104b5c",
+        "decodedRgba2x": "80af2f1b2462806b41da4e939fac4c3e365ec0312a0306f99690e1f9da546c0b"
+      },
+      "bytes1x": 2621,
+      "bytes2x": 7885
+    },
+    "shell_wall_side_left|tier1": {
+      "id": "lying-0105",
+      "target": "shell_wall_side_left",
+      "zoneSide": "left",
+      "signature": "shell_wall_side_left|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_side_left",
+          "side": "up",
+          "dx": -7,
+          "dy": 46
+        },
+        {
+          "shell": "shell_wall_side_left",
+          "side": "right",
+          "dx": -7,
+          "dy": 46
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0105.png",
+      "textureFile2x": "overlays/lying/2x/lying-0105.png",
+      "texWidth": 108,
+      "texHeight": 89,
+      "peakAlpha": 1,
+      "meanAlpha": 0.7898,
+      "supportPx": 4067,
+      "sha256": {
+        "decodedRgba1x": "174baa396ed23052db71773076264a251c5aa5a464281043f4a36b9973c0f97c",
+        "decodedRgba2x": "4b086a2cbc205b6118f3b09bbd8f1f356bc0426ecfb72584e310829a56bd8db7"
+      },
+      "bytes1x": 1513,
+      "bytes2x": 3773
+    },
+    "shell_wall_side_right|tier0": {
+      "id": "lying-0106",
+      "target": "shell_wall_side_right",
+      "zoneSide": "right",
+      "signature": "shell_wall_side_right|tier0",
+      "casters": [
+        {
+          "shell": "shell_wall_side_right",
+          "side": "left",
+          "dx": 12,
+          "dy": 6
+        },
+        {
+          "shell": "shell_wall_side_right",
+          "side": "up",
+          "dx": 12,
+          "dy": 6
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0106.png",
+      "textureFile2x": "overlays/lying/2x/lying-0106.png",
+      "texWidth": 108,
+      "texHeight": 89,
+      "peakAlpha": 1,
+      "meanAlpha": 0.2538,
+      "supportPx": 3914,
+      "sha256": {
+        "decodedRgba1x": "83d43840a5dff642f91950dd830915518b84c636c4b0770d4640e73a898bf22d",
+        "decodedRgba2x": "e8597421c3d87024db7548d7df6821faf3f9987b933cf8fadd935e9b28b1109a"
+      },
+      "bytes1x": 2495,
+      "bytes2x": 7674
+    },
+    "shell_wall_side_right|tier1": {
+      "id": "lying-0107",
+      "target": "shell_wall_side_right",
+      "zoneSide": "right",
+      "signature": "shell_wall_side_right|tier1",
+      "casters": [
+        {
+          "shell": "shell_wall_side_right",
+          "side": "up",
+          "dx": 7,
+          "dy": 46
+        },
+        {
+          "shell": "shell_wall_side_right",
+          "side": "left",
+          "dx": 7,
+          "dy": 46
+        }
+      ],
+      "textureFile": "overlays/lying/lying-0107.png",
+      "textureFile2x": "overlays/lying/2x/lying-0107.png",
+      "texWidth": 108,
+      "texHeight": 89,
+      "peakAlpha": 1,
+      "meanAlpha": 0.8326,
+      "supportPx": 3845,
+      "sha256": {
+        "decodedRgba1x": "053ac85c405f962c6ffb3b064de88f499cebde7ba845d88e69bcc8a06dd8c5ce",
+        "decodedRgba2x": "cea4867eeee6fa7018067ed7f6b347687bd2fbb09f645087339be850db9ce352"
+      },
+      "bytes1x": 1177,
+      "bytes2x": 2879
+    }
+  }
+}

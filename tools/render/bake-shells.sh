@@ -118,8 +118,11 @@ fi
 
 if [ "$mode" = "check" ]; then
   # Dependency-free: validates the spec, the felt raster and shells.json plus
-  # every shell PNG. CI runs this without Blender.
-  exec node "$here/scripts/check-shells.mjs"
+  # every shell PNG, then the Phase 3.5 contact decals and their composition.
+  # CI runs this without Blender.
+  node "$here/scripts/check-shells.mjs"
+  node "$here/scripts/check-overlays.mjs"
+  exit 0
 fi
 
 if [ "$mode" = "check-audition" ]; then
@@ -168,6 +171,7 @@ if [ "$mode" = "bake" ]; then
   node "$here/scripts/review-shells.mjs"
   echo "[shells] validating the committed assets and the review sheets"
   node "$here/scripts/check-shells.mjs"
+  node "$here/scripts/check-overlays.mjs"
 elif [ "$mode" = "preview" ]; then
   "$blender" "${blender_args[@]}"
   echo "[shells] preview sheet (gitignored, build/preview/preview-1x.png)"

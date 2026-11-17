@@ -50,11 +50,11 @@ the tile, and it is never baked into the body.
 3. **Per-Slot Fan Rows (Drawn Outermost-to-Innermost):** The standing hand, the top hand and the front/back walls are baked as a camera fan whose centre is straight on, so the **inner** tile is nearer the camera than the outer tile. A uniform right-to-left order is wrong on the left half: it puts the outer left tile on top of the inner right tile, but the inner tile should overlap the outer tile's visible inner side. Draw the **outermost slots first on both halves**, then inward, with the centre slot last.
 4. **Vertical Discard Rows (Drawn Top-to-Bottom):** Row 2 sits below Row 1 and is drawn *after* Row 1, so the bodies stack in depth order.
 
-**Deferred: tile-to-tile overlay shadows.** The blob pass deliberately cannot
-darken a neighbour's face. The next step is a separate per-shell overlay that is
-drawn onto the *next* tile before that tile's body, so a tile can cast contact
-shading onto the neighbour drawn above it; it has to be generated per shell
-variation. It is recorded in §10.11 and `TASK.md`, not part of Phase 1d.
+**Contact-shadow decals (Phase 3.5, §15).** The blob pass deliberately cannot
+darken a neighbour's face, so Phase 3.5 adds one small per-shell decal per
+contact side. It is drawn after the neighbour body and before the caster body,
+clipped to the neighbour's published body polygon; the group recipe above is
+unchanged.
 
 ```text
 Horizontal Row (Drawn Right-to-Left: Tile 2 -> Tile 1 -> Tile 0)
@@ -1001,12 +1001,10 @@ records a decoded-RGBA hash per texture for integrity; the optional
 **5,653,539 B** (1,515,854 @1x + 4,137,685 @2x) against the 6,291,456 B budget;
 `shells.json` is **561,793 B** against 614,400 B.
 
-**Deferred: tile-to-tile overlay shadows.** The blob pass cannot darken a
-neighbour's face by design. The agreed next step is a separate per-shell overlay
-shadow, drawn onto the tile that will be above it before that tile's body: the
-next tile's body covers the overlap, so the shading sits on the neighbour's face
-rather than on the felt. It must be generated per shell variation (each slot's
-geometry differs), so it is a follow-up task, not part of Phase 1d.
+**Resolved in Phase 3.5 (§15): contact-shadow decals.** The blob still cannot
+darken a neighbour's face; the separate per-shell overlay is now baked and
+composed between the bodies. The derivation stays per shell variation, as
+predicted; the group recipe above is untouched.
 
 ### 10.12 Group shadows: merged footprint, one blur (2026-11-14)
 
@@ -1426,6 +1424,201 @@ unrotated local space, so Phase 4 applies the transform to the zone group and
 Phase 5 applies the same transform when hit-testing. `leanDeg` overrides the
 angle, and `0` disables it.
 
-**Deferred.** The tile-to-tile overlay shadow is still the next polish step: the
-few visible slivers where two tiles touch are not shadowed because the group
-blob is unioned under both bodies. Phase 3.5 records that work.
+**Contact shadows.** The few visible slivers where two tiles touch were not
+shadowed because the group blob is unioned under both bodies. Phase 3.5 closed
+that gap with per-shell decals; see §15.
+
+
+## 15. Phase 3.5: contact-shadow decals (landed 2026-11-16)
+
+The group layer (§10.12) is one blurred union **under** every body. It is correct
+for the felt, but where two tiles touch the neighbour's exposed sliver is not
+darkened: the bodies cover the union. Phase 3.5 adds a **contact-shadow decal**
+per shell and per screen side. It is still 2D: no WebGL, no per-frame lighting,
+and the group recipe remains one blur per zone.
+
+**Scope follow-up (2026-11-16 review).** The lying face-up ponds and melds read
+as smudges with contact bands over tiles that already look right, so those
+families are deliberately unshadowed; the top hand, side hands and walls are
+also off. The human hand was first narrowed to synthetic per-caster-side bands,
+then approved as **target-space 3D catches**. `overlay.enabledFamilies` in
+`shell-spec.json` is the synthetic fallback switch; the catches are a separate
+`catches.json` and take precedence in `contactOverlays.ts`.
+
+**3D catch (active standing-hand path).** `tools/render/bake_hand_catches.py`
+renders the target tile with its adjacent caster at the target's published shell
+camera. It covers the human hand (12), the top hand (12) and one catch per side
+hand (the shell is reused down the row; its row sign is verified against the
+committed `gridStepPx`). The hidden caster is translated until its **projected
+contact edge** matches the committed caster sprite's body edge: the per-slot
+caster sprite is normalised for its own camera, and under the target camera its
+physical edge can sit ~3 px inside the drawn edge, leaving a bright unshadowed
+sliver on the target's visible side (worst on the right half of the hand). That
+is a catch alignment fix, not a layout-spacing change.
+The per-slot cameras are one eye at the row centre (`lateralOffsetUnits =
+-offsetUnits`), so the pair is just the target at the origin, the caster one
+0.75-unit row step away, and the same eye; the target's reference crop is
+**byte-identical to the committed target body**. Each pair combines the physical
+key/world shadow (reference vs caster-present, caster invisible to camera) with
+a **contact AO** term (an emission target with a Cycles ambient-occlusion node,
+distance 0.12 units, no key/world; the caster occludes the AO rays). The result
+is a straight-alpha ink overlay in the target's own texture coordinates, one per
+covered slot (12 hand + 12 top + 2 side = 26), published in `catches.json`; the
+compositor draws it at the target's `drawX/drawY`, after the target body and
+before the caster body, clipped to the target's **full advance box**, not the
+synthetic bands' inset `bodyQuads` hull. The lying ponds and melds extend the
+same method with multiple primary casters: the distinct
+`target | zone side | nearest caster per side` signatures from the full
+pond/meld stress matrix are published in `lying-catches.json` (**107 catches**, 671,367 B). The turned Riichi/called tile is excluded as a target and as a caster: its 3-D cell does not line up with the face-centred turn and produced a black-square shadow; those tiles stay unshadowed. Walls use one full 17-slot run per wall/side; run-edge and dora-faceup variants are dropped, and the dora shells alias to their face-down twin. Wall visible means: front 13.21, back 13.23, side 1.98/1.93; the checker is 3,065 checks. The resolver selects a lying catch by that signature before falling
+back to the standing `target:caster` catch or a synthetic band. Walls remain
+disabled. The catch is already masked to the
+target's opaque body; the inset hull clips the bevel at the body edge and leaves
+a bright sliver on the target's bottom/side face (the small light line at the
+bottom of the right-half hand's left face). The synthetic bands (including the σ 2.5/α 0.50
+right-side override) remain a fallback for any pair without a catch. The lying
+ponds/melds/walls are active through `lying-catches.json`; the turned Riichi/called
+tile is deliberately unshadowed, and the walls use the trimmed full-run matrix.
+
+### 15.1 What the decal is, and why it is not `shadowShape`
+
+A decal is a small straight-alpha PNG of a soft band that hugs one edge of the
+caster's *own body silhouette*, baked from the committed shell PNG alpha:
+
+```
+alpha(d) = coreAlpha * exp(-0.5 * (d / sigma)^2)
+```
+
+`d` is the distance outward from the silhouette's opaque contour in @1x px; the
+band is zero inside the body and beyond `supportSigma * sigma`, and fades to zero
+over `tangentFadePx1x` at both ends. The contour is **fit to a smooth line along
+the tangent** (with a local smoothing fallback for a genuinely curved edge), so
+the silhouette's 1–3 px bevel staircase cannot become horizontal steps on the
+neighbour; the fill still starts at the true contour so no bright strip is left
+under the body edge. The committed values are `coreAlpha 0.35`,
+`sigmaPx1x` 6 lying / 4 standing, tangent fade 16 px, support 3σ, ink `#0b1418`;
+the hand's `right` side overrides those with σ 2.5 / α 0.50.
+The band is not the cast blob: `shadowShape` is 1.15× the body box with a 40 px
+top trim and a 5/7 offset, so using it here would smear across the neighbour
+instead of hugging the contact. Only its `lying/standing` classification, ink
+and sigma family are reused.
+
+A decal belongs to the **caster** (the later body) but is drawn **after the
+neighbour body it lands on** and before the caster's body. The caster covers the
+overlap; only the neighbour's exposed sliver darkens. The compositor clips the
+decal to the neighbour's published **body polygon** (`bodyQuads`), an inset
+convex hull of its opaque silhouette. The advance box is not enough: an oblique
+side-wall or standing-hand body does not fill its box, and a box clip would let
+the band show through the empty corners onto the felt.
+
+### 15.2 Contact detection and painter order
+
+`frontend/src/table/contactOverlays.ts` derives the contacts from the **Phase 3
+painter order**, not from a per-zone special case. For each earlier body A and
+later caster B whose drawn advance boxes overlap, each B edge that lies strictly
+inside A's box with at least 4 px of edge overlap is a contact. A decal whose
+strongest point is already covered by a later body is pruned. The same pair can
+qualify on two sides, which is what the side hand's L-shaped sliver needs.
+
+This is the complete matrix; the four ponds differ exactly as §10.10 predicted:
+
+| Family | Later body is | Sides used |
+| :--- | :--- | :--- |
+| Bottom / top pond | below (row seam), left/right (column seam) | `up`, `left`, `right` |
+| Right / left pond | below in a column, across the logical rows | `up`, `left`, `right` |
+| Turned riichi / called tile | sideways family; the near-edge nudge | inherits its shell's sides |
+| Human hand fan | the inner neighbour (left or right half) | `left` / `right`; centre both |
+| Top hand | the same fan rule on blue backs | `left` / `right` |
+| Side hands | the next tile down-left | `up` + `right` (or `left`) |
+| Melds | the pond row rule; called tile sideways | `left` / `right` / `up` |
+| Front / back wall fans | inner slot horizontally; upper tier down | `left` / `right` / `down` |
+| Side wall columns | next stack down; upper tier down | `up`, `down` |
+
+The **side-pond 1° lean** is a single group transform around
+`rotationDeg/pivotX/pivotY`; the decals are baked and drawn in the same local
+unrotated frame as the bodies, inside that transform. The grid positions and hit
+boxes stay in local space, exactly as Phase 3 publishes them.
+
+### 15.3 Asset and manifest contract
+
+`tools/render/bake_overlays.mjs` bakes
+`frontend/public/table/overlays/<shell>--<side>.png` and the `2x/` twin, plus
+`frontend/public/table/overlays.json`:
+
+- `model`: `contact-ao-band`, `coreAlpha`, `sigmaPx1x`, `tangentFadePx1x`,
+  `supportSigma`, `colorHex`, and the anchor/clip rules;
+- `aliases`: the `_faceup` wall dora shells share their face-down twin's decal
+  (the drawn body geometry is identical);
+- `bodyQuads`: one inset convex clip polygon per shell, in drawn-body-box
+  coordinates;
+- `decals`: keyed `${shell}:${side}`, with the texture files, @1x size,
+  `bodyAnchorX/Y`, support rectangle, peak alpha, decoded-RGBA sha256 and bytes.
+
+The `(shell, side)` set is not hand-written. `frontend/scripts/export-overlays.ts
+--sides` runs the real layout over **5,877 supported compositions** (every pond
+length and Riichi position × 4 seats, hands 1–14, side hands, melds with every
+called index, every wall run/start/dora) and writes the side histogram; the
+baker bakes exactly that set. The `--fixture` mode writes the committed
+`tools/render/overlay-zones.json` for the dependency-free checker, and
+`contactOverlays.test.ts` rejects fixture drift.
+
+The current bakes produce **13 synthetic hand decals** (fallback; 35,780 B across
+both scales) and **26 target-space 3D catches** (12 human + 12 top hand + 2 side
+hands; active; 109,321 B across both scales). The catches publish `target:caster`, the target texture size, peak/mean
+alpha, support, decoded-RGBA sha and bytes.
+
+### 15.4 Verification
+
+`node tools/render/scripts/check-overlays.mjs` runs **1,116 dependency-free
+checks**:
+
+- **assets**: the synthetic fallback bands still pass their size/bytes/hash,
+  outer-ring, peak, contour-staircase and inside-body checks. Each **catch** is
+  exactly the target shell texture size, hashes to its published decoded RGBA,
+  has its published peak/mean/support, is transparent on the outer ring and is
+  **zero outside the target's opaque body**;
+- **layout**: every contact in the fixture resolves to a catch or a fallback
+  decal, every overlay is attached to an earlier body, every draw position is
+  whole-pixel, and every clip polygon is convex and inside the body box;
+- **pixels**: the group shadow + bodies + overlays are composed over the real
+  felt at 1:1 and compared with the same composition without them. Every zone
+  changes **zero felt pixels**; the group field is identical (it is the same
+  object) and the §10.12 seam kink stays below 0.05. The **four ponds are
+  asserted to stay unshadowed** (0 overlays, 0 changed pixels); the human hand
+  uses the 12 catches, with mean Δluma **17.96** on 7,637 changed body pixels
+  and zero felt change. The top hand's 12 catches are drawn with mean Δluma
+  **7.70**; the side hands' catches with **3.41 / 1.69**. The disabled families
+  are byte-identical to the no-overlay baseline.
+
+The review script (`cd frontend && npm run overlays:review`) writes
+`build/review/hand-layouts-1x.png` (the hand at 1:1 plus left/centre/right seam
+crops with and without the catches — the active sign-off sheet),
+`overlay-decals-1x.png` (the 12 catches), `pond-layouts-1x.png` (the disabled
+baseline), and `overlay-zones-1x.png`. The layout script's bodies-only pond sheet
+is `pond-layout-bodies-1x.png`. The build-only experiment sheet
+(`build/contact-shadow-experiment/contact-shadow-experiment-sheet.png`) remains
+the A/B record. Visual sign-off is the user's (AGENTS.md §6).
+
+### 15.5 Known limits
+
+- The **turned Riichi/called tile is unshadowed by policy**: its 3-D cell does
+  not line up with the face-centred 2-D turn and the catch produced a black
+  square at its far end. It is excluded as a target and as a caster; a normal
+  target's catch simply omits it.
+- **Walls use one full 17-slot run per wall/side.** Run-edge and dora-faceup
+  variants are dropped; the dora shells alias to their face-down twin. A missing
+  run-end neighbour can still contribute a faint full-run shadow, and the wall
+  upper centre (no later caster) has no catch.
+- The synthetic bands remain a fallback for a family without a catch. A catch
+  is already target-masked and uses the full advance box; the synthetic bands
+  use the neighbour's inset `bodyQuads` hull.
+- The multi-caster lying catches are one combined bake per target, so they do
+  not stack multiple bands; the catch's shared-body alpha is the review sheet's
+  gate. The decoded-pixel check asserts zero felt change for every zone.
+- The decals are baked per committed shell silhouette, so a future shell or a
+  change to a body texture must re-run `bake-overlays.sh --bake` (the side
+  histogram and the fixture are regenerated by the same command).
+- The **3D catch** is the committed active hand path
+  (`bake-hand-catches.sh`); the two-pair experiment
+  (`bake-contact-shadow-experiment.sh`) is kept as the A/B exploration harness.
+  The catches are target-space, so they carry the target's own bevel and edge
+  exactly; the synthetic per-caster stamp remains the fallback.
