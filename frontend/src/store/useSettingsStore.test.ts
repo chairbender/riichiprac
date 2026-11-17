@@ -61,7 +61,7 @@ describe('useSettingsStore', () => {
     const { useSettingsStore, SETTINGS_STORAGE_KEY } =
       await loadSettingsStore();
 
-    for (const view of ['topdown', 'stacked'] as const) {
+    for (const view of ['topdown', 'rendered', 'stacked'] as const) {
       useSettingsStore.getState().setView(view);
       expect(
         JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null'),
@@ -70,6 +70,21 @@ describe('useSettingsStore', () => {
       const reloaded = await loadSettingsStore();
       expect(reloaded.useSettingsStore.getState().view).toBe(view);
     }
+  });
+
+  it('accepts the rendered view as a real setting', async () => {
+    const storage = memoryStorage();
+    setLocalStorage(storage);
+    const { isTableView, useSettingsStore, SETTINGS_STORAGE_KEY } =
+      await loadSettingsStore();
+
+    expect(isTableView('rendered')).toBe(true);
+    useSettingsStore.getState().setView('rendered');
+    expect(useSettingsStore.getState().view).toBe('rendered');
+    expect(JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null')).toEqual({
+      version: 1,
+      view: 'rendered',
+    });
   });
 
   it('migrates a stored experimental isometric view to the default', async () => {

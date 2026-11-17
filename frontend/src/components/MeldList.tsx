@@ -1,14 +1,6 @@
-import { calledTile } from '../meld';
-import type { CalledFrom } from '../meld';
+import { CALLED_FROM_LABELS, calledTile } from '../meld';
 import type { PlayerState } from '../types/game';
 import { Tile } from './Tile';
-
-/** Human-readable name for the seat a call came from. */
-const CALLED_FROM_LABELS: Record<CalledFrom, string> = {
-  left: 'the left player (kamicha)',
-  across: 'the player across (toimen)',
-  right: 'the right player (shimocha)',
-};
 
 interface MeldListProps {
   player: PlayerState;

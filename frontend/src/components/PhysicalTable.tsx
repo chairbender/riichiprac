@@ -5,20 +5,19 @@ import {
   RegularShaa,
   RegularTon,
 } from 'riichi-mahjong-tiles';
-import { SIDE_ROTATION, TABLE_SIDES, tablePlacements } from '../seatOrder';
+import {
+  SIDE_ROTATION,
+  TABLE_SIDES,
+  TABLE_SIDE_LABELS,
+  tablePlacements,
+} from '../seatOrder';
 import type { SeatPlacement, TableSide } from '../seatOrder';
 import type { GameState, PlayerState, Wind } from '../types/game';
 import { MeldList } from './MeldList';
 import { RiichiStick } from './RiichiStick';
 import { River } from './River';
 
-/** Where each edge of the table sits, as the human reads the screen. */
-const SIDE_LABELS: Record<TableSide, string> = {
-  bottom: 'your seat, at the bottom',
-  right: 'right side, shimocha',
-  top: 'across, toimen',
-  left: 'left side, kamicha',
-};
+const SIDE_LABELS = TABLE_SIDE_LABELS;
 
 type WindGlyph = ComponentType<SVGProps<SVGSVGElement>>;
 

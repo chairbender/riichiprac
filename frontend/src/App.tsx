@@ -10,6 +10,7 @@ import { HandDock } from './components/HandDock';
 import { HotseatCard } from './components/HotseatCard';
 import { PhysicalTable } from './components/PhysicalTable';
 import { PlayerRow } from './components/PlayerRow';
+import { RenderedTable } from './components/RenderedTable';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
@@ -555,7 +556,7 @@ export const App = () => {
         : 'Waiting for the Mortal model to load…';
 
   const viewHint =
-    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view. Stays 2D: no 3D or perspective.';
+    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view, and rendered is the opt-in 2.5D table. All stay 2D: no 3D or perspective camera.';
 
   const statusMessage = hotseatLoading
     ? hotseatProgressLabel(hotseatProgress)
@@ -679,7 +680,13 @@ export const App = () => {
       {verdictPanel}
 
       <main
-        className={tableView === 'stacked' ? 'table-stack' : 'table-physical'}
+        className={
+          tableView === 'stacked'
+            ? 'table-stack'
+            : tableView === 'topdown'
+              ? 'table-physical'
+              : 'table-rendered'
+        }
       >
         {statusMessage && <div className="status-msg">{statusMessage}</div>}
         {error && (
@@ -689,11 +696,18 @@ export const App = () => {
         )}
 
         {/*
-         * The persisted view picks between the stacked rows and the top-down
-         * plan; nothing else about the hand changes when it switches, so the
-         * answer and grade stay put.
+         * The persisted view picks between the stacked rows, the top-down plan
+         * and the opt-in 2.5D table; nothing else about the hand changes when
+         * it switches, so the answer and grade stay put.
          */}
-        {tableView === 'topdown' && gameState ? (
+        {tableView === 'rendered' ? (
+          gameState ? (
+            <RenderedTable
+              state={gameState}
+              highlightLastDiscard={claimedFrom}
+            />
+          ) : null
+        ) : tableView === 'topdown' && gameState ? (
           <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
         ) : (
           orderedPlayers.map((player) => (

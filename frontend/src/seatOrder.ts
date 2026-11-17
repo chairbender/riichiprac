@@ -6,6 +6,18 @@ const SEAT_COUNT = 4;
 /** The four edges of the flat table, as the human sees them. */
 export type TableSide = 'bottom' | 'right' | 'top' | 'left';
 
+/**
+ * Where each edge of the table sits, as the human reads the screen. Shared by
+ * the top-down plan and the rendered table so both views name a seat the same
+ * way to screen readers.
+ */
+export const TABLE_SIDE_LABELS: Record<TableSide, string> = {
+  bottom: 'your seat, at the bottom',
+  right: 'right side, shimocha',
+  top: 'across, toimen',
+  left: 'left side, kamicha',
+};
+
 /** Clockwise rotation, in degrees, of a tile drawn for the bottom seat. */
 export type SeatRotation = 0 | 90 | 180 | 270;
 

@@ -3281,3 +3281,188 @@
     max-height: min(88vh, 44rem);
   }
 }
+
+/* Rendered 2.5D table ----------------------------------------------------- */
+
+/*
+ * The opt-in rendered view fills the main area with the committed felt raster
+ * and centres one board over it. The board is a single canvas plus a
+ * transparent DOM hit layer; the canvas keeps its @1x logical size and CSS
+ * scales the whole composition, so every position stays in one coordinate
+ * space. `--board-unit` is 1 logical @1x px in container-query units, which is
+ * what lets the compass text scale with the board instead of the viewport.
+ */
+.table-rendered {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+}
+
+.rendered-table {
+  position: relative;
+  flex: 1;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background-color: #1a5038;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.rendered-table--message {
+  padding: 24px;
+  color: #d7e3da;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.rendered-board {
+  position: relative;
+  width: min(100%, calc(56dvh * var(--board-ratio, 1.4)));
+  aspect-ratio: var(--board-aspect, 3 / 2);
+  container-type: inline-size;
+}
+
+.rendered-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * The hit layer is the accessible table: it is not visible, but every placed
+ * tile is one labelled element with its published advance box. Pointer events
+ * are off until Phase 5 wires the lift and selection interactions.
+ */
+.rendered-hit-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rendered-seat,
+.rendered-seat-body {
+  position: static;
+}
+
+.rendered-hit-zone {
+  position: absolute;
+}
+
+.rendered-hit {
+  position: absolute;
+  border-radius: 6%;
+}
+
+.rendered-hit--claim {
+  box-shadow: inset 0 0 0 2px rgb(255 208 110 / 85%);
+}
+
+/* Compass ----------------------------------------------------------------- */
+
+/*
+ * The centre compartment is the rendered view's scoreboard. It carries the
+ * same wind/score/Riichi/round information as the top-down compass, but stays
+ * upright because the rendered table is read from the human's chair. Sizes are
+ * in logical @1x px through `--board-unit`, so it shrinks with the board.
+ */
+.rendered-compass {
+  position: absolute;
+  color: #e8f0e9;
+  pointer-events: none;
+}
+
+.rendered-compass-seat {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(2 * var(--board-unit, 0.06cqw));
+  line-height: 1;
+  text-shadow: 0 calc(1 * var(--board-unit, 0.06cqw))
+    calc(3 * var(--board-unit, 0.06cqw)) rgb(0 0 0 / 60%);
+}
+
+.rendered-compass-seat--bottom {
+  bottom: 2%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.rendered-compass-seat--top {
+  top: 2%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.rendered-compass-seat--left {
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.rendered-compass-seat--right {
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.rendered-compass-wind {
+  font-size: calc(36 * var(--board-unit, 0.06cqw));
+  font-weight: 700;
+}
+
+.rendered-compass-score {
+  font-size: calc(24 * var(--board-unit, 0.06cqw));
+  opacity: 0.92;
+}
+
+.rendered-compass-stick {
+  width: calc(26 * var(--board-unit, 0.06cqw));
+  height: calc(4 * var(--board-unit, 0.06cqw));
+  border-radius: 999px;
+  background-color: #f4f1e8;
+}
+
+.rendered-compass-wall {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(2 * var(--board-unit, 0.06cqw));
+  font-size: calc(20 * var(--board-unit, 0.06cqw));
+  opacity: 0.78;
+}
+
+.rendered-compass-remaining {
+  font-size: calc(28 * var(--board-unit, 0.06cqw));
+  font-weight: 700;
+  opacity: 1;
+}
+
+.rendered-error {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background-color: rgb(20 22 28 / 88%);
+  color: #ffd7d7;
+  font-size: 0.75rem;
+  text-align: center;
+}

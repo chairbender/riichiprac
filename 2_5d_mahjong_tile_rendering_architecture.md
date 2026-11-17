@@ -144,7 +144,7 @@ Configure an automated Blender script to render the canonical blank tile shells 
 ### Phase 4: Painter's Algorithm Renderer (Strict Draw Order)
 Because there is no Z-buffer, enforce a deterministic back-to-front draw order across and within every table zone:
 
-- [ ] **Task 4.1 — Global Zone Order:** Render zones in this exact order:
+- [x] **Task 4.1 — Global Zone Order (landed 2026-11-16, §16):** Render zones in this exact order:
   1. Table felt background (use a subtle, low-contrast mottled felt noise texture so semi-transparent tile shadows ground naturally instead of looking like flat stickers).
   2. Top wall (`yama`) & Top player's hand/melds.
   3. Left and Right side walls (`yama`) — draw from top-of-screen (back) to bottom-of-screen (front).
@@ -152,7 +152,7 @@ Because there is no Z-buffer, enforce a deterministic back-to-front draw order a
   5. Bottom wall (`yama`).
   6. Left and Right player open melds & concealed hands.
   7. Bottom player's open melds & standing hand (always drawn last so lifted/hovered tiles never clip behind the bottom wall).
-- [ ] **Task 4.2 — Intra-Zone Draw Order:**
+- [x] **Task 4.2 — Intra-Zone Draw Order (landed 2026-11-16, §16):**
   - **Shadow group first, then bodies:** every shell publishes its hard `shadowShape`. For each zone, draw every placed tile's shape into one layer at alpha 1 (overlaps merge), blur that layer once at the zone's `sigmaPx1x`, draw it over the felt at `coreAlpha`, then draw every body in the zone's back-to-front order. A shadow is never baked into a body, so it cannot land on top of a neighbouring tile; `blur(union)` has no seam and no double-darkening. In DOM use `filter: blur(σpx)` on the layer; in canvas draw the shapes into a mask surface first and apply `ctx.filter` to one `drawImage`, never per shape. Zones: all four walls together, each pond, each seat's hand + melds.
   - **Uniform horizontal rows (ponds, discards):** Iterate **Right-to-Left** (`index = length - 1` down to `0`) for the body painter order.
   - **Per-slot fan rows (standing hand, top hand, front/back walls):** Draw **outermost-to-innermost on both halves, centre last** (slots 0 and N, then 1 and N-1, …, then the centre), because the camera is at the row centre and the inner tile is nearer. Do not use the uniform right-to-left order here; it puts the left half's outer tile on top of its inner neighbour, which is the wrong overlap.
@@ -1622,3 +1622,135 @@ the A/B record. Visual sign-off is the user's (AGENTS.md §6).
   (`bake-contact-shadow-experiment.sh`) is kept as the A/B exploration harness.
   The catches are target-space, so they carry the target's own bevel and edge
   exactly; the synthetic per-caster stamp remains the fallback.
+
+## 16. Phase 4: the painter's-order compositor (landed 2026-11-16)
+
+Phase 4 makes the rendered table visible. It consumes Phase 3's `LayoutZone`s
+and the Phase 2/2b atlas and implements Tasks 4.1-4.2 plus the §10.12 group
+shadow contract. There is still no table model, no browser 3D context and no
+per-frame lighting: one 2D canvas over the committed felt.
+
+**Canvas, not DOM, for the runtime path.** The startup atlas is a set of
+canvas pages (§11), so bodies are already canvas blits; drawing them as DOM
+images would need a second copy of every composited sprite. The §10.12 canvas
+route is therefore the runtime: hard shapes into a mask, one filtered
+`drawImage`, and the DOM only for the accessible hit layer. The DOM lab remains
+the reference for the CSS-filter route.
+
+**Modules.**
+
+- `frontend/src/table/boardLayout.ts` — pure board composition. `buildBoard`
+  turns a `GameState` into the zones it needs, places them around the reserved
+  centre square, normalises the result to `(0, 0) + 28 px` felt, and publishes
+  the Task 4.1 painter order plus one `BoardShadowGroup` per blurred
+  union.
+- `frontend/src/table/TableCompositor.ts` — the strict painter. One offscreen
+  layer per shadow group (hard shapes at alpha 1, one `ctx.filter = blur(σ)`
+  draw of the mask at `coreAlpha`) and one per body zone (bodies in the
+  published order, contact decals between them). It caches every layer by a
+  content signature and rebuilds only what changed.
+- `frontend/src/table/boardOverlay.ts` + `frontend/src/components/RenderedTable.tsx`
+  — the view and its transparent hit layer. The board is a `<canvas>`; over it
+  are absolutely positioned seat/zone/tile elements carrying the top-down
+  view's names and the published advance box of every tile.
+- `frontend/src/table/boardAssets.ts` — loads the atlas, `overlays.json`,
+  `catches.json`, `lying-catches.json`, and the bare-shell/contact textures the
+  current board actually uses.
+
+**Placement (not a shared camera).** The four ponds grow away from a 180 px
+centre square; each wall sits between its pond and its hand; the four walls
+share one `walls` shadow group. Hands sit outside the wall ring; the bottom hand
+is drawn last (Task 4.1 layer 6). Melds sit beside their seat's hand on that
+player's right, outside the ring: the compact ring has no inside lane wide
+enough for a lying meld, and a player's calls read correctly next to their own
+hand. A side pond keeps its approved 1° whole-zone lean; `buildBoard` rotates
+its shadow shapes and publishes a `rotationPad`, and the compositor rotates the
+body layer by the same transform.
+
+**Live wall.** `tiles_remaining` is the live wall. `wallStacksFor` splits it over
+the four sides (`ceil(tiles / 8)` stacks, capped at 17) and centres the run on
+the 17-slot fan. At 70 remaining that is 9 stacks a side, i.e. the wall a real
+hand shows, not a full ring. The engine payload carries no per-side wall
+distribution; this is presentation only.
+
+**Group shadows.** The §10.12 recipe is the runtime path, not the lab path:
+every hard `shadowShape` is filled into a mask at alpha 1, the mask is blurred
+once per group, and exactly one `drawImage` composites it at `coreAlpha`.
+`TableCompositor.test.ts` compares the resulting alpha field to
+`tools/render/scripts/shadow-group.mjs` (the same reference the lab uses):
+mean error below 0.01 and max below 0.05, with the overlap measuring one union
+rather than a source-over stack. A per-shape recipe would have assigned the
+filter 112 times for the fixture board; the compositor assigns it once for each
+of the 11 groups.
+
+**Contact decals.** Phase 3.5 landed the decals and their resolver but had no
+compositor. Phase 4 resolves them per board and draws each one after the body it
+shades and before the caster body, clipped to the published polygon. The loader
+therefore preloads exactly the catch/band textures the current board names.
+
+**Caching.** `update()` returns the zone/group ids it rebuilt. A second update
+with the same board rebuilds nothing; changing one pond body rebuilds that pond
+zone only, and changing a shadow union rebuilds that group only. A real discard
+that makes a pond grow to a new row also moves the wall and hand below it (the
+board must make room), so those moved zones rebuild as well; unchanged zones and
+groups are still reused, and no shadow union is re-blurred unless its shapes
+changed. A Phase 5 hover lift touches one seat's hand zone and its standing
+shadow group is unchanged, so exactly one body layer redraws.
+
+**Accessibility.** The hit layer is the accessible table: four seat sections use
+`TABLE_SIDE_LABELS`, each pond/meld/hand keeps the top-down name, every placed
+tile is a labelled `role="img"` with `data-hit-box="x,y,width,height"`, and the
+centre carries the same wind/score/Riichi/round/wall-count information as the
+top-down compass. The stacked and top-down views remain the fallback. The
+centre scoreboard is a DOM overlay, not a table part; the addendum's "compass
+deferred" note is narrowed to the dora-indicator wall slot, which the payload
+still does not map.
+
+**The dock stays.** The human's standing hand is drawn on the board because
+Task 4.1/4.2 require it; the hand dock stays the primary tap target and keeps
+its toggles, probabilities and answer summary. Phase 5 will wire the board's
+hit boxes (lift, selection and hover) and can then choose whether the dock's
+tile row is still needed in this view.
+
+**View switch.** `TableView` is now `stacked | topdown | rendered`; the header
+select offers Rendered and the persisted setting keeps the same hand, answer and
+grade when it changes. No game logic moved into React: the view only reads
+`GameState` and the committed manifests.
+
+**Verification.**
+
+- `cd frontend && npx vitest run` — **21 files / 260 tests**, including 30
+  board-layout tests (global layer order, fan/pond/wall tier order, advance-box
+  hit boxes, non-overlapping shadow-group bounds, compass geometry, group
+  sigmas) and 7 compositor tests (composite order, one blur per group, cache
+  granularity, a reference-alpha pixel comparison) and 7 rendered-table
+  DOM/ARIA tests (seat and zone names, one hit box per body, the claim
+  marker, compass labels, the Rendered option).
+- `npx tsc --noEmit -p tsconfig.app.json`, `npm run lint`, `npm run build` all
+  pass.
+- `node tools/render/scripts/preview-group-shadow.mjs` — the group recipe's
+  seam numbers are unchanged: worst boundary kink ≤ 0.0072 on every
+  representative zone; merged vs per-tile mean alpha 0.0054-0.0173 for the wall
+  and pond families.
+- `cd frontend && npm run board:review` writes
+  `tools/render/build/review/rendered-board-1x.png` and
+  `rendered-board-numbers.json`. The committed fixture reports **1635 × 1398 px
+  @1x, 14 zones, 11 shadow groups, 148 bodies, 112 hard shapes, 129 contact
+  decals, 105 preloaded textures, 687,918 opaque body pixels and 407,297 shadow
+  pixels, with 0 non-transparent pixels on the outer 4 px edge**; the painter order is the 11 group layers
+  then `wall-back`, `hand-top`, `wall-side-left`, `wall-side-right`,
+  `pond-bottom`, `pond-right`, `pond-top`, `pond-left`, `wall-front`,
+  `hand-left`, `melds-right-0`, `hand-right`, `melds-bottom-0`,
+  `hand-bottom`; the second update rebuilds 0 zones and 0 groups. The
+  textures are dominated by the per-slot wall shells (36 stacks × 2 tiers); a
+  board loads only the slots it draws. Byte budgets are advisory (AGENTS.md
+  §1c).
+- **Visual sign-off is the user's** (AGENTS.md §6). Open
+  `tools/render/build/review/rendered-board-1x.png`, then
+  `cd frontend && npm run dev` → View → Rendered. What needs the user's verdict
+  is the look of the composed board (zone spacing, whether the wall ring reads
+  as a ring, whether the centre scoreboard is legible at the app's width), not
+  the shadow alpha, which the tests and the lab measure.
+
+**Stop point.** No hover lift, selection, tint or shimmer yet: the hit boxes are
+published but `pointer-events` is still off. Phase 5 owns those interactions.

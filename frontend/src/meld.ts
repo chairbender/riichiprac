@@ -6,6 +6,13 @@ const SEAT_COUNT = 4;
 /** Which opponent's discard a meld claimed, seen from the caller's seat. */
 export type CalledFrom = 'left' | 'across' | 'right';
 
+/** Human-readable name for the seat a call came from. */
+export const CALLED_FROM_LABELS: Record<CalledFrom, string> = {
+  left: 'the left player (kamicha)',
+  across: 'the player across (toimen)',
+  right: 'the right player (shimocha)',
+};
+
 /** Where a meld's called tile sits and which opponent discarded it. */
 export interface CalledTile {
   /** Index into `meld.tiles` of the tile taken from the discard. */

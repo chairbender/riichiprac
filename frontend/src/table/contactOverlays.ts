@@ -24,6 +24,7 @@
  * baked from the shell PNG's alpha (see `tools/render/scripts/bake_overlays.mjs`).
  */
 import type { ShellStats, ShellsManifest } from './shellManifest';
+import type { Board } from './boardLayout';
 import { catchFor } from './catchManifest';
 import type { CatchesManifest } from './catchManifest';
 import { lyingCatchFor } from './lyingCatchManifest';
@@ -502,4 +503,30 @@ export function overlaysByBody(
   const grouped: ContactOverlay[][] = Array.from({ length: bodyCount }, () => []);
   for (const overlay of overlays) grouped[overlay.bodyIndex].push(overlay);
   return grouped;
+}
+
+/**
+ * Resolve every zone on a rendered board, keyed by its board-zone id.
+ *
+ * The rendered table (Phase 4) is the first compositor, so the Phase 3.5
+ * contact decals are resolved here once per board: the loader can collect the
+ * texture paths before the first draw, and the compositor can draw the decals
+ * between the bodies without re-resolving them.
+ */
+export function resolveBoardContactOverlays(
+  manifest: ShellsManifest,
+  board: Board,
+  overlays: OverlayManifest | null | undefined,
+  catches?: CatchesManifest | null,
+  lyingCatches?: LyingCatchesManifest | null,
+): Map<string, ContactOverlay[]> {
+  const resolved = new Map<string, ContactOverlay[]>();
+  if (!overlays) return resolved;
+  for (const placement of board.zones) {
+    resolved.set(
+      placement.id,
+      resolveContactOverlays(manifest, overlays, placement.zone, catches, lyingCatches),
+    );
+  }
+  return resolved;
 }

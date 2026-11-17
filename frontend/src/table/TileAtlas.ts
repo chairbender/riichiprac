@@ -76,6 +76,16 @@ function defaultBaseUrl(): string {
   return joinUrl(base, 'table');
 }
 
+/** The directory holding `shells.json`, `faces.json`, `decals.json` and textures. */
+export function tableAssetBaseUrl(): string {
+  return defaultBaseUrl();
+}
+
+/** Resolve a manifest-relative texture path against {@link tableAssetBaseUrl}. */
+export function tableAssetUrl(relativePath: string, baseUrl = defaultBaseUrl()): string {
+  return joinUrl(baseUrl, relativePath);
+}
+
 function defaultFetchJson(): (url: string) => Promise<unknown> {
   return async (url) => {
     if (typeof fetch !== 'function') throw new Error(`cannot fetch ${url}: no fetch available`);

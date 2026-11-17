@@ -55,6 +55,7 @@ bash tools/render/bake-decals.sh --check   # validate the build decal manifest; 
 cd frontend && npm run tune:carved         # lying-rig tuner at http://localhost:7458
 cd frontend && npm run atlas:review:carved # flat vs carved review sheets
 cd frontend && npm run atlas:review        # build the real atlas and write review sheets
+cd frontend && npm run board:review        # real Phase 4 board over the felt + numbers
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
 ```
