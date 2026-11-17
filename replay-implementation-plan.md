@@ -1493,6 +1493,65 @@ misclassification of ambiguous shapes.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-16, B3 branch).** All ten ch. 3/ch. 4 block-theory lessons
+> are recognised from arbitrary states in `src/classifier/shape/`: `ryanmen`,
+> `nakabukure`, `protorun_priority`, `ryankan`, `plus_one`, `nobetan`,
+> `pair_count`, `pair_count_open`, `skipping` and `perfect`, registered on the
+> default app build with B1/B2. The recognisers never read the state's answer:
+> they enumerate the at most fourteen distinct discards, ask `agari` for the
+> effective-hand shanten/acceptance, and apply the shape predicate the lesson's
+> constructor proves. `Match::validate` still grades every returned tile
+> against the state's own legal discards, and `Match::stamp` preserves the
+> decision context.
+>
+> **Bounded and fail closed.** A hand partition is an exact-cover search capped
+> at `MAX_SEARCH_NODES = 4096`; the expensive completion helpers
+> (`side_wait_routes`, `is_perfect_one_away`, `can_reach_side_wait`) run only on
+> the two or three hands a lesson compares. Every recogniser declines a tie, a
+> second line with the same book claim, or a state outside its cell:
+> - ryanmen requires the drawn duplicate, a sets + pair + bare side-wait
+>   partition, and exactly two winning kinds;
+> - nakabukure separates the ready cell (strictly best tenpai discard) from
+>   1-away keep/break by the draw's rival block (adjacent to one pair vs between
+>   two pairs), so the same shape can teach all three answers;
+> - protorun priority requires the closed wait's two tiles to be the unique
+>   tied maximum and the kept hand to show two side waits;
+> - ryankan requires the draw one rank below the head, the low terminal to keep
+>   a side wait, and both the draw and the high terminal to lose it;
+> - protorun plus one requires exactly one side-wait and one closed-wait cover
+>   tying at the top;
+> - nobetan requires the one 3456/4567, two pairs, the shape-preserving best
+>   discard, both ends accepting more, and more side-wait routes kept;
+> - pair count requires three suited pairs, the drawn pair as the strict best
+>   break, and every other pair break tying it;
+> - pair count open requires one live honour pair (the visible Pon plan), the
+>   closed oracle preferring the pair break but the post-Pon line reversing it,
+>   and only the redundant float tying;
+> - skipping requires same-rank isolated competition, equal current acceptance
+>   and a strictly larger protorun-draw count;
+> - perfect requires exactly one perfect-1-away discard and a non-perfect rival
+>   that accepts more.
+>
+> **Family boundaries.** The shape rules are offensive block comparisons, so
+> `shape::view` refuses a table with an opponent Riichi or open meld (the ch. 8
+> defence family owns those boards), and protorun priority defers to
+> `push_or_fold` when that box also fires. The two pair-count cells are
+> disjoint by construction: the closed lesson refuses an honour pair and the
+> open lesson requires a live one. Generated boards across B1–B3 are proven
+> disjoint by the framework test.
+>
+> **Performance and transform policy.** `shape::PERFORMANCE_BUDGET` documents
+> the bound (14 discard evaluations plus the capped block search per state; a
+> 20-state generated batch must classify in under 5 s even while the suite
+> runs), and `the_shape_family_stays_within_its_performance_budget` pins it.
+> The family opts into seat, suit, rank-mirror, wind-relabel and red-five
+> variants with recompute: the rules compare runs, protoruns and rank gaps,
+> never values, dora or seats. The gate run was `cargo fmt --check`,
+> `cargo test --lib` (745 tests, three consecutive runs),
+> `cargo clippy --lib --tests -- -D warnings`,
+> `cargo check --target wasm32-unknown-unknown` and, for the miner seam,
+> `cargo test --features miner --lib` (884 tests).
+
 #### Phase 4 — Mortal labeler
 
 ##### L1 — Native batch labeler, Q values and cache

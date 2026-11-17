@@ -45,16 +45,20 @@
 //!
 //! # Where the predicates live
 //!
-//! The B1/B2 recognisers share one state reading ([`support`]) and one
-//! transform contract, and the classifier gate runs on the **default** app
-//! build (not the `miner` feature), so they live in this module rather than
-//! beside each constructor. They still call each lesson's own judgement helpers
-//! instead of re-implementing the book rule.
+//! The B1/B2 recognisers share one state reading ([`support`]); B3's ch. 3
+//! block-theory family shares [`shape`]'s bounded block comparison. Every
+//! family uses one transform contract, and the classifier gate runs on the
+//! **default** app build (not the `miner` feature), so they live in this
+//! module rather than beside each constructor. They still call each lesson's
+//! own judgement helpers instead of re-implementing the book rule.
 //!
-//! # Two decision shapes
+//! # Decision shapes
 //!
 //! B1's lessons are all closed self-turn discard decisions, and [`support::turn`]
-//! is that view. B2 adds the ch. 9 reaction and kan decisions: a Pon/Chi/Kan
+//! is that view. B3 adds the ch. 3 block-theory shape comparisons: a quiet
+//! self-turn discard whose answer is the block reading `agari`'s acceptance
+//! numbers and the book's shape rule pick out ([`shape`]). B2 adds the ch. 9
+//! reaction and kan decisions: a Pon/Chi/Kan
 //! offer ([`crate::state::DecisionContext::ReactToDiscard`]) and an open or
 //! concealed quad on the player's own turn. Those recognisers read the hand
 //! through their own tile lists and the state's `call_offer`/`melds` instead of
@@ -107,6 +111,7 @@ pub mod kan;
 pub mod pinfu;
 pub mod push_fold;
 pub mod riichi;
+pub mod shape;
 pub mod suji;
 pub mod wind;
 
@@ -456,6 +461,60 @@ pub const CLASSIFIERS: &[LessonClassifier] = &[
         lesson: ScenarioId::WindDiscardOrder,
         policy: wind::POLICY,
         matches: wind::wind_discard_order,
+    },
+    // ch. 3/ch. 4 block-theory shape family (B3). The open pair-count cell is
+    // narrower than the closed one and is listed first; the two never both
+    // match because the closed lesson refuses an honour pair and the open one
+    // requires a live honour pair.
+    LessonClassifier {
+        lesson: ScenarioId::RyanmenProtorun,
+        policy: shape::POLICY,
+        matches: shape::ryanmen::ryanmen_protorun,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::NakabukureReady,
+        policy: shape::POLICY,
+        matches: shape::nakabukure::nakabukure_ready,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::ProtorunPriority,
+        policy: shape::POLICY,
+        matches: shape::protorun_priority::protorun_priority,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::RyankanBreak,
+        policy: shape::POLICY,
+        matches: shape::ryankan::ryankan_break,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::ProtorunPlusOne,
+        policy: shape::POLICY,
+        matches: shape::plus_one::protorun_plus_one,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::NobetanKeep,
+        policy: shape::POLICY,
+        matches: shape::nobetan::nobetan_keep,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::PairCountOpen,
+        policy: shape::POLICY,
+        matches: shape::pair_count_open::pair_count_open,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::PairCount,
+        policy: shape::POLICY,
+        matches: shape::pair_count::pair_count,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::SkippingBlock,
+        policy: shape::POLICY,
+        matches: shape::skipping::skipping_block,
+    },
+    LessonClassifier {
+        lesson: ScenarioId::PerfectOneAway,
+        policy: shape::POLICY,
+        matches: shape::perfect::perfect_one_away,
     },
 ];
 

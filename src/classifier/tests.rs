@@ -42,6 +42,17 @@ const BOOK_LESSONS: &[ScenarioId] = &[
     ScenarioId::ShouminkanDecision,
     ScenarioId::DaiminkanDecision,
     ScenarioId::WindDiscardOrder,
+    // B3.
+    ScenarioId::RyanmenProtorun,
+    ScenarioId::NakabukureReady,
+    ScenarioId::ProtorunPriority,
+    ScenarioId::RyankanBreak,
+    ScenarioId::ProtorunPlusOne,
+    ScenarioId::NobetanKeep,
+    ScenarioId::PairCount,
+    ScenarioId::SkippingBlock,
+    ScenarioId::PairCountOpen,
+    ScenarioId::PerfectOneAway,
 ];
 
 fn generated(lesson: ScenarioId) -> GameState {
