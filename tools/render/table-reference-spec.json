@@ -294,18 +294,6 @@
       "clipEnd": 600.0,
       "note": "Perspective, 75 mm on a 36 mm sensor, pitched 50 deg down from horizontal, centred on X = 0 behind the south edge at 76 units. 76 units is the distance at which the whole 700 mm mat plus rim fits the 16:9 width with a comfortable ~165 px margin each side and the far rim still inside the frame. Blender's Shift Y is measured against the sensor width, and its positive direction moves the image down; Shift Y -0.02 therefore raises the image 38.4 px, which buys the far rim its headroom and leaves the player's standing hand 74 px above the bottom edge without pitching the camera further down. shiftX = 0 and no roll keep every world-vertical edge parallel to the screen vertical up to the small outward convergence the 50 deg pitch produces (about 2.3 px at the outer hand slots, measured and gated by check-table-rig.mjs); a pitched camera cannot give exactly parallel verticals, and a level camera cannot see the table."
     },
-    "output": {
-      "resolution": [
-        1920,
-        1080
-      ],
-      "aspect": "16:9",
-      "file": "rig-1x.png",
-      "manifest": "rig.json",
-      "masterPath": "build/reference/rig/rig-1920.png",
-      "bakePath": "build/reference/rig/rig-bake.json",
-      "note": "The plan's reference resolution. One render, not a @2x master: the rig is a perspective/lighting calibration target, and Task 3 exports normalized screen coordinates and quads, not pixels from this board."
-    },
     "lighting": {
       "convention": "A large soft overhead AREA key slightly forward of table centre (toward the camera) plus three low-intensity AREA fills, one from the near/south side for the standing hand and two low side fills for the side-wall inner vertical faces. Cycles path-traced GI supplies the contact occlusion and soft shadows under the tile bases (there is no Eevee AO toggle in the Cycles engine). The key is neutral warm and the fills are cool so the bevels and inner faces read against the ivory body without tinting the face paint.",
       "key": {
@@ -452,7 +440,168 @@
       "minBlueMinusRed": 40.0,
       "minHandFaceLuma": 40.0,
       "minSideFaceLuma": 45.0,
-      "note": "Thresholds are the acceptance criteria of the plan's Task 2, in numbers: perspective + 75 mm + 50 deg + X = 0 + negative shift, the full table width inside the frame, the south hand near the bottom, no inward vertical lean and at most maxOutwardLeanPx of outward lean, side-wall inner faces at least wallInnerFaceMinPx wide, the centre hand tile straight-on and the outer hand tiles showing a sliver, and a lit ivory face / blue back / readable hand face / lit inner side face in the render."
+      "note": "Thresholds are the acceptance criteria of the plan's Task 2, in numbers: perspective + 75 mm + 50 deg + X = 0 + negative shift, the full table width inside the frame, the south hand near the bottom, no inward vertical lean and at most maxOutwardLeanPx of outward lean, side-wall inner faces at least wallInnerFaceMinPx wide, the centre hand tile straight-on and the outer hand tiles showing a sliver, and a lit ivory face / blue back / readable hand face / lit inner side face in the render.",
+      "requireFarRimInside": true,
+      "minTransparentPct": 5.0,
+      "maxTransparentPct": 60.0
+    },
+    "output": {
+      "resolution": [
+        1920,
+        1080
+      ],
+      "aspect": "16:9",
+      "directory": "rig",
+      "imagePattern": "{variant}-1x.png",
+      "manifestPattern": "{variant}.json",
+      "index": "index.html",
+      "bakeDirectory": "rig/{variant}",
+      "bakeFile": "rig-bake.json",
+      "renderPattern": "rig-{width}.png",
+      "note": "The plan's reference resolution. One render per variant, not a @2x master: the rig is a perspective/lighting calibration target, and Task 3 exports normalized screen coordinates and quads, not pixels from a board. Committed variants live together under reference/rig/ so they can be A/B compared; {variant} is the variant id."
+    },
+    "defaultVariant": "v1-baseline",
+    "variants": {
+      "v1-baseline": {
+        "order": 1,
+        "label": "v1 baseline (committed 2026-11-17)",
+        "date": "2026-11-17",
+        "strictScene": true,
+        "note": "The first committed rig: whole table width framed with the near rim as the working-area border, the hand reclined 12 deg, 75 mm at 76 units, 9000 W key. Saved unchanged as the A/B reference.",
+        "table": {},
+        "camera": {},
+        "lighting": {},
+        "render": {},
+        "checks": {}
+      },
+      "v2-compact": {
+        "order": 2,
+        "label": "v2 compact + readable hand + dimmer key",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "The user's 2026-11-17 direction: everything bigger and more compact, hands and melds pulled in to the wall, the player's hand reclined further so the faces read from the 50 deg camera (a deliberate cheat; the runtime will use a blob shadow under it, not this render's real shadow), and the key dimmed so the discards stop reading as blown-out white. The mat/rim are only the working-area border and are allowed to crop.",
+        "table": {
+          "hand": {
+            "backRadiusUnits": 8.8,
+            "tiltDeg": 40.0,
+            "note": "v2: 13 standing tiles with a 0.3 mm gap, pulled in to radius 8.8 (v1: 10.6) so the row sits 1.3 units behind the wall's outer edge (v1: 3.1). The 14th draw slot keeps the tsumogiri gap. The tiles are RECLINED 40 deg about their far bottom edges as a deliberate readability cheat, so the near bottom edge floats 0.38 units above the table and the real cast shadow is not the production shadow (the runtime uses a blob). Their shading normals are corrected to the 12 deg physical pose (see rig.variants['v2-compact'].lightingCheat), so the light on them is the physical read."
+          },
+          "meld": {
+            "rowRadiusUnits": 8.8,
+            "note": "v2: one four-slot meld row per seat at the hand's new radius 8.8 (v1: 10.6), to the right of the player's hand; the drawn tile ends at x 5.58 and the row starts at x 6.1. Slots 0-1 upright, slot 2 the called tile lying sideways, slot 3 the kan extension."
+          }
+        },
+        "camera": {
+          "distanceUnits": 59.0,
+          "eye": [
+            0.0,
+            -37.924469,
+            45.546622
+          ],
+          "shiftY": -0.02,
+          "note": "v2 experiment: framed to the tile content (hands at radius 8.8, melds at 8.8) rather than the 700 mm mat, so the tiles read ~1.29x larger than v1 in linear size (~1.68x in area). 59 units leaves every tile inside the frame (>=27 px) with the hand 45 px above the bottom edge; the mat and rim are only the working-area border and the rim crosses the frame edges. Blender's Shift Y convention is unchanged from v1 (negative raises the image)."
+        },
+        "lighting": {
+          "key": {
+            "id": "rig-key",
+            "type": "AREA",
+            "shape": "RECTANGLE",
+            "sizeUnits": 20.0,
+            "sizeYUnits": 14.0,
+            "location": [
+              0.0,
+              -2.5,
+              22.0
+            ],
+            "aimAt": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "energyW": 6000.0,
+            "hex": "#fff7ea",
+            "note": "v2: dimmed from the 9000 W baseline so the discard faces stop reading as blown-out white. Same position, size and colour."
+          },
+          "fills": [
+            {
+              "id": "rig-fill-near",
+              "type": "AREA",
+              "shape": "RECTANGLE",
+              "sizeUnits": 26.0,
+              "sizeYUnits": 16.0,
+              "location": [
+                0.0,
+                -26.0,
+                9.0
+              ],
+              "aimAt": [
+                0.0,
+                0.0,
+                0.5
+              ],
+              "energyW": 900.0,
+              "hex": "#cfe0ff",
+              "note": "Near/south fill: lights the player's standing hand fronts and the south-facing inner faces of the far wall; cool and low so it only opens the shadows."
+            },
+            {
+              "id": "rig-fill-left",
+              "type": "AREA",
+              "shape": "RECTANGLE",
+              "sizeUnits": 14.0,
+              "sizeYUnits": 14.0,
+              "location": [
+                -22.0,
+                -7.0,
+                11.0
+              ],
+              "aimAt": [
+                0.0,
+                0.0,
+                0.5
+              ],
+              "energyW": 450.0,
+              "hex": "#dfe9ff",
+              "note": "Left side fill: defines the west wall's inner vertical faces and the left bevels."
+            },
+            {
+              "id": "rig-fill-right",
+              "type": "AREA",
+              "shape": "RECTANGLE",
+              "sizeUnits": 14.0,
+              "sizeYUnits": 14.0,
+              "location": [
+                22.0,
+                -7.0,
+                11.0
+              ],
+              "aimAt": [
+                0.0,
+                0.0,
+                0.5
+              ],
+              "energyW": 450.0,
+              "hex": "#dfe9ff",
+              "note": "Right side fill: mirrors the left fill for the east wall's inner vertical faces and the right bevels."
+            }
+          ]
+        },
+        "render": {},
+        "checks": {
+          "minWidthMarginPx": 0.0,
+          "requireFarRimInside": false,
+          "minTransparentPct": 0.0,
+          "handBottomMarginPx": [
+            24.0,
+            140.0
+          ],
+          "handToDiscardLumaRatioMax": 0.7
+        },
+        "lightingCheat": {
+          "mode": "physicalPose",
+          "physicalTiltDeg": 12.0,
+          "note": "The hand's geometry keeps the 40 deg cheat so the faces read, but every hand material shades with its normal rotated back by the extra 28 deg about world X, so the key and fills land on it exactly as they would on the 12 deg physical pose. The illusion is the point: the viewer should not read the tilt as a lighting change. The real cast shadow is still the cheated pose's; the runtime will use a blob shadow instead."
+        }
+      }
     }
   },
   "faces": {

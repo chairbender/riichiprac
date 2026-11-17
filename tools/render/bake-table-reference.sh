@@ -4,7 +4,8 @@
 #   bash tools/render/bake-table-reference.sh                 # dry run: build the scene, print the camera metrics
 #   bash tools/render/bake-table-reference.sh --bake          # render the @2x master, then publish the 1x board + 2x crops + manifest
 #   bash tools/render/bake-table-reference.sh --audition      # render the ortho/weak/physical camera candidates at 1x
-#   bash tools/render/bake-table-reference.sh --rig           # Task 2 rig: render the 16:9 1920x1080 RGBA reference, publish + check
+#   bash tools/render/bake-table-reference.sh --rig           # Task 2 rig: render the default variant, publish + check
+#   bash tools/render/bake-table-reference.sh --rig --variant v2-compact  # render/publish/check one A/B variant
 #   bash tools/render/bake-table-reference.sh --check         # integrity + projection check; needs no Blender
 #
 # --bake renders only the transient @2x master under tools/render/build/reference/.
@@ -16,10 +17,11 @@
 #
 # --rig builds the same scene with the Task 2 2.5D camera and light rig, hides the
 # room floor, renders the 16:9 1920x1080 RGBA reference into
-# tools/render/build/reference/rig/, then scripts/table-rig.mjs publishes
-# tools/render/reference/rig-1x.png + rig.json and check-table-rig.mjs gates the
-# acceptance numbers. Add --rig-width N (and --samples N) for a fast tuning render;
-# a tuning render never publishes or checks.
+# tools/render/build/reference/rig/<variant>/, then scripts/table-rig.mjs publishes
+# tools/render/reference/rig/<variant>-1x.png + <variant>.json (and rebuilds the A/B
+# index.html), and check-table-rig.mjs gates every committed variant. --variant NAME
+# picks an A/B variant (default: spec.rig.defaultVariant). Add --rig-width N or
+# --samples N for a fast tuning render; a tuning render never publishes or checks.
 #
 # The reference is a calibration target only: it writes nothing under
 # frontend/public and the runtime never reads it.
@@ -31,6 +33,8 @@ blender="${BLENDER:-$HOME/.local/opt/blender-4.5.9/blender}"
 mode="bake"
 mode_set=0
 dry_run=0
+variant=""
+tuning=0
 args=()
 
 while [ $# -gt 0 ]; do
@@ -40,9 +44,11 @@ while [ $# -gt 0 ]; do
     --rig) mode_set=1; mode="rig"; shift ;;
     --check) mode_set=1; mode="check"; shift ;;
     --dry-run) dry_run=1; shift ;;
-    --camera|--samples|--rig-width)
+    --variant|--camera|--samples|--rig-width)
       [ $# -ge 2 ] || { echo "bake-table-reference: $1 needs a value" >&2; exit 2; }
       args+=("$1" "$2")
+      if [ "$1" = "--variant" ]; then variant="$2"; fi
+      if [ "$1" = "--rig-width" ] || [ "$1" = "--samples" ]; then tuning=1; fi
       shift 2
       ;;
     *)
@@ -88,8 +94,12 @@ if [ "$mode" = "bake" ] && [ "$dry_run" = "0" ]; then
   node "$here/scripts/check-table-reference.mjs"
 fi
 
-if [ "$mode" = "rig" ] && [ "$dry_run" = "0" ] && [ ${#args[@]} -eq 0 ]; then
-  node "$here/scripts/table-rig.mjs"
+if [ "$mode" = "rig" ] && [ "$dry_run" = "0" ] && [ "$tuning" = "0" ]; then
+  if [ -n "$variant" ]; then
+    node "$here/scripts/table-rig.mjs" --variant "$variant"
+  else
+    node "$here/scripts/table-rig.mjs"
+  fi
   node "$here/scripts/check-table-rig.mjs"
 fi
 

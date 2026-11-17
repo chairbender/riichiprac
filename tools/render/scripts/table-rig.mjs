@@ -1,48 +1,63 @@
 #!/usr/bin/env node
 /**
- * Publish the 2.5D rig reference (Task 2 of 2_5d_implementation_plan.md).
+ * Publish one 2.5D rig variant (Task 2 of 2_5d_implementation_plan.md).
  *
- *   bash tools/render/bake-table-reference.sh --rig   # render, publish, check
+ *   bash tools/render/bake-table-reference.sh --rig --variant v2-compact
  *
- * Reads the transient bake (`tools/render/build/reference/rig/rig-bake.json`
- * plus `rig-1920.png`), recomputes the acceptance geometry from the recorded
- * camera and placements, measures the lighting probes on the rendered pixels,
- * then commits `tools/render/reference/rig-1x.png`, `rig.json` and `rig.html`.
+ * Reads the transient bake (`tools/render/build/reference/rig/<variant>/`),
+ * recomputes the acceptance geometry from the recorded camera and placements,
+ * measures the lighting probes on the rendered pixels, then commits
+ * `tools/render/reference/rig/<variant>-1x.png`, `<variant>.json`, and rebuilds
+ * the A/B `index.html` from every committed variant.
  *
  * Calibration only: nothing under frontend/public is written and the runtime
  * never reads the rig.
  */
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPng } from './png.mjs';
 import { cameraFromCandidate, rigLightingSamples, rigMetrics } from './table-camera.mjs';
 import { alphaAt, alphaCoverage, measureRigSamples } from './table-rig-samples.mjs';
+import { orderedVariants, resolveRigVariant } from './table-rig-spec.mjs';
 
 const renderDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const spec = JSON.parse(readFileSync(join(renderDir, 'table-reference-spec.json'), 'utf8'));
 const shellSpec = JSON.parse(readFileSync(join(renderDir, 'shell-spec.json'), 'utf8'));
-const rig = spec.rig;
-if (!rig) throw new Error('table-rig: table-reference-spec.json has no rig block');
+if (!spec.rig) throw new Error('table-rig: table-reference-spec.json has no rig block');
 
-const bakePath = join(renderDir, rig.output.bakePath);
+let requested = null;
+for (let index = 2; index < process.argv.length; index += 1) {
+  const arg = process.argv[index];
+  if (arg === '--variant') {
+    requested = process.argv[index + 1];
+    index += 1;
+  } else {
+    throw new Error(`table-rig: unknown option ${arg}`);
+  }
+}
+const { id, variant, rig, table } = resolveRigVariant(spec, requested);
+const resolution = rig.output.resolution;
+
+const bakeDir = join(renderDir, 'build', 'reference', rig.output.bakeDirectory.replace('{variant}', id));
+const bakePath = join(bakeDir, rig.output.bakeFile);
 if (!existsSync(bakePath)) {
-  throw new Error(`table-rig: no bake at ${bakePath}; run bake-table-reference.sh --rig first`);
+  throw new Error(`table-rig: no bake at ${bakePath}; run bake-table-reference.sh --rig --variant ${id} first`);
 }
 const bake = JSON.parse(readFileSync(bakePath, 'utf8'));
-const resolution = rig.output.resolution;
-if (bake.mode !== 'rig') throw new Error(`table-rig: ${bakePath} is not a rig bake`);
+if (bake.mode !== 'rig' || bake.variant !== id) {
+  throw new Error(`table-rig: ${bakePath} is not a ${id} rig bake`);
+}
 if (bake.resolution[0] !== resolution[0] || bake.resolution[1] !== resolution[1]) {
   throw new Error(
-    `table-rig: the bake is ${bake.resolution.join('x')}, but the committed rig is ` +
+    `table-rig: the bake is ${bake.resolution.join('x')}, but the variant is ` +
       `${resolution.join('x')}; a tuning render is never published`,
   );
 }
-
 if (bake.render.samples !== rig.render.samples) {
   throw new Error(
-    `table-rig: the bake used ${bake.render.samples} samples, the committed rig uses ` +
+    `table-rig: the bake used ${bake.render.samples} samples, the variant uses ` +
       `${rig.render.samples}; a tuning render is never published`,
   );
 }
@@ -56,7 +71,7 @@ for (const key of ['eye', 'target']) {
   }
 }
 
-const renderPath = join(renderDir, 'build', 'reference', 'rig', `rig-${resolution[0]}.png`);
+const renderPath = join(bakeDir, rig.output.renderPattern.replace('{width}', String(resolution[0])));
 if (!existsSync(renderPath)) throw new Error(`table-rig: no render at ${renderPath}`);
 const image = readPng(renderPath);
 if (image.width !== resolution[0] || image.height !== resolution[1]) {
@@ -72,8 +87,8 @@ const samples = rigLightingSamples(camera, tiles, spec, shellSpec);
 const measured = measureRigSamples(image, samples);
 const coverage = alphaCoverage(image);
 
-const outDir = join(renderDir, 'reference');
-const committedPath = join(outDir, rig.output.file);
+const outDir = join(renderDir, 'reference', rig.output.directory);
+const committedPath = join(outDir, rig.output.imagePattern.replace('{variant}', id));
 copyFileSync(renderPath, committedPath);
 const bytes = statSync(committedPath).size;
 const digest = createHash('sha256')
@@ -87,6 +102,9 @@ const facts = {
   blueLuma: luma('blue'),
   blueMinusRed: measured.blue ? Number((measured.blue.rgb[2] - measured.blue.rgb[0]).toFixed(1)) : null,
   handFaceLuma: luma('handFace'),
+  handToDiscardLumaRatio: measured.handFace && measured.face
+    ? Number((measured.handFace.luma / measured.face.luma).toFixed(3))
+    : null,
   sideFaceLuma: {
     left: luma('sideLeft'),
     right: luma('sideRight'),
@@ -105,6 +123,12 @@ const manifest = {
   version: 1,
   generatedBy: 'tools/render/scripts/table-rig.mjs',
   rig: rig.id,
+  variant: id,
+  variantLabel: variant.label,
+  variantNote: variant.note,
+  variantDate: variant.date,
+  variantOrder: variant.order ?? 0,
+  strictScene: Boolean(variant.strictScene),
   blender: bake.blender,
   resolution,
   camera,
@@ -112,6 +136,21 @@ const manifest = {
   visibility: bake.visibility,
   render: bake.render,
   lighting: bake.lighting,
+  handLightingCheat: bake.handLightingCheat ?? null,
+  layout: {
+    hand: table.hand,
+    meld: table.meld,
+    wall: {
+      radiusUnits: table.wall.radiusUnits,
+      stacksPerRun: table.wall.stacksPerRun,
+      tiers: table.wall.tiers,
+    },
+    pond: {
+      rows: table.pond.rows,
+      columns: table.pond.columns,
+      rowRadiiUnits: table.pond.rowRadiiUnits,
+    },
+  },
   scene: {
     dimensions: bake.scene.dimensions,
     innerFacePlate: bake.scene.innerFacePlate,
@@ -139,9 +178,14 @@ const manifest = {
     render: rig.render,
     samples: rig.samples,
     checks: rig.checks,
+    lightingCheat: rig.lightingCheat ?? null,
+    table: {
+      hand: table.hand,
+      meld: table.meld,
+    },
   },
   renders: {
-    file: rig.output.file,
+    file: rig.output.imagePattern.replace('{variant}', id),
     width: image.width,
     height: image.height,
     channels: image.channels,
@@ -150,77 +194,86 @@ const manifest = {
   },
   note: rig.status,
 };
-writeFileSync(join(outDir, rig.output.manifest), `${JSON.stringify(manifest, null, 1)}\n`);
+writeFileSync(join(outDir, rig.output.manifestPattern.replace('{variant}', id)), `${JSON.stringify(manifest, null, 1)}\n`);
 
-const row = (label, value) => `<tr><th>${label}</th><td>${value}</td></tr>`;
+// --------------------------------------------------------------------------- //
+// The A/B page: every committed variant, newest settings included.
+// --------------------------------------------------------------------------- //
+const manifests = readdirSync(outDir)
+  .filter((name) => name.endsWith('.json'))
+  .map((name) => JSON.parse(readFileSync(join(outDir, name), 'utf8')))
+  .filter((entry) => entry.version === 1 && entry.variant)
+  .sort((a, b) => a.variantOrder - b.variantOrder || a.variant.localeCompare(b.variant));
+const settingsRows = (entry) => {
+  const hand = entry.layout?.hand ?? {};
+  const cam = entry.camera;
+  return `
+      <tr><th>camera</th><td>${cam.lensMm} mm · pitch ${cam.elevationDeg}° · ${cam.distanceUnits.toFixed(3)} units · Shift Y ${cam.shiftY}</td></tr>
+      <tr><th>hand / meld radius</th><td>${hand.backRadiusUnits ?? '?'} / ${entry.layout?.meld?.rowRadiusUnits ?? '?'} units</td></tr>
+      <tr><th>hand tilt</th><td>${hand.tiltDeg ?? '?'}°${entry.handLightingCheat ? ` (shaded as ${entry.handLightingCheat.physicalTiltDeg}°)` : ''}</td></tr>
+      <tr><th>light key</th><td>${entry.lighting?.lights?.[0]?.energyW ?? '?'} W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>${entry.metrics?.hand?.rows?.[6]?.topWidthPx ?? '?'} px</td></tr>
+      <tr><th>hand face / discard luma</th><td>${entry.facts?.handFaceLuma} / ${entry.facts?.faceLuma}</td></tr>
+      <tr><th>hand bottom margin</th><td>${entry.metrics?.hand?.bottomMarginPx} px</td></tr>`;
+};
+const sections = manifests.map((entry) => `
+  <section>
+    <h2>${entry.variant} — ${entry.variantLabel ?? ''}</h2>
+    <p>${entry.variantNote ?? ''}</p>
+    <figure>
+      <a href="${entry.renders.file}"><img src="${entry.renders.file}" alt="${entry.variant}"></a>
+      <figcaption>${entry.renders.width}×${entry.renders.height} RGBA · ${entry.renders.bytes.toLocaleString()} B ·
+      ${entry.variantDate ?? ''}</figcaption>
+    </figure>
+    <table>${settingsRows(entry)}
+      <tr><th>side inner face / hand sliver</th><td>${entry.metrics?.wallInnerFaceMinPx?.left} / ${entry.metrics?.hand?.rows?.[0]?.sideSliverPx} px</td></tr>
+      <tr><th>transparent pixels</th><td>${entry.alpha?.transparentPct}%</td></tr>
+    </table>
+  </section>`).join('\n');
+
 const html = `<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<title>riichiprac 2.5D rig reference</title>
+<title>riichiprac 2.5D rig A/B</title>
 <style>
   body { margin: 0 auto; max-width: 1180px; padding: 24px; background: #10171b; color: #dbe6e9;
          font: 15px/1.45 system-ui, sans-serif; }
   h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 17px; margin: 0 0 4px; }
   p { color: #9fb2b8; max-width: 78ch; }
   img { max-width: 100%; display: block; border-radius: 4px; background: #0b1114; }
-  table { border-collapse: collapse; margin: 18px 0 26px; font-size: 14px; }
-  th, td { text-align: left; padding: 4px 14px 4px 0; border-bottom: 1px solid #23343a; }
+  figure { margin: 0 0 12px; }
+  figcaption { color: #9fb2b8; font-size: 13px; padding-top: 6px; }
+  table { border-collapse: collapse; margin: 6px 0 22px; font-size: 14px; }
+  th, td { text-align: left; padding: 3px 14px 3px 0; border-bottom: 1px solid #23343a; }
   th { color: #9fb2b8; font-weight: 500; }
   code { color: #cbe3c6; }
+  section { border-top: 1px solid #23343a; padding-top: 18px; margin-top: 22px; }
 </style>
-<h1>2.5D perspective camera + lighting rig</h1>
-<p>Task 2 of <code>2_5d_implementation_plan.md</code>. Calibration only: one Blender
-scene, one medium-telephoto perspective camera with a negative vertical lens shift,
-a large soft overhead area key plus three low fills, film transparent. The
-published PNG is RGBA. Numbers below are recomputed by
-<code>scripts/check-table-rig.mjs</code> from the camera and placements, and
-measured on the rendered pixels.</p>
-<figure>
-  <a href="${rig.output.file}"><img src="${rig.output.file}" alt="2.5D rig reference"></a>
-  <figcaption>${image.width}×${image.height} RGBA · ${bytes.toLocaleString()} B ·
-  ${rig.camera.lensMm} mm · pitch ${rig.camera.elevationDeg}° · distance ${rig.camera.distanceUnits} ·
-  Shift Y ${rig.camera.shiftY}</figcaption>
-</figure>
-<table>
-${row('camera eye', `[${camera.eye.map((value) => value.toFixed(3)).join(', ')}]`)}
-${row('vanishing point of the side-wall runs', `(${metrics.vanishingPoint.x.toFixed(1)}, ${metrics.vanishingPoint.y.toFixed(1)}) px — above the frame`)}
-${row('run convergence error', `${metrics.runConvergenceDeltaPx.toFixed(2)} px`)}
-${row('side-wall inner face width (left / right)', `${metrics.wallInnerFaceMinPx.left} / ${metrics.wallInnerFaceMinPx.right} px (min over the run)`)}
-${row('hand side sliver, outer / centre', `${metrics.hand.rows[0].sideSliverPx} / ${metrics.hand.rows[6].sideSliverPx} px`)}
-${row('hand plate vertical lean, outward min / max', `${Math.min(...metrics.hand.rows.flatMap((entry) => [entry.outwardLeanLeftPx, entry.outwardLeanRightPx])).toFixed(2)} / ${Math.max(...metrics.hand.rows.flatMap((entry) => [entry.outwardLeanLeftPx, entry.outwardLeanRightPx])).toFixed(2)} px`)}
-${row('frame margins: rim left / right / top / bottom', `${metrics.rim.marginsPx.left} / ${metrics.rim.marginsPx.right} / ${metrics.rim.marginsPx.top} / ${metrics.rim.marginsPx.bottom}`)}
-${row('player hand bottom margin', `${metrics.hand.bottomMarginPx} px`)}
-${row('lit face luma (pond 5z)', `${facts.faceLuma} (shipped shell 223,220,216)`)}
-${row('blue back luma', `${facts.blueLuma} (blue − red ${facts.blueMinusRed})`)}
-${row('blank hand face luma', `${facts.handFaceLuma}`)}
-${row('side-wall inner face luma (left / right)', `${facts.sideFaceLuma.left} / ${facts.sideFaceLuma.right}`)}
-${row('felt luma', `${facts.matLuma}`)}
-${row('transparent / opaque pixels', `${coverage.transparentPct}% / ${coverage.opaquePct}%`)}
-</table>
-<p><code>rig.json</code> holds the full record: camera, light rig, every tile
-placement, every acceptance number and every measured probe.</p>
+<h1>2.5D rig variants — A/B</h1>
+<p>Task 2 of <code>2_5d_implementation_plan.md</code>, variant by variant. Every
+variant is the same Blender scene and the same 269 placements, rebuilt with its
+own layout overrides, camera and lights. The committed record of each is its
+<code>.json</code>; the numbers are recomputed by
+<code>scripts/check-table-rig.mjs</code> from the camera and placements and
+measured on the rendered pixels. Calibration only.</p>
+${sections}
 `;
-writeFileSync(join(outDir, 'rig.html'), html);
+writeFileSync(join(outDir, rig.output.index), html);
 
 console.log(
-  `[table-rig] ${resolution.join('x')} · ${rig.camera.lensMm} mm · ` +
+  `[table-rig] ${id} · ${resolution.join('x')} · ${rig.camera.lensMm} mm · ` +
     `pitch ${rig.camera.elevationDeg}° · d ${rig.camera.distanceUnits} · Shift Y ${rig.camera.shiftY}`,
 );
 console.log(
   `[table-rig] vanishing point (${metrics.vanishingPoint.x.toFixed(1)}, ` +
     `${metrics.vanishingPoint.y.toFixed(0)}) px above the frame · ` +
-    `run convergence ${metrics.runConvergenceDeltaPx} px · ` +
-    `inner faces ${metrics.wallInnerFaceMinPx.left}/${metrics.wallInnerFaceMinPx.right} px`,
+    `hand sliver outer ${metrics.hand.rows[0].sideSliverPx} px / centre ${metrics.hand.rows[6].sideSliverPx} px · ` +
+    `hand bottom ${metrics.hand.bottomMarginPx} px`,
 );
 console.log(
-  `[table-rig] hand sliver outer ${metrics.hand.rows[0].sideSliverPx} px / ` +
-    `centre ${metrics.hand.rows[6].sideSliverPx} px · ` +
-    `hand bottom margin ${metrics.hand.bottomMarginPx} px · ` +
-    `rim margins ${metrics.rim.marginsPx.left}/${metrics.rim.marginsPx.right}/${metrics.rim.marginsPx.top}`,
-);
-console.log(
-  `[table-rig] face ${facts.faceLuma} · blue ${facts.blueLuma} · ` +
-    `hand ${facts.handFaceLuma} · sides ${facts.sideFaceLuma.left}/${facts.sideFaceLuma.right} · ` +
+  `[table-rig] face ${facts.faceLuma} · blue ${facts.blueLuma} · hand ${facts.handFaceLuma} ` +
+    `(ratio ${facts.handToDiscardLumaRatio}) · sides ${facts.sideFaceLuma.left}/${facts.sideFaceLuma.right} · ` +
     `felt ${facts.matLuma} · transparent ${coverage.transparentPct}%`,
 );
-console.log(`[table-rig] published ${committedPath} and reference/${rig.output.manifest}`);
+console.log(`[table-rig] published ${committedPath}, reference/${rig.output.directory}/${rig.output.manifestPattern.replace('{variant}', id)} and the A/B ${rig.output.index}`);

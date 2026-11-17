@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>riichiprac 2.5D rig A/B</title>
+<style>
+  body { margin: 0 auto; max-width: 1180px; padding: 24px; background: #10171b; color: #dbe6e9;
+         font: 15px/1.45 system-ui, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 17px; margin: 0 0 4px; }
+  p { color: #9fb2b8; max-width: 78ch; }
+  img { max-width: 100%; display: block; border-radius: 4px; background: #0b1114; }
+  figure { margin: 0 0 12px; }
+  figcaption { color: #9fb2b8; font-size: 13px; padding-top: 6px; }
+  table { border-collapse: collapse; margin: 6px 0 22px; font-size: 14px; }
+  th, td { text-align: left; padding: 3px 14px 3px 0; border-bottom: 1px solid #23343a; }
+  th { color: #9fb2b8; font-weight: 500; }
+  code { color: #cbe3c6; }
+  section { border-top: 1px solid #23343a; padding-top: 18px; margin-top: 22px; }
+</style>
+<h1>2.5D rig variants — A/B</h1>
+<p>Task 2 of <code>2_5d_implementation_plan.md</code>, variant by variant. Every
+variant is the same Blender scene and the same 269 placements, rebuilt with its
+own layout overrides, camera and lights. The committed record of each is its
+<code>.json</code>; the numbers are recomputed by
+<code>scripts/check-table-rig.mjs</code> from the camera and placements and
+measured on the rendered pixels. Calibration only.</p>
+
+  <section>
+    <h2>v1-baseline — v1 baseline (committed 2026-11-17)</h2>
+    <p>The first committed rig: whole table width framed with the near rim as the working-area border, the hand reclined 12 deg, 75 mm at 76 units, 9000 W key. Saved unchanged as the A/B reference.</p>
+    <figure>
+      <a href="v1-baseline-1x.png"><img src="v1-baseline-1x.png" alt="v1-baseline"></a>
+      <figcaption>1920×1080 RGBA · 2,210,928 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      <tr><th>camera</th><td>75 mm · pitch 50° · 76.000 units · Shift Y -0.02</td></tr>
+      <tr><th>hand / meld radius</th><td>10.6 / 10.6 units</td></tr>
+      <tr><th>hand tilt</th><td>12°</td></tr>
+      <tr><th>light key</th><td>9000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>37.4223 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>137.9 / 217.2</td></tr>
+      <tr><th>hand bottom margin</th><td>73.5256 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>3.7969 / 3.811 px</td></tr>
+      <tr><th>transparent pixels</th><td>26.76%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v2-compact — v2 compact + readable hand + dimmer key</h2>
+    <p>The user's 2026-11-17 direction: everything bigger and more compact, hands and melds pulled in to the wall, the player's hand reclined further so the faces read from the 50 deg camera (a deliberate cheat; the runtime will use a blob shadow under it, not this render's real shadow), and the key dimmed so the discards stop reading as blown-out white. The mat/rim are only the working-area border and are allowed to crop.</p>
+    <figure>
+      <a href="v2-compact-1x.png"><img src="v2-compact-1x.png" alt="v2-compact"></a>
+      <figcaption>1920×1080 RGBA · 2,659,568 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      <tr><th>camera</th><td>75 mm · pitch 50° · 59.000 units · Shift Y -0.02</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>48.4233 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>119.8 / 203.3</td></tr>
+      <tr><th>hand bottom margin</th><td>45.2431 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>6.1244 / 4.4586 px</td></tr>
+      <tr><th>transparent pixels</th><td>5.4%</td></tr>
+    </table>
+  </section>

@@ -2,6 +2,12 @@
  "version": 1,
  "generatedBy": "tools/render/scripts/table-rig.mjs",
  "rig": "plan25d",
+ "variant": "v1-baseline",
+ "variantLabel": "v1 baseline (committed 2026-11-17)",
+ "variantNote": "The first committed rig: whole table width framed with the near rim as the working-area border, the hand reclined 12 deg, 75 mm at 76 units, 9000 W key. Saved unchanged as the A/B reference.",
+ "variantDate": "2026-11-17",
+ "variantOrder": 1,
+ "strictScene": true,
  "blender": "4.5.9 LTS",
  "resolution": [
   1920,
@@ -183,6 +189,44 @@
   "ambientOcclusion": {
    "mode": "cycles-gi",
    "note": "Cycles path-traced global illumination produces the soft contact shadow under every tile base and the crevice darkening between neighbours; no post AO pass and no Eevee AO setting exists in this engine."
+  }
+ },
+ "handLightingCheat": null,
+ "layout": {
+  "hand": {
+   "backRadiusUnits": 10.6,
+   "count": 13,
+   "pitchUnits": 0.760714286,
+   "drawnOffsetUnits": 5.576785714,
+   "note": "A standing 13-tile row with a 0.3 mm gap. The human's (south) hand is reclined 12 deg backward about its far bottom edge, blue back to the table centre; the other three hands are upright back rows. The human also gets a separate 14th draw slot at +5.5805 (the intentional tsumogiri gap, not the 0.3 mm row clearance); opponents have 13 anchors.",
+   "tiltDeg": 12,
+   "slotsPerSeat": 14,
+   "drawnGapUnits": 0.2625
+  },
+  "meld": {
+   "note": "One four-slot meld row per seat OUTSIDE the wall ring, on the table edge at the hand's radius 10.6, to the right of the player's hand (x from 6.1, clear of the drawn tile at x 5.58). Slots 0 and 1 are upright (0.75 wide), slot 2 is the called tile lying sideways (1.0 wide) and slot 3 is the kan extension; the modelled pon occupies slots 0-2 and slot 3 is an anchor only.",
+   "rowRadiusUnits": 10.6,
+   "startXUnits": 6.1,
+   "uprightTiles": 2,
+   "calledTiles": 1,
+   "slots": 4,
+   "uprightWidthUnits": 0.760714286,
+   "calledWidthUnits": 1.010714286,
+   "calledGapUnits": 0.010714286
+  },
+  "wall": {
+   "radiusUnits": 7,
+   "stacksPerRun": 17,
+   "tiers": 2
+  },
+  "pond": {
+   "rows": 3,
+   "columns": 6,
+   "rowRadiiUnits": [
+    4.81,
+    3.799286,
+    2.788571
+   ]
   }
  },
  "scene": {
@@ -10385,6 +10429,7 @@
   "blueLuma": 63.7,
   "blueMinusRed": 152,
   "handFaceLuma": 137.9,
+  "handToDiscardLumaRatio": 0.635,
   "sideFaceLuma": {
    "left": 121,
    "right": 118.6,
@@ -10436,11 +10481,14 @@
     1080
    ],
    "aspect": "16:9",
-   "file": "rig-1x.png",
-   "manifest": "rig.json",
-   "masterPath": "build/reference/rig/rig-1920.png",
-   "bakePath": "build/reference/rig/rig-bake.json",
-   "note": "The plan's reference resolution. One render, not a @2x master: the rig is a perspective/lighting calibration target, and Task 3 exports normalized screen coordinates and quads, not pixels from this board."
+   "directory": "rig",
+   "imagePattern": "{variant}-1x.png",
+   "manifestPattern": "{variant}.json",
+   "index": "index.html",
+   "bakeDirectory": "rig/{variant}",
+   "bakeFile": "rig-bake.json",
+   "renderPattern": "rig-{width}.png",
+   "note": "The plan's reference resolution. One render per variant, not a @2x master: the rig is a perspective/lighting calibration target, and Task 3 exports normalized screen coordinates and quads, not pixels from a board. Committed variants live together under reference/rig/ so they can be A/B compared; {variant} is the variant id."
   },
   "lighting": {
    "convention": "A large soft overhead AREA key slightly forward of table centre (toward the camera) plus three low-intensity AREA fills, one from the near/south side for the standing hand and two low side fills for the side-wall inner vertical faces. Cycles path-traced GI supplies the contact occlusion and soft shadows under the tile bases (there is no Eevee AO toggle in the Cycles engine). The key is neutral warm and the fills are cool so the bevels and inner faces read against the ivory body without tinting the face paint.",
@@ -10588,11 +10636,38 @@
    "minBlueMinusRed": 40,
    "minHandFaceLuma": 40,
    "minSideFaceLuma": 45,
-   "note": "Thresholds are the acceptance criteria of the plan's Task 2, in numbers: perspective + 75 mm + 50 deg + X = 0 + negative shift, the full table width inside the frame, the south hand near the bottom, no inward vertical lean and at most maxOutwardLeanPx of outward lean, side-wall inner faces at least wallInnerFaceMinPx wide, the centre hand tile straight-on and the outer hand tiles showing a sliver, and a lit ivory face / blue back / readable hand face / lit inner side face in the render."
+   "note": "Thresholds are the acceptance criteria of the plan's Task 2, in numbers: perspective + 75 mm + 50 deg + X = 0 + negative shift, the full table width inside the frame, the south hand near the bottom, no inward vertical lean and at most maxOutwardLeanPx of outward lean, side-wall inner faces at least wallInnerFaceMinPx wide, the centre hand tile straight-on and the outer hand tiles showing a sliver, and a lit ivory face / blue back / readable hand face / lit inner side face in the render.",
+   "requireFarRimInside": true,
+   "minTransparentPct": 5,
+   "maxTransparentPct": 60
+  },
+  "lightingCheat": null,
+  "table": {
+   "hand": {
+    "backRadiusUnits": 10.6,
+    "count": 13,
+    "pitchUnits": 0.760714286,
+    "drawnOffsetUnits": 5.576785714,
+    "note": "A standing 13-tile row with a 0.3 mm gap. The human's (south) hand is reclined 12 deg backward about its far bottom edge, blue back to the table centre; the other three hands are upright back rows. The human also gets a separate 14th draw slot at +5.5805 (the intentional tsumogiri gap, not the 0.3 mm row clearance); opponents have 13 anchors.",
+    "tiltDeg": 12,
+    "slotsPerSeat": 14,
+    "drawnGapUnits": 0.2625
+   },
+   "meld": {
+    "note": "One four-slot meld row per seat OUTSIDE the wall ring, on the table edge at the hand's radius 10.6, to the right of the player's hand (x from 6.1, clear of the drawn tile at x 5.58). Slots 0 and 1 are upright (0.75 wide), slot 2 is the called tile lying sideways (1.0 wide) and slot 3 is the kan extension; the modelled pon occupies slots 0-2 and slot 3 is an anchor only.",
+    "rowRadiusUnits": 10.6,
+    "startXUnits": 6.1,
+    "uprightTiles": 2,
+    "calledTiles": 1,
+    "slots": 4,
+    "uprightWidthUnits": 0.760714286,
+    "calledWidthUnits": 1.010714286,
+    "calledGapUnits": 0.010714286
+   }
   }
  },
  "renders": {
-  "file": "rig-1x.png",
+  "file": "v1-baseline-1x.png",
   "width": 1920,
   "height": 1080,
   "channels": 4,

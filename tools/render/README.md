@@ -59,8 +59,9 @@ bash tools/render/bake-shells.sh           # dry run: build the tile, print the 
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
 bash tools/render/bake-table-reference.sh  # dry run: build the whole-table reference scene, print camera metrics
 bash tools/render/bake-table-reference.sh --bake  # whole-table reference: @2x render -> 1x board + 2x crops + manifest + check
-bash tools/render/bake-table-reference.sh --rig   # 2.5D rig: 1920x1080 RGBA reference + rig.json + acceptance check
-bash tools/render/bake-table-reference.sh --rig --rig-width 960 --samples 16  # fast rig tuning; never publishes
+bash tools/render/bake-table-reference.sh --rig   # 2.5D rig: default variant -> RGBA reference + record + acceptance check
+bash tools/render/bake-table-reference.sh --rig --variant v2-compact   # one A/B variant
+bash tools/render/bake-table-reference.sh --rig --variant v2-compact --rig-width 700 --samples 12  # fast tuning; never publishes
 bash tools/render/bake-table-reference.sh --check # whole-table + rig integrity gates; no Blender
 ```
 
@@ -202,32 +203,52 @@ contract, the resolved ambiguities and the full check list.
 ### The 2.5D rig (Task 2 of the implementation plan)
 
 `--rig` runs the same scene and the same 269 placements through the new
-pipeline's camera and light rig instead of the placement camera: a **75 mm**
-perspective camera on a 36 mm sensor, pitched **50°**, centred on X = 0 behind
-the south edge at **76 units**, with **Shift Y −0.02** and no roll; a 20 × 14-unit
-AREA key 9000 W slightly forward of centre plus three low AREA fills; a low
-ambient world; **film transparent** with the room floor hidden. It writes
-`reference/rig-1x.png` (1920 × 1080 RGBA), `reference/rig.json` (camera, light
-rig, placements, acceptance numbers, measured probes) and `reference/rig.html`.
-The gate is `scripts/check-table-rig.mjs`, which recomputes the geometry from the
-camera and placements and then measures the rendered pixels (AGENTS.md §6):
+pipeline's camera and light rig instead of the placement camera: perspective,
+**75 mm** on a 36 mm sensor, pitched **50°**, centred on X = 0 behind the south
+edge, **negative Shift Y**, no roll; one large soft **AREA key** slightly forward
+of centre plus low AREA fills; a low ambient world; **film transparent** with the
+room floor hidden.
+
+The rig is **variant-based for A/B**. `table-reference-spec.json`'s `rig` blocks
+are the saved `v1-baseline`; `rig.variants` holds experiments that may override
+the table layout (hand/meld radius, hand tilt), the camera, the lights, the
+render settings and the acceptance thresholds. `--variant NAME` picks one; each
+publishes `reference/rig/<variant>-1x.png` and `<variant>.json`, and
+`reference/rig/index.html` is the A/B page. `scripts/check-table-rig.mjs` gates
+**every committed variant**, recomputing the geometry from the camera and
+placements and then measuring the rendered pixels (AGENTS.md §6):
 
 - the +Y vanishing point of both side-wall runs is above the frame and the runs
   meet it within 1 px;
-- both side walls' inner vertical faces are visible slivers (3.8 px minimum) and
-  measure brighter than the felt;
-- the south hand's centre slot is straight-on (0.34 px of inner side) while the
-  outer slots show a 3.8 px inner sliver, growing outward;
+- both side walls' inner vertical faces are visible slivers and measure brighter
+  than the felt;
+- the south hand's centre slot is straight-on while the outer slots show an
+  inner sliver, growing outward;
 - no south-hand plate edge leans inward and the outward lean stays under 2.5 px;
-- the full table width is framed with 164.6 px margins, the far rim is inside,
-  the hand is 73.5 px above the bottom, and every tile is inside;
+- every tile is inside the frame, the hand sits at the variant's height, and the
+  width margins meet the variant's floor;
 - the blank pond face, blue wall back, blank hand face and side-face probes are
-  lit as specified, and the PNG really is RGBA with a transparent surround.
+  lit as specified, and the PNG is RGBA with the declared transparency.
 
-The rig reproduces the shipped shells' face `[223, 220, 216]` and blue
-`[3, 68, 165]` within a few levels, so the new pipeline's blank bodies can be
-matched to the approved look. See `TABLE-REFERENCE.md` for the parameter table
-and the user sign-off questions.
+**v1-baseline** (saved 2026-11-17): 76 units, hands/melds at radius 10.6, the
+player's hand reclined 12°, a 9000 W key; the whole mat+rim width framed, discard
+face 217.2 luma. **v2-compact** (experiment): 59 units, hands/melds at 8.8 (1.3
+units behind the wall), the player's hand reclined 40°, key 6000 W; framed to the
+tile content, every tile inside, tiles 1.29× linear larger, discard face 203.3
+luma.
+
+The **hand cheat** in v2 reclines the player's hand further than is physical, so
+the near bottom edge floats and the real cast shadow is not the production
+shadow (the runtime uses a blob). To keep the light on it looking physical, the
+hand bodies and decals shade with their normals rotated back by the extra 28°
+about world X: the key and fills land exactly as on the 12° pose, and the gate
+enforces hand/discard luma ≤ 0.7 (measured 0.589; without the correction the 40°
+hand reads 178.8 instead of 119.8). The silhouette keeps the cheat; the shading
+does not.
+
+The v1 rig reproduces the shipped shells' face `[223, 220, 216]` and blue
+`[3, 68, 165]` within a few levels. See `TABLE-REFERENCE.md` for the parameter
+tables, the variant workflow and the user sign-off questions.
 
 This is development-only: nothing under `frontend/public` is written and the
 runtime never reads it.
@@ -260,13 +281,14 @@ runtime never reads it.
 | `scripts/table-camera.mjs` | yes | shared reference pinhole, tile-corner projection, metrics and crop rects |
 | `scripts/table-reference.mjs` | yes | publishes the 1x board, 2x crops, manifest and contact page from the master |
 | `scripts/check-table-reference.mjs` | yes | dependency-free reference spec/scene/render/hash/projection/lighting gate (CI) |
-| `scripts/table-rig.mjs` | yes | publishes the 2.5D rig reference (`rig-1x.png`, `rig.json`, `rig.html`) from the transient bake |
-| `scripts/check-table-rig.mjs` | yes | dependency-free rig contract/geometry/framing/pixel-probe gate (CI) |
+| `scripts/table-rig.mjs` | yes | publishes one rig variant (`<variant>-1x.png`, `<variant>.json`) and rebuilds the A/B `index.html` |
+| `scripts/check-table-rig.mjs` | yes | dependency-free gate for every committed variant (contract, geometry, framing, pixel probes) |
+| `scripts/table-rig-spec.mjs` | yes | the rig-variant merge/resolution shared by the publisher and checker |
 | `scripts/table-rig-samples.mjs` | yes | point and projected-polygon sample measurement shared by the rig publisher and checker |
 | `reference/` | yes | committed calibration renders (`full-board-1x.png`, `crops-2x/`, `table-reference.json`, `index.html`) |
-| `reference/rig-1x.png` | yes | the committed 2.5D rig reference at 1920 × 1080 RGBA |
-| `reference/rig.json` | yes | the rig's record: camera, light rig, placements, acceptance numbers, measured probes |
-| `reference/rig.html` | yes | a contact page for the rig reference and its numbers |
+| `reference/rig/<variant>-1x.png` | yes | each committed rig variant at 1920 × 1080 RGBA (v1-baseline, v2-compact, …) |
+| `reference/rig/<variant>.json` | yes | each variant's record: resolved settings, layout, camera, lights, placements, acceptance numbers, measured probes |
+| `reference/rig/index.html` | yes | the A/B page: every variant's image and numbers side by side |
 | `scripts/check-shells.mjs` | yes | dependency-free spec + PNG + `shells.json` integrity check (CI gate); `--audition` validates the candidate matrix and its labelled sheets |
 | `scripts/png.mjs` | yes | dependency-free PNG decode/encode + sprite compositor shared by the checker and the review sheets |
 | `scripts/shadow-group.mjs` | yes | the hard shadow footprint per shell and the group field (`merged` union-then-blur vs `perTile` blur-then-max); browser-safe |

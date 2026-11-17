@@ -6,12 +6,13 @@ tile slot. It is a **development/calibration model**: nothing under
 
 **Scope note (2026-11-17):** this task is the table model and the anchor bank.
 The placement renders here inherit the earlier calibration reference's camera
-and are **not** a lighting verdict. **Task 2** (2026-11-17) now owns the
-perspective and lighting calibration and ships it as a separate `--rig` mode of
-the same scene and the same 269 placements: a 75 mm perspective camera with a
-negative lens shift, a soft overhead area key plus fills, film transparent, and
-a 1920 × 1080 RGBA reference. The placement board below stays at its own
-2880 × 2112 framing for plan review. See [The 2.5D rig](#the-25d-rig-task-2).
+and are **not** a lighting verdict. **Task 2** (2026-11-17) owns the perspective
+and lighting calibration and ships it as a separate `--rig` mode of the same
+scene and placements. It is variant-based (A/B): `v1-baseline` is the saved
+first rig, `v2-compact` is the first experiment (bigger, hands/melds pulled in
+to the wall, a readability cheat on the player's hand, dimmer key). The
+placement board below stays at its own 2880 × 2112 framing for plan review. See
+[The 2.5D rig](#the-25d-rig-task-2).
 
 **Placement sign-off (2026-11-17):** the user reviewed the committed board, the
 table plan and the anchor plan and approved the table model, anchor bank, riichi
@@ -25,9 +26,9 @@ produced by the scripted checks.
 - Entry point: [`bake-table-reference.sh`](bake-table-reference.sh)
 - Published model: [`reference/`](reference/) — board, element crops,
   `slot-anchors.json`, `table-reference.json`, contact page
-- Published rig: [`reference/rig-1x.png`](reference/rig-1x.png),
-  [`reference/rig.json`](reference/rig.json),
-  [`reference/rig.html`](reference/rig.html)
+- Published rig variants: [`reference/rig/`](reference/rig/) —
+  `<variant>-1x.png` + `<variant>.json` for each saved look, plus the A/B page
+  [`reference/rig/index.html`](reference/rig/index.html)
 - Integrity gates: [`scripts/check-table-reference.mjs`](scripts/check-table-reference.mjs)
   and [`scripts/check-table-rig.mjs`](scripts/check-table-rig.mjs)
 
@@ -36,8 +37,9 @@ produced by the scripted checks.
 ```bash
 bash tools/render/bake-table-reference.sh --dry-run   # build + validate; print the model's metrics
 bash tools/render/bake-table-reference.sh --bake      # render the @2x placement reference, publish, check
-bash tools/render/bake-table-reference.sh --rig       # render the 2.5D rig reference (1920x1080 RGBA), publish, check
-bash tools/render/bake-table-reference.sh --rig --rig-width 960 --samples 16   # fast tuning render, never publishes
+bash tools/render/bake-table-reference.sh --rig       # render/publish/check the default rig variant (v1-baseline)
+bash tools/render/bake-table-reference.sh --rig --variant v2-compact   # one A/B variant
+bash tools/render/bake-table-reference.sh --rig --variant v2-compact --rig-width 700 --samples 12   # fast tuning, never publishes
 bash tools/render/bake-table-reference.sh --check     # both gates; no Blender
 ```
 
@@ -131,96 +133,98 @@ the same space as the previous reference; it is not the 2.5D framing.
 
 Task 2 of [`2_5d_implementation_plan.md`](../../2_5d_implementation_plan.md)
 ships the perspective and lighting for the new pipeline as a second mode of the
-same scene (`--rig`). It reuses every tile placement from this model; the only
-content difference is that `hand-bottom-06` is forced to a blank (`5z`) face so
-the hand has a known ivory lighting probe. The committed artifact is
-[`reference/rig-1x.png`](reference/rig-1x.png) (1920 × 1080 RGBA), its record
-[`reference/rig.json`](reference/rig.json), and a contact page
-[`reference/rig.html`](reference/rig.html).
+same scene (`--rig`). It reuses every tile placement from this model. The rig is
+**variant-based** so settings can be A/B compared without losing a look:
 
-### Camera
+- `table-reference-spec.json`'s `rig` blocks are the saved **v1 baseline**
+  (the first committed rig).
+- `rig.variants` holds named experiments. A variant may override the **table
+  layout** (hand/meld radius, hand tilt), the **camera**, the **lights**, the
+  **render settings** and the **acceptance thresholds**. Empty overrides mean
+  "the baseline".
+- Each variant renders to `tools/render/reference/rig/<variant>-1x.png` with its
+  record in `<variant>.json`. `tools/render/reference/rig/index.html` is the
+  A/B page (both images, both settings tables, both number sets).
+- The gate `scripts/check-table-rig.mjs` validates **every committed variant**.
+
+```bash
+bash tools/render/bake-table-reference.sh --rig                        # v1 baseline: render, publish, check
+bash tools/render/bake-table-reference.sh --rig --variant v2-compact    # one variant
+bash tools/render/bake-table-reference.sh --rig --variant v2-compact --rig-width 700 --samples 12  # fast tuning, never publishes
+bash tools/render/bake-table-reference.sh --check                       # every committed variant, no Blender
+```
+
+Every rig variant shares these fixed rules: perspective (not orthographic),
+65–85 mm on a 36 mm sensor, 48–52° pitch, eye on X = 0 behind the south edge, a
+negative Shift Y, no roll, 16:9 at 1920 × 1080, Film > Transparent with the room
+floor hidden, one large soft AREA key slightly forward of centre plus low fills,
+and Cycles path-traced GI for the contact shadows. The player's blank hand probe
+(`hand-bottom-06` forced to `5z`) gives a known ivory hand face in every variant;
+`check-table-rig.mjs` also confirms the only face override is that probe.
+
+### v1-baseline (saved 2026-11-17)
+
+The first committed rig, kept unchanged as the A/B reference.
 
 | Parameter | Value |
 | --- | --- |
-| Projection | Perspective (not orthographic) |
-| Lens / sensor | **75 mm** on a 36 mm sensor, horizontal fit (75 mm is the middle of the plan's 65–85 mm band) |
-| Position | eye `(0, −48.851858, 58.569378)`, X = 0, behind the south edge; target `(0, 0, 0.35)` |
-| Distance | **76 units** (eye to target) |
-| Pitch | **50°** down from horizontal (inside the plan's 48–52°) |
-| Lens shift | Shift X **0**, Shift Y **−0.02** |
-| Roll | none: the camera right vector is world +X |
-| Clip | 1 … 600 units |
+| Camera | 75 mm, 50° pitch, eye `(0, −48.851858, 58.569378)`, **76 units**, Shift Y **−0.02**, no roll |
+| Framing | whole 700 mm mat + rim width, 164.6 px side margins; far rim 16.3 px inside; near rim cropped 41.8 px; hand 73.5 px above the bottom |
+| Layout | hands radius **10.6**, melds **10.6**; player hand reclined **12°** |
+| Lights | AREA key 20 × 14 at `(0, −2.5, 22)`, **9000 W**, `#fff7ea`; fills 1400 W at `(0, −26, 9)` and 700 W each at `(±22, −7, 11)`; world `#3b4a5c` × 0.35 |
+| Measured | discard face **217.2**, blue back 63.7, hand face **137.9**, side inner faces 121.0 / 118.6, felt 69.1 |
 
-The distance is the width fit: the whole 700 mm mat plus its raised rim fits the
-16:9 frame with **164.6 px** of margin on each side. The far rim is **16.3 px**
-inside the top of the frame; the near rim is deliberately cropped **41.8 px**
-below the bottom (the plan only requires the table *width* to fit, and a
-gameplay view does not show the near rim). The player's standing hand sits
-**73.5 px** above the bottom edge. Every tile is inside the frame.
+### v2-compact (experiment, 2026-11-17)
 
-**Shift Y sign.** Blender measures camera shift against the sensor width
-(here 1920 px, not 1080) and its positive direction moves the image **down**:
-`y = 1080/2 + shiftY × 1920 − focal·up/depth`. The plan asks for a *negative*
-Shift Y; this rig sets **−0.02**, which raises the image 38.4 px. Without it the
-far rim would be cut by 22 px; with it the board is framed as above. The
-`project_point` in `bake_table_reference.py` and `scripts/table-camera.mjs` was
-corrected to that convention in this task (it had only ever run with shift 0),
-and `bake_table_reference.py` asserts it against Blender's own
-`world_to_camera_view` on every rig bake (worst drift 0.0004 px).
+The user's direction: everything bigger and more compact, hands and melds pulled
+in to the wall, the player's hand angled more toward the eye for readability,
+and the key dimmed a little.
 
-### Lighting
+| Parameter | v2 | vs v1 |
+| --- | --- | --- |
+| Hands / melds radius | **8.8 / 8.8 units** | pulled in from 10.6; the hand row now sits 1.3 units behind the wall's outer edge (was 3.1) |
+| Player hand tilt | **40°** recline about the far bottom edge | was 12°; the face is now ~19° off the eye instead of ~47°, so the faces read much closer to straight-on |
+| Camera | 75 mm, 50° pitch, eye `(0, −37.924469, 45.546622)`, **59 units**, Shift Y −0.02 | framed to the tile content, not the mat: **every tile inside** (≥ 26.8 px), hand 45.2 px above the bottom, rim crosses the frame edges |
+| Tile size | hand face width **48.42 px** | 1.29× linear / 1.68× area larger than v1 |
+| Lights | key **6000 W**, fills 900 / 450 / 450 W | key cut 33 % in energy; the lit discard face drops **217.2 → 203.3** luma (AgX compresses most of it) |
+| Measured | discard face **203.3**, blue back 50.5, hand face **119.8**, side inner faces 95.4 / 98.2, felt 51.8 | |
 
-| Element | Value |
-| --- | --- |
-| Key | one **AREA** light, 20 × 14 units (560 × 392 mm), at `(0, −2.5, 22)` — slightly forward of centre — aimed at the table centre, 9000 W, `#fff7ea` |
-| Fill near | AREA 26 × 16 units at `(0, −26, 9)` aimed at `(0, 0, 0.5)`, 1400 W, `#cfe0ff`: the standing hand and the far wall's south faces |
-| Fill left / right | AREA 14 × 14 units at `(∓22, −7, 11)`, 700 W each, `#dfe9ff`: the side walls' inner vertical faces and the bevels |
-| Ambient | world `#3b4a5c` × **0.35** (lights the scene, writes no background with film transparent) |
-| Contact occlusion | Cycles path-traced GI: soft contact shadows under every tile base and crevice darkening between neighbours. Cycles has no Eevee-style AO toggle; this is the "bake soft contact shadows" arm of the plan's step. |
-| Render | CPU Cycles, **64 samples**, adaptive (threshold 0.02), OpenImageDenoise, AgX / "AgX - Medium High Contrast", exposure 0 |
-| Film | **Film > Transparent**, room floor hidden: the published PNG is RGBA |
+**The hand cheat, and its lighting.** The 40° recline is deliberately not
+physical: the tile balances on its far bottom edge, the near bottom edge floats
+0.38 units (10.6 mm) above the table, and the reference render's cast shadow is
+therefore not the production shadow (the runtime will draw a blob shadow under
+it). To keep the light on the hand looking like a normally seated tile, every
+hand material — the blank bodies and their face decals — shades with its normal
+rotated back by the extra 28° about world X (the hand row is not yawed), so the
+key and fills land exactly as they would on the 12° physical pose. The
+silhouette keeps the cheat; the shading does not. Measured proof, same lights:
+without the correction the 40° hand face reads **178.8** luma at the tuning
+render; with it, **119.8** — the physical-pose level (v1's 12° hand reads
+137.9 at its brighter key). The gate enforces `hand/discard luma ≤ 0.7`
+(measured **0.589**) so a regression that drops the correction fails.
 
-The rig reproduces the shipped shells' lit measurements: the blank pond face
-measures **217.2** luma (`[219.8, 216.8, 213.1]`) against the shipped
-`shell_flat_upright` face `[223, 220, 216]`, and the face-down wall back
-`[12, 70, 160]` against the shipped `[3, 68, 165]`. `rig.json` also records the
-light objects (type, size, location, aim, watts, colour, direction) so Task 3A
-can export a `lighting` block that matches the actual scene.
-
-### Acceptance, as numbers
-
-`scripts/check-table-rig.mjs` recomputes these from the camera and the recorded
-placements and then measures the rendered pixels (AGENTS.md §6: numbers, not
-looks). The committed bake reports:
-
-| Criterion | Measured |
-| --- | --- |
-| Side-wall inner vertical faces visible | 3.80 px wide (minimum over both runs); probe luma **121.0 / 118.6** against **69.1** felt |
-| Runs converge above the frame | both inner-face lines meet the +Y vanishing point at `(960.0, −4265.4)`, **0.096 px** from it; the point is above the top edge |
-| South hand centre straight-on | slot 06 inner side **0.34 px** (≤ 0.6 px) |
-| Outer hand shows its inner thickness | slots 00 / 12: **3.81 px** (≥ 3 px), growing outward monotonically |
-| No inward trapezoidal lean | every south-hand plate edge leans **outward** 0 … **2.27 px** (a 50° pitch cannot give parallel verticals; the plan's ceiling is 2.5 px) |
-| Framing | rim margins 164.6 / 164.6 / 16.3 px (left / right / top); hand bottom 73.5 px; all 269 tiles inside |
-| Lit face / blue back / hand face | **217.2** / blue−red **152.0** / **137.9** luma |
-| Felt probe | `(0, 6, 0)` open felt, **69.1** luma |
-| Film transparent | **26.8 %** transparent pixels, opaque table, corners alpha 0 |
+The correction is a shading-normal rotation per hand material, recorded in the
+bake as `handLightingCheat` (mode `physicalPose`, physical/cheated tilt, the
+28° delta, 27 objects, 11 materials). Task 3A should export the **physical**
+face basis for the player's hand (or the cheat has to move into the runtime
+shader) if the same look is to survive the sprite pipeline.
 
 ### What still needs the user
 
-The numbers say the geometry and exposure are what the plan asked for; only the
-user can sign off the *look* (AGENTS.md §6). To review:
+The numbers say the geometry, framing and exposure are what was asked; only the
+user can sign off the *look* (AGENTS.md §6).
 
 ```bash
-xdg-open tools/render/reference/rig-1x.png     # the committed RGBA reference
-xdg-open tools/render/reference/rig.html       # the same image with the numbers
+xdg-open tools/render/reference/rig/index.html   # v1 vs v2 side by side, with the numbers
 bash tools/render/bake-table-reference.sh --check
 ```
 
-Questions only the user can answer: do the side-wall inner faces read as visible
-sunlit slivers at 1920 × 1080, or are they too thin at 3.8 px? Is the 73.5 px
-gap under the player's hand the right amount, or should the board sit lower
-(more near-rim crop) or higher? Do the key/fill balance and the shadow softness
-read as a parlour table, or does the near fill flatten the bevels?
+Questions only the user can answer for v2: is the 1.29× size and 1.3-unit
+hand-to-wall gap right, or should it go further? Is 40° the right hand recline
+(45° would be nearly face-on but the floating edge grows)? Does the corrected
+hand lighting now read as a normally seated tile, or does the 40° silhouette
+still give it away? Is the 203 discard face the right amount of dimming? Does the
+cropped mat/rim framing suit the all-felt final board?
 
 ## Published renders and checks
 

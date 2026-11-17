@@ -29,6 +29,9 @@ Options:
     --audition           render every camera candidate at @1x into build/
     --rig                build the same scene with the Task 2 2.5D rig camera
                          and light rig, then render the 16:9 RGBA reference
+    --variant NAME       rig variant to build (default: rig.defaultVariant);
+                         variants may override the table layout, camera, lights
+                         and thresholds for A/B calibration
     --rig-width N        render the rig reference at N px wide (preview/tuning)
     --camera NAME        override the committed camera candidate
     --samples N          override the sample count
@@ -95,6 +98,45 @@ def read_json(path: Path) -> dict:
         die(f"{path} is not valid JSON: {error}")
 
 
+def deep_merge(base, override):
+    """Merge a variant override into the base record; lists replace wholesale."""
+    if not isinstance(base, dict) or not isinstance(override, dict):
+        return override
+    merged = dict(base)
+    for key, value in override.items():
+        merged[key] = deep_merge(base[key], value) if key in base else value
+    return merged
+
+
+RIG_MERGE_KEYS = ("camera", "lighting", "render", "output", "samples", "checks")
+
+
+def resolve_variant(spec: dict, variant_id: str | None) -> tuple[str, dict, dict]:
+    """Resolve the rig variant into (id, variant, a spec with the resolved rig).
+
+    Variants are A/B experiments: each may override the table layout (hand and
+    meld radii, hand tilt), the camera, the lights, the render settings and the
+    acceptance thresholds. The base rig blocks stay the saved baseline.
+    """
+    rig = spec["rig"]
+    variants = rig.get("variants") or {}
+    chosen = variant_id or rig.get("defaultVariant")
+    if chosen not in variants:
+        die(f"unknown rig variant {chosen!r}; variants: {', '.join(variants) or '(none)'}")
+    variant = variants[chosen]
+    resolved = dict(rig)
+    for key in RIG_MERGE_KEYS:
+        if key in rig:
+            resolved[key] = deep_merge(rig[key], variant.get(key, {}))
+    resolved.pop("variants", None)
+    if "lightingCheat" in variant:
+        resolved["lightingCheat"] = variant["lightingCheat"]
+    scene_spec = dict(spec)
+    scene_spec["table"] = deep_merge(spec["table"], variant.get("table", {}))
+    scene_spec["rig"] = resolved
+    return chosen, variant, scene_spec
+
+
 def parse_options(argv: list[str]) -> dict:
     options = {
         "dryRun": False,
@@ -102,6 +144,7 @@ def parse_options(argv: list[str]) -> dict:
         "audition": False,
         "preview": False,
         "rig": False,
+        "variant": None,
         "rigWidth": None,
         "camera": None,
         "samples": None,
@@ -120,6 +163,9 @@ def parse_options(argv: list[str]) -> dict:
             options["preview"] = True
         elif arg == "--rig":
             options["rig"] = True
+        elif arg == "--variant":
+            options["variant"] = argv[index + 1]
+            index += 1
         elif arg == "--preview-width":
             options["previewWidth"] = int(argv[index + 1])
             index += 1
@@ -824,6 +870,96 @@ def measure_clearance(tiles: list[dict], spec: dict) -> dict:
     return result
 
 
+def corrected_normal_material(source, angle: float, cache: dict) -> bpy.types.Material:
+    """A copy of `source` whose shading normal is rotated about world X."""
+    if source.name in cache:
+        return cache[source.name]
+    material = source.copy()
+    material.name = f"{source.name}-handlit"
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    geometry = nodes.new("ShaderNodeNewGeometry")
+    rotate = nodes.new("ShaderNodeVectorRotate")
+    rotate.rotation_type = "AXIS_ANGLE"
+    rotate.inputs["Axis"].default_value = (1.0, 0.0, 0.0)
+    rotate.inputs["Angle"].default_value = angle
+    rotate.location = (-600.0, 300.0)
+    links.new(geometry.outputs["Normal"], rotate.inputs["Vector"])
+    count = 0
+    for node in nodes:
+        if node.type == "BSDF_PRINCIPLED":
+            links.new(rotate.outputs["Vector"], node.inputs["Normal"])
+            count += 1
+    if not count:
+        die(f"hand lighting cheat: {source.name} has no Principled BSDF")
+    cache[source.name] = material
+    return material
+
+
+def apply_hand_lighting_cheat(spec: dict, rig: dict) -> dict | None:
+    """Shade the player's hand as if it sat at the physical tilt.
+
+    The hand is reclined further than physically plausible so its faces read
+    from the 50 deg camera (the user's deliberate cheat; the runtime replaces
+    its real shadow with a blob). To keep the light on it looking like a
+    normally seated tile, every hand material shades with its normal rotated
+    back by the extra tilt (delta = cheated tilt - physical tilt) about world X
+    (the hand row is not yawed). The silhouette keeps the cheat; the shading
+    does not.
+    """
+    cheat = rig.get("lightingCheat")
+    if not cheat:
+        return None
+    if cheat.get("mode") != "physicalPose":
+        die(f"hand lighting cheat: unknown mode {cheat.get('mode')!r}")
+    hand = spec["table"]["hand"]
+    cheated = math.radians(hand["tiltDeg"])
+    physical = math.radians(cheat["physicalTiltDeg"])
+    delta = cheated - physical
+    if abs(delta) < 1e-6:
+        return {
+            "mode": cheat["mode"],
+            "physicalTiltDeg": cheat["physicalTiltDeg"],
+            "cheatedTiltDeg": hand["tiltDeg"],
+            "deltaDeg": 0.0,
+            "objects": 0,
+            "materials": 0,
+        }
+    prefix = "hand-bottom-"
+    targets = [
+        obj for obj in bpy.data.objects
+        if obj.type == "MESH" and obj.name.startswith(prefix)
+    ]
+    if not targets:
+        die("hand lighting cheat: found no south-hand mesh objects")
+    cache: dict = {}
+    for obj in targets:
+        for slot in obj.material_slots:
+            source = slot.material
+            if source is None:
+                continue
+            # Switching the slot to object-linked materials clears the slot, so
+            # keep the source material before the switch.
+            slot.link = "OBJECT"
+            slot.material = corrected_normal_material(source, delta, cache)
+    record = {
+        "mode": cheat["mode"],
+        "physicalTiltDeg": cheat["physicalTiltDeg"],
+        "cheatedTiltDeg": hand["tiltDeg"],
+        "deltaDeg": round(math.degrees(delta), 4),
+        "axis": [1.0, 0.0, 0.0],
+        "objects": len(targets),
+        "materials": len(cache),
+        "note": cheat.get("note"),
+    }
+    log(
+        f"hand lighting cheat: {len(targets)} objects, {len(cache)} materials shade as if the "
+        f"hand were at {cheat['physicalTiltDeg']:g} deg (cheated pose {hand['tiltDeg']:g} deg, "
+        f"normal rotated {math.degrees(delta):+.2f} deg about world X)"
+    )
+    return record
+
+
 def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]:
     shell_spec = read_json(SHELL_SPEC_PATH)
     check_blender_version(shell_spec)
@@ -1383,6 +1519,8 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         f"'{anchor_collection.name}' ({len(anchor_collection.objects)} Empties)"
     )
 
+    hand_lighting_cheat = apply_hand_lighting_cheat(spec, spec["rig"]) if rig_mode else None
+
     clearance = measure_clearance(tiles, spec)
     return scene, {
         "tiles": tiles,
@@ -1395,6 +1533,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         "anchorCollection": anchor_collection.name,
         "clearance": clearance,
         "rigLighting": rig_lighting,
+        "handLightingCheat": hand_lighting_cheat,
         "floorHidden": bool(rig_mode and spec["rig"]["render"]["hideFloor"]),
         "props": {
             "mat": spec["table"]["playingMat"],
@@ -1745,10 +1884,17 @@ def main() -> None:
         die(f"unknown camera candidate {camera_name}")
     candidate = spec["camera"]["candidates"][camera_name]
 
-    scene, scene_data, shell_spec = build_scene(spec, options)
+    variant_id = None
+    variant = None
+    scene_spec = spec
+    if options["rig"]:
+        variant_id, variant, scene_spec = resolve_variant(spec, options["variant"])
+        log(f"rig variant: {variant_id} — {variant.get('label', '')}")
+
+    scene, scene_data, shell_spec = build_scene(scene_spec, options)
 
     if options["rig"]:
-        rig = spec["rig"]
+        rig = scene_spec["rig"]
         resolution = list(rig["output"]["resolution"])
         if options["rigWidth"]:
             resolution = [
@@ -1773,13 +1919,18 @@ def main() -> None:
             )
         log(f"rig visibility: {visibility['samples']} probes, 0 occluded")
 
-        rig_dir = out_dir / "rig"
+        rig_dir = out_dir / rig["output"]["bakeDirectory"].format(variant=variant_id)
         rig_dir.mkdir(parents=True, exist_ok=True)
         bake = {
             "version": 1,
             "generatedBy": "tools/render/bake_table_reference.py",
             "mode": "rig",
             "rig": rig["id"],
+            "variant": variant_id,
+            "variantLabel": variant.get("label"),
+            "variantNote": variant.get("note"),
+            "variantDate": variant.get("date"),
+            "strictScene": bool(variant.get("strictScene", False)),
             "blender": bpy.app.version_string,
             "resolution": resolution,
             "camera": camera,
@@ -1805,8 +1956,9 @@ def main() -> None:
                 "tiles": scene_data["tiles"],
             },
             "lighting": scene_data["rigLighting"],
+            "handLightingCheat": scene_data["handLightingCheat"],
         }
-        bake_path = rig_dir / "rig-bake.json"
+        bake_path = rig_dir / rig["output"]["bakeFile"]
         bake_path.write_text(json.dumps(bake, indent=1))
         log(f"rig bake: {bake_path}")
         log(
@@ -1819,7 +1971,7 @@ def main() -> None:
         if options["dryRun"]:
             log("rig dry run: nothing rendered")
             return
-        path = rig_dir / f"rig-{resolution[0]}.png"
+        path = rig_dir / rig["output"]["renderPattern"].format(width=resolution[0])
         render_pass(scene, path)
         log(f"rig render: {path} ({resolution[0]}x{resolution[1]})")
         return
