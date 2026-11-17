@@ -32,6 +32,7 @@ import { TableCompositor } from '../src/table/TableCompositor';
 import type { BoardCanvas } from '../src/table/TableCompositor';
 import { TileAtlas } from '../src/table/TileAtlas';
 import type { AtlasCanvas, AtlasImage } from '../src/table/TileAtlasBuilder';
+import { tileRenderKey } from '../src/table/tiles';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const tableDir = resolve(scriptDir, '../public/table');
@@ -65,6 +66,51 @@ const atlas = await TileAtlas.load({
   pixelRatio: 1,
 });
 
+// The flat-glyph twin, for a scripted "is the carve actually composited?"
+// number. Same assets, only `decals.json` is skipped.
+const flatAtlas = await TileAtlas.load({
+  baseUrl: tableDir,
+  fetchJson: readJson,
+  loadImage: loadFileImage,
+  createCanvas: (width, height) => createCanvas(width, height) as unknown as AtlasCanvas,
+  pixelRatio: 1,
+  decalsUrl: null,
+});
+
+/** Mean/max |luma| between a decal sprite and its flat-glyph twin. */
+function decalDelta(
+  shell: 'shell_hand_slot_06' | 'shell_flat_upright',
+  face: '1p',
+): { mean: number; max: number } {
+  const carved = atlas.getSprite(tileRenderKey(shell, face));
+  const flat = flatAtlas.getSprite(tileRenderKey(shell, face));
+  const carvedContext = atlas
+    .getPage(carved)
+    .canvas.getContext('2d') as unknown as CanvasRenderingContext2D;
+  const flatContext = flatAtlas
+    .getPage(flat)
+    .canvas.getContext('2d') as unknown as CanvasRenderingContext2D;
+  const width = Math.round(carved.texWidth);
+  const height = Math.round(carved.texHeight);
+  const a = carvedContext.getImageData(carved.uv.x, carved.uv.y, width, height).data;
+  const b = flatContext.getImageData(flat.uv.x, flat.uv.y, width, height).data;
+  let sum = 0;
+  let max = 0;
+  for (let index = 0; index < a.length; index += 4) {
+    const lumaA = (a[index] + a[index + 1] + a[index + 2]) / 3;
+    const lumaB = (b[index] + b[index + 1] + b[index + 2]) / 3;
+    const delta = Math.abs(lumaA - lumaB);
+    sum += delta;
+    max = Math.max(max, delta);
+  }
+  return { mean: sum / (a.length / 4), max };
+}
+
+const decalProbe = {
+  hand: decalDelta('shell_hand_slot_06', '1p'),
+  pond: decalDelta('shell_flat_upright', '1p'),
+};
+
 const state = boardGameState();
 const board = buildBoard(manifest, state);
 const zoneOverlays = resolveBoardContactOverlays(
@@ -94,6 +140,7 @@ const compositor = new TableCompositor(
 );
 const first = compositor.update(board, zoneOverlays);
 const second = compositor.update(board, zoneOverlays);
+const atlasStats = atlas.stats;
 
 const pixels = (destination as unknown as { getContext: (id: '2d') => { getImageData: (x: number, y: number, w: number, h: number) => { data: Uint8ClampedArray } } })
   .getContext('2d')
@@ -152,6 +199,19 @@ const numbers = {
     rotationDeg: placement.zone.rotationDeg,
     bodies: placement.zone.bodies.length,
     shadows: placement.zone.shadows.length,
+    bodyRect: (() => {
+      let left = Infinity;
+      let top = Infinity;
+      let right = -Infinity;
+      let bottom = -Infinity;
+      for (const tile of placement.zone.bodies) {
+        left = Math.min(left, placement.x + tile.hitBox.x);
+        top = Math.min(top, placement.y + tile.hitBox.y);
+        right = Math.max(right, placement.x + tile.hitBox.x + tile.hitBox.width);
+        bottom = Math.max(bottom, placement.y + tile.hitBox.y + tile.hitBox.height);
+      }
+      return { x: left, y: top, width: right - left, height: bottom - top };
+    })(),
     drawPositionsInteger: placement.zone.bodies.every(
       (tile) => Number.isInteger(tile.drawX) && Number.isInteger(tile.drawY),
     ),
@@ -174,6 +234,13 @@ const numbers = {
       (total, list) => total + list.length,
       0,
     ),
+    atlas: {
+      decalSprites: atlasStats.decalSprites,
+      flatGlyphSprites: atlasStats.flatGlyphSprites,
+      bareSprites: atlasStats.bareSprites,
+      pixelRatio: atlasStats.pixelRatio,
+    },
+    decalProbe,
     opaquePixels,
     translucentPixels,
     edgePixels,
@@ -206,6 +273,14 @@ console.log(
 console.log(
   `PIXELS opaque ${opaquePixels}, translucent shadow ${translucentPixels}, ` +
     `clipped at the edge ${edgePixels}`,
+);
+console.log(
+  `ATLAS decal sprites ${atlasStats.decalSprites}, flat glyph sprites ` +
+    `${atlasStats.flatGlyphSprites}, bare ${atlasStats.bareSprites}, @${atlasStats.pixelRatio}x`,
+);
+console.log(
+  `CARVE hand 1p mean ${decalProbe.hand.mean.toFixed(2)} max ${decalProbe.hand.max.toFixed(1)} luma; ` +
+    `pond 1p mean ${decalProbe.pond.mean.toFixed(2)} max ${decalProbe.pond.max.toFixed(1)}`,
 );
 console.log(`WROTE ${pngPath}`);
 console.log(`WROTE ${numbersPath}`);

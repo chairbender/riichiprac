@@ -735,8 +735,10 @@ export function layoutTopHand(
 
 /**
  * A side player's concealed hand: one standing blue-back shell reused down a
- * single row, exactly like a side-wall column but upright. The row steps by the
- * shell's projected short axis and runs toward the viewer.
+ * single flush vertical row, exactly like a side-wall column but upright. The
+ * row steps by the projected thickness (the y component of the shell's short
+ * axis); the small x drift in that axis describes the slot camera, and reusing
+ * the same shell down the row makes it a visible staircase, so it is dropped.
  */
 export function layoutSideHand(
   manifest: ShellsManifest,
@@ -751,7 +753,11 @@ export function layoutSideHand(
     );
   }
   const axis = base.gridStepPx.x;
-  const step: PointPx = axis[1] < 0 ? [-axis[0], -axis[1]] : axis;
+  // The row is a flush vertical column: every reused shell sits at the same
+  // screen x. The published axis carries a small x drift from the slot camera,
+  // which stacks 13 tile copies into a visible staircase; the row step is the
+  // projected thickness (the y component) only.
+  const step: PointPx = [0, Math.abs(axis[1])];
   const tiles = Array.from({ length: count }, (_, index) =>
     placeAtFace(baseId, base, null, index * step[0], index * step[1]),
   );
@@ -852,8 +858,11 @@ export function layoutPond(manifest: ShellsManifest, options: PondLayoutOptions)
     .map((entry) => entry.tile);
 
   const lean = options.leanDeg ?? SIDE_POND_LEAN_DEG;
+  // The lean direction is the 2026-11-16 review's choice: the right pond
+  // angles left and the left pond angles right, so their near edges tuck
+  // toward the centre. It is a visual trick, not a perspective derivation.
   const rotationDeg =
-    lean === 0 ? 0 : side === 'right' ? -lean : side === 'left' ? lean : 0;
+    lean === 0 ? 0 : side === 'right' ? lean : side === 'left' ? -lean : 0;
 
   return finishZone(manifest, {
     id: `pond-${side}`,

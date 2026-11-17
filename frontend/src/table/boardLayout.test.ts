@@ -30,14 +30,10 @@ const zone = (result: Board, id: string): BoardZone => {
 };
 
 describe('wall run', () => {
-  it('splits the live wall over four sides and caps at 17 stacks', () => {
-    expect(wallStacksFor(0)).toBe(0);
-    expect(wallStacksFor(1)).toBe(1);
-    expect(wallStacksFor(3)).toBe(1);
-    expect(wallStacksFor(4)).toBe(1);
-    expect(wallStacksFor(8)).toBe(1);
-    expect(wallStacksFor(9)).toBe(2);
-    expect(wallStacksFor(70)).toBe(9);
+  it('draws the full 17-stack ring for the whole hand', () => {
+    expect(wallStacksFor(0)).toBe(17);
+    expect(wallStacksFor(1)).toBe(17);
+    expect(wallStacksFor(70)).toBe(17);
     expect(wallStacksFor(136)).toBe(17);
     expect(wallStacksFor(Number.NaN)).toBe(0);
   });
@@ -110,13 +106,15 @@ describe('Task 4.1 global painter order', () => {
     expect(result.zones.at(-1)?.id).toBe('hand-bottom');
   });
 
-  it('drops empty zones instead of drawing a zero-size layer', () => {
+  it('drops empty ponds but keeps the full wall ring', () => {
     const state = boardGameState();
     state.players = state.players.map((player) => ({ ...player, discards: [] }));
     state.tiles_remaining = 0;
     const result = buildBoard(manifest, state);
     expect(result.zones.some((entry) => entry.zone.kind === 'pond')).toBe(false);
-    expect(result.zones.some((entry) => entry.zone.kind === 'wall')).toBe(false);
+    const walls = result.zones.filter((entry) => entry.zone.kind === 'wall');
+    expect(walls).toHaveLength(4);
+    expect(walls.every((entry) => entry.zone.bodies.length === 34)).toBe(true);
   });
 });
 
@@ -167,13 +165,13 @@ describe('Task 4.2 intra-zone order', () => {
   });
 
   it('draws every wall bottom tier before its top tier', () => {    const result = board();
-    const slots = [4, 12, 5, 11, 6, 10, 7, 9, 8];
+    const slots = [0, 16, 1, 15, 2, 14, 3, 13, 4, 12, 5, 11, 6, 10, 7, 9, 8];
     for (const id of ['wall-front', 'wall-back']) {
       const wall = zone(result, id);
       expect(wall.zone.bodies.map((tile) => tile.cell?.slot)).toEqual([...slots, ...slots]);
       expect(wall.zone.bodies.map((tile) => tile.cell?.tier)).toEqual([
-        ...Array(9).fill(0),
-        ...Array(9).fill(1),
+        ...Array(17).fill(0),
+        ...Array(17).fill(1),
       ]);
     }
   });
@@ -181,12 +179,12 @@ describe('Task 4.2 intra-zone order', () => {
   it('draws the side wall columns back to front with all lowers first', () => {
     const wall = zone(board(), 'wall-side-left');
     expect(wall.zone.bodies.map((tile) => tile.cell?.tier)).toEqual([
-      ...Array(9).fill(0),
-      ...Array(9).fill(1),
+      ...Array(17).fill(0),
+      ...Array(17).fill(1),
     ]);
-    expect(wall.zone.bodies.slice(0, 9).map((tile) => tile.cell?.slot)).toEqual([
-      4, 5, 6, 7, 8, 9, 10, 11, 12,
-    ]);
+    expect(wall.zone.bodies.slice(0, 17).map((tile) => tile.cell?.slot)).toEqual(
+      Array.from({ length: 17 }, (_, index) => index),
+    );
   });
 });
 
@@ -253,8 +251,8 @@ describe('board geometry', () => {
 
   it('publishes the pond lean on the side ponds only', () => {
     const result = board();
-    expect(zone(result, 'pond-left').zone.rotationDeg).toBe(1);
-    expect(zone(result, 'pond-right').zone.rotationDeg).toBe(-1);
+    expect(zone(result, 'pond-left').zone.rotationDeg).toBe(-1);
+    expect(zone(result, 'pond-right').zone.rotationDeg).toBe(1);
     expect(zone(result, 'pond-bottom').zone.rotationDeg).toBe(0);
     expect(zone(result, 'pond-top').zone.rotationDeg).toBe(0);
     expect(zone(result, 'pond-left').rotationPad).toBeGreaterThan(0);
@@ -275,23 +273,34 @@ describe('board geometry', () => {
     }
   });
 
-  it('leaves the separate shadow groups without overlapping bounds', () => {
+  it('leaves the separate shadow groups without overlapping bodies', () => {
     const result = board();
-    // Each pond and each seat group blurs on its own, so two of them sharing
-    // screen space would double-darken the felt. The four walls are one group
-    // and may meet at the corners.
+    // Each pond and each seat group blurs on its own. Their padded shadow
+    // boxes may meet where a later body covers the tail (a hand over a wall
+    // shadow), but two body layers must not share screen space.
+    const bodyBounds = (placement: BoardZone): { x: number; y: number; right: number; bottom: number } => {
+      let left = Infinity;
+      let top = Infinity;
+      let right = -Infinity;
+      let bottom = -Infinity;
+      for (const tile of placement.zone.bodies) {
+        left = Math.min(left, placement.x + tile.hitBox.x);
+        top = Math.min(top, placement.y + tile.hitBox.y);
+        right = Math.max(right, placement.x + tile.hitBox.x + tile.hitBox.width);
+        bottom = Math.max(bottom, placement.y + tile.hitBox.y + tile.hitBox.height);
+      }
+      return { x: left, y: top, right, bottom };
+    };
     const overlaps: string[] = [];
     for (let left = 0; left < result.zones.length; left += 1) {
       for (let right = left + 1; right < result.zones.length; right += 1) {
         const a = result.zones[left];
         const b = result.zones[right];
         if (a.zone.shadowGroup === b.zone.shadowGroup) continue;
-        const width =
-          Math.min(a.bounds.x + a.bounds.width, b.bounds.x + b.bounds.width) -
-          Math.max(a.bounds.x, b.bounds.x);
-        const height =
-          Math.min(a.bounds.y + a.bounds.height, b.bounds.y + b.bounds.height) -
-          Math.max(a.bounds.y, b.bounds.y);
+        const boxA = bodyBounds(a);
+        const boxB = bodyBounds(b);
+        const width = Math.min(boxA.right, boxB.right) - Math.max(boxA.x, boxB.x);
+        const height = Math.min(boxA.bottom, boxB.bottom) - Math.max(boxA.y, boxB.y);
         if (width > 1 && height > 1) overlaps.push(`${a.id}/${b.id}`);
       }
     }
@@ -322,7 +331,7 @@ describe('group shadows', () => {
       'wall-side-right',
       'wall-front',
     ]);
-    expect(walls?.shapes).toHaveLength(4 * 9);
+    expect(walls?.shapes).toHaveLength(4 * 17);
   });
 
   it('publishes one hard shape per placed shadow with the group sigma', () => {
@@ -356,13 +365,34 @@ describe('group shadows', () => {
     expect(group('walls')?.sigmaPx1x).toBe(12);
   });
 
+  it('rotates side-wall and side-hand shadow shapes with their rows', () => {
+    const result = board();
+    const walls = result.groups.find((group) => group.id === 'walls');
+    // The group follows zone order: back wall, left wall, right wall, front wall.
+    const back = zone(result, 'wall-back');
+    const left = zone(result, 'wall-side-left');
+    const right = zone(result, 'wall-side-right');
+    const leftShapes = walls?.shapes.slice(
+      back.zone.shadows.length,
+      back.zone.shadows.length + left.zone.shadows.length,
+    );
+    const rightShapes = walls?.shapes.slice(
+      back.zone.shadows.length + left.zone.shadows.length,
+      back.zone.shadows.length + left.zone.shadows.length + right.zone.shadows.length,
+    );
+    expect(leftShapes?.every((shape) => Math.abs(shape.angleDeg - 8.55) < 0.1)).toBe(true);
+    expect(rightShapes?.every((shape) => Math.abs(shape.angleDeg + 8.55) < 0.1)).toBe(true);
+    const hands = result.groups.find((group) => group.id === 'seat-left-hand');
+    expect(hands?.shapes.every((shape) => Math.abs(shape.angleDeg) < 1e-9)).toBe(true);
+  });
+
   it('rotates a leaning pond’s shapes, not its body placements', () => {
     const result = board();
     const right = result.groups.find((group) => group.id === 'pond-right');
     const first = right?.shapes[0];
     const tile = zone(result, 'pond-right').zone.shadows[0];
     const base = manifest.shells[tile.shell].shadowShape;
-    expect(first?.angleDeg).toBeCloseTo(base.angleDeg - 1, 10);
+    expect(first?.angleDeg).toBeCloseTo(base.angleDeg + 1, 10);
   });
 });
 

@@ -26,10 +26,9 @@
  * union of the hard shapes in board coordinates, already rotated by a zone's
  * whole-zone lean, so the compositor can blur each group once.
  *
- * **Walls.** `tiles_remaining` is the live wall. It is split evenly over the
- * four sides and centred as a contiguous run, so a late hand shows a short wall
- * instead of a full 17-stack ring. The exact live-wall distribution is not in
- * the engine payload and does not affect any decision.
+ * **Walls.** The riichi wall is a full ring: 17 stacks on each of the four
+ * sides, meeting at the corners from the first draw. `tiles_remaining` is the
+ * live wall and does not change the physical ring.
  *
  * The module is pure geometry/data. {@link TableCompositor} draws it and
  * `RenderedTable` hosts it; neither is imported here.
@@ -62,10 +61,6 @@ export const BOARD_GAP = 28;
 const POND_GAP = 56;
 /** The reserved centre compartment (compass) side, in @1x px. */
 export const COMPASS_SIZE = 180;
-/** The live wall is split over four sides. */
-const WALL_SIDES = 4;
-/** Tiles in one wall stack. */
-const STACK_TILES = 2;
 
 export interface Rect {
   readonly x: number;
@@ -183,20 +178,17 @@ function rotatedRectBounds(
 }
 
 /**
- * The live wall as a contiguous centred run. `tiles_remaining` is the live
- * wall; a stack holds two tiles and the four sides share it evenly. At 70
- * remaining that is nine stacks a side, not a full ring, which is the wall a
- * real hand shows.
+ * The riichi wall is a full ring for the whole hand: 17 stacks on each of the
+ * four sides. `tiles_remaining` is the live wall and does not change the
+ * physical ring; the wall's ends meet at the four corners from the first draw.
  */
 export function wallStacksFor(tilesRemaining: number): number {
-  if (!Number.isFinite(tilesRemaining) || tilesRemaining <= 0) return 0;
-  const perSide = Math.ceil(tilesRemaining / (WALL_SIDES * STACK_TILES));
-  return Math.max(0, Math.min(WALL_STACKS, perSide));
+  return Number.isFinite(tilesRemaining) ? WALL_STACKS : 0;
 }
 
-/** The centred run's first slot index for a wall that many stacks long. */
+/** The wall's first slot; a full ring starts at slot 0. */
 export function wallStartIndex(stacks: number): number {
-  return Math.max(0, Math.floor((WALL_STACKS - stacks) / 2));
+  return Math.max(0, Math.floor((WALL_STACKS - Math.min(WALL_STACKS, stacks)) / 2));
 }
 
 /** Transparent margin a whole-zone lean needs around its local box. */
@@ -298,6 +290,43 @@ function shadowShapeBounds(shape: BoardShadowShape): Rect {
   };
 }
 
+/** Keep a rectangle angle in (-90, 90]; a half-turn is the same rectangle. */
+function normalizeShadowAngle(degrees: number): number {
+  let angle = ((degrees % 180) + 180) % 180;
+  if (angle > 90) angle -= 180;
+  return angle;
+}
+
+/**
+ * The hard shape's angle in board space. A side wall and a side hand reuse one
+ * shell down a full row, so their published base-strip angle is the *tile's*
+ * angle, not the row's. The row direction turns the footprint: the side wall
+ * runs down an oblique column, so its long axis is the column normal; the side
+ * hand is a flush vertical row, so its footprint is axis-aligned. Without this
+ * the repeated axis-aligned rectangles make a staircase instead of one long
+ * blur band. The rotated pond lean is added on top.
+ */
+function shadowAngleFor(
+  manifest: ShellsManifest,
+  zone: LayoutZone,
+  shape: ShadowShape,
+): number {
+  if (zone.kind === 'wall' && (zone.side === 'left' || zone.side === 'right')) {
+    const step = zone.shadows[0]
+      ? manifest.shells[zone.shadows[0].shell]?.gridStepPx.x
+      : undefined;
+    if (step) {
+      return normalizeShadowAngle(
+        (Math.atan2(step[1], step[0]) * 180) / Math.PI + 90 + zone.rotationDeg,
+      );
+    }
+  }
+  if (zone.kind === 'hand' && (zone.side === 'left' || zone.side === 'right')) {
+    return normalizeShadowAngle(zone.rotationDeg);
+  }
+  return shape.angleDeg + zone.rotationDeg;
+}
+
 /**
  * The shadow groups for the board, in the order their first zone appears.
  * A group's shapes have the zone's lean baked into their centre and angle, so
@@ -342,7 +371,7 @@ function buildShadowGroups(
           halfX: shape.halfPx[0],
           halfY: shape.halfPx[1],
           radiusPx: shape.radiusPx,
-          angleDeg: shape.angleDeg + zone.rotationDeg,
+          angleDeg: shadowAngleFor(manifest, zone, shape),
         });
         sigmaPx1x = shape.sigmaPx1x;
         coreAlpha = shape.coreAlpha;
@@ -581,20 +610,21 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
         const y = hand ? hand.y : pond ? pond.y : -half;
         placed.push(placeZone(zone, x, y));
       } else if (side === 'left') {
-        const x = hand ? hand.x : pond ? pond.x : -half;
+        const x = hand
+          ? hand.x - BOARD_GAP - zone.width - index * (zone.width + BOARD_GAP)
+          : (pond ? pond.x : -half) - BOARD_GAP - zone.width;
         const y = hand
-          ? hand.y + hand.zone.height + BOARD_GAP + index * (zone.height + BOARD_GAP)
-          : bottomOf(pond, half) + BOARD_GAP;
+          ? hand.y + (hand.zone.height - zone.height) / 2
+          : -zone.height / 2;
         placed.push(placeZone(zone, x, y));
       } else {
         const x = hand
-          ? hand.x + hand.zone.width - zone.width
-          : (wall ? wall.x + wall.zone.width : pond ? pond.x + pond.zone.width : half) -
-            BOARD_GAP -
-            zone.width;
+          ? hand.x + hand.zone.width + BOARD_GAP + index * (zone.width + BOARD_GAP)
+          : (wall ? wall.x + wall.zone.width : pond ? pond.x + pond.zone.width : half) +
+            BOARD_GAP;
         const y = hand
-          ? hand.y - BOARD_GAP - zone.height - index * (zone.height + BOARD_GAP)
-          : (pond ? pond.y : -half) - BOARD_GAP - zone.height;
+          ? hand.y + (hand.zone.height - zone.height) / 2
+          : -zone.height / 2;
         placed.push(placeZone(zone, x, y));
       }
     });

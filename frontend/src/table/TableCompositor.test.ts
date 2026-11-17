@@ -328,6 +328,60 @@ describe('group shadow pixels', () => {
   const napiCanvas = (width: number, height: number): BoardCanvas =>
     createCanvas(width, height) as unknown as BoardCanvas;
 
+  it('turns a side wall run into one smooth long shadow band', () => {
+    const result = board();
+    const walls = result.groups.find((group) => group.id === 'walls');
+    if (!walls) throw new Error('no walls group');
+    const back = result.zones.find((entry) => entry.id === 'wall-back');
+    const left = result.zones.find((entry) => entry.id === 'wall-side-left');
+    if (!back || !left) throw new Error('missing wall zones');
+    // The wall group follows zone order; take just the left column.
+    const leftShapes = walls.shapes.slice(
+      back.zone.shadows.length,
+      back.zone.shadows.length + left.zone.shadows.length,
+    );
+    const layer = drawShadowGroupLayer(
+      { ...walls, shapes: leftShapes, zoneIds: [left.id] },
+      napiCanvas,
+    );
+    const context = layer.canvas.getContext('2d');
+    if (!context) throw new Error('no context');
+    const { width, height } = layer.canvas;
+    const pixels = context.getImageData(0, 0, width, height).data;
+    const alphaAt = (x: number, y: number): number => pixels[(y * width + x) * 4 + 3] / 255;
+    const edgeAt = (y: number): number | null => {
+      for (let x = 0; x < width; x += 1) if (alphaAt(x, y) > 0.3) return x;
+      return null;
+    };
+    const alphaPresent = (y: number): boolean => {
+      for (let x = 0; x < width; x += 1) if (alphaAt(x, y) > 0.3) return true;
+      return false;
+    };
+    let firstY = 0;
+    while (firstY < height && !alphaPresent(firstY)) firstY += 1;
+    let lastY = height - 1;
+    while (lastY >= 0 && !alphaPresent(lastY)) lastY -= 1;
+    let worstStep = 0;
+    let worstY = -1;
+    let previous: number | null = null;
+    // Skip the rounded end caps; the complaint is the long edge's staircase.
+    for (let y = firstY + 90; y <= lastY - 90; y += 1) {
+      const edge = edgeAt(y);
+      if (edge === null) {
+        previous = null;
+        continue;
+      }
+      if (previous !== null && Math.abs(edge - previous) > worstStep) {
+        worstStep = Math.abs(edge - previous);
+        worstY = y;
+      }
+      previous = edge;
+    }
+    // An axis-aligned per-stack footprint steps ~6.9 px between rows; the
+    // rotated run moves the edge smoothly (about 0.15 px per row).
+    expect(worstStep, `worst step at y=${worstY} of ${height}`).toBeLessThan(2.5);
+  });
+
   const group: BoardShadowGroup = {
     id: 'test-group',
     x: 0,
