@@ -1,0 +1,474 @@
+{
+  "version": 1,
+  "name": "riichiprac whole-table 3D reference",
+  "status": "Calibration-only. One authoritative Blender scene of the complete table, for comparing the opt-in 2.5D compositor's pieces against a single physical perspective. It is not a runtime dependency, it does not replace the compositor, and nothing under frontend/public is written by this pipeline.",
+  "blender": {
+    "requiredVersion": "4.5.9"
+  },
+  "sourceOfTruth": {
+    "tileGeometryAndMaterials": "shell-spec.json's tile/scene/lighting blocks",
+    "shells": "frontend/public/table/shells.json (measured face/back colours and body sizes the reference is checked against)",
+    "faces": "frontend/public/table/faces/<id>.png (the same perspective-neutral glyph masters the runtime atlas uses)",
+    "note": "The reference imports the shell baker's tile mesh, one-material white/blue gate and tile proportions, so the reference body cannot drift from the shipped shells."
+  },
+  "scene": {
+    "engine": "CYCLES",
+    "device": "CPU",
+    "samples": 32,
+    "useAdaptiveSampling": true,
+    "adaptiveThreshold": 0.01,
+    "denoise": true,
+    "denoiser": "OPENIMAGEDENOISE",
+    "filmTransparent": false,
+    "resolutionPercentage": 100,
+    "colorManagement": {
+      "displayDevice": "sRGB",
+      "viewTransform": "AgX",
+      "look": "AgX - Medium High Contrast",
+      "exposure": 0,
+      "gamma": 1
+    }
+  },
+  "table": {
+    "units": "tile units: 1 unit = the 28 mm tile height, the same scale as shell-spec.json (0.75 wide, 0.58929 thick)",
+    "origin": "table centre at (0, 0, 0); the human sits on -Y; +Z is up",
+    "seats": [
+      {
+        "id": "bottom",
+        "rotateZDeg": 0
+      },
+      {
+        "id": "right",
+        "rotateZDeg": 90
+      },
+      {
+        "id": "top",
+        "rotateZDeg": 180
+      },
+      {
+        "id": "left",
+        "rotateZDeg": 270
+      }
+    ],
+    "wall": {
+      "radiusUnits": 7.0,
+      "stacksPerRun": 17,
+      "stackPitchUnits": 0.760714286,
+      "tileDepthUnits": 1.0,
+      "tiers": 2,
+      "note": "Each run is 17 stacks with a 0.3 mm gap (pitch 0.760714), two face-down tiles high with a 0.3 mm tier gap, ring radius 7.0. Corners keep a small clearance, so no wall tiles intersect. Every wall has one tile missing on the top tier at slot 16 (the draw end); the bottom tile remains. The draw end is the close side of the left wall, the left of the top wall, the far side of the right wall and the right of the close wall (clockwise drawing).",
+      "tierStepUnits": 0.6,
+      "stackSpanUnits": 12.932142857,
+      "deadWall": {
+        "seat": "left",
+        "stacks": 7,
+        "breakAfterSlot": 6,
+        "breakGapUnits": 0.5,
+        "doraSlot": 4,
+        "doraTier": 1,
+        "doraFace": "1z",
+        "note": "The west (left) wall has the 7-stack dead wall at slots 0..6 with a 0.5-unit break after slot 6; the live wall is slots 7..16. The dora indicator is the face-up top tile at slot 4. The dead-wall seats use the same wall_seat_stack_layer anchors."
+      },
+      "drawEndSlot": 16,
+      "drawEndTiers": 1
+    },
+    "pond": {
+      "columns": 6,
+      "rows": 3,
+      "columnPitchUnits": 0.757142857,
+      "rowPitchUnits": 1.010714286,
+      "rowRadiiUnits": [
+        4.81,
+        3.799286,
+        2.788571
+      ],
+      "columnCentreOffsetUnits": 1.892857142,
+      "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg. Four overflow anchors continue row 2 at columns 6..9 (reserved; no tiles).",
+      "overflowColumns": 6,
+      "riichi": {
+        "row": 1,
+        "column": 5,
+        "turnDeg": -90,
+        "note": "One riichi discard per pond, the last tile of row 1; rotated 90 deg to the declaring player's right (glyph top to the seat's right). The turned tile is wider along the row, so it is shifted after the previous tile and marked turned."
+      }
+    },
+    "hand": {
+      "backRadiusUnits": 10.6,
+      "count": 13,
+      "pitchUnits": 0.760714286,
+      "drawnOffsetUnits": 5.576785714,
+      "note": "A standing 13-tile row with a 0.3 mm gap. The human's (south) hand is reclined 12 deg backward about its far bottom edge, blue back to the table centre; the other three hands are upright back rows. The human also gets a separate 14th draw slot at +5.5805 (the intentional tsumogiri gap, not the 0.3 mm row clearance); opponents have 13 anchors.",
+      "tiltDeg": 12.0,
+      "slotsPerSeat": 14,
+      "drawnGapUnits": 0.2625
+    },
+    "meld": {
+      "note": "One four-slot meld row per seat OUTSIDE the wall ring, on the table edge at the hand's radius 10.6, to the right of the player's hand (x from 6.1, clear of the drawn tile at x 5.58). Slots 0 and 1 are upright (0.75 wide), slot 2 is the called tile lying sideways (1.0 wide) and slot 3 is the kan extension; the modelled pon occupies slots 0-2 and slot 3 is an anchor only.",
+      "rowRadiusUnits": 10.6,
+      "startXUnits": 6.1,
+      "uprightTiles": 2,
+      "calledTiles": 1,
+      "slots": 4,
+      "uprightWidthUnits": 0.760714286,
+      "calledWidthUnits": 1.010714286,
+      "calledGapUnits": 0.010714286
+    },
+    "clearanceMm": 0.3,
+    "clearanceUnits": 0.010714286,
+    "playingMat": {
+      "sizeUnits": 25.0,
+      "sizeMm": 700,
+      "thicknessUnits": 0.06,
+      "topZUnits": 0.0,
+      "note": "700 mm x 700 mm playable mat, built as a square ring with a 4.0-unit compass well in the centre; the mat top is z = 0.",
+      "baseColorHex": "#1a5038",
+      "roughness": 0.92
+    },
+    "rim": {
+      "innerHalfUnits": 12.5,
+      "widthUnits": 0.9,
+      "heightUnits": 0.35,
+      "colorHex": "#3a2a1e",
+      "roughness": 0.45,
+      "note": "Raised outer frame around the 700 mm mat, 0.9 units (25 mm) wide and 0.35 units (9.8 mm) high.",
+      "outerHalfUnits": 13.4
+    },
+    "floor": {
+      "halfExtentUnits": 60.0,
+      "zUnits": -0.08,
+      "colorHex": "#141a1d",
+      "roughness": 0.9,
+      "note": "Dark floor under the mat/rim, replacing the old full-bleed felt plane."
+    },
+    "compassWell": {
+      "halfUnits": 2.0,
+      "depthUnits": 0.06,
+      "plateHalfUnits": 1.7,
+      "plateZUnits": -0.055,
+      "plateColorHex": "#20262b",
+      "ringOuterUnits": 1.5,
+      "ringInnerUnits": 1.36,
+      "ringZUnits": -0.052,
+      "ringColorHex": "#8a7440",
+      "note": "Recessed centre compass/score well: a 4.0-unit square hole in the mat, a dark floor at -0.06, a near-black plate and a brass ring. Everything is below z = 0, so it cannot occlude a pond or a wall."
+    },
+    "body": {
+      "halfExtentUnits": 13.4,
+      "depthUnits": 0.9,
+      "colorHex": "#2b1d14",
+      "roughness": 0.55,
+      "note": "Slab under the mat and rim; its top is just below z=0 so the mat is the tile contact plane."
+    }
+  },
+  "camera": {
+    "chosen": "weak",
+    "note": "One perspective camera for the whole table at the pond/wall shells' 45 deg elevation, so a centre pond tile projects to the same ~103 px body long axis as the 104 px @1x shells. 'weak' is the committed framing: a long lens at more than twice the physical eye distance, which keeps the near/far tile scale spread close to the compositor's deliberately uniform scale while each zone still shows a real lateral reveal. It is the 2.5D compromise made explicit.",
+    "output": {
+      "resolution1x": [
+        2880,
+        2112
+      ],
+      "resolution2x": [
+        5760,
+        4224
+      ],
+      "masterPath": "build/reference/master-2x.png",
+      "masterDownsample": "box-2x2",
+      "note": "@1x is the shell scale: a centre pond tile's projected long axis is ~100 px, the same ballpark as shells.json's 104 px base. The 700 mm mat plus its raised rim needs a taller frame than the felt-only scene, so the board is 2880x2112 (1.364:1) from one 5760x4224 @2x master; the eye, lens, elevation and scale are unchanged. The 2x master is rendered once and both the 1x board and the 2x crops are derived from it."
+    },
+    "candidates": {
+      "ortho": {
+        "mode": "orthographic",
+        "elevationDeg": 45.0,
+        "target": [
+          0.0,
+          0.0,
+          0.35
+        ],
+        "eyeDistanceUnits": 121.7391,
+        "orthoScaleUnits": 31.3043,
+        "note": "No convergence and no lateral reveal at all. The audit case: it proves how much of the table read is the elevation plus thickness rather than perspective."
+      },
+      "weak": {
+        "mode": "perspective",
+        "elevationDeg": 45.0,
+        "target": [
+          0.0,
+          0.0,
+          0.35
+        ],
+        "lensMm": 140.0,
+        "sensorWidthMm": 36.0,
+        "sensorFit": "HORIZONTAL",
+        "pixelsPerUnitAtTarget": 92.0,
+        "distanceUnits": 121.7391,
+        "eye": [
+          0.0,
+          -86.082565,
+          86.432565
+        ],
+        "shiftX": 0.0,
+        "shiftY": 0.0,
+        "clipStart": 1.0,
+        "clipEnd": 600.0
+      },
+      "physical": {
+        "mode": "perspective",
+        "elevationDeg": 45.0,
+        "target": [
+          0.0,
+          0.0,
+          0.35
+        ],
+        "lensMm": 65.0,
+        "sensorWidthMm": 36.0,
+        "sensorFit": "HORIZONTAL",
+        "distanceUnits": 57.4391,
+        "eye": [
+          0.0,
+          -40.6224,
+          40.9724
+        ],
+        "shiftX": 0.0,
+        "shiftY": 0.0,
+        "clipStart": 1.0,
+        "clipEnd": 600.0,
+        "note": "A strong-perspective audit case: 65 mm at the physical eye distance (57.4 units), 45 deg elevation. It shows the largest near/far size spread and the strongest lateral reveal."
+      }
+    },
+    "checks": {
+      "maxScaleSpread": 1.18,
+      "maxRunLengthRatio": 1.22,
+      "maxRunAngleErrorDeg": 0.05,
+      "minFrameMarginPx1x": 24,
+      "tileSizePx1x": {
+        "min": 88.0,
+        "max": 116.0
+      },
+      "sampleFaceLumaTolerance": 14,
+      "sampleFaceChannelTolerance": 42,
+      "sampleBlueChannelTolerance": 55
+    }
+  },
+  "lighting": {
+    "convention": "One global key at the shell bake's screen-space top-left reference direction (azimuth 315 fronts -X/-Y, elevation 55), but as a distant sun so the whole table is lit evenly instead of the near corner being several stops brighter than the far one. Shadows fall down-right on screen, matching the compositor's blob offset. The sun strength is tuned so a bare 5z (haku) face measures the shipped shell's face colour.",
+    "key": {
+      "type": "SUN",
+      "azimuthDeg": 315,
+      "elevationDeg": 55,
+      "distance": 55,
+      "angleDeg": 12.0,
+      "energyWPerM2": 6.6,
+      "hex": "#fff7ea"
+    },
+    "world": {
+      "hex": "#3b4a5c",
+      "strength": 1.0
+    }
+  },
+  "faces": {
+    "mode": "planar-overlay",
+    "note": "The glyph masters are composited onto a thin transparent plane 0.001 units above the white plate, exactly the flat 2D glyph the runtime atlas draws, not the carved decal. 5z (haku) has zero ink and gets no plane, which makes it the bare lighting sample tile.",
+    "sampleFace": "5z",
+    "sampleTileId": "pond-bottom-00",
+    "decalInsetUnits": 0.055
+  },
+  "content": {
+    "doraIndicators": 0,
+    "note": "Every wall stack is face-down. The scene is a visual calibration target, not a legal game state: tile faces are drawn from a seeded shuffle and may repeat more than four times.",
+    "seed": 20261116
+  },
+  "renders": {
+    "fullBoard1x": "full-board-1x.png",
+    "crops2xDir": "crops-2x",
+    "manifest": "table-reference.json",
+    "cropMarginPx2x": 28,
+    "cropFamilies": [
+      {
+        "id": "wall-front",
+        "kind": "wall",
+        "seats": [
+          "bottom"
+        ]
+      },
+      {
+        "id": "wall-back",
+        "kind": "wall",
+        "seats": [
+          "top"
+        ]
+      },
+      {
+        "id": "wall-left",
+        "kind": "wall",
+        "seats": [
+          "left"
+        ]
+      },
+      {
+        "id": "wall-right",
+        "kind": "wall",
+        "seats": [
+          "right"
+        ]
+      },
+      {
+        "id": "pond-bottom",
+        "kind": "pond",
+        "seats": [
+          "bottom"
+        ]
+      },
+      {
+        "id": "pond-right",
+        "kind": "pond",
+        "seats": [
+          "right"
+        ]
+      },
+      {
+        "id": "pond-top",
+        "kind": "pond",
+        "seats": [
+          "top"
+        ]
+      },
+      {
+        "id": "pond-left",
+        "kind": "pond",
+        "seats": [
+          "left"
+        ]
+      },
+      {
+        "id": "hand-bottom",
+        "kind": "hand",
+        "seats": [
+          "bottom"
+        ]
+      },
+      {
+        "id": "hand-top",
+        "kind": "hand",
+        "seats": [
+          "top"
+        ]
+      },
+      {
+        "id": "hand-left",
+        "kind": "hand",
+        "seats": [
+          "left"
+        ]
+      },
+      {
+        "id": "hand-right",
+        "kind": "hand",
+        "seats": [
+          "right"
+        ]
+      },
+      {
+        "id": "meld-bottom",
+        "kind": "meld",
+        "seats": [
+          "bottom"
+        ]
+      },
+      {
+        "id": "meld-right",
+        "kind": "meld",
+        "seats": [
+          "right"
+        ]
+      },
+      {
+        "id": "meld-top",
+        "kind": "meld",
+        "seats": [
+          "top"
+        ]
+      },
+      {
+        "id": "meld-left",
+        "kind": "meld",
+        "seats": [
+          "left"
+        ]
+      },
+      {
+        "id": "drawn-tile",
+        "kind": "drawn",
+        "seats": [
+          "bottom"
+        ]
+      }
+    ]
+  },
+  "anchors": {
+    "collection": "SlotAnchors",
+    "type": "Empty (PLAIN_AXES, display size 0.35)",
+    "naming": {
+      "wall": "wall_{seat}_{stack:02d}_{layer}  (layer 0 bottom, 1 top)",
+      "river": "river_{seat}_{row}_{col}  (row 0..2, col 0..5 plus row-2 overflow cols 6..9)",
+      "meld": "meld_{seat}_{slot}  (slot 0..3)",
+      "hand": "hand_{seat}_{index:02d}  (index 00..12; south also has 13 for the drawn tile)"
+    },
+    "seats": [
+      "south",
+      "east",
+      "north",
+      "west"
+    ],
+    "counts": {
+      "wall": 136,
+      "river": 88,
+      "meld": 16,
+      "hand": 53,
+      "total": 293
+    },
+    "riverOverflowColumns": 4,
+    "faceQuad": {
+      "space": "anchor-local tile units: +x = tile right, +y = glyph top, +z = out of the painted face; the anchor is at the tile's 3D centre",
+      "order": "top-left, top-right, bottom-right, bottom-left (glyph image top is +y)",
+      "corners": "x = +/- (width/2 - faceInset), y = +/- (height/2 - faceInset), z = +thickness/2, with faceInset = 0.055 units (the shell bevel inset)",
+      "storage": "flat 12-float Blender custom property `faceQuadLocal` on each Empty, plus the published tools/render/reference/slot-anchors.json dump"
+    },
+    "customProperties": [
+      "zone",
+      "seat",
+      "index",
+      "tileId",
+      "tileFace",
+      "occupied",
+      "faceQuadLocal",
+      "faceQuadWorld",
+      "faceQuadOrder",
+      "row",
+      "column",
+      "slot",
+      "tier",
+      "overflow"
+    ],
+    "note": "Every valid tile position is an Empty in the SlotAnchors collection, named wall_{seat}_{stack}_{layer}, river_{seat}_{row}_{col}, meld_{seat}_{slot} or hand_{seat}_{index}. Anchors are at the tile body centre with the tile pose. Occupied anchors hold the 273 reference tiles; the 20 empty anchors are the 16 row-2 overflow slots and 4 kan-extension meld slots. Each anchor carries zone/seat/index/tileId/tileFace/occupied, the flat faceQuadLocal and faceQuadWorld (12 floats, TL/TR/BR/BL) and faceQuadOrder as Blender custom properties; the same records are published in reference/slot-anchors.json. Project anchor.matrix_world @ Vector(faceQuadLocal corner) for Task 3.",
+    "anchorDisplaySize": 0.25,
+    "clearanceMm": 0.3,
+    "clearanceRangeMm": [
+      0.2,
+      0.5
+    ],
+    "occupied": {
+      "wall": 132,
+      "river": 72,
+      "meld": 12,
+      "hand": 53,
+      "total": 269
+    },
+    "empty": {
+      "wallDrawn": 4,
+      "riverOverflow": 16,
+      "meldKan": 4,
+      "total": 24
+    }
+  }
+}

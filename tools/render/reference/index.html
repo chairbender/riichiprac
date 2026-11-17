@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>riichiprac whole-table 3D reference</title>
+<style>
+  body { margin: 0 auto; max-width: 1180px; padding: 24px; background: #10171b; color: #dbe6e9;
+         font: 15px/1.45 system-ui, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p { color: #9fb2b8; max-width: 78ch; }
+  img { max-width: 100%; display: block; border-radius: 4px; }
+  figure { margin: 0 0 26px; }
+  figcaption { color: #9fb2b8; font-size: 13px; padding-top: 6px; }
+  table { border-collapse: collapse; margin: 18px 0 34px; font-size: 14px; }
+  th, td { text-align: left; padding: 4px 14px 4px 0; border-bottom: 1px solid #23343a; }
+  th { color: #9fb2b8; font-weight: 500; }
+  code { color: #cbe3c6; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 26px; }
+</style>
+<h1>Whole-table 3D reference</h1>
+<p>Calibration only. One Blender scene and one camera; compare the 2.5D compositor's
+element crops against these. Committed by <code>tools/render/scripts/table-reference.mjs</code>
+from <code>tools/render/bake_table_reference.py</code>; camera <code>weak</code>
+(perspective, 45° elevation, eye
+[0.00, -86.08, 86.43]).</p>
+<figure>
+  <a href="full-board-1x.png"><img src="full-board-1x.png" alt="full board"></a>
+  <figcaption>full board @1x · 2880×2112</figcaption>
+</figure>
+<table>
+<tr><th>pond tile size (px @1x, 4 seats)</th><td>106.3127 / 94.9038 / 100.5693 / 94.4755</td></tr>
+<tr><th>near/far scale spread</th><td>1.125293</td></tr>
+<tr><th>front/back run length ratio</th><td>1.084584</td></tr>
+<tr><th>left/right run length ratio</th><td>1.084584</td></tr>
+<tr><th>run angle error (deg)</th><td>0 / 0 / 0 / 0</td></tr>
+<tr><th>bottom/top hand size ratio</th><td>1.216764</td></tr>
+<tr><th>front outer lateral reveal (deg)</th><td>4.6743</td></tr>
+<tr><th>minimum frame margin (px @1x)</th><td>261.527</td></tr>
+</table>
+<div class="grid">
+      <figure>
+        <a href="crops-2x/wall-front-2x.png"><img src="crops-2x/wall-front-2x.png" alt="wall-front"></a>
+        <figcaption>wall-front · 2551×353 @2x · 33 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/wall-back-2x.png"><img src="crops-2x/wall-back-2x.png" alt="wall-back"></a>
+        <figcaption>wall-back · 2355×332 @2x · 33 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/wall-left-2x.png"><img src="crops-2x/wall-left-2x.png" alt="wall-left"></a>
+        <figcaption>wall-left · 347×1966 @2x · 33 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/wall-right-2x.png"><img src="crops-2x/wall-right-2x.png" alt="wall-right"></a>
+        <figcaption>wall-right · 348×1817 @2x · 33 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/pond-bottom-2x.png"><img src="crops-2x/pond-bottom-2x.png" alt="pond-bottom"></a>
+        <figcaption>pond-bottom · 965×545 @2x · 18 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/pond-right-2x.png"><img src="crops-2x/pond-right-2x.png" alt="pond-right"></a>
+        <figcaption>pond-right · 634×756 @2x · 18 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/pond-top-2x.png"><img src="crops-2x/pond-top-2x.png" alt="pond-top"></a>
+        <figcaption>pond-top · 925×510 @2x · 18 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/pond-left-2x.png"><img src="crops-2x/pond-left-2x.png" alt="pond-left"></a>
+        <figcaption>pond-left · 634×758 @2x · 18 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/hand-bottom-2x.png"><img src="crops-2x/hand-bottom-2x.png" alt="hand-bottom"></a>
+        <figcaption>hand-bottom · 2008×284 @2x · 13 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/hand-top-2x.png"><img src="crops-2x/hand-top-2x.png" alt="hand-top"></a>
+        <figcaption>hand-top · 1776×255 @2x · 13 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/hand-left-2x.png"><img src="crops-2x/hand-left-2x.png" alt="hand-left"></a>
+        <figcaption>hand-left · 292×1474 @2x · 13 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/hand-right-2x.png"><img src="crops-2x/hand-right-2x.png" alt="hand-right"></a>
+        <figcaption>hand-right · 292×1474 @2x · 13 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/meld-bottom-2x.png"><img src="crops-2x/meld-bottom-2x.png" alt="meld-bottom"></a>
+        <figcaption>meld-bottom · 566×281 @2x · 3 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/meld-right-2x.png"><img src="crops-2x/meld-right-2x.png" alt="meld-right"></a>
+        <figcaption>meld-right · 256×435 @2x · 3 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/meld-top-2x.png"><img src="crops-2x/meld-top-2x.png" alt="meld-top"></a>
+        <figcaption>meld-top · 503×249 @2x · 3 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/meld-left-2x.png"><img src="crops-2x/meld-left-2x.png" alt="meld-left"></a>
+        <figcaption>meld-left · 288×491 @2x · 3 tiles</figcaption>
+      </figure>
+      <figure>
+        <a href="crops-2x/drawn-tile-2x.png"><img src="crops-2x/drawn-tile-2x.png" alt="drawn-tile"></a>
+        <figcaption>drawn-tile · 215×284 @2x · 1 tiles</figcaption>
+      </figure>
+</div>
+</html>

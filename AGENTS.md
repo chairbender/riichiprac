@@ -64,6 +64,7 @@ The app is a **Constraint Satisfaction Generator**:
   * The opt-in rendered view composes blank tile **shells** baked offline. Blender 4.5.9 LTS builds the tile mesh, an orthographic camera, a locked top-left key plus a weak ambient fill, and the tight contact shadow/AO from a committed Python/JSON spec; `@resvg/resvg-js` rasterises the 2D face glyphs. No headless browser is part of the pipeline.
   * `shells.json` publishes each shell's texture size, anchor, advance width/height, and `faceQuad`. The runtime composites each tile face into its shell's `faceQuad` in a startup atlas and draws the board with a strict painter's algorithm; it never projects a 3D quad.
   * The active architecture is `2_5d_mahjong_tile_rendering_architecture.md`; read it before touching shells, layouts, or the compositor. `tools/render/README.md` is the active shell-baker/felt pipeline doc. `rendered-table-plan.md` and `rendered-table-strip-lights-plan.md` are **retired** design records with banners: do not regenerate or extend them.
+  * **Whole-table calibration reference (not shipped).** `bash tools/render/bake-table-reference.sh --bake` builds one Blender scene of the complete table (walls, ponds, hands, drawn tile, melds, felt) from `tools/render/table-reference-spec.json`, publishes `tools/render/reference/` (a @1x board, one @2x crop per element family, a manifest with decoded-pixel hashes) and `tools/render/TABLE-REFERENCE.md` records the camera and how to compare a hybrid. It is **calibration-only**: it writes nothing under `frontend/public`, the runtime never reads it, and it is not a second source of layout truth. See §16 of the architecture doc.
   * There is **no table model**. The background is a full-screen felt raster with a vignette (`frontend/public/table/felt.png`); walls, ponds, hands, melds and (later) the compass are overlaid in screen space. Each zone uses the projection that reads best, so there is no shared perspective camera.
   * The runtime is 2D composition only: images plus DOM. **Do NOT add a 3D/WebGL library to the frontend, and do not rasterise tile art in the browser.**
 
@@ -102,6 +103,9 @@ The app is a **Constraint Satisfaction Generator**:
   `bash tools/render/bake-shells.sh --check` (no Blender) and, for the felt,
   `bash tools/render/bake-felt.sh`. Commit the baker/spec and the regenerated felt,
   shells, and `shells.json` together; never hand-edit a generated shell or the felt.
+* The whole-table calibration reference has its own gate:
+  `bash tools/render/bake-table-reference.sh --check` (no Blender). It is
+  calibration-only and never a runtime dependency.
 * Keep the rendered view's interaction and ARIA behaviour equivalent to the top-down view. The stacked and top-down views remain the accessible fallback.
 * Visual work follows §6: verify visuals with scripted checks or hand the artifact to the user. Never sign off a render, screenshot, or layout from your own inspection.
 

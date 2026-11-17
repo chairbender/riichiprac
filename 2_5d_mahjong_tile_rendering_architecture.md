@@ -1622,3 +1622,42 @@ the A/B record. Visual sign-off is the user's (AGENTS.md §6).
   (`bake-contact-shadow-experiment.sh`) is kept as the A/B exploration harness.
   The catches are target-space, so they carry the target's own bevel and edge
   exactly; the synthetic per-caster stamp remains the fallback.
+
+## 16. Whole-table 3D model + slot anchors (2026-11-17)
+
+The whole table now exists as a Blender model for placement review, plus a
+complete `SlotAnchors` Empty bank for the later projection export. It is
+**development-only**: nothing under `frontend/public` is written and the runtime
+never reads it. Perspective and lighting are inherited from the earlier
+calibration reference; a separate Task 2 sets those up, so this section covers
+the model and anchors, not a lighting decision.
+
+- The 700 mm mat, raised rim/frame and recessed compass/score well are built
+  from the spec (`tools/render/table-reference-spec.json`); the mat is a square
+  ring around the well so the well can sit below z = 0.
+- Four 17-stack two-tier walls: 132 tiles, because every run has only the
+  bottom tile at slot 16 (the draw end). The west (left) run carries the
+  7-stack dead wall at slots 0–6 with a 0.5-unit break and a face-up dora
+  indicator (`1z`) at slot 4. Four 6×3 ponds (72), each with one riichi
+  discard at row 1 column 5 turned 90° to the seat's right; four 13-tile hands
+  (52) plus the human's drawn tile; one open meld per seat (12, **outside the
+  wall on the player's right**, called tile flush with the uprights' bottom edge). The human's hand is reclined 12°.
+- Adjacent tiles have 0.2–0.5 mm clearance (0.3 mm target, 0.2 mm pond column
+  pitch) and no tile bodies intersect: 346 adjacent pairs measured, 0
+  intersections. The dead-wall break (14.3 mm) and the turned riichi tile's
+  far-side row gap (7.3 mm) are recorded exceptions.
+- `SlotAnchors` holds 293 Empties, 269 occupied and 24 reserved:
+  `wall_{seat}_{stack:02d}_{layer}` (136, 4 empty drawn tops),
+  `river_{seat}_{row}_{col}` (88, incl. row-2 overflow), `meld_{seat}_{slot}`
+  (16, incl. the kan extension) and `hand_{seat}_{index:02d}` (53, incl.
+  south_13 for the drawn tile). Each anchor is at the tile body centre with the
+  tile pose, carries `zone/seat/index/tileId/tileFace/occupied` and the face
+  plate as `faceQuadLocal`/`faceQuadWorld` (12 floats, TL/TR/BR/BL; +y glyph
+  top; z = +thickness/2, inset by the bevel), and is published in
+  `tools/render/reference/slot-anchors.json`. Task 3 projects
+  `anchor.matrix_world @ Vector(faceQuadLocal corner)`.
+- The bake's checks cover the anchor names/counts/poses/face quads, the
+  clearance and intersection contract, the 269-tile inventory, the render
+  hashes and the table-surface facts. The earlier lighting samples remain as
+  information, not this task's acceptance.
+
