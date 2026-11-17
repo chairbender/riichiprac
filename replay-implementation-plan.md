@@ -1734,6 +1734,73 @@ integration.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-16, V1 branch).** The engine lives in `src/miner/transform/`
+> (miner feature), as `seat` (opponent permutations), `tiles` (suit bijections
+> and kind maps), `mapping` (one relabelling step and the answer/text
+> vocabulary), `apply` (the `GameState` rewrite and the red-five record),
+> `ledger` (the visible-tile ledger) and `chain` (the transform chain, its
+> inverse and the `riichiprac.scenario-transforms` v1 document).
+>
+> **The chain.** `TransformChain` holds the schema/version, the
+> `transform_seed`, the ordered `Transform` list and — once applied — the
+> red-five copies a `red5_normalize` cleared. `apply` returns the transformed
+> state plus the resolved chain (the provenance document); `Resolved::inverse`
+> gives an `InverseChain` that applies the inverse mappings in reverse order and
+> restores the red-five flags. Answers and model labels map through both
+> directions: `map_correct_action`, `map_action_info`, `map_action_name`,
+> `map_tile`, `map_text`, including `Discard_5mr` suffixes, the `tile_index` a
+> ranking carries, and the rank-relative `Chi_Low`/`Chi_High` names (a rank
+> mirror swaps them). `fingerprint` is the seed-independent dedupe key.
+>
+> **Field coverage.** Every tile-bearing `GameState` field is rewritten: hands,
+> draws, red-five lists, rivers (with `is_red`), meld tiles, dora/ura indicators,
+> `hand_string`, `tiles`, `ukeire_tiles`, `equivalent_tiles`, `correct_action`,
+> `call_offer` (tiles and label), `decision.tile`, the whole `ai_decision`
+> payload, `scenario_note`, `round_wind`, the players' winds, `current_turn`,
+> every `called_from` and `decision.from`. Free text is rewritten token by token
+> (codes and the book display names `E`/`S`/`W`/`N`/`Wh`/`G`/`R`/`R5m`), which is
+> a bijection on the tokens it recognises and leaves other words alone.
+> `book_rationale` is deliberately untouched: §4.4 recomputes it through
+> `finalize_state`, and its book quotations must stay verbatim (they say
+> `wan4`, `suo2` and `zhong`, not app codes).
+>
+> **Decisions worth knowing.**
+> - A seat wind belongs to the seat, so a permuted player takes the destination
+>   seat's wind (the labels move only with `wind_relabel`). Letting winds travel
+>   with players would leave the table out of wind order, which
+>   `validate_reachable_state` rejects; `apply` also refuses a table whose winds
+>   are not the seat-0 sequence when a seat permutation runs.
+> - A chi may only claim the caller's kamicha, and the opponents' adjacency is
+>   not permutation-invariant. `apply` therefore rejects a seat permutation that
+>   would move a chi meld (or a chi offer's source) off the previous seat; that
+>   is a structural impossibility, not a label question.
+> - `red5_normalize` clears every aka flag and records the slots it cleared
+>   (`Concealed`/`River`), which is the only information the inverse cannot
+>   derive. It refuses a state whose graded answer — `correct_action` or any
+>   action in the `ai_decision` payload — names a red discard (`Discard_5mr`):
+>   that action stops existing once the copy is plain, and the label must be
+>   re-derived rather than rewrapped. Transform the base state before labelling.
+> - A called tile is written twice in this model (the caller's meld and the
+>   source's river record), so `TileLedger` skips the river record. The matcher
+>   moved into `state_validation::claim_records`, shared with
+>   `validate_meld_claims`, with a flag for the validator's "all four copies
+>   already held, no witness needed" exception.
+>
+> **Evidence.** 56 engine tests: per-transform and composed round trips on a
+> synthetic state with every field populated; explicit field-by-field suit/
+> seat/rank/wind/redeye assertions; ledger conservation and the no-fifth-copy
+> rule; answer/label inverse mapping; fail-closed cases (chi seating, red
+> answers, bad tile, bad seat, foreign schema/version, duplicate normalisation);
+> every walked `all_events_game` snapshot round-tripping through all five
+> transforms, still reachable after a suit or rank relabel (kans, red fives, ura
+> dora, calls and riichi included). The gate run was `cargo fmt --check`,
+> `cargo test --lib` (744 tests), `cargo clippy --lib --tests -- -D warnings`,
+> `cargo check --target wasm32-unknown-unknown`, and for the miner library
+> `cargo test --features miner` (939 tests),
+> `cargo clippy --all-targets --features miner -- -D warnings` and
+> `! cargo tree --features miner | grep -qi libriichi`. The headless browser gate
+> was not run: this machine has no Chrome, and no wasm-exposed behaviour changed.
+
 ##### V2 — Label-preservation gate and pipeline integration
 
 **Goal.** Make permutation a real pipeline stage, not a helper.

@@ -11,6 +11,12 @@ pub enum Wind {
     North,
 }
 
+/// Positional seat names: the actor, then the right, across and left players.
+///
+/// Every generator and the replay walker use these, so a seat permutation can
+/// restore the name that belongs to the seat a player moved to.
+pub const SEAT_NAMES: [&str; 4] = ["You", "Shimocha", "Toimen", "Kamicha"];
+
 impl Wind {
     /// All winds in seating order starting from East.
     pub const ALL: [Wind; 4] = [Wind::East, Wind::South, Wind::West, Wind::North];
