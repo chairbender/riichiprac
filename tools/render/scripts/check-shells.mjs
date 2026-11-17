@@ -1476,16 +1476,22 @@ function checkCandidateRecord(context) {
   const texturePath = resolve(reviewDir, record.textureFile ?? '');
   const texture2xPath = resolve(reviewDir, record.textureFile2x ?? '');
   const shadowPath = resolve(reviewDir, record.shadowTextureFile ?? '');
-  const shadow2xPath = resolve(reviewDir, record.shadowTextureFile2x ?? '');
+  // The @2x shadow sprite was retired (the runtime draws the group blob from
+  // shadowShape), so a candidate carries only the @1x shadow reference.
+  const shadow2xPath = record.shadowTextureFile2x
+    ? resolve(reviewDir, record.shadowTextureFile2x)
+    : null;
   check(existsSync(texturePath), `${label} texture exists (${record.textureFile})`);
   check(existsSync(texture2xPath), `${label} @2x texture exists (${record.textureFile2x})`);
   check(existsSync(shadowPath), `${label} shadow texture exists (${record.shadowTextureFile})`);
-  check(existsSync(shadow2xPath), `${label} @2x shadow exists (${record.shadowTextureFile2x})`);
+  if (shadow2xPath) {
+    check(existsSync(shadow2xPath), `${label} @2x shadow exists (${record.shadowTextureFile2x})`);
+  }
   if (
     !existsSync(texturePath) ||
     !existsSync(texture2xPath) ||
     !existsSync(shadowPath) ||
-    !existsSync(shadow2xPath)
+    (shadow2xPath && !existsSync(shadow2xPath))
   ) {
     return 0;
   }
@@ -1493,10 +1499,14 @@ function checkCandidateRecord(context) {
   const image = readPng(texturePath);
   const image2x = readPng(texture2xPath);
   const shadowImage = readPng(shadowPath);
-  const shadowImage2x = readPng(shadow2xPath);
-  const bytes = image.bytes + image2x.bytes + shadowImage.bytes + shadowImage2x.bytes;
+  const shadowImage2x = shadow2xPath ? readPng(shadow2xPath) : null;
+  const bytes =
+    image.bytes + image2x.bytes + shadowImage.bytes + (shadowImage2x?.bytes ?? 0);
   check(
-    image.channels === 4 && image2x.channels === 4 && shadowImage.channels === 4 && shadowImage2x.channels === 4,
+    image.channels === 4 &&
+      image2x.channels === 4 &&
+      shadowImage.channels === 4 &&
+      (!shadowImage2x || shadowImage2x.channels === 4),
     `${label} body and shadow textures are RGBA`,
   );
   check(
@@ -1515,11 +1525,13 @@ function checkCandidateRecord(context) {
       shadowImage.height === record.shadowTexHeight,
     `${label} shadow texture is ${shadowImage.width}x${shadowImage.height}`,
   );
-  check(
-    shadowImage2x.width === record.shadowTexWidth * manifest.pixelRatio &&
-      shadowImage2x.height === record.shadowTexHeight * manifest.pixelRatio,
-    `${label} @2x shadow is exactly twice @1x`,
-  );
+  if (shadowImage2x) {
+    check(
+      shadowImage2x.width === record.shadowTexWidth * manifest.pixelRatio &&
+        shadowImage2x.height === record.shadowTexHeight * manifest.pixelRatio,
+      `${label} @2x shadow is exactly twice @1x`,
+    );
+  }
 
   const padding = record.padding ?? {};
   check(
@@ -1589,9 +1601,19 @@ function checkCandidateRecord(context) {
       const [x1, y1] = quad[(i + 1) % 4];
       area += x0 * y1 - x1 * y0;
     }
-    check(Math.abs(area) / 2 > 400, `${label} faceQuad has a real area (${(Math.abs(area) / 2).toFixed(1)} px²)`);
+    // A deliberately yawed side hand sees its back plate at a grazing angle, so
+    // the plate is a sliver by design and shrinks with the lateral angle; the
+    // 400 px² floor would reject the very cameras the side-hand audition is
+    // comparing. It still has to be non-degenerate, like the committed bake.
+    const areaFloor = isSideHand(baseId) ? 100 : 400;
+    check(
+      Math.abs(area) / 2 > areaFloor,
+      `${label} faceQuad has a real area (${(Math.abs(area) / 2).toFixed(1)} px² > ${areaFloor})`,
+    );
     if (perspective) {
-      checkPerspectiveQuad(label, quad, isVerticalFace(record));
+      // A bare side-hand shell is deliberately yawed, so its visible back quad
+      // has no table-parallel edge pair; it carries no glyph.
+      if (!isSideHand(baseId)) checkPerspectiveQuad(label, quad, isVerticalFace(record));
     } else {
       const first = [(quad[0][0] + quad[2][0]) / 2, (quad[0][1] + quad[2][1]) / 2];
       const second = [(quad[1][0] + quad[3][0]) / 2, (quad[1][1] + quad[3][1]) / 2];
@@ -1701,7 +1723,15 @@ function checkCandidateRecord(context) {
       `${label} face is ivory, not blue resin (${face.join(',')}, luma ${luma(...face).toFixed(1)})`,
     );
   }
-  if (isFaceDown(baseId)) {
+  if (isSideHand(baseId)) {
+    // The side hands are the same vertical blue back, yawed 90 degrees, so the
+    // camera sees it more grazing than a face-down wall's bright blue. Same
+    // shadowed-blue family assertion as the committed side-hand shells.
+    check(
+      face[2] >= face[0] + 20 && face[2] >= face[1] + 10,
+      `${label} side-hand back is blue resin (${face.join(',')})`,
+    );
+  } else if (isFaceDown(baseId)) {
     check(
       face[2] - face[0] >= 80 && face[2] - face[1] >= 50,
       `${label} face is blue resin (${face.join(',')})`,
@@ -1738,16 +1768,28 @@ function checkCandidateRecord(context) {
     hashes.decodedRgba1x === sha256(image.data) && hashes.decodedRgba2x === sha256(image2x.data),
     `${label} body decoded-RGBA sha256 matches the candidate PNGs`,
   );
-  check(
-    shadowHashes.decodedRgba1x === sha256(shadowImage.data) &&
-      shadowHashes.decodedRgba2x === sha256(shadowImage2x.data),
-    `${label} shadow decoded-RGBA sha256 matches the candidate PNGs`,
-  );
-  check(
-    measured.bytes1x === image.bytes + shadowImage.bytes &&
-      measured.bytes2x === image2x.bytes + shadowImage2x.bytes,
-    `${label} manifest byte counts match body+shadow`,
-  );
+  if (shadowImage2x) {
+    check(
+      shadowHashes.decodedRgba1x === sha256(shadowImage.data) &&
+        shadowHashes.decodedRgba2x === sha256(shadowImage2x.data),
+      `${label} shadow decoded-RGBA sha256 matches the candidate PNGs`,
+    );
+    check(
+      measured.bytes1x === image.bytes + shadowImage.bytes &&
+        measured.bytes2x === image2x.bytes + shadowImage2x.bytes,
+      `${label} manifest byte counts match body+shadow`,
+    );
+  } else {
+    check(
+      shadowHashes.decodedRgba1x === sha256(shadowImage.data),
+      `${label} shadow decoded-RGBA sha256 matches the candidate PNG`,
+    );
+    check(
+      measured.bytes1x === image.bytes + shadowImage.bytes &&
+        measured.bytes2x === image2x.bytes,
+      `${label} manifest byte counts match body+shadow`,
+    );
+  }
   return bytes;
 }
 
@@ -1807,6 +1849,17 @@ function checkCommittedReviewSheets(feltSpec) {
       labelColour: LABEL,
       minLabel: 400,
       what: 'exploded hand fan + top hand with every slot number',
+    },
+    {
+      name: 'side-hand-rows-1x.png',
+      minWidth: 700,
+      minHeight: 600,
+      minTiles: 30000,
+      titleColour: TITLE,
+      minTitle: 300,
+      labelColour: LABEL,
+      minLabel: 400,
+      what: 'both side-hand rows, one shell reused down 13 tiles',
     },
   ];
   for (const sheet of sheets) {
@@ -2235,6 +2288,7 @@ try {
   if (shadowAuditionMode) checkShadowAudition(shellSpec);
 } catch (error) {
   failures.push(error instanceof Error ? error.message : String(error));
+  if (process.env.SHELL_CHECK_TRACE) console.error(error.stack);
 }
 
 console.log('');

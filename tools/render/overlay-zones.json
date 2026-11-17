@@ -3754,8 +3754,8 @@
    "kind": "hand",
    "side": "left",
    "layer": 5,
-   "width": 194,
-   "height": 684,
+   "width": 139,
+   "height": 674,
    "sigmaPx1x": 5,
    "blurPad": 15,
    "rotationDeg": 0,
@@ -3764,135 +3764,135 @@
    "bodies": [
     {
      "shell": "shell_hand_side_left",
-     "drawX": 90,
+     "drawX": 50,
      "drawY": 0
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 83,
+     "drawX": 47,
      "drawY": 45
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 77,
+     "drawX": 43,
      "drawY": 90
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 70,
-     "drawY": 135
+     "drawX": 40,
+     "drawY": 134
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 63,
-     "drawY": 180
+     "drawX": 37,
+     "drawY": 179
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 56,
-     "drawY": 225
-    },
-    {
-     "shell": "shell_hand_side_left",
-     "drawX": 50,
-     "drawY": 270
-    },
-    {
-     "shell": "shell_hand_side_left",
-     "drawX": 43,
-     "drawY": 315
-    },
-    {
-     "shell": "shell_hand_side_left",
-     "drawX": 36,
-     "drawY": 360
+     "drawX": 34,
+     "drawY": 224
     },
     {
      "shell": "shell_hand_side_left",
      "drawX": 30,
-     "drawY": 405
+     "drawY": 269
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 23,
-     "drawY": 450
+     "drawX": 27,
+     "drawY": 313
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 16,
-     "drawY": 495
+     "drawX": 24,
+     "drawY": 358
     },
     {
      "shell": "shell_hand_side_left",
-     "drawX": 10,
-     "drawY": 540
+     "drawX": 21,
+     "drawY": 403
+    },
+    {
+     "shell": "shell_hand_side_left",
+     "drawX": 17,
+     "drawY": 448
+    },
+    {
+     "shell": "shell_hand_side_left",
+     "drawX": 14,
+     "drawY": 493
+    },
+    {
+     "shell": "shell_hand_side_left",
+     "drawX": 11,
+     "drawY": 537
     }
    ],
    "shadows": [
     {
      "shell": "shell_hand_side_left",
-     "gridX": 91.96566269097625,
+     "gridX": 51.76321092081382,
      "gridY": 2
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 85.26566269097624,
-     "gridY": 47
+     "gridX": 48.51321092081382,
+     "gridY": 46.78
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 78.56566269097624,
-     "gridY": 92
+     "gridX": 45.26321092081382,
+     "gridY": 91.56
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 71.86566269097625,
-     "gridY": 137
+     "gridX": 42.01321092081382,
+     "gridY": 136.34
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 65.16566269097625,
-     "gridY": 182
+     "gridX": 38.76321092081382,
+     "gridY": 181.12
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 58.465662690976245,
-     "gridY": 227
+     "gridX": 35.51321092081382,
+     "gridY": 225.89999999999998
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 51.76566269097624,
-     "gridY": 272
+     "gridX": 32.26321092081382,
+     "gridY": 270.68
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 45.06566269097624,
-     "gridY": 317
+     "gridX": 29.01321092081382,
+     "gridY": 315.46000000000004
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 38.36566269097625,
-     "gridY": 362
+     "gridX": 25.76321092081382,
+     "gridY": 360.24
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 31.665662690976234,
-     "gridY": 407
+     "gridX": 22.51321092081382,
+     "gridY": 405.02
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 24.965662690976245,
-     "gridY": 452
+     "gridX": 19.26321092081382,
+     "gridY": 449.8
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 18.265662690976228,
-     "gridY": 497
+     "gridX": 16.01321092081382,
+     "gridY": 494.58000000000004
     },
     {
      "shell": "shell_hand_side_left",
-     "gridX": 11.56566269097624,
-     "gridY": 542
+     "gridX": 12.763210920813819,
+     "gridY": 539.36
     }
    ],
    "contacts": [
@@ -3965,9 +3965,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 90,
+     "drawX": 50,
      "drawY": 0,
-     "texWidth": 71,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -3977,9 +3977,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 83,
+     "drawX": 47,
      "drawY": 45,
-     "texWidth": 71,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -3989,9 +3989,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 77,
+     "drawX": 43,
      "drawY": 90,
-     "texWidth": 71,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4001,9 +4001,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 70,
-     "drawY": 135,
-     "texWidth": 71,
+     "drawX": 40,
+     "drawY": 134,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4013,9 +4013,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 63,
-     "drawY": 180,
-     "texWidth": 71,
+     "drawX": 37,
+     "drawY": 179,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4025,9 +4025,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 56,
-     "drawY": 225,
-     "texWidth": 71,
+     "drawX": 34,
+     "drawY": 224,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4037,9 +4037,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 50,
-     "drawY": 270,
-     "texWidth": 71,
+     "drawX": 30,
+     "drawY": 269,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4049,9 +4049,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 43,
-     "drawY": 315,
-     "texWidth": 71,
+     "drawX": 27,
+     "drawY": 313,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4061,9 +4061,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 36,
-     "drawY": 360,
-     "texWidth": 71,
+     "drawX": 24,
+     "drawY": 358,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4073,9 +4073,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 30,
-     "drawY": 405,
-     "texWidth": 71,
+     "drawX": 21,
+     "drawY": 403,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4085,9 +4085,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 23,
-     "drawY": 450,
-     "texWidth": 71,
+     "drawX": 17,
+     "drawY": 448,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4097,9 +4097,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 16,
-     "drawY": 495,
-     "texWidth": 71,
+     "drawX": 14,
+     "drawY": 493,
+     "texWidth": 63,
      "texHeight": 106
     }
    ]
@@ -4109,8 +4109,8 @@
    "kind": "hand",
    "side": "right",
    "layer": 5,
-   "width": 188,
-   "height": 644,
+   "width": 138,
+   "height": 654,
    "sigmaPx1x": 5,
    "blurPad": 15,
    "rotationDeg": 0,
@@ -4119,135 +4119,135 @@
    "bodies": [
     {
      "shell": "shell_hand_side_right",
-     "drawX": 22,
+     "drawX": 16,
      "drawY": 0
     },
     {
      "shell": "shell_hand_side_right",
-     "drawX": 28,
-     "drawY": 42
+     "drawX": 19,
+     "drawY": 43
     },
     {
      "shell": "shell_hand_side_right",
-     "drawX": 34,
-     "drawY": 83
+     "drawX": 22,
+     "drawY": 86
+    },
+    {
+     "shell": "shell_hand_side_right",
+     "drawX": 25,
+     "drawY": 129
+    },
+    {
+     "shell": "shell_hand_side_right",
+     "drawX": 28,
+     "drawY": 172
+    },
+    {
+     "shell": "shell_hand_side_right",
+     "drawX": 31,
+     "drawY": 216
+    },
+    {
+     "shell": "shell_hand_side_right",
+     "drawX": 35,
+     "drawY": 259
+    },
+    {
+     "shell": "shell_hand_side_right",
+     "drawX": 38,
+     "drawY": 302
     },
     {
      "shell": "shell_hand_side_right",
      "drawX": 41,
-     "drawY": 125
+     "drawY": 345
+    },
+    {
+     "shell": "shell_hand_side_right",
+     "drawX": 44,
+     "drawY": 388
     },
     {
      "shell": "shell_hand_side_right",
      "drawX": 47,
-     "drawY": 167
+     "drawY": 431
+    },
+    {
+     "shell": "shell_hand_side_right",
+     "drawX": 50,
+     "drawY": 474
     },
     {
      "shell": "shell_hand_side_right",
      "drawX": 53,
-     "drawY": 208
-    },
-    {
-     "shell": "shell_hand_side_right",
-     "drawX": 59,
-     "drawY": 250
-    },
-    {
-     "shell": "shell_hand_side_right",
-     "drawX": 65,
-     "drawY": 292
-    },
-    {
-     "shell": "shell_hand_side_right",
-     "drawX": 72,
-     "drawY": 333
-    },
-    {
-     "shell": "shell_hand_side_right",
-     "drawX": 78,
-     "drawY": 375
-    },
-    {
-     "shell": "shell_hand_side_right",
-     "drawX": 84,
-     "drawY": 417
-    },
-    {
-     "shell": "shell_hand_side_right",
-     "drawX": 90,
-     "drawY": 458
-    },
-    {
-     "shell": "shell_hand_side_right",
-     "drawX": 96,
-     "drawY": 500
+     "drawY": 517
     }
    ],
    "shadows": [
     {
      "shell": "shell_hand_side_right",
-     "gridX": 24.035687878682054,
+     "gridX": 17.827250506633593,
      "gridY": 2
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 30.235687878682054,
-     "gridY": 43.67
+     "gridX": 20.957250506633592,
+     "gridY": 45.11
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 36.43568787868205,
-     "gridY": 85.34
+     "gridX": 24.08725050663359,
+     "gridY": 88.22
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 42.635687878682056,
-     "gridY": 127.01000000000002
+     "gridX": 27.217250506633594,
+     "gridY": 131.32999999999998
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 48.83568787868205,
-     "gridY": 168.68
+     "gridX": 30.347250506633593,
+     "gridY": 174.44
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 55.035687878682054,
-     "gridY": 210.35000000000002
+     "gridX": 33.477250506633595,
+     "gridY": 217.55
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 61.23568787868206,
-     "gridY": 252.02
+     "gridX": 36.60725050663359,
+     "gridY": 260.65999999999997
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 67.43568787868205,
-     "gridY": 293.69
+     "gridX": 39.73725050663359,
+     "gridY": 303.77
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 73.63568787868206,
-     "gridY": 335.36
+     "gridX": 42.867250506633596,
+     "gridY": 346.88
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 79.83568787868205,
-     "gridY": 377.03000000000003
+     "gridX": 45.99725050663359,
+     "gridY": 389.99
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 86.03568787868205,
-     "gridY": 418.70000000000005
+     "gridX": 49.12725050663359,
+     "gridY": 433.1
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 92.23568787868206,
-     "gridY": 460.37
+     "gridX": 52.257250506633596,
+     "gridY": 476.21
     },
     {
      "shell": "shell_hand_side_right",
-     "gridX": 98.43568787868205,
-     "gridY": 502.04
+     "gridX": 55.38725050663359,
+     "gridY": 519.3199999999999
     }
    ],
    "contacts": [
@@ -4320,9 +4320,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 22,
+     "drawX": 16,
      "drawY": 0,
-     "texWidth": 71,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4332,9 +4332,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 28,
-     "drawY": 42,
-     "texWidth": 71,
+     "drawX": 19,
+     "drawY": 43,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4344,9 +4344,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 34,
-     "drawY": 83,
-     "texWidth": 71,
+     "drawX": 22,
+     "drawY": 86,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4356,9 +4356,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 41,
-     "drawY": 125,
-     "texWidth": 71,
+     "drawX": 25,
+     "drawY": 129,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4368,9 +4368,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 47,
-     "drawY": 167,
-     "texWidth": 71,
+     "drawX": 28,
+     "drawY": 172,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4380,9 +4380,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 53,
-     "drawY": 208,
-     "texWidth": 71,
+     "drawX": 31,
+     "drawY": 216,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4392,9 +4392,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 59,
-     "drawY": 250,
-     "texWidth": 71,
+     "drawX": 35,
+     "drawY": 259,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4404,9 +4404,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 65,
-     "drawY": 292,
-     "texWidth": 71,
+     "drawX": 38,
+     "drawY": 302,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4416,9 +4416,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 72,
-     "drawY": 333,
-     "texWidth": 71,
+     "drawX": 41,
+     "drawY": 345,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4428,9 +4428,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 78,
-     "drawY": 375,
-     "texWidth": 71,
+     "drawX": 44,
+     "drawY": 388,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4440,9 +4440,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 84,
-     "drawY": 417,
-     "texWidth": 71,
+     "drawX": 47,
+     "drawY": 431,
+     "texWidth": 63,
      "texHeight": 106
     },
     {
@@ -4452,9 +4452,9 @@
      "contact": "up",
      "kind": "catch",
      "cacheKey": null,
-     "drawX": 90,
-     "drawY": 458,
-     "texWidth": 71,
+     "drawX": 50,
+     "drawY": 474,
+     "texWidth": 63,
      "texHeight": 106
     }
    ]

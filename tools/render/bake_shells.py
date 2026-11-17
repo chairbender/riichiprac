@@ -1889,7 +1889,7 @@ def validate_audition(spec: dict) -> None:
 
 def audition_shell(base: dict, candidate: dict) -> dict:
     """A throwaway shell record for one candidate; the catalogue is never mutated."""
-    return {
+    shell = {
         "id": f"{base['id']}--{candidate['candidateId']}",
         "sourceShellId": base["id"],
         "projection": base["projection"],
@@ -1899,6 +1899,12 @@ def audition_shell(base: dict, candidate: dict) -> dict:
         "camera": dict(candidate["camera"]),
         "expectProjection": candidate.get("expectProjection", base.get("expectProjection")),
     }
+    # A family with a hand-tuned shadow box (the side hands' rotated base strip)
+    # keeps it: the candidate changes only the camera, so the standing footprint
+    # is the same shape and the box that holds the committed blob holds this one.
+    if "shadowPadding1x" in base:
+        shell["shadowPadding1x"] = dict(base["shadowPadding1x"])
+    return shell
 
 
 def face_quad_size(quad: list[list[float]]) -> dict:

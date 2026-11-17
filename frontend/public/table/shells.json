@@ -272,35 +272,35 @@
       },
       "shell_hand_side_left": {
         "projection": "perspective",
-        "lensMm": 361.4337,
-        "shiftX": -1.683806,
-        "shiftY": 0.26033,
+        "lensMm": 795.7925,
+        "shiftX": -1.82212,
+        "shiftY": 0.281367,
         "lateralOffsetUnits": 2.0,
-        "distanceUnits": 10.0,
-        "pixelsPerUnit2x": 129.293837,
+        "distanceUnits": 20.0,
+        "pixelsPerUnit2x": 123.57152,
         "resolution2x": [
-          230,
+          212,
           304
         ],
         "resolution1x": [
-          115,
+          106,
           152
         ]
       },
       "shell_hand_side_right": {
         "projection": "perspective",
-        "lensMm": 361.4337,
-        "shiftX": 1.683806,
-        "shiftY": 0.26033,
+        "lensMm": 795.7925,
+        "shiftX": 1.82212,
+        "shiftY": 0.281367,
         "lateralOffsetUnits": -2.0,
-        "distanceUnits": 10.0,
-        "pixelsPerUnit2x": 129.293835,
+        "distanceUnits": 20.0,
+        "pixelsPerUnit2x": 123.57152,
         "resolution2x": [
-          230,
+          212,
           304
         ],
         "resolution1x": [
-          115,
+          106,
           152
         ]
       },
@@ -3908,7 +3908,7 @@
       "textureFile": "shells/shell_hand_side_left.png",
       "textureFile2x": "shells/2x/shell_hand_side_left.png",
       "shadowTextureFile": "shells/shell_hand_side_left-shadow.png",
-      "shadowTexWidth": 163,
+      "shadowTexWidth": 155,
       "shadowTexHeight": 168,
       "shadowAnchorX": 44,
       "shadowAnchorY": 8,
@@ -3922,11 +3922,11 @@
         "bottom": 58,
         "left": 44
       },
-      "texWidth": 71,
+      "texWidth": 63,
       "texHeight": 106,
       "anchorX": 2,
       "anchorY": 2,
-      "advanceWidth": 67,
+      "advanceWidth": 59,
       "advanceHeight": 102,
       "padding": {
         "top": 2,
@@ -3958,15 +3958,15 @@
         "model": "hard-rounded-rect",
         "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
         "centrePx": [
-          44.735,
-          88.344
+          37.032,
+          88.031
         ],
         "halfPx": [
-          44.557,
-          37.319
+          41.017,
+          36.216
         ],
-        "radiusPx": 13.062,
-        "angleDeg": -25.571,
+        "radiusPx": 12.676,
+        "angleDeg": -16.9543,
         "sigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "colorHex": "#0b1418",
@@ -3975,31 +3975,31 @@
       "faceRotationDeg": 0,
       "faceQuad": [
         [
-          60.59,
-          7.56
+          55.83,
+          7.55
         ],
         [
-          54.83,
-          44.42
+          53.05,
+          45.02
         ],
         [
-          62.74,
-          98.53
+          56.89,
+          98.5
         ],
         [
-          67.99,
-          61.57
+          59.55,
+          61.0
         ]
       ],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
       "gridStepPx": {
         "x": [
-          -6.7,
-          45.0
+          -3.25,
+          44.78
         ],
         "y": [
-          9.05,
-          64.01
+          4.36,
+          61.63
         ]
       },
       "projection": "fixed-oblique",
@@ -4014,56 +4014,56 @@
         "elevationDeg": 45,
         "faceLocalZ": "bottom",
         "projection": "perspective",
-        "lensMm": 361.4337,
-        "shiftX": -1.683806,
-        "shiftY": 0.26033,
+        "lensMm": 795.7925,
+        "shiftX": -1.82212,
+        "shiftY": 0.281367,
         "lateralOffsetUnits": 2.0,
-        "distanceUnits": 10.0,
-        "pixelsPerUnit2x": 129.293837,
+        "distanceUnits": 20.0,
+        "pixelsPerUnit2x": 123.57152,
         "resolution1x": [
-          115,
+          106,
           152
         ],
         "resolution2x": [
-          230,
+          212,
           304
         ]
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 17,
+          "left": 20,
           "top": 0,
-          "right": 40,
-          "bottom": 45
+          "right": 35,
+          "bottom": 39
         },
         "alphaPeak1x": {
-          "left": 0.5216,
+          "left": 0.5686,
           "top": 0.0,
           "right": 0.6,
           "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 96.055,
+          "left": 161.02,
           "top": 0.0,
-          "right": 682.894,
-          "bottom": 976.98
+          "right": 555.937,
+          "bottom": 811.769
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            110.86,
-            67.69
+            102.0,
+            67.06
           ],
           [
-            63.64,
-            67.69
+            53.63,
+            67.06
           ],
           [
-            104.74,
+            98.89,
             111.0
           ],
           [
-            55.71,
+            49.61,
             111.0
           ]
         ],
@@ -4074,38 +4074,38 @@
           1
         ],
         "faceSampleRgb": [
-          24,
-          40,
-          60
+          30,
+          47,
+          68
         ],
         "edgeSamplesRgb": {
           "top": [
-            203,
-            206,
-            212
+            214,
+            214,
+            214
           ],
           "bottom": [
             40,
             58,
-            74
+            75
           ]
         },
-        "bytes1x": 13760,
-        "bytes2x": 24781
+        "bytes1x": 13150,
+        "bytes2x": 22962
       },
       "sha256": {
-        "decodedRgba1x": "8eb63fe187e250b26c13e8372a96a170695aa930e4d5add0503be767232a3f13",
-        "decodedRgba2x": "b67dd6187d47f42f06f5928892a03f2c5b302a114c8188b26737bd7993e9cf03"
+        "decodedRgba1x": "b7b486a0b66ffb193da6cf5a9ac85d9e0c1c87374ac7d85c1e435c11a2d26159",
+        "decodedRgba2x": "231e353c6a4cb899e8b295bfc5179cff6372033b826892b20b76509dee4f0e84"
       },
       "shadowSha256": {
-        "decodedRgba1x": "f72957386c55ec87fbfa2ac8b041ee0fcb497b589be5f5804104ffe07fd6134b"
+        "decodedRgba1x": "0ec199c42d7625db70c5471586b4e74b73a81529b1f04a939941a5dc40b559e4"
       }
     },
     "shell_hand_side_right": {
       "textureFile": "shells/shell_hand_side_right.png",
       "textureFile2x": "shells/2x/shell_hand_side_right.png",
       "shadowTextureFile": "shells/shell_hand_side_right-shadow.png",
-      "shadowTexWidth": 163,
+      "shadowTexWidth": 155,
       "shadowTexHeight": 168,
       "shadowAnchorX": 44,
       "shadowAnchorY": 8,
@@ -4119,11 +4119,11 @@
         "bottom": 58,
         "left": 44
       },
-      "texWidth": 71,
+      "texWidth": 63,
       "texHeight": 106,
       "anchorX": 2,
       "anchorY": 2,
-      "advanceWidth": 67,
+      "advanceWidth": 59,
       "advanceHeight": 102,
       "padding": {
         "top": 2,
@@ -4155,15 +4155,15 @@
         "model": "hard-rounded-rect",
         "space": "centrePx/halfPx/radiusPx are @1x px relative to the tile's grid anchor (the body-box left/top); rotate by angleDeg about centrePx",
         "centrePx": [
-          32.265,
-          88.344
+          31.968,
+          88.031
         ],
         "halfPx": [
-          44.557,
-          37.319
+          41.017,
+          36.216
         ],
-        "radiusPx": 13.062,
-        "angleDeg": 25.5711,
+        "radiusPx": 12.676,
+        "angleDeg": 16.9544,
         "sigmaPx1x": 5.0,
         "coreAlpha": 0.6,
         "colorHex": "#0b1418",
@@ -4172,31 +4172,31 @@
       "faceRotationDeg": 0,
       "faceQuad": [
         [
-          16.17,
-          44.42
+          9.95,
+          45.02
         ],
         [
-          10.41,
-          7.56
+          7.17,
+          7.55
         ],
         [
-          3.01,
-          61.57
+          3.45,
+          61.0
         ],
         [
-          8.26,
-          98.53
+          6.11,
+          98.5
         ]
       ],
       "faceQuadOrder": "face-local [top-left, top-right, bottom-right, bottom-left]",
       "gridStepPx": {
         "x": [
-          6.2,
-          41.67
+          3.13,
+          43.11
         ],
         "y": [
-          -9.05,
-          64.01
+          -4.36,
+          61.63
         ]
       },
       "projection": "fixed-oblique",
@@ -4211,57 +4211,57 @@
         "elevationDeg": 45,
         "faceLocalZ": "bottom",
         "projection": "perspective",
-        "lensMm": 361.4337,
-        "shiftX": 1.683806,
-        "shiftY": 0.26033,
+        "lensMm": 795.7925,
+        "shiftX": 1.82212,
+        "shiftY": 0.281367,
         "lateralOffsetUnits": -2.0,
-        "distanceUnits": 10.0,
-        "pixelsPerUnit2x": 129.293835,
+        "distanceUnits": 20.0,
+        "pixelsPerUnit2x": 123.57152,
         "resolution1x": [
-          115,
+          106,
           152
         ],
         "resolution2x": [
-          230,
+          212,
           304
         ]
       },
       "measured": {
         "alphaExtent1x": {
-          "left": 30,
+          "left": 25,
           "top": 0,
-          "right": 27,
-          "bottom": 45
+          "right": 30,
+          "bottom": 39
         },
         "alphaPeak1x": {
-          "left": 0.6,
+          "left": 0.5961,
           "top": 0.0,
           "right": 0.6,
           "bottom": 0.6
         },
         "alphaMass1x": {
-          "left": 350.294,
+          "left": 242.286,
           "top": 0.0,
-          "right": 295.18,
-          "bottom": 1010.863
+          "right": 404.922,
+          "bottom": 799.549
         },
         "shadowMaxAlpha": 0.6,
         "contactQuadPx": [
           [
-            50.26,
+            48.11,
             111.0
           ],
           [
-            99.29,
+            97.39,
             111.0
           ],
           [
-            44.14,
-            67.69
+            45.0,
+            67.06
           ],
           [
-            91.36,
-            67.69
+            93.37,
+            67.06
           ]
         ],
         "solidInset1x": [
@@ -4271,15 +4271,15 @@
           1
         ],
         "faceSampleRgb": [
-          16,
-          52,
-          102
+          27,
+          56,
+          99
         ],
         "edgeSamplesRgb": {
           "top": [
-            187,
-            194,
-            208
+            196,
+            201,
+            210
           ],
           "bottom": [
             37,
@@ -4287,15 +4287,15 @@
             71
           ]
         },
-        "bytes1x": 13614,
-        "bytes2x": 24691
+        "bytes1x": 13013,
+        "bytes2x": 22973
       },
       "sha256": {
-        "decodedRgba1x": "1831fd5bd6c4e961d57474cc73fe9940ed233fb5e5a83b671abdcb4b80e5aeea",
-        "decodedRgba2x": "0e90c0333eb93d63cbeebb6ef74f0901a910fb7f8f09283c84e24da2de9d9ea5"
+        "decodedRgba1x": "184fb9da11e834ecef909e9fc22738ed901f38bd3688dfa9d553ff245a3a5653",
+        "decodedRgba2x": "8cc04c9e3839d2aa8e458813e1910596c974452e198f119f131cd1ca2820911e"
       },
       "shadowSha256": {
-        "decodedRgba1x": "1f06c82867f1360a7ac8bf21db106630c9df834f15543a2f1ac9c7fea3262f0e"
+        "decodedRgba1x": "19f5149ccff9c4746e2996e6f59eee0987835b9476d3468d57819bea015373a3"
       }
     },
     "shell_hand_slot_00": {

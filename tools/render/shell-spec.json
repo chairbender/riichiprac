@@ -376,7 +376,7 @@
       "id": "shell_hand_side_left",
       "projection": "fixed-oblique",
       "faceRotationDeg": 0,
-      "role": "left player's concealed hand tile; standing upright with the blue back to the human, reusing the left wall's off-axis perspective down a single 13-tile row. The pose is mirrored from the right shell (rotZ 270 vs 90) so the human sees the back, while the camera mirror keeps the side-wall read.",
+      "role": "left player's concealed hand tile; standing upright with the blue back to the human, reusing the left wall's off-axis read at its own weaker, row-repeat perspective down a single 13-tile row. The pose is mirrored from the right shell (rotZ 270 vs 90) so the human sees the back, while the camera mirror keeps the side-wall read.",
       "pose": {
         "rotateXDeg": 90,
         "rotateYDeg": 0,
@@ -389,8 +389,9 @@
         "projection": "perspective",
         "perspective": {
           "lateralOffsetUnits": 2.0,
-          "distanceUnits": 10.0
-        }
+          "distanceUnits": 20.0
+        },
+        "note": "2/20 (5.71 deg) instead of the side wall's 2/10 (11.31 deg): the side-hand row reuses ONE shell down 13 tiles, and at 2/10 each tile's near end poked ~19 px past the next tile's far end (13-tile row raggedness 14.8 px @1x). The weaker lateral angle halves the visible back plate (580 -> 287 px^2 @1x) and cuts the raggedness to 9.0 px. Picked 2026-11-16 from the side-hand audition matrix in audition.shells."
       },
       "expectProjection": "portrait",
       "shadowPadding1x": {
@@ -404,7 +405,7 @@
       "id": "shell_hand_side_right",
       "projection": "fixed-oblique",
       "faceRotationDeg": 0,
-      "role": "right player's concealed hand tile; standing upright with the blue back to the human, reusing the right wall's off-axis perspective down a single 13-tile row. The pose is mirrored from the left shell (rotZ 90 vs 270), with the camera mirror carrying the side-wall read.",
+      "role": "right player's concealed hand tile; standing upright with the blue back to the human, reusing the right wall's off-axis read at its own weaker, row-repeat perspective down a single 13-tile row. The pose is mirrored from the left shell (rotZ 90 vs 270), with the camera mirror carrying the side-wall read.",
       "pose": {
         "rotateXDeg": 90,
         "rotateYDeg": 0,
@@ -417,8 +418,9 @@
         "projection": "perspective",
         "perspective": {
           "lateralOffsetUnits": -2.0,
-          "distanceUnits": 10.0
-        }
+          "distanceUnits": 20.0
+        },
+        "note": "2/20 (5.71 deg) instead of the side wall's 2/10 (11.31 deg): the side-hand row reuses ONE shell down 13 tiles, and at 2/10 each tile's near end poked ~19 px past the next tile's far end (13-tile row raggedness 14.8 px @1x). The weaker lateral angle halves the visible back plate (580 -> 287 px^2 @1x) and cuts the raggedness to 9.0 px. Picked 2026-11-16 from the side-hand audition matrix in audition.shells."
       },
       "expectProjection": "portrait",
       "shadowPadding1x": {
@@ -430,12 +432,12 @@
     }
   ],
   "audition": {
-    "status": "Proposals only: hand fan-strength calibration. The committed hand fan is the 24-unit stylised eye distance (outer row 10.6 deg, drawn tile 12.9 deg). These candidates keep the outer row slot and the drawn-tile slot and move the eye closer/further, so the amount of side reveal and face skew can be picked. Written under build/ (gitignored); the committed shells are never touched.",
+    "status": "Proposals only: two camera matrices. (1) Hand fan-strength calibration: the committed hand fan is the 24-unit stylised eye distance (outer row 10.6 deg, drawn tile 12.9 deg); the candidates move the eye closer/further so the amount of side reveal and face skew can be picked. (2) Side-hand row repeat (2026-11-16): the left/right concealed-hand rows reuse ONE standing shell down 13 tiles. The tile's silhouette is a two-face lens (the top end face above, the back/end face below) whose widest line repeats every step, so each tile's near end pokes ~19 px past the next tile's far end. The candidates sweep the elevation and the convergence to find the read that assembles into a clean row. Written under build/ (gitignored); the committed shells are never touched.",
     "outputDir": "build/review/candidates",
     "sheetDir": "build/review",
     "manifest": "build/review/shell-candidates.json",
-    "deliverable": "Three eye distances for the outer hand row slot and the drawn-tile slot, each rendered as a six-tile packed row plus an isolated tile (the isolated tile shows the full side reveal and face skew), with the camera, body, face ratio and bytes printed. Compare against the committed 24-unit REF.",
-    "references": "Each sheet shows the committed outer row / drawn slot as REF (10.6 / 12.9 deg at 24 units). The lateral offset is fixed; only the eye distance changes, so the candidate is a pure fan-strength change. The centre slot stays straight on.",
+    "deliverable": "Hand fan: three eye distances for the outer hand row slot and the drawn-tile slot, each rendered as a six-tile packed row plus an isolated tile, with the camera, body, face ratio and bytes printed. Side hands: five camera candidates per side, each rendered as a three-tile row at @1x (1:1) and @2x (2:1 zoom) plus the full 13-tile row at 1:1, with the row-repeat numbers printed (the tile's own flare, the near-end wedge per tile, the union sawtooth, and the blue-back share). Compare against the committed REF in every case.",
+    "references": "Hand fan: each sheet shows the committed outer row / drawn slot as REF (10.6 / 12.9 deg at 24 units); the lateral offset is fixed, only the eye distance changes. Side hands: the committed shell is REF (EL 45, 2/10 = 11.31 deg). The candidates keep the 11.31 deg lateral angle (so the side reveal of the tile end is unchanged) and lower the elevation, which is the angle that shows the tile's TOP face, and/or move the eye out. The row is drawn at each record's own gridStepPx.x, so the printed numbers are the row the runtime actually builds.",
     "shells": {
       "shell_hand_slot_12": {
         "question": "Hand outer slot: how strong should the hand fan be? The committed outer row tile is 10.6 deg (eye 24 units). A closer eye (14 / 18 units) shows more side and more face skew; a farther eye (40 units) is subtler. The centre tile stays straight on.",
@@ -572,11 +574,231 @@
             "expectProjection": "portrait"
           }
         ]
+      },
+      "shell_hand_side_left": {
+        "question": "Left side hand: the row reuses this one shell down 13 tiles, so the tile's own silhouette repeats every step and each tile's near end pokes out past the next tile's far end. The committed camera is 2/10 (11.31 deg). A keeps the committed lateral read and halves the convergence; B/C/D keep half the convergence and sweep the lateral angle (8.53 / 5.71 / 2.86 deg); E is the control that only moves the eye (11.31 deg at a sixth of the convergence). Pick the read that assembles into the cleanest row while the blue back still reads.",
+        "candidates": [
+          {
+            "candidateId": "A",
+            "label": "4/20 11.31",
+            "note": "the committed lateral read at half the convergence",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 270
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": 4,
+                "distanceUnits": 20
+              }
+            },
+            "expectProjection": "portrait"
+          },
+          {
+            "candidateId": "B",
+            "label": "3/20 8.53",
+            "note": "three-quarters of the committed lateral read at half the convergence",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 270
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": 3,
+                "distanceUnits": 20
+              }
+            },
+            "expectProjection": "portrait"
+          },
+          {
+            "candidateId": "C",
+            "label": "2/20 5.71",
+            "note": "half the committed lateral read at half the convergence",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 270
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": 2,
+                "distanceUnits": 20
+              }
+            },
+            "expectProjection": "portrait"
+          },
+          {
+            "candidateId": "D",
+            "label": "1/20 2.86",
+            "note": "a quarter of the committed lateral read at half the convergence",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 270
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": 1,
+                "distanceUnits": 20
+              }
+            },
+            "expectProjection": "portrait"
+          },
+          {
+            "candidateId": "E",
+            "label": "12/60 11.31",
+            "note": "the committed lateral read at a sixth of the convergence (distance-only control)",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 270
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": 12,
+                "distanceUnits": 60
+              }
+            },
+            "expectProjection": "portrait"
+          }
+        ]
+      },
+      "shell_hand_side_right": {
+        "question": "Right side hand: the row reuses this one shell down 13 tiles, so the tile's own silhouette repeats every step and each tile's near end pokes out past the next tile's far end. The committed camera is 2/10 (11.31 deg). A keeps the committed lateral read and halves the convergence; B/C/D keep half the convergence and sweep the lateral angle (8.53 / 5.71 / 2.86 deg); E is the control that only moves the eye (11.31 deg at a sixth of the convergence). Pick the read that assembles into the cleanest row while the blue back still reads.",
+        "candidates": [
+          {
+            "candidateId": "A",
+            "label": "4/20 11.31",
+            "note": "the committed lateral read at half the convergence",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": -4,
+                "distanceUnits": 20
+              }
+            },
+            "expectProjection": "portrait"
+          },
+          {
+            "candidateId": "B",
+            "label": "3/20 8.53",
+            "note": "three-quarters of the committed lateral read at half the convergence",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": -3,
+                "distanceUnits": 20
+              }
+            },
+            "expectProjection": "portrait"
+          },
+          {
+            "candidateId": "C",
+            "label": "2/20 5.71",
+            "note": "half the committed lateral read at half the convergence",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": -2,
+                "distanceUnits": 20
+              }
+            },
+            "expectProjection": "portrait"
+          },
+          {
+            "candidateId": "D",
+            "label": "1/20 2.86",
+            "note": "a quarter of the committed lateral read at half the convergence",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": -1,
+                "distanceUnits": 20
+              }
+            },
+            "expectProjection": "portrait"
+          },
+          {
+            "candidateId": "E",
+            "label": "12/60 11.31",
+            "note": "the committed lateral read at a sixth of the convergence (distance-only control)",
+            "pose": {
+              "rotateXDeg": 90,
+              "rotateYDeg": 0,
+              "rotateZDeg": 90
+            },
+            "camera": {
+              "azimuthDeg": 0,
+              "elevationDeg": 45,
+              "faceLocalZ": "bottom",
+              "projection": "perspective",
+              "perspective": {
+                "lateralOffsetUnits": -12,
+                "distanceUnits": 60
+              }
+            },
+            "expectProjection": "portrait"
+          }
+        ]
       }
     }
   },
   "faceVariants": {
-    "status": "Landed 2026-11-15 for the three landed families: standing-front-00..12 + draw (14 hand slots), flat-topdown (shell_flat_upright) and flat-rot90 (shell_flat_sideways). The 37 glyph masters and the startup atlas are committed; see the architecture doc \u00a711 and tools/render/README.md. The per-slot dora families below remain the next face-variant task.",
+    "status": "Landed 2026-11-15 for the three landed families: standing-front-00..12 + draw (14 hand slots), flat-topdown (shell_flat_upright) and flat-rot90 (shell_flat_sideways). Phase 2b added the two river shells' variants: flat-topdown-180 (shell_flat_upright_180) and flat-rot270 (shell_flat_sideways_270), the same glyph with the atlas rotation applied (see frontend/src/table/tiles.ts). The 37 glyph masters and the startup atlas are committed; see the architecture doc §11 and tools/render/README.md. The per-slot dora families below remain the next face-variant task.",
     "atlasKey": "(shellType, faceVariant, tileFace)",
     "faceUpShells": {
       "shell_flat_upright": [
@@ -584,6 +806,12 @@
       ],
       "shell_flat_sideways": [
         "flat-rot90"
+      ],
+      "shell_flat_upright_180": [
+        "flat-topdown-180"
+      ],
+      "shell_flat_sideways_270": [
+        "flat-rot270"
       ],
       "shell_wall_horizontal_faceup": [
         "wall-topdown-dora"

@@ -11,46 +11,46 @@
       "caster": "shell_hand_side_left",
       "textureFile": "overlays/catches/shell_hand_side_left_from_shell_hand_side_left.png",
       "textureFile2x": "overlays/catches/2x/shell_hand_side_left_from_shell_hand_side_left.png",
-      "texWidth": 71,
+      "texWidth": 63,
       "texHeight": 106,
       "peakAlpha": 1,
-      "meanAlpha": 0.538,
-      "supportPx": 3302,
+      "meanAlpha": 0.6408,
+      "supportPx": 3171,
       "sha256": {
-        "decodedRgba1x": "91e07803232568bff713118d69c2ea964e9194f3fbe9e7b14cbf9bb1256297ad",
-        "decodedRgba2x": "ddf9e63ccfc4905c24160adc8e87e8ca0f7f692ca28ffb59865226ffef012b30"
+        "decodedRgba1x": "1e2a5b70bb7fd69cf8d5b4309b887ae62664c5dfa90afa0231d1d6d741b67e15",
+        "decodedRgba2x": "3066a4be479bd7dff4cba4b300e87d35b14e667f6d37fd779426c19c9b6d232a"
       },
-      "bytes1x": 3061,
-      "bytes2x": 8961,
+      "bytes1x": 2830,
+      "bytes2x": 8358,
       "reference": {
         "meanDelta": 0,
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 21.4
+      "renderSeconds": 19.1
     },
     "shell_hand_side_right:shell_hand_side_right": {
       "target": "shell_hand_side_right",
       "caster": "shell_hand_side_right",
       "textureFile": "overlays/catches/shell_hand_side_right_from_shell_hand_side_right.png",
       "textureFile2x": "overlays/catches/2x/shell_hand_side_right_from_shell_hand_side_right.png",
-      "texWidth": 71,
+      "texWidth": 63,
       "texHeight": 106,
       "peakAlpha": 1,
-      "meanAlpha": 0.7961,
-      "supportPx": 3188,
+      "meanAlpha": 0.7827,
+      "supportPx": 3147,
       "sha256": {
-        "decodedRgba1x": "ac24a3673ff82f5510717cc09de2a1406b1477ab420c99838f930e405648582a",
-        "decodedRgba2x": "a6ae31076d51d3eecd78f6d99e234d47cb98578f412841fb0767820256896494"
+        "decodedRgba1x": "f16c571100a90af2985af5c368ba4468626067345b18a8b0e07fc243d0610129",
+        "decodedRgba2x": "37b22e9567ab8719b57851f9ef6108c8c454f1bd350173d14c8f24d89ca8c938"
       },
-      "bytes1x": 1467,
-      "bytes2x": 4192,
+      "bytes1x": 1507,
+      "bytes2x": 4752,
       "reference": {
         "meanDelta": 0,
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 18.2
+      "renderSeconds": 16.3
     },
     "shell_hand_slot_00:shell_hand_slot_01": {
       "target": "shell_hand_slot_00",
@@ -73,7 +73,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 27.1
+      "renderSeconds": 20.2
     },
     "shell_hand_slot_01:shell_hand_slot_02": {
       "target": "shell_hand_slot_01",
@@ -96,7 +96,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 23.8
+      "renderSeconds": 21.8
     },
     "shell_hand_slot_02:shell_hand_slot_03": {
       "target": "shell_hand_slot_02",
@@ -119,7 +119,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 23.4
+      "renderSeconds": 21.3
     },
     "shell_hand_slot_03:shell_hand_slot_04": {
       "target": "shell_hand_slot_03",
@@ -142,7 +142,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 28.2
+      "renderSeconds": 21
     },
     "shell_hand_slot_04:shell_hand_slot_05": {
       "target": "shell_hand_slot_04",
@@ -165,7 +165,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 24.7
+      "renderSeconds": 20.6
     },
     "shell_hand_slot_05:shell_hand_slot_06": {
       "target": "shell_hand_slot_05",
@@ -188,7 +188,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 22.4
+      "renderSeconds": 19.8
     },
     "shell_hand_slot_07:shell_hand_slot_06": {
       "target": "shell_hand_slot_07",
@@ -211,7 +211,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 22.5
+      "renderSeconds": 26.9
     },
     "shell_hand_slot_08:shell_hand_slot_07": {
       "target": "shell_hand_slot_08",
@@ -234,7 +234,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 22.6
+      "renderSeconds": 53.4
     },
     "shell_hand_slot_09:shell_hand_slot_08": {
       "target": "shell_hand_slot_09",
@@ -257,7 +257,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 22.1
+      "renderSeconds": 54.1
     },
     "shell_hand_slot_10:shell_hand_slot_09": {
       "target": "shell_hand_slot_10",
@@ -280,7 +280,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 22.3
+      "renderSeconds": 35.6
     },
     "shell_hand_slot_11:shell_hand_slot_10": {
       "target": "shell_hand_slot_11",
@@ -303,7 +303,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 23
+      "renderSeconds": 22.3
     },
     "shell_hand_slot_12:shell_hand_slot_11": {
       "target": "shell_hand_slot_12",
@@ -326,7 +326,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 23.6
+      "renderSeconds": 39.7
     },
     "shell_hand_top_slot_00:shell_hand_top_slot_01": {
       "target": "shell_hand_top_slot_00",
@@ -349,7 +349,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 19
+      "renderSeconds": 24
     },
     "shell_hand_top_slot_01:shell_hand_top_slot_02": {
       "target": "shell_hand_top_slot_01",
@@ -372,7 +372,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 18.6
+      "renderSeconds": 18.2
     },
     "shell_hand_top_slot_02:shell_hand_top_slot_03": {
       "target": "shell_hand_top_slot_02",
@@ -395,7 +395,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 18.5
+      "renderSeconds": 17.6
     },
     "shell_hand_top_slot_03:shell_hand_top_slot_04": {
       "target": "shell_hand_top_slot_03",
@@ -418,7 +418,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 18.2
+      "renderSeconds": 17.1
     },
     "shell_hand_top_slot_04:shell_hand_top_slot_05": {
       "target": "shell_hand_top_slot_04",
@@ -441,7 +441,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 18.1
+      "renderSeconds": 17.2
     },
     "shell_hand_top_slot_05:shell_hand_top_slot_06": {
       "target": "shell_hand_top_slot_05",
@@ -464,7 +464,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 18.2
+      "renderSeconds": 24.9
     },
     "shell_hand_top_slot_07:shell_hand_top_slot_06": {
       "target": "shell_hand_top_slot_07",
@@ -487,7 +487,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 18.2
+      "renderSeconds": 47.7
     },
     "shell_hand_top_slot_08:shell_hand_top_slot_07": {
       "target": "shell_hand_top_slot_08",
@@ -510,7 +510,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 18.5
+      "renderSeconds": 26.4
     },
     "shell_hand_top_slot_09:shell_hand_top_slot_08": {
       "target": "shell_hand_top_slot_09",
@@ -533,7 +533,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 20.7
+      "renderSeconds": 17.2
     },
     "shell_hand_top_slot_10:shell_hand_top_slot_09": {
       "target": "shell_hand_top_slot_10",
@@ -556,7 +556,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 19.2
+      "renderSeconds": 17.1
     },
     "shell_hand_top_slot_11:shell_hand_top_slot_10": {
       "target": "shell_hand_top_slot_11",
@@ -579,7 +579,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 18.5
+      "renderSeconds": 17.3
     },
     "shell_hand_top_slot_12:shell_hand_top_slot_11": {
       "target": "shell_hand_top_slot_12",
@@ -602,7 +602,7 @@
         "maxDelta": 0,
         "alphaMeanDelta": 0
       },
-      "renderSeconds": 18.5
+      "renderSeconds": 17.5
     }
   }
 }

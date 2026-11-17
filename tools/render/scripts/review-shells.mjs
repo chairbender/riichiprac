@@ -36,6 +36,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { drawSprite, drawSpriteMax, encodePng, readPng, zoomNearest } from './png.mjs';
 import { drawText, textWidth, wrapText } from './label-font.mjs';
+import { rowMetrics } from './side-hand-metrics.mjs';
 
 const renderDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -1065,15 +1066,26 @@ if (auditionMode) {
   const rowsFor = (baseId) => {
     const entry = candidateManifest.shells[baseId];
     const committed = committedManifest.shells[baseId];
-    const rows = entry.candidates.map((record) => ({
-      record,
-      texture: readPng(resolve(candidateDir, record.textureFile)),
-      title: `CANDIDATE ${record.candidate.candidateId}`,
-      reference: false,
-    }));
+    const sideHand = baseId.startsWith('shell_hand_side_');
+    const rows = entry.candidates.map((record) => {
+      const texture = readPng(resolve(candidateDir, record.textureFile));
+      return {
+        record,
+        texture,
+        texture2x: sideHand ? readPng(resolve(candidateDir, record.textureFile2x)) : null,
+        metrics: sideHand ? rowMetrics(texture, record, 13) : null,
+        title: `CANDIDATE ${record.candidate.candidateId}`,
+        reference: false,
+      };
+    });
+    const committedTexture = readPng(resolve(committedDir, committed.textureFile));
     rows.push({
       record: committed,
-      texture: readPng(resolve(committedDir, committed.textureFile)),
+      texture: committedTexture,
+      texture2x: sideHand
+        ? readPng(resolve(committedDir, committed.textureFile2x))
+        : null,
+      metrics: sideHand ? rowMetrics(committedTexture, committed, 13) : null,
       title: 'REF COMMITTED',
       reference: true,
     });
@@ -1084,18 +1096,29 @@ if (auditionMode) {
     const record = row.record;
     const face = quadNumbers(record);
     const bytes = record.measured.bytes1x / 1024;
+    const m = row.metrics;
     return [
       row.title,
       `CAM AZ ${record.camera.azimuthDeg} / EL ${record.camera.elevationDeg}`,
       `TEX ${record.texWidth}×${record.texHeight}`,
       `BODY ${record.advanceWidth}×${record.advanceHeight}`,
       `FACE ${face.long.toFixed(0)}×${face.short.toFixed(0)}`,
-      `SHORT/LONG ${face.ratio.toFixed(2)}`,
-      ...(record.camera.distanceUnits !== undefined
-        ? [`OFF ${record.camera.lateralOffsetUnits} D ${record.camera.distanceUnits}`]
-        : []),
-      `1X ${bytes.toFixed(1)}K B`,
-      ...(record.stackStepPx ? [`RISE ${record.stackStepPx[1]} PX`] : []),
+      ...(m
+        ? [
+            `FLARE ${m.flare} PX  WEDGE ${m.wedge.toFixed(1)} PX`,
+            `SAW L ${m.sawLeft.toFixed(1)} R ${m.sawRight.toFixed(1)} PX`,
+            `BLUE BACK ${(m.blueShare * 100).toFixed(0)}% OF BODY`,
+            `OFF ${record.camera.lateralOffsetUnits} D ${record.camera.distanceUnits}`,
+            `1X ${bytes.toFixed(1)}K B`,
+          ]
+        : [
+            `SHORT/LONG ${face.ratio.toFixed(2)}`,
+            ...(record.camera.distanceUnits !== undefined
+              ? [`OFF ${record.camera.lateralOffsetUnits} D ${record.camera.distanceUnits}`]
+              : []),
+            `1X ${bytes.toFixed(1)}K B`,
+            ...(record.stackStepPx ? [`RISE ${record.stackStepPx[1]} PX`] : []),
+          ]),
     ];
   };
 
@@ -1187,8 +1210,91 @@ if (auditionMode) {
     const entry = candidateManifest.shells[baseId];
     const rows = rowsFor(baseId);
     const sideWall = baseId.startsWith('shell_wall_side');
+    const sideHand = baseId.startsWith('shell_hand_side_');
 
-    if (sideWall) {
+    if (sideHand) {
+      // The side hand is ONE shell reused down a 13-tile row, and the row is
+      // what the defect lives in. Each row shows the smallest repeat sample
+      // (three tiles) at @1x 1:1 and from the @2x texture at 2:1, then the real
+      // 13-tile row at 1:1. Every column is composed at the record's own
+      // gridStepPx, so the sheet is the row the runtime builds.
+      const SHORT_RUN = 3;
+      const FULL_RUN = 13;
+      const COLUMN_GAP = 40;
+      const CAPTION = 14;
+      const sample = (row, run, scale) => {
+        const step = [row.record.gridStepPx.x[0] * scale, row.record.gridStepPx.x[1] * scale];
+        const advance = row.record.advanceWidth * scale;
+        const height = Math.abs((run - 1) * step[1]) + row.record.texHeight * scale;
+        const width = Math.abs((run - 1) * step[0]) + advance;
+        return { step, width, height, run, scale };
+      };
+      const columns = rows.map((row) => [
+        { ...sample(row, SHORT_RUN, 1), sprite: row.texture, caption: '1X 3-TILE 1:1' },
+        { ...sample(row, SHORT_RUN, 2), sprite: row.texture2x, caption: '2X 3-TILE 2:1 ZOOM' },
+        { ...sample(row, FULL_RUN, 1), sprite: row.texture, caption: '1X 13-TILE ROW 1:1' },
+      ]);
+      const contentWidth = Math.max(
+        ...columns.map(
+          (cols) =>
+            cols.reduce((sum, column) => sum + column.width, 0) + (cols.length - 1) * COLUMN_GAP,
+        ),
+      );
+      const width = Math.ceil(MARGIN + LABEL_WIDTH + PAD + contentWidth + MARGIN);
+      const plan = headerPlan(baseId, width);
+      const rowHeights = columns.map((cols) =>
+        cols.reduce((best, column) => Math.max(best, column.height + CAPTION), LABEL_HEIGHT),
+      );
+      const height = Math.ceil(
+        MARGIN + plan.height + rowHeights.reduce((sum, value) => sum + value + 10, 0) + MARGIN,
+      );
+      const image = canvas(width, height);
+      let y = header(image, baseId, plan, MARGIN);
+      const originX = MARGIN + LABEL_WIDTH + PAD;
+      rows.forEach((row, index) => {
+        labelPanel(image, row, MARGIN, y);
+        let offsetX = 0;
+        for (const column of columns[index]) {
+          const drift = Math.abs((column.run - 1) * column.step[0]);
+          // A negative step walks left: start the run at the far end so it
+          // stays inside the box the column was given.
+          const startX = originX + offsetX + (column.step[0] < 0 ? drift : 0);
+          for (let i = 0; i < column.run; i += 1) {
+            const gridX = Math.round(startX + i * column.step[0]);
+            const gridY = Math.round(y + 4 + i * column.step[1]);
+            const left = Math.round(gridX - row.record.anchorX * column.scale);
+            const top = Math.round(gridY - row.record.anchorY * column.scale);
+            if (
+              left < 0 ||
+              top < 0 ||
+              left + column.sprite.width > width ||
+              top + column.sprite.height > height
+            ) {
+              throw new Error(
+                `sheet layout overflow: ${baseId} row ${index} ${column.caption} tile ${i} ` +
+                  `${left},${top} ${column.sprite.width}x${column.sprite.height} leaves ${width}x${height}`,
+              );
+            }
+            drawSprite(image, column.sprite, left, top);
+          }
+          // The step the column was drawn at is printed under it, so the sheet
+          // cannot silently disagree with the record.
+          queueText(
+            image,
+            `${column.caption}  STEP ${column.step[0].toFixed(0)},${column.step[1].toFixed(0)}`,
+            Math.round(originX + offsetX),
+            Math.round(y + 4 + column.height + 2),
+            { scale: 2, rgb: [176, 200, 186] },
+          );
+          offsetX += column.width + COLUMN_GAP;
+        }
+        y += rowHeights[index] + 10;
+      });
+      if (y > height - MARGIN + 10) {
+        throw new Error(`sheet layout overflow: ${baseId} content bottom ${y} > ${height - MARGIN}`);
+      }
+      write(`shell-candidates-${baseId}.png`, image);
+    } else if (sideWall) {
       // Candidate matrix: one column per candidate, a wall run of four tiles
       // stepping down (a leaned column drifts sideways, so each cell is wide
       // enough for its own drift and the run is centred in it).
@@ -1294,4 +1400,120 @@ console.log('');
 console.log(`felt base colour ${feltR},${feltG},${feltB} (from felt-spec.json)`);
 if (!auditionMode) {
   console.log('draw order: ponds right-to-left; fans outermost-to-innermost; wall bottom tier before top tier');
+}
+
+// --------------------------------------------------------------------------- //
+// 5. The committed side-hand rows: ONE shell reused down 13 tiles per side. The
+//    row is the thing the camera has to survive, so the sign-off sheet is the
+//    real 13-tile row at 1:1 plus 3-tile crops at 2:1 and 4:1, with the repeat
+//    numbers printed. It never judges the look (AGENTS.md §6).
+// --------------------------------------------------------------------------- //
+if (!auditionMode) {
+  const sides = ['left', 'right'];
+  const rows = sides.map((side) => {
+    const id = `shell_hand_side_${side}`;
+    const record = manifest.shells[id];
+    const sprite = texture(id);
+    const sprite2x = readPng(resolve(tableDir, record.textureFile2x));
+    return { id, record, sprite, sprite2x, metrics: rowMetrics(sprite, record, 13) };
+  });
+  const pad = 24;
+  const gap = 40;
+  const run = 13;
+  // Every crop is composed from a real texture (`base` 1 or 2) and optionally
+  // nearest-neighbour doubled (`zoom`), so 4:1 is the @2x texture at 2x pixels.
+  const crops = [
+    { label: '13-TILE ROW 1:1', count: run, base: 1, zoom: 1 },
+    { label: '3-TILE 2:1 ZOOM', count: 3, base: 2, zoom: 1 },
+    { label: '3-TILE 4:1 ZOOM', count: 3, base: 2, zoom: 2 },
+  ];
+  const composeCrop = (row, crop) => {
+    const step = [row.metrics.step[0] * crop.base, row.metrics.step[1] * crop.base];
+    const sprite = crop.base === 1 ? row.sprite : row.sprite2x;
+    const drift = step[0] < 0 ? Math.abs((crop.count - 1) * step[0]) : 0;
+    const box = transparentCanvas(
+      Math.ceil(drift + sprite.width),
+      Math.ceil(Math.abs((crop.count - 1) * step[1]) + sprite.height),
+    );
+    for (let i = 0; i < crop.count; i += 1) {
+      drawSprite(
+        box,
+        sprite,
+        Math.round(drift + i * step[0] - row.record.anchorX * crop.base),
+        Math.round(i * step[1] - row.record.anchorY * crop.base),
+      );
+    }
+    return crop.zoom === 1
+      ? box
+      : zoomNearest(box, 0, 0, box.width, box.height, crop.zoom);
+  };
+  const columns = rows.map((row) => crops.map((crop) => composeCrop(row, crop)));
+  const columnsWidth = Math.max(
+    ...columns.map(
+      (cols) => cols.reduce((sum, image) => sum + image.width, 0) + gap * (cols.length - 1),
+    ),
+  );
+  const title = 'SIDE HANDS  ONE SHELL REUSED DOWN 13 TILES  COMMITTED 2/20 (5.71 DEG)';
+  const question =
+    'THE ROW IS THE GATE: does each tile front line up with the next, or does the back sliver step?';
+  const headerLines = rows.map(
+    (row) =>
+      `${row.id.toUpperCase()}  STEP ${row.metrics.step[0].toFixed(2)},${row.metrics.step[1].toFixed(2)}  ` +
+      `WEDGE ${row.metrics.wedge.toFixed(1)} PX  FLARE ${row.metrics.flare}  ` +
+      `SAW ${row.metrics.sawLeft.toFixed(1)}/${row.metrics.sawRight.toFixed(1)}  ` +
+      `BLUE ${(row.metrics.blueShare * 100).toFixed(0)}%`,
+  );
+  const labelH = 26;
+  const captionH = 14;
+  const rowHeight = (index) =>
+    labelH + Math.max(...columns[index].map((image) => image.height)) + captionH;
+  const width = Math.ceil(
+    Math.max(
+      pad * 2 + columnsWidth,
+      ...[title, question, ...headerLines].map((line) => pad * 2 + textWidth(line, 2)),
+      ...columns.flat().map((image) => pad * 2 + image.width + gap),
+    ),
+  );
+  const height = Math.ceil(
+    pad * 2 + 26 + 20 + 12 + rows.reduce((sum, row, index) => sum + rowHeight(index) + 26, 0),
+  );
+  const image = canvas(width, height);
+  queueText(image, title, pad, pad, { scale: 2, rgb: [244, 238, 220] });
+  queueText(image, question, pad, pad + 26, { scale: 2, rgb: [214, 220, 190] });
+  let y = pad + 26 + 20 + 12;
+  rows.forEach((row, index) => {
+    queueText(image, headerLines[index], pad, y, { scale: 2, rgb: [204, 214, 200] });
+    const top = y + labelH;
+    let left = pad;
+    columns[index].forEach((column, cropIndex) => {
+      if (
+        left < 0 ||
+        top < 0 ||
+        left + column.width > width ||
+        top + column.height > height
+      ) {
+        throw new Error(
+          `side-hand sheet overflow: ${row.id} ${crops[cropIndex].label} ` +
+            `${left},${top} ${column.width}x${column.height} leaves ${width}x${height}`,
+        );
+      }
+      drawSprite(image, column, left, top);
+      queueText(image, crops[cropIndex].label, left, top + column.height + 2, {
+        scale: 1,
+        rgb: [176, 200, 186],
+      });
+      left += column.width + gap;
+    });
+    console.log(
+      `INFO ${row.id}: step ${row.metrics.step[0].toFixed(2)},${row.metrics.step[1].toFixed(2)}, ` +
+        `wedge ${row.metrics.wedge.toFixed(1)} px, flare ${row.metrics.flare}, ` +
+        `sawtooth ${row.metrics.sawLeft.toFixed(1)}/${row.metrics.sawRight.toFixed(1)}, ` +
+        `blue ${(row.metrics.blueShare * 100).toFixed(0)}%`,
+    );
+    y += rowHeight(index) + 26;
+  });
+  if (y > height - pad + 26) {
+    throw new Error(`side-hand sheet overflow: content bottom ${y} > ${height - pad}`);
+  }
+  write('side-hand-rows-1x.png', image);
 }

@@ -287,19 +287,30 @@ the `faceQuad`, and writes both texture scales. The felt is unchanged.
 | `shell_wall_side_left_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (−6.91, 45.96) / (92.84, 0) | (−5.64, −39.87) |
 | `shell_wall_side_right` | off-axis perspective | rotX 180°, rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
 | `shell_wall_side_right_faceup` | off-axis perspective | rotZ 90° | el 45, 2 units inside / d10 | 104 × 85 | 108 × 89 / 136 × 119 | (6.91, 45.96) / (92.84, 0) | (5.64, −39.87) |
-| `shell_hand_side_left` | off-axis perspective | rotX 90°, rotZ 270° | el 45, 2 units inside / d10 | 67 × 102 | 71 × 106 / 163 × 168 | (−6.7, 45) / (9.05, 64.01) | — |
-| `shell_hand_side_right` | off-axis perspective | rotX 90°, rotZ 90° | el 45, 2 units inside / d10 | 67 × 102 | 71 × 106 / 163 × 168 | (6.2, 41.67) / (−9.05, 64.01) | — |
+| `shell_hand_side_left` | off-axis perspective | rotX 90°, rotZ 270° | el 45, 2 / d20 (5.71°) | 59 × 102 | 63 × 106 / 155 × 168 | (−3.25, 44.78) / (4.36, 61.63) | — |
+| `shell_hand_side_right` | off-axis perspective | rotX 90°, rotZ 90° | el 45, 2 / d20 (5.71°) | 59 × 102 | 63 × 106 / 155 × 168 | (3.13, 43.11) / (−4.36, 61.63) | — |
 
-The two side-hand backs stand the tile up (`rotX 90`) and reuse the side-wall
-camera, one shell per side. The pose and camera are both mirrored (left
+The two side-hand backs stand the tile up (`rotX 90`), one shell per side,
+reused down a whole 13-tile row. The pose and camera are both mirrored (left
 `rotZ 270` / camera +2, right `rotZ 90` / camera −2) so both blue backs face the
-human. Their
-shadow is standing (σ 5) and needs a wider per-shell shadow box
+human. Their shadow is standing (σ 5) and needs a wider per-shell shadow box
 (`shadowPadding1x`), because the yawed base strip is wider than a hand fan's.
 
-All 107 shell bodies plus their @1x shadow references are **4,428,110 B**
+**The side-hand camera is its own, weaker than the side wall's.** The side wall
+is a single tile, so it can afford the 2/10 (11.31°) camera that shows its end
+face strongly. A hand row reuses ONE shell down 13 tiles, so whatever taper the
+shell has repeats every step. At 2/10 each tile's near end (the visible back
+sliver) poked **19 px** past the next tile's far end, and the 13-tile row's
+outer silhouette wandered **14.8 px** off a straight line — the "shingled"
+read. The 2026-11-16 audition (below) measured that against four alternatives:
+moving the eye out at a fixed angle is a no-op (12/60 still raggedness 15.0),
+so the lever is the **lateral angle**. The committed 2/20 (5.71°) halves the
+visible back plate (580 → 287 px² @1x) and cuts the raggedness to **9.0 px**.
+The rows are `side-hand-rows-1x.png` in the review set.
+
+All 107 shell bodies plus their @1x shadow references are **4,423,362 B**
 (budget 6,291,456 B); the @2x body textures are included, the redundant @2x
-shadow sprites were removed in Phase 2b. `shells.json` is **563,226 B** (budget
+shadow sprites were removed in Phase 2b. `shells.json` is **563,220 B** (budget
 614,400 B). The hand
 slots keep the 104 px body long axis (102 px measured); the human-hand centre
 body is 75 × 106 and its shadow 119 × 142, the drawn body 89 × 106 and its
@@ -1006,7 +1017,36 @@ bash tools/render/bake-shells.sh --check-audition              # no Blender
 Each candidate is the outer row slot or drawn slot with its lateral offset fixed
 and the eye distance varied; the sheet shows a packed six-tile row plus an
 isolated tile (the isolated tile shows the full side reveal and face skew). The
-committed reference is 24 units. The output is gitignored:
+committed reference is 24 units.
+
+**The side-hand row repeat (audited 2026-11-16).** The same `--audition` run
+also renders a 5-candidate matrix for each side hand, because those shells are
+used differently from every other one: ONE shell is reused down a whole 13-tile
+row, so any taper in the shell repeats every step. The metric the sheets print
+is the row itself, at 1:1: compose 13 copies at the published `gridStepPx.x` and
+measure (a) the **flare** — the tile's own silhouette width range inside one
+step (45→63 px at the old camera), (b) the **wedge** — how much wider the union
+is than the next tile's own top edge (19 px, i.e. the back sliver poking out on
+both sides), (c) the **sawtooth** — the union's outer edge against a straight
+line (14.8 px on the old camera, and one-sided: L 2.1 / R 14.8 on the left),
+and (d) the blue-back share and the face-plate area as the read-preservation
+check. Findings:
+
+- **Distance does not fix it.** 12/60 (the same 11.31° angle, a sixth of the
+  convergence) moves the sawtooth 14.8 → 15.0 and the plate area 580 → 571 px².
+- **The lateral angle is the lever.** Halving it to 2/20 (5.71°) gives flare 12,
+  wedge 13.2, sawtooth 9.0, plate 287 px² (49%) with the blue and white shares
+  unchanged; a quarter (1/20, 2.86°) gives sawtooth 5.8 and a 144 px² plate.
+- **Elevation is the wrong direction.** EL 35 / 28 / 20 at 2/10 push the wedge to
+  28 / 40 / 53 px, because a lower camera makes each tile taller on screen and
+  the step covers less of it.
+- The pick (user sign-off, AGENTS.md §6) is **2/20, EL 45**: `shell_hand_side_left`
+  / `_right` were re-baked, their `shadowShape` and both side-hand 3D catches
+  re-derived, `catches.json` / `overlays.json` / `overlay-zones.json`
+  regenerated and the zone sizes updated (right hand 188 × 644 → 138 × 654,
+  left 194 × 684 → 139 × 674).
+
+The output is gitignored:
 
 | Path | Contents |
 | --- | --- |
@@ -1016,6 +1056,9 @@ committed reference is 24 units. The output is gitignored:
 | `build/review/shell-candidates-shell_wall_back_slot_16.png` | 3 eye distances + REF, back outer slot |
 | `build/review/shell-candidates-shell_hand_slot_12.png` | 3 hand eye distances + REF, outer row slot |
 | `build/review/shell-candidates-shell_hand_slot_draw.png` | 3 hand eye distances + REF, drawn slot |
+| `build/review/shell-candidates-shell_hand_side_left.png` | 5 side-hand cameras + REF: 3-tile 1:1, 3-tile 2:1, 13-tile row |
+| `build/review/shell-candidates-shell_hand_side_right.png` | the same matrix, right side mirror |
+| `build/review/side-hand-rows-1x.png` | the committed rows: 13 tiles 1:1 + 3-tile 2:1 and 4:1 crops, both sides |
 | `build/review/wall-stack-1x.png` | packed front/back 17-stack runs + side-wall columns |
 | `build/review/wall-fan-1x.png` | exploded front/back fans, both halves, every slot numbered |
 | `build/review/hand-stack-1x.png` | packed 13-tile hand + drawn tile + top hand |
@@ -1122,6 +1165,7 @@ xdg-open tools/render/build/review/shells-row-1x.png      # the twelve base shel
 xdg-open tools/render/build/review/discard-row-1x.png     # 6-tile row + isolated + riichi
 xdg-open tools/render/build/review/hand-stack-1x.png      # packed hand row + drawn tile + top hand
 xdg-open tools/render/build/review/hand-fan-1x.png        # exploded hand fan + top hand, numbered
+xdg-open tools/render/build/review/side-hand-rows-1x.png  # both side-hand rows: 13 tiles 1:1 + 2:1 / 4:1 crops
 xdg-open tools/render/build/review/hand-fan-right-zoom3x.png
 xdg-open tools/render/build/review/wall-stack-1x.png      # packed 17-stack front/back walls + side walls
 xdg-open tools/render/build/review/wall-fan-1x.png        # exploded front/back fans, every slot numbered
