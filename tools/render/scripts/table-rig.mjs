@@ -158,12 +158,14 @@ const facts = {
   handShadowMinLumaFactor: shadowFactors.length
     ? Math.min(...shadowFactors.filter((value) => value !== null))
     : null,
-  handWrapLumaFactors: shadowReference
-    ? {
-      left: measured.handWrapLeft ? Number((measured.handWrapLeft.luma / shadowReference).toFixed(3)) : null,
-      right: measured.handWrapRight ? Number((measured.handWrapRight.luma / shadowReference).toFixed(3)) : null,
-    }
-    : null,
+  handWrapLumaFactors: {
+    left: measured.handWrapLeft && measured.handWrapLeftRef
+      ? Number((measured.handWrapLeft.luma / measured.handWrapLeftRef.luma).toFixed(3))
+      : null,
+    right: measured.handWrapRight && measured.handWrapRightRef
+      ? Number((measured.handWrapRight.luma / measured.handWrapRightRef.luma).toFixed(3))
+      : null,
+  },
   handBaseRadiusUnits: handBases,
   playerHandBackOffsetUnits: playerHandBackOffset,
   sideOverMat: Number(

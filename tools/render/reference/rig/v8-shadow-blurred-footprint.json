@@ -214,18 +214,25 @@
   "edgeLineRadiusUnits": 9.4336,
   "sigmaUnits": 0.3,
   "maxAlpha": 0.95,
+  "spreadUnits": 0,
   "falloff": "gaussian-like smoothstep over 2 sigma",
   "groups": [
    {
     "x0": -4.9393,
     "x1": 4.9393,
+    "tileX0": -4.9393,
+    "tileX1": 4.9393,
     "widthUnits": 9.8786,
+    "tileWidthUnits": 9.8786,
     "edgeRadiusUnits": 9.4336
    },
    {
     "x0": 5.2018,
     "x1": 5.9518,
+    "tileX0": 5.2018,
+    "tileX1": 5.9518,
     "widthUnits": 0.75,
+    "tileWidthUnits": 0.75,
     "edgeRadiusUnits": 9.4336
    }
   ],
@@ -10620,6 +10627,31 @@
     "pixels": 9
    }
   },
+  "handWrapLeftRef": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    -5.019286,
+    -10.18358,
+    0
+   ],
+   "pixel": [
+    589.725,
+    1074.486
+   ],
+   "radiusPx": 1,
+   "offsetUnits": 0.75,
+   "measured": {
+    "rgb": [
+     8.2,
+     62.8,
+     39.8
+    ],
+    "alpha": 255,
+    "luma": 49.5,
+    "pixels": 9
+   }
+  },
   "handWrapRight": {
    "kind": "point",
    "tile": null,
@@ -10636,12 +10668,37 @@
    "offsetUnits": 0.12,
    "measured": {
     "rgb": [
-     7.2,
-     56.3,
-     34.8
+     6.6,
+     54.4,
+     33.6
     ],
     "alpha": 255,
-    "luma": 44.3,
+    "luma": 42.8,
+    "pixels": 9
+   }
+  },
+  "handWrapRightRef": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    5.019286,
+    -10.18358,
+    0
+   ],
+   "pixel": [
+    1330.275,
+    1074.486
+   ],
+   "radiusPx": 1,
+   "offsetUnits": 0.75,
+   "measured": {
+    "rgb": [
+     8.6,
+     63.1,
+     40.1
+    ],
+    "alpha": 255,
+    "luma": 49.9,
     "pixels": 9
    }
   },
@@ -10852,8 +10909,8 @@
   ],
   "handShadowMinLumaFactor": 0.754,
   "handWrapLumaFactors": {
-   "left": 0.887,
-   "right": 0.865
+   "left": 0.917,
+   "right": 0.858
   },
   "handBaseRadiusUnits": {
    "bottom": 9.3,
@@ -11099,7 +11156,6 @@
    "handShadowMinLumaFactor": 0.4,
    "handShadowFadeUnits": 0.6,
    "handShadowFadeFactor": 0.92,
-   "handWrapSymmetryTolerance": 0.08,
    "handWrapMaxLumaFactor": 0.97
   },
   "lightingCheat": {
@@ -11146,8 +11202,8 @@
   "width": 1920,
   "height": 1080,
   "channels": 4,
-  "bytes": 2622895,
-  "sha256": "60cee06ea452864c451cda0c994d00903732a4dfc7cb66d1c0b6f8b9a7da39e8"
+  "bytes": 2623342,
+  "sha256": "ed11da9b20f96aec01ccbb3a434e918248a909afd5b9467521085cfb15503b9f"
  },
  "note": "Task 2 of 2_5d_implementation_plan.md. Same scene and the same 269 tile placements as the placement reference; the --rig render mode swaps in this camera and light rig, hides the room floor and writes the 16:9 gameplay framing with a transparent film so the published PNG is clean RGBA. Calibration-only: nothing under frontend/public is written and the runtime never reads it."
 }

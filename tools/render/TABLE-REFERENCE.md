@@ -15,7 +15,8 @@ the wall, a readability cheat on the player's hand, dimmer key), and
 `v4-shadow-decal` replaces the shadow with a soft gradient that emerges from the
 tile's front edge, `v5`–`v7` are three longer/stronger takes on it, and
 `v8-shadow-blurred-footprint` rebuilds the chosen take A as the retired UI
-recipe (a blurred contact rectangle) so the shadow wraps around the row ends. The
+recipe (a blurred contact rectangle), and `v9-shadow-widened` widens that
+footprint so the shadow extends past the end tiles. The
 placement board below stays at its own 2880 × 2112 framing for plan review. See
 [The 2.5D rig](#the-25d-rig-task-2).
 
@@ -310,6 +311,26 @@ the lit felt (≤ 0.97×) and within 0.08 of each other, and the row group's x s
 must match the row's tiles exactly, so the blur is centred on the end tiles
 rather than fading inside them.
 
+### v9-shadow-widened (experiment, 2026-11-17)
+
+v8's blur faded at the footprint's edges, so the wrap only existed as the outer
+half of the blur and the right side read as stopping at the tiles. v9 widens the
+contact rectangle by **0.15 units (4 mm) at each end before the blur** — the
+retired UI recipe's oversized shadow rectangle — so the shadow extends past the
+end tiles instead of beginning at their edges.
+
+| Parameter | v9 |
+| --- | --- |
+| Rect | tiles + **0.15 units each side** (row 9.88 → 10.18; drawn tile 0.75 → 1.05) |
+| Blur / opacity | σ 0.30 units, `maxAlpha 0.95`, front edge line unchanged |
+| Measured | front-edge felt **0.754×**, lit again by ~0.45 units; just outside the row ends **0.875× / 0.768×** the local felt (the right also carries the drawn tile's blob); wall behind the hand **0.7** dip |
+| Artifact fixed | the row's and drawn tile's decal planes were coplanar and **z-fought**, so one won per pixel and a bright notch appeared at the row's right end. They are now staggered by 0.0008 units. |
+
+The gate checks that each group's decal rect is exactly its tiles' span widened
+by the declared spread, so "wider than the object" is asserted, not just aimed
+at. The end probes compare against a local felt probe at the same x, so the
+felt's own left-right lighting variation does not masquerade as wrap.
+
 ### What still needs the user
 
 The numbers say the geometry, framing, shadowing and exposure are what was
@@ -320,12 +341,12 @@ xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, wi
 bash tools/render/bake-table-reference.sh --check
 ```
 
-The open question is whether **v8** is the keeper: take A's length and weight,
-but as a blurred contact footprint that starts at the leftmost tile's edge and
-wraps around both ends. If it is, it becomes the production shadow setting (the
-runtime does the same thing with a blurred rounded rectangle under the hand) and
-the other takes can be pruned. The 40° recline and the 203 discard face are
-unchanged.
+The open question is whether **v9** is the keeper: take A's length and weight,
+drawn as a widened, blurred contact rectangle that starts at the leftmost tile's
+edge and extends past both ends. If it is, it becomes the production shadow
+setting (the runtime does the same thing: a rounded rectangle under the hand,
+scaled a little past the contact footprint, blurred once) and the other takes
+can be pruned. The 40° recline and the 203 discard face are unchanged.
 
 ## Published renders and checks
 

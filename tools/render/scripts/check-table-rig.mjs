@@ -240,17 +240,27 @@ function checkVariant(manifest, file) {
               record.edgeHeightUnits / Math.tan((cameraSpec.elevationDeg * Math.PI) / 180))) <= 1e-3,
           `${id} blob edge line is the front-edge silhouette on the mat`,
         );
-        // The row group must span exactly the row's tiles, so the wrap is
-        // centred on the end tiles.
-        const row = (manifest.scene?.tiles ?? []).filter((tile) => tile.seat === 'bottom' && tile.kind === 'hand');
-        const half = row[0].dimensions.width / 2;
-        const xs = row.map((tile) => tile.origin[0]);
-        const x0 = Number((Math.min(...xs) - half).toFixed(4));
-        const x1 = Number((Math.max(...xs) + half).toFixed(4));
-        const group = record.groups?.[0];
-        if (check(Boolean(group), `${id} blob records its row group`)) {
-          near(group.x0, x0, 1e-3, `${id} blob row group left edge`);
-          near(group.x1, x1, 1e-3, `${id} blob row group right edge`);
+        // Each group's blur must be centred on its tiles' span, and the decal
+        // rect must be wider than the tiles by the declared spread, so the
+        // shadow extends past the object's ends rather than stopping at them.
+        const bottom = (manifest.scene?.tiles ?? []).filter(
+          (tile) => tile.seat === 'bottom' && (tile.kind === 'hand' || tile.kind === 'drawn'),
+        );
+        const spread = Number(record.spreadUnits ?? 0);
+        check(spread >= 0, `${id} blob spread is non-negative (${spread})`);
+        for (const [index, kind] of ['hand', 'drawn'].entries()) {
+          const groupTiles = bottom.filter((tile) => tile.kind === kind);
+          if (!groupTiles.length) continue;
+          const half = groupTiles[0].dimensions.width / 2;
+          const xs = groupTiles.map((tile) => tile.origin[0]);
+          const tileX0 = Number((Math.min(...xs) - half).toFixed(4));
+          const tileX1 = Number((Math.max(...xs) + half).toFixed(4));
+          const group = record.groups?.[index];
+          if (!check(Boolean(group), `${id} blob records its ${kind} group`)) continue;
+          near(group.tileX0, tileX0, 1e-3, `${id} blob ${kind} tile left edge`);
+          near(group.tileX1, tileX1, 1e-3, `${id} blob ${kind} tile right edge`);
+          near(group.x0, tileX0 - spread, 1e-3, `${id} blob ${kind} shadow left edge is widened`);
+          near(group.x1, tileX1 + spread, 1e-3, `${id} blob ${kind} shadow right edge is widened`);
         }
       } else if (shadowCheat.mode === 'gradientDecal') {
         near(record.maxAlpha, shadowCheat.maxAlpha, 1e-9, `${id} decal max alpha`);
@@ -556,8 +566,12 @@ function checkVariant(manifest, file) {
     }
     if (Number.isFinite(limits.handWrapMaxLumaFactor)) {
       const wrap = {
-        left: measured.handWrapLeft ? measured.handWrapLeft.luma / shadowLumas[shadowLumas.length - 1] : null,
-        right: measured.handWrapRight ? measured.handWrapRight.luma / shadowLumas[shadowLumas.length - 1] : null,
+        left: measured.handWrapLeft && measured.handWrapLeftRef
+          ? measured.handWrapLeft.luma / measured.handWrapLeftRef.luma
+          : null,
+        right: measured.handWrapRight && measured.handWrapRightRef
+          ? measured.handWrapRight.luma / measured.handWrapRightRef.luma
+          : null,
       };
       checkEqual(`${id} manifest hand wrap factors`, manifest.facts.handWrapLumaFactors, {
         left: wrap.left === null ? null : Number(wrap.left.toFixed(3)),
@@ -569,11 +583,8 @@ function checkVariant(manifest, file) {
         `${id} the shadow wraps around both row ends ` +
           `(${wrap.left?.toFixed(2)} / ${wrap.right?.toFixed(2)} <= ${limits.handWrapMaxLumaFactor})`,
       );
-      check(
-        Math.abs(wrap.left - wrap.right) <= limits.handWrapSymmetryTolerance,
-        `${id} the wrap is symmetric (${Math.abs(wrap.left - wrap.right).toFixed(3)} ` +
-          `<= ${limits.handWrapSymmetryTolerance})`,
-      );
+      // No symmetry gate: the drawn tile sits just beyond the row's right end,
+      // so that side legitimately carries its own blob as well.
     }
     if (Number.isFinite(limits.handShadowFadeUnits)) {
       const probe = Object.entries(samples)

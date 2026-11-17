@@ -825,8 +825,23 @@
           "handShadowMinLumaFactor": 0.4,
           "handShadowFadeUnits": 0.6,
           "handShadowFadeFactor": 0.92,
-          "handWrapSymmetryTolerance": 0.08,
           "handWrapMaxLumaFactor": 0.97
+        }
+      },
+      "v9-shadow-widened": {
+        "order": 9,
+        "extends": "v8-shadow-blurred-footprint",
+        "label": "v9 blurred footprint + widened shadow",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "v8's blur only fades at the footprint's edges; the shadow should visibly extend a little past the end tiles. v9 widens the contact rectangle by 0.15 units on each side (the retired UI recipe's oversized shadow rect) before the blur, so the wrap starts outside the tiles instead of at their edges. Same take A weight, length, framing and silhouette; no shadow rays.",
+        "handShadow": {
+          "mode": "blurredFootprint",
+          "sigmaUnits": 0.3,
+          "maxAlpha": 0.95,
+          "spreadUnits": 0.15,
+          "zUnits": 0.0025,
+          "note": "The contact rectangle is widened by spreadUnits (0.15 units, 4 mm) at each end before the blur, so the blurred shadow extends past the row's and drawn tile's end edges. The front edge line is unchanged."
         }
       }
     }

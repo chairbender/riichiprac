@@ -249,7 +249,10 @@ finishes on lit felt; they are for choosing a preference.
 **v8-shadow-blurred-footprint** rebuilds the chosen take A as the retired UI
 recipe: a contact rectangle blurred once (σ 0.30 units, 0.5 alpha at the edge),
 one plane per hand group, so the shadow starts at the leftmost tile's edge and
-wraps around both ends (0.887 / 0.865 × felt) with nothing on the wall.
+wraps around both ends. **v9-shadow-widened** widens that rectangle by 0.15 units
+at each end before the blur (the UI recipe's oversized rect), so the wrap extends
+past the end tiles (0.875 / 0.768 × the local felt), and staggers the row and
+drawn-tile decal planes to kill a z-fight notch at the row's right end.
 
 The **hand cheat** in v2 reclines the player's hand further than is physical, so
 the near bottom edge floats and the real cast shadow is not the production

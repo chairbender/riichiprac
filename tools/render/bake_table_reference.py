@@ -1331,6 +1331,7 @@ def apply_blurred_footprint_shadow(
     edge_line = front_edge - edge_height / math.tan(pitch)
     sigma = float(shadow["sigmaUnits"])
     max_alpha = float(shadow["maxAlpha"])
+    spread = float(shadow.get("spreadUnits", 0.0))
     z = float(shadow.get("zUnits", 0.0025))
     margin = 2.5 * sigma
     y_north = -edge_line
@@ -1347,7 +1348,11 @@ def apply_blurred_footprint_shadow(
             continue
         half = group[0]["dimensions"]["width"] / 2
         xs = [tile["origin"][0] for tile in group]
-        x0, x1 = min(xs) - half, max(xs) + half
+        tile_x0, tile_x1 = min(xs) - half, max(xs) + half
+        # The shadow footprint is deliberately a little larger than the object
+        # (the retired UI recipe's oversized rect), so the wrap reads past the
+        # end tiles rather than only fading at their edges.
+        x0, x1 = tile_x0 - spread, tile_x1 + spread
         material = blurred_footprint_material(x0, x1, y_north, sigma, max_alpha)
         planes.append(
             add_shadow_plane(
@@ -1356,7 +1361,10 @@ def apply_blurred_footprint_shadow(
                 x1 + margin,
                 y_north,
                 y_south,
-                z,
+                # Coplanar translucent planes z-fight and one of them wins per
+                # pixel, which shows up as a bright notch where the row's and
+                # the drawn tile's blobs overlap. Stagger them by a hair.
+                z + 0.0008 * len(planes),
                 material,
             )
         )
@@ -1364,7 +1372,10 @@ def apply_blurred_footprint_shadow(
             {
                 "x0": round(x0, 4),
                 "x1": round(x1, 4),
+                "tileX0": round(tile_x0, 4),
+                "tileX1": round(tile_x1, 4),
                 "widthUnits": round(x1 - x0, 4),
+                "tileWidthUnits": round(tile_x1 - tile_x0, 4),
                 "edgeRadiusUnits": round(edge_line, 4),
             }
         )
@@ -1377,6 +1388,7 @@ def apply_blurred_footprint_shadow(
         "edgeLineRadiusUnits": round(edge_line, 4),
         "sigmaUnits": sigma,
         "maxAlpha": max_alpha,
+        "spreadUnits": spread,
         "falloff": "gaussian-like smoothstep over 2 sigma",
         "groups": group_records,
         "hiddenObjects": len(bodies) + len(decals),
@@ -1388,7 +1400,7 @@ def apply_blurred_footprint_shadow(
     log(
         f"hand shadow blob: {len(planes)} blurred-footprint planes, edge line {edge_line:.3f} "
         f"(front edge {front_edge:.3f}), sigma {sigma:.3f} units, max alpha {max_alpha:g}, "
-        f"over {len(bodies) + len(decals)} hidden hand objects"
+        f"spread {spread:.3f} units, over {len(bodies) + len(decals)} hidden hand objects"
     )
     return record
 
