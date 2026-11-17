@@ -10,6 +10,12 @@ reference and are **not** tuned here; a separate Task 2 sets those up. The
 render in this task exists so placement can be eyeballed, not for a lighting
 sign-off.
 
+**Placement sign-off (2026-11-17):** the user reviewed the committed board, the
+table plan and the anchor plan and approved the table model, anchor bank, riichi
+discards, dead wall/dora, drawn wall ends and the melded called-tile edge. The
+visual verdict was the user's (AGENTS.md §6); the numbers in this note were
+produced by the scripted checks.
+
 - Scene + camera + anchor spec: [`table-reference-spec.json`](table-reference-spec.json)
 - Blender generator: [`bake_table_reference.py`](bake_table_reference.py)
 - Entry point: [`bake-table-reference.sh`](bake-table-reference.sh)
