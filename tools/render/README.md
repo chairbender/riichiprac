@@ -57,6 +57,9 @@ cd frontend && npm run atlas:review:carved # flat vs carved review sheets
 cd frontend && npm run atlas:review        # build the real atlas and write review sheets
 bash tools/render/bake-shells.sh           # dry run: build the tile, print the shell plan
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
+bash tools/render/bake-table-reference.sh  # dry run: build the whole-table reference scene, print camera metrics
+bash tools/render/bake-table-reference.sh --bake  # whole-table reference: @2x render -> 1x board + 2x crops + manifest + check
+bash tools/render/bake-table-reference.sh --check # whole-table reference integrity gate; no Blender
 ```
 
 The group-shadow lab is a static page; serve the repo root and open it:
@@ -166,6 +169,37 @@ scene is pinned to **CPU Cycles** (`scene.device`): the determinism rule assumes
 CPU sampling. A GPU device samples differently, so a GPU regeneration would be
 its own regeneration, not mixed with CPU output.
 
+## Whole-table model + slot anchors (not a runtime asset)
+
+`bake-table-reference.sh` builds the complete table in Blender — a 700 mm
+playable mat, a raised rim/frame, a recessed centre compass/score well, four
+17-stack two-tier wall runs (132 tiles after the four draw ends; the left run
+has the 7-stack dead wall with a break and a face-up dora), four full 6×3 ponds
+(72, each with one riichi discard turned to the player's right), four 13-tile
+hands (52) plus the human's drawn tile, and one open meld per seat **outside the
+wall on the player's right** (12; the called tile's near edge is flush with the
+uprights) — and renders it for placement review. It also
+builds the **`SlotAnchors`** collection: 293 named `Empty`s (136 wall slots,
+132 occupied, 88
+rivers including overflow, 16 meld slots, 53 hand slots), each at the tile body
+centre with the tile pose, a `{zone:seat:index}` custom-property set, and the
+12-float local/world face quad that a later export projects with
+`world_to_camera_view`. The machine-readable dump is
+`reference/slot-anchors.json`.
+
+Adjacent tiles carry a 0.2–0.5 mm clearance (0.3 mm target, pond columns 0.2 mm
+so the four inner rows clear at the corners) and no tile bodies intersect; the
+south hand is reclined 12°. The bake measures 346 adjacent pairs, reports
+0.2–0.3 mm, and proves 0 intersections; the dead-wall break (14.3 mm) and the
+turned riichi tile's far-side gap (7.3 mm) are recorded exceptions. The camera and sun are inherited from
+the previous calibration reference; **perspective and lighting are a separate
+Task 2**, so this render is for placement, not a lighting verdict. See
+[`TABLE-REFERENCE.md`](TABLE-REFERENCE.md) for the naming scheme, the face-quad
+contract, the resolved ambiguities and the full check list.
+
+This is development-only: nothing under `frontend/public` is written and the
+runtime never reads it.
+
 ## Directory layout
 
 | Path | Committed | Purpose |
@@ -187,6 +221,14 @@ its own regeneration, not mixed with CPU output.
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
 | `bake_felt.py` | yes | deterministic stdlib PNG generator for the felt + vignette |
 | `bake-felt.sh` | yes | one-command felt regeneration |
+| `table-reference-spec.json` | yes | the whole-table calibration reference: table plan, camera candidates, sun rig, crop families, render sizes, thresholds |
+| `bake_table_reference.py` | yes | Blender 4.5.9 whole-table scene builder, pinhole/visibility assertions and @2x master render |
+| `bake-table-reference.sh` | yes | dry-run / audition / bake / check for the whole-table reference |
+| `TABLE-REFERENCE.md` | yes | the reference's calibration note: scene, chosen perspective, metrics, how to compare |
+| `scripts/table-camera.mjs` | yes | shared reference pinhole, tile-corner projection, metrics and crop rects |
+| `scripts/table-reference.mjs` | yes | publishes the 1x board, 2x crops, manifest and contact page from the master |
+| `scripts/check-table-reference.mjs` | yes | dependency-free reference spec/scene/render/hash/projection/lighting gate (CI) |
+| `reference/` | yes | committed calibration renders (`full-board-1x.png`, `crops-2x/`, `table-reference.json`, `index.html`) |
 | `scripts/check-shells.mjs` | yes | dependency-free spec + PNG + `shells.json` integrity check (CI gate); `--audition` validates the candidate matrix and its labelled sheets |
 | `scripts/png.mjs` | yes | dependency-free PNG decode/encode + sprite compositor shared by the checker and the review sheets |
 | `scripts/shadow-group.mjs` | yes | the hard shadow footprint per shell and the group field (`merged` union-then-blur vs `perTile` blur-then-max); browser-safe |

@@ -1955,6 +1955,26 @@ write; audit clean; fixture pack.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-16, P1a branch).** Implemented in `src/miner/pack/`:
+> `model.rs` defines `riichiprac.scenario-pack` v1 and
+> `riichiprac.scenario-pack-manifest` v1 with the extended `source.agents`,
+> `provenance.variant_of`/`transform_chain`/`label_check` and `played.agent`;
+> `gate.rs` runs the executable G8 gate and returns stable finding codes;
+> `check.rs` covers state reachability, legal/accepted answers, spoilers, units
+> and variant honesty; `write.rs` provides deterministic gzip encoding,
+> content-addressed atomic publishing and the atomic manifest; `audit.rs` audits
+> a directory (manifest budget, hash/bytes/count, per-body gate, strict-only
+> drift and unlisted bodies); `fixture.rs` is a seeded two-lesson fixture pack
+> with valid synthetic game provenance; `report.rs` is the pack report. The CLI
+> gained `pack fixture`, `pack report` and `audit [--strict] [--commercial]`.
+> The gate refuses a missing `GameProvenance`, a commercial profile over
+> non-commercial/Akochan data, a variant without a preserved label check, an
+> illegal answer, a spoiler and an over-budget body. A `games.jsonl` provenance
+> source (default beside the manifest) is how P1a checks G0 before P1b reads the
+> DB. Tests cover every negative case in the acceptance list, deterministic
+> hashes, atomic writes and the clean fixture audit; the operator contract is in
+> `replay-miner-operations.md`.
+
 ##### P1b — Pack assembly from selected, gated scenarios
 
 **Goal.** Turn the selector's base scenarios and the permutation stage's

@@ -338,6 +338,28 @@ pub fn utc_stamp(at: SystemTime) -> String {
     )
 }
 
+/// Format a UTC instant as an ISO-8601 `YYYY-MM-DDTHH:MM:SSZ` timestamp.
+///
+/// Pack documents use this spelling (`2026-11-14T12:00:00Z`), while snapshots
+/// use the compact [`utc_stamp`] filename form. Both share one calendar
+/// conversion, so they cannot disagree about the date.
+#[must_use]
+pub fn utc_iso8601(at: SystemTime) -> String {
+    let seconds = at
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs() as i64)
+        .unwrap_or(0);
+    let days = seconds.div_euclid(86_400);
+    let second_of_day = seconds.rem_euclid(86_400);
+    let (year, month, day) = civil_from_days(days);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z",
+        second_of_day / 3_600,
+        (second_of_day % 3_600) / 60,
+        second_of_day % 60
+    )
+}
+
 /// Howard Hinnant's `civil_from_days`, for UTC formatting without `chrono`.
 fn civil_from_days(days_since_epoch: i64) -> (i64, u32, u32) {
     let z = days_since_epoch + 719_468;
@@ -1033,6 +1055,11 @@ mod tests {
         assert_eq!(
             utc_stamp(UNIX_EPOCH + Duration::from_secs(1_794_787_200)),
             "20261116-000000"
+        );
+        assert_eq!(utc_iso8601(UNIX_EPOCH), "1970-01-01T00:00:00Z");
+        assert_eq!(
+            utc_iso8601(UNIX_EPOCH + Duration::from_secs(1_794_787_200 + 43_201)),
+            "2026-11-16T12:00:01Z"
         );
         let root = DataRoot::new("/tmp").expect("root");
         assert_eq!(
