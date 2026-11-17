@@ -67,10 +67,10 @@ mine_replays [--data-dir DIR] <command>
   review            work the human review queue
 ```
 
-`label` (L1 with the L2 agreement/calibration extensions) and `triggers` (S1)
-are implemented. The other commands still resolve the data root, report the
-command they would run, and exit with code 2, so a script cannot treat a stub as
-a successful run.
+`label` (L1 with the L2 agreement/calibration extensions), `triggers` (S1) and
+`pack fixture`, `pack report` and `audit` (P1a) are implemented. The remaining
+commands still resolve the data root, report the command they would run, and
+exit with code 2, so a script cannot treat a stub as a successful run.
 
 ```bash
 cargo run --features miner --bin mine_replays -- label \
@@ -744,6 +744,122 @@ rejected at load.
   `cargo tree --features miner` (no `libriichi`) stay clean.
 
 Visual sign-off is not involved in L2.
+
+## Scenario pack format, gate and audit (P1a)
+
+Implemented in `src/miner/pack/`. This is the executable form of the pack half
+of G8: the format exists and is validated before P1b wires real selection output
+into it.
+
+### Documents
+
+| Document | Schema | Where |
+| --- | --- | --- |
+| pack body | `riichiprac.scenario-pack` v1 | one gzipped JSON file per pack |
+| manifest | `riichiprac.scenario-pack-manifest` v1 | `<packs>/manifest.json` |
+| provenance source | `riichiprac.corpus-game` v1 | JSONL rows the audit checks against |
+
+The body is `replay-strategy.md` §6.7's shape extended with a complete
+`source.agents` union (each contributor's `agent_id`, `kind`, `engine`,
+`engine_version`, `weights_sha256`, licence and attribution),
+`provenance.variant_of`, `provenance.transform_chain` (the V1
+`riichiprac.scenario-transforms` document), `provenance.label_check`,
+`played.agent` and `data_commercial_use` on the manifest entry. Every scenario
+carries the complete `GameState` plus its own `correct_action`/`accepted`; the
+audit recomputes the state's copy and rejects a mismatch. A single candidate is
+reviewed through the existing `scenario-report` path (it takes the same
+`GameState` the pack embeds); P1a adds no pack-specific review format.
+
+Versioning is additive within v1: new fields are optional/defaulted and unknown
+fields are ignored. A breaking change bumps `version`. `source.kind`
+deserialises through the F1 `SourceKind`, so any value except `ai_selfplay` is a
+parse error rather than a gate warning.
+
+### Pack-time gate
+
+`audit_pack(pack, context)` runs every check and returns stable finding codes;
+`publish_pack` refuses any pack with an error finding.
+
+| Gate | What it enforces |
+| --- | --- |
+| schema | known schema/version, non-empty pack, unique scenario ids and state hashes, non-empty title/prompt/lesson, book key `ch<chapter>.<section>`, `lesson_id` = state `category` |
+| source/licence | `source.kind = ai_selfplay`; data licence on `CC-BY-4.0`/`CC0-1.0`/`MIT`; attribution present; `redistributable`; known and complete agent licences; `data_commercial_use` = logical AND of contributors |
+| commercial profile | a commercial publish refuses a pack whose data or any agent licence forbids commercial use (explicitly naming Akochan) |
+| provenance | every `replay_id` has a matching `GameProvenance` row; the game validates and is publishable; its `corpus_id` matches `source.corpus_id`; `source.agents` is exactly the union of contributing seats with the same licence ids/commercial flags |
+| legal answer | the answer is on `ai::actions::legal_actions`; a Riichi answer names a legal discard; a `Pass` answer has a `call_offer`; equivalents are legal discards; `accepted` is exactly the answer plus `equivalent_tiles`, sorted |
+| reachable state | `validate_reachable_state`; the build record says `state_valid`, `answer_recomputed` and `visible_info_only` |
+| no spoiler | title, prompt, pre-answer note, book label, provenance labels and selection tags print no answer or tenpai-wait tile code; a visibly offered call tile is not a wait |
+| variant honesty | a transform chain validates, `provenance.transforms` matches it, and a variant carries `label_check.preserved = true` |
+| budget | encoded gzip body within `max_bytes` (default 50 MB), scenario count within `max_scenarios` (2000), manifest within 512 KiB |
+| manifest integrity | entry path is safe and content-addressed, hash/bytes/scenario count match the body, and convenience metadata drift is a strict-mode warning |
+
+A missing corpus row is a hard failure, not a warning, including when the whole
+`games.jsonl` source is absent: a pack whose provenance cannot be checked is not
+publishable.
+
+### Deterministic encoding and atomic publishing
+
+`encode_pack` writes compact struct-order JSON through a fixed gzip level with
+no header timestamp, so the same pack always has the same bytes and SHA-256.
+The body includes `generated_at`, which is an input like any other: a
+reproducibility run must pin it (the encoder never adds a timestamp of its own).
+`publish_pack` audits, writes `<pack-id>-<sha256-prefix>.json.gz` with
+`storage::write_atomic`, then merges the manifest entry and writes
+`manifest.json` the same way. A failed manifest write removes a body this call
+created; an existing content-addressed body is never deleted. Republishing an
+unchanged pack rewrites the same file and the same single manifest entry.
+
+### CLI
+
+```bash
+# Publish the built-in fixture pack, manifest and provenance rows.
+cargo run --features miner --bin mine_replays -- \
+  pack fixture [--out "$RIICHI_DATA_DIR/packs"] [--max-bytes N] [--json]
+
+# Print the per-pack report from the manifest.
+cargo run --features miner --bin mine_replays -- \
+  pack report [--manifest FILE] [--json]
+
+# Audit a manifest and every body it lists.
+cargo run --features miner --bin mine_replays -- \
+  audit [--manifest FILE] [--games FILE] [--strict] [--commercial] [--json]
+```
+
+Defaults: manifest `<packs>/manifest.json`, provenance `<packs>/games.jsonl`.
+`audit` exits 0 clean, 1 dirty, 2 unreadable. `--strict` turns recoverable
+manifest metadata drift and unlisted bodies into failures. `--commercial`
+applies the commercial profile. `pack fixture` writes
+`replay.fixture.2026-11-<sha>.json.gz`, `manifest.json` and `games.jsonl`; the
+fixture is two generated lessons with two synthetic-but-valid game rows, honest
+about having no replay round-trip and no precomputed model label
+(`requires_model = true`, `generator.commit = fixture`).
+
+### P1a acceptance evidence
+
+- `cargo test --features miner` covers: pack/manifest round-trip and unknown
+  field tolerance; the non-self-play source parse failure; every source/licence
+  negative (unknown data licence, empty attribution, non-redistributable, no
+  agents, invalid agent licence, commercial-flag mismatch, commercial-profile
+  refusal); missing/unpublishable/corpus-mismatched/duplicate game provenance;
+  missing, unexpected and mis-licensed agents; every legal-answer negative
+  (illegal discard, Riichi without a discard, Pass without an offer, accepted
+  mismatch, illegal/duplicate equivalents); a spoiler in the title and in the
+  scenario note; structural negatives (schema/version/empty/duplicate
+  id/duplicate state/lesson/book/answer/accepted); state reachability; a variant
+  without a preserved label check; byte, manifest and scenario-count budgets;
+  deterministic encoding; content-addressed atomic publish with no temp files
+  and an untouched existing path on failure; a dirty pack writing nothing;
+  manifest byte/hash/id/count tampering; strict-only manifest drift and unlisted
+  bodies; a missing provenance source; manifest entry path/hash/licence
+  validation; JSONL round-trip; and the fixture pack auditing clean in normal
+  and strict mode.
+- The fixture publisher and `audit` were run end to end on a scratch data root;
+  `audit` and `audit --strict` both report clean.
+- `cargo fmt --check`, `cargo clippy --all-targets --features miner -- -D
+  warnings`, `cargo test --lib`, and `cargo check --target wasm32-unknown-unknown`
+  stay clean.
+
+Visual sign-off is not involved in P1a.
 
 ## F1 acceptance evidence
 
