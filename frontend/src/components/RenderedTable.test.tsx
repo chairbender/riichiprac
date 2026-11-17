@@ -11,7 +11,6 @@ import type { ShellsManifest } from '../table/shellManifest';
 import { buildBoard } from '../table/boardLayout';
 import { boardOverlay } from '../table/boardOverlay';
 import { boardGameState } from '../table/boardFixture';
-import { SIDE_POND_LEAN_DEG } from '../table/zoneLayout';
 
 const tableDir = fileURLToPath(new URL('../../public/table/', import.meta.url));
 const manifest: ShellsManifest = parseShellsManifest(
@@ -77,11 +76,11 @@ describe('rendered table hit layer', () => {
     expect(html).toContain('aria-label="1s, riichi discard"');
   });
 
-  it('leans the side ponds as one group transform', () => {
+  it('draws every pond straight', () => {
     const html = markup();
     expect(html).toContain('data-zone="pond-right"');
-    expect(html).toContain(`transform:rotate(-${SIDE_POND_LEAN_DEG}deg)`);
-    expect(html).toContain(`transform:rotate(${SIDE_POND_LEAN_DEG}deg)`);
+    expect(html).toContain('data-zone="pond-left"');
+    expect(html).not.toContain('transform:rotate');
   });
 
   it('marks the claiming discard without changing the rest', () => {

@@ -6,7 +6,6 @@ import { parseShellsManifest } from './shellManifest';
 import type { ShellsManifest } from './shellManifest';
 import {
   HAND_ROW_SLOTS,
-  SIDE_POND_LEAN_DEG,
   POND_COLUMNS,
   WALL_CENTRE_INDEX,
   WALL_STACKS,
@@ -478,16 +477,23 @@ describe('pond zone', () => {
     }
   });
 
-  it('leans the side ponds toward the viewer as one group transform', () => {
+  it('keeps the side ponds straight by default', () => {
+    for (const side of ['right', 'left'] as const) {
+      const zone = layoutPond(manifest, { discards, side });
+      expect(zone.rotationDeg).toBe(0);
+    }
+  });
+
+  it('supports an explicit side-pond lean as one group transform', () => {
     const sides = ['bottom', 'right', 'top', 'left'] as const;
-    const zones = sides.map((side) => layoutPond(manifest, { discards, side }));
+    const zones = sides.map((side) => layoutPond(manifest, { discards, side, leanDeg: 5 }));
     const bottom = zones[0];
     const right = zones[1];
     const top = zones[2];
     const left = zones[3];
     expect([bottom.rotationDeg, top.rotationDeg]).toEqual([0, 0]);
-    expect(right.rotationDeg).toBe(-SIDE_POND_LEAN_DEG);
-    expect(left.rotationDeg).toBe(SIDE_POND_LEAN_DEG);
+    expect(right.rotationDeg).toBe(-5);
+    expect(left.rotationDeg).toBe(5);
 
     const bodyBounds = (zone: LayoutZone) => {
       let leftX = Infinity;

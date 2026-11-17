@@ -56,12 +56,11 @@ export const HAND_CENTRE_INDEX = 6;
 /**
  * The whole-zone lean of each side pond, in screen degrees. Positive is
  * clockwise. It is a group transform of the composed pond (shadow + bodies),
- * not a per-tile position change or a new sprite. The 2026-11-16 review chose
- * a subtle 1° centred Z rotation: right `−1°`, left `+1°` (far end toward the
- * centre). The pivot is the pond body centre so the whole object reads as lying
- * flat rather than tipping on one edge.
+ * not a per-tile position change or a new sprite. The 2026-11-16 review dropped
+ * the lean entirely: the side ponds are perfectly straight. The `leanDeg`
+ * option remains for the isolated lab and for a future revisit.
  */
-export const SIDE_POND_LEAN_DEG = 1;
+export const SIDE_POND_LEAN_DEG = 0;
 
 /**
  * Architecture Task 4.1's global paint order. Felt is layer 0 and is not a

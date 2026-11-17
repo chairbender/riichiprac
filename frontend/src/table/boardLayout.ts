@@ -59,8 +59,8 @@ export const BOARD_MARGIN = 28;
 export const BOARD_GAP = 28;
 /** Extra gap around the centre compartment so pond shadow bounds clear. */
 const POND_GAP = 56;
-/** The side walls sit just outside the front/back wall ends, forming a ring. */
-const WALL_JOIN_GAP = 2;
+/** The side walls tuck 46 px under the front/back wall ends at the corners. */
+const WALL_CORNER_OVERLAP = 46;
 /**
  * The wall run is a very long band; the published lying sigma (12) reads as a
  * hard edge at that length. The 2026-11-16 review asked for the same soft read
@@ -68,11 +68,11 @@ const WALL_JOIN_GAP = 2;
  */
 const WALL_SHADOW_SIGMA_PX = 20;
 /**
- * The side-wall bottom edge sits a quarter of a wall tile above the front
- * wall's bottom edge. The front wall paints over the side walls, so the corner
- * reads as one continuous ring instead of an optical step.
+ * The side-wall bottom edge sits exactly on the front wall's bottom edge. The
+ * front wall paints over the side walls, so the corner reads as one continuous
+ * ring instead of an optical step.
  */
-const SIDE_WALL_BOTTOM_GAP = 12;
+const SIDE_WALL_BOTTOM_GAP = 0;
 /**
  * The side hands reuse one shell down a long row, and their standing sigma (5)
  * leaves a thin hard band. The review asked for the same soft read as the
@@ -616,7 +616,7 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
           'left',
           placeZone(
             left,
-            ringBodyLeft - WALL_JOIN_GAP - leftInsets.width - leftInsets.left,
+            ringBodyLeft + WALL_CORNER_OVERLAP - leftInsets.width - leftInsets.left,
             sideBodyBottom - leftInsets.bottom,
           ),
         );
@@ -624,7 +624,7 @@ export function buildBoard(manifest: ShellsManifest, state: GameState): Board {
           'right',
           placeZone(
             right,
-            ringBodyRight + WALL_JOIN_GAP - rightInsets.left,
+            ringBodyRight - WALL_CORNER_OVERLAP - rightInsets.left,
             sideBodyBottom - rightInsets.bottom,
           ),
         );

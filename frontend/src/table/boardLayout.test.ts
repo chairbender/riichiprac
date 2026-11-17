@@ -249,13 +249,12 @@ describe('board geometry', () => {
     expect(result.compass.y + result.compass.height).toBeLessThan(result.height);
   });
 
-  it('publishes the pond lean on the side ponds only', () => {
+  it('keeps every pond straight', () => {
     const result = board();
-    expect(zone(result, 'pond-left').zone.rotationDeg).toBe(SIDE_POND_LEAN_DEG);
-    expect(zone(result, 'pond-right').zone.rotationDeg).toBe(-SIDE_POND_LEAN_DEG);
-    expect(zone(result, 'pond-bottom').zone.rotationDeg).toBe(0);
-    expect(zone(result, 'pond-top').zone.rotationDeg).toBe(0);
-    expect(zone(result, 'pond-left').rotationPad).toBeGreaterThan(0);
+    for (const side of ['bottom', 'right', 'top', 'left'] as const) {
+      expect(zone(result, `pond-${side}`).zone.rotationDeg).toBe(0);
+      expect(zone(result, `pond-${side}`).rotationPad).toBe(0);
+    }
   });
 
   it('places every layer at a whole @1x px', () => {
@@ -273,7 +272,7 @@ describe('board geometry', () => {
     }
   });
 
-  it('lines the side wall bottoms a quarter tile above the front wall', () => {
+  it('seats the side wall bottoms on the front wall and overlaps the corners', () => {
     const result = board();
     const bottom = (id: string): number => {
       const placement = zone(result, id);
@@ -284,8 +283,23 @@ describe('board geometry', () => {
       );
     };
     const front = bottom('wall-front');
-    expect(bottom('wall-side-left')).toBeCloseTo(front - 12, 0);
-    expect(bottom('wall-side-right')).toBeCloseTo(front - 12, 0);
+    expect(bottom('wall-side-left')).toBeCloseTo(front, 0);
+    expect(bottom('wall-side-right')).toBeCloseTo(front, 0);
+    const body = (id: string) => {
+      const placement = zone(result, id);
+      let left = Infinity;
+      let right = -Infinity;
+      for (const tile of placement.zone.bodies) {
+        left = Math.min(left, placement.x + tile.hitBox.x);
+        right = Math.max(right, placement.x + tile.hitBox.x + tile.hitBox.width);
+      }
+      return { left, right };
+    };
+    const frontBody = body('wall-front');
+    const leftBody = body('wall-side-left');
+    const rightBody = body('wall-side-right');
+    expect(frontBody.left - leftBody.right).toBeLessThanOrEqual(-40);
+    expect(rightBody.left - frontBody.right).toBeLessThanOrEqual(-40);
     // The front wall is painted after the side walls, so it covers the join.
     const order = result.zones.map((entry) => entry.id);
     expect(order.indexOf('wall-front')).toBeGreaterThan(order.indexOf('wall-side-left'));

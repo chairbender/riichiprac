@@ -116,8 +116,8 @@ function shearedBody(degrees: number): ReturnType<typeof drawZoneLayer> {
 }
 
 const variants = [
-  { label: 'straight (no lean)', layer: leanZone(base, 0).layer },
-  { label: 'z-centre (current, −1°)', layer: leanZone(base, -1).layer },
+  { label: 'straight (production, no lean)', layer: leanZone(base, 0).layer },
+  { label: 'z-centre (historical, −1°)', layer: leanZone(base, -1).layer },
   { label: 'z-near (bottom edge, −1°)', layer: leanZone(base, -1, base.height).layer },
   { label: 'shear (upright sprites, top −1°)', layer: shearedBody(-1) },
   { label: 'z opposite (centre, +1°)', layer: leanZone(base, 1).layer },
