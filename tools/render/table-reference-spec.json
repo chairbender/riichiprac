@@ -448,7 +448,6 @@
       "outerSideSliverMinPx": 3.0,
       "wallInnerFaceMinPx": 3.0,
       "minFaceLuma": 150.0,
-      "minFaceChannelSpread": 0.0,
       "maxFaceChannelSpread": 40.0,
       "minBlueMinusRed": 40.0,
       "minHandFaceLuma": 40.0,
