@@ -59,7 +59,9 @@ bash tools/render/bake-shells.sh           # dry run: build the tile, print the 
 bash tools/render/bake-felt.sh             # regenerate frontend/public/table/felt.png
 bash tools/render/bake-table-reference.sh  # dry run: build the whole-table reference scene, print camera metrics
 bash tools/render/bake-table-reference.sh --bake  # whole-table reference: @2x render -> 1x board + 2x crops + manifest + check
-bash tools/render/bake-table-reference.sh --check # whole-table reference integrity gate; no Blender
+bash tools/render/bake-table-reference.sh --rig   # 2.5D rig: 1920x1080 RGBA reference + rig.json + acceptance check
+bash tools/render/bake-table-reference.sh --rig --rig-width 960 --samples 16  # fast rig tuning; never publishes
+bash tools/render/bake-table-reference.sh --check # whole-table + rig integrity gates; no Blender
 ```
 
 The group-shadow lab is a static page; serve the repo root and open it:
@@ -197,6 +199,36 @@ Task 2**, so this render is for placement, not a lighting verdict. See
 [`TABLE-REFERENCE.md`](TABLE-REFERENCE.md) for the naming scheme, the face-quad
 contract, the resolved ambiguities and the full check list.
 
+### The 2.5D rig (Task 2 of the implementation plan)
+
+`--rig` runs the same scene and the same 269 placements through the new
+pipeline's camera and light rig instead of the placement camera: a **75 mm**
+perspective camera on a 36 mm sensor, pitched **50°**, centred on X = 0 behind
+the south edge at **76 units**, with **Shift Y −0.02** and no roll; a 20 × 14-unit
+AREA key 9000 W slightly forward of centre plus three low AREA fills; a low
+ambient world; **film transparent** with the room floor hidden. It writes
+`reference/rig-1x.png` (1920 × 1080 RGBA), `reference/rig.json` (camera, light
+rig, placements, acceptance numbers, measured probes) and `reference/rig.html`.
+The gate is `scripts/check-table-rig.mjs`, which recomputes the geometry from the
+camera and placements and then measures the rendered pixels (AGENTS.md §6):
+
+- the +Y vanishing point of both side-wall runs is above the frame and the runs
+  meet it within 1 px;
+- both side walls' inner vertical faces are visible slivers (3.8 px minimum) and
+  measure brighter than the felt;
+- the south hand's centre slot is straight-on (0.34 px of inner side) while the
+  outer slots show a 3.8 px inner sliver, growing outward;
+- no south-hand plate edge leans inward and the outward lean stays under 2.5 px;
+- the full table width is framed with 164.6 px margins, the far rim is inside,
+  the hand is 73.5 px above the bottom, and every tile is inside;
+- the blank pond face, blue wall back, blank hand face and side-face probes are
+  lit as specified, and the PNG really is RGBA with a transparent surround.
+
+The rig reproduces the shipped shells' face `[223, 220, 216]` and blue
+`[3, 68, 165]` within a few levels, so the new pipeline's blank bodies can be
+matched to the approved look. See `TABLE-REFERENCE.md` for the parameter table
+and the user sign-off questions.
+
 This is development-only: nothing under `frontend/public` is written and the
 runtime never reads it.
 
@@ -228,7 +260,13 @@ runtime never reads it.
 | `scripts/table-camera.mjs` | yes | shared reference pinhole, tile-corner projection, metrics and crop rects |
 | `scripts/table-reference.mjs` | yes | publishes the 1x board, 2x crops, manifest and contact page from the master |
 | `scripts/check-table-reference.mjs` | yes | dependency-free reference spec/scene/render/hash/projection/lighting gate (CI) |
+| `scripts/table-rig.mjs` | yes | publishes the 2.5D rig reference (`rig-1x.png`, `rig.json`, `rig.html`) from the transient bake |
+| `scripts/check-table-rig.mjs` | yes | dependency-free rig contract/geometry/framing/pixel-probe gate (CI) |
+| `scripts/table-rig-samples.mjs` | yes | point and projected-polygon sample measurement shared by the rig publisher and checker |
 | `reference/` | yes | committed calibration renders (`full-board-1x.png`, `crops-2x/`, `table-reference.json`, `index.html`) |
+| `reference/rig-1x.png` | yes | the committed 2.5D rig reference at 1920 × 1080 RGBA |
+| `reference/rig.json` | yes | the rig's record: camera, light rig, placements, acceptance numbers, measured probes |
+| `reference/rig.html` | yes | a contact page for the rig reference and its numbers |
 | `scripts/check-shells.mjs` | yes | dependency-free spec + PNG + `shells.json` integrity check (CI gate); `--audition` validates the candidate matrix and its labelled sheets |
 | `scripts/png.mjs` | yes | dependency-free PNG decode/encode + sprite compositor shared by the checker and the review sheets |
 | `scripts/shadow-group.mjs` | yes | the hard shadow footprint per shell and the group field (`merged` union-then-blur vs `perTile` blur-then-max); browser-safe |

@@ -266,6 +266,196 @@
       "strength": 1.0
     }
   },
+  "rig": {
+    "version": 1,
+    "id": "plan25d",
+    "name": "2.5D perspective camera + lighting rig",
+    "status": "Task 2 of 2_5d_implementation_plan.md. Same scene and the same 269 tile placements as the placement reference; the --rig render mode swaps in this camera and light rig, hides the room floor and writes the 16:9 gameplay framing with a transparent film so the published PNG is clean RGBA. Calibration-only: nothing under frontend/public is written and the runtime never reads it.",
+    "camera": {
+      "mode": "perspective",
+      "lensMm": 75.0,
+      "sensorWidthMm": 36.0,
+      "sensorFit": "HORIZONTAL",
+      "elevationDeg": 50.0,
+      "target": [
+        0.0,
+        0.0,
+        0.35
+      ],
+      "distanceUnits": 76.0,
+      "eye": [
+        0.0,
+        -48.851858,
+        58.569378
+      ],
+      "shiftX": 0.0,
+      "shiftY": -0.02,
+      "clipStart": 1.0,
+      "clipEnd": 600.0,
+      "note": "Perspective, 75 mm on a 36 mm sensor, pitched 50 deg down from horizontal, centred on X = 0 behind the south edge at 76 units. 76 units is the distance at which the whole 700 mm mat plus rim fits the 16:9 width with a comfortable ~165 px margin each side and the far rim still inside the frame. Blender's Shift Y is measured against the sensor width, and its positive direction moves the image down; Shift Y -0.02 therefore raises the image 38.4 px, which buys the far rim its headroom and leaves the player's standing hand 74 px above the bottom edge without pitching the camera further down. shiftX = 0 and no roll keep every world-vertical edge parallel to the screen vertical up to the small outward convergence the 50 deg pitch produces (about 2.3 px at the outer hand slots, measured and gated by check-table-rig.mjs); a pitched camera cannot give exactly parallel verticals, and a level camera cannot see the table."
+    },
+    "output": {
+      "resolution": [
+        1920,
+        1080
+      ],
+      "aspect": "16:9",
+      "file": "rig-1x.png",
+      "manifest": "rig.json",
+      "masterPath": "build/reference/rig/rig-1920.png",
+      "bakePath": "build/reference/rig/rig-bake.json",
+      "note": "The plan's reference resolution. One render, not a @2x master: the rig is a perspective/lighting calibration target, and Task 3 exports normalized screen coordinates and quads, not pixels from this board."
+    },
+    "lighting": {
+      "convention": "A large soft overhead AREA key slightly forward of table centre (toward the camera) plus three low-intensity AREA fills, one from the near/south side for the standing hand and two low side fills for the side-wall inner vertical faces. Cycles path-traced GI supplies the contact occlusion and soft shadows under the tile bases (there is no Eevee AO toggle in the Cycles engine). The key is neutral warm and the fills are cool so the bevels and inner faces read against the ivory body without tinting the face paint.",
+      "key": {
+        "id": "rig-key",
+        "type": "AREA",
+        "shape": "RECTANGLE",
+        "sizeUnits": 20.0,
+        "sizeYUnits": 14.0,
+        "location": [
+          0.0,
+          -2.5,
+          22.0
+        ],
+        "aimAt": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energyW": 9000.0,
+        "hex": "#fff7ea",
+        "note": "20 x 14 units (560 x 392 mm) at 22 units up, 2.5 units forward of centre; the source is large enough that tile-base contact shadows are soft penumbrae rather than a hard stamp."
+      },
+      "fills": [
+        {
+          "id": "rig-fill-near",
+          "type": "AREA",
+          "shape": "RECTANGLE",
+          "sizeUnits": 26.0,
+          "sizeYUnits": 16.0,
+          "location": [
+            0.0,
+            -26.0,
+            9.0
+          ],
+          "aimAt": [
+            0.0,
+            0.0,
+            0.5
+          ],
+          "energyW": 1400.0,
+          "hex": "#cfe0ff",
+          "note": "Near/south fill: lights the player's standing hand fronts and the south-facing inner faces of the far wall; cool and low so it only opens the shadows."
+        },
+        {
+          "id": "rig-fill-left",
+          "type": "AREA",
+          "shape": "RECTANGLE",
+          "sizeUnits": 14.0,
+          "sizeYUnits": 14.0,
+          "location": [
+            -22.0,
+            -7.0,
+            11.0
+          ],
+          "aimAt": [
+            0.0,
+            0.0,
+            0.5
+          ],
+          "energyW": 700.0,
+          "hex": "#dfe9ff",
+          "note": "Left side fill: defines the west wall's inner vertical faces and the left bevels."
+        },
+        {
+          "id": "rig-fill-right",
+          "type": "AREA",
+          "shape": "RECTANGLE",
+          "sizeUnits": 14.0,
+          "sizeYUnits": 14.0,
+          "location": [
+            22.0,
+            -7.0,
+            11.0
+          ],
+          "aimAt": [
+            0.0,
+            0.0,
+            0.5
+          ],
+          "energyW": 700.0,
+          "hex": "#dfe9ff",
+          "note": "Right side fill: mirrors the left fill for the east wall's inner vertical faces and the right bevels."
+        }
+      ],
+      "world": {
+        "hex": "#3b4a5c",
+        "strength": 0.35,
+        "note": "Ambient sky at the shell baker's world tint, low strength; with film transparent it still lights the scene but does not write a background."
+      },
+      "ambientOcclusion": {
+        "mode": "cycles-gi",
+        "note": "Cycles path-traced global illumination produces the soft contact shadow under every tile base and the crevice darkening between neighbours; no post AO pass and no Eevee AO setting exists in this engine."
+      }
+    },
+    "render": {
+      "engine": "CYCLES",
+      "device": "CPU",
+      "samples": 64,
+      "adaptiveSampling": true,
+      "adaptiveThreshold": 0.02,
+      "denoise": "OPENIMAGEDENOISE",
+      "filmTransparent": true,
+      "hideFloor": true,
+      "colorMode": "RGBA",
+      "colorManagement": "table-reference scene block (sRGB, AgX, AgX - Medium High Contrast, exposure 0)",
+      "note": "Film > Transparent plus the room floor hidden: the published PNG is RGBA with a transparent surround, so the board can be composited and the alpha is a checkable fact. The mat, rim, centre well and every tile stay opaque. 64 samples with adaptive sampling and OpenImageDenoise is the smallest count that leaves the bevelled edges clean at 1920 x 1080."
+    },
+    "samples": {
+      "handFaceTileId": "hand-bottom-06",
+      "handFace": "5z",
+      "faceTileId": "pond-bottom-00",
+      "blueTileId": "wall-bottom-slot-08-t1",
+      "sideWallTileIds": [
+        "wall-left-slot-08-t0",
+        "wall-right-slot-08-t0"
+      ],
+      "matWorldPoint": [
+        -4.0,
+        -6.0,
+        0.0
+      ],
+      "note": "Pixel probes for the lighting facts. The pond's 5z face (the faces.sampleTileId) and the wall's blue back are the same probes the placement reference uses, so the rig can be compared with the shipped shells. hand-bottom-06 is forced to 5z in the rig scene only, giving a known blank ivory hand face (the near-fill read). The side probes sit at the centre of each side wall's inner vertical face; matWorldPoint is open felt between the south pond and the south wall, clear of tile shadows."
+    },
+    "checks": {
+      "lensMmRange": [
+        65.0,
+        85.0
+      ],
+      "elevationDegRange": [
+        48.0,
+        52.0
+      ],
+      "minWidthMarginPx": 120.0,
+      "handBottomMarginPx": [
+        16.0,
+        120.0
+      ],
+      "maxOutwardLeanPx": 2.5,
+      "centreSideSliverMaxPx": 0.6,
+      "outerSideSliverMinPx": 3.0,
+      "wallInnerFaceMinPx": 3.0,
+      "minFaceLuma": 150.0,
+      "minFaceChannelSpread": 0.0,
+      "maxFaceChannelSpread": 40.0,
+      "minBlueMinusRed": 40.0,
+      "minHandFaceLuma": 40.0,
+      "minSideFaceLuma": 45.0,
+      "note": "Thresholds are the acceptance criteria of the plan's Task 2, in numbers: perspective + 75 mm + 50 deg + X = 0 + negative shift, the full table width inside the frame, the south hand near the bottom, no inward vertical lean and at most maxOutwardLeanPx of outward lean, side-wall inner faces at least wallInnerFaceMinPx wide, the centre hand tile straight-on and the outer hand tiles showing a sliver, and a lit ivory face / blue back / readable hand face / lit inner side face in the render."
+    }
+  },
   "faces": {
     "mode": "planar-overlay",
     "note": "The glyph masters are composited onto a thin transparent plane 0.001 units above the white plate, exactly the flat 2D glyph the runtime atlas draws, not the carved decal. 5z (haku) has zero ink and gets no plane, which makes it the bare lighting sample tile.",

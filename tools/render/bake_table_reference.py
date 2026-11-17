@@ -27,6 +27,9 @@ Options:
     --dry-run            print the plan and the camera metrics; write nothing
     --bake               render the committed @2x master
     --audition           render every camera candidate at @1x into build/
+    --rig                build the same scene with the Task 2 2.5D rig camera
+                         and light rig, then render the 16:9 RGBA reference
+    --rig-width N        render the rig reference at N px wide (preview/tuning)
     --camera NAME        override the committed camera candidate
     --samples N          override the sample count
     --out DIR            output directory (default tools/render/build/reference)
@@ -98,6 +101,8 @@ def parse_options(argv: list[str]) -> dict:
         "bake": False,
         "audition": False,
         "preview": False,
+        "rig": False,
+        "rigWidth": None,
         "camera": None,
         "samples": None,
         "out": None,
@@ -113,8 +118,13 @@ def parse_options(argv: list[str]) -> dict:
             options["audition"] = True
         elif arg == "--preview":
             options["preview"] = True
+        elif arg == "--rig":
+            options["rig"] = True
         elif arg == "--preview-width":
             options["previewWidth"] = int(argv[index + 1])
+            index += 1
+        elif arg == "--rig-width":
+            options["rigWidth"] = int(argv[index + 1])
             index += 1
         elif arg in ("--camera", "--samples", "--out"):
             if index + 1 >= len(argv):
@@ -199,17 +209,17 @@ def project_point(camera: dict, point) -> tuple[float, float]:
     if camera["mode"] == "orthographic":
         scale = camera["orthoScaleUnits"] / width
         offset_x = camera["shiftX"] * width
-        offset_y = camera["shiftY"] * height
+        offset_y = camera["shiftY"] * width
         return (
             width / 2 + offset_x + value.dot(right) / scale,
-            height / 2 - offset_y - value.dot(up) / scale,
+            height / 2 + offset_y - value.dot(up) / scale,
         )
     if depth <= 0:
         raise ValueError(f"point behind the camera: {point}")
     focal = camera["focalPixels"]
     return (
         width / 2 + camera["shiftX"] * width + focal * value.dot(right) / depth,
-        height / 2 - camera["shiftY"] * height - focal * value.dot(up) / depth,
+        height / 2 + camera["shiftY"] * width - focal * value.dot(up) / depth,
     )
 
 
@@ -453,6 +463,67 @@ def build_reference_lights(scene: bpy.types.Scene, spec: dict) -> list[bpy.types
         f"world {spec['lighting']['world']['hex']} x {spec['lighting']['world']['strength']}"
     )
     return [obj]
+
+
+def build_rig_lights(scene: bpy.types.Scene, rig: dict) -> list[dict]:
+    """The Task 2 2.5D light rig: one large AREA key plus low AREA fills.
+
+    The key is large and close enough that tile-base contact shadows are soft
+    penumbrae; the fills exist to open the bevels and the inner vertical faces
+    of side tiles, which a pure overhead source leaves dark. Cycles path
+    tracing produces the contact occlusion (there is no AO toggle in Cycles).
+    The records are what the rig manifest publishes for Task 3A's lighting
+    block.
+    """
+    lighting = rig["lighting"]
+    entries = [lighting["key"], *lighting["fills"]]
+    records: list[dict] = []
+    for entry in entries:
+        data = bpy.data.lights.new(entry["id"], type=entry["type"])
+        if entry["type"] == "AREA":
+            data.shape = entry.get("shape", "RECTANGLE")
+            data.size = entry["sizeUnits"]
+            data.size_y = entry.get("sizeYUnits", entry["sizeUnits"])
+            data.energy = entry["energyW"]
+        else:
+            die(f"rig light {entry['id']}: only AREA lights are defined")
+        data.color = hex_linear(entry["hex"])[:3]
+        obj = new_object(entry["id"], data)
+        location = Vector(entry["location"])
+        aim_at = Vector(entry["aimAt"])
+        obj.location = location
+        aim(obj, aim_at)
+        direction = (aim_at - location).normalized()
+        records.append(
+            {
+                "id": entry["id"],
+                "type": entry["type"],
+                "shape": entry.get("shape"),
+                "sizeUnits": entry["sizeUnits"],
+                "sizeYUnits": entry.get("sizeYUnits"),
+                "location": [round(value, 6) for value in location],
+                "aimAt": [round(value, 6) for value in aim_at],
+                "energyW": entry["energyW"],
+                "hex": entry["hex"],
+                "distanceUnits": round((aim_at - location).length, 6),
+                "direction": [round(value, 6) for value in direction],
+                "toLight": [round(-value, 6) for value in direction],
+            }
+        )
+
+    world_spec = lighting["world"]
+    world = bpy.data.worlds.new("rig-world")
+    world.use_nodes = True
+    background = world.node_tree.nodes["Background"]
+    background.inputs["Color"].default_value = hex_linear(world_spec["hex"])
+    background.inputs["Strength"].default_value = world_spec["strength"]
+    scene.world = world
+    log(
+        f"rig light: AREA key {lighting['key']['sizeUnits']}x{lighting['key']['sizeYUnits']} "
+        f"at {lighting['key']['location']} ({lighting['key']['energyW']:.0f} W) + "
+        f"{len(lighting['fills'])} fills; world {world_spec['hex']} x {world_spec['strength']}"
+    )
+    return records
 
 
 def build_face_material(face_id: str) -> bpy.types.Material:
@@ -762,15 +833,48 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
     scene.cycles.samples = (
         options["samples"] if options["samples"] is not None else spec["scene"]["samples"]
     )
-    log(f"reference render: {scene.cycles.samples} samples, film transparent {spec['scene']['filmTransparent']}")
+    rig_mode = bool(options.get("rig"))
+    if rig_mode:
+        rig = spec["rig"]
+        scene.cycles.samples = (
+            options["samples"] if options["samples"] is not None else rig["render"]["samples"]
+        )
+        scene.cycles.adaptive_threshold = rig["render"]["adaptiveThreshold"]
+        scene.cycles.use_adaptive_sampling = rig["render"]["adaptiveSampling"]
+        scene.render.film_transparent = rig["render"]["filmTransparent"]
+        scene.render.image_settings.color_mode = rig["render"]["colorMode"]
+    log(
+        f"{'rig' if rig_mode else 'reference'} render: {scene.cycles.samples} samples, "
+        f"film transparent "
+        f"{rig['render']['filmTransparent'] if rig_mode else spec['scene']['filmTransparent']}"
+    )
     scene.cycles.seed = 0
     scene.cycles.use_animated_seed = False
-    scene.render.film_transparent = spec["scene"]["filmTransparent"]
-    scene.render.image_settings.color_mode = "RGB"
+    if not rig_mode:
+        scene.render.film_transparent = spec["scene"]["filmTransparent"]
+        scene.render.image_settings.color_mode = "RGB"
     scene.view_settings.look = spec["scene"]["colorManagement"]["look"]
 
-    build_table(scene, spec)
-    build_reference_lights(scene, spec)
+    table_objects = build_table(scene, spec)
+    if rig_mode:
+        if rig["render"]["hideFloor"]:
+            for obj in table_objects:
+                if obj.name == "floor":
+                    obj.hide_render = True
+                    obj.hide_viewport = True
+                    log("rig: room floor hidden (film transparent)")
+        light_records = build_rig_lights(scene, rig)
+        rig_lighting = {
+            "lights": light_records,
+            "world": {
+                "hex": rig["lighting"]["world"]["hex"],
+                "strength": rig["lighting"]["world"]["strength"],
+            },
+            "ambientOcclusion": rig["lighting"]["ambientOcclusion"],
+        }
+    else:
+        build_reference_lights(scene, spec)
+        rig_lighting = None
 
     anchors_spec = spec["anchors"]
     anchor_collection = bpy.data.collections.new(anchors_spec["collection"])
@@ -806,6 +910,13 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
     def next_face(tile_id: str) -> str:
         if tile_id == sample_tile:
             return sample_face
+        if rig_mode:
+            rig_samples = spec["rig"].get("samples", {})
+            if tile_id == rig_samples.get("handFaceTileId"):
+                # Burn the draw so the seeded stream stays aligned with the
+                # placement reference; only this one face differs.
+                rng.choice(FACE_IDS)
+                return rig_samples["handFace"]
         return rng.choice(FACE_IDS)
 
     seat_name = {"bottom": "south", "right": "east", "top": "north", "left": "west"}
@@ -1283,6 +1394,8 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         "anchorCounts": counted,
         "anchorCollection": anchor_collection.name,
         "clearance": clearance,
+        "rigLighting": rig_lighting,
+        "floorHidden": bool(rig_mode and spec["rig"]["render"]["hideFloor"]),
         "props": {
             "mat": spec["table"]["playingMat"],
             "rim": spec["table"]["rim"],
@@ -1633,6 +1746,84 @@ def main() -> None:
     candidate = spec["camera"]["candidates"][camera_name]
 
     scene, scene_data, shell_spec = build_scene(spec, options)
+
+    if options["rig"]:
+        rig = spec["rig"]
+        resolution = list(rig["output"]["resolution"])
+        if options["rigWidth"]:
+            resolution = [
+                options["rigWidth"],
+                round(options["rigWidth"] * rig["output"]["resolution"][1] / rig["output"]["resolution"][0]),
+            ]
+        camera = camera_from_candidate(rig["camera"], resolution)
+        scene.render.resolution_x = resolution[0]
+        scene.render.resolution_y = resolution[1]
+        build_camera_object(scene, camera)
+        sample_points = [tile_box_corners(tile)[0] for tile in scene_data["tiles"][::23]]
+        delta = verify_projection(scene, camera, sample_points)
+        if delta > 0.01:
+            die(f"rig pinhole projection drifts from Blender by {delta:.4f} px")
+        log(f"rig projection: pinhole matches Blender within {delta:.6f} px")
+
+        visibility = check_visibility(scene, camera, scene_data["tiles"])
+        if visibility["occluded"]:
+            die(
+                f"rig: {visibility['occluded']} of {visibility['samples']} visible-surface "
+                f"probes are occluded: {visibility['details'][:6]}"
+            )
+        log(f"rig visibility: {visibility['samples']} probes, 0 occluded")
+
+        rig_dir = out_dir / "rig"
+        rig_dir.mkdir(parents=True, exist_ok=True)
+        bake = {
+            "version": 1,
+            "generatedBy": "tools/render/bake_table_reference.py",
+            "mode": "rig",
+            "rig": rig["id"],
+            "blender": bpy.app.version_string,
+            "resolution": resolution,
+            "camera": camera,
+            "projectionDeltaPx": round(delta, 6),
+            "visibility": visibility,
+            "render": {
+                "engine": bpy.context.scene.render.engine,
+                "device": scene.cycles.device,
+                "samples": scene.cycles.samples,
+                "adaptiveSampling": scene.cycles.use_adaptive_sampling,
+                "adaptiveThreshold": round(scene.cycles.adaptive_threshold, 6),
+                "denoise": scene.cycles.use_denoising,
+                "denoiser": scene.cycles.denoiser,
+                "filmTransparent": scene.render.film_transparent,
+                "colorMode": scene.render.image_settings.color_mode,
+                "floorHidden": scene_data["floorHidden"],
+                "look": scene.view_settings.look,
+                "viewTransform": scene.view_settings.view_transform,
+            },
+            "scene": {
+                "dimensions": scene_data["dimensions"],
+                "innerFacePlate": scene_data["inner"],
+                "tiles": scene_data["tiles"],
+            },
+            "lighting": scene_data["rigLighting"],
+        }
+        bake_path = rig_dir / "rig-bake.json"
+        bake_path.write_text(json.dumps(bake, indent=1))
+        log(f"rig bake: {bake_path}")
+        log(
+            "rig camera: "
+            f"{camera['mode']} {camera['lensMm']:.1f} mm, {camera['distanceUnits']:.3f} units, "
+            f"pitch {camera['elevationDeg']:.1f} deg, shift {camera['shiftX']:.3f}/{camera['shiftY']:.3f}, "
+            f"eye {[round(value, 3) for value in camera['eye']]}"
+        )
+
+        if options["dryRun"]:
+            log("rig dry run: nothing rendered")
+            return
+        path = rig_dir / f"rig-{resolution[0]}.png"
+        render_pass(scene, path)
+        log(f"rig render: {path} ({resolution[0]}x{resolution[1]})")
+        return
+
     resolution1x = spec["camera"]["output"]["resolution1x"]
     resolution2x = spec["camera"]["output"]["resolution2x"]
     camera1x = camera_from_candidate(candidate, resolution1x)

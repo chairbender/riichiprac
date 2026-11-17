@@ -1,0 +1,10604 @@
+{
+ "version": 1,
+ "generatedBy": "tools/render/scripts/table-rig.mjs",
+ "rig": "plan25d",
+ "blender": "4.5.9 LTS",
+ "resolution": [
+  1920,
+  1080
+ ],
+ "camera": {
+  "mode": "perspective",
+  "eye": [
+   0,
+   -48.851858,
+   58.569378
+  ],
+  "target": [
+   0,
+   0,
+   0.35
+  ],
+  "elevationDeg": 50,
+  "distanceUnits": 76.00000003130953,
+  "lensMm": 75,
+  "sensorWidthMm": 36,
+  "sensorFit": "HORIZONTAL",
+  "shiftX": 0,
+  "shiftY": -0.02,
+  "focalPixels": 4000.0000000000005,
+  "pixelsPerUnitAtTarget": 52.63157892568593,
+  "resolution": [
+   1920,
+   1080
+  ]
+ },
+ "projectionDeltaPx": 0.000399,
+ "visibility": {
+  "samples": 767,
+  "occluded": 0,
+  "details": []
+ },
+ "render": {
+  "engine": "CYCLES",
+  "device": "CPU",
+  "samples": 64,
+  "adaptiveSampling": true,
+  "adaptiveThreshold": 0.02,
+  "denoise": true,
+  "denoiser": "OPENIMAGEDENOISE",
+  "filmTransparent": true,
+  "colorMode": "RGBA",
+  "floorHidden": true,
+  "look": "AgX - Medium High Contrast",
+  "viewTransform": "AgX"
+ },
+ "lighting": {
+  "lights": [
+   {
+    "id": "rig-key",
+    "type": "AREA",
+    "shape": "RECTANGLE",
+    "sizeUnits": 20,
+    "sizeYUnits": 14,
+    "location": [
+     0,
+     -2.5,
+     22
+    ],
+    "aimAt": [
+     0,
+     0,
+     0
+    ],
+    "energyW": 9000,
+    "hex": "#fff7ea",
+    "distanceUnits": 22.14159,
+    "direction": [
+     0,
+     0.11291,
+     -0.993605
+    ],
+    "toLight": [
+     0,
+     -0.11291,
+     0.993605
+    ]
+   },
+   {
+    "id": "rig-fill-near",
+    "type": "AREA",
+    "shape": "RECTANGLE",
+    "sizeUnits": 26,
+    "sizeYUnits": 16,
+    "location": [
+     0,
+     -26,
+     9
+    ],
+    "aimAt": [
+     0,
+     0,
+     0.5
+    ],
+    "energyW": 1400,
+    "hex": "#cfe0ff",
+    "distanceUnits": 27.354159,
+    "direction": [
+     0,
+     0.950495,
+     -0.310739
+    ],
+    "toLight": [
+     0,
+     -0.950495,
+     0.310739
+    ]
+   },
+   {
+    "id": "rig-fill-left",
+    "type": "AREA",
+    "shape": "RECTANGLE",
+    "sizeUnits": 14,
+    "sizeYUnits": 14,
+    "location": [
+     -22,
+     -7,
+     11
+    ],
+    "aimAt": [
+     0,
+     0,
+     0.5
+    ],
+    "energyW": 700,
+    "hex": "#dfe9ff",
+    "distanceUnits": 25.362374,
+    "direction": [
+     0.867427,
+     0.275999,
+     -0.413999
+    ],
+    "toLight": [
+     -0.867427,
+     -0.275999,
+     0.413999
+    ]
+   },
+   {
+    "id": "rig-fill-right",
+    "type": "AREA",
+    "shape": "RECTANGLE",
+    "sizeUnits": 14,
+    "sizeYUnits": 14,
+    "location": [
+     22,
+     -7,
+     11
+    ],
+    "aimAt": [
+     0,
+     0,
+     0.5
+    ],
+    "energyW": 700,
+    "hex": "#dfe9ff",
+    "distanceUnits": 25.362374,
+    "direction": [
+     -0.867427,
+     0.275999,
+     -0.413999
+    ],
+    "toLight": [
+     0.867427,
+     -0.275999,
+     0.413999
+    ]
+   }
+  ],
+  "world": {
+   "hex": "#3b4a5c",
+   "strength": 0.35
+  },
+  "ambientOcclusion": {
+   "mode": "cycles-gi",
+   "note": "Cycles path-traced global illumination produces the soft contact shadow under every tile base and the crevice darkening between neighbours; no post AO pass and no Eevee AO setting exists in this engine."
+  }
+ },
+ "scene": {
+  "dimensions": {
+   "width": 0.75,
+   "height": 1,
+   "thickness": 0.589286
+  },
+  "innerFacePlate": {
+   "width": 0.64,
+   "height": 0.89
+  },
+  "tiles": [
+   {
+    "id": "wall-bottom-slot-00-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -6.085714,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-00-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -6.085714,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-01-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -5.325,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-01-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -5.325,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-02-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -4.564286,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-02-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -4.564286,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-03-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -3.803571,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-03-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -3.803571,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-04-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -3.042857,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-04-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -3.042857,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-05-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -2.282143,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-05-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -2.282143,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-06-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -1.521429,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-06-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -1.521429,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-07-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -0.760714,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-07-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -0.760714,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-08-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     0,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-08-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     0,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-09-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     0.760714,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-09-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     0.760714,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-10-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     1.521429,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-10-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     1.521429,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-11-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     2.282143,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-11-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     2.282143,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-12-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     3.042857,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-12-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     3.042857,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-13-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     3.803571,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 13,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-13-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     3.803571,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 13,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-14-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     4.564286,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 14,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-14-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     4.564286,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 14,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-15-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     5.325,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 15,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-bottom-slot-15-t1",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     5.325,
+     -7,
+     1.189286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 15,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-bottom-slot-16-t0",
+    "zone": "wall-bottom",
+    "kind": "wall",
+    "seat": "bottom",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     6.085714,
+     -7,
+     0.589286
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 16,
+     "tier": 0
+    }
+   },
+   {
+    "id": "pond-bottom-00",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "5z",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.892857,
+     -4.81,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-bottom-01",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "5p",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.135714,
+     -4.81,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-bottom-02",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "5p",
+    "pose": "lying-faceup",
+    "origin": [
+     -0.378571,
+     -4.81,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-bottom-03",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "8s",
+    "pose": "lying-faceup",
+    "origin": [
+     0.378571,
+     -4.81,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-bottom-04",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "4s",
+    "pose": "lying-faceup",
+    "origin": [
+     1.135714,
+     -4.81,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-bottom-05",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "6z",
+    "pose": "lying-faceup",
+    "origin": [
+     1.892857,
+     -4.81,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 5
+    }
+   },
+   {
+    "id": "pond-bottom-10",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "3s",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.892857,
+     -3.799286,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-bottom-11",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "5sr",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.135714,
+     -3.799286,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-bottom-12",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "1m",
+    "pose": "lying-faceup",
+    "origin": [
+     -0.378571,
+     -3.799286,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-bottom-13",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "6z",
+    "pose": "lying-faceup",
+    "origin": [
+     0.378571,
+     -3.799286,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-bottom-14",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "4p",
+    "pose": "lying-faceup",
+    "origin": [
+     1.135714,
+     -3.799286,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-bottom-15",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "1m",
+    "pose": "lying-faceup",
+    "origin": [
+     2.021429,
+     -3.924286,
+     0
+    ],
+    "rotation": [
+     -4.4e-8,
+     1,
+     0,
+     -1,
+     -4.4e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 5,
+     "riichi": true,
+     "turned": true
+    }
+   },
+   {
+    "id": "pond-bottom-20",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "7z",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.892857,
+     -2.788571,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-bottom-21",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "6z",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.135714,
+     -2.788571,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-bottom-22",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "5sr",
+    "pose": "lying-faceup",
+    "origin": [
+     -0.378571,
+     -2.788571,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-bottom-23",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "6s",
+    "pose": "lying-faceup",
+    "origin": [
+     0.378571,
+     -2.788571,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-bottom-24",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "6z",
+    "pose": "lying-faceup",
+    "origin": [
+     1.135714,
+     -2.788571,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-bottom-25",
+    "zone": "pond-bottom",
+    "kind": "pond",
+    "seat": "bottom",
+    "face": "7p",
+    "pose": "lying-faceup",
+    "origin": [
+     1.892857,
+     -2.788571,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 5
+    }
+   },
+   {
+    "id": "hand-bottom-00",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "5sr",
+    "pose": "standing",
+    "origin": [
+     -4.564286,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0
+    }
+   },
+   {
+    "id": "hand-bottom-01",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "7z",
+    "pose": "standing",
+    "origin": [
+     -3.803571,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1
+    }
+   },
+   {
+    "id": "hand-bottom-02",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "1z",
+    "pose": "standing",
+    "origin": [
+     -3.042857,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2
+    }
+   },
+   {
+    "id": "hand-bottom-03",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "5pr",
+    "pose": "standing",
+    "origin": [
+     -2.282143,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3
+    }
+   },
+   {
+    "id": "hand-bottom-04",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "5s",
+    "pose": "standing",
+    "origin": [
+     -1.521429,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4
+    }
+   },
+   {
+    "id": "hand-bottom-05",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "5pr",
+    "pose": "standing",
+    "origin": [
+     -0.760714,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5
+    }
+   },
+   {
+    "id": "hand-bottom-06",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "5z",
+    "pose": "standing",
+    "origin": [
+     0,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6
+    }
+   },
+   {
+    "id": "hand-bottom-07",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "3m",
+    "pose": "standing",
+    "origin": [
+     0.760714,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7
+    }
+   },
+   {
+    "id": "hand-bottom-08",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "6p",
+    "pose": "standing",
+    "origin": [
+     1.521429,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8
+    }
+   },
+   {
+    "id": "hand-bottom-09",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "5sr",
+    "pose": "standing",
+    "origin": [
+     2.282143,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9
+    }
+   },
+   {
+    "id": "hand-bottom-10",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "1z",
+    "pose": "standing",
+    "origin": [
+     3.042857,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10
+    }
+   },
+   {
+    "id": "hand-bottom-11",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "8s",
+    "pose": "standing",
+    "origin": [
+     3.803571,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11
+    }
+   },
+   {
+    "id": "hand-bottom-12",
+    "zone": "hand-bottom",
+    "kind": "hand",
+    "seat": "bottom",
+    "face": "3z",
+    "pose": "standing",
+    "origin": [
+     4.564286,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12
+    }
+   },
+   {
+    "id": "meld-bottom-0",
+    "zone": "meld-bottom",
+    "kind": "meld",
+    "seat": "bottom",
+    "face": "8m",
+    "pose": "lying-faceup",
+    "origin": [
+     6.480357,
+     -10.6,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 0,
+     "turned": false
+    }
+   },
+   {
+    "id": "meld-bottom-1",
+    "zone": "meld-bottom",
+    "kind": "meld",
+    "seat": "bottom",
+    "face": "3z",
+    "pose": "lying-faceup",
+    "origin": [
+     7.241071,
+     -10.6,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 1,
+     "turned": false
+    }
+   },
+   {
+    "id": "meld-bottom-2",
+    "zone": "meld-bottom",
+    "kind": "meld",
+    "seat": "bottom",
+    "face": "5p",
+    "pose": "lying-faceup",
+    "origin": [
+     8.126785,
+     -10.725,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 2,
+     "turned": true
+    }
+   },
+   {
+    "id": "wall-right-slot-00-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -6.085715,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-00-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -6.085715,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-01-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -5.325,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-01-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -5.325,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-02-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -4.564286,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-02-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -4.564286,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-03-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -3.803572,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-03-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -3.803572,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-04-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -3.042858,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-04-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -3.042858,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-05-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -2.282143,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-05-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -2.282143,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-06-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -1.521429,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-06-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -1.521429,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-07-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -0.760715,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-07-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -0.760715,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-08-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -0.000001,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-08-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     -0.000001,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-09-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     0.760714,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-09-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     0.760714,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-10-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     1.521428,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-10-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     1.521428,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-11-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     2.282142,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-11-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     2.282142,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-12-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     3.042857,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-12-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     3.042857,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-13-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     3.803571,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 13,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-13-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     3.803571,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 13,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-14-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     4.564285,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 14,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-14-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     4.564285,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 14,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-15-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     5.324999,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 15,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-right-slot-15-t1",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     5.324999,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 15,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-right-slot-16-t0",
+    "zone": "wall-right",
+    "kind": "wall",
+    "seat": "right",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     7,
+     6.085714,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     8.7e-8,
+     1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 16,
+     "tier": 0
+    }
+   },
+   {
+    "id": "pond-right-00",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "3p",
+    "pose": "lying-faceup",
+    "origin": [
+     4.81,
+     -1.892858,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-right-01",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "6p",
+    "pose": "lying-faceup",
+    "origin": [
+     4.81,
+     -1.135715,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-right-02",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "1m",
+    "pose": "lying-faceup",
+    "origin": [
+     4.81,
+     -0.378572,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-right-03",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "1m",
+    "pose": "lying-faceup",
+    "origin": [
+     4.81,
+     0.378571,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-right-04",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "5p",
+    "pose": "lying-faceup",
+    "origin": [
+     4.81,
+     1.135714,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-right-05",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "8s",
+    "pose": "lying-faceup",
+    "origin": [
+     4.81,
+     1.892857,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 5
+    }
+   },
+   {
+    "id": "pond-right-10",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "5z",
+    "pose": "lying-faceup",
+    "origin": [
+     3.799286,
+     -1.892857,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-right-11",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "2p",
+    "pose": "lying-faceup",
+    "origin": [
+     3.799286,
+     -1.135715,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-right-12",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "4p",
+    "pose": "lying-faceup",
+    "origin": [
+     3.799286,
+     -0.378572,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-right-13",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "9m",
+    "pose": "lying-faceup",
+    "origin": [
+     3.799286,
+     0.378571,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-right-14",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "7p",
+    "pose": "lying-faceup",
+    "origin": [
+     3.799286,
+     1.135714,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-right-15",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "5mr",
+    "pose": "lying-faceup",
+    "origin": [
+     3.924286,
+     2.021428,
+     0
+    ],
+    "rotation": [
+     1,
+     1.19e-7,
+     0,
+     -1.19e-7,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 5,
+     "riichi": true,
+     "turned": true
+    }
+   },
+   {
+    "id": "pond-right-20",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "5pr",
+    "pose": "lying-faceup",
+    "origin": [
+     2.788571,
+     -1.892857,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-right-21",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "7p",
+    "pose": "lying-faceup",
+    "origin": [
+     2.788571,
+     -1.135715,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-right-22",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "8s",
+    "pose": "lying-faceup",
+    "origin": [
+     2.788571,
+     -0.378572,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-right-23",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "8m",
+    "pose": "lying-faceup",
+    "origin": [
+     2.788571,
+     0.378571,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-right-24",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "2p",
+    "pose": "lying-faceup",
+    "origin": [
+     2.788571,
+     1.135714,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-right-25",
+    "zone": "pond-right",
+    "kind": "pond",
+    "seat": "right",
+    "face": "6m",
+    "pose": "lying-faceup",
+    "origin": [
+     2.788571,
+     1.892857,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 5
+    }
+   },
+   {
+    "id": "hand-right-00",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     -4.564287,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0
+    }
+   },
+   {
+    "id": "hand-right-01",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     -3.803572,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1
+    }
+   },
+   {
+    "id": "hand-right-02",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     -3.042858,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2
+    }
+   },
+   {
+    "id": "hand-right-03",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     -2.282144,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3
+    }
+   },
+   {
+    "id": "hand-right-04",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     -1.521429,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4
+    }
+   },
+   {
+    "id": "hand-right-05",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     -0.760715,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5
+    }
+   },
+   {
+    "id": "hand-right-06",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     -0.000001,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6
+    }
+   },
+   {
+    "id": "hand-right-07",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     0.760713,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7
+    }
+   },
+   {
+    "id": "hand-right-08",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     1.521428,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8
+    }
+   },
+   {
+    "id": "hand-right-09",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     2.282142,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9
+    }
+   },
+   {
+    "id": "hand-right-10",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     3.042856,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10
+    }
+   },
+   {
+    "id": "hand-right-11",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     3.803571,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11
+    }
+   },
+   {
+    "id": "hand-right-12",
+    "zone": "hand-right",
+    "kind": "hand",
+    "seat": "right",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     10.6,
+     4.564285,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     -7.5e-8,
+     1,
+     1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12
+    }
+   },
+   {
+    "id": "meld-right-0",
+    "zone": "meld-right",
+    "kind": "meld",
+    "seat": "right",
+    "face": "5p",
+    "pose": "lying-faceup",
+    "origin": [
+     10.600001,
+     6.480356,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 0,
+     "turned": false
+    }
+   },
+   {
+    "id": "meld-right-1",
+    "zone": "meld-right",
+    "kind": "meld",
+    "seat": "right",
+    "face": "2z",
+    "pose": "lying-faceup",
+    "origin": [
+     10.600001,
+     7.24107,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     0,
+     1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 1,
+     "turned": false
+    }
+   },
+   {
+    "id": "meld-right-2",
+    "zone": "meld-right",
+    "kind": "meld",
+    "seat": "right",
+    "face": "5p",
+    "pose": "lying-faceup",
+    "origin": [
+     10.725001,
+     8.126784,
+     0
+    ],
+    "rotation": [
+     -1,
+     -1.51e-7,
+     0,
+     1.51e-7,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 2,
+     "turned": true
+    }
+   },
+   {
+    "id": "wall-top-slot-00-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     6.085715,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-00-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     6.085715,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-01-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     5.325,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-01-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     5.325,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-02-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     4.564286,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-02-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     4.564286,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-03-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     3.803572,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-03-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     3.803572,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-04-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     3.042858,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-04-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     3.042858,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-05-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     2.282144,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-05-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     2.282144,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-06-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     1.521429,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-06-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     1.521429,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-07-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     0.760715,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-07-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     0.760715,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-08-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     0.000001,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-08-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     0.000001,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-09-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -0.760714,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-09-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -0.760714,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-10-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -1.521428,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-10-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -1.521428,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-11-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -2.282142,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-11-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -2.282142,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-12-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -3.042856,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-12-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -3.042856,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-13-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -3.803571,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 13,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-13-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -3.803571,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 13,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-14-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -4.564285,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 14,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-14-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -4.564285,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 14,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-15-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -5.324999,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 15,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-top-slot-15-t1",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -5.324999,
+     7,
+     1.189286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 15,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-top-slot-16-t0",
+    "zone": "wall-top",
+    "kind": "wall",
+    "seat": "top",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -6.085714,
+     7,
+     0.589286
+    ],
+    "rotation": [
+     -1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     1,
+     8.7e-8,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 16,
+     "tier": 0
+    }
+   },
+   {
+    "id": "pond-top-00",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "5z",
+    "pose": "lying-faceup",
+    "origin": [
+     1.892858,
+     4.81,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-top-01",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "1m",
+    "pose": "lying-faceup",
+    "origin": [
+     1.135715,
+     4.81,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-top-02",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "9s",
+    "pose": "lying-faceup",
+    "origin": [
+     0.378572,
+     4.81,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-top-03",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "8m",
+    "pose": "lying-faceup",
+    "origin": [
+     -0.378571,
+     4.81,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-top-04",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "3p",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.135714,
+     4.81,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-top-05",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "3s",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.892857,
+     4.81,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 5
+    }
+   },
+   {
+    "id": "pond-top-10",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "1s",
+    "pose": "lying-faceup",
+    "origin": [
+     1.892858,
+     3.799286,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-top-11",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "1z",
+    "pose": "lying-faceup",
+    "origin": [
+     1.135715,
+     3.799286,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-top-12",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "7p",
+    "pose": "lying-faceup",
+    "origin": [
+     0.378572,
+     3.799286,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-top-13",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "7s",
+    "pose": "lying-faceup",
+    "origin": [
+     -0.378571,
+     3.799286,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-top-14",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "7s",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.135714,
+     3.799286,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-top-15",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "8m",
+    "pose": "lying-faceup",
+    "origin": [
+     -2.021428,
+     3.924286,
+     0
+    ],
+    "rotation": [
+     1.31e-7,
+     -1,
+     0,
+     1,
+     1.31e-7,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 5,
+     "riichi": true,
+     "turned": true
+    }
+   },
+   {
+    "id": "pond-top-20",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "3z",
+    "pose": "lying-faceup",
+    "origin": [
+     1.892857,
+     2.788571,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-top-21",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "5pr",
+    "pose": "lying-faceup",
+    "origin": [
+     1.135715,
+     2.788571,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-top-22",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "8m",
+    "pose": "lying-faceup",
+    "origin": [
+     0.378572,
+     2.788571,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-top-23",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "2s",
+    "pose": "lying-faceup",
+    "origin": [
+     -0.378571,
+     2.788571,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-top-24",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "7s",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.135714,
+     2.788571,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-top-25",
+    "zone": "pond-top",
+    "kind": "pond",
+    "seat": "top",
+    "face": "8s",
+    "pose": "lying-faceup",
+    "origin": [
+     -1.892857,
+     2.788571,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 5
+    }
+   },
+   {
+    "id": "hand-top-00",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     4.564287,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0
+    }
+   },
+   {
+    "id": "hand-top-01",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     3.803572,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1
+    }
+   },
+   {
+    "id": "hand-top-02",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     3.042858,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2
+    }
+   },
+   {
+    "id": "hand-top-03",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     2.282144,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3
+    }
+   },
+   {
+    "id": "hand-top-04",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     1.52143,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4
+    }
+   },
+   {
+    "id": "hand-top-05",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     0.760715,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5
+    }
+   },
+   {
+    "id": "hand-top-06",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     0.000001,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6
+    }
+   },
+   {
+    "id": "hand-top-07",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -0.760713,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7
+    }
+   },
+   {
+    "id": "hand-top-08",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -1.521428,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8
+    }
+   },
+   {
+    "id": "hand-top-09",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -2.282142,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9
+    }
+   },
+   {
+    "id": "hand-top-10",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -3.042856,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10
+    }
+   },
+   {
+    "id": "hand-top-11",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -3.803571,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11
+    }
+   },
+   {
+    "id": "hand-top-12",
+    "zone": "hand-top",
+    "kind": "hand",
+    "seat": "top",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -4.564285,
+     10.6,
+     0.5
+    ],
+    "rotation": [
+     -1,
+     0,
+     8.7e-8,
+     8.7e-8,
+     -7.5e-8,
+     1,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12
+    }
+   },
+   {
+    "id": "meld-top-0",
+    "zone": "meld-top",
+    "kind": "meld",
+    "seat": "top",
+    "face": "7z",
+    "pose": "lying-faceup",
+    "origin": [
+     -6.480356,
+     10.600001,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 0,
+     "turned": false
+    }
+   },
+   {
+    "id": "meld-top-1",
+    "zone": "meld-top",
+    "kind": "meld",
+    "seat": "top",
+    "face": "6p",
+    "pose": "lying-faceup",
+    "origin": [
+     -7.24107,
+     10.600001,
+     0
+    ],
+    "rotation": [
+     -1,
+     -8.7e-8,
+     0,
+     8.7e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 1,
+     "turned": false
+    }
+   },
+   {
+    "id": "meld-top-2",
+    "zone": "meld-top",
+    "kind": "meld",
+    "seat": "top",
+    "face": "5z",
+    "pose": "lying-faceup",
+    "origin": [
+     -8.126784,
+     10.725001,
+     0
+    ],
+    "rotation": [
+     -1.63e-7,
+     1,
+     0,
+     -1,
+     -1.63e-7,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 2,
+     "turned": true
+    }
+   },
+   {
+    "id": "wall-left-slot-00-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     6.085714,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-00-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     6.085714,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-01-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     5.324999,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-01-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     5.324999,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-02-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     4.564285,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-02-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     4.564285,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-03-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     3.803571,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-03-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     3.803571,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-04-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     3.042857,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-04-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": "1z",
+    "pose": "lying-faceup",
+    "origin": [
+     -7,
+     3.042857,
+     0.6
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4,
+     "tier": 1,
+     "dora": true
+    }
+   },
+   {
+    "id": "wall-left-slot-05-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     2.282142,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-05-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     2.282142,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-06-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     1.521428,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-06-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     1.521428,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-07-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     0.260714,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-07-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     0.260714,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-08-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -0.500001,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-08-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -0.500001,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-09-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -1.260715,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-09-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -1.260715,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-10-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -2.021429,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-10-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -2.021429,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-11-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -2.782143,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-11-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -2.782143,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-12-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -3.542858,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-12-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -3.542858,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-13-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -4.303572,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 13,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-13-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -4.303572,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 13,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-14-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -5.064286,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 14,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-14-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -5.064286,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 14,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-15-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -5.825,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 15,
+     "tier": 0
+    }
+   },
+   {
+    "id": "wall-left-slot-15-t1",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -5.825,
+     1.189286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 15,
+     "tier": 1
+    }
+   },
+   {
+    "id": "wall-left-slot-16-t0",
+    "zone": "wall-left",
+    "kind": "wall",
+    "seat": "left",
+    "face": null,
+    "pose": "lying-facedown",
+    "origin": [
+     -7,
+     -6.585715,
+     0.589286
+    ],
+    "rotation": [
+     7.5e-8,
+     -1,
+     -8.7e-8,
+     -1,
+     -7.5e-8,
+     0,
+     0,
+     8.7e-8,
+     -1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 16,
+     "tier": 0
+    }
+   },
+   {
+    "id": "pond-left-00",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "7p",
+    "pose": "lying-faceup",
+    "origin": [
+     -4.81,
+     1.892857,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-left-01",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "4m",
+    "pose": "lying-faceup",
+    "origin": [
+     -4.81,
+     1.135714,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-left-02",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "1m",
+    "pose": "lying-faceup",
+    "origin": [
+     -4.81,
+     0.378571,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-left-03",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "5m",
+    "pose": "lying-faceup",
+    "origin": [
+     -4.81,
+     -0.378572,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-left-04",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "8s",
+    "pose": "lying-faceup",
+    "origin": [
+     -4.81,
+     -1.135715,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-left-05",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "6p",
+    "pose": "lying-faceup",
+    "origin": [
+     -4.81,
+     -1.892858,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 0,
+     "column": 5
+    }
+   },
+   {
+    "id": "pond-left-10",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "2m",
+    "pose": "lying-faceup",
+    "origin": [
+     -3.799286,
+     1.892857,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-left-11",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "3p",
+    "pose": "lying-faceup",
+    "origin": [
+     -3.799286,
+     1.135714,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-left-12",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "2m",
+    "pose": "lying-faceup",
+    "origin": [
+     -3.799286,
+     0.378571,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-left-13",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "7p",
+    "pose": "lying-faceup",
+    "origin": [
+     -3.799286,
+     -0.378572,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-left-14",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "3s",
+    "pose": "lying-faceup",
+    "origin": [
+     -3.799286,
+     -1.135715,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-left-15",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "3s",
+    "pose": "lying-faceup",
+    "origin": [
+     -3.924286,
+     -2.021429,
+     0
+    ],
+    "rotation": [
+     -1,
+     3.2e-8,
+     0,
+     -3.2e-8,
+     -1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 1,
+     "column": 5,
+     "riichi": true,
+     "turned": true
+    }
+   },
+   {
+    "id": "pond-left-20",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "5p",
+    "pose": "lying-faceup",
+    "origin": [
+     -2.788571,
+     1.892857,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 0
+    }
+   },
+   {
+    "id": "pond-left-21",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "6s",
+    "pose": "lying-faceup",
+    "origin": [
+     -2.788571,
+     1.135714,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 1
+    }
+   },
+   {
+    "id": "pond-left-22",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "5sr",
+    "pose": "lying-faceup",
+    "origin": [
+     -2.788571,
+     0.378571,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 2
+    }
+   },
+   {
+    "id": "pond-left-23",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "4m",
+    "pose": "lying-faceup",
+    "origin": [
+     -2.788571,
+     -0.378572,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 3
+    }
+   },
+   {
+    "id": "pond-left-24",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "8s",
+    "pose": "lying-faceup",
+    "origin": [
+     -2.788571,
+     -1.135715,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 4
+    }
+   },
+   {
+    "id": "pond-left-25",
+    "zone": "pond-left",
+    "kind": "pond",
+    "seat": "left",
+    "face": "2s",
+    "pose": "lying-faceup",
+    "origin": [
+     -2.788571,
+     -1.892857,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "row": 2,
+     "column": 5
+    }
+   },
+   {
+    "id": "hand-left-00",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     4.564285,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 0
+    }
+   },
+   {
+    "id": "hand-left-01",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     3.803571,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 1
+    }
+   },
+   {
+    "id": "hand-left-02",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     3.042856,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 2
+    }
+   },
+   {
+    "id": "hand-left-03",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     2.282142,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 3
+    }
+   },
+   {
+    "id": "hand-left-04",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     1.521428,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 4
+    }
+   },
+   {
+    "id": "hand-left-05",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     0.760713,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 5
+    }
+   },
+   {
+    "id": "hand-left-06",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     -0.000001,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 6
+    }
+   },
+   {
+    "id": "hand-left-07",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     -0.760715,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 7
+    }
+   },
+   {
+    "id": "hand-left-08",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     -1.521429,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 8
+    }
+   },
+   {
+    "id": "hand-left-09",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     -2.282144,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 9
+    }
+   },
+   {
+    "id": "hand-left-10",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     -3.042858,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 10
+    }
+   },
+   {
+    "id": "hand-left-11",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     -3.803572,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 11
+    }
+   },
+   {
+    "id": "hand-left-12",
+    "zone": "hand-left",
+    "kind": "hand",
+    "seat": "left",
+    "face": null,
+    "pose": "standing-back",
+    "origin": [
+     -10.6,
+     -4.564287,
+     0.5
+    ],
+    "rotation": [
+     7.5e-8,
+     7.5e-8,
+     -1,
+     -1,
+     0,
+     -7.5e-8,
+     0,
+     1,
+     7.5e-8
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": 12
+    }
+   },
+   {
+    "id": "meld-left-0",
+    "zone": "meld-left",
+    "kind": "meld",
+    "seat": "left",
+    "face": "7s",
+    "pose": "lying-faceup",
+    "origin": [
+     -10.599999,
+     -6.480358,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 0,
+     "turned": false
+    }
+   },
+   {
+    "id": "meld-left-1",
+    "zone": "meld-left",
+    "kind": "meld",
+    "seat": "left",
+    "face": "1z",
+    "pose": "lying-faceup",
+    "origin": [
+     -10.599999,
+     -7.241072,
+     0
+    ],
+    "rotation": [
+     7.5e-8,
+     1,
+     0,
+     -1,
+     7.5e-8,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 1,
+     "turned": false
+    }
+   },
+   {
+    "id": "meld-left-2",
+    "zone": "meld-left",
+    "kind": "meld",
+    "seat": "left",
+    "face": "8m",
+    "pose": "lying-faceup",
+    "origin": [
+     -10.724999,
+     -8.126786,
+     0
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "column": 2,
+     "turned": true
+    }
+   },
+   {
+    "id": "hand-bottom-draw",
+    "zone": "hand-bottom",
+    "kind": "drawn",
+    "seat": "bottom",
+    "face": "1m",
+    "pose": "standing",
+    "origin": [
+     5.576786,
+     -10.496044,
+     0.489074
+    ],
+    "rotation": [
+     1,
+     0,
+     0,
+     0,
+     0.207911775,
+     -0.978147626,
+     0,
+     0.978147626,
+     0.207911775
+    ],
+    "dimensions": {
+     "width": 0.75,
+     "height": 1,
+     "thickness": 0.589286
+    },
+    "cell": {
+     "slot": "draw"
+    }
+   }
+  ]
+ },
+ "metrics": {
+  "resolution": [
+   1920,
+   1080
+  ],
+  "camera": {
+   "mode": "perspective",
+   "eye": [
+    0,
+    -48.851858,
+    58.569378
+   ],
+   "target": [
+    0,
+    0,
+    0.35
+   ],
+   "lensMm": 75,
+   "sensorWidthMm": 36,
+   "shiftX": 0,
+   "shiftY": -0.02,
+   "elevationDeg": 50,
+   "distanceUnits": 76,
+   "focalPixels": 4000,
+   "right": [
+    1,
+    0,
+    0
+   ],
+   "up": [
+    0,
+    0.766044447,
+    0.642787605
+   ],
+   "forward": [
+    0,
+    0.642787605,
+    -0.766044447
+   ]
+  },
+  "vanishingPoint": {
+   "x": 960,
+   "y": -4265.4144
+  },
+  "runConvergencePx": [
+   960,
+   -4265.51
+  ],
+  "runConvergenceDeltaPx": 0.0956,
+  "runs": {
+   "left": {
+    "slotRange": [
+     4,
+     11
+    ],
+    "maxDeviationPx": 0.0006
+   },
+   "right": {
+    "slotRange": [
+     4,
+     12
+    ],
+    "maxDeviationPx": 0.0006
+   }
+  },
+  "rim": {
+   "marginsPx": {
+    "left": 164.59,
+    "top": 16.33,
+    "right": 164.59,
+    "bottom": -41.81
+   },
+   "boundsPx": {
+    "left": 164.59,
+    "top": 16.33,
+    "right": 1755.41,
+    "bottom": 1121.81
+   }
+  },
+  "tileMarginsPx": {
+   "left": 328.165,
+   "top": 66.7797,
+   "right": 341.1848,
+   "bottom": 73.3997
+  },
+  "hand": {
+   "bottomMarginPx": 73.5256,
+   "topMarginPx": 940.7142,
+   "leftMarginPx": 674.4043,
+   "rightMarginPx": 674.4043,
+   "rows": [
+    {
+     "slot": 0,
+     "centreX": 694.176,
+     "innerFaceNormal": [
+      1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 3.811,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 2.2694,
+     "outwardLeanRightPx": 1.972
+    },
+    {
+     "slot": 1,
+     "centreX": 738.48,
+     "innerFaceNormal": [
+      1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 3.119,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 1.9159,
+     "outwardLeanRightPx": 1.6186
+    },
+    {
+     "slot": 2,
+     "centreX": 782.784,
+     "innerFaceNormal": [
+      1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 2.427,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 1.5625,
+     "outwardLeanRightPx": 1.2651
+    },
+    {
+     "slot": 3,
+     "centreX": 827.088,
+     "innerFaceNormal": [
+      1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 1.7349,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 1.209,
+     "outwardLeanRightPx": 0.9117
+    },
+    {
+     "slot": 4,
+     "centreX": 871.392,
+     "innerFaceNormal": [
+      1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 1.0429,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 0.8556,
+     "outwardLeanRightPx": 0.5582
+    },
+    {
+     "slot": 5,
+     "centreX": 915.696,
+     "innerFaceNormal": [
+      1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 0.3509,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 0.5021,
+     "outwardLeanRightPx": 0.2048
+    },
+    {
+     "slot": 6,
+     "centreX": 960,
+     "innerFaceNormal": [
+      1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 0.3411,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 0.1487,
+     "outwardLeanRightPx": -0.1487
+    },
+    {
+     "slot": 7,
+     "centreX": 1004.304,
+     "innerFaceNormal": [
+      -1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 0.3509,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 0.2048,
+     "outwardLeanRightPx": 0.5021
+    },
+    {
+     "slot": 8,
+     "centreX": 1048.608,
+     "innerFaceNormal": [
+      -1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 1.0429,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 0.5582,
+     "outwardLeanRightPx": 0.8556
+    },
+    {
+     "slot": 9,
+     "centreX": 1092.912,
+     "innerFaceNormal": [
+      -1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 1.7349,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 0.9117,
+     "outwardLeanRightPx": 1.209
+    },
+    {
+     "slot": 10,
+     "centreX": 1137.216,
+     "innerFaceNormal": [
+      -1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 2.427,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 1.2651,
+     "outwardLeanRightPx": 1.5625
+    },
+    {
+     "slot": 11,
+     "centreX": 1181.52,
+     "innerFaceNormal": [
+      -1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 3.119,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 1.6186,
+     "outwardLeanRightPx": 1.9159
+    },
+    {
+     "slot": 12,
+     "centreX": 1225.824,
+     "innerFaceNormal": [
+      -1,
+      0,
+      0
+     ],
+     "innerFaceDot": 1,
+     "sideSliverPx": 3.811,
+     "topWidthPx": 37.4223,
+     "bottomWidthPx": 37.1249,
+     "outwardLeanLeftPx": 1.972,
+     "outwardLeanRightPx": 2.2694
+    }
+   ]
+  },
+  "wallInnerFaces": [
+   {
+    "id": "wall-left-slot-00-t0",
+    "seat": "left",
+    "slot": 0,
+    "tier": 0,
+    "normalDotInward": 0.7547,
+    "normalDotView": 0.0873,
+    "widthPx": 3.7969,
+    "centre": [
+     634.808,
+     270.163
+    ]
+   },
+   {
+    "id": "wall-left-slot-00-t1",
+    "seat": "left",
+    "slot": 0,
+    "tier": 1,
+    "normalDotInward": 0.7547,
+    "normalDotView": 0.0878,
+    "widthPx": 3.8409,
+    "centre": [
+     632.928,
+     249.418
+    ]
+   },
+   {
+    "id": "wall-left-slot-01-t0",
+    "seat": "left",
+    "slot": 1,
+    "tier": 0,
+    "normalDotInward": 0.7959,
+    "normalDotView": 0.0879,
+    "widthPx": 3.8437,
+    "centre": [
+     632.807,
+     298.073
+    ]
+   },
+   {
+    "id": "wall-left-slot-01-t1",
+    "seat": "left",
+    "slot": 1,
+    "tier": 1,
+    "normalDotInward": 0.7959,
+    "normalDotView": 0.0884,
+    "widthPx": 3.8886,
+    "centre": [
+     630.904,
+     277.362
+    ]
+   },
+   {
+    "id": "wall-left-slot-02-t0",
+    "seat": "left",
+    "slot": 2,
+    "tier": 0,
+    "normalDotInward": 0.8377,
+    "normalDotView": 0.0884,
+    "widthPx": 3.8915,
+    "centre": [
+     630.781,
+     326.328
+    ]
+   },
+   {
+    "id": "wall-left-slot-02-t1",
+    "seat": "left",
+    "slot": 2,
+    "tier": 1,
+    "normalDotInward": 0.8377,
+    "normalDotView": 0.0889,
+    "widthPx": 3.9372,
+    "centre": [
+     628.854,
+     305.653
+    ]
+   },
+   {
+    "id": "wall-left-slot-03-t0",
+    "seat": "left",
+    "slot": 3,
+    "tier": 0,
+    "normalDotInward": 0.8787,
+    "normalDotView": 0.089,
+    "widthPx": 3.9401,
+    "centre": [
+     628.73,
+     354.935
+    ]
+   },
+   {
+    "id": "wall-left-slot-03-t1",
+    "seat": "left",
+    "slot": 3,
+    "tier": 1,
+    "normalDotInward": 0.8787,
+    "normalDotView": 0.0895,
+    "widthPx": 3.9867,
+    "centre": [
+     626.779,
+     334.3
+    ]
+   },
+   {
+    "id": "wall-left-slot-04-t0",
+    "seat": "left",
+    "slot": 4,
+    "tier": 0,
+    "normalDotInward": 0.9171,
+    "normalDotView": 0.0896,
+    "widthPx": 3.9897,
+    "centre": [
+     626.653,
+     383.901
+    ]
+   },
+   {
+    "id": "wall-left-slot-04-t1",
+    "seat": "left",
+    "slot": 4,
+    "tier": 1,
+    "normalDotInward": 0.9171,
+    "normalDotView": 0.0896,
+    "widthPx": 4.0371,
+    "centre": [
+     624.677,
+     363.307
+    ]
+   },
+   {
+    "id": "wall-left-slot-05-t0",
+    "seat": "left",
+    "slot": 5,
+    "tier": 0,
+    "normalDotInward": 0.9507,
+    "normalDotView": 0.0902,
+    "widthPx": 4.0402,
+    "centre": [
+     624.55,
+     413.232
+    ]
+   },
+   {
+    "id": "wall-left-slot-05-t1",
+    "seat": "left",
+    "slot": 5,
+    "tier": 1,
+    "normalDotInward": 0.9507,
+    "normalDotView": 0.0907,
+    "widthPx": 4.0885,
+    "centre": [
+     622.549,
+     392.683
+    ]
+   },
+   {
+    "id": "wall-left-slot-06-t0",
+    "seat": "left",
+    "slot": 6,
+    "tier": 0,
+    "normalDotInward": 0.9772,
+    "normalDotView": 0.0908,
+    "widthPx": 4.0916,
+    "centre": [
+     622.421,
+     442.936
+    ]
+   },
+   {
+    "id": "wall-left-slot-06-t1",
+    "seat": "left",
+    "slot": 6,
+    "tier": 1,
+    "normalDotInward": 0.9772,
+    "normalDotView": 0.0913,
+    "widthPx": 4.1409,
+    "centre": [
+     620.394,
+     422.434
+    ]
+   },
+   {
+    "id": "wall-left-slot-07-t0",
+    "seat": "left",
+    "slot": 7,
+    "tier": 0,
+    "normalDotInward": 0.9993,
+    "normalDotView": 0.0917,
+    "widthPx": 4.1791,
+    "centre": [
+     618.831,
+     493.003
+    ]
+   },
+   {
+    "id": "wall-left-slot-07-t1",
+    "seat": "left",
+    "slot": 7,
+    "tier": 1,
+    "normalDotInward": 0.9993,
+    "normalDotView": 0.0923,
+    "widthPx": 4.23,
+    "centre": [
+     616.761,
+     472.585
+    ]
+   },
+   {
+    "id": "wall-left-slot-08-t0",
+    "seat": "left",
+    "slot": 8,
+    "tier": 0,
+    "normalDotInward": 0.9975,
+    "normalDotView": 0.0923,
+    "widthPx": 4.2333,
+    "centre": [
+     616.628,
+     523.732
+    ]
+   },
+   {
+    "id": "wall-left-slot-08-t1",
+    "seat": "left",
+    "slot": 8,
+    "tier": 1,
+    "normalDotInward": 0.9975,
+    "normalDotView": 0.0929,
+    "widthPx": 4.2851,
+    "centre": [
+     614.531,
+     503.369
+    ]
+   },
+   {
+    "id": "wall-left-slot-09-t0",
+    "seat": "left",
+    "slot": 9,
+    "tier": 0,
+    "normalDotInward": 0.9842,
+    "normalDotView": 0.0929,
+    "widthPx": 4.2885,
+    "centre": [
+     614.396,
+     554.86
+    ]
+   },
+   {
+    "id": "wall-left-slot-09-t1",
+    "seat": "left",
+    "slot": 9,
+    "tier": 1,
+    "normalDotInward": 0.9842,
+    "normalDotView": 0.0935,
+    "widthPx": 4.3414,
+    "centre": [
+     612.271,
+     534.555
+    ]
+   },
+   {
+    "id": "wall-left-slot-10-t0",
+    "seat": "left",
+    "slot": 10,
+    "tier": 0,
+    "normalDotInward": 0.9607,
+    "normalDotView": 0.0935,
+    "widthPx": 4.3448,
+    "centre": [
+     612.135,
+     586.396
+    ]
+   },
+   {
+    "id": "wall-left-slot-10-t1",
+    "seat": "left",
+    "slot": 10,
+    "tier": 1,
+    "normalDotInward": 0.9607,
+    "normalDotView": 0.0941,
+    "widthPx": 4.3987,
+    "centre": [
+     609.982,
+     566.152
+    ]
+   },
+   {
+    "id": "wall-left-slot-11-t0",
+    "seat": "left",
+    "slot": 11,
+    "tier": 0,
+    "normalDotInward": 0.9293,
+    "normalDotView": 0.0941,
+    "widthPx": 4.4022,
+    "centre": [
+     609.844,
+     618.347
+    ]
+   },
+   {
+    "id": "wall-left-slot-11-t1",
+    "seat": "left",
+    "slot": 11,
+    "tier": 1,
+    "normalDotInward": 0.9293,
+    "normalDotView": 0.0947,
+    "widthPx": 4.4572,
+    "centre": [
+     607.663,
+     598.168
+    ]
+   },
+   {
+    "id": "wall-left-slot-12-t0",
+    "seat": "left",
+    "slot": 12,
+    "tier": 0,
+    "normalDotInward": 0.8922,
+    "normalDotView": 0.0947,
+    "widthPx": 4.4607,
+    "centre": [
+     607.523,
+     650.721
+    ]
+   },
+   {
+    "id": "wall-left-slot-12-t1",
+    "seat": "left",
+    "slot": 12,
+    "tier": 1,
+    "normalDotInward": 0.8922,
+    "normalDotView": 0.0953,
+    "widthPx": 4.5169,
+    "centre": [
+     605.313,
+     630.611
+    ]
+   },
+   {
+    "id": "wall-left-slot-13-t0",
+    "seat": "left",
+    "slot": 13,
+    "tier": 0,
+    "normalDotInward": 0.8519,
+    "normalDotView": 0.0953,
+    "widthPx": 4.5205,
+    "centre": [
+     605.171,
+     683.528
+    ]
+   },
+   {
+    "id": "wall-left-slot-13-t1",
+    "seat": "left",
+    "slot": 13,
+    "tier": 1,
+    "normalDotInward": 0.8519,
+    "normalDotView": 0.0959,
+    "widthPx": 4.5777,
+    "centre": [
+     602.931,
+     663.49
+    ]
+   },
+   {
+    "id": "wall-left-slot-14-t0",
+    "seat": "left",
+    "slot": 14,
+    "tier": 0,
+    "normalDotInward": 0.8102,
+    "normalDotView": 0.0959,
+    "widthPx": 4.5814,
+    "centre": [
+     602.787,
+     716.775
+    ]
+   },
+   {
+    "id": "wall-left-slot-14-t1",
+    "seat": "left",
+    "slot": 14,
+    "tier": 1,
+    "normalDotInward": 0.8102,
+    "normalDotView": 0.0965,
+    "widthPx": 4.6398,
+    "centre": [
+     600.517,
+     696.813
+    ]
+   },
+   {
+    "id": "wall-left-slot-15-t0",
+    "seat": "left",
+    "slot": 15,
+    "tier": 0,
+    "normalDotInward": 0.7687,
+    "normalDotView": 0.0965,
+    "widthPx": 4.6436,
+    "centre": [
+     600.371,
+     750.472
+    ]
+   },
+   {
+    "id": "wall-left-slot-15-t1",
+    "seat": "left",
+    "slot": 15,
+    "tier": 1,
+    "normalDotInward": 0.7687,
+    "normalDotView": 0.0971,
+    "widthPx": 4.7032,
+    "centre": [
+     598.07,
+     730.59
+    ]
+   },
+   {
+    "id": "wall-left-slot-16-t0",
+    "seat": "left",
+    "slot": 16,
+    "tier": 0,
+    "normalDotInward": 0.7283,
+    "normalDotView": 0.0971,
+    "widthPx": 4.7071,
+    "centre": [
+     597.922,
+     784.628
+    ]
+   },
+   {
+    "id": "wall-right-slot-00-t0",
+    "seat": "right",
+    "slot": 0,
+    "tier": 0,
+    "normalDotInward": 0.7547,
+    "normalDotView": 0.0967,
+    "widthPx": 4.6652,
+    "centre": [
+     1320.465,
+     762.126
+    ]
+   },
+   {
+    "id": "wall-right-slot-00-t1",
+    "seat": "right",
+    "slot": 0,
+    "tier": 1,
+    "normalDotInward": 0.7547,
+    "normalDotView": 0.0973,
+    "widthPx": 4.7252,
+    "centre": [
+     1322.777,
+     742.272
+    ]
+   },
+   {
+    "id": "wall-right-slot-01-t0",
+    "seat": "right",
+    "slot": 1,
+    "tier": 0,
+    "normalDotInward": 0.7959,
+    "normalDotView": 0.0961,
+    "widthPx": 4.6026,
+    "centre": [
+     1318.038,
+     728.273
+    ]
+   },
+   {
+    "id": "wall-right-slot-01-t1",
+    "seat": "right",
+    "slot": 1,
+    "tier": 1,
+    "normalDotInward": 0.7959,
+    "normalDotView": 0.0967,
+    "widthPx": 4.6614,
+    "centre": [
+     1320.318,
+     708.338
+    ]
+   },
+   {
+    "id": "wall-right-slot-02-t0",
+    "seat": "right",
+    "slot": 2,
+    "tier": 0,
+    "normalDotInward": 0.8377,
+    "normalDotView": 0.0955,
+    "widthPx": 4.5412,
+    "centre": [
+     1315.643,
+     694.872
+    ]
+   },
+   {
+    "id": "wall-right-slot-02-t1",
+    "seat": "right",
+    "slot": 2,
+    "tier": 1,
+    "normalDotInward": 0.8377,
+    "normalDotView": 0.0961,
+    "widthPx": 4.5989,
+    "centre": [
+     1317.893,
+     674.86
+    ]
+   },
+   {
+    "id": "wall-right-slot-03-t0",
+    "seat": "right",
+    "slot": 3,
+    "tier": 0,
+    "normalDotInward": 0.8787,
+    "normalDotView": 0.0949,
+    "widthPx": 4.4811,
+    "centre": [
+     1313.28,
+     661.916
+    ]
+   },
+   {
+    "id": "wall-right-slot-03-t1",
+    "seat": "right",
+    "slot": 3,
+    "tier": 1,
+    "normalDotInward": 0.8787,
+    "normalDotView": 0.0955,
+    "widthPx": 4.5376,
+    "centre": [
+     1315.5,
+     641.83
+    ]
+   },
+   {
+    "id": "wall-right-slot-04-t0",
+    "seat": "right",
+    "slot": 4,
+    "tier": 0,
+    "normalDotInward": 0.9171,
+    "normalDotView": 0.0943,
+    "widthPx": 4.4221,
+    "centre": [
+     1310.948,
+     629.394
+    ]
+   },
+   {
+    "id": "wall-right-slot-04-t1",
+    "seat": "right",
+    "slot": 4,
+    "tier": 1,
+    "normalDotInward": 0.9171,
+    "normalDotView": 0.0949,
+    "widthPx": 4.4775,
+    "centre": [
+     1313.139,
+     609.239
+    ]
+   },
+   {
+    "id": "wall-right-slot-05-t0",
+    "seat": "right",
+    "slot": 5,
+    "tier": 0,
+    "normalDotInward": 0.9507,
+    "normalDotView": 0.0937,
+    "widthPx": 4.3643,
+    "centre": [
+     1308.647,
+     597.299
+    ]
+   },
+   {
+    "id": "wall-right-slot-05-t1",
+    "seat": "right",
+    "slot": 5,
+    "tier": 1,
+    "normalDotInward": 0.9507,
+    "normalDotView": 0.0943,
+    "widthPx": 4.4186,
+    "centre": [
+     1310.809,
+     577.077
+    ]
+   },
+   {
+    "id": "wall-right-slot-06-t0",
+    "seat": "right",
+    "slot": 6,
+    "tier": 0,
+    "normalDotInward": 0.9772,
+    "normalDotView": 0.0931,
+    "widthPx": 4.3076,
+    "centre": [
+     1306.376,
+     565.622
+    ]
+   },
+   {
+    "id": "wall-right-slot-06-t1",
+    "seat": "right",
+    "slot": 6,
+    "tier": 1,
+    "normalDotInward": 0.9772,
+    "normalDotView": 0.0937,
+    "widthPx": 4.3609,
+    "centre": [
+     1308.51,
+     545.338
+    ]
+   },
+   {
+    "id": "wall-right-slot-07-t0",
+    "seat": "right",
+    "slot": 7,
+    "tier": 0,
+    "normalDotInward": 0.9941,
+    "normalDotView": 0.0925,
+    "widthPx": 4.2521,
+    "centre": [
+     1304.134,
+     534.355
+    ]
+   },
+   {
+    "id": "wall-right-slot-07-t1",
+    "seat": "right",
+    "slot": 7,
+    "tier": 1,
+    "normalDotInward": 0.9941,
+    "normalDotView": 0.0931,
+    "widthPx": 4.3043,
+    "centre": [
+     1306.24,
+     514.012
+    ]
+   },
+   {
+    "id": "wall-right-slot-08-t0",
+    "seat": "right",
+    "slot": 8,
+    "tier": 0,
+    "normalDotInward": 1,
+    "normalDotView": 0.0919,
+    "widthPx": 4.1976,
+    "centre": [
+     1301.921,
+     503.49
+    ]
+   },
+   {
+    "id": "wall-right-slot-08-t1",
+    "seat": "right",
+    "slot": 8,
+    "tier": 1,
+    "normalDotInward": 1,
+    "normalDotView": 0.0925,
+    "widthPx": 4.2488,
+    "centre": [
+     1304,
+     483.091
+    ]
+   },
+   {
+    "id": "wall-right-slot-09-t0",
+    "seat": "right",
+    "slot": 9,
+    "tier": 0,
+    "normalDotInward": 0.9941,
+    "normalDotView": 0.0913,
+    "widthPx": 4.1441,
+    "centre": [
+     1299.736,
+     473.02
+    ]
+   },
+   {
+    "id": "wall-right-slot-09-t1",
+    "seat": "right",
+    "slot": 9,
+    "tier": 1,
+    "normalDotInward": 0.9941,
+    "normalDotView": 0.0919,
+    "widthPx": 4.1943,
+    "centre": [
+     1301.789,
+     452.567
+    ]
+   },
+   {
+    "id": "wall-right-slot-10-t0",
+    "seat": "right",
+    "slot": 10,
+    "tier": 0,
+    "normalDotInward": 0.9772,
+    "normalDotView": 0.0908,
+    "widthPx": 4.0916,
+    "centre": [
+     1297.579,
+     442.936
+    ]
+   },
+   {
+    "id": "wall-right-slot-10-t1",
+    "seat": "right",
+    "slot": 10,
+    "tier": 1,
+    "normalDotInward": 0.9772,
+    "normalDotView": 0.0913,
+    "widthPx": 4.1409,
+    "centre": [
+     1299.606,
+     422.434
+    ]
+   },
+   {
+    "id": "wall-right-slot-11-t0",
+    "seat": "right",
+    "slot": 11,
+    "tier": 0,
+    "normalDotInward": 0.9507,
+    "normalDotView": 0.0902,
+    "widthPx": 4.0402,
+    "centre": [
+     1295.45,
+     413.232
+    ]
+   },
+   {
+    "id": "wall-right-slot-11-t1",
+    "seat": "right",
+    "slot": 11,
+    "tier": 1,
+    "normalDotInward": 0.9507,
+    "normalDotView": 0.0907,
+    "widthPx": 4.0885,
+    "centre": [
+     1297.451,
+     392.683
+    ]
+   },
+   {
+    "id": "wall-right-slot-12-t0",
+    "seat": "right",
+    "slot": 12,
+    "tier": 0,
+    "normalDotInward": 0.9171,
+    "normalDotView": 0.0896,
+    "widthPx": 3.9897,
+    "centre": [
+     1293.347,
+     383.901
+    ]
+   },
+   {
+    "id": "wall-right-slot-12-t1",
+    "seat": "right",
+    "slot": 12,
+    "tier": 1,
+    "normalDotInward": 0.9171,
+    "normalDotView": 0.0901,
+    "widthPx": 4.0371,
+    "centre": [
+     1295.323,
+     363.307
+    ]
+   },
+   {
+    "id": "wall-right-slot-13-t0",
+    "seat": "right",
+    "slot": 13,
+    "tier": 0,
+    "normalDotInward": 0.8787,
+    "normalDotView": 0.089,
+    "widthPx": 3.9401,
+    "centre": [
+     1291.27,
+     354.935
+    ]
+   },
+   {
+    "id": "wall-right-slot-13-t1",
+    "seat": "right",
+    "slot": 13,
+    "tier": 1,
+    "normalDotInward": 0.8787,
+    "normalDotView": 0.0895,
+    "widthPx": 3.9867,
+    "centre": [
+     1293.221,
+     334.3
+    ]
+   },
+   {
+    "id": "wall-right-slot-14-t0",
+    "seat": "right",
+    "slot": 14,
+    "tier": 0,
+    "normalDotInward": 0.8377,
+    "normalDotView": 0.0884,
+    "widthPx": 3.8915,
+    "centre": [
+     1289.219,
+     326.328
+    ]
+   },
+   {
+    "id": "wall-right-slot-14-t1",
+    "seat": "right",
+    "slot": 14,
+    "tier": 1,
+    "normalDotInward": 0.8377,
+    "normalDotView": 0.0889,
+    "widthPx": 3.9372,
+    "centre": [
+     1291.146,
+     305.653
+    ]
+   },
+   {
+    "id": "wall-right-slot-15-t0",
+    "seat": "right",
+    "slot": 15,
+    "tier": 0,
+    "normalDotInward": 0.7959,
+    "normalDotView": 0.0879,
+    "widthPx": 3.8437,
+    "centre": [
+     1287.193,
+     298.073
+    ]
+   },
+   {
+    "id": "wall-right-slot-15-t1",
+    "seat": "right",
+    "slot": 15,
+    "tier": 1,
+    "normalDotInward": 0.7959,
+    "normalDotView": 0.0884,
+    "widthPx": 3.8886,
+    "centre": [
+     1289.096,
+     277.362
+    ]
+   },
+   {
+    "id": "wall-right-slot-16-t0",
+    "seat": "right",
+    "slot": 16,
+    "tier": 0,
+    "normalDotInward": 0.7547,
+    "normalDotView": 0.0873,
+    "widthPx": 3.7969,
+    "centre": [
+     1285.192,
+     270.163
+    ]
+   }
+  ],
+  "wallInnerFaceMinPx": {
+   "left": 3.7969,
+   "right": 3.7969
+  },
+  "tiles": {
+   "count": 269,
+   "ids": 269
+  }
+ },
+ "samples": {
+  "face": {
+   "kind": "point",
+   "tile": "pond-bottom-00",
+   "localPoint": [
+    0,
+    0,
+    0.589286
+   ],
+   "world": [
+    -1.892857,
+    -4.81,
+    0.589286
+   ],
+   "pixel": [
+    855.889,
+    695.804
+   ],
+   "radiusPx": 3,
+   "localZ": "paint face",
+   "measured": {
+    "rgb": [
+     219.8,
+     216.8,
+     213.1
+    ],
+    "alpha": 255,
+    "luma": 217.2,
+    "pixels": 49
+   }
+  },
+  "blue": {
+   "kind": "point",
+   "tile": "wall-bottom-slot-08-t1",
+   "localPoint": [
+    0,
+    0,
+    0.001
+   ],
+   "world": [
+    0,
+    -7,
+    1.188286
+   ],
+   "pixel": [
+    960,
+    773.888
+   ],
+   "radiusPx": 3,
+   "localZ": "back face",
+   "measured": {
+    "rgb": [
+     10.4,
+     69.5,
+     162.4
+    ],
+    "alpha": 255,
+    "luma": 63.7,
+    "pixels": 49
+   }
+  },
+  "handFace": {
+   "kind": "point",
+   "tile": "hand-bottom-06",
+   "localPoint": [
+    0,
+    0,
+    0.589286
+   ],
+   "world": [
+    0,
+    -11.072453,
+    0.611593
+   ],
+   "pixel": [
+    960,
+    985.791
+   ],
+   "radiusPx": 2,
+   "localZ": "paint face (the rig scene forces 5z here)",
+   "measured": {
+    "rgb": [
+     127.2,
+     140,
+     149
+    ],
+    "alpha": 255,
+    "luma": 137.9,
+    "pixels": 25
+   }
+  },
+  "sideLeft": {
+   "kind": "polygon",
+   "tile": "wall-left-slot-08-t0",
+   "axis": 1,
+   "sign": -1,
+   "polygon": [
+    [
+     616.704,
+     498.534
+    ],
+    [
+     618.738,
+     518.439
+    ],
+    [
+     614.505,
+     529.053
+    ],
+    [
+     616.565,
+     548.902
+    ]
+   ],
+   "centre": [
+    616.628,
+    523.732
+   ],
+   "measured": {
+    "rgb": [
+     107.2,
+     126.2,
+     110.6
+    ],
+    "alpha": 255,
+    "luma": 121,
+    "pixels": 55
+   }
+  },
+  "sideRight": {
+   "kind": "polygon",
+   "tile": "wall-right-slot-08-t0",
+   "axis": 1,
+   "sign": -1,
+   "polygon": [
+    [
+     1304.026,
+     508.664
+    ],
+    [
+     1301.983,
+     528.551
+    ],
+    [
+     1301.846,
+     478.403
+    ],
+    [
+     1299.829,
+     498.343
+    ]
+   ],
+   "centre": [
+    1301.921,
+    503.49
+   ],
+   "measured": {
+    "rgb": [
+     105,
+     123.2,
+     113.4
+    ],
+    "alpha": 255,
+    "luma": 118.6,
+    "pixels": 54
+   }
+  },
+  "mat": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    -4,
+    -6,
+    0
+   ],
+   "pixel": [
+    739.04,
+    767.925
+   ],
+   "radiusPx": 3,
+   "measured": {
+    "rgb": [
+     6.3,
+     67.3,
+     160.2
+    ],
+    "alpha": 255,
+    "luma": 61,
+    "pixels": 49
+   }
+  }
+ },
+ "facts": {
+  "faceLuma": 217.2,
+  "blueLuma": 63.7,
+  "blueMinusRed": 152,
+  "handFaceLuma": 137.9,
+  "sideFaceLuma": {
+   "left": 121,
+   "right": 118.6,
+   "min": 118.6
+  },
+  "matLuma": 61,
+  "sideOverMat": 57.6
+ },
+ "alpha": {
+  "transparentPct": 26.76,
+  "opaquePct": 72.91,
+  "partialPct": 0.33,
+  "channels": 4,
+  "corners": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "mat": 255
+ },
+ "rigSpec": {
+  "camera": {
+   "mode": "perspective",
+   "lensMm": 75,
+   "sensorWidthMm": 36,
+   "sensorFit": "HORIZONTAL",
+   "elevationDeg": 50,
+   "target": [
+    0,
+    0,
+    0.35
+   ],
+   "distanceUnits": 76,
+   "eye": [
+    0,
+    -48.851858,
+    58.569378
+   ],
+   "shiftX": 0,
+   "shiftY": -0.02,
+   "clipStart": 1,
+   "clipEnd": 600,
+   "note": "Perspective, 75 mm on a 36 mm sensor, pitched 50 deg down from horizontal, centred on X = 0 behind the south edge at 76 units. 76 units is the distance at which the whole 700 mm mat plus rim fits the 16:9 width with a comfortable ~165 px margin each side and the far rim still inside the frame. Blender's Shift Y is measured against the sensor width, and its positive direction moves the image down; Shift Y -0.02 therefore raises the image 38.4 px, which buys the far rim its headroom and leaves the player's standing hand 74 px above the bottom edge without pitching the camera further down. shiftX = 0 and no roll keep every world-vertical edge parallel to the screen vertical up to the small outward convergence the 50 deg pitch produces (about 2.3 px at the outer hand slots, measured and gated by check-table-rig.mjs); a pitched camera cannot give exactly parallel verticals, and a level camera cannot see the table."
+  },
+  "output": {
+   "resolution": [
+    1920,
+    1080
+   ],
+   "aspect": "16:9",
+   "file": "rig-1x.png",
+   "manifest": "rig.json",
+   "masterPath": "build/reference/rig/rig-1920.png",
+   "bakePath": "build/reference/rig/rig-bake.json",
+   "note": "The plan's reference resolution. One render, not a @2x master: the rig is a perspective/lighting calibration target, and Task 3 exports normalized screen coordinates and quads, not pixels from this board."
+  },
+  "lighting": {
+   "convention": "A large soft overhead AREA key slightly forward of table centre (toward the camera) plus three low-intensity AREA fills, one from the near/south side for the standing hand and two low side fills for the side-wall inner vertical faces. Cycles path-traced GI supplies the contact occlusion and soft shadows under the tile bases (there is no Eevee AO toggle in the Cycles engine). The key is neutral warm and the fills are cool so the bevels and inner faces read against the ivory body without tinting the face paint.",
+   "key": {
+    "id": "rig-key",
+    "type": "AREA",
+    "shape": "RECTANGLE",
+    "sizeUnits": 20,
+    "sizeYUnits": 14,
+    "location": [
+     0,
+     -2.5,
+     22
+    ],
+    "aimAt": [
+     0,
+     0,
+     0
+    ],
+    "energyW": 9000,
+    "hex": "#fff7ea",
+    "note": "20 x 14 units (560 x 392 mm) at 22 units up, 2.5 units forward of centre; the source is large enough that tile-base contact shadows are soft penumbrae rather than a hard stamp."
+   },
+   "fills": [
+    {
+     "id": "rig-fill-near",
+     "type": "AREA",
+     "shape": "RECTANGLE",
+     "sizeUnits": 26,
+     "sizeYUnits": 16,
+     "location": [
+      0,
+      -26,
+      9
+     ],
+     "aimAt": [
+      0,
+      0,
+      0.5
+     ],
+     "energyW": 1400,
+     "hex": "#cfe0ff",
+     "note": "Near/south fill: lights the player's standing hand fronts and the south-facing inner faces of the far wall; cool and low so it only opens the shadows."
+    },
+    {
+     "id": "rig-fill-left",
+     "type": "AREA",
+     "shape": "RECTANGLE",
+     "sizeUnits": 14,
+     "sizeYUnits": 14,
+     "location": [
+      -22,
+      -7,
+      11
+     ],
+     "aimAt": [
+      0,
+      0,
+      0.5
+     ],
+     "energyW": 700,
+     "hex": "#dfe9ff",
+     "note": "Left side fill: defines the west wall's inner vertical faces and the left bevels."
+    },
+    {
+     "id": "rig-fill-right",
+     "type": "AREA",
+     "shape": "RECTANGLE",
+     "sizeUnits": 14,
+     "sizeYUnits": 14,
+     "location": [
+      22,
+      -7,
+      11
+     ],
+     "aimAt": [
+      0,
+      0,
+      0.5
+     ],
+     "energyW": 700,
+     "hex": "#dfe9ff",
+     "note": "Right side fill: mirrors the left fill for the east wall's inner vertical faces and the right bevels."
+    }
+   ],
+   "world": {
+    "hex": "#3b4a5c",
+    "strength": 0.35,
+    "note": "Ambient sky at the shell baker's world tint, low strength; with film transparent it still lights the scene but does not write a background."
+   },
+   "ambientOcclusion": {
+    "mode": "cycles-gi",
+    "note": "Cycles path-traced global illumination produces the soft contact shadow under every tile base and the crevice darkening between neighbours; no post AO pass and no Eevee AO setting exists in this engine."
+   }
+  },
+  "render": {
+   "engine": "CYCLES",
+   "device": "CPU",
+   "samples": 64,
+   "adaptiveSampling": true,
+   "adaptiveThreshold": 0.02,
+   "denoise": "OPENIMAGEDENOISE",
+   "filmTransparent": true,
+   "hideFloor": true,
+   "colorMode": "RGBA",
+   "colorManagement": "table-reference scene block (sRGB, AgX, AgX - Medium High Contrast, exposure 0)",
+   "note": "Film > Transparent plus the room floor hidden: the published PNG is RGBA with a transparent surround, so the board can be composited and the alpha is a checkable fact. The mat, rim, centre well and every tile stay opaque. 64 samples with adaptive sampling and OpenImageDenoise is the smallest count that leaves the bevelled edges clean at 1920 x 1080."
+  },
+  "samples": {
+   "handFaceTileId": "hand-bottom-06",
+   "handFace": "5z",
+   "faceTileId": "pond-bottom-00",
+   "blueTileId": "wall-bottom-slot-08-t1",
+   "sideWallTileIds": [
+    "wall-left-slot-08-t0",
+    "wall-right-slot-08-t0"
+   ],
+   "matWorldPoint": [
+    -4,
+    -6,
+    0
+   ],
+   "note": "Pixel probes for the lighting facts. The pond's 5z face (the faces.sampleTileId) and the wall's blue back are the same probes the placement reference uses, so the rig can be compared with the shipped shells. hand-bottom-06 is forced to 5z in the rig scene only, giving a known blank ivory hand face (the near-fill read). The side probes sit at the centre of each side wall's inner vertical face; matWorldPoint is open felt between the south pond and the south wall, clear of tile shadows."
+  },
+  "checks": {
+   "lensMmRange": [
+    65,
+    85
+   ],
+   "elevationDegRange": [
+    48,
+    52
+   ],
+   "minWidthMarginPx": 120,
+   "handBottomMarginPx": [
+    16,
+    120
+   ],
+   "maxOutwardLeanPx": 2.5,
+   "centreSideSliverMaxPx": 0.6,
+   "outerSideSliverMinPx": 3,
+   "wallInnerFaceMinPx": 3,
+   "minFaceLuma": 150,
+   "minFaceChannelSpread": 0,
+   "maxFaceChannelSpread": 40,
+   "minBlueMinusRed": 40,
+   "minHandFaceLuma": 40,
+   "minSideFaceLuma": 45,
+   "note": "Thresholds are the acceptance criteria of the plan's Task 2, in numbers: perspective + 75 mm + 50 deg + X = 0 + negative shift, the full table width inside the frame, the south hand near the bottom, no inward vertical lean and at most maxOutwardLeanPx of outward lean, side-wall inner faces at least wallInnerFaceMinPx wide, the centre hand tile straight-on and the outer hand tiles showing a sliver, and a lit ivory face / blue back / readable hand face / lit inner side face in the render."
+  }
+ },
+ "renders": {
+  "file": "rig-1x.png",
+  "width": 1920,
+  "height": 1080,
+  "channels": 4,
+  "bytes": 2210928,
+  "sha256": "5973c592904b0e9d67c69469eb7a87bcba55ade47a78227a01f455212b931ba6"
+ },
+ "note": "Task 2 of 2_5d_implementation_plan.md. Same scene and the same 269 tile placements as the placement reference; the --rig render mode swaps in this camera and light rig, hides the room floor and writes the 16:9 gameplay framing with a transparent film so the published PNG is clean RGBA. Calibration-only: nothing under frontend/public is written and the runtime never reads it."
+}
