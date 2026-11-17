@@ -18,7 +18,7 @@ import { copyFileSync, existsSync, readFileSync, readdirSync, statSync, writeFil
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPng } from './png.mjs';
-import { cameraFromCandidate, rigLightingSamples, rigMetrics } from './table-camera.mjs';
+import { cameraFromCandidate, rigLightingSamples, rigMetrics, tileBoxCorners } from './table-camera.mjs';
 import { alphaAt, alphaCoverage, measureRigSamples } from './table-rig-samples.mjs';
 import { orderedVariants, resolveRigVariant } from './table-rig-spec.mjs';
 
@@ -97,6 +97,37 @@ const digest = createHash('sha256')
   .digest('hex');
 
 const luma = (name) => measured[name]?.luma ?? null;
+const wallLumas = Object.keys(measured)
+  .filter((name) => name.startsWith('wallFace'))
+  .sort((a, b) => Number(a.slice('wallFace'.length)) - Number(b.slice('wallFace'.length)))
+  .map((name) => measured[name]?.luma ?? null);
+const wallMid = Math.floor(wallLumas.length / 2);
+const wallDip = wallLumas.length >= 3
+  ? Number(Math.abs(wallLumas[wallMid] - (wallLumas[0] + wallLumas[wallLumas.length - 1]) / 2).toFixed(1))
+  : null;
+
+const seatRadial = {
+  bottom: (corner) => -corner[1],
+  top: (corner) => corner[1],
+  right: (corner) => corner[0],
+  left: (corner) => -corner[0],
+};
+const handBases = {};
+for (const seat of ['bottom', 'top', 'right', 'left']) {
+  let minimum = Infinity;
+  for (const tile of tiles.filter((entry) => (entry.kind === 'hand' || entry.kind === 'drawn') && entry.seat === seat)) {
+    for (const corner of tileBoxCorners(tile)) {
+      if (corner[2] >= 0.01) continue;
+      minimum = Math.min(minimum, seatRadial[seat](corner));
+    }
+  }
+  if (Number.isFinite(minimum)) handBases[seat] = Number(minimum.toFixed(4));
+}
+const otherBases = ['top', 'right', 'left'].map((seat) => handBases[seat]).filter(Number.isFinite);
+const playerHandBackOffset = handBases.bottom !== undefined && otherBases.length
+  ? Number((handBases.bottom - otherBases.reduce((sum, value) => sum + value, 0) / otherBases.length).toFixed(4))
+  : null;
+
 const facts = {
   faceLuma: luma('face'),
   blueLuma: luma('blue'),
@@ -111,6 +142,10 @@ const facts = {
     min: Math.min(...[luma('sideLeft'), luma('sideRight')].filter((value) => value !== null)),
   },
   matLuma: luma('mat'),
+  wallFaceLumas: wallLumas,
+  wallFaceDip: wallDip,
+  handBaseRadiusUnits: handBases,
+  playerHandBackOffsetUnits: playerHandBackOffset,
   sideOverMat: Number(
     (
       Math.min(...[luma('sideLeft'), luma('sideRight')].filter((value) => value !== null)) -
@@ -137,6 +172,8 @@ const manifest = {
   render: bake.render,
   lighting: bake.lighting,
   handLightingCheat: bake.handLightingCheat ?? null,
+  handShadow: bake.handShadowCheat ?? null,
+  variantExtends: variant.extends ?? null,
   layout: {
     hand: table.hand,
     meld: table.meld,
@@ -179,6 +216,7 @@ const manifest = {
     samples: rig.samples,
     checks: rig.checks,
     lightingCheat: rig.lightingCheat ?? null,
+    handShadow: rig.handShadow ?? null,
     table: {
       hand: table.hand,
       meld: table.meld,
@@ -209,8 +247,10 @@ const settingsRows = (entry) => {
   const cam = entry.camera;
   return `
       <tr><th>camera</th><td>${cam.lensMm} mm · pitch ${cam.elevationDeg}° · ${cam.distanceUnits.toFixed(3)} units · Shift Y ${cam.shiftY}</td></tr>
-      <tr><th>hand / meld radius</th><td>${hand.backRadiusUnits ?? '?'} / ${entry.layout?.meld?.rowRadiusUnits ?? '?'} units</td></tr>
+      <tr><th>hand / meld radius</th><td>${hand.backRadiusUnits ?? '?'} / ${entry.layout?.meld?.rowRadiusUnits ?? '?'} units${hand.backRadiusUnitsBySeat?.bottom && hand.backRadiusUnitsBySeat.bottom !== hand.backRadiusUnits ? ` (player hand ${hand.backRadiusUnitsBySeat.bottom})` : ''}</td></tr>
       <tr><th>hand tilt</th><td>${hand.tiltDeg ?? '?'}°${entry.handLightingCheat ? ` (shaded as ${entry.handLightingCheat.physicalTiltDeg}°)` : ''}</td></tr>
+      <tr><th>hand shadow</th><td>${entry.handShadow ? `physical-pose caster (${entry.handShadow.casters} casters)` : 'real'}</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>${entry.facts?.wallFaceDip ?? '?'} luma</td></tr>
       <tr><th>light key</th><td>${entry.lighting?.lights?.[0]?.energyW ?? '?'} W</td></tr>
       <tr><th>tile size (hand face width)</th><td>${entry.metrics?.hand?.rows?.[6]?.topWidthPx ?? '?'} px</td></tr>
       <tr><th>hand face / discard luma</th><td>${entry.facts?.handFaceLuma} / ${entry.facts?.faceLuma}</td></tr>

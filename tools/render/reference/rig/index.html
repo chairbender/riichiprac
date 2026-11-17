@@ -37,6 +37,8 @@ measured on the rendered pixels. Calibration only.</p>
       <tr><th>camera</th><td>75 mm · pitch 50° · 76.000 units · Shift Y -0.02</td></tr>
       <tr><th>hand / meld radius</th><td>10.6 / 10.6 units</td></tr>
       <tr><th>hand tilt</th><td>12°</td></tr>
+      <tr><th>hand shadow</th><td>real</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>6.8 luma</td></tr>
       <tr><th>light key</th><td>9000 W</td></tr>
       <tr><th>tile size (hand face width)</th><td>37.4223 px</td></tr>
       <tr><th>hand face / discard luma</th><td>137.9 / 217.2</td></tr>
@@ -58,11 +60,36 @@ measured on the rendered pixels. Calibration only.</p>
       <tr><th>camera</th><td>75 mm · pitch 50° · 59.000 units · Shift Y -0.02</td></tr>
       <tr><th>hand / meld radius</th><td>8.8 / 8.8 units</td></tr>
       <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>real</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>45.4 luma</td></tr>
       <tr><th>light key</th><td>6000 W</td></tr>
       <tr><th>tile size (hand face width)</th><td>48.4233 px</td></tr>
       <tr><th>hand face / discard luma</th><td>119.8 / 203.3</td></tr>
       <tr><th>hand bottom margin</th><td>45.2431 px</td></tr>
       <tr><th>side inner face / hand sliver</th><td>6.1244 / 4.4586 px</td></tr>
       <tr><th>transparent pixels</th><td>5.4%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v3-hand-shadow — v3 compact + player hand back + physical hand shadow</h2>
+    <p>The user's follow-up on v2: only the player's hand moves a further half tile height back from the wall, and its shadow stops giving the cheat away. The cheated hand casts no shadow at all (no tall shadow under it, nothing up the wall behind it); each hand tile gets a shadow-only caster at the 12 deg physical pose, and the fills are light-linked to ignore the caster, so only the key casts a short, diffuse physical shadow. The rest of the table is v2.</p>
+    <figure>
+      <a href="v3-hand-shadow-1x.png"><img src="v3-hand-shadow-1x.png" alt="v3-hand-shadow"></a>
+      <figcaption>1920×1080 RGBA · 2,623,607 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.02</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>physical-pose caster (14 casters)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>4.3 luma</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>105.5 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>28.5725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>7.17%</td></tr>
     </table>
   </section>

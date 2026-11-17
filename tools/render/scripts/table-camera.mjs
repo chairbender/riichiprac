@@ -727,7 +727,7 @@ export function rigLightingSamples(camera, tiles, spec, shellSpec) {
   };
   const matWorld = rigSamples.matWorldPoint ?? [0, 6, 0];
   const [matX, matY] = projectPoint(camera, matWorld);
-  return {
+  const samples = {
     face: {
       ...point(spec.faces.sampleTileId, [0, 0, thickness], 3),
       localZ: 'paint face',
@@ -752,4 +752,21 @@ export function rigLightingSamples(camera, tiles, spec, shellSpec) {
       radiusPx: 3,
     },
   };
+  // The south wall's outer face, inside and outside the player's hand span;
+  // the shadow cheat's "nothing on the wall behind" fact.
+  const wall = rigSamples.southWallFace;
+  if (wall) {
+    for (const [index, x] of wall.x.entries()) {
+      const world = [x, wall.y, wall.z];
+      const [px, py] = projectPoint(camera, world);
+      samples[`wallFace${index}`] = {
+        kind: 'point',
+        tile: null,
+        world: world.map((value) => round(value, 6)),
+        pixel: [round(px, 3), round(py, 3)],
+        radiusPx: wall.radiusPx ?? 1,
+      };
+    }
+  }
+  return samples;
 }

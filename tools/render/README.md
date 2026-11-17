@@ -212,8 +212,9 @@ room floor hidden.
 The rig is **variant-based for A/B**. `table-reference-spec.json`'s `rig` blocks
 are the saved `v1-baseline`; `rig.variants` holds experiments that may override
 the table layout (hand/meld radius, hand tilt), the camera, the lights, the
-render settings and the acceptance thresholds. `--variant NAME` picks one; each
-publishes `reference/rig/<variant>-1x.png` and `<variant>.json`, and
+render settings and the acceptance thresholds. `--variant NAME` picks one (a variant may `extends` another, so a small delta
+sits on top of an earlier experiment); each publishes
+`reference/rig/<variant>-1x.png` and `<variant>.json`, and
 `reference/rig/index.html` is the A/B page. `scripts/check-table-rig.mjs` gates
 **every committed variant**, recomputing the geometry from the camera and
 placements and then measuring the rendered pixels (AGENTS.md §6):
@@ -235,7 +236,11 @@ player's hand reclined 12°, a 9000 W key; the whole mat+rim width framed, disca
 face 217.2 luma. **v2-compact** (experiment): 59 units, hands/melds at 8.8 (1.3
 units behind the wall), the player's hand reclined 40°, key 6000 W; framed to the
 tile content, every tile inside, tiles 1.29× linear larger, discard face 203.3
-luma.
+luma. **v3-hand-shadow** (experiment): the player's hand alone moves back to 9.3
+(half a tile height), the camera refits to 60.5 units, and the hand's own shadow
+is replaced by a shadow-only caster at the 12° physical pose (the fills are
+light-linked away from it), so there is nothing on the wall behind the hand and
+the under-hand shadow is a normally seated tile's.
 
 The **hand cheat** in v2 reclines the player's hand further than is physical, so
 the near bottom edge floats and the real cast shadow is not the production

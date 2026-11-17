@@ -415,7 +415,22 @@
         6.0,
         0.0
       ],
-      "note": "Pixel probes for the lighting facts. The pond's 5z face (the faces.sampleTileId) and the wall's blue back are the same probes the placement reference uses, so the rig can be compared with the shipped shells. hand-bottom-06 is forced to 5z in the rig scene only, giving a known blank ivory hand face (the near-fill read). The side probes average the pixels inside each side wall's projected inner vertical face (a single pixel would spill at 3.8 px wide). matWorldPoint is open felt between the north pond and the north wall: the north wall stands farther from the camera, so it cannot occlude the probe, and the point is clear of tile shadows (the near strip behind the south wall is occluded by the wall's own top at a 50 deg pitch)."
+      "note": "Pixel probes for the lighting facts. The pond's 5z face (the faces.sampleTileId) and the wall's blue back are the same probes the placement reference uses, so the rig can be compared with the shipped shells. hand-bottom-06 is forced to 5z in the rig scene only, giving a known blank ivory hand face (the near-fill read). The side probes average the pixels inside each side wall's projected inner vertical face (a single pixel would spill at 3.8 px wide). matWorldPoint is open felt between the north pond and the north wall: the north wall stands farther from the camera, so it cannot occlude the probe, and the point is clear of tile shadows (the near strip behind the south wall is occluded by the wall's own top at a 50 deg pitch).",
+      "southWallFace": {
+        "x": [
+          -6.2,
+          -4.0,
+          -2.0,
+          0.0,
+          2.0,
+          4.0,
+          6.2
+        ],
+        "y": -7.499,
+        "z": 0.1,
+        "radiusPx": 1,
+        "note": "A row of probes on the south wall's outer vertical face at z = 0.1, inside and outside the player's hand span (the hand covers |x| <= 5). The hand's fill shadow on this wall is the give-away the shadow cheat removes, so the checker compares the centre probe with the two end probes: a uniform row (small dip) means nothing is cast on the wall. Informational for variants without the cheat."
+      }
     },
     "checks": {
       "lensMmRange": [
@@ -600,6 +615,45 @@
           "mode": "physicalPose",
           "physicalTiltDeg": 12.0,
           "note": "The hand's geometry keeps the 40 deg cheat so the faces read, but every hand material shades with its normal rotated back by the extra 28 deg about world X, so the key and fills land on it exactly as they would on the 12 deg physical pose. The illusion is the point: the viewer should not read the tilt as a lighting change. The real cast shadow is still the cheated pose's; the runtime will use a blob shadow instead."
+        }
+      },
+      "v3-hand-shadow": {
+        "order": 3,
+        "extends": "v2-compact",
+        "label": "v3 compact + player hand back + physical hand shadow",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "The user's follow-up on v2: only the player's hand moves a further half tile height back from the wall, and its shadow stops giving the cheat away. The cheated hand casts no shadow at all (no tall shadow under it, nothing up the wall behind it); each hand tile gets a shadow-only caster at the 12 deg physical pose, and the fills are light-linked to ignore the caster, so only the key casts a short, diffuse physical shadow. The rest of the table is v2.",
+        "table": {
+          "hand": {
+            "backRadiusUnitsBySeat": {
+              "bottom": 9.3
+            },
+            "note": "v3: the shared 8.8 radius applies to the three opponent hands; only the player's (bottom) hand moves back to 9.3, a further half tile height (0.5 units) from the wall. The player's drawn tile moves with it. The tilt stays the 40 deg readability cheat, shaded as the 12 deg physical pose."
+          }
+        },
+        "handShadow": {
+          "mode": "physicalPoseCaster",
+          "physicalTiltDeg": 12.0,
+          "fillsDoNotSeeCaster": true,
+          "note": "The cheated hand bodies and decals are invisible to shadow rays. Each body is duplicated at the 12 deg physical pose as a shadow-only caster: invisible to the camera, diffuse and glossy rays, and volume scatter, visible only to shadow rays. The fills are light-linked to a blocker collection that omits the casters, so only the key (69 deg above, north of the hand) casts the shadow: a short band falling south, like the shadow in front of the wall, and nothing on the wall behind."
+        },
+        "camera": {
+          "distanceUnits": 60.5,
+          "eye": [
+            0.0,
+            -38.88865,
+            46.695689
+          ],
+          "shiftY": -0.02,
+          "note": "v3: refit after moving the player's hand back to radius 9.3; 60.5 units keeps every tile inside the frame (>=28 px) with the hand 29 px above the bottom edge. Same 75 mm / 50 deg / X = 0 / Shift Y -0.02 as v2."
+        },
+        "checks": {
+          "playerHandBackOffsetUnits": 0.5,
+          "wallShadowDipMaxLuma": 15.0
+        },
+        "lightingCheat": {
+          "note": "v3: the hand's geometry keeps the 40 deg cheat so the faces read, and every hand material still shades as the 12 deg physical pose. Unlike v2, the cast shadow is now also the physical pose's (rig.variants['v3-hand-shadow'].handShadow), so the shading and the shadow both read as a normally seated tile."
         }
       }
     }

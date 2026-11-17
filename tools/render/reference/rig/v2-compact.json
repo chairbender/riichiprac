@@ -205,6 +205,8 @@
   "materials": 11,
   "note": "The hand's geometry keeps the 40 deg cheat so the faces read, but every hand material shades with its normal rotated back by the extra 28 deg about world X, so the key and fills land on it exactly as they would on the 12 deg physical pose. The illusion is the point: the viewer should not read the tilt as a lighting change. The real cast shadow is still the cheated pose's; the runtime will use a blob shadow instead."
  },
+ "handShadow": null,
+ "variantExtends": null,
  "layout": {
   "hand": {
    "backRadiusUnits": 8.8,
@@ -10435,6 +10437,174 @@
     "luma": 51.8,
     "pixels": 49
    }
+  },
+  "wallFace0": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    -6.2,
+    -7.499,
+    0.1
+   ],
+   "pixel": [
+    503.877,
+    936.04
+   ],
+   "radiusPx": 1,
+   "measured": {
+    "rgb": [
+     75.6,
+     91.2,
+     98.2
+    ],
+    "alpha": 255,
+    "luma": 88.4,
+    "pixels": 9
+   }
+  },
+  "wallFace1": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    -4,
+    -7.499,
+    0.1
+   ],
+   "pixel": [
+    665.727,
+    936.04
+   ],
+   "radiusPx": 1,
+   "measured": {
+    "rgb": [
+     21.7,
+     34.3,
+     31.9
+    ],
+    "alpha": 255,
+    "luma": 31.5,
+    "pixels": 9
+   }
+  },
+  "wallFace2": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    -2,
+    -7.499,
+    0.1
+   ],
+   "pixel": [
+    812.863,
+    936.04
+   ],
+   "radiusPx": 1,
+   "measured": {
+    "rgb": [
+     20.2,
+     33.2,
+     30.1
+    ],
+    "alpha": 255,
+    "luma": 30.2,
+    "pixels": 9
+   }
+  },
+  "wallFace3": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    0,
+    -7.499,
+    0.1
+   ],
+   "pixel": [
+    960,
+    936.04
+   ],
+   "radiusPx": 1,
+   "measured": {
+    "rgb": [
+     20.6,
+     33.2,
+     31
+    ],
+    "alpha": 255,
+    "luma": 30.4,
+    "pixels": 9
+   }
+  },
+  "wallFace4": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    2,
+    -7.499,
+    0.1
+   ],
+   "pixel": [
+    1107.137,
+    936.04
+   ],
+   "radiusPx": 1,
+   "measured": {
+    "rgb": [
+     19.9,
+     32.6,
+     30.2
+    ],
+    "alpha": 255,
+    "luma": 29.7,
+    "pixels": 9
+   }
+  },
+  "wallFace5": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    4,
+    -7.499,
+    0.1
+   ],
+   "pixel": [
+    1254.273,
+    936.04
+   ],
+   "radiusPx": 1,
+   "measured": {
+    "rgb": [
+     23.2,
+     35.3,
+     33.6
+    ],
+    "alpha": 255,
+    "luma": 32.6,
+    "pixels": 9
+   }
+  },
+  "wallFace6": {
+   "kind": "point",
+   "tile": null,
+   "world": [
+    6.2,
+    -7.499,
+    0.1
+   ],
+   "pixel": [
+    1416.123,
+    936.04
+   ],
+   "radiusPx": 1,
+   "measured": {
+    "rgb": [
+     54.3,
+     65.7,
+     63.9
+    ],
+    "alpha": 255,
+    "luma": 63.1,
+    "pixels": 9
+   }
   }
  },
  "facts": {
@@ -10449,6 +10619,23 @@
    "min": 95.4
   },
   "matLuma": 51.8,
+  "wallFaceLumas": [
+   88.4,
+   31.5,
+   30.2,
+   30.4,
+   29.7,
+   32.6,
+   63.1
+  ],
+  "wallFaceDip": 45.4,
+  "handBaseRadiusUnits": {
+   "bottom": 8.8,
+   "top": 8.8,
+   "right": 8.8,
+   "left": 8.8
+  },
+  "playerHandBackOffsetUnits": 0,
   "sideOverMat": 43.6
  },
  "alpha": {
@@ -10624,7 +10811,22 @@
     6,
     0
    ],
-   "note": "Pixel probes for the lighting facts. The pond's 5z face (the faces.sampleTileId) and the wall's blue back are the same probes the placement reference uses, so the rig can be compared with the shipped shells. hand-bottom-06 is forced to 5z in the rig scene only, giving a known blank ivory hand face (the near-fill read). The side probes average the pixels inside each side wall's projected inner vertical face (a single pixel would spill at 3.8 px wide). matWorldPoint is open felt between the north pond and the north wall: the north wall stands farther from the camera, so it cannot occlude the probe, and the point is clear of tile shadows (the near strip behind the south wall is occluded by the wall's own top at a 50 deg pitch)."
+   "note": "Pixel probes for the lighting facts. The pond's 5z face (the faces.sampleTileId) and the wall's blue back are the same probes the placement reference uses, so the rig can be compared with the shipped shells. hand-bottom-06 is forced to 5z in the rig scene only, giving a known blank ivory hand face (the near-fill read). The side probes average the pixels inside each side wall's projected inner vertical face (a single pixel would spill at 3.8 px wide). matWorldPoint is open felt between the north pond and the north wall: the north wall stands farther from the camera, so it cannot occlude the probe, and the point is clear of tile shadows (the near strip behind the south wall is occluded by the wall's own top at a 50 deg pitch).",
+   "southWallFace": {
+    "x": [
+     -6.2,
+     -4,
+     -2,
+     0,
+     2,
+     4,
+     6.2
+    ],
+    "y": -7.499,
+    "z": 0.1,
+    "radiusPx": 1,
+    "note": "A row of probes on the south wall's outer vertical face at z = 0.1, inside and outside the player's hand span (the hand covers |x| <= 5). The hand's fill shadow on this wall is the give-away the shadow cheat removes, so the checker compares the centre probe with the two end probes: a uniform row (small dip) means nothing is cast on the wall. Informational for variants without the cheat."
+   }
   },
   "checks": {
    "lensMmRange": [
@@ -10660,6 +10862,7 @@
    "physicalTiltDeg": 12,
    "note": "The hand's geometry keeps the 40 deg cheat so the faces read, but every hand material shades with its normal rotated back by the extra 28 deg about world X, so the key and fills land on it exactly as they would on the 12 deg physical pose. The illusion is the point: the viewer should not read the tilt as a lighting change. The real cast shadow is still the cheated pose's; the runtime will use a blob shadow instead."
   },
+  "handShadow": null,
   "table": {
    "hand": {
     "backRadiusUnits": 8.8,

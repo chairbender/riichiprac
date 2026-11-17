@@ -111,30 +111,54 @@ def deep_merge(base, override):
 RIG_MERGE_KEYS = ("camera", "lighting", "render", "output", "samples", "checks")
 
 
+def variant_chain(rig: dict, variant_id: str) -> list[tuple[str, dict]]:
+    """The variant and its `extends` ancestors, oldest first."""
+    chain = []
+    seen = set()
+    current = variant_id
+    while current:
+        if current in seen:
+            die(f"rig variant cycle through {current!r}")
+        seen.add(current)
+        if current not in rig.get("variants", {}):
+            die(
+                f"unknown rig variant {current!r}; variants: "
+                f"{', '.join(rig.get('variants', {})) or '(none)'}"
+            )
+        variant = rig["variants"][current]
+        chain.append((current, variant))
+        current = variant.get("extends")
+    return list(reversed(chain))
+
+
 def resolve_variant(spec: dict, variant_id: str | None) -> tuple[str, dict, dict]:
     """Resolve the rig variant into (id, variant, a spec with the resolved rig).
 
     Variants are A/B experiments: each may override the table layout (hand and
     meld radii, hand tilt), the camera, the lights, the render settings and the
-    acceptance thresholds. The base rig blocks stay the saved baseline.
+    acceptance thresholds. A variant may `extends` another, so a small delta can
+    sit on top of an earlier experiment while the base rig blocks stay the saved
+    baseline.
     """
     rig = spec["rig"]
-    variants = rig.get("variants") or {}
     chosen = variant_id or rig.get("defaultVariant")
-    if chosen not in variants:
-        die(f"unknown rig variant {chosen!r}; variants: {', '.join(variants) or '(none)'}")
-    variant = variants[chosen]
+    chain = variant_chain(rig, chosen)
+    merged: dict = {}
+    for _, entry in chain:
+        merged = deep_merge(merged, {key: value for key, value in entry.items() if key != "extends"})
     resolved = dict(rig)
     for key in RIG_MERGE_KEYS:
         if key in rig:
-            resolved[key] = deep_merge(rig[key], variant.get(key, {}))
+            resolved[key] = deep_merge(rig[key], merged.get(key, {}))
     resolved.pop("variants", None)
-    if "lightingCheat" in variant:
-        resolved["lightingCheat"] = variant["lightingCheat"]
+    merged["extends"] = chain[-1][1].get("extends")
+    for extra in ("lightingCheat", "handShadow"):
+        if extra in merged:
+            resolved[extra] = merged[extra]
     scene_spec = dict(spec)
-    scene_spec["table"] = deep_merge(spec["table"], variant.get("table", {}))
+    scene_spec["table"] = deep_merge(spec["table"], merged.get("table", {}))
     scene_spec["rig"] = resolved
-    return chosen, variant, scene_spec
+    return chosen, merged, scene_spec
 
 
 def parse_options(argv: list[str]) -> dict:
@@ -960,6 +984,114 @@ def apply_hand_lighting_cheat(spec: dict, rig: dict) -> dict | None:
     return record
 
 
+def apply_hand_shadow_cheat(spec: dict, rig: dict) -> dict | None:
+    """Give the cheated player's hand a physical-pose shadow, not its own.
+
+    The 40 deg readability cheat would cast a tall shadow under the hand and a
+    hand-shaped shadow up the wall behind it (the near fill sees the hand from
+    the south). So the hand bodies and decals stop casting shadows entirely, and
+    each hand tile gets a shadow-only duplicate at the *physical* 12 deg pose;
+    that caster is invisible to the camera and to light/GI (it only blocks
+    shadow rays). The fills are light-linked to a blocker collection that omits
+    the casters, so only the key casts the physical shadow: a short, diffuse
+    band like the one in front of the wall, with nothing on the wall behind.
+    """
+    shadow = rig.get("handShadow")
+    if not shadow:
+        return None
+    if shadow.get("mode") != "physicalPoseCaster":
+        die(f"hand shadow cheat: unknown mode {shadow.get('mode')!r}")
+    cheat = rig.get("lightingCheat")
+    if cheat and abs(float(cheat["physicalTiltDeg"]) - float(shadow["physicalTiltDeg"])) > 1e-9:
+        die("hand shadow cheat: physicalTiltDeg disagrees with the lighting cheat")
+    hand = spec["table"]["hand"]
+    cheated = math.radians(hand["tiltDeg"])
+    physical = math.radians(shadow["physicalTiltDeg"])
+    delta = cheated - physical
+    radius = hand.get("backRadiusUnitsBySeat", {}).get("bottom", hand["backRadiusUnits"])
+
+    bodies = [
+        obj for obj in bpy.data.objects
+        if obj.type == "MESH"
+        and obj.name.startswith("hand-bottom-")
+        and not obj.name.endswith("-decal")
+    ]
+    decals = [
+        obj for obj in bpy.data.objects
+        if obj.type == "MESH"
+        and obj.name.startswith("hand-bottom-")
+        and obj.name.endswith("-decal")
+    ]
+    if not bodies:
+        die("hand shadow cheat: found no south-hand bodies")
+
+    # The cheated hand stops casting entirely (no key shadow, no fill shadow).
+    for obj in bodies + decals:
+        obj.visible_shadow = False
+
+    caster_collection = bpy.data.collections.new("HandShadowCasters")
+    bpy.context.scene.collection.children.link(caster_collection)
+    casters = []
+    for body in bodies:
+        caster = body.copy()
+        caster.data = body.data
+        caster.name = f"{body.name}-shadowcaster"
+        pivot = Vector((body.matrix_world.translation.x, -radius, 0.0))
+        caster.matrix_world = (
+            Matrix.Translation(pivot)
+            @ Matrix.Rotation(delta, 4, "X")
+            @ Matrix.Translation(-pivot)
+            @ body.matrix_world
+        )
+        caster.visible_shadow = True
+        caster.visible_camera = False
+        caster.visible_diffuse = False
+        caster.visible_glossy = False
+        caster.visible_transmission = False
+        caster.visible_volume_scatter = False
+        caster.hide_render = False
+        caster_collection.objects.link(caster)
+        casters.append(caster)
+
+    fills = []
+    if shadow.get("fillsDoNotSeeCaster", True):
+        blocker_collection = bpy.data.collections.new("RigFillBlockers")
+        bpy.context.scene.collection.children.link(blocker_collection)
+        caster_set = set(casters)
+        for obj in bpy.context.scene.objects:
+            if obj in caster_set:
+                continue
+            if obj.type in {"LIGHT", "CAMERA"}:
+                continue
+            blocker_collection.objects.link(obj)
+        for entry in rig["lighting"]["fills"]:
+            light = bpy.data.objects.get(entry["id"])
+            if light is None:
+                die(f"hand shadow cheat: fill {entry['id']} is missing")
+            light.light_linking.blocker_collection = blocker_collection
+            fills.append(entry["id"])
+
+    record = {
+        "mode": shadow["mode"],
+        "physicalTiltDeg": shadow["physicalTiltDeg"],
+        "cheatedTiltDeg": hand["tiltDeg"],
+        "deltaDeg": round(math.degrees(delta), 4),
+        "playerHandRadiusUnits": radius,
+        "hiddenObjects": len(bodies) + len(decals),
+        "handBodies": len(bodies),
+        "handDecals": len(decals),
+        "casters": len(casters),
+        "fillLights": fills,
+        "note": shadow.get("note"),
+    }
+    log(
+        f"hand shadow cheat: {len(bodies) + len(decals)} hand objects hidden from shadows, "
+        f"{len(casters)} casters at the {shadow['physicalTiltDeg']:g} deg physical pose"
+        + (f"; {len(fills)} fills do not see the casters" if fills else "")
+    )
+    return record
+
+
 def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]:
     shell_spec = read_json(SHELL_SPEC_PATH)
     check_blender_version(shell_spec)
@@ -1368,6 +1500,11 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
             )
 
         # Concealed hand: 13 standing tiles, reclined 12 degrees backward.
+        # A seat may sit farther back than the shared radius (v3 moves only the
+        # player's hand back), stored as backRadiusUnitsBySeat[seat].
+        seat_hand_radius = hand.get("backRadiusUnitsBySeat", {}).get(
+            seat_id, hand["backRadiusUnits"]
+        )
         for slot in range(hand["count"]):
             tile_id = f"hand-{seat_id}-{slot:02d}"
             face = next_face(tile_id) if seat_id == "bottom" else None
@@ -1378,7 +1515,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                 seat_id,
                 "standing" if face is not None else "standing-back",
                 (slot - (hand["count"] - 1) / 2) * hand["pitchUnits"],
-                -hand["backRadiusUnits"] - thickness / 2,
+                -seat_hand_radius - thickness / 2,
                 0.5,
                 90.0,
                 0.0,
@@ -1388,7 +1525,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                 f"{slot:02d}",
                 "hand",
                 tilt if seat_id == "bottom" else 0.0,
-                -hand["backRadiusUnits"],
+                -seat_hand_radius,
             )
             index["hand"].setdefault(f"hand-{seat_id}", []).append(tile_id)
 
@@ -1457,6 +1594,9 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
 
     # The human's drawn tile, after the 13th tile's +0.35 advance gap.
     drawn_id = "hand-bottom-draw"
+    bottom_hand_radius = hand.get("backRadiusUnitsBySeat", {}).get(
+        "bottom", hand["backRadiusUnits"]
+    )
     place(
         drawn_id,
         "hand-bottom",
@@ -1464,7 +1604,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         "bottom",
         "standing",
         hand["drawnOffsetUnits"],
-        -hand["backRadiusUnits"] - thickness / 2,
+        -bottom_hand_radius - thickness / 2,
         0.5,
         90.0,
         0.0,
@@ -1474,7 +1614,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         "13",
         "hand",
         tilt,
-        -hand["backRadiusUnits"],
+        -bottom_hand_radius,
     )
     index["drawn"]["drawn"] = [drawn_id]
 
@@ -1520,6 +1660,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
     )
 
     hand_lighting_cheat = apply_hand_lighting_cheat(spec, spec["rig"]) if rig_mode else None
+    hand_shadow_cheat = apply_hand_shadow_cheat(spec, spec["rig"]) if rig_mode else None
 
     clearance = measure_clearance(tiles, spec)
     return scene, {
@@ -1534,6 +1675,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         "clearance": clearance,
         "rigLighting": rig_lighting,
         "handLightingCheat": hand_lighting_cheat,
+        "handShadowCheat": hand_shadow_cheat,
         "floorHidden": bool(rig_mode and spec["rig"]["render"]["hideFloor"]),
         "props": {
             "mat": spec["table"]["playingMat"],
@@ -1828,11 +1970,25 @@ def check_visibility(scene: bpy.types.Scene, camera: dict, tiles: list[dict]) ->
         for x, y in probes:
             point = origin + Vector(rotation @ np.array(Vector((x, y, local_z))))
             direction = (point - eye).normalized()
-            hit, location, normal, index, hit_object, matrix = scene.ray_cast(
-                depsgraph, eye, direction
-            )
+            # Skip camera-invisible helpers (the hand's shadow-only casters):
+            # they exist for shadow rays, not for the rendered image.
+            start = eye
+            hit_object = None
+            for _ in range(6):
+                hit, location, normal, index, candidate, matrix = scene.ray_cast(
+                    depsgraph, start, direction
+                )
+                if not hit:
+                    break
+                if getattr(candidate, "visible_camera", True) and not candidate.hide_render:
+                    hit_object = candidate
+                    break
+                start = location + direction * 1e-4
             samples += 1
             if not hit:
+                occluded.append({"tile": tile["id"], "hit": None})
+                continue
+            if hit_object is None:
                 occluded.append({"tile": tile["id"], "hit": None})
                 continue
             allowed = {tile["id"], f"{tile['id']}-decal"}
@@ -1931,6 +2087,7 @@ def main() -> None:
             "variantNote": variant.get("note"),
             "variantDate": variant.get("date"),
             "strictScene": bool(variant.get("strictScene", False)),
+            "variantExtends": variant.get("extends"),
             "blender": bpy.app.version_string,
             "resolution": resolution,
             "camera": camera,
@@ -1957,6 +2114,7 @@ def main() -> None:
             },
             "lighting": scene_data["rigLighting"],
             "handLightingCheat": scene_data["handLightingCheat"],
+            "handShadowCheat": scene_data["handShadowCheat"],
         }
         bake_path = rig_dir / rig["output"]["bakeFile"]
         bake_path.write_text(json.dumps(bake, indent=1))

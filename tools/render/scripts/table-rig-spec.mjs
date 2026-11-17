@@ -22,22 +22,48 @@ export function deepMerge(base, override) {
   return merged;
 }
 
-/** Resolve a rig variant into the explicit settings its bake used. */
+/** The variant and its `extends` ancestors, oldest first. */
+export function variantChain(rig, id) {
+  const chain = [];
+  const seen = new Set();
+  let current = id;
+  while (current) {
+    if (seen.has(current)) throw new Error(`table-rig: variant cycle through ${current}`);
+    seen.add(current);
+    const variant = rig.variants?.[current];
+    if (!variant) {
+      throw new Error(
+        `table-rig: unknown variant ${current}; variants: ` +
+          `${Object.keys(rig.variants ?? {}).join(', ') || '(none)'}`,
+      );
+    }
+    chain.push(variant);
+    current = variant.extends;
+  }
+  return chain.reverse();
+}
+
+/** Resolve a rig variant (and any `extends` chain) into its explicit settings. */
 export function resolveRigVariant(spec, requested) {
   const rig = spec.rig;
   const id = requested ?? rig.defaultVariant;
-  const variant = rig.variants?.[id];
-  if (!variant) {
-    throw new Error(
-      `table-rig: unknown variant ${id}; variants: ${Object.keys(rig.variants ?? {}).join(', ') || '(none)'}`,
-    );
-  }
+  const chain = variantChain(rig, id);
+  const variant = chain.reduce(
+    (merged, entry) => deepMerge(
+      merged,
+      Object.fromEntries(Object.entries(entry).filter(([key]) => key !== 'extends')),
+    ),
+    {},
+  );
+  variant.extends = chain[chain.length - 1].extends ?? null;
   const resolved = { ...rig };
   for (const key of RIG_MERGE_KEYS) {
     if (key in rig) resolved[key] = deepMerge(rig[key], variant[key] ?? {});
   }
   delete resolved.variants;
-  if (variant.lightingCheat) resolved.lightingCheat = variant.lightingCheat;
+  for (const extra of ['lightingCheat', 'handShadow']) {
+    if (variant[extra]) resolved[extra] = variant[extra];
+  }
   const table = deepMerge(spec.table, variant.table ?? {});
   return { id, variant, rig: resolved, table };
 }

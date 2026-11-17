@@ -39,7 +39,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPng } from './png.mjs';
-import { cameraFromCandidate, rigLightingSamples, rigMetrics } from './table-camera.mjs';
+import { cameraFromCandidate, rigLightingSamples, rigMetrics, tileBoxCorners } from './table-camera.mjs';
 import { alphaAt, alphaCoverage, measureRigSamples } from './table-rig-samples.mjs';
 import { orderedVariants, resolveRigVariant } from './table-rig-spec.mjs';
 
@@ -211,6 +211,28 @@ function checkVariant(manifest, file) {
     checkEqual(`${id} no hand lighting cheat`, manifest.handLightingCheat, null);
   }
 
+  const shadowCheat = rig.handShadow;
+  if (shadowCheat) {
+    const record = manifest.handShadow;
+    if (check(Boolean(record), `${id} records the hand shadow cheat`)) {
+      checkEqual(`${id} shadow mode`, record.mode, shadowCheat.mode);
+      near(record.physicalTiltDeg, shadowCheat.physicalTiltDeg, 1e-9, `${id} shadow physical tilt`);
+      near(record.cheatedTiltDeg, table.hand.tiltDeg, 1e-9, `${id} shadow cheated tilt`);
+      near(record.deltaDeg, table.hand.tiltDeg - shadowCheat.physicalTiltDeg, 1e-6, `${id} shadow normal delta`);
+      check(record.casters >= 13, `${id} shadow casters ${record.casters} >= 13`);
+      check(record.hiddenObjects >= 26, `${id} ${record.hiddenObjects} hand objects hidden from shadows`);
+      checkEqual(`${id} shadow fills`, record.fillLights, rig.lighting.fills.map((fill) => fill.id));
+      near(
+        record.playerHandRadiusUnits,
+        table.hand.backRadiusUnitsBySeat?.bottom ?? table.hand.backRadiusUnits,
+        1e-9,
+        `${id} shadow caster uses the player-hand radius`,
+      );
+    }
+  } else {
+    checkEqual(`${id} no hand shadow cheat`, manifest.handShadow, null);
+  }
+
   // ------------------------------------------------------------------------- //
   // The scene
   // ------------------------------------------------------------------------- //
@@ -321,6 +343,40 @@ function checkVariant(manifest, file) {
     check(value >= 0, `${id} every tile inside the frame (${side} ${value} px)`);
   }
 
+  // The player's hand may sit farther back than the other seats.
+  const seatRadial = {
+    bottom: (corner) => -corner[1],
+    top: (corner) => corner[1],
+    right: (corner) => corner[0],
+    left: (corner) => -corner[0],
+  };
+  const handBases = {};
+  for (const seat of ['bottom', 'top', 'right', 'left']) {
+    let minimum = Infinity;
+    for (const tile of tiles.filter((entry) => (entry.kind === 'hand' || entry.kind === 'drawn') && entry.seat === seat)) {
+      for (const corner of tileBoxCorners(tile)) {
+        if (corner[2] >= 0.01) continue;
+        minimum = Math.min(minimum, seatRadial[seat](corner));
+      }
+    }
+    if (Number.isFinite(minimum)) handBases[seat] = Number(minimum.toFixed(4));
+  }
+  for (const [seat, value] of Object.entries(handBases)) {
+    near(manifest.facts.handBaseRadiusUnits?.[seat], value, 1e-3, `${id} ${seat} hand base radius`);
+  }
+  const otherBases = ['top', 'right', 'left'].map((seat) => handBases[seat]).filter(Number.isFinite);
+  const offset = handBases.bottom !== undefined && otherBases.length
+    ? handBases.bottom - otherBases.reduce((sum, value) => sum + value, 0) / otherBases.length
+    : null;
+  near(manifest.facts.playerHandBackOffsetUnits, offset, 1e-3, `${id} player hand back offset`);
+  if (Number.isFinite(limits.playerHandBackOffsetUnits)) {
+    check(
+      offset !== null && Math.abs(offset - limits.playerHandBackOffsetUnits) <= 0.01,
+      `${id} player's hand sits ${limits.playerHandBackOffsetUnits} units farther back than the other hands ` +
+        `(measured ${offset})`,
+    );
+  }
+
   // ------------------------------------------------------------------------- //
   // The committed render
   // ------------------------------------------------------------------------- //
@@ -409,6 +465,23 @@ function checkVariant(manifest, file) {
   near(manifest.facts.sideFaceLuma.left, measured.sideLeft.luma, 0.11, `${id} manifest left side luma`);
   near(manifest.facts.sideFaceLuma.right, measured.sideRight.luma, 0.11, `${id} manifest right side luma`);
   near(manifest.facts.matLuma, mat.luma, 0.11, `${id} manifest felt luma`);
+  const wallLumas = Object.keys(measured)
+    .filter((name) => name.startsWith('wallFace'))
+    .sort((a, b) => Number(a.slice('wallFace'.length)) - Number(b.slice('wallFace'.length)))
+    .map((name) => measured[name]?.luma ?? null);
+  check(wallLumas.length >= 3, `${id} has ${wallLumas.length} wall-face probes`);
+  const wallMid = Math.floor(wallLumas.length / 2);
+  const wallDip = wallLumas.length >= 3
+    ? Math.abs(wallLumas[wallMid] - (wallLumas[0] + wallLumas[wallLumas.length - 1]) / 2)
+    : null;
+  near(manifest.facts.wallFaceDip, wallDip, 0.11, `${id} manifest wall-face dip`);
+  if (Number.isFinite(limits.wallShadowDipMaxLuma)) {
+    check(
+      wallDip !== null && wallDip <= limits.wallShadowDipMaxLuma,
+      `${id} nothing is cast on the wall behind the hand (dip ${wallDip?.toFixed(1)} ` +
+        `<= ${limits.wallShadowDipMaxLuma})`,
+    );
+  }
 
   checkedVariants.push({ id, metrics, face, blue, handFace, mat, coverage, cameraSpec, rig });
 }

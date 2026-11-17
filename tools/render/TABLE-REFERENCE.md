@@ -9,8 +9,10 @@ The placement renders here inherit the earlier calibration reference's camera
 and are **not** a lighting verdict. **Task 2** (2026-11-17) owns the perspective
 and lighting calibration and ships it as a separate `--rig` mode of the same
 scene and placements. It is variant-based (A/B): `v1-baseline` is the saved
-first rig, `v2-compact` is the first experiment (bigger, hands/melds pulled in
-to the wall, a readability cheat on the player's hand, dimmer key). The
+first rig, `v2-compact` the first experiment (bigger, hands/melds pulled in to
+the wall, a readability cheat on the player's hand, dimmer key), and
+`v3-hand-shadow` moves only the player's hand a further half tile back and makes
+its shadow read as a normally seated tile. The
 placement board below stays at its own 2880 × 2112 framing for plan review. See
 [The 2.5D rig](#the-25d-rig-task-2).
 
@@ -209,22 +211,52 @@ bake as `handLightingCheat` (mode `physicalPose`, physical/cheated tilt, the
 face basis for the player's hand (or the cheat has to move into the runtime
 shader) if the same look is to survive the sprite pipeline.
 
+### v3-hand-shadow (experiment, 2026-11-17)
+
+v3 extends v2 with the user's follow-up: only the player's hand moves further
+from the wall, and its shadow stops giving the cheat away.
+
+| Parameter | v3 | vs v2 |
+| --- | --- | --- |
+| Player's hand radius | **9.3** | the shared 8.8 radius still applies to the three opponent hands; only the bottom hand (and its drawn tile) moves back the extra **0.5 units** (half a tile height) |
+| Camera | 75 mm, 50° pitch, eye `(0, −38.88865, 46.695689)`, **60.5 units**, Shift Y −0.02 | refit for the moved hand: every tile inside (≥ 28.6 px), hand 28.6 px above the bottom, hand face 47.37 px wide |
+| Hand shadow | **physical-pose caster**, fills light-linked away from it | was the cheated hand's own shadow |
+| Measured | discard face **203.2**, hand face **105.5** (hand/discard 0.519), side inner faces 93.4 / 100.2, felt 51.8; wall behind the hand **uniform** | |
+
+**The shadow cheat.** The 40° hand casts a tall shadow under itself and a
+hand-shaped shadow up the wall behind it (the near fill sees the hand from the
+south; that wall band measured a **45.4** luma dip in v2). v3 turns the hand's
+own shadow off entirely and gives every hand tile a **shadow-only duplicate at
+the 12° physical pose**: invisible to the camera, diffuse and glossy rays and
+volume scatter, visible only to shadow rays. Each fill's blocker collection
+omits those casters, so only the key casts the physical shadow — a short band
+falling south, the same family as the shadow in front of the wall. The wall row
+now measures a **4.3** dip (uniform), and the under-hand shadow is the normal
+tile's, not the leaning tile's. The hand still never casts onto the wall or the
+pond behind it.
+
+The bake records the casters (`handShadow`: 14 casters, 27 hand objects hidden,
+the three light-linked fills), and the gate enforces: the player's hand base is
+exactly 0.5 units behind the other hands, the caster tilt is the physical 12°,
+and the wall dip stays under 15 luma.
+
 ### What still needs the user
 
-The numbers say the geometry, framing and exposure are what was asked; only the
-user can sign off the *look* (AGENTS.md §6).
+The numbers say the geometry, framing, shadowing and exposure are what was
+asked; only the user can sign off the *look* (AGENTS.md §6).
 
 ```bash
-xdg-open tools/render/reference/rig/index.html   # v1 vs v2 side by side, with the numbers
+xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, with the numbers
 bash tools/render/bake-table-reference.sh --check
 ```
 
-Questions only the user can answer for v2: is the 1.29× size and 1.3-unit
-hand-to-wall gap right, or should it go further? Is 40° the right hand recline
-(45° would be nearly face-on but the floating edge grows)? Does the corrected
-hand lighting now read as a normally seated tile, or does the 40° silhouette
-still give it away? Is the 203 discard face the right amount of dimming? Does the
-cropped mat/rim framing suit the all-felt final board?
+Questions only the user can answer for v3: is the 0.5-unit step back on the
+player's hand right, and is the hand-to-wall gap now what you wanted? Does the
+under-hand shadow read as short and diffuse like the wall's, or should it be
+shorter still (the caster height is the knob) or lighter? Is the wall behind the
+hand clean enough? Does the hand face at 105.5 luma still read (the physical-pose
+lighting is dimmer than the cheat's 178.8)? Is the 40° recline right, and is the
+203 discard face the right dimming?
 
 ## Published renders and checks
 
