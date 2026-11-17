@@ -13,6 +13,7 @@
     "atlas:review:carved": "vite-node scripts/review-carved.ts",
     "layout:review": "vite-node scripts/review-zone-layout.ts",
     "board:review": "vite-node scripts/review-rendered-board.ts",
+    "pond:review": "vite-node scripts/review-pond-lean.ts",
     "overlays:export": "vite-node scripts/export-overlays.ts",
     "overlays:review": "vite-node scripts/review-overlays.ts",
     "experiment:review": "vite-node scripts/review-contact-shadow-experiment.ts",

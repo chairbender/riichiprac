@@ -1731,6 +1731,27 @@ The blue-back side hands' **per-shell 3D catches** still use the pre-alignment
 row offset; re-baking them is a Blender follow-up. The group shadow, which is
 what the rendered view actually draws under the hand, is aligned.
 
+**Open visual decisions.** The side-pond lean is the one unresolved look. The
+production transform is a true 2D Z rotation about the pond body centre
+(`rotationDeg`/`pivotX`/`pivotY`), at 5°. `cd frontend && npm run pond:review`
+writes `build/review/pond-lean-lab-4x.png` with straight, Z-centre, Z-near,
+shear-with-upright-sprites and opposite-sign variants so the user can pick the
+read; a shear keeps the top/bottom tile edges horizontal and may be what reads
+as "flat on the table" while still leaning the row.
+
+The left/right hand rows still reuse one shell down 13 tiles. The stronger
+side-hand perspective makes the far end of each face narrower, so identical
+shells cannot make the fronts line up; the backs only look aligned. That needs a
+new shell capture with a weaker (closer to isometric) perspective and a re-bake
+of the two side-hand shadows/catches: follow-up task **261116-2217, "2.5D
+polish: re-bake left/right hand shells with weaker perspective"**.
+
+The front/back wall runs measure **1201.35 px** (front, bottom) and **1195.8 px**
+(back, top) body width at @1x: the back is already 5.5 px smaller. Swapping the
+two shell families would put the nearer/larger front shells at the top, so it
+would make the top longer, not shorter. A visibly smaller back would need a
+deliberate scale (about 0.97), which is a separate visual decision.
+
 **Caching.** `update()` returns the zone/group ids it rebuilt. A second update
 with the same board rebuilds nothing; changing one pond body rebuilds that pond
 zone only, and changing a shadow union rebuilds that group only. A real discard
@@ -1775,6 +1796,8 @@ grade when it changes. No game logic moved into React: the view only reads
   seam numbers are unchanged: worst boundary kink ≤ 0.0072 on every
   representative zone; merged vs per-tile mean alpha 0.0054-0.0173 for the wall
   and pond families.
+- `cd frontend && npm run pond:review` writes the isolated side-pond lean lab
+  (`build/review/pond-lean-lab-4x.png`) for the open visual pick.
 - `cd frontend && npm run board:review` writes
   `tools/render/build/review/rendered-board-1x.png` and
   `rendered-board-numbers.json`. The committed fixture reports **2421 × 1398 px
