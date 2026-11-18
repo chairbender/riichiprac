@@ -1380,30 +1380,39 @@ bakery disables itself after one warning and the Task 5 decals draw instead.
    The un-carved plate stays transparent, so the shell's own baked shading is
    untouched and the lip only modulates the rim.
 
-**Display light rig (a deliberate cheat).** The user's direction was to stop
-matching the table bake and light the relief for drama. `DEFAULT_RELIEF_LIGHTING`
-is a separate, world-space rig published in `carvedRelief.ts` (not read from
-`table_layout.json` anymore; only its `cameraPos` is still used):
-- **Key**: warm `[1, 0.93, 0.82]`, intensity 1.8, from low screen-left
-  (`[-0.5, -0.55, 0.62]`), so the upper/left inner walls of a pit catch it and
-  the opposite walls fall away.
-- **Fill**: cool `[0.42, 0.6, 1]`, 0.4, from the opposite side so the shadow
-  side is not dead.
-- **Rim**: warm `[1, 0.96, 0.88]`, 0.55, from above/slightly camera-side for
-  the lip and the top of a stroke.
-- **Specular**: a tight enamel lobe (power 64, gain 1.15 × ink) plus a broad
-  resin sheen (power 22, gain 0.22 × bare ivory) and a grazing Fresnel kicker
-  (0.38). This is the glare that makes the curved V-walls read.
-- **Groove shadow**: the key is marched two steps through the height field
-  toward the light. The terrain blocks when it rises above the ray
-  (`depthAhead < depthHere − ray`), so the far wall of a groove gets a crisp
-  cast shadow without a shadow map. Strength 0.7, distance 0.024 UV.
-- **Ink base** 0.04: a small diffuse floor so black pigment still shows the
-  carving's relief instead of clipping to black.
+**Display light rig: the Phase 2b decal rig, ported (A1, screen-locked).**
+The previous 2.5D decals were Cycles renders of the carved mesh under a
+face-normal "lying parlour" rig, and they are the visual reference. The CPU
+shader now ports that rig instead of inventing a world-space one:
+- **Key** 23.34° off the face normal from glyph-up (`around 0`), warm `#fff4e4`;
+- **fill** `around 56.6 / tilt 50.14`, cool `#dfe9ff`;
+- **bounce** `around 70.57 / tilt 31.47`, green-grey `#cfe4d3`;
+- **rim** `around 9.85 / tilt 134.14` (behind the face), white;
+- **world ambient** `#b9c6d6`, boosted to match the old rig's 0.4 strength.
 
-All directions are world space, so the highlight stays on the same **world**
-wall after a 90/180/270 rotation. The rig is intentionally independent of the
-shell bake; it is a close-up treatment, not a table match.
+The key is near head-on (`n·L ≈ 0.92`), which is why the old decals read
+bright and glossy rather than dark. The rig is rotated around the face normal
+by **`-screenRotationOfQuad`** exactly like `bake_decals.py`, so the light lands
+in the same place on screen for every tile. Our CPU equivalent uses the slot's
+basis and the camera axes to derive the same quad rotation
+(`screenRotationOfBasis`), then `a = around + quadRotation` because the
+`(sin a, cos a)` face-frame parameterization winds opposite to Blender's
+counter-clockwise `lightRotationDeg`. The four pond orientations therefore
+share one screen light; only the glyph rotates under it. This replaces the
+world-locked orientation test from the first pass. The user's decision
+(2026-11-18) is that per-slot/world-locked behavior is not required for visual
+fidelity; A1 first, with the old Cycles decals (option C) as a fallback if the
+CPU approximation still is not close enough.
+
+**Tone and gloss.** The output is tone-mapped with an ACES-like filmic curve
+(the display analogue of the old AgX "Medium High Contrast") and encoded to
+sRGB, rather than clipping a linear value. The pigment is scaled by
+`paintGain 1.75` and the flat ivory target is `ivoryBoost 1.04` with a 190
+floor, so the decal is deliberately brighter than its shell body (the old
+decals were, too; this is what makes them pop). Two specular lobes (tight
+enamel 70/1.1, broad resin 16/0.35) and a Fresnel kicker provide the coat
+glare; the groove shadow is softened to 0.3 because the old look is a bright,
+softly shadowed carve, not a hard cast shadow.
 
 **Paint spill (paint fills the carving).** The Task 4B atlas deliberately keeps
 the V-carve bevel bare ivory. For this view the user asked for the enamel to
@@ -1436,17 +1445,26 @@ call at all.
 
 **Numbers (`npm run atlas:review:relief`, @1x, all 18 face-up shells).** 9
 reachable groups, 432 baked decals (216 cache hits across the 14 standing
-slots), atlas load **420 ms** (raw PNG inflate/unfilter of 3.4 MiB compressed
-data), decal bake **870 ms** (2.0 ms/decal with the shadow march and spill
-sampling), full relief atlas build 1.29 s vs 196 ms carved vs 54 ms flat.
-Frame path: 136 blits in **0.21 ms/frame**; per-frame CPU shading of the same
-136 plates would cost about **270 ms**, which is why it is a startup bake.
-Orientation proof: the same `1m` decal differs from its 90/180/270 siblings by
-about 14k channel bytes each. The display rig's measured contrast: 7z p05/p95
-luma **89 / 220**, 2.8 % of opaque texels ≥225, 0.13 % clipped; 1m p05/p95
-44 / 218 with a 4 % ink-base floor so its black strokes still show relief.
-Spill tint: 57 % of 7z's bare wall, 45 % of 1m's. Regression tests pin the
-raw-decode (no inward normals), the no-black red dragon, and the spill coverage.
+slots), atlas load **420 ms** (raw PNG inflate/unfilter), decal bake **786 ms**
+(1.8 ms/decal), full relief atlas build 1.21 s. Frame path: 136 blits in
+**0.17 ms/frame**; per-frame CPU shading of the same 136 plates would be far
+over budget, which is why this is a startup bake.
+
+Against the old Phase 2b lying decals (opaque pixels, luma):
+
+| | old decal p05 / median / p95 | new relief p05 / median / p95 |
+| --- | --- | --- |
+| 7z | 204 / 233 / 237 | 168 / 231 / 235 |
+| 1m | 46 / 225 / 236 | 127 / 218 / 235 |
+| 1p | 62 / 206 / 241 | 129 / 215 / 241 |
+
+7z and 1p are now within a few luma of the reference median and p95; 1m's
+shadow percentile is higher because the relief covers the whole V-wall (the
+old decal was a glyph-only overlay). Highlights: 7z 58%, 1p 46%, 1m 44% of
+opaque pixels ≥225; clipping is zero. Spill: **92 %** of 7z's bare wall and
+**70 %** of 1m's carry paint, which is the "paint fills the carving" effect.
+The reference metrics are published in `relief-numbers.json` as
+`referenceDecals` so this comparison is reproducible.
 
 **Fallback.** Per face: relief → Task 5 carved decal → flat glyph. A missing
 relief cell skips only that face; a missing/corrupt relief atlas disables the

@@ -35,10 +35,12 @@ import type { AtlasCanvas, CreateAtlasCanvas, ResolveAssetUrl } from './TileAtla
 import type {
   OrientationGroup,
   SlotBasis,
+  TableCamera,
   TableLayoutManifest,
   Vec3,
 } from './tableLayoutManifest';
 import {
+  cameraAxes,
   groupSlotsByOrientation,
   normalizeVec3,
   reliefGroupForShell,
@@ -61,8 +63,13 @@ import type { FaceUpShellId } from './tiles';
  * Rim: a warm grazing kicker from above/back for the lip and stroke tops.
  */
 export interface ReliefLightConfig {
-  /** World-space direction toward the light source. */
-  readonly direction: Vec3;
+  /**
+   * Around the face normal, in degrees: 0 = glyph-up, 90 = glyph-right.
+   * The display rig is face-normal, like the Phase 2b decals.
+   */
+  readonly aroundDeg: number;
+  /** Angle from the face normal: 0 head-on, 90 grazing, >90 behind. */
+  readonly tiltDeg: number;
   /** Linear RGB tint. */
   readonly color: Vec3;
   readonly intensity: number;
@@ -73,6 +80,7 @@ export interface ReliefLightConfig {
 export interface ReliefLightingConfig {
   readonly key: ReliefLightConfig;
   readonly fill: ReliefLightConfig;
+  readonly bounce: ReliefLightConfig;
   readonly rim: ReliefLightConfig;
   /** Linear RGB ambient fill. */
   readonly ambient: Vec3;
@@ -82,12 +90,31 @@ export interface ReliefLightingConfig {
   readonly normalStrength: number;
   /** Enamel (paint) specular lobe. */
   readonly enamel: { readonly power: number; readonly gain: number };
-  /** Broad resin sheen on the bare ivory. */
+  /** Broad resin/coat sheen on the bare ivory. */
   readonly resin: { readonly power: number; readonly gain: number };
   /** Grazing-angle ivory kicker. */
   readonly fresnel: number;
   /** A small diffuse floor so black ink still shows the carving's relief. */
   readonly inkBase: number;
+  /**
+   * Scale applied to the pigment albedo before tone mapping. The Phase 2b
+   * decals read much brighter than a naive diffuse of the raw #A60C0C pigment;
+   * this is the display cheat that brings the paint up to that level without
+   * washing out the ivory.
+   */
+  readonly paintGain: number;
+  /** Multiplier before the ACES-like tone curve. */
+  readonly toneExposure: number;
+  /** The decorative ivory is allowed to be brighter than the shell body. */
+  readonly ivoryBoost: number;
+  /** A floor so the dark standing-hand shell still gets a luminous carve. */
+  readonly ivoryFloor: number;
+  /**
+   * Rotate the whole rig around the face normal by `-quadRotation`, exactly
+   * like the Phase 2b bake. This keeps the light in the same place on screen
+   * for every tile orientation.
+   */
+  readonly screenLock: boolean;
   /**
    * One-step directional groove shadow. `distanceUv` is the march length in
    * face UV, `lift` is the ray height over that distance in normalized carve
@@ -109,31 +136,56 @@ export interface ReliefLightingConfig {
   };
 }
 
+/**
+ * The Phase 2b lying-decal rig, ported from `tools/render/decal-spec.json`.
+ * The key is only 23° off the face normal from glyph-up, which is what makes
+ * the old decals read bright and glossy rather than dark and uniform. Fill,
+ * bounce and a behind-the-face rim are the original relative fixtures; the
+ * world ambient is the old `#b9c6d6 @ 0.4`.
+ *
+ * Intensities are relative (the Blender rig used area-light watts and
+ * distances), so they keep the same key/fill/bounce/rim ordering while the
+ * per-shell exposure calibration sets the absolute level.
+ */
 export const DEFAULT_RELIEF_LIGHTING: ReliefLightingConfig = {
   key: {
-    direction: [-0.5, -0.55, 0.62],
-    color: [1.0, 0.93, 0.82],
-    intensity: 1.8,
+    aroundDeg: 0,
+    tiltDeg: 23.34,
+    color: [1.0, 0.905, 0.776],
+    intensity: 1.6,
     castShadow: true,
   },
   fill: {
-    direction: [0.65, 0.45, 0.6],
-    color: [0.42, 0.6, 1.0],
-    intensity: 0.4,
+    aroundDeg: 56.6,
+    tiltDeg: 50.14,
+    color: [0.738, 0.815, 1.0],
+    intensity: 0.75,
+  },
+  bounce: {
+    aroundDeg: 70.57,
+    tiltDeg: 31.47,
+    color: [0.624, 0.776, 0.65],
+    intensity: 0.3,
   },
   rim: {
-    direction: [0.1, -0.35, 0.93],
-    color: [1.0, 0.96, 0.88],
-    intensity: 0.55,
+    aroundDeg: 9.85,
+    tiltDeg: 134.14,
+    color: [1.0, 1.0, 1.0],
+    intensity: 0.3,
   },
-  ambient: [0.045, 0.055, 0.075],
-  ambientSky: 0.3,
-  normalStrength: 1.6,
-  enamel: { power: 64, gain: 1.15 },
-  resin: { power: 22, gain: 0.22 },
-  fresnel: 0.38,
-  inkBase: 0.04,
-  shadow: { strength: 0.7, distanceUv: 0.024, steps: 2, lift: 0.8, softness: 0.16 },
+  ambient: [0.22, 0.25, 0.3],
+  ambientSky: 0.2,
+  normalStrength: 1.15,
+  enamel: { power: 70, gain: 1.1 },
+  resin: { power: 16, gain: 0.35 },
+  fresnel: 0.3,
+  inkBase: 0.02,
+  paintGain: 1.75,
+  toneExposure: 1.0,
+  ivoryBoost: 1.04,
+  ivoryFloor: 190,
+  screenLock: true,
+  shadow: { strength: 0.3, distanceUv: 0.02, steps: 2, lift: 0.8, softness: 0.2 },
   paintSpill: { radiusUv: 0.038, strength: 0.98, falloff: 0.45 },
 };
 
@@ -168,6 +220,8 @@ export interface ReliefShadingFrame {
   readonly resinGain: number;
   readonly fresnelGain: number;
   readonly inkBase: number;
+  readonly paintGain: number;
+  readonly toneExposure: number;
   /** Key light's in-face direction in UV, for the groove-shadow march. */
   readonly keyShadowDir: readonly [number, number];
   readonly shadowStrength: number;
@@ -223,6 +277,43 @@ for (let index = 0; index <= 4096; index += 1) {
   linearToSrgbTable[index] = Math.round(clamp(encoded, 0, 1) * 255);
 }
 
+/**
+ * ACES-like filmic curve, the display analogue of the old decals' AgX
+ * "Medium High Contrast". It lifts the mids and rolls the highlights off
+ * instead of clipping them, which is what makes the bright Phase 2b look.
+ */
+const TONE_STEPS = 1024;
+const TONE_MAX = 8;
+const toneTable = new Uint8Array(TONE_MAX * TONE_STEPS + 1);
+for (let index = 0; index <= TONE_MAX * TONE_STEPS; index += 1) {
+  const x = index / TONE_STEPS;
+  const mapped = (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14);
+  // ACES is linear; encode it back to sRGB, exactly like the old AgX output.
+  toneTable[index] = linearToSrgbTable[(clamp(mapped, 0, 1) * 4096 + 0.5) | 0];
+}
+
+function encodeTone(value: number, exposure: number): number {
+  const x = value * exposure;
+  if (x <= 0) return 0;
+  if (x >= TONE_MAX) return 255;
+  return toneTable[(x * TONE_STEPS + 0.5) | 0];
+}
+
+/**
+ * The linear input that tone-maps to a target sRGB byte. Used to calibrate the
+ * flat ivory through the filmic curve (a linear division is not enough once
+ * the tone curve is non-linear).
+ */
+const toneInputForByte = new Float64Array(256);
+{
+  let index = 0;
+  for (let byte = 0; byte < 256; byte += 1) {
+    while (index < toneTable.length - 1 && toneTable[index] < byte) index += 1;
+    toneInputForByte[byte] = index / TONE_STEPS;
+  }
+}
+
+
 function encodeLinear(value: number): number {
   if (value <= 0) return linearToSrgbTable[0];
   if (value >= 1) return linearToSrgbTable[4096];
@@ -264,6 +355,11 @@ export function reliefShadingFrame(input: {
   readonly position: Vec3;
   readonly cameraPos: Vec3;
   readonly ivorySrgb: Vec3;
+  /**
+   * The shell quad's screen rotation. The old decal rig rotates around the
+   * face normal by `-quadRotation` so the room light stays fixed on screen.
+   */
+  readonly quadRotationDeg: 0 | 90 | 180 | 270;
   readonly config?: ReliefLightingConfig;
   readonly dCarve?: number;
   readonly minViewZ?: number;
@@ -276,24 +372,37 @@ export function reliefShadingFrame(input: {
     input.cameraPos[2] - input.position[2],
   ] as const);
   const { tangent, bitangent, normal } = input.basis;
+  const up: Vec3 = [-bitangent[0], -bitangent[1], -bitangent[2]] as const;
   const viewTan: Vec3 = [
     dot(viewWorld, tangent),
     dot(viewWorld, bitangent),
     dot(viewWorld, normal),
   ] as const;
 
-  const lights: ReliefLightFrame[] = [config.key, config.fill, config.rim].map((light) => {
-    const direction = normalizeVec3(light.direction);
-    return {
-      direction,
-      color: [
-        light.color[0] * light.intensity,
-        light.color[1] * light.intensity,
-        light.color[2] * light.intensity,
-      ] as const,
-      castShadow: light.castShadow === true,
-    };
-  });
+  const screenRotation = config.screenLock ? input.quadRotationDeg : 0;
+  const lights: ReliefLightFrame[] = [config.key, config.fill, config.bounce, config.rim].map(
+    (light) => {
+      const around = ((light.aroundDeg + screenRotation) * Math.PI) / 180;
+      const tilt = (light.tiltDeg * Math.PI) / 180;
+      const towardTangent = Math.sin(tilt) * Math.sin(around);
+      const towardUp = Math.sin(tilt) * Math.cos(around);
+      const towardOut = Math.cos(tilt);
+      const direction = normalizeVec3([
+        tangent[0] * towardTangent + up[0] * towardUp + normal[0] * towardOut,
+        tangent[1] * towardTangent + up[1] * towardUp + normal[1] * towardOut,
+        tangent[2] * towardTangent + up[2] * towardUp + normal[2] * towardOut,
+      ] as const);
+      return {
+        direction,
+        color: [
+          light.color[0] * light.intensity,
+          light.color[1] * light.intensity,
+          light.color[2] * light.intensity,
+        ] as const,
+        castShadow: light.castShadow === true,
+      };
+    },
+  );
 
   // Flat-ivory calibration includes every light that can hit the face.
   const sky = 1 + config.ambientSky * Math.max(normal[2], 0);
@@ -309,10 +418,15 @@ export function reliefShadingFrame(input: {
     flat[1] += amount * light.color[1];
     flat[2] += amount * light.color[2];
   }
+  const ivoryTarget: Vec3 = [
+    clamp(Math.max(input.ivorySrgb[0] * config.ivoryBoost, config.ivoryFloor), 0, 255),
+    clamp(Math.max(input.ivorySrgb[1] * config.ivoryBoost, config.ivoryFloor), 0, 255),
+    clamp(Math.max(input.ivorySrgb[2] * config.ivoryBoost, config.ivoryFloor), 0, 255),
+  ] as const;
   const exposure: Vec3 = [
-    srgbToLinear(input.ivorySrgb[0]) / Math.max(reference[0] + flat[0], 1e-3),
-    srgbToLinear(input.ivorySrgb[1]) / Math.max(reference[1] + flat[1], 1e-3),
-    srgbToLinear(input.ivorySrgb[2]) / Math.max(reference[2] + flat[2], 1e-3),
+    toneInputForByte[Math.round(ivoryTarget[0])] / Math.max(reference[0] + flat[0], 1e-3),
+    toneInputForByte[Math.round(ivoryTarget[1])] / Math.max(reference[1] + flat[1], 1e-3),
+    toneInputForByte[Math.round(ivoryTarget[2])] / Math.max(reference[2] + flat[2], 1e-3),
   ].map((value) => clamp(value, 0.02, 6)) as unknown as Vec3;
 
   const key = lights[0].direction;
@@ -335,6 +449,8 @@ export function reliefShadingFrame(input: {
     resinGain: config.resin.gain,
     fresnelGain: config.fresnel,
     inkBase: config.inkBase,
+    paintGain: config.paintGain,
+    toneExposure: config.toneExposure,
     keyShadowDir:
       keyLength > 1e-4 ? [keyX / keyLength, keyY / keyLength] : [0, 0],
     shadowStrength: config.shadow.strength,
@@ -375,6 +491,25 @@ export function carveUvOffsetInto(
   const scale = ((1 - clamp01(height)) * dCarve) / Math.max(viewTan[2], minViewZ);
   out[offset] = -viewTan[0] * scale;
   out[offset + 1] = -viewTan[1] * scale;
+}
+
+/**
+ * The shell quad's screen rotation for a slot. The Phase 2b rig rotated the
+ * light by `-quadRotation`, so two tiles with the same face basis but a
+ * different screen orientation get the light rotated to the same place on
+ * screen. Derived from the glyph's right axis projected into the camera's
+ * screen plane, so it needs no shell id.
+ */
+export function screenRotationOfBasis(
+  basis: SlotBasis,
+  camera: TableCamera,
+): 0 | 90 | 180 | 270 {
+  const { right, up } = cameraAxes(camera);
+  let degrees =
+    (Math.atan2(dot(basis.tangent, up), dot(basis.tangent, right)) * 180) / Math.PI;
+  if (degrees < 0) degrees += 360;
+  const wrapped = ((Math.round(degrees / 90) * 90) % 360 + 360) % 360;
+  return wrapped as 0 | 90 | 180 | 270;
 }
 
 /** Step 3a: decode a tangent normal into world space. No sign flip. */
@@ -438,6 +573,8 @@ export interface ReliefScalars {
   readonly resinPower: number; readonly resinGain: number;
   readonly fresnelGain: number;
   readonly inkBase: number;
+  readonly paintGain: number;
+  readonly toneExposure: number;
   readonly bevelGain: number;
 }
 
@@ -465,6 +602,8 @@ export function reliefScalars(frame: ReliefShadingFrame): ReliefScalars {
     resinPower: frame.resinPower, resinGain: frame.resinGain,
     fresnelGain: frame.fresnelGain,
     inkBase: frame.inkBase,
+    paintGain: frame.paintGain,
+    toneExposure: frame.toneExposure,
     bevelGain: frame.bevelGain,
   };
 }
@@ -570,18 +709,24 @@ export function shadeReliefInto(
   // Blend the nearest pigment toward the blank tile's white with the ink mask:
   // this is also what makes the spill read as paint creeping over the lip.
   const base = s.inkBase * inkMask;
-  const pigmentRl = 1 + (srgbTable[pigmentR | 0] - 1) * inkMask + base;
-  const pigmentGl = 1 + (srgbTable[pigmentG | 0] - 1) * inkMask + base;
-  const pigmentBl = 1 + (srgbTable[pigmentB | 0] - 1) * inkMask + base;
+  const pigmentRl =
+    1 + (Math.min(1, srgbTable[pigmentR | 0] * s.paintGain) - 1) * inkMask + base;
+  const pigmentGl =
+    1 + (Math.min(1, srgbTable[pigmentG | 0] * s.paintGain) - 1) * inkMask + base;
+  const pigmentBl =
+    1 + (Math.min(1, srgbTable[pigmentB | 0] * s.paintGain) - 1) * inkMask + base;
 
-  out[offset] = encodeLinear(
+  out[offset] = encodeTone(
     (pigmentRl * irradianceR * ao + enamelR + resinR + fresnelR) * s.e0,
+    s.toneExposure,
   );
-  out[offset + 1] = encodeLinear(
+  out[offset + 1] = encodeTone(
     (pigmentGl * irradianceG * ao + enamelG + resinG + fresnelG) * s.e1,
+    s.toneExposure,
   );
-  out[offset + 2] = encodeLinear(
+  out[offset + 2] = encodeTone(
     (pigmentBl * irradianceB * ao + enamelB + resinB + fresnelB) * s.e2,
+    s.toneExposure,
   );
 
   // Cover only the carve: painted floors and the bare V-carve walls/lip. The
@@ -921,6 +1066,7 @@ export class CarvedReliefBakery {
     const started = now();
     const { cellWidth, cellHeight } = this.options.manifest.raster;
     const frame = reliefShadingFrame({
+      quadRotationDeg: screenRotationOfBasis(group.basis, this.options.layout.camera),
       basis: group.basis,
       position: group.position,
       cameraPos: this.options.layout.lighting.cameraPos,

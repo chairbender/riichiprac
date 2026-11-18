@@ -5,7 +5,9 @@ import { createCanvas, loadImage as loadNapiImage } from '@napi-rs/canvas';
 import { describe, expect, it, vi } from 'vitest';
 import {
   CarvedReliefBakery,
+  DEFAULT_RELIEF_LIGHTING,
   carveUvOffset,
+  screenRotationOfBasis,
   linearToSrgb,
   reliefShadingFrame,
   shadeReliefSample,
@@ -23,6 +25,7 @@ import { TileAtlas } from './TileAtlas';
 import { TileAtlasBuilder } from './TileAtlasBuilder';
 import type { AtlasCanvas, AtlasImage } from './TileAtlasBuilder';
 import {
+  cameraAxes,
   groupSlotsByOrientation,
   parseTableLayoutManifest,
   reliefGroupForShell,
@@ -187,16 +190,17 @@ describe('carved relief maths', () => {
     expect(tangentNormalToWorld([0, 1, 0], north)).toEqual([0, 1, 0]);
   });
 
-  it('lights world-north walls brighter than world-south walls, in any rotation', () => {
-    const frame = (basis: SlotBasis): ReliefShadingFrame =>
+  it('lights the glyph-up wall with the face-normal key, mirrored by the screen lock', () => {
+    const south: SlotBasis = { tangent: [1, 0, 0], bitangent: [0, -1, 0], normal: [0, 0, 1] };
+    const north: SlotBasis = { tangent: [-1, 0, 0], bitangent: [0, 1, 0], normal: [0, 0, 1] };
+    const frame = (basis: SlotBasis, quadRotationDeg: 0 | 90 | 180 | 270) =>
       reliefShadingFrame({
         basis,
         position: [0, -4.8, 0.295],
         cameraPos: layout.lighting.cameraPos,
         ivorySrgb: IVORY,
+        quadRotationDeg,
       });
-    const south: SlotBasis = { tangent: [1, 0, 0], bitangent: [0, -1, 0], normal: [0, 0, 1] };
-    const north: SlotBasis = { tangent: [-1, 0, 0], bitangent: [0, 1, 0], normal: [0, 0, 1] };
     const wall = (normal: readonly [number, number, number]): ReliefSample => ({
       albedo: [255, 255, 255],
       paint: 0,
@@ -205,17 +209,50 @@ describe('carved relief maths', () => {
       ao: 1,
       roughness: 0.45,
     });
-    // Tangent +y is world north under `south`, world south under `north`.
-    const southNorthWall = shadeReliefSample(wall([0, 0.6, 0.8]), frame(south));
-    const southSouthWall = shadeReliefSample(wall([0, -0.6, 0.8]), frame(south));
-    expect(brightness([southNorthWall.r, southNorthWall.g, southNorthWall.b])).toBeGreaterThan(
-      brightness([southSouthWall.r, southSouthWall.g, southSouthWall.b]),
+    const lit = (sample: ReliefSample, shadingFrame: ReliefShadingFrame) => {
+      const pixel = shadeReliefSample(sample, shadingFrame);
+      return brightness([pixel.r, pixel.g, pixel.b]);
+    };
+    // Phase 2b key comes from glyph-up, so the glyph-up inner wall (normal-y
+    // negative) is the lit one for a 0-degree decal.
+    expect(lit(wall([0, -0.6, 0.8]), frame(south, 0))).toBeGreaterThan(
+      lit(wall([0, 0.6, 0.8]), frame(south, 0)),
     );
-    const northNorthWall = shadeReliefSample(wall([0, -0.6, 0.8]), frame(north));
-    const northSouthWall = shadeReliefSample(wall([0, 0.6, 0.8]), frame(north));
-    expect(brightness([northNorthWall.r, northNorthWall.g, northNorthWall.b])).toBeGreaterThan(
-      brightness([northSouthWall.r, northSouthWall.g, northSouthWall.b]),
+    // A 180-degree tile pre-rotates the rig by -180, so the highlight is on
+    // the opposite face-local wall; the shell quad puts it back on screen-top.
+    expect(lit(wall([0, 0.6, 0.8]), frame(north, 180))).toBeGreaterThan(
+      lit(wall([0, -0.6, 0.8]), frame(north, 180)),
     );
+  });
+
+  it('keeps the key fixed in screen space across the four pond orientations', () => {
+    const camera = layout.camera;
+    const axes = cameraAxes(camera);
+    const projected: { x: number; y: number }[] = [];
+    for (const shell of [
+      'shell_flat_upright',
+      'shell_flat_sideways',
+      'shell_flat_upright_180',
+      'shell_flat_sideways_270',
+    ] as const) {
+      const shellGroup = group(shell);
+      const frame = reliefShadingFrame({
+        basis: shellGroup.basis,
+        position: shellGroup.position,
+        cameraPos: layout.lighting.cameraPos,
+        ivorySrgb: IVORY,
+        quadRotationDeg: screenRotationOfBasis(shellGroup.basis, camera),
+      });
+      const key = frame.lights[0].direction;
+      projected.push({
+        x: key[0] * axes.right[0] + key[1] * axes.right[1] + key[2] * axes.right[2],
+        y: key[0] * axes.up[0] + key[1] * axes.up[1] + key[2] * axes.up[2],
+      });
+    }
+    for (const entry of projected.slice(1)) {
+      expect(entry.x).toBeCloseTo(projected[0].x, 6);
+      expect(entry.y).toBeCloseTo(projected[0].y, 6);
+    }
   });
 
   it('adds a glossy enamel glint when a painted wall faces the halfway vector', () => {
@@ -224,6 +261,7 @@ describe('carved relief maths', () => {
       position: group('shell_flat_upright').position,
       cameraPos: layout.lighting.cameraPos,
       ivorySrgb: IVORY,
+      quadRotationDeg: 0,
     });
     const base: Omit<ReliefSample, 'normal'> = {
       albedo: [166, 12, 12],
@@ -257,11 +295,13 @@ describe('carved relief maths', () => {
     expect(glint.r - flat.r).toBeGreaterThan(0);
   });
 
-  it('tone-matches flat ivory to the shell face sample', () => {    const frame = reliefShadingFrame({
+  it('tone-matches flat ivory to the shell face sample', () => {
+    const frame = reliefShadingFrame({
       basis: group('shell_flat_upright').basis,
       position: group('shell_flat_upright').position,
       cameraPos: layout.lighting.cameraPos,
       ivorySrgb: IVORY,
+      quadRotationDeg: 0,
     });
     const flat = shadeReliefSample(
       {
@@ -275,12 +315,17 @@ describe('carved relief maths', () => {
       frame,
     );
     expect(flat.a).toBe(0); // un-carved plate stays transparent
-    expect(flat.r).toBeGreaterThanOrEqual(IVORY[0] - 4);
-    expect(flat.r).toBeLessThanOrEqual(IVORY[0] + 6);
-    expect(flat.g).toBeGreaterThanOrEqual(IVORY[1] - 4);
-    expect(flat.g).toBeLessThanOrEqual(IVORY[1] + 6);
-    expect(flat.b).toBeGreaterThanOrEqual(IVORY[2] - 4);
-    expect(flat.b).toBeLessThanOrEqual(IVORY[2] + 6);
+    // The decal is deliberately brighter than the shell body (ivoryBoost) and
+    // has a floor so the dark standing hand still gets a luminous carve.
+    const target = IVORY.map((value) =>
+      Math.round(Math.max(value * DEFAULT_RELIEF_LIGHTING.ivoryBoost, DEFAULT_RELIEF_LIGHTING.ivoryFloor)),
+    );
+    expect(flat.r).toBeGreaterThanOrEqual(target[0] - 8);
+    expect(flat.r).toBeLessThanOrEqual(target[0] + 8);
+    expect(flat.g).toBeGreaterThanOrEqual(target[1] - 8);
+    expect(flat.g).toBeLessThanOrEqual(target[1] + 8);
+    expect(flat.b).toBeGreaterThanOrEqual(target[2] - 8);
+    expect(flat.b).toBeLessThanOrEqual(target[2] + 8);
 
     // A deep cavity is darker than the open face.
     const cavity = shadeReliefSample(
@@ -333,8 +378,10 @@ describe('carved relief bake', () => {
     const at = (face: typeof upright, wall: { x: number; y: number }) =>
       rgba(face!.canvas, wall.x, wall.y);
 
-    // `wall.positive` is the face-local +y wall. It faces world north under
-    // the upright south-pond basis, and world south under the 180 rotation.
+    // `wall.positive` is the face-local +y (glyph-down) wall. The Phase 2b key
+    // comes from glyph-up, so the -y wall is the lit one in the 0-degree decal;
+    // the 180-degree decal pre-rotates the rig by -180 and lights the opposite
+    // face-local wall, which the shell quad turns back to screen-top.
     const uprightPositive = at(upright, walls.positive);
     const uprightNegative = at(upright, walls.negative);
     const northPositive = at(north, walls.positive);
@@ -342,10 +389,9 @@ describe('carved relief bake', () => {
     expect(walls.positive.ny).toBeGreaterThan(0.4);
     expect(walls.negative.ny).toBeLessThan(-0.4);
 
-    expect(brightness(uprightPositive)).toBeGreaterThan(brightness(uprightNegative));
-    expect(brightness(northNegative)).toBeGreaterThan(brightness(northPositive));
-    // The same tangent texel is lit differently once the basis rotates: the
-    // highlight moved with the world, not with the sprite.
+    expect(brightness(uprightNegative)).toBeGreaterThan(brightness(uprightPositive));
+    expect(brightness(northPositive)).toBeGreaterThan(brightness(northNegative));
+    // The two orientations are genuinely different decals.
     expect(Math.abs(brightness(uprightPositive) - brightness(northPositive))).toBeGreaterThan(2);
     expect(Math.abs(brightness(uprightNegative) - brightness(northNegative))).toBeGreaterThan(2);
     // Both walls remain visible; the carve is not silently transparent.

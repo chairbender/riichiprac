@@ -460,11 +460,49 @@ for (const orientation of [ORIENTATIONS[0], ORIENTATIONS[2]]) {
   }
 }
 
+/* The Phase 2b lying decals, as the visual reference this rig is ported from. */
+const referenceDecals: unknown[] = [];
+for (const face of ['7z', '1m', '1p'] as TileFaceId[]) {
+  const image = await loadImage(readFileSync(join(tableDir, `decals/${face}-lying-l0.avif`)));
+  const canvas = createCanvas(image.width, image.height);
+  const context = canvas.getContext('2d');
+  context.drawImage(image, 0, 0);
+  const data = context.getImageData(0, 0, image.width, image.height).data;
+  const luma: number[] = [];
+  let opaque = 0;
+  let highlight = 0;
+  let shadow = 0;
+  for (let index = 0; index < data.length; index += 4) {
+    if (data[index + 3] < 128) continue;
+    opaque += 1;
+    const value = Math.max(data[index], data[index + 1], data[index + 2]);
+    luma.push(value);
+    if (value >= 225) highlight += 1;
+    if (value <= 110) shadow += 1;
+  }
+  luma.sort((a, b) => a - b);
+  const at = (p: number) => luma[Math.min(luma.length - 1, Math.floor(p * luma.length))];
+  referenceDecals.push({
+    face,
+    source: `decals/${face}-lying-l0.avif`,
+    opacityThreshold: 128,
+    opaque,
+    min: at(0),
+    p05: at(0.05),
+    median: at(0.5),
+    p95: at(0.95),
+    max: at(0.999),
+    highlightPct: round((100 * highlight) / opaque),
+    shadowPct: round((100 * shadow) / opaque),
+  });
+}
+
 const numbers = {
   generatedBy: 'frontend/scripts/review-relief.ts',
   path: 'Task 5A CPU startup bake into the per-(bucket, rounded basis) decal cache',
   lighting: DEFAULT_RELIEF_LIGHTING,
   lightingMetrics,
+  referenceDecals,
   spillMetrics,
   cache: {
     key: 'face @ (bucket|t…|b…|n…) @ output size @ ivory calibration',
