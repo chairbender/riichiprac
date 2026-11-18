@@ -261,8 +261,10 @@ and blurred once, so the tsumogiri gap is not double-darkened and the shadow is
 exactly symmetric (0.18 units at both outer ends, drawn tile centred).
 **v13-shadow-darker** keeps that shape and deepens it to match the key shadow in
 front of the player's wall: full black at the core, σ 0.26, footprint offset 0.18
-units south — the hand shadow's core now measures 27 luma against the wall
-shadow's 27.
+units south — the hand shadow's core measures 27 luma against the wall shadow's
+27. **v13 is the chosen rig (user sign-off 2026-11-17) and the spec's default
+variant**, so `--rig` with no `--variant` reproduces it; the earlier takes remain
+as the A/B record.
 
 The **hand cheat** in v2 reclines the player's hand further than is physical, so
 the near bottom edge floats and the real cast shadow is not the production

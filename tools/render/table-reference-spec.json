@@ -486,7 +486,7 @@
       "renderPattern": "rig-{width}.png",
       "note": "The plan's reference resolution. One render per variant, not a @2x master: the rig is a perspective/lighting calibration target, and Task 3 exports normalized screen coordinates and quads, not pixels from a board. Committed variants live together under reference/rig/ so they can be A/B compared; {variant} is the variant id."
     },
-    "defaultVariant": "v1-baseline",
+    "defaultVariant": "v13-shadow-darker",
     "variants": {
       "v1-baseline": {
         "order": 1,
@@ -939,7 +939,10 @@
           "handWrapNorthMaxLumaFactor": 0.97,
           "handWrapSymmetryTolerance": 0.06,
           "symmetricGroups": true
-        }
+        },
+        "chosen": true,
+        "chosenDate": "2026-11-17",
+        "chosenNote": "Reviewed on the A/B page by the user on 2026-11-17 ('Looks good now, let's go with that') and approved: the compact layout (hands/melds at 8.8 with the player's hand at 9.3), the 40 deg hand recline shaded as the 12 deg pose, the 6000 W key, and the unioned hand shadow at the wall-key-shadow darkness. v13 is the default variant."
       }
     }
   },

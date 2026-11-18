@@ -142,8 +142,18 @@ the same space as the previous reference; it is not the 2.5D framing.
 
 Task 2 of [`2_5d_implementation_plan.md`](../../2_5d_implementation_plan.md)
 ships the perspective and lighting for the new pipeline as a second mode of the
-same scene (`--rig`). It reuses every tile placement from this model. The rig is
-**variant-based** so settings can be A/B compared without losing a look:
+same scene (`--rig`). It reuses every tile placement from this model.
+
+**Chosen (2026-11-17): the user reviewed the A/B page and approved
+`v13-shadow-darker`** ("Looks good now, let's go with that") — the compact layout
+(hands/melds at 8.8, the player's hand at 9.3), the 40° hand recline shaded as
+the 12° pose, the 6000 W key, and the unioned hand shadow at the wall-key-shadow
+darkness. It is the spec's `defaultVariant`, so `bash
+tools/render/bake-table-reference.sh --rig` with no `--variant` reproduces it.
+The earlier takes stay committed as the A/B record.
+
+The rig is **variant-based** so settings can be A/B compared without losing a
+look:
 
 - `table-reference-spec.json`'s `rig` blocks are the saved **v1 baseline**
   (the first committed rig).
@@ -384,13 +394,12 @@ xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, wi
 bash tools/render/bake-table-reference.sh --check
 ```
 
-The open question is whether **v13** is the keeper: take A's length and weight,
-one union footprint for the hand zone (row + drawn tile) blurred once, exactly
-symmetric margins, offset slightly forward, and now as dark as the wall's key
-shadow. If it is, it becomes the production shadow setting (the runtime does the
-same thing: union the zone's contact rectangles, offset them down a hair, blur
-once, and draw at the matching core alpha) and the other takes can be pruned.
-The 40° recline and the 203 discard face are unchanged.
+**Resolved (2026-11-17): v13 is the chosen rig** and the default variant. The
+user reviewed the A/B page and approved the compact layout, the readable hand,
+the dimmed key and the union shadow at the wall's darkness. The earlier takes
+remain committed for the record (they can be pruned later); no visual question
+is open. The remaining knobs, if ever revisited, are the hand tilt, the key
+energy and the shadow's `offsetYUnits`/`sigmaUnits`.
 
 ## Published renders and checks
 

@@ -111,6 +111,7 @@ function checkVariant(manifest, file) {
   checkEqual(`${id} variant label`, manifest.variantLabel, variant.label);
   checkEqual(`${id} variant order`, manifest.variantOrder, variant.order ?? 0);
   checkEqual(`${id} strictScene`, manifest.strictScene, Boolean(variant.strictScene));
+  checkEqual(`${id} chosen flag`, Boolean(manifest.variantChosen), Boolean(variant.chosen));
   check(Boolean(variantsOfSpec[id]), `${id} is declared in the spec`);
   check(cameraSpec.mode === 'perspective', `${id} camera is perspective`);
   check(
@@ -728,6 +729,15 @@ for (const { file, manifest } of toCheck) {
   if (variantsOfSpec[manifest.variant]) checkVariant(manifest, file);
   else fail(`committed manifest ${file} names unknown variant ${manifest.variant}`);
 }
+
+check(
+  Boolean(spec.rig.variants?.[spec.rig.defaultVariant]),
+  `the default variant ${spec.rig.defaultVariant} is declared`,
+);
+check(
+  Object.values(spec.rig.variants ?? {}).filter((entry) => entry.chosen).length === 1,
+  'exactly one variant is marked chosen',
+);
 
 const declared = orderedVariants(spec).map((entry) => entry.id);
 for (const id of declared) {

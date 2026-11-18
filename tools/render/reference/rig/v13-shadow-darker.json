@@ -7,6 +7,9 @@
  "variantNote": "v12's union shadow was a touch lighter than the key shadow in front of the player's wall (26 luma at its core). v13 keeps the same union footprint, symmetric margins and x blur but darkens it: full black at the core, sigma 0.26, and the footprint offset 0.18 units south, which puts the darkest visible felt at ~27 luma against the wall shadow's 26.",
  "variantDate": "2026-11-17",
  "variantOrder": 13,
+ "variantChosen": true,
+ "variantChosenDate": "2026-11-17",
+ "variantChosenNote": "Reviewed on the A/B page by the user on 2026-11-17 ('Looks good now, let's go with that') and approved: the compact layout (hands/melds at 8.8 with the player's hand at 9.3), the 40 deg hand recline shaded as the 12 deg pose, the 6000 W key, and the unioned hand shadow at the wall-key-shadow darkness. v13 is the default variant.",
  "strictScene": false,
  "blender": "4.5.9 LTS",
  "resolution": [

@@ -202,6 +202,9 @@ const manifest = {
   variantNote: variant.note,
   variantDate: variant.date,
   variantOrder: variant.order ?? 0,
+  variantChosen: Boolean(variant.chosen),
+  variantChosenDate: variant.chosenDate ?? null,
+  variantChosenNote: variant.chosenNote ?? null,
   strictScene: Boolean(variant.strictScene),
   blender: bake.blender,
   resolution,
@@ -285,6 +288,7 @@ const settingsRows = (entry) => {
   const hand = entry.layout?.hand ?? {};
   const cam = entry.camera;
   return `
+      ${entry.variantChosen ? `<tr><th>status</th><td><strong>CHOSEN ${entry.variantChosenDate ?? ''}</strong> — ${entry.variantChosenNote ?? ''}</td></tr>` : ''}
       <tr><th>camera</th><td>${cam.lensMm} mm · pitch ${cam.elevationDeg}° · ${cam.distanceUnits.toFixed(3)} units · Shift Y ${cam.shiftY}</td></tr>
       <tr><th>hand / meld radius</th><td>${hand.backRadiusUnits ?? '?'} / ${entry.layout?.meld?.rowRadiusUnits ?? '?'} units${hand.backRadiusUnitsBySeat?.bottom && hand.backRadiusUnitsBySeat.bottom !== hand.backRadiusUnits ? ` (player hand ${hand.backRadiusUnitsBySeat.bottom})` : ''}</td></tr>
       <tr><th>hand tilt</th><td>${hand.tiltDeg ?? '?'}°${entry.handLightingCheat ? ` (shaded as ${entry.handLightingCheat.physicalTiltDeg}°)` : ''}</td></tr>
