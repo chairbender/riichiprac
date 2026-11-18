@@ -2262,7 +2262,8 @@ only).
 > frontend/dist/scenarios` (41 checks) proving the Pages artifact still carries
 > the audited pack. No Rust behaviour changed. Visual work is not signed off by
 > the agent: the picker's new pack note/badge styling is handed to the user as a
-> dev URL (AGENTS.md §6).
+> dev URL (AGENTS.md §6). **User sign-off 2026-11-17:** the pack note and the
+> PACK badge row read fine at `http://127.0.0.1:5199/`.
 
 #### Phase 8 — Validation and first ship
 
