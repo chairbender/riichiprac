@@ -118,10 +118,11 @@ fi
 
 if [ "$mode" = "check" ]; then
   # Dependency-free: validates the spec, the felt raster and shells.json plus
-  # every shell PNG, then the Phase 3.5 contact decals and their composition.
-  # CI runs this without Blender.
+  # every shell PNG, then the Phase 3.5 contact decals and their composition,
+  # then the Task 4B relief atlases. CI runs this without Blender.
   node "$here/scripts/check-shells.mjs"
   node "$here/scripts/check-overlays.mjs"
+  node "$here/scripts/check-relief.mjs"
   exit 0
 fi
 

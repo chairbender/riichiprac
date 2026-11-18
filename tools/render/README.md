@@ -39,7 +39,7 @@ bash tools/render/bake-shells.sh --preview --only <id> [--only <id>...]  # fast 
 bash tools/render/bake-shells.sh --preview-shadow --only <id>  # single-tile shadow, no Blender
 bash tools/render/bake-shells.sh --audition # standing-hand fan calibration + sheets
 bash tools/render/bake-shells.sh --shadow-audition  # REF + A/B/C shadow sheet
-bash tools/render/bake-shells.sh --check   # shell + contact-shadow check; no Blender needed
+bash tools/render/bake-shells.sh --check   # shell + contact-shadow + relief check; no Blender needed
 bash tools/render/bake-overlays.sh --bake  # bake the Phase 3.5 contact decals + check
 bash tools/render/bake-overlays.sh --check # contact decals + composed pixels; no Blender
 bash tools/render/bake-hand-catches.sh        # production 3D hand catches + check
@@ -52,6 +52,10 @@ node tools/render/scripts/bake-faces.mjs   # bake the 37 face glyphs + faces.jso
 node tools/render/scripts/check-faces.mjs  # face glyph + atlas budget gate; no Blender/resvg
 bash tools/render/bake-decals.sh --spike   # carve/lit decal spike into build/decals (Blender)
 bash tools/render/bake-decals.sh --check   # validate the build decal manifest; no Blender
+bash tools/render/bake-relief.sh --bake    # Task 4B: bake the three carved relief atlases (Blender)
+bash tools/render/bake-relief.sh --preview --only 8s,4z  # fast partial relief bake into build/
+bash tools/render/bake-relief.sh --masks   # re-rasterise the relief artwork + distance fields (Node)
+bash tools/render/bake-relief.sh --check   # validate the committed relief atlases; no Blender
 cd frontend && npm run tune:carved         # lying-rig tuner at http://localhost:7458
 cd frontend && npm run atlas:review:carved # flat vs carved review sheets
 cd frontend && npm run atlas:review        # build the real atlas and write review sheets
@@ -151,7 +155,7 @@ art is never rasterised in the browser. See "Phase 2" below.
 
 | Tool | Version | Location | Used for |
 | --- | --- | --- | --- |
-| Blender | **4.5.9 LTS** | `~/.local/opt/blender-4.5.9/blender` (or `BLENDER=...`) | tile mesh, lights, shell renders |
+| Blender | **4.5.9 LTS** | `~/.local/opt/blender-4.5.9/blender` (or `BLENDER=...`) | tile mesh, lights, shell renders, relief renders |
 | Node | ≥ 18 | system `node` | the integrity check and resvg scripts |
 | `@resvg/resvg-js` | **2.6.2** | `tools/render/node_modules` (installed, gitignored) | rasterising face SVGs |
 | `@napi-rs/canvas` | **1.1.1** | `tools/render/node_modules` (installed, gitignored) | AVIF/WebP decal encoding and the decal integrity check |
@@ -423,6 +427,14 @@ script, the spec, the layout JSON and the proof artifacts together.
 | `encode-decals.mjs` | yes | PNG → AVIF/WebP encoder for the committed decal set, with decoded measurements/hashes |
 | `decal-image.mjs` | yes | Node Canvas decode + decal measurement shared by the encoder and checker |
 | `check-decals.mjs` | yes | Node Canvas carved-decal (AVIF/WebP/PNG) + committed budget gate (CI) |
+| `relief-spec.json` | yes | Task 4B contract: 256 × 340 cell, 6 × 7 atlas, 0.55 mm engraving inside 0.45–0.65, 40° V-carve inside 35–45°, hand-carve rounding, AO ranges, 0.45/0.12 roughness, outputs |
+| `bake_relief.py` | yes | Blender 4.5.9 orthographic relief baker: samples the distance field onto a 2× plate mesh, then four Cycles passes (pigment, normal, height/AO/roughness, mask) and atlas packing |
+| `bake-relief.sh` | yes | one command for dry-run/preview/masks/bake/check |
+| `scripts/bake-relief-masks.mjs` | yes | resvg artwork pass + exact per-axis weighted signed-distance field for the carve (build artifacts) |
+| `scripts/check-relief.mjs` | yes | dependency-free relief spec/atlas/channel/alignment/flat-glyph gate (CI) |
+| `scripts/review-relief.mjs` | yes | build-only contact, 4× zoom and paint-edge alignment sheets for the user's sign-off |
+| `../../frontend/public/table/relief/` | yes | the three committed atlases, 1536 × 2380 RGBA each |
+| `../../frontend/public/table/relief.json` | yes | the relief contract: cell rects, channel encodings, plate millimetres, px/mm, carve numbers, per-face measurements and hashes |
 | `../../frontend/scripts/tune-carved.ts` | yes | the lying-rig preview/tuner server |
 | `../../frontend/scripts/tune-carved.html` | yes | the tuner UI |
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
@@ -1034,6 +1046,80 @@ per-frame compositing.
 `carved-numbers.json`. The lying tuner writes its four previews under
 `tools/render/build/tune/preview/`. These are evidence for the user, not for the
 agent to sign off (AGENTS.md §6).
+
+### Task 4B: orthographic carved relief maps (2026-11-17)
+
+The plan's chosen carved-face approach is **option 3**: one flat set of
+physically baked relief maps per face, lit in world space at runtime from each
+slot's exported basis (`table_layout.json`'s `T/B/N`). It replaces neither the
+flat glyphs nor the Phase 2b decals: those stay the runtime path and the
+fallback until the Task 5A compositor lands. What this bake produces is the
+input to that compositor — no per-orientation sprites (612 faces × 18 poses) and
+no 2D emboss whose highlights would rotate with the sprite.
+
+**The three atlases.** One 256 × 340 px cell per face, 37 faces in a 6 × 7 =
+42-cell atlas (five unused cells hold neutral flat-ivory values), so each atlas
+is **1536 × 2380**:
+
+| Atlas | Channels |
+| --- | --- |
+| `face_albedo.png` | RGB pure pigment (no baked lighting, `#FFFFFF` on un-carved ivory); A paint mask, 0.0 resin / 1.0 enamel groove |
+| `face_normal_depth.png` | RGB tangent normal, x right / y down / z out; A normalized height, 1.0 un-carved → 0.0 deepest engraving |
+| `face_ao_roughness.png` | R remapped Cycles cavity AO (1.0 open face, ~0.45 tight junction); G roughness 0.45 resin / 0.12 lacquer |
+
+A cell maps the **inset face plate** exactly like `faces.json`'s flat glyph
+(17.92 × 24.92 mm = 0.64 × 0.89 tile units), so the paint silhouette matches
+the fallback glyph. The fixed 256 × 340 cell gives 14.286 px/mm across and
+13.643 px/mm down (4.7% texel anisotropy, recorded in the manifest); the render
+camera compensates with `pixel_aspect_y` so the geometry is never squashed.
+
+**The geometry is real.** `scripts/bake-relief-masks.mjs` rasterises the same
+vendored public-domain SVGs at 1200 × 1600 (57 px/mm, ~4.7× the bake) and
+computes the **exact signed distance** to the glyph outline with a per-axis
+weighted Felzenszwalb transform. `bake_relief.py` samples that field onto a
+plate grid at 2× the cell resolution, engraves the **glyph floor** inward by
+0.55 mm (union of the field, so two strokes closer than 2× the run merge into a
+shallow valley), adds a **40° V-carve bevel outside the glyph outline** over a
+0.655 mm run (the painted silhouette stays exactly the flat glyph; the bevel is
+bare carved ivory that catches the light), rounds the creases with a 0.04 mm
+Gaussian and varies the depth with a deterministic two-axis hand-carve
+sinusoid. The deepest point is normalized to the nominal 0.55 mm per face. Four
+orthographic Cycles passes then read the true mesh: pigment emission,
+object-space normal, height/AO/roughness (Raw view transform, no dithering) and
+the paint mask. A 2-texel bleed keeps every frame pixel fully covered so the
+cell border is not averaged with the transparent background.
+
+**AO.** Cycles' Ambient Occlusion node (`only_local`, 24 rays) at 1.2 mm; a 3×3
+median removes single-ray self-intersection speckle on the single-sided plate,
+then the visibility is remapped to `floor + (1-floor)·t^γ` (`floor` 0.25, `low`
+0.55, `γ` 2.0): the planar open face stays exactly 1.0, a tight stroke junction
+lands at ~0.45–0.52, and the very deepest V-corner floors at 0.25 instead of
+black. `relief.json` records the raw **and** mapped min/mean per face.
+
+**Numbers (committed).** The full bake is 37 faces × 4 passes, **331 s** on the
+dev box. Atlas bytes are **948,566 + 1,645,011 + 957,674 = 3,551,251 B
+(3.39 MiB)**, plus `relief.json` (77,431 B: per-face measurements and
+decoded-RGBA hashes). `check-relief.mjs` reports **770 checks** in ~1 s: every
+cell rect, atlas hash, channel contract, the measured V-carve wall median
+(**37.31–39.21°**, inside the 35–45° band), the paint silhouette against the
+committed flat glyph (**worst IoU 0.9928**), cavity AO (**darkest 0.380**), and
+the cross-atlas alignment (the albedo paint mask and roughness paint gate agree
+within 2 px always; every non-flat normal and non-1 depth pixel lies in the
+paint's wall band). Byte budgets are advisory (AGENTS.md §1c) and are measured,
+not a reason to shrink the maps.
+
+**Runtime.** Nothing loads the atlases yet; Task 5A samples them at startup,
+transforms the tangent normal with the slot basis, applies the groove parallax
+from the depth alpha and composites the result. Until then `faces.json` and the
+decals are the runtime path.
+
+**Review.** `bash tools/render/bake-relief.sh --bake` writes the sheets under
+`tools/render/build/relief/review/` (gitignored): `relief-contact-sheet.png`
+(every face: albedo over ivory, normal, AO, roughness panels with the measured
+numbers), `relief-zoom-8s-4x.png` (one 4× crop through all four panels) and
+`relief-alignment-8s.png` (the paint silhouette drawn in red over each map at
+4×, so a misalignment would be visible as the red edge leaving the feature).
+The user signs off the look; the agent does not (AGENTS.md §6).
 
 ### `shells.json` contract
 

@@ -104,6 +104,11 @@ The app is a **Constraint Satisfaction Generator**:
   `bash tools/render/bake-shells.sh --check` (no Blender) and, for the felt,
   `bash tools/render/bake-felt.sh`. Commit the baker/spec and the regenerated felt,
   shells, and `shells.json` together; never hand-edit a generated shell or the felt.
+* The **carved relief maps** (Task 4B: `face_albedo.png`, `face_normal_depth.png`,
+  `face_ao_roughness.png` + `relief.json`) are baked by
+  `bash tools/render/bake-relief.sh --bake`; its Blender-free gate is
+  `bash tools/render/bake-relief.sh --check`. Commit the spec, both bakers, the three
+  atlases and `relief.json` together; never hand-edit an atlas.
 * The whole-table calibration reference has its own gate:
   `bash tools/render/bake-table-reference.sh --check` (no Blender). It is
   calibration-only and never a runtime dependency.
