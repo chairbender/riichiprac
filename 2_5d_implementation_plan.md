@@ -21,7 +21,7 @@ Steps:
 3. Place tile slot anchors as `Empty` objects at the exact 3D center of every valid slot, using a strict naming convention (`{zone}_{seat}_{index}` or `{zone}_{seat}_{row}_{col}`):
    - Player standing hand `hand_south_00` .. `hand_south_13`: 14 slots along the bottom edge, pitched upright/slightly reclined (10 to 15 degrees backward tilt) facing the camera, with a small gap before slot 13 for the drawn tile (tsumo).
    - Walls `wall_{seat}_{stack}_{layer}`: 4 walls (north, east, south, west), each 17 stacks wide x 2 tiles high (`layer_0` bottom, `layer_1` top), arranged in a square around the center.
-   - Discard rivers `river_{seat}_{row}_{col}`: 4 grids of 3 rows x 6 columns (plus overflow slots on row 2 for columns 6+), oriented face-up toward each respective player.
+   - Discard rivers `river_{seat}_{row}_{col}`: 4 grids of 3 rows x 6 columns (plus overflow slots extending the third, nearest row - `row 0` in the geometric index - at columns 6+), oriented face-up toward each respective player.
    - Open melds `meld_{seat}_{slot}`: corner slots to the right of each player's hand/wall area for chii, pon, kan and kita declarations.
    - For every anchor, also record or define the 4 local 3D corner coordinates of the tile's face quad (where the 2D symbol sits).
 4. Acceptance: all tile slots exist as named `Empty` objects in a dedicated `SlotAnchors` collection; adjacent tiles in walls, rivers and hands have realistic spacing (0.2mm to 0.5mm clearance) with zero mesh intersection.

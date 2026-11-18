@@ -94,13 +94,13 @@ the measurement from the published placements.
 Every valid tile position is an Empty in the dedicated Blender collection
 **`SlotAnchors`**, at the tile's 3D body centre with the tile's pose. The model
 has **293 anchors**, of which **269 are occupied** by the reference tiles and
-24 are reserved (16 row-2 river overflow slots, 4 kan-extension meld slots,
+24 are reserved (16 third-row river overflow slots, 4 kan-extension meld slots,
 4 drawn top-tier wall slots).
 
 | Zone | Naming | Anchors | Occupied |
 | --- | --- | --- | --- |
 | walls | `wall_{seat}_{stack:02d}_{layer}` | 136 (4 × 17 × 2) | 132 (4 drawn tops) |
-| rivers | `river_{seat}_{row}_{col}` (row 0..2, col 0..5, overflow 6..9) | 88 (4 × 22) | 72 |
+| rivers | `river_{seat}_{row}_{col}` (row 0..2, col 0..5, overflow row 0 cols 6..9) | 88 (4 × 22) | 72 |
 | melds | `meld_{seat}_{slot}` (slot 0..3) | 16 (4 × 4) | 12 |
 | hands | `hand_{seat}_{index:02d}` (00..12; south also 13 for the drawn tile) | 53 | 53 |
 | **total** | | **293** | **269** |
@@ -431,12 +431,13 @@ This reference is the early-hand calibration state: a full concealed hand plus
 one open meld. Two legal states are **not** separate 3D scenes, because they are
 layout variants that reuse the existing shells and face variants:
 
-- **19+ discards in a pond.** In play, extra discards continue on the last row
-  rather than starting a fourth row. The runtime layout should wrap them into
-  row 2, columns 6+, reusing the same flat shells. The four reserved row-2
-  overflow anchors in `SlotAnchors` document those slots, but placing tile
-  bodies there in 3D would collide with the neighbouring pond (a property of the
-  physical table), so they stay empty.
+- **19+ discards in a pond.** Rows are laid from the far side, so row 2 is the
+  first discard row, row 1 the second and row 0 (nearest the player) the third;
+  extra discards extend that third row at columns 6+ rather than starting a
+  fourth row. The four reserved overflow anchors per pond document those slots
+  as row 0, columns 6..9, reusing the same flat shells. They stay empty in this
+  early-hand reference because no hand reaches 19 discards here; the slots are
+  inside the wall and clear of the neighbouring pond and the meld row.
 - **Two or more open melds.** In a real hand the concealed count shrinks by 3
   per open meld (13 - 3N at rest; 14 - 3N with the draw), so additional melds
   occupy the space vacated by the hand. The runtime should lay the meld groups
@@ -453,10 +454,12 @@ tiles to this early-hand reference.
 
 - **Bevel**: the brief says 0.8–1.2 mm; the shipped shell body uses 1.54 mm
   (0.055 units). Kept the shell value so the model and shells agree.
-- **Overflow rivers**: the brief says "row 2 for columns 6+" without a count;
-  four extra columns (6..9) fit before the west/east wall at this table size.
-  They are anchors only (no tiles) because a fully occupied overflow row would
-  run into the neighbouring pond.
+- **Overflow rivers**: the brief says the extra columns extend the third row
+  without a count; four extra columns (6..9) fit before the west/east wall at
+  this table size. Row indices are geometric from the player outward (row 0 is
+  nearest), while the six-three convention counts the far row first, so the
+  third row is geometric row 0 - the overflow anchors extend it there.
+  They are anchors only (no tiles) because this reference is an early hand.
 - **Melds**: the brief says "corner slots ... for chii, pon, kan and kita". One
   4-slot meld row per seat is modelled outside the wall on the player's right;
   the reference pon occupies 3 slots and the fourth is the kan extension. Only
@@ -465,5 +468,5 @@ tiles to this early-hand reference.
   are the generic declaration area.
 - **Hand tilt**: the brief names the player's standing hand, so only the south
   hand is reclined 12°; the three opponents' back rows stay upright.
-- **Empty slots**: 20 anchors have no body (river overflow, kan extension); they
+- **Empty slots**: 24 anchors have no body (river overflow, kan extension and the four drawn wall tops); they
   still carry a full face quad.

@@ -83,8 +83,10 @@
         2.788571
       ],
       "columnCentreOffsetUnits": 1.892857142,
-      "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg. Four overflow anchors continue row 2 at columns 6..9 (reserved; no tiles).",
+      "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. Rows are laid from the far side, so row 2 is the first discard row and row 0 is the third; the four reserved overflow anchors extend the third (nearest) row at columns 6..9, never the first. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg.",
       "overflowColumns": 6,
+      "overflowRow": 0,
+      "overflowRowNote": "The third (nearest) row, per the six-three convention: the extra columns extend the last row a player reaches, not the far first row.",
       "riichi": {
         "row": 1,
         "column": 5,
@@ -1090,7 +1092,7 @@
     "type": "Empty (PLAIN_AXES, display size 0.35)",
     "naming": {
       "wall": "wall_{seat}_{stack:02d}_{layer}  (layer 0 bottom, 1 top)",
-      "river": "river_{seat}_{row}_{col}  (row 0..2, col 0..5 plus row-2 overflow cols 6..9)",
+      "river": "river_{seat}_{row}_{col}  (row 0..2, col 0..5 plus row-0 overflow cols 6..9)",
       "meld": "meld_{seat}_{slot}  (slot 0..3)",
       "hand": "hand_{seat}_{index:02d}  (index 00..12; south also has 13 for the drawn tile)"
     },
@@ -1130,7 +1132,7 @@
       "tier",
       "overflow"
     ],
-    "note": "Every valid tile position is an Empty in the SlotAnchors collection, named wall_{seat}_{stack}_{layer}, river_{seat}_{row}_{col}, meld_{seat}_{slot} or hand_{seat}_{index}. Anchors are at the tile body centre with the tile pose. Occupied anchors hold the 273 reference tiles; the 20 empty anchors are the 16 row-2 overflow slots and 4 kan-extension meld slots. Each anchor carries zone/seat/index/tileId/tileFace/occupied, the flat faceQuadLocal and faceQuadWorld (12 floats, TL/TR/BR/BL) and faceQuadOrder as Blender custom properties; the same records are published in reference/slot-anchors.json. Project anchor.matrix_world @ Vector(faceQuadLocal corner) for Task 3.",
+    "note": "Every valid tile position is an Empty in the SlotAnchors collection, named wall_{seat}_{stack}_{layer}, river_{seat}_{row}_{col}, meld_{seat}_{slot} or hand_{seat}_{index}. Anchors are at the tile body centre with the tile pose. Occupied anchors hold the 269 reference tiles; the 24 empty anchors are the 16 overflow slots (extending the third, nearest river row), 4 kan-extension meld slots and 4 empty drawn wall tops. Each anchor carries zone/seat/index/tileId/tileFace/occupied, the flat faceQuadLocal and faceQuadWorld (12 floats, TL/TR/BR/BL) and faceQuadOrder as Blender custom properties; the same records are published in reference/slot-anchors.json. Project anchor.matrix_world @ Vector(faceQuadLocal corner) for Task 3.",
     "anchorDisplaySize": 0.25,
     "clearanceMm": 0.3,
     "clearanceRangeMm": [

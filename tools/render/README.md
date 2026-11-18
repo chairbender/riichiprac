@@ -333,7 +333,7 @@ centroid is Blender's own projection of that centre.
 `scripts/table-layout-proof.mjs` finds one connected component per marker,
 computes the subpixel centroid, matches it one-to-one to the exported anchor and
 writes `reference/layout/layout-proof.json`. On the committed v13 bake:
-**293 markers, max delta 0.1315 px, mean 0.0452 px, p95 0.0922 px** against the
+**293 markers, max delta 0.1315 px, mean 0.0453 px, p95 0.0926 px** against the
 1.0 px threshold. `check-table-layout.mjs` re-measures the committed probe PNG
 without Blender, so the claim is reproducible from the repository.
 

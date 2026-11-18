@@ -126,8 +126,10 @@
     2.788571
    ],
    "columnCentreOffsetUnits": 1.892857142,
-   "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg. Four overflow anchors continue row 2 at columns 6..9 (reserved; no tiles).",
+   "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. Rows are laid from the far side, so row 2 is the first discard row and row 0 is the third; the four reserved overflow anchors extend the third (nearest) row at columns 6..9, never the first. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg.",
    "overflowColumns": 6,
+   "overflowRow": 0,
+   "overflowRowNote": "The third (nearest) row, per the six-three convention: the extra columns extend the last row a player reaches, not the far first row.",
    "riichi": {
     "row": 1,
     "column": 5,
@@ -9158,8 +9160,8 @@
   },
   "total": 293,
   "occupied": 269,
-  "bytes": 216866,
-  "sha256": "e1163529e1d8061e68e4fc257a009f7c11e3cf237c354ba7827c8c5020f1e491"
+  "bytes": 216701,
+  "sha256": "cadee320a5ebeec0d13ba171fa6ede4de5beac835c3913d5d99f6d9e66cd0019"
  },
  "renders": {
   "fullBoard1x": {

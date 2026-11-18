@@ -1899,7 +1899,11 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                 )
                 index["pond"].setdefault(f"pond-{seat_id}", []).append(tile_id)
 
-        # Row-2 overflow anchors (no tile bodies in this reference).
+        # Overflow anchors extend the third (nearest) row at columns 6..9. Rows
+        # fill from the far side, so row 0 is the third row a player reaches;
+        # the standard six-three arrangement extends that row rather than the
+        # far first row. They are anchors only in this reference.
+        overflow_row = pond["overflowRow"]
         for column in range(
             pond["columns"],
             pond["columns"] + spec["anchors"]["riverOverflowColumns"],
@@ -1907,20 +1911,20 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
             matrix = body_matrix(
                 seat_id,
                 (column - (pond["columns"] - 1) / 2) * pond["columnPitchUnits"],
-                -pond["rowRadiiUnits"][2],
+                -pond["rowRadiiUnits"][overflow_row],
                 thickness / 2,
                 0.0,
                 0.0,
             )
             add_anchor(
-                f"river_{short}_2_{column}",
+                f"river_{short}_{overflow_row}_{column}",
                 "river",
                 seat_id,
-                f"2_{column}",
+                f"{overflow_row}_{column}",
                 matrix,
                 None,
                 None,
-                {"row": 2, "column": column, "overflow": True},
+                {"row": overflow_row, "column": column, "overflow": True},
             )
 
         # Concealed hand: 13 standing tiles, reclined 12 degrees backward.
