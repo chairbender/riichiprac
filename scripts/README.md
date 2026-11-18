@@ -104,3 +104,21 @@ scripts/validate_mortal_review.py --selftest   # parser check, no network
 `mortal-validation.md` at the repository root explains the log format, why the
 upload itself has to be manual, what the comparison can and cannot prove, and
 the table-shape problems the export exposed.
+
+## Scenario-pack hosting checks
+
+Two dependency-free Node checks cover the Pages pack artifact (P2; see
+`hosting-plan.md` §7):
+
+```bash
+# Manifest/body hashes, byte budgets, metadata drift, no raw corpus/weights.
+node scripts/check-pack-hosting.mjs
+node scripts/check-pack-hosting.mjs --dir frontend/dist/scenarios
+
+# An external R2/HF mirror: CORS headers plus optional hash/byte verification.
+node scripts/check-pack-cors.mjs --url <body-url> --sha256 <hash> --bytes <n>
+```
+
+Neither script produces or edits a pack; `mine_replays pack publish` does that
+from the audited export (`replay-miner-operations.md`).
+

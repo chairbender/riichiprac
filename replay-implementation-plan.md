@@ -2142,6 +2142,45 @@ corpus/weights in the artifact.
 
 **CC slice.** `worktree` / `riichiprac`; account setup steps are `none`.
 
+> **Status (2026-11-17, P2 branch).** Implemented in
+> `src/miner/pack/host.rs`: `HostOptions`/`HostBudget` (50 MB total bodies,
+> 512 KB manifest), `publish_hosted` and `verify_hosted_dir`. The publisher
+> re-runs the P1a/P1b directory audit (including `games.jsonl`) on the audited
+> export, copies **only** the manifest and the selected content-addressed
+> bodies, re-hashes each body while writing, writes the manifest atomically,
+> prunes `.json.gz` bodies the new manifest no longer lists, and reads the
+> staged directory back through the verifier. `games.jsonl`, raw replays,
+> SQLite/DuckDB files and weights never enter the artifact; a foreign file in
+> the destination refuses the publish before anything is written. An
+> over-budget set is refused rather than trimmed. Paths stay relative, so the
+> same manifest works for the same-origin load and for an optional R2/HF
+> mirror; Google Drive remains backup-only.
+>
+> The CLI gained `pack publish` (`--from`, `--to` default
+> `frontend/public/scenarios`, `--packs`, `--max-total-bytes`, `--updated-at`,
+> `--commercial`, `--dry-run`, `--json`) and `pack fixture --generated-at` so
+> the committed smoke pack is reproducible. The deploy workflow gained the
+> optional GitHub Release copy (`vars.PACK_RELEASE_TAG`), the pre-build
+> `scripts/check-pack-hosting.mjs` check, the post-build check on
+> `frontend/dist/scenarios` (proving Pages includes the packs), and the optional
+> `scripts/check-pack-cors.mjs` mirror measurement
+> (`vars.PACK_MIRROR_BODY_URL`). Both scripts are dependency-free and print
+> numbers/pass-fail.
+>
+> The committed smoke pack is the P1a fixture (`replay.fixture.2026-11`,
+> 2 scenarios, 3 572 body bytes, 614-byte manifest) and is labelled as a
+> fixture, not a curated pack; P3 consumes its manifest and Q2 replaces it with
+> the first curated ch. 8 pack. The hosting check passes 41 assertions; the CORS
+> check was measured against a local server (header present/missing, same-origin
+> and hash/bytes modes). 16 host tests cover the clean publish, dirty source,
+> unknown/subset ids, both budgets, dry run, idempotence, pruning, foreign
+> files, tampering and forbidden artifacts. Gates: `cargo fmt --check`,
+> `cargo test --lib` (745), `cargo test --features miner` (1 107), `cargo clippy
+> --all-targets --features miner -- -D warnings`, `cargo check --target
+> wasm32-unknown-unknown`. No wasm behaviour changed and no visual output is
+> involved. The operator contract and runbook are in
+> `replay-miner-operations.md` and `hosting-plan.md`.
+
 ##### P3 — Frontend pack loader
 
 **Goal.** Load the manifest and one pack lazily without changing game logic.

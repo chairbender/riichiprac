@@ -1,12 +1,13 @@
-# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers, selection, variants and packs (F1, R1, R2, L1, L2, S1, S2, V2, P1a, P1b)
+# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers, selection, variants and packs (F1, R1, R2, L1, L2, S1, S2, V2, P1a, P1b, P2)
 
 Status: implemented foundation (F1), replay reader/validator (R1), the walker /
 `GameState` reconstruction (R2), the native Mortal labeler with Q values and
 the label cache (L1), book/Mortal agreement with contested marking,
 percentile hooks and optional calibration (L2), the cheap candidate triggers with
 family filters (S1), the hard gates, ranking, quotas, dedupe, held-out QA and
-review queue (S2), the label-preserving variant stage (V2) and the scenario-pack
-format/gate/audit (P1a) with DB-backed assembly (P1b) of
+review queue (S2), the label-preserving variant stage (V2), the scenario-pack
+format/gate/audit (P1a) with DB-backed assembly (P1b), and same-origin hosting
+with CI copy, byte/CORS checks and the optional R2/HF mirror (P2) of
 [`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
 document is the operator contract for the native-only miner. It does not re-open
 the source decision: [`replay-strategy.md`](replay-strategy.md) §2 fixes AI
@@ -38,9 +39,12 @@ stage, the `riichiprac.variant-report` and the pack assembly path. P1a adds
 executable G8 pack gate, deterministic encoding, atomic content-addressed
 publishing, the directory audit and the fixture publisher. P1b adds
 `src/miner/pack/assemble.rs`: DB-backed assembly, the review gate, caps/dedupe,
-the `packs`/`pack_scenarios` rows and the assembly report. Book
-classification (B1/B2/B3) already exists in `src/classifier/`; S3's selectors and
-the hosting/publisher (P2) and loader (P3) remain.
+the `packs`/`pack_scenarios` rows and the assembly report. P2 adds
+`src/miner/pack/host.rs`: the same-origin publisher with the 50 MB budget,
+curated copy and prune, the staged-directory verifier, plus
+`scripts/check-pack-hosting.mjs` and `scripts/check-pack-cors.mjs` for CI and
+the optional R2/HF mirror. Book classification (B1/B2/B3) already exists in
+`src/classifier/`; S3's selectors and the loader (P3) remain.
 
 ## Build boundary
 
@@ -84,9 +88,10 @@ mine_replays [--data-dir DIR] <command>
 
 `label` (L1 with the L2 agreement/calibration extensions), `triggers` (S1),
 `select` and `review` (S2), `transform` (V2), and `pack fixture`, `pack
-assemble`, `pack report` and `audit` (P1a/P1b) are implemented. The remaining
-commands still resolve the data root, report the command they would run, and
-exit with code 2, so a script cannot treat a stub as a successful run.
+assemble`, `pack publish`, `pack report` and `audit` (P1a/P1b/P2) are
+implemented. The remaining commands still resolve the data root, report the
+command they would run, and exit with code 2, so a script cannot treat a stub as
+a successful run.
 
 ```bash
 cargo run --features miner --bin mine_replays -- label \
@@ -1362,6 +1367,173 @@ memory but writes no body, manifest, DB rows or report. Exit codes: 0 clean,
 - `cargo fmt --check`, `cargo clippy --all-targets --features miner -- -D
   warnings`, `cargo test --lib` (745), `cargo test --features miner` (1 091) and
   `cargo check --target wasm32-unknown-unknown` are clean. No wasm behaviour
+  changed and no visual output is involved.
+
+## Same-origin pack hosting, CI copy and mirrors (P2)
+
+Implemented in `src/miner/pack/host.rs`, `scripts/check-pack-hosting.mjs`,
+`scripts/check-pack-cors.mjs` and the Pages workflow. P2 publishes the audited
+P1b export without shipping the corpus: the browser loads a small same-origin
+manifest and content-addressed pack bodies, and the miner's export directory is
+never part of the artifact.
+
+### Layout and the source of truth
+
+```text
+$RIICHI_DATA_DIR/packs/                  # audited export (operator machine)
+├── manifest.json
+├── <pack-id>-<sha256-prefix>.json.gz    # bodies
+└── games.jsonl                          # GameProvenance rows, audit-only
+
+frontend/public/scenarios/               # same-origin hosting (committed/CI)
+├── manifest.json                        # same-origin, fetched on page visit
+└── <pack-id>-<sha256-prefix>.json.gz    # identical bytes, no games.jsonl
+```
+
+`pack assemble` / `pack fixture` write the left-hand tree. `pack publish` copies
+only the manifest and the manifest-listed bodies into the right-hand tree; it
+never copies `games.jsonl`, raw replays, databases or weights. The P1a/P1b
+directory audit (which does use `games.jsonl`) runs on the **source** before any
+copy, so a pack that cannot prove its provenance never reaches Pages. The hosted
+directory therefore carries no provenance rows: re-audit the export, not the
+artifact. `scripts/check-pack-hosting.mjs` is the artifact-side verification.
+
+The manifest is same-origin and every path in it is relative. That is
+deliberate: the loader tries the same-origin manifest/body first, and an
+optional external mirror is only a second base for the same relative path. A
+pack is never loaded from Google Drive.
+
+### Budgets
+
+| Budget | Default | Enforced by |
+| --- | --- | --- |
+| one pack body | 50 MB | P1a gate during `pack assemble`/`pack fixture` |
+| all hosted bodies | **50 MB** | `pack publish` (`HostBudget`) and the CI check |
+| manifest | 512 KB | `pack publish` and the CI check |
+
+The AGENTS.md 8 MB committed-asset budget is mostly consumed by the
+rendered-view shells/felt, so packs do not get it. Stay same-origin only while
+the whole hosted set is small; a larger set moves to the R2/HF mirror. An
+over-budget set is **refused**, never trimmed: which pack to drop is an operator
+decision, not a silent publisher decision.
+
+### Publisher
+
+```bash
+# Stage the full audited export (default source <data-dir>/packs,
+# default destination frontend/public/scenarios).
+cargo run --features miner --bin mine_replays -- pack publish \
+  [--from DIR] [--to DIR] [--packs ID,...] [--max-total-bytes N] \
+  [--updated-at ISO] [--commercial] [--dry-run] [--json]
+```
+
+- **Audit first.** `audit_pack_dir` on the source must be clean under the chosen
+  profile; a dirty source or a missing `games.jsonl` is refused.
+- **Allowlist copy.** Only `manifest.json` and the selected content-addressed
+  bodies are written. Every body is re-hashed and re-sized while copying.
+- **Selection.** With no `--packs`, every source entry is hosted. With ids, the
+  hosted set becomes exactly those packs, and bodies the new manifest no longer
+  lists are pruned (content-addressed names change with every edit, so pruning
+  is what keeps the artifact from growing forever).
+- **Foreign files.** The destination may contain only `manifest.json` and
+  `.json.gz` bodies. A README, hidden file or weights file refuses the publish
+  without touching anything.
+- **Atomic and verified.** Bodies and the manifest go through
+  `write_atomic`; the staged directory is read back through
+  `verify_hosted_dir`, which re-hashes, decodes and compares the manifest's id,
+  count, lesson ids, book sections, licence, `requires_model` and
+  `data_commercial_use` with the body.
+- `--dry-run` reports the planned bodies and stale files and writes nothing.
+- Exit codes: 0 published/verified, 1 refused (dirty source, unknown pack,
+  over budget, invalid staged directory), 2 unreadable input.
+
+`--generated-at` on `pack fixture` pins the smoke pack's timestamp, so the
+committed `frontend/public/scenarios/` artifact is reproducible.
+
+### CI: Pages build, copy and checks
+
+`.github/workflows/deploy.yml`:
+
+1. **Optional Release copy** (`vars.PACK_RELEASE_TAG`). GitHub Release assets
+   send no `access-control-allow-origin` header (hosting-plan.md), so they are
+   never a browser source. When the variable is set, CI replaces
+   `frontend/public/scenarios/` (in the CI workspace only) with the release
+   `manifest.json` and `*.json.gz`; without it the committed smoke pack is used.
+2. **Before the build**, `node scripts/check-pack-hosting.mjs` verifies the
+   staged directory: manifest schema/version/size/sort, safe relative
+   content-addressed names, every body's bytes and SHA-256, the gzip/JSON
+   decode, manifest↔body metadata, `source.kind = ai_selfplay`,
+   redistributability/attribution/agents, the 50 MB total and the "only packs
+   in this directory" rule.
+3. **After the build**, the same check runs on `frontend/dist/scenarios`, which
+   proves the Pages artifact includes the packs at `/riichiprac/scenarios/`.
+   (The weights under `dist/models/` are intentional and outside this
+   directory; the check's rule is about the pack artifact, not the app bundle.)
+4. **Optional mirror CORS check** (`vars.PACK_MIRROR_BODY_URL`) runs
+   `scripts/check-pack-cors.mjs` with `Origin: https://chairbender.github.io`.
+   It passes only on `200`, a non-HTML content type and
+   `access-control-allow-origin: *` (or the Pages origin), and can also assert
+   `content-length` and the exact SHA-256 of the audited body.
+
+Both scripts are dependency-free and print numbers and pass/fail; neither judges
+a render (AGENTS.md §6).
+
+### Optional R2 / Hugging Face mirror
+
+The manifest stays on Pages. Mirror the **same `scenarios/` directory layout**
+and point a loader at `<mirror-base>` as a fallback for the same relative
+paths. The mirror never replaces the manifest.
+
+```bash
+# Cloudflare R2 (rclone remote `r2:riichiprac`; credentials stay in rclone's
+# config, never in the repo).
+rclone copy frontend/public/scenarios r2:riichiprac/scenarios --checksum
+
+# Hugging Face dataset repo (public, browser-fetchable).
+hf upload chairbender/riichiprac-packs frontend/public/scenarios scenarios \
+  --repo-type dataset
+```
+
+R2 bucket CORS must allow `GET`/`HEAD` from `https://chairbender.github.io`
+(or `*`), and expose `content-length`/`content-type` if the loader needs them.
+Measure it rather than trusting the console:
+
+```bash
+node scripts/check-pack-cors.mjs \
+  --url https://<mirror>/scenarios/<pack-id>-<sha>.json.gz \
+  --sha256 <64-hex> --bytes <n>
+```
+
+No URL configured is a normal "skipped" run (exit 0): the mirror is optional and
+never blocks a deploy. Google Drive remains a corpus/DB backup only (rclone
+`copy`, snapshots, `rclone check`) and has no role in the runtime pack chain.
+
+### P2 acceptance evidence
+
+- `cargo test --features miner --lib pack::host` (16 tests): full publish copies
+  only the manifest + content-addressed body (never `games.jsonl`, notes or
+  weights); a dirty source (missing provenance) is refused; an unknown pack id
+  is refused with the available ids; over-budget body and manifest ceilings are
+  refused without trimming; a dry run writes nothing; publishing twice is
+  byte-identical; stale bodies are pruned after the manifest write while foreign
+  files refuse before any write; a subset publish replaces the hosted set; a
+  tampered body, missing body, unlisted body and a `.safetensors` file all fail
+  verification; source-equals-destination and an empty timestamp are refused.
+- `node scripts/check-pack-hosting.mjs` passes on the committed smoke pack
+  (`replay.fixture.2026-11`, 3 572 body bytes, 614-byte manifest, 41 checks) and
+  fails on a missing/tampered body, a manifest/body metadata drift and a raw
+  corpus/weights file.
+- `node scripts/check-pack-cors.mjs` was measured against a local server: a
+  cross-origin response with `access-control-allow-origin: *` passes, the same
+  response without the header fails, same-origin needs no CORS header, and the
+  `--sha256/--bytes` mode verifies the downloaded body.
+- The deploy workflow parses and includes the optional Release copy, the
+  pre-build staging check, the post-build artifact check and the optional mirror
+  CORS check. `frontend/public/scenarios/` contains only the smoke manifest and
+  body. `GITHUB_ACTIONS=true npm run build` copies them to
+  `frontend/dist/scenarios/`, where the check passes 41 assertions.
+- `npm run lint`, `npm test` (215 tests) and the Rust gates above are clean. No
+  raw corpus, database, weights or LFS object is hosted. No wasm behaviour
   changed and no visual output is involved.
 
 ## F1 acceptance evidence

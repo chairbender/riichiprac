@@ -1,9 +1,9 @@
 # Free Hosting Plan — GitHub Pages + external weights CDN
 
-Status: code complete (2026-11-10). Remaining work is the human-only
-"Manual one-time setup" section at the bottom. Licensing split (MIT app, AGPL
-weights) is recorded in section 5. This is the living status document for
-making the app deployable at $0.
+Status: code complete (2026-11-10), plus scenario-pack hosting (P2,
+2026-11-17). Remaining work is the human-only "Manual one-time setup" section at
+the bottom. Licensing split (MIT app, AGPL weights) is recorded in section 5.
+This is the living status document for making the app deployable at $0.
 
 Branch sync (2026-11-10): merged `origin/main` at `319fd6f` into
 `am/free-hosting`. Two conflicts, both resolved by hand:
@@ -47,6 +47,7 @@ Why this works at $0:
 | App + weights (`frontend/dist`) | GitHub Pages | free for public repos | 1 GB site, 100 GB/month soft bandwidth (~2,300 first-time weight downloads/month; repeat visits hit IndexedDB) |
 | Weights artifact (43 MB) | GitHub Release asset `weights-v1` | free | 2 GiB per asset; no CORS, so it is fetched by CI, not the browser |
 | Optional mirror | Hugging Face model repo (public) | free | sends `access-control-allow-origin: *`, so it is browser-fetchable |
+| Scenario packs | GitHub Pages `scenarios/` (small set) or an R2/HF mirror | free | same-origin manifest + content-addressed bodies; 50 MB same-origin budget, mirror when larger |
 | Repeat downloads | Browser IndexedDB cache | free | one download per browser per weights version |
 
 GitHub Pages does not support custom response headers, so nothing can set
@@ -340,6 +341,86 @@ the weights land in IndexedDB, and that a reload issues no weights request. See
 
 ---
 
+## 7. Scenario packs: same-origin Pages + optional R2/HF mirror (P2)
+
+Status (2026-11-17): implemented. The runtime never reads the miner's data root;
+it loads a small same-origin manifest and content-addressed pack bodies that Vite
+copies into the Pages artifact.
+
+```text
+frontend/public/scenarios/
+├── manifest.json                        # same-origin, relative paths
+└── <pack-id>-<sha256-prefix>.json.gz    # audited export, byte-identical
+```
+
+**Publishing.** `mine_replays pack publish` stages the audited export from
+`$RIICHI_DATA_DIR/packs/`:
+
+```bash
+cargo run --features miner --bin mine_replays -- pack publish \
+  [--from DIR] [--to frontend/public/scenarios] [--packs ID,...] \
+  [--max-total-bytes N] [--updated-at ISO] [--dry-run] [--json]
+```
+
+It re-runs the pack audit (including `games.jsonl` provenance), copies only the
+manifest and the selected bodies, re-hashes each body, writes the manifest
+atomically, prunes obsolete content-addressed bodies and verifies the staged
+directory. `games.jsonl`, raw replays, SQLite/DuckDB files and weights never
+enter the artifact. The set is refused — not trimmed — if the bodies exceed the
+**50 MB** same-origin budget (the AGENTS.md 8 MB asset budget belongs to the
+rendered view and is already mostly spent). The operator contract is in
+`replay-miner-operations.md`.
+
+**CI.** `.github/workflows/deploy.yml`:
+
+1. optionally downloads a pack export published as a GitHub Release asset
+   (`vars.PACK_RELEASE_TAG`), replacing the committed smoke pack in the CI
+   workspace with the release set. Release assets send no
+   `access-control-allow-origin`, so they are a **CI copy step**, never a
+   browser source;
+2. runs `node scripts/check-pack-hosting.mjs` before the build (manifest/body
+   hash, bytes, gzip/JSON, metadata drift, `ai_selfplay` source, attribution,
+   50 MB total, no raw corpus/weights in the directory);
+3. runs the same check on `frontend/dist/scenarios` after the build, proving the
+   Pages artifact includes the packs at `/riichiprac/scenarios/` (the intentional
+   `dist/models/` weights are outside this check);
+4. optionally runs `node scripts/check-pack-cors.mjs` against a mirror body
+   (`vars.PACK_MIRROR_BODY_URL`).
+
+**Optional R2 / Hugging Face mirror.** The manifest stays same-origin; a mirror
+serves the same relative `scenarios/` layout and the loader falls back to it for
+the same paths. Mirror with `rclone copy frontend/public/scenarios
+r2:riichiprac/scenarios --checksum` or `hf upload <dataset-repo>
+frontend/public/scenarios scenarios --repo-type dataset`. Configure the bucket
+CORS to allow `GET`/`HEAD` from `https://chairbender.github.io` (or `*`) and
+measure it:
+
+```bash
+node scripts/check-pack-cors.mjs \
+  --url https://<mirror>/scenarios/<pack-id>-<sha>.json.gz \
+  --sha256 <64-hex> --bytes <n>
+```
+
+No mirror URL is a normal skipped run (exit 0). **Google Drive is a
+corpus/DB backup only** (rclone `copy` + SQLite snapshots + `rclone check`) and
+is never in the browser's pack chain.
+
+**Committed smoke pack.** `frontend/public/scenarios/` ships the P1a fixture
+(`replay.fixture.2026-11`, 2 scenarios, 3 572 body bytes, 614-byte manifest) so
+the Pages build proves the whole path before a curated pack exists. P3 consumes
+this manifest; Q2 replaces it with the first curated ch. 8 pack.
+
+**Manual setup for a mirror or a Release copy** (needs credentials):
+
+- GitHub: create the pack Release and set the repository variable
+  `PACK_RELEASE_TAG` to its tag; or leave the variable unset and use the
+  committed pack.
+- R2/HF: create the bucket/dataset, upload `frontend/public/scenarios`, add the
+  CORS rule, then set the `PACK_MIRROR_BODY_URL` repository variable to a real
+  body URL (with an audit log run of `check-pack-cors.mjs`).
+
+---
+
 ## Manual one-time setup (human)
 
 Nothing below can be done by an agent: it needs GitHub and Hugging Face
@@ -464,4 +545,6 @@ The hashed wasm filename comes from the workflow's build log (or from
 | `HF_WEIGHTS_URL` | `frontend/src/services/weightLoader.ts` | `chairbender/mortal-weights` HF mirror (not published; optional) |
 | `CACHE_VERSION` | `frontend/src/services/weightLoader.ts` | bump when the weights file changes, to invalidate browser caches |
 | HF model card license | HF model repo | set `license: agpl-3.0` + provenance (see "5. Licensing") |
+| `PACK_RELEASE_TAG` | repo variable | optional pack Release tag copied into `frontend/public/scenarios/` by CI (unset = committed pack) |
+| `PACK_MIRROR_BODY_URL` | repo variable | optional R2/HF body URL measured by `scripts/check-pack-cors.mjs` (unset = mirror check skipped) |
 | Pages URL | repo Settings → Pages | `https://chairbender.github.io/riichiprac/` |
