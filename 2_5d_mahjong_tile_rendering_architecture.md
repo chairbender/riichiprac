@@ -1636,11 +1636,12 @@ the A/B record. Visual sign-off is the user's (AGENTS.md §6).
 ## 16. Whole-table 3D model + slot anchors (2026-11-17)
 
 The whole table now exists as a Blender model for placement review, plus a
-complete `SlotAnchors` Empty bank for the later projection export. It is
-**development-only**: nothing under `frontend/public` is written and the runtime
-never reads it. Perspective and lighting are inherited from the earlier
-calibration reference; a separate Task 2 sets those up, so this section covers
-the model and anchors, not a lighting decision.
+complete `SlotAnchors` Empty bank for the later projection export. The model and
+the reference renders are **development-only** — the runtime never reads them —
+with one exception: the Task 3/3A runtime layout (`table_layout.json`, below) is
+the pipeline's runtime output. Perspective and lighting are inherited from the
+earlier calibration reference; a separate Task 2 sets those up, so this section
+covers the model and anchors, not a lighting decision.
 
 - The 700 mm mat, raised rim/frame and recessed compass/score well are built
   from the spec (`tools/render/table-reference-spec.json`); the mat is a square
@@ -1670,4 +1671,23 @@ the model and anchors, not a lighting decision.
   clearance and intersection contract, the 269-tile inventory, the render
   hashes and the table-surface facts. The earlier lighting samples remain as
   information, not this task's acceptance.
+
+**The runtime layout (Tasks 3 + 3A).** `bash tools/render/bake-table-layout.sh
+--bake` projects those anchors through the resolved rig camera into
+`frontend/public/table/table_layout.json`: per slot `anchor/depth/scale/bucket/
+faceQuad` plus `basis {tangent, bitangent, normal}`, and a top-level `lighting`
+block. `tangent` is TL→TR (glyph right), `bitangent` is TL→BL (glyph down) and
+`normal` is `B × T`, the visible face's outward direction. `T × B` points into
+the tile body: a glyph-right / glyph-down / face-out frame is left-handed under
+the usual cross product, so a normal map authored x right, y down, z out maps to
+world space as `n.x*T + n.y*B + n.z*N` with no sign flip (publishing `N = T × B`
+would light the back of every face). The basis comes from each slot's own quad
+corners, so a 90° riichi discard, a 180° seat's pond and the 40° readability-cheat
+hand need no special case. `lighting` carries the key light's direction, linear
+tint and energy, the world ambient tint and strength, the three fills and the
+active camera's position, all read off the built scene and cross-checked against
+the rig records. The exporter fails on a non-unit, non-orthogonal or
+inward-facing basis; `scripts/check-table-layout.mjs` re-checks the committed
+file without Blender and also projects each basis through the layout camera to
+prove it runs along the slot's published screen quad edges.
 

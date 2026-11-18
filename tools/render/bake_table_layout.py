@@ -15,8 +15,10 @@ variant's perspective camera, not a second layout.
 Outputs:
 
   - ``frontend/public/table/table_layout.json`` — the runtime contract:
-    ``referenceResolution`` and a ``slots`` array of
-    ``{id, zone, seat, row, col, anchor, depth, scale, bucket, faceQuad}``;
+    ``referenceResolution``, a top-level ``lighting`` block (the key light,
+    ambient and camera vectors read off the built scene) and a ``slots`` array of
+    ``{id, zone, seat, row, col, anchor, depth, scale, bucket, faceQuad, basis}``
+    where ``basis`` is that slot's world-space tangent/bitangent/normal;
   - ``tools/render/reference/layout/probes-1x.png`` — one emissive marker per
     anchor, rendered alone at 1920 x 1080 RGBA. The committed proof measures
     each marker's alpha centroid against the export to prove the coordinates
@@ -87,8 +89,22 @@ def main() -> None:
     reference.build_camera_object(scene, camera)
 
     collection = bpy_collection(scene_data["anchorCollection"])
+    lighting = table_layout.read_scene_lighting(
+        scene,
+        scene_data["rigLighting"],
+        scene_spec["rig"]["lighting"]["key"]["id"],
+        camera,
+        layout_spec,
+    )
     layout = table_layout.project_table_layout(
-        scene, collection, camera, layout_spec, resolution, variant_id
+        scene,
+        collection,
+        camera,
+        layout_spec,
+        resolution,
+        variant_id,
+        lighting,
+        scene_data.get("handLightingCheat"),
     )
     counts: dict[str, int] = {}
     for slot in layout["slots"]:

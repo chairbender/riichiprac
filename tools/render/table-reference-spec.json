@@ -1164,7 +1164,7 @@
     ],
     "rounding": 6,
     "output": "frontend/public/table/table_layout.json",
-    "note": "Task 3 export (bake-table-layout.sh). It projects the same SlotAnchors collection the Task 1/2 scene builds through the resolved rig camera and publishes the runtime layout. The reference renders stay calibration-only; this one block is the pipeline's runtime output. Re-run after any scene, placement or camera change; the file is sorted and rounded, so an unchanged scene reproduces it byte for byte.",
+    "note": "Task 3 export (bake-table-layout.sh). It projects the same SlotAnchors collection the Task 1/2 scene builds through the resolved rig camera and publishes the runtime layout; Task 3A adds the per-slot world-space basis (layout.basis) and the scene lighting block. The reference renders stay calibration-only; this one block is the pipeline's runtime output. Re-run after any scene, placement, camera or rig-light change; the file is sorted and rounded, so an unchanged scene reproduces it byte for byte.",
     "reference": {
       "mode": "nearest-slot",
       "point": [
@@ -1177,6 +1177,16 @@
     "rotation": {
       "sidewaysMaxAbsCos": 0.5,
       "note": "A slot is sideways when the projected TL -> TR edge is more vertical than horizontal in pixels (|dx| / length <= 0.5). That is the physically turned riichi discard and called meld tile, which need a rotated blank. 180-degree seats keep a horizontal top edge and stay upright blanks with a rotated glyph."
+    },
+    "basis": {
+      "tangent": "Unit world vector TL -> TR: the glyph's left-to-right axis on the face.",
+      "bitangent": "Unit world vector TL -> BL: the glyph's top-to-bottom axis on the face.",
+      "normal": "Unit world vector B x T: the visible face's outward direction, i.e. the anchor pose's local +z.",
+      "handedness": "T x B points INTO the tile body for the published TL,TR,BR,BL order: a glyph-right / glyph-down / face-out triple has determinant -1 under the usual cross product. This is the convention a tangent-space normal map authored x right, y down, z out expects, so a shader maps n_world = n.x*T + n.y*B + n.z*N with no sign flip. Exporting N = T x B would silently light the back of every face.",
+      "space": "World space of the rig scene, 1 unit = 28 mm (the tile height); the same space as the anchors and the lighting block.",
+      "tolerance": 1e-06,
+      "publishedTolerance": 0.00001,
+      "note": "Task 3A. Each slot's basis is derived from its own face-quad corners, so 0, plus/minus 90 and 180 degree tile rotations and the standing-hand tilt are captured by the geometry rather than special-cased. The exporter validates every vector for unit length, mutual orthogonality, the outward normal sign and agreement with the anchor pose's +z; publishedTolerance covers the six-decimal rounding in the file, tolerance the unrounded vectors."
     },
     "buckets": [
       {
