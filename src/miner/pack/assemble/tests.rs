@@ -9,7 +9,7 @@ use crate::generator::ScenarioId;
 use crate::miner::pack::{
     AssemblyLimits, AssemblyOptions, AssemblyReport, PackError, audit_pack_dir, decode_pack,
 };
-use crate::miner::provenance::{GameProvenance, sha256_hex};
+use crate::miner::provenance::{GameProvenance, ReplayId, sha256_hex};
 use crate::miner::select::dedupe::exact_state_hash;
 use crate::miner::select::review::{
     DISPOSITION_SCHEMA, DISPOSITION_VERSION, REVIEW_SCHEMA, REVIEW_VERSION,
@@ -238,6 +238,24 @@ fn assembles_a_clean_pack_that_agrees_with_the_db_and_is_deterministic() {
         outcome.report.scenarios
     );
     assert!(outcome.report.variants > 0, "the pack ships variants");
+    let first_variant = outcome
+        .pack
+        .scenarios
+        .iter()
+        .position(|scenario| scenario.provenance.is_variant())
+        .expect("a variant");
+    assert!(
+        outcome.pack.scenarios[..first_variant]
+            .iter()
+            .all(|scenario| !scenario.provenance.is_variant()),
+        "bases must precede variants so the session picker sees every position first"
+    );
+    assert!(
+        outcome.pack.scenarios[first_variant..]
+            .iter()
+            .all(|scenario| scenario.provenance.is_variant()),
+        "every variant must follow the base block"
+    );
 
     // The manifest and the body are present and agree.
     let published = outcome.published.as_ref().expect("published");
@@ -358,6 +376,7 @@ fn enforces_family_quotas_on_the_selection() {
                 max_per_base: 8,
                 max_pack_share: 1.0,
                 family_quotas: BTreeMap::from([("book".to_string(), 1)]),
+                max_variants: None,
             },
             ..options()
         },
@@ -492,6 +511,40 @@ fn caps_dedupe_and_family_quotas_apply_to_the_groups() {
             .filter(|drop| drop.reason == "base_dropped")
             .count(),
         2
+    );
+
+    // A global variant ceiling keeps evenly spaced variants, not the tail.
+    let options = AssemblyOptions {
+        limits: AssemblyLimits {
+            max_pack_share: 1.0,
+            max_variants: Some(3),
+            ..AssemblyLimits::default()
+        },
+        ..AssemblyOptions::default()
+    };
+    let mut groups = vec![
+        synthetic_group("book", "base-a", "state-a", 2),
+        synthetic_group("book", "base-b", "state-b", 2),
+        synthetic_group("book", "base-c", "state-c", 2),
+    ];
+    let mut drops = Vec::new();
+    super::apply_dedupe_and_caps(&mut groups, &options, &mut drops);
+    let kept: usize = groups.iter().map(|group| group.variants.len()).sum();
+    assert_eq!(kept, 3, "the ceiling keeps exactly three variants");
+    assert_eq!(
+        drops
+            .iter()
+            .filter(|drop| drop.reason == "variant_limit")
+            .count(),
+        3
+    );
+    assert!(
+        groups.iter().all(|group| !group.variants.is_empty()),
+        "the kept variants are spread across bases: {:?}",
+        groups
+            .iter()
+            .map(|group| group.variants.len())
+            .collect::<Vec<_>>()
     );
 }
 
@@ -922,4 +975,49 @@ fn assembly_refuses_a_missing_selection_and_an_ungated_variant() {
     }
     assert_eq!(bases.len(), 1);
     assert!(ScenarioId::from_id(&bases[0].scenario.lesson_id).is_some());
+}
+
+#[test]
+fn the_pack_interleaves_bases_from_the_same_replay() {
+    let mut groups = vec![
+        synthetic_group("book", "base-a", "state-a", 1),
+        synthetic_group("book", "base-b", "state-b", 1),
+        synthetic_group("book", "base-c", "state-c", 1),
+        synthetic_group("book", "base-d", "state-d", 1),
+        synthetic_group("book", "base-e", "state-e", 1),
+    ];
+    for (index, group) in groups.iter_mut().enumerate() {
+        let replay = if index < 3 { "a" } else { "b" };
+        group
+            .base
+            .as_mut()
+            .expect("base")
+            .scenario
+            .provenance
+            .replay_id = ReplayId::parse(&replay.repeat(64)).expect("replay id");
+    }
+    super::order_groups_for_pack(&mut groups);
+    let replays: Vec<String> = groups
+        .iter()
+        .map(|group| {
+            group
+                .base
+                .as_ref()
+                .expect("base")
+                .scenario
+                .provenance
+                .replay_id
+                .as_str()
+                .chars()
+                .next()
+                .expect("first")
+                .to_string()
+        })
+        .collect();
+    for pair in replays.windows(2) {
+        assert_ne!(
+            pair[0], pair[1],
+            "adjacent bases share a replay: {replays:?}"
+        );
+    }
 }

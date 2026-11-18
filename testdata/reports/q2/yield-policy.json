@@ -1,0 +1,102 @@
+{
+  "schema": "riichiprac.variant-yield-policy",
+  "version": 1,
+  "pairs": [
+    {
+      "lesson": "fold_to_riichi",
+      "transform": "seat_perm",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "fold_to_riichi",
+      "transform": "wind_relabel",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "fold_to_riichi",
+      "transform": "suit_perm",
+      "enabled": false,
+      "note": "keep a rank/red-five mix so the pack ships at least two transform families"
+    },
+    {
+      "lesson": "defense_safety_chart",
+      "transform": "seat_perm",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "defense_safety_chart",
+      "transform": "wind_relabel",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "defense_safety_chart",
+      "transform": "suit_perm",
+      "enabled": false,
+      "note": "keep a rank/red-five mix so the pack ships at least two transform families"
+    },
+    {
+      "lesson": "push_or_fold",
+      "transform": "seat_perm",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "push_or_fold",
+      "transform": "wind_relabel",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "suji_kabe_safety",
+      "transform": "seat_perm",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "suji_kabe_safety",
+      "transform": "wind_relabel",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "defense_stuck_heuristic",
+      "transform": "seat_perm",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "defense_stuck_heuristic",
+      "transform": "wind_relabel",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "defense_stuck_heuristic",
+      "transform": "suit_perm",
+      "enabled": false,
+      "note": "keep a rank/red-five mix so the pack ships at least two transform families"
+    },
+    {
+      "lesson": "kabe_one_chance",
+      "transform": "seat_perm",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "kabe_one_chance",
+      "transform": "wind_relabel",
+      "enabled": false,
+      "note": "seat/wind relabels leave the actor's hand and river unchanged; not a useful solo drill variant"
+    },
+    {
+      "lesson": "kabe_one_chance",
+      "transform": "suit_perm",
+      "enabled": false,
+      "note": "keep a rank/red-five mix so the pack ships at least two transform families"
+    }
+  ]
+}

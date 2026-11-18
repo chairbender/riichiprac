@@ -128,6 +128,10 @@ pub struct AssemblyLimits {
     /// Optional per-family ceilings, counted in base scenarios.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub family_quotas: BTreeMap<String, usize>,
+    /// Optional ceiling on the whole pack's variants, spread evenly across the
+    /// remaining pack order. `None` keeps every variant the per-base cap allows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_variants: Option<usize>,
 }
 
 impl Default for AssemblyLimits {
@@ -136,6 +140,7 @@ impl Default for AssemblyLimits {
             max_per_base: DEFAULT_MAX_PER_BASE,
             max_pack_share: DEFAULT_PACK_SHARE,
             family_quotas: BTreeMap::new(),
+            max_variants: None,
         }
     }
 }
@@ -161,6 +166,9 @@ impl AssemblyLimits {
             if *quota == 0 {
                 return Err(format!("family `{family}` has a zero quota"));
             }
+        }
+        if self.max_variants == Some(0) {
+            return Err("`max_variants` must be at least one".to_string());
         }
         Ok(())
     }
@@ -488,12 +496,19 @@ pub fn run_assembly(
         &mut drops,
     )?;
     apply_dedupe_and_caps(&mut groups, options, &mut drops);
+    order_groups_for_pack(&mut groups);
 
+    // Bases first, then variants. The picker deals in body order, so keeping
+    // every base ahead of its (and every other base's) variant means a learner
+    // sees the distinct positions before the relabelled repeats. The order is
+    // still deterministic: bases in base-id order, variants in the same order.
     let mut scenarios: Vec<PackScenario> = Vec::new();
     for group in &groups {
         if let Some(base) = &group.base {
             scenarios.push(base.scenario.clone());
         }
+    }
+    for group in &groups {
         for variant in &group.variants {
             scenarios.push(variant.scenario.clone());
         }
@@ -1499,44 +1514,105 @@ fn apply_dedupe_and_caps(
     }
 
     // 3. Optional family quotas, counted in base scenarios (§4.6).
-    if options.limits.family_quotas.is_empty() {
+    if !options.limits.family_quotas.is_empty() {
+        let mut bases_per_family: BTreeMap<String, usize> = BTreeMap::new();
+        for group in groups.iter_mut() {
+            let Some(base) = &group.base else {
+                continue;
+            };
+            let Some(quota) = options.limits.family_quotas.get(&base.family) else {
+                continue;
+            };
+            let taken = bases_per_family.entry(base.family.clone()).or_insert(0);
+            if *taken >= *quota {
+                let id = base.scenario.id.to_string();
+                let family = base.family.clone();
+                drops.push(AssemblyDrop {
+                    scenario_id: id.clone(),
+                    reason: "family_quota".to_string(),
+                    detail: format!("family `{family}` already has its quota of {quota} base(s)"),
+                });
+                for variant in &group.variants {
+                    drops.push(AssemblyDrop {
+                        scenario_id: variant.scenario.id.to_string(),
+                        reason: "base_dropped".to_string(),
+                        detail: format!("its base `{id}` was over its family quota"),
+                    });
+                }
+                group.base = None;
+                group.variants.clear();
+            } else {
+                *taken += 1;
+            }
+        }
+    }
+
+    // 4. Optional global variant ceiling. Keep evenly spaced variants across
+    // the pack order rather than truncating the tail, so the limit does not
+    // silently favour whichever lesson sorts first.
+    let Some(limit) = options.limits.max_variants else {
+        return;
+    };
+    let total: usize = groups.iter().map(|group| group.variants.len()).sum();
+    if total <= limit {
         return;
     }
-    let mut bases_per_family: BTreeMap<String, usize> = BTreeMap::new();
+    let keep: BTreeSet<usize> = (0..limit).map(|index| index * total / limit).collect();
+    let mut position = 0_usize;
     for group in groups.iter_mut() {
-        let Some(base) = &group.base else {
-            continue;
-        };
-        let Some(quota) = options.limits.family_quotas.get(&base.family) else {
-            continue;
-        };
-        let taken = bases_per_family.entry(base.family.clone()).or_insert(0);
-        if *taken >= *quota {
-            let id = base.scenario.id.to_string();
-            let family = base.family.clone();
-            drops.push(AssemblyDrop {
-                scenario_id: id.clone(),
-                reason: "family_quota".to_string(),
-                detail: format!("family `{family}` already has its quota of {quota} base(s)"),
-            });
-            for variant in &group.variants {
+        let mut retained = Vec::new();
+        for variant in group.variants.drain(..) {
+            if keep.contains(&position) {
+                retained.push(variant);
+            } else {
                 drops.push(AssemblyDrop {
                     scenario_id: variant.scenario.id.to_string(),
-                    reason: "base_dropped".to_string(),
-                    detail: format!("its base `{id}` was over its family quota"),
+                    reason: "variant_limit".to_string(),
+                    detail: format!("the pack keeps {limit} of {total} variant(s)"),
                 });
             }
-            group.base = None;
-            group.variants.clear();
-        } else {
-            *taken += 1;
+            position += 1;
         }
+        group.variants = retained;
     }
 }
 
 // ---------------------------------------------------------------------------
 // Pack metadata.
 // ---------------------------------------------------------------------------
+
+/// Interleave base groups so consecutive scenarios rarely come from the same
+/// replay.
+///
+/// The selector may pick several decisions from one game (sometimes adjacent
+/// turns). Dealing those back-to-back looks like the same hand repeating, even
+/// though every state hash is unique. This greedy pass keeps the deterministic
+/// first-fit order but picks the next group with a different source replay when
+/// one remains; only a run with no alternative repeats a replay.
+fn order_groups_for_pack(groups: &mut Vec<BaseGroup>) {
+    let mut remaining = std::mem::take(groups);
+    let mut ordered = Vec::with_capacity(remaining.len());
+    let mut last_replay: Option<String> = None;
+    while !remaining.is_empty() {
+        let pick = remaining
+            .iter()
+            .position(|group| {
+                group
+                    .base
+                    .as_ref()
+                    .map(|base| base.scenario.provenance.replay_id.as_str())
+                    != last_replay.as_deref()
+            })
+            .unwrap_or(0);
+        let group = remaining.remove(pick);
+        last_replay = group
+            .base
+            .as_ref()
+            .map(|base| base.scenario.provenance.replay_id.as_str().to_string());
+        ordered.push(group);
+    }
+    *groups = ordered;
+}
 
 fn games_for(
     rows: &[SelectedRow],
@@ -1767,6 +1843,12 @@ fn build_report(
             "family quotas were applied and count base scenarios, not variants (§4.6)".to_string(),
         );
     }
+    if let Some(limit) = options.limits.max_variants {
+        notes.push(format!(
+            "the pack keeps at most {limit} variant(s), spread evenly across the base order; \
+             a variant beyond the ceiling is reported as `variant_limit`"
+        ));
+    }
 
     AssemblyReport {
         schema: ASSEMBLY_SCHEMA.to_string(),
@@ -1877,20 +1959,26 @@ fn record_pack(
     )?;
 
     let mut ordinal = 0_i64;
+    // Match the pack body's bases-first order (see `run_assembly`).
     for group in groups {
         if let Some(base) = &group.base {
             insert_pack_scenario(&transaction, pack, base, None, ordinal)?;
             ordinal += 1;
-            for variant in &group.variants {
-                insert_pack_scenario(
-                    &transaction,
-                    pack,
-                    variant,
-                    Some(base.scenario.id.as_str()),
-                    ordinal,
-                )?;
-                ordinal += 1;
-            }
+        }
+    }
+    for group in groups {
+        let Some(base) = &group.base else {
+            continue;
+        };
+        for variant in &group.variants {
+            insert_pack_scenario(
+                &transaction,
+                pack,
+                variant,
+                Some(base.scenario.id.as_str()),
+                ordinal,
+            )?;
+            ordinal += 1;
         }
     }
     transaction.commit()?;

@@ -3,14 +3,14 @@
   "version": 1,
   "dir": "/home/kylehipke/workspaces/riichiprac-261115-234326/frontend/public/scenarios",
   "pack": "replay.ch8-defense.2026-11",
-  "checks": 221,
+  "checks": 73,
   "problems": [],
-  "scenarios": 200,
+  "scenarios": 125,
   "bases": 100,
-  "variants": 100,
-  "variant_share": 0.5,
+  "variants": 25,
+  "variant_share": 0.2,
   "transform_families": [
-    "seat_perm",
+    "rank_mirror",
     "suit_perm"
   ],
   "lessons": [
@@ -26,7 +26,7 @@
     "ch8.2",
     "ch8.3"
   ],
-  "bytes": 143528,
+  "bytes": 133734,
   "agents": [
     "akochan (akochan)",
     "efficiency-safety-v1 (corpus-reference)",

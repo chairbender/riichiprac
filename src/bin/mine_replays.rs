@@ -430,6 +430,11 @@ enum PackAction {
         #[arg(long, value_name = "F32")]
         share: Option<f32>,
 
+        /// Maximum variants in the whole pack, spread evenly across the base
+        /// order. Omit to keep every variant the per-base cap allows.
+        #[arg(long, value_name = "N")]
+        max_variants: Option<usize>,
+
         /// Family ceilings counted in base scenarios, e.g. book=30,coverage=15.
         #[arg(long, value_name = "LIST", value_delimiter = ',')]
         family_quota: Vec<String>,
@@ -929,6 +934,7 @@ fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
             max_scenarios,
             max_per_base,
             share,
+            max_variants,
             family_quota,
             generated_at,
             commit,
@@ -945,6 +951,7 @@ fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
                 max_scenarios,
                 max_per_base,
                 share,
+                max_variants,
                 family_quota,
                 generated_at,
                 commit,
@@ -993,6 +1000,7 @@ struct AssemblyCommand {
     max_scenarios: Option<usize>,
     max_per_base: Option<usize>,
     share: Option<f32>,
+    max_variants: Option<usize>,
     family_quota: Vec<String>,
     generated_at: Option<String>,
     commit: String,
@@ -1022,6 +1030,7 @@ fn run_pack_assemble(root: &DataRoot, command: AssemblyCommand) -> ExitCode {
     if let Some(share) = command.share {
         limits.max_pack_share = share;
     }
+    limits.max_variants = command.max_variants;
     limits.family_quotas = quotas;
     let options = AssemblyOptions {
         pack_id: command.pack,

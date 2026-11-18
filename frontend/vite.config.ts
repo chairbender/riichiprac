@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -9,7 +9,6 @@ import topLevelAwait from 'vite-plugin-top-level-await';
 
 // Use the freshly built WASM package rather than a stale copy in node_modules.
 const pkgDir = fileURLToPath(new URL('../pkg', import.meta.url));
-const scenariosDir = fileURLToPath(new URL('./public/scenarios', import.meta.url));
 
 /**
  * Serve the content-addressed `.json.gz` pack bodies as raw bytes.
@@ -26,7 +25,7 @@ const scenariosDir = fileURLToPath(new URL('./public/scenarios', import.meta.url
  * `hosting-plan.md` §7.
  */
 function rawScenarioPackBodies(): Plugin {
-  const middleware: Connect.NextHandleFunction = (request, response, next) => {
+  const middleware = (dir: string): Connect.NextHandleFunction => (request, response, next) => {
     const path = decodeURIComponent((request.url ?? '').split('?')[0]);
     const prefix = '/scenarios/';
     if (!path.startsWith(prefix) || !path.endsWith('.json.gz')) {
@@ -38,7 +37,7 @@ function rawScenarioPackBodies(): Plugin {
       next();
       return;
     }
-    const file = join(scenariosDir, name);
+    const file = join(dir, name);
     if (!existsSync(file)) {
       next();
       return;
@@ -52,10 +51,18 @@ function rawScenarioPackBodies(): Plugin {
     name: 'raw-scenario-pack-bodies',
     enforce: 'pre',
     configureServer(server) {
-      server.middlewares.use(middleware);
+      // Dev serves `public/` directly.
+      server.middlewares.use(
+        middleware(join(server.config.root, 'public', 'scenarios')),
+      );
     },
     configurePreviewServer(server) {
-      server.middlewares.use(middleware);
+      // Preview serves the built artifact, not `public/`.
+      server.middlewares.use(
+        middleware(
+          resolve(server.config.root, server.config.build.outDir, 'scenarios'),
+        ),
+      );
     },
   };
 }

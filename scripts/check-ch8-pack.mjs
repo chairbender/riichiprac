@@ -135,7 +135,10 @@ const scenarioIds = new Set();
 const duplicateIds = [];
 const offChapter = [];
 const missingBook = [];
-for (const scenario of scenarios) {
+const byId = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
+let variantIndex = -1;
+let sameHandVariants = 0;
+for (const [index, scenario] of scenarios.entries()) {
   if (scenarioIds.has(scenario.id)) duplicateIds.push(scenario.id);
   scenarioIds.add(scenario.id);
   if (!CH8_LESSONS.has(scenario.lesson_id)) offChapter.push(scenario.lesson_id);
@@ -146,8 +149,13 @@ for (const scenario of scenarios) {
     Boolean(provenance.variant_of) ||
     (Array.isArray(provenance.transforms) && provenance.transforms.length > 0);
   if (isVariant) {
+    if (variantIndex < 0) variantIndex = index;
     variants += 1;
     for (const name of provenance.transforms ?? []) transformFamilies.add(name);
+    const base = byId.get(provenance.variant_of);
+    if (base && base.state?.hand_string === scenario.state?.hand_string) {
+      sameHandVariants += 1;
+    }
     check(
       Boolean(provenance.variant_of),
       `${scenario.id} names its base`,
@@ -162,6 +170,16 @@ for (const scenario of scenarios) {
 }
 
 check(duplicateIds.length === 0, `no duplicate scenario ids (${duplicateIds.length})`);
+check(
+  variantIndex < 0 ||
+    (scenarios.slice(0, variantIndex).every((scenario) => !scenario.provenance?.variant_of) &&
+      scenarios.slice(variantIndex).every((scenario) => Boolean(scenario.provenance?.variant_of))),
+  'the base block precedes every variant',
+);
+check(
+  sameHandVariants === 0,
+  `no variant repeats its base's actor hand (${sameHandVariants})`,
+);
 check(
   offChapter.length === 0,
   `every scenario is a ch. 8 lesson (${offChapter.length} off-chapter)`,

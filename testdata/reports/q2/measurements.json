@@ -139,27 +139,42 @@
   },
   "variants": {
     "bases": 100,
-    "attempts": 500,
-    "preserved": 336,
+    "attempts": 1028,
+    "preserved": 542,
     "shipped": 100,
-    "transform_families_shipped": ["seat_perm", "suit_perm"],
+    "transform_families_shipped": [
+      "rank_mirror",
+      "suit_perm"
+    ],
+    "shipped_by_family": {
+      "rank_mirror": 13,
+      "suit_perm": 12
+    },
     "label_preservation": "100/100 book",
-    "dropped_by_cap": 203,
-    "duplicate_states": 33,
-    "unreachable": 134,
-    "changed_answer": 3,
-    "changed_answer_set": 1,
-    "missing_lesson": 5,
-    "noop": 8,
-    "transform_rejected": 13
+    "withdrawn_disabled": 233,
+    "dropped_by_cap": 151,
+    "duplicate_states": 58,
+    "rejections": {
+      "answer_changed": 7,
+      "answer_set_changed": 1,
+      "disabled_pair": 233,
+      "duplicate_state": 58,
+      "lesson_missing": 12,
+      "per_base_cap": 151,
+      "state_unreachable": 412,
+      "transform_noop": 8,
+      "transform_rejected": 46
+    },
+    "assembly_variant_limit": 25,
+    "variants_repeating_actor_hand": 0
   },
   "pack": {
-    "scenarios": 200,
+    "scenarios": 125,
     "bases": 100,
-    "variants": 100,
-    "variant_share": 0.5,
+    "variants": 25,
+    "variant_share": 0.2,
     "largest_base_scenarios": 2,
-    "largest_base_share": 0.01,
+    "largest_base_share": 0.016,
     "lessons": [
       "defense_safety_chart",
       "defense_stuck_heuristic",
@@ -168,11 +183,15 @@
       "push_or_fold",
       "suji_kabe_safety"
     ],
-    "book_sections": ["ch8.1", "ch8.2", "ch8.3"],
-    "bytes": 143528,
-    "bytes_per_scenario": 717.64,
+    "book_sections": [
+      "ch8.1",
+      "ch8.2",
+      "ch8.3"
+    ],
+    "bytes": 133734,
+    "bytes_per_scenario": 1069.87,
     "manifest_bytes": 763,
-    "sha256": "323404f8dcb782246b46c2b172c77f1092ef71fb08d3a11ce90ccef48e307830",
+    "sha256": "f7d5db4ff8746f3a668a52c9cb92ceccf5a1ae93b327d0523b661c15f525875d",
     "licence": "CC-BY-4.0",
     "data_commercial_use": false,
     "requires_model": false,
@@ -181,11 +200,19 @@
       "efficiency-safety-v1 (MIT)",
       "isolated-first-v1 (MIT)",
       "mortal-298k (AGPL-3.0)"
-    ]
+    ],
+    "order": "all bases first, then variants",
+    "unique_actor_hands": 125,
+    "drop_counts": {
+      "variant_limit": 75
+    },
+    "adjacent_same_replay_bases": 0
   },
   "load": {
     "startup_bytes": 763,
-    "startup_files": ["scenarios/manifest.json"],
+    "startup_files": [
+      "scenarios/manifest.json"
+    ],
     "first_lesson_body_fetches": 1,
     "second_load_fetches": 0,
     "cache": "IndexedDB/content-addressed in the app; in-memory test cache in the loader smoke",
@@ -210,25 +237,25 @@
     "wasm_check": "pass",
     "no_libriichi": true,
     "q1_end_to_end": "PASS (same pack hash on two runs)",
-    "frontend_tests": "313 passed, 1 skipped",
+    "frontend_tests": "320 passed, 1 skipped",
     "frontend_build": "pass",
     "frontend_lint": "pass",
     "pack_hosting": "41/41 checks",
-    "ch8_pack_content": "221/221 checks",
+    "ch8_pack_content": "73/73 checks",
     "pack_serving": "8/8 checks (application/gzip, no Content-Encoding, exact bytes/SHA-256)",
     "audit": "clean, 0 findings"
   },
   "storage": {
-    "snapshot": "snapshots/miner-20261118-031900.sqlite",
-    "snapshot_bytes": 304259072,
-    "snapshot_sha256": "7949f5965356e866f316b50ec1d0606907503b2c27a94bd6703680eb5c5ef761",
+    "snapshot": "snapshots/miner-20261118-142000.sqlite",
+    "snapshot_bytes": 304394240,
+    "snapshot_sha256": "f52320031ddb2bb1b1b037d0783a8c271bf96474ea028390a84194f2ee0c72fc",
     "integrity_check": "ok",
     "replays": 999,
     "decisions": 44683,
     "selected_scenarios": 200,
-    "variants": 297,
+    "variants": 644,
     "packs": 1,
-    "pack_scenarios": 200,
+    "pack_scenarios": 125,
     "missing_replay_files": 0,
     "rclone": "skipped (no remote configured)"
   },
@@ -241,7 +268,7 @@
   "scale_up_decision": {
     "decision": "ship this pack; scale to 500 reviewed bases after Q2r sign-off, not 10k",
     "reasons": [
-      "200 scenarios cost 143 KB, so 1000 scenarios are about 0.7 MB and stay inside the byte budgets",
+      "125 scenarios cost 134 KB, so 1000 scenarios are about 1.1 MB and stay inside the byte budgets",
       "84 games produced 4077 stable ch8 candidates (about 40 per base slot)",
       "selection walked 544 replays and built 110 reports in about 70 minutes; skip unextracted replays and parallelise report building before 500 bases",
       "100 candidates are human-reviewable; 500 need the S2 review tool and a second reviewer"
