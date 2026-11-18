@@ -1,0 +1,37 @@
+{
+  "schema": "riichiprac.ch8-pack-check",
+  "version": 1,
+  "dir": "/home/kylehipke/workspaces/riichiprac-261115-234326/frontend/public/scenarios",
+  "pack": "replay.ch8-defense.2026-11",
+  "checks": 221,
+  "problems": [],
+  "scenarios": 200,
+  "bases": 100,
+  "variants": 100,
+  "variant_share": 0.5,
+  "transform_families": [
+    "seat_perm",
+    "suit_perm"
+  ],
+  "lessons": [
+    "defense_safety_chart",
+    "defense_stuck_heuristic",
+    "fold_to_riichi",
+    "kabe_one_chance",
+    "push_or_fold",
+    "suji_kabe_safety"
+  ],
+  "book_sections": [
+    "ch8.1",
+    "ch8.2",
+    "ch8.3"
+  ],
+  "bytes": 143528,
+  "agents": [
+    "akochan (akochan)",
+    "efficiency-safety-v1 (corpus-reference)",
+    "isolated-first-v1 (corpus-reference)",
+    "mortal-298k (mortal-candle)"
+  ],
+  "data_commercial_use": false
+}

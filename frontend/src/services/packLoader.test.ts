@@ -166,7 +166,7 @@ function memoryCache(): {
 }
 
 /* -------------------------------------------------------------------------- */
-/* The committed smoke pack                                                   */
+/* The committed pack                                                   */
 /* -------------------------------------------------------------------------- */
 
 const fixtureDir = new URL('../../public/scenarios/', import.meta.url);
@@ -180,7 +180,7 @@ const fixtureBody = new Uint8Array(
   readFileSync(new URL(fixtureEntry.path, fixtureDir)),
 );
 
-describe('committed smoke pack', () => {
+describe('committed pack', () => {
   it('validates the published manifest and carries the content address', async () => {
     expect(packManifestUrl()).toBe('/scenarios/manifest.json');
     expect(fixtureManifest.packs).toHaveLength(1);
@@ -226,7 +226,9 @@ describe('committed smoke pack', () => {
     expect(offline).not.toHaveBeenCalled();
     expect(again.fromCache).toBe(true);
     expect(again.pack.scenarios).toHaveLength(fixtureEntry.scenario_count);
-    expect(again.byLesson.get(fixtureEntry.lesson_ids[0])).toHaveLength(1);
+    for (const lesson of fixtureEntry.lesson_ids) {
+      expect(again.byLesson.get(lesson)?.length ?? 0).toBeGreaterThan(0);
+    }
   });
 });
 

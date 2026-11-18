@@ -1,0 +1,1096 @@
+{
+  "schema": "riichiprac.review-report",
+  "version": 1,
+  "generated_at": "20261118-080854",
+  "queue_path": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-defense.2026-11/review-queue.jsonl",
+  "dispositions_path": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-defense.2026-11/dispositions.jsonl",
+  "pack_id": "replay.ch8-defense.2026-11",
+  "items": 110,
+  "valid": 110,
+  "invalid": 0,
+  "pending": 10,
+  "accepted": 100,
+  "rejected": 0,
+  "rows": [
+    {
+      "queue_id": "replay.ch8-defense.2026-11-001",
+      "decision_id": "9032ba36ccfeb44a8eba069cb6e50551f2729867dd94bab8eed719485a563285",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-002",
+      "decision_id": "79b3be19347c03c8aaabfcad9a793567448c1acf82d0e9d5209714bcfcb784b0",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-003",
+      "decision_id": "c6532d066b2e21be6bef3edca00935dac5de199c57bbf4b356c8f465009b937e",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-004",
+      "decision_id": "dc9c73ff160b5bd4192ea63998535b7dc06b506d323455f9a282f3ab8d313f87",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-005",
+      "decision_id": "7f627bf7392fe83d659b178ab9455b3c7addfc3ba842c7af1761bcacec9dc527",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-006",
+      "decision_id": "1275e49ca614af65fcefd47d54d7d2219a256187aed2f5984351ff8ab8aaf060",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-007",
+      "decision_id": "e96a30c37566f26fe97ed7ca581cdb46450a8defb60a42b65ad87841f42df135",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-008",
+      "decision_id": "0100e70c8d7c84691d89c3fe5a55fb3c2110355b96829418101be0e56723393c",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-009",
+      "decision_id": "e8aa6d59d30f57cf3c10b4c6ea6a70c8e3887d8b99eed685f6f9edeab9a1fa79",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-010",
+      "decision_id": "c9621cf1666c586156dd6ab52c38b658f1560dc34d6cbacb4bedf78bbaaa5197",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-011",
+      "decision_id": "7c553bf2dbf5751a467a2bbeef9dadd28c28db53cab3f0158cac51371b95738b",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-012",
+      "decision_id": "0241f3a48caaa59bdc157ebc7fbde4347b57b7a5a5d09ab1c268241c103b220c",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-013",
+      "decision_id": "028486cfc4fa566eb4bb7e4f6a62bfa1613af2f681ccbea16e143319276e8bbc",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-014",
+      "decision_id": "6bc640d23747dc483a56ca7c979621e4de92673e70edd0bd429fe8910ad9259b",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-015",
+      "decision_id": "ef096e9d9eaa652b0b7b543799145a414ced2a1736d3c7bb9693bbbc72414153",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-016",
+      "decision_id": "36b5f57079c9961cc2eea72cef7eb13857331a618b8e3993a496f8b583c385ae",
+      "family": "book",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-017",
+      "decision_id": "9de8376daaf6314bc44ab119ace0546de2ca9f7e7475559a7713afeec5ec8896",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-018",
+      "decision_id": "76b8b44870c21b5b8f9cff3a7fe41f4f7783b7dcc7ac8731b7c368976053ddae",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-019",
+      "decision_id": "e78b47eafe5b50c10771271a8f5f673b803095fdf7e79d71c177c792e2b22ca3",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-020",
+      "decision_id": "50d941a74d0398f97f6359d1c2cebb915fe133763a9aed7340ebd3b1499fdf3c",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-021",
+      "decision_id": "a6672bd95a7c00fabb6f4c088309e168197476a575ce744bdd50c1936abe25f1",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-022",
+      "decision_id": "7c9347a2875d5f00caa210e601f1ee665bf4f3752dff5cd5b53eae6575f21bed",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-023",
+      "decision_id": "d8b1d49ac94b46993a5b7bd6f4ae50ad7a15ef1906793e80c419168ff6aa0c6b",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-024",
+      "decision_id": "2d9164dea5a62fdaa811d47aed290b2d308c0917b18ceec811c94bec2f080c1c",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-025",
+      "decision_id": "d29d22fc4096f7721366e136f7919ec6fdeab80ae605313954b0586e872f087d",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-026",
+      "decision_id": "c3af15bf51623e7824cd8f2ca2ae02a27b66c3b6cf06a2c6fc975a223e1cdd18",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-027",
+      "decision_id": "0cbc5a695e38d3b373a51b67b2595a53c7309ea5ed3bbf2ac4d48f6032fb86ea",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-028",
+      "decision_id": "d65feea7b39cb01ae8e6cb11814ff26af15dc2452d15f396d47060413fd4242e",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-029",
+      "decision_id": "d894df65d88ca09dd4c3e56404b06fa1be79e62bdc6b2657a916ee3b2a54b427",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-030",
+      "decision_id": "04e82d9bc62eb84c9b74a45fdb6c667ce150d6a8e48bbd191401533296711e0f",
+      "family": "book",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-031",
+      "decision_id": "37e10c726e28451aed89da2e48807f5533965507e3b9dc5b41e98ab0160985ba",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-032",
+      "decision_id": "9679b423acc04f239b284d0c3702ae7044cbdf83a36eedec3f581677bb1824a1",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-033",
+      "decision_id": "f4f0b7ea4aa65f8df60614fa70f98c1ce8d4380b16678c3701ee3bd7fcea6a62",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-034",
+      "decision_id": "4292cae8d0660a2860d1ea48d270dc502a40485765eacc8273fa7223514003ef",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-035",
+      "decision_id": "7982b53ea8ec10af9b7d2bd2b2e9c1a912856fd31c4992990839f606ed5fa296",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-036",
+      "decision_id": "96dcdf1d47f0b65d2e300236aab8d51ad85af73974d3220b1becca7ea157bcf4",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-037",
+      "decision_id": "a3fa4ec9bdb9c41ee303d2d38d061e1621698f8eeec162372247c8bc674ea87c",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-038",
+      "decision_id": "f8c1f1c94b4e0dd6861bc18a16e927dc309cbf542f8740c1a7e37e2a0aa1c953",
+      "family": "book",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-039",
+      "decision_id": "4cf222a489bd4b0bb57205ec1ec294b25d2e0de27353918c534e1a2a402e6e86",
+      "family": "book",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-040",
+      "decision_id": "ee0b0ae1024831e6d8aab47abfcf6c255da1e0dfac09ecbb1797a3b6ab1f5dd5",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-041",
+      "decision_id": "06c00676d6f0b2023287941922e7d6934508c24f722d20a0bb2278a6cb1096a4",
+      "family": "book",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-042",
+      "decision_id": "ac23c4a92c4b3427b5ef9cae52fd4432f060f1b414f329089247213f588ab8af",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-043",
+      "decision_id": "1fb769d8a3aad53b9ac99e35ce2ea782138f4ec31de4780dd2853115ea14926f",
+      "family": "book",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-044",
+      "decision_id": "c5a10068a6140edf9ee7ad5de7ba64302c75c870ee438c3f7b4815733efcdf34",
+      "family": "book",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-045",
+      "decision_id": "73d014345c6fac3f8f2485178323475a0b5811f1450f67d4a624ad466cf925ff",
+      "family": "mistake",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-046",
+      "decision_id": "7ee68cb8111057b9bd268d12dec81a555f4a8603495c44b9331a4032a33fa550",
+      "family": "mistake",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-047",
+      "decision_id": "142f9682f30f380da52cc4fe3fe8f5169c9252bfce2fbe213dbe575fd883cf4c",
+      "family": "mistake",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-048",
+      "decision_id": "c918d588cf5875e9973889bbf0bce5b917bd553cce9c555a86f5090564841e9c",
+      "family": "mistake",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-049",
+      "decision_id": "4f16051fac6f882277a7eafc54206514b18c495ef354c247dd92b504742c5805",
+      "family": "mistake",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-050",
+      "decision_id": "607da61845a93a33f72e1f859ca340e6a298d09b549f4c7f9b867012a90b7409",
+      "family": "mistake",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-051",
+      "decision_id": "19541fba6d6f2da2a31bc9f5f8633d32b7a16ccfbbaf98200566afb4da4e169c",
+      "family": "mistake",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-052",
+      "decision_id": "f25242ce3abeb77bc2db4a38d64d0c031caad6be5b5663a8f45de632d74bd037",
+      "family": "mistake",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-053",
+      "decision_id": "b9e6028251d18dc553a035e0a2be150828aa0a3a3737a8ffb8889b3afe6776e8",
+      "family": "mistake",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-054",
+      "decision_id": "eacde08b357d5b4dbae7e2e7e05501db624bdbaf34a3e738f313f0487f8e3247",
+      "family": "mistake",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-055",
+      "decision_id": "aec082c58548e9ce2588964c2089a4d691f9739f48f5a5c6cfb1c3ce4cbbef5b",
+      "family": "mistake",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-056",
+      "decision_id": "4d789fe718910f9ce74f48120bb63ccced937bef7df7b641b0ca2316e6a6479e",
+      "family": "close_call",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-057",
+      "decision_id": "f8fe79efa555b2c47b53397983ff074b1030193e378c11745a37f8779af86f66",
+      "family": "close_call",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-058",
+      "decision_id": "7d862e7576a9bde2adaac3aadbdedd97a58e5d782a5e9c145c786660c8d42cf2",
+      "family": "close_call",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-059",
+      "decision_id": "59ee22290763d76e51a9cecd02383074f030e452b91953820c9e170cc1b17715",
+      "family": "close_call",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-060",
+      "decision_id": "d37eca345ba4040296342bcc6961f983152ee3037c156c84a75ef71c32f57378",
+      "family": "close_call",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-061",
+      "decision_id": "a84546bda4f3d6ac65d99b454258c925eafc5f0a1584b62124273a683982b5f3",
+      "family": "close_call",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-062",
+      "decision_id": "eb6bfec3a2a29d8fa470a356e18d95b8429bc3c10e16d82f7194420113c04c3f",
+      "family": "close_call",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-063",
+      "decision_id": "66da6b7704b09dc0b39af1d23976bb79c167ff43ed42e1ad1876b91478176c46",
+      "family": "close_call",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-064",
+      "decision_id": "9811ecbd257dbd35115b69a2b8ab3f2d454c89d19fa39cc02d5d4b05381222aa",
+      "family": "close_call",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-065",
+      "decision_id": "4cfa3e358e433fb3e2e84b40bcc1d81c0457e15b59dc5695e68c2a1ce9f1edd0",
+      "family": "close_call",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-066",
+      "decision_id": "96aa683f2afaa020dd33686ee3c02f42c6b0e88a1dd05d5d7e1ed7c0aba26aa7",
+      "family": "close_call",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-067",
+      "decision_id": "cc442be23668af21fe9a2c9dc1a8088120d47e73948a510c9349f06a0e991f3b",
+      "family": "close_call",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-068",
+      "decision_id": "ea3d225deca4ba3f937353b813f7a579c14339250d402e115df2cf6a3c622a22",
+      "family": "close_call",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-069",
+      "decision_id": "3de53e10e96db853c3b5afa8e824d1d60f5fc97be717a43be365385d846db515",
+      "family": "close_call",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-070",
+      "decision_id": "bf7dff2836a1d3cb8a4bbc7910a4aa42860fc24401e381d95cb3555768545ea8",
+      "family": "close_call",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-071",
+      "decision_id": "4b9bfc327e43c14ef2b66143fb823968d4939a939e6229e664e34ba77645a1f6",
+      "family": "coverage",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-072",
+      "decision_id": "01130c12daca45ff9f47d8f66fb9c8288cf265929ed8e1f33d37554ed7a79e81",
+      "family": "coverage",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-073",
+      "decision_id": "3b117f6a1d281571bb4a1e6001b4c2dd2e8a15d018fe34d8cdc5f6e375f87404",
+      "family": "coverage",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-074",
+      "decision_id": "fc16ae8c1dfdc29e7711d6e101425b64e5d83ac76a42d0138980e16cae4c3610",
+      "family": "coverage",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-075",
+      "decision_id": "781f6d95232fff5d77602632c62755daf248580fa55c4a58af29895b1aa0d204",
+      "family": "coverage",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-076",
+      "decision_id": "461c21f328b48e71f25f3aa7bec0ad7cadedf39f5d6563c315a7d9ce37bc3b65",
+      "family": "coverage",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-077",
+      "decision_id": "4edb5fceae6104d530f2fd43475e4abe6783c6cd8b59e947dfda9cbec6b6a2ee",
+      "family": "coverage",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-078",
+      "decision_id": "b2ceb816e27cdfdc602571bda214d6c85fccd95cd31efd53a3b0e56dec6623b6",
+      "family": "coverage",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-079",
+      "decision_id": "a07ab8da5a794e725bea1aab5ddb19f2032e57c71aa7f70f35607a9f2626c038",
+      "family": "coverage",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-080",
+      "decision_id": "1085e0049259f17d3823d264a809c98d1ba45219089bac60b2d3cc6842931761",
+      "family": "coverage",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-081",
+      "decision_id": "1851e215117855dd10cbc716730e0b77504c9d5f0f4e012f4e17874fd02eedab",
+      "family": "coverage",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-082",
+      "decision_id": "a921a701805024224b551a5813a73086c782b1b18ee444d5eeba28dc69ab25c5",
+      "family": "coverage",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-083",
+      "decision_id": "e35351af0aeba74582b86d70b4c3ec9c6abcb42ec4d2098f7cbb53b0c57c3c4d",
+      "family": "coverage",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-084",
+      "decision_id": "360d52ef2ebe14dc062a62f1c7d435a6fe13046abf59c34d99a0a221713a7f17",
+      "family": "coverage",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-085",
+      "decision_id": "7b7fa2b82a12a7140ad4966752d59d5837c263d306e49706347d080203158a79",
+      "family": "coverage",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-086",
+      "decision_id": "94b9fb0988f0f456006963e3daca6ab33f2e40d4732c705735dafd84e5220126",
+      "family": "coverage",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-087",
+      "decision_id": "901bab816c555b173f2aa23a316cf03f17b4abf5e965dd9825b1ed5a15eb2ce3",
+      "family": "coverage",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-088",
+      "decision_id": "5bce5af7c507a2185e4622d16bd3a28cd75c3e9b07ae465595f37ab844b97486",
+      "family": "coverage",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-089",
+      "decision_id": "56df48dead7dd1f7c7dc988dadfd24efa4ec658fd275f19019457452465ea9d0",
+      "family": "coverage",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-090",
+      "decision_id": "0438d10eeb78fce258c136a2c3fa5b34b5fbdab057a17ce1f2880f749e7eda25",
+      "family": "coverage",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-091",
+      "decision_id": "4996ba282567c8cb968ad73ef1fbcc6c9fdb0d00b5574111ba6222c4d7ae1ffc",
+      "family": "coverage",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-092",
+      "decision_id": "8fc29f2a1af5ee83fa0c6abffb3c85ca6d8a1fd2c8b675c4fbb064884449feda",
+      "family": "coverage",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-093",
+      "decision_id": "359b4f436db97933d08896bac72c2ff4ee45f1c1d368fa85eae3ea5bb3624a65",
+      "family": "table_read",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-094",
+      "decision_id": "929c96b63a18802546621477a641d4db2d5458a1d12f73d51836a3082f65da11",
+      "family": "table_read",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-095",
+      "decision_id": "5ffa79fcba3a795228cf1be21fe7f8f3ca834f81381e9c859dbc387735d385d1",
+      "family": "table_read",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-096",
+      "decision_id": "12a892d02f92bd9b984005998c0e1dc062dfabfb4eed7345b9c1ef3e9a9ca8b5",
+      "family": "table_read",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-097",
+      "decision_id": "0e5cb0acfafedd268341a482873ab318c0e5429324d42ab9d5ef21e3e2e24fa2",
+      "family": "table_read",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-098",
+      "decision_id": "b6eb24797a17e1134458d72030708d5f9668d2c9bb7e62856a6e7cde1424a5d8",
+      "family": "table_read",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-099",
+      "decision_id": "96c44b1683f5a9fb9aaca017584fdae4a9c1f783422c2b02ff425b4652ebe510",
+      "family": "table_read",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-100",
+      "decision_id": "acab38b0a2718be094ada32bf86fbbc525bd701dfdcf42df511211d1e1567aad",
+      "family": "table_read",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-101",
+      "decision_id": "62aa7fa9b9a14be810550e8b0036af22708574d7a1e4e2bba05ad8ce3cca767f",
+      "family": "table_read",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-102",
+      "decision_id": "949c8079b343dd3da2c514e2e1b4d481db9236a66859205d576fd864457a780e",
+      "family": "table_read",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-103",
+      "decision_id": "4e8346a6d0ec79c3d0d02cde9f7de75b4539986345499beb0b1715a31f0163b5",
+      "family": "table_read",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-104",
+      "decision_id": "0ca1ef0e175b537cf8824cb68dc362a23ce422f2ad8a69299ee6341f7a2b63b4",
+      "family": "placement",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-105",
+      "decision_id": "d2433738553b14567ee55608173d0865a0bc94de0fb945da7b5c6161d8f7f40d",
+      "family": "placement",
+      "book_section": "ch8.1",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-106",
+      "decision_id": "b5f6a56a02a37ea9b5c53de3fed8dff47067eb6bcb4a25f4a42c3ee1a574ec56",
+      "family": "placement",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-107",
+      "decision_id": "9dc41b3ad3888d5e6b55208ca1627ad834605d23dcd0cefa686463248fd527a7",
+      "family": "placement",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-108",
+      "decision_id": "3108c77f2cd9d62abb569e7b1548b40bcf87b854c6f1dacb6ee7f71116ad9341",
+      "family": "placement",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-109",
+      "decision_id": "b2c5abe88f908601a089b9a4da395cb645bad0999bc94ff34b3ae56b8c3a5c8f",
+      "family": "placement",
+      "book_section": "ch8.2",
+      "label_kind": "book",
+      "held_out": false
+    },
+    {
+      "queue_id": "replay.ch8-defense.2026-11-110",
+      "decision_id": "b9671b25e93aa99c1279c10885967774a5cb8b91da5bc738b96ede029844dafa",
+      "family": "placement",
+      "book_section": "ch8.3",
+      "label_kind": "book",
+      "held_out": false,
+      "verdict": "accepted",
+      "note": "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
+    }
+  ]
+}

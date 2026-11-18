@@ -1,0 +1,1063 @@
+{
+  "schema": "riichiprac.variant-report",
+  "version": 1,
+  "generated_at": "2026-11-18T08:09:39Z",
+  "pack_id": "replay.ch8-defense.2026-11",
+  "bases": 100,
+  "variants_per_base": 1,
+  "attempts": 500,
+  "preserved": 336,
+  "shipped": 100,
+  "withdrawn_disabled": 0,
+  "dropped_by_cap": 203,
+  "duplicate_states": 33,
+  "rejections": {
+    "answer_changed": 3,
+    "answer_set_changed": 1,
+    "duplicate_state": 33,
+    "lesson_missing": 5,
+    "per_base_cap": 203,
+    "state_unreachable": 134,
+    "transform_noop": 8,
+    "transform_rejected": 13
+  },
+  "pair_yield": [
+    {
+      "lesson": "defense_safety_chart",
+      "transform": "seat_perm",
+      "attempted": 30,
+      "preserved": 11,
+      "ratio": 0.36666667,
+      "disabled": false,
+      "rejections": {
+        "answer_changed": 3,
+        "state_unreachable": 11,
+        "transform_rejected": 5
+      }
+    },
+    {
+      "lesson": "defense_safety_chart",
+      "transform": "suit_perm",
+      "attempted": 30,
+      "preserved": 30,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "defense_safety_chart",
+      "transform": "rank_mirror",
+      "attempted": 30,
+      "preserved": 30,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "defense_safety_chart",
+      "transform": "wind_relabel",
+      "attempted": 30,
+      "preserved": 2,
+      "ratio": 0.06666667,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 28
+      }
+    },
+    {
+      "lesson": "defense_safety_chart",
+      "transform": "red5_normalize",
+      "attempted": 30,
+      "preserved": 30,
+      "ratio": 1.0,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 14
+      }
+    },
+    {
+      "lesson": "defense_stuck_heuristic",
+      "transform": "seat_perm",
+      "attempted": 1,
+      "preserved": 1,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "defense_stuck_heuristic",
+      "transform": "suit_perm",
+      "attempted": 1,
+      "preserved": 1,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "defense_stuck_heuristic",
+      "transform": "rank_mirror",
+      "attempted": 1,
+      "preserved": 1,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "defense_stuck_heuristic",
+      "transform": "wind_relabel",
+      "attempted": 1,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 1
+      }
+    },
+    {
+      "lesson": "defense_stuck_heuristic",
+      "transform": "red5_normalize",
+      "attempted": 1,
+      "preserved": 1,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "fold_to_riichi",
+      "transform": "seat_perm",
+      "attempted": 33,
+      "preserved": 15,
+      "ratio": 0.45454547,
+      "disabled": false,
+      "rejections": {
+        "answer_set_changed": 1,
+        "state_unreachable": 13,
+        "transform_rejected": 4
+      }
+    },
+    {
+      "lesson": "fold_to_riichi",
+      "transform": "suit_perm",
+      "attempted": 33,
+      "preserved": 33,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "fold_to_riichi",
+      "transform": "rank_mirror",
+      "attempted": 33,
+      "preserved": 33,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "fold_to_riichi",
+      "transform": "wind_relabel",
+      "attempted": 33,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 33
+      }
+    },
+    {
+      "lesson": "fold_to_riichi",
+      "transform": "red5_normalize",
+      "attempted": 33,
+      "preserved": 28,
+      "ratio": 0.8484849,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 6,
+        "transform_noop": 5
+      }
+    },
+    {
+      "lesson": "kabe_one_chance",
+      "transform": "seat_perm",
+      "attempted": 1,
+      "preserved": 1,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "kabe_one_chance",
+      "transform": "suit_perm",
+      "attempted": 1,
+      "preserved": 1,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "kabe_one_chance",
+      "transform": "rank_mirror",
+      "attempted": 1,
+      "preserved": 1,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "kabe_one_chance",
+      "transform": "wind_relabel",
+      "attempted": 1,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 1
+      }
+    },
+    {
+      "lesson": "kabe_one_chance",
+      "transform": "red5_normalize",
+      "attempted": 1,
+      "preserved": 1,
+      "ratio": 1.0,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 1
+      }
+    },
+    {
+      "lesson": "push_or_fold",
+      "transform": "seat_perm",
+      "attempted": 18,
+      "preserved": 7,
+      "ratio": 0.3888889,
+      "disabled": false,
+      "rejections": {
+        "lesson_missing": 2,
+        "state_unreachable": 7,
+        "transform_rejected": 2
+      }
+    },
+    {
+      "lesson": "push_or_fold",
+      "transform": "suit_perm",
+      "attempted": 18,
+      "preserved": 18,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "push_or_fold",
+      "transform": "rank_mirror",
+      "attempted": 18,
+      "preserved": 18,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "push_or_fold",
+      "transform": "wind_relabel",
+      "attempted": 18,
+      "preserved": 1,
+      "ratio": 0.055555556,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 17
+      }
+    },
+    {
+      "lesson": "push_or_fold",
+      "transform": "red5_normalize",
+      "attempted": 18,
+      "preserved": 17,
+      "ratio": 0.9444444,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 8,
+        "transform_noop": 1
+      }
+    },
+    {
+      "lesson": "suji_kabe_safety",
+      "transform": "seat_perm",
+      "attempted": 17,
+      "preserved": 6,
+      "ratio": 0.3529412,
+      "disabled": false,
+      "rejections": {
+        "lesson_missing": 3,
+        "state_unreachable": 6,
+        "transform_rejected": 2
+      }
+    },
+    {
+      "lesson": "suji_kabe_safety",
+      "transform": "suit_perm",
+      "attempted": 17,
+      "preserved": 17,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "suji_kabe_safety",
+      "transform": "rank_mirror",
+      "attempted": 17,
+      "preserved": 17,
+      "ratio": 1.0,
+      "disabled": false
+    },
+    {
+      "lesson": "suji_kabe_safety",
+      "transform": "wind_relabel",
+      "attempted": 17,
+      "preserved": 0,
+      "ratio": 0.0,
+      "disabled": false,
+      "rejections": {
+        "state_unreachable": 17
+      }
+    },
+    {
+      "lesson": "suji_kabe_safety",
+      "transform": "red5_normalize",
+      "attempted": 17,
+      "preserved": 15,
+      "ratio": 0.88235295,
+      "disabled": false,
+      "rejections": {
+        "duplicate_state": 4,
+        "transform_noop": 2
+      }
+    }
+  ],
+  "disabled_pairs": [],
+  "cap_limited": [
+    {
+      "base": "replay.ch8-defense.2026-11-001",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-002",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-003",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-004",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-005",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-006",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-007",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-008",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-009",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-010",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-011",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-012",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-013",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-014",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-015",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-016",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-017",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-018",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-019",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-020",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-021",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-022",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-023",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-024",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-025",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-026",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-027",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-028",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-029",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-030",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-032",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-033",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-034",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-035",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-036",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-037",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-038",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-039",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-041",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-042",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-043",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-045",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-046",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-047",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-048",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-049",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-050",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-051",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-052",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-053",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-055",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-056",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-057",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-058",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-059",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-060",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-061",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-062",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-063",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-065",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-066",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-068",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-069",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-070",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-071",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-072",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-073",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-074",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-075",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-076",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-077",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-078",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-079",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-080",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-081",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-082",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-083",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-085",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-086",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-087",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-089",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-090",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-091",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-092",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-093",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-094",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-095",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-096",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-097",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-098",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-099",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-100",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-101",
+      "preserved": 4,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-102",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-103",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-104",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-105",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-106",
+      "preserved": 2,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-107",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    },
+    {
+      "base": "replay.ch8-defense.2026-11-110",
+      "preserved": 3,
+      "kept": 1,
+      "cap": 1,
+      "cause": "per_base"
+    }
+  ],
+  "effective_cap": 1,
+  "cap_cause": "per_base",
+  "min_yield": 0.0,
+  "label_kinds": {
+    "book": 100
+  },
+  "labels": {
+    "cached": 0,
+    "evaluated": 0,
+    "retried": 0
+  },
+  "share": {
+    "bases": 100,
+    "variants": 100,
+    "pack_scenarios": 200,
+    "variant_share": 0.5,
+    "largest_base": {
+      "base": "replay.ch8-defense.2026-11-001",
+      "scenarios": 2
+    },
+    "largest_base_share": 0.01,
+    "transform_families": [
+      "seat_perm",
+      "suit_perm"
+    ],
+    "by_family": {
+      "seat_perm": 41,
+      "suit_perm": 59
+    },
+    "by_chain": {
+      "seat_perm": 41,
+      "suit_perm": 59
+    }
+  },
+  "notes": [
+    "queue: 100 base(s) from `/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-defense.2026-11/review-queue.jsonl`; 0 held-out item(s) skipped; 10 reviewer-rejected item(s) skipped; 0 unusable item(s)"
+  ],
+  "errors": []
+}

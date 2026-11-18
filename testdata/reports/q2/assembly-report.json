@@ -1,0 +1,94 @@
+{
+  "schema": "riichiprac.pack-assembly-report",
+  "version": 1,
+  "pack_id": "replay.ch8-defense.2026-11",
+  "generated_at": "2026-11-18T00:00:00Z",
+  "rows_read": 200,
+  "bases": 100,
+  "variants": 100,
+  "scenarios": 200,
+  "families": [
+    {
+      "family": "book",
+      "bases": 41,
+      "variants": 41,
+      "scenarios": 82
+    },
+    {
+      "family": "coverage",
+      "bases": 20,
+      "variants": 20,
+      "scenarios": 40
+    },
+    {
+      "family": "close_call",
+      "bases": 13,
+      "variants": 13,
+      "scenarios": 26
+    },
+    {
+      "family": "table_read",
+      "bases": 11,
+      "variants": 11,
+      "scenarios": 22
+    },
+    {
+      "family": "mistake",
+      "bases": 10,
+      "variants": 10,
+      "scenarios": 20
+    },
+    {
+      "family": "placement",
+      "bases": 5,
+      "variants": 5,
+      "scenarios": 10
+    }
+  ],
+  "dropped": [],
+  "drop_counts": {},
+  "variant_share": 0.5,
+  "largest_base": {
+    "base": "replay.ch8-defense.2026-11-001",
+    "scenarios": 2,
+    "share": 0.01
+  },
+  "limits": {
+    "max_per_base": 8,
+    "max_pack_share": 0.2,
+    "family_quotas": {
+      "akochan_tactics": 30,
+      "akochan_vs_mortal": 30,
+      "heterogeneous_table": 30,
+      "mortal_mirror": 10,
+      "mortal_sampling_sweep": 10
+    }
+  },
+  "bytes": 143528,
+  "max_bytes": 50000000,
+  "max_scenarios": 2000,
+  "sha256": "323404f8dcb782246b46c2b172c77f1092ef71fb08d3a11ce90ccef48e307830",
+  "export_path": "packs/replay.ch8-defense.2026-11-323404f8dcb7.json.gz",
+  "manifest_path": "packs/manifest.json",
+  "licence": "CC-BY-4.0",
+  "data_commercial_use": false,
+  "agents": [
+    "akochan (akochan master-53188a0-minimum, akochan-custom)",
+    "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+    "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+    "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+  ],
+  "review": {
+    "checked": true,
+    "items": 110,
+    "accepted": 100,
+    "rejected": 10
+  },
+  "audited": true,
+  "audit_clean": true,
+  "notes": [
+    "generated_at is the latest selected row's timestamp, so re-assembling the same rows hashes identically",
+    "a base state comes from the walked decision row; a variant re-applies its recorded chain to that state and the lesson classifier must re-derive the stored answer",
+    "family quotas were applied and count base scenarios, not variants (§4.6)"
+  ]
+}

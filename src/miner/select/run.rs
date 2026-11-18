@@ -280,6 +280,12 @@ pub fn run_selection(
     if let Some(limit) = options.limit {
         files.truncate(limit);
     }
+    if !options.config.replay_families.is_empty() {
+        files.retain(|path| {
+            let family = family_of_path(path, &replays_dir);
+            options.config.replay_family_allowed(&family)
+        });
+    }
 
     let connection = open_miner_db(root)?;
     let replay_rows = load_replay_rows(&connection)?;
@@ -372,9 +378,34 @@ pub fn run_selection(
             if label.as_ref().is_some_and(|label| label.book.is_some()) {
                 decisions_classified += 1;
             }
+            let Some(label) = label.as_ref() else {
+                *gate_counts.entry(GateKind::AnswerDefined).or_insert(0) += 1;
+                funnel.reject("no_label");
+                continue;
+            };
+            let plan = match answer_plan(decision, label) {
+                Ok(plan) => plan,
+                Err(failure) => {
+                    *gate_counts.entry(failure.gate).or_insert(0) += 1;
+                    funnel.reject(&failure.code);
+                    continue;
+                }
+            };
+            if options.config.stable_book_only && label.kind() != LabelKind::Book {
+                funnel.reject("scope_not_stable_book");
+                continue;
+            }
+            if !options.config.section_allowed(plan.section.as_deref())
+                || !options.config.lesson_allowed(plan.lesson.as_deref())
+                || !options.config.replay_family_allowed(&family)
+            {
+                funnel.reject("out_of_scope");
+                continue;
+            }
             match build_candidate(
                 decision,
-                label.as_ref(),
+                label,
+                plan,
                 report,
                 &facts,
                 &family,
@@ -439,6 +470,15 @@ pub fn run_selection(
             plan.cap_blocked
         ));
     }
+    if plan.replay_cap_blocked > 0 {
+        notes.push(format!(
+            "{} selection attempt(s) were skipped because a corpus-family cap was full",
+            plan.replay_cap_blocked
+        ));
+    }
+    if let Some(scope) = options.config.scope_note() {
+        notes.push(scope);
+    }
     if plan.open_slots_used > 0 {
         notes.push(format!(
             "{} slot(s) were filled outside the family quotas (the configured shares sum below 1.0)",
@@ -492,6 +532,7 @@ pub fn run_selection(
         sections: plan.sections.clone(),
         kinds: plan.kinds.clone(),
         turns: plan.turns.clone(),
+        replay_families: plan.replay_families.clone(),
         quotas: plan.quotas.clone(),
         caps: plan.caps,
         weights: options.config.weights,
@@ -618,7 +659,8 @@ fn answer_plan(snapshot: &DecisionSnapshot, label: &ModelLabel) -> Result<Answer
 #[allow(clippy::too_many_arguments)]
 fn build_candidate(
     snapshot: &DecisionSnapshot,
-    label: Option<&ModelLabel>,
+    label: &ModelLabel,
+    plan: AnswerPlan,
     report: TriggerReport,
     facts: &ReplayFacts,
     replay_family: &str,
@@ -626,14 +668,6 @@ fn build_candidate(
     samples: &SampleCuts,
     cuts: &crate::miner::trigger::LabelCuts,
 ) -> Result<Candidate, GateFailure> {
-    let Some(label) = label else {
-        return Err(GateFailure::new(
-            GateKind::AnswerDefined,
-            "no_label",
-            "the decision has no cached book or Mortal label",
-        ));
-    };
-    let plan = answer_plan(snapshot, label)?;
     let (turn, turn_bucket) = candidate_turn(snapshot);
     let family_key = DecisionFamily::of(snapshot).key();
     let signals = compute_signals(snapshot, label, &family_key, facts, samples, &cuts.blunder);

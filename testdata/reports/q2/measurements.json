@@ -1,0 +1,249 @@
+{
+  "schema": "riichiprac.q2-measurements",
+  "version": 1,
+  "measured_at": "2026-11-18T00:00:00Z",
+  "pack_id": "replay.ch8-defense.2026-11",
+  "corpus": {
+    "corpus_id": "c8-smoke-2026-11",
+    "data_root": "$RIICHI_DATA_DIR/q2-ch8-defense-2026-11",
+    "model": "mortal_298k.safetensors",
+    "model_sha256": "afb911473ac8e20cb249c4c71344cf92c780cfc98d405c60574f38f485ccc128",
+    "akochan_version": "master-53188a0-minimum",
+    "games_extracted": 84,
+    "decisions_reconstructed": 44683,
+    "book_labels": 7595,
+    "stable_labels": 4822,
+    "contested_labels": 2773,
+    "stable_book_share": 0.63489,
+    "stable_ch8_by_section": {
+      "ch8.1": 295,
+      "ch8.2": 1545,
+      "ch8.3": 2237
+    },
+    "families": {
+      "akochan_tactics": {
+        "games": 14,
+        "decisions": 8063,
+        "book_labels": 1648,
+        "stable": 1119,
+        "contested": 529
+      },
+      "akochan_vs_mortal": {
+        "games": 15,
+        "decisions": 7637,
+        "book_labels": 1087,
+        "stable": 623,
+        "contested": 464
+      },
+      "heterogeneous_table": {
+        "games": 15,
+        "decisions": 8184,
+        "book_labels": 1673,
+        "stable": 1101,
+        "contested": 572
+      },
+      "mortal_mirror": {
+        "games": 20,
+        "decisions": 10311,
+        "book_labels": 1610,
+        "stable": 1022,
+        "contested": 588
+      },
+      "mortal_sampling_sweep": {
+        "games": 20,
+        "decisions": 10488,
+        "book_labels": 1577,
+        "stable": 957,
+        "contested": 620
+      }
+    }
+  },
+  "selection": {
+    "pack_size_requested": 110,
+    "held_out_share": 0.09,
+    "held_out_salt": "q2-ch8-2026-11",
+    "replays_walked": 544,
+    "replays_failed": 0,
+    "decisions_seen": 278517,
+    "candidates_valid": 4112,
+    "candidates_held_out": 10,
+    "candidates_selected": 110,
+    "funnel": {
+      "games_requested": 544,
+      "games_parsed": 544,
+      "games_valid": 544,
+      "decision_points": 278517,
+      "trigger_hits": 228668,
+      "reconstructed": 278517,
+      "book_matches": 7679,
+      "mortal_labelled": 7679,
+      "gate_passed": 4112,
+      "held_out": 10,
+      "selected": 110,
+      "packed": 0
+    },
+    "rejections": {
+      "no_label": 270838,
+      "out_of_scope": 762,
+      "scope_not_stable_book": 2805
+    },
+    "corpus_mix": {
+      "akochan_tactics": {
+        "cap": 30,
+        "candidates": 944,
+        "selected": 30
+      },
+      "akochan_vs_mortal": {
+        "cap": 30,
+        "candidates": 518,
+        "selected": 30
+      },
+      "heterogeneous_table": {
+        "cap": 30,
+        "candidates": 934,
+        "selected": 30
+      },
+      "mortal_mirror": {
+        "cap": 10,
+        "candidates": 887,
+        "selected": 10
+      },
+      "mortal_sampling_sweep": {
+        "cap": 10,
+        "candidates": 819,
+        "selected": 10
+      }
+    },
+    "section_mix": {
+      "ch8.1": 18,
+      "ch8.2": 58,
+      "ch8.3": 34
+    },
+    "section_cap_relaxed": 14,
+    "decision_kind_cap_relaxed": 44,
+    "held_out": {
+      "items": 10,
+      "stable": 10,
+      "legal_answers": 10,
+      "unique_states": 10
+    }
+  },
+  "review": {
+    "queue_items": 110,
+    "valid_reports": 110,
+    "invalid_reports": 0,
+    "accepted": 100,
+    "rejected": 10,
+    "pending": 0,
+    "rejection_reason": "valid ch8.2 safety-chart candidates rejected as redundant section crowding to keep the reviewed pack at 100"
+  },
+  "variants": {
+    "bases": 100,
+    "attempts": 500,
+    "preserved": 336,
+    "shipped": 100,
+    "transform_families_shipped": ["seat_perm", "suit_perm"],
+    "label_preservation": "100/100 book",
+    "dropped_by_cap": 203,
+    "duplicate_states": 33,
+    "unreachable": 134,
+    "changed_answer": 3,
+    "changed_answer_set": 1,
+    "missing_lesson": 5,
+    "noop": 8,
+    "transform_rejected": 13
+  },
+  "pack": {
+    "scenarios": 200,
+    "bases": 100,
+    "variants": 100,
+    "variant_share": 0.5,
+    "largest_base_scenarios": 2,
+    "largest_base_share": 0.01,
+    "lessons": [
+      "defense_safety_chart",
+      "defense_stuck_heuristic",
+      "fold_to_riichi",
+      "kabe_one_chance",
+      "push_or_fold",
+      "suji_kabe_safety"
+    ],
+    "book_sections": ["ch8.1", "ch8.2", "ch8.3"],
+    "bytes": 143528,
+    "bytes_per_scenario": 717.64,
+    "manifest_bytes": 763,
+    "sha256": "323404f8dcb782246b46c2b172c77f1092ef71fb08d3a11ce90ccef48e307830",
+    "licence": "CC-BY-4.0",
+    "data_commercial_use": false,
+    "requires_model": false,
+    "agents": [
+      "akochan (akochan-custom)",
+      "efficiency-safety-v1 (MIT)",
+      "isolated-first-v1 (MIT)",
+      "mortal-298k (AGPL-3.0)"
+    ]
+  },
+  "load": {
+    "startup_bytes": 763,
+    "startup_files": ["scenarios/manifest.json"],
+    "first_lesson_body_fetches": 1,
+    "second_load_fetches": 0,
+    "cache": "IndexedDB/content-addressed in the app; in-memory test cache in the loader smoke",
+    "loader_smoke_test": "frontend/src/services/packLoader.q1.test.ts (Q1_PACK_DIR=frontend/public/scenarios)",
+    "initial_hand_board_unaffected": true
+  },
+  "accuracy": {
+    "shipped_stable_book_answers": 100,
+    "shipped_contested_answers": 0,
+    "held_out_stable_book_answers": 10,
+    "held_out_contested_answers": 0,
+    "audit_findings": 0,
+    "answer_recomputed": true,
+    "note": "Accuracy is book/Mortal agreement on the shipped and held-out sets; it is not a human learner accuracy measurement."
+  },
+  "checks": {
+    "cargo_fmt": "pass",
+    "cargo_test_lib": "745 passed",
+    "cargo_test_miner": "1117 passed (lib) + integration/bin gates",
+    "cargo_clippy_default": "pass",
+    "cargo_clippy_miner": "pass",
+    "wasm_check": "pass",
+    "no_libriichi": true,
+    "q1_end_to_end": "PASS (same pack hash on two runs)",
+    "frontend_tests": "313 passed, 1 skipped",
+    "frontend_build": "pass",
+    "frontend_lint": "pass",
+    "pack_hosting": "41/41 checks",
+    "ch8_pack_content": "221/221 checks",
+    "audit": "clean, 0 findings"
+  },
+  "storage": {
+    "snapshot": "snapshots/miner-20261118-031900.sqlite",
+    "snapshot_bytes": 304259072,
+    "snapshot_sha256": "7949f5965356e866f316b50ec1d0606907503b2c27a94bd6703680eb5c5ef761",
+    "integrity_check": "ok",
+    "replays": 999,
+    "decisions": 44683,
+    "selected_scenarios": 200,
+    "variants": 297,
+    "packs": 1,
+    "pack_scenarios": 200,
+    "missing_replay_files": 0,
+    "rclone": "skipped (no remote configured)"
+  },
+  "feedback": {
+    "too_easy": null,
+    "too_hard": null,
+    "collected": false,
+    "next": "Q2r human review plus the in-app feedback path"
+  },
+  "scale_up_decision": {
+    "decision": "ship this pack; scale to 500 reviewed bases after Q2r sign-off, not 10k",
+    "reasons": [
+      "200 scenarios cost 143 KB, so 1000 scenarios are about 0.7 MB and stay inside the byte budgets",
+      "84 games produced 4077 stable ch8 candidates (about 40 per base slot)",
+      "selection walked 544 replays and built 110 reports in about 70 minutes; skip unextracted replays and parallelise report building before 500 bases",
+      "100 candidates are human-reviewable; 500 need the S2 review tool and a second reviewer"
+    ]
+  }
+}

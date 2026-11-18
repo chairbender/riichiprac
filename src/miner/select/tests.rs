@@ -1249,3 +1249,92 @@ fn a_dry_run_writes_nothing() {
     assert!(!outcome.paths.report.exists());
     assert_eq!(outcome.report.candidates_selected, 2);
 }
+
+#[test]
+fn the_section_scope_matches_a_prefix_or_an_exact_section() {
+    let mut config = SelectionConfig {
+        pack_id: "scope".to_string(),
+        book_prefixes: vec!["ch8".to_string()],
+        ..SelectionConfig::default()
+    };
+    assert!(config.section_allowed(Some("ch8")));
+    assert!(config.section_allowed(Some("ch8.2")));
+    assert!(config.section_allowed(Some("ch8.3")));
+    assert!(!config.section_allowed(Some("ch8x.2")));
+    assert!(!config.section_allowed(Some("ch7.3")));
+    assert!(!config.section_allowed(None), "a ch8 pack is book-only");
+
+    config.book_prefixes = vec!["ch8.2".to_string()];
+    assert!(config.section_allowed(Some("ch8.2")));
+    assert!(!config.section_allowed(Some("ch8.3")));
+
+    config.lessons = vec!["fold_to_riichi".to_string()];
+    assert!(config.lesson_allowed(Some("fold_to_riichi")));
+    assert!(!config.lesson_allowed(Some("defense_safety_chart")));
+
+    config.replay_families = vec!["akochan_tactics".to_string()];
+    assert!(config.replay_family_allowed("akochan_tactics"));
+    assert!(!config.replay_family_allowed("mortal_mirror"));
+    assert!(config.scope_note().is_some());
+}
+
+#[test]
+fn a_corpus_family_cap_balances_the_pack_and_is_never_relaxed() {
+    let mut candidates = Vec::new();
+    for index in 0..10 {
+        let family = if index < 5 {
+            "mortal_mirror"
+        } else {
+            "akochan_tactics"
+        };
+        let mut candidate = fixture::candidate_with(
+            &format!("c{index}"),
+            Family::Book,
+            Some("ch8.2"),
+            DecisionKind::SelfTurn,
+            TurnBucket::Mid,
+            1.0 - index as f32 / 100.0,
+            &sha256_hex(format!("exact-{index}").as_bytes()),
+            &sha256_hex(format!("visible-{index}").as_bytes()),
+        );
+        candidate.replay_family = family.to_string();
+        candidates.push(candidate);
+    }
+    let mut mixed = config(BTreeMap::from([(Family::Book, 1.0)]), 6);
+    mixed.replay_family_caps = BTreeMap::from([
+        ("mortal_mirror".to_string(), 3),
+        ("akochan_tactics".to_string(), 3),
+    ]);
+    let plan = plan_selection(candidates, &mixed);
+    assert_eq!(plan.selected.len(), 6);
+    let families: BTreeMap<&str, usize> =
+        plan.selected
+            .iter()
+            .fold(BTreeMap::new(), |mut counts, scenario| {
+                *counts
+                    .entry(scenario.candidate.replay_family.as_str())
+                    .or_insert(0) += 1;
+                counts
+            });
+    assert_eq!(families["mortal_mirror"], 3);
+    assert_eq!(families["akochan_tactics"], 3);
+    let row = plan
+        .replay_families
+        .iter()
+        .find(|row| row.bucket == "mortal_mirror")
+        .expect("corpus family row");
+    assert_eq!(row.cap, Some(3));
+    assert_eq!(row.relaxed, 0);
+    assert!(row.cap_reached);
+
+    // A cap is a mix rule, so the pack may be short rather than over the cap.
+    let mut strict = config(BTreeMap::from([(Family::Book, 1.0)]), 10);
+    strict.replay_family_caps = BTreeMap::from([("mortal_mirror".to_string(), 2)]);
+    let candidates: Vec<Candidate> = (0..5)
+        .map(|index| fixture::candidate(&format!("m{index}"), Family::Book, Some("ch8.2")))
+        .collect();
+    let plan = plan_selection(candidates, &strict);
+    assert_eq!(plan.selected.len(), 2, "the unlisted pool is empty");
+    assert!(plan.replay_cap_blocked > 0);
+    assert_eq!(plan.cap_relaxed, 0);
+}

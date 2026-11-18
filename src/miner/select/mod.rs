@@ -142,6 +142,33 @@ pub struct SelectionConfig {
     /// Cheap-trigger thresholds (S1) used to annotate candidates.
     #[serde(default)]
     pub trigger: TriggerConfig,
+    /// Only candidates whose book section starts with one of these prefixes
+    /// (`ch8` or `ch8.2`). Empty means every section, including Mortal-only
+    /// candidates with no book section.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub book_prefixes: Vec<String>,
+    /// Only candidates with one of these exact book lessons. Empty means every
+    /// lesson.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub lessons: Vec<String>,
+    /// Only candidates from these corpus (replay) families. Empty means every
+    /// family.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub replay_families: Vec<String>,
+    /// Maximum selected bases per corpus family. A family not listed is
+    /// uncapped. The cap is enforced during both the quota fill and the relaxed
+    /// fill, so one corpus family cannot dominate a lesson-scoped pack.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub replay_family_caps: BTreeMap<String, usize>,
+    /// Keep only stable book labels; a contested (book vs Mortal disagreement)
+    /// label is rejected. A first curated pack uses this so every shipped
+    /// scenario has one unambiguous book answer.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub stable_book_only: bool,
+}
+
+const fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 const fn default_min_top_probability() -> f32 {
@@ -169,6 +196,11 @@ impl Default for SelectionConfig {
             held_out_share: default_held_out_share(),
             held_out_salt: default_held_out_salt(),
             trigger: TriggerConfig::default(),
+            book_prefixes: Vec::new(),
+            lessons: Vec::new(),
+            replay_families: Vec::new(),
+            replay_family_caps: BTreeMap::new(),
+            stable_book_only: false,
         }
     }
 }
@@ -224,7 +256,97 @@ impl SelectionConfig {
         self.quotas.validate()?;
         self.percentiles.validate().map_err(|err| err.to_string())?;
         self.trigger.validate().map_err(|err| err.to_string())?;
+        for prefix in &self.book_prefixes {
+            if prefix.trim().is_empty() || !prefix.starts_with("ch") {
+                return Err(format!(
+                    "book prefix `{prefix}` must be a non-empty `ch<chapter>` string"
+                ));
+            }
+        }
+        if self.lessons.iter().any(|lesson| lesson.trim().is_empty()) {
+            return Err("`lessons` must not contain a blank lesson id".to_string());
+        }
+        if self
+            .replay_families
+            .iter()
+            .any(|family| family.trim().is_empty())
+        {
+            return Err("`replay_families` must not contain a blank family".to_string());
+        }
+        for (family, cap) in &self.replay_family_caps {
+            if family.trim().is_empty() {
+                return Err("`replay_family_caps` has a blank family".to_string());
+            }
+            if *cap == 0 {
+                return Err(format!(
+                    "replay family cap for `{family}` must be at least one"
+                ));
+            }
+        }
         Ok(())
+    }
+
+    /// Whether a book section satisfies the section scope.
+    ///
+    /// A prefix matches the section itself (`ch8`) or a dotted child
+    /// (`ch8.2`). A Mortal-only candidate has no section and is rejected by a
+    /// non-empty section scope, because a ch. 8 pack is a book-lesson pack.
+    #[must_use]
+    pub fn section_allowed(&self, section: Option<&str>) -> bool {
+        if self.book_prefixes.is_empty() {
+            return true;
+        }
+        let Some(section) = section else {
+            return false;
+        };
+        self.book_prefixes.iter().any(|prefix| {
+            section == prefix
+                || section
+                    .strip_prefix(prefix)
+                    .is_some_and(|rest| rest.starts_with('.'))
+        })
+    }
+
+    /// Whether a book lesson satisfies the lesson scope.
+    #[must_use]
+    pub fn lesson_allowed(&self, lesson: Option<&str>) -> bool {
+        if self.lessons.is_empty() {
+            return true;
+        }
+        lesson.is_some_and(|lesson| self.lessons.iter().any(|allowed| allowed == lesson))
+    }
+
+    /// Whether a corpus (replay) family satisfies the family scope.
+    #[must_use]
+    pub fn replay_family_allowed(&self, family: &str) -> bool {
+        self.replay_families.is_empty()
+            || self.replay_families.iter().any(|allowed| allowed == family)
+    }
+
+    /// A one-line description of the scope, for the selection report notes.
+    #[must_use]
+    pub fn scope_note(&self) -> Option<String> {
+        if self.book_prefixes.is_empty()
+            && self.lessons.is_empty()
+            && self.replay_families.is_empty()
+            && !self.stable_book_only
+        {
+            return None;
+        }
+        let mut parts = Vec::new();
+        if !self.book_prefixes.is_empty() {
+            parts.push(format!("sections={}", self.book_prefixes.join(",")));
+        }
+        if !self.lessons.is_empty() {
+            parts.push(format!("lessons={}", self.lessons.join(",")));
+        }
+        if !self.replay_families.is_empty() {
+            parts.push(format!("corpus={}", self.replay_families.join(",")));
+        }
+        if self.stable_book_only {
+            parts.push("stable book labels only".to_string());
+        }
+        Some(format!("scope: {}", parts.join("; ")))
     }
 
     /// How many candidates the held-out QA set should hold.
@@ -548,6 +670,8 @@ pub struct SelectionPlan {
     pub kinds: Vec<BucketQuotaRow>,
     /// Turn buckets, in early/mid/late order.
     pub turns: Vec<BucketQuotaRow>,
+    /// Corpus-family buckets, sorted by key.
+    pub replay_families: Vec<BucketQuotaRow>,
     /// Integer family quotas.
     pub quotas: BTreeMap<Family, usize>,
     /// The integer diversity caps.
@@ -557,6 +681,8 @@ pub struct SelectionPlan {
     pub dedupe: DedupeStats,
     /// Selections skipped because a diversity cap was full.
     pub cap_blocked: u64,
+    /// Selections skipped because a corpus-family cap was full.
+    pub replay_cap_blocked: u64,
     /// Scenarios selected **beyond** a diversity cap because the remaining pool
     /// had nothing else to offer.
     pub cap_relaxed: u64,
@@ -709,22 +835,30 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
     let mut section_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut kind_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut turn_counts: BTreeMap<String, usize> = BTreeMap::new();
+    let mut replay_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut dedupe = DedupeStats::default();
     // Indices known to duplicate an already selected candidate. They are never
     // retried: a later fill phase must not count the same duplicate twice.
     let mut duplicate_indices: BTreeSet<usize> = BTreeSet::new();
     let mut cap_blocked = 0_u64;
+    let mut replay_cap_blocked = 0_u64;
 
     let caps_ok = |candidate: &Candidate,
                    sections: &BTreeMap<String, usize>,
                    kinds: &BTreeMap<String, usize>,
-                   turns: &BTreeMap<String, usize>| {
+                   turns: &BTreeMap<String, usize>,
+                   replays: &BTreeMap<String, usize>| {
         // A Mortal-only candidate has no book section, so the section cap does
         // not apply to it; applying a cap to "none" would limit the unbooked
         // half of the pack for no pedagogical reason.
         let section_ok = candidate.book_section.is_none()
             || sections.get(candidate.section_key()).copied().unwrap_or(0) < caps.section;
+        let replay_ok = config
+            .replay_family_caps
+            .get(&candidate.replay_family)
+            .is_none_or(|cap| replays.get(&candidate.replay_family).copied().unwrap_or(0) < *cap);
         section_ok
+            && replay_ok
             && kinds.get(candidate.kind_key()).copied().unwrap_or(0) < caps.decision_kind
             && turns.get(candidate.turn_key()).copied().unwrap_or(0) < caps.turn_bucket
     };
@@ -772,7 +906,27 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                     continue;
                 }
                 let candidate = &candidates[index];
-                if !caps_ok(candidate, &section_counts, &kind_counts, &turn_counts) {
+                let replay_ok = config
+                    .replay_family_caps
+                    .get(&candidate.replay_family)
+                    .is_none_or(|cap| {
+                        replay_counts
+                            .get(&candidate.replay_family)
+                            .copied()
+                            .unwrap_or(0)
+                            < *cap
+                    });
+                if !replay_ok {
+                    replay_cap_blocked += 1;
+                    continue;
+                }
+                if !caps_ok(
+                    candidate,
+                    &section_counts,
+                    &kind_counts,
+                    &turn_counts,
+                    &replay_counts,
+                ) {
                     cap_blocked += 1;
                     *cap_blocked_by_family.entry(family).or_insert(0) += 1;
                     continue;
@@ -796,6 +950,9 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                     .or_insert(0) += 1;
                 *turn_counts
                     .entry(candidate.turn_key().to_string())
+                    .or_insert(0) += 1;
+                *replay_counts
+                    .entry(candidate.replay_family.clone())
                     .or_insert(0) += 1;
                 selected.push(SelectedScenario {
                     candidate: candidate.clone(),
@@ -832,7 +989,13 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                 break;
             }
             let candidate = &candidates[index];
-            if !caps_ok(candidate, &section_counts, &kind_counts, &turn_counts) {
+            if !caps_ok(
+                candidate,
+                &section_counts,
+                &kind_counts,
+                &turn_counts,
+                &replay_counts,
+            ) {
                 cap_blocked += 1;
                 continue;
             }
@@ -857,6 +1020,9 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                 .or_insert(0) += 1;
             *turn_counts
                 .entry(candidate.turn_key().to_string())
+                .or_insert(0) += 1;
+            *replay_counts
+                .entry(candidate.replay_family.clone())
                 .or_insert(0) += 1;
             selected.push(SelectedScenario {
                 candidate: candidate.clone(),
@@ -914,7 +1080,27 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                     continue;
                 }
                 let candidate = &candidates[index];
-                let over_cap = !caps_ok(candidate, &section_counts, &kind_counts, &turn_counts);
+                let replay_ok = config
+                    .replay_family_caps
+                    .get(&candidate.replay_family)
+                    .is_none_or(|cap| {
+                        replay_counts
+                            .get(&candidate.replay_family)
+                            .copied()
+                            .unwrap_or(0)
+                            < *cap
+                    });
+                if !replay_ok {
+                    replay_cap_blocked += 1;
+                    continue;
+                }
+                let over_cap = !caps_ok(
+                    candidate,
+                    &section_counts,
+                    &kind_counts,
+                    &turn_counts,
+                    &replay_counts,
+                );
                 if let Some(failure) = seen.insert(
                     candidate.exact_hash.clone(),
                     candidate.visible_fingerprint.clone(),
@@ -937,6 +1123,9 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                     .or_insert(0) += 1;
                 *turn_counts
                     .entry(candidate.turn_key().to_string())
+                    .or_insert(0) += 1;
+                *replay_counts
+                    .entry(candidate.replay_family.clone())
                     .or_insert(0) += 1;
                 selected.push(SelectedScenario {
                     candidate: candidate.clone(),
@@ -967,7 +1156,27 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
             let Some(family) = balanced_family(candidate, &family_selected, &quotas) else {
                 continue;
             };
-            let over_cap = !caps_ok(candidate, &section_counts, &kind_counts, &turn_counts);
+            let replay_ok = config
+                .replay_family_caps
+                .get(&candidate.replay_family)
+                .is_none_or(|cap| {
+                    replay_counts
+                        .get(&candidate.replay_family)
+                        .copied()
+                        .unwrap_or(0)
+                        < *cap
+                });
+            if !replay_ok {
+                replay_cap_blocked += 1;
+                continue;
+            }
+            let over_cap = !caps_ok(
+                candidate,
+                &section_counts,
+                &kind_counts,
+                &turn_counts,
+                &replay_counts,
+            );
             if let Some(failure) = seen.insert(
                 candidate.exact_hash.clone(),
                 candidate.visible_fingerprint.clone(),
@@ -990,6 +1199,9 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                 .or_insert(0) += 1;
             *turn_counts
                 .entry(candidate.turn_key().to_string())
+                .or_insert(0) += 1;
+            *replay_counts
+                .entry(candidate.replay_family.clone())
                 .or_insert(0) += 1;
             selected.push(SelectedScenario {
                 candidate: candidate.clone(),
@@ -1042,6 +1254,7 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
     let mut section_candidates: BTreeMap<String, usize> = BTreeMap::new();
     let mut kind_candidates: BTreeMap<String, usize> = BTreeMap::new();
     let mut turn_candidates: BTreeMap<String, usize> = BTreeMap::new();
+    let mut replay_candidates: BTreeMap<String, usize> = BTreeMap::new();
     for (index, candidate) in candidates.iter().enumerate() {
         if held_out_set.contains(&index) {
             continue;
@@ -1054,6 +1267,9 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
             .or_insert(0) += 1;
         *turn_candidates
             .entry(candidate.turn_key().to_string())
+            .or_insert(0) += 1;
+        *replay_candidates
+            .entry(candidate.replay_family.clone())
             .or_insert(0) += 1;
     }
     let rows = |candidate_counts: &BTreeMap<String, usize>,
@@ -1090,6 +1306,23 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
         ),
         kinds: rows(&kind_candidates, &kind_counts, caps.decision_kind, None),
         turns: rows(&turn_candidates, &turn_counts, caps.turn_bucket, None),
+        replay_families: replay_candidates
+            .iter()
+            .map(|(bucket, candidates)| {
+                let taken = replay_counts.get(bucket).copied().unwrap_or(0);
+                let cap = config.replay_family_caps.get(bucket).copied();
+                BucketQuotaRow {
+                    bucket: bucket.clone(),
+                    cap,
+                    candidates: *candidates,
+                    selected: taken,
+                    cap_reached: cap.is_some_and(|cap| taken >= cap),
+                    // A corpus-family cap is never relaxed: it is the mix rule,
+                    // not a crowding-out guard.
+                    relaxed: 0,
+                }
+            })
+            .collect(),
         quotas,
         caps,
         dedupe,
@@ -1097,6 +1330,7 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
         cap_relaxed,
         relaxed_fill: relaxed_fill + open_slots_used as u64,
         open_slots_used,
+        replay_cap_blocked,
     }
 }
 

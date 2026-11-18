@@ -446,14 +446,19 @@ the one-time Pages setup: [`hosting-plan.md`](hosting-plan.md).
 Scenario packs are separate from the app bundle and from the weights. The
 browser loads a small **same-origin** manifest
 (`/scenarios/manifest.json`) and then only the content-addressed pack body it
-needs; the miner never ships its corpus, databases or model weights. A smoke
-pack ships in `frontend/public/scenarios/` so the Pages build exercises the whole
-path, and the deploy workflow verifies every body's bytes/SHA-256 before upload
-(`scripts/check-pack-hosting.mjs`). Published packs are produced by
+needs; the miner never ships its corpus, databases or model weights. The first
+curated ch. 8 defense pack (`replay.ch8-defense.2026-11`: 100 reviewed bases +
+100 variants, 143 KB) ships in `frontend/public/scenarios/` so the Pages build
+exercises the whole path, and the deploy workflow verifies every body's
+bytes/SHA-256 before upload (`scripts/check-pack-hosting.mjs`); Q2's content
+gate `scripts/check-ch8-pack.mjs` proves every scenario is a ch. 8 lesson, the
+variants are label-preserving and the source/licence envelope is complete.
+Published packs are produced by
 `mine_replays pack publish` from the audited export and stay under a 50 MB
 same-origin budget; a larger set moves to an optional R2/HF mirror whose CORS and
 hashes are measured with `scripts/check-pack-cors.mjs`. Google Drive is backup
-only. See [`hosting-plan.md`](hosting-plan.md#7-scenario-packs-same-origin-pages--optional-r2hf-mirror-p2)
+only. See [`q2-ch8-defense-pack.md`](q2-ch8-defense-pack.md),
+[`hosting-plan.md`](hosting-plan.md#7-scenario-packs-same-origin-pages--optional-r2hf-mirror-p2)
 and [`replay-miner-operations.md`](replay-miner-operations.md).
 
 ## Model weights license

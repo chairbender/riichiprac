@@ -90,12 +90,12 @@ mine_replays [--data-dir DIR] <command>
   review            work the human review queue
 ```
 
-`label` (L1 with the L2 agreement/calibration extensions), `triggers` (S1),
-`select` and `review` (S2), `transform` (V2), and `pack fixture`, `pack
-assemble`, `pack publish`, `pack report` and `audit` (P1a/P1b/P2) are
-implemented. The remaining commands still resolve the data root, report the
-command they would run, and exit with code 2, so a script cannot treat a stub as
-a successful run.
+`extract` (R2 → `decisions`), `label` (L1 with the L2 agreement/calibration
+extensions), `triggers` (S1), `select` and `review` (S2), `transform` (V2), and
+`pack fixture`, `pack assemble`, `pack publish`, `pack report` and `audit`
+(P1a/P1b/P2) are implemented. `ingest` and `corpus` are still stubs: they
+resolve the data root, report the command they would run, and exit with code 2,
+so a script cannot treat a stub as a successful run.
 
 ```bash
 cargo run --features miner --bin mine_replays -- label \
@@ -151,6 +151,9 @@ so selection can read every reason and the candidate families.
 cargo run --release --features miner --bin mine_replays -- select \
   [--replays DIR] [--family NAME] [--limit N] \
   [--pack-id ID] [--size N] [--held-out-share F] [--seed TEXT] \
+  [--section LIST] [--lesson LIST] [--corpus-family LIST] \
+  [--corpus-cap family=N,...] [--stable-book-only] \
+  [--max-section-share F] [--max-kind-share F] [--max-turn-share F] \
   [--dry-run] [--json]
 
 cargo run --release --features miner --bin mine_replays -- review \
@@ -239,6 +242,7 @@ Every serialised miner document carries `schema` and `version`.
 | `riichiprac.model-label` | `MODEL_LABEL_SCHEMA` | one Mortal label (L1) |
 | `riichiprac.candidate-trigger` | `TRIGGER_SCHEMA` | one candidate's trigger report (S1) |
 | `riichiprac.selection-report` | `SELECTION_SCHEMA` | one selection run's report (S2) |
+| `riichiprac.extraction-report` | `EXTRACT_SCHEMA` | one `extract` run's replay/decision counts |
 | `riichiprac.review-item` | `REVIEW_SCHEMA` | one review-queue line (S2) |
 | `riichiprac.review-disposition` | `DISPOSITION_SCHEMA` | one reviewer verdict (S2) |
 | `riichiprac.pack-assembly-report` | `ASSEMBLY_SCHEMA` | one pack-assembly run's report (P1b) |
@@ -612,6 +616,42 @@ walk.
   `cargo tree --features miner` contains no `libriichi`.
 - Visual sign-off is not involved in R2.
 
+## Decision extraction (R2 → database)
+
+Status: implemented in `src/miner/extract.rs`; Q2 added it because P1b cannot
+rebuild a packed base without a `decisions.state_json` row. `extract` walks a
+validated replay shard with the same R2 `walk_path` the labeler and selector use
+and upserts one row per reconstructed decision.
+
+```bash
+cargo run --release --features miner --bin mine_replays -- extract \
+  [--replays DIR] [--family NAME] [--limit N] [--dry-run] [--json]
+```
+
+`decisions` stores:
+
+| Column | Value |
+| --- | --- |
+| `decision_id` | R2's `sha256(replay_id, kyoku_index, event_index)` |
+| `family` | the replay family directory (`akochan_tactics`, `mortal_mirror`, ...) |
+| `kyoku` / `honba` / `event_index` / `turn` / `seat` / `decision_kind` | the reconstruction's own fields |
+| `state_json` | the complete `GameState` P1b rebuilds the base from |
+| `state_hash` | the L1 v4-observation hash (label cache key) |
+| `visible_info_hash` | the literal visible-table fingerprint (dedupe) |
+| `legal_actions` | JSON array of the legal action strings |
+| `played_action` | the action string the record played |
+
+It is idempotent and **does not clobber later stages**: a rerun refreshes the
+state/ledger columns and leaves `trigger`, `book_match`, `mortal_*`,
+`label_json`, `label_kind`, `selection_reason` and `pack_id` untouched. The
+report (`riichiprac.extraction-report` v1) carries per-family replay, decision,
+inserted and refreshed counts; exit code 1 means at least one replay failed.
+
+Extraction is model-free and can run before or after `label`; `label` reads the
+decision id/state from its own walk and writes the label columns when a row
+exists. The Q2 pack run extracts the selected corpus families only, so a
+100-scenario pack does not pay for 999 games of unrelated state.
+
 ## Mortal labeler contract (L1)
 
 Status: implemented. `src/miner/label/` labels a reconstructed `GameState` with
@@ -889,6 +929,36 @@ candidates fill the rest. The report records `relaxed_fill` and `cap_relaxed`,
 the per-bucket `relaxed` count, and a shortfall reason per family
 (`no_candidates`, `shared_with_other_families`, `cap_limited`, `exhausted`,
 `pack_full`). A family is never silently substituted.
+
+### Lesson scope and corpus mix (Q2)
+
+A curated lesson pack needs selection to be scoped, not just balanced. Four
+optional filters sit before the gates:
+
+- `--section ch8` (or `ch8.2`) keeps only book sections with that prefix. A
+  Mortal-only candidate has no section and is rejected while a section scope is
+  active, because a ch. 8 pack is a book-lesson pack.
+- `--lesson fold_to_riichi,defense_safety_chart` keeps exact lesson ids.
+- `--corpus-family` keeps only those replay family directories; selection also
+  stops walking files outside the list, so a scoped run does not pay for the
+  whole corpus.
+- `--stable-book-only` keeps `label_kind = book` and rejects a contested
+  book/Mortal disagreement. The first curated pack uses this so a learner is not
+  asked to arbitrate an unsettled position.
+
+`--corpus-cap family=N` is a **mix rule**, not a crowding-out guard: no more than
+N selected bases may come from that corpus family, it is enforced in both the
+quota round and the relaxed fill, and the pack reports a shortfall rather than
+exceeding it. The report's `replay_families` rows record each family's cap,
+candidate count, selected count and whether the cap was reached. The scope is
+also written into the report notes, so the queue explains why a candidate was
+rejected (`out_of_scope`, `scope_not_stable_book`).
+
+The lesson scope does not change the family quotas: a scoped candidate still
+feeds `book`, `coverage`, `table_read`, `placement` or whichever families its
+triggers name, and the quota fill balances those as usual. A lesson-scoped pack
+also needs a higher section cap (`--max-section-share`, default 0.20) because
+three ch. 8 sections cannot fill 100 slots under a 20-scenario per-section cap.
 
 ### Dedupe
 
@@ -1578,12 +1648,13 @@ the V2 seeded book rehearsal (`rehearsal_bases`) because a Mortal-only base
 cannot be label-verified without a checkpoint. The report names both branches;
 it never pretends one produced the other.
 
-`ingest` and `extract` are still CLI stubs. Q1's ingest step writes the same
-content-addressed replay files and `replays` rows those commands will own, and
-the label/selection stages walk the validated replay through R2 — the same
-reconstruction `extract` will persist as `decisions` rows. Q1 therefore exercises
-the parser, validator, walker, classifier and label path without a stub
-pretending to have run.
+`ingest` is still a CLI stub. Q1's ingest step writes the same
+content-addressed replay files and `replays` rows that command will own, and the
+label/selection stages walk the validated replay through R2 — the same
+reconstruction `extract` now persists as `decisions` rows (Q2 implemented that
+stage; see “Decision extraction” above). Q1 therefore exercises the parser,
+validator, walker, classifier and label path without a stub pretending to have
+run.
 
 The `qa fixture` command exits 0 only when every `checks` entry is true: corpus
 ingested, labels clean, selection non-empty, held-out present, review complete,
@@ -1655,6 +1726,32 @@ and needs no secrets. It is independent of the Pages deploy workflow.
   re-used the content-addressed key.
 - No visual judgement is involved: the harness only checks bytes, schemas,
   hashes, row counts and `PRAGMA integrity_check`.
+
+## First curated ch. 8 defense pack (Q2)
+
+Status: shipped. The pack is `replay.ch8-defense.2026-11`:
+
+- 200 scenarios = 100 reviewed bases + 100 label-preserving variants (50 %),
+  143,528 body bytes and a 763-byte manifest;
+- 100 bases selected from 4,112 valid candidates after a ch. 8 scope, a
+  stable-book-only rule and a five-family corpus cap (M3 30, M4 30, M5 30,
+  M1 10, M2 10); 10 held-out QA items;
+- six ch. 8 lessons across ch8.1/ch8.2/ch8.3, no other chapter;
+- reviewers accepted 100 and rejected 10 redundant ch8.2 candidates; 0 pending,
+  0 invalid reports;
+- four agents (Akochan, Mortal 298k, `efficiency-safety-v1`,
+  `isolated-first-v1`), complete licences/attribution, `data_commercial_use` is
+  false because Akochan contributes;
+- clean audit, 41/41 hosting checks, 221/221 ch8-pack checks, the loader smoke
+  and the frontend suite pass.
+
+Q2 also implemented the missing `extract` stage and the selection lesson scope
+(`--section`, `--lesson`, `--corpus-family`, `--corpus-cap`,
+`--stable-book-only`). The full command list, label counts, funnel, review and
+measurements (including the scale-up decision) are in
+[`q2-ch8-defense-pack.md`](q2-ch8-defense-pack.md); the machine-readable
+evidence is in [`testdata/reports/q2/`](testdata/reports/q2/). The human content
+review is Q2r.
 
 ## F1 acceptance evidence
 
