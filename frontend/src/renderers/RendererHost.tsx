@@ -19,10 +19,11 @@
  * dynamic `import('./three')` below, which the module-boundary test pins.
  */
 
-import { Component, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Component, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { probeCapabilities } from './capabilities';
-import type { DebugMode, QualityTier, TableRenderer, TableSnapshot } from './contract';
+import type { DebugMode, HeroReport, QualityTier, TableRenderer, TableSnapshot } from './contract';
+import { HERO_FAILED_EVENT, HERO_READY_EVENT } from './contract';
 import './RendererHost.css';
 
 /** The host's observable lifecycle. */
@@ -125,6 +126,126 @@ export class RendererErrorBoundary extends Component<
 }
 
 /**
+ * The 3D-05 hero HUD: the numbers the debug view measured, printed as numbers.
+ *
+ * It exists so the handoff (AGENTS.md §6) can be about taste rather than
+ * mystery: the probe colours and their ΔE, the incidence angle and parallax
+ * displacement of each slot, the step count and the carve depth, plus the
+ * POM-off comparison, all come from `heroReport()`.
+ */
+interface HeroHudProps {
+  readonly report: HeroReport | null;
+  readonly exported: number;
+  readonly onRefresh: () => void;
+  readonly onExport: () => void;
+}
+
+function HeroHud({ report, exported, onRefresh, onExport }: HeroHudProps) {
+  return (
+    <aside className="renderer-3d-hero" aria-label="3D hero tile measurements">
+      <h3 className="renderer-3d-hero-title">Hero tile · numeric report</h3>
+      {!report && <p className="renderer-3d-hero-note">Loading the carved tile…</p>}
+      {report && (
+        <>
+          <dl className="renderer-3d-hero-facts">
+            <dt>relief</dt>
+            <dd>{report.relief}</dd>
+            <dt>tier / steps</dt>
+            <dd>
+              {report.tier} / {report.pomSteps}
+            </dd>
+            <dt>carve</dt>
+            <dd>
+              {report.carveDepthMm} mm · clamp {report.maxParallaxTexels} texels
+            </dd>
+            <dt>aspect</dt>
+            <dd>{report.aspect.toFixed(3)}</dd>
+          </dl>
+          <table className="renderer-3d-hero-table">
+            <caption>probe read-backs (5×5 block median)</caption>
+            <thead>
+              <tr>
+                <th scope="col">probe</th>
+                <th scope="col">colour</th>
+                <th scope="col">target</th>
+                <th scope="col">ΔE</th>
+                <th scope="col">redness</th>
+                <th scope="col">result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.probes.map((probe) => (
+                <tr key={probe.id} data-probe={probe.id} data-pass={probe.pass}>
+                  <th scope="row">{probe.label}</th>
+                  <td>{probe.hex}</td>
+                  <td>{probe.targetHex ?? '—'}</td>
+                  <td>{probe.deltaE === null ? '—' : probe.deltaE.toFixed(2)}</td>
+                  <td>{probe.redness}</td>
+                  <td>{probe.pass ? 'pass' : `FAIL${probe.detail ? `: ${probe.detail}` : ''}`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <table className="renderer-3d-hero-table">
+            <caption>plate incidence and full-depth parallax</caption>
+            <thead>
+              <tr>
+                <th scope="col">slot</th>
+                <th scope="col">angle</th>
+                <th scope="col">texels</th>
+                <th scope="col">clamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.parallax.map((slot) => (
+                <tr key={slot.slot}>
+                  <th scope="row">{slot.label}</th>
+                  <td>{slot.angleDeg.toFixed(2)}°</td>
+                  <td>{slot.texels.toFixed(2)}</td>
+                  <td>{slot.clamped ? 'bounded' : 'under'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {report.pomOff && (
+            <p className="renderer-3d-hero-note">
+              POM off (steps 0):{' '}
+              {report.pomOff.probes
+                .map((probe) => `${probe.id} ${probe.deltaE === null ? probe.hex : `ΔE ${probe.deltaE.toFixed(2)}`}`)
+                .join(' · ')}{' '}
+              — {report.pomOff.allProbesPass ? 'within tolerance' : 'OUT OF TOLERANCE'}
+            </p>
+          )}
+        </>
+      )}
+      <div className="renderer-3d-hero-actions">
+        <button type="button" onClick={onRefresh}>
+          Refresh numbers
+        </button>
+        <button type="button" onClick={onExport}>
+          Export hero PNGs (8)
+        </button>
+      </div>
+      {exported > 0 && (
+        <p className="renderer-3d-hero-note" role="status">
+          {exported} PNGs downloaded (hero-&lt;slot&gt;-pom-&lt;on|off&gt;.png).
+        </p>
+      )}
+    </aside>
+  );
+}
+
+function downloadDataUrl(name: string, dataUrl: string): void {
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = name;
+  link.rel = 'noopener';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+/**
  * Mount the 3D renderer.
  *
  * The effect is deliberately StrictMode-safe: the dynamic import's result is
@@ -147,6 +268,21 @@ export function RendererHost({
   snapshotRef.current = snapshot;
 
   const [status, setStatus] = useState<HostStatus>({ state: 'idle', message: null });
+  const [heroReport, setHeroReport] = useState<HeroReport | null>(null);
+  const [heroExported, setHeroExported] = useState(0);
+
+  const refreshHero = useCallback(() => {
+    setHeroReport(rendererRef.current?.heroReport?.() ?? null);
+  }, []);
+
+  const exportHero = useCallback(() => {
+    const captures = rendererRef.current?.heroCaptures?.() ?? [];
+    for (const capture of captures) {
+      downloadDataUrl(capture.name, capture.pngDataUrl);
+    }
+    setHeroExported(captures.length);
+    refreshHero();
+  }, [refreshHero]);
 
   // Once per mount: a probe that never leaks its context. Done in render rather
   // than an effect so the first paint already knows whether to show a canvas.
@@ -172,6 +308,9 @@ export function RendererHost({
     let losses = 0;
     let observer: ResizeObserver | null = null;
 
+    setHeroReport(null);
+    setHeroExported(0);
+
     const measure = () => {
       if (!renderer) return;
       // clientWidth/Height are 0 for a display:none or not-yet-laid-out
@@ -181,6 +320,8 @@ export function RendererHost({
       const height = container.clientHeight || container.getBoundingClientRect().height;
       if (width <= 0 || height <= 0) return;
       renderer.setSize(width, height, globalThis.devicePixelRatio || 1);
+      // The probes are screen-space: a resize moves them.
+      if (debug === 'hero') refreshHero();
     };
 
     setStatus({ state: 'loading', message: null });
@@ -221,6 +362,24 @@ export function RendererHost({
     canvas.addEventListener('webglcontextlost', onContextLost);
     canvas.addEventListener('webglcontextrestored', onContextRestored);
 
+    // 3D-05's hero view: the scene tells the host when the carved tiles are
+    // mounted (and if they failed), so the HUD never polls.
+    const onHeroReady = () => {
+      setHeroReport(renderer?.heroReport?.() ?? null);
+    };
+    const onHeroFailed = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail;
+      setStatus({
+        state: 'failed',
+        message:
+          typeof detail === 'string' && detail.length > 0
+            ? detail
+            : 'The hero tile could not be built.',
+      });
+    };
+    canvas.addEventListener(HERO_READY_EVENT, onHeroReady);
+    canvas.addEventListener(HERO_FAILED_EVENT, onHeroFailed);
+
     if (typeof ResizeObserver === 'function') {
       observer = new ResizeObserver(measure);
       observer.observe(container);
@@ -257,13 +416,15 @@ export function RendererHost({
       // contextlost event, and a teardown must never look like a failure.
       canvas?.removeEventListener('webglcontextlost', onContextLost);
       canvas?.removeEventListener('webglcontextrestored', onContextRestored);
+      canvas?.removeEventListener(HERO_READY_EVENT, onHeroReady);
+      canvas?.removeEventListener(HERO_FAILED_EVENT, onHeroFailed);
       renderer?.dispose();
       renderer = null;
       rendererRef.current = null;
       canvas?.remove();
       canvas = null;
     };
-  }, [capabilities, debug, perfHud, reducedMotion, resolvedTier]);
+  }, [capabilities, debug, perfHud, reducedMotion, refreshHero, resolvedTier]);
 
   // Redraw on a new snapshot without remounting the renderer.
   useEffect(() => {
@@ -291,6 +452,14 @@ export function RendererHost({
         />
         <div className="renderer-3d-vignette" aria-hidden="true" />
         {showFallback && fallback}
+        {debug === 'hero' && status.state === 'ready' && (
+          <HeroHud
+            report={heroReport}
+            exported={heroExported}
+            onRefresh={refreshHero}
+            onExport={exportHero}
+          />
+        )}
         {status.message && (
           <p
             id={statusId}

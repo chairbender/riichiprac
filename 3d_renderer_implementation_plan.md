@@ -669,7 +669,7 @@ export interface RendererCapabilities {
 
 export interface RendererOptions {
   readonly tier: QualityTier;
-  readonly debug: DebugMode | null; // 'albedo' | 'height' | 'normal' | 'steps' | 'pom-off' | 'wireframe'
+  readonly debug: DebugMode | null; // 'albedo' | 'height' | 'normal' | 'steps' | 'pom-off' | 'wireframe' | 'hero'
   readonly perfHud: boolean;
   readonly reducedMotion: boolean;
 }
@@ -1024,6 +1024,71 @@ decision 4 of 2026-11-18), and the 0-step kill switch is built alongside it.
   per slot (pond, hand, wall, back) under `frontend/scripts/out/`, POM on and
   off — ask: does the carving read as physically recessed, does the material
   family match the 2.5D shells, and does Haku stay clean? Record the verdict.
+
+**As built (3D-05, 2026-11-18).** Files: `three/{tileMaterial,lighting,hero,probes,reliefTextures}.ts`,
+`three/materials/tile.{vert,frag}.ts`, the hero wiring in `three/Scene.ts`, the
+debug HUD in `RendererHost.tsx`/`.css`, `contract.ts` (`DebugMode` gains `hero`,
+the hero report/capture types, two optional debug methods on `TableRenderer`,
+`pomSteps` on `RendererStats`), `capabilities.ts` (`hero` in `DEBUG_MODES`), and
+tests for each. The hero view's four tiles are the real committed deliveries at
+their real places: the human hand's centre slot (reclined 40°), the human pond's
+nearest row (lying), the far wall's first dora indicator (lying, oriented to the
+human) and a face-down wall top-tier tile beyond the five dora stacks (blue
+back). One `InstancedMesh`, one material, one draw — the shape 3D-07 scales.
+
+The rig, with the measured calibration (`lighting.ts`): key `#fff7ea` at 2.507,
+hemisphere fill `#cfe0ff`/`#0b1512` at 1.10, ambient `#ffffff` at 0.251 (all
+three.js intensity units; the shader divides by π). That sums to a neutral 1.0
+irradiance on an up-facing normal (0.998 / 0.992 / 1.006 linear) and 0.97 / 0.96
+/ 0.95 on the reclined hand's normal, so a committed colour renders as itself.
+`POM_STEPS` = 12 / 8 / 0 for high / balanced / compat; `?debug=pom-off` forces
+0; the compile-time loop bound is 32; the shader clamps any full-depth parallax
+offset to **8 texels** (direction preserved, so the bound holds at every angle).
+
+Numbers from a real WebGL2 run (Chrome + ANGLE/SwiftShader, 1920 × 992 CSS,
+DPR 2), printed by the HUD (`frontend/scripts/out/hero-report.txt`):
+
+| probe | reading | target | ΔE |
+| --- | --- | --- | --- |
+| face ivory (pond, Haku, open) | `#f5f0ec` | `#f5f0eb` | 0.51 |
+| blue back (wall, face-down) | `#142987` | `#132986` | 0.63 |
+| paint (hand, `1m` stroke) | `#9f0c0b`, block redness 151 | — | pass |
+| Haku at the same point | `#f5f0ec`, redness 5 | — | clean |
+| ivory bevel (hand) | `#dcd7d3` | — | pass |
+
+POM off (steps 0) reproduces every reading within 0.0 ΔE (the `1m` median moves
+from `#9f0c0b` to `#a20c0c`; the presence flags are unchanged), so the carve path
+really is one uniform.
+
+| slot | incidence | parallax at 0.55 mm |
+| --- | --- | --- |
+| hand (reclined 40°) | 16.0° | 2.26 texels |
+| pond (lying) | 37.3° | 5.98 texels |
+| dora indicator (top tier) | 44.2° | 7.64 texels |
+| face-down wall tile | 0° (no carve) | 0 |
+
+At every supported aspect the hero set stays inside the 8-texel budget (the
+worst is 7.72 at 16:9). The **strict board-wide** worst under the board's own
+camera (`frameForAspect`, §2.4) — a far opponent meld at 4:3, the pose the hero
+set deliberately omits — is 8.41 texels before the shader's clamp, so on a full
+board the clamp binds by a hair rather than the depth being wrong; the test
+prints both numbers. No hero slot displaces more than 8, so the clamp is
+invisible in this unit's view.
+
+Shader-compile failure path: `installShaderErrorTrap` throws three's
+`onShaderError` log as a `TileShaderError`, so the host reports `failed` with
+the driver text. It caught a real bug on the first run (`tangent` declared as a
+`vec3` while the geometry supplies a 4-component tangent) — the exact failure
+mode the criterion exists for. Covered by tests on both the trap and the host.
+
+Handoff artifacts: `frontend/scripts/out/hero-<slot>-pom-<on|off>.png` (8 macro
+shots at 640 × 640: same incidence ray, same lights, same shader, camera moved
+in to frame the body), `hero-overview.png` (the live view at 3840 × 2160) and
+`hero-report.txt`. Numeric difference between each POM pair, computed on the
+exported pixels: hand 7.4 % of pixels change by more than 8/255 (mean 8.0),
+dora 6.5 % (mean 7.0), Haku 0.0 % (mean 0.0 — a white dragon has no carving),
+blue back 0.0 %. **Verdict: pending the user's review of the three named
+questions.**
 
 **Gate:** frontend gate + user verdict.
 

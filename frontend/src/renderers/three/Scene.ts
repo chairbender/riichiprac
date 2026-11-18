@@ -1,29 +1,48 @@
 /**
- * The three.js scene behind the lazy entry (3D-02).
+ * The three.js scene behind the lazy entry (3D-02, hero view 3D-05).
  *
  * This module is only reachable through the host's `import('./three')`, so no
  * byte of three.js can reach the entry chunk. It owns the renderer, the resize
  * path, the on-demand frame loop and a dispose registry; it owns no game rules
  * and reads no `GameState` (a `TableSnapshot` is the only input).
  *
- * The scene as of this unit is the felt plane and its lights. The board mesh
- * arrives in 3D-07, the DOM overlay's hit rects in 3D-08, motion in 3D-12 and
- * the perf HUD in 3D-13; those units add to this shell rather than replace it.
+ * As of 3D-05 the scene is the felt, its lights, and — only under
+ * `?renderer=3d&debug=hero` — the four hero tiles in their real committed
+ * attitudes (see `hero.ts`). The four are one instanced draw of 3D-04's mesh
+ * with `tileMaterial`'s carved shader, so the unit proves the look and the draw
+ * shape 3D-07 will scale to a board. The board itself arrives in 3D-07, the DOM
+ * overlay's hit rects in 3D-08, motion in 3D-12 and the perf HUD in 3D-13; those
+ * units add to this shell rather than replace it.
+ *
+ * Debug reporting. `heroReport()` re-draws, reads the five probe blocks back with
+ * `readPixels` and prints them as numbers; `heroCaptures()` renders the same
+ * view with the depth march on and off and returns one PNG per slot. Neither
+ * inspects an image or decides whether the tile "looks right" — AGENTS.md §6
+ * hands that to the user at `?renderer=3d&debug=hero`.
  */
 
 import {
   AmbientLight,
+  BufferAttribute,
+  BufferGeometry,
   Color,
   DirectionalLight,
   HemisphereLight,
+  InstancedBufferAttribute,
+  InstancedMesh,
+  Matrix4,
   NoToneMapping,
   PerspectiveCamera,
   SRGBColorSpace,
   Scene,
+  Vector2,
+  Vector3,
   WebGLRenderer,
 } from 'three';
 import { effectiveDevicePixelRatio } from '../capabilities';
 import type {
+  HeroCapture,
+  HeroReport,
   HitRect,
   QualityTier,
   RendererOptions,
@@ -31,10 +50,32 @@ import type {
   TableRenderer,
   TableSnapshot,
 } from '../contract';
+import { HERO_FAILED_EVENT, HERO_READY_EVENT } from '../contract';
 import { CAMERA, LIGHT } from '../layoutConstants';
 import { applyPoseToCamera, rigPoseForAspect, verticalFieldOfViewDeg } from './cameraRig';
 import { createFelt, feltSizeForPose } from './felt';
 import type { FeltSurface } from './felt';
+import { heroInstances, heroParallaxAt, probeWorldPoint } from './hero';
+import type { HeroInstance, HeroSlot } from './hero';
+import { sceneLightSpecs } from './lighting';
+import {
+  allProbesPass,
+  readProbes,
+} from './probes';
+import type { ProbePixelSource, ProbeProjector } from './probes';
+import { loadReliefAssets } from './reliefAssets';
+import type { ReliefAssets } from './reliefAssets';
+import { createReliefTextureFactory } from './reliefTextures';
+import type { ReliefGpuTexture } from './reliefTextures';
+import { buildTileGeometry } from './tileGeometry';
+import {
+  CARVE_DEPTH_MM,
+  POM_MAX_TEXELS,
+  POM_STEPS,
+  createTileMaterial,
+  installShaderErrorTrap,
+} from './tileMaterial';
+import type { TileMaterialHandle } from './tileMaterial';
 
 /** Something that releases a GPU resource when the view unmounts. */
 export interface Disposable {
@@ -68,6 +109,38 @@ export class DisposeRegistry {
   }
 }
 
+/** The mounted hero view: the tiles, their material and the relief textures. */
+interface HeroView {
+  readonly assets: ReliefAssets<ReliefGpuTexture>;
+  readonly material: TileMaterialHandle;
+  readonly mesh: InstancedMesh;
+  readonly geometry: BufferGeometry;
+  readonly instances: readonly HeroInstance[];
+}
+
+/** The macro capture's square edge, in pixels. */
+const HERO_CAPTURE_SIZE = 640;
+
+/** How much of the macro capture's frame the tile body fills. */
+const HERO_CAPTURE_FILL = 0.72;
+
+/** The framed extent around a tile in the macro capture, in world units. */
+const HERO_CAPTURE_FRAME_UNITS = 1.15;
+
+/** Build 3D-04's mesh as a three geometry, attributes and index included. */
+function createTileRenderGeometry(): BufferGeometry {
+  const data = buildTileGeometry();
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new BufferAttribute(data.positions, 3));
+  geometry.setAttribute('normal', new BufferAttribute(data.normals, 3));
+  geometry.setAttribute('uv', new BufferAttribute(data.uvs, 2));
+  geometry.setAttribute('tangent', new BufferAttribute(data.tangents, 4));
+  geometry.setAttribute('faceZone', new BufferAttribute(data.faceZone, 1));
+  geometry.setIndex(new BufferAttribute(data.indices, 1));
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
 /** The scene's drawable picture plus the renderer the host drives. */
 export class TableScene implements TableRenderer {
   private readonly renderer: WebGLRenderer;
@@ -75,13 +148,18 @@ export class TableScene implements TableRenderer {
   private readonly camera: PerspectiveCamera;
   private readonly registry = new DisposeRegistry();
   private readonly felt: FeltSurface;
+  private readonly canvas: HTMLCanvasElement;
+  private hero: HeroView | null = null;
+  private heroStarted = false;
   private tier: QualityTier;
   private frameHandle: number | null = null;
   private disposed = false;
   private revision = 0;
+  private aspect = 16 / 9;
 
   constructor(canvas: HTMLCanvasElement, options: RendererOptions) {
     this.tier = options.tier;
+    this.canvas = canvas;
 
     const context = canvas.getContext('webgl2', {
       antialias: false,
@@ -107,6 +185,10 @@ export class TableScene implements TableRenderer {
     this.renderer.toneMapping = NoToneMapping;
     this.renderer.setPixelRatio(1);
 
+    // A compile failure must reach the host as `failed`, not as a silent black
+    // tile (3D-05). Installed before anything is compiled.
+    installShaderErrorTrap(this.renderer);
+
     this.scene = new Scene();
     this.scene.background = new Color('#0b1116');
     this.camera = new PerspectiveCamera(
@@ -124,6 +206,9 @@ export class TableScene implements TableRenderer {
     const initialPose = rigPoseForAspect(16 / 9);
     applyPoseToCamera(this.camera, initialPose);
     this.felt.setSize(feltSizeForPose(initialPose));
+    if (options.debug === 'hero') {
+      this.startHero(options);
+    }
     this.requestFrame();
   }
 
@@ -133,7 +218,7 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * Accept a new snapshot. The empty scene draws only the felt, but the
+   * Accept a new snapshot. The hero scene draws no snapshot tiles, but the
    * revision is recorded now so 3D-12's "a new revision is a cut, never a move"
    * rule has one owner, and the frame is redrawn so a later board cannot be
    * stale.
@@ -157,7 +242,8 @@ export class TableScene implements TableRenderer {
     const ratio = effectiveDevicePixelRatio(cssWidth, cssHeight, dpr);
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(cssWidth, cssHeight, false);
-    const pose = rigPoseForAspect(cssWidth / cssHeight);
+    this.aspect = cssWidth / cssHeight;
+    const pose = rigPoseForAspect(this.aspect);
     applyPoseToCamera(this.camera, pose);
     // The felt is a square that reaches the top and bottom edges, so it is
     // re-sized with the framing; it is never stretched to the aspect.
@@ -168,12 +254,14 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * Change the quality tier. The tier only selects shader and sampling budgets
-   * (3D-11); the felt and the camera are tier-independent, so nothing is
-   * rebuilt here.
+   * Change the quality tier. The tier selects the depth-march step count and the
+   * atlas upload scale (3D-11 owns loading a different scale); the felt and the
+   * camera are tier-independent.
    */
   setQuality(tier: QualityTier): void {
     this.tier = tier;
+    this.hero?.material.setTier(tier);
+    this.requestFrame();
   }
 
   /** No interactive tiles exist before 3D-08. */
@@ -194,11 +282,135 @@ export class TableScene implements TableRenderer {
       tier: this.tier,
       drawCalls: info.calls,
       triangles: info.triangles,
-      instances: 0,
-      atlasBytes: 0,
+      instances: this.hero?.mesh.count ?? 0,
+      atlasBytes: this.hero?.assets.atlasBytes ?? 0,
+      relief: this.hero?.assets.status,
+      pomSteps: this.hero?.material.pomSteps(),
       frameMsP50: 0,
       frameMsP95: 0,
     };
+  }
+
+  /**
+   * The hero view's measured numbers, or null when the hero tiles are not
+   * mounted. Re-draws first: `preserveDrawingBuffer` is false, so the pixels are
+   * only readable in the same task as the draw.
+   */
+  heroReport(): HeroReport | null {
+    const hero = this.hero;
+    if (!hero || this.disposed) return null;
+
+    this.draw();
+    const probes = this.readProbeSet();
+    const liveSteps = hero.material.pomSteps();
+    let pomOff: HeroReport['pomOff'] = null;
+    if (liveSteps > 0) {
+      hero.material.setPomSteps(0);
+      this.draw();
+      const offProbes = this.readProbeSet();
+      hero.material.setPomSteps(liveSteps);
+      this.draw();
+      pomOff = { probes: offProbes, allProbesPass: allProbesPass(offProbes) };
+    }
+
+    const parallax = heroParallaxAt(this.aspect);
+    return {
+      relief: hero.assets.status,
+      tier: this.tier,
+      pomSteps: liveSteps,
+      carveDepthMm: CARVE_DEPTH_MM,
+      maxParallaxTexels: POM_MAX_TEXELS,
+      aspect: this.aspect,
+      parallax: parallax.slots.map((slot) => ({
+        slot: slot.slot,
+        label: slot.label,
+        angleDeg: slot.angleDeg,
+        texels: slot.texels,
+        clamped: slot.clamped,
+      })),
+      probes,
+      allProbesPass: allProbesPass(probes),
+      pomOff,
+    };
+  }
+
+  /**
+   * One PNG per hero slot with the depth march on and off, for the 3D-05 user
+   * handoff.
+   *
+   * Each capture is a **macro shot of that slot**: the camera stays on the real
+   * incidence ray (the direction from the tile to the committed eye, which is
+   * what the parallax depends on) and moves in to frame the body at 640 x 640.
+   * It is the same pose, the same lights and the same shader — only the distance
+   * changes, so the perspective across the tile is exaggerated and the carve's
+   * displacement is not. That is the difference between "judge the carving" and
+   * "judge the board at 45 CSS px per tile"; 3D-07 shows the latter.
+   */
+  heroCaptures(): readonly HeroCapture[] {
+    const hero = this.hero;
+    if (!hero || this.disposed) return [];
+    const liveSteps = hero.material.pomSteps();
+    const onSteps = liveSteps > 0 ? liveSteps : POM_STEPS[this.tier];
+
+    const cssSize = this.renderer.getSize(new Vector2());
+    const liveRatio = this.renderer.getPixelRatio();
+    const captures: HeroCapture[] = [];
+    this.renderer.setPixelRatio(1);
+    this.renderer.setSize(HERO_CAPTURE_SIZE, HERO_CAPTURE_SIZE, false);
+    try {
+      for (const state of ['on', 'off'] as const) {
+        hero.material.setPomSteps(state === 'on' ? onSteps : 0);
+        for (const instance of hero.instances) {
+          this.applyHeroCaptureCamera(instance.slot);
+          this.draw();
+          const png = this.readPngBlock({
+            x: 0,
+            y: 0,
+            width: HERO_CAPTURE_SIZE,
+            height: HERO_CAPTURE_SIZE,
+          });
+          if (!png) continue;
+          captures.push({
+            name: `hero-${instance.slot.id}-pom-${state}.png`,
+            pngDataUrl: png,
+            width: HERO_CAPTURE_SIZE,
+            height: HERO_CAPTURE_SIZE,
+          });
+        }
+      }
+    } finally {
+      hero.material.setPomSteps(liveSteps);
+      this.renderer.setPixelRatio(liveRatio);
+      this.renderer.setSize(cssSize.x, cssSize.y, false);
+      applyPoseToCamera(this.camera, rigPoseForAspect(this.aspect));
+      this.draw();
+    }
+    return captures;
+  }
+
+  /**
+   * Point the camera down the slot's own incidence ray at macro distance. The
+   * direction from the tile to the committed eye is kept exactly, so the plate's
+   * angle to the view (and therefore the parallax) is the board's.
+   */
+  private applyHeroCaptureCamera(slot: HeroSlot): void {
+    // The committed eye, not the camera's current (macro) position: every slot
+    // and both POM states must use the board's own incidence ray.
+    const eye = new Vector3(...rigPoseForAspect(this.aspect).eyeUnits);
+    const centre = new Vector3(...slot.pose.position);
+    const direction = eye.sub(centre).normalize();
+    const fovYDeg = verticalFieldOfViewDeg(1);
+    const halfFov = (fovYDeg * Math.PI) / 360;
+    const distance =
+      HERO_CAPTURE_FRAME_UNITS / 2 / (HERO_CAPTURE_FILL * Math.tan(halfFov));
+    this.camera.fov = fovYDeg;
+    this.camera.aspect = 1;
+    this.camera.near = 0.1;
+    this.camera.far = CAMERA.clipEndUnits;
+    this.camera.position.copy(centre.clone().addScaledVector(direction, distance));
+    this.camera.up.set(0, 1, 0);
+    this.camera.lookAt(centre);
+    this.camera.updateProjectionMatrix();
   }
 
   /** Cancel the frame, release every registered resource and the renderer. */
@@ -209,6 +421,7 @@ export class TableScene implements TableRenderer {
       globalThis.cancelAnimationFrame?.(this.frameHandle);
       this.frameHandle = null;
     }
+    this.hero = null;
     this.registry.disposeAll();
     this.scene.clear();
     this.renderer.dispose();
@@ -216,15 +429,187 @@ export class TableScene implements TableRenderer {
   }
 
   private addLights(): void {
-    const [x, y, z] = LIGHT.keyDirection;
-    const key = new DirectionalLight(new Color(LIGHT.keyHex), 3);
-    key.position.set(x * 30, y * 30, z * 30);
-    this.scene.add(key);
+    for (const spec of sceneLightSpecs()) {
+      if (spec.kind === 'key' && spec.direction) {
+        const [x, y, z] = spec.direction;
+        const light = new DirectionalLight(new Color(spec.colorHex), spec.intensity);
+        light.position.set(x * 30, y * 30, z * 30);
+        light.name = 'key';
+        this.scene.add(light);
+      } else if (spec.kind === 'fill') {
+        const light = new HemisphereLight(
+          new Color(spec.colorHex),
+          new Color(spec.groundHex ?? LIGHT.keyHex),
+          spec.intensity,
+        );
+        light.name = 'fill';
+        this.scene.add(light);
+      } else {
+        const light = new AmbientLight(new Color(spec.colorHex), spec.intensity);
+        light.name = 'ambient';
+        this.scene.add(light);
+      }
+    }
+  }
 
-    // A cool, very low fill and ambient so the felt has shape but the key still
-    // owns the highlight, matching the 2.5D rig's intent.
-    this.scene.add(new HemisphereLight(new Color('#cfe0ff'), new Color('#0b1512'), 0.5));
-    this.scene.add(new AmbientLight(new Color('#ffffff'), 0.15));
+  /** Load the committed relief atlases and mount the four hero tiles. */
+  private startHero(options: RendererOptions): void {
+    if (this.heroStarted) return;
+    this.heroStarted = true;
+    const maxAnisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    const baseUrl =
+      typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL
+        ? String(import.meta.env.BASE_URL)
+        : '/';
+    void loadReliefAssets<ReliefGpuTexture>({
+      tier: options.tier,
+      baseUrl,
+      maxAnisotropy,
+      createTexture: createReliefTextureFactory(maxAnisotropy),
+    })
+      .then((assets) => {
+        if (this.disposed) {
+          assets.dispose();
+          return;
+        }
+        this.buildHero(assets, options);
+      })
+      .catch((error: unknown) => {
+        this.reportHeroFailure(error);
+      });
+  }
+
+  private buildHero(assets: ReliefAssets<ReliefGpuTexture>, options: RendererOptions): void {
+    const geometry = createTileRenderGeometry();
+    this.registry.add({ dispose: () => geometry.dispose() });
+    const material = createTileMaterial({
+      tier: options.tier,
+      debug: options.debug,
+      albedo: assets.textures.albedo,
+      normalDepth: assets.textures.normalDepth,
+      aoRoughness: assets.textures.aoRoughness,
+    });
+
+    const instances = heroInstances((face) => assets.cellForFace(face));
+    const mesh = new InstancedMesh(geometry, material.material, instances.length);
+    mesh.name = 'hero-tiles';
+    // Every instance has its own transform; the geometry's bounding sphere says
+    // nothing about where they are, so culling would drop visible tiles.
+    mesh.frustumCulled = false;
+
+    const rects = new Float32Array(instances.length * 4);
+    const faceUp = new Float32Array(instances.length);
+    const matrix = new Matrix4();
+    instances.forEach((instance, index) => {
+      const rect = instance.atlasRect ?? [0, 0, 1, 1];
+      rects.set(rect, index * 4);
+      faceUp[index] = instance.slot.faceUp ? 1 : 0;
+      matrix.fromArray(instance.matrix);
+      mesh.setMatrixAt(index, matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    geometry.setAttribute('aAtlasRect', new InstancedBufferAttribute(rects, 4));
+    geometry.setAttribute('aFaceUp', new InstancedBufferAttribute(faceUp, 1));
+    this.scene.add(mesh);
+
+    // The registry owns both lifetimes; the hero view keeps the live handles.
+    this.registry.add({ dispose: () => assets.dispose() });
+    this.registry.add({ dispose: () => material.dispose() });
+    this.hero = {
+      assets,
+      material,
+      mesh,
+      geometry,
+      instances,
+    };
+
+    // Compile now, in the load path, so a broken program throws into the
+    // promise's catch and the host reports `failed` before the first frame.
+    this.renderer.compile(this.scene, this.camera);
+    this.draw();
+    this.canvas.dispatchEvent(new CustomEvent(HERO_READY_EVENT));
+  }
+
+  private reportHeroFailure(error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    if (this.disposed) return;
+    this.canvas.dispatchEvent(
+      new CustomEvent(HERO_FAILED_EVENT, { detail: message }),
+    );
+  }
+
+  /** Read the five probe blocks from the current frame. */
+  private readProbeSet(): ReturnType<typeof readProbes> {
+    const gl = this.renderer.getContext();
+    const size = this.renderer.getDrawingBufferSize(new Vector2());
+    this.camera.updateMatrixWorld();
+    const camera = this.camera;
+    const projector: ProbeProjector = {
+      project(definition) {
+        const world = probeWorldPoint(definition.point);
+        const projected = new Vector3(world[0], world[1], world[2]).project(camera);
+        if (
+          !Number.isFinite(projected.x) ||
+          !Number.isFinite(projected.y) ||
+          projected.z < -1 ||
+          projected.z > 1
+        ) {
+          return null;
+        }
+        return {
+          x: (projected.x * 0.5 + 0.5) * size.x,
+          y: (projected.y * 0.5 + 0.5) * size.y,
+        };
+      },
+    };
+    const source: ProbePixelSource = {
+      width: size.x,
+      height: size.y,
+      read(x, y, width, height) {
+        const pixels = new Uint8Array(width * height * 4);
+        gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        return pixels;
+      },
+    };
+    return readProbes(source, projector);
+  }
+
+  /** Read a block and encode it as a PNG data URL. */
+  private readPngBlock(rect: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  }): string | null {
+    if (typeof document === 'undefined') return null;
+    const gl = this.renderer.getContext();
+    const pixels = new Uint8Array(rect.width * rect.height * 4);
+    gl.readPixels(
+      rect.x,
+      rect.y,
+      rect.width,
+      rect.height,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
+    const canvas = document.createElement('canvas');
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    const image = context.createImageData(rect.width, rect.height);
+    // `readPixels` is bottom-up; the PNG is top-down.
+    const rowBytes = rect.width * 4;
+    for (let row = 0; row < rect.height; row += 1) {
+      const sourceStart = (rect.height - 1 - row) * rowBytes;
+      image.data.set(
+        pixels.subarray(sourceStart, sourceStart + rowBytes),
+        row * rowBytes,
+      );
+    }
+    context.putImageData(image, 0, 0);
+    return canvas.toDataURL('image/png');
   }
 
   /** Draw on the next frame, coalescing multiple change notifications. */
