@@ -160,6 +160,10 @@ pub struct SelectionConfig {
     /// fill, so one corpus family cannot dominate a lesson-scoped pack.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub replay_family_caps: BTreeMap<String, usize>,
+    /// Maximum selected bases from one source replay. `None` is uncapped. This
+    /// keeps several adjacent turns of one game from looking like repeats.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_per_replay: Option<usize>,
     /// Keep only stable book labels; a contested (book vs Mortal disagreement)
     /// label is rejected. A first curated pack uses this so every shipped
     /// scenario has one unambiguous book answer.
@@ -200,6 +204,7 @@ impl Default for SelectionConfig {
             lessons: Vec::new(),
             replay_families: Vec::new(),
             replay_family_caps: BTreeMap::new(),
+            max_per_replay: None,
             stable_book_only: false,
         }
     }
@@ -282,6 +287,9 @@ impl SelectionConfig {
                     "replay family cap for `{family}` must be at least one"
                 ));
             }
+        }
+        if self.max_per_replay == Some(0) {
+            return Err("`max_per_replay` must be at least one".to_string());
         }
         Ok(())
     }
@@ -683,6 +691,8 @@ pub struct SelectionPlan {
     pub cap_blocked: u64,
     /// Selections skipped because a corpus-family cap was full.
     pub replay_cap_blocked: u64,
+    /// Selections skipped because a source replay already had its maximum.
+    pub source_replay_cap_blocked: u64,
     /// Scenarios selected **beyond** a diversity cap because the remaining pool
     /// had nothing else to offer.
     pub cap_relaxed: u64,
@@ -836,12 +846,14 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
     let mut kind_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut turn_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut replay_counts: BTreeMap<String, usize> = BTreeMap::new();
+    let mut replay_id_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut dedupe = DedupeStats::default();
     // Indices known to duplicate an already selected candidate. They are never
     // retried: a later fill phase must not count the same duplicate twice.
     let mut duplicate_indices: BTreeSet<usize> = BTreeSet::new();
     let mut cap_blocked = 0_u64;
     let mut replay_cap_blocked = 0_u64;
+    let mut source_replay_cap_blocked = 0_u64;
 
     let caps_ok = |candidate: &Candidate,
                    sections: &BTreeMap<String, usize>,
@@ -861,6 +873,11 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
             && replay_ok
             && kinds.get(candidate.kind_key()).copied().unwrap_or(0) < caps.decision_kind
             && turns.get(candidate.turn_key()).copied().unwrap_or(0) < caps.turn_bucket
+    };
+    let source_replay_ok = |candidate: &Candidate, counts: &BTreeMap<String, usize>| {
+        config
+            .max_per_replay
+            .is_none_or(|cap| counts.get(&candidate.replay_id).copied().unwrap_or(0) < cap)
     };
 
     loop {
@@ -906,6 +923,10 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                     continue;
                 }
                 let candidate = &candidates[index];
+                if !source_replay_ok(candidate, &replay_id_counts) {
+                    source_replay_cap_blocked += 1;
+                    continue;
+                }
                 let replay_ok = config
                     .replay_family_caps
                     .get(&candidate.replay_family)
@@ -954,6 +975,9 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                 *replay_counts
                     .entry(candidate.replay_family.clone())
                     .or_insert(0) += 1;
+                *replay_id_counts
+                    .entry(candidate.replay_id.clone())
+                    .or_insert(0) += 1;
                 selected.push(SelectedScenario {
                     candidate: candidate.clone(),
                     family,
@@ -989,6 +1013,10 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                 break;
             }
             let candidate = &candidates[index];
+            if !source_replay_ok(candidate, &replay_id_counts) {
+                source_replay_cap_blocked += 1;
+                continue;
+            }
             if !caps_ok(
                 candidate,
                 &section_counts,
@@ -1023,6 +1051,9 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                 .or_insert(0) += 1;
             *replay_counts
                 .entry(candidate.replay_family.clone())
+                .or_insert(0) += 1;
+            *replay_id_counts
+                .entry(candidate.replay_id.clone())
                 .or_insert(0) += 1;
             selected.push(SelectedScenario {
                 candidate: candidate.clone(),
@@ -1080,6 +1111,10 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                     continue;
                 }
                 let candidate = &candidates[index];
+                if !source_replay_ok(candidate, &replay_id_counts) {
+                    source_replay_cap_blocked += 1;
+                    continue;
+                }
                 let replay_ok = config
                     .replay_family_caps
                     .get(&candidate.replay_family)
@@ -1127,6 +1162,9 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                 *replay_counts
                     .entry(candidate.replay_family.clone())
                     .or_insert(0) += 1;
+                *replay_id_counts
+                    .entry(candidate.replay_id.clone())
+                    .or_insert(0) += 1;
                 selected.push(SelectedScenario {
                     candidate: candidate.clone(),
                     family,
@@ -1156,6 +1194,10 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
             let Some(family) = balanced_family(candidate, &family_selected, &quotas) else {
                 continue;
             };
+            if !source_replay_ok(candidate, &replay_id_counts) {
+                source_replay_cap_blocked += 1;
+                continue;
+            }
             let replay_ok = config
                 .replay_family_caps
                 .get(&candidate.replay_family)
@@ -1202,6 +1244,9 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
                 .or_insert(0) += 1;
             *replay_counts
                 .entry(candidate.replay_family.clone())
+                .or_insert(0) += 1;
+            *replay_id_counts
+                .entry(candidate.replay_id.clone())
                 .or_insert(0) += 1;
             selected.push(SelectedScenario {
                 candidate: candidate.clone(),
@@ -1331,6 +1376,7 @@ pub fn plan_selection(mut candidates: Vec<Candidate>, config: &SelectionConfig) 
         relaxed_fill: relaxed_fill + open_slots_used as u64,
         open_slots_used,
         replay_cap_blocked,
+        source_replay_cap_blocked,
     }
 }
 

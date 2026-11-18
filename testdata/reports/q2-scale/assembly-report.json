@@ -1,0 +1,146 @@
+{
+  "schema": "riichiprac.pack-assembly-report",
+  "version": 1,
+  "pack_id": "replay.ch8-defense.2026-11",
+  "generated_at": "2026-11-18T00:00:00Z",
+  "rows_read": 560,
+  "bases": 550,
+  "variants": 0,
+  "scenarios": 550,
+  "families": [
+    {
+      "family": "book",
+      "bases": 233,
+      "variants": 0,
+      "scenarios": 233
+    },
+    {
+      "family": "coverage",
+      "bases": 114,
+      "variants": 0,
+      "scenarios": 114
+    },
+    {
+      "family": "close_call",
+      "bases": 74,
+      "variants": 0,
+      "scenarios": 74
+    },
+    {
+      "family": "table_read",
+      "bases": 54,
+      "variants": 0,
+      "scenarios": 54
+    },
+    {
+      "family": "placement",
+      "bases": 39,
+      "variants": 0,
+      "scenarios": 39
+    },
+    {
+      "family": "mistake",
+      "bases": 36,
+      "variants": 0,
+      "scenarios": 36
+    }
+  ],
+  "dropped": [
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-137",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-145",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-301",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-329",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-366",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-367",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-515",
+      "reason": "duplicate_hand",
+      "detail": "another selected base has the same actor hand"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-250",
+      "reason": "lesson_too_small",
+      "detail": "lesson `kabe_suji_defense` has 1 base(s); the pack needs at least 4"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-330",
+      "reason": "lesson_too_small",
+      "detail": "lesson `kabe_one_chance` has 2 base(s); the pack needs at least 4"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-407",
+      "reason": "lesson_too_small",
+      "detail": "lesson `kabe_one_chance` has 2 base(s); the pack needs at least 4"
+    }
+  ],
+  "drop_counts": {
+    "duplicate_hand": 7,
+    "lesson_too_small": 3
+  },
+  "variant_share": 0.0,
+  "largest_base": {
+    "base": "replay.ch8-defense.2026-11-001",
+    "scenarios": 1,
+    "share": 0.0018181818181818182
+  },
+  "limits": {
+    "max_per_base": 8,
+    "max_pack_share": 0.2,
+    "variants_disabled": true,
+    "min_bases_per_lesson": 4,
+    "unique_actor_hands": true
+  },
+  "bytes": 550577,
+  "max_bytes": 50000000,
+  "max_scenarios": 2000,
+  "sha256": "14144f8caa6ee891198d32b4442a4a9c251dc1c37ed8326c20151320930e68f3",
+  "export_path": "packs/replay.ch8-defense.2026-11-14144f8caa6e.json.gz",
+  "manifest_path": "packs/manifest.json",
+  "licence": "CC-BY-4.0",
+  "data_commercial_use": false,
+  "agents": [
+    "akochan (akochan master-53188a0-minimum, akochan-custom)",
+    "efficiency-safety-v1 (corpus-reference 0.1.0, MIT)",
+    "isolated-first-v1 (corpus-reference 0.1.0, MIT)",
+    "mortal-298k (mortal-candle v4-candle+7e8134c, AGPL-3.0)"
+  ],
+  "review": {
+    "checked": true,
+    "items": 560,
+    "accepted": 560,
+    "rejected": 0
+  },
+  "audited": true,
+  "audit_clean": true,
+  "notes": [
+    "generated_at is the latest selected row's timestamp, so re-assembling the same rows hashes identically",
+    "a base state comes from the walked decision row; a variant re-applies its recorded chain to that state and the lesson classifier must re-derive the stored answer",
+    "variants are disabled for this pack: it ships the reviewed bases only, and its variety comes from real scenarios",
+    "a lesson needs at least 4 reviewed base(s) to stay in the pack; an undersupplied lesson is reported as `lesson_too_small` instead of repeating one position",
+    "the pack keeps one scenario per actor hand; a different river or score with the same 13/14 tiles is reported as `duplicate_hand`"
+  ]
+}

@@ -218,6 +218,14 @@ enum Command {
         #[arg(long, value_name = "LIST", value_delimiter = ',')]
         corpus_cap: Vec<String>,
 
+        /// Maximum selected bases from one source replay.
+        #[arg(long, value_name = "N")]
+        max_per_replay: Option<usize>,
+
+        /// Walk only replays that already have extracted decisions rows.
+        #[arg(long)]
+        extracted_only: bool,
+
         /// Keep only stable book labels (reject book/Mortal disagreement).
         #[arg(long)]
         stable_book_only: bool,
@@ -442,6 +450,11 @@ enum PackAction {
         /// Drop a lesson that has fewer than N reviewed bases (default 1).
         #[arg(long, value_name = "N")]
         min_bases_per_lesson: Option<usize>,
+
+        /// Keep at most one scenario per actor hand (different rivers/scores can
+        /// otherwise repeat the same-looking hand).
+        #[arg(long)]
+        unique_hands: bool,
 
         /// Family ceilings counted in base scenarios, e.g. book=30,coverage=15.
         #[arg(long, value_name = "LIST", value_delimiter = ',')]
@@ -771,6 +784,8 @@ fn main() -> ExitCode {
             lesson,
             corpus_family,
             corpus_cap,
+            max_per_replay,
+            extracted_only,
             stable_book_only,
             max_section_share,
             max_kind_share,
@@ -793,6 +808,7 @@ fn main() -> ExitCode {
                 book_prefixes: section,
                 lessons: lesson,
                 replay_families: corpus_family,
+                max_per_replay,
                 stable_book_only,
                 quotas,
                 ..SelectionConfig::default()
@@ -814,6 +830,7 @@ fn main() -> ExitCode {
                     replays,
                     family,
                     limit,
+                    extracted_only,
                     config,
                     dry_run,
                 },
@@ -945,6 +962,7 @@ fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
             max_variants,
             no_variants,
             min_bases_per_lesson,
+            unique_hands,
             family_quota,
             generated_at,
             commit,
@@ -964,6 +982,7 @@ fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
                 max_variants,
                 no_variants,
                 min_bases_per_lesson,
+                unique_hands,
                 family_quota,
                 generated_at,
                 commit,
@@ -1015,6 +1034,7 @@ struct AssemblyCommand {
     max_variants: Option<usize>,
     no_variants: bool,
     min_bases_per_lesson: Option<usize>,
+    unique_hands: bool,
     family_quota: Vec<String>,
     generated_at: Option<String>,
     commit: String,
@@ -1049,6 +1069,7 @@ fn run_pack_assemble(root: &DataRoot, command: AssemblyCommand) -> ExitCode {
     if let Some(minimum) = command.min_bases_per_lesson {
         limits.min_bases_per_lesson = minimum;
     }
+    limits.unique_actor_hands = command.unique_hands;
     limits.family_quotas = quotas;
     let options = AssemblyOptions {
         pack_id: command.pack,
@@ -2089,6 +2110,9 @@ mod tests {
             "mortal_mirror,akochan_tactics",
             "--corpus-cap",
             "akochan_tactics=25",
+            "--max-per-replay",
+            "2",
+            "--extracted-only",
             "--stable-book-only",
             "--dry-run",
             "--json",
@@ -2107,6 +2131,8 @@ mod tests {
                 lesson,
                 corpus_family,
                 corpus_cap,
+                max_per_replay,
+                extracted_only,
                 stable_book_only,
                 dry_run,
                 json,
@@ -2126,6 +2152,8 @@ mod tests {
                     vec!["mortal_mirror".to_string(), "akochan_tactics".to_string()]
                 );
                 assert_eq!(corpus_cap, vec!["akochan_tactics=25".to_string()]);
+                assert_eq!(max_per_replay, Some(2));
+                assert!(extracted_only);
                 assert!(stable_book_only);
                 assert!(dry_run);
                 assert!(json);

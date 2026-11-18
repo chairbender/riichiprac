@@ -1396,6 +1396,10 @@ that is not in the queue at all is refused as unreviewed.
   lesson whose base count is below N with reason `lesson_too_small`. A replay
   lesson with one state would otherwise deal that same position every time it
   is drawn; the generated lesson remains available for that topic.
+- **Unique actor hands** (`--unique-hands`) keeps the first scenario for each
+  13/14-tile actor hand and drops later states with the same hand as
+  `duplicate_hand`. Different rivers/scores make these distinct state hashes,
+  but a learner still reads them as the same drill.
 - **Family quotas** (`--family-quota book=30,coverage=15`) are optional explicit
   ceilings counted in **base** scenarios (§4.6: quotas count bases, not
   variants). S2 already balanced the selection, so the default leaves the
@@ -1432,7 +1436,8 @@ cargo run --features miner --bin mine_replays -- pack assemble \
   [--pack ID] [--queue FILE] [--licence ID] [--attribution TEXT] \
   [--max-bytes N] [--max-scenarios N] [--max-per-base N] [--share F32] \
   [--family-quota book=30,coverage=15] [--max-variants N] [--no-variants] \
-  [--min-bases-per-lesson N] [--generated-at ISO] [--commit TEXT] \
+  [--min-bases-per-lesson N] [--unique-hands] \
+  [--generated-at ISO] [--commit TEXT] \
   [--dry-run] [--json]
 ```
 
@@ -1781,6 +1786,18 @@ measurements (including the scale-up decision) are in
 [`q2-ch8-defense-pack.md`](q2-ch8-defense-pack.md); the machine-readable
 evidence is in [`testdata/reports/q2/`](testdata/reports/q2/). The human content
 review is Q2r.
+
+**Scale-up (2026-11-18).** The user reviewed the 100 bases and skipped a separate
+Q2r item. The follow-on run extracted and book-labelled 240 additional M1/M2
+games (284 games / 146,374 decisions / 21,745 book labels in total), then used
+`select --extracted-only --max-per-replay 2` to pick 560 bases (51 held out). It
+ships **550 reviewed bases, 0 variants**, 550,577 bytes, five ch. 8 lessons;
+`defense_stuck_heuristic` now has four distinct real positions instead of one.
+`--unique-hands` removed seven same-hand near-duplicates, and
+`--min-bases-per-lesson 4` dropped the two undersupplied topics. The pack is
+`replay.ch8-defense.2026-11` and passes the same audit/hosting/serving checks.
+Details: [`q2-scale-up-500.md`](q2-scale-up-500.md), evidence:
+[`testdata/reports/q2-scale/`](testdata/reports/q2-scale/).
 
 ## F1 acceptance evidence
 

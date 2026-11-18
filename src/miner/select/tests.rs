@@ -1161,6 +1161,7 @@ fn a_shard_run_writes_the_queue_the_report_and_the_latest_pointer() {
             replays: None,
             family: Some("mortal_mirror".to_string()),
             limit: None,
+            extracted_only: false,
             config,
             dry_run: false,
         },
@@ -1239,6 +1240,7 @@ fn a_dry_run_writes_nothing() {
             replays: None,
             family: Some("mortal_mirror".to_string()),
             limit: None,
+            extracted_only: false,
             config,
             dry_run: true,
         },
@@ -1337,4 +1339,25 @@ fn a_corpus_family_cap_balances_the_pack_and_is_never_relaxed() {
     assert_eq!(plan.selected.len(), 2, "the unlisted pool is empty");
     assert!(plan.replay_cap_blocked > 0);
     assert_eq!(plan.cap_relaxed, 0);
+}
+
+#[test]
+fn a_source_replay_cap_keeps_one_game_from_filling_the_pack() {
+    let mut candidates = Vec::new();
+    for index in 0..10 {
+        let mut candidate = fixture::candidate(&format!("r{index}"), Family::Book, Some("ch8.2"));
+        candidate.replay_id = format!("{:064x}", index / 2);
+        candidates.push(candidate);
+    }
+    let mut config = config(BTreeMap::from([(Family::Book, 1.0)]), 10);
+    config.max_per_replay = Some(1);
+    let plan = plan_selection(candidates, &config);
+    assert_eq!(plan.selected.len(), 5);
+    let seen: BTreeSet<&str> = plan
+        .selected
+        .iter()
+        .map(|scenario| scenario.candidate.replay_id.as_str())
+        .collect();
+    assert_eq!(seen.len(), 5, "one base per replay");
+    assert!(plan.source_replay_cap_blocked > 0);
 }

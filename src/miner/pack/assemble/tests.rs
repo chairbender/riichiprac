@@ -379,6 +379,7 @@ fn enforces_family_quotas_on_the_selection() {
                 max_variants: None,
                 variants_disabled: false,
                 min_bases_per_lesson: 1,
+                unique_actor_hands: false,
             },
             ..options()
         },
@@ -1088,6 +1089,43 @@ fn a_lesson_with_too_few_bases_is_dropped() {
         drops
             .iter()
             .filter(|drop| drop.reason == "lesson_too_small")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn unique_actor_hands_drop_a_different_state_with_the_same_hand() {
+    let mut groups = vec![
+        synthetic_group("book", "base-a", "state-a", 0),
+        synthetic_group("book", "base-b", "state-b", 0),
+        synthetic_group("book", "base-c", "state-c", 0),
+    ];
+    for (index, hand) in ["same-hand", "same-hand", "other-hand"].iter().enumerate() {
+        groups[index]
+            .base
+            .as_mut()
+            .expect("base")
+            .scenario
+            .state
+            .hand_string = hand.to_string();
+    }
+    let options = AssemblyOptions {
+        limits: AssemblyLimits {
+            unique_actor_hands: true,
+            ..AssemblyLimits::default()
+        },
+        ..AssemblyOptions::default()
+    };
+    let mut drops = Vec::new();
+    super::apply_dedupe_and_caps(&mut groups, &options, &mut drops);
+    assert!(groups[0].base.is_some());
+    assert!(groups[1].base.is_none(), "the second same hand is dropped");
+    assert!(groups[2].base.is_some());
+    assert_eq!(
+        drops
+            .iter()
+            .filter(|drop| drop.reason == "duplicate_hand")
             .count(),
         1
     );

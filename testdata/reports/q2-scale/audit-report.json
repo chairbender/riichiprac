@@ -1,0 +1,16 @@
+{
+  "manifest": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/packs/manifest.json",
+  "manifest_bytes": 736,
+  "strict": false,
+  "profile": "non_commercial",
+  "findings": [],
+  "packs": [
+    {
+      "pack_id": "replay.ch8-defense.2026-11",
+      "scenario_count": 550,
+      "bytes": 550577,
+      "sha256": "14144f8caa6ee891198d32b4442a4a9c251dc1c37ed8326c20151320930e68f3",
+      "findings": []
+    }
+  ]
+}

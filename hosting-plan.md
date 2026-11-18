@@ -419,8 +419,8 @@ corpus/DB backup only** (rclone `copy` + SQLite snapshots + `rclone check`) and
 is never in the browser's pack chain.
 
 **Committed pack.** Q2 replaced the P1a fixture with the first curated ch. 8
-defense pack (`replay.ch8-defense.2026-11`, 100 scenarios, 105 032 body bytes,
-763-byte manifest); `scripts/check-ch8-pack.mjs --allow-no-variants` checks its
+defense pack (`replay.ch8-defense.2026-11`, 550 scenarios, 550 577 body bytes,
+736-byte manifest); `scripts/check-ch8-pack.mjs --allow-no-variants` checks its
 content and `scripts/check-pack-hosting.mjs` checks the hosting envelope. The
 fixture is still reproducible from the data root for the Q1 harness. P3
 consumes this manifest.

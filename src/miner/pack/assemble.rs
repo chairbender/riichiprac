@@ -141,6 +141,11 @@ pub struct AssemblyLimits {
     /// position every time it is drawn.
     #[serde(default = "default_min_bases_per_lesson")]
     pub min_bases_per_lesson: usize,
+    /// Keep at most one scenario per actor hand. A different river or score can
+    /// make a distinct state with the same 13/14 tiles; a learner still reads it
+    /// as the same scenario, so the pack keeps the first one.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub unique_actor_hands: bool,
 }
 
 const fn default_min_bases_per_lesson() -> usize {
@@ -160,6 +165,7 @@ impl Default for AssemblyLimits {
             max_variants: None,
             variants_disabled: false,
             min_bases_per_lesson: default_min_bases_per_lesson(),
+            unique_actor_hands: false,
         }
     }
 }
@@ -1516,7 +1522,48 @@ fn apply_dedupe_and_caps(
         });
     }
 
-    // 2. The per-base cap, counted in variants (§4.6 defaults 8 and 20 %).
+    // 2. Optional actor-hand dedupe. Two different replays can reach the same
+    // 13/14 tiles with a different river or score: distinct states, but the
+    // same-looking drill. Keep the first and drop the rest.
+    if options.limits.unique_actor_hands {
+        let mut hands: BTreeSet<String> = BTreeSet::new();
+        for group in groups.iter_mut() {
+            if let Some(base) = &group.base {
+                let hand = base.scenario.state.hand_string.clone();
+                if !hands.insert(hand) {
+                    let id = base.scenario.id.to_string();
+                    drops.push(AssemblyDrop {
+                        scenario_id: id.clone(),
+                        reason: "duplicate_hand".to_string(),
+                        detail: "another selected base has the same actor hand".to_string(),
+                    });
+                    for variant in &group.variants {
+                        drops.push(AssemblyDrop {
+                            scenario_id: variant.scenario.id.to_string(),
+                            reason: "base_dropped".to_string(),
+                            detail: format!("its base `{id}` repeated another hand"),
+                        });
+                    }
+                    group.base = None;
+                    group.variants.clear();
+                }
+            }
+            group.variants.retain(|variant| {
+                if hands.insert(variant.scenario.state.hand_string.clone()) {
+                    true
+                } else {
+                    drops.push(AssemblyDrop {
+                        scenario_id: variant.scenario.id.to_string(),
+                        reason: "duplicate_hand".to_string(),
+                        detail: "another shipped scenario has the same actor hand".to_string(),
+                    });
+                    false
+                }
+            });
+        }
+    }
+
+    // 3. The per-base cap, counted in variants (§4.6 defaults 8 and 20 %).
     let planned: usize = groups
         .iter()
         .map(|group| usize::from(group.base.is_some()) + group.variants.len())
@@ -1535,7 +1582,7 @@ fn apply_dedupe_and_caps(
         }
     }
 
-    // 3. Optional family quotas, counted in base scenarios (§4.6).
+    // 4. Optional family quotas, counted in base scenarios (§4.6).
     if !options.limits.family_quotas.is_empty() {
         let mut bases_per_family: BTreeMap<String, usize> = BTreeMap::new();
         for group in groups.iter_mut() {
@@ -1569,7 +1616,7 @@ fn apply_dedupe_and_caps(
         }
     }
 
-    // 4. A lesson with too few real positions is not a varied replay drill:
+    // 5. A lesson with too few real positions is not a varied replay drill:
     // drop it rather than deal the same scenario every time it is drawn.
     if options.limits.min_bases_per_lesson > 1 {
         let mut per_lesson: BTreeMap<String, usize> = BTreeMap::new();
@@ -1610,7 +1657,7 @@ fn apply_dedupe_and_caps(
         }
     }
 
-    // 5. Variants can be disabled entirely: the pack then ships only the
+    // 6. Variants can be disabled entirely: the pack then ships only the
     // reviewed bases. This is a product decision, not a cap.
     if options.limits.variants_disabled {
         for group in groups.iter_mut() {
@@ -1625,7 +1672,7 @@ fn apply_dedupe_and_caps(
         return;
     }
 
-    // 6. Optional global variant ceiling. Keep evenly spaced variants across
+    // 7. Optional global variant ceiling. Keep evenly spaced variants across
     // the pack order rather than truncating the tail, so the limit does not
     // silently favour whichever lesson sorts first.
     let Some(limit) = options.limits.max_variants else {
@@ -1939,6 +1986,13 @@ fn build_report(
              lesson is reported as `lesson_too_small` instead of repeating one position",
             options.limits.min_bases_per_lesson
         ));
+    }
+    if options.limits.unique_actor_hands {
+        notes.push(
+            "the pack keeps one scenario per actor hand; a different river or score with the \
+             same 13/14 tiles is reported as `duplicate_hand`"
+                .to_string(),
+        );
     }
 
     AssemblyReport {

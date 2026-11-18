@@ -2359,6 +2359,17 @@ counted as an implementation unit.
 > selection lesson scope / corpus cap, the pack's bases-first order, the
 > `--no-variants` switch, the global variant ceiling and the minimum-bases-per-
 > lesson rule. Details in [`q2-ch8-defense-pack.md`](q2-ch8-defense-pack.md).
+>
+> **Scale-up (2026-11-18).** The user signed off the 100 bases and chose to
+> scale to 500 real bases with mechanical review plus a spot-check, skipping the
+> separate Q2r item. The corpus was expanded to **284 games / 146,374 decisions /
+> 21,745 book labels** (120 M1, 120 M2, 44 Akochan). `select --extracted-only
+> --max-per-replay 2` produced 560 bases (51 held out); `pack assemble
+> --no-variants --unique-hands --min-bases-per-lesson 4` ships **550 bases,
+> 0 variants, 550,577 bytes**, five ch. 8 lessons. `defense_stuck_heuristic`
+> returns with four distinct real positions; the two lessons below the four-base
+> floor are left out. The pack passes audit, 41/41 hosting, 23/23 ch8 content
+> and 8/8 serving checks. Details: [`q2-scale-up-500.md`](q2-scale-up-500.md).
 
 ### 5.4 Critical path and parallel tracks
 

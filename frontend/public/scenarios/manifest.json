@@ -5,12 +5,13 @@
   "packs": [
     {
       "id": "replay.ch8-defense.2026-11",
-      "path": "replay.ch8-defense.2026-11-13ea4647a9d8.json.gz",
-      "sha256": "13ea4647a9d85a86f29770eb1c63b879d635daf16c2afedf25a42cfbb742ad3f",
-      "bytes": 104357,
-      "scenario_count": 100,
+      "path": "replay.ch8-defense.2026-11-14144f8caa6e.json.gz",
+      "sha256": "14144f8caa6ee891198d32b4442a4a9c251dc1c37ed8326c20151320930e68f3",
+      "bytes": 550577,
+      "scenario_count": 550,
       "lesson_ids": [
         "defense_safety_chart",
+        "defense_stuck_heuristic",
         "fold_to_riichi",
         "push_or_fold",
         "suji_kabe_safety"

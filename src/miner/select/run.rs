@@ -76,6 +76,10 @@ pub struct SelectionOptions {
     pub family: Option<String>,
     /// Maximum replay files in the shard.
     pub limit: Option<usize>,
+    /// Only walk replays that already have extracted `decisions` rows. A large
+    /// corpus can hold thousands of unlabelled games; without this the
+    /// selector walks them all to find no labels.
+    pub extracted_only: bool,
     /// The selection configuration.
     pub config: SelectionConfig,
     /// Do not write the queue, the held-out set or the report.
@@ -288,6 +292,18 @@ pub fn run_selection(
     }
 
     let connection = open_miner_db(root)?;
+    if options.extracted_only {
+        let mut statement = connection.prepare("SELECT DISTINCT replay_id FROM decisions")?;
+        let extracted: std::collections::BTreeSet<String> = statement
+            .query_map([], |row| row.get::<_, String>(0))?
+            .collect::<Result<_, _>>()?;
+        files.retain(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .and_then(|name| name.strip_suffix(".jsonl.gz"))
+                .is_some_and(|id| extracted.contains(id))
+        });
+    }
     let replay_rows = load_replay_rows(&connection)?;
 
     let mut funnel = FunnelCounter::new();
@@ -474,6 +490,13 @@ pub fn run_selection(
         notes.push(format!(
             "{} selection attempt(s) were skipped because a corpus-family cap was full",
             plan.replay_cap_blocked
+        ));
+    }
+    if plan.source_replay_cap_blocked > 0 {
+        notes.push(format!(
+            "{} selection attempt(s) were skipped because a source replay hit its per-replay \
+             cap",
+            plan.source_replay_cap_blocked
         ));
     }
     if let Some(scope) = options.config.scope_note() {
