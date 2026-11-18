@@ -11,7 +11,6 @@
     "preview": "vite preview",
     "atlas:review": "vite-node scripts/review-atlas.ts",
     "atlas:review:carved": "vite-node scripts/review-carved.ts",
-    "atlas:review:relief": "vite-node scripts/review-relief.ts",
     "layout:review": "vite-node scripts/review-zone-layout.ts",
     "overlays:export": "vite-node scripts/export-overlays.ts",
     "overlays:review": "vite-node scripts/review-overlays.ts",

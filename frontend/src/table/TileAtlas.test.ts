@@ -207,8 +207,6 @@ describe('startup tile atlas', () => {
       createCanvas: createNapiCanvas,
       pixelRatio: 1,
       decalsUrl: null,
-      reliefUrl: null,
-      layoutUrl: null,
       warmShells: ['shell_flat_upright'],
     });
     expect(fetched).toEqual([join(tableDir, 'shells.json'), join(tableDir, 'faces.json')]);
@@ -226,8 +224,6 @@ describe('startup tile atlas', () => {
       loadImage: loadFileImage,
       createCanvas: createNapiCanvas,
       pixelRatio: 1,
-      reliefUrl: null,
-      layoutUrl: null,
       warmShells: ['shell_flat_upright'],
     });
     expect(registry.decals).not.toBeNull();
@@ -249,8 +245,6 @@ describe('startup tile atlas', () => {
       pixelRatio: 2,
       maxRgbaBytes: 1,
       decalsUrl: null,
-      reliefUrl: null,
-      layoutUrl: null,
       warmShells: ['shell_flat_upright'],
     });
     expect(registry.requestedPixelRatio).toBe(2);

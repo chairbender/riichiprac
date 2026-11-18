@@ -37,12 +37,6 @@ import { faceHasInk } from './faceManifest';
 import type { FacesManifest } from './faceManifest';
 import { decalFor } from './decalManifest';
 import type { DecalRecord, DecalRotation, DecalsManifest } from './decalManifest';
-import { CarvedReliefBakery } from './carvedRelief';
-import type { BakedReliefFace, LoadAtlasBytes, ReliefLightingConfig } from './carvedRelief';
-export type { LoadAtlasBytes } from './carvedRelief';
-import { reliefCellFor } from './reliefManifest';
-import type { ReliefManifest } from './reliefManifest';
-import type { OrientationGroup, TableLayoutManifest } from './tableLayoutManifest';
 import {
   decalLightRotationDegFor,
   decalSymbolRotationDegFor,
@@ -117,22 +111,6 @@ export interface BakedTileSprite {
   readonly decalSurface: FaceSurface | null;
   readonly decalLightRotationDeg: DecalRotation | null;
   readonly decalSymbolRotationDeg: DecalRotation | null;
-  /**
-   * Task 5A: which face source produced this sprite.
-   *  - `relief`: world-space carved relief baked at startup (the new path);
-   *  - `decal`: the Task 5 carved-decal PNG (the fallback);
-   *  - `glyph`: the flat glyph (the fallback when no carved source exists);
-   *  - `bare`: `blank`/`5z`, which share the shell's bare slot.
-   */
-  readonly shading: 'relief' | 'decal' | 'glyph' | 'bare';
-  /** The `(bucket, rounded basis)` relief group, when `shading` is `relief`. */
-  readonly reliefGroup: string | null;
-  /** The world-space tangent frame the relief decal was lit through. */
-  readonly reliefBasis: {
-    readonly tangent: readonly number[];
-    readonly bitangent: readonly number[];
-    readonly normal: readonly number[];
-  } | null;
 }
 
 export interface AtlasStats {
@@ -145,15 +123,6 @@ export interface AtlasStats {
   readonly decalSprites: number;
   /** Sprites composited from a flat glyph (subset of glyphSprites). */
   readonly flatGlyphSprites: number;
-  /** Sprites composited from the Task 5A carved relief bake. */
-  readonly reliefSprites: number;
-  /** `(bucket, rounded basis)` groups the relief bakery resolved. */
-  readonly reliefGroups: number;
-  /** Unique lit face decals the relief bakery baked (the source cache is released after composition). */
-  readonly reliefDecals: number;
-  readonly reliefBakeMs: number;
-  readonly reliefCacheHits: number;
-  readonly reliefAtlasLoadMs: number;
   readonly atlasPixels: number;
   readonly rgbaBytes: number;
   readonly pixelRatio: number;
@@ -176,21 +145,8 @@ export interface TileAtlasBuilderOptions {
   readonly decals?: DecalsManifest;
   /** Throw when a face has no carved decal instead of falling back. */
   readonly requireDecals?: boolean;
-  /**
-   * Task 5A world-space carved relief. When both the relief manifest and the
-   * layout are supplied, every face with a relief cell is shaded at startup
-   * through its `(bucket, rounded basis)` group instead of using a baked decal;
-   * decals and flat glyphs remain the per-face fallback.
-   */
-  readonly relief?: CarvedReliefOptionsInput;
   readonly resolveUrl: ResolveAssetUrl;
   readonly loadImage: LoadAtlasImage;
-  /**
-   * Raw PNG bytes for the relief atlases. Must not go through `loadImage`: a
-   * Canvas premultiplies the normal RGB by the height alpha (see
-   * `pngDecoder.ts`). Required when `relief` is supplied; defaults to `fetch`.
-   */
-  readonly loadBytes?: LoadAtlasBytes;
   readonly createCanvas?: CreateAtlasCanvas;
   /** Atlas pixels per CSS px. Defaults to 1; @2x is opt-in (4x the memory). */
   readonly pixelRatio?: 1 | 2;
@@ -204,24 +160,6 @@ export interface TileAtlasBuilderOptions {
   readonly forceDecalLightRotationDeg?: DecalRotation;
   /** Developer preview override for the in-plate symbol rotation. */
   readonly forceDecalSymbolRotationDeg?: DecalRotation;
-}
-
-/**
- * The Task 5A inputs. The manifests are parsed separately so the builder owns
- * no fetch policy; images are loaded through the builder's `loadImage`.
- */
-export interface CarvedReliefOptionsInput {
-  readonly manifest: ReliefManifest;
-  readonly layout: TableLayoutManifest;
-  /**
-   * One-step carving scale in plate UV. Defaults to the plan's 0.018; the A/B
-   * review script sets 0 to isolate the parallax contribution.
-   */
-  readonly dCarve?: number;
-  readonly minViewZ?: number;
-  readonly bevelGain?: number;
-  /** Display-only relief light rig; defaults to {@link DEFAULT_RELIEF_LIGHTING}. */
-  readonly lighting?: ReliefLightingConfig;
 }
 
 export interface ShellPageResult {
@@ -245,14 +183,6 @@ export function defaultCreateCanvas(width: number, height: number): AtlasCanvas 
     return canvas;
   }
   throw new Error('no 2D canvas available; pass createCanvas to TileAtlasBuilder');
-}
-
-/** Fetch raw bytes (relief atlases must bypass the Canvas decoder). */
-export async function defaultLoadBytes(url: string): Promise<Uint8Array> {
-  if (typeof fetch !== 'function') throw new Error(`cannot fetch ${url}: no fetch available`);
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`cannot fetch ${url}: HTTP ${response.status}`);
-  return new Uint8Array(await response.arrayBuffer());
 }
 
 function context2d(canvas: AtlasCanvas): CanvasRenderingContext2D {
@@ -314,32 +244,6 @@ export function estimateAtlasBytes(
 }
 
 /**
- * The relief decal's natural pixel size for one shell: the length of its
- * published face-plate edge, at the atlas pixel ratio. Baking at exactly this
- * size means the atlas composition is a 1:1 copy (no extra resample) and the
- * cache never holds more detail than the page can show.
- */
-export function reliefPlateSize(
-  shell: { readonly faceQuad: FaceQuad },
-  pixelRatio: 1 | 2,
-): { readonly width: number; readonly height: number } {
-  const [topLeft, topRight, , bottomLeft] = shell.faceQuad;
-  const width = Math.hypot(topRight[0] - topLeft[0], topRight[1] - topLeft[1]) * pixelRatio;
-  const height = Math.hypot(bottomLeft[0] - topLeft[0], bottomLeft[1] - topLeft[1]) * pixelRatio;
-  return {
-    width: Math.max(8, Math.round(width)),
-    height: Math.max(8, Math.round(height)),
-  };
-}
-
-/** One face's composited source: relief first, then carved decal, then glyph. */
-interface FaceSource {
-  readonly image: AtlasImage;
-  readonly decal: DecalRecord | null;
-  readonly relief: BakedReliefFace | null;
-}
-
-/**
  * Destination corners for the glyph's top-left, top-right and bottom-left
  * under an extra rotation inside the face plate. The fourth corner follows
  * from the affine, and the clip to `faceQuad` keeps any trapezoid mismatch
@@ -369,26 +273,12 @@ export class TileAtlasBuilder {
   private readonly createCanvas: CreateAtlasCanvas;
   private readonly glyphCache = new Map<TileFaceId, Promise<AtlasImage>>();
   private readonly decalCache = new Map<string, Promise<AtlasImage>>();
-  private readonly relief: CarvedReliefBakery | null;
 
   constructor(options: TileAtlasBuilderOptions) {
     this.options = options;
     this.pixelRatio = options.pixelRatio ?? 1;
     this.maxPageWidthPx = options.maxPageWidthPx ?? 2048;
     this.createCanvas = options.createCanvas ?? defaultCreateCanvas;
-    this.relief = options.relief
-      ? new CarvedReliefBakery({
-          manifest: options.relief.manifest,
-          layout: options.relief.layout,
-          loadBytes: options.loadBytes ?? defaultLoadBytes,
-          resolveUrl: options.resolveUrl,
-          createCanvas: this.createCanvas,
-          ...(options.relief.dCarve === undefined ? {} : { dCarve: options.relief.dCarve }),
-          ...(options.relief.minViewZ === undefined ? {} : { minViewZ: options.relief.minViewZ }),
-          ...(options.relief.bevelGain === undefined ? {} : { bevelGain: options.relief.bevelGain }),
-          ...(options.relief.lighting === undefined ? {} : { lighting: options.relief.lighting }),
-        })
-      : null;
   }
 
   /** Load and cache a glyph image; one fetch per face for the whole atlas. */
@@ -423,74 +313,25 @@ export class TileAtlasBuilder {
   releaseGlyphCache(): void {
     this.glyphCache.clear();
     this.decalCache.clear();
-    this.relief?.release();
   }
 
-  /** Number of layout `(bucket, rounded basis)` groups the relief path knows. */
-  get orientationGroupCount(): number {
-    return this.relief?.orientationGroups.length ?? 0;
-  }
-
-  get reliefBakeCount(): number {
-    return this.relief?.stats.bakes ?? 0;
-  }
-
-  get reliefBakeMs(): number {
-    return this.relief?.stats.bakeMs ?? 0;
-  }
-
-  get reliefCacheHits(): number {
-    return this.relief?.stats.cacheHits ?? 0;
-  }
-
-  get reliefAtlasLoadMs(): number {
-    return this.relief?.stats.atlasLoadMs ?? 0;
-  }
-
-  /**
-   * Prefer the Task 5A world-space relief, then a carved decal, then the flat
-   * glyph. The fallback chain is deliberate: a missing relief cell or atlas
-   * must still draw the board, and `requireDecals` keeps its old meaning for
-   * the carved-decal path.
-   */
+  /** Prefer a carved decal for this shell/face, else the flat glyph. */
   private async sourceFor(
     face: TileFaceId,
     surface: FaceSurface,
     lightRotationDeg: DecalRotation,
     symbolRotationDeg: DecalRotation,
-    reliefRequest: {
-      readonly group: OrientationGroup;
-      readonly width: number;
-      readonly height: number;
-      readonly ivorySrgb: readonly [number, number, number];
-    } | null,
-  ): Promise<FaceSource> {
-    if (reliefRequest && this.relief && reliefCellFor(this.options.relief?.manifest, face)) {
-      const baked = await this.relief.decalFor(
-        face,
-        reliefRequest.group,
-        reliefRequest.width,
-        reliefRequest.height,
-        [
-          reliefRequest.ivorySrgb[0],
-          reliefRequest.ivorySrgb[1],
-          reliefRequest.ivorySrgb[2],
-        ] as const,
-      );
-      if (baked) {
-        return { image: baked.canvas, decal: null, relief: baked };
-      }
-    }
+  ): Promise<{ image: AtlasImage; decal: DecalRecord | null }> {
     const record = decalFor(this.options.decals, face, surface, lightRotationDeg, symbolRotationDeg);
     if (record) {
-      return { image: await this.decal(record), decal: record, relief: null };
+      return { image: await this.decal(record), decal: record };
     }
     if (this.options.requireDecals) {
       throw new Error(
         `face ${face} has no carved decal for light ${lightRotationDeg} / symbol ${symbolRotationDeg}`,
       );
     }
-    return { image: await this.glyph(face), decal: null, relief: null };
+    return { image: await this.glyph(face), decal: null };
   }
 
   /**
@@ -530,30 +371,12 @@ export class TileAtlasBuilder {
     const spriteWidth = shell.texWidth * scale;
     const spriteHeight = shell.texHeight * scale;
 
-    // Task 5A: the shell's (bucket, rounded basis) group and the plate size its
-    // lit decals are baked at. The carved-decal tuner's forced rotations stay
-    // on the Task 5 path so its four-panel preview is unchanged.
-    const forced = this.options.forceDecalLightRotationDeg !== undefined;
-    const reliefGroup = this.relief && !forced ? this.relief.groupForShell(shellId) : null;
-    const plate = reliefPlateSize(shell, scale);
-    const reliefRequest =
-      reliefGroup === null
-        ? null
-        : {
-            group: reliefGroup,
-            width: plate.width,
-            height: plate.height,
-            ivorySrgb: shell.faceSampleRgb ?? ([223, 220, 216] as const),
-          };
-
     const shellUrl = this.options.resolveUrl(
       scale === 2 ? shell.textureFile2x : shell.textureFile,
     );
     const [shellImage, ...sources] = await Promise.all([
       this.options.loadImage(shellUrl),
-      ...inkedFaces.map((face) =>
-        this.sourceFor(face, surface, lightRotationDeg, symbolRotationDeg, reliefRequest),
-      ),
+      ...inkedFaces.map((face) => this.sourceFor(face, surface, lightRotationDeg, symbolRotationDeg)),
     ]);
     assertSpriteSize(shell, shellImage, scale);
 
@@ -575,17 +398,14 @@ export class TileAtlasBuilder {
       ctx.drawImage(shellImage as CanvasImageSource, x, y, spriteWidth, spriteHeight);
     }
 
-    // Pass 2: the relief decal, carved decal or flat glyph into its own slot,
-    // clipped to the face plate. A decal carries its baked light rotation and
-    // a relief decal carries world-space light; only an extra symbol rotation
-    // is applied here.
+    // Pass 2: the carved decal or flat glyph into its own slot, clipped to the
+    // face plate. A decal already carries its baked light rotation; only the
+    // symbol's in-plate rotation is applied here.
     inkedFaces.forEach((_face, index) => {
       const slot = index + 1;
       const { x, y } = slotOffset(slot);
       const source = sources[index];
-      if (source.relief) {
-        this.drawFacePlate(ctx, shell, source.image, [0, 0, 1, 1], x, y, scale);
-      } else if (source.decal) {
+      if (source.decal) {
         this.drawDecal(ctx, shell, source.decal, source.image, x, y, scale, symbolRotationDeg);
       } else {
         this.drawGlyph(ctx, shell, source.image, x, y, scale, glyphRotationDeg);
@@ -602,17 +422,8 @@ export class TileAtlasBuilder {
       bytes: pageWidth * pageHeight * 4,
     };
 
-    const sourceByFace = new Map<
-      TileFaceId,
-      { slot: number; decal: DecalRecord | null; relief: BakedReliefFace | null }
-    >();
-    inkedFaces.forEach((face, index) =>
-      sourceByFace.set(face, {
-        slot: index + 1,
-        decal: sources[index].decal,
-        relief: sources[index].relief,
-      }),
-    );
+    const sourceByFace = new Map<TileFaceId, { slot: number; decal: DecalRecord | null }>();
+    inkedFaces.forEach((face, index) => sourceByFace.set(face, { slot: index + 1, decal: sources[index].decal }));
 
     const sprites = TILE_FACE_IDS.map((face): BakedTileSprite => {
       const entry = sourceByFace.get(face);
@@ -640,36 +451,10 @@ export class TileAtlasBuilder {
         decalSurface: entry?.decal ? surface : null,
         decalLightRotationDeg: entry?.decal ? lightRotationDeg : null,
         decalSymbolRotationDeg: entry?.decal ? symbolRotationDeg : null,
-        shading: entry?.relief ? 'relief' : entry?.decal ? 'decal' : entry ? 'glyph' : 'bare',
-        reliefGroup: entry?.relief?.groupKey ?? null,
-        reliefBasis: entry?.relief
-          ? {
-              tangent: entry.relief.basis.tangent,
-              bitangent: entry.relief.basis.bitangent,
-              normal: entry.relief.basis.normal,
-            }
-          : null,
       };
     });
 
     return { page, sprites };
-  }
-
-  /**
-   * Draw one full-plate source (the Task 5A relief decal) into the shell's
-   * face plate. It is the same affine plate mapping `drawDecal` uses, with the
-   * whole image as the source rect.
-   */
-  private drawFacePlate(
-    ctx: CanvasRenderingContext2D,
-    shell: ShellStats,
-    image: AtlasImage,
-    rect: readonly [number, number, number, number],
-    offsetX: number,
-    offsetY: number,
-    scale: number,
-  ): void {
-    this.drawPlateRect(ctx, shell, image, rect, offsetX, offsetY, scale);
   }
 
   /**
@@ -696,23 +481,10 @@ export class TileAtlasBuilder {
         `${record.face} needs symbol rotation ${symbolRotationDeg}; only 0 is baked in Phase 2`,
       );
     }
-    this.drawPlateRect(ctx, shell, image, record.facePlateRect, offsetX, offsetY, scale);
-  }
-
-  /** Map a normalized source sub-rect of `image` onto the shell's face plate. */
-  private drawPlateRect(
-    ctx: CanvasRenderingContext2D,
-    shell: ShellStats,
-    image: AtlasImage,
-    rect: readonly [number, number, number, number],
-    offsetX: number,
-    offsetY: number,
-    scale: number,
-  ): void {
     const quad = shell.faceQuad.map(
       ([x, y]) => [x * scale + offsetX, y * scale + offsetY] as const,
     ) as unknown as FaceQuad;
-    const [u0, v0, u1, v1] = rect;
+    const [u0, v0, u1, v1] = record.facePlateRect;
     const point = (u: number, v: number): readonly [number, number] => [
       quad[0][0] + u * (quad[1][0] - quad[0][0]) + v * (quad[3][0] - quad[0][0]),
       quad[0][1] + u * (quad[1][1] - quad[0][1]) + v * (quad[3][1] - quad[0][1]),
@@ -807,7 +579,6 @@ export class TileAtlasBuilder {
     let bareSprites = 0;
     let decalSprites = 0;
     let flatGlyphSprites = 0;
-    let reliefSprites = 0;
 
     for (const shellId of FACE_UP_SHELL_IDS) {
       if (!requested.has(shellId)) continue;
@@ -817,20 +588,13 @@ export class TileAtlasBuilder {
         sprites.set(sprite.key, sprite);
         if (sprite.hasGlyph) {
           glyphSprites += 1;
-          if (sprite.shading === 'relief') {
-            reliefSprites += 1;
-          } else if (sprite.decalFile) decalSprites += 1;
+          if (sprite.decalFile) decalSprites += 1;
           else flatGlyphSprites += 1;
         } else {
           bareSprites += 1;
         }
       }
     }
-
-    // Every page is composed, so the source atlases and the per-face decals are
-    // no longer needed: the frame path blits the composed pages only.
-    this.relief?.release();
-    const reliefStats = this.relief?.stats;
 
     const atlasPixels = pages.reduce((total, page) => total + page.width * page.height, 0);
     return {
@@ -847,12 +611,6 @@ export class TileAtlasBuilder {
         bareSprites,
         decalSprites,
         flatGlyphSprites,
-        reliefSprites,
-        reliefGroups: this.relief?.orientationGroups.length ?? 0,
-        reliefDecals: reliefStats?.bakes ?? 0,
-        reliefBakeMs: reliefStats?.bakeMs ?? 0,
-        reliefCacheHits: reliefStats?.cacheHits ?? 0,
-        reliefAtlasLoadMs: reliefStats?.atlasLoadMs ?? 0,
         atlasPixels,
         rgbaBytes: atlasPixels * 4,
         pixelRatio: this.pixelRatio,
