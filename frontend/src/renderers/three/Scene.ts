@@ -33,7 +33,7 @@ import type {
 } from '../contract';
 import { CAMERA, LIGHT } from '../layoutConstants';
 import { applyPoseToCamera, rigPoseForAspect, verticalFieldOfViewDeg } from './cameraRig';
-import { createFelt } from './felt';
+import { createFelt, feltSizeForPose } from './felt';
 import type { FeltSurface } from './felt';
 
 /** Something that releases a GPU resource when the view unmounts. */
@@ -121,7 +121,9 @@ export class TableScene implements TableRenderer {
     this.addLights();
 
     // A default 16:9 pose until the host reports the real element size.
-    applyPoseToCamera(this.camera, rigPoseForAspect(16 / 9));
+    const initialPose = rigPoseForAspect(16 / 9);
+    applyPoseToCamera(this.camera, initialPose);
+    this.felt.setSize(feltSizeForPose(initialPose));
     this.requestFrame();
   }
 
@@ -155,7 +157,11 @@ export class TableScene implements TableRenderer {
     const ratio = effectiveDevicePixelRatio(cssWidth, cssHeight, dpr);
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(cssWidth, cssHeight, false);
-    applyPoseToCamera(this.camera, rigPoseForAspect(cssWidth / cssHeight));
+    const pose = rigPoseForAspect(cssWidth / cssHeight);
+    applyPoseToCamera(this.camera, pose);
+    // The felt is a square that reaches the top and bottom edges, so it is
+    // re-sized with the framing; it is never stretched to the aspect.
+    this.felt.setSize(feltSizeForPose(pose));
     // Draw now rather than on the next frame: the host reveals the canvas as
     // soon as this returns, and a resize is a discrete change, not a loop.
     this.draw();

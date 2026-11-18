@@ -1,6 +1,6 @@
 /**
  * The procedural felt (3D-02): deterministic bytes, the committed cloth colour,
- * and a plane that matches the mat.
+ * and the square that has to reach the top and bottom of the frame.
  *
  * The texture is generated in code, so these assertions are exact; whether the
  * felt *reads* as felt is the user handoff, not an agent verdict.
@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { CAMERA, TABLE } from '../layoutConstants';
 import { groundHit, rigPoseForAspect } from './cameraRig';
-import { FELT, generateFeltPixels } from './felt';
+import { FELT, feltSizeForPose, generateFeltPixels } from './felt';
 
 describe('procedural felt', () => {
   it('generates an RGBA texture of the declared size', () => {
@@ -64,24 +64,44 @@ describe('procedural felt', () => {
     expect(max - min).toBeLessThan(40);
   });
 
-  it('covers the whole frame at every supported aspect, as one square', () => {
-    expect(FELT.sizeUnits).toBeGreaterThan(TABLE.matSizeUnits);
-    const half = FELT.sizeUnits / 2;
+  it('reaches the top and bottom edges at every aspect, as one square', () => {
     // The plan's aspects plus the phone portraits a browser actually reports.
     const aspects = [...CAMERA.supportedAspects, 9 / 19.5, 9 / 21];
 
     for (const aspect of aspects) {
       const pose = rigPoseForAspect(aspect);
-      for (const ndcX of [-1, 1]) {
-        for (const ndcY of [-1, 1]) {
-          const hit = groundHit(pose, ndcX, ndcY);
-          expect(hit, `ground hit at ${aspect}`).not.toBeNull();
-          if (!hit) continue;
-          // Every screen corner lands on the felt, with a margin, so no
-          // background shows at the top, bottom or sides.
-          expect(Math.abs(hit[0]), `x at ${aspect}`).toBeLessThan(half * 0.98);
-          expect(Math.abs(hit[1]), `z at ${aspect}`).toBeLessThan(half * 0.98);
-        }
+      const size = feltSizeForPose(pose);
+      const half = size / 2;
+      expect(size, `size at ${aspect}`).toBeGreaterThan(TABLE.matSizeUnits);
+
+      // The square is centred on the table and square by construction: the
+      // near and far edges must both be at or beyond the frame's top and bottom
+      // lines, at the centre line where the felt cannot rely on its width.
+      const top = groundHit(pose, 0, 1);
+      const bottom = groundHit(pose, 0, -1);
+      expect(top, `top at ${aspect}`).not.toBeNull();
+      expect(bottom, `bottom at ${aspect}`).not.toBeNull();
+      if (!top || !bottom) continue;
+      expect(Math.abs(top[1]), `far edge at ${aspect}`).toBeLessThanOrEqual(half);
+      expect(Math.abs(bottom[1]), `near edge at ${aspect}`).toBeLessThanOrEqual(half);
+      expect(top[0], 'centre line').toBeCloseTo(0, 6);
+      expect(bottom[0], 'centre line').toBeCloseTo(0, 6);
+    }
+  });
+
+  it('is narrower than a wide frame, so its side edges stay visible', () => {
+    // A wide window is the case the user described: a square spanning the
+    // height cannot also span the width, so the felt's left/right edges are
+    // inside the frame. (On a tall window the same square is wider than the
+    // frame, which is geometry, not a bug.)
+    for (const aspect of [21 / 9, 16 / 9]) {
+      const pose = rigPoseForAspect(aspect);
+      const half = feltSizeForPose(pose) / 2;
+      for (const ndcY of [-1, 1]) {
+        const left = groundHit(pose, -1, ndcY);
+        expect(left, `left at ${aspect}`).not.toBeNull();
+        if (!left) continue;
+        expect(Math.abs(left[0]), `left edge at ${aspect}`).toBeGreaterThan(half);
       }
     }
   });

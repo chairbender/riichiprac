@@ -2,12 +2,13 @@
  * The procedural felt surface (3D-02).
  *
  * There is no modelled table and no new committed texture: the play surface is
- * one square felt plane under a deterministic value-noise texture, drawn much
- * larger than the 25-unit play mat so it reaches every edge of a full-window
- * frame (user guidance 2026-11-18: no background may show above or beside the
- * scene). The vignette is supplied in screen space by CSS (the 2.5D felt raster
- * has a vignette baked into screen space and must not be wrapped onto a 3D
- * plane).
+ * one square felt plane under a deterministic value-noise texture, sized so its
+ * far and near edges reach the top and bottom of the frame (user guidance
+ * 2026-11-18: no black band above the table). It is never stretched to the
+ * viewport, so on a wide window its left and right edges stay inside the frame
+ * and the scene background shows beside it — the intended look. The vignette is
+ * supplied in screen space by CSS (the 2.5D felt raster has a vignette baked
+ * into screen space and must not be wrapped onto a 3D plane).
  *
  * The noise is generated in code rather than read from `felt.png` so the plane
  * tiles seamlessly and the 3D view keeps D11's "no new committed runtime
@@ -25,6 +26,8 @@ import {
   SRGBColorSpace,
 } from 'three';
 import { TABLE } from '../layoutConstants';
+import { groundHit, rigPoseForAspect } from './cameraRig';
+import type { RigPose } from './cameraRig';
 
 /** Felt texture parameters. The base colour is the committed 2.5D felt's. */
 export const FELT = {
@@ -33,15 +36,13 @@ export const FELT = {
   /** Times the 512 texture repeats across the 25-unit mat. */
   repeat: 2,
   /**
-   * The drawn felt's side length, in tile units. It stays a square — the cloth
-   * is never stretched to the viewport — but it is much larger than the 25-unit
-   * play mat, because a full-window frame reaches past the mat: the frame
-   * corners need a half-size of 25.0 units at 21:9, 46.6 at 9:16, 60.8 on a
-   * 9:19.5 phone and 67.5 at 9:21 (see `groundHit`). 160 units covers all of
-   * those with margin, so no background shows above, below or beside the felt;
-   * the extra area is off-screen and costs nothing to draw.
+   * How far past the top and bottom frame edges the square reaches, as a
+   * fraction of the required half-size. Small on purpose: the felt's edges are
+   * meant to be seen on the sides of a wide window.
    */
-  sizeUnits: 160,
+  verticalMargin: 0.02,
+  /** A sane floor for a nonsense pose; every real aspect is much larger. */
+  minSizeUnits: 8,
   /** `felt-spec.json`'s base colour (#1a5038). */
   baseRgb: [26, 80, 56] as const,
   seed: 20261118,
@@ -54,6 +55,25 @@ export const FELT = {
   /** Per-pixel grain, so the plane does not band on a large display. */
   grainAmplitude: 0.8,
 } as const;
+
+/**
+ * The side length of the square felt for a pose, in tile units.
+ *
+ * The felt is user-visible cloth, not a frame filler: it is a **square** that
+ * is never stretched to the viewport, sized so its far and near edges reach the
+ * top and bottom of the frame (with {@link FELT.verticalMargin} to spare). On a
+ * wide window that leaves its left and right edges inside the frame, which is
+ * the intended look; on a tall one the same square is necessarily wider than the
+ * frame and reaches the sides. Ties, if any, go to the vertical fit: a black
+ * band above the table is the failure this rule exists to prevent.
+ */
+export function feltSizeForPose(pose: RigPose): number {
+  const top = groundHit(pose, 0, 1);
+  const bottom = groundHit(pose, 0, -1);
+  if (!top || !bottom) return FELT.minSizeUnits;
+  const half = Math.max(Math.abs(top[1]), Math.abs(bottom[1]));
+  return Math.max(FELT.minSizeUnits, half * 2 * (1 + FELT.verticalMargin));
+}
 
 /** Smoothstep interpolation weight for value noise. */
 function fade(t: number): number {
@@ -133,6 +153,8 @@ export function generateFeltPixels(
 /** A felt plane and the GPU resources it owns. */
 export interface FeltSurface {
   readonly mesh: Mesh;
+  /** Resize the square (see {@link feltSizeForPose}); it stays square. */
+  setSize(sizeUnits: number): void;
   dispose(): void;
 }
 
@@ -160,14 +182,15 @@ export function createFelt(): FeltSurface {
   texture.colorSpace = SRGBColorSpace;
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  // Keep the cloth's texel size constant now that the drawn square is larger
-  // than the mat: the same 12.5 units per repeat as `FELT.repeat` gives over
-  // the 25-unit mat.
-  const repeats = (FELT.sizeUnits / TABLE.matSizeUnits) * FELT.repeat;
-  texture.repeat.set(repeats, repeats);
   texture.needsUpdate = true;
 
-  const geometry = new PlaneGeometry(FELT.sizeUnits, FELT.sizeUnits, 1, 1);
+  // Built at one unit and scaled to whatever the frame needs, so a resize never
+  // rebuilds a geometry. The scale is uniform in the plane, so the felt stays a
+  // square; the texture repeat is rescaled with it to keep the cloth's texel
+  // size constant (the same 12.5 units per repeat as `FELT.repeat` gives over
+  // the 25-unit mat).
+  const geometry = new PlaneGeometry(1, 1, 1, 1);
+  const unitsPerRepeat = TABLE.matSizeUnits / FELT.repeat;
   const material = new MeshStandardMaterial({
     map: texture,
     roughness: 0.94,
@@ -178,12 +201,24 @@ export function createFelt(): FeltSurface {
   mesh.rotation.x = -Math.PI / 2;
   mesh.name = 'felt';
 
-  return {
+  const surface: FeltSurface = {
     mesh,
+    setSize(sizeUnits: number) {
+      const size = Number.isFinite(sizeUnits)
+        ? Math.max(FELT.minSizeUnits, sizeUnits)
+        : FELT.minSizeUnits;
+      mesh.scale.set(size, size, 1);
+      const repeats = size / unitsPerRepeat;
+      texture.repeat.set(repeats, repeats);
+    },
     dispose() {
       geometry.dispose();
       material.dispose();
       texture.dispose();
     },
   };
+
+  // Size it for the reference aspect until the host reports a real one.
+  surface.setSize(feltSizeForPose(rigPoseForAspect(16 / 9)));
+  return surface;
 }
