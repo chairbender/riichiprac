@@ -39,7 +39,7 @@ bash tools/render/bake-shells.sh --preview --only <id> [--only <id>...]  # fast 
 bash tools/render/bake-shells.sh --preview-shadow --only <id>  # single-tile shadow, no Blender
 bash tools/render/bake-shells.sh --audition # standing-hand fan calibration + sheets
 bash tools/render/bake-shells.sh --shadow-audition  # REF + A/B/C shadow sheet
-bash tools/render/bake-shells.sh --check   # shell + contact-shadow + relief check; no Blender needed
+bash tools/render/bake-shells.sh --check   # shell + contact-shadow check; no Blender needed
 bash tools/render/bake-overlays.sh --bake  # bake the Phase 3.5 contact decals + check
 bash tools/render/bake-overlays.sh --check # contact decals + composed pixels; no Blender
 bash tools/render/bake-hand-catches.sh        # production 3D hand catches + check
@@ -52,10 +52,12 @@ node tools/render/scripts/bake-faces.mjs   # bake the 37 face glyphs + faces.jso
 node tools/render/scripts/check-faces.mjs  # face glyph + atlas budget gate; no Blender/resvg
 bash tools/render/bake-decals.sh --spike   # carve/lit decal spike into build/decals (Blender)
 bash tools/render/bake-decals.sh --check   # validate the build decal manifest; no Blender
-bash tools/render/bake-relief.sh --bake    # Task 4B: bake the three carved relief atlases (Blender)
+# Task 4B relief maps were retired on 2026-11-18 (the runtime uses the Phase 2b
+# carved decals). The bakers remain for a possible revival and write into build/:
+bash tools/render/bake-relief.sh --bake    # bake the three relief atlases (Blender)
 bash tools/render/bake-relief.sh --preview --only 8s,4z  # fast partial relief bake into build/
 bash tools/render/bake-relief.sh --masks   # re-rasterise the relief artwork + distance fields (Node)
-bash tools/render/bake-relief.sh --check   # validate the committed relief atlases; no Blender
+bash tools/render/bake-relief.sh --check   # validate a local relief bake; no Blender
 cd frontend && npm run tune:carved         # lying-rig tuner at http://localhost:7458
 cd frontend && npm run atlas:review:carved # flat vs carved review sheets
 cd frontend && npm run atlas:review        # build the real atlas and write review sheets
@@ -431,10 +433,10 @@ script, the spec, the layout JSON and the proof artifacts together.
 | `bake_relief.py` | yes | Blender 4.5.9 orthographic relief baker: samples the distance field onto a 2× plate mesh, then four Cycles passes (pigment, normal, height/AO/roughness, mask) and atlas packing |
 | `bake-relief.sh` | yes | one command for dry-run/preview/masks/bake/check |
 | `scripts/bake-relief-masks.mjs` | yes | resvg artwork pass + exact per-axis weighted signed-distance field for the carve (build artifacts) |
-| `scripts/check-relief.mjs` | yes | dependency-free relief spec/atlas/channel/alignment/flat-glyph gate (CI) |
+| `scripts/check-relief.mjs` | yes | dependency-free relief spec/atlas/channel/alignment/flat-glyph gate (local; not CI while the atlases are unshipped) |
 | `scripts/review-relief.mjs` | yes | build-only contact, 4× zoom and paint-edge alignment sheets for the user's sign-off |
-| `../../frontend/public/table/relief/` | yes | the three committed atlases, 1536 × 2380 RGBA each |
-| `../../frontend/public/table/relief.json` | yes | the relief contract: cell rects, channel encodings, plate millimetres, px/mm, carve numbers, per-face measurements and hashes |
+| `build/relief/*.png` | build-only | the three relief atlases, 1536 × 2380 RGBA each; retired/unshipped since 2026-11-18 |
+| `build/relief/relief.json` | build-only | the relief contract: cell rects, channel encodings, plate millimetres, px/mm, carve numbers, per-face measurements and hashes |
 | `../../frontend/scripts/tune-carved.ts` | yes | the lying-rig preview/tuner server |
 | `../../frontend/scripts/tune-carved.html` | yes | the tuner UI |
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
@@ -1004,6 +1006,26 @@ cd frontend && npm run tune:carved           # lying-rig tuner
 cd frontend && npm run atlas:review:carved   # flat vs carved review sheets
 ```
 
+**Named decal profiles.** The decal look is a set of lighting/carve numbers, so
+save the good ones before experimenting:
+
+```bash
+node tools/render/scripts/decal-profile.mjs list
+node tools/render/scripts/decal-profile.mjs save approved-lying-v3-glare
+node tools/render/scripts/decal-profile.mjs use approved-lying-v3-glare
+```
+
+`save` snapshots the active `decal-spec.json` into `tools/render/decal-profiles/`;
+`use` restores it. Re-bake after applying a profile.
+
+- `approved-lying-v3-glare` — final approved rig (2026-11-18): white-fill islands
+  uncarved, lying rig ported from the upright parlour rig, specular-only head-on
+  glare spot (0.9°, 0.45 kW).
+- `approved-lying-v2` — same carve/lying rig without the glare spot.
+- `approved-lying-g2-glare` — the earlier 1.2° / 0.6 kW glare spot.
+- `experiment-glare-*` — 20°, grazing, and radial-stamp experiments; not used by
+  the approved rig.
+
 **Spike (measured).** 4 faces (`1m`, `5p`, `7z`, `5mr`) × (1 upright + 4 lying)
 = **20 decals at 158 × 216** (150 × 208 face plate + a 4 px transparent safety
 ring), **926,272 B** PNG, ~1 min wall on the dev box. Each decal is 34–62 KB
@@ -1047,7 +1069,14 @@ per-frame compositing.
 `tools/render/build/tune/preview/`. These are evidence for the user, not for the
 agent to sign off (AGENTS.md §6).
 
-### Task 4B: orthographic carved relief maps (2026-11-17)
+### Task 4B: orthographic carved relief maps (2026-11-17, retired 2026-11-18)
+
+> The relief maps were evaluated as the input to Task 5A and rejected: the
+> CPU lit result blew out highlights, lost the white-in-shape bumps, and had no
+> per-slot benefit once the light was screen-locked. The atlases and
+> `relief.json` were removed from `frontend/public/table/`; the Phase 2b carved
+> decals are the runtime path. The bakers and measurements below are kept as a
+> record and for a possible revival; write outputs to `build/`, not `public/`.
 
 The plan's chosen carved-face approach is **option 3**: one flat set of
 physically baked relief maps per face, lit in world space at runtime from each
