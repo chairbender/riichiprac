@@ -1134,6 +1134,30 @@ lights, same shader, camera moved in), `hero-overview.png` (the live view at
 committed carved decals converted to PNG and composited on the ivory face, as the
 approved recess to compare against. **Verdict: pending the user's review.**
 
+**Live-shading pass (same day, after the user's second review: "the inside
+white parts just look like white paint").** Measured against the approved
+decals, face `1m`, as luma by distance from the paint boundary:
+
+| 0 / 0.5 / 1.0 mm | decal | render before | render now |
+| --- | --- | --- | --- |
+| ivory luma | 217 / 240 / 240 | 110 / 195 / 238 (`ao^4`, normal 1.6) | 179 / 227 / 238 |
+
+| paint luma | p05 | p25 | p50 | p75 | p95 |
+| --- | --- | --- | --- | --- | --- |
+| decal | 31 | 43 | **80** | 87 | 177 |
+| render | 74 | 80 | **84** | 87 | 102 |
+
+What that bought: the key's area character (five samples over a 24° radius, the
+bake's tube is ~40°), a lower wrap (0.3) and a calibrated lacquer sheen on the
+paint (`PAINT_SHEEN` 0.05 linear) that desaturates it exactly as the decal's
+bake does (render median rgb 172,65,65 against the decal's 196,46,37). What it
+cannot buy: the decal's *width* (a 0.3 mm wall against the relief bake's
+0.655 mm) and the paint's *internal variation* (the decal's groove floor is
+slightly concave; the committed one is flat). Curving the normal/AO to fake
+sharpness only spreads a dark halo — the numbers above are the record of that
+attempt. `CARVE_NORMAL_STRENGTH` and `CARVE_AO_POWER` stay at 1.0 (use the maps
+as baked) and become the controls for the rebake below.
+
 ### 3D-S1 — POM cost measurement (optional, no app change)
 
 **Goal.** Answer "how many POM steps fit in 16.7 ms on this hardware" with a
@@ -1576,6 +1600,52 @@ and any conflict is hand-resolved.
 
 ---
 
+### 3D-17 — 3D-owned carve rebake at the decal profile
+
+**Goal.** Give the live shading the crispness the approved 2.5D decals have, by
+rebaking the carve channels at the decal's *profile* instead of the current
+0.655 mm / 40° one. This is the user-chosen "B" path (2026-11-18, second
+review): a fully live-lit face, not baked art pasted on the shells. The
+decal-on-shell hybrid stays the fallback (see 3D-05).
+
+**Depends on:** 3D-05. **Does not touch the 2.5D pipeline**: a new 3D-owned
+directory, its own spec and its own script, reading only the committed
+public-domain glyph PNGs.
+
+**Deliverables**
+
+- `tools/render3d/relief3d-spec.json` + `bake-relief3d.py`: port
+  `bake_decals.py`'s carve field (`carve_field` / `bezier_profile` /
+  `blurUnits` / `alphaRamp`) into a channel bake (albedo+paint, tangent
+  normal+height, AO+roughness) at **256 × 340** per face (the committed cell
+  size: 14.3 px/mm, still higher resolution than the decal's 8.4 px/mm), with
+  the decal's numbers: `depthFractionOfThickness` 0.03 (0.495 mm),
+  `transitionUnits` 0.0107 (0.3 mm), `blurUnits` 0.00429, and a tight AO
+  distance so the groove's shadow is a line, not a field.
+- `frontend/public/table/relief3d/` + `relief3d.json` with the same shape as
+  `relief.json` (cells, plate, measured stats, byte+sha256 pins), 37 faces.
+- `reliefAssets.ts` gains a source selector (`relief3d` when present and
+  pinned, else the committed `relief`), so 3D-03's validation and the fallback
+  path are unchanged.
+- No 2.5D file, no 2.5D request; the old relief atlases stay committed and
+  readable (the 2.5D owns them).
+
+**Acceptance criteria**
+
+- The new bake's lip profile and paint distribution are measured against the
+  decal exactly as in 3D-05's report, and the test prints both: the ivory luma
+  at 0 / 0.5 / 1.0 mm must be within 25 / 8 / 8 of the decal's 217 / 240 / 240,
+  and the paint's p05/p50/p95 within 15 / 12 / 40 of 31 / 80 / 177.
+- The carve depth, wall run and AO distance are printed beside the committed
+  bake's, so the difference is a number, not an impression.
+- Every committed atlas matches its pin; a missing or off-pin `relief3d`
+  degrades to the committed `relief` with one warning (no hard failure).
+- The hero view (`?renderer=3d&debug=hero`) and its depth sweep are re-run and
+  handed to the user; the verdict is recorded here.
+- No change to the tile body, the materials, the light rig or the layout.
+
+**Gate:** frontend gate + the bake's own `--check` + user verdict.
+
 ## 7. Proposed command-center slicing
 
 One task per unit, all `worktree` on `riichiprac`, created wave by wave (not all
@@ -1666,6 +1736,7 @@ which files it touched.
 | R7 | The DOM overlay drifts from the 3D camera (buttons not aligned with tiles) | medium / high (usability) | single projection source (`hitRects()`), tests at two aspects, user check on the final board | 3D-08 |
 | R8 | Shading/looks cannot be verified in CI | certain / medium | numeric probes for colours and POM displacement, debug modes, explicit user handoffs, no self-approval | all |
 | R9 | A new runtime dependency is more than the repo wants | low / medium | lazy chunk, budget gate, exact pin, MIT notice; the renderer interface keeps the choice reversible | 3D-02, 3D-16 |
+| R11 | The committed Task 4B carve is too soft to match the approved 2.5D decals at a live-lit face (0.655 mm wall, empty flat floor) | seen / medium (looks) | measure against the decals (3D-05's report), bake a 3D-owned set at the decal profile (3D-17), keep decal-on-shell as the fallback | 3D-05, 3D-17 |
 | R10 | Both renderers load the relief atlases at once (double GPU memory) if a view ever mounts both | low / medium | only one table is mounted at a time (structural test in 3D-14); dispose drops textures | 3D-14 |
 
 **Decisions recorded with the user (2026-11-18)** — all seven are settled; they

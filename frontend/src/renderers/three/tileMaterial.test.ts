@@ -23,8 +23,13 @@ import { TILE_LIGHTING_UNIFORMS } from './lighting';
 import { TILE_FRAGMENT_SHADER } from './materials/tile.frag';
 import { TILE_VERTEX_SHADER } from './materials/tile.vert';
 import {
+  CARVE_AO_POWER,
   CARVE_DEPTH_MM,
   CARVE_DEPTH_UNITS,
+  CARVE_NORMAL_STRENGTH,
+  KEY_SPREAD_DEG,
+  PAINT_CAVITY_BLEND,
+  PAINT_SHEEN,
   DEBUG_MODE_CODE,
   POM_HEIGHT_SCALE,
   POM_HEIGHT_SCALE_SWEEP,
@@ -195,8 +200,14 @@ describe('material uniforms', () => {
     handle.dispose();
   });
 
-  it('carries the shell material gate and coat', () => {
+  it('carries the shell material gate, coat and carve-response knobs', () => {
     const handle = material();
+    expect(handle.uniforms.uNormalStrength.value).toBe(CARVE_NORMAL_STRENGTH);
+    expect(handle.uniforms.uAoPower.value).toBe(CARVE_AO_POWER);
+    expect(handle.uniforms.uPaintCavityBlend.value).toBe(PAINT_CAVITY_BLEND);
+    expect(handle.uniforms.uPaintSheen.value).toBe(PAINT_SHEEN);
+    expect(handle.uniforms.uKeySpreadDeg.value).toBe(KEY_SPREAD_DEG);
+    expect(PAINT_SHEEN).toBeGreaterThan(0);
     expect(handle.uniforms.uBackEdgeFraction.value).toBe(0.3);
     expect(handle.uniforms.uThicknessUnits.value).toBeCloseTo(16.5 / 28, 12);
     expect(handle.uniforms.uCoatFace.value).toBe(0.4);

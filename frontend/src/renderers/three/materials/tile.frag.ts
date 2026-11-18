@@ -30,6 +30,18 @@
  *    roughness feeds one GGX lobe. Wrapped diffuse fakes the slab's
  *    translucency, and a second tight GGX lobe is the melamine clear coat the
  *    shells were baked with (`shell-spec.json`: coat 0.4 at roughness 0.1).
+ *
+ *    **Carve response.** The committed relief bake is a 0.655 mm, 40° V-wall
+ *    with a broad 1.2 mm AO field, and the approved 2.5D decals are a 0.3 mm
+ *    wall with tight occlusion: same engraving, much crisper shading. Two
+ *    calibration uniforms close that gap without a rebake:
+ *    `uNormalStrength` steepens the sampled wall (1.6 turns the map's 39°
+ *    median lip into ~52°), and `uAoPower` curves the cavity (`ao^4` takes the
+ *    lip's 0.66..0.99 into 0.19..0.96) so the groove's shadow side goes dark
+ *    while the open face stays exactly 1. The key is one directional light, but
+ *    the bake's key is a 40°-wide tube: `uKeySpreadDeg` integrates five samples
+ *    of that source for the specular only, which is what produces the decals'
+ *    bright lip rim. Measured against the decals in the unit's report.
  *    The white/blue split is `bake_shells.py`'s shader gate: everything behind
  *    0.3 x thickness is blue backing, so the side wall shows the 4.95 mm white
  *    band and the 11.55 mm blue band the shipped shells show.
@@ -70,6 +82,11 @@ uniform float uThicknessUnits;
 uniform float uCoatFace;
 uniform float uCoatBack;
 uniform float uCoatRoughness;
+uniform float uNormalStrength;
+uniform float uAoPower;
+uniform float uPaintCavityBlend;
+uniform float uPaintSheen;
+uniform float uKeySpreadDeg;
 
 uniform vec3 uKeyDirection;
 uniform vec3 uKeyColor;
@@ -104,8 +121,7 @@ float hemisphereWeight(vec3 worldNormal) {
 }
 
 /**
- * One GGX specular lobe (Smith-Schlick masking, Schlick Fresnel). Used twice:
- * the semigloss substrate and the shell's clear coat.
+ * One GGX specular lobe (Smith-Schlick masking, Schlick Fresnel).
  */
 vec3 ggxLobe(float ndl, float ndv, float ndh, float vdh, float roughness, float f0) {
   float alpha = max(roughness * roughness, 0.0016);
@@ -119,6 +135,46 @@ vec3 ggxLobe(float ndl, float ndv, float ndh, float vdh, float roughness, float 
   float fresnel = f0 + (1.0 - f0) * pow(1.0 - vdh, 5.0);
   return vec3(distribution * geometry * fresnel /
     (4.0 * ndv * max(ndl, EPSILON)) * ndl);
+}
+
+/**
+ * The specular of one light direction for the semigloss substrate plus the
+ * clear coat. roughness is the surface's (sampled or body) roughness.
+ */
+vec3 specularFrom(vec3 L, vec3 N, vec3 V, float roughness, float coat) {
+  vec3 halfVector = normalize(L + V);
+  float ndl = clamp(dot(N, L), 0.0, 1.0);
+  float ndv = clamp(dot(N, V), EPSILON, 1.0);
+  float ndh = clamp(dot(N, halfVector), 0.0, 1.0);
+  float vdh = clamp(dot(V, halfVector), 0.0, 1.0);
+  return ggxLobe(ndl, ndv, ndh, vdh, roughness, uSpecularF0) +
+    ggxLobe(ndl, ndv, ndh, vdh, uCoatRoughness, uSpecularF0) * coat;
+}
+
+/**
+ * The bake's key is a wide tube (40 x 2.5 units at 56 away, i.e. ~40 deg of
+ * source). A single directional sample would give a pinpoint highlight; five
+ * samples across the source give the broad rim the decals show. Diffuse keeps
+ * the single key direction: averaging it would only shift its brightness.
+ */
+vec3 keySpecular(vec3 N, vec3 V, float roughness, float coat) {
+  vec3 L = normalize(uKeyDirection);
+  vec3 reference = abs(L.y) > 0.9 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
+  vec3 ax = normalize(cross(L, reference));
+  vec3 ay = cross(L, ax);
+  float spread = radians(uKeySpreadDeg);
+  vec2 offsets[5];
+  offsets[0] = vec2(0.0, 0.0);
+  offsets[1] = vec2(1.0, 0.0);
+  offsets[2] = vec2(-1.0, 0.0);
+  offsets[3] = vec2(0.0, 1.0);
+  offsets[4] = vec2(0.0, -1.0);
+  vec3 total = vec3(0.0);
+  for (int i = 0; i < 5; i++) {
+    vec3 sampleDirection = normalize(L + ax * offsets[i].x * spread + ay * offsets[i].y * spread);
+    total += specularFrom(sampleDirection, N, V, roughness, coat);
+  }
+  return total * 0.2;
 }
 
 void main() {
@@ -144,6 +200,7 @@ void main() {
   float roughness = blueBody ? uBodyBlueRoughness : uBodyIvoryRoughness;
   float coat = blueBody ? uCoatBack : uCoatFace;
   float cavity = 1.0;
+  float vPaintMaskOut = 0.0;
   vec3 tangentNormal = vec3(0.0, 0.0, 1.0);
 
   // The base height is always sampled: the height debug view and the POM
@@ -200,10 +257,20 @@ void main() {
     vec4 aoSample = textureGrad(uAoRoughness, uv, dUvDx, dUvDy);
 
     tangentNormal = decodeTangentNormal(normalSample.rgb);
+    // The map's wall is 40 deg; the approved decals' is ~59 deg. Steepen the
+    // sampled normal so the plate reads like the sharper engraving, without a
+    // rebake. A flat (open face) normal is unchanged: 0 x strength is 0.
+    tangentNormal = normalize(vec3(tangentNormal.xy * uNormalStrength, tangentNormal.z));
     N = normalize(T * tangentNormal.x + B * tangentNormal.y + N * tangentNormal.z);
     albedo = mix(uBodyIvory, albedoSample.rgb, albedoSample.a);
+    vPaintMaskOut = albedoSample.a;
     roughness = aoSample.g;
-    cavity = aoSample.r;
+    // The committed AO only spans 0.66..1.0 on the lip. The ivory lip takes a
+    // power curve (the open face stays exactly 1, the wall drops); the painted
+    // groove keeps almost all of the atlas's own AO, because the decal's paint
+    // is a glossy lacquer that reads bright, not a shadow.
+    float lipCavity = pow(aoSample.r, uAoPower);
+    cavity = mix(lipCavity, aoSample.r, albedoSample.a * uPaintCavityBlend);
   }
 
   // Wrapped Lambert diffuse (translucent resin) + one GGX key highlight + a
@@ -215,18 +282,12 @@ void main() {
   vec3 ambientIrradiance = uAmbientColor * uAmbientIntensity;
   vec3 diffuse = albedo * (keyIrradiance + fillIrradiance + ambientIrradiance) / PI * cavity;
 
-  vec3 halfVector = normalize(lightDirection + V);
-  float ndl = clamp(dot(N, lightDirection), 0.0, 1.0);
-  float ndv = clamp(dot(N, V), EPSILON, 1.0);
-  float ndh = clamp(dot(N, halfVector), 0.0, 1.0);
-  float vdh = clamp(dot(V, halfVector), 0.0, 1.0);
-  vec3 substrateLobe = ggxLobe(ndl, ndv, ndh, vdh, roughness, uSpecularF0);
-  // The shell's clear coat: the same lobe at the shell's coat roughness, weighted
-  // by the per-side coat value (0.4 face, 0.35 backing).
-  vec3 coatLobe = ggxLobe(ndl, ndv, ndh, vdh, uCoatRoughness, uSpecularF0) * coat;
-  vec3 specular = uKeyColor * uKeyIntensity * (substrateLobe + coatLobe);
+  vec3 specular = uKeyColor * uKeyIntensity * keySpecular(N, V, roughness, coat);
 
   vec3 colour = diffuse + specular;
+  // The baked lacquer's broad sheen (see PAINT_SHEEN): painted pixels only, and
+  // only where the plate was sampled.
+  colour += vec3(uPaintSheen) * vPaintMaskOut * clamp(cavity, 0.0, 1.0);
 
   if (uDebug > 0.5) {
     if (uDebug < 1.5) {

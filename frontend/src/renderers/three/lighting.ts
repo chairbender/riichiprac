@@ -75,7 +75,7 @@ export const LIGHTING = {
      * for an up-facing surface at the committed direction (0.879 is the wrapped
      * `N·L`, not the raw 0.819), which is 70 % of the neutral calibration below.
      */
-    intensity: 2.507,
+    intensity: 2.561,
     direction: LIGHT.keyDirection,
   },
   fill: {
@@ -92,11 +92,20 @@ export const LIGHTING = {
   /** Dielectric F0 of melamine (the carved plate is non-metallic). */
   specularF0: 0.04,
   /**
-   * Subsurface wrap for the translucent ivory: `(N·L + wrap) / (1 + wrap)`.
-   * 0.5 softens the terminator the way a 16.5 mm slab of melamine actually
-   * scatters, without turning the tile into porcelain.
+   * The angular radius of the area-key approximation, in degrees: the shell and
+   * decal bakes light the tile with a 40 x 2.5-unit tube at 56 units, i.e. a
+   * source about 40 deg wide. The specular integrates five samples across this
+   * radius so a carved wall gets the decals' broad bright rim instead of a
+   * pinpoint.
    */
-  wrap: 0.5,
+  keySpreadDeg: 24,
+  /**
+   * Subsurface wrap for the translucent ivory: `(N·L + wrap) / (1 + wrap)`.
+   * 0.3 keeps a hint of the slab's scatter without lifting the terminator so
+   * far that a carved wall stops going dark — the decals' groove shadow needs
+   * the wall to reach zero. (0.5 was too soft: the lip read as white paint.)
+   */
+  wrap: 0.3,
 } as const;
 
 /** The normal orientation the rig is calibrated neutral for (the felt plane). */
@@ -176,6 +185,7 @@ export interface LightingUniformValues {
   readonly ambientIntensity: number;
   readonly specularF0: number;
   readonly wrap: number;
+  readonly keySpreadDeg: number;
   /** The body colours the shader mixes the plate's paint mask into. */
   readonly bodyIvory: LinearRgb;
   readonly bodyBlue: LinearRgb;
@@ -201,6 +211,7 @@ export const TILE_LIGHTING_UNIFORMS: LightingUniformValues = {
   ambientIntensity: LIGHTING.ambient.intensity,
   specularF0: LIGHTING.specularF0,
   wrap: LIGHTING.wrap,
+  keySpreadDeg: LIGHTING.keySpreadDeg,
   bodyIvory: hexToLinear(BODY.ivoryHex),
   bodyBlue: hexToLinear(BODY.blueHex),
   bodyIvoryRoughness: BODY.ivoryRoughness,
@@ -266,31 +277,60 @@ export function predictLitColour(options: {
   const irradiance = diffuseIrradiance(normal).map((value) => value * ao) as unknown as LinearRgb;
 
   const light = LIGHTING.key.direction;
-  const half = normalise([
-    light[0] + viewDir[0],
-    light[1] + viewDir[1],
-    light[2] + viewDir[2],
-  ]);
-  const ndl = Math.min(1, Math.max(0, dot(normal, light)));
   const ndv = Math.min(1, Math.max(1e-4, dot(normal, viewDir)));
-  const ndh = Math.min(1, Math.max(0, dot(normal, half)));
-  const vdh = Math.min(1, Math.max(0, dot(viewDir, half)));
-  const lobe = (surfaceRoughness: number): number => {
-    const alpha = Math.max(surfaceRoughness * surfaceRoughness, 0.0016);
-    const alpha2 = alpha * alpha;
-    const denominator = ndh * ndh * (alpha2 - 1) + 1;
-    const distribution = alpha2 / (Math.PI * denominator * denominator);
-    const k = alpha * 0.5;
-    const geometry = (ndv / (ndv * (1 - k) + k)) * (ndl / (ndl * (1 - k) + k));
-    const fresnel = LIGHTING.specularF0 + (1 - LIGHTING.specularF0) * Math.pow(1 - vdh, 5);
-    return (distribution * geometry * fresnel) / (4 * ndv * Math.max(ndl, 1e-4)) * ndl;
-  };
-  const specularScale =
-    lobe(roughness) + coat * lobe(BODY.coatRoughness);
+  // The area-key approximation: five directions across the source's radius,
+  // averaged exactly as the shader's `keySpecular` does it.
+  const spread = (LIGHTING.keySpreadDeg * Math.PI) / 180;
+  const reference: Direction3 = Math.abs(light[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+  const ax = normalise(cross(light, reference));
+  const ay = cross(light, ax);
+  const offsets: readonly (readonly [number, number])[] = [
+    [0, 0],
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ];
+  let specularScale = 0;
+  for (const offset of offsets) {
+    const sampleDirection = normalise([
+      light[0] + ax[0] * offset[0] * spread + ay[0] * offset[1] * spread,
+      light[1] + ax[1] * offset[0] * spread + ay[1] * offset[1] * spread,
+      light[2] + ax[2] * offset[0] * spread + ay[2] * offset[1] * spread,
+    ]);
+    const sampleHalf = normalise([
+      sampleDirection[0] + viewDir[0],
+      sampleDirection[1] + viewDir[1],
+      sampleDirection[2] + viewDir[2],
+    ]);
+    const sampleNdl = Math.min(1, Math.max(0, dot(normal, sampleDirection)));
+    const sampleNdh = Math.min(1, Math.max(0, dot(normal, sampleHalf)));
+    const sampleVdh = Math.min(1, Math.max(0, dot(viewDir, sampleHalf)));
+    const sampleLobe = (surfaceRoughness: number): number => {
+      const alpha = Math.max(surfaceRoughness * surfaceRoughness, 0.0016);
+      const alpha2 = alpha * alpha;
+      const denominator = sampleNdh * sampleNdh * (alpha2 - 1) + 1;
+      const distribution = alpha2 / (Math.PI * denominator * denominator);
+      const k = alpha * 0.5;
+      const geometry = (ndv / (ndv * (1 - k) + k)) * (sampleNdl / (sampleNdl * (1 - k) + k));
+      const fresnel = LIGHTING.specularF0 + (1 - LIGHTING.specularF0) * Math.pow(1 - sampleVdh, 5);
+      return (distribution * geometry * fresnel) / (4 * ndv * Math.max(sampleNdl, 1e-4)) * sampleNdl;
+    };
+    specularScale += sampleLobe(roughness) + coat * sampleLobe(BODY.coatRoughness);
+  }
+  specularScale /= offsets.length;
   return [
     albedo[0] * irradiance[0] + KEY_LINEAR[0] * LIGHTING.key.intensity * specularScale,
     albedo[1] * irradiance[1] + KEY_LINEAR[1] * LIGHTING.key.intensity * specularScale,
     albedo[2] * irradiance[2] + KEY_LINEAR[2] * LIGHTING.key.intensity * specularScale,
+  ];
+}
+
+function cross(a: Direction3, b: Direction3): Direction3 {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
   ];
 }
 

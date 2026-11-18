@@ -134,8 +134,9 @@ describe('wrapped diffuse', () => {
   it('matches N·L at the wrap midpoint and clamps at the extremes', () => {
     expect(wrappedDiffuse([0, 1, 0], [0, 1, 0])).toBeCloseTo(1, 6);
     expect(wrappedDiffuse([0, 1, 0], [0, -1, 0])).toBeCloseTo(0, 6);
-    // Light exactly at the horizon: the wrap already lights half the term.
-    expect(wrappedDiffuse([0, 1, 0], [1, 0, 0])).toBeCloseTo(1 / 3, 6);
+    // Light exactly at the horizon: the wrap already lights part of the term
+    // (wrap / (1 + wrap) = 0.3 / 1.3).
+    expect(wrappedDiffuse([0, 1, 0], [1, 0, 0])).toBeCloseTo(LIGHTING.wrap / (1 + LIGHTING.wrap), 6);
   });
 
   it('is monotone in N·L', () => {

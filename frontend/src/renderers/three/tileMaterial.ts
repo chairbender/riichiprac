@@ -93,6 +93,56 @@ export const POM_HEIGHT_SCALE = 0.25;
 export const POM_HEIGHT_SCALE_SWEEP: readonly number[] = [0, 0.25, 0.5, 1];
 
 /**
+ * Carve response calibration, measured against the approved 2.5D decals.
+ *
+ * Two knobs, and what the measurements say about each:
+ *
+ * - `CARVE_NORMAL_STRENGTH` steepens the sampled wall and `CARVE_AO_POWER`
+ *   curves the cavity. Both are kept at **1.0** because the committed relief
+ *   bake is already sharper than the decal at the edge: measured as the mean
+ *   ivory luma against distance from the paint boundary, the decal reads
+ *   217 / 240 / 240 at 0 / 0.5 / 1.0 mm and the render 179 / 227 / 238 (1.0)
+ *   or 171 / 223 / 238 (1.2 + a 1.15 normal). Curving harder only spreads a
+ *   dark halo (a first pass at `ao^4` + 1.6 read 110 / 195 / 238). The real
+ *   residual is *width*: the relief bake's wall is 0.655 mm at 40° where the
+ *   decal's is 0.3 mm, so no shader curve can narrow it. That is what the
+ *   3D-owned rebake is for; the knobs stay as the controls for it.
+ * - The paint's *brightness* was the visible gap: the decal's paint is a
+ *   glossy lacquer whose median is 80/255 with a sheen (rgb 196,46,37 against
+ *   the glyph's 166,12,12), and the render's was 41 — a flat dark red, which
+ *   is what "looks like paint" meant. {@link PAINT_SHEEN} closes that median.
+ */
+export const CARVE_NORMAL_STRENGTH = 1.0;
+export const CARVE_AO_POWER = 1.0;
+
+/** The area-key approximation's angular radius (see `lighting.ts`). */
+export const KEY_SPREAD_DEG = TILE_LIGHTING_UNIFORMS.keySpreadDeg;
+
+/**
+ * How much of the cavity curve a *painted* pixel takes.
+ *
+ * The decal's paint is a glossy lacquer sitting in the groove: its baked luma
+ * spreads 30..212 (median 77) with a sheen, while the ivory lip around it is
+ * only faintly shaded (mean 217 at the edge, back to 240 by 0.5 mm). Applying
+ * the lip's cavity curve to the paint crushes it to a flat dark red, so the
+ * paint keeps the atlas's own AO and the ivory gets the curve.
+ */
+export const PAINT_CAVITY_BLEND = 0.0;
+
+/**
+ * The paint's broad lacquer sheen, in linear light added on painted pixels.
+ *
+ * The committed decal bakes its paint with a 40°-wide tube key, and the groove
+ * floor's slight concavity spreads that highlight over the whole stroke: the
+ * decal's paint is a neutral +0.05 linear over the same pigment (its median
+ * rgb 196,46,37 against the glyph's 166,12,12). A flat floor under one
+ * directional key produces almost none of that (our median was 41 against the
+ * decal's 77), so the plate adds it as a calibrated sheen. It only applies to
+ * painted pixels; the ivory's probe stays exact.
+ */
+export const PAINT_SHEEN = 0.05;
+
+/**
  * Debug-mode codes the shader branches on. `hero` selects a *view* (the scene
  * composition), and `pom-off` is a step count of 0, so neither has a code here;
  * `wireframe` is a material flag rather than a fragment output.
@@ -188,6 +238,11 @@ export function createTileMaterial(options: TileMaterialOptions): TileMaterialHa
     uCoatFace: { value: TILE_LIGHTING_UNIFORMS.coatFace },
     uCoatBack: { value: TILE_LIGHTING_UNIFORMS.coatBack },
     uCoatRoughness: { value: TILE_LIGHTING_UNIFORMS.coatRoughness },
+    uNormalStrength: { value: CARVE_NORMAL_STRENGTH },
+    uAoPower: { value: CARVE_AO_POWER },
+    uPaintCavityBlend: { value: PAINT_CAVITY_BLEND },
+    uPaintSheen: { value: PAINT_SHEEN },
+    uKeySpreadDeg: { value: KEY_SPREAD_DEG },
     uKeyDirection: { value: [...TILE_LIGHTING_UNIFORMS.keyDirection] },
     uKeyColor: { value: [...TILE_LIGHTING_UNIFORMS.keyColor] },
     uKeyIntensity: { value: TILE_LIGHTING_UNIFORMS.keyIntensity },
