@@ -371,6 +371,17 @@ enter the artifact. The set is refused — not trimmed — if the bodies exceed 
 rendered view and is already mostly spent). The operator contract is in
 `replay-miner-operations.md`.
 
+**Serving the body.** A pack body must be served as the exact bytes on disk:
+`Content-Type: application/gzip` and **no** `Content-Encoding` header. If a
+static server infers `Content-Encoding: gzip` from the `.json.gz` extension, the
+browser transparently decompresses the response, the loader receives the JSON
+document instead of the stored gzip body, and its byte-count/SHA-256 check
+fails (the exact failure mode that a Vite dev session hit on the first Q2 pack).
+GitHub Pages already serves the file as `application/gzip` with no
+content-encoding; `frontend/vite.config.ts` installs a `rawScenarioPackBodies`
+middleware for `vite dev` and `vite preview`; any R2/HF/nginx mirror must do the
+same. `scripts/check-pack-cors.mjs` can then verify the served hash and bytes.
+
 **CI.** `.github/workflows/deploy.yml`:
 
 1. optionally downloads a pack export published as a GitHub Release asset
@@ -407,10 +418,12 @@ No mirror URL is a normal skipped run (exit 0). **Google Drive is a
 corpus/DB backup only** (rclone `copy` + SQLite snapshots + `rclone check`) and
 is never in the browser's pack chain.
 
-**Committed smoke pack.** `frontend/public/scenarios/` ships the P1a fixture
-(`replay.fixture.2026-11`, 2 scenarios, 3 572 body bytes, 614-byte manifest) so
-the Pages build proves the whole path before a curated pack exists. P3 consumes
-this manifest; Q2 replaces it with the first curated ch. 8 pack.
+**Committed pack.** Q2 replaced the P1a fixture with the first curated ch. 8
+defense pack (`replay.ch8-defense.2026-11`, 200 scenarios, 143 528 body bytes,
+763-byte manifest); `scripts/check-ch8-pack.mjs` checks its content and
+`scripts/check-pack-hosting.mjs` checks the hosting envelope. The fixture is
+still reproducible from the data root for the Q1 harness. P3 consumes this
+manifest.
 
 **Runtime loader (P3, 2026-11-17).** `frontend/src/services/packLoader.ts` fetches
 only `scenarios/manifest.json` at launch, validates it against the schema, and

@@ -99,6 +99,12 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Verify committed ch8 pack content
+        run: node scripts/check-ch8-pack.mjs --dir frontend/dist/scenarios
+
+      - name: Verify pack bodies are served raw
+        run: node scripts/check-pack-serving.mjs
+
       - name: Frontend lint
         working-directory: frontend
         run: npm run lint

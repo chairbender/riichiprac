@@ -215,6 +215,7 @@
     "frontend_lint": "pass",
     "pack_hosting": "41/41 checks",
     "ch8_pack_content": "221/221 checks",
+    "pack_serving": "8/8 checks (application/gzip, no Content-Encoding, exact bytes/SHA-256)",
     "audit": "clean, 0 findings"
   },
   "storage": {

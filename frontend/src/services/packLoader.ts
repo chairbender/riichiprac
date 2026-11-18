@@ -16,7 +16,10 @@
  * difference is that the cache key includes the content address, so a new body
  * can never be served under an old hash.
  *
- * Hosting contract: `hosting-plan.md` §7. Publishing/audit contract:
+ * Hosting contract: `hosting-plan.md` §7. The body must arrive as the exact
+ * bytes on disk (`application/gzip`, **no** `Content-Encoding`); a server that
+ * decompresses `.gz` responses makes the byte-count/SHA-256 check fail before
+ * the loader can parse anything. Publishing/audit contract:
  * `replay-miner-operations.md`.
  */
 import { isCorrectAction } from '../actions';

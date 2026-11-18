@@ -218,6 +218,7 @@ pruned the old 2-scenario fixture body and installed the ch8 pack plus its
 | Answer accuracy | 100/100 shipped bases are stable book labels (Mortal top-1 agrees with the book answer); 0 contested shipped. 10/10 held-out QA stable and legal |
 | Audit | 0 findings; every answer recomputed and legal; source/licence/provenance complete |
 | Hosting | 41/41 `check-pack-hosting.mjs` checks; 221/221 `check-ch8-pack.mjs` checks |
+| Serving | 8/8 `check-pack-serving.mjs` checks: `application/gzip`, no `Content-Encoding`, exact bytes/SHA-256. `vite.config.ts` serves the bodies raw in dev/preview; Pages already does |
 | Frontend | 313 tests pass, build/lint pass; Q1 loader smoke passes on the ch8 pack |
 | Too easy / too hard | Not collected yet: no learner traffic. Q2r human review and the in-app feedback path are the next measurement |
 | Snapshot | `snapshots/miner-20261118-031900.sqlite`, 304,259,072 bytes, `PRAGMA integrity_check = ok`, 999 replays / 44,683 decisions / 200 selected / 200 pack scenarios; every content-addressed replay path exists |

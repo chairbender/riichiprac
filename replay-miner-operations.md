@@ -1477,6 +1477,15 @@ deliberate: the loader tries the same-origin manifest/body first, and an
 optional external mirror is only a second base for the same relative path. A
 pack is never loaded from Google Drive.
 
+**Raw-body serving.** The loader checks a body's byte count and SHA-256 before
+it gunzips it, so the body must arrive as the exact stored bytes:
+`Content-Type: application/gzip` and no `Content-Encoding`. GitHub Pages already
+does that; `frontend/vite.config.ts` installs a `rawScenarioPackBodies`
+middleware for `vite dev`/`vite preview`, and a mirror must configure the same.
+`scripts/check-pack-serving.mjs` starts the preview server and asserts the
+headers, bytes and hash. A server that decompresses `.gz` responses makes the
+loader see the JSON document and reject the pack.
+
 ### Budgets
 
 | Budget | Default | Enforced by |
