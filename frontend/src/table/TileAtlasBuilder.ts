@@ -148,7 +148,7 @@ export interface AtlasStats {
   readonly reliefSprites: number;
   /** `(bucket, rounded basis)` groups the relief bakery resolved. */
   readonly reliefGroups: number;
-  /** Unique lit face decals in the relief cache. */
+  /** Unique lit face decals the relief bakery baked (the source cache is released after composition). */
   readonly reliefDecals: number;
   readonly reliefBakeMs: number;
   readonly reliefCacheHits: number;
