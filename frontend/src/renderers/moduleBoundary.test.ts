@@ -21,6 +21,7 @@ const FILES = [
   'snapshot.ts',
   'capabilities.ts',
   'layoutConstants.ts',
+  'three/boardLayout.ts',
 ] as const;
 
 function source(file: (typeof FILES)[number]): string {
@@ -50,7 +51,12 @@ describe('3D renderer module boundaries', () => {
   });
 
   it('keeps the snapshot and the contracts free of DOM and renderer types', () => {
-    for (const file of ['contract.ts', 'snapshot.ts', 'layoutConstants.ts'] as const) {
+    for (const file of [
+      'contract.ts',
+      'snapshot.ts',
+      'layoutConstants.ts',
+      'three/boardLayout.ts',
+    ] as const) {
       const text = source(file);
       expect(text, file).not.toMatch(/\bdocument\b/);
       expect(text, file).not.toMatch(/\bwindow\b/);
@@ -63,7 +69,12 @@ describe('3D renderer module boundaries', () => {
     expect(source('snapshot.ts')).toMatch(
       /export function snapshotFromGameState\(/,
     );
-    for (const file of ['contract.ts', 'capabilities.ts', 'layoutConstants.ts'] as const) {
+    for (const file of [
+      'contract.ts',
+      'capabilities.ts',
+      'layoutConstants.ts',
+      'three/boardLayout.ts',
+    ] as const) {
       expect(source(file), file).not.toMatch(/snapshotFromGameState/);
     }
   });

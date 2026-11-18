@@ -1,5 +1,6 @@
 /**
- * The 3D chain's committed table and camera constants (3D-01).
+ * The 3D chain's committed table and camera constants (3D-01; the board and
+ * framing constants are 3D-06's additions to the same module).
  *
  * These mirror the user-signed-off whole-table reference
  * (`tools/render/table-reference-spec.json`, rig v13) and the committed tile
@@ -10,11 +11,13 @@
  * optional local `--reference` run, not a CI gate, so a 2.5D edit cannot turn
  * the 3D gate red.
  *
+ * Everything here is pure data: no three.js, no DOM, no game rules. The
+ * consumer is `three/boardLayout.ts`, which turns these numbers into world
+ * transforms and a solved camera per aspect.
+ *
  * All lengths are tile units: **1 unit = 28 mm**, the tile height. The 3D world
  * is +X right, +Y up, +Z toward the human, which maps from the Blender reference
  * as `(x, y, z)three = (x, z, -y)blender`.
- *
- * Pure data: no three.js, no DOM.
  */
 
 /** The committed tile proportions in millimetres (height x width x thickness). */
@@ -55,6 +58,25 @@ export const TABLE = {
   matSizeUnits: 25,
   /** Screen-space compass well; the overlay is DOM, not 3D text. */
   compassWellUnits: 4,
+} as const;
+
+/**
+ * A point stick (1000 points), lying flat next to the compass well.
+ *
+ * The sticks are table furniture, not tiles: the layout never merges them into
+ * the tile list and the collision gate skips them. They sit in the free band
+ * between the compass well (half-width 2) and the human's nearest pond row
+ * (inner edge 2.2886), a 0.29-unit annulus wide enough for the 0.22-unit width,
+ * and they lie along +X so the row reads from the camera.
+ */
+export const STICK = {
+  lengthUnits: 1.2,
+  widthUnits: 0.22,
+  heightUnits: 0.1,
+  /** Centre-line distance from the table centre, on the human's (+Z) side. */
+  radiusUnits: 2.144,
+  /** Centre-to-centre step along the row. */
+  pitchUnits: 0.3,
 } as const;
 
 /** Seats around the table, in turn order from the human. */
@@ -104,10 +126,37 @@ export const WALL = {
   /** The committed one-tile draw end: slot 16 loses its top tier on every run. */
   drawEndSlot: WALL_DRAW_END_SLOT,
   drawEndTiers: WALL_DRAW_END_TIERS,
+  /**
+   * The draw end sits at the seat's **right** (local +tangential), which is the
+   * committed clockwise draw: the close wall draws from its right, the top wall
+   * from its left, the right wall from its far side and the left wall from its
+   * close side. In each seat's own frame that is the same +w end, so the layout
+   * and its gate can assert one rule instead of four.
+   */
+  drawEndIsSeatRight: true,
   slotsPerRun: WALL_STACKS_PER_RUN * WALL_TIERS,
   tileCount:
     WALL_RUNS *
     (WALL_STACKS_PER_RUN * WALL_TIERS - (WALL_TIERS - WALL_DRAW_END_TIERS)),
+} as const;
+
+/**
+ * The revealed dora indicators: face-up on the far wall's top tier, one per
+ * indicator, counting in from the draw end (the 3D contract places them there,
+ * §4 of `3d_renderer_implementation_plan.md`; the 2.5D reference's dead wall is
+ * on the left run and is not modelled here).
+ *
+ * Indicator `i` covers the wall stack at `drawEndSlot - 1 - i`, tier 1, and the
+ * decorative wall tile underneath it is omitted, so the two lists never draw the
+ * same tile twice. A game reveals at most five indicators (four kans plus the
+ * initial flip), which is what the layout accepts.
+ */
+export const DORA = {
+  /** Top tier, matching the flipped wall tile. */
+  tier: 1,
+  /** Indicator 0 sits one stack inboard of the missing draw-end top. */
+  firstStackFromDrawEnd: 1,
+  maxIndicators: 5,
 } as const;
 
 /**
@@ -121,6 +170,8 @@ export const POND = {
   rows: 3,
   /** A 21 mm tile plus the 0.2 mm column groove. */
   columnPitchUnits: TILE.widthUnits + 0.2 / UNIT_MM,
+  /** The column gap a turned tile is set out from its neighbour by. */
+  columnGapUnits: 0.2 / UNIT_MM,
   /** A 28 mm tile plus the 0.3 mm row groove. */
   rowPitchUnits: TILE.heightUnits + TILE.gapUnits,
   /** Distance from table centre to each row's centre line, nearest first. */
@@ -129,6 +180,13 @@ export const POND = {
   columnCentreOffsetUnits: 2.5 * (TILE.widthUnits + 0.2 / UNIT_MM),
   /** Extra anchors on the nearest row, at columns 6..9. */
   overflowColumns: 4,
+  /** Which row the overflow cells extend: the nearest row, index into rowRadiiUnits. */
+  overflowRow: 0,
+  /**
+   * A turned (riichi) discard advances the row by its long axis: a 28 mm tile
+   * plus the 0.3 mm groove, exactly the reference's `turned` step.
+   */
+  sidewaysPitchUnits: TILE.heightUnits + TILE.gapUnits,
   /** 18 pond cells plus the four overflow anchors. */
   capacity: 18 + 4,
 } as const;
@@ -160,6 +218,40 @@ export const HAND = {
 } as const;
 
 /**
+ * One seat's open-meld row: four slots to the right of the hand, outside the
+ * wall ring at the hand's radius (the reference's `meld` block).
+ *
+ * The row is laid out as a sequence, not a fixed grid: an upright slot advances
+ * by a 21 mm tile plus the 0.3 mm groove, and a sideways (called) slot advances
+ * by its 28 mm long axis plus the groove, exactly the reference's
+ * `calledWidthUnits`. A meld therefore occupies as many slots as it has tiles,
+ * and consecutive melds follow each other along the row (the reference only
+ * models the single 4-slot row). If a row would run past {@link MELD.maxRowUnits}
+ * the next meld starts a row one pitch nearer the player, so a four-meld hand
+ * never leaves the mat.
+ */
+export const MELD = {
+  /** A full row's nominal slots: two upright, the called tile, the kan extension. */
+  slots: 4,
+  /** Advance past an upright meld tile. */
+  uprightPitchUnits: TILE.widthUnits + TILE.gapUnits,
+  /** Advance past a sideways (called) meld tile. */
+  sidewaysPitchUnits: TILE.heightUnits + TILE.gapUnits,
+  /** The gap a sideways slot is set out from its neighbour by. */
+  slotGapUnits: TILE.gapUnits,
+  /** Tangential start of the row, clear of the drawn tile (5.58 + 0.375). */
+  rowStartUnits: 6.1,
+  /** Centre-line radius of the first meld row, at the hand's radius. */
+  rowRadiusUnits: HAND.backRadiusUnits,
+  /** Radius step for a second/third meld row (a 28 mm tile plus clearance). */
+  rowPitchUnits: 1.05,
+  /** Meld rows before a row has to keep growing along its own length. */
+  rowCount: 3,
+  /** Tangential limit of one row: the mat edge (12.5) less 0.1 units. */
+  maxRowUnits: 12.4,
+} as const;
+
+/**
  * The committed whole-table camera rig: 75 mm on a 36 mm gauge, pitched 50°
  * down, centred on X = 0 at 76 units behind the south edge and aimed 0.35 units
  * above the felt. Blender's Shift Y is measured against the sensor width and
@@ -186,6 +278,14 @@ export const CAMERA = {
   clipEndUnits: 600,
   /** The portrait preset's steeper pitch (plan §2.4). */
   portraitPitchDeg: 62,
+  /** Aspects narrower than this use {@link CAMERA.portraitPitchDeg}. */
+  portraitBelowAspect: 1,
+  /** The reference frame whose relative margins every other aspect preserves. */
+  framingAspect: 16 / 9,
+  /** The safe-area margin the framing solver must keep at every aspect. */
+  safeAreaMargin: 0.02,
+  /** The hand's projected long axis, as a fraction of the frame height. */
+  handLongAxisMinViewportFraction: 0.05,
   /** Every aspect the framing solver must keep inside the safe area. */
   supportedAspects: [
     21 / 9,

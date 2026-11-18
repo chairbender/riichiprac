@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   CAMERA,
+  DORA,
   HAND,
   LIGHT,
+  MELD,
   POND,
   SEATS,
+  STICK,
   TABLE,
   TILE,
   TILE_MM,
@@ -148,5 +151,83 @@ describe('3D layout constants: light', () => {
     expect(z).toBeGreaterThan(0);
     expect(LIGHT.azimuthDeg).toBe(315);
     expect(LIGHT.elevationDeg).toBe(55);
+  });
+});
+
+describe('3D layout constants: board layout additions (3D-06)', () => {
+  it('puts each run\u2019s draw end at the seat\u2019s right', () => {
+    expect(WALL.drawEndIsSeatRight).toBe(true);
+  });
+
+  it('reveals dora on the far wall\u2019s top tier, in from the draw end', () => {
+    expect(DORA.tier).toBe(1);
+    expect(DORA.firstStackFromDrawEnd).toBe(1);
+    expect(DORA.maxIndicators).toBe(5);
+    // Five indicators still land on real stacks of the far run.
+    expect(
+      WALL.drawEndSlot - DORA.firstStackFromDrawEnd - (DORA.maxIndicators - 1),
+    ).toBeGreaterThanOrEqual(0);
+  });
+
+  it('describes the pond overflow on the nearest row', () => {
+    expect(POND.overflowRow).toBe(0);
+    expect(POND.rowRadiiUnits[POND.overflowRow]).toBe(POND.rowRadiiUnits[0]);
+    expect(POND.overflowColumns).toBe(4);
+    expect(POND.columnGapUnits).toBeCloseTo(0.2 / 28, 12);
+    expect(POND.sidewaysPitchUnits).toBeCloseTo(1 + 0.3 / 28, 12);
+    // The committed centre offset is the middle of a 6-column row.
+    expect(POND.columnCentreOffsetUnits).toBeCloseTo(
+      2.5 * POND.columnPitchUnits,
+      9,
+    );
+    expect(
+      POND.columnCentreOffsetUnits + TILE.widthUnits / 2,
+    ).toBeCloseTo(2.267857142, 8);
+  });
+
+  it('lays a meld row right of the drawn tile, outside the wall', () => {
+    expect(MELD.slots).toBe(4);
+    expect(MELD.rowStartUnits).toBeCloseTo(6.1, 12);
+    expect(MELD.rowRadiusUnits).toBe(HAND.backRadiusUnits);
+    expect(MELD.uprightPitchUnits).toBeCloseTo(0.7607142857, 9);
+    expect(MELD.sidewaysPitchUnits).toBeCloseTo(1.0107142857, 9);
+    // The row starts clear of the 13-tile draw slot.
+    expect(MELD.rowStartUnits).toBeGreaterThan(
+      HAND.drawOffsetUnits + TILE.widthUnits / 2,
+    );
+    // A four-tile kan fits inside one row's tangential limit.
+    expect(MELD.rowStartUnits + 4 * MELD.sidewaysPitchUnits).toBeLessThanOrEqual(
+      MELD.maxRowUnits,
+    );
+    // Successive meld rows stay clear of the wall's outer edge.
+    expect(
+      MELD.rowRadiusUnits -
+        (MELD.rowCount - 1) * MELD.rowPitchUnits -
+        TILE.heightUnits / 2,
+    ).toBeGreaterThan(WALL.radiusUnits + TILE.heightUnits / 2);
+  });
+
+  it('keeps a point stick between the compass well and the near pond row', () => {
+    expect(STICK.widthUnits).toBeLessThan(
+      POND.rowRadiiUnits[POND.rows - 1] -
+        TILE.heightUnits / 2 -
+        TABLE.compassWellUnits / 2,
+    );
+    expect(STICK.radiusUnits - STICK.widthUnits / 2).toBeGreaterThan(
+      TABLE.compassWellUnits / 2,
+    );
+    expect(STICK.radiusUnits + STICK.widthUnits / 2).toBeLessThan(
+      POND.rowRadiiUnits[POND.rows - 1] - TILE.heightUnits / 2,
+    );
+    expect(STICK.pitchUnits).toBeGreaterThan(STICK.widthUnits);
+  });
+
+  it('carries the framing solver\u2019s inputs', () => {
+    expect(CAMERA.portraitBelowAspect).toBe(1);
+    expect(CAMERA.framingAspect).toBeCloseTo(16 / 9, 12);
+    expect(CAMERA.safeAreaMargin).toBe(0.02);
+    expect(CAMERA.handLongAxisMinViewportFraction).toBe(0.05);
+    // The reference frame is one of the supported aspects.
+    expect(CAMERA.supportedAspects).toContain(CAMERA.framingAspect);
   });
 });
