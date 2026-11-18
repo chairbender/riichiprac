@@ -48,6 +48,18 @@ export default defineConfig({
   // `WebAssembly.instantiate(await response.arrayBuffer())` if streaming
   // instantiation is rejected, so a wrong MIME only costs speed.
   plugins: [react(), wasm(), topLevelAwait()],
+  build: {
+    /*
+     * Spelled out even though it is Vite's default: the top-level-await plugin
+     * reads `build.minify` in its own `config` hook, before Vite applies that
+     * default, and a swallowed `undefined` leaves every chunk it rewrites
+     * unminified. A chunk that contains a dynamic import is always rewritten
+     * (the 3D lazy chunk, from unit 3D-02), so the entry would otherwise grow
+     * by the minifier's whole share. Do not remove without re-measuring the
+     * entry chunk.
+     */
+    minify: 'esbuild',
+  },
   define: {
     __BUILD_COMMIT__: JSON.stringify(buildCommit()),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),

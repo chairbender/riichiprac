@@ -483,6 +483,22 @@ in D1 and in `3d_renderer_architecture.md`. Depend on the core entry only; no
 own task that re-runs `check-3d-budget.mjs` and the 3D-05/3D-10 handoffs — a
 silent `npm update` is a bug.
 
+**As built (3D-02, 2026-11-18).** `three@0.187.0` and `@types/three@0.187.0`,
+both exact. Two build-toolchain facts came out of landing the first lazy chunk
+and should not be undone casually:
+
+- `vite.config.ts` spells out `build.minify: 'esbuild'` (Vite's default, written
+  down on purpose): `vite-plugin-top-level-await` reads `build.minify` in its
+  own `config` hook before Vite applies that default, and it rewrites every
+  chunk that contains a dynamic import — now the app's entry chunk. Without the
+  explicit value the rewritten entry ships unminified (+19 KB gzip, measured).
+  The chunk gate in 3D-13 would see that as an entry regression.
+- `@swc/core` is pinned to `1.12.14`, the plugin's declared baseline.
+  `@swc/core@1.16.x` rejects the plugin's generated AST for a chunk that has
+  exports (`missing field type`), which is exactly the shape the first
+  dynamic-import split produces (the entry then exports the symbols its lazy
+  chunk shares). Upgrade the plugin and the swc pin together or not at all.
+
 **Bundle size.** The measured budget is **≤ 200 KB gzip for the lazy 3D chunk**
 (advisory; 3D-13 prints it), and **0 bytes added to the entry chunk**, which
 3D-13 asserts by parsing the build manifest. For context, the app already loads

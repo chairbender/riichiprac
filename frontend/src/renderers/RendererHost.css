@@ -1,0 +1,89 @@
+/*
+ * The opt-in 3D table host (3D-02).
+ *
+ * The host fills whatever slot App gives it; the table slot owns the height
+ * (see `.table-3d` in App.css). The canvas is one image; the only chrome this
+ * unit draws is the hidden view heading, the screen-space vignette and a status
+ * line while the scene loads or cannot run.
+ */
+
+.renderer-3d {
+  position: relative;
+  display: flex;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  overflow: hidden;
+  background: #0b1116;
+  border-radius: 8px;
+}
+
+/*
+ * The view is named for screen readers and never announced as a visual
+ * heading: the table itself carries the information.
+ */
+.renderer-3d-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.renderer-3d-viewport,
+.renderer-3d-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * A screen-space vignette, not a texture: the 2.5D felt raster's vignette is
+ * baked in screen space and must not be wrapped onto a 3D plane. It never
+ * intercepts pointer events, so later units' hand buttons stay reachable.
+ */
+.renderer-3d-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(4, 8, 6, 0) 38%,
+    rgba(4, 8, 6, 0.28) 72%,
+    rgba(4, 8, 6, 0.62) 100%
+  );
+}
+
+/*
+ * While the scene loads, is unsupported or has failed, the fallback view keeps
+ * the slot, so there is never a blank stage or a white flash.
+ */
+.renderer-3d-status {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 2;
+  max-width: min(440px, calc(100% - 24px));
+  margin: 0;
+  padding: 8px 12px;
+  transform: translateX(-50%);
+
+  font-size: 0.85rem;
+  line-height: 1.35;
+  text-align: center;
+  color: #e7ecf3;
+  background: rgba(9, 14, 19, 0.86);
+  border: 1px solid #2a3442;
+  border-radius: 8px;
+}
+
+.renderer-3d[data-renderer-state='failed'] .renderer-3d-status {
+  border-color: #7a3a3a;
+}

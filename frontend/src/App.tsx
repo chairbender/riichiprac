@@ -13,6 +13,9 @@ import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
 import { TableInfo } from './components/TableInfo';
 import { VerdictPanel } from './components/VerdictPanel';
+import { RendererHost } from './renderers/RendererHost';
+import { resolveTableMount } from './renderers/resolveTableMount';
+import { snapshotFromGameState } from './renderers/snapshot';
 import {
   DEFAULT_HOTSEAT_OPTIONS,
   HOTSEAT_SCENARIO_ID,
@@ -663,6 +666,45 @@ export const App = () => {
   const claimedFrom =
     decision?.kind === 'react_to_discard' ? decision.from : null;
 
+  /*
+   * The 3D table is opt-in through `?renderer=3d`; nothing else selects it
+   * (decision D13, exposure decision 1). The resolver owns the precedence —
+   * explicit query, then stored view, then the store's default — so App only
+   * mounts what it says.
+   */
+  const tableMount = resolveTableMount(window.location.search, tableView);
+
+  /*
+   * The 3D snapshot's `revision` identifies a *position*, not a move: it is
+   * bumped whenever the store replaces `gameState`, so the renderer treats
+   * every new hand as a cut rather than animating a diff between two scenarios
+   * (plan §2.3). This is the only per-deal state the 3D chain adds to App.
+   */
+  const threeRevisionRef = useRef(0);
+  const [threeRevision, setThreeRevision] = useState(0);
+  useEffect(() => {
+    // Only the opt-in 3D view pays for this: the standard views never read a
+    // revision, so they must not re-render because of one.
+    if (!gameState || tableMount.kind !== 'three') return;
+    threeRevisionRef.current += 1;
+    setThreeRevision(threeRevisionRef.current);
+  }, [gameState, tableMount.kind]);
+
+  const threeSnapshot = useMemo(() => {
+    if (!gameState || tableMount.kind !== 'three') return null;
+    try {
+      return snapshotFromGameState(
+        gameState,
+        threeRevision,
+        submittedAnswer !== null,
+      );
+    } catch {
+      // A state the adapter refuses to describe is not drawn in 3D; the
+      // standard view still renders below, so nothing takes the app down.
+      return null;
+    }
+  }, [gameState, tableMount.kind, threeRevision, submittedAnswer]);
+
   const agreementHint =
     aiStatus === 'ready'
       ? 'Deal book-graded hands only when the embedded Mortal model plays the book answer. AI drills have no book answer, so they are dealt as usual and graded by Mortal alone. Each agreeing hand may need several forward passes.'
@@ -767,6 +809,24 @@ export const App = () => {
     />
   ) : null;
 
+  /*
+   * The 2D table: the persisted view picks between the stacked rows and the
+   * top-down plan. Built once so the 3D host can keep showing it while its
+   * WebGL scene loads, and fall back to it when the browser cannot run 3D.
+   */
+  const standardTable =
+    tableView === 'topdown' && gameState ? (
+      <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
+    ) : (
+      orderedPlayers.map((player) => (
+        <PlayerRow
+          key={player.seat}
+          player={player}
+          highlightLastDiscard={claimedFrom === player.seat}
+        />
+      ))
+    );
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -800,7 +860,13 @@ export const App = () => {
       {verdictPanel}
 
       <main
-        className={tableView === 'stacked' ? 'table-stack' : 'table-physical'}
+        className={
+          tableMount.kind === 'three'
+            ? 'table-3d'
+            : tableView === 'stacked'
+              ? 'table-stack'
+              : 'table-physical'
+        }
       >
         {statusMessage && (
           <div className="status-msg" role="status">
@@ -816,18 +882,19 @@ export const App = () => {
         {/*
          * The persisted view picks between the stacked rows and the top-down
          * plan; nothing else about the hand changes when it switches, so the
-         * answer and grade stay put.
+         * answer and grade stay put. `?renderer=3d` swaps in the opt-in 3D
+         * host, which falls back to the same table whenever 3D cannot run.
          */}
-        {tableView === 'topdown' && gameState ? (
-          <PhysicalTable state={gameState} highlightLastDiscard={claimedFrom} />
+        {tableMount.kind === 'three' && threeSnapshot ? (
+          <RendererHost
+            snapshot={threeSnapshot}
+            tier={tableMount.query.quality}
+            debug={tableMount.query.debug}
+            perfHud={tableMount.query.perf}
+            fallback={standardTable}
+          />
         ) : (
-          orderedPlayers.map((player) => (
-            <PlayerRow
-              key={player.seat}
-              player={player}
-              highlightLastDiscard={claimedFrom === player.seat}
-            />
-          ))
+          standardTable
         )}
       </main>
 

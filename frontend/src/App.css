@@ -855,6 +855,21 @@
   overflow-x: auto;
 }
 
+/*
+ * The opt-in 3D view (`?renderer=3d`). It is not the default and does not join
+ * the persistent View control until 3D-15 signs it off, so this slot is a plain
+ * block with a usable height rather than full-screen table chrome (3D-14 moves
+ * it into the table stage).
+ */
+.table-3d {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: clamp(420px, 72vh, 900px);
+  padding: 10px;
+}
+
+
 .physical-table {
   /*
    * The plan fills the app column and sizes its tiles from that width, so it
