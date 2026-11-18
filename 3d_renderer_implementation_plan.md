@@ -1646,6 +1646,38 @@ public-domain glyph PNGs.
 
 **Gate:** frontend gate + the bake's own `--check` + user verdict.
 
+**As built (3D-17, 2026-11-18).** `frontend/tools/relief3d/bake-relief3d.mjs` (Node,
+no Blender, `@napi-rs/canvas` for decode only) bakes `frontend/public/table/relief3d/`
+plus `relief3d.json`: the decal's carve (glyph area displaced inward, wall inside
+the painted silhouette, 0.495 mm through a 0.3 mm Bézier transition) as normal+height
+and AO+roughness at 256 × 340, reusing the committed albedo (paint is
+geometry-independent). 22 s for 37 faces; 1.06 MB + 1.01 MB committed. Normals are
+the exact height-field gradient; AO is a stated horizon approximation (8
+directions × 10 steps over 1.4 mm). `reliefAssets.ts` gained `source:
+'relief3d' | 'committed'` with its own pin table and a degrade-to-committed path;
+`Scene.ts` asks for `relief3d`, `measure()`/the HUD report it.
+
+Two bugs found while landing it, both caught by numbers rather than eyes:
+
+- **A canvas surface premultiplies alpha**, and this bake's height channel is 0
+  across every groove floor, so decoding the atlas through `drawImage` multiplied
+  the floors' normal RGB away (the PNG was correct; the reader was not). The
+  runtime factory now uploads a straight-alpha `ImageBitmap`
+  (`premultiplyAlpha: 'none'`, decoder-side resize for the compat tier) and never
+  touches a canvas; the baker writes PNG bytes directly with `node:zlib`.
+- the first bake's `erfinv` treated an erf value as a probability, producing NaNs
+  for negative distances (flat black cells); fixed with `Phi^-1((v+1)/2)/sqrt(2)`.
+
+Measured against the decal after the switch (hand macro, `1m`): ivory at
+0 / 0.5 / 1.0 mm **160 / 223 / 235** against the decal's 217 / 240 / 240; paint
+interior **88** against 72; and the scanline now shows 241 bright ivory, 121–143
+shaded ivory between strokes and 59–88 ink with 66–80 dark stroke edges, where the
+committed bake read a flat 84 everywhere. The paint's *interior variation* (decal
+p05 31 … p95 177) still exceeds ours (63 … 90): the decal's bright end is a
+specular streak from its area light, and our directional key plus a 24° spread
+does not reproduce it. `hero-vs-decal.png` in the artifact directory puts the two
+side by side. **Verdict: pending.**
+
 ## 7. Proposed command-center slicing
 
 One task per unit, all `worktree` on `riichiprac`, created wave by wave (not all

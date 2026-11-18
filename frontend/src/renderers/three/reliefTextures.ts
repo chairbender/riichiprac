@@ -25,13 +25,13 @@
  */
 
 import {
-  CanvasTexture,
   ClampToEdgeWrapping,
   DataTexture,
   LinearFilter,
   LinearMipmapLinearFilter,
   RGBAFormat,
   SRGBColorSpace,
+  Texture as ThreeTexture,
   UnsignedByteType,
 } from 'three';
 import type { Texture } from 'three';
@@ -101,11 +101,16 @@ function createDataTexture(request: ReliefTextureRequest): ReliefGpuTexture {
 }
 
 /**
- * Decode a committed PNG and upload it at the requested size.
+ * Decode a PNG and upload it at the requested size.
  *
- * `createImageBitmap` decodes off the main thread; drawing it into a canvas at
- * `request.width x request.height` is what implements the `compat` tier's
- * half-size upload without a second fetch or a second committed asset.
+ * Decoding goes straight to an `ImageBitmap` and the texture is built from that
+ * bitmap, **never through a canvas**: a 2D canvas surface premultiplies alpha,
+ * and this chain's height channel is 0 (alpha 0) wherever the engraving is at
+ * its floor, so a canvas round-trip multiplied those texels' normal RGB away.
+ * `premultiplyAlpha: 'none'` plus a direct upload keeps every channel exact;
+ * the resize is done by the decoder (which is also what implements the
+ * `compat` tier's half-size atlas) and `flipY` stays false because the image
+ * arrives unflipped.
  */
 async function createDecodedTexture(
   request: ReliefTextureRequest,
@@ -115,22 +120,15 @@ async function createDecodedTexture(
   if (typeof createImageBitmap !== 'function') {
     throw new Error('relief textures: createImageBitmap is unavailable');
   }
-  const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = request.width;
-    canvas.height = request.height;
-    const context = canvas.getContext('2d');
-    if (!context) {
-      throw new Error('relief textures: a 2D canvas context is required to resize an atlas');
-    }
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = 'high';
-    context.drawImage(bitmap, 0, 0, request.width, request.height);
-    const texture = new CanvasTexture(canvas);
-    applySampling(texture, request, maxAnisotropy);
-    return texture;
-  } finally {
-    bitmap.close();
-  }
+  const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }), {
+    premultiplyAlpha: 'none',
+    resizeWidth: request.width,
+    resizeHeight: request.height,
+    resizeQuality: 'high',
+  });
+  const texture = new ThreeTexture(bitmap);
+  applySampling(texture, request, maxAnisotropy);
+  // three uploads an ImageBitmap as-is; the bitmap is owned by the texture and
+  // released when the texture is disposed.
+  return texture;
 }

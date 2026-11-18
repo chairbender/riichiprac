@@ -92,6 +92,42 @@ export const PINNED_RELIEF_ATLASES = {
   },
 } as const;
 
+/**
+ * The 3D-owned carve channels (3D-17), pinned exactly like the committed set.
+ *
+ * `relief3d.json` bakes the *decal's* engraving (a 0.3 mm transition with the
+ * wall inside the painted silhouette) into the normal/height and AO/roughness
+ * atlases, and reuses the committed albedo because the paint does not depend on
+ * the carve geometry. A mismatch is a hard load error, exactly as for the
+ * committed set.
+ */
+export const PINNED_RELIEF3D_ATLASES = {
+  face_albedo: {
+    file: 'relief/face_albedo.png',
+    width: 1536,
+    height: 2380,
+    bytes: 948566,
+    sha256: '9f4f390711c6100b2efd0a026eed28293e1583f39f02f5504cb014d37482cb04',
+  },
+  face_normal_depth: {
+    file: 'relief3d/face_normal_depth.png',
+    width: 1536,
+    height: 2380,
+    bytes: 1082742,
+    sha256: '6b36290b5332b6b77fc5df50ecfedb2879028396cec2d39947ad16c643ad09cf',
+  },
+  face_ao_roughness: {
+    file: 'relief3d/face_ao_roughness.png',
+    width: 1536,
+    height: 2380,
+    bytes: 1033367,
+    sha256: '4c20494e24298a9d8bb20a848623c0efd96ec1d3314768422b5d8b2b5867b76c',
+  },
+} as const;
+
+/** Manifest path for the 3D-owned carve set, relative to `public/table/`. */
+export const RELIEF3D_MANIFEST_PATH = 'table/relief3d.json';
+
 /** The manifest's atlas keys, in the order the bridge creates textures. */
 export type ReliefAtlasKey = keyof typeof PINNED_RELIEF_ATLASES;
 
@@ -401,6 +437,13 @@ export interface LoadReliefOptions<
   /** Renderer's `MAX_TEXTURE_ANISOTROPY`; the tier value is clamped to it. */
   readonly maxAnisotropy?: number;
   readonly fetchImpl?: ReliefFetch;
+  /**
+   * Which bake to prefer: the 3D-owned carve set (3D-17) or the committed
+   * Task 4B relief (the default, 3D-03's own contract). The scene asks for
+   * `relief3d`; a failure of the preferred source degrades to the committed
+   * set, then to the procedural cell.
+   */
+  readonly source?: 'relief3d' | 'committed';
   /** Defaults to `console.warn`; called once, only on the fallback path. */
   readonly warn?: (message: string) => void;
 }
@@ -440,7 +483,10 @@ function joinUrl(baseUrl: string, path: string): string {
  * a non-normalized or inconsistent rect, or an atlas pin mismatch. The caller
  * turns that into the procedural fallback, with the code in the warning.
  */
-export function parseReliefManifest(value: unknown): ReliefManifest {
+export function parseReliefManifest(
+  value: unknown,
+  pins: typeof PINNED_RELIEF_ATLASES | typeof PINNED_RELIEF3D_ATLASES = PINNED_RELIEF_ATLASES,
+): ReliefManifest {
   const manifest = record(value, 'relief manifest');
 
   if (integer(manifest.version, 'version') !== RELIEF_VERSION) {
@@ -500,8 +546,8 @@ export function parseReliefManifest(value: unknown): ReliefManifest {
 
   const atlasSource = record(manifest.atlases, 'atlases');
   const atlases = {} as Record<ReliefAtlasKey, ReliefAtlasEntry>;
-  for (const key of Object.keys(PINNED_RELIEF_ATLASES) as ReliefAtlasKey[]) {
-    const pin = PINNED_RELIEF_ATLASES[key];
+  for (const key of Object.keys(pins) as ReliefAtlasKey[]) {
+    const pin = pins[key];
     const entry = record(atlasSource[key], `atlases.${key}`);
     if (entry.file !== pin.file) {
       fail('manifest-atlases', `atlases.${key}.file is not ${pin.file}`);
@@ -875,6 +921,88 @@ async function loadCommitted<TTexture extends ReliefTextureHandle>(
   });
 }
 
+/**
+ * Load the 3D-owned carve set (3D-17): the decal-profile normal/height and
+ * AO/roughness plus the committed albedo.
+ *
+ * The file paths come from the manifest (`relief/…` and `relief3d/…` are both
+ * relative to `public/table/`), and the pins are validated exactly like the
+ * committed set, so a missing or off-pin bake falls through to the committed
+ * relief rather than rendering silently wrong.
+ */
+async function loadRelief3d<TTexture extends ReliefTextureHandle>(
+  options: LoadReliefOptions<TTexture>,
+  fetchImpl: ReliefFetch,
+  anisotropy: number,
+): Promise<ReliefAssets<TTexture>> {
+  const manifestBytes = await fetchBytes(
+    fetchImpl,
+    joinUrl(options.baseUrl, RELIEF3D_MANIFEST_PATH),
+    'relief3d manifest',
+    'manifest-fetch',
+  );
+  let raw: unknown;
+  try {
+    raw = JSON.parse(new TextDecoder().decode(manifestBytes));
+  } catch (error) {
+    fail('manifest-json', `relief3d manifest is not JSON: ${describeError(error)}`);
+  }
+  const manifest = parseReliefManifest(raw, PINNED_RELIEF3D_ATLASES);
+
+  const payloads = {} as Record<ReliefAtlasKey, Uint8Array>;
+  for (const key of Object.keys(PINNED_RELIEF3D_ATLASES) as ReliefAtlasKey[]) {
+    const pin = PINNED_RELIEF3D_ATLASES[key];
+    const bytes = await fetchBytes(
+      fetchImpl,
+      joinUrl(options.baseUrl, `table/${pin.file}`),
+      `relief3d atlas ${key}`,
+      'atlas-fetch',
+    );
+    if (bytes.byteLength !== pin.bytes) {
+      fail('atlas-bytes', `${pin.file} is ${bytes.byteLength} bytes, pinned at ${pin.bytes}`);
+    }
+    const digest = await sha256Hex(bytes);
+    if (digest !== pin.sha256) {
+      fail('atlas-hash', `${pin.file} SHA-256 does not match the pin`);
+    }
+    payloads[key] = bytes;
+  }
+
+  const created: TTexture[] = [];
+  const textures = {} as Record<ReliefTextureRole, TTexture>;
+  try {
+    for (const key of Object.keys(PINNED_RELIEF3D_ATLASES) as ReliefAtlasKey[]) {
+      const atlas = manifest.atlases[key];
+      const texture = await options.createTexture.create(
+        committedRequest(atlas, payloads[key], options.tier, anisotropy),
+      );
+      textures[atlas.role] = texture;
+      created.push(texture);
+    }
+  } catch (error) {
+    for (const texture of created) texture.dispose();
+    fail('texture', `could not create relief3d textures: ${describeError(error)}`);
+  }
+
+  const { width, height } = reliefTextureSize(options.tier);
+  const perTexture = reliefTextureBytes(
+    width,
+    height,
+    RELIEF_TIER_SETTINGS[options.tier].mipmaps,
+  );
+  return createAssets({
+    status: 'relief3d',
+    tier: options.tier,
+    textures,
+    bytesByRole: { albedo: perTexture, normalDepth: perTexture, aoRoughness: perTexture },
+    faces: manifest.cells,
+    plateUnits: {
+      width: manifest.plateUnits[0],
+      height: manifest.plateUnits[1],
+    },
+  });
+}
+
 async function loadFallback<TTexture extends ReliefTextureHandle>(
   options: LoadReliefOptions<TTexture>,
   anisotropy: number,
@@ -934,6 +1062,17 @@ export async function loadReliefAssets<TTexture extends ReliefTextureHandle>(
   const warn =
     options.warn ?? ((message: string) => console.warn(message));
   const anisotropy = anisotropyFor(options.tier, options.maxAnisotropy);
+  const source = options.source ?? 'committed';
+  if (source === 'relief3d') {
+    try {
+      return await loadRelief3d(options, fetchImpl, anisotropy);
+    } catch (error) {
+      const code = error instanceof ReliefAssetError ? error.code : 'manifest-shape';
+      warn(
+        `[3d] relief3d carve unavailable (${code}: ${describeError(error)}); using the committed relief`,
+      );
+    }
+  }
   try {
     return await loadCommitted(options, fetchImpl, anisotropy);
   } catch (error) {

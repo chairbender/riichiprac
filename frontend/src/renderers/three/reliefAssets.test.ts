@@ -8,6 +8,7 @@ import { TILE } from '../layoutConstants';
 import { TILE_FACE_IDS } from '../contract';
 import {
   NEUTRAL_CELL_SIZE,
+  PINNED_RELIEF3D_ATLASES,
   PINNED_RELIEF_ATLASES,
   RELIEF_FACE_IDS,
   RELIEF_PLATE_UNITS,
@@ -703,5 +704,68 @@ describe('relief assets: module boundaries', () => {
     expect(source).not.toMatch(/import\(\s*['"]/);
     expect(source).not.toMatch(/from\s+['"][^'"]*\/table\//);
     expect(source).not.toMatch(/Math\.random/);
+  });
+});
+
+describe('the 3D-owned carve set (3D-17)', () => {
+  const relief3dBytes = readFileSync(join(tableDir, 'relief3d.json'));
+  const relief3dManifest = JSON.parse(relief3dBytes.toString('utf8')) as Record<
+    string,
+    unknown
+  >;
+
+  it('pins the committed relief3d atlases by bytes and hash', () => {
+    for (const [key, pin] of Object.entries(PINNED_RELIEF3D_ATLASES)) {
+      const bytes = readFileSync(join(tableDir, pin.file));
+      expect(bytes.byteLength, key).toBe(pin.bytes);
+      expect(createHash('sha256').update(bytes).digest('hex'), key).toBe(pin.sha256);
+    }
+  });
+
+  it('parses with its own pin table and resolves all 37 faces', () => {
+    const manifest = parseReliefManifest(relief3dManifest, PINNED_RELIEF3D_ATLASES);
+    expect(manifest.cells.size).toBe(RELIEF_RASTER.faceCount);
+    expect(manifest.plateUnits).toEqual(RELIEF_PLATE_UNITS);
+    expect(manifest.atlases.face_albedo.file).toBe('relief/face_albedo.png');
+    expect(manifest.atlases.face_normal_depth.file).toBe('relief3d/face_normal_depth.png');
+  });
+
+  it('rejects the committed manifest against the relief3d pins', () => {
+    expect(() => parseReliefManifest(rawManifest, PINNED_RELIEF3D_ATLASES)).toThrow(
+      ReliefAssetError,
+    );
+  });
+
+  it('loads through the committed file bytes and reports relief3d', async () => {
+    const requests: ReliefTextureRequest[] = [];
+    const fetchImpl: ReliefFetch = async (url) => {
+      if (url.endsWith('/table/relief3d.json')) return fileResponse(relief3dBytes);
+      if (url.endsWith('/table/relief/face_albedo.png')) {
+        return fileResponse(readFileSync(join(tableDir, 'relief/face_albedo.png')));
+      }
+      if (url.endsWith('/table/relief3d/face_normal_depth.png')) {
+        return fileResponse(readFileSync(join(tableDir, 'relief3d/face_normal_depth.png')));
+      }
+      if (url.endsWith('/table/relief3d/face_ao_roughness.png')) {
+        return fileResponse(readFileSync(join(tableDir, 'relief3d/face_ao_roughness.png')));
+      }
+      return { ok: false, status: 404, async arrayBuffer() { return new ArrayBuffer(0); } };
+    };
+    const assets = await loadReliefAssets({
+      tier: 'high',
+      baseUrl: '/',
+      source: 'relief3d',
+      fetchImpl,
+      createTexture: {
+        create: (request) => {
+          requests.push(request);
+          return { dispose: () => undefined };
+        },
+      },
+    });
+    expect(assets.status).toBe('relief3d');
+    expect(requests).toHaveLength(3);
+    expect(requests.map((request) => request.name)).toContain('relief-normalDepth');
+    expect(assets.cellForFace('1m')).not.toBeNull();
   });
 });

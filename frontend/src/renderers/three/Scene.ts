@@ -476,6 +476,7 @@ export class TableScene implements TableRenderer {
       tier: options.tier,
       baseUrl,
       maxAnisotropy,
+      source: 'relief3d',
       createTexture: createReliefTextureFactory(maxAnisotropy),
     })
       .then((assets) => {
