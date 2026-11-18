@@ -305,6 +305,20 @@ Two additions the 2.5D reference cannot answer:
   numeric: the angle between the hand face normal and the camera view ray must
   be ≤ 25° for the human hand at every supported aspect.
 
+**One frame, owned by the layout (reconciliation, 2026-11-18).** Two pure
+solutions to the same problem landed in parallel: 3D-02's `cameraRig.ts` (the
+committed 76-unit rig fitted to a fixed mat+hand subject, which only ever moves
+back) and 3D-06's `boardLayout.frameForAspect` (a distance + lens-nudge solve
+over the actual `layoutBoard` extents, gated by `check-3d-layout.mjs`). They
+agree at 16:9 to within 0.05 units; 3D-06 also lifts the projection 18 px there
+to hold its 2 % safe-area margin, and it moves the camera much closer on taller
+frames (64.4 units at 3:2, 60.9 in portrait). **`frameForAspect` wins: it solves
+against the real board and owns the gate, so it is the only projection source
+from 3D-07 on.** `cameraRig.ts` becomes a thin `PerspectiveCamera` adapter, the
+felt is sized from that frame (`groundHit` against the frame's eye/axes/fov/
+shift, preserving the top/bottom rule), and 3D-08's hit rects use the same
+frame. No view may project through a second camera.
+
 ### 2.5 Assets: reuse Task 4B, do not bake twice
 
 Task 4B (landed, `frontend/public/table/relief/`, 3.39 MiB, 37 faces at
@@ -1098,9 +1112,17 @@ the committed table geometry.
 - `shadows.ts`: one instanced quad draw with a procedural rounded-rect alpha
   texture, scaled per tile, anchored under each grounded tile.
 - `sticks.ts`: one instanced mesh for riichi sticks.
+- **One framing source** (§2.4): the scene's camera is
+  `boardLayout.frameForAspect`, `cameraRig.ts` is reduced to the
+  `PerspectiveCamera` adapter, its duplicate distance/shift solver is deleted,
+  and the felt is re-sized from that frame.
 
 **Acceptance criteria**
 
+- The rendered camera equals the solved frame (eye, pitch, field of view and
+  projection shift) and no second camera solver remains in the renderer; the
+  felt still reaches the top and bottom edges at every supported aspect under
+  the new frame.
 - One tile draw call for the whole board (wall + foreground, ≤ 320 instances);
   `measure()` reports `instances`, `triangles`, `drawCalls` and a test asserts
   `drawCalls ≤ 4` in the default debug-off scene.
@@ -1159,6 +1181,9 @@ keyboard and screen reader.
 - Clicking a button calls the same handler the top-down/stacked views call; the
   answer flow has no renderer dependency (answers work with the renderer
   disposed).
+- The buttons land on the tiles: `hitRects()` and the rendered instance
+  transforms both come from `frameForAspect` on the same `BoardLayout` (a drift
+  test projects the hand OBBs through the frame and compares).
 
 **Gate:** frontend gate.
 
