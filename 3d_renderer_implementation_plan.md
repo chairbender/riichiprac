@@ -275,7 +275,7 @@ The world-space layout already exists, user-signed-off, in
 
 | Quantity | Committed value | 3D use |
 | --- | --- | --- |
-| Mat | 25 units = 700 mm square, front/back walls at radius 7.0 | felt plane 25 × 25, wall ring |
+| Mat | 25 units = 700 mm square, front/back walls at radius 7.0 | layout reference; the drawn felt is a 160-unit square so it reaches every screen edge (3D-02), wall ring |
 | Tile | 1 unit = 28 mm; 21 × 28 × 16.5 mm; 0.3 mm gaps | tile mesh + layout pitch |
 | Wall | 4 runs × 17 stacks × 2 tiers, 0.760714 pitch, one missing top tile at slot 16 (draw end) | wall layout |
 | Ponds | 3 rows × 6, nearest row at 4.81, next at 2.7886, 4 overflow anchors on the near row | river layout |
@@ -817,8 +817,10 @@ who does not ask for it.
   registry for every buffer/geometry/material/texture.
 - `cameraRig.ts` (imports `layoutConstants.ts`) with the committed rig and the
   aspect/portrait fit.
-- `felt.ts`: deterministic 512 × 512 procedural felt texture and a 25 × 25 unit
-  plane; a CSS radial vignette overlay.
+- `felt.ts`: deterministic 512 × 512 procedural felt texture and **one square
+  plane large enough to reach every screen edge** (160 units; the 25-unit mat
+  stays the layout reference, and the cloth is never stretched to the aspect);
+  a CSS radial vignette overlay.
 - `package.json`: `three` added with an **exact** version; the version is
   recorded in this plan when it is chosen.
 - Minimal `App.tsx` wiring: `?renderer=3d` mounts the host in place of the
@@ -844,6 +846,10 @@ who does not ask for it.
   (header, cards, action bar, hand dock, player rows) is mounted with it. A
   transient status or generation error floats over the scene without pushing the
   canvas down.
+- The felt reaches every edge: a numeric test projects the frame corners onto the
+  ground plane (`groundHit`) at the supported aspects plus 9:19.5/9:21 phone
+  portraits and asserts the square felt covers them with margin, so no
+  background shows above, below or beside the scene at any window size.
 - The full-screen component targets the shell and follows `fullscreenchange`
   rather than its own guess; it renders nothing without the API (jsdom). It is
   not mounted by 3D-02 (above), and its tests cover both states.

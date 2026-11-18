@@ -2,9 +2,12 @@
  * The procedural felt surface (3D-02).
  *
  * There is no modelled table and no new committed texture: the play surface is
- * one 25 x 25-unit plane under a deterministic value-noise texture, with the
- * vignette supplied in screen space by CSS (the 2.5D felt raster has a vignette
- * baked into screen space and must not be wrapped onto a 3D plane).
+ * one square felt plane under a deterministic value-noise texture, drawn much
+ * larger than the 25-unit play mat so it reaches every edge of a full-window
+ * frame (user guidance 2026-11-18: no background may show above or beside the
+ * scene). The vignette is supplied in screen space by CSS (the 2.5D felt raster
+ * has a vignette baked into screen space and must not be wrapped onto a 3D
+ * plane).
  *
  * The noise is generated in code rather than read from `felt.png` so the plane
  * tiles seamlessly and the 3D view keeps D11's "no new committed runtime
@@ -29,6 +32,16 @@ export const FELT = {
   textureSize: 512,
   /** Times the 512 texture repeats across the 25-unit mat. */
   repeat: 2,
+  /**
+   * The drawn felt's side length, in tile units. It stays a square — the cloth
+   * is never stretched to the viewport — but it is much larger than the 25-unit
+   * play mat, because a full-window frame reaches past the mat: the frame
+   * corners need a half-size of 25.0 units at 21:9, 46.6 at 9:16, 60.8 on a
+   * 9:19.5 phone and 67.5 at 9:21 (see `groundHit`). 160 units covers all of
+   * those with margin, so no background shows above, below or beside the felt;
+   * the extra area is off-screen and costs nothing to draw.
+   */
+  sizeUnits: 160,
   /** `felt-spec.json`'s base colour (#1a5038). */
   baseRgb: [26, 80, 56] as const,
   seed: 20261118,
@@ -147,10 +160,14 @@ export function createFelt(): FeltSurface {
   texture.colorSpace = SRGBColorSpace;
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  texture.repeat.set(FELT.repeat, FELT.repeat);
+  // Keep the cloth's texel size constant now that the drawn square is larger
+  // than the mat: the same 12.5 units per repeat as `FELT.repeat` gives over
+  // the 25-unit mat.
+  const repeats = (FELT.sizeUnits / TABLE.matSizeUnits) * FELT.repeat;
+  texture.repeat.set(repeats, repeats);
   texture.needsUpdate = true;
 
-  const geometry = new PlaneGeometry(TABLE.matSizeUnits, TABLE.matSizeUnits, 1, 1);
+  const geometry = new PlaneGeometry(FELT.sizeUnits, FELT.sizeUnits, 1, 1);
   const material = new MeshStandardMaterial({
     map: texture,
     roughness: 0.94,

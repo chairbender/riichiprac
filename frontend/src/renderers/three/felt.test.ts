@@ -7,7 +7,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { TABLE } from '../layoutConstants';
+import { CAMERA, TABLE } from '../layoutConstants';
+import { groundHit, rigPoseForAspect } from './cameraRig';
 import { FELT, generateFeltPixels } from './felt';
 
 describe('procedural felt', () => {
@@ -63,8 +64,25 @@ describe('procedural felt', () => {
     expect(max - min).toBeLessThan(40);
   });
 
-  it('covers exactly the 25-unit mat', () => {
-    expect(TABLE.matSizeUnits).toBe(25);
-    expect(FELT.repeat).toBeGreaterThanOrEqual(1);
+  it('covers the whole frame at every supported aspect, as one square', () => {
+    expect(FELT.sizeUnits).toBeGreaterThan(TABLE.matSizeUnits);
+    const half = FELT.sizeUnits / 2;
+    // The plan's aspects plus the phone portraits a browser actually reports.
+    const aspects = [...CAMERA.supportedAspects, 9 / 19.5, 9 / 21];
+
+    for (const aspect of aspects) {
+      const pose = rigPoseForAspect(aspect);
+      for (const ndcX of [-1, 1]) {
+        for (const ndcY of [-1, 1]) {
+          const hit = groundHit(pose, ndcX, ndcY);
+          expect(hit, `ground hit at ${aspect}`).not.toBeNull();
+          if (!hit) continue;
+          // Every screen corner lands on the felt, with a margin, so no
+          // background shows at the top, bottom or sides.
+          expect(Math.abs(hit[0]), `x at ${aspect}`).toBeLessThan(half * 0.98);
+          expect(Math.abs(hit[1]), `z at ${aspect}`).toBeLessThan(half * 0.98);
+        }
+      }
+    }
   });
 });

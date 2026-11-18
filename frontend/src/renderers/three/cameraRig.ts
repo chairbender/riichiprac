@@ -389,6 +389,52 @@ export function applyPoseToCamera(camera: PerspectiveCamera, pose: RigPose): voi
   camera.projectionMatrixInverse.invert();
 }
 
+/** One point where a view ray meets the felt plane, in world X/Z units. */
+export type GroundPoint = readonly [number, number];
+
+/**
+ * Where the ray through an NDC point meets the felt plane (`y = 0`), or null
+ * when the ray points at or above the horizon and never reaches it.
+ *
+ * The frame corners of a full-window view land outside the 25-unit mat, so the
+ * felt has to be larger than the play area to reach the screen edges (§2.4).
+ * This is the pure geometry that decides how large, and the felt test asserts
+ * coverage at every supported aspect.
+ */
+export function groundHit(
+  pose: RigPose,
+  ndcX: number,
+  ndcY: number,
+): GroundPoint | null {
+  const forward = normalise([
+    pose.targetUnits[0] - pose.eyeUnits[0],
+    pose.targetUnits[1] - pose.eyeUnits[1],
+    pose.targetUnits[2] - pose.eyeUnits[2],
+  ]);
+  const right = normalise(cross(forward, [0, 1, 0]));
+  const up = cross(right, forward);
+
+  const tanHalfY = Math.tan((pose.fovYDeg * DEG) / 2);
+  const tanHalfX = tanHalfY * pose.aspect;
+  // The NDC y already includes the lens lift, so remove it before rebuilding
+  // the camera-space direction.
+  const sx = ndcX * tanHalfX;
+  const sy = (ndcY - pose.shiftNdcY) * tanHalfY;
+
+  const direction = normalise([
+    forward[0] + sx * right[0] + sy * up[0],
+    forward[1] + sx * right[1] + sy * up[1],
+    forward[2] + sx * right[2] + sy * up[2],
+  ]);
+  if (direction[1] >= -1e-9) return null;
+
+  const distance = -pose.eyeUnits[1] / direction[1];
+  return [
+    pose.eyeUnits[0] + distance * direction[0],
+    pose.eyeUnits[2] + distance * direction[2],
+  ];
+}
+
 function dot(a: Vec3, b: Vec3): number {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
