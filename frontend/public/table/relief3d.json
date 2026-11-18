@@ -78,9 +78,9 @@
    "file": "relief3d/face_ao_roughness.png",
    "width": 1536,
    "height": 2380,
-   "bytes": 1033367,
+   "bytes": 784828,
    "sha256": {
-    "png": "4c20494e24298a9d8bb20a848623c0efd96ec1d3314768422b5d8b2b5867b76c"
+    "png": "8967e3dae887cad615092342fc6c34de0fe5f8e1eb6f59c3fb0b4a2bdcaa7b56"
    },
    "source": "relief3d"
   }
@@ -104,7 +104,7 @@
    "measured": {
     "paintFraction": 0.22535615808823528,
     "deepestMm": 0.495,
-    "aoMin": 0.2902
+    "aoMin": 0.2627
    }
   },
   "2m": {
@@ -125,7 +125,7 @@
    "measured": {
     "paintFraction": 0.24496783088235294,
     "deepestMm": 0.495,
-    "aoMin": 0.2902
+    "aoMin": 0.2627
    }
   },
   "3m": {
@@ -146,7 +146,7 @@
    "measured": {
     "paintFraction": 0.2654871323529412,
     "deepestMm": 0.495,
-    "aoMin": 0.2902
+    "aoMin": 0.2627
    }
   },
   "4m": {
@@ -167,7 +167,7 @@
    "measured": {
     "paintFraction": 0.2859719669117647,
     "deepestMm": 0.495,
-    "aoMin": 0.2902
+    "aoMin": 0.2627
    }
   },
   "5m": {
@@ -188,7 +188,7 @@
    "measured": {
     "paintFraction": 0.2864315257352941,
     "deepestMm": 0.495,
-    "aoMin": 0.2902
+    "aoMin": 0.2627
    }
   },
   "6m": {
@@ -209,7 +209,7 @@
    "measured": {
     "paintFraction": 0.26232766544117647,
     "deepestMm": 0.495,
-    "aoMin": 0.2902
+    "aoMin": 0.2627
    }
   },
   "7m": {
@@ -230,7 +230,7 @@
    "measured": {
     "paintFraction": 0.2513327205882353,
     "deepestMm": 0.495,
-    "aoMin": 0.2902
+    "aoMin": 0.2627
    }
   },
   "8m": {
@@ -251,7 +251,7 @@
    "measured": {
     "paintFraction": 0.23539751838235295,
     "deepestMm": 0.495,
-    "aoMin": 0.2902
+    "aoMin": 0.2549
    }
   },
   "9m": {
@@ -272,7 +272,7 @@
    "measured": {
     "paintFraction": 0.25633042279411766,
     "deepestMm": 0.495,
-    "aoMin": 0.2902
+    "aoMin": 0.1804
    }
   },
   "1p": {
@@ -293,7 +293,7 @@
    "measured": {
     "paintFraction": 0.5681870404411765,
     "deepestMm": 0.495,
-    "aoMin": 0.5529
+    "aoMin": 0.5569
    }
   },
   "2p": {
@@ -314,7 +314,7 @@
    "measured": {
     "paintFraction": 0.4140625,
     "deepestMm": 0.495,
-    "aoMin": 0.5529
+    "aoMin": 0.5569
    }
   },
   "3p": {
@@ -335,7 +335,7 @@
    "measured": {
     "paintFraction": 0.2931295955882353,
     "deepestMm": 0.495,
-    "aoMin": 0.5569
+    "aoMin": 0.5451
    }
   },
   "4p": {
@@ -356,7 +356,7 @@
    "measured": {
     "paintFraction": 0.3902803308823529,
     "deepestMm": 0.495,
-    "aoMin": 0.5569
+    "aoMin": 0.549
    }
   },
   "5p": {
@@ -377,7 +377,7 @@
    "measured": {
     "paintFraction": 0.48787913602941174,
     "deepestMm": 0.495,
-    "aoMin": 0.4784
+    "aoMin": 0.549
    }
   },
   "6p": {
@@ -398,7 +398,7 @@
    "measured": {
     "paintFraction": 0.5234489889705882,
     "deepestMm": 0.495,
-    "aoMin": 0.2863
+    "aoMin": 0.549
    }
   },
   "7p": {
@@ -419,7 +419,7 @@
    "measured": {
     "paintFraction": 0.5931870404411764,
     "deepestMm": 0.495,
-    "aoMin": 0.2824
+    "aoMin": 0.5412
    }
   },
   "8p": {
@@ -440,7 +440,7 @@
    "measured": {
     "paintFraction": 0.6629250919117647,
     "deepestMm": 0.495,
-    "aoMin": 0.3333
+    "aoMin": 0.549
    }
   },
   "9p": {
@@ -461,7 +461,7 @@
    "measured": {
     "paintFraction": 0.7759420955882353,
     "deepestMm": 0.495,
-    "aoMin": 0.4471
+    "aoMin": 0.549
    }
   },
   "1s": {
@@ -482,7 +482,7 @@
    "measured": {
     "paintFraction": 0.4812385110294118,
     "deepestMm": 0.495,
-    "aoMin": 0.3216
+    "aoMin": 0.251
    }
   },
   "2s": {
@@ -503,7 +503,7 @@
    "measured": {
     "paintFraction": 0.19185431985294119,
     "deepestMm": 0.495,
-    "aoMin": 0.4863
+    "aoMin": 0.451
    }
   },
   "3s": {
@@ -524,7 +524,7 @@
    "measured": {
     "paintFraction": 0.28725873161764703,
     "deepestMm": 0.495,
-    "aoMin": 0.4863
+    "aoMin": 0.451
    }
   },
   "4s": {
@@ -545,7 +545,7 @@
    "measured": {
     "paintFraction": 0.3840188419117647,
     "deepestMm": 0.495,
-    "aoMin": 0.4863
+    "aoMin": 0.451
    }
   },
   "5s": {
@@ -566,7 +566,7 @@
    "measured": {
     "paintFraction": 0.47876838235294117,
     "deepestMm": 0.495,
-    "aoMin": 0.4902
+    "aoMin": 0.451
    }
   },
   "6s": {
@@ -587,7 +587,7 @@
    "measured": {
     "paintFraction": 0.5745863970588235,
     "deepestMm": 0.495,
-    "aoMin": 0.4863
+    "aoMin": 0.451
    }
   },
   "7s": {
@@ -608,7 +608,7 @@
    "measured": {
     "paintFraction": 0.38100873161764703,
     "deepestMm": 0.495,
-    "aoMin": 0.4392
+    "aoMin": 0.4353
    }
   },
   "8s": {
@@ -629,7 +629,7 @@
    "measured": {
     "paintFraction": 0.5956686580882353,
     "deepestMm": 0.495,
-    "aoMin": 0.4118
+    "aoMin": 0.451
    }
   },
   "9s": {
@@ -650,7 +650,7 @@
    "measured": {
     "paintFraction": 0.4897403492647059,
     "deepestMm": 0.495,
-    "aoMin": 0.4392
+    "aoMin": 0.4353
    }
   },
   "5mr": {
@@ -671,7 +671,7 @@
    "measured": {
     "paintFraction": 0.29663373161764706,
     "deepestMm": 0.495,
-    "aoMin": 0.2902
+    "aoMin": 0.2627
    }
   },
   "5pr": {
@@ -692,7 +692,7 @@
    "measured": {
     "paintFraction": 0.49812729779411763,
     "deepestMm": 0.495,
-    "aoMin": 0.4784
+    "aoMin": 0.4627
    }
   },
   "5sr": {
@@ -713,7 +713,7 @@
    "measured": {
     "paintFraction": 0.4889246323529412,
     "deepestMm": 0.495,
-    "aoMin": 0.4902
+    "aoMin": 0.451
    }
   },
   "1z": {
@@ -734,7 +734,7 @@
    "measured": {
     "paintFraction": 0.2502872242647059,
     "deepestMm": 0.495,
-    "aoMin": 0.3255
+    "aoMin": 0.2549
    }
   },
   "2z": {
@@ -755,7 +755,7 @@
    "measured": {
     "paintFraction": 0.2779641544117647,
     "deepestMm": 0.495,
-    "aoMin": 0.298
+    "aoMin": 0.2627
    }
   },
   "3z": {
@@ -776,7 +776,7 @@
    "measured": {
     "paintFraction": 0.24595588235294116,
     "deepestMm": 0.495,
-    "aoMin": 0.2824
+    "aoMin": 0.2627
    }
   },
   "4z": {
@@ -797,7 +797,7 @@
    "measured": {
     "paintFraction": 0.1967486213235294,
     "deepestMm": 0.495,
-    "aoMin": 0.2941
+    "aoMin": 0.2863
    }
   },
   "5z": {
@@ -839,7 +839,7 @@
    "measured": {
     "paintFraction": 0.2541245404411765,
     "deepestMm": 0.495,
-    "aoMin": 0.3059
+    "aoMin": 0.2196
    }
   },
   "7z": {
@@ -860,7 +860,7 @@
    "measured": {
     "paintFraction": 0.19327895220588234,
     "deepestMm": 0.495,
-    "aoMin": 0.3608
+    "aoMin": 0.2706
    }
   }
  }

@@ -149,7 +149,7 @@ describe('instance data', () => {
 
   it('gives each face-up slot its atlas rect and the back the neutral one', () => {
     const instances = heroInstances((face) =>
-      face === '1m' ? { rect: [0, 0, 0.1666, 0.1428] as const } : { rect: [0.5, 0.5, 0.6, 0.6] as const },
+      face === '1p' ? { rect: [0, 0, 0.1666, 0.1428] as const } : { rect: [0.5, 0.5, 0.6, 0.6] as const },
     );
     const hand = instances.find((instance) => instance.slot.id === 'hand');
     expect(hand?.atlasRect).toEqual([0, 0, 0.1666, 0.1428]);

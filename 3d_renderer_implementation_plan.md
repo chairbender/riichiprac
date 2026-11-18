@@ -1103,7 +1103,7 @@ DPR 2), printed by the HUD (`frontend/scripts/out/hero-report.txt`):
 | --- | --- | --- | --- |
 | face ivory (pond, Haku, open) | `#f5f0ec` | `#f5f0eb` | 0.51 |
 | blue back (wall, face-down) | `#132986` | `#132986` | 0.00 |
-| paint (hand, `1m` stroke) | `#a20c0c`, block redness 151 | — | pass |
+| paint (hand, `1p` artwork) | `#434356` (navy), ΔE 74 from ivory | — | pass |
 | Haku at the same point | `#f5f0ec`, redness 5 | — | clean |
 | ivory bevel (hand) | `#dbd6d3` | — | pass |
 
@@ -1133,6 +1133,16 @@ lights, same shader, camera moved in), `hero-overview.png` (the live view at
 3840 × 2160), `hero-report.txt`, and `decal-1m-{upright,lying}.png` — the
 committed carved decals converted to PNG and composited on the ivory face, as the
 approved recess to compare against. **Verdict: pending the user's review.**
+
+**Hero face moved to `1p` (same day, at the user's request: "a more complex
+carve").** `1p` is multi-colour (navy 16004 px, white 12539, black 4860, crimson
+3530 in the committed albedo), so the paint probe is now a **contrast** test —
+the block median must sit at least ΔE 25 from the committed ivory — instead of a
+redness test, and its point is the widest navy band (11.2 texels of clearance).
+A white part of the artwork deliberately does not count: it is within ΔE 6 of
+the ivory. This also exposed a bake bug: the AO horizon treated *deeper*
+neighbours as occluders, so it darkened the open face around the pit instead of
+the pit itself; fixed, and the AO atlas is 766 kB now instead of 1009 kB.
 
 **Live-shading pass (same day, after the user's second review: "the inside
 white parts just look like white paint").** Measured against the approved

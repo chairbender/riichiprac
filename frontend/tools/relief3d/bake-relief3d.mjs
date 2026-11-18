@@ -321,7 +321,9 @@ async function bakeFace(face) {
           const sy = y + dirY * stepPxY * step;
           if (sx < 0 || sy < 0 || sx >= width || sy >= height) break;
           const sampleDepth = sample(depthMm, width, height, sx, sy);
-          const rise = sampleDepth - here;
+          // Depth is measured *inward*, so an occluder is a neighbour that is
+          // shallower than this point (less depth = higher up).
+          const rise = here - sampleDepth;
           if (rise <= 0) continue;
           const distance = stepMm * step;
           const tangent = rise / distance;

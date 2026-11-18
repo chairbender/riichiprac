@@ -120,8 +120,8 @@ export const PINNED_RELIEF3D_ATLASES = {
     file: 'relief3d/face_ao_roughness.png',
     width: 1536,
     height: 2380,
-    bytes: 1033367,
-    sha256: '4c20494e24298a9d8bb20a848623c0efd96ec1d3314768422b5d8b2b5867b76c',
+    bytes: 784828,
+    sha256: '8967e3dae887cad615092342fc6c34de0fe5f8e1eb6f59c3fb0b4a2bdcaa7b56',
   },
 } as const;
 

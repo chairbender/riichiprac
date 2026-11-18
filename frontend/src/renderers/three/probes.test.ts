@@ -145,31 +145,26 @@ describe('probe rules', () => {
     expect(reading.detail).toMatch(/ΔE .* > 6/);
   });
 
-  it('detects painted ink by the reddest pixel, not the median', () => {
-    // A block that is mostly ivory with one crimson pixel: the median is ivory,
-    // the presence test is still positive.
-    const source: ProbePixelSource = {
-      width: 32,
-      height: 32,
-      read(_x, _y, w, h) {
-        const out = new Uint8Array(w * h * 4);
-        for (let pixel = 0; pixel < w * h; pixel += 1) {
-          const offset = pixel * 4;
-          const ink = pixel === 0;
-          out[offset] = ink ? 166 : 245;
-          out[offset + 1] = ink ? 12 : 240;
-          out[offset + 2] = ink ? 12 : 235;
-          out[offset + 3] = 255;
-        }
-        return out;
-      },
-    };
-    const paint = readProbes(source, fixedProjector({ x: 16, y: 16 }), [
-      definition('paint', 'paint'),
-    ])[0];
-    expect(paint.redness).toBe(166 - 12);
-    expect(paint.rgb).toEqual([245, 240, 235]);
-    expect(paint.pass).toBe(true);
+  it('detects paint by its contrast with the ivory, and reports redness as information', () => {
+    // 1p's artwork is navy as well as crimson: the rule is ΔE from the ivory,
+    // not redness, so a navy band passes and its redness stays a number in the
+    // report.
+    const navy = readProbes(
+      solidSource([0, 0, 55]),
+      fixedProjector({ x: 16, y: 16 }),
+      [definition('paint', 'paint')],
+    )[0];
+    expect(navy.pass).toBe(true);
+    expect(navy.redness).toBe(0);
+    expect(navy.rgb).toEqual([0, 0, 55]);
+
+    const crimson = readProbes(
+      solidSource([166, 12, 12]),
+      fixedProjector({ x: 16, y: 16 }),
+      [definition('paint', 'paint')],
+    )[0];
+    expect(crimson.pass).toBe(true);
+    expect(crimson.redness).toBe(166 - 12);
   });
 
   it('fails a paint probe on a clean face and a clean probe on ink', () => {
@@ -179,7 +174,7 @@ describe('probe rules', () => {
       [definition('paint', 'paint')],
     )[0];
     expect(noInk.pass).toBe(false);
-    expect(noInk.detail).toMatch(/no painted stroke/);
+    expect(noInk.detail).toMatch(/no paint at the probe/);
 
     const ink = readProbes(
       solidSource([166, 12, 12]),
@@ -187,7 +182,7 @@ describe('probe rules', () => {
       [definition('clean', 'clean')],
     )[0];
     expect(ink.pass).toBe(false);
-    expect(ink.detail).toMatch(/ink where a clean face is expected/);
+    expect(ink.detail).toMatch(/paint where a clean face is expected/);
   });
 
   it('accepts an ivory body and rejects the blue back there', () => {
@@ -292,7 +287,7 @@ describe('probe targets are reachable at the hero slots', () => {
 });
 
 describe('probe points against the committed atlas', () => {
-  it('puts the ink probe inside a 1m stroke and finds Haku ink-free there', async () => {
+  it('puts the ink probe inside the 1p disk and finds Haku ink-free there', async () => {
     const file = join(tableDir, PINNED_RELIEF_ATLASES.face_albedo.file);
     const image = await loadNapiImage(readFileSync(file));
     const canvas = createCanvas(image.width, image.height);
@@ -302,20 +297,26 @@ describe('probe points against the committed atlas', () => {
     const cellX = Math.floor(HERO_PROBE_UV.ink.u * RELIEF_RASTER.cellWidth);
     const cellY = Math.floor(HERO_PROBE_UV.ink.v * RELIEF_RASTER.cellHeight);
 
-    // 1m is atlas cell 0; Haku (5z) is cell 34 (column 4, row 5).
-    const man = context.getImageData(0, 0, RELIEF_RASTER.cellWidth, RELIEF_RASTER.cellHeight);
-    const manOffset = (cellY * RELIEF_RASTER.cellWidth + cellX) * 4;
-    expect(man.data[manOffset + 3]).toBeGreaterThanOrEqual(200);
+    // The hero hand is 1p: atlas cell 13 (column 3, row 1). Haku (5z) is cell
+    // 34 (column 4, row 5).
+    const pin = context.getImageData(
+      3 * RELIEF_RASTER.cellWidth,
+      1 * RELIEF_RASTER.cellHeight,
+      RELIEF_RASTER.cellWidth,
+      RELIEF_RASTER.cellHeight,
+    );
+    const pinOffset = (cellY * RELIEF_RASTER.cellWidth + cellX) * 4;
+    expect(pin.data[pinOffset + 3]).toBeGreaterThanOrEqual(200);
 
     // Every texel within 8 of the point is ink too, so a 5 x 5 read-back cannot
-    // land on the stroke's edge.
+    // land on a stroke's edge.
     const clearance = 8;
     for (let dy = -clearance; dy <= clearance; dy += 1) {
       for (let dx = -clearance; dx <= clearance; dx += 1) {
         const x = cellX + dx;
         const y = cellY + dy;
         const offset = (y * RELIEF_RASTER.cellWidth + x) * 4;
-        expect(man.data[offset + 3], `ink at ${x},${y}`).toBeGreaterThanOrEqual(200);
+        expect(pin.data[offset + 3], `ink at ${x},${y}`).toBeGreaterThanOrEqual(200);
       }
     }
 

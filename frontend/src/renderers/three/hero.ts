@@ -126,7 +126,7 @@ export const HERO_SLOTS: readonly HeroSlot[] = [
   {
     id: 'hand',
     label: 'human hand (reclined 40°)',
-    face: '1m',
+    face: '1p',
     faceUp: true,
     pose: handHeroPose(),
   },
@@ -197,14 +197,16 @@ export function heroInstances(
 /**
  * Probe points in the plate's own UV space (V down, like the atlas cells).
  *
- * `ink` is the centre of the deepest ink interior of the `1m` cell — found by a
- * distance transform over the committed albedo atlas, 15.7 texels inside the
- * painted silhouette — so a 5 x 5 read-back is guaranteed to be inside the
- * stroke. It is reused on Haku on purpose: the same point must be *clean*
- * there, because Haku has no printed mark.
+ * `ink` is the widest point of *distinct* paint on the hero hand's face (a
+ * colour at least ΔE 25 from the ivory, so a white part of the artwork does
+ * not count) — a distance transform over the committed albedo atlas. For `1p`
+ * that is a 22-texel-wide navy band at 11.2 texels of clearance; the earlier
+ * `1m` stroke offered 15.7. A 5 x 5 read-back is therefore guaranteed to be
+ * inside the paint. It is reused on Haku on purpose: the same point must be
+ * *clean* there, because Haku has no printed mark at all.
  */
 export const HERO_PROBE_UV = {
-  ink: { u: 0.6309, v: 0.8015 },
+  ink: { u: 0.5684, v: 0.7985 },
   centre: { u: 0.5, v: 0.5 },
 } as const;
 

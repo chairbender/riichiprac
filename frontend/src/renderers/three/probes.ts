@@ -30,11 +30,18 @@ export type ProbeKind = 'ivory' | 'paint' | 'clean' | 'blue' | 'body';
 /** The ΔE a committed colour probe must stay inside (3D-05's acceptance). */
 export const PROBE_DELTA_E_TOLERANCE = 6;
 
-/** A painted stroke must show at least this much `R - max(G, B)`. */
-export const PAINT_REDNESS_MIN = 60;
+/**
+ * A paint probe must differ from the ivory by at least this ΔE.
+ *
+ * `1m`'s stroke is crimson, but `1p`'s artwork is navy, black, white and
+ * crimson; "is the paint there?" is therefore a contrast test against the
+ * unpainted ivory, not a redness test. White regions of the art deliberately do
+ * not count (they are within ΔE 6 of the ivory).
+ */
+export const PAINT_CONTRAST_MIN = 25;
 
-/** A clean face must show at most this much red excess. */
-export const CLEAN_REDNESS_MAX = 30;
+/** A clean face must sit within this ΔE of the committed ivory. */
+export const CLEAN_DELTA_E_MAX = 6;
 
 /** The block read per probe (an odd size, so there is a true centre pixel). */
 export const PROBE_BLOCK = 5;
@@ -66,7 +73,7 @@ export const HERO_PROBES: readonly ProbeDefinition[] = [
   },
   {
     id: 'facePaint',
-    label: 'paint (hand, 1m stroke)',
+    label: 'paint (hand, 1p artwork)',
     kind: 'paint',
     point: { slot: 'hand', uv: HERO_PROBE_UV.ink },
   },
@@ -248,22 +255,23 @@ export function readProbes(
     const rgb: [number, number, number] = [median(reds), median(greens), median(blues)];
     const lab = srgbBytesToLab(rgb);
 
+    const ivoryContrast = deltaE76(lab, IVORY_LAB);
     let pass = false;
     let detail: string | null = null;
     if (definition.kind === 'paint') {
-      pass = redness >= PAINT_REDNESS_MIN;
+      pass = ivoryContrast >= PAINT_CONTRAST_MIN;
       if (!pass) {
-        detail = `no painted stroke: redness ${redness} < ${PAINT_REDNESS_MIN}`;
+        detail = `no paint at the probe: ΔE ${ivoryContrast.toFixed(2)} from the ivory < ${PAINT_CONTRAST_MIN}`;
       }
     } else if (definition.kind === 'clean') {
-      pass = redness <= CLEAN_REDNESS_MAX;
+      pass = ivoryContrast <= CLEAN_DELTA_E_MAX;
       if (!pass) {
-        detail = `ink where a clean face is expected: redness ${redness} > ${CLEAN_REDNESS_MAX}`;
+        detail = `paint where a clean face is expected: ΔE ${ivoryContrast.toFixed(2)} > ${CLEAN_DELTA_E_MAX}`;
       }
     } else if (definition.kind === 'body') {
       const blueExcess = rgb[2] - rgb[0];
       const luminance = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
-      pass = redness < PAINT_REDNESS_MIN && blueExcess < 60 && luminance > 80;
+      pass = blueExcess < 60 && luminance > 80 && ivoryContrast < PAINT_CONTRAST_MIN;
       if (!pass) {
         detail = `expected ivory body: ${rgbToHex(rgb)} (blue excess ${blueExcess}, luminance ${luminance.toFixed(1)})`;
       }
@@ -295,6 +303,9 @@ export function readProbes(
     };
   });
 }
+
+/** The committed ivory, as a Lab reference for the paint/clean rules. */
+const IVORY_LAB = srgbBytesToLab([245, 240, 235]);
 
 function failed(
   definition: ProbeDefinition,
