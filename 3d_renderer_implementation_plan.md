@@ -881,6 +881,14 @@ slot and the full-screen control; ~100 lines with comments) and `App.css`. The
 a dependency — neither chain waits for the other. Keep the diff to the mount
 point and the shell modifier.
 
+**Handoff recorded (2026-11-18).** The user reviewed the full-window,
+scene-only mount and the square felt at `?renderer=3d` and said: "Looks good
+now." Accepted as-is: no app chrome mounted, the camera rig and framing, the
+procedural felt (a square sized to the frame's top and bottom edges, sides
+visible on a wide window), and the status/error placement. Not yet built and
+still owned by later units: the board (3D-07), the floating hand/compass UI
+(3D-08/3D-09), the re-mounted chrome plus the full-screen toggle (3D-14).
+
 ---
 
 ### 3D-03 — Relief asset bridge and procedural fallback
