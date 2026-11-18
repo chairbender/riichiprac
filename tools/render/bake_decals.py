@@ -342,6 +342,7 @@ def decal_material(
     decal_spec: dict,
     symbol_path: Path,
     field_path: Path,
+    surface: str,
 ) -> bpy.types.Material:
     """The carved face shader: face + paint, cavity AO, and transparent outside."""
     tile_spec = shell_spec["tile"]
@@ -464,11 +465,95 @@ def decal_material(
         links.new(island_alpha.outputs["Value"], coverage_with_island.inputs[1])
         coverage_output = coverage_with_island.outputs["Value"]
 
+    # Display-only glare stamp: a small white hot core with a fast radial
+    # falloff. A physical spot light cannot shape this falloff at the requested
+    # angle (the flat-face mirror point leaves the tile), so this is baked into
+    # the decal like a reflection. It is screen-locked by construction.
+    stamp = decal_spec.get("glareStamps", {}).get(surface)
+    base_shader = paint_mix.outputs["Shader"]
+    stamp_mask_output = None
+    if stamp and stamp.get("enabled", True):
+        coord = nodes.new("ShaderNodeTexCoord")
+        uv = nodes.new("ShaderNodeSeparateXYZ")
+        links.new(coord.outputs["UV"], uv.inputs["Vector"])
+        cx, cy = stamp["centerUv"]
+        dx = nodes.new("ShaderNodeMath")
+        dx.operation = "SUBTRACT"
+        links.new(uv.outputs["X"], dx.inputs[0])
+        dx.inputs[1].default_value = float(cx)
+        dy = nodes.new("ShaderNodeMath")
+        dy.operation = "SUBTRACT"
+        links.new(uv.outputs["Y"], dy.inputs[0])
+        dy.inputs[1].default_value = float(cy)
+        dx2 = nodes.new("ShaderNodeMath")
+        dx2.operation = "MULTIPLY"
+        links.new(dx.outputs["Value"], dx2.inputs[0])
+        links.new(dx.outputs["Value"], dx2.inputs[1])
+        dy2 = nodes.new("ShaderNodeMath")
+        dy2.operation = "MULTIPLY"
+        links.new(dy.outputs["Value"], dy2.inputs[0])
+        links.new(dy.outputs["Value"], dy2.inputs[1])
+        dist2 = nodes.new("ShaderNodeMath")
+        dist2.operation = "ADD"
+        links.new(dx2.outputs["Value"], dist2.inputs[0])
+        links.new(dy2.outputs["Value"], dist2.inputs[1])
+        dist = nodes.new("ShaderNodeMath")
+        dist.operation = "POWER"
+        links.new(dist2.outputs["Value"], dist.inputs[0])
+        dist.inputs[1].default_value = 0.5
+        halo = float(stamp["haloRadiusUv"])
+        hot = float(stamp["hotRadiusUv"])
+        falloff = float(stamp["falloff"])
+        # halo = (1 - d/halo)^falloff, clamped; 0 outside the halo.
+        t = nodes.new("ShaderNodeMapRange")
+        t.inputs["From Min"].default_value = 0.0
+        t.inputs["From Max"].default_value = halo
+        t.inputs["To Min"].default_value = 1.0
+        t.inputs["To Max"].default_value = 0.0
+        t.clamp = True
+        links.new(dist.outputs["Value"], t.inputs["Value"])
+        power = nodes.new("ShaderNodeMath")
+        power.operation = "POWER"
+        links.new(t.outputs["Result"], power.inputs[0])
+        power.inputs[1].default_value = falloff
+        core = nodes.new("ShaderNodeMapRange")
+        core.inputs["From Min"].default_value = 0.0
+        core.inputs["From Max"].default_value = hot
+        core.inputs["To Min"].default_value = 1.0
+        core.inputs["To Max"].default_value = 0.0
+        core.clamp = True
+        links.new(dist.outputs["Value"], core.inputs["Value"])
+        mask = nodes.new("ShaderNodeMath")
+        mask.operation = "MAXIMUM"
+        links.new(power.outputs["Value"], mask.inputs[0])
+        links.new(core.outputs["Result"], mask.inputs[1])
+        strength = nodes.new("ShaderNodeMath")
+        strength.operation = "MULTIPLY"
+        links.new(mask.outputs["Value"], strength.inputs[0])
+        strength.inputs[1].default_value = float(stamp.get("intensity", 1.0))
+        # The stamp carries its own coverage: it must draw even where the glyph
+        # is transparent (a glare on the tile face, not only inside the carve).
+        stamp_mask_output = mask.outputs["Value"]
+        stamp_emission = nodes.new("ShaderNodeEmission")
+        stamp_emission.inputs["Color"].default_value = hex_linear(stamp.get("color", "#ffffff"))
+        links.new(strength.outputs["Value"], stamp_emission.inputs["Strength"])
+        add_stamp = nodes.new("ShaderNodeAddShader")
+        links.new(paint_mix.outputs["Shader"], add_stamp.inputs[0])
+        links.new(stamp_emission.outputs["Emission"], add_stamp.inputs[1])
+        base_shader = add_stamp.outputs["Shader"]
+
+    if stamp_mask_output is not None:
+        coverage_with_stamp = nodes.new("ShaderNodeMath")
+        coverage_with_stamp.operation = "MAXIMUM"
+        links.new(coverage_output, coverage_with_stamp.inputs[0])
+        links.new(stamp_mask_output, coverage_with_stamp.inputs[1])
+        coverage_output = coverage_with_stamp.outputs["Value"]
+
     transparent = nodes.new("ShaderNodeBsdfTransparent")
     final_mix = nodes.new("ShaderNodeMixShader")
     links.new(coverage_output, final_mix.inputs["Fac"])
     links.new(transparent.outputs["BSDF"], final_mix.inputs[1])
-    links.new(paint_mix.outputs["Shader"], final_mix.inputs[2])
+    links.new(base_shader, final_mix.inputs[2])
     output_node = nodes["Material Output"]
     links.new(final_mix.outputs["Shader"], output_node.inputs["Surface"])
     return material
@@ -507,12 +592,28 @@ def build_decal_lights(
     center = Vector((0.0, 0.0, tile["height"] / 2.0))
     frame = lighting.get("frame", "world")
     for entry in lighting["lights"]:
-        data = bpy.data.lights.new(entry["id"], "AREA")
-        data.shape = "RECTANGLE"
-        data.size = entry["size"]
-        data.size_y = entry["sizeY"]
+        light_type = entry.get("type", "AREA")
+        data = bpy.data.lights.new(entry["id"], light_type)
+        if light_type == "AREA":
+            data.shape = "RECTANGLE"
+            data.size = entry["size"]
+            data.size_y = entry["sizeY"]
+        elif light_type == "POINT":
+            # A finite-distance point source gives a local specular hotspot on
+            # a flat face instead of the whole-face wash of a large area light.
+            data.shadow_soft_size = float(entry.get("shadowSoftSize", 0.1))
+        elif light_type == "SPOT":
+            data.shadow_soft_size = float(entry.get("shadowSoftSize", 0.1))
+            data.spot_size = float(entry.get("spotSizeDeg", 30.0)) * math.pi / 180.0
+            data.spot_blend = float(entry.get("spotBlend", 0.3))
+        else:
+            die(f"decal light {entry['id']} has unsupported type {light_type}")
         data.energy = entry["energyW"]
         data.color = hex_linear(entry["hex"])[:3]
+        # Glare experiments use specular-only lights: a white reflection
+        # without a diffuse wash that would flatten the carve.
+        data.diffuse_factor = float(entry.get("diffuseFactor", 1.0))
+        data.specular_factor = float(entry.get("specularFactor", 1.0))
         if frame == "face-normal":
             # Room light expressed in the tile's face frame: aroundDeg turns
             # around the face normal, tiltDeg is the angle from the normal.
@@ -672,7 +773,7 @@ def bake_one(
     field_path = field_dir / f"{face}-field.png"
     field = carve_field(symbol_path, decal_spec, geometry, field_path)
 
-    material = decal_material(shell_spec, decal_spec, symbol_path, field_path)
+    material = decal_material(shell_spec, decal_spec, symbol_path, field_path, surface)
     half_w = tile["width"] / 2.0 - tile["faceInset"]
     half_h = tile["height"] / 2.0 - tile["faceInset"]
     # Map the FULL upstream symbol canvas (300 x 400) onto the inset face

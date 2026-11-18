@@ -1251,6 +1251,28 @@ the flat glyph, and still composites one `BakedTileSprite` per
 `requireDecals: true` makes a missing decal a hard error. No per-frame
 compositing is added.
 
+**Final approved revision (2026-11-18).** Three changes landed after the
+original Phase 2b rig:
+1. **White-fill islands.** Pure-white glyph fills (the white interiors in
+   pinzu and souzu) are the tile's own ivory, not white enamel. They are
+   excluded from the carve mask (`carve.whiteFillUncarved`, threshold 0.9) so
+   the field is 0 there, and kept in the decal as **opaque ivory at the
+   original surface** — a raised island inside the recessed glyph. A
+   transparent hole would have exposed the dark standing-hand shell.
+2. **Lying rig v2.** The lying face-normal rig now carries the approved
+   upright parlour angles: key `around 0 / tilt 52.6` (was 23.34), the second
+   tube behind the face as a rim, the green bounce and the behind rim. Lying
+   decal contrast now tracks the upright.
+3. **Glare spot.** A **specular-only** head-on spot (`tilt 0`, `around 0`,
+   0.9° cone, 0.45 kW, `diffuseFactor 0`, `specularFactor 1`) gives a small
+   white flat-face reflection without flattening the carve. The larger 1.2° /
+   0.6 kW version, a 20° angled light (the mirror point leaves the tile), an
+   80° grazing wall light, and a radial baked stamp were all evaluated; the
+   head-on 0.9° spot is the approved one. Settings are saved as
+   `decal-profiles/approved-lying-v3-glare.json`; use
+   `node tools/render/scripts/decal-profile.mjs use approved-lying-v3-glare`
+   to restore, then re-bake.
+
 **Review.** `cd frontend && npm run atlas:review:carved` writes
 `carved-compare-4x.png` (flat vs carved), `carved-variants-1x.png`,
 `carved-hand-fan-1x.png` and `carved-numbers.json` under

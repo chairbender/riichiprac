@@ -1011,13 +1011,20 @@ save the good ones before experimenting:
 
 ```bash
 node tools/render/scripts/decal-profile.mjs list
-node tools/render/scripts/decal-profile.mjs save approved-lying-v2
-node tools/render/scripts/decal-profile.mjs use approved-lying-v2
+node tools/render/scripts/decal-profile.mjs save approved-lying-v3-glare
+node tools/render/scripts/decal-profile.mjs use approved-lying-v3-glare
 ```
 
 `save` snapshots the active `decal-spec.json` into `tools/render/decal-profiles/`;
-`use` restores it. Re-bake after applying a profile. `approved-lying-v2`
-(2026-11-18) is the approved white-island + upright-derived lying rig checkpoint.
+`use` restores it. Re-bake after applying a profile.
+
+- `approved-lying-v3-glare` — final approved rig (2026-11-18): white-fill islands
+  uncarved, lying rig ported from the upright parlour rig, specular-only head-on
+  glare spot (0.9°, 0.45 kW).
+- `approved-lying-v2` — same carve/lying rig without the glare spot.
+- `approved-lying-g2-glare` — the earlier 1.2° / 0.6 kW glare spot.
+- `experiment-glare-*` — 20°, grazing, and radial-stamp experiments; not used by
+  the approved rig.
 
 **Spike (measured).** 4 faces (`1m`, `5p`, `7z`, `5mr`) × (1 upright + 4 lying)
 = **20 decals at 158 × 216** (150 × 208 face plate + a 4 px transparent safety
