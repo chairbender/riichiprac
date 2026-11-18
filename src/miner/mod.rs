@@ -46,6 +46,7 @@ pub mod label;
 pub mod licence;
 pub mod pack;
 pub mod provenance;
+pub mod qa;
 pub mod select;
 pub mod source;
 pub mod storage;

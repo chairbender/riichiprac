@@ -62,6 +62,9 @@ pub struct VariantRunOptions {
     pub config: VariantConfig,
     /// Output directory. Defaults to the review directory's `variants/`.
     pub out: Option<PathBuf>,
+    /// Pack/report timestamp. A fixed value keeps a reproducibility run's pack
+    /// hash stable; `None` uses the wall clock.
+    pub generated_at: Option<String>,
     /// Assemble and publish a pack through P1a.
     pub publish: bool,
     /// Write the bases and variants to the DB (queue runs only).
@@ -78,6 +81,7 @@ impl Default for VariantRunOptions {
             pack_id: None,
             config: VariantConfig::default(),
             out: None,
+            generated_at: None,
             publish: false,
             persist: true,
             dry_run: false,
@@ -154,7 +158,10 @@ pub fn run_variants(
         ));
     }
 
-    let now = utc_iso8601(std::time::SystemTime::now());
+    let now = options
+        .generated_at
+        .clone()
+        .unwrap_or_else(|| utc_iso8601(std::time::SystemTime::now()));
     let (bases, games, queue_note, default_pack_id, base_notes) = match options.rehearsal {
         Some(count) => {
             let rehearsal = rehearsal_bases(count)?;

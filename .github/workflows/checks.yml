@@ -1,0 +1,104 @@
+name: Checks
+
+# Q1 adds the fixture pipeline to CI. Real corpus generation stays offline; this
+# job proves the schema, gates, deterministic pack hash, storage snapshot and
+# loader work on committed fixtures without a GPU or network.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  miner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Default library tests (no miner feature)
+        run: cargo test --lib
+
+      - name: Miner library and CLI tests
+        run: cargo test --features miner
+
+      - name: Miner clippy
+        run: cargo clippy --all-targets --features miner -- -D warnings
+
+      - name: WASM target stays clean without the miner feature
+        run: cargo check --target wasm32-unknown-unknown
+
+      - name: No libriichi in the miner dependency tree
+        run: |
+          if cargo tree --features miner | grep -qi libriichi; then
+            echo "::error::libriichi must never be linked into the app repo"
+            exit 1
+          fi
+
+      - name: Q1 end-to-end fixture pipeline
+        run: bash scripts/check-pipeline-e2e.sh
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain (wasm target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+
+      - name: Build WASM package
+        run: wasm-pack build --target web --release
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Frontend lint
+        working-directory: frontend
+        run: npm run lint

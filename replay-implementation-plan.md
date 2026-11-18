@@ -2289,6 +2289,24 @@ same pack hash; every gate has a failing test; no third-party source; docs.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-17, Q1 branch).** Implemented as a fixture-only pipeline that
+> runs in CI with no GPU, network, real corpus or Mortal checkpoint:
+> `mine_replays qa fixture` ingests the committed replay fixtures into
+> content-addressed gzipped replays with valid provenance, labels them with a
+> deterministic fixture evaluator (`q1-fixture-evaluator`, never presented as
+> Mortal), selects a review queue plus held-out QA, auto-accepts the fixture
+> queue, then runs the seeded book-rehearsal transform stage, publishes the pack,
+> audits it, stages the same-origin copy, and snapshots the DB with
+> `PRAGMA integrity_check`. `scripts/check-pipeline-e2e.sh` runs it twice and
+> requires the same pack SHA-256, then verifies the hosting directory (41
+> checks), loads the produced pack through the frontend loader and runs the
+> failing-gate matrix in `tests/q1_gates.rs` (G0–G8, G11; G9 is the frontend
+> suite, G10 is the two-run hash). The replay branch and the variant/pack branch
+> use different fixture sources because the committed replay fixtures contain no
+> book-recognised table; the report states this instead of faking one chain. G3's
+> full per-family report stays offline with C1–C8. See
+> [`replay-miner-operations.md`](replay-miner-operations.md#end-to-end-acceptance-harness-q1).
+
 ##### Q2 — First curated pack: 100 ch. 8 defense scenarios
 
 **Goal.** Ship one small pack and measure it before scaling.

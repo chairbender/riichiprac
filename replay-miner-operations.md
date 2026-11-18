@@ -1,4 +1,4 @@
-# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers, selection, variants and packs (F1, R1, R2, L1, L2, S1, S2, V2, P1a, P1b, P2)
+# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers, selection, variants, packs and the Q1 harness (F1, R1, R2, L1, L2, S1, S2, V2, P1a, P1b, P2, Q1)
 
 Status: implemented foundation (F1), replay reader/validator (R1), the walker /
 `GameState` reconstruction (R2), the native Mortal labeler with Q values and
@@ -7,7 +7,8 @@ percentile hooks and optional calibration (L2), the cheap candidate triggers wit
 family filters (S1), the hard gates, ranking, quotas, dedupe, held-out QA and
 review queue (S2), the label-preserving variant stage (V2), the scenario-pack
 format/gate/audit (P1a) with DB-backed assembly (P1b), and same-origin hosting
-with CI copy, byte/CORS checks and the optional R2/HF mirror (P2) of
+with CI copy, byte/CORS checks and the optional R2/HF mirror (P2), and the
+end-to-end fixture acceptance harness (Q1) of
 [`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
 document is the operator contract for the native-only miner. It does not re-open
 the source decision: [`replay-strategy.md`](replay-strategy.md) §2 fixes AI
@@ -85,6 +86,7 @@ mine_replays [--data-dir DIR] <command>
   transform         generate label-preserving scenario variants
   pack              assemble, audit and export scenario packs
   audit             audit provenance, licences and pack integrity
+  qa fixture        run the Q1 end-to-end acceptance harness on fixtures
   review            work the human review queue
 ```
 
@@ -1537,6 +1539,122 @@ never blocks a deploy. Google Drive remains a corpus/DB backup only (rclone
 - `npm run lint`, `npm test` (215 tests) and the Rust gates above are clean. No
   raw corpus, database, weights or LFS object is hosted. No wasm behaviour
   changed and no visual output is involved.
+
+
+## End-to-end acceptance harness (Q1)
+
+Status: implemented. Q1 makes the whole pipeline runnable in CI from committed
+fixtures, with no GPU, network, real corpus or Mortal checkpoint. Real corpus
+generation stays offline (C1–C8); Q1 does not generate a corpus.
+
+```bash
+# One full fixture run (data root is scratch; every artifact is reproducible).
+cargo run --release --features miner --bin mine_replays -- \
+  --data-dir target/q1-smoke qa fixture \
+  --corpus testdata/replays --generated-at 2026-11-17T00:00:00Z --json
+
+# The CI wrapper: two runs, same-pack-hash check, hosting check, loader smoke
+# and the failing-gate matrix.
+bash scripts/check-pipeline-e2e.sh
+```
+
+### What `qa fixture` runs
+
+```text
+testdata/replays/*.jsonl
+  └─ ingest ─► replays/mortal_mirror/<sha256>.jsonl.gz + valid GameProvenance rows
+       └─ label (FixtureEvaluator) ─► model_labels cache
+            └─ select ─► review-queue.jsonl + held-out.jsonl + selection-report.json
+                 └─ review (auto-accept the fixture) ─► dispositions
+                      └─ transform rehearsal (seeded book bases) ─► variants + pack
+                           └─ audit ─► publish_hosted ─► verify_hosted_dir
+                                └─ snapshot + PRAGMA integrity_check
+```
+
+There are deliberately two sources in one run. The committed replay fixtures
+contain no table a book classifier recognises, so the replay branch proves
+ingest → label → select → review → held-out QA. The variant/pack branch uses
+the V2 seeded book rehearsal (`rehearsal_bases`) because a Mortal-only base
+cannot be label-verified without a checkpoint. The report names both branches;
+it never pretends one produced the other.
+
+`ingest` and `extract` are still CLI stubs. Q1's ingest step writes the same
+content-addressed replay files and `replays` rows those commands will own, and
+the label/selection stages walk the validated replay through R2 — the same
+reconstruction `extract` will persist as `decisions` rows. Q1 therefore exercises
+the parser, validator, walker, classifier and label path without a stub
+pretending to have run.
+
+The `qa fixture` command exits 0 only when every `checks` entry is true: corpus
+ingested, labels clean, selection non-empty, held-out present, review complete,
+variants shipped, pack published, audit clean, hosting verified, storage
+integrity ok, and every replay path content-addressed.
+
+### Fixture evaluator (not a model)
+
+`miner::label::fixture::FixtureEvaluator` is the Q1 stand-in for Mortal. It puts
+the first book classifier's answer on top when the table matches one, otherwise
+the first legal discard, and scores the rest deterministically. Every label
+records `model = q1-fixture-evaluator` with a fixed hash, so it can never be
+mistaken for `mortal_298k`. It is not used to grade a shipped drill; Q2 labels
+with the real checkpoint. A Mortal-only base's variants are not verified with
+this evaluator (its fallback is not equivariant under relabelling), which is why
+the pack branch is the seeded book rehearsal.
+
+### Determinism
+
+Every pack/manifest timestamp is the caller's pinned `--generated-at`; the
+fixture corpus gzip uses a fixed header; the fixture evaluator is pure; the
+rehearsal is seeded (it reseeds before every draw). `transform` therefore gained
+`--generated-at` and `VariantRunOptions::generated_at`. Two runs with the same
+inputs write the same pack bytes and SHA-256. `scripts/check-pipeline-e2e.sh`
+runs `qa fixture` twice into separate data roots and compares the pack hash,
+byte count, scenario count and selected/held-out counts. The DB snapshot is not
+compared byte-for-byte (SQLite page layout is not the determinism contract); its
+`PRAGMA integrity_check` must be `ok`.
+
+### Gate matrix
+
+`tests/q1_gates.rs` is the failing-test matrix: G0 source/provenance, G1 parser,
+G2 reachability, G3 corpus family slug, G4 classifier positive/near-miss, G5
+label cache + Q values, G6 illegal selection answer, G7 label-preservation
+mismatch, G8 pack source licence/illegal answer/spoiler/byte budget/missing
+provenance, and G11 snapshot integrity/content-addressed paths/rclone skip.
+G9 loader is the frontend suite plus `frontend/src/services/packLoader.q1.test.ts`,
+which loads the pipeline's own pack when `Q1_PACK_DIR` is set. G10 is the
+two-run pack-hash comparison. G3's full per-family report is offline corpus work
+(C1–C8); the fixture checks the provenance family rule every fixture run uses.
+
+### Storage and backup (G11)
+
+The harness snapshots the miner DB through `snapshot_database` (VACUUM INTO plus
+`PRAGMA integrity_check`), reports row counts and verifies
+`replays/<family>/<replay_id>.jsonl.gz` for every row. The rclone plan is
+reported as `skipped` when no `RIICHI_RCLONE_REMOTE` is configured; the harness
+never runs rclone. The operator commands remain in §7.1 of the plan.
+
+### CI
+
+`.github/workflows/checks.yml` runs the default library tests, the miner tests,
+clippy, the WASM check, the no-`libriichi` check, `scripts/check-pipeline-e2e.sh`
+and the frontend test/build/lint jobs. The pipeline job uses committed fixtures
+and needs no secrets. It is independent of the Pages deploy workflow.
+
+### Q1 acceptance evidence
+
+- `bash scripts/check-pipeline-e2e.sh` passes: 2 fixture replays, 99 labels, 8
+  selected + 2 held-out, 24 shipped variants from 12 seeded bases across
+  `rank_mirror`/`seat_perm`/`suit_perm`, a 36-scenario pack, clean audit, 41
+  hosting checks, loader smoke and the 10-test gate matrix.
+- The two runs report the same pack SHA-256
+  (`9cbf1e4a3eccbcc4e5ac2e087be0923f41720a2b0a428361ddf8db3910347c96` in the
+  recorded 2026-11-17 run), byte count and scenario count.
+- `cargo test --features miner --test q1_gates` passes all ten negative tests;
+  `cargo test --features miner` and the §7.1 shared commands stay clean.
+- The loader smoke passed with the pack at `Q1_PACK_DIR` and the cache path
+  re-used the content-addressed key.
+- No visual judgement is involved: the harness only checks bytes, schemas,
+  hashes, row counts and `PRAGMA integrity_check`.
 
 ## F1 acceptance evidence
 
