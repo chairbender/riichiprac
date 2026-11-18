@@ -305,18 +305,19 @@ describe('the 8-texel parallax budget at every supported aspect', () => {
       }
     }
     const reading = parallaxTexels(worst.angle);
+    const physical = parallaxTexels(worst.angle, { heightScale: 1 });
     const heroRigWorst = Math.max(
       ...CAMERA.supportedAspects.map((aspect) => heroParallaxAt(aspect).worst.texels),
     );
     console.log(
       `3D-05 strict board worst (frameForAspect): ${worst.id} at ${worst.angle.toFixed(2)}° → ` +
-        `${reading.texels.toFixed(2)} texels (clamped: ${reading.clamped}); ` +
+        `${reading.texels.toFixed(2)} texels at the live scale (physical ${physical.texels.toFixed(2)}); ` +
         `hero view worst (cameraRig): ${heroRigWorst.toFixed(2)}`,
     );
-    // A bad depth parameter would be an order of magnitude past the bound; the
-    // real board's steepest face is within a quarter of it, and where it does
-    // cross 8 the shader's clamp is what holds the budget (it reports that).
-    expect(reading.texels).toBeLessThan(POM_MAX_TEXELS * 1.25);
-    expect(reading.clamped).toBe(reading.texels > POM_MAX_TEXELS);
+    // The live scale keeps even the steepest face well inside the bound; the
+    // physical depth would cross it, which is what the shader's clamp covers.
+    expect(reading.texels).toBeLessThan(POM_MAX_TEXELS);
+    expect(reading.clamped).toBe(false);
+    expect(physical.clamped).toBe(physical.texels > POM_MAX_TEXELS);
   });
 });

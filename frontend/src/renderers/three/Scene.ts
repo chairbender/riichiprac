@@ -70,6 +70,7 @@ import type { ReliefGpuTexture } from './reliefTextures';
 import { buildTileGeometry } from './tileGeometry';
 import {
   CARVE_DEPTH_MM,
+  POM_HEIGHT_SCALE_SWEEP,
   POM_MAX_TEXELS,
   POM_STEPS,
   createTileMaterial,
@@ -313,12 +314,14 @@ export class TableScene implements TableRenderer {
       pomOff = { probes: offProbes, allProbesPass: allProbesPass(offProbes) };
     }
 
-    const parallax = heroParallaxAt(this.aspect);
+    const heightScale = hero.material.heightScale();
+    const parallax = heroParallaxAt(this.aspect, heightScale);
     return {
       relief: hero.assets.status,
       tier: this.tier,
       pomSteps: liveSteps,
       carveDepthMm: CARVE_DEPTH_MM,
+      heightScale,
       maxParallaxTexels: POM_MAX_TEXELS,
       aspect: this.aspect,
       parallax: parallax.slots.map((slot) => ({
@@ -335,21 +338,22 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * One PNG per hero slot with the depth march on and off, for the 3D-05 user
-   * handoff.
+   * One PNG per hero slot for the 3D-05 user handoff: a **depth sweep** of that
+   * slot.
    *
-   * Each capture is a **macro shot of that slot**: the camera stays on the real
-   * incidence ray (the direction from the tile to the committed eye, which is
-   * what the parallax depends on) and moves in to frame the body at 640 x 640.
-   * It is the same pose, the same lights and the same shader — only the distance
-   * changes, so the perspective across the tile is exaggerated and the carve's
-   * displacement is not. That is the difference between "judge the carving" and
-   * "judge the board at 45 CSS px per tile"; 3D-07 shows the latter.
+   * Each capture is a macro shot on the slot's real incidence ray (the direction
+   * from the tile to the committed eye, which is what the parallax depends on)
+   * with the camera moved in to frame the body. Four panels per slot show the
+   * depth-march scale {@link POM_HEIGHT_SCALE_SWEEP} (0 = POM off, 1 = the full
+   * physical 0.55 mm groove), labelled in the image, so the approved 2.5D decal
+   * look can be matched by eye against a fixed set of candidates. Nothing here
+   * decides which one is right.
    */
   heroCaptures(): readonly HeroCapture[] {
     const hero = this.hero;
     if (!hero || this.disposed) return [];
     const liveSteps = hero.material.pomSteps();
+    const liveScale = hero.material.heightScale();
     const onSteps = liveSteps > 0 ? liveSteps : POM_STEPS[this.tier];
 
     const cssSize = this.renderer.getSize(new Vector2());
@@ -358,28 +362,35 @@ export class TableScene implements TableRenderer {
     this.renderer.setPixelRatio(1);
     this.renderer.setSize(HERO_CAPTURE_SIZE, HERO_CAPTURE_SIZE, false);
     try {
-      for (const state of ['on', 'off'] as const) {
-        hero.material.setPomSteps(state === 'on' ? onSteps : 0);
-        for (const instance of hero.instances) {
+      for (const instance of hero.instances) {
+        const panels: ImageData[] = [];
+        for (const scale of POM_HEIGHT_SCALE_SWEEP) {
+          hero.material.setHeightScale(scale);
+          hero.material.setPomSteps(scale === 0 ? 0 : onSteps);
           this.applyHeroCaptureCamera(instance.slot);
           this.draw();
-          const png = this.readPngBlock({
+          const image = this.readImageBlock({
             x: 0,
             y: 0,
             width: HERO_CAPTURE_SIZE,
             height: HERO_CAPTURE_SIZE,
           });
-          if (!png) continue;
-          captures.push({
-            name: `hero-${instance.slot.id}-pom-${state}.png`,
-            pngDataUrl: png,
-            width: HERO_CAPTURE_SIZE,
-            height: HERO_CAPTURE_SIZE,
-          });
+          if (!image) break;
+          panels.push(image);
         }
+        if (panels.length !== POM_HEIGHT_SCALE_SWEEP.length) continue;
+        const png = composeDepthSweep(instance.slot.label, panels, POM_HEIGHT_SCALE_SWEEP);
+        if (!png) continue;
+        captures.push({
+          name: `hero-${instance.slot.id}-depth-sweep.png`,
+          pngDataUrl: png.dataUrl,
+          width: png.width,
+          height: png.height,
+        });
       }
     } finally {
       hero.material.setPomSteps(liveSteps);
+      hero.material.setHeightScale(liveScale);
       this.renderer.setPixelRatio(liveRatio);
       this.renderer.setSize(cssSize.x, cssSize.y, false);
       applyPoseToCamera(this.camera, rigPoseForAspect(this.aspect));
@@ -574,13 +585,13 @@ export class TableScene implements TableRenderer {
     return readProbes(source, projector);
   }
 
-  /** Read a block and encode it as a PNG data URL. */
-  private readPngBlock(rect: {
+  /** Read a block of the current frame as top-down RGBA pixels. */
+  private readImageBlock(rect: {
     readonly x: number;
     readonly y: number;
     readonly width: number;
     readonly height: number;
-  }): string | null {
+  }): ImageData | null {
     if (typeof document === 'undefined') return null;
     const gl = this.renderer.getContext();
     const pixels = new Uint8Array(rect.width * rect.height * 4);
@@ -599,7 +610,7 @@ export class TableScene implements TableRenderer {
     const context = canvas.getContext('2d');
     if (!context) return null;
     const image = context.createImageData(rect.width, rect.height);
-    // `readPixels` is bottom-up; the PNG is top-down.
+    // `readPixels` is bottom-up; an ImageData is top-down.
     const rowBytes = rect.width * 4;
     for (let row = 0; row < rect.height; row += 1) {
       const sourceStart = (rect.height - 1 - row) * rowBytes;
@@ -608,8 +619,7 @@ export class TableScene implements TableRenderer {
         row * rowBytes,
       );
     }
-    context.putImageData(image, 0, 0);
-    return canvas.toDataURL('image/png');
+    return image;
   }
 
   /** Draw on the next frame, coalescing multiple change notifications. */
@@ -632,4 +642,44 @@ export class TableScene implements TableRenderer {
     if (this.disposed) return;
     this.renderer.render(this.scene, this.camera);
   }
+}
+
+/**
+ * Paste the depth-sweep panels into one labelled strip: one image per slot, so
+ * the user can pick the displacement scale against the 2.5D decals without
+ * having to line up eight separate downloads. Labelling is DOM canvas work,
+ * never a judgement about the render.
+ */
+function composeDepthSweep(
+  label: string,
+  panels: readonly ImageData[],
+  scales: readonly number[],
+): { readonly dataUrl: string; readonly width: number; readonly height: number } | null {
+  if (typeof document === 'undefined' || panels.length === 0) return null;
+  const panelWidth = panels[0].width;
+  const panelHeight = panels[0].height;
+  const captionHeight = 32;
+  const canvas = document.createElement('canvas');
+  canvas.width = panelWidth * panels.length;
+  canvas.height = panelHeight + captionHeight;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+  context.fillStyle = '#0b1116';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  panels.forEach((panel, index) => {
+    context.putImageData(panel, index * panelWidth, captionHeight);
+    context.fillStyle = '#e7ecf3';
+    context.font = '20px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    const scale = scales[index] ?? 0;
+    context.fillText(
+      `${label} · depth scale ${scale.toFixed(2)}${scale === 0 ? ' (POM off)' : ''}`,
+      index * panelWidth + 12,
+      22,
+    );
+  });
+  return {
+    dataUrl: canvas.toDataURL('image/png'),
+    width: canvas.width,
+    height: canvas.height,
+  };
 }

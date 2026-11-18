@@ -26,6 +26,8 @@ import {
   CARVE_DEPTH_MM,
   CARVE_DEPTH_UNITS,
   DEBUG_MODE_CODE,
+  POM_HEIGHT_SCALE,
+  POM_HEIGHT_SCALE_SWEEP,
   POM_MAX_STEPS,
   POM_MAX_TEXELS,
   POM_STEPS,
@@ -97,9 +99,13 @@ describe('fragment shader invariants', () => {
     expect(TILE_FRAGMENT_SHADER).toContain('normalSample.rgb');
     expect(TILE_FRAGMENT_SHADER).toContain('aoSample.r');
     expect(TILE_FRAGMENT_SHADER).toContain('aoSample.g');
-    // The blue back / ivory bevel split comes from the *local* normal, which is
-    // what makes a face-down tile's visible surface blue without a second mesh.
-    expect(TILE_FRAGMENT_SHADER).toContain('vLocalNormal.z < -0.5');
+    // The white/blue split is the shell baker's gate on the local Z position,
+    // which is what makes the side wall carry the ivory band in front of the
+    // blue backing without a second mesh or a per-face material.
+    expect(TILE_FRAGMENT_SHADER).toContain('vLocalPosition.z < backCut');
+    expect(TILE_FRAGMENT_SHADER).toContain('uBackEdgeFraction');
+    expect(TILE_FRAGMENT_SHADER).toContain('uCoatRoughness');
+    expect(TILE_FRAGMENT_SHADER).toContain('uHeightScale');
   });
 
   it('has a wrapped diffuse and a GGX lobe fed by the sampled roughness', () => {
@@ -180,6 +186,24 @@ describe('material uniforms', () => {
     expect(handle.uniforms.uCarveDepthUnits.value).toBeCloseTo(0.55 / 28, 12);
     expect(handle.uniforms.uPlateUnits.value).toEqual([0.64, 0.89]);
     expect(handle.uniforms.uMaxParallaxTexels.value).toBe(POM_MAX_TEXELS);
+    expect(handle.uniforms.uHeightScale.value).toBe(POM_HEIGHT_SCALE);
+    expect(handle.heightScale()).toBe(POM_HEIGHT_SCALE);
+    handle.setHeightScale(2);
+    expect(handle.heightScale()).toBe(1);
+    handle.setHeightScale(-1);
+    expect(handle.heightScale()).toBe(0);
+    handle.dispose();
+  });
+
+  it('carries the shell material gate and coat', () => {
+    const handle = material();
+    expect(handle.uniforms.uBackEdgeFraction.value).toBe(0.3);
+    expect(handle.uniforms.uThicknessUnits.value).toBeCloseTo(16.5 / 28, 12);
+    expect(handle.uniforms.uCoatFace.value).toBe(0.4);
+    expect(handle.uniforms.uCoatBack.value).toBe(0.35);
+    expect(handle.uniforms.uCoatRoughness.value).toBe(0.1);
+    expect(handle.uniforms.uBodyIvoryRoughness.value).toBe(0.16);
+    expect(handle.uniforms.uBodyBlueRoughness.value).toBe(0.18);
     handle.dispose();
   });
 
@@ -215,8 +239,19 @@ describe('the parallax bound', () => {
     const near = parallaxTexels(10).texels;
     const pond = parallaxTexels(40).texels;
     expect(pond).toBeGreaterThan(near);
-    expect(pond).toBeCloseTo(6.59, 1);
+    // The live scale (0.25) is a quarter of the physical displacement.
+    expect(pond).toBeCloseTo(6.59 * POM_HEIGHT_SCALE, 1);
     expect(pond).toBeLessThan(POM_MAX_TEXELS);
+  });
+
+  it('reports the physical 6.6-texel figure at scale 1', () => {
+    const physical = parallaxTexels(40, { heightScale: 1 });
+    expect(physical.texels).toBeCloseTo(6.59, 1);
+    // That figure is what the approved decals never show (their camera is
+    // head-on), which is why the live material scales it down.
+    expect(POM_HEIGHT_SCALE).toBeLessThan(1);
+    expect(POM_HEIGHT_SCALE_SWEEP).toContain(0);
+    expect(POM_HEIGHT_SCALE_SWEEP).toContain(1);
   });
 
   it('uses the denser horizontal texel axis as the bound', () => {
@@ -225,20 +260,25 @@ describe('the parallax bound', () => {
     expect(reading.texels).toBe(reading.texelsU);
   });
 
-  it('flags and would clamp a grazing angle, which is why the shader clamps', () => {
-    // A far meld at 4:3 sits near 47°: about 8.4 texels, just past the bound,
-    // which is exactly where the shader's clamp takes over.
-    const meld = parallaxTexels(47);
-    expect(meld.texels).toBeGreaterThan(7.5);
-    expect(meld.texels).toBeLessThan(POM_MAX_TEXELS * 1.25);
-    expect(meld.clamped).toBe(meld.texels > POM_MAX_TEXELS);
-    const grazing = parallaxTexels(80);
+  it('stays far inside the budget at the live scale, and flags scale 1 past it', () => {
+    // A far meld at 4:3 sits near 47°: 2.1 texels at the live scale, 8.4 at the
+    // full physical depth — where the shader's clamp takes over.
+    const live = parallaxTexels(47);
+    expect(live.texels).toBeGreaterThan(1.5);
+    expect(live.texels).toBeLessThan(3);
+    expect(live.clamped).toBe(false);
+
+    const physical = parallaxTexels(47, { heightScale: 1 });
+    expect(physical.texels).toBeGreaterThan(7.5);
+    expect(physical.clamped).toBe(true);
+
+    const grazing = parallaxTexels(80, { heightScale: 1 });
     expect(grazing.texels).toBeGreaterThan(POM_MAX_TEXELS);
     expect(grazing.clamped).toBe(true);
   });
 
-  it('fails a bad depth parameter: 5 mm is far past the budget', () => {
-    const bad = parallaxTexels(40, { carveDepthUnits: 5 / 28 });
+  it('fails a bad depth parameter: 5 mm at scale 1 is far past the budget', () => {
+    const bad = parallaxTexels(40, { carveDepthUnits: 5 / 28, heightScale: 1 });
     expect(bad.texels).toBeGreaterThan(50);
     expect(bad.clamped).toBe(true);
   });

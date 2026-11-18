@@ -251,6 +251,8 @@ export interface HeroReport {
   readonly tier: QualityTier;
   readonly pomSteps: number;
   readonly carveDepthMm: number;
+  /** The live depth-march displacement scale (1 = the full 0.55 mm groove). */
+  readonly heightScale: number;
   readonly maxParallaxTexels: number;
   readonly aspect: number;
   readonly parallax: readonly HeroParallaxNumber[];

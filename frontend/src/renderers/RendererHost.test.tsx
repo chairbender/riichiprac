@@ -361,6 +361,7 @@ function heroReportFixture(): HeroReport {
     tier: 'high',
     pomSteps: 12,
     carveDepthMm: 0.55,
+    heightScale: 0.25,
     maxParallaxTexels: 8,
     aspect: 16 / 9,
     parallax: [
@@ -411,8 +412,8 @@ describe('RendererHost hero debug view (3D-05)', () => {
   it('exports one PNG per capture on demand', async () => {
     hostMock.state.report = heroReportFixture();
     hostMock.state.captures = [
-      { name: 'hero-hand-pom-on.png', pngDataUrl: 'data:image/png;base64,AA==', width: 2, height: 2 },
-      { name: 'hero-pond-pom-off.png', pngDataUrl: 'data:image/png;base64,AA==', width: 2, height: 2 },
+      { name: 'hero-hand-depth-sweep.png', pngDataUrl: 'data:image/png;base64,AA==', width: 2, height: 2 },
+      { name: 'hero-pond-depth-sweep.png', pngDataUrl: 'data:image/png;base64,AA==', width: 2, height: 2 },
     ] as HeroCapture[];
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
@@ -428,13 +429,13 @@ describe('RendererHost hero debug view (3D-05)', () => {
       canvas.dispatchEvent(new CustomEvent(HERO_READY_EVENT));
     });
 
-    const button = screen.getByRole('button', { name: /Export hero PNGs/ });
+    const button = screen.getByRole('button', { name: /Export depth sweep/ });
     act(() => {
       button.click();
     });
 
     expect(click).toHaveBeenCalledTimes(2);
-    expect(screen.getByText(/2 PNGs downloaded/)).toBeTruthy();
+    expect(screen.getByText(/2 depth-sweep PNGs downloaded/)).toBeTruthy();
     const downloads = Array.from(container.querySelectorAll('a')).map((anchor) => anchor.download);
     expect(downloads).toEqual([]);
   });

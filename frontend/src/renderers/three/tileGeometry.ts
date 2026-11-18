@@ -45,13 +45,30 @@ const PLATE_HALF_WIDTH = HALF_WIDTH - BEVEL;
 const PLATE_HALF_HEIGHT = HALF_HEIGHT - BEVEL;
 
 /**
- * The silhouette's rounded-corner radius in the face plane. The committed
- * shell is beveled on its vertical edges too; 0.1 unit (2.8 mm) is a plausible
- * mahjong corner that still leaves the plateau a 0.045-unit rounded corner.
+ * The silhouette's rounded-corner radius in the face plane.
+ *
+ * This is the shell baker's own number, not a guess: `bake_shells.py` builds the
+ * tile as a cube bevelled 0.055 units with 6 segments on **every** edge, so the
+ * vertical corners are rounded by exactly one bevel (1.54 mm), and the reference
+ * table (`bake_table_reference.py`) imports that same `build_tile`. The plateau,
+ * inset one bevel, therefore lands on a *sharp* rectangle: offsetting a rounded
+ * rectangle inward by its own radius leaves square corners. That is what the
+ * shipped shells show.
+ *
+ * The sweep below needs a non-zero radius on the inset ring, so the body keeps
+ * 0.17 mm more than one bevel: the plateau corner comes out at 0.006 units
+ * (0.17 mm) instead of exactly sharp — well inside the shell's own edge
+ * softness, and the visible silhouette is the reference's 1.54 mm corner
+ * within 0.6 % of the tile width.
  */
-const CORNER_RADIUS = 0.1;
+const CORNER_RADIUS = BEVEL + 0.006;
 
-/** Arc segments per silhouette corner. Four keeps the loop at 20 vertices. */
+/**
+ * Arc segments per silhouette corner. The shell's bevel uses 6; this keeps 4 so
+ * the whole tile stays inside the 600-triangle budget (28 outline vertices
+ * would push the flat-back body to 672). At 1.54 mm the difference is a
+ * sub-pixel chamfer.
+ */
 const LOOP_SEGMENTS_PER_CORNER = 4;
 
 /** The committed 6-segment bevel (: the shell spec's `bevel.segments`). */

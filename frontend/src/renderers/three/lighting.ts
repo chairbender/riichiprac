@@ -31,7 +31,7 @@
  * objects from it.
  */
 
-import { LIGHT } from '../layoutConstants';
+import { LIGHT, TILE } from '../layoutConstants';
 
 /** A colour in linear-light RGB, each channel nominally 0..1 (may exceed 1). */
 export type LinearRgb = readonly [number, number, number];
@@ -39,20 +39,31 @@ export type LinearRgb = readonly [number, number, number];
 /** A direction in 3D world space (+X right, +Y up, +Z toward the human). */
 export type Direction3 = readonly [number, number, number];
 
-/** The tile body's fixed colours, from the plan and the committed shell. */
+/** The tile body's fixed colours and finish, from `shell-spec.json`'s tile block. */
 export const BODY = {
   /** Warm ivory: the committed shell face colour (`#f5f0eb`). */
   ivoryHex: '#f5f0eb',
   /** The committed tile back (`#132986`). */
   blueHex: '#132986',
   /**
-   * Melamine body roughness. The relief atlas overrides the *plate* with its
-   * painted/open values (0.12 lacquer in the grooves, 0.45 open resin); this is
-   * the un-mapped bevel and the back.
+   * Un-mapped body roughness, straight from `shell-spec.json`: the face is
+   * 0.16 with a 0.4 coat, the backing 0.18 with a 0.35 coat. The carved plate
+   * overrides this with the relief atlas's own G channel (0.45 open resin,
+   * 0.12 lacquer in the paint); `PLATE_ROUGHNESS` documents that split.
    */
-  ivoryRoughness: 0.35,
-  /** The blue back is a smoother lacquer than the ivory body. */
-  blueRoughness: 0.28,
+  ivoryRoughness: 0.16,
+  blueRoughness: 0.18,
+  /** Clear-coat weight per side (`shell-spec.json` face 0.4, backing 0.35). */
+  coatFace: 0.4,
+  coatBack: 0.35,
+  /** Clear-coat roughness, both sides. */
+  coatRoughness: 0.1,
+  /**
+   * The white/blue gate, as a fraction of the thickness measured from the back
+   * (`bake_shells.py`'s `backEdgeFraction`): the front 30 % of the side wall is
+   * ivory, the back 70 % is the blue backing.
+   */
+  backEdgeFraction: 0.3,
 } as const;
 
 /** The light rig's committed numbers. Distances are not used (directional). */
@@ -170,6 +181,12 @@ export interface LightingUniformValues {
   readonly bodyBlue: LinearRgb;
   readonly bodyIvoryRoughness: number;
   readonly bodyBlueRoughness: number;
+  /** The shell's clear coat and its white/blue gate (see {@link BODY}). */
+  readonly coatFace: number;
+  readonly coatBack: number;
+  readonly coatRoughness: number;
+  readonly backEdgeFraction: number;
+  readonly thicknessUnits: number;
 }
 
 /** The uniform payload `tileMaterial.ts` hands the shader. */
@@ -188,6 +205,11 @@ export const TILE_LIGHTING_UNIFORMS: LightingUniformValues = {
   bodyBlue: hexToLinear(BODY.blueHex),
   bodyIvoryRoughness: BODY.ivoryRoughness,
   bodyBlueRoughness: BODY.blueRoughness,
+  coatFace: BODY.coatFace,
+  coatBack: BODY.coatBack,
+  coatRoughness: BODY.coatRoughness,
+  backEdgeFraction: BODY.backEdgeFraction,
+  thicknessUnits: TILE.thicknessUnits,
 };
 
 function dot(a: Direction3, b: Direction3): number {
@@ -223,21 +245,24 @@ export function diffuseIrradiance(normal: Direction3): LinearRgb {
 
 /**
  * The same lighting model the carved-face shader implements, in TypeScript:
- * wrapped Lambert diffuse plus one GGX key highlight (F0 0.04, Smith-Schlick
- * masking), with **no** shadow term and no AO (the caller passes the sampled
- * AO). The probe test asserts this prediction against the committed colours;
- * the in-browser probe asserts the shader agrees with it.
+ * wrapped Lambert diffuse plus two GGX key lobes — the substrate and the
+ * shell's clear coat — with **no** shadow term and no AO (the caller passes the
+ * sampled AO). The probe test asserts this prediction against the committed
+ * colours; the in-browser probe asserts the shader agrees with it.
  */
 export function predictLitColour(options: {
   readonly albedo: LinearRgb;
   readonly normal: Direction3;
   readonly viewDir: Direction3;
   readonly roughness: number;
+  /** Clear-coat weight for this surface (0 disables the coat lobe). */
+  readonly coat?: number;
   /** Sampled cavity AO, default 1 (an open face). */
   readonly ao?: number;
 }): LinearRgb {
   const { albedo, normal, viewDir, roughness } = options;
   const ao = options.ao ?? 1;
+  const coat = options.coat ?? BODY.coatFace;
   const irradiance = diffuseIrradiance(normal).map((value) => value * ao) as unknown as LinearRgb;
 
   const light = LIGHTING.key.direction;
@@ -250,20 +275,22 @@ export function predictLitColour(options: {
   const ndv = Math.min(1, Math.max(1e-4, dot(normal, viewDir)));
   const ndh = Math.min(1, Math.max(0, dot(normal, half)));
   const vdh = Math.min(1, Math.max(0, dot(viewDir, half)));
-  const alpha = Math.max(roughness * roughness, 0.0016);
-  const alpha2 = alpha * alpha;
-  const denominator = ndh * ndh * (alpha2 - 1) + 1;
-  const distribution = alpha2 / (Math.PI * denominator * denominator);
-  const k = alpha * 0.5;
-  const geometry =
-    (ndv / (ndv * (1 - k) + k)) * (ndl / (ndl * (1 - k) + k));
-  const fresnel = LIGHTING.specularF0 + (1 - LIGHTING.specularF0) * Math.pow(1 - vdh, 5);
+  const lobe = (surfaceRoughness: number): number => {
+    const alpha = Math.max(surfaceRoughness * surfaceRoughness, 0.0016);
+    const alpha2 = alpha * alpha;
+    const denominator = ndh * ndh * (alpha2 - 1) + 1;
+    const distribution = alpha2 / (Math.PI * denominator * denominator);
+    const k = alpha * 0.5;
+    const geometry = (ndv / (ndv * (1 - k) + k)) * (ndl / (ndl * (1 - k) + k));
+    const fresnel = LIGHTING.specularF0 + (1 - LIGHTING.specularF0) * Math.pow(1 - vdh, 5);
+    return (distribution * geometry * fresnel) / (4 * ndv * Math.max(ndl, 1e-4)) * ndl;
+  };
   const specularScale =
-    (distribution * geometry * fresnel) / (4 * ndv * Math.max(ndl, 1e-4));
+    lobe(roughness) + coat * lobe(BODY.coatRoughness);
   return [
-    albedo[0] * irradiance[0] + KEY_LINEAR[0] * LIGHTING.key.intensity * specularScale * ndl,
-    albedo[1] * irradiance[1] + KEY_LINEAR[1] * LIGHTING.key.intensity * specularScale * ndl,
-    albedo[2] * irradiance[2] + KEY_LINEAR[2] * LIGHTING.key.intensity * specularScale * ndl,
+    albedo[0] * irradiance[0] + KEY_LINEAR[0] * LIGHTING.key.intensity * specularScale,
+    albedo[1] * irradiance[1] + KEY_LINEAR[1] * LIGHTING.key.intensity * specularScale,
+    albedo[2] * irradiance[2] + KEY_LINEAR[2] * LIGHTING.key.intensity * specularScale,
   ];
 }
 

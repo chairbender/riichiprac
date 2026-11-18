@@ -321,6 +321,15 @@ frame. No view may project through a second camera.
 
 ### 2.5 Assets: reuse Task 4B, do not bake twice
 
+**Read AGENTS.md §3b first.** The 2.5D workspace already models the tile body and
+the whole table in 3D (`shell-spec.json` + `bake_shells.py`,
+`table-reference-spec.json` + `bake_table_reference.py`) and has the approved
+carve look baked as decals (`decal-spec.json`). Those are the reference for this
+chain's geometry, materials, poses and carve: take the numbers from them instead
+of inventing a second set. The first 3D-05 handoff did not, and shipped a tile
+with a made-up corner radius and a blue back plate instead of the shell's taped
+blue side; the correction is recorded in §6 under 3D-05.
+
 Task 4B (landed, `frontend/public/table/relief/`, 3.39 MiB, 37 faces at
 256 × 340 px) already bakes exactly the channels a POM pipeline needs. The
 mapping is direct:
@@ -379,11 +388,19 @@ match, so no flip is applied to the row and the tangent basis (`x` right,
 
 ### 2.6 Materials and lighting
 
-- Body: warm ivory `#f5f0eb` (the committed shell face colour), roughness 0.35,
-  no map — the sides and bevels are geometry. Back: `#132986` (committed blue).
+- Body: warm ivory `#f5f0eb` roughness 0.16 + coat 0.4, no map — the sides and
+  bevels are geometry. Back: `#132986` roughness 0.18 + coat 0.35, coat
+  roughness 0.1. **These are `shell-spec.json`'s materials**, not new ones, and
+  the white/blue split is the shell baker's gate at 0.3 of the thickness (front
+  30 % ivory side band, back 70 % blue plus the back plate) — see AGENTS.md §3b.
 - Face: the three relief atlases (albedo + paint mask, normal + height, AO +
   roughness), carved faces with tiered POM, wrapped diffuse to fake resin
-  translucency, GGX specular with the sampled roughness, AO multiply.
+  translucency, GGX specular with the sampled roughness, AO multiply, plus the
+  shell's coat lobe.
+- Carve displacement is scaled, not physical: the approved 2.5D decals bake the
+  same engraving as shading only, so the live `POM_HEIGHT_SCALE` keeps the
+  silhouette from sliding; 0 is the decal-equivalent end and the hero view's
+  depth sweep is how the scale is chosen (3D-05).
 - One key light matching the 2.5D rig's authored key (azimuth 315°,
   elevation 55° → three-space direction `normalize(-0.406, 0.819, 0.406)`), so
   highlights land top-left in both views, plus a low hemisphere fill and a very
@@ -1025,25 +1042,59 @@ decision 4 of 2026-11-18), and the 0-step kill switch is built alongside it.
   off — ask: does the carving read as physically recessed, does the material
   family match the 2.5D shells, and does Haku stay clean? Record the verdict.
 
-**As built (3D-05, 2026-11-18).** Files: `three/{tileMaterial,lighting,hero,probes,reliefTextures}.ts`,
+**As built (3D-05, 2026-11-18; corrected the same day after the first
+handoff).** Files: `three/{tileMaterial,lighting,hero,probes,reliefTextures}.ts`,
 `three/materials/tile.{vert,frag}.ts`, the hero wiring in `three/Scene.ts`, the
 debug HUD in `RendererHost.tsx`/`.css`, `contract.ts` (`DebugMode` gains `hero`,
 the hero report/capture types, two optional debug methods on `TableRenderer`,
-`pomSteps` on `RendererStats`), `capabilities.ts` (`hero` in `DEBUG_MODES`), and
-tests for each. The hero view's four tiles are the real committed deliveries at
-their real places: the human hand's centre slot (reclined 40°), the human pond's
-nearest row (lying), the far wall's first dora indicator (lying, oriented to the
-human) and a face-down wall top-tier tile beyond the five dora stacks (blue
-back). One `InstancedMesh`, one material, one draw — the shape 3D-07 scales.
+`pomSteps`/`heightScale` on the report), `capabilities.ts` (`hero` in
+`DEBUG_MODES`), and tests for each. The hero view's four tiles are the real
+committed deliveries at their real places: the human hand's centre slot
+(reclined 40°), the human pond's nearest row (lying), the far wall's first dora
+indicator (lying, oriented to the human) and a face-down wall top-tier tile
+beyond the five dora stacks (blue back). One `InstancedMesh`, one material, one
+draw — the shape 3D-07 scales.
 
-The rig, with the measured calibration (`lighting.ts`): key `#fff7ea` at 2.507,
-hemisphere fill `#cfe0ff`/`#0b1512` at 1.10, ambient `#ffffff` at 0.251 (all
-three.js intensity units; the shader divides by π). That sums to a neutral 1.0
-irradiance on an up-facing normal (0.998 / 0.992 / 1.006 linear) and 0.97 / 0.96
-/ 0.95 on the reclined hand's normal, so a committed colour renders as itself.
-`POM_STEPS` = 12 / 8 / 0 for high / balanced / compat; `?debug=pom-off` forces
-0; the compile-time loop bound is 32; the shader clamps any full-depth parallax
-offset to **8 texels** (direction preserved, so the bound holds at every angle).
+**The body is the shell baker's, not an invented one** (AGENTS.md §3b). The
+first handoff's tile was wrong in three ways and all three are now taken from
+`bake_shells.py` / `shell-spec.json`: the silhouette corner radius is one bevel
+(0.055 units = 1.54 mm) instead of an invented 0.1, so the inset glyph plate has
+a (near-)sharp corner; the white/blue split is the baker's shader gate on local
+Z at `backEdgeFraction` 0.3 of the thickness — the front 4.95 mm of the side wall
+is ivory and the back 11.55 mm plus the whole back plate is blue, instead of a
+blue back plate alone; and the finish is the shell's melamine (ivory 0.16 +
+coat 0.4, backing 0.18 + coat 0.35, coat roughness 0.1) as a second GGX lobe,
+instead of a flat 0.35/0.28. A numeric check on the exported back macro: the
+face-down slot's near edge reads a 100 px ivory band under the blue side/back
+band at 15 px/mm, i.e. the 4.95 mm / 11.55 mm gate.
+
+**The carve is calibrated to the approved decals, not to the physical depth.**
+The committed relief map describes a real 0.55 mm groove and its normal and AO
+channels shade that in full, but the approved 2.5D carved decals
+(`decal-spec.json`) bake the carve head-on as shading only, so their glyph never
+slides. At the pond's 37° the full 0.55 mm depth moves a stroke edge by 0.41 mm
+— a whole stroke width — which is what made the first handoff "way too
+recessed". `POM_HEIGHT_SCALE` (0.25) now scales the *displacement* only: 1.5
+texels at the pond, 0.6 at the hand, 1.9 at the dora, versus 5.98 / 2.26 / 7.64
+before. The hero export is a labelled four-panel **depth sweep** per slot
+(scales 0 / 0.25 / 0.5 / 1) so the decal look can be picked: scale 0 is the
+decal-equivalent shading-only end, 1 is the physical groove.
+
+Measured against the decals (both shading-only carves, 0.495 mm vs 0.55 mm): the
+decal `1m` lip's ivory luminance spans p05 128 / p50 188 / p95 254 (min 113); the
+3D hand face's spans 182 / 237 / 241 (min 116) at every scale, so the *shading*
+family matches and the displacement was the outlier. Depth-sweep difference
+against the POM-off panel, over the exported pixels: hand mean 3.5/255 at scale
+0.25 (4.4 % of pixels), 6.3 at 0.5, 8.0 at 1.0; the dora likewise 5.2 / 6.0 /
+7.0; Haku and the blue back stay at 0.0 (flat face, no carve).
+
+The rig (`lighting.ts`): key `#fff7ea` at 2.507, hemisphere fill
+`#cfe0ff`/`#0b1512` at 1.10, ambient `#ffffff` at 0.251 (three.js intensity
+units; the shader divides by π), which sums to neutral 1.0 irradiance on an
+up-facing normal (0.998 / 0.992 / 1.006 linear) and 0.97 / 0.96 / 0.95 on the
+reclined hand. `POM_STEPS` = 12 / 8 / 0 for high / balanced / compat;
+`?debug=pom-off` forces 0; the loop bound is 32; the shader clamps the
+displacement to **8 texels**.
 
 Numbers from a real WebGL2 run (Chrome + ANGLE/SwiftShader, 1920 × 992 CSS,
 DPR 2), printed by the HUD (`frontend/scripts/out/hero-report.txt`):
@@ -1051,48 +1102,37 @@ DPR 2), printed by the HUD (`frontend/scripts/out/hero-report.txt`):
 | probe | reading | target | ΔE |
 | --- | --- | --- | --- |
 | face ivory (pond, Haku, open) | `#f5f0ec` | `#f5f0eb` | 0.51 |
-| blue back (wall, face-down) | `#142987` | `#132986` | 0.63 |
-| paint (hand, `1m` stroke) | `#9f0c0b`, block redness 151 | — | pass |
+| blue back (wall, face-down) | `#132986` | `#132986` | 0.00 |
+| paint (hand, `1m` stroke) | `#a20c0c`, block redness 151 | — | pass |
 | Haku at the same point | `#f5f0ec`, redness 5 | — | clean |
-| ivory bevel (hand) | `#dcd7d3` | — | pass |
+| ivory bevel (hand) | `#dbd6d3` | — | pass |
 
-POM off (steps 0) reproduces every reading within 0.0 ΔE (the `1m` median moves
-from `#9f0c0b` to `#a20c0c`; the presence flags are unchanged), so the carve path
-really is one uniform.
+POM off (steps 0) reproduces every reading, so the carve path is one uniform.
 
-| slot | incidence | parallax at 0.55 mm |
-| --- | --- | --- |
-| hand (reclined 40°) | 16.0° | 2.26 texels |
-| pond (lying) | 37.3° | 5.98 texels |
-| dora indicator (top tier) | 44.2° | 7.64 texels |
-| face-down wall tile | 0° (no carve) | 0 |
+| slot | incidence | live parallax | physical (scale 1) |
+| --- | --- | --- | --- |
+| hand (reclined 40°) | 16.0° | 0.56 texels | 2.26 |
+| pond (lying) | 37.3° | 1.50 texels | 5.98 |
+| dora indicator (top tier) | 44.2° | 1.91 texels | 7.64 |
+| face-down wall tile | 0° (no carve) | 0 | 0 |
 
-At every supported aspect the hero set stays inside the 8-texel budget (the
-worst is 7.72 at 16:9). The **strict board-wide** worst under the board's own
-camera (`frameForAspect`, §2.4) — a far opponent meld at 4:3, the pose the hero
-set deliberately omits — is 8.41 texels before the shader's clamp, so on a full
-board the clamp binds by a hair rather than the depth being wrong; the test
-prints both numbers. No hero slot displaces more than 8, so the clamp is
-invisible in this unit's view.
+The hero worst is 1.93 at every supported aspect. The strict board-wide worst
+under the board's own camera (`frameForAspect`, §2.4) — a far opponent meld at
+4:3 — is 2.10 at the live scale and 8.41 at the physical depth, where the
+shader's clamp takes over; the test prints both.
 
 Shader-compile failure path: `installShaderErrorTrap` throws three's
-`onShaderError` log as a `TileShaderError`, so the host reports `failed` with
-the driver text. It caught a real bug on the first run (`tangent` declared as a
-`vec3` while the geometry supplies a 4-component tangent) — the exact failure
-mode the criterion exists for. Covered by tests on both the trap and the host.
+`onShaderError` log as a `TileShaderError`, so the host reports `failed` with the
+driver text. It caught two real bugs in this unit (a `vec3` tangent declared for a
+4-component attribute, and a backtick in a GLSL comment) — the exact failure mode
+the criterion exists for. Covered by tests on both the trap and the host.
 
-Handoff artifacts: `frontend/scripts/out/hero-<slot>-pom-<on|off>.png` (8 macro
-shots at 640 × 640: same incidence ray, same lights, same shader, camera moved
-in to frame the body), `hero-overview.png` (the live view at 3840 × 2160) and
-`hero-report.txt`. Numeric difference between each POM pair, computed on the
-exported pixels: hand 7.4 % of pixels change by more than 8/255 (mean 8.0),
-dora 6.5 % (mean 7.0), Haku 0.0 % (mean 0.0 — a white dragon has no carving),
-blue back 0.0 %. **Verdict: pending the user's review of the three named
-questions.**
-
-**Gate:** frontend gate + user verdict.
-
----
+Handoff artifacts: `frontend/scripts/out/hero-<slot>-depth-sweep.png` (4 labelled
+2560 × 672 strips: one macro shot per depth scale, same incidence ray, same
+lights, same shader, camera moved in), `hero-overview.png` (the live view at
+3840 × 2160), `hero-report.txt`, and `decal-1m-{upright,lying}.png` — the
+committed carved decals converted to PNG and composited on the ivory face, as the
+approved recess to compare against. **Verdict: pending the user's review.**
 
 ### 3D-S1 — POM cost measurement (optional, no app change)
 

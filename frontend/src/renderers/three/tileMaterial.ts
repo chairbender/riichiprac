@@ -75,6 +75,24 @@ export const POM_MAX_STEPS = 32;
 export const POM_MAX_TEXELS = 8;
 
 /**
+ * How much of the physical engraving depth the depth march displaces.
+ *
+ * The committed relief map describes a real 0.55 mm groove and the normal and
+ * AO channels shade that carve in full. The *displacement*, though, is what the
+ * approved 2.5D carved decals never show: they bake the same geometry head-on,
+ * so a stroke's silhouette cannot slide. At the pond's 37° the full depth moves
+ * an edge by 0.55 mm x tan(37°) ≈ 0.41 mm — about a whole stroke width — which
+ * reads far deeper than the decals the user signed off. 0.25 keeps a subtle
+ * settle (1.5 texels at the pond, 0.6 at the hand) while the shading does the
+ * work; 0 is the decal-equivalent "shading only" end of the sweep, and the hero
+ * view exports the depth sweep so the value can be re-picked against the decals.
+ */
+export const POM_HEIGHT_SCALE = 0.25;
+
+/** The height scales the hero handoff exports for comparison (0 = POM off). */
+export const POM_HEIGHT_SCALE_SWEEP: readonly number[] = [0, 0.25, 0.5, 1];
+
+/**
  * Debug-mode codes the shader branches on. `hero` selects a *view* (the scene
  * composition), and `pom-off` is a step count of 0, so neither has a code here;
  * `wireframe` is a material flag rather than a fragment output.
@@ -133,6 +151,9 @@ export interface TileMaterialHandle {
   /** The live POM step count (0 = un-carved shading path). */
   pomSteps(): number;
   setPomSteps(steps: number): void;
+  /** The live displacement scale (1 = the full physical 0.55 mm groove). */
+  heightScale(): number;
+  setHeightScale(scale: number): void;
   setTier(tier: QualityTier): void;
   setDebug(debug: DebugMode | null): void;
   dispose(): void;
@@ -153,6 +174,7 @@ export function createTileMaterial(options: TileMaterialOptions): TileMaterialHa
     uAoRoughness: { value: options.aoRoughness },
     uPomSteps: { value: pomStepsFor(options.tier, options.debug) },
     uCarveDepthUnits: { value: CARVE_DEPTH_UNITS },
+    uHeightScale: { value: POM_HEIGHT_SCALE },
     uPlateUnits: { value: [PLATE_WIDTH_UNITS, PLATE_HEIGHT_UNITS] },
     uCellTexels: { value: [cell.x, cell.y] },
     uMaxParallaxTexels: { value: POM_MAX_TEXELS },
@@ -161,6 +183,11 @@ export function createTileMaterial(options: TileMaterialOptions): TileMaterialHa
     uBodyBlue: { value: [...TILE_LIGHTING_UNIFORMS.bodyBlue] },
     uBodyIvoryRoughness: { value: TILE_LIGHTING_UNIFORMS.bodyIvoryRoughness },
     uBodyBlueRoughness: { value: TILE_LIGHTING_UNIFORMS.bodyBlueRoughness },
+    uBackEdgeFraction: { value: TILE_LIGHTING_UNIFORMS.backEdgeFraction },
+    uThicknessUnits: { value: TILE_LIGHTING_UNIFORMS.thicknessUnits },
+    uCoatFace: { value: TILE_LIGHTING_UNIFORMS.coatFace },
+    uCoatBack: { value: TILE_LIGHTING_UNIFORMS.coatBack },
+    uCoatRoughness: { value: TILE_LIGHTING_UNIFORMS.coatRoughness },
     uKeyDirection: { value: [...TILE_LIGHTING_UNIFORMS.keyDirection] },
     uKeyColor: { value: [...TILE_LIGHTING_UNIFORMS.keyColor] },
     uKeyIntensity: { value: TILE_LIGHTING_UNIFORMS.keyIntensity },
@@ -194,6 +221,11 @@ export function createTileMaterial(options: TileMaterialOptions): TileMaterialHa
       const value = Number.isFinite(steps) ? Math.round(steps) : 0;
       uniforms.uPomSteps.value = Math.min(POM_MAX_STEPS, Math.max(0, value));
     },
+    heightScale: () => uniforms.uHeightScale.value as number,
+    setHeightScale(scale: number) {
+      const value = Number.isFinite(scale) ? scale : POM_HEIGHT_SCALE;
+      uniforms.uHeightScale.value = Math.min(1, Math.max(0, value));
+    },
     setTier(next: QualityTier) {
       tier = next;
       uniforms.uPomSteps.value = POM_STEPS[tier];
@@ -222,9 +254,9 @@ const MAX_ANGLE_DEG = 89;
 export interface ParallaxReading {
   /** The angle between the view ray and the plate's face normal. */
   readonly angleDeg: number;
-  /** Displacement along the cell's U axis at full carve depth. */
+  /** Displacement along the cell's U axis at the applied depth. */
   readonly texelsU: number;
-  /** Displacement along the cell's V axis. */
+  /** Displacement along the cell's V axis at the applied depth. */
   readonly texelsV: number;
   /** The larger of the two: what the shader's bound applies to. */
   readonly texels: number;
@@ -233,25 +265,29 @@ export interface ParallaxReading {
 }
 
 /**
- * The full-depth parallax displacement of a carve at a view angle, in atlas
- * texels.
+ * The parallax displacement of a carve at a view angle, in atlas texels.
  *
  * The plate is 0.64 x 0.89 units mapped to a 256 x 340 texel cell, so a
  * displacement of `depth * tan(angle)` tile units becomes
- * `depth * tan(angle) * cellTexels / plateUnits` texels per axis. At the
- * committed depth of 0.55 mm and the pond's ~40° view that is ≈ 6.6 texels;
- * the plate's horizontal axis is the denser one (400 texels/unit against 382).
+ * `depth * tan(angle) * cellTexels / plateUnits` texels per axis. The depth is
+ * the committed 0.55 mm groove times the {@link POM_HEIGHT_SCALE} the live
+ * material uses: the scale-1 figure is what a physical 0.55 mm engraving would
+ * do (≈ 6.6 texels at the pond's 40°), and the scaled one is what the renderer
+ * actually displaces. The decal comparison calibrates the latter.
  */
 export function parallaxTexels(
   angleDeg: number,
   options: {
     readonly carveDepthUnits?: number;
+    readonly heightScale?: number;
     readonly plateUnits?: readonly [number, number];
     readonly cellTexels?: readonly [number, number];
     readonly maxTexels?: number;
   } = {},
 ): ParallaxReading {
-  const depth = options.carveDepthUnits ?? CARVE_DEPTH_UNITS;
+  const depth =
+    (options.carveDepthUnits ?? CARVE_DEPTH_UNITS) *
+    (options.heightScale ?? POM_HEIGHT_SCALE);
   const plate = options.plateUnits ?? [PLATE_WIDTH_UNITS, PLATE_HEIGHT_UNITS];
   const cell = options.cellTexels ?? [RELIEF_RASTER.cellWidth, RELIEF_RASTER.cellHeight];
   const maxTexels = options.maxTexels ?? POM_MAX_TEXELS;

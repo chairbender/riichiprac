@@ -15,15 +15,24 @@
  *    0 engraving floor), and the ray from the eye to the plate is walked in
  *    `uPomSteps` linear layers. The first layer that falls below the sampled
  *    surface is refined once by the secant step between the last two samples.
- *    The full-depth offset is clamped to {@link POM_MAX_TEXELS} by the material
- *    uniform so no view can displace more than the 8-texel budget (3D-05).
+ *    **The displacement is scaled; the shading is not.** `uHeightScale` divides
+ *    the engraved depth used by the march (the committed 0.55 mm map is the
+ *    physical groove), because the approved 2.5D carved decals bake the same
+ *    geometry as shading only — their camera is head-on, so the glyph never
+ *    slides. A full-depth march at the pond's 37° moves a stroke edge by ~0.4 mm
+ *    (a whole stroke width) and reads far deeper than the decals; the scale is
+ *    the calibration between the two, and the normal and AO maps still carry the
+ *    full carve. The offset is clamped to {@link POM_MAX_TEXELS} afterwards.
  * 3. **The carved look.** Albedo is `mix(ivory, pigment, paintMask)` — the
  *    committed albedo RGB is pigment only, white outside the mask, so the ivory
  *    body is what shows through. The sampled tangent normal is applied on the
  *    geometric plate normal; cavity AO multiplies the diffuse; the sampled
  *    roughness feeds one GGX lobe. Wrapped diffuse fakes the slab's
- *    translucency. The blue back and the ivory bevel share the same BRDF with
- *    the body colours.
+ *    translucency, and a second tight GGX lobe is the melamine clear coat the
+ *    shells were baked with (`shell-spec.json`: coat 0.4 at roughness 0.1).
+ *    The white/blue split is `bake_shells.py`'s shader gate: everything behind
+ *    0.3 x thickness is blue backing, so the side wall shows the 4.95 mm white
+ *    band and the 11.55 mm blue band the shipped shells show.
  *
  * `POM_MAX_STEPS` is the compile-time loop bound (a constant so the compiler
  * unrolls it); the live count is the `uPomSteps` uniform, and **0 is a
@@ -46,6 +55,7 @@ uniform sampler2D uAoRoughness;
 
 uniform float uPomSteps;
 uniform float uCarveDepthUnits;
+uniform float uHeightScale;
 uniform vec2 uPlateUnits;
 uniform vec2 uCellTexels;
 uniform float uMaxParallaxTexels;
@@ -55,6 +65,11 @@ uniform vec3 uBodyIvory;
 uniform vec3 uBodyBlue;
 uniform float uBodyIvoryRoughness;
 uniform float uBodyBlueRoughness;
+uniform float uBackEdgeFraction;
+uniform float uThicknessUnits;
+uniform float uCoatFace;
+uniform float uCoatBack;
+uniform float uCoatRoughness;
 
 uniform vec3 uKeyDirection;
 uniform vec3 uKeyColor;
@@ -72,7 +87,7 @@ varying vec3 vWorldNormal;
 varying vec3 vWorldTangent;
 varying vec3 vWorldBitangent;
 varying vec3 vWorldPosition;
-varying vec3 vLocalNormal;
+varying vec3 vLocalPosition;
 varying float vFaceZone;
 varying float vFaceUp;
 
@@ -88,6 +103,24 @@ float hemisphereWeight(vec3 worldNormal) {
   return clamp(0.5 + 0.5 * worldNormal.y, 0.0, 1.0);
 }
 
+/**
+ * One GGX specular lobe (Smith-Schlick masking, Schlick Fresnel). Used twice:
+ * the semigloss substrate and the shell's clear coat.
+ */
+vec3 ggxLobe(float ndl, float ndv, float ndh, float vdh, float roughness, float f0) {
+  float alpha = max(roughness * roughness, 0.0016);
+  float alphaSquared = alpha * alpha;
+  float denominator = ndh * ndh * (alphaSquared - 1.0) + 1.0;
+  float distribution = alphaSquared / (PI * denominator * denominator);
+  float k = alpha * 0.5;
+  float geometry =
+    (ndv / (ndv * (1.0 - k) + k)) *
+    (ndl / (ndl * (1.0 - k) + k));
+  float fresnel = f0 + (1.0 - f0) * pow(1.0 - vdh, 5.0);
+  return vec3(distribution * geometry * fresnel /
+    (4.0 * ndv * max(ndl, EPSILON)) * ndl);
+}
+
 void main() {
   // (1) The derivative guard. Nothing before this line, no branch above it.
   vec2 dUvDx = dFdx(vFaceUv);
@@ -101,10 +134,15 @@ void main() {
   vec3 viewTangent = vec3(dot(V, T), dot(V, B), dot(V, N));
 
   bool onPlate = vFaceZone > 0.5 && vFaceUp > 0.5;
-  bool onBlueBack = vLocalNormal.z < -0.5;
+  // The shell baker's white/blue gate (bake_shells.py): everything behind
+  // 0.3 x thickness is the blue backing, so the side wall carries a 4.95 mm
+  // ivory band in front of an 11.55 mm blue one. Local +Z is the face normal.
+  float backCut = (uBackEdgeFraction - 0.5) * uThicknessUnits;
+  bool blueBody = vLocalPosition.z < backCut;
 
-  vec3 albedo = onBlueBack ? uBodyBlue : uBodyIvory;
-  float roughness = onBlueBack ? uBodyBlueRoughness : uBodyIvoryRoughness;
+  vec3 albedo = blueBody ? uBodyBlue : uBodyIvory;
+  float roughness = blueBody ? uBodyBlueRoughness : uBodyIvoryRoughness;
+  float coat = blueBody ? uCoatBack : uCoatFace;
   float cavity = 1.0;
   vec3 tangentNormal = vec3(0.0, 0.0, 1.0);
 
@@ -119,11 +157,13 @@ void main() {
 
     if (uPomSteps > 0.5) {
       // Full-depth offset in atlas UV: the lateral part of the view ray, scaled
-      // by the carve depth and divided by the plate's own width/height so a
-      // non-square plate keeps the ray's true direction.
+      // by the engraved depth (times the calibration scale) and divided by the
+      // plate's own width/height so a non-square plate keeps the ray's true
+      // direction.
+      float depthUnits = uCarveDepthUnits * uHeightScale;
       vec2 rayDir = vec2(
-        -uCarveDepthUnits * viewTangent.x / max(viewTangent.z, 0.08) / uPlateUnits.x,
-        -uCarveDepthUnits * viewTangent.y / max(viewTangent.z, 0.08) / uPlateUnits.y
+        -depthUnits * viewTangent.x / max(viewTangent.z, 0.08) / uPlateUnits.x,
+        -depthUnits * viewTangent.y / max(viewTangent.z, 0.08) / uPlateUnits.y
       );
       // The 8-texel parallax bound: clamp the full-depth displacement, not the
       // per-step one, so direction is preserved and cost is unchanged.
@@ -180,18 +220,11 @@ void main() {
   float ndv = clamp(dot(N, V), EPSILON, 1.0);
   float ndh = clamp(dot(N, halfVector), 0.0, 1.0);
   float vdh = clamp(dot(V, halfVector), 0.0, 1.0);
-  float alpha = max(roughness * roughness, 0.0016);
-  float alphaSquared = alpha * alpha;
-  float distributionDenominator = ndh * ndh * (alphaSquared - 1.0) + 1.0;
-  float distribution = alphaSquared / (PI * distributionDenominator * distributionDenominator);
-  float k = alpha * 0.5;
-  float geometry =
-    (ndv / (ndv * (1.0 - k) + k)) *
-    (ndl / (ndl * (1.0 - k) + k));
-  vec3 fresnel = vec3(uSpecularF0) + (1.0 - uSpecularF0) * pow(1.0 - vdh, 5.0);
-  vec3 specular =
-    uKeyColor * uKeyIntensity * distribution * geometry * fresnel /
-    (4.0 * ndv * max(ndl, EPSILON)) * ndl;
+  vec3 substrateLobe = ggxLobe(ndl, ndv, ndh, vdh, roughness, uSpecularF0);
+  // The shell's clear coat: the same lobe at the shell's coat roughness, weighted
+  // by the per-side coat value (0.4 face, 0.35 backing).
+  vec3 coatLobe = ggxLobe(ndl, ndv, ndh, vdh, uCoatRoughness, uSpecularF0) * coat;
+  vec3 specular = uKeyColor * uKeyIntensity * (substrateLobe + coatLobe);
 
   vec3 colour = diffuse + specular;
 

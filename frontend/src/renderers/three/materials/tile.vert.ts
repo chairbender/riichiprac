@@ -32,7 +32,7 @@ varying vec3 vWorldNormal;
 varying vec3 vWorldTangent;
 varying vec3 vWorldBitangent;
 varying vec3 vWorldPosition;
-varying vec3 vLocalNormal;
+varying vec3 vLocalPosition;
 varying float vFaceZone;
 varying float vFaceUp;
 
@@ -65,7 +65,7 @@ void main() {
   vWorldNormal = worldNormal;
   vWorldTangent = worldTangent;
   vWorldBitangent = worldBitangent;
-  vLocalNormal = localNormal;
+  vLocalPosition = localPosition.xyz;
   vFaceZone = faceZone;
   vFaceUp = aFaceUp;
 

@@ -156,7 +156,8 @@ function HeroHud({ report, exported, onRefresh, onExport }: HeroHudProps) {
             </dd>
             <dt>carve</dt>
             <dd>
-              {report.carveDepthMm} mm · clamp {report.maxParallaxTexels} texels
+              {report.carveDepthMm} mm × {report.heightScale.toFixed(2)} · clamp{' '}
+              {report.maxParallaxTexels} texels
             </dd>
             <dt>aspect</dt>
             <dd>{report.aspect.toFixed(3)}</dd>
@@ -223,12 +224,12 @@ function HeroHud({ report, exported, onRefresh, onExport }: HeroHudProps) {
           Refresh numbers
         </button>
         <button type="button" onClick={onExport}>
-          Export hero PNGs (8)
+          Export depth sweep (4)
         </button>
       </div>
       {exported > 0 && (
         <p className="renderer-3d-hero-note" role="status">
-          {exported} PNGs downloaded (hero-&lt;slot&gt;-pom-&lt;on|off&gt;.png).
+          {exported} depth-sweep PNGs downloaded (hero-&lt;slot&gt;-depth-sweep.png).
         </p>
       )}
     </aside>

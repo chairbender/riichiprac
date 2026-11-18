@@ -37,7 +37,7 @@ import {
 } from './boardLayout';
 import type { TilePose, Vec3 } from './boardLayout';
 import { rigPoseForAspect } from './cameraRig';
-import { parallaxTexels } from './tileMaterial';
+import { POM_HEIGHT_SCALE, parallaxTexels } from './tileMaterial';
 import type { ParallaxReading } from './tileMaterial';
 
 /** The four attitudes the hero handoff judges. */
@@ -281,6 +281,8 @@ export interface HeroSlotParallax extends ParallaxReading {
 /** The hero parallax report for one viewport aspect. */
 export interface HeroParallaxReport {
   readonly aspect: number;
+  /** The displacement scale the material applied (see {@link POM_HEIGHT_SCALE}). */
+  readonly heightScale: number;
   readonly slots: readonly HeroSlotParallax[];
   /** The largest displacement across the four slots (what the gate bounds). */
   readonly worst: HeroSlotParallax;
@@ -306,25 +308,29 @@ function angleToEyeDeg(slot: HeroSlot, eye: Vec3): number {
  * switches the scene to `boardLayout.frameForAspect`; the two agree within
  * 0.05 units at the reference aspect).
  */
-export function heroParallaxAt(aspect: number): HeroParallaxReport {
+export function heroParallaxAt(
+  aspect: number,
+  heightScale: number = POM_HEIGHT_SCALE,
+): HeroParallaxReport {
   const pose = rigPoseForAspect(aspect);
   const slots = HERO_SLOTS.map((slot) => {
     const angle = slot.faceUp ? angleToEyeDeg(slot, pose.eyeUnits) : 0;
     // A face-down tile shows no carving, so only the three face-up slots can
     // contribute a displacement.
-    const reading = parallaxTexels(slot.faceUp ? angle : 0);
+    const reading = parallaxTexels(slot.faceUp ? angle : 0, { heightScale });
     return { slot: slot.id, label: slot.label, ...reading };
   });
   let worst = slots[0];
   for (const entry of slots) if (entry.texels > worst.texels) worst = entry;
-  return { aspect: pose.aspect, slots, worst };
+  return { aspect: pose.aspect, heightScale, slots, worst };
 }
 
 /** The report at every aspect the framing solver must support. */
 export function heroParallaxAllAspects(
   aspects: readonly number[],
+  heightScale: number = POM_HEIGHT_SCALE,
 ): readonly HeroParallaxReport[] {
-  return aspects.map((aspect) => heroParallaxAt(aspect));
+  return aspects.map((aspect) => heroParallaxAt(aspect, heightScale));
 }
 
 /** Which slot a probe point belongs to, for the read-back. */
