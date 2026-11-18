@@ -16,6 +16,7 @@ import {
   parsePackBody,
   parsePackManifest,
   pickPackScenario,
+  pickUnseenPackScenario,
   sha256FallbackHex,
   sha256Hex,
 } from './packLoader';
@@ -675,6 +676,19 @@ describe('pickPackScenario', () => {
 
   it('rejects a lesson the pack does not contain', () => {
     expect(() => pickPackScenario(loaded, 'push_or_fold')).toThrow(/no scenario for lesson/);
+  });
+
+  it('cycles through unseen scenarios before repeating', () => {
+    const seen = new Set<string>();
+    const first = pickUnseenPackScenario(loaded, 'fold_to_riichi', seen, () => 0);
+    const second = pickUnseenPackScenario(loaded, 'fold_to_riichi', seen, () => 0);
+    expect(first).toEqual({ scenario: expect.objectContaining({ id: 'a' }), reset: false });
+    expect(second).toEqual({ scenario: expect.objectContaining({ id: 'b' }), reset: false });
+    const third = pickUnseenPackScenario(loaded, 'fold_to_riichi', seen, () => 0);
+    expect(third.reset).toBe(true);
+    expect(third.scenario.id).toBe('a');
+    expect(seen.has('a')).toBe(true);
+    expect(seen.has('b')).toBe(false);
   });
 });
 

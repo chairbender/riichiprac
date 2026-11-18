@@ -129,9 +129,12 @@ graded through the normal table. Replay entries are deliberately outside **All
 scenarios (random)**, so the first page load only fetches the small same-origin
 pack manifest (`/scenarios/manifest.json`); a pack body downloads when you pick
 one of its lessons and is then cached in IndexedDB, verified against the
-manifest's SHA-256 first. If no pack is published (or its manifest is
-unreachable) the note in the picker says so and generated lessons are
-unaffected.
+manifest's SHA-256 first. Within a page session a replay lesson cycles through
+its scenarios without replacement (generated lessons use the same session
+guard): the same hand does not repeat until every unseen sibling for that pool
+has been dealt, then a new cycle starts. If no pack is published (or its
+manifest is unreachable) the note in the picker says so and generated lessons
+are unaffected.
 
 ## Going back to a previous hand
 
