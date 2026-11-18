@@ -2,19 +2,17 @@
   "ok": true,
   "dir": "/home/kylehipke/workspaces/riichiprac-261115-234326/frontend/public/scenarios",
   "budgetBytes": 50000000,
-  "manifestBytes": 763,
-  "totalBytes": 105032,
+  "manifestBytes": 701,
+  "totalBytes": 104357,
   "packs": [
     {
       "id": "replay.ch8-defense.2026-11",
-      "bytes": 105032,
+      "bytes": 104357,
       "scenarios": 100,
-      "sha256": "481b548929f96de25d2991f9277791be127397411762943aa52a697a767474d0",
+      "sha256": "13ea4647a9d85a86f29770eb1c63b879d635daf16c2afedf25a42cfbb742ad3f",
       "lessonIds": [
         "defense_safety_chart",
-        "defense_stuck_heuristic",
         "fold_to_riichi",
-        "kabe_one_chance",
         "push_or_fold",
         "suji_kabe_safety"
       ]

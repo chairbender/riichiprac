@@ -439,6 +439,10 @@ enum PackAction {
         #[arg(long)]
         no_variants: bool,
 
+        /// Drop a lesson that has fewer than N reviewed bases (default 1).
+        #[arg(long, value_name = "N")]
+        min_bases_per_lesson: Option<usize>,
+
         /// Family ceilings counted in base scenarios, e.g. book=30,coverage=15.
         #[arg(long, value_name = "LIST", value_delimiter = ',')]
         family_quota: Vec<String>,
@@ -940,6 +944,7 @@ fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
             share,
             max_variants,
             no_variants,
+            min_bases_per_lesson,
             family_quota,
             generated_at,
             commit,
@@ -958,6 +963,7 @@ fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
                 share,
                 max_variants,
                 no_variants,
+                min_bases_per_lesson,
                 family_quota,
                 generated_at,
                 commit,
@@ -1008,6 +1014,7 @@ struct AssemblyCommand {
     share: Option<f32>,
     max_variants: Option<usize>,
     no_variants: bool,
+    min_bases_per_lesson: Option<usize>,
     family_quota: Vec<String>,
     generated_at: Option<String>,
     commit: String,
@@ -1039,6 +1046,9 @@ fn run_pack_assemble(root: &DataRoot, command: AssemblyCommand) -> ExitCode {
     }
     limits.max_variants = command.max_variants;
     limits.variants_disabled = command.no_variants;
+    if let Some(minimum) = command.min_bases_per_lesson {
+        limits.min_bases_per_lesson = minimum;
+    }
     limits.family_quotas = quotas;
     let options = AssemblyOptions {
         pack_id: command.pack,

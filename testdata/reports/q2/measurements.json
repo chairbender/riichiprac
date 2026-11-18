@@ -132,10 +132,16 @@
     "queue_items": 110,
     "valid_reports": 110,
     "invalid_reports": 0,
-    "accepted": 100,
-    "rejected": 10,
+    "accepted": 102,
+    "rejected": 8,
     "pending": 0,
-    "rejection_reason": "valid ch8.2 safety-chart candidates rejected as redundant section crowding to keep the reviewed pack at 100"
+    "rejection_reason": "valid ch8.2 safety-chart candidates rejected as redundant section crowding to keep the reviewed pack at 100",
+    "pack_shipped_bases": 100,
+    "dropped_for_lesson_supply": {
+      "defense_stuck_heuristic": 1,
+      "kabe_one_chance": 1
+    },
+    "note": "two ch8.2 candidates were accepted as backfill after the first pass; the min-bases-per-lesson rule then dropped the two one-scenario lessons"
   },
   "variants": {
     "bases": 100,
@@ -174,9 +180,7 @@
     "largest_base_share": 0.01,
     "lessons": [
       "defense_safety_chart",
-      "defense_stuck_heuristic",
       "fold_to_riichi",
-      "kabe_one_chance",
       "push_or_fold",
       "suji_kabe_safety"
     ],
@@ -185,10 +189,10 @@
       "ch8.2",
       "ch8.3"
     ],
-    "bytes": 105032,
-    "bytes_per_scenario": 1050.32,
+    "bytes": 104357,
+    "bytes_per_scenario": 1043.57,
     "manifest_bytes": 763,
-    "sha256": "481b548929f96de25d2991f9277791be127397411762943aa52a697a767474d0",
+    "sha256": "13ea4647a9d85a86f29770eb1c63b879d635daf16c2afedf25a42cfbb742ad3f",
     "licence": "CC-BY-4.0",
     "data_commercial_use": false,
     "requires_model": false,
@@ -241,14 +245,14 @@
     "audit": "clean, 0 findings"
   },
   "storage": {
-    "snapshot": "snapshots/miner-20261118-143000.sqlite",
-    "snapshot_bytes": 304226304,
-    "snapshot_sha256": "564e20c14c9cd37baa407d5238bb145b2bf74ecfcc409a4ef4fd9377c5ba95cf",
+    "snapshot": "snapshots/miner-20261118-144500.sqlite",
+    "snapshot_bytes": 304263168,
+    "snapshot_sha256": "7d853c29c3ca5316615c2c3f9c3843a11b41b6fd269bba2c68251ab6a97b0cc6",
     "integrity_check": "ok",
     "replays": 999,
     "decisions": 44683,
-    "selected_scenarios": 100,
-    "variants": 644,
+    "selected_scenarios": 102,
+    "variants": 735,
     "packs": 1,
     "pack_scenarios": 100,
     "missing_replay_files": 0,

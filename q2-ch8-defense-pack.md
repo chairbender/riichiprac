@@ -13,7 +13,7 @@ database and review queue stay outside git under
 committed under [`testdata/reports/q2/`](../testdata/reports/q2/).
 
 **Pack:** `replay.ch8-defense.2026-11`, 100 reviewed base scenarios, no
-variants, 105,032 bytes, 6 ch. 8 lessons across ch8.1/ch8.2/ch8.3, four agents,
+variants, 104,357 bytes, 4 ch. 8 lessons across ch8.1/ch8.2/ch8.3, four agents,
 non-commercial data flag. Largest base share 1 %.
 
 ## Pipeline
@@ -49,12 +49,17 @@ $BIN --data-dir "$RIICHI_DATA_DIR" review --pack replay.ch8-defense.2026-11 \
   --accept <100 ids> --note "q2 agent review: stable ch8 book label, legal answer, unique visible state, clean walk"
 $BIN --data-dir "$RIICHI_DATA_DIR" review --pack replay.ch8-defense.2026-11 \
   --reject <10 ids> --note "q2 curation: valid ch8.2 safety-chart candidate, rejected as redundant section crowding to keep the reviewed pack at 100"
+# After seeing the one-scenario defense_stuck_heuristic/kabe_one_chance lessons,
+# accept two of those rejected ch8.2 candidates as backfill (102 accepted/8 rejected).
 
 # 5. Assemble the reviewed bases only (variants are disabled), audit, publish.
+#    A lesson with fewer than 3 real bases is dropped instead of repeating one
+#    position; that removes defense_stuck_heuristic and kabe_one_chance.
 $BIN --data-dir "$RIICHI_DATA_DIR" pack assemble \
   --pack replay.ch8-defense.2026-11 \
   --queue "$RIICHI_DATA_DIR/reviews/replay.ch8-defense.2026-11/review-queue.jsonl" \
-  --no-variants --licence CC-BY-4.0 --attribution "<all four agents>" \
+  --no-variants --min-bases-per-lesson 3 \
+  --licence CC-BY-4.0 --attribution "<all four agents>" \
   --generated-at 2026-11-18T00:00:00Z --json > testdata/reports/q2/assembly-report.json
 $BIN --data-dir "$RIICHI_DATA_DIR" audit --json > testdata/reports/q2/audit-report.json
 $BIN --data-dir "$RIICHI_DATA_DIR" pack publish \
@@ -159,8 +164,12 @@ The reviewer dispositions then accepted 100 and rejected 10 valid
 keep the pack at exactly 100 reviewed bases and reduce ch8.2 crowding:
 
 - queue: 110 items, 110 valid reports, 0 invalid, 0 pending;
-- accepted 100, rejected 10;
-- assembly's review gate: `checked, 100 accepted, 10 rejected`.
+- first pass: accepted 100, rejected 10;
+- backfill after the lesson-supply check: two rejected ch8.2 candidates were
+  accepted, so the final disposition is **102 accepted / 8 rejected**;
+- assembly's review gate: `checked, 102 accepted, 8 rejected`;
+- `--min-bases-per-lesson 3` then drops the two one-scenario lessons
+  (`defense_stuck_heuristic`, `kabe_one_chance`), leaving 100 shipped bases.
 
 The 10 held-out QA items are not part of the pack and are not dispositioned.
 The human content review is Q2r (a separate task); this unit supplies the 100
@@ -194,14 +203,29 @@ same-replay bases**, and the 100 scenarios have 100 distinct hand strings. The
 only shared structure is the lesson itself (a ch. 8 defense position), which is
 what the pack is teaching.
 
+**Duplicate check.** Selection rejects an exact state hash and a visible-info
+fingerprint it has already taken, and assembly dedupes exact state hashes again.
+The shipped 100 bases have 100 distinct full states and 100 distinct hand
+strings. The export that kept returning was not a duplicate: it was the only
+reviewed `defense_stuck_heuristic` base in the pack, so every draw of that
+lesson had to deal it.
+
+**Lesson supply.** A replay lesson needs at least **3** real bases
+(`--min-bases-per-lesson 3`). `defense_stuck_heuristic` and `kabe_one_chance`
+had exactly one stable reviewed position each (the exported 9m-discard state
+was the former), so both were dropped from the pack instead of repeating one
+position. Their generated lessons remain in the normal catalogue, where the
+generator produces a fresh board each time. The next scale-up should select
+more real bases per lesson so those lessons can return with variety.
+
 | Pack measurement | Value |
 | --- | ---: |
 | Scenarios | 100 |
 | Reviewed bases | 100 |
 | Variants | 0 (disabled) |
-| Distinct lessons | 6 |
+| Distinct lessons | 4 (`defense_safety_chart`, `fold_to_riichi`, `push_or_fold`, `suji_kabe_safety`) |
 | Book sections | ch8.1, ch8.2, ch8.3 |
-| Body bytes | 105,032 |
+| Body bytes | 104,357 |
 | Manifest bytes | 763 |
 | Distinct replay ids | 47 |
 | Adjacent same-replay bases | 0 |
@@ -210,7 +234,7 @@ what the pack is teaching.
 | `data_commercial_use` | false (Akochan) |
 | `requires_model` | false (all book answers) |
 | Audit | clean, 0 findings |
-| Pack SHA-256 | `481b548929f96de25d2991f9277791be127397411762943aa52a697a767474d0` |
+| Pack SHA-256 | `13ea4647a9d85a86f29770eb1c63b879d635daf16c2afedf25a42cfbb742ad3f` |
 
 The pack body is 105 KB, far below the 50 MB pack ceiling. `pack publish`
 pruned every earlier fixture/variant body and installed this pack plus its
@@ -227,7 +251,7 @@ not just the labels.
 
 | Measurement | Result |
 | --- | --- |
-| Pack body | 105,032 bytes (100 scenarios, ~1,050 B/scenario) |
+| Pack body | 104,357 bytes (100 scenarios, ~1,044 B/scenario) |
 | Manifest | 763 bytes; the only file fetched at startup |
 | Initial load | Unaffected: the loader fetches only `/scenarios/manifest.json` at startup; the body is fetched when a pack lesson is picked (asserted by the App pack test) |
 | Lazy body fetch | Exactly one content-addressed body request for the first pack lesson; no `.json.gz` request while the picker is open |
@@ -238,7 +262,7 @@ not just the labels.
 | Serving | 8/8 `check-pack-serving.mjs` checks: `application/gzip`, no `Content-Encoding`, exact bytes/SHA-256. `vite.config.ts` serves the bodies raw in dev/preview; Pages already does |
 | Frontend | 320 tests pass, build/lint pass; Q1 loader smoke passes on the ch8 pack |
 | Too easy / too hard | Not collected yet: no learner traffic. Q2r human review and the in-app feedback path are the next measurement |
-| Snapshot | `snapshots/miner-20261118-143000.sqlite`, 304,226,304 bytes, `PRAGMA integrity_check = ok`, 999 replays / 44,683 decisions / 100 selected rows / 100 packed scenarios / 0 variants; every content-addressed replay path exists |
+| Snapshot | `snapshots/miner-20261118-144500.sqlite`, 304,263,168 bytes, `PRAGMA integrity_check = ok`, 999 replays / 44,683 decisions / 102 selected rows / 100 packed scenarios / 0 variants; every content-addressed replay path exists |
 
 The selector walked all 544 replay files in the five scoped family directories
 even though only 84 had extracted decisions; that is why the selection run took

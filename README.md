@@ -451,13 +451,14 @@ browser loads a small **same-origin** manifest
 (`/scenarios/manifest.json`) and then only the content-addressed pack body it
 needs; the miner never ships its corpus, databases or model weights. The first
 curated ch. 8 defense pack (`replay.ch8-defense.2026-11`: 100 reviewed bases,
-no variants, 105 KB) ships in `frontend/public/scenarios/` so the Pages build
+no variants, 104 KB) ships in `frontend/public/scenarios/` so the Pages build
 exercises the whole path, and the deploy workflow verifies every body's
 bytes/SHA-256 before upload (`scripts/check-pack-hosting.mjs`); Q2's content
 gate `scripts/check-ch8-pack.mjs --allow-no-variants` proves every scenario is
 a ch. 8 lesson and the source/licence envelope is complete. Variants are
 disabled for this pack by product decision; variety comes from real reviewed
-positions.
+positions, and a lesson with fewer than three real bases is left out of the
+pack rather than repeating one scenario.
 Published packs are produced by
 `mine_replays pack publish` from the audited export and stay under a 50 MB
 same-origin budget; a larger set moves to an optional R2/HF mirror whose CORS and

@@ -1392,6 +1392,10 @@ that is not in the queue at all is refused as unreviewed.
   `variants_disabled` and ships the reviewed bases only. This is a product
   decision for a pack that gets its variety from real scenarios; the variant
   stage and its label-preservation gate stay available for a future design.
+- **Minimum bases per lesson** (`--min-bases-per-lesson N`, default 1) drops a
+  lesson whose base count is below N with reason `lesson_too_small`. A replay
+  lesson with one state would otherwise deal that same position every time it
+  is drawn; the generated lesson remains available for that topic.
 - **Family quotas** (`--family-quota book=30,coverage=15`) are optional explicit
   ceilings counted in **base** scenarios (§4.6: quotas count bases, not
   variants). S2 already balanced the selection, so the default leaves the
@@ -1428,7 +1432,7 @@ cargo run --features miner --bin mine_replays -- pack assemble \
   [--pack ID] [--queue FILE] [--licence ID] [--attribution TEXT] \
   [--max-bytes N] [--max-scenarios N] [--max-per-base N] [--share F32] \
   [--family-quota book=30,coverage=15] [--max-variants N] [--no-variants] \
-  [--generated-at ISO] [--commit TEXT] \
+  [--min-bases-per-lesson N] [--generated-at ISO] [--commit TEXT] \
   [--dry-run] [--json]
 ```
 
@@ -1753,14 +1757,17 @@ Status: shipped. The pack is `replay.ch8-defense.2026-11`:
 
 - 100 reviewed base scenarios, **no variants** (disabled by product decision:
   the generated variants looked too similar; variety comes from real
-  scenarios), 105,032 body bytes and a 763-byte manifest; bases from 47
+  scenarios), 104,357 body bytes and a 763-byte manifest; bases from 47
   replays, 0 adjacent same-replay bases;
 - 100 bases selected from 4,112 valid candidates after a ch. 8 scope, a
   stable-book-only rule and a five-family corpus cap (M3 30, M4 30, M5 30,
   M1 10, M2 10); 10 held-out QA items;
-- six ch. 8 lessons across ch8.1/ch8.2/ch8.3, no other chapter;
-- reviewers accepted 100 and rejected 10 redundant ch8.2 candidates; 0 pending,
-  0 invalid reports;
+- four ch. 8 lessons across ch8.1/ch8.2/ch8.3, no other chapter;
+  `--min-bases-per-lesson 3` dropped the two one-scenario lessons
+  (`defense_stuck_heuristic`, `kabe_one_chance`) instead of repeating a single
+  position;
+- reviewers accepted 100 and rejected 10, then accepted two ch8.2 backfill
+  candidates (102 accepted / 8 rejected); the pack ships 100 reviewed bases;
 - four agents (Akochan, Mortal 298k, `efficiency-safety-v1`,
   `isolated-first-v1`), complete licences/attribution, `data_commercial_use` is
   false because Akochan contributes;

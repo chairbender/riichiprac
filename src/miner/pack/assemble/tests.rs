@@ -378,6 +378,7 @@ fn enforces_family_quotas_on_the_selection() {
                 family_quotas: BTreeMap::from([("book".to_string(), 1)]),
                 max_variants: None,
                 variants_disabled: false,
+                min_bases_per_lesson: 1,
             },
             ..options()
         },
@@ -1053,5 +1054,41 @@ fn disabling_variants_ships_the_reviewed_bases_only() {
             .filter(|drop| drop.reason == "variants_disabled")
             .count(),
         5
+    );
+}
+
+#[test]
+fn a_lesson_with_too_few_bases_is_dropped() {
+    let mut groups = vec![
+        synthetic_group("book", "base-a", "state-a", 1),
+        synthetic_group("book", "base-b", "state-b", 1),
+        synthetic_group("book", "base-c", "state-c", 1),
+    ];
+    for (index, lesson) in ["singleton", "pair", "pair"].iter().enumerate() {
+        let base = groups[index].base.as_mut().expect("base");
+        base.scenario.lesson_id = lesson.to_string();
+        for variant in &mut groups[index].variants {
+            variant.scenario.lesson_id = lesson.to_string();
+        }
+    }
+    let options = AssemblyOptions {
+        limits: AssemblyLimits {
+            max_pack_share: 1.0,
+            min_bases_per_lesson: 2,
+            ..AssemblyLimits::default()
+        },
+        ..AssemblyOptions::default()
+    };
+    let mut drops = Vec::new();
+    super::apply_dedupe_and_caps(&mut groups, &options, &mut drops);
+    assert!(groups[0].base.is_none(), "the singleton lesson is dropped");
+    assert!(groups[0].variants.is_empty(), "its variant goes with it");
+    assert!(groups[1].base.is_some() && groups[2].base.is_some());
+    assert_eq!(
+        drops
+            .iter()
+            .filter(|drop| drop.reason == "lesson_too_small")
+            .count(),
+        1
     );
 }

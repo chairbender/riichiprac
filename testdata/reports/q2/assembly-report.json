@@ -3,16 +3,16 @@
   "version": 1,
   "pack_id": "replay.ch8-defense.2026-11",
   "generated_at": "2026-11-18T00:00:00Z",
-  "rows_read": 100,
+  "rows_read": 102,
   "bases": 100,
   "variants": 0,
   "scenarios": 100,
   "families": [
     {
       "family": "book",
-      "bases": 41,
+      "bases": 42,
       "variants": 0,
-      "scenarios": 41
+      "scenarios": 42
     },
     {
       "family": "coverage",
@@ -22,9 +22,9 @@
     },
     {
       "family": "close_call",
-      "bases": 13,
+      "bases": 12,
       "variants": 0,
-      "scenarios": 13
+      "scenarios": 12
     },
     {
       "family": "table_read",
@@ -45,8 +45,21 @@
       "scenarios": 5
     }
   ],
-  "dropped": [],
-  "drop_counts": {},
+  "dropped": [
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-026",
+      "reason": "lesson_too_small",
+      "detail": "lesson `kabe_one_chance` has 1 base(s); the pack needs at least 3"
+    },
+    {
+      "scenario_id": "replay.ch8-defense.2026-11-060",
+      "reason": "lesson_too_small",
+      "detail": "lesson `defense_stuck_heuristic` has 1 base(s); the pack needs at least 3"
+    }
+  ],
+  "drop_counts": {
+    "lesson_too_small": 2
+  },
   "variant_share": 0.0,
   "largest_base": {
     "base": "replay.ch8-defense.2026-11-001",
@@ -56,13 +69,14 @@
   "limits": {
     "max_per_base": 8,
     "max_pack_share": 0.2,
-    "variants_disabled": true
+    "variants_disabled": true,
+    "min_bases_per_lesson": 3
   },
-  "bytes": 105032,
+  "bytes": 104357,
   "max_bytes": 50000000,
   "max_scenarios": 2000,
-  "sha256": "481b548929f96de25d2991f9277791be127397411762943aa52a697a767474d0",
-  "export_path": "packs/replay.ch8-defense.2026-11-481b548929f9.json.gz",
+  "sha256": "13ea4647a9d85a86f29770eb1c63b879d635daf16c2afedf25a42cfbb742ad3f",
+  "export_path": "packs/replay.ch8-defense.2026-11-13ea4647a9d8.json.gz",
   "manifest_path": "packs/manifest.json",
   "licence": "CC-BY-4.0",
   "data_commercial_use": false,
@@ -75,14 +89,15 @@
   "review": {
     "checked": true,
     "items": 110,
-    "accepted": 100,
-    "rejected": 10
+    "accepted": 102,
+    "rejected": 8
   },
   "audited": true,
   "audit_clean": true,
   "notes": [
     "generated_at is the latest selected row's timestamp, so re-assembling the same rows hashes identically",
     "a base state comes from the walked decision row; a variant re-applies its recorded chain to that state and the lesson classifier must re-derive the stored answer",
-    "variants are disabled for this pack: it ships the reviewed bases only, and its variety comes from real scenarios"
+    "variants are disabled for this pack: it ships the reviewed bases only, and its variety comes from real scenarios",
+    "a lesson needs at least 3 reviewed base(s) to stay in the pack; an undersupplied lesson is reported as `lesson_too_small` instead of repeating one position"
   ]
 }

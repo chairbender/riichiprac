@@ -136,6 +136,15 @@ pub struct AssemblyLimits {
     /// for a pack that gets its variety from real scenarios instead.
     #[serde(default, skip_serializing_if = "is_false")]
     pub variants_disabled: bool,
+    /// Minimum number of bases a lesson needs to stay in the pack. A lesson with
+    /// fewer real scenarios than this is dropped rather than repeating one
+    /// position every time it is drawn.
+    #[serde(default = "default_min_bases_per_lesson")]
+    pub min_bases_per_lesson: usize,
+}
+
+const fn default_min_bases_per_lesson() -> usize {
+    1
 }
 
 const fn is_false(value: &bool) -> bool {
@@ -150,6 +159,7 @@ impl Default for AssemblyLimits {
             family_quotas: BTreeMap::new(),
             max_variants: None,
             variants_disabled: false,
+            min_bases_per_lesson: default_min_bases_per_lesson(),
         }
     }
 }
@@ -178,6 +188,9 @@ impl AssemblyLimits {
         }
         if self.max_variants == Some(0) {
             return Err("`max_variants` must be at least one".to_string());
+        }
+        if self.min_bases_per_lesson == 0 {
+            return Err("`min_bases_per_lesson` must be at least one".to_string());
         }
         Ok(())
     }
@@ -1556,7 +1569,48 @@ fn apply_dedupe_and_caps(
         }
     }
 
-    // 4. Variants can be disabled entirely: the pack then ships only the
+    // 4. A lesson with too few real positions is not a varied replay drill:
+    // drop it rather than deal the same scenario every time it is drawn.
+    if options.limits.min_bases_per_lesson > 1 {
+        let mut per_lesson: BTreeMap<String, usize> = BTreeMap::new();
+        for group in groups.iter() {
+            if let Some(base) = &group.base {
+                *per_lesson
+                    .entry(base.scenario.lesson_id.clone())
+                    .or_insert(0) += 1;
+            }
+        }
+        for group in groups.iter_mut() {
+            let Some(base) = &group.base else {
+                continue;
+            };
+            let lesson = base.scenario.lesson_id.clone();
+            let count = per_lesson.get(&lesson).copied().unwrap_or(0);
+            if count >= options.limits.min_bases_per_lesson {
+                continue;
+            }
+            let id = base.scenario.id.to_string();
+            drops.push(AssemblyDrop {
+                scenario_id: id.clone(),
+                reason: "lesson_too_small".to_string(),
+                detail: format!(
+                    "lesson `{lesson}` has {count} base(s); the pack needs at least {}",
+                    options.limits.min_bases_per_lesson
+                ),
+            });
+            for variant in &group.variants {
+                drops.push(AssemblyDrop {
+                    scenario_id: variant.scenario.id.to_string(),
+                    reason: "base_dropped".to_string(),
+                    detail: format!("its base `{id}` was in an undersupplied lesson"),
+                });
+            }
+            group.base = None;
+            group.variants.clear();
+        }
+    }
+
+    // 5. Variants can be disabled entirely: the pack then ships only the
     // reviewed bases. This is a product decision, not a cap.
     if options.limits.variants_disabled {
         for group in groups.iter_mut() {
@@ -1571,7 +1625,7 @@ fn apply_dedupe_and_caps(
         return;
     }
 
-    // 5. Optional global variant ceiling. Keep evenly spaced variants across
+    // 6. Optional global variant ceiling. Keep evenly spaced variants across
     // the pack order rather than truncating the tail, so the limit does not
     // silently favour whichever lesson sorts first.
     let Some(limit) = options.limits.max_variants else {
@@ -1877,6 +1931,13 @@ fn build_report(
         notes.push(format!(
             "the pack keeps at most {limit} variant(s), spread evenly across the base order; \
              a variant beyond the ceiling is reported as `variant_limit`"
+        ));
+    }
+    if options.limits.min_bases_per_lesson > 1 {
+        notes.push(format!(
+            "a lesson needs at least {} reviewed base(s) to stay in the pack; an undersupplied \
+             lesson is reported as `lesson_too_small` instead of repeating one position",
+            options.limits.min_bases_per_lesson
         ));
     }
 

@@ -1,7 +1,7 @@
 {
   "schema": "riichiprac.review-report",
   "version": 1,
-  "generated_at": "20261118-080854",
+  "generated_at": "20261118-193145",
   "queue_path": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-defense.2026-11/review-queue.jsonl",
   "dispositions_path": "/home/kylehipke/riichiprac-data/q2-ch8-defense-2026-11/reviews/replay.ch8-defense.2026-11/dispositions.jsonl",
   "pack_id": "replay.ch8-defense.2026-11",
@@ -9,8 +9,8 @@
   "valid": 110,
   "invalid": 0,
   "pending": 0,
-  "accepted": 100,
-  "rejected": 10,
+  "accepted": 102,
+  "rejected": 8,
   "rows": [
     {
       "queue_id": "replay.ch8-defense.2026-11-001",
@@ -319,8 +319,8 @@
       "book_section": "ch8.2",
       "label_kind": "book",
       "held_out": false,
-      "verdict": "rejected",
-      "note": "q2 curation: valid ch8.2 safety-chart candidate, rejected as redundant section crowding to keep the reviewed pack at 100"
+      "verdict": "accepted",
+      "note": "q2 backfill: valid ch8.2 candidate accepted to replace undersupplied one-scenario lessons while keeping 100 reviewed bases"
     },
     {
       "queue_id": "replay.ch8-defense.2026-11-032",
@@ -409,8 +409,8 @@
       "book_section": "ch8.2",
       "label_kind": "book",
       "held_out": false,
-      "verdict": "rejected",
-      "note": "q2 curation: valid ch8.2 safety-chart candidate, rejected as redundant section crowding to keep the reviewed pack at 100"
+      "verdict": "accepted",
+      "note": "q2 backfill: valid ch8.2 candidate accepted to replace undersupplied one-scenario lessons while keeping 100 reviewed bases"
     },
     {
       "queue_id": "replay.ch8-defense.2026-11-041",
