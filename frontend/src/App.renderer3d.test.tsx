@@ -4,9 +4,10 @@
  *
  * jsdom has no WebGL2, so this is the "3D cannot run" path in the real App: the
  * query parameter must select the host, the host must report why, and the App
- * must keep drawing the normal table underneath instead of throwing or going
- * blank. The happy path (a live renderer) is covered by `RendererHost.test.tsx`
- * with a mocked lazy entry.
+ * must not throw. The 3D view is the scene alone (user guidance 2026-11-18): no
+ * app chrome is mounted above or below it, so the mount is also asserted to
+ * have no header/dock/cards. The happy path (a live renderer) is covered by
+ * `RendererHost.test.tsx` with a mocked lazy entry.
  */
 
 import { readFileSync } from 'node:fs';
@@ -78,7 +79,7 @@ afterEach(() => {
 });
 
 describe('App 3D mount point', () => {
-  it('falls back to the standard table when WebGL2 is unavailable', async () => {
+  it('mounts the scene alone, full-window, and reports an unavailable WebGL2', async () => {
     wasmMock.generatedJson = JSON.stringify(hand.state);
     window.history.replaceState(null, '', '?renderer=3d');
     // jsdom cannot create a WebGL2 context; make that explicit and silent
@@ -103,13 +104,19 @@ describe('App 3D mount point', () => {
     expect(screen.getByRole('group', { name: '3D table view' })).toBeTruthy();
     // ...it explains why it cannot run...
     expect(screen.getByText(/WebGL2 is not available/)).toBeTruthy();
-    // ...and the standard view is still on screen underneath.
-    expect(document.querySelector('.table-3d')).not.toBeNull();
-    expect(document.querySelectorAll('.player-row').length).toBeGreaterThan(0);
-    // The 3D view owns the window: the shell drops the phone column and its
-    // chrome becomes an overlay over the fixed stage.
+    // ...and the scene alone owns the window: the shell drops the phone
+    // column and no app chrome is mounted in the document flow.
     expect(document.querySelector('.app-shell--3d')).not.toBeNull();
     expect(document.querySelector('.app-shell--3d > .table-3d')).not.toBeNull();
+    for (const selector of [
+      '.app-header',
+      '.hand-dock',
+      '.action-bar',
+      '.player-row',
+      '.table-info',
+    ]) {
+      expect(document.querySelector(selector), selector).toBeNull();
+    }
     // No canvas was created, so no three.js chunk was needed.
     expect(document.querySelector('canvas')).toBeNull();
     // jsdom has no Fullscreen API, so the toggle must not be offered.

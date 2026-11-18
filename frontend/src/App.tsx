@@ -6,7 +6,6 @@ import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import { ActionBar } from './components/ActionBar';
 import { AppControls } from './components/AppControls';
 import { ExportImportControls } from './components/ExportImportControls';
-import { FullscreenButton } from './components/FullscreenButton';
 import { HandDock } from './components/HandDock';
 import { HotseatCard } from './components/HotseatCard';
 import { PhysicalTable } from './components/PhysicalTable';
@@ -123,12 +122,6 @@ export const App = () => {
   const restoreSnapshot = useGameStore((state) => state.restoreSnapshot);
 
   const [selection, setSelection] = useState<ScenarioSelection>(ALL_SCENARIOS);
-  /**
-   * The app shell, which is the full-screen target for the opt-in 3D view: the
-   * scene fills the window and this element (chrome included) is the thing the
-   * Fullscreen API promotes.
-   */
-  const shellRef = useRef<HTMLDivElement>(null);
   /**
    * The generated catalogue the WASM manifest publishes. Replay-pack entries are
    * merged on top in `scenarios` below; keeping the two apart means a late pack
@@ -818,8 +811,7 @@ export const App = () => {
 
   /*
    * The 2D table: the persisted view picks between the stacked rows and the
-   * top-down plan. Built once so the 3D host can keep showing it while its
-   * WebGL scene loads, and fall back to it when the browser cannot run 3D.
+   * top-down plan.
    */
   const standardTable =
     tableView === 'topdown' && gameState ? (
@@ -834,13 +826,47 @@ export const App = () => {
       ))
     );
 
+  /*
+   * The opt-in 3D view is the scene alone (user guidance 2026-11-18): no
+   * header, cards, action bar or hand dock are mounted, so the canvas owns the
+   * full window with no UI above or below it. The floating UI layer — chrome
+   * positioned over the scene, like a game HUD — is planned work (3D-08,
+   * 3D-09, 3D-14), not this mount.
+   */
+  if (tableMount.kind === 'three') {
+    return (
+      <div className="app-shell app-shell--3d">
+        <main className="table-3d">
+          {statusMessage && (
+            <div className="status-msg" role="status">
+              {statusMessage}
+            </div>
+          )}
+          {error && (
+            <div className="error-msg" role="alert">
+              {error}
+            </div>
+          )}
+
+          {threeSnapshot ? (
+            <RendererHost
+              snapshot={threeSnapshot}
+              tier={tableMount.query.quality}
+              debug={tableMount.query.debug}
+              perfHud={tableMount.query.perf}
+            />
+          ) : (
+            <p className="status-msg" role="status">
+              Loading table…
+            </p>
+          )}
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={
-        tableMount.kind === 'three' ? 'app-shell app-shell--3d' : 'app-shell'
-      }
-      ref={shellRef}
-    >
+    <div className="app-shell">
       <header className="app-header">
         <div className="app-title-group">
           {/* No scenario name here: it would hint at the answer during random draws. */}
@@ -848,9 +874,6 @@ export const App = () => {
         </div>
 
         <div className="app-controls">{controls}</div>
-
-        {/* The 3D view owns the window; full screen only removes browser chrome. */}
-        {tableMount.kind === 'three' && <FullscreenButton target={shellRef} />}
       </header>
 
       {hotseatOpen && (
@@ -875,13 +898,7 @@ export const App = () => {
       {verdictPanel}
 
       <main
-        className={
-          tableMount.kind === 'three'
-            ? 'table-3d'
-            : tableView === 'stacked'
-              ? 'table-stack'
-              : 'table-physical'
-        }
+        className={tableView === 'stacked' ? 'table-stack' : 'table-physical'}
       >
         {statusMessage && (
           <div className="status-msg" role="status">
@@ -897,20 +914,9 @@ export const App = () => {
         {/*
          * The persisted view picks between the stacked rows and the top-down
          * plan; nothing else about the hand changes when it switches, so the
-         * answer and grade stay put. `?renderer=3d` swaps in the opt-in 3D
-         * host, which falls back to the same table whenever 3D cannot run.
+         * answer and grade stay put.
          */}
-        {tableMount.kind === 'three' && threeSnapshot ? (
-          <RendererHost
-            snapshot={threeSnapshot}
-            tier={tableMount.query.quality}
-            debug={tableMount.query.debug}
-            perfHud={tableMount.query.perf}
-            fallback={standardTable}
-          />
-        ) : (
-          standardTable
-        )}
+        {standardTable}
       </main>
 
       {gameState && !dualGrade && actionBarActions.length > 0 && (

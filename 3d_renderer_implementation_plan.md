@@ -49,9 +49,10 @@ persistent View control is 3D-15's decision**, not 3D-14's.
 
 - a true real-time 3D table rendered into a `<canvas>` in the browser, as an
   additional opt-in view beside the stacked, top-down and (when it lands) 2.5D
-  rendered views. **It takes the whole browser window, and the app's UI is laid
-  out as an overlay on top of the scene** (user guidance, 2026-11-18; §9
-  decision 7), with an optional full-screen toggle;
+  rendered views. **It takes the whole browser window with no UI in the document
+  flow around it**, and the app's UI is planned as a floating layer over the
+  scene (user guidance, 2026-11-18; §9 decision 7), with an optional full-screen
+  toggle;
 - the same board information the top-down view shows: four seats with concealed
   hands, the human's drawn tile, four discard rivers, open melds, the wall,
   dora indicators, riichi declarations and sticks, wind/score/round compass;
@@ -160,19 +161,27 @@ Four rules make this safe:
    an animation or the perf HUD is active. This is a battery decision, not a
    performance optimisation of last resort.
 
-**The stage is the window; the UI is an overlay** (user guidance, 2026-11-18;
-§9 decision 7). In the 3D view the canvas is a fixed, full-window backdrop
-(`z-index: 0`) and everything else the app draws — the header and its controls,
-status cards, the action bar, the hand dock and (from 3D-09) the compass — is
-positioned above it. The table is then the background of the interface, not a
-card inside a phone-width column. The 2D views keep their existing layout: the
-shell carries a modifier only while the 3D view is mounted, and 3D-14 must
-remove it (and leave full screen) when the user switches away.
+**The stage is the window; the UI is a floating layer** (user guidance,
+2026-11-18; §9 decision 7). The 3D canvas is a fixed, full-window layer
+(`z-index: 0`) that fills the whole height of the browser: **no UI panel sits
+above or below it in the document flow.** The UI that follows — header controls,
+status cards, the action bar, the hand dock, the projected hand/draw buttons and
+the compass — is positioned *over* the scene, the way a game HUD is, never
+outside it.
+
+**Interim state (as of 3D-02's landing).** While there is no floating layer yet,
+the 3D mount renders **the scene alone**: no header, no cards, no action bar and
+no hand dock are mounted, so nothing occupies Y space around the canvas. The
+2D views keep their existing layout. 3D-14 re-mounts the chrome as the floating
+layer and must remove the shell modifier (and leave full screen) when the user
+switches away.
 
 A full-screen toggle uses the Fullscreen API on the **shell**, not on the
-canvas, so the overlaid chrome travels with the scene; it is rendered only where
+canvas, so the floating layer travels with the scene; it is rendered only where
 `requestFullscreen` exists, and it reports the browser's own state rather than
 guessing. Browsers that do not support the API simply get the full-window view.
+The component is built and tested in 3D-02 but stays unmounted until the
+floating layer exists (3D-14), because offering a header control is UI.
 
 ### 2.2 Repository and build boundaries
 
@@ -390,13 +399,15 @@ The canvas is an image. Everything a user can do or must hear is DOM:
   interactive. A hidden heading names the view for screen readers.
 - The interaction layer is a pure function of `TableSnapshot` + camera matrices
   (`hitTest.ts`), so it is unit-testable in Node without WebGL.
-- **Chrome over the scene.** Because the stage is the whole window (§2.1), the
-  existing app chrome — header controls, status cards, the action bar and the
-  hand dock — already floats above the canvas in the 3D view; the hand/draw
-  buttons and the compass are positioned against the same stage. No overlay may
-  capture pointer events outside its own controls: clicking the felt (once
-  anything is bound to it) and every chrome control must keep working. Chrome
-  panels keep their own backgrounds so they stay readable over the felt.
+- **Chrome over the scene.** The stage is the whole window (§2.1). Once the
+  floating layer lands (3D-14; hand/draw buttons in 3D-08, compass in 3D-09),
+  the app chrome — header controls, status cards, the action bar and the hand
+  dock — is positioned *over* the canvas in Z order, never in the document flow
+  above or below it. Until then the 3D view deliberately shows no chrome at all.
+  No overlay may capture pointer events outside its own controls: clicking the
+  felt (once anything is bound to it) and every chrome control must keep
+  working. Floating panels keep their own backgrounds so they stay readable
+  over the felt.
 
 ### 2.8 Performance budget, stated and justified
 
@@ -812,13 +823,14 @@ who does not ask for it.
   recorded in this plan when it is chosen.
 - Minimal `App.tsx` wiring: `?renderer=3d` mounts the host in place of the
   current table (only when a `GameState` exists); no persistence.
-- **Full-window stage with the UI as an overlay** (user guidance 2026-11-18):
-  the shell drops its phone-width column, the 3D stage becomes a fixed
-  full-window backdrop and the existing chrome (header, cards, action bar, hand
-  dock) positions above it. The stacked and top-down layouts are untouched.
-- **Full-screen toggle** (`components/FullscreenButton.tsx`) in the 3D view's
-  header: promotes the shell, not the canvas, and renders nothing where the
-  Fullscreen API is absent.
+- **Full-window, scene-only stage** (user guidance 2026-11-18, revised the same
+  day): the shell drops its phone-width column and the 3D stage becomes a fixed
+  layer covering the whole viewport, with **no UI mounted above or below it** in
+  the document flow. The stacked and top-down layouts are untouched.
+- **Full-screen toggle** (`components/FullscreenButton.tsx`): promotes the
+  shell, not the canvas, follows `fullscreenchange`, and renders nothing where
+  the Fullscreen API is absent. Built and tested here, but kept **unmounted**
+  until the floating UI layer exists (3D-14), because a header control is UI.
 
 **Acceptance criteria**
 
@@ -827,21 +839,24 @@ who does not ask for it.
 - With `?renderer=3d`, an empty felt scene mounts at the correct camera framing
   on a 1920 × 1080 viewport; the canvas is `aria-hidden`, is not focusable, and
   has an accessible name on a sibling heading.
-- The 3D stage covers the window: the shell has no max-width, the stage is a
-  fixed full-viewport layer, and the header/hand dock/action bar are asserted to
-  paint above it. Leaving the view must leave no shell modifier behind
-  (asserted here for the mount; 3D-14 owns the switch).
-- The full-screen control appears only when `requestFullscreen` exists, targets
-  the shell, and follows `fullscreenchange` rather than its own guess; jsdom
-  (no API) shows no control.
+- The 3D stage is the whole window: the shell has no max-width, the stage is a
+  fixed full-viewport layer, and a DOM test asserts that **no** app chrome
+  (header, cards, action bar, hand dock, player rows) is mounted with it. A
+  transient status or generation error floats over the scene without pushing the
+  canvas down.
+- The full-screen component targets the shell and follows `fullscreenchange`
+  rather than its own guess; it renders nothing without the API (jsdom). It is
+  not mounted by 3D-02 (above), and its tests cover both states.
 - `dispose()` releases every registered resource; mount/unmount ×5 leaves the
   tracked resource count at zero; React StrictMode's double effect does not
   create two renderers.
 - WebGL2 unavailable (jsdom, or a mocked failing `getContext`) → state
-  `unsupported`, a rendered message, and App falls back to the previous view
-  without throwing.
+  `unsupported` and a rendered message over the stage, never a thrown error.
+  While the view is scene-only there is no 2D fallback inside it; the standard
+  views remain reachable by dropping the query parameter (the persistent View
+  control is 3D-14's).
 - `webglcontextlost` is prevented, one restore is attempted, a second loss
-  disposes and reports `failed`; the host then falls back.
+  disposes and reports `failed` with a message over the stage.
 - Precedence is explicit and tested: explicit query param > stored view >
   default (`stacked`).
 - Framing numbers at 16:9 match the reference within 1 px for the mat corners
@@ -1105,9 +1120,10 @@ keyboard and screen reader.
 **Acceptance criteria**
 
 - The overlay is positioned against the **full-window stage** (3D-02, §2.1): the
-  buttons sit on the scene, not inside a card, and the chrome that already
-  overlays the stage (header, action bar, hand dock) keeps receiving its own
-  events.
+  buttons sit on the scene, not inside a card. This unit lands the first part of
+  the floating UI; 3D-14 re-mounts the rest of the chrome (header, action bar,
+  hand dock, cards) as the same kind of layer, and the two must not capture each
+  other's pointer events.
 - Exactly one button per hand tile plus the draw when present; zero when the
   hand is locked (answered), matching `HandDock`.
 - Labels and order are identical to the top-down hand's accessible names for the
@@ -1306,6 +1322,11 @@ does not wait for the 2.5D rendered view.
   shell modifier that drops the phone-width column and fixes the 3D backdrop is
   applied only for the 3D value, and switching away removes it *and* leaves
   full screen (never leaves the user in a full-screen 2D view).
+- **The floating UI layer** (user guidance, revised 2026-11-18): re-mount the
+  app chrome — header controls, status cards, the action bar and the hand dock —
+  over the scene in Z order instead of in the document flow above/below it, and
+  mount the full-screen toggle (`components/FullscreenButton.tsx`, built in
+  3D-02) in that layer. The scene-only interim (§2.1) ends with this unit.
 
 **Acceptance criteria**
 
@@ -1316,6 +1337,9 @@ does not wait for the 2.5D rendered view.
   once; after leaving, the stacked/top-down layout is byte-for-byte the same
   structure it had before (the stage is no longer fixed, the column width is
   back), and `document.fullscreenElement` is null.
+- In 3D, the chrome is mounted *over* the fixed stage (DOM/stacking assertions,
+  no Y-flow siblings of the canvas), every chrome control still works, and the
+  full-screen toggle is present exactly when the API is.
 - The 3D view (once `RENDERED3D_EXPOSED`) persists across reload when selected and
   supported; when it later becomes unavailable the stored value falls back
   **without** rewriting the user's choice (so a temporarily unsupported device
@@ -1521,15 +1545,18 @@ are binding on the units, not open questions.
    rebake would cost ≈176 MB raw / ≈234 MB with mips for no visible gain, and is
    not planned. If it is ever wanted, it is a 3D-owned offline task, not a request
    to the 2.5D chain.
-7. **Full-window stage, UI as an overlay** (added 2026-11-18, while 3D-02 was in
-   progress). The 3D display takes the whole browser window, and the app's UI —
-   header controls, status cards, action bar, hand dock, and the compass and hand
-   buttons from 3D-08/3D-09 — is laid out **on top of the scene** rather than in
-   the phone-width column. A full-screen toggle (Fullscreen API) is offered where
-   the browser supports it; it promotes the shell so the overlay travels with the
-   scene. The stacked and top-down views keep their existing layout, and leaving
-   the 3D view restores it (3D-14). 3D-02 lands the stage and the toggle; 3D-08,
-   3D-09, 3D-14 and 3D-15 are updated to match.
+7. **Full-window stage, no UI around it, floating UI later** (added and revised
+   2026-11-18, while 3D-02 was in progress). The 3D display takes the whole
+   browser window and the full height of the screen. **No UI panel sits above or
+   below the canvas (no Y-flow siblings).** The UI that follows — header
+   controls, status cards, action bar, hand dock, the hand/draw buttons (3D-08)
+   and the compass (3D-09) — is planned as a **floating layer over the scene**
+   (Z order, like a typical game HUD), not as elements outside the canvas.
+   Until that layer exists, 3D-02 mounts **the scene alone**; 3D-14 re-mounts the
+   chrome as the floating layer, mounts the full-screen toggle (Fullscreen API,
+   promoting the shell so the layer travels with the scene) and restores the 2D
+   layout — including leaving full screen — when the user switches away. The
+   stacked and top-down views keep their existing layout throughout.
 
 **Chain independence (recorded).** No 3D unit depends on 2.5D work, and no 2.5D
 unit depends on 3D work. The 3D chain reads the *already committed* relief

@@ -89,14 +89,16 @@ The app is a **Constraint Satisfaction Generator**:
   with no perspective or camera tilt. Its table edges hold only tiles: winds, scores, and
   Riichi sticks live on the compass in the middle, one corner facing each player.
 * **3D view (opt-in, `?renderer=3d` until 3D-15):** a real-time three.js scene with the committed
-  tile proportions and carved faces. It **takes the whole browser window**, and the app's UI —
-  header controls, status cards, action bar, hand dock, plus the projected hand buttons and
-  compass — is laid out **as an overlay on top of the scene**, not in the phone-width column.
-  A full-screen toggle promotes the shell (so the overlay comes along) where the Fullscreen API
-  exists. The stacked and top-down views keep their own layout, and leaving 3D restores it.
-  It is never the default and never auto-selected. See `3d_renderer_implementation_plan.md`
-  (§2.1, §2.7, §9 decision 7) and note that the help text for the View control still describes
-  the two 2D views until 3D-14 adds the fourth.
+  tile proportions and carved faces. It **takes the whole browser window and the full height of
+  the screen**, and **no UI panel sits above or below the canvas** in the document flow. While
+  the view is being built (as of 3D-02) it mounts the scene alone. The planned UI — header
+  controls, status cards, action bar, hand dock, plus the projected hand buttons and compass —
+  is a **floating layer over the scene** (Z order, like a typical game HUD), landed in 3D-08,
+  3D-09 and 3D-14; a full-screen toggle then promotes the shell so the layer comes along. The
+  stacked and top-down views keep their own layout, and leaving 3D restores it. It is never the
+  default and never auto-selected. See `3d_renderer_implementation_plan.md` (§2.1, §2.7, §9
+  decision 7) and note that the help text for the View control still describes the two 2D views
+  until 3D-14 adds the fourth.
 * **Layout Structure:**
   * 4 strictly vertical flex/grid rows (one for each player).
   * Each opponent row displays their Wind, Points, Melds, and Discard River.
