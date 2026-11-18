@@ -2070,6 +2070,46 @@ and JSON export agree exactly; pack report.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-17, P1b branch).** Implemented in
+> `src/miner/pack/assemble.rs`. `run_assembly` reads the pack's
+> `selected_scenarios`, `variants`, `decisions` and `replays` rows, rebuilds each
+> base from the walked state and each variant by re-applying its recorded chain,
+> re-stamps the stored answer through the lesson classifier (and refuses a row
+> whose rebuilt answer/`accepted` disagree), runs the review gate (a pending
+> disposition or an invalid embedded report refuses the pack; a rejected base and
+> its variants are excluded), and applies exact-state dedupe, the §4.6 per-base
+> cap (defaults 8 variants / 20 % of the planned pack), optional family quotas
+> counted in base scenarios, and the byte/scenario budget (refusing rather than
+> trimming). It writes the P1a body `packs/<pack-id>-<sha-prefix>.json.gz` and
+> the atomic manifest, merges the referenced `GameProvenance` rows into
+> `packs/games.jsonl`, re-runs `audit_pack_dir`, records the `packs` and
+> `pack_scenarios` rows (schema v3) and writes
+> `reviews/<pack-id>/assembly-report.json` with the family mix, variant share,
+> largest base share, bytes, licence/commercial flag, agent union, drops, caps and
+> review summary. `generated_at` defaults to the latest selected row's timestamp
+> and the scenario order is fixed, so the same rows produce the same SHA-256. The
+> CLI gained `pack assemble`
+> (`--pack`, `--queue`, `--licence`, `--attribution`, `--max-bytes`,
+> `--max-scenarios`, `--max-per-base`, `--share`, `--family-quota`,
+> `--generated-at`, `--commit`, `--dry-run`, `--json`). V2's persist now records
+> the selector's family (`selection_family`) so the mix/quota report does not
+> have to parse a human string.
+>
+> **Evidence.** 10 P1b tests (plus the DB/migration/persist suites): a realistic
+> three-base selection persisted through the V2 stage assembling to a clean pack
+> with a decoded body identical to the manifest entry, the `packs` row and every
+> `pack_scenarios` row (id, ordinal, base, lesson, state hash, scenario hash,
+> variant); a clean directory audit; the report round-trip; deterministic
+> re-assembly; per-base cap, exact-state dedupe and family quotas directly and
+> through the DB; byte and scenario ceilings; the review gate's accepted/rejected
+> split, pending item and invalid embedded report; a missing selection; an
+> ungated variant; the quota parser and the variant-cap bounds; and the DB stamp
+> → ISO normalisation. Gates: `cargo test --lib` (745), `cargo test --features
+> miner` (1 091), `cargo clippy --all-targets --features miner -- -D warnings`,
+> `cargo fmt --check`, `cargo check --target wasm32-unknown-unknown`. No wasm
+> behaviour changed and no visual output is involved. The operator contract is in
+> `replay-miner-operations.md`.
+
 ##### P2 — Hosting/publisher (Pages / R2 / HF)
 
 **Goal.** Publish packs with the existing hosting pattern without shipping the

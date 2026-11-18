@@ -1,11 +1,12 @@
-# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers, selection and variants (F1, R1, R2, L1, L2, S1, S2, V2)
+# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers, selection, variants and packs (F1, R1, R2, L1, L2, S1, S2, V2, P1a, P1b)
 
 Status: implemented foundation (F1), replay reader/validator (R1), the walker /
 `GameState` reconstruction (R2), the native Mortal labeler with Q values and
 the label cache (L1), book/Mortal agreement with contested marking,
 percentile hooks and optional calibration (L2), the cheap candidate triggers with
 family filters (S1), the hard gates, ranking, quotas, dedupe, held-out QA and
-review queue (S2), and the label-preserving variant stage (V2) of
+review queue (S2), the label-preserving variant stage (V2) and the scenario-pack
+format/gate/audit (P1a) with DB-backed assembly (P1b) of
 [`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
 document is the operator contract for the native-only miner. It does not re-open
 the source decision: [`replay-strategy.md`](replay-strategy.md) §2 fixes AI
@@ -32,9 +33,14 @@ caps, exact and visible-info dedupe, the deterministic held-out QA split, and
 the JSONL review queue that embeds a single-candidate
 `riichiprac.scenario-report`. V2 adds `src/miner/variant/`: the per-lesson
 transform policy, the label-preservation gate, the yield/disable/dedupe/cap
-stage, the `riichiprac.variant-report` and the pack assembly path. Book
+stage, the `riichiprac.variant-report` and the pack assembly path. P1a adds
+`src/miner/pack/`: the `riichiprac.scenario-pack` and manifest documents, the
+executable G8 pack gate, deterministic encoding, atomic content-addressed
+publishing, the directory audit and the fixture publisher. P1b adds
+`src/miner/pack/assemble.rs`: DB-backed assembly, the review gate, caps/dedupe,
+the `packs`/`pack_scenarios` rows and the assembly report. Book
 classification (B1/B2/B3) already exists in `src/classifier/`; S3's selectors and
-the full curator/publisher (P1b–P3) remain.
+the hosting/publisher (P2) and loader (P3) remain.
 
 ## Build boundary
 
@@ -77,10 +83,10 @@ mine_replays [--data-dir DIR] <command>
 ```
 
 `label` (L1 with the L2 agreement/calibration extensions), `triggers` (S1),
-`select` and `review` (S2), `transform` (V2), and `pack fixture`, `pack report`
-and `audit` (P1a) are implemented. The remaining commands still resolve the data
-root, report the command they would run, and exit with code 2, so a script cannot
-treat a stub as a successful run.
+`select` and `review` (S2), `transform` (V2), and `pack fixture`, `pack
+assemble`, `pack report` and `audit` (P1a/P1b) are implemented. The remaining
+commands still resolve the data root, report the command they would run, and
+exit with code 2, so a script cannot treat a stub as a successful run.
 
 ```bash
 cargo run --features miner --bin mine_replays -- label \
@@ -226,6 +232,7 @@ Every serialised miner document carries `schema` and `version`.
 | `riichiprac.selection-report` | `SELECTION_SCHEMA` | one selection run's report (S2) |
 | `riichiprac.review-item` | `REVIEW_SCHEMA` | one review-queue line (S2) |
 | `riichiprac.review-disposition` | `DISPOSITION_SCHEMA` | one reviewer verdict (S2) |
+| `riichiprac.pack-assembly-report` | `ASSEMBLY_SCHEMA` | one pack-assembly run's report (P1b) |
 
 The review item embeds the app's own `riichiprac.scenario-report` v2 for that
 single candidate, so the existing report importer validates it unchanged.
@@ -296,7 +303,7 @@ state model does not use it.
 
 `db/miner.sqlite` is the source of truth for candidate and curated scenarios.
 It is a single transactional SQLite file, created and migrated on open
-(`PRAGMA user_version = 2`).
+(`PRAGMA user_version = 3`).
 
 | Table | Purpose |
 | --- | --- |
@@ -304,9 +311,10 @@ It is a single transactional SQLite file, created and migrated on open
 | `replays` | one immutable game: source, licence, rule profile, log path/bytes/hash, validation, agent roster, full provenance JSON |
 | `decisions` | one decision point: state hash/JSON, legal/played actions, trigger, book match, Mortal label, Q values (units `model_utility`), L2 `label_kind`/`label_source` agreement classification, selection fields |
 | `model_labels` | L1 cache: status/attempts/label JSON per `(state_hash, model_sha256, classifier_version, options_hash)` |
-| `selected_scenarios` | curated rows: decision, pack, lesson, correct/accepted action, label fields, variant base, transform chain, provenance |
+| `selected_scenarios` | curated rows: decision, pack, lesson, correct/accepted action, label fields, selection family, variant base, transform chain, provenance |
 | `variants` | transform output: base scenario, chain, seed, label-preserved flag, rejection reason |
 | `packs` | generated pack metadata: hash, bytes, count, source mix, licence, commercial flag, export path, DB snapshot |
+| `pack_scenarios` | one row per published scenario: ordinal, base (for a variant), lesson, family, exact state hash, serialised-scenario hash, variant flag |
 | `backups` | replay copies and DB snapshots with hash/bytes/verification |
 
 Foreign keys are enabled per connection. The schema extends the strategy §4.2
@@ -1241,6 +1249,120 @@ about having no replay round-trip and no precomputed model label
   stay clean.
 
 Visual sign-off is not involved in P1a.
+
+## Pack assembly from the selected, gated rows (P1b)
+
+Implemented in `src/miner/pack/assemble.rs`. P1b is the export half of the pack
+pipeline: it reads the rows S2/V2 wrote and turns them into an audited,
+content-addressed pack plus the `packs`/`pack_scenarios` records.
+
+```text
+selected_scenarios + variants + decisions + replays
+   │  rebuild each PackScenario (base state, or base + recorded chain)
+   ├─ review gate: pending disposition / invalid embedded report refuses the pack
+   ├─ exact-state dedupe
+   ├─ per-base cap (§4.6; defaults 8 variants / 20 % of the pack)
+   ├─ optional family quotas (counted in base scenarios)
+   └─ byte/scenario budget → refuse, never trim
+          ▼
+   P1a encode + audit → packs/<pack-id>-<sha256-prefix>.json.gz + manifest.json
+          ▼
+   packs + pack_scenarios rows → reviews/<pack-id>/assembly-report.json
+```
+
+### What is rebuilt, and from what
+
+The DB stores references and provenance, not a second copy of every table. A
+base scenario is rebuilt from the walked `decisions.state_json`; a variant is
+rebuilt by applying the recorded `variants.transform_chain` to that base state.
+Both are then re-stamped through the lesson's classifier, which re-derives the
+situation note, triggers and answer set. The rebuilt answer and `accepted` set
+must equal the stored ones — a disagreement is a stale/corrupt row and refuses
+the pack rather than being papered over. A `mortal_best` row has no classifier;
+its stored answer is stamped with the target action derived from the action kind.
+
+A selected row is read with its decision and replay row; a missing decision or
+replay, a variant without a `variants` row, or a `variants` row whose
+`label_preserved` is 0 are all hard failures. A variant whose recorded chain,
+seed or label check disagrees with the provenance JSON is also refused.
+
+### Review gate
+
+When `reviews/<pack-id>/review-queue.jsonl` exists (or `--queue` is passed), every
+non-held-out item needs a disposition, the embedded `riichiprac.scenario-report`
+must parse, and the queue must belong to the pack. A pending item or an invalid
+embedded report refuses the whole pack. A reviewer-rejected base is dropped with
+reason `reviewer_rejected`, and its variants with `base_dropped`. A selected base
+that is not in the queue at all is refused as unreviewed.
+
+### Limits and determinism
+
+- **Dedupe** by exact state hash, in pack order (base id order, variants after
+  their base).
+- **Per-base cap** = `min(max_per_base, floor(max_pack_share * planned
+  scenarios))`, counted in variants (§4.6 defaults 8 and 20 %; a 100-scenario
+  pack allows 20). The report's `largest_base_share` counts the base plus its
+  variants.
+- **Family quotas** (`--family-quota book=30,coverage=15`) are optional explicit
+  ceilings counted in **base** scenarios (§4.6: quotas count bases, not
+  variants). S2 already balanced the selection, so the default leaves the
+  reviewed rows alone.
+- **Budget.** A body over `PackBudget::max_bytes` (50 MB) or a scenario count over
+  `max_scenarios` (2 000) is refused; split the pack instead of shipping a
+  different selection.
+- **Determinism.** The scenario order is fixed, `generated_at` defaults to the
+  latest selected row's `created_at` (not the wall clock), and the encoder is
+  already deterministic, so re-assembling the same rows produces the same
+  SHA-256. `--generated-at` pins it explicitly; `generator.commit` defaults to
+  the label `db`, never a fake SHA.
+
+### DB records and the assembly report
+
+`packs` gets one upserted row per export: schema/version, manifest path, body
+SHA-256/bytes/count, `source_mix` (the per-family mix + variant share),
+licence, `data_commercial_use`, publish/created timestamps and the root-relative
+`export_path`. `pack_scenarios` gets one row per scenario: ordinal, base id (for
+a variant), lesson, selection family, exact state hash, SHA-256 of the serialised
+`PackScenario`, and the variant flag. The re-audit (`audit_pack_dir`) runs after
+publishing; the report records `audited`/`audit_clean`.
+
+The report (`riichiprac.pack-assembly-report` v1) at
+`reviews/<pack-id>/assembly-report.json` carries the family mix, variant share,
+largest base share, byte size, licence, commercial flag, agent union, every drop
+with its stable reason, the caps/quotas applied and the review summary.
+
+### CLI
+
+```bash
+# Export the latest `select` pack from the miner DB.
+cargo run --features miner --bin mine_replays -- pack assemble \
+  [--pack ID] [--queue FILE] [--licence ID] [--attribution TEXT] \
+  [--max-bytes N] [--max-scenarios N] [--max-per-base N] [--share F32] \
+  [--family-quota book=30,coverage=15] [--generated-at ISO] [--commit TEXT] \
+  [--dry-run] [--json]
+```
+
+`--licence`/`--attribution` default to the packed replays' shared values; a
+disagreement asks for them explicitly. `--dry-run` builds and audits the pack in
+memory but writes no body, manifest, DB rows or report. Exit codes: 0 clean,
+1 a failed pack audit, 2 an unreadable/unassemblable selection.
+
+### P1b acceptance evidence
+
+- `cargo test --features miner` covers: a realistic selection (three rehearsal
+  bases persisted through the V2 stage with real chains/gates) assembling into a
+  clean pack whose decoded body equals the manifest entry, the `packs` row and
+  every `pack_scenarios` row (id, ordinal, base, lesson, state hash, scenario
+  hash, variant flag); the directory audit clean; the report round-trip;
+  determinism (a second assembly produces the same SHA-256); the per-base cap,
+  exact-state dedupe and family quotas (both directly and through the DB); the
+  byte and scenario ceilings; the review gate (accepted/rejected split, a pending
+  item, an invalid embedded report); a missing selection; an ungated variant; the
+  family-quota parser and variant-cap bounds; and DB stamp→ISO normalisation.
+- `cargo fmt --check`, `cargo clippy --all-targets --features miner -- -D
+  warnings`, `cargo test --lib` (745), `cargo test --features miner` (1 091) and
+  `cargo check --target wasm32-unknown-unknown` are clean. No wasm behaviour
+  changed and no visual output is involved.
 
 ## F1 acceptance evidence
 

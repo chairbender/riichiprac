@@ -45,7 +45,7 @@ pub const RCLONE_REPLAYS_DIR: &str = "replays";
 pub const RCLONE_DB_DIR: &str = "db";
 
 /// Current SQLite schema version.
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 
 /// Tables created by [`SCHEMA_VERSION`], in dependency order.
 pub const MINER_TABLES: &[&str] = &[
@@ -55,6 +55,7 @@ pub const MINER_TABLES: &[&str] = &[
     "selected_scenarios",
     "variants",
     "packs",
+    "pack_scenarios",
     "backups",
     "model_labels",
 ];
@@ -748,7 +749,7 @@ pub fn plan_snapshot_backup(snapshot: &Path, remote: Option<&RemoteBackup>) -> B
     }
 }
 
-const MIGRATIONS: &[&str] = &[MIGRATION_1, MIGRATION_2];
+const MIGRATIONS: &[&str] = &[MIGRATION_1, MIGRATION_2, MIGRATION_3];
 
 const MIGRATION_1: &str = r#"
 PRAGMA foreign_keys = ON;
@@ -951,6 +952,37 @@ CREATE TABLE IF NOT EXISTS model_labels (
 );
 
 CREATE INDEX IF NOT EXISTS idx_model_labels_status ON model_labels(status);
+"#;
+
+/// P1b: the pack export's per-scenario rows.
+///
+/// `selected_scenarios` is the selector/transform hand-off (a row per base and
+/// per shipped variant). `pack_scenarios` records what a published export
+/// actually contains, in pack order: the same id, the base it was transformed
+/// from, its lesson and selection family, the exact state hash and a hash of
+/// the serialised `PackScenario`. The JSON body is the runtime export; these
+/// rows are how the DB stays the source of truth and how a later audit can
+/// prove the two agree.
+const MIGRATION_3: &str = r#"
+-- The selector's family (book, coverage, ...), which the export's mix report
+-- balances. `family` keeps the replay corpus family.
+ALTER TABLE selected_scenarios ADD COLUMN selection_family TEXT NULL;
+
+CREATE TABLE IF NOT EXISTS pack_scenarios (
+    pack_id             TEXT NOT NULL REFERENCES packs(pack_id) ON DELETE CASCADE,
+    scenario_id         TEXT NOT NULL,
+    ordinal             INTEGER NOT NULL CHECK (ordinal >= 0),
+    base_scenario_id    TEXT NULL,
+    lesson_id           TEXT NOT NULL,
+    family              TEXT NOT NULL,
+    state_hash          TEXT NOT NULL,
+    scenario_sha256     TEXT NOT NULL,
+    variant             INTEGER NOT NULL CHECK (variant IN (0, 1)),
+    PRIMARY KEY (pack_id, scenario_id),
+    UNIQUE (pack_id, ordinal)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pack_scenarios_base ON pack_scenarios(base_scenario_id);
 "#;
 
 #[cfg(test)]

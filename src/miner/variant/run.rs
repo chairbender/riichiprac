@@ -30,10 +30,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::miner::label::CLASSIFIER_VERSION;
 use crate::miner::label::thresholds::{PercentileConfig, PercentileCuts};
-use crate::miner::pack::{
-    GAMES_FILE_NAME, PackAuditContext, PackScenario, PublishedPack, load_games, publish_pack,
-    write_games_atomic,
-};
+use crate::miner::pack::{PackAuditContext, PackScenario, PublishedPack, publish_pack};
 use crate::miner::provenance::{GameProvenance, ReplayId};
 use crate::miner::select::review::{read_dispositions, read_queue};
 use crate::miner::select::run::latest_pack;
@@ -470,18 +467,7 @@ fn publish_copy(rehearsal: bool, config: &VariantConfig) -> Result<(&str, &str),
 }
 
 fn write_games_merged(dir: &Path, games: &[GameProvenance]) -> Result<(), VariantError> {
-    let path = dir.join(GAMES_FILE_NAME);
-    let mut merged: BTreeMap<String, GameProvenance> = BTreeMap::new();
-    if path.exists() {
-        for game in load_games(&path).map_err(VariantError::Pack)? {
-            merged.insert(game.replay_id.as_str().to_string(), game);
-        }
-    }
-    for game in games {
-        merged.insert(game.replay_id.as_str().to_string(), game.clone());
-    }
-    let games: Vec<GameProvenance> = merged.into_values().collect();
-    write_games_atomic(dir, &games)?;
+    crate::miner::pack::merge_games(dir, games).map_err(VariantError::Pack)?;
     Ok(())
 }
 

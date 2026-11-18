@@ -25,6 +25,7 @@
 //! | [`SELECTION_SCHEMA`] | `riichiprac.selection-report` | one selection run's report (S2) |
 //! | [`REVIEW_SCHEMA`] | `riichiprac.review-item` | one review-queue line (S2) |
 //! | [`DISPOSITION_SCHEMA`] | `riichiprac.review-disposition` | one reviewer verdict (S2) |
+//! | [`ASSEMBLY_SCHEMA`] | `riichiprac.pack-assembly-report` | one pack-assembly run's report (P1b) |
 //!
 //! The versioning rule is **additive within a version**: new optional fields
 //! use `#[serde(default)]` so older files still parse, and unknown fields are
@@ -71,16 +72,19 @@ pub use label::{
 };
 pub use licence::{LicenceError, LicenseInfo, allowed_data_licence, data_commercial_use_all};
 pub use pack::{
-    AuditOptions, AuditReport, DEFAULT_MAX_MANIFEST_BYTES, DEFAULT_MAX_PACK_BYTES,
-    DEFAULT_MAX_SCENARIOS, FindingSeverity, GAMES_FILE_NAME, LabelCheck, LabelCheckKind,
-    MANIFEST_FILE_NAME, MANIFEST_SCHEMA, ManifestEntry, PACK_SCHEMA, PACK_VERSION, Pack, PackAgent,
-    PackAudit, PackAuditContext, PackBook, PackBudget, PackBytes, PackCounterfactual, PackError,
-    PackFinding, PackFindingCode, PackGenerator, PackId, PackInterestingness, PackManifest,
-    PackMortal, PackPlayed, PackProvenance, PackRankedAction, PackReport, PackScenario, PackSource,
-    PackValidation, PlayedKind, PublishProfile, PublishedPack, ScenarioKey, accepted_for,
-    audit_pack, audit_pack_dir, audit_summary, decode_pack, encode_games, encode_pack,
-    find_spoiler, fixture_games, fixture_pack, load_games, load_manifest, pack_file_name,
-    pack_report, publish_pack, read_manifest_or_default, read_pack, render_pack_report,
+    ASSEMBLY_REPORT_FILE_NAME, ASSEMBLY_SCHEMA, ASSEMBLY_VERSION, AssemblyDrop, AssemblyLimits,
+    AssemblyOptions, AssemblyOutcome, AssemblyReport, AuditOptions, AuditReport,
+    DEFAULT_GENERATOR_COMMIT, DEFAULT_MAX_MANIFEST_BYTES, DEFAULT_MAX_PACK_BYTES,
+    DEFAULT_MAX_SCENARIOS, FamilyMixRow, FindingSeverity, GAMES_FILE_NAME, LabelCheck,
+    LabelCheckKind, MANIFEST_FILE_NAME, MANIFEST_SCHEMA, ManifestEntry, PACK_SCHEMA, PACK_VERSION,
+    Pack, PackAgent, PackAudit, PackAuditContext, PackBook, PackBudget, PackBytes,
+    PackCounterfactual, PackError, PackFinding, PackFindingCode, PackGenerator, PackId,
+    PackInterestingness, PackManifest, PackMortal, PackPlayed, PackProvenance, PackRankedAction,
+    PackReport, PackScenario, PackSource, PackValidation, PlayedKind, PublishProfile,
+    PublishedPack, ReviewSummary, ScenarioKey, accepted_for, audit_pack, audit_pack_dir,
+    audit_summary, decode_pack, encode_games, encode_pack, find_spoiler, fixture_games,
+    fixture_pack, load_games, load_manifest, merge_games, pack_file_name, pack_report,
+    publish_pack, read_manifest_or_default, read_pack, render_pack_report, run_assembly,
     upsert_manifest_entry, write_games_atomic, write_manifest_atomic,
 };
 pub use provenance::{
