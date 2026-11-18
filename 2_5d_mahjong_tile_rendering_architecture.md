@@ -1658,7 +1658,7 @@ the model and anchors, not a lighting decision.
   far-side row gap (7.3 mm) are recorded exceptions.
 - `SlotAnchors` holds 293 Empties, 269 occupied and 24 reserved:
   `wall_{seat}_{stack:02d}_{layer}` (136, 4 empty drawn tops),
-  `river_{seat}_{row}_{col}` (88, incl. row-2 overflow), `meld_{seat}_{slot}`
+  `river_{seat}_{row}_{col}` (88, incl. third-row overflow), `meld_{seat}_{slot}`
   (16, incl. the kan extension) and `hand_{seat}_{index:02d}` (53, incl.
   south_13 for the drawn tile). Each anchor is at the tile body centre with the
   tile pose, carries `zone/seat/index/tileId/tileFace/occupied` and the face

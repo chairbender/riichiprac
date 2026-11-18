@@ -83,8 +83,10 @@
         2.788571
       ],
       "columnCentreOffsetUnits": 1.892857142,
-      "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg. Four overflow anchors continue row 2 at columns 6..9 (reserved; no tiles).",
+      "note": "18 discards per pond in three 6-wide rows with a 0.2 mm column gap and a 0.3 mm row gap. Row 0 is nearest the discarding player (radius 4.81) and the rows advance toward the table centre; row 2 is at 2.7886 so the four inner pond rows clear each other at the corners. Rows are laid from the far side, so row 2 is the first discard row and row 0 is the third; the four reserved overflow anchors extend the third (nearest) row at columns 6..9, never the first. The pond outer edge (5.31) leaves 1.19 units to the wall inner edge, so the two-tier wall does not occlude the visible near row at 45 deg.",
       "overflowColumns": 6,
+      "overflowRow": 0,
+      "overflowRowNote": "The third (nearest) row, per the six-three convention: the extra columns extend the last row a player reaches, not the far first row.",
       "riichi": {
         "row": 1,
         "column": 5,
@@ -1090,7 +1092,7 @@
     "type": "Empty (PLAIN_AXES, display size 0.35)",
     "naming": {
       "wall": "wall_{seat}_{stack:02d}_{layer}  (layer 0 bottom, 1 top)",
-      "river": "river_{seat}_{row}_{col}  (row 0..2, col 0..5 plus row-2 overflow cols 6..9)",
+      "river": "river_{seat}_{row}_{col}  (row 0..2, col 0..5 plus row-0 overflow cols 6..9)",
       "meld": "meld_{seat}_{slot}  (slot 0..3)",
       "hand": "hand_{seat}_{index:02d}  (index 00..12; south also has 13 for the drawn tile)"
     },
@@ -1130,7 +1132,7 @@
       "tier",
       "overflow"
     ],
-    "note": "Every valid tile position is an Empty in the SlotAnchors collection, named wall_{seat}_{stack}_{layer}, river_{seat}_{row}_{col}, meld_{seat}_{slot} or hand_{seat}_{index}. Anchors are at the tile body centre with the tile pose. Occupied anchors hold the 273 reference tiles; the 20 empty anchors are the 16 row-2 overflow slots and 4 kan-extension meld slots. Each anchor carries zone/seat/index/tileId/tileFace/occupied, the flat faceQuadLocal and faceQuadWorld (12 floats, TL/TR/BR/BL) and faceQuadOrder as Blender custom properties; the same records are published in reference/slot-anchors.json. Project anchor.matrix_world @ Vector(faceQuadLocal corner) for Task 3.",
+    "note": "Every valid tile position is an Empty in the SlotAnchors collection, named wall_{seat}_{stack}_{layer}, river_{seat}_{row}_{col}, meld_{seat}_{slot} or hand_{seat}_{index}. Anchors are at the tile body centre with the tile pose. Occupied anchors hold the 269 reference tiles; the 24 empty anchors are the 16 overflow slots (extending the third, nearest river row), 4 kan-extension meld slots and 4 empty drawn wall tops. Each anchor carries zone/seat/index/tileId/tileFace/occupied, the flat faceQuadLocal and faceQuadWorld (12 floats, TL/TR/BR/BL) and faceQuadOrder as Blender custom properties; the same records are published in reference/slot-anchors.json. Project anchor.matrix_world @ Vector(faceQuadLocal corner) for Task 3.",
     "anchorDisplaySize": 0.25,
     "clearanceMm": 0.3,
     "clearanceRangeMm": [
@@ -1149,6 +1151,130 @@
       "riverOverflow": 16,
       "meldKan": 4,
       "total": 24
+    }
+  },
+  "layout": {
+    "version": 1,
+    "collection": "SlotAnchors",
+    "rigId": "2.5d-rig",
+    "resolution": "the Task 3 runtime contract; the rig renders 1920 x 1080, so normalized coordinates and the probe render share one frame",
+    "referenceResolution": [
+      1920,
+      1080
+    ],
+    "rounding": 6,
+    "output": "frontend/public/table/table_layout.json",
+    "note": "Task 3 export (bake-table-layout.sh). It projects the same SlotAnchors collection the Task 1/2 scene builds through the resolved rig camera and publishes the runtime layout. The reference renders stay calibration-only; this one block is the pipeline's runtime output. Re-run after any scene, placement or camera change; the file is sorted and rounded, so an unchanged scene reproduces it byte for byte.",
+    "reference": {
+      "mode": "nearest-slot",
+      "point": [
+        0,
+        0,
+        0.294643
+      ],
+      "note": "The table centre at the mat surface (z = half a tile thickness). The anchor nearest that point is the reference slot and carries scale 1.0; every other slot's scale is reference.depth / slot.depth. The point, the chosen slot and its depth are all published in the JSON."
+    },
+    "rotation": {
+      "sidewaysMaxAbsCos": 0.5,
+      "note": "A slot is sideways when the projected TL -> TR edge is more vertical than horizontal in pixels (|dx| / length <= 0.5). That is the physically turned riichi discard and called meld tile, which need a rotated blank. 180-degree seats keep a horizontal top edge and stay upright blanks with a rotated glyph."
+    },
+    "buckets": [
+      {
+        "id": "hand",
+        "zones": [
+          "hand"
+        ],
+        "axis": "screenX",
+        "representativeAxis": "x",
+        "representativeSeat": "south",
+        "boundaries": [
+          0.398,
+          0.456,
+          0.544,
+          0.602
+        ],
+        "names": [
+          "hand_far_left",
+          "hand_mid_left",
+          "hand_center",
+          "hand_mid_right",
+          "hand_far_right"
+        ],
+        "note": "The plan's standing-hand fan. The boundaries are explicit spec data, not a measurement: Task 4 bakes exactly one blank per name. Bucket representatives come from hand_south, the fan the plan names; the other three hands share the same five blanks for now (their backs are a Task 4 asset decision, not a second bucket family)."
+      },
+      {
+        "id": "wall_side",
+        "zones": [
+          "wall"
+        ],
+        "axis": "seat",
+        "representativeAxis": "y",
+        "seats": {
+          "west": "wall_left_side",
+          "east": "wall_right_side"
+        },
+        "note": "One side-wall blank per wall; the plan names wall_left_side / wall_right_side explicitly, so no horizontal split. The representative is the median stack of the run (the vertical axis varies with depth)."
+      },
+      {
+        "id": "wall_horizontal",
+        "zones": [
+          "wall"
+        ],
+        "axis": "screenX",
+        "seats": [
+          "north",
+          "south"
+        ],
+        "representativeAxis": "x",
+        "boundaries": [
+          0.435,
+          0.565
+        ],
+        "names": [
+          "wall_horiz_left",
+          "wall_horiz_center",
+          "wall_horiz_right"
+        ],
+        "note": "The front/back wall runs split into the plan's three horizontal blanks. The boundaries sit in the widest empty gaps of the two runs' merged projected stack positions (0.427/0.443 and 0.557/0.573), so no wall stack straddles a bucket."
+      },
+      {
+        "id": "flat",
+        "zones": [
+          "river",
+          "meld"
+        ],
+        "axis": "screenX",
+        "representativeAxis": "x",
+        "boundaries": [
+          0.42,
+          0.582
+        ],
+        "names": [
+          "flat_left",
+          "flat_center",
+          "flat_right"
+        ],
+        "rotatedSuffix": "_rotated",
+        "note": "Face-up ponds and melds split left/center/right by screen X; a turned tile (riichi discard, called meld tile) appends _rotated, so the plan's six flat blanks are all exercised. The boundaries sit in the empty gaps between the pond groups: the west pond ends at 0.406 and the centre ponds start at 0.431; the centre ponds end at 0.573 and the east pond starts at 0.591."
+      }
+    ],
+    "probe": {
+      "radiusUnits": 0.05,
+      "samples": 8,
+      "note": "One emissive UV sphere per anchor at its body centre, radius 0.05 tile units (about 2.6 px at 1920 wide), all tiles/lights/table hidden, film transparent. The marker is symmetric, so its rendered alpha centroid is the camera's projection of the anchor centre; the Node proof measures it against the export."
+    },
+    "proof": {
+      "directory": "reference/layout",
+      "probes": "probes-1x.png",
+      "overlay": "overlay-1x.png",
+      "zoom": "overlay-zoom-4x.png",
+      "record": "layout-proof.json",
+      "thresholdPx": 1.0,
+      "matchRadiusPx": 4.0,
+      "alphaThreshold": 128,
+      "zoomSize": 64,
+      "zoomFactor": 4,
+      "note": "The probe marker's alpha centroid is measured per slot and must be within thresholdPx of the exported anchor (the Task 3 acceptance). matchRadiusPx is the one-to-one matching radius between a rendered marker and its exported anchor, wide enough that a real drift is reported as a delta rather than lost; a drift beyond it fails loudly. The zoom sheet is a nearest-neighbour crop around each bucket representative and the drawn hand tile."
     }
   }
 }

@@ -8,6 +8,10 @@
 #   bash tools/render/bake-table-reference.sh --rig --variant v2-compact  # render/publish/check one A/B variant
 #   bash tools/render/bake-table-reference.sh --check         # integrity + projection check; needs no Blender
 #
+# --check also runs the Task 3 layout gate (scripts/check-table-layout.mjs),
+# which re-measures the committed anchor probe without Blender. The export
+# itself is the separate bake-table-layout.sh command.
+#
 # --bake renders only the transient @2x master under tools/render/build/reference/.
 # scripts/table-reference.mjs derives the committed @1x full board, the @2x
 # element-family crops and tools/render/reference/table-reference.json from it
@@ -66,6 +70,7 @@ fi
 if [ "$mode" = "check" ]; then
   node "$here/scripts/check-table-reference.mjs"
   node "$here/scripts/check-table-rig.mjs"
+  node "$here/scripts/check-table-layout.mjs"
   exit 0
 fi
 
