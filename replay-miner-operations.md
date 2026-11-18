@@ -44,7 +44,9 @@ the `packs`/`pack_scenarios` rows and the assembly report. P2 adds
 curated copy and prune, the staged-directory verifier, plus
 `scripts/check-pack-hosting.mjs` and `scripts/check-pack-cors.mjs` for CI and
 the optional R2/HF mirror. Book classification (B1/B2/B3) already exists in
-`src/classifier/`; S3's selectors and the loader (P3) remain.
+`src/classifier/`; S3's selectors remain, and P3's runtime half is
+`frontend/src/services/packLoader.ts` plus the picker merge in
+`frontend/src/scenarios.ts` (no miner code).
 
 ## Build boundary
 

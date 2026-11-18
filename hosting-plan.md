@@ -389,7 +389,9 @@ rendered view and is already mostly spent). The operator contract is in
 
 **Optional R2 / Hugging Face mirror.** The manifest stays same-origin; a mirror
 serves the same relative `scenarios/` layout and the loader falls back to it for
-the same paths. Mirror with `rclone copy frontend/public/scenarios
+the same paths (`VITE_PACK_MIRROR_URL`, for example
+`https://<mirror>/scenarios/`; `VITE_PACK_MANIFEST_URL` overrides the manifest
+URL). Mirror with `rclone copy frontend/public/scenarios
 r2:riichiprac/scenarios --checksum` or `hf upload <dataset-repo>
 frontend/public/scenarios scenarios --repo-type dataset`. Configure the bucket
 CORS to allow `GET`/`HEAD` from `https://chairbender.github.io` (or `*`) and
@@ -409,6 +411,18 @@ is never in the browser's pack chain.
 (`replay.fixture.2026-11`, 2 scenarios, 3 572 body bytes, 614-byte manifest) so
 the Pages build proves the whole path before a curated pack exists. P3 consumes
 this manifest; Q2 replaces it with the first curated ch. 8 pack.
+
+**Runtime loader (P3, 2026-11-17).** `frontend/src/services/packLoader.ts` fetches
+only `scenarios/manifest.json` at launch, validates it against the schema, and
+fetches a content-addressed body the first time a replay lesson is picked. The
+body is rejected unless its byte count and SHA-256 match the manifest, then
+gunzipped and checked for pack id/count/lesson/book/licence agreement before any
+scenario is handed to the app. Verified bytes live in IndexedDB
+(`riichiprac-packs`, key `<pack-id>@<sha256>@<cache-version>`), so a reload with
+the same content address downloads nothing; a corrupt or evicted entry is
+re-fetched and a cache failure is ignored. Replay lessons appear as opt-in
+picker entries (PACK badge, `all` excludes them, so the startup download is the
+manifest only). Details and evidence: P3 in `replay-implementation-plan.md`.
 
 **Manual setup for a mirror or a Release copy** (needs credentials):
 

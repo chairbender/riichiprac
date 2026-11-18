@@ -120,6 +120,19 @@ Edits are staged: ticking boxes changes the draft pool shown in the panel footer
 from it. Cancel, Escape, or a click outside discards the draft, so building a
 pool never fires a burst of generations or Mortal forward passes.
 
+### Replay packs
+
+Published replay packs add an opt-in lesson row next to the lesson it teaches,
+marked **PACK** and labelled `(replay)`. Picking one deals a real audited
+position shipped in the pack instead of generating a hand; it is laid out and
+graded through the normal table. Replay entries are deliberately outside **All
+scenarios (random)**, so the first page load only fetches the small same-origin
+pack manifest (`/scenarios/manifest.json`); a pack body downloads when you pick
+one of its lessons and is then cached in IndexedDB, verified against the
+manifest's SHA-256 first. If no pack is published (or its manifest is
+unreachable) the note in the picker says so and generated lessons are
+unaffected.
+
 ## Going back to a previous hand
 
 Every dealt hand is recorded as one browser history entry, so the browser's Back

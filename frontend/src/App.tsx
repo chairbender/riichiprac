@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { generate_puzzle, list_scenarios } from 'riichiprac';
 import { callOfferActions, canDeclareRiichi, isCallDecision } from './actions';
@@ -25,10 +25,25 @@ import { downloadJson, readStateFile, serializeState } from './stateFile';
 import {
   ALL_SCENARIOS,
   FALLBACK_SCENARIOS,
+  mergePackLessons,
   parseScenarioManifest,
   pickRandomScenarioFrom,
 } from './scenarios';
-import type { ScenarioOption, ScenarioSelection } from './scenarios';
+import type {
+  PackLessonSource,
+  ScenarioOption,
+  ScenarioSelection,
+} from './scenarios';
+import {
+  fetchPackManifest,
+  loadPack,
+  pickPackScenario,
+} from './services/packLoader';
+import type {
+  PackManifest,
+  PackManifestStatus,
+  PackScenario,
+} from './services/packLoader';
 import {
   SCENARIO_HISTORY_VERSION,
   ScenarioHistory,
@@ -46,6 +61,23 @@ import './App.css';
  * checkbox state, so the two cannot drift.
  */
 const DEFAULT_REQUIRE_AGREEMENT = true;
+
+/**
+ * Load the pack a picker entry points at and choose one of its hands for that
+ * lesson. The manifest is re-read from the ref so a pack that was unpublished
+ * after the picker rendered fails with a clear message instead of a stale body.
+ */
+async function loadReplayScenario(
+  manifest: PackManifest | null,
+  source: PackLessonSource,
+): Promise<PackScenario> {
+  const entry = manifest?.packs.find((pack) => pack.id === source.packId);
+  if (!entry) {
+    throw new Error(`Replay pack "${source.packId}" is no longer published.`);
+  }
+  const loaded = await loadPack(entry);
+  return pickPackScenario(loaded, source.lessonId);
+}
 
 export const App = () => {
   const gameState = useGameStore((state) => state.gameState);
@@ -87,8 +119,18 @@ export const App = () => {
   const restoreSnapshot = useGameStore((state) => state.restoreSnapshot);
 
   const [selection, setSelection] = useState<ScenarioSelection>(ALL_SCENARIOS);
-  const [scenarios, setScenarios] =
+  /**
+   * The generated catalogue the WASM manifest publishes. Replay-pack entries are
+   * merged on top in `scenarios` below; keeping the two apart means a late pack
+   * manifest cannot lose the engine's metadata and vice versa.
+   */
+  const [wasmScenarios, setWasmScenarios] =
     useState<ScenarioOption[]>(FALLBACK_SCENARIOS);
+  const [packManifest, setPackManifest] = useState<PackManifest | null>(null);
+  const [packStatus, setPackStatus] =
+    useState<PackManifestStatus>('loading');
+  const [packError, setPackError] = useState<string | null>(null);
+  const [packLoading, setPackLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [agreementLoading, setAgreementLoading] = useState(false);
   const [hotseatLoading, setHotseatLoading] = useState(false);
@@ -125,7 +167,14 @@ export const App = () => {
   const tableView = useSettingsStore((state) => state.view);
   const setTableView = useSettingsStore((state) => state.setView);
   const [exportDescription, setExportDescription] = useState('');
-  const manifestRef = useRef<ScenarioOption[] | null>(null);
+  /** The parsed WASM catalogue, so a repeat deal does not re-parse it. */
+  const wasmCatalogRef = useRef<ScenarioOption[] | null>(null);
+  /**
+   * The latest pack manifest, mirrored synchronously for `loadPuzzle`: the deal
+   * must see a manifest that arrived since the last render, and the fetch
+   * resolves outside React's state updates.
+   */
+  const packManifestRef = useRef<PackManifest | null>(null);
   const loadRequestId = useRef(0);
   /**
    * Mirrors `exportDescription` synchronously. A history snapshot is written in
@@ -137,6 +186,16 @@ export const App = () => {
     exportDescriptionRef.current = text;
     setExportDescription(text);
   }, []);
+
+  /**
+   * The picker's catalogue: the generated lessons plus one opt-in entry per
+   * replay lesson the manifest published. Recomputed when either side changes,
+   * never re-deals the hand on screen.
+   */
+  const scenarios = useMemo(
+    () => mergePackLessons(wasmScenarios, packManifest),
+    [wasmScenarios, packManifest],
+  );
 
   /** Browser Back/Forward bookkeeping; created once, outside React's state. */
   const historyRef = useRef<ScenarioHistory | null>(null);
@@ -226,16 +285,19 @@ export const App = () => {
         await ensureWasmReady();
         if (requestId !== loadRequestId.current) return;
 
-        if (!manifestRef.current) {
+        if (!wasmCatalogRef.current) {
           const manifest = parseScenarioManifest(list_scenarios());
-          manifestRef.current =
+          wasmCatalogRef.current =
             manifest.length > 0 ? manifest : FALLBACK_SCENARIOS;
           if (manifest.length > 0) {
-            setScenarios(manifest);
+            setWasmScenarios(manifest);
           }
         }
 
-        const options = manifestRef.current ?? FALLBACK_SCENARIOS;
+        const options = mergePackLessons(
+          wasmCatalogRef.current ?? FALLBACK_SCENARIOS,
+          packManifestRef.current,
+        );
         const category =
           forced?.category ??
           pickRandomScenarioFrom(
@@ -243,8 +305,30 @@ export const App = () => {
             scenarioSelection,
             useGameStore.getState().aiStatus === 'ready',
           );
-        const requiresAi =
-          options.find((option) => option.id === category)?.requires_ai === true;
+        const option = options.find((entry) => entry.id === category) ?? null;
+
+        // A replay lesson ships its own complete state, so it is laid out with
+        // the same `loadFromJson` path as an imported position: verified bytes
+        // only, no generation and no Mortal-agreement sampling.
+        if (option?.pack) {
+          setPackLoading(true);
+          try {
+            const scenario = await loadReplayScenario(
+              packManifestRef.current,
+              option.pack,
+            );
+            if (requestId !== loadRequestId.current) return;
+            finish(() => loadFromJson(JSON.stringify(scenario.state)));
+          } finally {
+            // A newer deal owns the status line; it set its own flag.
+            if (requestId === loadRequestId.current) {
+              setPackLoading(false);
+            }
+          }
+          return;
+        }
+
+        const requiresAi = option?.requires_ai === true;
         // The AI drill's answer is Mortal's own argmax, so the agreement filter
         // is meaningless there; that scenario is generated below instead.
         const wantsAgreement = requireMortalAgreement && !requiresAi;
@@ -422,6 +506,38 @@ export const App = () => {
     void initializeAi();
   }, [initializeAi]);
 
+  /**
+   * Fetch the replay-pack manifest on first paint. This is the only pack bytes a
+   * launch downloads: the content-addressed bodies are fetched lazily by
+   * `loadPuzzle` when a replay lesson is actually dealt.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    setPackStatus('loading');
+
+    void fetchPackManifest()
+      .then((manifest) => {
+        if (cancelled) return;
+        packManifestRef.current = manifest;
+        setPackManifest(manifest);
+        setPackError(null);
+        setPackStatus(manifest.packs.length > 0 ? 'ready' : 'empty');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        // A missing manifest must not break generated lessons: keep the pool
+        // and tell the picker. A reload retries the fetch.
+        packManifestRef.current = null;
+        setPackManifest(null);
+        setPackError(err instanceof Error ? err.message : String(err));
+        setPackStatus('error');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSelectionChange = (next: ScenarioSelection) => {
     setSelection(next);
     void loadPuzzle(next, requireAgreement);
@@ -563,9 +679,11 @@ export const App = () => {
       ? 'Finding a hand Mortal agrees with…'
       : aiLoading
         ? 'Asking Mortal…'
-        : isLoading
-          ? 'Loading table…'
-          : null;
+        : packLoading
+          ? 'Loading replay pack…'
+          : isLoading
+            ? 'Loading table…'
+            : null;
 
   // The header controls, built once so the stacked and top-down layouts cannot
   // drift apart.
@@ -575,6 +693,9 @@ export const App = () => {
       selection={selection}
       onSelectionChange={handleSelectionChange}
       onConfigureHotseat={handleConfigureHotseat}
+      packStatus={packStatus}
+      packCount={packManifest?.packs.length ?? 0}
+      packError={packError}
       requireAgreement={requireAgreement}
       aiStatus={aiStatus}
       agreementHint={agreementHint}
@@ -681,7 +802,11 @@ export const App = () => {
       <main
         className={tableView === 'stacked' ? 'table-stack' : 'table-physical'}
       >
-        {statusMessage && <div className="status-msg">{statusMessage}</div>}
+        {statusMessage && (
+          <div className="status-msg" role="status">
+            {statusMessage}
+          </div>
+        )}
         {error && (
           <div className="error-msg" role="alert">
             {error}

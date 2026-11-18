@@ -3,7 +3,11 @@ import {
   ALL_SCENARIOS,
   FALLBACK_SCENARIOS,
   groupScenarios,
+  isPackScenarioId,
+  mergePackLessons,
+  packScenarioId,
   parseScenarioManifest,
+  parsePackScenarioId,
   pickRandomScenario,
   pickRandomScenarioFrom,
   selectedScenarioIds,
@@ -13,6 +17,7 @@ import {
   toggleScenario,
 } from './scenarios';
 import type { BookSection, ScenarioGrading, ScenarioOption } from './scenarios';
+import type { PackManifest, PackManifestEntry } from './services/packLoader';
 
 function scenario(
   id: string,
@@ -76,6 +81,8 @@ const chapter8c = scenario(
   book(8, 1, 'ch8.1', 'ch8.1 · To push or to fold?'),
 );
 const catalogue = [chapter8b, drill, chapter3, chapter8];
+/** The base catalogue plus the generated lesson the fixture pack covers. */
+const replayCatalogue = [...catalogue, chapter8c];
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -329,5 +336,204 @@ describe('parseScenarioManifest', () => {
     );
 
     expect(parsed[0].book).toBeNull();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Replay-pack picker entries                                                 */
+/* -------------------------------------------------------------------------- */
+
+function packEntry(overrides: Partial<PackManifestEntry> = {}): PackManifestEntry {
+  return {
+    id: 'replay.fixture.2026-11',
+    path: 'replay.fixture.2026-11-8aa259ff85d4.json.gz',
+    sha256: '8aa259ff85d470e434226beed84acd3d5cbe2d0864ab1e6b46148a802c8a2fcb',
+    bytes: 3572,
+    scenario_count: 2,
+    lesson_ids: ['fold_to_riichi', 'ryanmen_protorun'],
+    book_sections: ['ch4.1', 'ch8.1'],
+    licence: 'CC-BY-4.0',
+    requires_model: true,
+    data_commercial_use: true,
+    ...overrides,
+  };
+}
+
+function manifest(entry: PackManifestEntry = packEntry()): PackManifest {
+  return {
+    schema: 'riichiprac.scenario-pack-manifest',
+    version: 1,
+    updated_at: '2026-11-17T00:00:00Z',
+    packs: [entry],
+  };
+}
+
+describe('pack lesson ids', () => {
+  it('round-trips a pack and lesson', () => {
+    const id = packScenarioId('replay.fixture.2026-11', 'fold_to_riichi');
+    expect(id).toBe('replay:replay.fixture.2026-11:fold_to_riichi');
+    expect(isPackScenarioId(id)).toBe(true);
+    expect(parsePackScenarioId(id)).toEqual({
+      packId: 'replay.fixture.2026-11',
+      lessonId: 'fold_to_riichi',
+    });
+  });
+
+  it('rejects ids that are not a complete pack/lesson pair', () => {
+    for (const id of [
+      'fold_to_riichi',
+      'replay:',
+      'replay:only-a-pack',
+      'replay::lesson',
+      'replay:pack:',
+    ]) {
+      expect(isPackScenarioId(id)).toBe(id.startsWith('replay:'));
+      expect(parsePackScenarioId(id)).toBeNull();
+    }
+  });
+});
+
+describe('mergePackLessons', () => {
+  const packCatalogue = mergePackLessons(replayCatalogue, manifest());
+  const replayFold = packScenarioId('replay.fixture.2026-11', 'fold_to_riichi');
+  const replayRyanmen = packScenarioId('replay.fixture.2026-11', 'ryanmen_protorun');
+
+  it('adds one replay entry per manifest lesson, next to its generated lesson', () => {
+    const ids = packCatalogue.map((option) => option.id);
+    expect(ids).toEqual([
+      'open_hand_defense',
+      'ai_hotseat',
+      'proturun_priority',
+      'push_or_fold',
+      'fold_to_riichi',
+      replayFold,
+      // ryanmen_protorun is not in this catalogue, so its replay entry is
+      // appended at the end with no generated sibling.
+      replayRyanmen,
+    ]);
+  });
+
+  it('merges the WASM lesson metadata into the replay entry', () => {
+    const replay = packCatalogue.find((option) => option.id === replayFold);
+    expect(replay).toBeDefined();
+    expect(replay?.label).toBe('fold_to_riichi (replay)');
+    expect(replay?.category).toBe('test');
+    expect(replay?.book).toEqual(chapter8.book);
+    expect(replay?.grading).toBe('book_and_mortal');
+    expect(replay?.requires_ai).toBe(false);
+    expect(replay?.tags).toContain('pack');
+    expect(replay?.pack).toMatchObject({
+      packId: 'replay.fixture.2026-11',
+      lessonId: 'fold_to_riichi',
+      packScenarioCount: 2,
+      licence: 'CC-BY-4.0',
+    });
+  });
+
+  it('keeps the answer out of the picker label and description', () => {
+    const replay = packCatalogue.find((option) => option.id === replayFold);
+    expect(replay?.label.toLowerCase()).not.toContain('7m');
+    expect(replay?.description).toContain('replay.fixture.2026-11');
+    expect(replay?.description.toLowerCase()).not.toContain('7m');
+  });
+
+  it('groups a replay entry with its generated lesson', () => {
+    const groups = groupScenarios(packCatalogue);
+    const section = groups.find((group) => group.key === 'ch8.1');
+    expect(section?.scenarios.map((option) => option.id)).toEqual([
+      'push_or_fold',
+      'fold_to_riichi',
+      replayFold,
+    ]);
+  });
+
+  it('humanises a replay lesson the catalogue does not know', () => {
+    const unknown = packEntry({
+      lesson_ids: ['replay_speed_value'],
+      book_sections: [],
+      scenario_count: 1,
+    });
+    const merged = mergePackLessons(catalogue, manifest(unknown));
+    const replay = merged.find(
+      (option) => option.id === packScenarioId(unknown.id, 'replay_speed_value'),
+    );
+    expect(replay?.label).toBe('Replay speed value');
+    expect(replay?.book).toBeNull();
+    expect(replay?.pack?.lessonId).toBe('replay_speed_value');
+    expect(
+      groupScenarios(merged).find((group) => group.key === 'ungrouped')?.scenarios,
+    ).toContainEqual(replay);
+  });
+
+  it('is idempotent when the merged catalogue is merged again', () => {
+    const twice = mergePackLessons(packCatalogue, manifest());
+    expect(twice.map((option) => option.id)).toEqual(
+      packCatalogue.map((option) => option.id),
+    );
+  });
+
+  it('returns the generated catalogue when there is no manifest or no pack', () => {
+    expect(mergePackLessons(catalogue, null)).toEqual(catalogue);
+    expect(
+      mergePackLessons(catalogue, {
+        schema: 'riichiprac.scenario-pack-manifest',
+        version: 1,
+        updated_at: '2026-11-17T00:00:00Z',
+        packs: [],
+      }),
+    ).toEqual(catalogue);
+  });
+});
+
+describe('replay entries and the all pool', () => {
+  const merged = mergePackLessons(replayCatalogue, manifest());
+  const replayFold = packScenarioId('replay.fixture.2026-11', 'fold_to_riichi');
+
+  it('keeps replay lessons out of All so launch stays manifest-only', () => {
+    expect(selectedScenarioIds(ALL_SCENARIOS, merged)).toEqual([
+      'open_hand_defense',
+      'ai_hotseat',
+      'proturun_priority',
+      'push_or_fold',
+      'fold_to_riichi',
+    ]);
+    const pool = selectionPool(merged, ALL_SCENARIOS, true);
+    expect(pool.every((option) => !option.pack)).toBe(true);
+    expect(pool.map((option) => option.id)).not.toContain(replayFold);
+  });
+
+  it('deals a replay lesson when it is explicitly selected', () => {
+    const pool = selectionPool(merged, { kind: 'selected', ids: [replayFold] });
+    expect(pool.map((option) => option.id)).toEqual([replayFold]);
+  });
+
+  it('adds a replay lesson to an explicit pool instead of dropping it', () => {
+    // Ticking a replay box while All is checked opts in: it must not be
+    // interpreted as "this id was already in All, so untick it".
+    const next = toggleScenario(merged, ALL_SCENARIOS, replayFold);
+    expect(next.kind).toBe('selected');
+    expect(next.kind === 'selected' && next.ids).toEqual([
+      'open_hand_defense',
+      'ai_hotseat',
+      'proturun_priority',
+      'push_or_fold',
+      'fold_to_riichi',
+      replayFold,
+    ]);
+  });
+
+  it('labels a replay selection with its merged label', () => {
+    expect(selectionLabel({ kind: 'selected', ids: [replayFold] }, merged)).toBe(
+      'fold_to_riichi (replay)',
+    );
+  });
+
+  it('never draws a replay lesson from All, even at the last candidate', () => {
+    pickLast();
+    for (let draw = 0; draw < 20; draw += 1) {
+      expect(pickRandomScenarioFrom(merged, ALL_SCENARIOS, true)).not.toBe(
+        replayFold,
+      );
+    }
   });
 });
