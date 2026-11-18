@@ -143,6 +143,7 @@ fn pack_json_carries_the_extended_shape_and_tolerates_unknown_fields() {
     let chain = TransformChain::new("0x51").with(Transform::RankMirror {});
     scenario.provenance.variant_of = Some(ScenarioKey::parse("fixture-base").expect("id"));
     scenario.provenance.transforms = vec!["rank_mirror".to_string()];
+    scenario.provenance.transform_seed = Some(chain.transform_seed.clone());
     scenario.provenance.transform_chain = Some(chain);
     scenario.provenance.label_check = Some(LabelCheck {
         kind: LabelCheckKind::Book,
@@ -443,17 +444,29 @@ fn variant_gate_requires_a_preserved_label_check() {
     });
     assert_rejected(&pack, &games, PackFindingCode::VariantLabelNotPreserved);
 
+    let chain = TransformChain::new("0x51").with(Transform::RankMirror {});
     pack.scenarios[0].provenance.label_check = Some(LabelCheck {
         kind: LabelCheckKind::Book,
         preserved: true,
         detail: None,
     });
+    pack.scenarios[0].provenance.transforms = vec!["rank_mirror".to_string()];
+    pack.scenarios[0].provenance.transform_chain = Some(chain.clone());
+    pack.scenarios[0].provenance.transform_seed = Some(chain.transform_seed.clone());
     assert!(audit(&pack, &games).is_clean());
 
     let mut bad = pack.clone();
     bad.scenarios[0].provenance.transform_chain =
         Some(TransformChain::new("0x1").with(Transform::RankMirror {}));
     bad.scenarios[0].provenance.transforms = vec!["seat_perm".to_string()];
+    assert_rejected(&bad, &games, PackFindingCode::TransformListMismatch);
+
+    let mut bad = pack.clone();
+    bad.scenarios[0].provenance.transform_seed = None;
+    assert_rejected(&bad, &games, PackFindingCode::TransformListMismatch);
+
+    let mut bad = pack.clone();
+    bad.scenarios[0].provenance.transform_seed = Some("0x99".to_string());
     assert_rejected(&bad, &games, PackFindingCode::TransformListMismatch);
 }
 

@@ -161,6 +161,7 @@ fn fixture_scenario(
             honba: Some(0),
             turn: Some(1),
             transforms: Vec::new(),
+            transform_seed: None,
             variant_of: None,
             transform_chain: None,
             label_check: None,

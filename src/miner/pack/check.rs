@@ -305,6 +305,31 @@ fn check_variant(scenario: &PackScenario) -> Vec<PackFinding> {
         }
     }
     if provenance.is_variant() {
+        if provenance
+            .transform_seed
+            .as_deref()
+            .unwrap_or("")
+            .trim()
+            .is_empty()
+        {
+            findings.push(PackFinding::scenario(
+                PackFindingCode::TransformListMismatch,
+                scenario.id.as_str(),
+                "a variant must record its `transform_seed`",
+            ));
+        }
+        if let (Some(seed), Some(chain)) = (&provenance.transform_seed, &provenance.transform_chain)
+            && seed != &chain.transform_seed
+        {
+            findings.push(PackFinding::scenario(
+                PackFindingCode::TransformListMismatch,
+                scenario.id.as_str(),
+                format!(
+                    "`transform_seed` is `{seed}` but the chain's seed is `{}`",
+                    chain.transform_seed
+                ),
+            ));
+        }
         match &provenance.label_check {
             None => findings.push(PackFinding::scenario(
                 PackFindingCode::VariantWithoutLabelCheck,

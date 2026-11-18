@@ -199,6 +199,56 @@ pub struct PackSource {
     pub agents: Vec<PackAgent>,
 }
 
+impl PackSource {
+    /// Build the source declaration for a pack assembled from `games`.
+    ///
+    /// The agent union is every contributor the games name, keyed by
+    /// `agent_id`/`engine`/`engine_version` (the pack gate's identity). The
+    /// corpus, licence and attribution come from the caller: a publisher must
+    /// not invent them. The commercial flag is derived from the contributors,
+    /// which is the only value the gate accepts.
+    ///
+    /// Returns `None` when `games` is empty or its games disagree about the
+    /// corpus: a pack has one source.
+    #[must_use]
+    pub fn from_games(
+        games: &[crate::miner::provenance::GameProvenance],
+        licence: impl Into<String>,
+        attribution: impl Into<String>,
+        redistributable: bool,
+    ) -> Option<Self> {
+        let first = games.first()?;
+        if games.iter().any(|game| game.corpus_id != first.corpus_id) {
+            return None;
+        }
+        let mut union: BTreeMap<String, PackAgent> = BTreeMap::new();
+        for game in games {
+            for seat in &game.seats {
+                union
+                    .entry(agent_key(
+                        &seat.agent_id,
+                        &seat.engine,
+                        &seat.engine_version,
+                    ))
+                    .or_insert_with(|| PackAgent::from_spec(seat));
+            }
+        }
+        let agents: Vec<PackAgent> = union.into_values().collect();
+        let data_commercial_use = crate::miner::licence::data_commercial_use_all(
+            agents.iter().map(|agent| &agent.licence),
+        );
+        Some(Self {
+            kind: SourceKind::ai_selfplay(),
+            corpus_id: first.corpus_id.clone(),
+            licence: licence.into(),
+            attribution: attribution.into(),
+            redistributable,
+            data_commercial_use,
+            agents,
+        })
+    }
+}
+
 /// One numbered Riichi Book 1 section, for picker grouping.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PackBook {
@@ -361,6 +411,12 @@ pub struct PackProvenance {
     /// `transform_chain`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub transforms: Vec<String>,
+    /// The seed the variant's transform parameters were drawn from. Duplicated
+    /// from `transform_chain.transform_seed` so a consumer that does not parse
+    /// the chain can still record an honest seed; the pack audit rejects a
+    /// mismatch.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transform_seed: Option<String>,
     /// The base scenario this is a variant of.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant_of: Option<ScenarioKey>,
