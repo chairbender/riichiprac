@@ -106,8 +106,14 @@ describe('App 3D mount point', () => {
     // ...and the standard view is still on screen underneath.
     expect(document.querySelector('.table-3d')).not.toBeNull();
     expect(document.querySelectorAll('.player-row').length).toBeGreaterThan(0);
+    // The 3D view owns the window: the shell drops the phone column and its
+    // chrome becomes an overlay over the fixed stage.
+    expect(document.querySelector('.app-shell--3d')).not.toBeNull();
+    expect(document.querySelector('.app-shell--3d > .table-3d')).not.toBeNull();
     // No canvas was created, so no three.js chunk was needed.
     expect(document.querySelector('canvas')).toBeNull();
+    // jsdom has no Fullscreen API, so the toggle must not be offered.
+    expect(screen.queryByRole('button', { name: /full screen/i })).toBeNull();
     expect(useGameStore.getState().error).toBeNull();
   });
 });

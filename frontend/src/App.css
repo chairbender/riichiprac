@@ -857,9 +857,12 @@
 
 /*
  * The opt-in 3D view (`?renderer=3d`). It is not the default and does not join
- * the persistent View control until 3D-15 signs it off, so this slot is a plain
- * block with a usable height rather than full-screen table chrome (3D-14 moves
- * it into the table stage).
+ * the persistent View control until 3D-15 signs it off.
+ *
+ * User guidance (2026-11-18): the 3D display takes up the whole browser window
+ * and the app's UI is an overlay on top of the scene. The stage is therefore a
+ * fixed backdrop and every other child of the shell floats above it; the 2D
+ * views keep the normal document column untouched.
  */
 .table-3d {
   flex: 1;
@@ -867,6 +870,74 @@
   flex-direction: column;
   height: clamp(420px, 72vh, 900px);
   padding: 10px;
+}
+
+.app-shell--3d {
+  /* The scene is the window: no phone-width column, no page background. */
+  max-width: none;
+  background-color: #0b1116;
+}
+
+/* The 3D stage is the backdrop, not a row in the column. */
+.app-shell--3d > .table-3d {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  padding: 0;
+}
+
+/*
+ * Everything else (header, cards, action bar, hand dock) is chrome over the
+ * scene. Positioned so it paints above the fixed stage; the elements' own
+ * backgrounds keep them readable over the felt.
+ */
+.app-shell--3d > :not(.table-3d) {
+  position: relative;
+  z-index: 1;
+}
+
+.app-shell--3d .renderer-3d {
+  border-radius: 0;
+}
+
+/*
+ * With the stage out of the flow, the shell has spare vertical space: push the
+ * action bar and hand dock to the bottom edge they occupy in the 2D views.
+ */
+.app-shell--3d .hand-dock {
+  margin-top: auto;
+}
+
+/* Clear the sticky header, which the fixed stage now sits underneath. */
+.app-shell--3d .table-3d > .status-msg,
+.app-shell--3d .table-3d > .error-msg {
+  margin-top: 4rem;
+}
+
+/* Full-screen toggle, shown in the header for the 3D view only. */
+.fullscreen-button {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #a5d8ff;
+  background-color: #1a2a3c;
+  border: 1px solid #34506e;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.fullscreen-button:hover {
+  background-color: #21374f;
+}
+
+.fullscreen-button:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
 }
 
 

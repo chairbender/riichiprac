@@ -6,6 +6,7 @@ import { AGREEMENT_OPTIONS, formatAgreementNotice } from './agreement';
 import { ActionBar } from './components/ActionBar';
 import { AppControls } from './components/AppControls';
 import { ExportImportControls } from './components/ExportImportControls';
+import { FullscreenButton } from './components/FullscreenButton';
 import { HandDock } from './components/HandDock';
 import { HotseatCard } from './components/HotseatCard';
 import { PhysicalTable } from './components/PhysicalTable';
@@ -122,6 +123,12 @@ export const App = () => {
   const restoreSnapshot = useGameStore((state) => state.restoreSnapshot);
 
   const [selection, setSelection] = useState<ScenarioSelection>(ALL_SCENARIOS);
+  /**
+   * The app shell, which is the full-screen target for the opt-in 3D view: the
+   * scene fills the window and this element (chrome included) is the thing the
+   * Fullscreen API promotes.
+   */
+  const shellRef = useRef<HTMLDivElement>(null);
   /**
    * The generated catalogue the WASM manifest publishes. Replay-pack entries are
    * merged on top in `scenarios` below; keeping the two apart means a late pack
@@ -828,7 +835,12 @@ export const App = () => {
     );
 
   return (
-    <div className="app-shell">
+    <div
+      className={
+        tableMount.kind === 'three' ? 'app-shell app-shell--3d' : 'app-shell'
+      }
+      ref={shellRef}
+    >
       <header className="app-header">
         <div className="app-title-group">
           {/* No scenario name here: it would hint at the answer during random draws. */}
@@ -836,6 +848,9 @@ export const App = () => {
         </div>
 
         <div className="app-controls">{controls}</div>
+
+        {/* The 3D view owns the window; full screen only removes browser chrome. */}
+        {tableMount.kind === 'three' && <FullscreenButton target={shellRef} />}
       </header>
 
       {hotseatOpen && (
