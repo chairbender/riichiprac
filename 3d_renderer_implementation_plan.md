@@ -20,27 +20,26 @@ read-only.
 
 **At a glance.** 16 implementation units plus one optional measurement spike.
 The critical path to the first usable 3D view is 3D-01 → 3D-02 → 3D-03 →
-3D-04 → 3D-05 → 3D-06 → 3D-07 → 3D-08 → 3D-14. Carving (POM), quality tiering,
-motion and the performance harness are off that path: the view must be complete,
-accessible and correct **with the carving shader disabled**, which is what makes
-POM a quality choice instead of a project risk. Full sign-off (3D-15) then adds
-those units.
+3D-04 → 3D-05 → 3D-06 → 3D-07 → 3D-08 → 3D-14. Carving is built at 3D-05 (user
+decision 4), so it is on that path; quality tiering, motion and the performance
+harness are not, and full sign-off (3D-15) adds them. The 0-step kill switch
+keeps the view renderable without carving even though POM is core.
 
 | Wave | Units | What it buys |
 | --- | --- | --- |
 | 0 | 3D-01 | Snapshot contract, capability probe, feature gate |
 | 1 | 3D-02, 3D-04, 3D-06 | Lazy three.js host, procedural tile mesh, world layout |
-| 2 | 3D-03, 3D-05 | Relief asset bridge, hero tile + lit material |
-| 3 | 3D-07, 3D-S1 | Instanced board; POM cost spike on real hardware |
-| 4 | 3D-08, 3D-09, 3D-10, 3D-12 | Accessible interaction, compass, carving, motion |
+| 2 | 3D-03, 3D-05 | Relief asset bridge; a carved hero tile renders and is handed to the user |
+| 3 | 3D-07, 3D-S1 | A full board renders in 1 instanced draw; real-hardware POM numbers recorded |
+| 4 | 3D-08, 3D-09, 3D-10, 3D-12 | Accessible interaction, compass, carve calibration, motion |
 | 5 | 3D-11, 3D-13 | Quality tiers and fallback; budget harness |
 | 6 | 3D-14, 3D-15, 3D-16 | View switch, full-board sign-off, architecture record |
 
 **v1 scope cut (the first usable checkpoint).** 3D-01…3D-09 plus 3D-14:
-a static, lit, interactive, accessible 3D table reachable with `?renderer=3d`,
-with no POM, no quality auto-downgrade and no motion. Everything after that
-makes it prettier, cheaper or safe to expose; **exposing it in the persistent
-View control is 3D-15's decision**, not 3D-14's.
+a static, carved, interactive, accessible 3D table reachable with
+`?renderer=3d`, with no quality auto-downgrade and no motion. Everything after
+that makes it calibrated, cheaper or safe to expose; **exposing it in the
+persistent View control is 3D-15's decision**, not 3D-14's.
 
 ---
 
@@ -67,8 +66,9 @@ View control is 3D-15's decision**, not 3D-14's.
   serialized `GameState`. No new Rust field, type or export is required, and no
   cargo gate is allowed to change behaviour.
 - **Touching the 2.5D pipeline.** No edits to `2_5d_*`, `tools/render/*` or
-  `frontend/src/table/*`. The 3D chain imports types and fetches committed
-  assets; it never writes them.
+  `frontend/src/table/*`, and no unit waits on that chain. The 3D chain owns its
+  own types and reads already-committed assets as immutable inputs; it never
+  writes them.
 - **Replacing the accessible views.** Stacked stays the default. 3D is opt-in,
   never auto-selected, and the stacked and top-down views remain the documented
   accessible fallback.
@@ -99,12 +99,12 @@ made mechanical rather than remembered.
 | D2 | WebGL2 only, via `WebGLRenderer`. WebGPU is rejected, not deferred. | context request is WebGL2 or the view is unavailable | 3D-02, 3D-11 |
 | D3 | The renderer consumes a typed, immutable `TableSnapshot` derived in TypeScript from `GameState`; it never reads `GameState`, never calls WASM per frame. | `snapshotFromGameState` is the only producer; a lint-visible module boundary | 3D-01 |
 | D4 | Animation timing belongs to the renderer's clock. React and the store never hold animation state, and no DOM answer path waits on an animation. | renderer API has no `enqueueAnimation`; a test answers with the renderer paused | 3D-12 |
-| D5 | Reuse the committed Task 4B carved relief atlases as the 3D face maps. Do not bake a second set. | asset bridge reads `frontend/public/table/relief/*` + `relief.json` unmodified | 3D-03, 3D-10 |
+| D5 | Use the committed Task 4B carved relief atlases as the 3D face maps, as read-only, hash-pinned inputs. Do not bake a second set, and do not make any unit wait on the 2.5D chain. | `reliefAssets.ts` pins and validates the manifest; a mismatch falls back loudly | 3D-03, 3D-10 |
 | D6 | Tile mesh is procedural code, not glTF. Proportions and bevel are the committed shell spec (28 × 21 × 16.5 mm, 1 unit = 28 mm, 0.055-unit bevel, 0.64 × 0.89-unit face plate). | geometry invariants in tests | 3D-04 |
 | D7 | Camera is the committed, user-signed-off whole-table rig (75 mm on a 36 mm gauge, 50° pitch, X = 0, 76 units), with an aspect-driven fit and a portrait preset. | framing assertions in `check-3d-layout.mjs` | 3D-02, 3D-06 |
 | D8 | No shadow maps. Contact grounding is one instanced blob-quad pass plus the carved self-shadow in the fragment shader. | draw-call/asset budget | 3D-07, 3D-10 |
 | D9 | Interaction lives in a DOM overlay of projected buttons; the canvas is `aria-hidden` decoration. | accessibility parity test against `PhysicalTable` | 3D-08 |
-| D10 | POM is a quality tier with a 0-step baseline that must render correctly on its own. | steps=0 path tested and gated before POM lands | 3D-05, 3D-10 |
+| D10 | POM ships from the hero-tile unit (user decision 2026-11-18: start with carving, do not bolt it on later). It is still a tiered parameter with a 0-step kill switch so the baseline cannot rot. | hero tile renders with POM; steps=0 renders the baseline in the same build | 3D-05, 3D-10, 3D-11 |
 | D11 | No new committed runtime assets and no new hosting surface. Only new bytes are the lazy JS chunk. | budget script reports the delta | 3D-13 |
 | D12 | Verification is scripted (numbers) or a user handoff. No agent looks at a render and declares it good. | every unit's gate names a command or a handoff | all |
 | D13 | The 3D view is opt-in and never the default; switching views never re-deals. | `TableView` + `RendererHost` tests | 3D-14 |
@@ -196,8 +196,11 @@ derivative guard precedes the first branch).
 
 New scripts, dependency-free Node, in the existing `frontend/scripts/` style:
 
-- `check-3d-layout.mjs` — layout constants vs `table-reference-spec.json`,
-  camera framing at five aspect ratios, per-zone counts, OBB separation.
+- `check-3d-layout.mjs` — 3D-owned layout constants and internal invariants:
+  per-zone counts, OBB separation, camera framing at five aspect ratios. An
+  optional `--reference` flag compares the constants against
+  `table-reference-spec.json` for local calibration; CI does not use it, so a
+  2.5D edit cannot turn the 3D gate red.
 - `check-3d-budget.mjs` — atlas and GPU bytes per tier, instances, triangles,
   draw calls, lazy-chunk gzip size, `three` absent from the entry chunk.
 
@@ -255,11 +258,13 @@ The world-space layout already exists, user-signed-off, in
 | Camera | 75 mm on 36 mm, 50° pitch, X = 0, 76 units, negative Shift Y | `cameraRig.ts` |
 
 The 3D chain **mirrors** those constants in `renderers/layoutConstants.ts` and
-`check-3d-layout.mjs` reads the reference spec (read-only) and fails with both
-values if they drift. It does not import across the `tools/` boundary at build
-time, and it does not modify the spec. Blender is Z-up with −Y toward the
-viewer; the three world is +X right, +Y up, +Z toward the human, mapped as
-`(x, y, z)three = (x, z, −y)blender`.
+owns them: `check-3d-layout.mjs` asserts the internal invariants (counts, framing,
+hand angle) without reading anything under `tools/`. Comparing the constants
+against `table-reference-spec.json` is an optional local `--reference` run that
+prints a table; it is not a CI gate and no unit waits on it. The chain does not
+import across the `tools/` boundary at build time and does not modify the spec.
+Blender is Z-up with −Y toward the viewer; the three world is +X right, +Y up,
++Z toward the human, mapped as `(x, y, z)three = (x, z, −y)blender`.
 
 Two additions the 2.5D reference cannot answer:
 
@@ -304,16 +309,23 @@ Decisions on top of that reuse:
   noise, 512 × 512, regenerated into a CanvasTexture at mount) and the
   screen-space vignette is CSS, because `felt.png` has a vignette baked into
   screen space and must not be wrapped onto a 3D plane.
-- **No second bake here.** A higher-resolution face atlas (512 × 680) would be a
-  change to the Task 4B baker and therefore a task for the 2.5D chain, not this
-  one. It is listed as an open decision (§9 R2), not a unit.
-- **Resolution is enough to start.** The reference rig puts a tile's long axis
-  at ≈104 CSS px at 1920 wide, so ≈206 px at a 4K backing store. The 340 px cell
-  is therefore ≈1.6 texels per screen pixel — *oversampled*, not undersampled,
-  which is the opposite of the usual risk. POM only displaces the sample; it
-  does not magnify the texture. A hi-res rebake is not needed for 4K; the real
-  sampling risk is mip/anisotropy at grazing angles, which `textureGrad` and
-  anisotropy address.
+- **Resolution is sufficient, permanently under this budget.** The reference rig
+  puts a tile's long axis at ≈104 CSS px at 1920 wide, so ≈208 px at a 4K
+  backing store. The 340 px cell is therefore ≈1.6 texels per screen pixel —
+  *oversampled*, not undersampled. The cell would only be undersampled above a
+  ~6,280 px-wide backing store, which the 8.29 MP cap (and its DPR rule) forbids.
+  POM only displaces the sample; it does not magnify the texture. **No rebake is
+  planned** (user decision 6): a 2× atlas would cost ≈176 MB raw / ≈234 MB with
+  mips for no visible gain. The real sampling risk is mip/anisotropy at grazing
+  angles, which `textureGrad` and anisotropy address.
+- **No second bake here, and no ask of the 2.5D chain.** If higher-resolution
+  carving were ever wanted, it would be a 3D-owned offline task in a 3D-owned
+  directory, built from the vendored public-domain SVGs — never a change
+  requested from the 2.5D pipeline.
+- **Independence by validation, not by trust.** The manifest and atlas sizes are
+  pinned in the 3D code; `reliefAssets.ts` validates them on load. A 2.5D rebake
+  that changes the atlas therefore either matches the pin or degrades the 3D view
+  to the procedural cell with a visible status — it cannot break it silently.
 
 GPU memory, stated up front: each atlas is 1536 × 2380 × 4 B = 14.6 MB, so
 three atlases are **43.9 MB** raw and **58.5 MB** with a full mip chain. The
@@ -330,7 +342,7 @@ match, so no flip is applied to the row and the tangent basis (`x` right,
 - Body: warm ivory `#f5f0eb` (the committed shell face colour), roughness 0.35,
   no map — the sides and bevels are geometry. Back: `#132986` (committed blue).
 - Face: the three relief atlases (albedo + paint mask, normal + height, AO +
-  roughness), dry-carve POM optional, wrapped diffuse to fake resin
+  roughness), carved faces with tiered POM, wrapped diffuse to fake resin
   translucency, GGX specular with the sampled roughness, AO multiply.
 - One key light matching the 2.5D rig's authored key (azimuth 315°,
   elevation 55° → three-space direction `normalize(-0.406, 0.819, 0.406)`), so
@@ -518,7 +530,14 @@ only coupling between React, the snapshot and the renderer.
 
 ```ts
 // contract.ts
-import type { TileFaceId } from '../table/tiles'; // 34 faces + 3 red fives + 'blank'
+// The face vocabulary is owned here, not imported from frontend/src/table/*.
+// The relief manifest's own `faces` keys are the runtime check: every id below
+// must resolve to a cell, and a manifest that disagrees is a hard load error.
+export type TileFaceId =
+  | `${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}${'m' | 'p' | 's'}`
+  | '5mr' | '5pr' | '5sr'
+  | '1z' | '2z' | '3z' | '4z' | '5z' | '6z' | '7z'
+  | 'blank';
 
 export type Seat = 0 | 1 | 2 | 3;
 export type Zone = 'hand' | 'draw' | 'river' | 'meld' | 'wall' | 'dora';
@@ -646,25 +665,26 @@ Two interface notes that matter:
 3D-01 contract
  ├─ 3D-04 mesh ──────────────────┐
  ├─ 3D-06 layout ─────────────┐  │
- └─ 3D-02 host ─ 3D-03 ─ 3D-05 hero ─ 3D-S1 spike
-                                    │         │
-     3D-07 board ◄─ 3D-04, 3D-05, 3D-06        │
-     3D-08 overlay ◄─ 3D-07                    │
-     3D-09 compass ◄─ 3D-07                    │
-     3D-10 POM ◄─ 3D-05, 3D-07, 3D-S1 ◄────────┘
+ └─ 3D-02 host ─ 3D-03 ─ 3D-05 hero + POM ─ 3D-S1 spike
+                                    │              │
+     3D-07 board ◄─ 3D-04, 3D-05, 3D-06           │
+     3D-08 overlay ◄─ 3D-07                       │
+     3D-09 compass ◄─ 3D-07                       │
+     3D-10 calibrate ◄─ 3D-05, 3D-07, 3D-S1 ◄─────┘
      3D-12 motion ◄─ 3D-07, 3D-08
      3D-11 tiers ◄─ 3D-02, 3D-10
      3D-13 budget ◄─ 3D-07, 3D-11
-     3D-14 view switch ◄─ 3D-08 (soft: 3D-11, 3D-13, 2.5D tasks 6A/7)
+     3D-14 view switch ◄─ 3D-08 (soft: 3D-11, 3D-13)
      3D-15 sign-off ◄─ 3D-08, 3D-09, 3D-11, 3D-12, 3D-13, 3D-14
      3D-16 docs ◄─ 3D-15
 ```
 
-**Critical path to the first shippable view:** 3D-01 → 3D-02 → 3D-03 → 3D-04
+**Critical path to the first usable view:** 3D-01 → 3D-02 → 3D-03 → 3D-04
 → 3D-05 → 3D-06 → 3D-07 → 3D-08 → 3D-14. 3D-04 and 3D-06 start as soon as
-3D-01 lands, in parallel with the host work. POM (3D-10), tiers (3D-11) and the
-budget harness (3D-13) are **not** on that path: they gate full sign-off
-(3D-15), which is the point of the v1 scope cut.
+3D-01 lands, in parallel with the host work. POM is inside 3D-05 and therefore
+on the path by decision; tiering (3D-11), calibration polish (3D-10) and the
+budget harness (3D-13) gate full sign-off (3D-15), not the first view. Nothing
+in this graph is a 2.5D unit.
 
 **Waves**
 
@@ -672,9 +692,9 @@ budget harness (3D-13) are **not** on that path: they gate full sign-off
 | --- | --- | --- |
 | 0 | 3D-01 | Snapshot + capabilities tested; no three.js in the bundle |
 | 1 | 3D-02, 3D-04, 3D-06 | An empty felt scene mounts behind `?renderer=3d`; geometry and layout pass their numeric gates |
-| 2 | 3D-03, 3D-05 | One real tile renders with the committed face maps and lighting, handed to the user |
+| 2 | 3D-03, 3D-05 | A carved hero tile renders with the committed face maps and is handed to the user |
 | 3 | 3D-07, 3D-S1 | A full board renders in 1 instanced draw; real-hardware POM numbers recorded |
-| 4 | 3D-08, 3D-09, 3D-10, 3D-12 | The view is usable with mouse, keyboard and screen reader; carving optional |
+| 4 | 3D-08, 3D-09, 3D-10, 3D-12 | The view is usable with mouse, keyboard and screen reader; carving calibrated |
 | 5 | 3D-11, 3D-13 | Tiers and fallback work; the budget script prints and asserts |
 | 6 | 3D-14, 3D-15, 3D-16 | The view is in the switch, signed off, and documented |
 
@@ -722,6 +742,9 @@ rendering exists.
   after probing, no context is left allocated (verified by a spy on
   `getContext`/`loseContext`).
 - Snapshot is deeply frozen in development and contains no DOM or three types.
+- No import from `frontend/src/table/*`: the face vocabulary is defined in
+  `contract.ts` and validated against the relief manifest's `faces` keys at load
+  (3D-03), so the two chains cannot break each other by editing a type.
 - `three` is not imported anywhere yet.
 
 **Gate:** frontend gate.
@@ -773,8 +796,9 @@ who does not ask for it.
 - No console errors/warnings in dev.
 
 **Gate:** frontend gate.
-**Merge note:** touches `App.tsx` (≈ 10 lines) with the 2.5D view tasks 6/7.
-Keep the diff minimal and sequence this early so the 2.5D chains rebase over it.
+**Merge note:** touches `App.tsx` (≈ 10 lines). The 2.5D view tasks may touch the
+same file; that is ordinary merge contention, not a dependency — neither chain
+waits for the other. Keep the diff minimal.
 
 ---
 
@@ -788,7 +812,9 @@ face-id → atlas-rect lookup, with a truthful failure path.
 **Deliverables**
 
 - `reliefAssets.ts`: fetch `table/relief.json`, validate `version`, the three
-  atlas entries, 37 face cells and normalized rects; fetch the three PNGs; create
+  atlas entries, 37 face cells and normalized rects, and pin the three atlas
+  byte sizes and `sha256` values (a mismatch is a hard load error that reports
+  the fallback status, never a silent re-read); fetch the three PNGs; create
   textures (albedo sRGB, normal/data linear, `flipY = false`, mipmaps,
   anisotropy from tier); report `relief: 'committed' | 'fallback'`.
 - A procedural neutral cell generator, shared with tests.
@@ -797,7 +823,9 @@ face-id → atlas-rect lookup, with a truthful failure path.
 **Acceptance criteria**
 
 - All 37 face ids resolve; unknown ids resolve to `blank`; unused cells are not
-  addressable.
+  addressable. The manifest's `faces` keys must equal the contract's 37-tile
+  vocabulary (a runtime list beside the type), so a manifest/contract mismatch is
+  a load error rather than a missing tile.
 - A Node test decodes the committed atlases with `@napi-rs/canvas`, samples each
   face's cell, and matches `relief.json`'s `measured` values (paint fraction, AO
   mean, roughness means) within a stated tolerance for at least three faces —
@@ -806,11 +834,14 @@ face-id → atlas-rect lookup, with a truthful failure path.
   21 × 28 mm face (`relief-spec.json`'s prose says 20.89 mm while the committed
   `plateUnits` and the cell rects say 17.92 mm; the committed data wins — see
   §9 R2).
-- Missing/invalid manifest or a failed PNG fetch → fallback cell, one console
-  warning, the scene still renders, and `measure().relief === 'fallback'`.
+- Missing/invalid manifest, a hash/size mismatch, or a failed PNG fetch →
+  fallback cell, one console warning, the scene still renders, and
+  `measure().relief === 'fallback'`.
 - GPU bytes are reported per tier and match the arithmetic in §2.5.
 - No committed relief file changes: the unit reads `frontend/public/table/relief/`
   and never writes it (the gate is a clean `git status`).
+- The unit needs no change from the 2.5D chain and waits for nothing; the pinned
+  manifest is the contract.
 
 **Gate:** frontend gate.
 
@@ -847,10 +878,11 @@ per-instance-ready attributes.
 
 ---
 
-### 3D-05 — Hero tile: material, lighting, baseline shading (no POM)
+### 3D-05 — Hero tile: material, lighting and POM
 
-**Goal.** Prove the look of one tile, made of the real maps and the real light,
-before scaling to a full board.
+**Goal.** Prove the look of one carved tile, made of the real maps and the real
+light, before scaling to a full board. POM is built here, not added later (user
+decision 4 of 2026-11-18), and the 0-step kill switch is built alongside it.
 
 **Depends on:** 3D-02, 3D-03, 3D-04.
 
@@ -858,7 +890,9 @@ before scaling to a full board.
 
 - `tileMaterial.ts` + `materials/tile.vert.ts`, `materials/tile.frag.ts` with
   albedo/paint compositing, normal mapping, AO, GGX, wrapped diffuse, the
-  front/side/back split, and `POM_STEPS = 0` as a first-class path.
+  front/side/back split, and the tangent-space height ray march (derivative guard
+  before any branch, secant refinement after the first hit).
+- Tier-driven step count; `POM_STEPS = 0` remains a first-class path.
 - `lighting.ts` (key, fill, ambient) and `?renderer=3d&debug=hero`.
 - `probes.ts`: read back a few pixels (face ivory, paint, blue back, side) and
   print them as numbers in the debug HUD.
@@ -871,21 +905,33 @@ before scaling to a full board.
   `#f5f0eb` under the key light, the back is within ΔE 6 of `#132986` in
   shadow-free fill. (The exact thresholds are the unit's to set; they are
   numbers, printed, not a look.)
-- The painted glyph is visible on the hero tile and absent on the blue back.
+- The painted glyph is present on the face and absent from the blue back (a
+  probe/flag check, not a look). Whether the ink *reads* as recessed is the
+  handoff question below, not an agent verdict.
+- `POM_STEPS = 0` reproduces the un-carved baseline within the probe tolerance,
+  so the carve path is removable in one uniform.
+- The worst-case parallax displacement, computed from the committed camera, the
+  face plate and `carve.depthMm`, is ≤ 8 texels at every supported aspect; a unit
+  test computes and prints it. (At 4K the hand is ~10° off normal and the ponds
+  ~40°, giving ≈ 6.6 texels; a bad depth parameter fails the gate.)
+- The derivative guard test fails if `dFdx`/`dFdy` move below the first `if`, and
+  every texture sample uses explicit gradients.
 - No `three/examples`, no post-processing, no new asset.
 - **Handoff:** `npm run dev` → `?renderer=3d&debug=hero`, plus one exported PNG
-  per slot (pond, hand, wall, back) under `frontend/scripts/out/` — ask: does the
-  ivory/paint/blue and the key direction read as the same material family as the
-  2.5D shells? Record the verdict in this plan.
+  per slot (pond, hand, wall, back) under `frontend/scripts/out/`, POM on and
+  off — ask: does the carving read as physically recessed, does the material
+  family match the 2.5D shells, and does Haku stay clean? Record the verdict.
 
 **Gate:** frontend gate + user verdict.
 
 ---
 
-### 3D-S1 — POM cost spike (optional, no app change)
+### 3D-S1 — POM cost measurement (optional, no app change)
 
 **Goal.** Answer "how many POM steps fit in 16.7 ms on this hardware" with a
-measurement instead of an estimate, before the shader is productionised.
+measurement instead of an estimate, using the shader 3D-05 actually built. If POM
+is already on the critical path by decision, this spike is how its step counts are
+chosen rather than guessed.
 
 **Depends on:** 3D-05.
 
@@ -899,8 +945,9 @@ decision log.
 
 - Numbers for all 8 combinations on the user's machine, with browser, GPU and
   DPR recorded.
-- A recommended `high` step count and a `compat` decision (POM or not).
-- If the spike is skipped, 3D-10 uses §2.8's defaults (12/8/0) and says so.
+- A recommended `high` step count and a confirmed `compat` step count (0 or 4).
+- If the spike is skipped, 3D-10 uses §2.8's defaults (12/8/0 depth, 4/2/0
+  shadow) and says so.
 
 **Gate:** none beyond a recorded table (it changes no shipped code).
 
@@ -937,9 +984,11 @@ the committed table geometry.
 - The human hand's face-normal-to-view angle is ≤ 25° at every supported aspect
   (9:16, 3:4, 1:1, 16:9, 21:9); all mat corners are in frame with ≥ 2 % margin;
   the hand's tile long axis is ≥ 5 % of viewport height.
-- `check-3d-layout.mjs` prints the constant table and fails with both values on
-  any drift from `table-reference-spec.json`; it also prints the per-zone counts
-  and the framing numbers for the five aspects.
+- `check-3d-layout.mjs` prints the constant table and the per-zone counts and
+  framing numbers for the five aspects, and fails on any internal invariant. Its
+  optional `--reference` run compares the constants against
+  `table-reference-spec.json` and prints both values, but is never part of a CI
+  gate (the constants are 3D-owned).
 - Pure: no three.js, no DOM.
 
 **Gate:** frontend gate + `node frontend/scripts/check-3d-layout.mjs`.
@@ -1049,38 +1098,33 @@ accessible marker on that seat.
 
 ---
 
-### 3D-10 — Carved POM shader and debug modes
+### 3D-10 — Carve calibration: light-space self-shadow, debug modes, step tiers
 
-**Goal.** Make the engraving read as depth, and prove it costs what the budget
-says.
+**Goal.** Finish the carving: micro-shadow the groove walls, make the parameters
+observable, and lock the per-tier step counts against the measured budget.
 
 **Depends on:** 3D-05, 3D-07, 3D-S1 (or the §2.8 defaults).
 
 **Deliverables**
 
-- POM in `tile.frag.ts`: derivative guard before any branch, height ray march
-  with secant refinement, light-space self-shadow march, cavity AO, sampled
-  roughness, wrapped diffuse.
-- Tier-driven steps; `?debug=albedo|height|normal|steps|pom-off|wireframe`.
-- A source-contract test for the derivative guard and the step uniforms.
+- Light-space self-shadow march in `tile.frag.ts` (4 steps high / 2 balanced / 0
+  compat), depth/strength calibration uniforms, and the final tier step table.
+- `?debug=albedo|height|normal|steps|pom-off|wireframe`.
+- A source-contract test for the tier step table and the flood-state of the
+  debug path.
 
 **Acceptance criteria**
 
-- `POM_STEPS = 0` renders within a small probe tolerance of the 3D-05 image
-  (proving the baseline path is intact and POM is removable).
-- The worst-case parallax displacement, computed from the committed camera, the
-  face plate and `carve.depthMm`, is ≤ 8 texels at every supported aspect; a
-  unit test computes and prints it. (At 4K the hand is ~10° off normal and the
-  ponds ~40°, giving ≈ 6.6 texels; a bad depth parameter fails the gate.)
-- Steps are exactly the tier's number (12/8/0) at runtime and in `measure()`.
-- The derivative guard test fails if `dFdx`/`dFdy` move below the first `if` —
-  a regression guard for the seam/mip artefact.
-- No branch-dependent texture sampling (all sampling uses explicit gradients).
+- Steps are exactly the tier's number (12/8/0 for depth, 4/2/0 for the shadow
+  march) at runtime and in `measure()`.
 - Debug modes change only shading and never the layout, the hit rects or the
-  snapshot.
-- **Handoff:** the hero, a pond row and a full wall at 4K, with steps 0 vs 12;
-  ask whether the carving reads as physically recessed with the ink behind a
-  lit near wall, and whether Haku (5z, bare ivory) stays clean. Record verdict.
+  snapshot; each mode's readout prints its numeric legend.
+- `?debug=pom-off` matches the `POM_STEPS = 0` baseline within the probe
+  tolerance on a full board.
+- Calibration never moves the parallax bound above the 8-texel gate from 3D-05.
+- **Handoff:** the hero, a pond row and a full wall at 4K, with steps 0 vs 12 and
+  self-shadow off vs on; ask whether the ink reads behind a lit near wall and
+  whether the shadow is too strong on the small glyphs. Record verdict.
 
 **Gate:** frontend gate + user verdict.
 
@@ -1183,7 +1227,8 @@ frontend gate.
 ### 3D-14 — View switch integration
 
 **Depends on:** 3D-08. Soft: 3D-11 (unsupported/fallback story), 3D-13 (budget
-gate), 2.5D tasks 6A/7 (a four-way control).
+gate). Nothing from the 2.5D chain: the 3D view is its own `TableView` value and
+does not wait for the 2.5D rendered view.
 
 **Goal.** Make the 3D view a first-class, reversible choice.
 
@@ -1213,9 +1258,10 @@ gate), 2.5D tasks 6A/7 (a four-way control).
 - No `2_5d_*`, `tools/render/*` or `frontend/src/table/*` diff.
 
 **Gate:** frontend gate.
-**Merge note:** the highest-contention unit. Run it after the 2.5D view tasks
-land, or be prepared to resolve `App.tsx`/`useSettingsStore.ts`/`AppControls.tsx`
-by hand.
+**Merge note:** the highest-contention unit for *conflicts* (the same
+`App.tsx`/`useSettingsStore.ts`/`AppControls.tsx` files as the parallel 2.5D view
+work). It has no dependency on that work; merge order is a normal judgement call
+and any conflict is hand-resolved.
 
 ---
 
@@ -1267,8 +1313,9 @@ by hand.
 - `THIRD_PARTY_NOTICES.md` with the Three.js MIT notice; README's view list and
   AGENTS.md §4 updated to the four views; this plan marked implemented with
   deviations listed.
-- A note on the stale §2.5 prose about the face plate (17.92 mm vs 20.89 mm) for
-  the 2.5D owner, since the 3D chain may not edit it.
+- A recorded note on the stale `relief-spec.json` prose (17.92 mm vs 20.89 mm),
+  written as information for whoever owns that file. It is not a request and
+  nothing in the 3D chain waits for it.
 
 **Acceptance criteria**
 
@@ -1292,13 +1339,13 @@ at once). Titles are the proposed task titles.
 | 3D-02 | 3D R2: lazy three.js host, lifecycle, empty felt scene | 3D-01 |
 | 3D-03 | 3D R3: relief asset bridge and procedural fallback | 3D-02 |
 | 3D-04 | 3D R4: procedural beveled tile geometry | 3D-01 |
-| 3D-05 | 3D R5: hero tile material, lighting, baseline shading | 3D-02, 3D-03, 3D-04 |
-| 3D-S1 | 3D S1: POM cost spike on real hardware | 3D-05 |
+| 3D-05 | 3D R5: hero tile — material, lighting and POM | 3D-02, 3D-03, 3D-04 |
+| 3D-S1 | 3D S1: POM cost measurement on real hardware | 3D-05 |
 | 3D-06 | 3D R6: world-space board layout and drift check | 3D-01 |
 | 3D-07 | 3D R7: instanced board, contact shadows, sticks | 3D-04, 3D-05, 3D-06 |
 | 3D-08 | 3D R8: interaction overlay and accessibility parity | 3D-07 |
 | 3D-09 | 3D R9: compass and chrome overlay | 3D-07 |
-| 3D-10 | 3D R10: carved POM shader and debug modes | 3D-05, 3D-07, 3D-S1 |
+| 3D-10 | 3D R10: carve calibration, self-shadow, debug modes | 3D-05, 3D-07, 3D-S1 |
 | 3D-11 | 3D R11: quality tiers, downgrade and fallback | 3D-02, 3D-10 |
 | 3D-12 | 3D R12: hover/deal-in motion and the event seam | 3D-07, 3D-08 |
 | 3D-13 | 3D R13: performance budget and measurement harness | 3D-07, 3D-11 |
@@ -1322,8 +1369,9 @@ the units that end in a handoff (3D-05, 3D-10, 3D-15) must say so in the task
 body so the session does not self-approve a look.
 
 **Ordering recommendation.** Start wave 0 + wave 1 (3D-01, then 3D-02/04/06 in
-parallel). Do not create 3D-14 until the 2.5D view tasks (6/7) have landed, to
-avoid three-way conflicts in `App.tsx`.
+parallel). 3D-14 can land as soon as 3D-08 is done; it is only a merge-conflict
+risk against the parallel 2.5D view work, not a sequencing dependency, so rebase
+and resolve rather than wait.
 
 ---
 
@@ -1357,14 +1405,14 @@ which files it touched.
 
 ---
 
-## 9. Risks and open decisions
+## 9. Risks and decisions
 
 | # | Risk | Likelihood / impact | Mitigation | Owner |
 | --- | --- | --- | --- | --- |
-| R1 | POM does not fit the frame budget on the target hardware | medium / medium | 0-step baseline, tier step counts, self-shadow optional, 3D-S1 spike before productionising | 3D-10, 3D-11 |
-| R2 | Face-map sampling: 256 × 340 is ≈1.6 texels per screen pixel at 4K (oversampled), but the relief prose says the plate is 20.89 mm while `plateUnits` is 17.92 mm | low / low | Ship on the committed plate (17.92 mm) and log the prose discrepancy for the 2.5D owner; a 512 × 680 rebake is a 2.5D-chain task, only if the user finds it soft | user decision |
+| R1 | POM does not fit the frame budget on the target hardware | medium / medium | tier step counts, 0-step/`pom-off` kill switch, self-shadow off at balanced/compat, 3D-S1 measures the built shader and 3D-11 downgrades automatically | 3D-10, 3D-11 |
+| R2 | Face-map sampling and the committed plate: 256 × 340 is ≈1.6 texels per screen pixel at 4K (oversampled within the 8.29 MP cap), but `relief-spec.json`'s prose says the plate is 20.89 mm while the committed `plateUnits`/cell rects say 17.92 mm | low / low | Ship on the committed plate (17.92 mm); **no rebake** (user decision 6); log the prose discrepancy for the 2.5D owner as information, not as a request | 3D-03 |
 | R3 | Three.js version churn breaks shader/instancing APIs | low / medium | exact pin, no addons, upgrade only as an explicit task with a budget + look re-check | 3D-02, 3D-16 |
-| R4 | Merge contention with 2.5D tasks 6/6A/7 in `App.tsx`, `useSettingsStore.ts`, `AppControls.tsx`, `AGENTS.md` | high / low | keep the 3D diff to the mount point, land 3D-14 last, expect one hand-resolved conflict | 3D-02, 3D-14 |
+| R4 | Merge contention with the parallel 2.5D view work in `App.tsx`, `useSettingsStore.ts`, `AppControls.tsx`, `AGENTS.md` (conflicts, not dependencies) | high / low | keep the 3D diff to the mount point; rebase and resolve by hand; neither chain waits for the other | 3D-02, 3D-14 |
 | R5 | Mobile GPU memory (58 MB atlas + existing 43 MB model) or thermal throttling | medium / medium | compat tier half-res, 0 POM, on-demand frames, 30 fps floor, auto-fallback remembered per session | 3D-11 |
 | R6 | The wall is decorative, so a "full wall + 14-tile hands" picture is physically impossible | certain / low | documented; depletion needs a Rust wall census, out of v1 (non-goal) | plan |
 | R7 | The DOM overlay drifts from the 3D camera (buttons not aligned with tiles) | medium / high (usability) | single projection source (`hitRects()`), tests at two aspects, user check on the final board | 3D-08 |
@@ -1372,26 +1420,40 @@ which files it touched.
 | R9 | A new runtime dependency is more than the repo wants | low / medium | lazy chunk, budget gate, exact pin, MIT notice; the renderer interface keeps the choice reversible | 3D-02, 3D-16 |
 | R10 | Both renderers load the relief atlases at once (double GPU memory) if a view ever mounts both | low / medium | only one table is mounted at a time (structural test in 3D-14); dispose drops textures | 3D-14 |
 
-**Decisions the user must make before implementation starts**
+**Decisions recorded with the user (2026-11-18)** — all six are settled; they are
+binding on the units, not open questions.
 
-1. **Ship the 3D view or keep it dev-only behind `?renderer=3d`?** Recommendation:
-   build it behind the flag, expose it in the view control only after 3D-15, and
-   never make it the default.
-2. **Adopt the v13 whole-table rig for the 3D camera** (recommended, because it is
-   already signed off) **or commission a 3D-specific framing.** Either way the
-   final framing is a user handoff.
-3. **Hand recline and whether to add a low near rail** so the reclined hand looks
-   physically supported. Recommendation: ship 40° with no rail first, and only
-   add geometry if you dislike the floating look.
-4. **Is POM worth it, or is normal + AO enough?** 3D-S1 gives the numbers; the
-   look is yours. The plan is built so "no POM" is a valid outcome rather than a
-   failure.
-5. **Concurrency:** whether to run this chain beside the 2.5D tasks, given the
-   shared `App.tsx`/store/AGENTS.md edits. Recommendation: run now, hold 3D-14.
-6. **Hi-res faces:** 256 × 340 is already ≈1.6 texels per screen pixel at 4K, so
-   this is only worth revisiting if the user finds the near hand soft in
-   practice. If so, it is a Task 4B baker change owned by the 2.5D chain. Decide
-   then, not now.
+1. **Exposure: behind the flag.** The 3D view stays reachable only by
+   `?renderer=3d` until 3D-15 signs it off; `RENDERED3D_EXPOSED` flips only then,
+   and it is never the default.
+2. **Camera: adopt the v13 whole-table rig.** 75 mm on a 36 mm gauge, 50° pitch,
+   X = 0, 76 units, with the aspect/portrait solver. No new framing is
+   commissioned.
+3. **Hand: keep the recline already settled, no rail.** 40° back from upright
+   (the reference rig's readable pose), no near rail or other added geometry.
+   The only gate is the numeric face-to-view angle (≤ 25°).
+4. **Carving: start with POM.** POM is built in 3D-05 with the hero tile, not
+   added later; 3D-10 is calibration and self-shadow. The 0-step kill switch and
+   the tier step counts still exist, so "POM off" remains a supported mode.
+5. **Concurrency: run in parallel with the 2.5D chain.** The two chains share no
+   units and neither waits for the other; the only overlap is ordinary merge
+   contention in `App.tsx`/store/controls (R4), resolved by hand.
+6. **Face resolution: no rebake.** The committed 256 × 340 maps are kept. Under
+   the 8.29 MP backing-store cap a tile is ≈208 px on screen at 4K against a
+   340 px map (≈1.6 texels/px, oversampled); the map would only become
+   undersampled above a ~6,280 px-wide backing store, which the cap forbids. A 2×
+   rebake would cost ≈176 MB raw / ≈234 MB with mips for no visible gain, and is
+   not planned. If it is ever wanted, it is a 3D-owned offline task, not a request
+   to the 2.5D chain.
+
+**Chain independence (recorded).** No 3D unit depends on 2.5D work, and no 2.5D
+unit depends on 3D work. The 3D chain reads the *already committed* relief
+manifest and atlases as immutable inputs (§2.5) and validates them by hash; a
+2.5D rebake cannot silently change the 3D result — it either matches the pinned
+manifest or the 3D view falls back to the procedural cell and reports it. The
+table/camera constants are owned by 3D (`layoutConstants.ts`); comparing them
+against `table-reference-spec.json` is an optional local `--reference` run, not a
+CI gate, so a 2.5D edit cannot turn the 3D gate red.
 
 ---
 
@@ -1454,10 +1516,12 @@ it was right and corrected where the repository or the browser facts disagree.
 4. **Haku's "un-inked rectangular border".** The committed face art has no
    printed symbol for Haku and bakes to zero ink; a carved blank frame would
    invent a motif. Haku is a bare ivory face in both views.
-5. **POM in the core path.** The proposal makes POM Phase 4 of 6. It is now an
-   enhancement with a mandatory 0-step baseline, sequenced after the whole board
-   is correct and accessible. A shader that cannot be turned off is a schedule
-   risk.
+5. **POM sequencing.** The proposal put POM in Phase 4 of 6. My first draft
+   deferred it behind a no-carve board; the user's 2026-11-18 decision is to start
+   with carving. POM is therefore built in the hero-tile unit (3D-05) and is on
+   the critical path, while keeping the parts that de-risk it: a 0-step kill
+   switch, tier step counts, and a numeric parallax bound. "POM later" is gone;
+   "POM that can be turned off" is not.
 6. **"60 fps at native 4K with DPR up to 2."** That is a 33.2 MP backing store.
    The budget is capped at 8.29 MP with an area-based DPR rule, and the
    projection shows why that is the defensible number.
@@ -1510,6 +1574,12 @@ it was right and corrected where the repository or the browser facts disagree.
     from an in-place update, and no per-frame WASM.
 20. **Licensing/hosting.** Three.js's MIT notice, the exact-pin policy, and the
     "no new hosted assets" conclusion are added; the proposal was silent on both.
+21. **Chain independence.** My first draft made 3D-14 wait for the 2.5D view
+    tasks and treated a hi-res rebake as a 2.5D request. Both are removed by the
+    user's 2026-11-18 decision: no 3D unit waits for 2.5D work and nothing is
+    asked of it. The remaining coupling is read-only, hash-validated inputs and
+    3D-owned constants; a 2.5D change can degrade the 3D view to its fallback but
+    cannot break it and cannot turn its gate red.
 
 ---
 
