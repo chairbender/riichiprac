@@ -63,6 +63,9 @@ bash tools/render/bake-table-reference.sh --rig   # 2.5D rig: default variant ->
 bash tools/render/bake-table-reference.sh --rig --variant v2-compact   # one A/B variant
 bash tools/render/bake-table-reference.sh --rig --variant v2-compact --rig-width 700 --samples 12  # fast tuning; never publishes
 bash tools/render/bake-table-reference.sh --check # whole-table + rig integrity gates; no Blender
+bash tools/render/bake-table-layout.sh            # Task 3 dry run: print the layout/bucket plan
+bash tools/render/bake-table-layout.sh --bake     # Task 3 export + probe render + 1 px proof + check
+bash tools/render/bake-table-layout.sh --check    # Task 3 layout + probe + overlay gate; no Blender
 ```
 
 The group-shadow lab is a static page; serve the repo root and open it:
@@ -280,8 +283,83 @@ The v1 rig reproduces the shipped shells' face `[223, 220, 216]` and blue
 `[3, 68, 165]` within a few levels. See `TABLE-REFERENCE.md` for the parameter
 tables, the variant workflow and the user sign-off questions.
 
-This is development-only: nothing under `frontend/public` is written and the
-runtime never reads it.
+The rig renders are development-only: nothing under `frontend/public` is
+written by `bake-table-reference.sh` and the runtime never reads them.
+
+## Task 3: the runtime table layout (`table_layout.json`)
+
+The rig's scene is also the source of the runtime layout. `bake_table_layout.py`
+walks every `Empty` in the `SlotAnchors` collection, projects its world centre
+and its four face-quad corners through the resolved rig camera with Blender's
+`world_to_camera_view`, and publishes the normalized 1920 x 1080 contract to
+**`frontend/public/table/table_layout.json`**. This is the Task 3 runtime
+contract: the runtime compositor (Task 5) reads it, so the board geometry is
+never hand-coded twice.
+
+```bash
+bash tools/render/bake-table-layout.sh              # dry run: print the camera, reference and bucket plan
+bash tools/render/bake-table-layout.sh --bake       # export + probe render + proof + check
+bash tools/render/bake-table-layout.sh --bake --no-probe   # fast JSON iteration
+bash tools/render/bake-table-layout.sh --bake --variant v2-compact  # A/B variant into build/, never publishes
+bash tools/render/bake-table-layout.sh --check      # layout + probe + overlay gate; no Blender
+```
+
+Each slot is `{id, zone, seat, row, col, anchor:{x,y}, depth, scale, bucket,
+faceQuad:[4 x {x,y}]}`. `anchor` is normalized top-left screen space (x
+left-to-right, y down), `depth` is Blender's view-axis distance, and `scale` is
+`reference.depth / depth` against the anchor nearest the table centre (that slot
+is published and carries 1.0). `faceQuad` is the four projected corners as
+offsets from the anchor in the anchor's published order, **TL, TR, BR, BL** in
+the tile's own face frame; a 180-degree seat therefore traces the same order
+counter-clockwise on screen, and the compositor maps the glyph onto it directly.
+The file also carries the resolved `camera`, the bucket spec and a
+`bucketCatalogue` with one representative slot per bucket for Task 4.
+
+**Buckets are spec data.** `table-reference-spec.json`'s `layout.buckets` holds
+every boundary; the script never derives them from a render. The families are:
+
+| Family | Buckets | Rule |
+| --- | --- | --- |
+| `hand` | `hand_far_left`, `hand_mid_left`, `hand_center`, `hand_mid_right`, `hand_far_right` | screen-X intervals `0.398 / 0.456 / 0.544 / 0.602`; all four hands share the fan, representatives are drawn from `hand_south` |
+| `wall_side` | `wall_left_side`, `wall_right_side` | the west and east runs, one blank each |
+| `wall_horizontal` | `wall_horiz_left`, `wall_horiz_center`, `wall_horiz_right` | screen-X intervals `0.435 / 0.565`, placed in the widest gaps of the two runs' merged stack positions |
+| `flat` | `flat_left`, `flat_center`, `flat_right` (+ `_rotated`) | screen-X intervals `0.42 / 0.582`; a physically turned tile (the riichi discard, the called meld tile) is detected from its projected TL→TR edge and gets `_rotated` |
+
+**The 1 px acceptance is a render measurement, not an eyeball call**
+(AGENTS.md §6). `--bake` renders `reference/layout/probes-1x.png`: one emissive
+marker per anchor at the anchor's body centre, with every tile, light and the
+table hidden and film transparent. The marker is symmetric, so its alpha
+centroid is Blender's own projection of that centre.
+`scripts/table-layout-proof.mjs` finds one connected component per marker,
+computes the subpixel centroid, matches it one-to-one to the exported anchor and
+writes `reference/layout/layout-proof.json`. On the committed v13 bake:
+**293 markers, max delta 0.1315 px, mean 0.0452 px, p95 0.0922 px** against the
+1.0 px threshold. `check-table-layout.mjs` re-measures the committed probe PNG
+without Blender, so the claim is reproducible from the repository.
+
+The proof writes two review images:
+
+- `reference/layout/overlay-1x.png` — every exported anchor cross (magenta) and
+  face quad (cyan) over the committed v13 board render, plus the measured probe
+  centres (yellow);
+- `reference/layout/overlay-zoom-4x.png` — a 4x nearest crop around each bucket
+  representative and the drawn hand tile, labelled with the slot id, bucket and
+  measured delta.
+
+Visual sign-off on those two images is the user's. The gate checks are numeric:
+the schema and every id, the camera against the committed rig manifest, each
+bucket recomputed from the spec boundaries, the face quad's convexity and area,
+the per-slot probe deltas, and the overlay actually marking every anchor.
+
+The export is idempotent: slots are sorted by id, every number is rounded to six
+decimals by `layout.rounding`, and the probe render uses seed 0 and CPU Cycles,
+so re-running an unchanged scene reproduces the JSON byte for byte (verified:
+two runs produce the same sha256). The probe PNG's decoded RGBA is also
+identical, but its container bytes may differ run to run — Blender writes PNG
+metadata, exactly as the shell pipeline records — so the proof hashes and
+measures decoded pixels, never the PNG bytes. Re-run `--bake` after any change
+to the table, a placement, the camera or a bucket boundary, and commit the
+script, the spec, the layout JSON and the proof artifacts together.
 
 ## Directory layout
 
@@ -304,9 +382,20 @@ runtime never reads it.
 | `felt-spec.json` | yes | felt size/format, base colour, noise octaves, vignette curve, dither, runtime fit, byte budget |
 | `bake_felt.py` | yes | deterministic stdlib PNG generator for the felt + vignette |
 | `bake-felt.sh` | yes | one-command felt regeneration |
-| `table-reference-spec.json` | yes | the whole-table calibration reference: table plan, camera candidates, sun rig, crop families, render sizes, thresholds |
+| `table-reference-spec.json` | yes | the whole-table calibration reference: table plan, camera candidates, sun rig, crop families, render sizes, thresholds, and the Task 3 `layout` block (reference frame, reference slot, bucket boundaries, probe/proof settings) |
 | `bake_table_reference.py` | yes | Blender 4.5.9 whole-table scene builder, pinhole/visibility assertions and @2x master render |
 | `bake-table-reference.sh` | yes | dry-run / audition / bake / check for the whole-table reference |
+| `bake_table_layout.py` | yes | Task 3 Blender exporter: builds the same scene, projects every `SlotAnchors` centre/face quad, writes the runtime layout and renders the anchor probe |
+| `table_layout.py` | yes | the Task 3 projection walker, bucket classifier and probe renderer (imported by `bake_table_layout.py`; the additive home for Task 3A's lighting/basis) |
+| `bake-table-layout.sh` | yes | one command for the Task 3 dry run / export + proof / no-Blender check |
+| `scripts/table-layout.mjs` | yes | shared layout rules: bucket families, sideways test, probe centroid measurement and one-to-one matching |
+| `scripts/table-layout-proof.mjs` | yes | measures the committed probe PNG, writes `layout-proof.json` and the overlay/zoom review images |
+| `scripts/check-table-layout.mjs` | yes | dependency-free layout + probe + overlay gate (CI) |
+| `reference/layout/probes-1x.png` | yes | the Task 3 anchor probe render (one emissive marker per slot) |
+| `reference/layout/layout-proof.json` | yes | the recorded per-slot probe centroid/delta and the 1 px acceptance |
+| `reference/layout/overlay-1x.png` | yes | exported anchors and face quads over the committed v13 board render |
+| `reference/layout/overlay-zoom-4x.png` | yes | 4x crops of each bucket representative and the drawn tile, labelled with the measured delta |
+| `../../frontend/public/table/table_layout.json` | yes | the runtime Task 3 layout contract (293 slots) |
 | `TABLE-REFERENCE.md` | yes | the reference's calibration note: scene, chosen perspective, metrics, how to compare |
 | `scripts/table-camera.mjs` | yes | shared reference pinhole, tile-corner projection, metrics and crop rects |
 | `scripts/table-reference.mjs` | yes | publishes the 1x board, 2x crops, manifest and contact page from the master |

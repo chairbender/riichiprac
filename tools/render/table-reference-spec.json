@@ -1150,5 +1150,129 @@
       "meldKan": 4,
       "total": 24
     }
+  },
+  "layout": {
+    "version": 1,
+    "collection": "SlotAnchors",
+    "rigId": "2.5d-rig",
+    "resolution": "the Task 3 runtime contract; the rig renders 1920 x 1080, so normalized coordinates and the probe render share one frame",
+    "referenceResolution": [
+      1920,
+      1080
+    ],
+    "rounding": 6,
+    "output": "frontend/public/table/table_layout.json",
+    "note": "Task 3 export (bake-table-layout.sh). It projects the same SlotAnchors collection the Task 1/2 scene builds through the resolved rig camera and publishes the runtime layout. The reference renders stay calibration-only; this one block is the pipeline's runtime output. Re-run after any scene, placement or camera change; the file is sorted and rounded, so an unchanged scene reproduces it byte for byte.",
+    "reference": {
+      "mode": "nearest-slot",
+      "point": [
+        0,
+        0,
+        0.294643
+      ],
+      "note": "The table centre at the mat surface (z = half a tile thickness). The anchor nearest that point is the reference slot and carries scale 1.0; every other slot's scale is reference.depth / slot.depth. The point, the chosen slot and its depth are all published in the JSON."
+    },
+    "rotation": {
+      "sidewaysMaxAbsCos": 0.5,
+      "note": "A slot is sideways when the projected TL -> TR edge is more vertical than horizontal in pixels (|dx| / length <= 0.5). That is the physically turned riichi discard and called meld tile, which need a rotated blank. 180-degree seats keep a horizontal top edge and stay upright blanks with a rotated glyph."
+    },
+    "buckets": [
+      {
+        "id": "hand",
+        "zones": [
+          "hand"
+        ],
+        "axis": "screenX",
+        "representativeAxis": "x",
+        "representativeSeat": "south",
+        "boundaries": [
+          0.398,
+          0.456,
+          0.544,
+          0.602
+        ],
+        "names": [
+          "hand_far_left",
+          "hand_mid_left",
+          "hand_center",
+          "hand_mid_right",
+          "hand_far_right"
+        ],
+        "note": "The plan's standing-hand fan. The boundaries are explicit spec data, not a measurement: Task 4 bakes exactly one blank per name. Bucket representatives come from hand_south, the fan the plan names; the other three hands share the same five blanks for now (their backs are a Task 4 asset decision, not a second bucket family)."
+      },
+      {
+        "id": "wall_side",
+        "zones": [
+          "wall"
+        ],
+        "axis": "seat",
+        "representativeAxis": "y",
+        "seats": {
+          "west": "wall_left_side",
+          "east": "wall_right_side"
+        },
+        "note": "One side-wall blank per wall; the plan names wall_left_side / wall_right_side explicitly, so no horizontal split. The representative is the median stack of the run (the vertical axis varies with depth)."
+      },
+      {
+        "id": "wall_horizontal",
+        "zones": [
+          "wall"
+        ],
+        "axis": "screenX",
+        "seats": [
+          "north",
+          "south"
+        ],
+        "representativeAxis": "x",
+        "boundaries": [
+          0.435,
+          0.565
+        ],
+        "names": [
+          "wall_horiz_left",
+          "wall_horiz_center",
+          "wall_horiz_right"
+        ],
+        "note": "The front/back wall runs split into the plan's three horizontal blanks. The boundaries sit in the widest empty gaps of the two runs' merged projected stack positions (0.427/0.443 and 0.557/0.573), so no wall stack straddles a bucket."
+      },
+      {
+        "id": "flat",
+        "zones": [
+          "river",
+          "meld"
+        ],
+        "axis": "screenX",
+        "representativeAxis": "x",
+        "boundaries": [
+          0.42,
+          0.582
+        ],
+        "names": [
+          "flat_left",
+          "flat_center",
+          "flat_right"
+        ],
+        "rotatedSuffix": "_rotated",
+        "note": "Face-up ponds and melds split left/center/right by screen X; a turned tile (riichi discard, called meld tile) appends _rotated, so the plan's six flat blanks are all exercised. The boundaries sit in the empty gaps between the pond groups: the west pond ends at 0.406 and the centre ponds start at 0.431; the centre ponds end at 0.573 and the east pond starts at 0.591."
+      }
+    ],
+    "probe": {
+      "radiusUnits": 0.05,
+      "samples": 8,
+      "note": "One emissive UV sphere per anchor at its body centre, radius 0.05 tile units (about 2.6 px at 1920 wide), all tiles/lights/table hidden, film transparent. The marker is symmetric, so its rendered alpha centroid is the camera's projection of the anchor centre; the Node proof measures it against the export."
+    },
+    "proof": {
+      "directory": "reference/layout",
+      "probes": "probes-1x.png",
+      "overlay": "overlay-1x.png",
+      "zoom": "overlay-zoom-4x.png",
+      "record": "layout-proof.json",
+      "thresholdPx": 1.0,
+      "matchRadiusPx": 4.0,
+      "alphaThreshold": 128,
+      "zoomSize": 64,
+      "zoomFactor": 4,
+      "note": "The probe marker's alpha centroid is measured per slot and must be within thresholdPx of the exported anchor (the Task 3 acceptance). matchRadiusPx is the one-to-one matching radius between a rendered marker and its exported anchor, wide enough that a real drift is reported as a delta rather than lost; a drift beyond it fails loudly. The zoom sheet is a nearest-neighbour crop around each bucket representative and the drawn hand tile."
+    }
   }
 }
