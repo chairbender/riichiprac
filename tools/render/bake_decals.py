@@ -247,7 +247,19 @@ def carve_field(symbol_path: Path, decal_spec: dict, geometry: dict, out_path: P
     carve = decal_spec["carve"]
     px_per_unit = geometry["pxPerUnit"]
     symbol = load_rgba(symbol_path)
-    raw_mask = symbol[..., 3]
+    raw_mask = symbol[..., 3].copy()
+    # Pure-white glyph fills are the tile's ivory showing through the paint,
+    # not white enamel. Excluding them from the carve mask leaves the shell
+    # face at its original height there: a raised island inside the recessed
+    # glyph (pinzu/souzu). The decal is transparent over the island.
+    if carve.get("whiteFillUncarved", False):
+        threshold = float(carve.get("whiteFillThreshold", 0.9))
+        white = (
+            (symbol[..., 0] >= threshold)
+            & (symbol[..., 1] >= threshold)
+            & (symbol[..., 2] >= threshold)
+        )
+        raw_mask[white] = 0.0
     sigma_px = float(carve["blurUnits"]) * px_per_unit
     blurred = blur2d(raw_mask, sigma_px)
     distance_px = alpha_to_distance(blurred, sigma_px)
@@ -416,10 +428,45 @@ def decal_material(
     coverage.operation = "MAXIMUM"
     links.new(field_gate.outputs["Result"], coverage.inputs[0])
     links.new(paint_gate.outputs["Result"], coverage.inputs[1])
+    coverage_output = coverage.outputs["Value"]
+
+    # White fill islands (pinzu/souzu): keep them in the decal as *uncarved
+    # ivory*, not white paint and not a transparent hole. The carve field is
+    # zero there, so the geometry stays at the original surface; the coverage
+    # below makes the face (ivory) material opaque over the island. The paint
+    # gate is zero because the field is zero.
+    if carve.get("whiteFillUncarved", False):
+        threshold = float(carve.get("whiteFillThreshold", 0.9))
+        separate_symbol = nodes.new("ShaderNodeSeparateColor")
+        links.new(symbol_node.outputs["Color"], separate_symbol.inputs["Color"])
+        min_rg = nodes.new("ShaderNodeMath")
+        min_rg.operation = "MINIMUM"
+        links.new(separate_symbol.outputs["Red"], min_rg.inputs[0])
+        links.new(separate_symbol.outputs["Green"], min_rg.inputs[1])
+        min_rgb = nodes.new("ShaderNodeMath")
+        min_rgb.operation = "MINIMUM"
+        links.new(min_rg.outputs["Value"], min_rgb.inputs[0])
+        links.new(separate_symbol.outputs["Blue"], min_rgb.inputs[1])
+        white_gate = nodes.new("ShaderNodeMapRange")
+        white_gate.inputs["From Min"].default_value = max(0.0, threshold - 0.05)
+        white_gate.inputs["From Max"].default_value = min(1.0, threshold + 0.03)
+        white_gate.inputs["To Min"].default_value = 0.0
+        white_gate.inputs["To Max"].default_value = 1.0
+        white_gate.clamp = True
+        links.new(min_rgb.outputs["Value"], white_gate.inputs["Value"])
+        island_alpha = nodes.new("ShaderNodeMath")
+        island_alpha.operation = "MULTIPLY"
+        links.new(white_gate.outputs["Result"], island_alpha.inputs[0])
+        links.new(symbol_node.outputs["Alpha"], island_alpha.inputs[1])
+        coverage_with_island = nodes.new("ShaderNodeMath")
+        coverage_with_island.operation = "MAXIMUM"
+        links.new(coverage_output, coverage_with_island.inputs[0])
+        links.new(island_alpha.outputs["Value"], coverage_with_island.inputs[1])
+        coverage_output = coverage_with_island.outputs["Value"]
 
     transparent = nodes.new("ShaderNodeBsdfTransparent")
     final_mix = nodes.new("ShaderNodeMixShader")
-    links.new(coverage.outputs["Value"], final_mix.inputs["Fac"])
+    links.new(coverage_output, final_mix.inputs["Fac"])
     links.new(transparent.outputs["BSDF"], final_mix.inputs[1])
     links.new(paint_mix.outputs["Shader"], final_mix.inputs[2])
     output_node = nodes["Material Output"]

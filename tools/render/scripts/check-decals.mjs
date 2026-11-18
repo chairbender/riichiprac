@@ -244,8 +244,12 @@ async function checkManifest() {
     const hashes = hashesByFaceSurface.get(group) ?? new Set();
     hashes.add(record.sha256.decodedRgba);
     hashesByFaceSurface.set(group, hashes);
+    // Placement is a geometry contract: use the alpha (carve) bbox, not the
+    // ink bbox. A specular highlight can change the ink classification at an
+    // edge by a pixel or two, which is the light doing its job, not a symbol
+    // shift. The carve silhouette is identical across light rotations.
     const bboxes = bboxesByFaceSurface.get(group) ?? [];
-    if (stats.inkBBox) bboxes.push(stats.inkBBox);
+    if (stats.alphaBBox) bboxes.push(stats.alphaBBox);
     bboxesByFaceSurface.set(group, bboxes);
   }
 

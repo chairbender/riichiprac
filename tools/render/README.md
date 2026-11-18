@@ -1006,6 +1006,19 @@ cd frontend && npm run tune:carved           # lying-rig tuner
 cd frontend && npm run atlas:review:carved   # flat vs carved review sheets
 ```
 
+**Named decal profiles.** The decal look is a set of lighting/carve numbers, so
+save the good ones before experimenting:
+
+```bash
+node tools/render/scripts/decal-profile.mjs list
+node tools/render/scripts/decal-profile.mjs save approved-lying-v2
+node tools/render/scripts/decal-profile.mjs use approved-lying-v2
+```
+
+`save` snapshots the active `decal-spec.json` into `tools/render/decal-profiles/`;
+`use` restores it. Re-bake after applying a profile. `approved-lying-v2`
+(2026-11-18) is the approved white-island + upright-derived lying rig checkpoint.
+
 **Spike (measured).** 4 faces (`1m`, `5p`, `7z`, `5mr`) × (1 upright + 4 lying)
 = **20 decals at 158 × 216** (150 × 208 face plate + a 4 px transparent safety
 ring), **926,272 B** PNG, ~1 min wall on the dev box. Each decal is 34–62 KB

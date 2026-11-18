@@ -72,11 +72,13 @@ case "$mode" in
     ;;
 esac
 
-# --bake is the only mode that writes the committed assets; every other mode
-# uses build/decals. The baker's --build flag writes build/decals, so --bake
-# invokes it without --build.
+# --bake is the only mode that writes the committed assets. The baker's
+# --build flag writes the PNG bake into build/decals; the encoder then reads
+# build/decals.json and writes the committed AVIF set + manifest. Baking
+# straight into the committed folder would leave the encoder reading a stale
+# preview manifest, so --bake always uses --build first.
 if [ "$mode" = "bake" ]; then
-  bake_args=()
+  bake_args=(--build)
 fi
 
 "$blender" --background --python "$here/bake_decals.py" -- "${bake_args[@]}" "${args[@]}"
