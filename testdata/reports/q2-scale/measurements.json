@@ -147,7 +147,7 @@
     "serving": "8/8",
     "audit_findings": 0,
     "frontend_tests": "320 passed, 1 skipped",
-    "rust_lib_tests": "1121 passed",
+    "rust_lib_tests": "1122 passed",
     "q1_end_to_end": "PASS"
   },
   "storage": {
