@@ -904,6 +904,42 @@
           "handWrapSymmetryTolerance": 0.06,
           "symmetricGroups": true
         }
+      },
+      "v13-shadow-darker": {
+        "order": 13,
+        "extends": "v12-shadow-symmetric",
+        "label": "v13 darker hand shadow (match the wall's front shadow)",
+        "date": "2026-11-17",
+        "strictScene": false,
+        "note": "v12's union shadow was a touch lighter than the key shadow in front of the player's wall (26 luma at its core). v13 keeps the same union footprint, symmetric margins and x blur but darkens it: full black at the core, sigma 0.26, and the footprint offset 0.18 units south, which puts the darkest visible felt at ~27 luma against the wall shadow's 26.",
+        "handShadow": {
+          "mode": "blurredFootprint",
+          "sigmaUnits": 0.26,
+          "sigmaXUnits": 0.1,
+          "maxAlpha": 1.0,
+          "spreadUnits": 0.18,
+          "spreads": {
+            "hand": {
+              "left": 0.18,
+              "right": 0.18
+            }
+          },
+          "unionGroups": true,
+          "offsetYUnits": 0.18,
+          "depthUnits": 0.5,
+          "zUnits": 0.0025,
+          "note": "Same union recipe as v12, darkening only: full black at the core, sigma 0.26, offset 0.09 south so the visible edge sits a little further into the gradient."
+        },
+        "checks": {
+          "handShadowMaxDarkening": 1.0,
+          "handShadowMinLumaFactor": 0.4,
+          "handShadowFadeUnits": 0.6,
+          "handShadowFadeFactor": 0.92,
+          "handWrapMaxLumaFactor": 0.97,
+          "handWrapNorthMaxLumaFactor": 0.97,
+          "handWrapSymmetryTolerance": 0.06,
+          "symmetricGroups": true
+        }
       }
     }
   },

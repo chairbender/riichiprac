@@ -18,7 +18,8 @@ tile's front edge, `v5`–`v7` are three longer/stronger takes on it, and
 blurred contact rectangle per hand group; `v11-shadow-inner-offset` widens the
 row's right end too and offsets the whole blob slightly forward;
 `v12-shadow-symmetric` unions the hand row and the drawn tile into one footprint
-so the shadow is exactly symmetric. The
+so the shadow is exactly symmetric, and `v13-shadow-darker` deepens that shadow
+to match the key shadow in front of the player's wall. The
 placement board below stays at its own 2880 × 2112 framing for plan review. See
 [The 2.5D rig](#the-25d-rig-task-2).
 
@@ -356,6 +357,23 @@ variants that declare it, that every group's left and right margins are equal,
 the shadow is centred on its tiles, the whole hand's outer margins match, and
 the rendered wrap factors on both ends match within 0.06.
 
+### v13-shadow-darker (experiment, 2026-11-17)
+
+v12's union shadow was a touch lighter than the key shadow in front of the
+player's wall. v13 keeps v12's shape exactly and only deepens it.
+
+| Parameter | v13 |
+| --- | --- |
+| Shape | same union footprint as v12 (row + drawn tile), 0.18 units at both outer ends, σ 0.26 depth / 0.10 x, north edge 0.5 units under the tiles |
+| Depth | `maxAlpha 1.0` (full black at the core) and the footprint offset **0.18 units south** — the blur's edge is only 0.5 alpha, so the visible edge has to sit further into the gradient to reach the wall shadow's darkness |
+| Measured | hand shadow core **27** luma vs the wall's key shadow core at the south wall **27**; fades back to lit felt (~47–50) by ~0.5 units |
+| Symmetry | margins 0.18 / 0.18, centre offset 0; rendered ends 26/26 · 32/31 · 38/38 · 47/46; wrap 0.667 / 0.692 |
+
+The deeper offset is the mechanism, not an extra move: at a 0.5-alpha blurred
+edge the decal cannot get darker than the wall shadow without either moving the
+footprint forward or drawing a second layer. If the shadow now sits too low, the
+offset is the single knob (`offsetYUnits`, 0.18).
+
 ### What still needs the user### What still needs the user
 
 The numbers say the geometry, framing, shadowing and exposure are what was
@@ -366,12 +384,13 @@ xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, wi
 bash tools/render/bake-table-reference.sh --check
 ```
 
-The open question is whether **v12** is the keeper: take A's length and weight,
+The open question is whether **v13** is the keeper: take A's length and weight,
 one union footprint for the hand zone (row + drawn tile) blurred once, exactly
-symmetric margins, offset slightly forward, with no hard line. If it is, it
-becomes the production shadow setting (the runtime does the same thing: union the
-zone's contact rectangles, offset them down a hair, blur once) and the other
-takes can be pruned. The 40° recline and the 203 discard face are unchanged.
+symmetric margins, offset slightly forward, and now as dark as the wall's key
+shadow. If it is, it becomes the production shadow setting (the runtime does the
+same thing: union the zone's contact rectangles, offset them down a hair, blur
+once, and draw at the matching core alpha) and the other takes can be pruned.
+The 40° recline and the 203 discard face are unchanged.
 
 ## Published renders and checks
 

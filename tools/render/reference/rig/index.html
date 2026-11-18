@@ -274,3 +274,28 @@ measured on the rendered pixels. Calibration only.</p>
       <tr><th>transparent pixels</th><td>6.87%</td></tr>
     </table>
   </section>
+
+  <section>
+    <h2>v13-shadow-darker — v13 darker hand shadow (match the wall's front shadow)</h2>
+    <p>v12's union shadow was a touch lighter than the key shadow in front of the player's wall (26 luma at its core). v13 keeps the same union footprint, symmetric margins and x blur but darkens it: full black at the core, sigma 0.26, and the footprint offset 0.18 units south, which puts the darkest visible felt at ~27 luma against the wall shadow's 26.</p>
+    <figure>
+      <a href="v13-shadow-darker-1x.png"><img src="v13-shadow-darker-1x.png" alt="v13-shadow-darker"></a>
+      <figcaption>1920×1080 RGBA · 2,622,223 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>physical-pose caster (undefined casters)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.529 × felt · 0.529 → 0.732 → 0.891 → 0.988 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>hand: 0.18 / 0.18 / 0</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>6.87%</td></tr>
+    </table>
+  </section>

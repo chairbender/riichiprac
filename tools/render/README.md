@@ -259,6 +259,10 @@ sit perfectly centred on the tiles. **v12-shadow-symmetric** applies the UI grou
 recipe instead: the hand row and the drawn tile are unioned into one footprint
 and blurred once, so the tsumogiri gap is not double-darkened and the shadow is
 exactly symmetric (0.18 units at both outer ends, drawn tile centred).
+**v13-shadow-darker** keeps that shape and deepens it to match the key shadow in
+front of the player's wall: full black at the core, σ 0.26, footprint offset 0.18
+units south — the hand shadow's core now measures 27 luma against the wall
+shadow's 27.
 
 The **hand cheat** in v2 reclines the player's hand further than is physical, so
 the near bottom edge floats and the real cast shadow is not the production
