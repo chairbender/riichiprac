@@ -1806,6 +1806,57 @@ absolute point claim; no outcome bias; labels/answers legal.
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-18, S3 branch).** Implemented in `src/miner/select/special/`:
+> `mod.rs` (the three selectors, `SpecialConfig`, `SpecialVerdict`, `SeatPolicy`,
+> the equivalent-tile rule and the strict speed/value pair) and `report.rs`
+> (the `riichiprac.selector-sample` corpus report and `run_selector_sample`).
+> `mine_replays selectors` walks a shard model-free and reports trigger hits,
+> accepted verdicts, close marks, ties and every decline reason per family.
+> `mine_replays select` now confirms or drops the three non-book families with
+> those verdicts, extends the accepted tile set for a true tie, and stores each
+> accepted verdict on the candidate and the review-queue line (`special`).
+>
+> Close call: the label's top-two gap (Q gap, probability-margin fallback) is
+> banded by the L2 decision-family percentile; only `close` is accepted, and the
+> second action is recorded as the alternative. A tie is the app's own
+> equivalence: the same discard tile including the red/plain five spelling, or a
+> tile the classifier already lists in `equivalent_tiles`. A genuinely different
+> action is shown but not graded as correct; structural symmetry alone is not a
+> tie.
+>
+> Speed vs value: a closed 1-shanten self turn, no active Riichi, in the 5–12
+> turn window, where two legal discards leave plans that **strictly** trade
+> acceptance (agari shanten/ukeire through `evaluate_hand`) for worst-completion
+> value (`worst_completion_value`). There is no point threshold: the value test
+> is an ordering, and the recorded point gap is descriptive. The Mortal top
+> action must be one of the pair or the selector declines `answer_not_in_pair`;
+> the top-two percentile only decides the close mark.
+>
+> Blunder: the recorded actor must be a weak policy from the replay provenance
+> (rule/Akochan, heuristic or external), its played action must differ from the
+> Mortal top, and the played-action gap must sit in the family's confidence
+> band. A Mortal-vs-Mortal sampling difference is not a blunder. The selector
+> reads only the label and the recorded action, never the kyoku result, the
+> final score or `ura_dora`; a fixture changes all three and asserts the verdict
+> is unchanged.
+>
+> Corpus sample (`selection-s3-sample.md`, report at
+> `testdata/reports/s3-selector-sample.json`): 12 replays (four each of
+> `mortal_mirror`, `akochan_vs_mortal`, `heterogeneous_table`), 6,734 decisions,
+> all labelled, 2,203 weak-policy decisions. `close_call` 675 proposals / 675
+> accepted (the bottom decile), `speed_value` 130 / 115 (26
+> `answer_not_in_pair`, 643 `no_divergence`), `mistake` 124 / 112 (4,531
+> `actor_not_weak`, 788 `not_confident`, 1,295 played the top action). The
+> `mortal_mirror` family contributes 0 blunders, which is the rule separating a
+> real weak-agent mistake from the labeler disagreeing with itself.
+>
+> Residuals: the blunder family is thin (112 accepted, 5 from Akochan), so a
+> larger mixed corpus is the fix, not a looser threshold; no equivalent-tile tie
+> occurs in this corpus, so the tie path is fixture-only; the speed/value
+> selector is closed-hand only because the completion walk is the closed-hand
+> `agari` reading; the close-call count tracks the configured percentile by
+> construction.
+
 #### Phase 6 — Permutation
 
 ##### V1 — Transform engine

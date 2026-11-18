@@ -1,0 +1,127 @@
+{
+  "schema": "riichiprac.selector-sample",
+  "version": 1,
+  "generated_at": "20261118-035035",
+  "replays_found": 12,
+  "replays_walked": 12,
+  "replays_failed": 0,
+  "decisions_seen": 6734,
+  "decisions_dropped": 0,
+  "labelled_decisions": 6734,
+  "unlabelled_decisions": 0,
+  "weak_policy_decisions": 2203,
+  "label_source": "cache",
+  "label_models": [
+    "mortal_298k.safetensors (afb911473ac8)"
+  ],
+  "selectors": [
+    {
+      "family": "close_call",
+      "triggered": 675,
+      "evaluated": 6734,
+      "accepted": 675,
+      "close": 675,
+      "tied": 0,
+      "divergences": 0,
+      "bands": {
+        "close": 675,
+        "confident": 676,
+        "middle": 5368
+      },
+      "declined": {
+        "no_top_two": 13,
+        "not_close": 6046
+      }
+    },
+    {
+      "family": "speed_value",
+      "triggered": 130,
+      "evaluated": 6734,
+      "accepted": 115,
+      "close": 5,
+      "tied": 0,
+      "divergences": 115,
+      "bands": {
+        "close": 5,
+        "confident": 54,
+        "middle": 56
+      },
+      "declined": {
+        "answer_not_in_pair": 26,
+        "no_divergence": 643,
+        "not_one_shanten": 3599,
+        "not_self_turn": 295,
+        "riichi_active": 1746,
+        "turn_outside_window": 310
+      }
+    },
+    {
+      "family": "mistake",
+      "triggered": 124,
+      "evaluated": 6734,
+      "accepted": 112,
+      "close": 0,
+      "tied": 0,
+      "divergences": 0,
+      "bands": {
+        "close": 71,
+        "confident": 112,
+        "middle": 709
+      },
+      "declined": {
+        "actor_not_weak": 4531,
+        "not_confident": 788,
+        "played_top_action": 1295,
+        "played_unscored": 8
+      }
+    }
+  ],
+  "replay_families": [
+    [
+      "akochan_vs_mortal",
+      {
+        "replays": 4,
+        "decisions": 2628,
+        "labelled": 2628,
+        "weak_policy_decisions": 658,
+        "accepted": {
+          "close_call": 293,
+          "mistake": 5,
+          "speed_value": 38
+        }
+      }
+    ],
+    [
+      "heterogeneous_table",
+      {
+        "replays": 4,
+        "decisions": 2077,
+        "labelled": 2077,
+        "weak_policy_decisions": 1545,
+        "accepted": {
+          "close_call": 201,
+          "mistake": 107,
+          "speed_value": 52
+        }
+      }
+    ],
+    [
+      "mortal_mirror",
+      {
+        "replays": 4,
+        "decisions": 2029,
+        "labelled": 2029,
+        "weak_policy_decisions": 0,
+        "accepted": {
+          "close_call": 181,
+          "speed_value": 25
+        }
+      }
+    ]
+  ],
+  "notes": [
+    "no forward pass: labels come from decisions.label_json or the L1/L2 model_labels cache",
+    "a blunder compares a weak agent's played action with the Mortal label; it never reads the kyoku result",
+    "closeness is banded by the decision family's percentile; a family with too few samples declines rather than guessing"
+  ]
+}

@@ -748,7 +748,7 @@ fn offensive_trigger(
     // Acceptance is cheap; value is not. A hand whose discards all keep the
     // same acceptance cannot diverge, so its completion tree is never walked.
     let mut plans = acceptance_plans(snapshot);
-    if !acceptance_gap_possible(&plans, config) {
+    if !acceptance_gap_possible(&plans, config.offensive_min_ukeire_gap) {
         return;
     }
     fill_plan_values(state, &mut plans);
@@ -819,21 +819,25 @@ fn score_placement_trigger(
 // --- Offensive plans ------------------------------------------------------
 
 /// One legal discard's post-discard plan.
+///
+/// Shared with the S3 speed/vs-value selector (`select::special`): the trigger
+/// and the selector must measure the same plans, or a trigger hit and a selector
+/// verdict could disagree about what the hand offers.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct DiscardPlan {
-    tile: String,
+pub(crate) struct DiscardPlan {
+    pub(crate) tile: String,
     /// True when the discarded copy is a red five; the completion value then
     /// loses its aka-dora bonus.
-    red: bool,
-    ukeire: u16,
-    value: u32,
+    pub(crate) red: bool,
+    pub(crate) ukeire: u16,
+    pub(crate) value: u32,
 }
 
 /// Every legal discard that keeps the hand 1-shanten, with its acceptance.
 ///
 /// `value` is filled separately by [`fill_plan_values`], because the completion
 /// walk behind it is the expensive part of the trigger.
-fn acceptance_plans(snapshot: &DecisionSnapshot) -> Vec<DiscardPlan> {
+pub(crate) fn acceptance_plans(snapshot: &DecisionSnapshot) -> Vec<DiscardPlan> {
     let state = &snapshot.state;
     let concealed = concealed_tiles(&state.players[0]);
     let mut seen: BTreeSet<String> = BTreeSet::new();
@@ -875,17 +879,16 @@ fn acceptance_plans(snapshot: &DecisionSnapshot) -> Vec<DiscardPlan> {
 
 /// Whether any two plans keep a large enough acceptance gap to be worth a
 /// completion walk.
-fn acceptance_gap_possible(plans: &[DiscardPlan], config: &TriggerConfig) -> bool {
+pub(crate) fn acceptance_gap_possible(plans: &[DiscardPlan], min_ukeire_gap: u16) -> bool {
     plans.iter().any(|speed| {
         plans.iter().any(|value| {
-            speed.tile != value.tile
-                && speed.ukeire >= value.ukeire.saturating_add(config.offensive_min_ukeire_gap)
+            speed.tile != value.tile && speed.ukeire >= value.ukeire.saturating_add(min_ukeire_gap)
         })
     })
 }
 
 /// Fill each plan's worst-completion value.
-fn fill_plan_values(state: &GameState, plans: &mut [DiscardPlan]) {
+pub(crate) fn fill_plan_values(state: &GameState, plans: &mut [DiscardPlan]) {
     let concealed = concealed_tiles(&state.players[0]);
     let dora: Vec<Tile> = state
         .dora_indicators

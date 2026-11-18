@@ -61,6 +61,7 @@ use super::gate::{GateFailure, GateInput, GateKind, evaluate};
 use super::report::{GateStats, HeldOutStats, SelectionReport};
 use super::review::ReviewItem;
 use super::score::{SampleCuts, compute_signals};
+use super::special::{SeatPolicy, evaluate_specials, is_special_family};
 use super::{
     AnswerSource, Candidate, LabelFacts, ReplayFacts, SELECTION_SCHEMA, SELECTION_VERSION,
     SelectedScenario, SelectionConfig, SelectionError, SelectionPlan, candidate_turn,
@@ -194,6 +195,7 @@ fn facts_for(row: Option<&ReplayRow>, replay_family: &str) -> ReplayFacts {
             validation_ok: false,
             publishable: false,
             walk_clean: true,
+            seats: Vec::new(),
         };
     };
     let mut facts = ReplayFacts {
@@ -209,19 +211,32 @@ fn facts_for(row: Option<&ReplayRow>, replay_family: &str) -> ReplayFacts {
         validation_ok: false,
         publishable: false,
         walk_clean: true,
+        seats: Vec::new(),
     };
     match serde_json::from_str::<GameProvenance>(&row.provenance_json) {
-        Ok(provenance) => match provenance.validate() {
-            Ok(()) => {
-                facts.provenance_ok = true;
-                facts.validation_ok =
-                    provenance.validation.is_publishable() && row.validation == "ok";
-                facts.publishable = provenance.is_publishable() && row.validation == "ok";
+        Ok(provenance) => {
+            facts.seats = provenance
+                .seats
+                .iter()
+                .map(|seat| SeatPolicy {
+                    seat: usize::from(seat.seat),
+                    agent_id: seat.agent_id.clone(),
+                    kind: seat.kind,
+                    engine: seat.engine.clone(),
+                })
+                .collect();
+            match provenance.validate() {
+                Ok(()) => {
+                    facts.provenance_ok = true;
+                    facts.validation_ok =
+                        provenance.validation.is_publishable() && row.validation == "ok";
+                    facts.publishable = provenance.is_publishable() && row.validation == "ok";
+                }
+                Err(err) => {
+                    facts.provenance_detail = Some(err.to_string());
+                }
             }
-            Err(err) => {
-                facts.provenance_detail = Some(err.to_string());
-            }
-        },
+        }
         Err(err) => {
             facts.provenance_detail = Some(format!("provenance JSON: {err}"));
         }
@@ -634,6 +649,33 @@ fn build_candidate(
         ));
     };
     let plan = answer_plan(snapshot, label)?;
+    // S3: the non-book families are selected by their own concrete logic, not by
+    // the trigger mapping alone. An accepted verdict confirms the family and may
+    // extend the accepted tile set with a true equivalent-tile tie; a declined
+    // verdict drops the family the trigger proposed.
+    let actor = facts.actor_policy(snapshot.seat);
+    let verdicts = evaluate_specials(snapshot, Some(label), cuts, actor, &config.special);
+    let mut accepted = plan.accepted.clone();
+    let mut families = report.family_set();
+    let mut special = Vec::new();
+    for verdict in &verdicts {
+        if !is_special_family(verdict.family) {
+            continue;
+        }
+        if verdict.accepted {
+            families.insert(verdict.family);
+            special.push(verdict.clone());
+            for tile in &verdict.accepted_tiles {
+                if !accepted.contains(tile) {
+                    accepted.push(tile.clone());
+                }
+            }
+        } else {
+            families.remove(&verdict.family);
+        }
+    }
+    accepted.sort();
+    accepted.dedup();
     let (turn, turn_bucket) = candidate_turn(snapshot);
     let family_key = DecisionFamily::of(snapshot).key();
     let signals = compute_signals(snapshot, label, &family_key, facts, samples, &cuts.blunder);
@@ -665,7 +707,7 @@ fn build_candidate(
         snapshot,
         label: Some(label),
         answer: Some(&plan.answer),
-        accepted: &plan.accepted,
+        accepted: &accepted,
         validated_reachable: true,
         facts,
         pre_answer_texts: &texts,
@@ -688,13 +730,14 @@ fn build_candidate(
         decision_family: family_key,
         answer_source: plan.source,
         answer: plan.answer,
-        accepted: plan.accepted,
+        accepted,
         lesson: plan.lesson,
         book_section: plan.section,
         target_action: plan.target_action,
         label: LabelFacts::from_label(label, &snapshot.played.action),
-        families: report.family_set(),
+        families,
         triggers: report,
+        special,
         exact_hash: exact_state_hash(&snapshot.state),
         visible_fingerprint: visible_info_fingerprint(snapshot),
         signals,

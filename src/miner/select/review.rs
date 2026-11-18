@@ -43,6 +43,7 @@ use crate::miner::trigger::families::Family;
 use crate::report::ScenarioReport;
 
 use super::score::Signals;
+use super::special::SpecialVerdict;
 use super::{Candidate, SelectionError};
 
 /// Schema name carried by one review-queue line.
@@ -87,6 +88,10 @@ pub struct ReviewItem {
     pub score: f32,
     /// The ranking signals behind the score.
     pub signals: Signals,
+    /// Accepted S3 selector verdicts (close-call alternative, speed/value pair,
+    /// or the weak agent's blunder action), answer-free until the report opens.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub special: Vec<SpecialVerdict>,
     /// True for a held-out QA item; it must not become a pack scenario.
     pub held_out: bool,
     /// Answer-free selection reason.
@@ -149,6 +154,7 @@ impl ReviewItem {
             rank,
             score: candidate.score,
             signals: candidate.signals,
+            special: candidate.special.clone(),
             held_out,
             selection_reason,
             lesson: candidate.lesson.clone(),

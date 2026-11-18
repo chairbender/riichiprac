@@ -334,6 +334,7 @@ pub(crate) mod fixture {
             },
             families: BTreeSet::from([family]),
             triggers: TriggerReport::new(),
+            special: Vec::new(),
             exact_hash: exact_hash.to_string(),
             visible_fingerprint: visible_fingerprint.to_string(),
             signals: Signals {

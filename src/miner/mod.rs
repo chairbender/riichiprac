@@ -23,6 +23,7 @@
 //! | [`MODEL_LABEL_SCHEMA`] | `riichiprac.model-label` | one Mortal label (L1) |
 //! | [`TRIGGER_SCHEMA`] | `riichiprac.candidate-trigger` | one candidate's trigger report (S1) |
 //! | [`SELECTION_SCHEMA`] | `riichiprac.selection-report` | one selection run's report (S2) |
+//! | [`SELECTOR_SAMPLE_SCHEMA`] | `riichiprac.selector-sample` | one S3 selector corpus sample |
 //! | [`REVIEW_SCHEMA`] | `riichiprac.review-item` | one review-queue line (S2) |
 //! | [`DISPOSITION_SCHEMA`] | `riichiprac.review-disposition` | one reviewer verdict (S2) |
 //! | [`ASSEMBLY_SCHEMA`] | `riichiprac.pack-assembly-report` | one pack-assembly run's report (P1b) |
@@ -108,6 +109,15 @@ pub use select::run::{
     SelectionOptions, SelectionOutcome, SelectionPaths, latest_pack, run_selection, selection_paths,
 };
 pub use select::score::{ScoreWeights, Signals, percentile_rank};
+pub use select::special::report::{
+    SELECTOR_SAMPLE_SCHEMA, SELECTOR_SAMPLE_VERSION, SelectorReplayFamilyStats,
+    SelectorSampleOptions, SelectorSampleReport, SelectorStats, run_selector_sample,
+};
+pub use select::special::{
+    AnswerPlan, Decline, Divergence, SPECIAL_FAMILIES, SeatPolicy, SpecialAction, SpecialConfig,
+    SpecialRole, SpecialVerdict, blunder_verdict, close_call_verdict, equivalent_discard_tiles,
+    evaluate_specials, is_special_family, speed_value_verdict, trigger_for,
+};
 pub use select::{
     BucketQuotaRow, Candidate, DEFAULT_HELD_OUT_SALT, DEFAULT_HELD_OUT_SHARE, DEFAULT_PACK_SIZE,
     FamilyQuotaRow, SELECTION_SCHEMA, SELECTION_VERSION, SelectionConfig, SelectionError,

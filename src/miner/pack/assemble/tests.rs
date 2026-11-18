@@ -671,6 +671,7 @@ fn review_item(base: &BaseScenario, state: &GameState, index: usize) -> ReviewIt
         rank: Some(index + 1),
         score: 0.5,
         signals: Signals::zero(),
+        special: Vec::new(),
         held_out: false,
         selection_reason: format!(
             "family=book;section=none;kind=self_turn;turn=early;rank={}",

@@ -1,11 +1,13 @@
-# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers, selection, variants and packs (F1, R1, R2, L1, L2, S1, S2, V2, P1a, P1b, P2)
+# Replay miner operations: data root, provenance, storage, replays, labels, candidate triggers, selection, non-book selectors, variants and packs (F1, R1, R2, L1, L2, S1, S2, S3, V2, P1a, P1b, P2)
 
 Status: implemented foundation (F1), replay reader/validator (R1), the walker /
 `GameState` reconstruction (R2), the native Mortal labeler with Q values and
 the label cache (L1), book/Mortal agreement with contested marking,
 percentile hooks and optional calibration (L2), the cheap candidate triggers with
 family filters (S1), the hard gates, ranking, quotas, dedupe, held-out QA and
-review queue (S2), the label-preserving variant stage (V2), the scenario-pack
+review queue (S2), the concrete close-call, speed-vs-value and blunder selectors
+with their corpus sample report (S3), the label-preserving variant stage (V2),
+the scenario-pack
 format/gate/audit (P1a) with DB-backed assembly (P1b), and same-origin hosting
 with CI copy, byte/CORS checks and the optional R2/HF mirror (P2) of
 [`replay-implementation-plan.md`](replay-implementation-plan.md) §5.3. This
@@ -32,7 +34,11 @@ mapping and filter, and the corpus sample precision/recall report. S2 adds
 signals and composite score, family quotas with section/kind/turn diversity
 caps, exact and visible-info dedupe, the deterministic held-out QA split, and
 the JSONL review queue that embeds a single-candidate
-`riichiprac.scenario-report`. V2 adds `src/miner/variant/`: the per-lesson
+`riichiprac.scenario-report`. S3 adds `src/miner/select/special/`: the close-call
+top-two percentile band with the app's equivalent-tile ties, the strict
+speed-vs-value plan divergence, the weak-actor blunder comparison, and the
+`riichiprac.selector-sample` corpus report behind `mine_replays selectors`. V2
+adds `src/miner/variant/`: the per-lesson
 transform policy, the label-preservation gate, the yield/disable/dedupe/cap
 stage, the `riichiprac.variant-report` and the pack assembly path. P1a adds
 `src/miner/pack/`: the `riichiprac.scenario-pack` and manifest documents, the
@@ -79,6 +85,7 @@ mine_replays [--data-dir DIR] <command>
   extract           reconstruct decision points from validated logs
   label             label reconstructed decisions with Mortal + book classifiers
   triggers          report cheap candidate triggers and family precision/recall
+  selectors         report the close-call, speed-value and blunder selectors
   select            gate, rank, quota and dedupe a review queue
   transform         generate label-preserving scenario variants
   pack              assemble, audit and export scenario packs
@@ -87,11 +94,11 @@ mine_replays [--data-dir DIR] <command>
 ```
 
 `label` (L1 with the L2 agreement/calibration extensions), `triggers` (S1),
-`select` and `review` (S2), `transform` (V2), and `pack fixture`, `pack
-assemble`, `pack publish`, `pack report` and `audit` (P1a/P1b/P2) are
-implemented. The remaining commands still resolve the data root, report the
-command they would run, and exit with code 2, so a script cannot treat a stub as
-a successful run.
+`selectors` (S3), `select` and `review` (S2), `transform` (V2), and `pack
+fixture`, `pack assemble`, `pack publish`, `pack report` and `audit`
+(P1a/P1b/P2) are implemented. The remaining commands still resolve the data
+root, report the command they would run, and exit with code 2, so a script
+cannot treat a stub as a successful run.
 
 ```bash
 cargo run --features miner --bin mine_replays -- label \
@@ -142,6 +149,28 @@ The trigger codes are `book:<section>` (`book:ch8.4`), `defensive_riichi`,
 `blunder`. `decisions.trigger` holds the most specific code and
 `decisions.trigger_detail` holds the full `riichiprac.candidate-trigger` v1 JSON,
 so selection can read every reason and the candidate families.
+
+```bash
+cargo run --release --features miner --bin mine_replays -- selectors \
+  [--replays DIR] [--family NAME] [--limit N] [--json]
+```
+
+`selectors` is the S3 corpus sample. It walks the shard, reads cached labels
+(never a forward pass), and reports one row per non-book selector: how many
+decisions S1 proposed, how many carried a label, how many the selector accepted,
+how many are close calls or equivalence ties, and every decline code. It never
+writes a queue or a pack. The committed sample is
+[`selection-s3-sample.md`](selection-s3-sample.md). The selector is also part of
+`select`: it confirms or drops `close_call`, `speed_value` and `mistake` on each
+candidate, extends the accepted tile set for a true equivalent-tile tie, and
+stores the accepted verdict on the review-queue line.
+
+The blunder row needs the replay's provenance to know whether the actor was a
+weak policy. A rule engine (Akochan), a heuristic baseline or an external policy
+is weak; a neural actor is the labeler's peer, so a Mortal-vs-Mortal sampling
+difference is not a blunder. A shard with no weak-actor labels honestly reports
+`actor_not_weak` instead of turning the labeler's own disagreement into a
+mistake drill.
 
 ```bash
 cargo run --release --features miner --bin mine_replays -- select \
@@ -235,6 +264,7 @@ Every serialised miner document carries `schema` and `version`.
 | `riichiprac.model-label` | `MODEL_LABEL_SCHEMA` | one Mortal label (L1) |
 | `riichiprac.candidate-trigger` | `TRIGGER_SCHEMA` | one candidate's trigger report (S1) |
 | `riichiprac.selection-report` | `SELECTION_SCHEMA` | one selection run's report (S2) |
+| `riichiprac.selector-sample` | `SELECTOR_SAMPLE_SCHEMA` | one S3 selector corpus sample (close call, speed/value, blunder) |
 | `riichiprac.review-item` | `REVIEW_SCHEMA` | one review-queue line (S2) |
 | `riichiprac.review-disposition` | `DISPOSITION_SCHEMA` | one reviewer verdict (S2) |
 | `riichiprac.pack-assembly-report` | `ASSEMBLY_SCHEMA` | one pack-assembly run's report (P1b) |

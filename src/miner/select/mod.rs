@@ -62,6 +62,7 @@ pub mod report;
 pub mod review;
 pub mod run;
 pub mod score;
+pub mod special;
 
 #[cfg(test)]
 mod tests;
@@ -93,6 +94,15 @@ pub use run::{
     SelectionOptions, SelectionOutcome, SelectionPaths, latest_pack, run_selection, selection_paths,
 };
 pub use score::{SampleCuts, SampleSummary, ScoreWeights, Signals};
+pub use special::report::{
+    SELECTOR_SAMPLE_SCHEMA, SELECTOR_SAMPLE_VERSION, SelectorReplayFamilyStats,
+    SelectorSampleOptions, SelectorSampleReport, SelectorStats, run_selector_sample,
+};
+pub use special::{
+    AnswerPlan, Decline, Divergence, SPECIAL_FAMILIES, SeatPolicy, SpecialAction, SpecialConfig,
+    SpecialRole, SpecialVerdict, blunder_verdict, close_call_verdict, equivalent_discard_tiles,
+    evaluate_specials, is_special_family, speed_value_verdict, trigger_for,
+};
 
 /// Schema name carried by a serialised selection report.
 pub const SELECTION_SCHEMA: &str = "riichiprac.selection-report";
@@ -142,6 +152,9 @@ pub struct SelectionConfig {
     /// Cheap-trigger thresholds (S1) used to annotate candidates.
     #[serde(default)]
     pub trigger: TriggerConfig,
+    /// Close-call, speed-vs-value and blunder selector thresholds (S3).
+    #[serde(default)]
+    pub special: special::SpecialConfig,
 }
 
 const fn default_min_top_probability() -> f32 {
@@ -169,6 +182,7 @@ impl Default for SelectionConfig {
             held_out_share: default_held_out_share(),
             held_out_salt: default_held_out_salt(),
             trigger: TriggerConfig::default(),
+            special: special::SpecialConfig::default(),
         }
     }
 }
@@ -224,6 +238,7 @@ impl SelectionConfig {
         self.quotas.validate()?;
         self.percentiles.validate().map_err(|err| err.to_string())?;
         self.trigger.validate().map_err(|err| err.to_string())?;
+        self.special.validate()?;
         Ok(())
     }
 
@@ -274,6 +289,14 @@ pub struct ReplayFacts {
     pub publishable: bool,
     /// The walk reconstructed every decision in the game.
     pub walk_clean: bool,
+    /// The provenance's per-seat policies, in resolved seat order.
+    ///
+    /// The blunder selector reads the recorded actor's seat here: a rule or
+    /// heuristic agent is the weak half of a blunder comparison, a neural
+    /// labeler is not. Empty when the replay row or its provenance is missing
+    /// (the selector then declines `actor_not_weak`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub seats: Vec<special::SeatPolicy>,
 }
 
 impl ReplayFacts {
@@ -293,7 +316,14 @@ impl ReplayFacts {
             validation_ok: true,
             publishable: true,
             walk_clean: true,
+            seats: Vec::new(),
         }
+    }
+
+    /// The recorded actor's policy, when its seat is known.
+    #[must_use]
+    pub fn actor_policy(&self, seat: usize) -> Option<&special::SeatPolicy> {
+        self.seats.iter().find(|policy| policy.seat == seat)
     }
 }
 
@@ -452,6 +482,9 @@ pub struct Candidate {
     pub families: BTreeSet<Family>,
     /// The S1 trigger report.
     pub triggers: TriggerReport,
+    /// Accepted S3 selector verdicts, one per accepted non-book family.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub special: Vec<SpecialVerdict>,
     /// The exact model-visible state hash.
     pub exact_hash: String,
     /// The literal visible-table fingerprint.

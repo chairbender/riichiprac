@@ -37,11 +37,12 @@ use riichiprac::miner::{
     DEFAULT_MAX_HOSTED_BYTES, DEFAULT_PACK_SIZE, DataRoot, FamilyFilter, GAMES_FILE_NAME,
     HostOptions, MANIFEST_FILE_NAME, PackAudit, PackAuditContext, PackBudget, PackError,
     PackFinding, PackFindingCode, PackId, PublishProfile, QPointCalibration, ReviewOptions,
-    SelectionConfig, SelectionOptions, TriggerConfig, TriggerFilter, TriggerSampleOptions,
-    TriggerSampleReport, audit_pack_dir, audit_summary, fixture_games, fixture_pack, latest_pack,
-    load_manifest, open_miner_db, pack_report, publish_hosted, publish_pack, read_pack, read_queue,
-    render_pack_report, review_queue, run_assembly, run_selection, run_trigger_sample,
-    selection_paths, utc_iso8601, write_games_atomic,
+    SelectionConfig, SelectionOptions, SelectorSampleOptions, SelectorSampleReport, TriggerConfig,
+    TriggerFilter, TriggerSampleOptions, TriggerSampleReport, audit_pack_dir, audit_summary,
+    fixture_games, fixture_pack, latest_pack, load_manifest, open_miner_db, pack_report,
+    publish_hosted, publish_pack, read_pack, read_queue, render_pack_report, review_queue,
+    run_assembly, run_selection, run_selector_sample, run_trigger_sample, selection_paths,
+    utc_iso8601, write_games_atomic,
 };
 
 #[derive(Debug, Parser)]
@@ -142,6 +143,24 @@ enum Command {
         /// Do not write trigger reasons onto decisions rows.
         #[arg(long)]
         dry_run: bool,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Report the close-call, speed-vs-value and blunder selectors on a shard.
+    Selectors {
+        /// Replay directory (default: <data-dir>/replays).
+        #[arg(long, value_name = "DIR")]
+        replays: Option<PathBuf>,
+
+        /// Read only this family sub-directory.
+        #[arg(long, value_name = "NAME")]
+        family: Option<String>,
+
+        /// Maximum replay files in the sample.
+        #[arg(long, value_name = "N")]
+        limit: Option<usize>,
 
         /// Machine-readable report.
         #[arg(long)]
@@ -462,6 +481,7 @@ impl Command {
             Self::Extract => "extract",
             Self::Label { .. } => "label",
             Self::Triggers { .. } => "triggers",
+            Self::Selectors { .. } => "selectors",
             Self::Transform { .. } => "transform",
             Self::Pack { .. } => "pack",
             Self::Audit { .. } => "audit",
@@ -564,6 +584,23 @@ fn main() -> ExitCode {
                 json,
             )
         }
+        Command::Selectors {
+            replays,
+            family,
+            limit,
+            json,
+        } => run_selectors_command(
+            &root,
+            &SelectorSampleOptions {
+                replays,
+                family,
+                limit,
+                trigger: TriggerConfig::default(),
+                special: Default::default(),
+                percentiles: Default::default(),
+            },
+            json,
+        ),
         Command::Transform {
             queue,
             rehearsal,
@@ -1453,6 +1490,37 @@ fn trigger_exit_code(report: &TriggerSampleReport) -> ExitCode {
     }
 }
 
+fn run_selectors_command(root: &DataRoot, options: &SelectorSampleOptions, json: bool) -> ExitCode {
+    match run_selector_sample(root, options) {
+        Ok(report) if json => {
+            match serde_json::to_string_pretty(&report) {
+                Ok(text) => println!("{text}"),
+                Err(err) => {
+                    eprintln!("mine_replays selectors: cannot serialise the report: {err}");
+                    return ExitCode::from(2);
+                }
+            }
+            selectors_exit_code(&report)
+        }
+        Ok(report) => {
+            print!("{}", report.human_summary());
+            selectors_exit_code(&report)
+        }
+        Err(err) => {
+            eprintln!("mine_replays selectors: {err}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn selectors_exit_code(report: &SelectorSampleReport) -> ExitCode {
+    if report.replays_failed > 0 || !report.errors.is_empty() {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1472,6 +1540,7 @@ mod tests {
             "select",
             "transform",
             "triggers",
+            "selectors",
             "pack",
             "audit",
             "review",
