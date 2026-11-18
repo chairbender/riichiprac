@@ -1262,9 +1262,13 @@ the look; the agent does not (AGENTS.md §6).
 
 The plan's three ways to get carved faces were: batch 612 rendered sprites, a 2D
 emboss filter, or **orthographic PBR relief maps lit in world space** (chosen).
-This section is that bake. It does not replace the flat glyphs or the Phase 2b
-decals: they remain the runtime path and the fallback until the Task 5A
-compositor lands. The bake's output is the *input* to Task 5A.
+**Status (2026-11-18): retired as a runtime input.** Task 5A lit these maps on
+the CPU, but the result was rejected: the screen-locked version blew out the
+highlights, the white-in-shape details were not represented as bumps, and with
+screen-locked lighting there was no per-slot benefit left. The three atlases and
+`relief.json` were **removed from `frontend/public/table/`** to stop shipping
+3.4 MiB of unused assets; the bake tooling and this record remain if the
+approach is ever revived. The Phase 2b carved decals are the runtime path.
 
 **Three atlases, one cell per face.** 37 faces (34 standard + the three red
 fives) at **256 × 340 px** in a 6 × 7 = 42-cell atlas (**1536 × 2380**; the five
@@ -1307,11 +1311,12 @@ stays exactly 1.0, a tight junction lands at ~0.45-0.52, and the deepest V-corne
 floors at 0.25 instead of black. The manifest records the raw and mapped
 min/mean/max.
 
-**Numbers.** `bash tools/render/bake-relief.sh --bake` runs the Node artwork
-pass and 37 × 4 Cycles passes in **331 s**. Atlas bytes: **948,566 +
-1,645,011 + 957,674 = 3,551,251 B (3.39 MiB)**; `relief.json` is 77,431 B with
-per-face measurements and decoded-RGBA hashes. `scripts/check-relief.mjs`
-(dependency-free, the CI gate) prints **770 checks** in ~1 s: spec contract,
+**Numbers (when regenerated into `build/`).** `bash tools/render/bake-relief.sh
+--bake` runs the Node artwork pass and 37 × 4 Cycles passes in **331 s**. Atlas
+bytes: **948,566 + 1,645,011 + 957,674 = 3,551,251 B (3.39 MiB)**; a manifest
+with per-face measurements and decoded-RGBA hashes is 77,431 B.
+`scripts/check-relief.mjs` (dependency-free; no longer a CI gate because the
+outputs are not committed) prints **770 checks** in ~1 s: spec contract,
 cell rects, atlas hashes, the channel contract per face, un-carved albedo
 exactly `#FFFFFF` with alpha 0, painted floors at the engraving depth with flat
 normals and 0.12 roughness, open faces at depth 1 / flat normal / AO 1.0 / 0.45
@@ -1321,7 +1326,7 @@ band), the paint silhouette IoU against the flat glyph, cavity AO **darkest
 every non-flat normal and non-1 depth pixel inside the paint's wall band).
 Budgets stay advisory (AGENTS.md §1c).
 
-**Review.** The bake writes build-only sheets under
+**Review.** A local bake writes build-only sheets under
 `tools/render/build/relief/review/`: a contact sheet with albedo-over-ivory,
 normal, AO and roughness panels per face and its measured numbers; a 4× zoom
 (the same crop through all four panels); and an alignment sheet that draws the
