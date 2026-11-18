@@ -185,6 +185,7 @@ interface ArtifactNumbers {
     y: number;
     width: number;
     height: number;
+    scale: number;
     bodies: number;
     shadows: number;
     covered: number;
@@ -348,6 +349,7 @@ for (const artifact of artifacts) {
         y: Math.round(rect.top * 10) / 10,
         width: entry.zone.width,
         height: entry.zone.height,
+        scale: entry.scale,
         bodies: entry.zone.bodies.length,
         shadows: entry.zone.shadows.length,
         covered: coverage?.covered ?? 0,

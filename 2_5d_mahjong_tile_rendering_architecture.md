@@ -1823,32 +1823,46 @@ views.
 | `frontend/src/table/boardAssets.ts` | `overlays.json`, `catches.json` and `lying-catches.json`, fetched once, each optional. |
 | `frontend/src/components/RenderedTable.tsx` | The React host: loads the shared atlas (`loadFirstBoardAtlas`, 18 pages, decals on) and manifests once, measures the window, builds the plan per hand, prepares once per plan and redraws on hand/viewport change; compass, hidden summary, status. |
 
-**Board geometry.** The plan places the four ponds round the compass well, the
-walls round the ponds, and each seat's hand (with its melds on the player's
-right) outside its wall. Distances are derived from the measured zones, so a
-hand's length or a meld moves its neighbours instead of overlapping them. Two
-frames are deliberately fixed:
+**Board geometry (revised 2026-11-18 after the user's "too zoomed out" review).**
+The plan places the four ponds round a square compass well, the four walls
+round the ponds, and each seat's hand (with its melds on the player's right)
+outside the ring. Distances are derived from the measured zones, so a hand's
+length or a meld moves its neighbours instead of overlapping them.
 
-- **The ring is sized from a full 6 x 3 reference pond**, not the current one.
-  A river grows toward its player from a fixed edge instead of moving the walls
-  and hands on every discard.
-- **The compass well is at least half a pond's long side** (250 px at the
-  committed shells). Otherwise the four rivers overlap in the corners: a
-  6-column pond spans half its width across the seat's centre line.
-- **The front/back walls push out to at least half a side wall's height**, so a
-  short pond band cannot let the 17-stack side walls cross the horizontal
-  walls. The bands meet at the corners; the horizontal walls are wider than the
-  side-wall columns, which is the per-zone "impossible geometry" this view
-  accepts.
+- **The wall ring is one closed square.** The front/back walls span the ring's
+  full outer width; the two side-wall columns span the ring's inner opening
+  height, so their outer edges land on the horizontal walls' outer edges and
+  their ends land on the horizontal walls' inner edges. Every corner is an
+  L-shaped overlap (`247 x 166` at the committed shells), drawn in Task 4.1
+  order: the side columns cover the back wall's ends and the front wall covers
+  theirs. Only the horizontal walls are scaled, by 0.3-0.5 %, to match the
+  ring's side; the side columns need no scaling.
+- **The four rivers share one square well.** Their long sides are scaled (each
+  pond uniformly, so its tiles keep their aspect) until bottom/top and
+  left/right have the same length: the well's side. The first row of every river
+  therefore sits on one square, and the pond block fills the ring's inner width
+  to within the 10 px `pondWallGapPx`. The well is as large as that width
+  allows (130 px half-side, 260 px square, at the committed shells), because the
+  side ponds' row depth is what limits the block. The pond scales are ~0.54
+  (bottom/top) and ~0.64 (left/right); early, short rivers anchor on the same
+  well and grow toward their player.
+- **The ring is sized from the *full* reference pond**, not the current one, so
+  a river growing during play never moves the walls or the hands.
+- The front/back walls still carry the wider run (17 stacks at 69.7 px) and the
+  side columns the shorter one (17 at 46 px); the equal outer square is what
+  makes the per-zone "impossible geometry" read as one table. The previous
+  layout left 92 px vertical gaps and 258 px horizontal overhangs at the
+  corners and placed the side walls outside the horizontal walls' ends; that is
+  what produced the zoomed-out board.
 
-The committed pack hand (`ryanmen_protorun`) plans a **2194 x 1738 @1x** board:
-13 zones, 211 bodies, 196 contact decals. At 1920 x 1080 the fit scale is
-**0.478** and the felt square is 1080 px at x = 420; at 390 x 844 the scale is
-0.172 with the felt cropped to the window width. On a phone the full board is
-necessarily small; the stacked and top-down views remain the accessible,
-readable fallbacks. The fit reserves the measured floating HUD's height (action
-strip + hand dock), so the drawn human hand is not hidden behind the dock; the
-felt raster itself still reaches the window edge.
+The committed pack hand (`ryanmen_protorun`) now plans a **1672 x 1554 @1x**
+board: 13 zones, 211 bodies, 196 contact decals. At 1920 x 1080 the fit scale is
+**0.542** (up from 0.478) and the felt square is 1080 px at x = 420; at 390 x 844
+the scale is **0.226** (up from 0.172) with the felt cropped to the window width.
+On a phone the full board is still small; the stacked and top-down views remain
+the accessible, readable fallbacks. The fit reserves the measured floating HUD's
+height (action strip + hand dock), so the drawn human hand is not hidden behind
+the dock; the felt raster itself still reaches the window edge.
 
 **Caching path.** `loadFirstBoardAtlas` composes the 18 face-up shell pages once
 per app lifetime (@2x if DPR asks and the estimate is inside the 48 MiB cap,
@@ -1863,9 +1877,9 @@ and a repeat draw of the same plan is a pure blit. There is no per-frame loop.
 (18 discards and four melds a seat, all hands full; a rendering fixture, not a
 legal state) and `rendered-board-portrait.png` (390 x 844), plus
 `rendered-board-numbers.json`. The script uses the runtime compositor itself and
-prints **35/35 / 50/50 / 35/35 checks**, including per-zone opaque-pixel
-coverage and the decoded-pixel fact that each written PNG's bright tile pixels
-lie inside the visible felt square. Unit
+prints **38/38 / 53/53 / 38/38 checks**, including the closed/square wall ring,
+the square pond well, per-zone opaque-pixel coverage and the decoded-pixel fact
+that each written PNG's bright tile pixels lie inside the visible felt square. Unit
 coverage: `boardPlan.test.ts` (12 tests, the scripted checks included),
 `BoardRenderer.test.ts` (fit/felt), `RenderedTable.test.tsx` (roles, compass,
 summary, no-canvas path) and `App.rendered.test.tsx` (full-window stage, overlay

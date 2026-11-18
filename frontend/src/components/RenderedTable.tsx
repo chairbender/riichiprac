@@ -26,7 +26,7 @@ import { BoardRenderer } from '../table/BoardRenderer';
 import type { BoardFit } from '../table/BoardRenderer';
 import { loadFirstBoardAssets } from '../table/boardAssets';
 import type { BoardAssets } from '../table/boardAssets';
-import { buildBoardPlan, RENDERED_BOARD_SPACING } from '../table/boardPlan';
+import { buildBoardPlan } from '../table/boardPlan';
 import { loadFirstBoardAtlas, tableAssetUrl } from '../table/TileAtlas';
 import type { TileAtlas } from '../table/TileAtlas';
 import { RiichiStick } from './RiichiStick';
@@ -328,7 +328,7 @@ export function RenderedTable({
 
   const compassSize = compassSizeNumber(
     fit,
-    plan?.centreGapPx ?? RENDERED_BOARD_SPACING.centreGapPx,
+    plan?.centreGapPx ?? 120,
   );
   const compassLeft =
     fit && plan ? fit.originX + plan.centreX * fit.scale : viewport.width / 2;

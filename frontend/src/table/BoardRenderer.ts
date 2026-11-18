@@ -354,6 +354,7 @@ export class BoardRenderer {
 
     context.save();
     context.translate(entry.x, entry.y);
+    if (entry.scale !== 1) context.scale(entry.scale, entry.scale);
     if (zone.rotationDeg !== 0) {
       context.translate(zone.pivotX, zone.pivotY);
       context.rotate((zone.rotationDeg * Math.PI) / 180);
@@ -426,22 +427,23 @@ export class BoardRenderer {
     let color = '#0b1418';
     for (const entry of members) {
       const zone = entry.zone;
+      const scale = entry.scale;
       for (const tile of zone.shadows) {
         const shell = this.atlas.shells.shells[tile.shell];
         if (!shell) continue;
         const shape = shell.shadowShape;
-        sigma = shape.sigmaPx1x;
+        sigma = Math.max(sigma, shape.sigmaPx1x * scale);
         coreAlpha = shape.coreAlpha;
         color = shape.colorHex;
-        let cx = entry.x + tile.gridX + shape.centrePx[0];
-        let cy = entry.y + tile.gridY + shape.centrePx[1];
+        let cx = entry.x + scale * (tile.gridX + shape.centrePx[0]);
+        let cy = entry.y + scale * (tile.gridY + shape.centrePx[1]);
         let angleDeg = shape.angleDeg;
         if (zone.rotationDeg !== 0) {
           [cx, cy] = rotatePoint(
             cx,
             cy,
-            entry.x + zone.pivotX,
-            entry.y + zone.pivotY,
+            entry.x + scale * zone.pivotX,
+            entry.y + scale * zone.pivotY,
             zone.rotationDeg,
           );
           angleDeg += zone.rotationDeg;
@@ -449,9 +451,9 @@ export class BoardRenderer {
         rects.push({
           cx,
           cy,
-          halfX: shape.halfPx[0],
-          halfY: shape.halfPx[1],
-          radius: shape.radiusPx,
+          halfX: shape.halfPx[0] * scale,
+          halfY: shape.halfPx[1] * scale,
+          radius: shape.radiusPx * scale,
           angleDeg,
         });
       }

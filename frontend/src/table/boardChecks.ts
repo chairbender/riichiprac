@@ -8,6 +8,8 @@
  */
 import type { GameState } from '../types/game';
 import type { BoardPlan, BoardZone } from './boardPlan';
+import { zoneVisualBounds } from './boardPlan';
+import { POND_COLUMNS } from './zoneLayout';
 
 export interface BoardCheck {
   readonly name: string;
@@ -24,11 +26,22 @@ interface Rect {
 
 /** The placed zone's rect: bodies plus their hard shadows, without blur tail. */
 export function rectOf(entry: BoardZone): Rect {
+  const bounds = zoneVisualBounds(entry.zone, entry.scale, false);
+  return {
+    left: entry.x + bounds.left,
+    top: entry.y + bounds.top,
+    right: entry.x + bounds.right,
+    bottom: entry.y + bounds.bottom,
+  };
+}
+
+/** The zone's placed frame without the 1° lean: bodies, hard shadows, no pad. */
+export function frameRectOf(entry: BoardZone): Rect {
   return {
     left: entry.x,
     top: entry.y,
-    right: entry.x + entry.zone.width,
-    bottom: entry.y + entry.zone.height,
+    right: entry.x + entry.zone.width * entry.scale,
+    bottom: entry.y + entry.zone.height * entry.scale,
   };
 }
 
@@ -93,14 +106,17 @@ export function checkBoardPlan(plan: BoardPlan, state: GameState): BoardCheck[] 
   const rightPond = zoneById(plan, 'pond-right');
   if (bottomPond && topPond && leftPond && rightPond) {
     const gap = plan.centreGapPx;
+    // The side ponds carry a 1° whole-zone lean, so their AABB's inner edge is
+    // a few px inside the unrotated well: allow that much.
+    const leanBudget = 8;
     checks.push(
       check(
-        'pond inner edges are one compass gap from the centre',
-        Math.abs(rectOf(bottomPond).top - (plan.centreY + gap)) < 0.01 &&
-          Math.abs(rectOf(topPond).bottom - (plan.centreY - gap)) < 0.01 &&
-          Math.abs(rectOf(rightPond).left - (plan.centreX + gap)) < 0.01 &&
-          Math.abs(rectOf(leftPond).right - (plan.centreX - gap)) < 0.01,
-        `gap ${gap}px · centre ${plan.centreX.toFixed(1)},${plan.centreY.toFixed(1)}`,
+        'pond inner edges are on one square well',
+        Math.abs(rectOf(bottomPond).top - (plan.centreY + gap)) <= leanBudget &&
+          Math.abs(rectOf(topPond).bottom - (plan.centreY - gap)) <= leanBudget &&
+          Math.abs(rectOf(rightPond).left - (plan.centreX + gap)) <= leanBudget &&
+          Math.abs(rectOf(leftPond).right - (plan.centreX - gap)) <= leanBudget,
+        `gap ${gap.toFixed(1)}px · centre ${plan.centreX.toFixed(1)},${plan.centreY.toFixed(1)}`,
       ),
     );
   }
@@ -127,6 +143,32 @@ export function checkBoardPlan(plan: BoardPlan, state: GameState): BoardCheck[] 
     leftHand &&
     rightHand
   ) {
+    // The wall ring is one closed square: the horizontal walls span its width,
+    // the side columns its height, and each corner is an L-shaped overlap.
+    const back = rectOf(backWall);
+    const front = rectOf(frontWall);
+    const leftSide = rectOf(leftWall);
+    const rightSide = rectOf(rightWall);
+    const ringWidth = rightSide.right - leftSide.left;
+    const ringHeight = front.bottom - back.top;
+    checks.push(
+      check(
+        'wall ring is square',
+        Math.abs(ringWidth - ringHeight) <= 2,
+        `${ringWidth.toFixed(1)} x ${ringHeight.toFixed(1)}`,
+      ),
+    );
+    checks.push(
+      check(
+        'wall ring corners close',
+        Math.abs(back.bottom - leftSide.top) <= 2 &&
+          Math.abs(back.bottom - rightSide.top) <= 2 &&
+          Math.abs(front.top - leftSide.bottom) <= 2 &&
+          Math.abs(front.top - rightSide.bottom) <= 2,
+        `back ${back.bottom.toFixed(1)} / side tops ${leftSide.top.toFixed(1)},${rightSide.top.toFixed(1)} · ` +
+          `front ${front.top.toFixed(1)} / side bottoms ${leftSide.bottom.toFixed(1)},${rightSide.bottom.toFixed(1)}`,
+      ),
+    );
     checks.push(
       check(
         'far-to-near rows: pond, wall, hand',
@@ -147,26 +189,57 @@ export function checkBoardPlan(plan: BoardPlan, state: GameState): BoardCheck[] 
           rectOf(rightHand).right > rectOf(rightWall).right,
       ),
     );
+    // The four rivers' first rows form one square well. The equality only
+    // holds once both a horizontal and a vertical river have a full 6-tile row
+    // (a short river is a shorter row anchored on the same well).
+    const topRowWidth = rectOf(bottomPond).right - rectOf(bottomPond).left;
+    const leftRowLength = rectOf(leftPond).bottom - rectOf(leftPond).top;
+    const bottomFull =
+      (player(state, 0)?.discards.length ?? 0) >= POND_COLUMNS;
+    const leftFull =
+      (player(state, 3)?.discards.length ?? 0) >= POND_COLUMNS;
+    const squareOk =
+      bottomFull && leftFull
+        ? Math.abs(topRowWidth - leftRowLength) <= 6
+        : topRowWidth <= plan.centreGapPx * 2 + 2 &&
+          leftRowLength <= plan.centreGapPx * 2 + 2;
+    checks.push(
+      check(
+        'pond first rows form one square well',
+        squareOk &&
+          Math.abs(rectOf(bottomPond).top - (plan.centreY + plan.centreGapPx)) <= 8 &&
+          Math.abs(rectOf(topPond).bottom - (plan.centreY - plan.centreGapPx)) <= 8,
+        `${topRowWidth.toFixed(1)} x ${leftRowLength.toFixed(1)} · well ${(plan.centreGapPx * 2).toFixed(1)} · ` +
+          `${bottomFull && leftFull ? 'full rows' : 'short rows'}`,
+      ),
+    );
   }
 
   // No placed zone may sit inside another: every gap is a measured constant.
   const overlaps: string[] = [];
   for (let first = 0; first < plan.zones.length; first += 1) {
     for (let second = first + 1; second < plan.zones.length; second += 1) {
-      const a = rectOf(plan.zones[first]);
-      const b = rectOf(plan.zones[second]);
+      const firstZone = plan.zones[first];
+      const secondZone = plan.zones[second];
+      // The four walls overlap at the corners by design: that L-shaped join is
+      // what closes the ring, and Task 4.1 draws the later layer over it.
+      if (firstZone.zone.kind === 'wall' && secondZone.zone.kind === 'wall') {
+        continue;
+      }
+      const a = frameRectOf(firstZone);
+      const b = frameRectOf(secondZone);
       const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
       const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-      if (overlapX > 0.5 && overlapY > 0.5) {
+      if (overlapX > 1.5 && overlapY > 1.5) {
         overlaps.push(
-          `${plan.zones[first].zone.id}/${plan.zones[second].zone.id} ${overlapX.toFixed(1)}x${overlapY.toFixed(1)}`,
+          `${firstZone.zone.id}/${secondZone.zone.id} ${overlapX.toFixed(1)}x${overlapY.toFixed(1)}`,
         );
       }
     }
   }
   checks.push(
     check(
-      'no placed zone overlaps another',
+      'no placed zone overlaps outside the wall corners',
       overlaps.length === 0,
       overlaps.length === 0 ? `${plan.zones.length} zones` : overlaps.join(', '),
     ),

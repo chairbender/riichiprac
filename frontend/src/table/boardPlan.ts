@@ -10,18 +10,30 @@
  * Geometry, in @1x board px:
  *
  *                top hand
- *              back wall
- *   left hand   top pond    right hand
- *   left wall   (compass)   right wall
- *               bottom pond
- *              front wall
+ *        ┌───────────────────────┐  back wall
+ *        │   top pond            │
+ *  left  │ ┌────┐        ┌────┐  │  right
+ *  hand  │ │left│ compass│right│ │  hand
+ *        │ └────┘        └────┘  │
+ *        │   bottom pond         │
+ *        └───────────────────────┘  front wall
  *                bottom hand
  *
- * The four ponds sit round the central compass well, the walls ring the ponds,
- * and each seat's hand (plus its melds, on the player's right) sits outside its
- * wall. Every distance is derived from the measured zones, so a longer hand, an
- * extra pond row or a second meld moves its neighbours rather than overlapping
- * them.
+ * **The wall ring is one closed square.** The front/back wall runs and the
+ * side-wall columns are placed on the same outer square: the horizontal walls'
+ * inner edges land exactly on the side columns' ends, and the side columns'
+ * outer edges land exactly on the horizontal walls' outer edges, so every
+ * corner is an L-shaped overlap (the side walls draw over the back wall's ends
+ * and under the front wall's, per Task 4.1).
+ *
+ * **The four ponds share one square well.** Their long sides are scaled (each
+ * pond uniformly, so its tiles keep their aspect) until bottom/top and
+ * left/right have the same length = the well's side, so the first row of every
+ * river forms a square with touching corners. The pond zones are the only
+ * scaled zones; the walls, hands and melds stay at @1x.
+ *
+ * Every distance is derived from the measured zones, so a longer hand or an
+ * extra meld moves its neighbours rather than overlapping them.
  *
  * Coordinates stay fractional and unrounded: the compositor scales the whole
  * board into the square felt, so rounding here would bake in a scale.
@@ -47,10 +59,8 @@ import type { LayoutZone, PondDiscard } from './zoneLayout';
 
 /** The gaps the board composition uses, in @1x px. */
 export const RENDERED_BOARD_SPACING = {
-  /** Half the compass well: the ponds' inner edges sit this far from centre. */
-  centreGapPx: 104,
-  /** Pond edge to its wall's inner edge. */
-  pondWallGapPx: 26,
+  /** Breathing room between the pond block and the wall ring's inner edges. */
+  pondWallGapPx: 10,
   /** Wall's outer edge to its seat's hand (or side hand) edge. */
   wallHandGapPx: 22,
   /** Hand edge to the first meld of that seat. */
@@ -65,6 +75,8 @@ export interface BoardZone {
   /** Board-space position of the zone's local origin (0, 0). */
   readonly x: number;
   readonly y: number;
+  /** Uniform scale of the zone's local space; 1 for everything but ponds. */
+  readonly scale: number;
 }
 
 export interface BoardPlan {
@@ -277,100 +289,152 @@ export function buildBoardPlan(
   const leftWall = layoutSideWall(manifest, { side: 'left' });
   const rightWall = layoutSideWall(manifest, { side: 'right' });
 
-  const placed: Array<{ zone: LayoutZone; x: number; y: number }> = [];
-  const put = (zone: LayoutZone | null, x: number, y: number) => {
-    if (zone) placed.push({ zone, x, y });
+  const placed: Array<{
+    zone: LayoutZone;
+    x: number;
+    y: number;
+    scale: number;
+  }> = [];
+  const put = (
+    zone: LayoutZone | null,
+    x: number,
+    y: number,
+    scale = 1,
+  ) => {
+    if (zone) placed.push({ zone, x, y, scale });
   };
 
   const { pondWallGapPx, wallHandGapPx, meldGapPx, meldStepGapPx } =
     RENDERED_BOARD_SPACING;
 
-  /*
-   * The compass well has to be at least as wide as one pond's long side, or the
-   * four rivers overlap in the corners: a 6-column bottom pond spans half its
-   * width either side of the seat's centre line.
-   */
   const reference = referencePondSizes(manifest);
-  const pondHalfSpan =
-    Math.max(
-      reference.bottom.width,
-      reference.top.width,
-      reference.left.height,
-      reference.right.height,
-    ) / 2;
-  const centreGapPx = Math.max(
-    RENDERED_BOARD_SPACING.centreGapPx,
-    Math.ceil(pondHalfSpan) + 8,
-  );
+  const bottomLong = Math.max(reference.bottom.width, reference.top.width);
+  const sideLong = Math.max(reference.left.height, reference.right.height);
+  const sideDepth = Math.max(reference.left.width, reference.right.width);
+  const bottomDepth = Math.max(reference.bottom.height, reference.top.height);
 
-  // Ponds: their inner edge is one centre gap from the compass centre.
+  /*
+   * The wall ring is one square. The side walls span the ring's inner opening
+   * vertically; the front/back walls span the full outer square horizontally,
+   * so their inner edges land exactly on the side columns' ends. Only the
+   * horizontal walls are scaled, by a fraction of a percent, to match the ring's
+   * side; the side columns are already exactly the inner opening's height.
+   */
+  const sideWallHalf = Math.max(leftWall.height, rightWall.height) / 2;
+  const horizontalDepth = Math.max(frontWall.height, backWall.height);
+  const ringHalf = sideWallHalf + horizontalDepth;
+  const frontWallScale = (ringHalf * 2) / frontWall.width;
+  const backWallScale = (ringHalf * 2) / backWall.width;
+  const leftWallScale = (sideWallHalf * 2) / leftWall.height;
+  const rightWallScale = (sideWallHalf * 2) / rightWall.height;
+
+  // The ring's inner opening, which the ponds must fill.
+  const openingHalfX =
+    ringHalf -
+    Math.max(
+      leftWall.width * leftWallScale,
+      rightWall.width * rightWallScale,
+    );
+  const openingHalfY =
+    ringHalf -
+    Math.max(
+      frontWall.height * frontWallScale,
+      backWall.height * backWallScale,
+    );
+
+  /*
+   * The four rivers share one square well. Their long sides are scaled (each
+   * pond uniformly, so its tiles keep their aspect) until bottom/top and
+   * left/right have the same length: the well's side. The well is as large as
+   * the ring's inner width allows, because the side ponds' row depth is what
+   * limits the block's width.
+   */
+  const sideDepthPerLong = (2 * sideDepth) / sideLong;
+  const bottomDepthPerLong = (2 * bottomDepth) / bottomLong;
+  const wellHalf = Math.max(
+    0,
+    Math.min(
+      (openingHalfX - pondWallGapPx) / (1 + sideDepthPerLong),
+      (openingHalfY - pondWallGapPx) / (1 + bottomDepthPerLong),
+    ),
+  );
+  const bottomPondScale = bottomLong > 0 ? (wellHalf * 2) / bottomLong : 1;
+  const sidePondScale = sideLong > 0 ? (wellHalf * 2) / sideLong : 1;
+  const centreGapPx = wellHalf;
+
+  // Ponds: their inner edge is the well; each grows toward its own player.
   const bottomPond = bottom?.pond ?? null;
   const topPond = top?.pond ?? null;
   const leftPond = left?.pond ?? null;
   const rightPond = right?.pond ?? null;
 
   /*
-   * The ring is measured from a *full* reference pond, not the current one: a
-   * pond that grows as discards land would move the walls, hands and board
-   * bounds on every discard. The actual pond keeps its far/near edge on the
-   * reference and grows toward its player, exactly like a real river.
-   *
-   * The side walls are 17 stacks tall, taller than a short pond band, so the
-   * band is at least half a side wall: the front/back walls move out to meet
-   * the side walls instead of the side walls crossing them.
+   * Walls: the back wall's outer edge is the ring's top, the front wall's
+   * bottom edge is the ring's bottom, and the side columns sit on the ring's
+   * left/right outer edges, centred vertically. Their ends meet the horizontal
+   * walls' inner edges exactly, so every corner is closed.
    */
-  const sideWallHalf = Math.max(leftWall.height, rightWall.height) / 2;
-  const ringHalf = Math.max(
-    sideWallHalf,
-    centreGapPx + Math.max(reference.top.height, reference.bottom.height) + pondWallGapPx,
-  );
-  const leftPondOuter = centreGapPx + reference.left.width;
-  const rightPondOuter = centreGapPx + reference.right.width;
+  const backWallY = -ringHalf;
+  const frontWallY = ringHalf - frontWall.height * frontWallScale;
+  const leftWallX = -ringHalf;
+  const rightWallX = ringHalf - rightWall.width * rightWallScale;
+  const leftWallY = -(leftWall.height * leftWallScale) / 2;
+  const rightWallY = -(rightWall.height * rightWallScale) / 2;
 
-  // The bottom hand: its far edge clears the front wall.
-  const frontWallY = ringHalf;
-  const frontWallNear = frontWallY + frontWall.height;
+  // The hands sit outside the ring's outer edges.
   const bottomHand = bottom?.hand ?? null;
-  const bottomHandY = frontWallNear + wallHandGapPx;
   const bottomHandX = bottomHand ? -bottomHand.width / 2 : 0;
+  const bottomHandY = ringHalf + wallHandGapPx;
 
-  // The top hand: its near edge clears the back wall.
-  const backWallNear = -ringHalf;
-  const backWallY = backWallNear - backWall.height;
   const topHand = top?.hand ?? null;
-  const topHandY = backWallY - wallHandGapPx - (topHand?.height ?? 0);
   const topHandX = topHand ? -topHand.width / 2 : 0;
+  const topHandY = -ringHalf - wallHandGapPx - (topHand?.height ?? 0);
 
-  // The side walls ring the ponds horizontally; the side hands sit outside.
-  const leftWallX = -(leftPondOuter + pondWallGapPx) - leftWall.width;
-  const rightWallX = rightPondOuter + pondWallGapPx;
-  const leftWallY = -leftWall.height / 2;
-  const rightWallY = -rightWall.height / 2;
   const leftHand = left?.hand ?? null;
   const rightHand = right?.hand ?? null;
   const leftHandX = leftHand
-    ? leftWallX - wallHandGapPx - leftHand.width
-    : leftWallX - wallHandGapPx;
+    ? -ringHalf - wallHandGapPx - leftHand.width
+    : -ringHalf - wallHandGapPx;
   const leftHandY = leftHand ? -leftHand.height / 2 : 0;
-  const rightHandX = rightWallX + rightWall.width + wallHandGapPx;
+  const rightHandX = ringHalf + wallHandGapPx;
   const rightHandY = rightHand ? -rightHand.height / 2 : 0;
 
   // Painter order (Task 4.1). Insertion order + the zones' own `layer` field is
   // the contract: the stable sort below only groups them.
-  put(backWall, -backWall.width / 2, backWallY);
+  put(backWall, -backWall.width / 2, backWallY, backWallScale);
   put(topHand, topHandX, topHandY);
   placeMelds(put, top?.melds ?? [], 'top', topHandX, topHandY, {
     hand: topHand,
     meldGapPx,
     meldStepGapPx,
   });
-  put(leftWall, leftWallX, leftWallY);
-  put(rightWall, rightWallX, rightWallY);
-  put(bottomPond, bottomPond ? -bottomPond.width / 2 : 0, centreGapPx);
-  put(rightPond, centreGapPx, rightPond ? -rightPond.height / 2 : 0);
-  put(topPond, topPond ? -topPond.width / 2 : 0, -centreGapPx - (topPond?.height ?? 0));
-  put(leftPond, leftPond ? -centreGapPx - leftPond.width : -centreGapPx, leftPond ? -leftPond.height / 2 : 0);
-  put(frontWall, -frontWall.width / 2, frontWallY);
+  put(leftWall, leftWallX, leftWallY, leftWallScale);
+  put(rightWall, rightWallX, rightWallY, rightWallScale);
+  put(
+    bottomPond,
+    bottomPond ? -(bottomPond.width * bottomPondScale) / 2 : 0,
+    centreGapPx,
+    bottomPondScale,
+  );
+  put(
+    rightPond,
+    centreGapPx,
+    rightPond ? -(rightPond.height * sidePondScale) / 2 : 0,
+    sidePondScale,
+  );
+  put(
+    topPond,
+    topPond ? -(topPond.width * bottomPondScale) / 2 : 0,
+    -centreGapPx - (topPond?.height ?? 0) * bottomPondScale,
+    bottomPondScale,
+  );
+  put(
+    leftPond,
+    leftPond ? -centreGapPx - leftPond.width * sidePondScale : -centreGapPx,
+    leftPond ? -(leftPond.height * sidePondScale) / 2 : 0,
+    sidePondScale,
+  );
+  put(frontWall, -frontWall.width / 2, frontWallY, frontWallScale);
   put(leftHand, leftHandX, leftHandY);
   placeMelds(put, left?.melds ?? [], 'left', leftHandX, leftHandY, {
     hand: leftHand,
@@ -451,37 +515,45 @@ function placeMelds(
 }
 
 /** Axis-aligned bounds of a zone's local space, including its shadow blur. */
-export function zoneVisualBounds(zone: LayoutZone): Bounds {
+export function zoneVisualBounds(
+  zone: LayoutZone,
+  scale = 1,
+  includePad = true,
+): Bounds {
+  const width = zone.width * scale;
+  const height = zone.height * scale;
   let left = 0;
   let top = 0;
-  let right = zone.width;
-  let bottom = zone.height;
+  let right = width;
+  let bottom = height;
   if (zone.rotationDeg !== 0) {
     const radians = (zone.rotationDeg * Math.PI) / 180;
     const cos = Math.cos(radians);
     const sin = Math.sin(radians);
+    const pivotX = zone.pivotX * scale;
+    const pivotY = zone.pivotY * scale;
     const corners: Array<readonly [number, number]> = [
       [0, 0],
-      [zone.width, 0],
-      [zone.width, zone.height],
-      [0, zone.height],
+      [width, 0],
+      [width, height],
+      [0, height],
     ];
     left = Infinity;
     top = Infinity;
     right = -Infinity;
     bottom = -Infinity;
     for (const [x, y] of corners) {
-      const dx = x - zone.pivotX;
-      const dy = y - zone.pivotY;
-      const rx = zone.pivotX + dx * cos - dy * sin;
-      const ry = zone.pivotY + dx * sin + dy * cos;
+      const dx = x - pivotX;
+      const dy = y - pivotY;
+      const rx = pivotX + dx * cos - dy * sin;
+      const ry = pivotY + dx * sin + dy * cos;
       left = Math.min(left, rx);
       top = Math.min(top, ry);
       right = Math.max(right, rx);
       bottom = Math.max(bottom, ry);
     }
   }
-  const pad = zone.blurPad;
+  const pad = includePad ? zone.blurPad * scale : 0;
   return {
     left: left - pad,
     top: top - pad,
@@ -492,7 +564,7 @@ export function zoneVisualBounds(zone: LayoutZone): Bounds {
 
 /** Shift every zone so the board's visual bounds start at (0, 0). */
 function normalizePlan(
-  zones: Array<{ zone: LayoutZone; x: number; y: number }>,
+  zones: Array<{ zone: LayoutZone; x: number; y: number; scale: number }>,
   centreGapPx: number,
 ): BoardPlan {
   let left = Infinity;
@@ -501,12 +573,12 @@ function normalizePlan(
   let bottom = -Infinity;
   let blurPadPx = 0;
   for (const entry of zones) {
-    const bounds = zoneVisualBounds(entry.zone);
+    const bounds = zoneVisualBounds(entry.zone, entry.scale);
     left = Math.min(left, entry.x + bounds.left);
     top = Math.min(top, entry.y + bounds.top);
     right = Math.max(right, entry.x + bounds.right);
     bottom = Math.max(bottom, entry.y + bounds.bottom);
-    blurPadPx = Math.max(blurPadPx, entry.zone.blurPad);
+    blurPadPx = Math.max(blurPadPx, entry.zone.blurPad * entry.scale);
   }
   if (!Number.isFinite(left)) {
     return {
@@ -524,6 +596,7 @@ function normalizePlan(
       zone: entry.zone,
       x: entry.x - left,
       y: entry.y - top,
+      scale: entry.scale,
     })),
     width: right - left,
     height: bottom - top,
