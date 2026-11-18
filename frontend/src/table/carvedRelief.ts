@@ -29,8 +29,9 @@
  * changing the key/ambient ratio the plan defines.
  */
 import type { TileFaceId } from './tiles';
+import { decodePng } from './pngDecoder';
 import type { ReliefCell, ReliefManifest } from './reliefManifest';
-import type { AtlasCanvas, CreateAtlasCanvas, LoadAtlasImage, ResolveAssetUrl } from './TileAtlasBuilder';
+import type { AtlasCanvas, CreateAtlasCanvas, ResolveAssetUrl } from './TileAtlasBuilder';
 import type {
   OrientationGroup,
   SlotBasis,
@@ -386,13 +387,21 @@ export interface CarvedReliefStats {
 export interface CarvedReliefOptions {
   readonly manifest: ReliefManifest;
   readonly layout: TableLayoutManifest;
-  readonly loadImage: LoadAtlasImage;
+  /**
+   * Raw PNG bytes for the relief atlases. A Canvas must NOT be used here: it
+   * premultiplies the normal RGB by the height alpha and destroys the normal
+   * wherever the carve is deep (see `pngDecoder.ts`).
+   */
+  readonly loadBytes: LoadAtlasBytes;
   readonly resolveUrl: ResolveAssetUrl;
   readonly createCanvas: CreateAtlasCanvas;
   readonly dCarve?: number;
   readonly minViewZ?: number;
   readonly bevelGain?: number;
 }
+
+/** Fetch a PNG as raw bytes (no image decode). */
+export type LoadAtlasBytes = (url: string) => Promise<Uint8Array>;
 
 const now = (): number =>
   typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -450,21 +459,15 @@ async function loadPixels(
   url: string,
   expectedWidth: number,
   expectedHeight: number,
-  loadImage: LoadAtlasImage,
-  createCanvas: CreateAtlasCanvas,
+  loadBytes: LoadAtlasBytes,
 ): Promise<PlatePixels> {
-  const image = await loadImage(url);
-  if (image.width !== expectedWidth || image.height !== expectedHeight) {
+  const png = await decodePng(await loadBytes(url), url);
+  if (png.width !== expectedWidth || png.height !== expectedHeight) {
     throw new Error(
-      `${url} is ${image.width}x${image.height}, expected ${expectedWidth}x${expectedHeight}`,
+      `${url} is ${png.width}x${png.height}, expected ${expectedWidth}x${expectedHeight}`,
     );
   }
-  const canvas = createCanvas(expectedWidth, expectedHeight);
-  const context = canvas.getContext('2d') as CanvasRenderingContext2D | null;
-  if (!context) throw new Error(`${url}: no 2D context to decode the relief atlas`);
-  context.drawImage(image as unknown as CanvasImageSource, 0, 0);
-  const { data } = context.getImageData(0, 0, expectedWidth, expectedHeight);
-  return { width: expectedWidth, height: expectedHeight, data };
+  return { width: png.width, height: png.height, data: png.data };
 }
 
 /**
@@ -510,28 +513,25 @@ export class CarvedReliefBakery {
   }> {
     if (!this.atlasPixels) {
       const started = now();
-      const { manifest, loadImage, createCanvas, resolveUrl } = this.options;
+      const { manifest, loadBytes, resolveUrl } = this.options;
       this.atlasPixels = Promise.all([
         loadPixels(
           resolveUrl(manifest.atlases.albedo.file),
           manifest.atlases.albedo.width,
           manifest.atlases.albedo.height,
-          loadImage,
-          createCanvas,
+          loadBytes,
         ),
         loadPixels(
           resolveUrl(manifest.atlases.normalDepth.file),
           manifest.atlases.normalDepth.width,
           manifest.atlases.normalDepth.height,
-          loadImage,
-          createCanvas,
+          loadBytes,
         ),
         loadPixels(
           resolveUrl(manifest.atlases.aoRoughness.file),
           manifest.atlases.aoRoughness.width,
           manifest.atlases.aoRoughness.height,
-          loadImage,
-          createCanvas,
+          loadBytes,
         ),
       ]).then(([albedo, normalDepth, aoRoughness]) => {
         this.atlasLoadMs += now() - started;

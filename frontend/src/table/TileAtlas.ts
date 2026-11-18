@@ -29,7 +29,7 @@ import { parseTableLayoutManifest } from './tableLayoutManifest';
 import type { TableLayoutManifest } from './tableLayoutManifest';
 import { parseShellsManifest } from './shellManifest';
 import type { ShellsManifest } from './shellManifest';
-import { TileAtlasBuilder, estimateAtlasBytes } from './TileAtlasBuilder';
+import { TileAtlasBuilder, defaultLoadBytes, estimateAtlasBytes } from './TileAtlasBuilder';
 import type {
   AtlasCanvas,
   AtlasImage,
@@ -37,6 +37,7 @@ import type {
   AtlasStats,
   BakedTileSprite,
   CreateAtlasCanvas,
+  LoadAtlasBytes,
   LoadAtlasImage,
 } from './TileAtlasBuilder';
 
@@ -65,6 +66,8 @@ export interface TileAtlasLoadOptions {
   readonly decals?: DecalsManifest;
   readonly fetchJson?: (url: string) => Promise<unknown>;
   readonly loadImage?: LoadAtlasImage;
+  /** Raw bytes for the relief atlases; must bypass the Canvas decoder. */
+  readonly loadBytes?: LoadAtlasBytes;
   readonly createCanvas?: CreateAtlasCanvas;
   /** Force the atlas pixel ratio; otherwise it follows DPR with a memory cap. */
   readonly pixelRatio?: 1 | 2;
@@ -320,6 +323,7 @@ export class TileAtlas {
       ...(relief && layout ? { relief: { manifest: relief, layout } } : {}),
       resolveUrl: (relativePath) => joinUrl(baseUrl, relativePath),
       loadImage: options.loadImage ?? defaultLoadImage,
+      loadBytes: options.loadBytes ?? defaultLoadBytes,
       createCanvas: options.createCanvas,
       pixelRatio,
     });

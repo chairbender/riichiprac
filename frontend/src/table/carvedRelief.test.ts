@@ -45,6 +45,8 @@ const createAtlasCanvas = (width: number, height: number) =>
   createCanvas(width, height) as unknown as AtlasCanvas;
 const loadFileImage = async (url: string): Promise<AtlasImage> =>
   (await loadNapiImage(readFileSync(url))) as unknown as AtlasImage;
+const loadFileBytes = async (url: string): Promise<Uint8Array> =>
+  new Uint8Array(readFileSync(url));
 const resolveFileUrl = (relativePath: string): string => join(tableDir, relativePath);
 
 function group(shell: FaceUpShellId): OrientationGroup {
@@ -57,7 +59,7 @@ function bakery(manifest: ReliefManifest = relief, dCarve?: number) {
   return new CarvedReliefBakery({
     manifest,
     layout,
-    loadImage: loadFileImage,
+    loadBytes: loadFileBytes,
     resolveUrl: resolveFileUrl,
     createCanvas: createAtlasCanvas,
     ...(dCarve === undefined ? {} : { dCarve }),
@@ -78,6 +80,7 @@ function makeBuilder(options: {
       : {}),
     resolveUrl: resolveFileUrl,
     loadImage: loadFileImage,
+    loadBytes: loadFileBytes,
     createCanvas: createAtlasCanvas,
     pixelRatio: 1,
   });
@@ -347,8 +350,33 @@ describe('carved relief bake', () => {
     expect(northNegative[3]).toBeGreaterThan(0);
   });
 
-  it('caches by face + group + size + ivory calibration', async () => {
-    const bake = bakery();
+  it('does not blacken red paint at deep junction floors', async () => {
+    // Regression: decoding the normal atlas through a Canvas premultiplied the
+    // normal RGB by the height alpha, so deep (alpha 0) junction texels decoded
+    // as inward normals and lit to near-black. The raw decoder keeps the flat
+    // floor normal, so a red dragon never has an opaque black texel.
+    const bake = bakery(relief, 0);
+    const decal = await bake.decalFor(
+      '7z',
+      group('shell_flat_upright'),
+      relief.raster.cellWidth,
+      relief.raster.cellHeight,
+      IVORY,
+    );
+    const data = pixelsOf(decal!.canvas);
+    let min = 255;
+    let black = 0;
+    for (let index = 0; index < data.length; index += 4) {
+      if (data[index + 3] === 0) continue;
+      const luminance = Math.max(data[index], data[index + 1], data[index + 2]);
+      if (luminance < min) min = luminance;
+      if (luminance <= 50) black += 1;
+    }
+    expect(black).toBe(0);
+    expect(min).toBeGreaterThan(80);
+  });
+
+  it('caches by face + group + size + ivory calibration', async () => {    const bake = bakery();
     const first = await bake.decalFor('1m', group('shell_flat_upright'), 64, 84, IVORY);
     const again = await bake.decalFor('1m', group('shell_flat_upright'), 64, 84, IVORY);
     expect(again).toBe(first);
@@ -364,7 +392,7 @@ describe('carved relief bake', () => {
     const flat = new CarvedReliefBakery({
       manifest: relief,
       layout,
-      loadImage: loadFileImage,
+      loadBytes: loadFileBytes,
       resolveUrl: resolveFileUrl,
       createCanvas: createAtlasCanvas,
       dCarve: 0,
@@ -495,6 +523,7 @@ describe('tile atlas relief integration', () => {
       baseUrl: tableDir,
       fetchJson: async (url) => JSON.parse(readFileSync(url, 'utf8')),
       loadImage: loadFileImage,
+      loadBytes: loadFileBytes,
       createCanvas: createAtlasCanvas,
       pixelRatio: 1,
       warmShells: ['shell_flat_upright'],
@@ -509,6 +538,7 @@ describe('tile atlas relief integration', () => {
       baseUrl: tableDir,
       fetchJson: async (url) => JSON.parse(readFileSync(url, 'utf8')),
       loadImage: loadFileImage,
+      loadBytes: loadFileBytes,
       createCanvas: createAtlasCanvas,
       pixelRatio: 1,
       reliefUrl: null,

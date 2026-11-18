@@ -38,7 +38,8 @@ import type { FacesManifest } from './faceManifest';
 import { decalFor } from './decalManifest';
 import type { DecalRecord, DecalRotation, DecalsManifest } from './decalManifest';
 import { CarvedReliefBakery } from './carvedRelief';
-import type { BakedReliefFace } from './carvedRelief';
+import type { BakedReliefFace, LoadAtlasBytes } from './carvedRelief';
+export type { LoadAtlasBytes } from './carvedRelief';
 import { reliefCellFor } from './reliefManifest';
 import type { ReliefManifest } from './reliefManifest';
 import type { OrientationGroup, TableLayoutManifest } from './tableLayoutManifest';
@@ -184,6 +185,12 @@ export interface TileAtlasBuilderOptions {
   readonly relief?: CarvedReliefOptionsInput;
   readonly resolveUrl: ResolveAssetUrl;
   readonly loadImage: LoadAtlasImage;
+  /**
+   * Raw PNG bytes for the relief atlases. Must not go through `loadImage`: a
+   * Canvas premultiplies the normal RGB by the height alpha (see
+   * `pngDecoder.ts`). Required when `relief` is supplied; defaults to `fetch`.
+   */
+  readonly loadBytes?: LoadAtlasBytes;
   readonly createCanvas?: CreateAtlasCanvas;
   /** Atlas pixels per CSS px. Defaults to 1; @2x is opt-in (4x the memory). */
   readonly pixelRatio?: 1 | 2;
@@ -236,6 +243,14 @@ export function defaultCreateCanvas(width: number, height: number): AtlasCanvas 
     return canvas;
   }
   throw new Error('no 2D canvas available; pass createCanvas to TileAtlasBuilder');
+}
+
+/** Fetch raw bytes (relief atlases must bypass the Canvas decoder). */
+export async function defaultLoadBytes(url: string): Promise<Uint8Array> {
+  if (typeof fetch !== 'function') throw new Error(`cannot fetch ${url}: no fetch available`);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`cannot fetch ${url}: HTTP ${response.status}`);
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 function context2d(canvas: AtlasCanvas): CanvasRenderingContext2D {
@@ -363,7 +378,7 @@ export class TileAtlasBuilder {
       ? new CarvedReliefBakery({
           manifest: options.relief.manifest,
           layout: options.relief.layout,
-          loadImage: options.loadImage,
+          loadBytes: options.loadBytes ?? defaultLoadBytes,
           resolveUrl: options.resolveUrl,
           createCanvas: this.createCanvas,
           ...(options.relief.dCarve === undefined ? {} : { dCarve: options.relief.dCarve }),

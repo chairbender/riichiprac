@@ -54,6 +54,7 @@ const groups = groupSlotsByOrientation(layout);
 
 const loadNapi = async (url: string): Promise<AtlasImage> =>
   (await loadImage(readFileSync(url))) as unknown as AtlasImage;
+const loadBytes = async (url: string): Promise<Uint8Array> => new Uint8Array(readFileSync(url));
 const createAtlasCanvas = (width: number, height: number) =>
   createCanvas(width, height) as unknown as AtlasCanvas;
 
@@ -70,6 +71,7 @@ function builder(
     ...(options.withRelief ? { relief: { manifest: relief, layout } } : {}),
     resolveUrl: (relativePath) => join(tableDir, relativePath),
     loadImage: loadNapi,
+    loadBytes,
     createCanvas: createAtlasCanvas,
     pixelRatio: 1,
   });
@@ -228,7 +230,7 @@ writeFileSync(join(outDir, 'relief-board-2x.png'), board.toBuffer('image/png'));
 const bakery = new CarvedReliefBakery({
   manifest: relief,
   layout,
-  loadImage: loadNapi,
+  loadBytes,
   resolveUrl: (relativePath) => join(tableDir, relativePath),
   createCanvas: createAtlasCanvas,
   dCarve: 0.018,

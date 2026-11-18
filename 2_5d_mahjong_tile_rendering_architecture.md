@@ -1351,6 +1351,20 @@ body; `n_world = n.x·T + n.y·B + n.z·N` with no sign flip).
 `frontend/src/table/reliefManifest.ts` parses `relief.json` (three atlas
 entries, 37 cells, engraving depth in tile units).
 
+**Raw PNG decode, not a Canvas.** `face_normal_depth.png` is data, not a
+picture: tangent normal in RGB, carve height in alpha. A Canvas premultiplies
+colour by alpha, so every deep-carve texel (height 0) came back as `(0,0,0)`;
+the shader decoded that as an inward normal, which lights as a black
+self-shadow, and that is exactly where the red dragon's junction spots came
+from. `frontend/src/table/pngDecoder.ts` inflates the IDAT stream
+(`DecompressionStream('deflate')`, no npm dependency), undoes all five PNG
+filters and keeps the four channels independent. The atlas itself was correct:
+a raw decode reads `(133,131,255, alpha 0)` at the 7z junction, and the
+committed atlas has **zero** texels with an inward normal. The baker loads via
+a new raw `loadBytes` seam (`fetch` by default), never through `loadImage`.
+Browser support: `DecompressionStream` is required for Task 5A; without it the
+bakery disables itself after one warning and the Task 5 decals draw instead.
+
 **Per texel** (`frontend/src/table/carvedRelief.ts`, `shadeReliefInto`):
 1. `V_world = normalize(cameraPos − P_slot)`, `V_tan = (V·T, V·B, V·N)`.
 2. `uv_carved = uv − (V_tan.xy / max(V_tan.z, 0.35)) · (1 − h) · d_carve`,
@@ -1392,13 +1406,15 @@ call at all.
 
 **Numbers (`npm run atlas:review:relief`, @1x, all 18 face-up shells).** 9
 reachable groups, 432 baked decals (216 cache hits across the 14 standing
-slots), atlas load 53 ms, decal bake **365 ms** (0.84 ms/decal), full relief
-atlas build 456 ms vs 196 ms carved vs 54 ms flat. Frame path: 136 blits in
-**0.21 ms/frame** (p95 0.22 ms); per-frame CPU shading of the same 136 plates
-would cost about **115 ms**, which is why it is a startup bake. Orientation
-proof: the same `1m` decal differs from its 90/180/270 siblings by 14.3k / 14.8k
-/ 14.1k channel bytes, and the tests assert the world-lit V-wall flips with the
-basis.
+slots), atlas load **420 ms** (raw PNG inflate/unfilter of 3.4 MiB compressed
+data), decal bake **430 ms** (1.0 ms/decal), full relief atlas build 872 ms vs
+196 ms carved vs 54 ms flat. Frame path: 136 blits in **0.23 ms/frame** (p95
+0.30 ms); per-frame CPU shading of the same 136 plates would cost about
+**136 ms**, which is why it is a startup bake. Orientation proof: the same `1m`
+decal differs from its 90/180/270 siblings by 15.6k / 15.5k / 15.6k channel
+bytes, and the tests assert the world-lit V-wall flips with the basis. A red
+dragon has no opaque texel below luma 80 (the regression test for the Canvas
+premultiply bug); black pigment on 1m/1p is still black by design.
 
 **Fallback.** Per face: relief → Task 5 carved decal → flat glyph. A missing
 relief cell skips only that face; a missing/corrupt relief atlas disables the

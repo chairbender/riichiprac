@@ -249,6 +249,8 @@ describe('startup tile atlas', () => {
       pixelRatio: 2,
       maxRgbaBytes: 1,
       decalsUrl: null,
+      reliefUrl: null,
+      layoutUrl: null,
       warmShells: ['shell_flat_upright'],
     });
     expect(registry.requestedPixelRatio).toBe(2);
