@@ -2,12 +2,15 @@
 """Project the whole-table ``SlotAnchors`` collection into the runtime layout.
 
 This module is imported by ``bake_table_layout.py`` (inside the pinned
-Blender 4.5.9) and holds no render logic, so Task 3A can add a scene
-``lighting`` block and a per-slot ``basis`` without restructuring anything:
+Blender 4.5.9) and holds no render logic:
 
   - :func:`project_table_layout` is the one walker over the collection. It
     reads every anchor's world position and face quadruple and projects them
     through the active camera with ``world_to_camera_view``;
+  - :func:`basis_by_id` derives and validates the per-slot world-space basis
+    (Task 3A) from each anchor's own face-quad corners;
+  - :func:`read_scene_lighting` reads the Task 3A lighting block off the built
+    scene's lights, world and active camera;
   - :func:`render_anchor_probes` is the test render used to prove the exported
     screen coordinates land on the rendered tile centres (one emissive marker
     per anchor; every tile, light and the table are hidden, so the marker's
@@ -23,6 +26,26 @@ exactly one blank sprite per bucket.
 Face-quad corner order is the anchor's published order, **TL, TR, BR, BL**, in
 the tile's own face frame. The exported offsets are normalized screen units
 relative to the projected anchor, top-left origin, +y down.
+
+Task 3A adds two blocks, both read from the built scene and both validated
+before anything is written:
+
+  - ``lighting`` — the key light's direction, colour and energy, the world
+    ambient tint and strength, the active camera's position, and the fills, all
+    read off the ``bpy`` objects the rig builder made (the rig's spec records
+    only cross-check them);
+  - per-slot ``basis`` — the world-space tangent, bitangent and normal of that
+    slot's face quad, from its own TL/TR/BR/BL corners. Because the corners
+    carry the tile's pose, a rotated riichi discard or a north-seat pond tile
+    needs no special case.
+
+The basis convention is spec data (``layout.basis`` in
+``table-reference-spec.json``): ``tangent`` is TL->TR (glyph right),
+``bitangent`` is TL->BL (glyph down) and ``normal`` is ``B x T``, the visible
+face's outward direction. ``T x B`` points into the tile body: a
+glyph-right/down/out triple is left-handed under the usual cross product, so a
+tangent-space normal map authored x right, y down, z out maps to world space as
+``n.x*T + n.y*B + n.z*N`` with no sign flip — the frame Task 5A shades in.
 """
 from __future__ import annotations
 
@@ -40,7 +63,7 @@ RENDER_DIR = Path(__file__).resolve().parent
 if str(RENDER_DIR) not in sys.path:
     sys.path.insert(0, str(RENDER_DIR))
 
-from bake_shells import die, log  # noqa: E402
+from bake_shells import die, hex_linear, log  # noqa: E402
 
 FACE_QUAD_ORDER = "TL,TR,BR,BL"
 
@@ -133,6 +156,7 @@ def read_anchor(obj: bpy.types.Object) -> dict:
             for axis in range(3):
                 if abs(stored[corner * 3 + axis] - point[axis]) > 1e-5:
                     die(f"layout: anchor {name} faceQuadWorld drifts from matrix_world")
+    pose_normal = (obj.matrix_world.to_3x3() @ Vector((0.0, 0.0, 1.0))).normalized()
     return {
         "id": name,
         "zone": zone,
@@ -142,6 +166,9 @@ def read_anchor(obj: bpy.types.Object) -> dict:
         "occupied": bool(obj.get("occupied", False)),
         "centre": obj.matrix_world.translation.copy(),
         "faceQuadWorld": world,
+        # The anchor-local +z the face plate sits on: the outward normal the
+        # published basis has to agree with (Task 3A's cross-check).
+        "poseNormal": pose_normal,
     }
 
 
@@ -274,6 +301,217 @@ def bucket_for(
 
 
 # --------------------------------------------------------------------------- #
+# Task 3A: the per-slot surface basis
+# --------------------------------------------------------------------------- #
+
+BASIS_KEYS = ("tangent", "bitangent", "normal")
+
+
+def face_basis(record: dict) -> dict:
+    """The world-space tangent frame of one anchor's published face quad.
+
+    ``faceQuadWorld`` is TL, TR, BR, BL, so the glyph's own axes are the quad
+    edges: TL->TR is glyph right and TL->BL is glyph down. The outward normal is
+    ``bitangent x tangent`` (see the module docstring for why that, and not
+    ``T x B``, is the visible face's direction).
+    """
+    top_left, top_right, _bottom_right, bottom_left = record["faceQuadWorld"]
+    tangent = (top_right - top_left).normalized()
+    bitangent = (bottom_left - top_left).normalized()
+    normal = bitangent.cross(tangent).normalized()
+    return {"tangent": tangent, "bitangent": bitangent, "normal": normal}
+
+
+def _basis_errors(record: dict, basis: dict, tolerance: float) -> list[str]:
+    """Every way one slot's basis violates the Task 3A contract."""
+    errors: list[str] = []
+    for key in BASIS_KEYS:
+        length = basis[key].length
+        if abs(length - 1.0) > tolerance:
+            errors.append(f"{record['id']} {key} length {length:.9f} != 1")
+    for left, right in (
+        ("tangent", "bitangent"),
+        ("tangent", "normal"),
+        ("bitangent", "normal"),
+    ):
+        value = basis[left].dot(basis[right])
+        if abs(value) > tolerance:
+            errors.append(f"{record['id']} {left}.{right} {value:+.9f} != 0")
+    # A tangent-space normal map's +z is the face's outward side, so N must be
+    # the B x T side; N.(T x B) = -1 exactly for this corner order.
+    facing = basis["normal"].dot(basis["tangent"].cross(basis["bitangent"]))
+    if facing > -1.0 + tolerance:
+        errors.append(
+            f"{record['id']} normal is not the outward B x T side: N.(T x B) = {facing:+.9f}"
+        )
+    # And it must be the face's own outward direction, not merely a well-formed
+    # frame: the anchor's pose rotates local +z onto the painted face.
+    against_pose = basis["normal"].dot(record["poseNormal"])
+    if against_pose < 1.0 - tolerance:
+        errors.append(
+            f"{record['id']} normal drifts from the anchor pose +z: dot {against_pose:+.9f}"
+        )
+    return errors
+
+
+def basis_by_id(records: list[dict], layout_spec: dict) -> dict[str, dict]:
+    """The rounded, validated ``basis`` block for every anchor, by id."""
+    basis_spec = layout_spec["basis"]
+    rounding = layout_spec["rounding"]
+    tolerance = float(basis_spec["tolerance"])
+    published = float(basis_spec["publishedTolerance"])
+    bases: dict[str, dict] = {}
+    errors: list[str] = []
+    for record in records:
+        exact = face_basis(record)
+        errors.extend(_basis_errors(record, exact, tolerance))
+        rounded = {
+            key: [round(value, rounding) for value in exact[key]] for key in BASIS_KEYS
+        }
+        # Validate what is actually published, too: six-decimal rounding moves
+        # the vectors by ~1e-6, inside the published tolerance.
+        errors.extend(
+            _basis_errors(record, {key: Vector(value) for key, value in rounded.items()}, published)
+        )
+        bases[record["id"]] = rounded
+    if errors:
+        extra = f" (+{len(errors) - 6} more)" if len(errors) > 6 else ""
+        die("layout basis: " + "; ".join(errors[:6]) + extra)
+    log(
+        f"layout basis: {len(bases)} slots validated — unit length, mutually orthogonal, "
+        "normal = B x T = the anchor pose's +z"
+    )
+    return bases
+
+
+# --------------------------------------------------------------------------- #
+# Task 3A: the scene lighting block
+# --------------------------------------------------------------------------- #
+
+
+def _light_object(light_id: str):
+    obj = bpy.data.objects.get(light_id)
+    if obj is None:
+        die(f"layout lighting: the scene has no object {light_id!r}")
+    if obj.type != "LIGHT":
+        die(f"layout lighting: {light_id!r} is a {obj.type}, not a LIGHT")
+    return obj
+
+
+def _light_to_source(obj) -> Vector:
+    """An aimed area light's local +z, which points from its aim point outward."""
+    return (obj.matrix_world.to_3x3() @ Vector((0.0, 0.0, 1.0))).normalized()
+
+
+def _world_ambient(scene) -> tuple[list[float], float]:
+    world = scene.world
+    if world is None or not world.use_nodes:
+        die("layout lighting: the scene has no node world")
+    node = next((item for item in world.node_tree.nodes if item.type == "BACKGROUND"), None)
+    if node is None:
+        die("layout lighting: the world has no Background node")
+    colour = [float(value) for value in node.inputs["Color"].default_value[:3]]
+    return colour, float(node.inputs["Strength"].default_value)
+
+
+def _rounded(values, digits: int) -> list[float]:
+    return [round(float(value), digits) for value in values]
+
+
+def read_scene_lighting(
+    scene, rig_lighting: dict | None, key_light_id: str, camera: dict, layout_spec: dict
+) -> dict:
+    """The Task 3A lighting block, read off the built scene's own objects.
+
+    ``rig_lighting`` is the rig builder's light/world records; it is used only
+    to cross-check the scene (the direction, colour and energy published here
+    come from the ``bpy`` objects). A drift means the scene and the rig no
+    longer describe the same rig, so it fails instead of exporting mixed data.
+    """
+    if not rig_lighting or not rig_lighting.get("lights"):
+        die("layout lighting: the rig scene published no light records")
+    rounding = layout_spec["rounding"]
+    records = rig_lighting["lights"]
+    by_id = {record["id"]: record for record in records}
+    if key_light_id not in by_id:
+        die(f"layout lighting: the rig published no record for the key light {key_light_id!r}")
+
+    blocks: dict[str, dict] = {}
+    for record in records:
+        obj = _light_object(record["id"])
+        direction = _light_to_source(obj)
+        drift = (direction - Vector(record["toLight"])).length
+        if drift > 1e-5:
+            die(
+                f"layout lighting: {record['id']} scene axis drifts from the rig record "
+                f"by {drift:.6f}"
+            )
+        if abs(float(obj.data.energy) - float(record["energyW"])) > 1e-3:
+            die(
+                f"layout lighting: {record['id']} scene energy {obj.data.energy} != "
+                f"rig record {record['energyW']}"
+            )
+        blocks[record["id"]] = {
+            "id": record["id"],
+            "dir": _rounded(direction, rounding),
+            "color": _rounded(obj.data.color[:3], rounding),
+            "energyW": round(float(obj.data.energy), rounding),
+        }
+
+    camera_object = scene.camera
+    if camera_object is None:
+        die("layout lighting: the scene has no active camera")
+    camera_pos = camera_object.matrix_world.translation
+    eye_drift = (camera_pos - Vector(camera["eye"])).length
+    if eye_drift > 1e-5:
+        die(f"layout lighting: the active camera drifts from the rig eye by {eye_drift:.6f}")
+
+    ambient, ambient_strength = _world_ambient(scene)
+    world_record = rig_lighting.get("world") or {}
+    if "hex" in world_record:
+        expected = hex_linear(world_record["hex"])[:3]
+        drift = max(abs(ambient[axis] - expected[axis]) for axis in range(3))
+        if drift > 1e-6:
+            die(f"layout lighting: world ambient drifts from the rig record by {drift:.9f}")
+    if "strength" in world_record:
+        strength_drift = abs(ambient_strength - float(world_record["strength"]))
+        if strength_drift > 1e-6:
+            die(
+                f"layout lighting: world strength {ambient_strength} != rig record "
+                f"{world_record['strength']}"
+            )
+
+    key = blocks.pop(key_light_id)
+    lighting = {
+        "keyLightDir": key["dir"],
+        "keyLightColor": key["color"],
+        "ambientColor": _rounded(ambient, rounding),
+        "cameraPos": _rounded(camera_pos, rounding),
+        "keyLightId": key_light_id,
+        "keyLightEnergyW": key["energyW"],
+        "ambientStrength": round(ambient_strength, rounding),
+        "fills": list(blocks.values()),
+        "space": layout_spec["basis"]["space"],
+        "note": (
+            "Read from the built rig scene. keyLightDir is the key AREA light's local +z "
+            "(normalized, world space): the direction from its aim point toward the source, "
+            "which is the direction a surface must face to catch it. keyLightColor and "
+            "ambientColor are linear RGB tints, not intensities; the energies and the world "
+            "strength are published alongside so a consumer can reproduce the ratio. "
+            "cameraPos is the active camera's world position. fills are the rig's three "
+            "low AREA sources, for matching the baked blank bodies."
+        ),
+    }
+    log(
+        "layout lighting: key "
+        + ", ".join(f"{value:+.6f}" for value in key["dir"])
+        + f" ({key['energyW']:g} W), ambient strength {ambient_strength:g}, "
+        f"camera {', '.join(f'{value:+.6f}' for value in camera_pos)}"
+    )
+    return lighting
+
+
+# --------------------------------------------------------------------------- #
 # Layout
 # --------------------------------------------------------------------------- #
 
@@ -298,10 +536,13 @@ def project_table_layout(
     layout_spec: dict,
     resolution: list[int],
     variant_id: str,
+    lighting: dict,
+    hand_lighting_cheat: dict | None = None,
 ) -> dict:
-    """Project every anchor and publish the Task 3 layout record."""
+    """Project every anchor and publish the Task 3 / 3A layout record."""
     records = read_anchors(collection)
     reference = _reference_slot(records, layout_spec)
+    bases = basis_by_id(records, layout_spec)
     width, height = resolution
     checked: list[Vector] = []
     for record in records:
@@ -337,6 +578,7 @@ def project_table_layout(
                     record["zone"], record["seat"], x / width, face_quad, layout_spec, resolution
                 ),
                 "faceQuad": face_quad,
+                "basis": bases[record["id"]],
             }
         )
 
@@ -360,6 +602,7 @@ def project_table_layout(
         "variant": variant_id,
         "referenceResolution": {"width": width, "height": height},
         "camera": camera,
+        "lighting": lighting,
         "projectionDeltaPx": round(delta, 6),
         "reference": {
             "mode": layout_spec["reference"]["mode"],
@@ -368,8 +611,13 @@ def project_table_layout(
             "depth": reference_depth,
             "note": layout_spec["reference"]["note"],
         },
+        "basisConvention": {
+            key: layout_spec["basis"][key]
+            for key in ("tangent", "bitangent", "normal", "handedness", "space")
+        },
         "buckets": layout_spec["buckets"],
         "bucketCatalogue": catalogue,
+        **({"handLightingCheat": hand_lighting_cheat} if hand_lighting_cheat else {}),
         "slots": slots,
     }
 

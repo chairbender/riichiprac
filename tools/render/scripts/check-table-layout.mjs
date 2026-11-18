@@ -73,6 +73,38 @@ const load = (path, label) => {
   return JSON.parse(readFileSync(path, 'utf8'));
 };
 
+// Small vector helpers for the Task 3A basis/lighting checks.
+const vec3 = (value) =>
+  Array.isArray(value) && value.length === 3 && value.every((item) => Number.isFinite(item));
+const length3 = (value) => Math.hypot(value[0], value[1], value[2]);
+const dot3 = (left, right) =>
+  left[0] * right[0] + left[1] * right[1] + left[2] * right[2];
+const cross3 = (left, right) => [
+  left[1] * right[2] - left[2] * right[1],
+  left[2] * right[0] - left[0] * right[2],
+  left[0] * right[1] - left[1] * right[0],
+];
+const add3 = (left, right) => [
+  left[0] + right[0],
+  left[1] + right[1],
+  left[2] + right[2],
+];
+const sub3 = (left, right) => [
+  left[0] - right[0],
+  left[1] - right[1],
+  left[2] - right[2],
+];
+const scale3 = (value, factor) => [value[0] * factor, value[1] * factor, value[2] * factor];
+const normalise3 = (value) => scale3(value, 1 / length3(value));
+const srgbToLinear = (value) =>
+  value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+const hexLinear = (hex) => {
+  const body = hex.replace('#', '');
+  return [0, 2, 4].map((offset) =>
+    srgbToLinear(Number.parseInt(body.slice(offset, offset + 2), 16) / 255),
+  );
+};
+
 const spec = load(join(renderDir, 'table-reference-spec.json'), 'table-reference-spec.json');
 const shellSpec = load(join(renderDir, 'shell-spec.json'), 'shell-spec.json');
 const anchorsDoc = load(join(renderDir, 'reference', 'slot-anchors.json'), 'slot-anchors.json');
@@ -312,6 +344,282 @@ if (check(Boolean(referenceSlot), `reference slot ${layout.reference.slot} exist
 }
 
 // --------------------------------------------------------------------------- //
+// Task 3A: surface basis and scene lighting
+// --------------------------------------------------------------------------- //
+const basisSpec = layoutSpec.basis;
+check(Boolean(basisSpec), 'spec publishes the basis convention');
+const vectorTolerance = 1e-5;
+// The tangent/bitangent must point along the published screen quad edges. The
+// measured worst is the perspective chord-vs-tangent difference (~0.5 deg).
+const screenEdgeMinCos = 0.999;
+
+const lighting = layout.lighting;
+if (check(Boolean(lighting), 'layout publishes the lighting block')) {
+  const lightingVectors = ['keyLightDir', 'keyLightColor', 'ambientColor', 'cameraPos'];
+  const vectorsOk = lightingVectors.every((key) => {
+    check(vec3(lighting[key]), `lighting.${key} is a 3-vector`);
+    return vec3(lighting[key]);
+  });
+  const fills = Array.isArray(lighting.fills) ? lighting.fills : [];
+  check(Array.isArray(lighting.fills), 'lighting.fills is an array');
+  if (vectorsOk) {
+    near('lighting keyLightDir is unit length', length3(lighting.keyLightDir), 1, vectorTolerance);
+    for (let axis = 0; axis < 3; axis += 1) {
+      near(
+        `lighting cameraPos[${axis}] is the layout camera eye`,
+        lighting.cameraPos[axis],
+        layout.camera.eye[axis],
+        1e-5,
+      );
+      check(
+        lighting.keyLightColor[axis] >= 0 && lighting.keyLightColor[axis] <= 1,
+        `lighting keyLightColor[${axis}] ${lighting.keyLightColor[axis]} is linear RGB`,
+      );
+      check(
+        lighting.ambientColor[axis] >= 0 && lighting.ambientColor[axis] <= 1,
+        `lighting ambientColor[${axis}] ${lighting.ambientColor[axis]} is linear RGB`,
+      );
+    }
+  }
+  checkEqual('lighting space is the basis space', lighting.space, basisSpec.space);
+  checkEqual(
+    'lighting key light is the rig key',
+    lighting.keyLightId,
+    spec.rig.lighting.key.id,
+  );
+  if (rigManifest?.lighting) {
+    const keyRecord = rigManifest.lighting.lights.find(
+      (record) => record.id === lighting.keyLightId,
+    );
+    if (
+      vectorsOk &&
+      check(Boolean(keyRecord), `lighting key ${lighting.keyLightId} is in the rig manifest`)
+    ) {
+      for (let axis = 0; axis < 3; axis += 1) {
+        near(
+          `lighting keyLightDir[${axis}] vs the rig's key toLight`,
+          lighting.keyLightDir[axis],
+          keyRecord.toLight[axis],
+          1e-5,
+        );
+        near(
+          `lighting keyLightColor[${axis}] vs the rig's key hex`,
+          lighting.keyLightColor[axis],
+          hexLinear(keyRecord.hex)[axis],
+          1e-6,
+        );
+      }
+      near('lighting keyLightEnergyW vs the rig', lighting.keyLightEnergyW, keyRecord.energyW, 1e-6);
+    }
+    checkEqual(
+      'lighting fills are the rig fills',
+      fills.map((fill) => fill.id).sort(),
+      rigManifest.lighting.lights
+        .map((record) => record.id)
+        .filter((id) => id !== lighting.keyLightId)
+        .sort(),
+    );
+    for (const fill of fills) {
+      const record = rigManifest.lighting.lights.find((entry) => entry.id === fill.id);
+      if (!check(Boolean(record), `lighting fill ${fill.id} is in the rig manifest`)) continue;
+      for (let axis = 0; axis < 3; axis += 1) {
+        near(
+          `lighting fill ${fill.id} dir[${axis}] vs the rig's toLight`,
+          fill.dir[axis],
+          record.toLight[axis],
+          1e-5,
+        );
+        near(
+          `lighting fill ${fill.id} color[${axis}] vs the rig's hex`,
+          fill.color[axis],
+          hexLinear(record.hex)[axis],
+          1e-6,
+        );
+      }
+      near(`lighting fill ${fill.id} energy`, fill.energyW, record.energyW, 1e-6);
+    }
+    for (let axis = 0; axis < 3; axis += 1) {
+      near(
+        `lighting ambientColor[${axis}] vs the rig's world hex`,
+        lighting.ambientColor[axis],
+        hexLinear(rigManifest.lighting.world.hex)[axis],
+        1e-6,
+      );
+    }
+    near(
+      'lighting ambientStrength vs the rig',
+      lighting.ambientStrength,
+      rigManifest.lighting.world.strength,
+      1e-6,
+    );
+  }
+}
+
+const convention = layout.basisConvention;
+if (check(Boolean(convention), 'layout publishes the basis convention')) {
+  for (const key of ['tangent', 'bitangent', 'normal', 'handedness', 'space']) {
+    check(typeof convention[key] === 'string' && convention[key].length > 0, `basisConvention.${key} is documented`);
+    checkEqual(`basisConvention.${key} is the spec's`, convention[key], basisSpec[key]);
+  }
+}
+
+// Recover the anchor's world point from the published normalized anchor and
+// depth, then check that each slot's T/B really travels along its own
+// published TL->TR / TL->BL screen edges. This ties the world basis, the screen
+// quad, the camera and the depth together in one measurement.
+const cameraForward = normalise3(sub3(layout.camera.target, layout.camera.eye));
+const cameraRight = normalise3(cross3(cameraForward, [0, 0, 1]));
+const cameraUp = cross3(cameraRight, cameraForward);
+const projectWorld = (point) => {
+  const value = sub3(point, layout.camera.eye);
+  const depth = dot3(value, cameraForward);
+  const focal = layout.camera.focalPixels;
+  return [
+    width / 2 + layout.camera.shiftX * width + (focal * dot3(value, cameraRight)) / depth,
+    height / 2 + layout.camera.shiftY * width - (focal * dot3(value, cameraUp)) / depth,
+  ];
+};
+const worldOfAnchor = (slot) => {
+  const lateral =
+    ((slot.anchor.x * width - width / 2 - layout.camera.shiftX * width) * slot.depth) /
+    layout.camera.focalPixels;
+  const vertical =
+    ((height / 2 + layout.camera.shiftY * width - slot.anchor.y * height) * slot.depth) /
+    layout.camera.focalPixels;
+  return add3(
+    layout.camera.eye,
+    add3(
+      scale3(cameraForward, slot.depth),
+      add3(scale3(cameraRight, lateral), scale3(cameraUp, vertical)),
+    ),
+  );
+};
+
+let worstEdgeCos = 1;
+let worstEdgeSlot = '';
+const basisFamilies = new Map();
+for (const slot of layout.slots) {
+  const basis = slot.basis;
+  if (!check(Boolean(basis), `${slot.id} publishes a basis`)) continue;
+  const vectors = { tangent: basis.tangent, bitangent: basis.bitangent, normal: basis.normal };
+  let wellFormed = true;
+  for (const [key, value] of Object.entries(vectors)) {
+    if (!check(vec3(value), `${slot.id} basis.${key} is a 3-vector`)) wellFormed = false;
+  }
+  if (!wellFormed) continue;
+  for (const [key, value] of Object.entries(vectors)) {
+    near(`${slot.id} basis.${key} is unit length`, length3(value), 1, vectorTolerance);
+  }
+  for (const [left, right] of [
+    ['tangent', 'bitangent'],
+    ['tangent', 'normal'],
+    ['bitangent', 'normal'],
+  ]) {
+    near(
+      `${slot.id} basis ${left}.${right} is orthogonal`,
+      dot3(vectors[left], vectors[right]),
+      0,
+      vectorTolerance,
+    );
+  }
+  // The published convention: N is the outward B x T side, so N.(T x B) = -1.
+  near(
+    `${slot.id} basis normal is the outward B x T side`,
+    dot3(vectors.normal, cross3(vectors.tangent, vectors.bitangent)),
+    -1,
+    vectorTolerance,
+  );
+
+  const point = worldOfAnchor(slot);
+  const delta = 0.05;
+  const origin = projectWorld(point);
+  const alongTangent = projectWorld(add3(point, scale3(vectors.tangent, delta)));
+  const alongBitangent = projectWorld(add3(point, scale3(vectors.bitangent, delta)));
+  const [first, second, , fourth] = slot.faceQuad;
+  const edgeT = [(second.x - first.x) * width, (second.y - first.y) * height];
+  const edgeB = [(fourth.x - first.x) * width, (fourth.y - first.y) * height];
+  const cosBetween = (left, right) => {
+    const [ax, ay] = left;
+    const [bx, by] = right;
+    return (ax * bx + ay * by) / (Math.hypot(ax, ay) * Math.hypot(bx, by));
+  };
+  const cosT = cosBetween(
+    [alongTangent[0] - origin[0], alongTangent[1] - origin[1]],
+    edgeT,
+  );
+  const cosB = cosBetween(
+    [alongBitangent[0] - origin[0], alongBitangent[1] - origin[1]],
+    edgeB,
+  );
+  check(
+    cosT >= screenEdgeMinCos,
+    `${slot.id} tangent projects along TL->TR (cos ${cosT.toFixed(6)})`,
+  );
+  check(
+    cosB >= screenEdgeMinCos,
+    `${slot.id} bitangent projects along TL->BL (cos ${cosB.toFixed(6)})`,
+  );
+  if (cosT < worstEdgeCos) {
+    worstEdgeCos = cosT;
+    worstEdgeSlot = `${slot.id} tangent`;
+  }
+  if (cosB < worstEdgeCos) {
+    worstEdgeCos = cosB;
+    worstEdgeSlot = `${slot.id} bitangent`;
+  }
+
+  // A lying tile (wall, pond, meld) is horizontal whatever its in-plane turn:
+  // the whole tangent frame is level apart from the face's up/down normal.
+  if (['wall', 'river', 'meld'].includes(slot.zone)) {
+    near(`${slot.id} lying tangent is level`, vectors.tangent[2], 0, 1e-6);
+    near(`${slot.id} lying bitangent is level`, vectors.bitangent[2], 0, 1e-6);
+    near(`${slot.id} lying normal is vertical`, Math.abs(vectors.normal[2]), 1, 1e-6);
+    check(
+      Math.abs(Math.abs(vectors.tangent[0]) + Math.abs(vectors.tangent[1]) - 1) <= 1e-6,
+      `${slot.id} lying tangent is axis aligned`,
+    );
+    if (slot.zone !== 'wall') {
+      check(vectors.normal[2] > 0.999999, `${slot.id} pond/meld face is up`);
+    }
+  }
+  // A standing tile keeps a horizontal glyph-right edge at any recline.
+  if (slot.zone === 'hand') {
+    near(`${slot.id} hand tangent is level`, vectors.tangent[2], 0, 1e-6);
+    check(
+      Math.abs(Math.abs(vectors.tangent[0]) + Math.abs(vectors.tangent[1]) - 1) <= 1e-6,
+      `${slot.id} hand tangent is axis aligned`,
+    );
+  }
+  if (slot.zone === 'hand' && slot.seat === 'south') {
+    // The player's hand is reposed for readability; the published basis carries
+    // the pose the geometry actually has, so its tilt is the rig's hand tilt.
+    const tiltDeg = (Math.atan2(vectors.normal[2], -vectors.normal[1]) * 180) / Math.PI;
+    if (rigManifest?.layout?.hand) {
+      near(
+        `${slot.id} hand tilt vs the rig's hand tilt`,
+        tiltDeg,
+        rigManifest.layout.hand.tiltDeg,
+        1e-3,
+      );
+    }
+    check(tiltDeg > 0 && tiltDeg < 90, `${slot.id} hand leans toward the camera (${tiltDeg.toFixed(2)} deg)`);
+  }
+  // Every distinct rotation family the board actually poses, for the report.
+  const family = `${slot.zone}/${slot.seat}: T ${vectors.tangent.map((value) => value.toFixed(3)).join(',')}`;
+  basisFamilies.set(family, (basisFamilies.get(family) ?? 0) + 1);
+}
+
+checkEqual('layout hand lighting cheat is the rig cheat', layout.handLightingCheat?.mode, rigManifest?.handLightingCheat?.mode);
+if (layout.handLightingCheat && rigManifest?.handLightingCheat) {
+  near(
+    'layout hand cheat delta vs the rig',
+    layout.handLightingCheat.deltaDeg,
+    rigManifest.handLightingCheat.deltaDeg,
+    1e-6,
+  );
+}
+
+// --------------------------------------------------------------------------- //
 // Bucket catalogue
 // --------------------------------------------------------------------------- //
 const catalogue = layout.bucketCatalogue;
@@ -463,7 +771,15 @@ function round(value) {
 console.log(
   `table-layout: ${layout.slots.length} slots, ${Object.keys(catalogue).length} buckets, ` +
     `face area ${faceAreaMinPx.toFixed(0)}-${faceAreaMaxPx.toFixed(0)} px^2, ` +
-    `probe max ${proof?.maxDeltaPx ?? '?'} px`,
+    `probe max ${proof?.maxDeltaPx ?? '?'} px, ` +
+    `basis ${basisFamilies.size} zone/seat tangents (worst screen-edge cos ` +
+    `${worstEdgeCos.toFixed(6)} at ${worstEdgeSlot}), ` +
+    `key ${
+      (
+        (Math.acos(Math.min(1, layout.lighting?.keyLightDir?.[2] ?? 1)) * 180) /
+        Math.PI
+      ).toFixed(1)
+    } deg off vertical`,
 );
 if (failures) {
   console.error(`table-layout: ${failures} failure(s) in ${checks} checks`);

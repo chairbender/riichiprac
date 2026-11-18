@@ -305,15 +305,16 @@ bash tools/render/bake-table-layout.sh --check      # layout + probe + overlay g
 ```
 
 Each slot is `{id, zone, seat, row, col, anchor:{x,y}, depth, scale, bucket,
-faceQuad:[4 x {x,y}]}`. `anchor` is normalized top-left screen space (x
-left-to-right, y down), `depth` is Blender's view-axis distance, and `scale` is
-`reference.depth / depth` against the anchor nearest the table centre (that slot
-is published and carries 1.0). `faceQuad` is the four projected corners as
-offsets from the anchor in the anchor's published order, **TL, TR, BR, BL** in
-the tile's own face frame; a 180-degree seat therefore traces the same order
-counter-clockwise on screen, and the compositor maps the glyph onto it directly.
-The file also carries the resolved `camera`, the bucket spec and a
-`bucketCatalogue` with one representative slot per bucket for Task 4.
+faceQuad:[4 x {x,y}], basis:{tangent,bitangent,normal}}`. `anchor` is normalized
+top-left screen space (x left-to-right, y down), `depth` is Blender's view-axis
+distance, and `scale` is `reference.depth / depth` against the anchor nearest the
+table centre (that slot is published and carries 1.0). `faceQuad` is the four
+projected corners as offsets from the anchor in the anchor's published order,
+**TL, TR, BR, BL** in the tile's own face frame; a 180-degree seat therefore
+traces the same order counter-clockwise on screen, and the compositor maps the
+glyph onto it directly. The file also carries the resolved `camera`, the bucket
+spec and a `bucketCatalogue` with one representative slot per bucket for
+Task 4.
 
 **Buckets are spec data.** `table-reference-spec.json`'s `layout.buckets` holds
 every boundary; the script never derives them from a render. The families are:
@@ -324,6 +325,51 @@ every boundary; the script never derives them from a render. The families are:
 | `wall_side` | `wall_left_side`, `wall_right_side` | the west and east runs, one blank each |
 | `wall_horizontal` | `wall_horiz_left`, `wall_horiz_center`, `wall_horiz_right` | screen-X intervals `0.435 / 0.565`, placed in the widest gaps of the two runs' merged stack positions |
 | `flat` | `flat_left`, `flat_center`, `flat_right` (+ `_rotated`) | screen-X intervals `0.42 / 0.582`; a physically turned tile (the riichi discard, the called meld tile) is detected from its projected TL→TR edge and gets `_rotated` |
+
+**Task 3A: the per-slot surface basis and the light rig.** Every slot also
+carries `basis: {tangent, bitangent, normal}` — its face quad's own axes in world
+space, from that slot's four corners: `tangent` is TL→TR (glyph right),
+`bitangent` is TL→BL (glyph down) and `normal` is `B × T`, the visible face's
+outward direction. Because the corners carry the tile's pose, a 90° riichi
+discard, a 180° north-seat pond tile and the 40° standing-hand recline need no
+special case; their frames are simply different. `T × B` points *into* the tile
+body: a glyph-right / glyph-down / face-out frame has determinant −1 under the
+usual cross product, which is exactly what a tangent-space normal map authored
+(x right, y down, z out) expects. The file publishes that convention in
+`basisConvention`, so Task 5A's shader can map
+`n_world = n.x*T + n.y*B + n.z*N` with no sign flip; exporting `N = T × B`
+would silently light the back of every face.
+
+The top-level `lighting` block is read off the built scene, not copied from the
+spec: `keyLightDir` is the key AREA light's own local +z (its axis, pointing
+from the aim point toward the source — `[0, -0.11291, 0.993605]`, 6.5° off
+vertical), `keyLightColor` and `ambientColor` are the light's and the world's
+linear RGB tints (`[1, 0.930111, 0.822786]` and `[0.043735, 0.068478,
+0.107023]`), and `cameraPos` is the active camera's world position.
+`keyLightId`, `keyLightEnergyW` (6000 W), `ambientStrength` (0.35) and the three
+cool fills are published alongside so a consumer can reproduce the ratios. Each
+value is cross-checked against the rig's own light records, so a scene/spec drift
+fails the export instead of publishing mixed data.
+
+The exporter validates every basis before writing (unit length, mutual
+orthogonality, `N` on the outward `B × T` side, and `N` against the anchor
+pose's +z) and prints the count:
+
+```text
+layout basis: 293 slots validated — unit length, mutually orthogonal, normal = B x T = the anchor pose's +z
+```
+
+The Python check runs on the unrounded vectors (1e-6) and again on the six-decimal
+values actually published (1e-5). `check-table-layout.mjs` re-measures the same
+facts from the committed file without Blender and adds a screen-space
+cross-check: it reconstructs each anchor's world point from its published anchor
+and depth, projects `T` and `B` through the layout camera, and requires each to
+run along that slot's own published `TL→TR` / `TL→BL` screen edge (worst measured
+cos `0.999966`, about 0.5°, threshold `0.999`).
+
+Re-run after any scene, pose, camera or rig-light change:
+`bash tools/render/bake-table-layout.sh --bake`; `--check` revalidates the
+committed layout (basis and lighting included) with no Blender.
 
 **The 1 px acceptance is a render measurement, not an eyeball call**
 (AGENTS.md §6). `--bake` renders `reference/layout/probes-1x.png`: one emissive
@@ -386,16 +432,16 @@ script, the spec, the layout JSON and the proof artifacts together.
 | `bake_table_reference.py` | yes | Blender 4.5.9 whole-table scene builder, pinhole/visibility assertions and @2x master render |
 | `bake-table-reference.sh` | yes | dry-run / audition / bake / check for the whole-table reference |
 | `bake_table_layout.py` | yes | Task 3 Blender exporter: builds the same scene, projects every `SlotAnchors` centre/face quad, writes the runtime layout and renders the anchor probe |
-| `table_layout.py` | yes | the Task 3 projection walker, bucket classifier and probe renderer (imported by `bake_table_layout.py`; the additive home for Task 3A's lighting/basis) |
+| `table_layout.py` | yes | the Task 3 projection walker, bucket classifier and probe renderer plus Task 3A's face basis and scene-lighting readers (imported by `bake_table_layout.py`) |
 | `bake-table-layout.sh` | yes | one command for the Task 3 dry run / export + proof / no-Blender check |
 | `scripts/table-layout.mjs` | yes | shared layout rules: bucket families, sideways test, probe centroid measurement and one-to-one matching |
 | `scripts/table-layout-proof.mjs` | yes | measures the committed probe PNG, writes `layout-proof.json` and the overlay/zoom review images |
-| `scripts/check-table-layout.mjs` | yes | dependency-free layout + probe + overlay gate (CI) |
+| `scripts/check-table-layout.mjs` | yes | dependency-free layout + basis + lighting + probe + overlay gate (CI) |
 | `reference/layout/probes-1x.png` | yes | the Task 3 anchor probe render (one emissive marker per slot) |
 | `reference/layout/layout-proof.json` | yes | the recorded per-slot probe centroid/delta and the 1 px acceptance |
 | `reference/layout/overlay-1x.png` | yes | exported anchors and face quads over the committed v13 board render |
 | `reference/layout/overlay-zoom-4x.png` | yes | 4x crops of each bucket representative and the drawn tile, labelled with the measured delta |
-| `../../frontend/public/table/table_layout.json` | yes | the runtime Task 3 layout contract (293 slots) |
+| `../../frontend/public/table/table_layout.json` | yes | the runtime Task 3/3A layout contract: 293 slots with anchors, face quads, world-space basis and the scene lighting block |
 | `TABLE-REFERENCE.md` | yes | the reference's calibration note: scene, chosen perspective, metrics, how to compare |
 | `scripts/table-camera.mjs` | yes | shared reference pinhole, tile-corner projection, metrics and crop rects |
 | `scripts/table-reference.mjs` | yes | publishes the 1x board, 2x crops, manifest and contact page from the master |
