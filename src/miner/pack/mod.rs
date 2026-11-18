@@ -1,5 +1,5 @@
-//! Scenario pack format, pack gate, audit and fixture publisher (implementation
-//! unit P1a).
+//! Scenario pack format, pack gate, audit, fixture publisher (implementation
+//! unit P1a) and DB-backed assembly (implementation unit P1b).
 //!
 //! A pack is a gzipped `riichiprac.scenario-pack` v1 JSON document: a small
 //! provenance envelope around a list of complete [`crate::state::GameState`]
@@ -56,23 +56,43 @@
 //! [`crate::miner::storage::write_atomic`], then updates the manifest atomically.
 //! A failure at any point leaves no partially written file.
 //!
+//! # Assembly (P1b)
+//!
+//! [`run_assembly`] is the real exporter: it reads the selected rows from the
+//! miner DB, rebuilds each `PackScenario` (a base from its walked state, a
+//! variant by re-applying its recorded chain), enforces the review gate, dedupe,
+//! the per-base cap, optional family quotas and the byte budget, publishes
+//! through the gate above, records `packs`/`pack_scenarios`, re-runs the
+//! directory audit and writes the assembly report. The module docs of
+//! [`assemble`] spell out the contracts and `replay-miner-operations.md` is the
+//! operator contract.
+//!
 //! # CLI
 //!
 //! ```text
-//! mine_replays pack fixture [--out DIR] [--max-bytes N] [--json]
-//! mine_replays pack report  [--manifest FILE] [--json]
-//! mine_replays audit        [--manifest FILE] [--games FILE] [--strict] [--commercial] [--json]
+//! mine_replays pack fixture  [--out DIR] [--max-bytes N] [--json]
+//! mine_replays pack assemble [--pack ID] [--queue FILE] [--licence ID]
+//!                           [--attribution TEXT] [--max-bytes N]
+//!                           [--max-scenarios N] [--max-per-base N]
+//!                           [--share F32] [--family-quota book=30,...]
+//!                           [--generated-at ISO] [--commit TEXT]
+//!                           [--dry-run] [--json]
+//! mine_replays pack report   [--manifest FILE] [--json]
+//! mine_replays audit         [--manifest FILE] [--games FILE] [--strict] [--commercial] [--json]
 //! ```
 //!
-//! `audit` exits 1 when the pack is dirty and 2 on an unreadable document. The
-//! fixture publisher writes the fixture pack, its manifest and the fixture
-//! `GameProvenance` rows the audit needs (`games.jsonl`).
+//! `audit` exits 1 when the pack is dirty and 2 on an unreadable document.
+//! `pack assemble` exits 1 on a failed pack audit and 2 when the selection
+//! cannot be assembled. The fixture publisher writes the fixture pack, its
+//! manifest and the fixture `GameProvenance` rows the audit needs
+//! (`games.jsonl`).
 //!
 //! [`replay-strategy.md`]: ../../../replay-strategy.md
 //! [`GameProvenance`]: crate::miner::GameProvenance
 
 use thiserror::Error;
 
+pub mod assemble;
 pub mod audit;
 pub mod check;
 pub mod fixture;
@@ -84,6 +104,11 @@ pub mod write;
 #[cfg(test)]
 mod tests;
 
+pub use assemble::{
+    ASSEMBLY_REPORT_FILE_NAME, ASSEMBLY_SCHEMA, ASSEMBLY_VERSION, AssemblyDrop, AssemblyLimits,
+    AssemblyOptions, AssemblyOutcome, AssemblyReport, DEFAULT_GENERATOR_COMMIT, FamilyMixRow,
+    ReviewSummary, run_assembly,
+};
 pub use audit::{AuditOptions, AuditReport, audit_pack_dir};
 pub use check::{PASS_ANSWER, accepted_for, find_spoiler, is_tile_code, spoiler_tokens};
 pub use fixture::{FIXTURE_CORPUS_ID, FIXTURE_PACK_ID, fixture_games, fixture_pack};
@@ -100,8 +125,9 @@ pub use model::{
 pub use report::{PackReport, pack_report, render_pack_report};
 pub use write::{
     GAMES_FILE_NAME, MANIFEST_FILE_NAME, PackBytes, PublishedPack, decode_pack, encode_games,
-    encode_pack, load_games, load_manifest, pack_file_name, publish_pack, read_manifest_or_default,
-    read_pack, upsert_manifest_entry, write_games_atomic, write_manifest_atomic,
+    encode_pack, load_games, load_manifest, merge_games, pack_file_name, publish_pack,
+    read_manifest_or_default, read_pack, upsert_manifest_entry, write_games_atomic,
+    write_manifest_atomic,
 };
 
 /// Default pack body ceiling: the P2 same-origin budget (50 MB).
@@ -214,4 +240,23 @@ pub enum PackError {
         /// Why the row was rejected.
         detail: String,
     },
+    /// The selected rows cannot be assembled into a pack.
+    #[error("pack `{pack_id}` cannot be assembled: {detail}")]
+    Assembly {
+        /// Pack id, or `unknown` when it did not resolve.
+        pack_id: String,
+        /// First failure.
+        detail: String,
+    },
+    /// The review queue blocks the pack (a pending item or an invalid report).
+    #[error("review queue `{path}` blocks the pack: {detail}")]
+    Review {
+        /// Queue path.
+        path: String,
+        /// Why it blocks.
+        detail: String,
+    },
+    /// SQLite failed while reading the selection or recording the export.
+    #[error("sqlite error: {0}")]
+    Sqlite(#[from] rusqlite::Error),
 }

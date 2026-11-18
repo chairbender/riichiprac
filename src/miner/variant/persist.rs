@@ -50,8 +50,8 @@ pub fn store_variants(
             "INSERT INTO selected_scenarios (
                 scenario_id, decision_id, pack_id, lesson_id, family, correct_action,
                 accepted, variant_of, transform_chain, label_check, label_kind,
-                label_source, selection_reason, provenance, created_at
-             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, NULL, NULL, ?8, ?9, ?10, ?11, ?12)
+                label_source, selection_reason, provenance, selection_family, created_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, NULL, NULL, ?8, ?9, ?10, ?11, ?12, ?13)
              ON CONFLICT(scenario_id) DO UPDATE SET
                 decision_id = excluded.decision_id,
                 pack_id = excluded.pack_id,
@@ -63,6 +63,7 @@ pub fn store_variants(
                 label_source = excluded.label_source,
                 selection_reason = excluded.selection_reason,
                 provenance = excluded.provenance,
+                selection_family = excluded.selection_family,
                 created_at = excluded.created_at",
             params![
                 base.id().as_str(),
@@ -76,6 +77,7 @@ pub fn store_variants(
                 base.label.kind.as_str(),
                 "transform:base",
                 provenance,
+                selection_family(base),
                 created_at,
             ],
         )?;
@@ -123,8 +125,8 @@ pub fn store_variants(
             "INSERT INTO selected_scenarios (
                 scenario_id, decision_id, pack_id, lesson_id, family, correct_action,
                 accepted, variant_of, transform_chain, label_check, label_kind,
-                label_source, selection_reason, provenance, created_at
-             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+                label_source, selection_reason, provenance, selection_family, created_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
              ON CONFLICT(scenario_id) DO UPDATE SET
                 decision_id = excluded.decision_id,
                 pack_id = excluded.pack_id,
@@ -139,6 +141,7 @@ pub fn store_variants(
                 label_source = excluded.label_source,
                 selection_reason = excluded.selection_reason,
                 provenance = excluded.provenance,
+                selection_family = excluded.selection_family,
                 created_at = excluded.created_at",
             params![
                 record.id.as_str(),
@@ -155,6 +158,7 @@ pub fn store_variants(
                 label_kind,
                 "transform:variant",
                 provenance,
+                selection_family(base),
                 created_at,
             ],
         )?;
@@ -229,4 +233,17 @@ fn upsert_variant_row(
 #[must_use]
 pub fn base_hash(base: &BaseScenario) -> String {
     exact_state_hash(&base.scenario.state)
+}
+
+/// The selection family a base was chosen for (P1b's mix report and quota
+/// check), falling back to the replay corpus family when the queue item carried
+/// no family.
+fn selection_family(base: &BaseScenario) -> String {
+    base.scenario
+        .interestingness
+        .as_ref()
+        .map(|interestingness| interestingness.coverage.trim().to_string())
+        .filter(|coverage| !coverage.is_empty())
+        .or_else(|| base.replay_family.clone())
+        .unwrap_or_else(|| "unknown".to_string())
 }

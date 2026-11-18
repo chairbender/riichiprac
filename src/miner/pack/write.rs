@@ -342,6 +342,27 @@ pub fn write_games_atomic(dir: &Path, games: &[GameProvenance]) -> Result<PathBu
     Ok(path)
 }
 
+/// Merge `games` into `<dir>/games.jsonl` by replay id, keeping earlier rows.
+///
+/// A pack directory accumulates the provenance of every body beside it, so a
+/// later audit can re-check any entry. Re-writing an existing row is a no-op
+/// (the rows are content-addressed by replay id).
+pub fn merge_games(dir: &Path, games: &[GameProvenance]) -> Result<PathBuf, PackError> {
+    let path = dir.join(GAMES_FILE_NAME);
+    let mut merged: std::collections::BTreeMap<String, GameProvenance> =
+        std::collections::BTreeMap::new();
+    if path.exists() {
+        for game in load_games(&path)? {
+            merged.insert(game.replay_id.as_str().to_string(), game);
+        }
+    }
+    for game in games {
+        merged.insert(game.replay_id.as_str().to_string(), game.clone());
+    }
+    let rows: Vec<GameProvenance> = merged.into_values().collect();
+    write_games_atomic(dir, &rows)
+}
+
 /// Read and validate a JSONL game-provenance source.
 pub fn load_games(path: &Path) -> Result<Vec<GameProvenance>, PackError> {
     let text = fs::read_to_string(path).map_err(|source| PackError::Io {

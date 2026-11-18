@@ -1,10 +1,12 @@
 //! Entry point for the native-only replay miner.
 //!
 //! F1 created the feature boundary and the subcommand surface; L1 implements
-//! `label` on top of the R2 walker and the F1 database, S1 implements `triggers`
-//! and S2 implements `select` and `review`. The remaining commands are still
-//! stubs: running one exits with code 2 and writes a "not implemented" line to
-//! stderr, so a script cannot mistake it for a completed run.
+//! `label` on top of the R2 walker and the F1 database, S1 implements `triggers`,
+//! S2 implements `select` and `review`, V2 implements `transform`, and P1a/P1b
+//! implement `pack fixture`, `pack assemble`, `pack report` and `audit`. The
+//! remaining commands are still stubs: running one exits with code 2 and writes
+//! a "not implemented" line to stderr, so a script cannot mistake it for a
+//! completed run.
 //!
 //! Build and run:
 //!
@@ -31,14 +33,14 @@ use riichiprac::miner::variant::{
     DEFAULT_VARIANTS_PER_BASE, VariantLabeler, VariantRunOptions, YieldPolicy, run_variants,
 };
 use riichiprac::miner::{
-    AuditOptions, CLASSIFIER_VERSION, DEFAULT_PACK_SIZE, DataRoot, FamilyFilter, GAMES_FILE_NAME,
-    MANIFEST_FILE_NAME, PackAudit, PackAuditContext, PackBudget, PackError, PackFinding,
-    PackFindingCode, PublishProfile, QPointCalibration, ReviewOptions, SelectionConfig,
-    SelectionOptions, TriggerConfig, TriggerFilter, TriggerSampleOptions, TriggerSampleReport,
-    audit_pack_dir, audit_summary, fixture_games, fixture_pack, latest_pack, load_manifest,
-    open_miner_db, pack_report, publish_pack, read_pack, read_queue, render_pack_report,
-    review_queue, run_selection, run_trigger_sample, selection_paths, utc_iso8601,
-    write_games_atomic,
+    AssemblyLimits, AssemblyOptions, AuditOptions, CLASSIFIER_VERSION, DEFAULT_GENERATOR_COMMIT,
+    DEFAULT_PACK_SIZE, DataRoot, FamilyFilter, GAMES_FILE_NAME, MANIFEST_FILE_NAME, PackAudit,
+    PackAuditContext, PackBudget, PackError, PackFinding, PackFindingCode, PublishProfile,
+    QPointCalibration, ReviewOptions, SelectionConfig, SelectionOptions, TriggerConfig,
+    TriggerFilter, TriggerSampleOptions, TriggerSampleReport, audit_pack_dir, audit_summary,
+    fixture_games, fixture_pack, latest_pack, load_manifest, open_miner_db, pack_report,
+    publish_pack, read_pack, read_queue, render_pack_report, review_queue, run_assembly,
+    run_selection, run_trigger_sample, selection_paths, utc_iso8601, write_games_atomic,
 };
 
 #[derive(Debug, Parser)]
@@ -325,6 +327,60 @@ enum Command {
 
 #[derive(Debug, Subcommand)]
 enum PackAction {
+    /// Assemble, audit and export a pack from the selected DB rows.
+    Assemble {
+        /// Pack id to export (default: the latest `select` run's pack).
+        #[arg(long, value_name = "ID")]
+        pack: Option<String>,
+
+        /// Review queue to check (default: reviews/<pack>/review-queue.jsonl).
+        #[arg(long, value_name = "FILE")]
+        queue: Option<PathBuf>,
+
+        /// Pack data licence (default: the packed replays' shared licence).
+        #[arg(long, value_name = "ID")]
+        licence: Option<String>,
+
+        /// Pack data attribution (default: the packed replays' shared text).
+        #[arg(long, value_name = "TEXT")]
+        attribution: Option<String>,
+
+        /// Pack body byte ceiling (default: 50 MB).
+        #[arg(long, value_name = "N")]
+        max_bytes: Option<u64>,
+
+        /// Scenario-count ceiling (default: 2000).
+        #[arg(long, value_name = "N")]
+        max_scenarios: Option<usize>,
+
+        /// Maximum variants one base may contribute (default: 8).
+        #[arg(long, value_name = "N")]
+        max_per_base: Option<usize>,
+
+        /// Maximum share of the pack one base may occupy (default: 0.20).
+        #[arg(long, value_name = "F32")]
+        share: Option<f32>,
+
+        /// Family ceilings counted in base scenarios, e.g. book=30,coverage=15.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        family_quota: Vec<String>,
+
+        /// Pack timestamp (default: the latest selected row's stamp).
+        #[arg(long, value_name = "ISO")]
+        generated_at: Option<String>,
+
+        /// Generator commit label recorded on the pack (default: `db`).
+        #[arg(long, value_name = "TEXT", default_value = DEFAULT_GENERATOR_COMMIT)]
+        commit: String,
+
+        /// Build, audit and report without writing the export or the DB rows.
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
     /// Publish the built-in fixture pack, manifest and provenance rows.
     Fixture {
         /// Output directory (default: <data-dir>/packs).
@@ -583,16 +639,136 @@ fn main() -> ExitCode {
 
 fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
     let Some(action) = action else {
-        eprintln!("mine_replays pack: choose `fixture` or `report`");
+        eprintln!("mine_replays pack: choose `assemble`, `fixture` or `report`");
         return ExitCode::from(2);
     };
     match action {
+        PackAction::Assemble {
+            pack,
+            queue,
+            licence,
+            attribution,
+            max_bytes,
+            max_scenarios,
+            max_per_base,
+            share,
+            family_quota,
+            generated_at,
+            commit,
+            dry_run,
+            json,
+        } => run_pack_assemble(
+            root,
+            AssemblyCommand {
+                pack,
+                queue,
+                licence,
+                attribution,
+                max_bytes,
+                max_scenarios,
+                max_per_base,
+                share,
+                family_quota,
+                generated_at,
+                commit,
+                dry_run,
+                json,
+            },
+        ),
         PackAction::Fixture {
             out,
             max_bytes,
             json,
         } => run_pack_fixture(root, out, max_bytes, json),
         PackAction::Report { manifest, json } => run_pack_report(root, manifest, json),
+    }
+}
+
+struct AssemblyCommand {
+    pack: Option<String>,
+    queue: Option<PathBuf>,
+    licence: Option<String>,
+    attribution: Option<String>,
+    max_bytes: Option<u64>,
+    max_scenarios: Option<usize>,
+    max_per_base: Option<usize>,
+    share: Option<f32>,
+    family_quota: Vec<String>,
+    generated_at: Option<String>,
+    commit: String,
+    dry_run: bool,
+    json: bool,
+}
+
+fn run_pack_assemble(root: &DataRoot, command: AssemblyCommand) -> ExitCode {
+    let quotas = match AssemblyLimits::parse_family_quotas(&command.family_quota) {
+        Ok(quotas) => quotas,
+        Err(message) => {
+            eprintln!("mine_replays pack assemble: {message}");
+            return ExitCode::from(2);
+        }
+    };
+    let mut budget = PackBudget::default();
+    if let Some(max_bytes) = command.max_bytes {
+        budget.max_bytes = max_bytes;
+    }
+    if let Some(max_scenarios) = command.max_scenarios {
+        budget.max_scenarios = max_scenarios;
+    }
+    let mut limits = AssemblyLimits::default();
+    if let Some(max_per_base) = command.max_per_base {
+        limits.max_per_base = max_per_base;
+    }
+    if let Some(share) = command.share {
+        limits.max_pack_share = share;
+    }
+    limits.family_quotas = quotas;
+    let options = AssemblyOptions {
+        pack_id: command.pack,
+        queue: command.queue,
+        licence: command.licence,
+        attribution: command.attribution,
+        commit: command.commit,
+        generated_at: command.generated_at,
+        limits,
+        budget,
+        dry_run: command.dry_run,
+    };
+    match run_assembly(root, &options) {
+        Ok(outcome) => {
+            if command.json {
+                match serde_json::to_string_pretty(&outcome.report) {
+                    Ok(text) => println!("{text}"),
+                    Err(err) => {
+                        eprintln!("mine_replays pack assemble: cannot serialise the report: {err}");
+                        return ExitCode::from(2);
+                    }
+                }
+            } else {
+                println!("{}", outcome.report.human_summary());
+                if let Some(published) = &outcome.published {
+                    println!("  pack: {}", published.path.display());
+                    println!("  manifest: {}", published.manifest_path.display());
+                }
+                if let Some(path) = &outcome.report_path {
+                    println!("  report: {}", path.display());
+                }
+            }
+            if outcome.written && !outcome.report.audit_clean {
+                ExitCode::from(1)
+            } else {
+                ExitCode::SUCCESS
+            }
+        }
+        Err(PackError::AuditFailed(audit)) => {
+            eprintln!("mine_replays pack assemble: the pack failed its own audit");
+            print_pack_findings(&audit);
+            ExitCode::from(1)
+        }
+        Err(err) => {
+            eprintln!("mine_replays pack assemble: {err}");
+            ExitCode::from(2)
+        }
     }
 }
 
