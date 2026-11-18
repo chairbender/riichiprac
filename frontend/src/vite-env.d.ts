@@ -13,4 +13,16 @@ interface ImportMetaEnv {
    * `services/weightLoader.ts`.
    */
   readonly VITE_WEIGHTS_URL?: string;
+  /**
+   * Optional build-time override for the scenario-pack manifest URL
+   * (`services/packLoader.ts`). Defaults to the same-origin
+   * `scenarios/manifest.json`.
+   */
+  readonly VITE_PACK_MANIFEST_URL?: string;
+  /**
+   * Optional mirror for content-addressed pack bodies, for example
+   * `https://mirror.example/scenarios/`. The manifest stays same-origin and the
+   * mirror is only tried after the same-origin body fails.
+   */
+  readonly VITE_PACK_MIRROR_URL?: string;
 }

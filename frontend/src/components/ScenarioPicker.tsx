@@ -9,6 +9,7 @@ import {
   toggleScenario,
 } from '../scenarios';
 import type { ScenarioId, ScenarioOption, ScenarioSelection } from '../scenarios';
+import type { PackManifestStatus } from '../services/packLoader';
 
 interface ScenarioPickerProps {
   scenarios: ScenarioOption[];
@@ -16,6 +17,10 @@ interface ScenarioPickerProps {
   onChange: (selection: ScenarioSelection) => void;
   /** Opens the AI Hotseat card; its options are chosen before generation. */
   onConfigureHotseat: () => void;
+  /** Replay-manifest state for the panel's pack note. */
+  packStatus: PackManifestStatus;
+  packCount: number;
+  packError: string | null;
 }
 
 const PANEL_ID = 'scenario-pool-panel';
@@ -37,6 +42,9 @@ export const ScenarioPicker = ({
   selection,
   onChange,
   onConfigureHotseat,
+  packStatus,
+  packCount,
+  packError,
 }: ScenarioPickerProps) => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<ScenarioSelection>(selection);
@@ -115,6 +123,17 @@ export const ScenarioPicker = ({
             draft.ids.length === 1 ? '' : 's'
           } · ${draftGroupCount} section${draftGroupCount === 1 ? '' : 's'}`;
 
+  const packNote =
+    packStatus === 'loading'
+      ? 'Loading replay packs…'
+      : packStatus === 'error'
+        ? `Replay packs unavailable: ${packError ?? 'unknown error'}`
+        : packStatus === 'empty'
+          ? 'No replay packs are published yet.'
+          : packCount === 1
+            ? 'Replay pack: PACK lessons deal a real audited hand and are opt-in, so they are not in All.'
+            : `${packCount} replay packs: PACK lessons deal a real audited hand and are opt-in, so they are not in All.`;
+
   return (
     <div className="scenario-picker" ref={containerRef}>
       <span className="scenario-picker-label" aria-hidden="true">
@@ -149,6 +168,9 @@ export const ScenarioPicker = ({
             <div className="scenario-picker-heading">Scenario pool</div>
             <p className="scenario-picker-hint">
               Pick one, a whole book section, or any mix to randomise between.
+            </p>
+            <p className="scenario-picker-pack-note" role="status">
+              {packNote}
             </p>
           </div>
 
@@ -217,6 +239,14 @@ export const ScenarioPicker = ({
                           </span>
                           {scenario.requires_ai && (
                             <span className="scenario-item-badge">AI</span>
+                          )}
+                          {scenario.pack && (
+                            <span
+                              className="scenario-item-badge"
+                              title={`Replay pack ${scenario.pack.packId}`}
+                            >
+                              PACK
+                            </span>
                           )}
                         </label>
                         <button

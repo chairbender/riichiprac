@@ -2206,6 +2206,65 @@ only).
 
 **CC slice.** `worktree` / `riichiprac`.
 
+> **Status (2026-11-17, P3 branch).** Implemented as a lazy loader plus an
+> opt-in picker entry per published replay lesson, with no new game logic.
+> `frontend/src/services/packLoader.ts` fetches and schema-checks
+> `scenarios/manifest.json` (`riichiprac.scenario-pack-manifest` v1; safe
+> relative `.json.gz` path, 64-hex hash, byte/scenario counts, licence and
+> commercial flags), then fetches one content-addressed body only when a replay
+> lesson is dealt. A body is rejected before parsing unless its declared byte
+> length and SHA-256 match (SHA-256 uses `crypto.subtle` with a pure-JS fallback
+> for non-secure contexts), gunzipped through `DecompressionStream`, and checked
+> against the manifest: pack schema/version/id, scenario count, lesson ids, book
+> sections, licence, `requires_model`, `data_commercial_use`, `ai_selfplay`
+> source, redistributable/attribution and per-agent licences. Every scenario's
+> `state` must meet the render contract (four players, a human, tiles, category,
+> a valid `correct_action`) and is then laid out by the existing
+> `loadFromJson`/import path. Verified gzip bytes are cached in IndexedDB
+> (`riichiprac-packs`) under `pack id@sha256@cache version`
+> (`PACK_CACHE_VERSION`); cache read/write/delete failures are swallowed, a
+> corrupt cache entry is dropped and re-fetched, and the key's content address
+> makes a stale body unservable. Same-origin is always tried first; an optional
+> `VITE_PACK_MIRROR_URL` serves the same relative paths as a fallback
+> (`VITE_PACK_MANIFEST_URL` overrides the manifest). HTML-fallback responses are
+> rejected by content type and leading `<`.
+>
+> `mergePackLessons` in `frontend/src/scenarios.ts` merges the manifest's
+> `lesson_ids` onto the WASM `list_scenarios()` metadata: each replay lesson gets
+> a namespaced `replay:<pack>:<lesson>` id next to its generated sibling, with
+> the base label/book/grading, a `(replay)` suffix, a PACK badge and no answer
+> text; an unknown lesson id is humanised and filed under the pack's sole book
+> section when the catalogue knows that section. Replay entries are opt-in:
+> `allScenarioIds`/the `all` pool exclude them, so a launch downloads the
+> manifest only (the fixture body stays unfetched until picked). Selecting one
+> explicitly deals the pack hand. The picker announces
+> loading/ready/empty/error states in a `role="status"` note, keeps the existing
+> dialog/trigger/checkbox ARIA (`aria-expanded`, `aria-controls`,
+> `aria-haspopup`, per-section tri-state and checkbox labels), and the table's
+> loading message gained `role="status"`. A pack fetch failure surfaces through
+> the existing `role="alert"` error box; a manifest failure only disables the
+> optional entries, never generated lessons.
+>
+> **Evidence.** `frontend/src/services/packLoader.test.ts` (71 tests) validates
+> the committed fixture manifest and loads its real gzip body, then serves it
+> from cache with the network disabled; covers every manifest/body schema and
+> fail-closed source/licence case, byte/hash mismatch, corrupt-cache refetch,
+> broken-cache swallowing, HTML/non-gzip bodies, mirror fallback, path/hash
+> checks and SHA-256 known-answer vectors against `node:crypto`.
+> `frontend/src/components/ScenarioPicker.test.tsx` (12) covers ARIA parity,
+> Escape/focus return, the PACK/AI badges, `Only`, pool/All behaviour and the
+> manifest states; `frontend/src/App.pack.test.tsx` (1, jsdom) proves the launch
+> fetches only `/scenarios/manifest.json`, opens the picker without fetching a
+> body, then loads exactly one body when the replay lesson is dealt and the pack
+> state reaches the store through the normal path. `frontend/src/scenarios.test.ts`
+> adds 14 merge/pool/id tests. Gates: `npm test` (313), `npm run build`,
+> `npm run lint`, `npx tsc -b`, plus `node scripts/check-pack-hosting.mjs --dir
+> frontend/dist/scenarios` (41 checks) proving the Pages artifact still carries
+> the audited pack. No Rust behaviour changed. Visual work is not signed off by
+> the agent: the picker's new pack note/badge styling is handed to the user as a
+> dev URL (AGENTS.md §6). **User sign-off 2026-11-17:** the pack note and the
+> PACK badge row read fine at `http://127.0.0.1:5199/`.
+
 #### Phase 8 — Validation and first ship
 
 ##### Q1 — End-to-end pipeline acceptance harness

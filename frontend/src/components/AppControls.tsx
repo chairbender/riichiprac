@@ -1,5 +1,6 @@
 import type { ChangeEvent } from 'react';
 import type { ScenarioOption, ScenarioSelection } from '../scenarios';
+import type { PackManifestStatus } from '../services/packLoader';
 import type { TableView } from '../store/useSettingsStore';
 import type { AiStatus } from '../types/ai';
 import { NextScenarioButton } from './NextScenarioButton';
@@ -11,6 +12,10 @@ interface AppControlsProps {
   onSelectionChange: (selection: ScenarioSelection) => void;
   /** Opens the AI Hotseat generation card without dealing a hand. */
   onConfigureHotseat: () => void;
+  /** Replay-manifest state shown in the picker's pack note. */
+  packStatus: PackManifestStatus;
+  packCount: number;
+  packError: string | null;
   requireAgreement: boolean;
   aiStatus: AiStatus;
   /** Tooltip explaining whether the Mortal-agreement filter can run. */
@@ -35,6 +40,9 @@ export function AppControls({
   selection,
   onSelectionChange,
   onConfigureHotseat,
+  packStatus,
+  packCount,
+  packError,
   requireAgreement,
   aiStatus,
   agreementHint,
@@ -52,6 +60,9 @@ export function AppControls({
         selection={selection}
         onChange={onSelectionChange}
         onConfigureHotseat={onConfigureHotseat}
+        packStatus={packStatus}
+        packCount={packCount}
+        packError={packError}
       />
 
       <label className="app-toggle" title={agreementHint}>

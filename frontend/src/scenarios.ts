@@ -1,3 +1,5 @@
+import type { PackManifest, PackManifestEntry } from './services/packLoader';
+
 /** Scenario IDs understood by the WASM `generate_puzzle` dispatcher. */
 export type ScenarioId = string;
 
@@ -17,6 +19,28 @@ export interface BookSection {
 
 export type ScenarioGrading = 'book_and_mortal' | 'mortal_only';
 
+/**
+ * Where a replay-pack picker entry comes from.
+ *
+ * The manifest only lists lesson ids and pack-level metadata (there are no
+ * per-lesson titles until a body is loaded), so the entry is merged onto the
+ * WASM lesson with the same id: its label, description, book section and
+ * grading annotate the replay entry. A lesson that is not in the WASM
+ * catalogue still gets an entry, with the id humanised and no book section.
+ */
+export interface PackLessonSource {
+  /** Published pack id, for the badge tooltip and the body lookup. */
+  packId: string;
+  /** The lesson id the pack body uses (`PackScenario.lesson_id`). */
+  lessonId: string;
+  /** Scenarios in the whole pack; the per-lesson count is only known after load. */
+  packScenarioCount: number;
+  licence: string;
+  requiresModel: boolean;
+  /** Book section keys the pack declares, for the merged-book fallback. */
+  bookSections: string[];
+}
+
 export interface ScenarioOption {
   id: ScenarioId;
   label: string;
@@ -29,14 +53,49 @@ export interface ScenarioOption {
   grading: ScenarioGrading;
   /** The book section this lesson teaches; null for lessons with no book tie. */
   book: BookSection | null;
+  /**
+   * Present when this picker entry deals a real hand from a published pack
+   * instead of generating one. Pack entries are opt-in: they are not part of
+   * the `all` pool, so the only bytes a first launch fetches are the manifest.
+   */
+  pack?: PackLessonSource | null;
+}
+
+/** Namespace that keeps a replay entry from colliding with the generated lesson. */
+export const PACK_SCENARIO_PREFIX = 'replay:';
+
+/** Stable picker/selection id for one lesson inside one pack. */
+export function packScenarioId(packId: string, lessonId: string): string {
+  return `${PACK_SCENARIO_PREFIX}${packId}:${lessonId}`;
+}
+
+/** True for an id minted by {@link packScenarioId}. */
+export function isPackScenarioId(id: string): boolean {
+  return id.startsWith(PACK_SCENARIO_PREFIX);
+}
+
+/** Split a pack entry id back into its pack and lesson, or null if malformed. */
+export function parsePackScenarioId(
+  id: string,
+): { packId: string; lessonId: string } | null {
+  if (!isPackScenarioId(id)) return null;
+  const rest = id.slice(PACK_SCENARIO_PREFIX.length);
+  const split = rest.indexOf(':');
+  if (split <= 0 || split === rest.length - 1) return null;
+  return {
+    packId: rest.slice(0, split),
+    lessonId: rest.slice(split + 1),
+  };
 }
 
 /**
  * What the next hand is drawn from.
  *
- * `all` keeps the catalogue-wide behaviour: the whole manifest, minus AI drills
- * until the model is ready. `selected` is taken literally because the user
- * picked those lessons by name.
+ * `all` keeps the catalogue-wide behaviour: the generated manifest, minus AI
+ * drills until the model is ready and minus replay-pack lessons (those are
+ * opt-in so startup fetches only the pack manifest). `selected` is taken
+ * literally because the user picked those lessons by name, replay packs
+ * included.
  */
 export type ScenarioSelection =
   | { kind: 'all' }
@@ -190,11 +249,110 @@ export function groupScenarios(
   return ordered;
 }
 
-/** Every catalogue id, in manifest order. */
+/** Every id the "All scenarios" pool covers, in manifest order. */
 export function allScenarioIds(
   scenarios: ScenarioOption[] = FALLBACK_SCENARIOS,
 ): ScenarioId[] {
-  return scenarios.map((scenario) => scenario.id);
+  return scenarios.filter((scenario) => !scenario.pack).map((scenario) => scenario.id);
+}
+
+/**
+ * Add one picker entry per replay lesson published by the manifest.
+ *
+ * The id is namespaced (`replay:<pack>:<lesson>`) so the generated lesson and
+ * the replay hand can be selected independently. Metadata is merged from the
+ * WASM entry with the same lesson id; a lesson the app does not know still gets
+ * an entry, falling back to the pack's sole book section when it declares one.
+ * Merging is idempotent: an existing pack entry is dropped before rebuilding,
+ * so calling it on every render cannot duplicate rows.
+ */
+export function mergePackLessons(
+  scenarios: ScenarioOption[],
+  manifest: PackManifest | null,
+): ScenarioOption[] {
+  const generated = scenarios.filter((scenario) => !scenario.pack);
+  if (!manifest || manifest.packs.length === 0) return generated;
+
+  const byId = new Map(generated.map((scenario) => [scenario.id, scenario]));
+  const sectionsByKey = new Map<string, BookSection>();
+  for (const option of generated) {
+    if (option.book) sectionsByKey.set(option.book.key, option.book);
+  }
+
+  const afterLesson = new Map<string, ScenarioOption[]>();
+  const orphaned: ScenarioOption[] = [];
+
+  for (const entry of manifest.packs) {
+    for (const lessonId of entry.lesson_ids) {
+      const base = byId.get(lessonId) ?? null;
+      const option = replayOption(entry, lessonId, base, sectionsByKey);
+      if (base) {
+        const list = afterLesson.get(base.id);
+        if (list) {
+          list.push(option);
+        } else {
+          afterLesson.set(base.id, [option]);
+        }
+      } else {
+        orphaned.push(option);
+      }
+    }
+  }
+
+  const merged: ScenarioOption[] = [];
+  for (const option of generated) {
+    merged.push(option);
+    const replay = afterLesson.get(option.id);
+    if (replay) merged.push(...replay);
+  }
+  merged.push(...orphaned);
+  return merged;
+}
+
+function replayOption(
+  entry: PackManifestEntry,
+  lessonId: string,
+  base: ScenarioOption | null,
+  sectionsByKey: Map<string, BookSection>,
+): ScenarioOption {
+  const book = base?.book ?? soleBookSection(entry, sectionsByKey);
+  return {
+    id: packScenarioId(entry.id, lessonId),
+    // The suffix keeps the generated and replay rows distinguishable in a
+    // section list; the badge repeats it. Neither names the answer.
+    label: base ? `${base.label} (replay)` : humanizeLessonId(lessonId),
+    description: base
+      ? `A real audited ${base.label} position from replay pack ${entry.id}.`
+      : `A real audited position from replay pack ${entry.id}.`,
+    category: base?.category ?? lessonId,
+    tags: [...new Set([...(base?.tags ?? []), 'replay', 'pack'])],
+    // The hand is shipped in the pack, so dealing it needs no model.
+    requires_ai: false,
+    grading: base?.grading ?? 'book_and_mortal',
+    book,
+    pack: {
+      packId: entry.id,
+      lessonId,
+      packScenarioCount: entry.scenario_count,
+      licence: entry.licence,
+      requiresModel: entry.requires_model,
+      bookSections: entry.book_sections,
+    },
+  };
+}
+
+function soleBookSection(
+  entry: PackManifestEntry,
+  sectionsByKey: Map<string, BookSection>,
+): BookSection | null {
+  if (entry.book_sections.length !== 1) return null;
+  return sectionsByKey.get(entry.book_sections[0]) ?? null;
+}
+
+function humanizeLessonId(lessonId: string): string {
+  const words = lessonId.replace(/[_-]+/g, ' ').trim();
+  if (words === '') return lessonId;
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /** The ids a selection currently holds, expanded for the `all` mode. */
@@ -220,8 +378,11 @@ export function selectionPool(
   const catalogue = scenarios.length > 0 ? scenarios : FALLBACK_SCENARIOS;
 
   if (selection.kind === 'all') {
+    // Replay-pack lessons are opt-in: the `all` pool is the generated
+    // catalogue, so a first launch never downloads a pack body.
     const pool = catalogue.filter(
-      (scenario) => includeRequiresAi || !scenario.requires_ai,
+      (scenario) =>
+        !scenario.pack && (includeRequiresAi || !scenario.requires_ai),
     );
     return pool.length > 0 ? pool : FALLBACK_SCENARIOS;
   }
@@ -260,7 +421,7 @@ export function toggleScenario(
   }
   return {
     kind: 'selected',
-    ids: allScenarioIds(scenarios).filter((scenarioId) => ids.has(scenarioId)),
+    ids: orderedSelectionIds(scenarios, ids),
   };
 }
 
@@ -281,10 +442,27 @@ export function setScenariosSelected(
   }
   return {
     kind: 'selected',
-    ids: allScenarioIds(scenarios).filter((scenarioId) =>
-      chosen.has(scenarioId),
-    ),
+    ids: orderedSelectionIds(scenarios, chosen),
   };
+}
+
+/**
+ * Stable order for an explicit selection: generated lessons in manifest order,
+ * then opt-in replay lessons in their merged order. Replay ids are appended
+ * rather than filtered out (as `allScenarioIds` does) because the user ticked
+ * one of them by name.
+ */
+function orderedSelectionIds(
+  scenarios: ScenarioOption[],
+  chosen: Set<ScenarioId>,
+): ScenarioId[] {
+  const generated = scenarios
+    .filter((scenario) => !scenario.pack)
+    .map((scenario) => scenario.id);
+  const replay = scenarios
+    .filter((scenario) => scenario.pack)
+    .map((scenario) => scenario.id);
+  return [...generated, ...replay].filter((id) => chosen.has(id));
 }
 
 /**
