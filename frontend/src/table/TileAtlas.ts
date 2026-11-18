@@ -23,6 +23,10 @@ import { parseFacesManifest } from './faceManifest';
 import type { FacesManifest } from './faceManifest';
 import { parseDecalsManifest } from './decalManifest';
 import type { DecalsManifest } from './decalManifest';
+import { parseReliefManifest } from './reliefManifest';
+import type { ReliefManifest } from './reliefManifest';
+import { parseTableLayoutManifest } from './tableLayoutManifest';
+import type { TableLayoutManifest } from './tableLayoutManifest';
 import { parseShellsManifest } from './shellManifest';
 import type { ShellsManifest } from './shellManifest';
 import { TileAtlasBuilder, estimateAtlasBytes } from './TileAtlasBuilder';
@@ -46,6 +50,17 @@ export interface TileAtlasLoadOptions {
   readonly facesUrl?: string;
   /** Carved decal manifest URL; null/undefined keeps the flat glyph path. */
   readonly decalsUrl?: string | null;
+  /**
+   * Task 5A relief manifest and slot layout. Both are needed for world-space
+   * carved shading; when either is unavailable the atlas keeps the Task 5
+   * path (carved decals, then flat glyphs) and logs a warning unless
+   * `requireRelief` is set.
+   */
+  readonly reliefUrl?: string | null;
+  readonly layoutUrl?: string | null;
+  readonly relief?: ReliefManifest;
+  readonly layout?: TableLayoutManifest;
+  readonly requireRelief?: boolean;
   /** A pre-parsed decal manifest, for tests and the review scripts. */
   readonly decals?: DecalsManifest;
   readonly fetchJson?: (url: string) => Promise<unknown>;
@@ -208,10 +223,12 @@ export class TileAtlas {
     let bareSprites = 0;
     let decalSprites = 0;
     let flatGlyphSprites = 0;
+    let reliefSprites = 0;
     for (const sprite of this.spriteMap.values()) {
       if (sprite.hasGlyph) {
         glyphSprites += 1;
-        if (sprite.decalFile) decalSprites += 1;
+        if (sprite.shading === 'relief') reliefSprites += 1;
+        else if (sprite.decalFile) decalSprites += 1;
         else flatGlyphSprites += 1;
       } else {
         bareSprites += 1;
@@ -225,6 +242,12 @@ export class TileAtlas {
       bareSprites,
       decalSprites,
       flatGlyphSprites,
+      reliefSprites,
+      reliefGroups: this.builder.orientationGroupCount,
+      reliefDecals: this.builder.reliefBakeCount,
+      reliefBakeMs: this.builder.reliefBakeMs,
+      reliefCacheHits: this.builder.reliefCacheHits,
+      reliefAtlasLoadMs: this.builder.reliefAtlasLoadMs,
       atlasPixels,
       rgbaBytes: atlasPixels * 4,
       pixelRatio: this.pixelRatio,
@@ -260,10 +283,41 @@ export class TileAtlas {
     const pixelRatio: 1 | 2 =
       requestedPixelRatio === 2 && requestedBytes > maxRgbaBytes ? 1 : requestedPixelRatio;
 
+    // Task 5A inputs. Both are optional: a deployment that ships only the
+    // Task 5 decals must still boot, and a partial asset load must leave every
+    // face on its fallback path rather than failing the board.
+    const reliefUrl =
+      options.reliefUrl === undefined ? joinUrl(baseUrl, 'relief.json') : options.reliefUrl;
+    const layoutUrl =
+      options.layoutUrl === undefined ? joinUrl(baseUrl, 'table_layout.json') : options.layoutUrl;
+    let relief: ReliefManifest | null = options.relief ?? null;
+    let layout: TableLayoutManifest | null = options.layout ?? null;
+    try {
+      const [reliefRaw, layoutRaw] = await Promise.all([
+        relief || !reliefUrl ? Promise.resolve(null) : fetchJson(reliefUrl),
+        layout || !layoutUrl ? Promise.resolve(null) : fetchJson(layoutUrl),
+      ]);
+      if (reliefRaw !== null) relief = parseReliefManifest(reliefRaw);
+      if (layoutRaw !== null) layout = parseTableLayoutManifest(layoutRaw);
+    } catch (error) {
+      if (options.requireRelief) throw error;
+      // Keep whichever manifest parsed; without both, every face uses the
+      // Task 5 carved decal / flat glyph fallback.
+      console.warn(`carved relief unavailable: ${String(error)}`);
+    }
+    if (!relief || !layout) {
+      if (options.requireRelief) {
+        throw new Error('carved relief requires both relief.json and table_layout.json');
+      }
+      relief = null;
+      layout = null;
+    }
+
     const builder = new TileAtlasBuilder({
       shells,
       faces,
       decals: decals ?? undefined,
+      ...(relief && layout ? { relief: { manifest: relief, layout } } : {}),
       resolveUrl: (relativePath) => joinUrl(baseUrl, relativePath),
       loadImage: options.loadImage ?? defaultLoadImage,
       createCanvas: options.createCanvas,

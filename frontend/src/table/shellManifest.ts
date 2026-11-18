@@ -116,6 +116,12 @@ export interface ShellStats {
   readonly pose: ShellPose;
   /** Authoritative glyph/blue-back switch. False on the wall and top hand. */
   readonly faceUp: boolean;
+  /**
+   * The bake's measured RGB sample at the middle of the face plate (`@1x`,
+   * 0-255). Task 5A uses it to tone-match the carved ivory so the relief
+   * highlights stay relative to the shell body they sit on.
+   */
+  readonly faceSampleRgb?: readonly [number, number, number];
 }
 
 export interface ShellsManifest {
@@ -336,6 +342,23 @@ function parseShell(id: string, raw: unknown): ShellStats {
   const wallSlot =
     shell.wallSlot === undefined ? undefined : parseWallSlot(shell.wallSlot, `${id}.wallSlot`);
 
+  const measuredRaw =
+    typeof shell.measured === 'object' && shell.measured !== null
+      ? (shell.measured as Record<string, unknown>)
+      : null;
+  const sampleRaw = measuredRaw?.faceSampleRgb;
+  let faceSampleRgb: readonly [number, number, number] | undefined;
+  if (sampleRaw !== undefined) {
+    if (!Array.isArray(sampleRaw) || sampleRaw.length !== 3) {
+      fail(`${id}.measured.faceSampleRgb must be [r, g, b]`);
+    }
+    faceSampleRgb = [
+      finite(sampleRaw[0], `${id}.measured.faceSampleRgb[0]`),
+      finite(sampleRaw[1], `${id}.measured.faceSampleRgb[1]`),
+      finite(sampleRaw[2], `${id}.measured.faceSampleRgb[2]`),
+    ] as const;
+  }
+
   const stats: ShellStats = {
     textureFile,
     textureFile2x,
@@ -362,6 +385,7 @@ function parseShell(id: string, raw: unknown): ShellStats {
     ...(handSlot === undefined ? {} : { handSlot }),
     ...(topHandSlot === undefined ? {} : { topHandSlot }),
     ...(wallSlot === undefined ? {} : { wallSlot }),
+    ...(faceSampleRgb === undefined ? {} : { faceSampleRgb }),
     shadowShape: parseShadowShape(shell.shadowShape, `${id}.shadowShape`),
     projection: typeof shell.projection === 'string' ? shell.projection : '',
     pose: {

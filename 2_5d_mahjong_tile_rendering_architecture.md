@@ -1283,6 +1283,10 @@ IoU of **0.9928** against the committed flat glyphs. The fixed 256 × 340 cell
 gives 14.286 px/mm across and 13.643 px/mm down (4.7% texel anisotropy), so the
 orthographic camera sets `pixel_aspect_y` and the geometry is not squashed.
 
+> Task 5A (§12c, landed below) is now the consumer of these maps; the spawned
+> per-orientation carved decals and the flat glyphs remain its per-face
+> fallback.
+
 **Geometry, not a filter.** `scripts/bake-relief-masks.mjs` rasterises the same
 public-domain symbol SVGs at 1200 × 1600 (57 px/mm) and computes the exact
 signed distance to the glyph outline (per-axis weighted Felzenszwalb). The
@@ -1327,6 +1331,88 @@ normal, AO and roughness panels per face and its measured numbers; a 4× zoom
 (the same crop through all four panels); and an alignment sheet that draws the
 paint silhouette in red over each map at 4×. The user signs off the look; the
 agent does not (AGENTS.md §6).
+
+## 12c. Task 5A: world-space carved relief shading and caching (2026-11-17)
+
+Task 4B's maps are unlit data; Task 5A is the consumer. The renderer is Canvas
+2D (no WebGL/WebGPU by design, §3), so the chosen path is a **CPU startup bake**
+into offscreen decals, not a per-frame shader: every tile's face is lit once
+while the atlas is composed, and gameplay stays one `drawImage` per tile.
+
+**Inputs, not fakes.** `frontend/src/table/tableLayoutManifest.ts` parses the
+Task 3A export: the `lighting` block (key direction/colour, ambient, camera
+position), the scene camera and every slot's `bucket` + `basis`. The layout has
+no 3D position per slot, only a normalized anchor and view-axis depth; both were
+projected from the rig camera, so `worldPositionOfSlot` inverts that pinhole
+(`px = W/2 + shiftX·W + focal·(P−eye)·right / depth`) and recovers the exact
+world position. `basisConvention` is enforced: coordinates are unit length,
+mutually orthogonal, and `normal = bitangent × tangent` (T × B points into the
+body; `n_world = n.x·T + n.y·B + n.z·N` with no sign flip).
+`frontend/src/table/reliefManifest.ts` parses `relief.json` (three atlas
+entries, 37 cells, engraving depth in tile units).
+
+**Per texel** (`frontend/src/table/carvedRelief.ts`, `shadeReliefInto`):
+1. `V_world = normalize(cameraPos − P_slot)`, `V_tan = (V·T, V·B, V·N)`.
+2. `uv_carved = uv − (V_tan.xy / max(V_tan.z, 0.35)) · (1 − h) · d_carve`,
+   `d_carve = 0.018`, with `h` from `face_normal_depth.a`. Albedo, normal and
+   AO/roughness are re-sampled bilinearly at the shifted UV (clamped to the
+   cell).
+3. Decode the tangent normal, rotate it with the slot basis, and light it:
+   `I = max(n_world·L, 0)·C_key + C_amb`, multiplied by cavity AO; enamel
+   specular `paintMask · max(n_world·H, 0)^48 · 0.45`.
+4. Output a straight-alpha decal whose coverage is the paint mask plus the
+   bare V-carve walls/lip (depth-based, fading to 0 at the un-carved surface).
+   The un-carved plate stays transparent, so the shell's own baked shading is
+   untouched and the lip only modulates the rim.
+
+**Tone match, not a second light.** The shells are Cycles/AgX renders while the
+relief atlases are unlit linear data. The bake scales the computed radiance so
+a flat ivory texel lands on the shell's own measured `faceSampleRgb` (published
+per shell in `shells.json`). The key/ambient ratio is unchanged; the scale just
+keeps a highlight on the standing hand relative to the hand body (which is
+darker than a pond tile). `reliefShadingFrame` computes it once per group.
+
+**Cache.** `CarvedReliefBakery` groups every layout slot by `(bucket, rounded
+T/B/N)` (31 groups in the committed layout, `orientationGroupKey`). A face-up
+shell resolves to the group of the slot whose world basis its own screen
+rotation implies: the 14 standing slots map to `hand_south_00..13`, and the
+four flat shells to the south / east / north / west ponds. That is correct for
+every use of a shell: a flat tile's in-plane world orientation is fixed by how
+it lies on the mat, not by which seat discarded it, so `shell_flat_sideways` is
+the east pond's normal discard *and* the south pond's turned (riichi/called)
+discard and both share the same published basis (T north, B east). Only 9 of
+the 31 groups are reachable from the 18 face-up shells (the walls and opponent
+hands are face-down and bare). The cache key is
+`face @ (bucket|t…|b…|n…) @ output size @ ivory calibration`, so a sideways
+riichi tile can never reuse an upright decal; the size is included because hand
+slots publish different plate widths. The atlas composition then blits each
+decal into its shell page and the baker's decal cache is released: the composed
+pages are the shipped cache (one per shell), and the frame path has no shading
+call at all.
+
+**Numbers (`npm run atlas:review:relief`, @1x, all 18 face-up shells).** 9
+reachable groups, 432 baked decals (216 cache hits across the 14 standing
+slots), atlas load 53 ms, decal bake **365 ms** (0.84 ms/decal), full relief
+atlas build 456 ms vs 196 ms carved vs 54 ms flat. Frame path: 136 blits in
+**0.21 ms/frame** (p95 0.22 ms); per-frame CPU shading of the same 136 plates
+would cost about **115 ms**, which is why it is a startup bake. Orientation
+proof: the same `1m` decal differs from its 90/180/270 siblings by 14.3k / 14.8k
+/ 14.1k channel bytes, and the tests assert the world-lit V-wall flips with the
+basis.
+
+**Fallback.** Per face: relief → Task 5 carved decal → flat glyph. A missing
+relief cell skips only that face; a missing/corrupt relief atlas disables the
+bakery after a single warning and the whole board falls back to the Task 5
+decals, so a partial asset load never fails the board. `blank`/`5z` keep the
+shared bare slot.
+
+**Review.** `cd frontend && npm run atlas:review:relief` writes
+`tools/render/build/review/relief-compare-4x.png` (flat / carved / relief for
+1m, 1p, 1s, 7z, 5z at 0/90/180/270), `relief-board-2x.png` (the four ponds plus
+the hand) and `relief-numbers.json` (cache, bake and blit numbers). The images
+are for the user's sign-off (AGENTS.md §6); the agent's verdict is the numbers
+and the test suite.
+
 
 ## 13. Phase 3: the zone layout engine (landed 2026-11-16)
 
