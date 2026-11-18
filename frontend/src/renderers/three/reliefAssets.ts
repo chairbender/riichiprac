@@ -103,25 +103,25 @@ export const PINNED_RELIEF_ATLASES = {
  */
 export const PINNED_RELIEF3D_ATLASES = {
   face_albedo: {
-    file: 'relief/face_albedo.png',
+    file: 'relief3d/face_albedo.png',
     width: 1536,
     height: 2380,
-    bytes: 948566,
-    sha256: '9f4f390711c6100b2efd0a026eed28293e1583f39f02f5504cb014d37482cb04',
+    bytes: 588892,
+    sha256: '7cdf6ce2269bbe5843805c9609b0669c99efb7c5e6177e294351df17d8636397',
   },
   face_normal_depth: {
     file: 'relief3d/face_normal_depth.png',
     width: 1536,
     height: 2380,
-    bytes: 1082742,
-    sha256: '6b36290b5332b6b77fc5df50ecfedb2879028396cec2d39947ad16c643ad09cf',
+    bytes: 1565299,
+    sha256: 'edf6671f36169596cb85e4d955a618fd294fca167eb76d0992808c095e7c89b8',
   },
   face_ao_roughness: {
     file: 'relief3d/face_ao_roughness.png',
     width: 1536,
     height: 2380,
-    bytes: 784828,
-    sha256: '8967e3dae887cad615092342fc6c34de0fe5f8e1eb6f59c3fb0b4a2bdcaa7b56',
+    bytes: 952842,
+    sha256: 'ad9ae2ec5cd1e8cbbf501f0cac8f839c7159db481215ec8264c54c35ee075a95',
   },
 } as const;
 

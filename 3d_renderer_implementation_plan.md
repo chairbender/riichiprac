@@ -1134,8 +1134,19 @@ lights, same shader, camera moved in), `hero-overview.png` (the live view at
 committed carved decals converted to PNG and composited on the ivory face, as the
 approved recess to compare against. **Verdict: pending the user's review.**
 
-**Hero face moved to `1p` (same day, at the user's request: "a more complex
-carve").** `1p` is multi-colour (navy 16004 px, white 12539, black 4860, crimson
+**Hero face moved to `1p`, and the carve mask fixed (same day, at the user's
+request: "a more complex carve").** The first `1p` bake carved every opaque
+pixel, so its whole disc sank — "just a recessed circle". `1p`'s artwork is
+woven with **opaque white** (17 066 of 87 040 cell px, 19.6 %) that is the bare
+tile showing through, while `1m` has none: the carve mask is now `opaque AND
+ΔE(colour, ivory) > 10` (the runtime paint probe's rule) and the relief3d albedo
+drops the white to transparent, so the white reads as raised uncarved islands.
+Measured after: plate ivory p25/p50/p95 **230 / 237 / 243**, its edges 162, paint
+34–98; `1p` whiteFraction 0.196, `1m` 0.000. The bake now also publishes its own
+albedo (pigment from the committed atlas, mask corrected) instead of reusing the
+committed one, so the runtime shader sees the same paint the carve does.
+
+**The same request's earlier detail.** `1p` is multi-colour (navy 16004 px, white 12539, black 4860, crimson
 3530 in the committed albedo), so the paint probe is now a **contrast** test —
 the block median must sit at least ΔE 25 from the committed ivory — instead of a
 redness test, and its point is the widest navy band (11.2 texels of clearance).

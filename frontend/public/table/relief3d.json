@@ -4,7 +4,7 @@
  "purpose": "Normal/height and AO/roughness for the live-lit 3D face, baked at the approved decal carve geometry: the glyph area is displaced inward through a 0.3 mm Bezier transition so the wall is inside the painted silhouette (the decals' bright rim and dark inner shadow). The committed relief albedo is reused because the paint colour and mask do not depend on the carve geometry.",
  "source": {
   "glyphs": "frontend/public/table/faces/<id>.png (committed, public domain)",
-  "albedo": "relief/face_albedo.png (committed Task 4B, reused)",
+  "albedo": "relief/face_albedo.png (committed Task 4B) for the pigment; the relief3d alpha drops the artwork white so it stays uncarved",
   "geometry": "tools/render/decal-spec.json carve block (the approved 2.5D engraving)",
   "generator": "frontend/tools/relief3d/bake-relief3d.mjs",
   "note": "Nothing under tools/render is written; the 2.5D pipeline is read for its published carve numbers only."
@@ -53,23 +53,23 @@
  "atlases": {
   "face_albedo": {
    "role": "albedo",
-   "file": "relief/face_albedo.png",
+   "file": "relief3d/face_albedo.png",
    "width": 1536,
    "height": 2380,
-   "bytes": 948566,
+   "bytes": 588892,
    "sha256": {
-    "png": "9f4f390711c6100b2efd0a026eed28293e1583f39f02f5504cb014d37482cb04"
+    "png": "7cdf6ce2269bbe5843805c9609b0669c99efb7c5e6177e294351df17d8636397"
    },
-   "source": "committed"
+   "source": "relief3d"
   },
   "face_normal_depth": {
    "role": "normalDepth",
    "file": "relief3d/face_normal_depth.png",
    "width": 1536,
    "height": 2380,
-   "bytes": 1082742,
+   "bytes": 1565299,
    "sha256": {
-    "png": "6b36290b5332b6b77fc5df50ecfedb2879028396cec2d39947ad16c643ad09cf"
+    "png": "edf6671f36169596cb85e4d955a618fd294fca167eb76d0992808c095e7c89b8"
    },
    "source": "relief3d"
   },
@@ -78,9 +78,9 @@
    "file": "relief3d/face_ao_roughness.png",
    "width": 1536,
    "height": 2380,
-   "bytes": 784828,
+   "bytes": 952842,
    "sha256": {
-    "png": "8967e3dae887cad615092342fc6c34de0fe5f8e1eb6f59c3fb0b4a2bdcaa7b56"
+    "png": "ad9ae2ec5cd1e8cbbf501f0cac8f839c7159db481215ec8264c54c35ee075a95"
    },
    "source": "relief3d"
   }
@@ -102,9 +102,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.22535615808823528,
+    "paintFraction": 0.22528722426470588,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2627
+    "aoMin": 0.2588
    }
   },
   "2m": {
@@ -123,9 +124,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.24496783088235294,
+    "paintFraction": 0.24500229779411764,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2627
+    "aoMin": 0.2588
    }
   },
   "3m": {
@@ -144,9 +146,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.2654871323529412,
+    "paintFraction": 0.26544117647058824,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2627
+    "aoMin": 0.2588
    }
   },
   "4m": {
@@ -165,9 +168,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.2859719669117647,
+    "paintFraction": 0.28596047794117646,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2627
+    "aoMin": 0.2588
    }
   },
   "5m": {
@@ -186,9 +190,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.2864315257352941,
+    "paintFraction": 0.2863625919117647,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2627
+    "aoMin": 0.2588
    }
   },
   "6m": {
@@ -207,9 +212,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.26232766544117647,
+    "paintFraction": 0.26231617647058825,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2627
+    "aoMin": 0.2588
    }
   },
   "7m": {
@@ -228,9 +234,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.2513327205882353,
+    "paintFraction": 0.2512063419117647,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2627
+    "aoMin": 0.2588
    }
   },
   "8m": {
@@ -249,7 +256,8 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.23539751838235295,
+    "paintFraction": 0.23537454044117648,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
     "aoMin": 0.2549
    }
@@ -270,9 +278,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.25633042279411766,
+    "paintFraction": 0.2564108455882353,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.1804
+    "aoMin": 0.1608
    }
   },
   "1p": {
@@ -291,9 +300,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.5681870404411765,
+    "paintFraction": 0.37279411764705883,
+    "whiteFraction": 0.19607077205882353,
     "deepestMm": 0.495,
-    "aoMin": 0.5569
+    "aoMin": 0.1294
    }
   },
   "2p": {
@@ -312,9 +322,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.4140625,
+    "paintFraction": 0.2904296875,
+    "whiteFraction": 0.12408088235294118,
     "deepestMm": 0.495,
-    "aoMin": 0.5569
+    "aoMin": 0.2196
    }
   },
   "3p": {
@@ -333,9 +344,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.2931295955882353,
+    "paintFraction": 0.23650045955882354,
+    "whiteFraction": 0.056881893382352944,
     "deepestMm": 0.495,
-    "aoMin": 0.5451
+    "aoMin": 0.1647
    }
   },
   "4p": {
@@ -354,9 +366,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.3902803308823529,
+    "paintFraction": 0.3153377757352941,
+    "whiteFraction": 0.0755859375,
     "deepestMm": 0.495,
-    "aoMin": 0.549
+    "aoMin": 0.149
    }
   },
   "5p": {
@@ -375,9 +388,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.48787913602941174,
+    "paintFraction": 0.39409466911764707,
+    "whiteFraction": 0.09455422794117647,
     "deepestMm": 0.495,
-    "aoMin": 0.549
+    "aoMin": 0.149
    }
   },
   "6p": {
@@ -396,9 +410,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.5234489889705882,
+    "paintFraction": 0.4110753676470588,
+    "whiteFraction": 0.11290211397058823,
     "deepestMm": 0.495,
-    "aoMin": 0.549
+    "aoMin": 0.1647
    }
   },
   "7p": {
@@ -417,9 +432,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.5931870404411764,
+    "paintFraction": 0.46186810661764705,
+    "whiteFraction": 0.1314453125,
     "deepestMm": 0.495,
-    "aoMin": 0.5412
+    "aoMin": 0.1647
    }
   },
   "8p": {
@@ -438,9 +454,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.6629250919117647,
+    "paintFraction": 0.5136603860294118,
+    "whiteFraction": 0.14979319852941175,
     "deepestMm": 0.495,
-    "aoMin": 0.549
+    "aoMin": 0.1294
    }
   },
   "9p": {
@@ -459,9 +476,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.7759420955882353,
+    "paintFraction": 0.6103400735294118,
+    "whiteFraction": 0.1665670955882353,
     "deepestMm": 0.495,
-    "aoMin": 0.549
+    "aoMin": 0.1294
    }
   },
   "1s": {
@@ -480,9 +498,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.4812385110294118,
+    "paintFraction": 0.31557904411764703,
+    "whiteFraction": 0.16623391544117647,
     "deepestMm": 0.495,
-    "aoMin": 0.251
+    "aoMin": 0.1333
    }
   },
   "2s": {
@@ -501,9 +520,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.19185431985294119,
+    "paintFraction": 0.16222426470588236,
+    "whiteFraction": 0.02973345588235294,
     "deepestMm": 0.495,
-    "aoMin": 0.451
+    "aoMin": 0.1608
    }
   },
   "3s": {
@@ -522,9 +542,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.28725873161764703,
+    "paintFraction": 0.2430032169117647,
+    "whiteFraction": 0.04500229779411765,
     "deepestMm": 0.495,
-    "aoMin": 0.451
+    "aoMin": 0.1569
    }
   },
   "4s": {
@@ -543,9 +564,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.3840188419117647,
+    "paintFraction": 0.3245174632352941,
+    "whiteFraction": 0.05947840073529412,
     "deepestMm": 0.495,
-    "aoMin": 0.451
+    "aoMin": 0.1569
    }
   },
   "5s": {
@@ -564,9 +586,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.47876838235294117,
+    "paintFraction": 0.40535386029411763,
+    "whiteFraction": 0.07488511029411765,
     "deepestMm": 0.495,
-    "aoMin": 0.451
+    "aoMin": 0.1569
    }
   },
   "6s": {
@@ -585,9 +608,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.5745863970588235,
+    "paintFraction": 0.4861902573529412,
+    "whiteFraction": 0.08994715073529412,
     "deepestMm": 0.495,
-    "aoMin": 0.451
+    "aoMin": 0.1569
    }
   },
   "7s": {
@@ -606,9 +630,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.38100873161764703,
+    "paintFraction": 0.3287109375,
+    "whiteFraction": 0.05280330882352941,
     "deepestMm": 0.495,
-    "aoMin": 0.4353
+    "aoMin": 0.3412
    }
   },
   "8s": {
@@ -627,9 +652,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.5956686580882353,
+    "paintFraction": 0.48820082720588237,
+    "whiteFraction": 0.10775505514705883,
     "deepestMm": 0.495,
-    "aoMin": 0.451
+    "aoMin": 0.1608
    }
   },
   "9s": {
@@ -648,9 +674,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.4897403492647059,
+    "paintFraction": 0.42218520220588235,
+    "whiteFraction": 0.06821001838235294,
     "deepestMm": 0.495,
-    "aoMin": 0.4353
+    "aoMin": 0.3412
    }
   },
   "5mr": {
@@ -669,9 +696,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.29663373161764706,
+    "paintFraction": 0.2965877757352941,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2627
+    "aoMin": 0.2588
    }
   },
   "5pr": {
@@ -690,9 +718,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.49812729779411763,
+    "paintFraction": 0.40313648897058824,
+    "whiteFraction": 0.09578354779411764,
     "deepestMm": 0.495,
-    "aoMin": 0.4627
+    "aoMin": 0.1961
    }
   },
   "5sr": {
@@ -711,9 +740,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.4889246323529412,
+    "paintFraction": 0.41541819852941175,
+    "whiteFraction": 0.07504595588235294,
     "deepestMm": 0.495,
-    "aoMin": 0.451
+    "aoMin": 0.1569
    }
   },
   "1z": {
@@ -732,9 +762,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.2502872242647059,
+    "paintFraction": 0.24994255514705882,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2549
+    "aoMin": 0.2471
    }
   },
   "2z": {
@@ -753,7 +784,8 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.2779641544117647,
+    "paintFraction": 0.278125,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
     "aoMin": 0.2627
    }
@@ -774,9 +806,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.24595588235294116,
+    "paintFraction": 0.24586397058823528,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2627
+    "aoMin": 0.2588
    }
   },
   "4z": {
@@ -795,9 +828,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.1967486213235294,
+    "paintFraction": 0.19658777573529412,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2863
+    "aoMin": 0.2667
    }
   },
   "5z": {
@@ -817,6 +851,7 @@
    },
    "measured": {
     "paintFraction": 0,
+    "whiteFraction": 0,
     "deepestMm": 0,
     "aoMin": 1
    }
@@ -837,9 +872,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.2541245404411765,
+    "paintFraction": 0.2542049632352941,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2196
+    "aoMin": 0.2039
    }
   },
   "7z": {
@@ -858,9 +894,10 @@
     ]
    },
    "measured": {
-    "paintFraction": 0.19327895220588234,
+    "paintFraction": 0.19370404411764705,
+    "whiteFraction": 0,
     "deepestMm": 0.495,
-    "aoMin": 0.2706
+    "aoMin": 0.2745
    }
   }
  }

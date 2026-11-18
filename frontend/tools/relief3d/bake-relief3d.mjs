@@ -10,6 +10,15 @@
  * decals' bright rim and dark inner shadow come from; a flat painted floor can
  * only ever look like paint, which is exactly what the user reported.
  *
+ * **The carve follows the *paint*, not the glyph's bounding alpha.** A pinzu
+ * artwork like `1p` is woven through with opaque **white** (17 066 px against
+ * 32 455 painted): that white is the bare tile showing through the pattern, so
+ * it must stay at the uncarved surface and read as a raised island. `1m` has no
+ * white, which is why treating the alpha as the carve mask worked there and
+ * turned `1p` into one recessed disc. The mask here is therefore the albedo's
+ * alpha *and* a colour that differs from the ivory by more than
+ * {@link PAINT_CONTRAST}: the same rule the runtime paint probe uses.
+ *
  * So this tool re-bakes the two carve channels at the decal's geometry:
  *
  * - `face_normal_depth.png` — tangent normal (x right, y down, z out) plus the
@@ -66,6 +75,16 @@ const CARVE = {
   roughnessPaint: 0.12,
 };
 
+/**
+ * A painted pixel must differ from the tile's ivory by at least this ΔE. White
+ * in the artwork is the bare tile (1p alone has 17 066 such pixels); the
+ * threshold matches the runtime paint probe's so the bake and the check agree.
+ */
+const PAINT_CONTRAST = 10;
+
+/** The committed ivory, for the paint/white test. */
+const IVORY = [245, 240, 235];
+
 /** The committed cell grid and plate, matching `relief.json`. */
 const RASTER = { cellWidth: 256, cellHeight: 340, columns: 6, rows: 7 };
 const PLATE_MM = { width: 0.64 * 28, height: 0.89 * 28 };
@@ -87,6 +106,7 @@ const FACE_IDS = [
 ];
 
 const ATLAS_FILES = {
+  albedo: 'relief3d/face_albedo.png',
   normalDepth: 'relief3d/face_normal_depth.png',
   aoRoughness: 'relief3d/face_ao_roughness.png',
 };
@@ -223,15 +243,71 @@ function bezierProfile(u, topSpread, bottomSpread) {
 /* One face                                                           */
 /* ------------------------------------------------------------------ */
 
-async function glyphAlpha(face) {
-  const image = await loadImage(readFileSync(join(tableDir, 'faces', `${face}.png`)));
+/** sRGB bytes to CIE Lab (D65). */
+function srgbToLab(r, g, b) {
+  const f = (value) => {
+    const v = value / 255;
+    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const R = f(r);
+  const G = f(g);
+  const B = f(b);
+  const x = (R * 0.4124564 + G * 0.3575761 + B * 0.1804375) / 0.95047;
+  const y = R * 0.2126729 + G * 0.7151522 + B * 0.072175;
+  const z = (R * 0.0193339 + G * 0.119192 + B * 0.9503041) / 1.08883;
+  const t = (value) => (value > 0.008856 ? Math.cbrt(value) : 7.787 * value + 16 / 116);
+  return [116 * t(y) - 16, 500 * (t(x) - t(y)), 200 * (t(y) - t(z))];
+}
+
+const IVORY_LAB = srgbToLab(...IVORY);
+
+/** ΔE76 between an 8-bit colour and the tile's ivory. */
+function ivoryDistance(r, g, b) {
+  const lab = srgbToLab(r, g, b);
+  return Math.hypot(lab[0] - IVORY_LAB[0], lab[1] - IVORY_LAB[1], lab[2] - IVORY_LAB[2]);
+}
+
+/**
+ * Read one face's committed albedo cell: the pigment RGB and the paint mask.
+ *
+ * The albedo is the only carve-independent channel, so it is the input here: a
+ * pixel counts as painted only when it is opaque *and* its colour is a real
+ * pigment (not the artwork's white, which is the bare tile).
+ */
+async function albedoCell(face) {
+  const index = FACE_IDS.indexOf(face);
+  const column = index % RASTER.columns;
+  const row = Math.floor(index / RASTER.columns);
+  const image = await loadImage(readFileSync(join(tableDir, 'relief/face_albedo.png')));
   const canvas = createCanvas(image.width, image.height);
   const context = canvas.getContext('2d');
   context.drawImage(image, 0, 0);
-  const data = context.getImageData(0, 0, image.width, image.height).data;
-  const alpha = new Float64Array(image.width * image.height);
-  for (let i = 0; i < alpha.length; i += 1) alpha[i] = data[i * 4 + 3] / 255;
-  return { alpha, width: image.width, height: image.height };
+  const data = context.getImageData(
+    column * RASTER.cellWidth,
+    row * RASTER.cellHeight,
+    RASTER.cellWidth,
+    RASTER.cellHeight,
+  ).data;
+  const width = RASTER.cellWidth;
+  const height = RASTER.cellHeight;
+  const mask = new Float64Array(width * height);
+  const pigment = new Uint8ClampedArray(width * height * 4);
+  let white = 0;
+  for (let i = 0; i < width * height; i += 1) {
+    const offset = i * 4;
+    const alpha = data[offset + 3];
+    const painted =
+      alpha > 128 && ivoryDistance(data[offset], data[offset + 1], data[offset + 2]) > PAINT_CONTRAST;
+    if (!painted && alpha > 128) white += 1;
+    mask[i] = painted ? 1 : 0;
+    pigment[offset] = data[offset];
+    pigment[offset + 1] = data[offset + 1];
+    pigment[offset + 2] = data[offset + 2];
+    // The white (unpainted) and transparent pixels both become transparent, so
+    // the runtime draws the ivory body there instead of a flat white paint.
+    pigment[offset + 3] = painted ? 255 : 0;
+  }
+  return { mask, pigment, white, width, height };
 }
 
 /**
@@ -247,21 +323,8 @@ async function bakeFace(face) {
   const pxPerMmX = width / PLATE_MM.width;
   const pxPerMmY = height / PLATE_MM.height;
 
-  const glyph = await glyphAlpha(face);
-  const mask = new Float64Array(width * height);
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const u = (x + 0.5) / width;
-      const v = (y + 0.5) / height;
-      mask[y * width + x] = sample(
-        glyph.alpha,
-        glyph.width,
-        glyph.height,
-        u * glyph.width - 0.5,
-        v * glyph.height - 0.5,
-      );
-    }
-  }
+  const albedo = await albedoCell(face);
+  const mask = albedo.mask;
 
   // Signed distance (pixels, positive inside) from the blurred mask, exactly as
   // the decal bake does it: a Gaussian blur, then the erf inverse.
@@ -348,7 +411,7 @@ async function bakeFace(face) {
     aoRoughness[offset + 3] = 255;
   }
 
-  return { normals, aoRoughness, depthMm, mask };
+  return { normals, aoRoughness, depthMm, mask, pigment: albedo.pigment, white: albedo.white };
 }
 
 /* ------------------------------------------------------------------ */
@@ -419,6 +482,7 @@ async function bake() {
   const atlasHeight = RASTER.cellHeight * RASTER.rows;
   const normalDepth = new Uint8ClampedArray(atlasWidth * atlasHeight * 4);
   const aoRoughness = new Uint8ClampedArray(atlasWidth * atlasHeight * 4);
+  const albedo = new Uint8ClampedArray(atlasWidth * atlasHeight * 4);
   const faces = {};
 
   for (let index = 0; index < FACE_IDS.length; index += 1) {
@@ -433,6 +497,7 @@ async function bake() {
       const target = ((oy + y) * atlasWidth + ox) * 4;
       normalDepth.set(baked.normals.subarray(source, source + RASTER.cellWidth * 4), target);
       aoRoughness.set(baked.aoRoughness.subarray(source, source + RASTER.cellWidth * 4), target);
+      albedo.set(baked.pigment.subarray(source, source + RASTER.cellWidth * 4), target);
     }
     let paint = 0;
     let depthMax = 0;
@@ -459,6 +524,7 @@ async function bake() {
       },
       measured: {
         paintFraction: paint / baked.mask.length,
+        whiteFraction: baked.white / baked.mask.length,
         deepestMm: Number(depthMax.toFixed(4)),
         aoMin: Number(aoMin.toFixed(4)),
       },
@@ -469,10 +535,10 @@ async function bake() {
 
   const normalBytes = encodePng(atlasWidth, atlasHeight, normalDepth);
   const aoBytes = encodePng(atlasWidth, atlasHeight, aoRoughness);
+  const albedoBytes = encodePng(atlasWidth, atlasHeight, albedo);
   writeFileSync(join(tableDir, ATLAS_FILES.normalDepth), normalBytes);
   writeFileSync(join(tableDir, ATLAS_FILES.aoRoughness), aoBytes);
-
-  const albedoBytes = readFileSync(join(tableDir, 'relief/face_albedo.png'));
+  writeFileSync(join(tableDir, ATLAS_FILES.albedo), albedoBytes);
   const manifest = {
     version: 1,
     name: 'riichiprac 3D-owned carved face channels (3D-17)',
@@ -480,7 +546,7 @@ async function bake() {
       'Normal/height and AO/roughness for the live-lit 3D face, baked at the approved decal carve geometry: the glyph area is displaced inward through a 0.3 mm Bezier transition so the wall is inside the painted silhouette (the decals\' bright rim and dark inner shadow). The committed relief albedo is reused because the paint colour and mask do not depend on the carve geometry.',
     source: {
       glyphs: 'frontend/public/table/faces/<id>.png (committed, public domain)',
-      albedo: 'relief/face_albedo.png (committed Task 4B, reused)',
+      albedo: 'relief/face_albedo.png (committed Task 4B) for the pigment; the relief3d alpha drops the artwork white so it stays uncarved',
       geometry: 'tools/render/decal-spec.json carve block (the approved 2.5D engraving)',
       generator: 'frontend/tools/relief3d/bake-relief3d.mjs',
       note: 'Nothing under tools/render is written; the 2.5D pipeline is read for its published carve numbers only.',
@@ -516,12 +582,12 @@ async function bake() {
     atlases: {
       face_albedo: {
         role: 'albedo',
-        file: 'relief/face_albedo.png',
+        file: ATLAS_FILES.albedo,
         width: atlasWidth,
         height: atlasHeight,
         bytes: albedoBytes.byteLength,
         sha256: { png: bytesToSha256(albedoBytes) },
-        source: 'committed',
+        source: 'relief3d',
       },
       face_normal_depth: {
         role: 'normalDepth',
@@ -546,7 +612,8 @@ async function bake() {
   };
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 1)}\n`);
   console.log(
-    `relief3d: ${FACE_IDS.length} faces, normal ${(normalBytes.byteLength / 1024).toFixed(0)} kB, ` +
+    `relief3d: ${FACE_IDS.length} faces, albedo ${(albedoBytes.byteLength / 1024).toFixed(0)} kB, ` +
+      `normal ${(normalBytes.byteLength / 1024).toFixed(0)} kB, ` +
       `ao/roughness ${(aoBytes.byteLength / 1024).toFixed(0)} kB, manifest relief3d.json`,
   );
 }

@@ -726,7 +726,7 @@ describe('the 3D-owned carve set (3D-17)', () => {
     const manifest = parseReliefManifest(relief3dManifest, PINNED_RELIEF3D_ATLASES);
     expect(manifest.cells.size).toBe(RELIEF_RASTER.faceCount);
     expect(manifest.plateUnits).toEqual(RELIEF_PLATE_UNITS);
-    expect(manifest.atlases.face_albedo.file).toBe('relief/face_albedo.png');
+    expect(manifest.atlases.face_albedo.file).toBe('relief3d/face_albedo.png');
     expect(manifest.atlases.face_normal_depth.file).toBe('relief3d/face_normal_depth.png');
   });
 
@@ -740,8 +740,8 @@ describe('the 3D-owned carve set (3D-17)', () => {
     const requests: ReliefTextureRequest[] = [];
     const fetchImpl: ReliefFetch = async (url) => {
       if (url.endsWith('/table/relief3d.json')) return fileResponse(relief3dBytes);
-      if (url.endsWith('/table/relief/face_albedo.png')) {
-        return fileResponse(readFileSync(join(tableDir, 'relief/face_albedo.png')));
+      if (url.endsWith('/table/relief3d/face_albedo.png')) {
+        return fileResponse(readFileSync(join(tableDir, 'relief3d/face_albedo.png')));
       }
       if (url.endsWith('/table/relief3d/face_normal_depth.png')) {
         return fileResponse(readFileSync(join(tableDir, 'relief3d/face_normal_depth.png')));
