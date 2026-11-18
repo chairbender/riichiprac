@@ -27,6 +27,12 @@ Options:
     --dry-run            print the plan and the camera metrics; write nothing
     --bake               render the committed @2x master
     --audition           render every camera candidate at @1x into build/
+    --rig                build the same scene with the Task 2 2.5D rig camera
+                         and light rig, then render the 16:9 RGBA reference
+    --variant NAME       rig variant to build (default: rig.defaultVariant);
+                         variants may override the table layout, camera, lights
+                         and thresholds for A/B calibration
+    --rig-width N        render the rig reference at N px wide (preview/tuning)
     --camera NAME        override the committed camera candidate
     --samples N          override the sample count
     --out DIR            output directory (default tools/render/build/reference)
@@ -92,12 +98,83 @@ def read_json(path: Path) -> dict:
         die(f"{path} is not valid JSON: {error}")
 
 
+def deep_merge(base, override):
+    """Merge a variant override into the base record; lists replace wholesale."""
+    if not isinstance(base, dict) or not isinstance(override, dict):
+        return override
+    merged = dict(base)
+    for key, value in override.items():
+        merged[key] = deep_merge(base[key], value) if key in base else value
+    return merged
+
+
+RIG_MERGE_KEYS = ("camera", "lighting", "render", "output", "samples", "checks")
+
+
+def variant_chain(rig: dict, variant_id: str) -> list[tuple[str, dict]]:
+    """The variant and its `extends` ancestors, oldest first."""
+    chain = []
+    seen = set()
+    current = variant_id
+    while current:
+        if current in seen:
+            die(f"rig variant cycle through {current!r}")
+        seen.add(current)
+        if current not in rig.get("variants", {}):
+            die(
+                f"unknown rig variant {current!r}; variants: "
+                f"{', '.join(rig.get('variants', {})) or '(none)'}"
+            )
+        variant = rig["variants"][current]
+        chain.append((current, variant))
+        current = variant.get("extends")
+    return list(reversed(chain))
+
+
+def resolve_variant(spec: dict, variant_id: str | None) -> tuple[str, dict, dict]:
+    """Resolve the rig variant into (id, variant, a spec with the resolved rig).
+
+    Variants are A/B experiments: each may override the table layout (hand and
+    meld radii, hand tilt), the camera, the lights, the render settings and the
+    acceptance thresholds. A variant may `extends` another, so a small delta can
+    sit on top of an earlier experiment while the base rig blocks stay the saved
+    baseline.
+    """
+    rig = spec["rig"]
+    chosen = variant_id or rig.get("defaultVariant")
+    chain = variant_chain(rig, chosen)
+    merged: dict = {}
+    for _, entry in chain:
+        shadow_override = entry.get("handShadow")
+        merged = deep_merge(merged, {key: value for key, value in entry.items() if key != "extends"})
+        # The shadow block is a strategy, not a bag of settings: a variant that
+        # declares one replaces its ancestor's instead of merging into it.
+        if shadow_override is not None:
+            merged["handShadow"] = shadow_override
+    resolved = dict(rig)
+    for key in RIG_MERGE_KEYS:
+        if key in rig:
+            resolved[key] = deep_merge(rig[key], merged.get(key, {}))
+    resolved.pop("variants", None)
+    merged["extends"] = chain[-1][1].get("extends")
+    for extra in ("lightingCheat", "handShadow"):
+        if extra in merged:
+            resolved[extra] = merged[extra]
+    scene_spec = dict(spec)
+    scene_spec["table"] = deep_merge(spec["table"], merged.get("table", {}))
+    scene_spec["rig"] = resolved
+    return chosen, merged, scene_spec
+
+
 def parse_options(argv: list[str]) -> dict:
     options = {
         "dryRun": False,
         "bake": False,
         "audition": False,
         "preview": False,
+        "rig": False,
+        "variant": None,
+        "rigWidth": None,
         "camera": None,
         "samples": None,
         "out": None,
@@ -113,8 +190,16 @@ def parse_options(argv: list[str]) -> dict:
             options["audition"] = True
         elif arg == "--preview":
             options["preview"] = True
+        elif arg == "--rig":
+            options["rig"] = True
+        elif arg == "--variant":
+            options["variant"] = argv[index + 1]
+            index += 1
         elif arg == "--preview-width":
             options["previewWidth"] = int(argv[index + 1])
+            index += 1
+        elif arg == "--rig-width":
+            options["rigWidth"] = int(argv[index + 1])
             index += 1
         elif arg in ("--camera", "--samples", "--out"):
             if index + 1 >= len(argv):
@@ -199,17 +284,17 @@ def project_point(camera: dict, point) -> tuple[float, float]:
     if camera["mode"] == "orthographic":
         scale = camera["orthoScaleUnits"] / width
         offset_x = camera["shiftX"] * width
-        offset_y = camera["shiftY"] * height
+        offset_y = camera["shiftY"] * width
         return (
             width / 2 + offset_x + value.dot(right) / scale,
-            height / 2 - offset_y - value.dot(up) / scale,
+            height / 2 + offset_y - value.dot(up) / scale,
         )
     if depth <= 0:
         raise ValueError(f"point behind the camera: {point}")
     focal = camera["focalPixels"]
     return (
         width / 2 + camera["shiftX"] * width + focal * value.dot(right) / depth,
-        height / 2 - camera["shiftY"] * height - focal * value.dot(up) / depth,
+        height / 2 + camera["shiftY"] * width - focal * value.dot(up) / depth,
     )
 
 
@@ -453,6 +538,67 @@ def build_reference_lights(scene: bpy.types.Scene, spec: dict) -> list[bpy.types
         f"world {spec['lighting']['world']['hex']} x {spec['lighting']['world']['strength']}"
     )
     return [obj]
+
+
+def build_rig_lights(scene: bpy.types.Scene, rig: dict) -> list[dict]:
+    """The Task 2 2.5D light rig: one large AREA key plus low AREA fills.
+
+    The key is large and close enough that tile-base contact shadows are soft
+    penumbrae; the fills exist to open the bevels and the inner vertical faces
+    of side tiles, which a pure overhead source leaves dark. Cycles path
+    tracing produces the contact occlusion (there is no AO toggle in Cycles).
+    The records are what the rig manifest publishes for Task 3A's lighting
+    block.
+    """
+    lighting = rig["lighting"]
+    entries = [lighting["key"], *lighting["fills"]]
+    records: list[dict] = []
+    for entry in entries:
+        data = bpy.data.lights.new(entry["id"], type=entry["type"])
+        if entry["type"] == "AREA":
+            data.shape = entry.get("shape", "RECTANGLE")
+            data.size = entry["sizeUnits"]
+            data.size_y = entry.get("sizeYUnits", entry["sizeUnits"])
+            data.energy = entry["energyW"]
+        else:
+            die(f"rig light {entry['id']}: only AREA lights are defined")
+        data.color = hex_linear(entry["hex"])[:3]
+        obj = new_object(entry["id"], data)
+        location = Vector(entry["location"])
+        aim_at = Vector(entry["aimAt"])
+        obj.location = location
+        aim(obj, aim_at)
+        direction = (aim_at - location).normalized()
+        records.append(
+            {
+                "id": entry["id"],
+                "type": entry["type"],
+                "shape": entry.get("shape"),
+                "sizeUnits": entry["sizeUnits"],
+                "sizeYUnits": entry.get("sizeYUnits"),
+                "location": [round(value, 6) for value in location],
+                "aimAt": [round(value, 6) for value in aim_at],
+                "energyW": entry["energyW"],
+                "hex": entry["hex"],
+                "distanceUnits": round((aim_at - location).length, 6),
+                "direction": [round(value, 6) for value in direction],
+                "toLight": [round(-value, 6) for value in direction],
+            }
+        )
+
+    world_spec = lighting["world"]
+    world = bpy.data.worlds.new("rig-world")
+    world.use_nodes = True
+    background = world.node_tree.nodes["Background"]
+    background.inputs["Color"].default_value = hex_linear(world_spec["hex"])
+    background.inputs["Strength"].default_value = world_spec["strength"]
+    scene.world = world
+    log(
+        f"rig light: AREA key {lighting['key']['sizeUnits']}x{lighting['key']['sizeYUnits']} "
+        f"at {lighting['key']['location']} ({lighting['key']['energyW']:.0f} W) + "
+        f"{len(lighting['fills'])} fills; world {world_spec['hex']} x {world_spec['strength']}"
+    )
+    return records
 
 
 def build_face_material(face_id: str) -> bpy.types.Material:
@@ -753,6 +899,623 @@ def measure_clearance(tiles: list[dict], spec: dict) -> dict:
     return result
 
 
+def corrected_normal_material(source, angle: float, cache: dict) -> bpy.types.Material:
+    """A copy of `source` whose shading normal is rotated about world X."""
+    if source.name in cache:
+        return cache[source.name]
+    material = source.copy()
+    material.name = f"{source.name}-handlit"
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    geometry = nodes.new("ShaderNodeNewGeometry")
+    rotate = nodes.new("ShaderNodeVectorRotate")
+    rotate.rotation_type = "AXIS_ANGLE"
+    rotate.inputs["Axis"].default_value = (1.0, 0.0, 0.0)
+    rotate.inputs["Angle"].default_value = angle
+    rotate.location = (-600.0, 300.0)
+    links.new(geometry.outputs["Normal"], rotate.inputs["Vector"])
+    count = 0
+    for node in nodes:
+        if node.type == "BSDF_PRINCIPLED":
+            links.new(rotate.outputs["Vector"], node.inputs["Normal"])
+            count += 1
+    if not count:
+        die(f"hand lighting cheat: {source.name} has no Principled BSDF")
+    cache[source.name] = material
+    return material
+
+
+def apply_hand_lighting_cheat(spec: dict, rig: dict) -> dict | None:
+    """Shade the player's hand as if it sat at the physical tilt.
+
+    The hand is reclined further than physically plausible so its faces read
+    from the 50 deg camera (the user's deliberate cheat; the runtime replaces
+    its real shadow with a blob). To keep the light on it looking like a
+    normally seated tile, every hand material shades with its normal rotated
+    back by the extra tilt (delta = cheated tilt - physical tilt) about world X
+    (the hand row is not yawed). The silhouette keeps the cheat; the shading
+    does not.
+    """
+    cheat = rig.get("lightingCheat")
+    if not cheat:
+        return None
+    if cheat.get("mode") != "physicalPose":
+        die(f"hand lighting cheat: unknown mode {cheat.get('mode')!r}")
+    hand = spec["table"]["hand"]
+    cheated = math.radians(hand["tiltDeg"])
+    physical = math.radians(cheat["physicalTiltDeg"])
+    delta = cheated - physical
+    if abs(delta) < 1e-6:
+        return {
+            "mode": cheat["mode"],
+            "physicalTiltDeg": cheat["physicalTiltDeg"],
+            "cheatedTiltDeg": hand["tiltDeg"],
+            "deltaDeg": 0.0,
+            "objects": 0,
+            "materials": 0,
+        }
+    prefix = "hand-bottom-"
+    targets = [
+        obj for obj in bpy.data.objects
+        if obj.type == "MESH" and obj.name.startswith(prefix)
+    ]
+    if not targets:
+        die("hand lighting cheat: found no south-hand mesh objects")
+    cache: dict = {}
+    for obj in targets:
+        for slot in obj.material_slots:
+            source = slot.material
+            if source is None:
+                continue
+            # Switching the slot to object-linked materials clears the slot, so
+            # keep the source material before the switch.
+            slot.link = "OBJECT"
+            slot.material = corrected_normal_material(source, delta, cache)
+    record = {
+        "mode": cheat["mode"],
+        "physicalTiltDeg": cheat["physicalTiltDeg"],
+        "cheatedTiltDeg": hand["tiltDeg"],
+        "deltaDeg": round(math.degrees(delta), 4),
+        "axis": [1.0, 0.0, 0.0],
+        "objects": len(targets),
+        "materials": len(cache),
+        "note": cheat.get("note"),
+    }
+    log(
+        f"hand lighting cheat: {len(targets)} objects, {len(cache)} materials shade as if the "
+        f"hand were at {cheat['physicalTiltDeg']:g} deg (cheated pose {hand['tiltDeg']:g} deg, "
+        f"normal rotated {math.degrees(delta):+.2f} deg about world X)"
+    )
+    return record
+
+
+def shadow_decal_material(max_alpha: float, falloff: float, edge_fade: float) -> bpy.types.Material:
+    """Pure darkening: a black, roughness-1 surface whose alpha is a UV gradient.
+
+    Alpha is strongest at the strip's near edge (v = 0, hidden under the tile),
+    falls off across the strip and is zero at both x ends. Building it from math
+    nodes keeps the ramp exact at any resolution, with no image to sample.
+    """
+    material = new_material("hand-shadow-decal")
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    principled = nodes["Principled BSDF"]
+    principled.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+    principled.inputs["Roughness"].default_value = 1.0
+    principled.inputs["Specular IOR Level"].default_value = 0.0
+    uv = nodes.new("ShaderNodeUVMap")
+    separate = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(uv.outputs["UV"], separate.inputs["Vector"])
+
+    one_minus_y = nodes.new("ShaderNodeMath")
+    one_minus_y.operation = "SUBTRACT"
+    one_minus_y.inputs[0].default_value = 1.0
+    links.new(separate.outputs["Y"], one_minus_y.inputs[1])
+    power = nodes.new("ShaderNodeMath")
+    power.operation = "POWER"
+    power.inputs[1].default_value = falloff
+    links.new(one_minus_y.outputs[0], power.inputs[0])
+
+    left = nodes.new("ShaderNodeMath")
+    left.operation = "DIVIDE"
+    left.use_clamp = True
+    left.inputs[1].default_value = edge_fade
+    links.new(separate.outputs["X"], left.inputs[0])
+    right = nodes.new("ShaderNodeMath")
+    right.operation = "DIVIDE"
+    right.use_clamp = True
+    right.inputs[1].default_value = edge_fade
+    invert = nodes.new("ShaderNodeMath")
+    invert.operation = "SUBTRACT"
+    invert.inputs[0].default_value = 1.0
+    links.new(separate.outputs["X"], invert.inputs[1])
+    links.new(invert.outputs[0], right.inputs[0])
+    edge = nodes.new("ShaderNodeMath")
+    edge.operation = "MINIMUM"
+    links.new(left.outputs[0], edge.inputs[0])
+    links.new(right.outputs[0], edge.inputs[1])
+    edge_power = nodes.new("ShaderNodeMath")
+    edge_power.operation = "POWER"
+    edge_power.inputs[1].default_value = 0.8
+    links.new(edge.outputs[0], edge_power.inputs[0])
+
+    combined = nodes.new("ShaderNodeMath")
+    combined.operation = "MULTIPLY"
+    links.new(power.outputs[0], combined.inputs[0])
+    links.new(edge_power.outputs[0], combined.inputs[1])
+    scaled = nodes.new("ShaderNodeMath")
+    scaled.operation = "MULTIPLY"
+    scaled.inputs[1].default_value = max_alpha
+    links.new(combined.outputs[0], scaled.inputs[0])
+    links.new(scaled.outputs[0], principled.inputs["Alpha"])
+    return material
+
+
+def edge_profile(nodes, links, source, edge: float, sigma: float, inside_sign: float):
+    """A one-sided blurred edge: 0.5 at the edge, 1 inside, 0 outside over 2 sigma."""
+    offset = nodes.new("ShaderNodeMath")
+    offset.operation = "SUBTRACT"
+    offset.inputs[1].default_value = edge
+    links.new(source, offset.inputs[0])
+    distance = offset.outputs[0]
+    if inside_sign < 0:
+        negate = nodes.new("ShaderNodeMath")
+        negate.operation = "MULTIPLY"
+        negate.inputs[1].default_value = -1.0
+        links.new(offset.outputs[0], negate.inputs[0])
+        distance = negate.outputs[0]
+    ramp = nodes.new("ShaderNodeMapRange")
+    ramp.interpolation_type = "SMOOTHSTEP"
+    ramp.clamp = True
+    ramp.inputs["From Min"].default_value = -2.0 * sigma
+    ramp.inputs["From Max"].default_value = 2.0 * sigma
+    ramp.inputs["To Min"].default_value = 0.0
+    ramp.inputs["To Max"].default_value = 1.0
+    links.new(distance, ramp.inputs["Value"])
+    return ramp.outputs["Result"]
+
+
+def blurred_footprint_material(
+    x0: float,
+    x1: float,
+    y_south: float,
+    depth: float,
+    sigma_x: float,
+    sigma_y: float,
+    max_alpha: float,
+) -> bpy.types.Material:
+    """A Gaussian-like blurred rounded rectangle under the hand's footprint.
+
+    This is the render-time analogue of the retired UI recipe: the contact
+    rectangle blurred once, drawn under the object. All four edges are blurred
+    (the north edge sits under the tiles, so it is hidden in the row and fades
+    softly past the end tiles instead of leaving a hard line). The alpha is
+    0.5*maxAlpha at every footprint edge, 1 inside and 0 two sigma outside.
+    """
+    material = new_material("hand-shadow-blob")
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    principled = nodes["Principled BSDF"]
+    principled.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+    principled.inputs["Roughness"].default_value = 1.0
+    principled.inputs["Specular IOR Level"].default_value = 0.0
+    coordinates = nodes.new("ShaderNodeTexCoord")
+    separate = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(coordinates.outputs["Object"], separate.inputs["Vector"])
+    y_north = y_south + depth
+    profiles = [
+        edge_profile(nodes, links, separate.outputs["X"], x0, sigma_x, 1.0),
+        edge_profile(nodes, links, separate.outputs["X"], x1, sigma_x, -1.0),
+        edge_profile(nodes, links, separate.outputs["Y"], y_south, sigma_y, 1.0),
+        edge_profile(nodes, links, separate.outputs["Y"], y_north, sigma_y, -1.0),
+    ]
+    alpha = None
+    for source in profiles:
+        multiply = nodes.new("ShaderNodeMath")
+        multiply.operation = "MULTIPLY"
+        if alpha is None:
+            multiply.inputs[0].default_value = max_alpha
+        else:
+            links.new(alpha, multiply.inputs[0])
+        links.new(source, multiply.inputs[1])
+        alpha = multiply.outputs[0]
+    links.new(alpha, principled.inputs["Alpha"])
+    return material
+
+
+def add_shadow_plane(
+    name: str,
+    x0: float,
+    x1: float,
+    y_north: float,
+    y_south: float,
+    z: float,
+    material: bpy.types.Material,
+) -> bpy.types.Object:
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(
+        [(x0, y_north, z), (x1, y_north, z), (x1, y_south, z), (x0, y_south, z)],
+        [],
+        [(0, 1, 2, 3)],
+    )
+    mesh.materials.append(material)
+    obj = new_object(name, mesh)
+    obj.visible_camera = True
+    obj.visible_shadow = False
+    obj.visible_diffuse = False
+    obj.visible_glossy = False
+    obj.visible_transmission = False
+    obj.visible_volume_scatter = False
+    return obj
+
+
+def add_shadow_strip(
+    name: str,
+    x0: float,
+    x1: float,
+    y_start: float,
+    y_end: float,
+    z: float,
+    material: bpy.types.Material,
+) -> bpy.types.Object:
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(
+        [(x0, y_start, z), (x1, y_start, z), (x1, y_end, z), (x0, y_end, z)],
+        [],
+        [(0, 1, 2, 3)],
+    )
+    uv = mesh.uv_layers.new(name="UVMap")
+    for loop, coordinate in zip(mesh.loops, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]):
+        uv.data[loop.index].uv = coordinate
+    mesh.materials.append(material)
+    obj = new_object(name, mesh)
+    obj.visible_camera = True
+    obj.visible_shadow = False
+    obj.visible_diffuse = False
+    obj.visible_glossy = False
+    obj.visible_transmission = False
+    obj.visible_volume_scatter = False
+    return obj
+
+
+def apply_hand_shadow_cheat(spec: dict, rig: dict, tiles: list[dict]) -> dict | None:
+    """Give the cheated player's hand a fake, seated-tile shadow.
+
+    The 40 deg readability cheat floats the tile's front (near) bottom edge
+    above the table, so its own shadow starts at the *rear* edge where it
+    balances and climbs the wall behind it. Both give the trick away. The hand's
+    bodies and decals therefore stop casting shadows entirely, and one of two
+    fake shadows goes under the row:
+
+    - ``physicalPoseCaster``: a shadow-only duplicate at the 12 deg physical
+      pose, with the fills light-linked so only the key casts it (v3).
+    - ``gradientDecal`` (v4): a short, soft, straight-alpha gradient strip laid
+      on the mat. Its darkest point is hidden under the tile and the visible
+      gradient begins right at the tile's front edge, as if the tile sat upright
+      and level there, fading out within a third of a tile height. No shadow
+      rays at all, so the wall behind stays clean.
+    """
+    shadow = rig.get("handShadow")
+    if not shadow:
+        return None
+    hand = spec["table"]["hand"]
+    radius = hand.get("backRadiusUnitsBySeat", {}).get("bottom", hand["backRadiusUnits"])
+    bodies = [
+        obj for obj in bpy.data.objects
+        if obj.type == "MESH"
+        and obj.name.startswith("hand-bottom-")
+        and not obj.name.endswith("-decal")
+    ]
+    decals = [
+        obj for obj in bpy.data.objects
+        if obj.type == "MESH"
+        and obj.name.startswith("hand-bottom-")
+        and obj.name.endswith("-decal")
+    ]
+    if not bodies:
+        die("hand shadow cheat: found no south-hand bodies")
+    for obj in bodies + decals:
+        obj.visible_shadow = False
+
+    mode = shadow.get("mode")
+    if mode == "physicalPoseCaster":
+        return apply_physical_caster_shadow(
+            spec, rig, shadow, hand, radius, bodies, decals
+        )
+    if mode == "gradientDecal":
+        return apply_gradient_decal_shadow(
+            spec, rig, shadow, hand, radius, tiles, bodies, decals
+        )
+    if mode == "blurredFootprint":
+        return apply_blurred_footprint_shadow(
+            spec, rig, shadow, hand, radius, tiles, bodies, decals
+        )
+    die(f"hand shadow cheat: unknown mode {mode!r}")
+
+
+def apply_physical_caster_shadow(
+    spec: dict,
+    rig: dict,
+    shadow: dict,
+    hand: dict,
+    radius: float,
+    bodies: list[bpy.types.Object],
+    decals: list[bpy.types.Object],
+) -> dict:
+    cheat = rig.get("lightingCheat")
+    if cheat and abs(float(cheat["physicalTiltDeg"]) - float(shadow["physicalTiltDeg"])) > 1e-9:
+        die("hand shadow cheat: physicalTiltDeg disagrees with the lighting cheat")
+    cheated = math.radians(hand["tiltDeg"])
+    physical = math.radians(shadow["physicalTiltDeg"])
+    delta = cheated - physical
+    caster_collection = bpy.data.collections.new("HandShadowCasters")
+    bpy.context.scene.collection.children.link(caster_collection)
+    casters = []
+    for body in bodies:
+        caster = body.copy()
+        caster.data = body.data
+        caster.name = f"{body.name}-shadowcaster"
+        pivot = Vector((body.matrix_world.translation.x, -radius, 0.0))
+        caster.matrix_world = (
+            Matrix.Translation(pivot)
+            @ Matrix.Rotation(delta, 4, "X")
+            @ Matrix.Translation(-pivot)
+            @ body.matrix_world
+        )
+        caster.visible_shadow = True
+        caster.visible_camera = False
+        caster.visible_diffuse = False
+        caster.visible_glossy = False
+        caster.visible_transmission = False
+        caster.visible_volume_scatter = False
+        caster.hide_render = False
+        caster_collection.objects.link(caster)
+        casters.append(caster)
+
+    fills = []
+    if shadow.get("fillsDoNotSeeCaster", True):
+        blocker_collection = bpy.data.collections.new("RigFillBlockers")
+        bpy.context.scene.collection.children.link(blocker_collection)
+        caster_set = set(casters)
+        for obj in bpy.context.scene.objects:
+            if obj in caster_set or obj.type in {"LIGHT", "CAMERA"}:
+                continue
+            blocker_collection.objects.link(obj)
+        for entry in rig["lighting"]["fills"]:
+            light = bpy.data.objects.get(entry["id"])
+            if light is None:
+                die(f"hand shadow cheat: fill {entry['id']} is missing")
+            light.light_linking.blocker_collection = blocker_collection
+            fills.append(entry["id"])
+
+    record = {
+        "mode": shadow["mode"],
+        "physicalTiltDeg": shadow["physicalTiltDeg"],
+        "cheatedTiltDeg": hand["tiltDeg"],
+        "deltaDeg": round(math.degrees(delta), 4),
+        "playerHandRadiusUnits": radius,
+        "hiddenObjects": len(bodies) + len(decals),
+        "handBodies": len(bodies),
+        "handDecals": len(decals),
+        "casters": len(casters),
+        "fillLights": fills,
+        "note": shadow.get("note"),
+    }
+    log(
+        f"hand shadow cheat: {len(bodies) + len(decals)} hand objects hidden from shadows, "
+        f"{len(casters)} casters at the {shadow['physicalTiltDeg']:g} deg physical pose"
+        + (f"; {len(fills)} fills do not see the casters" if fills else "")
+    )
+    return record
+
+
+def apply_blurred_footprint_shadow(
+    spec: dict,
+    rig: dict,
+    shadow: dict,
+    hand: dict,
+    radius: float,
+    tiles: list[dict],
+    bodies: list[bpy.types.Object],
+    decals: list[bpy.types.Object],
+) -> dict:
+    """The retired UI recipe in the reference scene: a blurred contact rectangle.
+
+    One plane per hand group (the 13-tile row and the drawn tile). Each group's
+    shadow rectangle is its contact footprint, widened outward (away from the
+    other group) by ``spreadUnits`` so the wrap extends past the outer end
+    tiles, and extended ``depthUnits`` north under the tiles. All four edges are
+    blurred, so the shadow wraps in every direction and the groups stay separate
+    at the tsumogiri gap. The rectangle is drawn at 0.5*maxAlpha on its edges
+    and fades to zero two sigma outside; the plane starts at the south edge and
+    only extends outward, with no shadow rays.
+    """
+    thickness = tiles[0]["dimensions"]["thickness"]
+    tilt = math.radians(hand["tiltDeg"])
+    pitch = math.radians(rig["camera"]["elevationDeg"])
+    front_edge = radius + math.cos(tilt) * thickness
+    edge_height = math.sin(tilt) * thickness
+    edge_line = front_edge - edge_height / math.tan(pitch)
+    sigma = float(shadow["sigmaUnits"])
+    sigma_x = float(shadow.get("sigmaXUnits", sigma))
+    max_alpha = float(shadow["maxAlpha"])
+    spread = float(shadow.get("spreadUnits", 0.0))
+    spreads = shadow.get("spreads") or {}
+    offset = float(shadow.get("offsetYUnits", 0.0))
+    depth = float(shadow.get("depthUnits", 0.5))
+    z = float(shadow.get("zUnits", 0.0025))
+    margin = 2.5 * sigma
+    # Offset the whole footprint a little forward (south): the shadow should not
+    # look like it surrounds the tiles perfectly evenly.
+    y_south = -edge_line - offset
+    y_north = y_south + depth
+    bottom = [tile for tile in tiles if tile["seat"] == "bottom" and tile["kind"] in ("hand", "drawn")]
+    groups = [
+        [tile for tile in bottom if tile["kind"] == "hand"],
+        [tile for tile in bottom if tile["kind"] == "drawn"],
+    ]
+    groups = [group for group in groups if group]
+    if shadow.get("unionGroups"):
+        # The retired UI group recipe: union the zone's footprints, blur once.
+        # The hand row and the drawn tile become one symmetric shadow with no
+        # double-darkened overlap in the tsumogiri gap.
+        groups = [bottom]
+    planes = []
+    group_records = []
+    for index, group in enumerate(groups):
+        half = group[0]["dimensions"]["width"] / 2
+        xs = [tile["origin"][0] for tile in group]
+        tile_x0, tile_x1 = min(xs) - half, max(xs) + half
+        # Per-group spreads: the hand row widens both of its ends (so its right
+        # shadow passes the last tile), while the drawn tile keeps its gap side
+        # at its tile edge and widens only outward. A variant may override each
+        # side through `spreads`.
+        kind = "hand" if shadow.get("unionGroups") else group[0]["kind"]
+        entry = spreads.get(kind, {})
+        spread_left = float(entry.get("left", spread))
+        spread_right = float(entry.get("right", spread))
+        x0, x1 = tile_x0 - spread_left, tile_x1 + spread_right
+        material = blurred_footprint_material(x0, x1, y_south, depth, sigma_x, sigma, max_alpha)
+        planes.append(
+            add_shadow_plane(
+                f"hand-shadow-blob-{len(planes)}",
+                x0 - margin,
+                x1 + margin,
+                y_north + margin,
+                y_south - margin,
+                # Coplanar translucent planes z-fight and one of them wins per
+                # pixel, which shows up as a bright notch where the row's and
+                # the drawn tile's blobs overlap. Stagger them by a hair.
+                z + 0.0008 * len(planes),
+                material,
+            )
+        )
+        group_records.append(
+            {
+                "kind": kind,
+                "x0": round(x0, 4),
+                "x1": round(x1, 4),
+                "tileX0": round(tile_x0, 4),
+                "tileX1": round(tile_x1, 4),
+                "spreadLeftUnits": round(spread_left, 4),
+                "spreadRightUnits": round(spread_right, 4),
+                "widthUnits": round(x1 - x0, 4),
+                "tileWidthUnits": round(tile_x1 - tile_x0, 4),
+                "edgeRadiusUnits": round(edge_line, 4),
+            }
+        )
+    record = {
+        "mode": shadow["mode"],
+        "cheatedTiltDeg": hand["tiltDeg"],
+        "playerHandRadiusUnits": radius,
+        "frontEdgeRadiusUnits": round(front_edge, 4),
+        "edgeHeightUnits": round(edge_height, 4),
+        "edgeLineRadiusUnits": round(edge_line, 4),
+        "sigmaUnits": sigma,
+        "sigmaXUnits": sigma_x,
+        "maxAlpha": max_alpha,
+        "spreadUnits": spread,
+        "spreads": spreads,
+        "offsetYUnits": offset,
+        "depthUnits": depth,
+        "falloff": "gaussian-like smoothstep on all four edges, 2 sigma",
+        "unionGroups": bool(shadow.get("unionGroups")),
+        "groups": group_records,
+        "hiddenObjects": len(bodies) + len(decals),
+        "handBodies": len(bodies),
+        "handDecals": len(decals),
+        "objects": len(planes),
+        "note": shadow.get("note"),
+    }
+    log(
+        f"hand shadow blob: {len(planes)} blurred-footprint planes, edge line {edge_line:.3f} "
+        f"(front edge {front_edge:.3f}), sigma {sigma:.3f}/{sigma_x:.3f} x, max alpha {max_alpha:g}, "
+f"spreads {spreads or spread}, offset {offset:.3f} south, "
+        f"depth {depth:.3f} north, "
+        f"over {len(bodies) + len(decals)} hidden hand objects"
+    )
+    return record
+
+
+def apply_gradient_decal_shadow(
+    spec: dict,
+    rig: dict,
+    shadow: dict,
+    hand: dict,
+    radius: float,
+    tiles: list[dict],
+    bodies: list[bpy.types.Object],
+    decals: list[bpy.types.Object],
+) -> dict:
+    thickness = tiles[0]["dimensions"]["thickness"]
+    tilt = math.radians(hand["tiltDeg"])
+    pitch = math.radians(rig["camera"]["elevationDeg"])
+    front_edge = radius + math.cos(tilt) * thickness
+    edge_height = math.sin(tilt) * thickness
+    # The mat point that projects at the tile's front-edge silhouette: pull the
+    # decal's start north under the tile by edgeHeight / tan(pitch) so its hard
+    # near edge is hidden by the tile and the visible gradient begins right at
+    # the tile's front edge.
+    start_radius = front_edge - edge_height / math.tan(pitch)
+    length = float(shadow["lengthUnits"])
+    max_alpha = float(shadow["maxAlpha"])
+    z = float(shadow.get("zUnits", 0.0025))
+    material = shadow_decal_material(
+        max_alpha,
+        float(shadow.get("falloff", 1.2)),
+        float(shadow.get("edgeFade", 0.03)),
+    )
+    bottom = [tile for tile in tiles if tile["seat"] == "bottom" and tile["kind"] in ("hand", "drawn")]
+    groups = [
+        [tile for tile in bottom if tile["kind"] == "hand"],
+        [tile for tile in bottom if tile["kind"] == "drawn"],
+    ]
+    strips = []
+    for group in groups:
+        if not group:
+            continue
+        half = group[0]["dimensions"]["width"] / 2
+        xs = [tile["origin"][0] for tile in group]
+        x0, x1 = min(xs) - half, max(xs) + half
+        y_start = -start_radius
+        strips.append(
+            add_shadow_strip(
+                f"hand-shadow-strip-{len(strips)}",
+                x0,
+                x1,
+                y_start,
+                y_start - length,
+                z,
+                material,
+            )
+        )
+    record = {
+        "mode": shadow["mode"],
+        "physicalTiltDeg": shadow.get("physicalTiltDeg"),
+        "cheatedTiltDeg": hand["tiltDeg"],
+        "playerHandRadiusUnits": radius,
+        "frontEdgeRadiusUnits": round(front_edge, 4),
+        "edgeHeightUnits": round(edge_height, 4),
+        "startRadiusUnits": round(start_radius, 4),
+        "lengthUnits": length,
+        "maxAlpha": max_alpha,
+        "falloff": float(shadow.get("falloff", 1.2)),
+        "edgeFade": float(shadow.get("edgeFade", 0.03)),
+        "hiddenObjects": len(bodies) + len(decals),
+        "handBodies": len(bodies),
+        "handDecals": len(decals),
+        "strips": len(strips),
+        "objects": len(strips),
+        "note": shadow.get("note"),
+    }
+    log(
+        f"hand shadow decal: {len(strips)} gradient strips, start {start_radius:.3f} units "
+        f"(front edge {front_edge:.3f}), {length:.3f} units long, max alpha {max_alpha:g}, "
+        f"over {len(bodies) + len(decals)} hidden hand objects"
+    )
+    return record
+
+
 def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]:
     shell_spec = read_json(SHELL_SPEC_PATH)
     check_blender_version(shell_spec)
@@ -762,15 +1525,48 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
     scene.cycles.samples = (
         options["samples"] if options["samples"] is not None else spec["scene"]["samples"]
     )
-    log(f"reference render: {scene.cycles.samples} samples, film transparent {spec['scene']['filmTransparent']}")
+    rig_mode = bool(options.get("rig"))
+    if rig_mode:
+        rig = spec["rig"]
+        scene.cycles.samples = (
+            options["samples"] if options["samples"] is not None else rig["render"]["samples"]
+        )
+        scene.cycles.adaptive_threshold = rig["render"]["adaptiveThreshold"]
+        scene.cycles.use_adaptive_sampling = rig["render"]["adaptiveSampling"]
+        scene.render.film_transparent = rig["render"]["filmTransparent"]
+        scene.render.image_settings.color_mode = rig["render"]["colorMode"]
+    log(
+        f"{'rig' if rig_mode else 'reference'} render: {scene.cycles.samples} samples, "
+        f"film transparent "
+        f"{rig['render']['filmTransparent'] if rig_mode else spec['scene']['filmTransparent']}"
+    )
     scene.cycles.seed = 0
     scene.cycles.use_animated_seed = False
-    scene.render.film_transparent = spec["scene"]["filmTransparent"]
-    scene.render.image_settings.color_mode = "RGB"
+    if not rig_mode:
+        scene.render.film_transparent = spec["scene"]["filmTransparent"]
+        scene.render.image_settings.color_mode = "RGB"
     scene.view_settings.look = spec["scene"]["colorManagement"]["look"]
 
-    build_table(scene, spec)
-    build_reference_lights(scene, spec)
+    table_objects = build_table(scene, spec)
+    if rig_mode:
+        if rig["render"]["hideFloor"]:
+            for obj in table_objects:
+                if obj.name == "floor":
+                    obj.hide_render = True
+                    obj.hide_viewport = True
+                    log("rig: room floor hidden (film transparent)")
+        light_records = build_rig_lights(scene, rig)
+        rig_lighting = {
+            "lights": light_records,
+            "world": {
+                "hex": rig["lighting"]["world"]["hex"],
+                "strength": rig["lighting"]["world"]["strength"],
+            },
+            "ambientOcclusion": rig["lighting"]["ambientOcclusion"],
+        }
+    else:
+        build_reference_lights(scene, spec)
+        rig_lighting = None
 
     anchors_spec = spec["anchors"]
     anchor_collection = bpy.data.collections.new(anchors_spec["collection"])
@@ -806,6 +1602,13 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
     def next_face(tile_id: str) -> str:
         if tile_id == sample_tile:
             return sample_face
+        if rig_mode:
+            rig_samples = spec["rig"].get("samples", {})
+            if tile_id == rig_samples.get("handFaceTileId"):
+                # Burn the draw so the seeded stream stays aligned with the
+                # placement reference; only this one face differs.
+                rng.choice(FACE_IDS)
+                return rig_samples["handFace"]
         return rng.choice(FACE_IDS)
 
     seat_name = {"bottom": "south", "right": "east", "top": "north", "left": "west"}
@@ -1121,6 +1924,11 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
             )
 
         # Concealed hand: 13 standing tiles, reclined 12 degrees backward.
+        # A seat may sit farther back than the shared radius (v3 moves only the
+        # player's hand back), stored as backRadiusUnitsBySeat[seat].
+        seat_hand_radius = hand.get("backRadiusUnitsBySeat", {}).get(
+            seat_id, hand["backRadiusUnits"]
+        )
         for slot in range(hand["count"]):
             tile_id = f"hand-{seat_id}-{slot:02d}"
             face = next_face(tile_id) if seat_id == "bottom" else None
@@ -1131,7 +1939,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                 seat_id,
                 "standing" if face is not None else "standing-back",
                 (slot - (hand["count"] - 1) / 2) * hand["pitchUnits"],
-                -hand["backRadiusUnits"] - thickness / 2,
+                -seat_hand_radius - thickness / 2,
                 0.5,
                 90.0,
                 0.0,
@@ -1141,7 +1949,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
                 f"{slot:02d}",
                 "hand",
                 tilt if seat_id == "bottom" else 0.0,
-                -hand["backRadiusUnits"],
+                -seat_hand_radius,
             )
             index["hand"].setdefault(f"hand-{seat_id}", []).append(tile_id)
 
@@ -1210,6 +2018,9 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
 
     # The human's drawn tile, after the 13th tile's +0.35 advance gap.
     drawn_id = "hand-bottom-draw"
+    bottom_hand_radius = hand.get("backRadiusUnitsBySeat", {}).get(
+        "bottom", hand["backRadiusUnits"]
+    )
     place(
         drawn_id,
         "hand-bottom",
@@ -1217,7 +2028,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         "bottom",
         "standing",
         hand["drawnOffsetUnits"],
-        -hand["backRadiusUnits"] - thickness / 2,
+        -bottom_hand_radius - thickness / 2,
         0.5,
         90.0,
         0.0,
@@ -1227,7 +2038,7 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         "13",
         "hand",
         tilt,
-        -hand["backRadiusUnits"],
+        -bottom_hand_radius,
     )
     index["drawn"]["drawn"] = [drawn_id]
 
@@ -1272,6 +2083,9 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         f"'{anchor_collection.name}' ({len(anchor_collection.objects)} Empties)"
     )
 
+    hand_lighting_cheat = apply_hand_lighting_cheat(spec, spec["rig"]) if rig_mode else None
+    hand_shadow_cheat = apply_hand_shadow_cheat(spec, spec["rig"], tiles) if rig_mode else None
+
     clearance = measure_clearance(tiles, spec)
     return scene, {
         "tiles": tiles,
@@ -1283,6 +2097,10 @@ def build_scene(spec: dict, options: dict) -> tuple[bpy.types.Scene, dict, dict]
         "anchorCounts": counted,
         "anchorCollection": anchor_collection.name,
         "clearance": clearance,
+        "rigLighting": rig_lighting,
+        "handLightingCheat": hand_lighting_cheat,
+        "handShadowCheat": hand_shadow_cheat,
+        "floorHidden": bool(rig_mode and spec["rig"]["render"]["hideFloor"]),
         "props": {
             "mat": spec["table"]["playingMat"],
             "rim": spec["table"]["rim"],
@@ -1576,11 +2394,25 @@ def check_visibility(scene: bpy.types.Scene, camera: dict, tiles: list[dict]) ->
         for x, y in probes:
             point = origin + Vector(rotation @ np.array(Vector((x, y, local_z))))
             direction = (point - eye).normalized()
-            hit, location, normal, index, hit_object, matrix = scene.ray_cast(
-                depsgraph, eye, direction
-            )
+            # Skip camera-invisible helpers (the hand's shadow-only casters):
+            # they exist for shadow rays, not for the rendered image.
+            start = eye
+            hit_object = None
+            for _ in range(6):
+                hit, location, normal, index, candidate, matrix = scene.ray_cast(
+                    depsgraph, start, direction
+                )
+                if not hit:
+                    break
+                if getattr(candidate, "visible_camera", True) and not candidate.hide_render:
+                    hit_object = candidate
+                    break
+                start = location + direction * 1e-4
             samples += 1
             if not hit:
+                occluded.append({"tile": tile["id"], "hit": None})
+                continue
+            if hit_object is None:
                 occluded.append({"tile": tile["id"], "hit": None})
                 continue
             allowed = {tile["id"], f"{tile['id']}-decal"}
@@ -1632,7 +2464,100 @@ def main() -> None:
         die(f"unknown camera candidate {camera_name}")
     candidate = spec["camera"]["candidates"][camera_name]
 
-    scene, scene_data, shell_spec = build_scene(spec, options)
+    variant_id = None
+    variant = None
+    scene_spec = spec
+    if options["rig"]:
+        variant_id, variant, scene_spec = resolve_variant(spec, options["variant"])
+        log(f"rig variant: {variant_id} — {variant.get('label', '')}")
+
+    scene, scene_data, shell_spec = build_scene(scene_spec, options)
+
+    if options["rig"]:
+        rig = scene_spec["rig"]
+        resolution = list(rig["output"]["resolution"])
+        if options["rigWidth"]:
+            resolution = [
+                options["rigWidth"],
+                round(options["rigWidth"] * rig["output"]["resolution"][1] / rig["output"]["resolution"][0]),
+            ]
+        camera = camera_from_candidate(rig["camera"], resolution)
+        scene.render.resolution_x = resolution[0]
+        scene.render.resolution_y = resolution[1]
+        build_camera_object(scene, camera)
+        sample_points = [tile_box_corners(tile)[0] for tile in scene_data["tiles"][::23]]
+        delta = verify_projection(scene, camera, sample_points)
+        if delta > 0.01:
+            die(f"rig pinhole projection drifts from Blender by {delta:.4f} px")
+        log(f"rig projection: pinhole matches Blender within {delta:.6f} px")
+
+        visibility = check_visibility(scene, camera, scene_data["tiles"])
+        if visibility["occluded"]:
+            die(
+                f"rig: {visibility['occluded']} of {visibility['samples']} visible-surface "
+                f"probes are occluded: {visibility['details'][:6]}"
+            )
+        log(f"rig visibility: {visibility['samples']} probes, 0 occluded")
+
+        rig_dir = out_dir / rig["output"]["bakeDirectory"].format(variant=variant_id)
+        rig_dir.mkdir(parents=True, exist_ok=True)
+        bake = {
+            "version": 1,
+            "generatedBy": "tools/render/bake_table_reference.py",
+            "mode": "rig",
+            "rig": rig["id"],
+            "variant": variant_id,
+            "variantLabel": variant.get("label"),
+            "variantNote": variant.get("note"),
+            "variantDate": variant.get("date"),
+            "strictScene": bool(variant.get("strictScene", False)),
+            "variantExtends": variant.get("extends"),
+            "blender": bpy.app.version_string,
+            "resolution": resolution,
+            "camera": camera,
+            "projectionDeltaPx": round(delta, 6),
+            "visibility": visibility,
+            "render": {
+                "engine": bpy.context.scene.render.engine,
+                "device": scene.cycles.device,
+                "samples": scene.cycles.samples,
+                "adaptiveSampling": scene.cycles.use_adaptive_sampling,
+                "adaptiveThreshold": round(scene.cycles.adaptive_threshold, 6),
+                "denoise": scene.cycles.use_denoising,
+                "denoiser": scene.cycles.denoiser,
+                "filmTransparent": scene.render.film_transparent,
+                "colorMode": scene.render.image_settings.color_mode,
+                "floorHidden": scene_data["floorHidden"],
+                "look": scene.view_settings.look,
+                "viewTransform": scene.view_settings.view_transform,
+            },
+            "scene": {
+                "dimensions": scene_data["dimensions"],
+                "innerFacePlate": scene_data["inner"],
+                "tiles": scene_data["tiles"],
+            },
+            "lighting": scene_data["rigLighting"],
+            "handLightingCheat": scene_data["handLightingCheat"],
+            "handShadowCheat": scene_data["handShadowCheat"],
+        }
+        bake_path = rig_dir / rig["output"]["bakeFile"]
+        bake_path.write_text(json.dumps(bake, indent=1))
+        log(f"rig bake: {bake_path}")
+        log(
+            "rig camera: "
+            f"{camera['mode']} {camera['lensMm']:.1f} mm, {camera['distanceUnits']:.3f} units, "
+            f"pitch {camera['elevationDeg']:.1f} deg, shift {camera['shiftX']:.3f}/{camera['shiftY']:.3f}, "
+            f"eye {[round(value, 3) for value in camera['eye']]}"
+        )
+
+        if options["dryRun"]:
+            log("rig dry run: nothing rendered")
+            return
+        path = rig_dir / rig["output"]["renderPattern"].format(width=resolution[0])
+        render_pass(scene, path)
+        log(f"rig render: {path} ({resolution[0]}x{resolution[1]})")
+        return
+
     resolution1x = spec["camera"]["output"]["resolution1x"]
     resolution2x = spec["camera"]["output"]["resolution2x"]
     camera1x = camera_from_candidate(candidate, resolution1x)

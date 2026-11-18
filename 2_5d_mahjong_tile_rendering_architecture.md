@@ -1,5 +1,15 @@
 # Architecture & Implementation Spec: Tenhou-Style 2.5D Mahjong Renderer
 
+> **Superseded where they conflict (2026-11-17):** the per-zone projection choices
+> in this document (multi-projection "impossible geometry", one orthographic/oblique
+> shell per zone) are superseded by
+> [`2_5d_implementation_plan.md`](2_5d_implementation_plan.md), which models the table
+> once in Blender with a single perspective camera plus negative lens shift, exports
+> projected slot anchors and face quads, and composites flat face glyphs onto
+> column-bucketed blank tile bodies. This document is not rewritten; its remaining
+> detail (shell scale, atlas, shadows, compositor contracts) still describes the
+> shipped runtime until the new plan replaces it task by task.
+
 ## 1. Executive Summary & Architectural Pivot
 
 ### The Problem with Full-Scene 3D Perspective

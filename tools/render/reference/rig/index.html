@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>riichiprac 2.5D rig A/B</title>
+<style>
+  body { margin: 0 auto; max-width: 1180px; padding: 24px; background: #10171b; color: #dbe6e9;
+         font: 15px/1.45 system-ui, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 17px; margin: 0 0 4px; }
+  p { color: #9fb2b8; max-width: 78ch; }
+  img { max-width: 100%; display: block; border-radius: 4px; background: #0b1114; }
+  figure { margin: 0 0 12px; }
+  figcaption { color: #9fb2b8; font-size: 13px; padding-top: 6px; }
+  table { border-collapse: collapse; margin: 6px 0 22px; font-size: 14px; }
+  th, td { text-align: left; padding: 3px 14px 3px 0; border-bottom: 1px solid #23343a; }
+  th { color: #9fb2b8; font-weight: 500; }
+  code { color: #cbe3c6; }
+  section { border-top: 1px solid #23343a; padding-top: 18px; margin-top: 22px; }
+</style>
+<h1>2.5D rig variants — A/B</h1>
+<p>Task 2 of <code>2_5d_implementation_plan.md</code>, variant by variant. Every
+variant is the same Blender scene and the same 269 placements, rebuilt with its
+own layout overrides, camera and lights. The committed record of each is its
+<code>.json</code>; the numbers are recomputed by
+<code>scripts/check-table-rig.mjs</code> from the camera and placements and
+measured on the rendered pixels. Calibration only.</p>
+
+  <section>
+    <h2>v1-baseline — v1 baseline (committed 2026-11-17)</h2>
+    <p>The first committed rig: whole table width framed with the near rim as the working-area border, the hand reclined 12 deg, 75 mm at 76 units, 9000 W key. Saved unchanged as the A/B reference.</p>
+    <figure>
+      <a href="v1-baseline-1x.png"><img src="v1-baseline-1x.png" alt="v1-baseline"></a>
+      <figcaption>1920×1080 RGBA · 2,210,928 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      
+      <tr><th>camera</th><td>75 mm · pitch 50° · 76.000 units · Shift Y -0.02</td></tr>
+      <tr><th>hand / meld radius</th><td>10.6 / 10.6 units</td></tr>
+      <tr><th>hand tilt</th><td>12°</td></tr>
+      <tr><th>hand shadow</th><td>real</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>6.8 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.302 × felt · 0.302 → 0.663 → 0.808 → 0.902 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>—</td></tr>
+      <tr><th>light key</th><td>9000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>37.4223 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>137.9 / 217.2</td></tr>
+      <tr><th>hand bottom margin</th><td>73.5256 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>3.7969 / 3.811 px</td></tr>
+      <tr><th>transparent pixels</th><td>26.76%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v2-compact — v2 compact + readable hand + dimmer key</h2>
+    <p>The user's 2026-11-17 direction: everything bigger and more compact, hands and melds pulled in to the wall, the player's hand reclined further so the faces read from the 50 deg camera (a deliberate cheat; the runtime will use a blob shadow under it, not this render's real shadow), and the key dimmed so the discards stop reading as blown-out white. The mat/rim are only the working-area border and are allowed to crop.</p>
+    <figure>
+      <a href="v2-compact-1x.png"><img src="v2-compact-1x.png" alt="v2-compact"></a>
+      <figcaption>1920×1080 RGBA · 2,659,568 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      
+      <tr><th>camera</th><td>75 mm · pitch 50° · 59.000 units · Shift Y -0.02</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>real</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>45.4 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.08 × felt · 0.08 → 0.091 → 0.123 → 0.557 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>—</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>48.4233 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>119.8 / 203.3</td></tr>
+      <tr><th>hand bottom margin</th><td>45.2431 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>6.1244 / 4.4586 px</td></tr>
+      <tr><th>transparent pixels</th><td>5.4%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v3-hand-shadow — v3 compact + player hand back + physical hand shadow</h2>
+    <p>The user's follow-up on v2: only the player's hand moves a further half tile height back from the wall, and its shadow stops giving the cheat away. The cheated hand casts no shadow at all (no tall shadow under it, nothing up the wall behind it); each hand tile gets a shadow-only caster at the 12 deg physical pose, and the fills are light-linked to ignore the caster, so only the key casts a short, diffuse physical shadow. The rest of the table is v2.</p>
+    <figure>
+      <a href="v3-hand-shadow-1x.png"><img src="v3-hand-shadow-1x.png" alt="v3-hand-shadow"></a>
+      <figcaption>1920×1080 RGBA · 2,623,607 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.02</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>physical-pose caster (14 casters)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>4.3 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.324 × felt · 0.324 → 0.336 → 0.34 → 0.373 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>—</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>105.5 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>28.5725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>7.17%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v4-shadow-decal — v4 soft gradient hand shadow</h2>
+    <p>v4 keeps v3's spacing (the player's hand at 9.3) and replaces the rendered physical-pose caster with a fake soft gradient decal: the v3 caster read as hard black rectangles that started at the rear edge where the tile balances. The decal is a straight-alpha black strip laid on the mat whose darkest point is hidden under the tile and whose visible gradient begins right at the tile's front edge, as if the tile sat upright and level, then fades to nothing within a third of a tile height. It casts no shadow rays, so the wall behind stays clean.</p>
+    <figure>
+      <a href="v4-shadow-decal-1x.png"><img src="v4-shadow-decal-1x.png" alt="v4-shadow-decal"></a>
+      <figcaption>1920×1080 RGBA · 2,623,462 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.02</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>gradient decal (2 strips, max alpha 0.3, 0.32 units)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.8 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.867 × felt · 0.867 → 0.917 → 0.971 → 0.994 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>—</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.6 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>28.5725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>7.17%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v5-shadow-wash — v5 shadow wash — 0.55 units, alpha 0.50</h2>
+    <p>Shadow take A: a medium-long, evenly fading wash. About 0.55 units (15 mm) of gradient, roughly 45 % dark at the visible edge, back to lit felt before the frame edge. This is the 'a bit longer, clearly visible' reading of v4.</p>
+    <figure>
+      <a href="v5-shadow-wash-1x.png"><img src="v5-shadow-wash-1x.png" alt="v5-shadow-wash"></a>
+      <figcaption>1920×1080 RGBA · 2,622,755 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>gradient decal (2 strips, max alpha 0.5, 0.55 units)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.702 × felt · 0.702 → 0.821 → 0.934 → 1.008 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>—</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>6.87%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v6-shadow-long-faint — v6 long faint shadow — 0.65 units, alpha 0.40</h2>
+    <p>Shadow take B: the longest and softest. About 0.65 units (18 mm), a light even haze (about 35 % dark at the edge) that fades slowly. This is the most diffuse take and the least 'contact shadow'.</p>
+    <figure>
+      <a href="v6-shadow-long-faint-1x.png"><img src="v6-shadow-long-faint-1x.png" alt="v6-shadow-long-faint"></a>
+      <figcaption>1920×1080 RGBA · 2,624,047 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>gradient decal (2 strips, max alpha 0.4, 0.65 units)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.733 × felt · 0.733 → 0.797 → 0.869 → 0.967 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>—</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>6.87%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v7-shadow-deep — v7 deep contact shadow — 0.42 units, alpha 0.65</h2>
+    <p>Shadow take C: the deepest but shortest. About 0.42 units (12 mm), roughly 55 % dark at the visible edge and dropping quickly, so it reads as a firmer contact shadow rather than a wash.</p>
+    <figure>
+      <a href="v7-shadow-deep-1x.png"><img src="v7-shadow-deep-1x.png" alt="v7-shadow-deep"></a>
+      <figcaption>1920×1080 RGBA · 2,622,309 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>gradient decal (2 strips, max alpha 0.65, 0.42 units)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.7 × felt · 0.7 → 0.908 → 1.006 → 1.01 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>—</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>6.87%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v10-shadow-split-blobs — v10 split blobs, blurred on all four edges</h2>
+    <p>Take A (v5) rebuilt with the retired UI shadow recipe, then corrected: the contact rectangle is blurred on all four edges (v9's hard north cut left a sharp line past the end tiles), each group widens only outward (the row's left, the drawn tile's right) so the tsumogiri gap keeps the drawn tile's blob separate, and the row/drawn planes are staggered to stop them z-fighting. Same spacing, framing, lighting and hand cheat as v5.</p>
+    <figure>
+      <a href="v10-shadow-split-blobs-1x.png"><img src="v10-shadow-split-blobs-1x.png" alt="v10-shadow-split-blobs"></a>
+      <figcaption>1920×1080 RGBA · 2,622,670 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>physical-pose caster (undefined casters)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.76 × felt · 0.76 → 0.897 → 0.986 → 1.01 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>hand: 0.15 / 0 / -0.075 · drawn: 0 / 0.15 / 0.075</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>6.87%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v11-shadow-inner-offset — v11 shadow: inner-right extended, offset forward</h2>
+    <p>v10's row shadow stopped at the row's right edge. v11 gives each group its own spreads: the hand row widens both ends by 0.15 units (so its right shadow passes the last tile), the drawn tile widens only outward (0.28 units, well past the hand) and keeps its gap side at its tile edge, so the tsumogiri gap still dips between the two blobs. The whole footprint is offset 0.06 units forward (south) so the shadow does not look like it surrounds the tiles perfectly evenly; the x blur is 0.10.</p>
+    <figure>
+      <a href="v11-shadow-inner-offset-1x.png"><img src="v11-shadow-inner-offset-1x.png" alt="v11-shadow-inner-offset"></a>
+      <figcaption>1920×1080 RGBA · 2,622,189 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>physical-pose caster (undefined casters)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.698 × felt · 0.698 → 0.848 → 0.957 → 1.006 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>hand: 0.15 / 0.15 / 0 · drawn: 0 / 0.28 / 0.14</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>6.87%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v12-shadow-symmetric — v12 symmetric per-group shadows, drawn tile centred</h2>
+    <p>The v11 shadow double-darkened where the row's and drawn tile's decals overlapped, and the drawn tile's blob was visibly off-centre. v12 applies the retired UI group recipe: the hand row and the drawn tile are unioned into one footprint and blurred once, so there is no overlap darkening and the shadow is symmetric around the whole hand (0.18 units at both outer ends). The drawn tile's shadow is part of the same union rather than a separate off-centre blob; the tsumogiri gap gets shadow like the rest of the union, as the UI recipe does.</p>
+    <figure>
+      <a href="v12-shadow-symmetric-1x.png"><img src="v12-shadow-symmetric-1x.png" alt="v12-shadow-symmetric"></a>
+      <figcaption>1920×1080 RGBA · 2,622,083 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>physical-pose caster (undefined casters)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.698 × felt · 0.698 → 0.848 → 0.957 → 1.006 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>hand: 0.18 / 0.18 / 0</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>6.87%</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>v13-shadow-darker — v13 darker hand shadow (match the wall's front shadow)</h2>
+    <p>v12's union shadow was a touch lighter than the key shadow in front of the player's wall (26 luma at its core). v13 keeps the same union footprint, symmetric margins and x blur but darkens it: full black at the core, sigma 0.26, and the footprint offset 0.18 units south, which puts the darkest visible felt at ~27 luma against the wall shadow's 26.</p>
+    <figure>
+      <a href="v13-shadow-darker-1x.png"><img src="v13-shadow-darker-1x.png" alt="v13-shadow-darker"></a>
+      <figcaption>1920×1080 RGBA · 2,622,223 B ·
+      2026-11-17</figcaption>
+    </figure>
+    <table>
+      <tr><th>status</th><td><strong>CHOSEN 2026-11-17</strong> — Reviewed on the A/B page by the user on 2026-11-17 ('Looks good now, let's go with that') and approved: the compact layout (hands/melds at 8.8 with the player's hand at 9.3), the 40 deg hand recline shaded as the 12 deg pose, the 6000 W key, and the unioned hand shadow at the wall-key-shadow darkness. v13 is the default variant.</td></tr>
+      <tr><th>camera</th><td>75 mm · pitch 50° · 60.500 units · Shift Y -0.03</td></tr>
+      <tr><th>hand / meld radius</th><td>8.8 / 8.8 units (player hand 9.3)</td></tr>
+      <tr><th>hand tilt</th><td>40° (shaded as 12°)</td></tr>
+      <tr><th>hand shadow</th><td>physical-pose caster (undefined casters)</td></tr>
+      <tr><th>wall behind the hand (dip)</th><td>0.7 luma</td></tr>
+      <tr><th>under-hand shadow (darkest / fade)</th><td>0.529 × felt · 0.529 → 0.732 → 0.891 → 0.988 → 1</td></tr>
+      <tr><th>shadow margins (L / R / centre)</th><td>hand: 0.18 / 0.18 / 0</td></tr>
+      <tr><th>light key</th><td>6000 W</td></tr>
+      <tr><th>tile size (hand face width)</th><td>47.3673 px</td></tr>
+      <tr><th>hand face / discard luma</th><td>117.7 / 203.2</td></tr>
+      <tr><th>hand bottom margin</th><td>47.7725 px</td></tr>
+      <tr><th>side inner face / hand sliver</th><td>5.8427 / 4.2675 px</td></tr>
+      <tr><th>transparent pixels</th><td>6.87%</td></tr>
+    </table>
+  </section>

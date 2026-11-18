@@ -5,10 +5,23 @@ tile slot. It is a **development/calibration model**: nothing under
 `frontend/public` is written and the runtime never reads it.
 
 **Scope note (2026-11-17):** this task is the table model and the anchor bank.
-The perspective and lighting are inherited from the earlier calibration
-reference and are **not** tuned here; a separate Task 2 sets those up. The
-render in this task exists so placement can be eyeballed, not for a lighting
-sign-off.
+The placement renders here inherit the earlier calibration reference's camera
+and are **not** a lighting verdict. **Task 2** (2026-11-17) owns the perspective
+and lighting calibration and ships it as a separate `--rig` mode of the same
+scene and placements. It is variant-based (A/B): `v1-baseline` is the saved
+first rig, `v2-compact` the first experiment (bigger, hands/melds pulled in to
+the wall, a readability cheat on the player's hand, dimmer key), and
+`v3-hand-shadow` moves only the player's hand a further half tile back, and
+`v4-shadow-decal` replaces the shadow with a soft gradient that emerges from the
+tile's front edge, `v5`–`v7` are three longer/stronger takes on it, and
+`v10-shadow-split-blobs` rebuilds the chosen take A as the retired UI recipe: a
+blurred contact rectangle per hand group; `v11-shadow-inner-offset` widens the
+row's right end too and offsets the whole blob slightly forward;
+`v12-shadow-symmetric` unions the hand row and the drawn tile into one footprint
+so the shadow is exactly symmetric, and `v13-shadow-darker` deepens that shadow
+to match the key shadow in front of the player's wall. The
+placement board below stays at its own 2880 × 2112 framing for plan review. See
+[The 2.5D rig](#the-25d-rig-task-2).
 
 **Placement sign-off (2026-11-17):** the user reviewed the committed board, the
 table plan and the anchor plan and approved the table model, anchor bank, riichi
@@ -17,18 +30,26 @@ visual verdict was the user's (AGENTS.md §6); the numbers in this note were
 produced by the scripted checks.
 
 - Scene + camera + anchor spec: [`table-reference-spec.json`](table-reference-spec.json)
+  (the Task 2 camera/light rig is the spec's `rig` block)
 - Blender generator: [`bake_table_reference.py`](bake_table_reference.py)
 - Entry point: [`bake-table-reference.sh`](bake-table-reference.sh)
 - Published model: [`reference/`](reference/) — board, element crops,
   `slot-anchors.json`, `table-reference.json`, contact page
-- Integrity gate: [`scripts/check-table-reference.mjs`](scripts/check-table-reference.mjs)
+- Published rig variants: [`reference/rig/`](reference/rig/) —
+  `<variant>-1x.png` + `<variant>.json` for each saved look, plus the A/B page
+  [`reference/rig/index.html`](reference/rig/index.html)
+- Integrity gates: [`scripts/check-table-reference.mjs`](scripts/check-table-reference.mjs)
+  and [`scripts/check-table-rig.mjs`](scripts/check-table-rig.mjs)
 
 ## Commands
 
 ```bash
 bash tools/render/bake-table-reference.sh --dry-run   # build + validate; print the model's metrics
-bash tools/render/bake-table-reference.sh --bake      # render the @2x master, publish, check
-bash tools/render/bake-table-reference.sh --check     # spec/anchors/clearance/files gate; no Blender
+bash tools/render/bake-table-reference.sh --bake      # render the @2x placement reference, publish, check
+bash tools/render/bake-table-reference.sh --rig       # render/publish/check the default rig variant (v1-baseline)
+bash tools/render/bake-table-reference.sh --rig --variant v2-compact   # one A/B variant
+bash tools/render/bake-table-reference.sh --rig --variant v2-compact --rig-width 700 --samples 12   # fast tuning, never publishes
+bash tools/render/bake-table-reference.sh --check     # both gates; no Blender
 ```
 
 Blender is pinned to 4.5.9 LTS at `~/.local/opt/blender-4.5.9/blender` (present
@@ -109,14 +130,276 @@ For a follow-up projection export: `world = anchor.matrix_world @ Vector(corner)
 for each local corner (or read `faceQuadWorld`), then project with
 `world_to_camera_view`.
 
-## Camera and lighting (inherited, not tuned here)
+## Camera and lighting: the placement view
 
-The renders use the reference's locked weak-perspective camera: 45° elevation,
-140 mm / 36 mm, eye `(0, −86.0826, 86.4326)`, target `(0, 0, 0.35)`, 2880 × 2112
-@1x from one 5760 × 4224 @2x master. The sun/ambient rig is the earlier
-reference's. **Task 2 owns the perspective and lighting calibration**; do not
-read this task's render as a lighting verdict. The camera exists to show the
-placement and to keep the model in the same space as the previous reference.
+The `--bake` placement board still uses the reference's locked weak-perspective
+camera: 45° elevation, 140 mm / 36 mm, eye `(0, −86.0826, 86.4326)`, target
+`(0, 0, 0.35)`, 2880 × 2112 @1x from one 5760 × 4224 @2x master, with the earlier
+reference's sun/ambient rig. It exists to show the anchors and keep the model in
+the same space as the previous reference; it is not the 2.5D framing.
+
+## The 2.5D rig (Task 2)
+
+Task 2 of [`2_5d_implementation_plan.md`](../../2_5d_implementation_plan.md)
+ships the perspective and lighting for the new pipeline as a second mode of the
+same scene (`--rig`). It reuses every tile placement from this model.
+
+**Chosen (2026-11-17): the user reviewed the A/B page and approved
+`v13-shadow-darker`** ("Looks good now, let's go with that") — the compact layout
+(hands/melds at 8.8, the player's hand at 9.3), the 40° hand recline shaded as
+the 12° pose, the 6000 W key, and the unioned hand shadow at the wall-key-shadow
+darkness. It is the spec's `defaultVariant`, so `bash
+tools/render/bake-table-reference.sh --rig` with no `--variant` reproduces it.
+The earlier takes stay committed as the A/B record.
+
+The rig is **variant-based** so settings can be A/B compared without losing a
+look:
+
+- `table-reference-spec.json`'s `rig` blocks are the saved **v1 baseline**
+  (the first committed rig).
+- `rig.variants` holds named experiments. A variant may override the **table
+  layout** (hand/meld radius, hand tilt), the **camera**, the **lights**, the
+  **render settings** and the **acceptance thresholds**. Empty overrides mean
+  "the baseline".
+- Each variant renders to `tools/render/reference/rig/<variant>-1x.png` with its
+  record in `<variant>.json`. `tools/render/reference/rig/index.html` is the
+  A/B page (both images, both settings tables, both number sets).
+- The gate `scripts/check-table-rig.mjs` validates **every committed variant**.
+
+```bash
+bash tools/render/bake-table-reference.sh --rig                        # v1 baseline: render, publish, check
+bash tools/render/bake-table-reference.sh --rig --variant v2-compact    # one variant
+bash tools/render/bake-table-reference.sh --rig --variant v2-compact --rig-width 700 --samples 12  # fast tuning, never publishes
+bash tools/render/bake-table-reference.sh --check                       # every committed variant, no Blender
+```
+
+Every rig variant shares these fixed rules: perspective (not orthographic),
+65–85 mm on a 36 mm sensor, 48–52° pitch, eye on X = 0 behind the south edge, a
+negative Shift Y, no roll, 16:9 at 1920 × 1080, Film > Transparent with the room
+floor hidden, one large soft AREA key slightly forward of centre plus low fills,
+and Cycles path-traced GI for the contact shadows. The player's blank hand probe
+(`hand-bottom-06` forced to `5z`) gives a known ivory hand face in every variant;
+`check-table-rig.mjs` also confirms the only face override is that probe.
+
+### v1-baseline (saved 2026-11-17)
+
+The first committed rig, kept unchanged as the A/B reference.
+
+| Parameter | Value |
+| --- | --- |
+| Camera | 75 mm, 50° pitch, eye `(0, −48.851858, 58.569378)`, **76 units**, Shift Y **−0.02**, no roll |
+| Framing | whole 700 mm mat + rim width, 164.6 px side margins; far rim 16.3 px inside; near rim cropped 41.8 px; hand 73.5 px above the bottom |
+| Layout | hands radius **10.6**, melds **10.6**; player hand reclined **12°** |
+| Lights | AREA key 20 × 14 at `(0, −2.5, 22)`, **9000 W**, `#fff7ea`; fills 1400 W at `(0, −26, 9)` and 700 W each at `(±22, −7, 11)`; world `#3b4a5c` × 0.35 |
+| Measured | discard face **217.2**, blue back 63.7, hand face **137.9**, side inner faces 121.0 / 118.6, felt 69.1 |
+
+### v2-compact (experiment, 2026-11-17)
+
+The user's direction: everything bigger and more compact, hands and melds pulled
+in to the wall, the player's hand angled more toward the eye for readability,
+and the key dimmed a little.
+
+| Parameter | v2 | vs v1 |
+| --- | --- | --- |
+| Hands / melds radius | **8.8 / 8.8 units** | pulled in from 10.6; the hand row now sits 1.3 units behind the wall's outer edge (was 3.1) |
+| Player hand tilt | **40°** recline about the far bottom edge | was 12°; the face is now ~19° off the eye instead of ~47°, so the faces read much closer to straight-on |
+| Camera | 75 mm, 50° pitch, eye `(0, −37.924469, 45.546622)`, **59 units**, Shift Y −0.02 | framed to the tile content, not the mat: **every tile inside** (≥ 26.8 px), hand 45.2 px above the bottom, rim crosses the frame edges |
+| Tile size | hand face width **48.42 px** | 1.29× linear / 1.68× area larger than v1 |
+| Lights | key **6000 W**, fills 900 / 450 / 450 W | key cut 33 % in energy; the lit discard face drops **217.2 → 203.3** luma (AgX compresses most of it) |
+| Measured | discard face **203.3**, blue back 50.5, hand face **119.8**, side inner faces 95.4 / 98.2, felt 51.8 | |
+
+**The hand cheat, and its lighting.** The 40° recline is deliberately not
+physical: the tile balances on its far bottom edge, the near bottom edge floats
+0.38 units (10.6 mm) above the table, and the reference render's cast shadow is
+therefore not the production shadow (the runtime will draw a blob shadow under
+it). To keep the light on the hand looking like a normally seated tile, every
+hand material — the blank bodies and their face decals — shades with its normal
+rotated back by the extra 28° about world X (the hand row is not yawed), so the
+key and fills land exactly as they would on the 12° physical pose. The
+silhouette keeps the cheat; the shading does not. Measured proof, same lights:
+without the correction the 40° hand face reads **178.8** luma at the tuning
+render; with it, **119.8** — the physical-pose level (v1's 12° hand reads
+137.9 at its brighter key). The gate enforces `hand/discard luma ≤ 0.7`
+(measured **0.589**) so a regression that drops the correction fails.
+
+The correction is a shading-normal rotation per hand material, recorded in the
+bake as `handLightingCheat` (mode `physicalPose`, physical/cheated tilt, the
+28° delta, 27 objects, 11 materials). Task 3A should export the **physical**
+face basis for the player's hand (or the cheat has to move into the runtime
+shader) if the same look is to survive the sprite pipeline.
+
+### v3-hand-shadow (experiment, 2026-11-17)
+
+v3 extends v2 with the user's follow-up: only the player's hand moves further
+from the wall, and its shadow stops giving the cheat away.
+
+| Parameter | v3 | vs v2 |
+| --- | --- | --- |
+| Player's hand radius | **9.3** | the shared 8.8 radius still applies to the three opponent hands; only the bottom hand (and its drawn tile) moves back the extra **0.5 units** (half a tile height) |
+| Camera | 75 mm, 50° pitch, eye `(0, −38.88865, 46.695689)`, **60.5 units**, Shift Y −0.02 | refit for the moved hand: every tile inside (≥ 28.6 px), hand 28.6 px above the bottom, hand face 47.37 px wide |
+| Hand shadow | **physical-pose caster**, fills light-linked away from it | was the cheated hand's own shadow |
+| Measured | discard face **203.2**, hand face **105.5** (hand/discard 0.519), side inner faces 93.4 / 100.2, felt 51.8; wall behind the hand **uniform** | |
+
+**The shadow cheat.** The 40° hand casts a tall shadow under itself and a
+hand-shaped shadow up the wall behind it (the near fill sees the hand from the
+south; that wall band measured a **45.4** luma dip in v2). v3 turns the hand's
+own shadow off entirely and gives every hand tile a **shadow-only duplicate at
+the 12° physical pose**: invisible to the camera, diffuse and glossy rays and
+volume scatter, visible only to shadow rays. Each fill's blocker collection
+omits those casters, so only the key casts the physical shadow — a short band
+falling south, the same family as the shadow in front of the wall. The wall row
+now measures a **4.3** dip (uniform), and the under-hand shadow is the normal
+tile's, not the leaning tile's. The hand still never casts onto the wall or the
+pond behind it.
+
+The bake records the casters (`handShadow`: 14 casters, 27 hand objects hidden,
+the three light-linked fills), and the gate enforces: the player's hand base is
+exactly 0.5 units behind the other hands, the caster tilt is the physical 12°,
+and the wall dip stays under 15 luma.
+
+### v4-shadow-decal (experiment, 2026-11-17)
+
+v4 keeps v3's spacing exactly (the player's hand at 9.3, camera at 60.5) and
+replaces the rendered physical-pose caster, which read as hard black rectangles
+and started at the *rear* edge where the tile balances, with a **fake soft
+gradient shadow**.
+
+| Parameter | v4 |
+| --- | --- |
+| Shadow | straight-alpha black strip on the mat; **2 strips** (the 13-tile row and the drawn tile), no shadow rays |
+| Start | radius **9.4336**, i.e. 0.317 units *under* the tile, so its hard near edge is hidden and the visible gradient begins at the tile's front edge (front edge 9.7514, edge height 0.3788) |
+| Shape | `maxAlpha 0.3`, length **0.32 units** (9 mm), falloff `(1-v)^1.2`, x ends faded over 3 % |
+| Measured | darkest visible felt **0.867×** the lit felt at 0.10 units from the edge; back to **0.994×** by 0.34 units; wall behind the hand **0.8** dip; hand face 117.6 luma |
+
+The decal is pure darkening (a black roughness-1 surface whose alpha is a UV
+gradient), so it cannot go solid black the way the caster's shadow core did: the
+darkest visible pixels are about 13 % below the local felt, and the gradient has
+returned to lit felt within ~0.2 units (≈ 12 px at 1920). Because it casts no
+shadow rays, nothing appears on the wall behind the hand, and the hand's own
+cast shadow stays off. The hand face reads **117.6** in v4 rather than v3's 105.5
+because v3's casters were also blocking fill light on the hand's face; with them
+gone the physical-pose shading is the full read.
+
+The gate enforces: the decal starts under the tile, `maxAlpha` ≤ 0.45, the
+darkest visible felt ≥ 0.7× the local felt, the shadow is gone (≥ 0.92×) by 0.34
+units, the gradient is monotonic, and the wall dip stays under 15.
+
+### Shadow takes (v5–v7, 2026-11-17)
+
+v4's gradient was judged barely visible, so three takes extend v4 with a longer,
+stronger decal. Each lifts the framing 19 px (Shift Y −0.03 instead of −0.02) so
+the longer gradient finishes on lit felt instead of reaching the frame edge; the
+hand bottom margin goes 28.6 → 47.8 px. v4 itself is untouched for comparison.
+
+| Variant | Length | Max alpha | Falloff | Darkest visible (× felt) | Back to lit felt |
+| --- | --- | --- | --- | --- | --- |
+| **v4** (reference) | 0.32 u / 9 mm | 0.30 | 1.2 | 0.867 | ~0.34 u |
+| **v5 shadow wash** | 0.55 u / 15 mm | 0.50 | 1.0 | 0.702 | ~0.55 u |
+| **v6 long faint** | 0.65 u / 18 mm | 0.40 | 0.7 | 0.733 | ~0.70 u |
+| **v7 deep contact** | 0.42 u / 12 mm | 0.65 | 1.4 | 0.70 | ~0.40 u |
+
+All four share the hidden start under the tile, the front-edge emergence, no
+shadow rays and a clean wall behind the hand (dip 0.7–0.8 luma). The gate holds
+every take to the "no black rectangle" floor: max alpha ≤ 0.75, the darkest
+visible felt ≥ 0.4× the local felt, a monotonic fade (5 % noise tolerance) and
+lit felt by the variant's fade distance.
+
+### v10-shadow-split-blobs (experiment, 2026-11-17)
+
+Take A's look, rebuilt as the shadow recipe the retired UI was going to use: a
+**contact rectangle blurred once** on all four edges, drawn under the hand, one
+blob per group.
+
+| Parameter | v10 |
+| --- | --- |
+| Shape | one plane per hand group (13-tile row, drawn tile); each group's rect is its contact footprint, **widened only outward** by 0.15 units (the row's left end, the drawn tile's right end) and extended 0.5 units north under the tiles |
+| Blur | all four edges; **σ 0.28 across the depth** (take A's ~0.45-unit fade) and **σ 0.12 across x**, so the row and the drawn tile stay separate at the tsumogiri gap; 0.5 × maxAlpha on the edges |
+| Opacity | `maxAlpha 0.95` → ~0.48 at the visible edge |
+| Measured | front edge **0.76×** the lit felt, lit again by ~0.45 units; outer-end wrap **0.868× / 0.871×** the local felt; north-of-the-edge wrap **0.713× / 0.649×** (the blur fades in every direction, so there is no hard line past the tiles); the tsumogiri gap stays lit (46–48 luma) between the row's 37–40 and the drawn tile's own blob; wall behind the hand **0.7** dip |
+| Shadow rays | none |
+
+Two previous attempts are folded in here (and not kept): trimming the plane at
+the front edge left a **hard north line** past the end tiles, and giving both
+groups the same spread made the row and drawn blobs merge. The four-edge blur
+plus outward-only spread and a narrower x sigma fix both.
+
+The gate asserts each group's rect is its tiles' span widened **only** on the
+outward side by the declared spread, that the decal is wider than the object,
+that the shadow wraps around both outer ends and also fades north of the edge
+line there, and that the front fade is monotonic and subtle.
+
+### v11-shadow-inner-offset (experiment, 2026-11-17)
+
+v10 only widened the outermost sides, so the hand row's shadow still stopped at
+its right edge, and the blob sat perfectly centred on the tiles. v11 gives each
+group its own spreads and nudges the whole footprint forward:
+
+| Parameter | v11 |
+| --- | --- |
+| Spreads | hand row **0.15 both ends** (its right shadow now passes the last tile); drawn tile **0 left / 0.28 right** (well past the hand); gap-facing sides stay at the tile edges |
+| Blur | σ 0.28 depth / **0.10 x**, all four edges, 0.5 × maxAlpha on the edges |
+| Forward offset | the whole rect is shifted **0.06 units south**, so the shadow no longer surrounds the tiles perfectly evenly |
+| Measured | row's right shadow reaches ~0.26 units past the tile edge; drawn tile's reaches ~0.4 past the hand; outer-end wrap 0.818× / 0.710× the local felt; north-of-the-edge wrap 0.684× / 0.429×; front edge ~0.70×, lit by ~0.5 units; wall dip 0.7 |
+
+The tsumogiri gap is now narrower, so the dip between the row's and drawn tile's
+blobs is small (≈ 41 vs 34 luma) rather than a fully lit gap; that is the trade
+for extending the row's shadow past its edge.
+
+### v12-shadow-symmetric (experiment, 2026-11-17)
+
+v11's separate rects overlapped and **double-darkened** the tsumogiri gap, the
+drawn tile's blob sat 0.14 units off-centre to its right, and the whole hand's
+outer margins were 0.15 left / 0.28 right. v12 applies the retired UI **group**
+recipe: union the zone's footprints, blur once.
+
+| Parameter | v12 |
+| --- | --- |
+| Shape | **one union footprint** for the whole hand (row + drawn tile), 0.18 units of spread at both outer ends, 0.06 units forward offset, north edge 0.5 units under the tiles |
+| Blur | all four edges, σ 0.28 depth / 0.10 x, `maxAlpha 0.95` |
+| Margins (analytic) | **0.18 / 0.18** on the row, **0.18 / 0.18** on the drawn tile, whole-hand outer margins **0.18 / 0.18**, both centres 0 offset |
+| Rendered pairs (luma, symmetric points) | drawn tile 33/34 · 34/33 · 34/34 · 34/35; whole-hand ends 34/34 · 38/37 · 42/42 · 48/46 |
+| Wrap / wall | outer-end wrap 0.785× / 0.795× the local felt; wall behind the hand 0.7 dip |
+
+Because the zone is unioned, the drawn tile's shadow is part of the hand's
+shadow instead of a separate blob — that is what removes the double-darkened
+overlap and lets the margins be exactly symmetric. The gate now asserts, for
+variants that declare it, that every group's left and right margins are equal,
+the shadow is centred on its tiles, the whole hand's outer margins match, and
+the rendered wrap factors on both ends match within 0.06.
+
+### v13-shadow-darker (experiment, 2026-11-17)
+
+v12's union shadow was a touch lighter than the key shadow in front of the
+player's wall. v13 keeps v12's shape exactly and only deepens it.
+
+| Parameter | v13 |
+| --- | --- |
+| Shape | same union footprint as v12 (row + drawn tile), 0.18 units at both outer ends, σ 0.26 depth / 0.10 x, north edge 0.5 units under the tiles |
+| Depth | `maxAlpha 1.0` (full black at the core) and the footprint offset **0.18 units south** — the blur's edge is only 0.5 alpha, so the visible edge has to sit further into the gradient to reach the wall shadow's darkness |
+| Measured | hand shadow core **27** luma vs the wall's key shadow core at the south wall **27**; fades back to lit felt (~47–50) by ~0.5 units |
+| Symmetry | margins 0.18 / 0.18, centre offset 0; rendered ends 26/26 · 32/31 · 38/38 · 47/46; wrap 0.667 / 0.692 |
+
+The deeper offset is the mechanism, not an extra move: at a 0.5-alpha blurred
+edge the decal cannot get darker than the wall shadow without either moving the
+footprint forward or drawing a second layer. If the shadow now sits too low, the
+offset is the single knob (`offsetYUnits`, 0.18).
+
+### What still needs the user### What still needs the user
+
+The numbers say the geometry, framing, shadowing and exposure are what was
+asked; only the user can sign off the *look* (AGENTS.md §6).
+
+```bash
+xdg-open tools/render/reference/rig/index.html   # v1 / v2 / v3 side by side, with the numbers
+bash tools/render/bake-table-reference.sh --check
+```
+
+**Resolved (2026-11-17): v13 is the chosen rig** and the default variant. The
+user reviewed the A/B page and approved the compact layout, the readable hand,
+the dimmed key and the union shadow at the wall's darkness. The earlier takes
+remain committed for the record (they can be pruned later); no visual question
+is open. The remaining knobs, if ever revisited, are the hand tilt, the key
+energy and the shadow's `offsetYUnits`/`sigmaUnits`.
 
 ## Published renders and checks
 

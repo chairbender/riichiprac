@@ -221,3 +221,57 @@ export function zoomNearest(rgba, x, y, width, height, factor) {
     stride: width * factor * 4,
   };
 }
+
+/** Mean RGBA over a square window around a pixel; returns null when off-image. */
+export function meanAround(image, x, y, radius = 0) {
+  const totals = [0, 0, 0, 0];
+  let count = 0;
+  for (let dy = -radius; dy <= radius; dy += 1) {
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      const px = Math.round(x) + dx;
+      const py = Math.round(y) + dy;
+      if (px < 0 || py < 0 || px >= image.width || py >= image.height) continue;
+      const offset = (py * image.width + px) * image.channels;
+      for (let channel = 0; channel < Math.min(image.channels, 4); channel += 1) {
+        totals[channel] += image.data[offset + channel];
+      }
+      count += 1;
+    }
+  }
+  if (!count) return null;
+  return { rgba: totals.map((value) => value / count), pixels: count };
+}
+
+function pointInPolygon(x, y, polygon) {
+  let inside = false;
+  for (let index = 0, other = polygon.length - 1; index < polygon.length; other = index, index += 1) {
+    const [xi, yi] = polygon[index];
+    const [xj, yj] = polygon[other];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** Mean RGBA over the pixel centres inside a projected polygon. */
+export function meanInsidePolygon(image, polygon) {
+  const xs = polygon.map((point) => point[0]);
+  const ys = polygon.map((point) => point[1]);
+  const left = Math.floor(Math.min(...xs));
+  const right = Math.ceil(Math.max(...xs));
+  const top = Math.floor(Math.min(...ys));
+  const bottom = Math.ceil(Math.max(...ys));
+  const totals = [0, 0, 0, 0];
+  let count = 0;
+  for (let y = top; y <= bottom; y += 1) {
+    for (let x = left; x <= right; x += 1) {
+      if (x < 0 || y < 0 || x >= image.width || y >= image.height) continue;
+      if (!pointInPolygon(x + 0.5, y + 0.5, polygon)) continue;
+      const offset = (y * image.width + x) * image.channels;
+      for (let channel = 0; channel < Math.min(image.channels, 4); channel += 1) {
+        totals[channel] += image.data[offset + channel];
+      }
+      count += 1;
+    }
+  }
+  return count ? { rgba: totals.map((value) => value / count), pixels: count } : null;
+}
