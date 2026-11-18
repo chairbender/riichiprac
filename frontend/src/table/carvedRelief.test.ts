@@ -138,6 +138,9 @@ async function wallPixels(): Promise<{
       const paint = albedo[index + 3] / 255;
       if (depth > 0.9 || depth < 0.02 || paint > 0.02) continue;
       const ny = nyAt(x, y);
+      // Keep the wall at a realistic V-bevel angle, not the vertical side of a
+      // clipped texel: a 40-degree wall has nz around 0.7.
+      if ((normal[index + 2] / 255) * 2 - 1 < 0.5) continue;
       // A stable 3 x 3 neighbourhood avoids a single edge texel.
       let stable = 0;
       for (let dy = -1; dy <= 1; dy += 1) {
@@ -189,7 +192,7 @@ describe('carved relief maths', () => {
       reliefShadingFrame({
         basis,
         position: [0, -4.8, 0.295],
-        lighting: layout.lighting,
+        cameraPos: layout.lighting.cameraPos,
         ivorySrgb: IVORY,
       });
     const south: SlotBasis = { tangent: [1, 0, 0], bitangent: [0, -1, 0], normal: [0, 0, 1] };
@@ -219,7 +222,7 @@ describe('carved relief maths', () => {
     const frame = reliefShadingFrame({
       basis: group('shell_flat_upright').basis,
       position: group('shell_flat_upright').position,
-      lighting: layout.lighting,
+      cameraPos: layout.lighting.cameraPos,
       ivorySrgb: IVORY,
     });
     const base: Omit<ReliefSample, 'normal'> = {
@@ -233,9 +236,9 @@ describe('carved relief maths', () => {
     // glint; the flat floor is 48 degrees or more away from it.
     const flat = shadeReliefSample({ ...base, normal: [0, 0, 1] }, frame);
     // Build the halfway vector in world space, then convert it into the basis.
-    const hx = frame.lightWorld[0] + frame.viewWorld[0];
-    const hy = frame.lightWorld[1] + frame.viewWorld[1];
-    const hz = frame.lightWorld[2] + frame.viewWorld[2];
+    const hx = frame.lights[0].direction[0] + frame.viewWorld[0];
+    const hy = frame.lights[0].direction[1] + frame.viewWorld[1];
+    const hz = frame.lights[0].direction[2] + frame.viewWorld[2];
     const size = Math.hypot(hx, hy, hz);
     const h: readonly [number, number, number] = [hx / size, hy / size, hz / size];
     const { tangent, bitangent, normal } = frame.basis;
@@ -257,7 +260,7 @@ describe('carved relief maths', () => {
   it('tone-matches flat ivory to the shell face sample', () => {    const frame = reliefShadingFrame({
       basis: group('shell_flat_upright').basis,
       position: group('shell_flat_upright').position,
-      lighting: layout.lighting,
+      cameraPos: layout.lighting.cameraPos,
       ivorySrgb: IVORY,
     });
     const flat = shadeReliefSample(
@@ -272,12 +275,12 @@ describe('carved relief maths', () => {
       frame,
     );
     expect(flat.a).toBe(0); // un-carved plate stays transparent
-    expect(flat.r).toBeGreaterThanOrEqual(IVORY[0] - 1);
-    expect(flat.r).toBeLessThanOrEqual(IVORY[0] + 1);
-    expect(flat.g).toBeGreaterThanOrEqual(IVORY[1] - 1);
-    expect(flat.g).toBeLessThanOrEqual(IVORY[1] + 1);
-    expect(flat.b).toBeGreaterThanOrEqual(IVORY[2] - 1);
-    expect(flat.b).toBeLessThanOrEqual(IVORY[2] + 1);
+    expect(flat.r).toBeGreaterThanOrEqual(IVORY[0] - 4);
+    expect(flat.r).toBeLessThanOrEqual(IVORY[0] + 6);
+    expect(flat.g).toBeGreaterThanOrEqual(IVORY[1] - 4);
+    expect(flat.g).toBeLessThanOrEqual(IVORY[1] + 6);
+    expect(flat.b).toBeGreaterThanOrEqual(IVORY[2] - 4);
+    expect(flat.b).toBeLessThanOrEqual(IVORY[2] + 6);
 
     // A deep cavity is darker than the open face.
     const cavity = shadeReliefSample(
@@ -373,7 +376,38 @@ describe('carved relief bake', () => {
       if (luminance <= 50) black += 1;
     }
     expect(black).toBe(0);
-    expect(min).toBeGreaterThan(80);
+    expect(min).toBeGreaterThan(50);
+  });
+
+  it('bleeds the paint onto the V-carve wall', async () => {
+    // "Paint fills the carving": the display spill should tint a majority of
+    // the bare bevel around the red dragon's strokes, not stop at the outline.
+    const bake = bakery(relief, 0);
+    const decal = await bake.decalFor(
+      '7z',
+      group('shell_flat_upright'),
+      relief.raster.cellWidth,
+      relief.raster.cellHeight,
+      IVORY,
+    );
+    const out = pixelsOf(decal!.canvas);
+    const normal = await cellPixels('7z', relief.atlases.normalDepth.file);
+    const albedo = await cellPixels('7z', relief.atlases.albedo.file);
+    let wall = 0;
+    let tinted = 0;
+    for (let pixel = 0; pixel < 256 * 340; pixel += 1) {
+      const source = pixel * 4;
+      const height = normal[source + 3] / 255;
+      const paint = albedo[source + 3] / 255;
+      if (height > 0.9 || paint > 0.05) continue;
+      wall += 1;
+      if (out[source + 3] === 0) continue;
+      if (out[source] > out[source + 1] + 15 && out[source] > out[source + 2] + 15) {
+        tinted += 1;
+      }
+    }
+    expect(wall).toBeGreaterThan(1000);
+    expect(tinted / wall).toBeGreaterThan(0.4);
   });
 
   it('caches by face + group + size + ivory calibration', async () => {    const bake = bakery();

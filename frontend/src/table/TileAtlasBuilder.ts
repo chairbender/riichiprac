@@ -38,7 +38,7 @@ import type { FacesManifest } from './faceManifest';
 import { decalFor } from './decalManifest';
 import type { DecalRecord, DecalRotation, DecalsManifest } from './decalManifest';
 import { CarvedReliefBakery } from './carvedRelief';
-import type { BakedReliefFace, LoadAtlasBytes } from './carvedRelief';
+import type { BakedReliefFace, LoadAtlasBytes, ReliefLightingConfig } from './carvedRelief';
 export type { LoadAtlasBytes } from './carvedRelief';
 import { reliefCellFor } from './reliefManifest';
 import type { ReliefManifest } from './reliefManifest';
@@ -220,6 +220,8 @@ export interface CarvedReliefOptionsInput {
   readonly dCarve?: number;
   readonly minViewZ?: number;
   readonly bevelGain?: number;
+  /** Display-only relief light rig; defaults to {@link DEFAULT_RELIEF_LIGHTING}. */
+  readonly lighting?: ReliefLightingConfig;
 }
 
 export interface ShellPageResult {
@@ -384,6 +386,7 @@ export class TileAtlasBuilder {
           ...(options.relief.dCarve === undefined ? {} : { dCarve: options.relief.dCarve }),
           ...(options.relief.minViewZ === undefined ? {} : { minViewZ: options.relief.minViewZ }),
           ...(options.relief.bevelGain === undefined ? {} : { bevelGain: options.relief.bevelGain }),
+          ...(options.relief.lighting === undefined ? {} : { lighting: options.relief.lighting }),
         })
       : null;
   }

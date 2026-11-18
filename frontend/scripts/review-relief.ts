@@ -16,7 +16,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { CarvedReliefBakery } from '../src/table/carvedRelief';
+import { CarvedReliefBakery, DEFAULT_RELIEF_LIGHTING } from '../src/table/carvedRelief';
+import { decodePng } from '../src/table/pngDecoder';
 import { parseDecalsManifest } from '../src/table/decalManifest';
 import type { DecalsManifest } from '../src/table/decalManifest';
 import { parseFacesManifest } from '../src/table/faceManifest';
@@ -224,6 +225,40 @@ for (const { entry, sprite } of boardCells) {
 writeFileSync(join(outDir, 'relief-board-2x.png'), board.toBuffer('image/png'));
 
 /* ------------------------------------------------------------------------- *
+ * Close-up detail: highlights, lowlights and the paint spill at 6x
+ * ------------------------------------------------------------------------- */
+
+const DETAIL_FACES: TileFaceId[] = ['7z', '1m', '1p'];
+const DETAIL_SHELLS: { shell: FaceUpShellId; label: string }[] = [
+  { shell: 'shell_flat_upright', label: 'upright 0' },
+  { shell: 'shell_flat_upright_180', label: 'rotated 180' },
+];
+const detailScale = 6;
+const detailCellW = Math.ceil(spriteOf(reliefAtlas, 'shell_flat_upright', '7z').uv.width * detailScale) + 20;
+const detailCellH = Math.ceil(spriteOf(reliefAtlas, 'shell_flat_upright', '7z').uv.height * detailScale) + 52;
+const detail = createCanvas(detailCellW * DETAIL_SHELLS.length + 24, detailCellH * DETAIL_FACES.length + 56);
+const detailCtx = detail.getContext('2d');
+detailCtx.fillStyle = FELT;
+detailCtx.fillRect(0, 0, detail.width, detail.height);
+detailCtx.font = '600 18px sans-serif';
+detailCtx.fillStyle = INK;
+detailCtx.fillText('Task 5A close-up (6x): key-lit walls, groove shadows and paint spill', 12, 28);
+DETAIL_FACES.forEach((face, row) => {
+  DETAIL_SHELLS.forEach((orientation, column) => {
+    const x = 12 + column * detailCellW;
+    const y = 52 + row * detailCellH;
+    detailCtx.fillStyle = PANEL;
+    detailCtx.fillRect(x, y, detailCellW - 10, detailCellH - 10);
+    const sprite = spriteOf(reliefAtlas, orientation.shell, face);
+    drawSprite(detailCtx, reliefAtlas, sprite, x + 10, y + 24, detailScale);
+    detailCtx.font = '600 14px sans-serif';
+    detailCtx.fillStyle = ACCENT;
+    detailCtx.fillText(`${face} · ${orientation.label}`, x + 10, y + 17);
+  });
+});
+writeFileSync(join(outDir, 'relief-detail-6x.png'), detail.toBuffer('image/png'));
+
+/* ------------------------------------------------------------------------- *
  * Numbers: cache, bake cost, blit cost, orientation proof
  * ------------------------------------------------------------------------- */
 
@@ -343,9 +378,94 @@ for (const entry of baked) {
 }
 
 const reliefStats = reliefAtlas.stats;
+
+/* Display-rig metrics: contrast, glare, clipping and paint spill. */
+const metricBakery = new CarvedReliefBakery({
+  manifest: relief,
+  layout,
+  loadBytes,
+  resolveUrl: (relativePath) => join(tableDir, relativePath),
+  createCanvas: createAtlasCanvas,
+  dCarve: 0,
+});
+const normalAtlas = await decodePng(await loadBytes(join(tableDir, relief.atlases.normalDepth.file)), 'normal');
+const albedoAtlas = await decodePng(await loadBytes(join(tableDir, relief.atlases.albedo.file)), 'albedo');
+const lightingMetrics: unknown[] = [];
+const spillMetrics: unknown[] = [];
+for (const orientation of [ORIENTATIONS[0], ORIENTATIONS[2]]) {
+  const reliefGroup = reliefGroupForShell(layout, orientation.shell, groups);
+  if (!reliefGroup) continue;
+  for (const face of ['7z', '1m', '1p'] as TileFaceId[]) {
+    const decal = await metricBakery.decalFor(face, reliefGroup, 256, 340, [223, 220, 216]);
+    if (!decal) continue;
+    const data = (decal.canvas.getContext('2d') as CanvasRenderingContext2D).getImageData(0, 0, 256, 340).data;
+    const luma: number[] = [];
+    let opaque = 0;
+    let highlight = 0;
+    let shadow = 0;
+    let clipped = 0;
+    for (let index = 0; index < data.length; index += 4) {
+      if (data[index + 3] === 0) continue;
+      opaque += 1;
+      const value = Math.max(data[index], data[index + 1], data[index + 2]);
+      luma.push(value);
+      if (value >= 225) highlight += 1;
+      if (value <= 110) shadow += 1;
+      if (data[index] === 255 || data[index + 1] === 255 || data[index + 2] === 255) clipped += 1;
+    }
+    luma.sort((a, b) => a - b);
+    const at = (p: number) => luma[Math.min(luma.length - 1, Math.floor(p * luma.length))];
+    lightingMetrics.push({
+      shell: orientation.shell,
+      face,
+      opaque,
+      min: at(0),
+      p05: at(0.05),
+      median: at(0.5),
+      p95: at(0.95),
+      max: at(0.999),
+      highlightPct: round((100 * highlight) / opaque),
+      shadowPct: round((100 * shadow) / opaque),
+      clippedPct: round((100 * clipped) / opaque),
+    });
+
+    if (face === '7z' || face === '1m') {
+      const cell = relief.cells[face];
+      let wall = 0;
+      let tinted = 0;
+      for (let y = 0; y < 340; y += 1) {
+        for (let x = 0; x < 256; x += 1) {
+          const source = ((cell.y + y) * normalAtlas.width + cell.x + x) * 4;
+          const height = normalAtlas.data[source + 3] / 255;
+          const paint = albedoAtlas.data[source + 3] / 255;
+          if (height > 0.9 || paint > 0.05) continue;
+          wall += 1;
+          const pixel = (y * 256 + x) * 4;
+          if (data[pixel + 3] === 0) continue;
+          if (
+            data[pixel] > data[pixel + 1] + 15 &&
+            data[pixel] > data[pixel + 2] + 15
+          ) {
+            tinted += 1;
+          }
+        }
+      }
+      spillMetrics.push({
+        shell: orientation.shell,
+        face,
+        wallPixels: wall,
+        tintedPct: round((100 * tinted) / Math.max(1, wall)),
+      });
+    }
+  }
+}
+
 const numbers = {
   generatedBy: 'frontend/scripts/review-relief.ts',
   path: 'Task 5A CPU startup bake into the per-(bucket, rounded basis) decal cache',
+  lighting: DEFAULT_RELIEF_LIGHTING,
+  lightingMetrics,
+  spillMetrics,
   cache: {
     key: 'face @ (bucket|t…|b…|n…) @ output size @ ivory calibration',
     layoutGroups: groups.length,
@@ -416,6 +536,7 @@ const numbers = {
   outputs: {
     sheet: 'relief-compare-4x.png',
     board: 'relief-board-2x.png',
+    detail: 'relief-detail-6x.png',
   },
   note:
     'A/B images are for the user to sign off (AGENTS.md §6). The numbers prove the orientation cache ' +

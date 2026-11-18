@@ -1368,23 +1368,53 @@ bakery disables itself after one warning and the Task 5 decals draw instead.
 **Per texel** (`frontend/src/table/carvedRelief.ts`, `shadeReliefInto`):
 1. `V_world = normalize(cameraPos − P_slot)`, `V_tan = (V·T, V·B, V·N)`.
 2. `uv_carved = uv − (V_tan.xy / max(V_tan.z, 0.35)) · (1 − h) · d_carve`,
-   `d_carve = 0.018`, with `h` from `face_normal_depth.a`. Albedo, normal and
-   AO/roughness are re-sampled bilinearly at the shifted UV (clamped to the
-   cell).
-3. Decode the tangent normal, rotate it with the slot basis, and light it:
-   `I = max(n_world·L, 0)·C_key + C_amb`, multiplied by cavity AO; enamel
-   specular `paintMask · max(n_world·H, 0)^48 · 0.45`.
+   `d_carve = 0.018`, with `h` from `face_normal_depth.a`. Albedo, normal,
+   AO/roughness and the paint-spill map are re-sampled bilinearly at the
+   shifted UV (clamped to the cell).
+3. Rotate the tangent normal into world space, exaggerate its XY by
+   `normalStrength` (1.6), and light it with a **display-only rig** (below):
+   three lights, two specular lobes, a Fresnel rim and a directional groove
+   shadow. Cavity AO multiplies the diffuse.
 4. Output a straight-alpha decal whose coverage is the paint mask plus the
    bare V-carve walls/lip (depth-based, fading to 0 at the un-carved surface).
    The un-carved plate stays transparent, so the shell's own baked shading is
    untouched and the lip only modulates the rim.
 
-**Tone match, not a second light.** The shells are Cycles/AgX renders while the
-relief atlases are unlit linear data. The bake scales the computed radiance so
-a flat ivory texel lands on the shell's own measured `faceSampleRgb` (published
-per shell in `shells.json`). The key/ambient ratio is unchanged; the scale just
-keeps a highlight on the standing hand relative to the hand body (which is
-darker than a pond tile). `reliefShadingFrame` computes it once per group.
+**Display light rig (a deliberate cheat).** The user's direction was to stop
+matching the table bake and light the relief for drama. `DEFAULT_RELIEF_LIGHTING`
+is a separate, world-space rig published in `carvedRelief.ts` (not read from
+`table_layout.json` anymore; only its `cameraPos` is still used):
+- **Key**: warm `[1, 0.93, 0.82]`, intensity 1.8, from low screen-left
+  (`[-0.5, -0.55, 0.62]`), so the upper/left inner walls of a pit catch it and
+  the opposite walls fall away.
+- **Fill**: cool `[0.42, 0.6, 1]`, 0.4, from the opposite side so the shadow
+  side is not dead.
+- **Rim**: warm `[1, 0.96, 0.88]`, 0.55, from above/slightly camera-side for
+  the lip and the top of a stroke.
+- **Specular**: a tight enamel lobe (power 64, gain 1.15 × ink) plus a broad
+  resin sheen (power 22, gain 0.22 × bare ivory) and a grazing Fresnel kicker
+  (0.38). This is the glare that makes the curved V-walls read.
+- **Groove shadow**: the key is marched two steps through the height field
+  toward the light. The terrain blocks when it rises above the ray
+  (`depthAhead < depthHere − ray`), so the far wall of a groove gets a crisp
+  cast shadow without a shadow map. Strength 0.7, distance 0.024 UV.
+- **Ink base** 0.04: a small diffuse floor so black pigment still shows the
+  carving's relief instead of clipping to black.
+
+All directions are world space, so the highlight stays on the same **world**
+wall after a 90/180/270 rotation. The rig is intentionally independent of the
+shell bake; it is a close-up treatment, not a table match.
+
+**Paint spill (paint fills the carving).** The Task 4B atlas deliberately keeps
+the V-carve bevel bare ivory. For this view the user asked for the enamel to
+spill over that wall. `CarvedReliefBakery.spillFor` builds a per-face
+nearest-painted-pixel map at the cell resolution (multi-source BFS over the
+paint mask, radius 0.038 UV ≈ 10 px, falloff 0.45) and keeps the nearest
+pigment colour. The bake uses `ink = max(paint, spill)` for the pigment and
+both specular lobes, while coverage still comes from the geometry, so the
+highlight and shadow remain visible under the ink. Measured spill: **57 %** of
+the bare wall pixels around the red dragon and **45 %** around 1m carry a
+visible paint tint.
 
 **Cache.** `CarvedReliefBakery` groups every layout slot by `(bucket, rounded
 T/B/N)` (31 groups in the committed layout, `orientationGroupKey`). A face-up
@@ -1407,14 +1437,16 @@ call at all.
 **Numbers (`npm run atlas:review:relief`, @1x, all 18 face-up shells).** 9
 reachable groups, 432 baked decals (216 cache hits across the 14 standing
 slots), atlas load **420 ms** (raw PNG inflate/unfilter of 3.4 MiB compressed
-data), decal bake **430 ms** (1.0 ms/decal), full relief atlas build 872 ms vs
-196 ms carved vs 54 ms flat. Frame path: 136 blits in **0.23 ms/frame** (p95
-0.30 ms); per-frame CPU shading of the same 136 plates would cost about
-**136 ms**, which is why it is a startup bake. Orientation proof: the same `1m`
-decal differs from its 90/180/270 siblings by 15.6k / 15.5k / 15.6k channel
-bytes, and the tests assert the world-lit V-wall flips with the basis. A red
-dragon has no opaque texel below luma 80 (the regression test for the Canvas
-premultiply bug); black pigment on 1m/1p is still black by design.
+data), decal bake **870 ms** (2.0 ms/decal with the shadow march and spill
+sampling), full relief atlas build 1.29 s vs 196 ms carved vs 54 ms flat.
+Frame path: 136 blits in **0.21 ms/frame**; per-frame CPU shading of the same
+136 plates would cost about **270 ms**, which is why it is a startup bake.
+Orientation proof: the same `1m` decal differs from its 90/180/270 siblings by
+about 14k channel bytes each. The display rig's measured contrast: 7z p05/p95
+luma **89 / 220**, 2.8 % of opaque texels ≥225, 0.13 % clipped; 1m p05/p95
+44 / 218 with a 4 % ink-base floor so its black strokes still show relief.
+Spill tint: 57 % of 7z's bare wall, 45 % of 1m's. Regression tests pin the
+raw-decode (no inward normals), the no-black red dragon, and the spill coverage.
 
 **Fallback.** Per face: relief → Task 5 carved decal → flat glyph. A missing
 relief cell skips only that face; a missing/corrupt relief atlas disables the
@@ -1425,9 +1457,10 @@ shared bare slot.
 **Review.** `cd frontend && npm run atlas:review:relief` writes
 `tools/render/build/review/relief-compare-4x.png` (flat / carved / relief for
 1m, 1p, 1s, 7z, 5z at 0/90/180/270), `relief-board-2x.png` (the four ponds plus
-the hand) and `relief-numbers.json` (cache, bake and blit numbers). The images
-are for the user's sign-off (AGENTS.md §6); the agent's verdict is the numbers
-and the test suite.
+the hand), `relief-detail-6x.png` (7z/1m/1p at upright and 180 for judging the
+glare, shadow and spill) and `relief-numbers.json` (rig, contrast, spill, bake
+and blit numbers). The images are for the user's sign-off (AGENTS.md §6); the
+agent's verdict is the numbers and the test suite.
 
 
 ## 13. Phase 3: the zone layout engine (landed 2026-11-16)

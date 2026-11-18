@@ -36,7 +36,6 @@ import type {
   OrientationGroup,
   SlotBasis,
   TableLayoutManifest,
-  TableLighting,
   Vec3,
 } from './tableLayoutManifest';
 import {
@@ -46,41 +45,156 @@ import {
 } from './tableLayoutManifest';
 import type { FaceUpShellId } from './tiles';
 
+/* ------------------------------------------------------------------------- *
+ * Display light rig (a deliberate cheat, not the table's bake rig)
+ * ------------------------------------------------------------------------- */
+
+/**
+ * The relief is a close-up: it can afford stronger, lower light than the
+ * table scene. These lights are still **world space**, so the highlight stays
+ * on the same side of the tile after a 90/180/270 rotation, but they are
+ * chosen for contrast and glare rather than for matching the shell bake.
+ *
+ * Key: warm, low, from screen lower-left (world -x, -y, +z). It lights the
+ * upper/left inner walls of a pit and drops the opposite walls into shadow.
+ * Fill: cool, weak, from the opposite side, to keep the shadow side readable.
+ * Rim: a warm grazing kicker from above/back for the lip and stroke tops.
+ */
+export interface ReliefLightConfig {
+  /** World-space direction toward the light source. */
+  readonly direction: Vec3;
+  /** Linear RGB tint. */
+  readonly color: Vec3;
+  readonly intensity: number;
+  /** Whether the groove-shadow march applies to this light. */
+  readonly castShadow?: boolean;
+}
+
+export interface ReliefLightingConfig {
+  readonly key: ReliefLightConfig;
+  readonly fill: ReliefLightConfig;
+  readonly rim: ReliefLightConfig;
+  /** Linear RGB ambient fill. */
+  readonly ambient: Vec3;
+  /** Upward-facing surfaces get `ambient * (1 + ambientSky)`. */
+  readonly ambientSky: number;
+  /** Exaggerates the baked tangent normal XY for a deeper-looking carve. */
+  readonly normalStrength: number;
+  /** Enamel (paint) specular lobe. */
+  readonly enamel: { readonly power: number; readonly gain: number };
+  /** Broad resin sheen on the bare ivory. */
+  readonly resin: { readonly power: number; readonly gain: number };
+  /** Grazing-angle ivory kicker. */
+  readonly fresnel: number;
+  /** A small diffuse floor so black ink still shows the carving's relief. */
+  readonly inkBase: number;
+  /**
+   * One-step directional groove shadow. `distanceUv` is the march length in
+   * face UV, `lift` is the ray height over that distance in normalized carve
+   * depth, `softness` feathers the blocker.
+   */
+  readonly shadow: {
+    readonly strength: number;
+    readonly distanceUv: number;
+    readonly steps: number;
+    readonly lift: number;
+    readonly softness: number;
+  };
+  /** Paint bleed over the V-carve wall. */
+  readonly paintSpill: {
+    readonly radiusUv: number;
+    readonly strength: number;
+    /** Lower is a wider, softer bleed; 1 is linear. */
+    readonly falloff: number;
+  };
+}
+
+export const DEFAULT_RELIEF_LIGHTING: ReliefLightingConfig = {
+  key: {
+    direction: [-0.5, -0.55, 0.62],
+    color: [1.0, 0.93, 0.82],
+    intensity: 1.8,
+    castShadow: true,
+  },
+  fill: {
+    direction: [0.65, 0.45, 0.6],
+    color: [0.42, 0.6, 1.0],
+    intensity: 0.4,
+  },
+  rim: {
+    direction: [0.1, -0.35, 0.93],
+    color: [1.0, 0.96, 0.88],
+    intensity: 0.55,
+  },
+  ambient: [0.045, 0.055, 0.075],
+  ambientSky: 0.3,
+  normalStrength: 1.6,
+  enamel: { power: 64, gain: 1.15 },
+  resin: { power: 22, gain: 0.22 },
+  fresnel: 0.38,
+  inkBase: 0.04,
+  shadow: { strength: 0.7, distanceUv: 0.024, steps: 2, lift: 0.8, softness: 0.16 },
+  paintSpill: { radiusUv: 0.038, strength: 0.98, falloff: 0.45 },
+};
+
 /** The plan's one-step carving scale, in face-plate UV units. */
 export const DEFAULT_D_CARVE = 0.018;
 /** Grazing views divide by this floor instead of exploding. */
 export const DEFAULT_MIN_VIEW_Z = 0.35;
 /** Bare V-carve walls fade in from the un-carved surface by this factor. */
 export const DEFAULT_BEVEL_GAIN = 8;
-/** Enamel specular: a tight, low-gain lobe, per the plan. */
-export const SPECULAR_POWER = 48;
-export const SPECULAR_GAIN = 0.45;
+
+export interface ReliefLightFrame {
+  /** World-space direction toward the light. */
+  readonly direction: Vec3;
+  /** Linear RGB times intensity. */
+  readonly color: Vec3;
+  readonly castShadow: boolean;
+}
 
 export interface ReliefShadingFrame {
   readonly basis: SlotBasis;
   readonly viewWorld: Vec3;
   readonly viewTan: Vec3;
-  readonly lightWorld: Vec3;
-  readonly keyColor: Vec3;
+  readonly lights: readonly ReliefLightFrame[];
   readonly ambientColor: Vec3;
+  readonly ambientSky: number;
   /** Per-channel tone match from the shell's measured flat face. */
   readonly exposure: Vec3;
+  readonly normalStrength: number;
+  readonly enamelPower: number;
+  readonly enamelGain: number;
+  readonly resinPower: number;
+  readonly resinGain: number;
+  readonly fresnelGain: number;
+  readonly inkBase: number;
+  /** Key light's in-face direction in UV, for the groove-shadow march. */
+  readonly keyShadowDir: readonly [number, number];
+  readonly shadowStrength: number;
+  readonly shadowDistanceUv: number;
+  readonly shadowSteps: number;
+  readonly shadowLift: number;
+  readonly shadowSoftness: number;
   readonly dCarve: number;
   readonly minViewZ: number;
   readonly bevelGain: number;
 }
 
 export interface ReliefSample {
-  /** Pigment RGB in [0, 255], as stored in `face_albedo`. */
+  /** Nearest pigment RGB in [0, 255] (from the paint or the spill). */
   readonly albedo: Vec3;
-  /** Paint mask in [0, 1]. */
+  /** Original paint mask in [0, 1]. */
   readonly paint: number;
+  /** Ink mask in [0, 1]: the paint mask plus the spilled edge. */
+  readonly ink?: number;
   /** Tangent-space normal, unit length. */
   readonly normal: Vec3;
   /** Surface height in [0, 1] (1 un-carved, 0 deepest). */
   readonly height: number;
   readonly ao: number;
   readonly roughness: number;
+  /** Groove-shadow visibility, 1 lit … 0 blocked. Defaults to lit. */
+  readonly keyShadow?: number;
 }
 
 export interface ReliefPixel {
@@ -127,23 +241,39 @@ export function linearToSrgb(value: number): number {
 
 const dot = (a: Vec3, b: Vec3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
+/** Integer power with ~log2(p) multiplies. */
+function powi(base: number, exponent: number): number {
+  let result = 1;
+  let value = base;
+  let power = exponent;
+  while (power > 0) {
+    if (power & 1) result *= value;
+    value *= value;
+    power >>= 1;
+  }
+  return result;
+}
+
 /**
- * Step 1: the shading frame for one group. `ivorySrgb` is the shell's measured
- * flat-face sample (0-255), used only for the tone match.
+ * The display frame for one group. `ivorySrgb` is the shell's measured flat
+ * face sample; it calibrates the flat plate to the shell, while the carve is
+ * lit with the deliberately dramatic {@link DEFAULT_RELIEF_LIGHTING} rig.
  */
 export function reliefShadingFrame(input: {
   readonly basis: SlotBasis;
   readonly position: Vec3;
-  readonly lighting: TableLighting;
+  readonly cameraPos: Vec3;
   readonly ivorySrgb: Vec3;
+  readonly config?: ReliefLightingConfig;
   readonly dCarve?: number;
   readonly minViewZ?: number;
   readonly bevelGain?: number;
 }): ReliefShadingFrame {
+  const config = input.config ?? DEFAULT_RELIEF_LIGHTING;
   const viewWorld = normalizeVec3([
-    input.lighting.cameraPos[0] - input.position[0],
-    input.lighting.cameraPos[1] - input.position[1],
-    input.lighting.cameraPos[2] - input.position[2],
+    input.cameraPos[0] - input.position[0],
+    input.cameraPos[1] - input.position[1],
+    input.cameraPos[2] - input.position[2],
   ] as const);
   const { tangent, bitangent, normal } = input.basis;
   const viewTan: Vec3 = [
@@ -151,24 +281,67 @@ export function reliefShadingFrame(input: {
     dot(viewWorld, bitangent),
     dot(viewWorld, normal),
   ] as const;
-  const lightWorld = normalizeVec3(input.lighting.keyLightDir);
-  const flatIrradiance = Math.max(dot(normal, lightWorld), 0);
+
+  const lights: ReliefLightFrame[] = [config.key, config.fill, config.rim].map((light) => {
+    const direction = normalizeVec3(light.direction);
+    return {
+      direction,
+      color: [
+        light.color[0] * light.intensity,
+        light.color[1] * light.intensity,
+        light.color[2] * light.intensity,
+      ] as const,
+      castShadow: light.castShadow === true,
+    };
+  });
+
+  // Flat-ivory calibration includes every light that can hit the face.
+  const sky = 1 + config.ambientSky * Math.max(normal[2], 0);
+  const reference: Vec3 = [
+    config.ambient[0] * sky,
+    config.ambient[1] * sky,
+    config.ambient[2] * sky,
+  ] as const;
+  const flat = [0, 0, 0];
+  for (const light of lights) {
+    const amount = Math.max(dot(normal, light.direction), 0);
+    flat[0] += amount * light.color[0];
+    flat[1] += amount * light.color[1];
+    flat[2] += amount * light.color[2];
+  }
   const exposure: Vec3 = [
-    srgbToLinear(input.ivorySrgb[0]) /
-      Math.max(flatIrradiance * input.lighting.keyLightColor[0] + input.lighting.ambientColor[0], 1e-3),
-    srgbToLinear(input.ivorySrgb[1]) /
-      Math.max(flatIrradiance * input.lighting.keyLightColor[1] + input.lighting.ambientColor[1], 1e-3),
-    srgbToLinear(input.ivorySrgb[2]) /
-      Math.max(flatIrradiance * input.lighting.keyLightColor[2] + input.lighting.ambientColor[2], 1e-3),
-  ].map((value) => clamp(value, 0.02, 4)) as unknown as Vec3;
+    srgbToLinear(input.ivorySrgb[0]) / Math.max(reference[0] + flat[0], 1e-3),
+    srgbToLinear(input.ivorySrgb[1]) / Math.max(reference[1] + flat[1], 1e-3),
+    srgbToLinear(input.ivorySrgb[2]) / Math.max(reference[2] + flat[2], 1e-3),
+  ].map((value) => clamp(value, 0.02, 6)) as unknown as Vec3;
+
+  const key = lights[0].direction;
+  const keyX = dot(key, tangent);
+  const keyY = dot(key, bitangent);
+  const keyLength = Math.hypot(keyX, keyY);
+
   return {
     basis: input.basis,
     viewWorld,
     viewTan,
-    lightWorld,
-    keyColor: input.lighting.keyLightColor,
-    ambientColor: input.lighting.ambientColor,
+    lights,
+    ambientColor: config.ambient,
+    ambientSky: config.ambientSky,
     exposure,
+    normalStrength: config.normalStrength,
+    enamelPower: config.enamel.power,
+    enamelGain: config.enamel.gain,
+    resinPower: config.resin.power,
+    resinGain: config.resin.gain,
+    fresnelGain: config.fresnel,
+    inkBase: config.inkBase,
+    keyShadowDir:
+      keyLength > 1e-4 ? [keyX / keyLength, keyY / keyLength] : [0, 0],
+    shadowStrength: config.shadow.strength,
+    shadowDistanceUv: config.shadow.distanceUv,
+    shadowSteps: config.shadow.steps,
+    shadowLift: config.shadow.lift,
+    shadowSoftness: config.shadow.softness,
     dCarve: input.dCarve ?? DEFAULT_D_CARVE,
     minViewZ: input.minViewZ ?? DEFAULT_MIN_VIEW_Z,
     bevelGain: input.bevelGain ?? DEFAULT_BEVEL_GAIN,
@@ -223,31 +396,48 @@ export function shadeReliefSample(sample: ReliefSample, frame: ReliefShadingFram
     sample.albedo[1],
     sample.albedo[2],
     sample.paint,
+    sample.ink ?? sample.paint,
     sample.normal[0],
     sample.normal[1],
     sample.normal[2],
     sample.height,
     sample.ao,
+    sample.keyShadow ?? 1,
     out,
     0,
   );
   return { r: out[0], g: out[1], b: out[2], a: out[3] };
 }
 
+interface ScalarLight {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly r: number;
+  readonly g: number;
+  readonly b: number;
+  readonly shadow: boolean;
+}
+
 /**
  * The scalar frame the bake loop uses. Kept separate from
- * {@link ReliefShadingFrame} so the hot path has no array allocation; the
+ * {@link ReliefShadingFrame} so the hot path has no per-texel allocation; the
  * public sample function above goes through the same code.
  */
 export interface ReliefScalars {
   readonly t0: number; readonly t1: number; readonly t2: number;
   readonly b0: number; readonly b1: number; readonly b2: number;
   readonly n0: number; readonly n1: number; readonly n2: number;
-  readonly l0: number; readonly l1: number; readonly l2: number;
   readonly v0: number; readonly v1: number; readonly v2: number;
-  readonly k0: number; readonly k1: number; readonly k2: number;
+  readonly lights: readonly ScalarLight[];
   readonly a0: number; readonly a1: number; readonly a2: number;
+  readonly ambientSky: number;
   readonly e0: number; readonly e1: number; readonly e2: number;
+  readonly normalStrength: number;
+  readonly enamelPower: number; readonly enamelGain: number;
+  readonly resinPower: number; readonly resinGain: number;
+  readonly fresnelGain: number;
+  readonly inkBase: number;
   readonly bevelGain: number;
 }
 
@@ -257,11 +447,24 @@ export function reliefScalars(frame: ReliefShadingFrame): ReliefScalars {
     t0: tangent[0], t1: tangent[1], t2: tangent[2],
     b0: bitangent[0], b1: bitangent[1], b2: bitangent[2],
     n0: normal[0], n1: normal[1], n2: normal[2],
-    l0: frame.lightWorld[0], l1: frame.lightWorld[1], l2: frame.lightWorld[2],
     v0: frame.viewWorld[0], v1: frame.viewWorld[1], v2: frame.viewWorld[2],
-    k0: frame.keyColor[0], k1: frame.keyColor[1], k2: frame.keyColor[2],
+    lights: frame.lights.map((light) => ({
+      x: light.direction[0],
+      y: light.direction[1],
+      z: light.direction[2],
+      r: light.color[0],
+      g: light.color[1],
+      b: light.color[2],
+      shadow: light.castShadow,
+    })),
     a0: frame.ambientColor[0], a1: frame.ambientColor[1], a2: frame.ambientColor[2],
+    ambientSky: frame.ambientSky,
     e0: frame.exposure[0], e1: frame.exposure[1], e2: frame.exposure[2],
+    normalStrength: frame.normalStrength,
+    enamelPower: frame.enamelPower, enamelGain: frame.enamelGain,
+    resinPower: frame.resinPower, resinGain: frame.resinGain,
+    fresnelGain: frame.fresnelGain,
+    inkBase: frame.inkBase,
     bevelGain: frame.bevelGain,
   };
 }
@@ -270,25 +473,33 @@ export function reliefScalars(frame: ReliefShadingFrame): ReliefScalars {
  * Step 3b, scalar version: decode the tangent normal, rotate it into world
  * space, light it and write straight-alpha sRGB bytes at `out[offset…]`.
  *
- * Allocation-free; the startup bake runs this once per decal texel.
+ * The display cheat lives here: normal XY is exaggerated, three lights with
+ * separate enamel/resin specular lobes are summed, a grazing Fresnel kicker
+ * lifts the ivory lip, and the key light is multiplied by the caller's
+ * groove-shadow visibility. Allocation-free; the startup bake runs this once
+ * per decal texel.
  */
 export function shadeReliefInto(
   s: ReliefScalars,
-  albedoR: number,
-  albedoG: number,
-  albedoB: number,
+  pigmentR: number,
+  pigmentG: number,
+  pigmentB: number,
   paint: number,
+  ink: number,
   normalX: number,
   normalY: number,
   normalZ: number,
   height: number,
   aoRaw: number,
+  keyShadow: number,
   out: Uint8ClampedArray,
   offset: number,
 ): void {
-  const inverseTangent = 1 / (Math.sqrt(normalX * normalX + normalY * normalY + normalZ * normalZ) || 1);
-  const nx = normalX * inverseTangent;
-  const ny = normalY * inverseTangent;
+  const strength = s.normalStrength;
+  const inverseTangent =
+    1 / (Math.sqrt(normalX * normalX * strength * strength + normalY * normalY * strength * strength + normalZ * normalZ) || 1);
+  const nx = normalX * strength * inverseTangent;
+  const ny = normalY * strength * inverseTangent;
   const nz = normalZ * inverseTangent;
 
   // n_world = n_x*T + n_y*B + n_z*N (no sign flip; N = B x T, per the layout).
@@ -300,43 +511,77 @@ export function shadeReliefInto(
   wy *= inverseWorld;
   wz *= inverseWorld;
 
-  const lambert = wx * s.l0 + wy * s.l1 + wz * s.l2;
-  const nDotL = lambert > 0 ? lambert : 0;
-
-  // Half vector, then a fixed 48-degree lobe. The q32*q16 trick avoids a
-  // Math.pow per texel.
-  let hx = s.l0 + s.v0;
-  let hy = s.l1 + s.v1;
-  let hz = s.l2 + s.v2;
-  const inverseHalf = 1 / (Math.sqrt(hx * hx + hy * hy + hz * hz) || 1);
-  hx *= inverseHalf;
-  hy *= inverseHalf;
-  hz *= inverseHalf;
-  let nDotH = wx * hx + wy * hy + wz * hz;
-  if (nDotH < 0) nDotH = 0;
-  const q2 = nDotH * nDotH;
-  const q4 = q2 * q2;
-  const q8 = q4 * q4;
-  const q16 = q8 * q8;
-  const q32 = q16 * q16;
-  const specular = paint * (q32 * q16) * SPECULAR_GAIN;
-
   const ao = aoRaw < 0 ? 0 : aoRaw > 1 ? 1 : aoRaw;
-  const p = paint < 0 ? 0 : paint > 1 ? 1 : paint;
+  const paintMask = paint < 0 ? 0 : paint > 1 ? 1 : paint;
+  const inkMask = ink < 0 ? 0 : ink > 1 ? 1 : ink;
+  const shadow = keyShadow < 0 ? 0 : keyShadow > 1 ? 1 : keyShadow;
 
-  // Blend pigment toward the blank tile's white where the paint mask feathers.
-  const pigmentR = 1 + (srgbTable[albedoR | 0] - 1) * p;
-  const pigmentG = 1 + (srgbTable[albedoG | 0] - 1) * p;
-  const pigmentB = 1 + (srgbTable[albedoB | 0] - 1) * p;
+  // Irradiance (linear RGB) and the two specular lobes.
+  const ambient = Math.max(wz, 0) * s.ambientSky + 1;
+  let irradianceR = s.a0 * ambient;
+  let irradianceG = s.a1 * ambient;
+  let irradianceB = s.a2 * ambient;
+  let enamelR = 0;
+  let enamelG = 0;
+  let enamelB = 0;
+  let resinR = 0;
+  let resinG = 0;
+  let resinB = 0;
+  let fresnelR = 0;
+  let fresnelG = 0;
+  let fresnelB = 0;
+
+  for (const light of s.lights) {
+    const lightShadow = light.shadow ? shadow : 1;
+    const toward = wx * light.x + wy * light.y + wz * light.z;
+    const amount = toward > 0 ? toward * lightShadow : 0;
+    irradianceR += light.r * amount;
+    irradianceG += light.g * amount;
+    irradianceB += light.b * amount;
+
+    let hx = light.x + s.v0;
+    let hy = light.y + s.v1;
+    let hz = light.z + s.v2;
+    const inverseHalf = 1 / (Math.sqrt(hx * hx + hy * hy + hz * hz) || 1);
+    hx *= inverseHalf;
+    hy *= inverseHalf;
+    hz *= inverseHalf;
+    let nDotH = wx * hx + wy * hy + wz * hz;
+    if (nDotH < 0) nDotH = 0;
+    const enamel = powi(nDotH, s.enamelPower) * s.enamelGain * inkMask * lightShadow;
+    const resin = powi(nDotH, s.resinPower) * s.resinGain * (1 - inkMask) * lightShadow;
+    enamelR += light.r * enamel;
+    enamelG += light.g * enamel;
+    enamelB += light.b * enamel;
+    resinR += light.r * resin;
+    resinG += light.g * resin;
+    resinB += light.b * resin;
+
+    const fresnel =
+      powi(1 - Math.min(Math.max(wx * s.v0 + wy * s.v1 + wz * s.v2, 0), 1), 3) *
+      s.fresnelGain *
+      (1 - inkMask) *
+      lightShadow;
+    fresnelR += light.r * fresnel;
+    fresnelG += light.g * fresnel;
+    fresnelB += light.b * fresnel;
+  }
+
+  // Blend the nearest pigment toward the blank tile's white with the ink mask:
+  // this is also what makes the spill read as paint creeping over the lip.
+  const base = s.inkBase * inkMask;
+  const pigmentRl = 1 + (srgbTable[pigmentR | 0] - 1) * inkMask + base;
+  const pigmentGl = 1 + (srgbTable[pigmentG | 0] - 1) * inkMask + base;
+  const pigmentBl = 1 + (srgbTable[pigmentB | 0] - 1) * inkMask + base;
 
   out[offset] = encodeLinear(
-    (pigmentR * (s.k0 * nDotL + s.a0) * ao + specular) * s.e0,
+    (pigmentRl * irradianceR * ao + enamelR + resinR + fresnelR) * s.e0,
   );
   out[offset + 1] = encodeLinear(
-    (pigmentG * (s.k1 * nDotL + s.a1) * ao + specular) * s.e1,
+    (pigmentGl * irradianceG * ao + enamelG + resinG + fresnelG) * s.e1,
   );
   out[offset + 2] = encodeLinear(
-    (pigmentB * (s.k2 * nDotL + s.a2) * ao + specular) * s.e2,
+    (pigmentBl * irradianceB * ao + enamelB + resinB + fresnelB) * s.e2,
   );
 
   // Cover only the carve: painted floors and the bare V-carve walls/lip. The
@@ -344,11 +589,12 @@ export function shadeReliefInto(
   const h = height < 0 ? 0 : height > 1 ? 1 : height;
   let bevel = (1 - h) * s.bevelGain;
   if (bevel > 1) bevel = 1;
-  bevel *= 1 - p;
-  let coverage = p + bevel;
+  bevel *= 1 - paintMask;
+  let coverage = paintMask + bevel;
   if (coverage > 1) coverage = 1;
   out[offset + 3] = (coverage * 255 + 0.5) | 0;
 }
+
 
 /* ------------------------------------------------------------------------- *
  * Atlas pixels and the startup decal cache
@@ -398,6 +644,8 @@ export interface CarvedReliefOptions {
   readonly dCarve?: number;
   readonly minViewZ?: number;
   readonly bevelGain?: number;
+  /** Display-only relief light rig; defaults to {@link DEFAULT_RELIEF_LIGHTING}. */
+  readonly lighting?: ReliefLightingConfig;
 }
 
 /** Fetch a PNG as raw bytes (no image decode). */
@@ -485,6 +733,7 @@ export class CarvedReliefBakery {
     readonly aoRoughness: PlatePixels;
   }> | null = null;
   private readonly cache = new Map<string, Promise<BakedReliefFace | null>>();
+  private readonly spillCache = new Map<TileFaceId, PlatePixels>();
   private bakes = 0;
   private cacheHits = 0;
   private bakeMs = 0;
@@ -584,6 +833,82 @@ export class CarvedReliefBakery {
     return pending;
   }
 
+  /**
+   * A nearest-painted-pixel bleed map for one face, at the source cell
+   * resolution. RGB is the nearest paint colour, A is the spill strength.
+   * This is the display cheat that lets the enamel creep over the V-carve
+   * wall instead of stopping exactly at the stroke outline.
+   */
+  private spillFor(
+    face: TileFaceId,
+    albedo: PlatePixels,
+    cellWidth: number,
+    cellHeight: number,
+  ): PlatePixels {
+    const cached = this.spillCache.get(face);
+    if (cached) return cached;
+    const cell = this.options.manifest.cells[face];
+    const count = cellWidth * cellHeight;
+    const distance = new Int32Array(count).fill(-1);
+    const color = new Uint8ClampedArray(count * 3);
+    const queue = new Int32Array(count);
+    let head = 0;
+    let tail = 0;
+    for (let y = 0; y < cellHeight; y += 1) {
+      for (let x = 0; x < cellWidth; x += 1) {
+        const source = ((cell.y + y) * albedo.width + cell.x + x) * 4;
+        if (albedo.data[source + 3] <= 128) continue;
+        const index = y * cellWidth + x;
+        distance[index] = 0;
+        color[index * 3] = albedo.data[source];
+        color[index * 3 + 1] = albedo.data[source + 1];
+        color[index * 3 + 2] = albedo.data[source + 2];
+        queue[tail] = index;
+        tail += 1;
+      }
+    }
+    const radius = Math.max(
+      1,
+      Math.round((this.options.lighting ?? DEFAULT_RELIEF_LIGHTING).paintSpill.radiusUv * cellWidth),
+    );
+    while (head < tail) {
+      const index = queue[head];
+      head += 1;
+      const step = distance[index];
+      if (step >= radius) continue;
+      const x = index % cellWidth;
+      const y = (index - x) / cellWidth;
+      for (let direction = 0; direction < 4; direction += 1) {
+        const nx = x + (direction === 0 ? -1 : direction === 1 ? 1 : 0);
+        const ny = y + (direction === 2 ? -1 : direction === 3 ? 1 : 0);
+        if (nx < 0 || ny < 0 || nx >= cellWidth || ny >= cellHeight) continue;
+        const neighbor = ny * cellWidth + nx;
+        if (distance[neighbor] !== -1) continue;
+        distance[neighbor] = step + 1;
+        color[neighbor * 3] = color[index * 3];
+        color[neighbor * 3 + 1] = color[index * 3 + 1];
+        color[neighbor * 3 + 2] = color[index * 3 + 2];
+        queue[tail] = neighbor;
+        tail += 1;
+      }
+    }
+    const spill = (this.options.lighting ?? DEFAULT_RELIEF_LIGHTING).paintSpill;
+    const data = new Uint8ClampedArray(count * 4);
+    for (let index = 0; index < count; index += 1) {
+      const step = distance[index];
+      if (step < 0) continue;
+      const t = 1 - step / radius;
+      const alpha = spill.strength * t ** spill.falloff;
+      data[index * 4] = color[index * 3];
+      data[index * 4 + 1] = color[index * 3 + 1];
+      data[index * 4 + 2] = color[index * 3 + 2];
+      data[index * 4 + 3] = Math.round(clamp01(alpha) * 255);
+    }
+    const result: PlatePixels = { width: cellWidth, height: cellHeight, data };
+    this.spillCache.set(face, result);
+    return result;
+  }
+
   private async bake(
     face: TileFaceId,
     cell: ReliefCell,
@@ -598,12 +923,23 @@ export class CarvedReliefBakery {
     const frame = reliefShadingFrame({
       basis: group.basis,
       position: group.position,
-      lighting: this.options.layout.lighting,
+      cameraPos: this.options.layout.lighting.cameraPos,
       ivorySrgb,
+      ...(this.options.lighting === undefined ? {} : { config: this.options.lighting }),
       ...(this.options.dCarve === undefined ? {} : { dCarve: this.options.dCarve }),
       ...(this.options.minViewZ === undefined ? {} : { minViewZ: this.options.minViewZ }),
       ...(this.options.bevelGain === undefined ? {} : { bevelGain: this.options.bevelGain }),
     });
+    const spill = this.spillFor(face, albedo, cellWidth, cellHeight);
+    const spillCell = {
+      face,
+      index: 0,
+      column: 0,
+      row: 0,
+      x: 0,
+      y: 0,
+      rect: [0, 0, 1, 1] as const,
+    };
 
     const canvas = this.options.createCanvas(width, height);
     const context = canvas.getContext('2d') as CanvasRenderingContext2D | null;
@@ -618,7 +954,11 @@ export class CarvedReliefBakery {
     const albedoPixel = new Uint8ClampedArray(4);
     const normalPixel = new Uint8ClampedArray(4);
     const aoPixel = new Uint8ClampedArray(4);
+    const spillPixel = new Uint8ClampedArray(4);
+    const ahead = new Uint8ClampedArray(4);
     const carveShift = new Float64Array(2);
+    const [shadowX, shadowY] = frame.keyShadowDir;
+    const shadowEnabled = frame.shadowStrength > 0 && (shadowX !== 0 || shadowY !== 0);
 
     for (let y = 0; y < height; y += 1) {
       const v = (y + 0.5) / height;
@@ -628,8 +968,9 @@ export class CarvedReliefBakery {
         // Step 2: the depth probe is the unshifted height; the shifted lookup
         // then supplies albedo, normal and AO exactly as the plan defines.
         samplePixel(normalDepth, cell, cellWidth, cellHeight, u, v, depth);
+        const probeHeight = depth[3] / 255;
         carveUvOffsetInto(
-          depth[3] / 255,
+          probeHeight,
           frame.viewTan,
           frame.dCarve,
           frame.minViewZ,
@@ -642,20 +983,56 @@ export class CarvedReliefBakery {
         samplePixel(albedo, cell, cellWidth, cellHeight, carvedU, carvedV, albedoPixel);
         samplePixel(normalDepth, cell, cellWidth, cellHeight, carvedU, carvedV, normalPixel);
         samplePixel(aoRoughness, cell, cellWidth, cellHeight, carvedU, carvedV, aoPixel);
+        samplePixel(spill, spillCell, cellWidth, cellHeight, carvedU, carvedV, spillPixel);
+
+        // Directional groove shadow: march the height field toward the key.
+        // The terrain blocks when it rises above the ray (depth falls below
+        // `depthHere - ray`). Two steps make the far wall read as a cast
+        // shadow without a real shadow map.
+        let keyShadow = 1;
+        if (shadowEnabled) {
+          const depthHere = 1 - probeHeight;
+          let block = 0;
+          for (let step = 1; step <= frame.shadowSteps; step += 1) {
+            const t = step / frame.shadowSteps;
+            samplePixel(
+              normalDepth,
+              cell,
+              cellWidth,
+              cellHeight,
+              u + shadowX * frame.shadowDistanceUv * t,
+              v + shadowY * frame.shadowDistanceUv * t,
+              ahead,
+            );
+            const depthAhead = 1 - ahead[3] / 255;
+            const amount = (depthHere - frame.shadowLift * t - depthAhead) / frame.shadowSoftness;
+            if (amount > block) block = amount;
+          }
+          keyShadow = 1 - frame.shadowStrength * clamp01(block);
+        }
+
+        const paint = albedoPixel[3] / 255;
+        const spilled = spillPixel[3] / 255;
+        const ink = Math.max(paint, spilled);
+        const pigmentR = spilled > paint ? spillPixel[0] : albedoPixel[0];
+        const pigmentG = spilled > paint ? spillPixel[1] : albedoPixel[1];
+        const pigmentB = spilled > paint ? spillPixel[2] : albedoPixel[2];
 
         // Decode: the normal atlas is x right / y down / z out, no sign flip.
         const index = (y * width + x) * 4;
         shadeReliefInto(
           scalars,
-          albedoPixel[0],
-          albedoPixel[1],
-          albedoPixel[2],
-          albedoPixel[3] / 255,
+          pigmentR,
+          pigmentG,
+          pigmentB,
+          paint,
+          ink,
           (normalPixel[0] / 255) * 2 - 1,
           (normalPixel[1] / 255) * 2 - 1,
           (normalPixel[2] / 255) * 2 - 1,
           normalPixel[3] / 255,
           aoPixel[0] / 255,
+          keyShadow,
           target,
           index,
         );
@@ -693,6 +1070,7 @@ export class CarvedReliefBakery {
   release(): void {
     this.atlasPixels = null;
     this.cache.clear();
+    this.spillCache.clear();
   }
 
   get stats(): CarvedReliefStats {
