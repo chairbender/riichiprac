@@ -1790,3 +1790,99 @@ inward-facing basis; `scripts/check-table-layout.mjs` re-checks the committed
 file without Blender and also projects each basis through the layout camera to
 prove it runs along the slot's published screen quad edges.
 
+
+## 17. Phase 4: the rendered view in the app (2026-11-18)
+
+Phase 4 mounts the 2.5D table as the third persisted view (`rendered`) and draws
+the whole board from the committed final asset set. It adds no 3D/WebGL
+dependency and no runtime relief shading: the shells carry the baked light and
+the Phase 2b carved decals are the faces.
+
+**The view (user guidance 2026-11-18).** The rendered view is a full-window
+**square of felt** whose top and bottom edges touch the browser, with the app
+chrome as an **overlay HUD**, mirroring the 3D alternate view's committed
+direction. On a wide window the square's sides stay inside the frame and the
+scene background shows beside it; on a tall one the square is wider than the
+window and the sides are cropped, never the top or bottom. `TableStage` is the
+shell (it existed unused for this task): the menu drawer holds the header
+controls, cards and the verdict, the action strip and the hand dock float over
+the bottom, and the status/error notices float at the top. The canvas is
+`aria-hidden`; the view is named by a hidden heading, a real DOM compass carries
+each seat's wind/score/Riichi, and a visually hidden table summary lists every
+seat's discards and melds. Answering and reveal state come from the same store
+actions and the same `HandDock`/`ActionBar`, so they cannot drift from the other
+views.
+
+**One board plan, one compositor.**
+
+| Module | Role |
+| :--- | :--- |
+| `frontend/src/table/boardPlan.ts` | `GameState` → placed zones (`BoardZone[]`) in Task 4.1 painter order plus the compass well and table centre. Pure: no canvas, no assets. |
+| `frontend/src/table/BoardRenderer.ts` | The only canvas code: group shadow (union of the published `shadowShape`, one blur, `coreAlpha`), bodies in each zone's painter order, then the resolved contact decals clipped to the neighbour body. `prepare()` resolves decals and loads images; `draw()` is synchronous. `fitBoardPlan` fits the board inside the visible square. |
+| `frontend/src/table/boardChecks.ts` | The scripted rules (presence, painter order, pond gaps, ring rows/columns, no overlaps, bounds, body counts). Run by the unit test and the review script. |
+| `frontend/src/table/boardAssets.ts` | `overlays.json`, `catches.json` and `lying-catches.json`, fetched once, each optional. |
+| `frontend/src/components/RenderedTable.tsx` | The React host: loads the shared atlas (`loadFirstBoardAtlas`, 18 pages, decals on) and manifests once, measures the window, builds the plan per hand, prepares once per plan and redraws on hand/viewport change; compass, hidden summary, status. |
+
+**Board geometry.** The plan places the four ponds round the compass well, the
+walls round the ponds, and each seat's hand (with its melds on the player's
+right) outside its wall. Distances are derived from the measured zones, so a
+hand's length or a meld moves its neighbours instead of overlapping them. Two
+frames are deliberately fixed:
+
+- **The ring is sized from a full 6 x 3 reference pond**, not the current one.
+  A river grows toward its player from a fixed edge instead of moving the walls
+  and hands on every discard.
+- **The compass well is at least half a pond's long side** (250 px at the
+  committed shells). Otherwise the four rivers overlap in the corners: a
+  6-column pond spans half its width across the seat's centre line.
+- **The front/back walls push out to at least half a side wall's height**, so a
+  short pond band cannot let the 17-stack side walls cross the horizontal
+  walls. The bands meet at the corners; the horizontal walls are wider than the
+  side-wall columns, which is the per-zone "impossible geometry" this view
+  accepts.
+
+The committed pack hand (`ryanmen_protorun`) plans a **2194 x 1738 @1x** board:
+13 zones, 211 bodies, 196 contact decals. At 1920 x 1080 the fit scale is
+**0.478** and the felt square is 1080 px at x = 420; at 390 x 844 the scale is
+0.172 with the felt cropped to the window width. On a phone the full board is
+necessarily small; the stacked and top-down views remain the accessible,
+readable fallbacks. The fit reserves the measured floating HUD's height (action
+strip + hand dock), so the drawn human hand is not hidden behind the dock; the
+felt raster itself still reaches the window edge.
+
+**Caching path.** `loadFirstBoardAtlas` composes the 18 face-up shell pages once
+per app lifetime (@2x if DPR asks and the estimate is inside the 48 MiB cap,
+else @1x) and loads `decals.json`; `loadFirstBoardAssets` fetches the three decal
+manifests once; `BoardRenderer.prepare` loads only the bare shell/overlay PNGs
+the current plan names and keeps them keyed by file, so a new hand reuses them
+and a repeat draw of the same plan is a pure blit. There is no per-frame loop.
+
+**Verification.** `cd frontend && npm run rendered:review` writes, under
+`tools/render/build/review/` (gitignored):
+`rendered-board-1920x1080.png` (the committed pack hand), `rendered-board-stress.png`
+(18 discards and four melds a seat, all hands full; a rendering fixture, not a
+legal state) and `rendered-board-portrait.png` (390 x 844), plus
+`rendered-board-numbers.json`. The script uses the runtime compositor itself and
+prints **35/35 / 50/50 / 35/35 checks**, including per-zone opaque-pixel
+coverage and the decoded-pixel fact that each written PNG's bright tile pixels
+lie inside the visible felt square. Unit
+coverage: `boardPlan.test.ts` (12 tests, the scripted checks included),
+`BoardRenderer.test.ts` (fit/felt), `RenderedTable.test.tsx` (roles, compass,
+summary, no-canvas path) and `App.rendered.test.tsx` (full-window stage, overlay
+HUD, all three views in the View control, same `gameState` across a view
+switch).
+
+**Deferred.**
+
+1. **Phase 5 interaction** (261114-171656): canvas hover/lift, hit-testing
+   against `LayoutZone.hitBox` and a hand dock that is the board's own drawn
+   hand. This unit draws the human hand on the board *and* keeps the DOM hand
+   dock; the dock is the controller.
+2. **Dora indicator faces.** The revealed dora shells are bare in the committed
+   catalogue (§13 decision 8), so the board does not flip a wall tile. The
+   `TableInfo` card in the drawer names every indicator, and the hidden summary
+   is the accessible path.
+3. **Mobile zoom.** The static fit is the whole table. A zoom/pan or a
+   portrait-specific board composition is not part of this unit.
+4. **Visual sign-off** (AGENTS.md §6) is the user's; the report lists the three
+   artifact paths and what to compare.

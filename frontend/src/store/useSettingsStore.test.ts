@@ -61,7 +61,7 @@ describe('useSettingsStore', () => {
     const { useSettingsStore, SETTINGS_STORAGE_KEY } =
       await loadSettingsStore();
 
-    for (const view of ['topdown', 'stacked'] as const) {
+    for (const view of ['topdown', 'rendered', 'stacked'] as const) {
       useSettingsStore.getState().setView(view);
       expect(
         JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? 'null'),

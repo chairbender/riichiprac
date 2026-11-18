@@ -11,7 +11,9 @@ import { HotseatCard } from './components/HotseatCard';
 import { PhysicalTable } from './components/PhysicalTable';
 import { PlayerRow } from './components/PlayerRow';
 import { PositionDescriptionCard } from './components/PositionDescriptionCard';
+import { RenderedTable } from './components/RenderedTable';
 import { TableInfo } from './components/TableInfo';
+import { TableStage } from './components/TableStage';
 import { VerdictPanel } from './components/VerdictPanel';
 import { RendererHost } from './renderers/RendererHost';
 import { resolveTableMount } from './renderers/resolveTableMount';
@@ -170,6 +172,12 @@ export const App = () => {
   const tableView = useSettingsStore((state) => state.view);
   const setTableView = useSettingsStore((state) => state.setView);
   const [exportDescription, setExportDescription] = useState('');
+  /**
+   * The full-window rendered table's menu drawer. App owns it because the hand
+   * dock's Details button has to open the drawer (the verdict lives in there),
+   * which is outside `TableStage`.
+   */
+  const [stageMenuOpen, setStageMenuOpen] = useState(false);
   /** The parsed WASM catalogue, so a repeat deal does not re-parse it. */
   const wasmCatalogRef = useRef<ScenarioOption[] | null>(null);
   /**
@@ -591,6 +599,9 @@ export const App = () => {
     // nothing about the hand or its grade.
     if (isTableView(event.target.value)) {
       setTableView(event.target.value);
+      // The stage's drawer belongs to the rendered view; do not leave it open
+      // when the next view is a normal document column.
+      if (event.target.value !== 'rendered') setStageMenuOpen(false);
     }
   };
 
@@ -713,7 +724,7 @@ export const App = () => {
         : 'Waiting for the Mortal model to load…';
 
   const viewHint =
-    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view. Stays 2D: no 3D or perspective.';
+    'How to draw the table. Stacked is the mobile-first four-row layout, top-down is the flat plan view. Rendered is the full-window 2.5D sprite table with the app chrome floating over it. All three draw the same hand: switching never re-deals.';
 
   const statusMessage = hotseatLoading
     ? hotseatProgressLabel(hotseatProgress)
@@ -827,6 +838,47 @@ export const App = () => {
     );
 
   /*
+   * The action strip and the hand dock are the same store-driven controls in
+   * every view: only their position changes (a row in the stacked/top-down
+   * document, a floating HUD over the rendered table).
+   */
+  const actionBarNode =
+    gameState && !dualGrade && actionBarActions.length > 0 ? (
+      <ActionBar
+        actions={actionBarActions}
+        disabled={false}
+        riichiArmed={callRiichi}
+        evaluation={evaluation}
+        revealMortal={dualGrade !== null || peekedBeforeAnswer}
+        onToggleRiichi={toggleRiichi}
+        onAction={submitAction}
+      />
+    ) : null;
+
+  const renderHandDock = (onShowVerdict: () => void) =>
+    humanPlayer ? (
+      <HandDock
+        player={humanPlayer}
+        grade={dualGrade}
+        answer={submittedAnswer}
+        callRiichi={callRiichi}
+        callKan={callKan}
+        aiEvaluation={evaluation}
+        availableActions={isDrill ? availableActions : undefined}
+        canDiscard={canDiscard}
+        canRiichi={canRiichi}
+        revealMortal={dualGrade !== null || peekedBeforeAnswer}
+        targetAction={gameState?.target_action}
+        nextDisabled={isLoading}
+        onNextScenario={handleNextScenario}
+        onShowVerdict={onShowVerdict}
+        onToggleRiichi={toggleRiichi}
+        onToggleKan={toggleKan}
+        onSelectTile={selectTile}
+      />
+    ) : null;
+
+  /*
    * The opt-in 3D view is the scene alone (user guidance 2026-11-18): no
    * header, cards, action bar or hand dock are mounted, so the canvas owns the
    * full window with no UI above or below it. The floating UI layer — chrome
@@ -861,6 +913,65 @@ export const App = () => {
             </p>
           )}
         </main>
+      </div>
+    );
+  }
+
+  /*
+   * The rendered 2.5D view (user guidance 2026-11-18): a full-window square of
+   * felt whose top and bottom edges touch the browser, with the app chrome as an
+   * overlay HUD — the menu drawer holds the controls and cards, the action strip
+   * and hand dock float over the bottom of the table. Switching to or from it
+   * only changes how the on-screen hand is drawn: nothing is re-dealt, and the
+   * answer and grade stay put.
+   */
+  if (tableMount.kind === '2d' && tableMount.view === 'rendered') {
+    return (
+      <div className="app-shell app-shell--stage">
+        <TableStage
+          state={gameState}
+          statusMessage={statusMessage}
+          error={error}
+          answered={submittedAnswer !== null}
+          nextDisabled={isLoading}
+          onNextScenario={handleNextScenario}
+          menuOpen={stageMenuOpen}
+          onMenuOpenChange={setStageMenuOpen}
+          menu={
+            <>
+              <div className="app-controls app-controls--menu">{controls}</div>
+              {hotseatOpen && (
+                <HotseatCard
+                  initialOptions={hotseatOptions}
+                  busy={isLoading || aiLoading}
+                  onGenerate={handleGenerateHotseat}
+                  onCancel={() => setHotseatOpen(false)}
+                />
+              )}
+              {exportImportControls}
+              {positionDescriptionCard}
+              {tableInformation}
+              {agreementNotice}
+              {scenarioNote}
+              {verdictPanel}
+            </>
+          }
+          table={
+            gameState ? (
+              <RenderedTable state={gameState} />
+            ) : (
+              <p className="rendered-table-status" role="status">
+                Loading table…
+              </p>
+            )
+          }
+          hud={
+            <>
+              {actionBarNode}
+              {renderHandDock(() => setStageMenuOpen(true))}
+            </>
+          }
+        />
       </div>
     );
   }
@@ -919,39 +1030,9 @@ export const App = () => {
         {standardTable}
       </main>
 
-      {gameState && !dualGrade && actionBarActions.length > 0 && (
-        <ActionBar
-          actions={actionBarActions}
-          disabled={false}
-          riichiArmed={callRiichi}
-          evaluation={evaluation}
-          revealMortal={dualGrade !== null || peekedBeforeAnswer}
-          onToggleRiichi={toggleRiichi}
-          onAction={submitAction}
-        />
-      )}
+      {actionBarNode}
 
-      {humanPlayer && (
-        <HandDock
-          player={humanPlayer}
-          grade={dualGrade}
-          answer={submittedAnswer}
-          callRiichi={callRiichi}
-          callKan={callKan}
-          aiEvaluation={evaluation}
-          availableActions={isDrill ? availableActions : undefined}
-          canDiscard={canDiscard}
-          canRiichi={canRiichi}
-          revealMortal={dualGrade !== null || peekedBeforeAnswer}
-          targetAction={gameState?.target_action}
-          nextDisabled={isLoading}
-          onNextScenario={handleNextScenario}
-          onShowVerdict={showVerdict}
-          onToggleRiichi={toggleRiichi}
-          onToggleKan={toggleKan}
-          onSelectTile={selectTile}
-        />
-      )}
+      {renderHandDock(showVerdict)}
     </div>
   );
 };

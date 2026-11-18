@@ -20,6 +20,18 @@ interface TableStageProps {
   table: ReactNode;
   /** The top-right decision panel, when the hand needs a non-discard answer. */
   popup?: ReactNode;
+  /**
+   * The app chrome that floats over the bottom of the table: the action strip
+   * and the hand dock. It is a Z-ordered overlay, never a layout sibling, so it
+   * cannot resize or re-fit the table behind it.
+   */
+  hud?: ReactNode;
+  /**
+   * Controlled drawer state. App opens the drawer from the hand dock's Details
+   * button (the verdict lives there); left undefined, the drawer is local.
+   */
+  menuOpen?: boolean;
+  onMenuOpenChange?: (open: boolean) => void;
 }
 
 const DRAWER_ID = 'table-stage-menu-drawer';
@@ -37,10 +49,10 @@ const DRAWER_ID = 'table-stage-menu-drawer';
  * siblings of the table. Opening the menu therefore cannot resize or re-fit
  * the table behind it.
  *
- * The shell is generic table chrome, not part of any one renderer: the offline
- * rendered table mounts its sprite compositor here (Task 4 of the rendered-table
- * chain). It is kept out of the view switch until that view exists, so the app
- * still offers only the stacked and top-down views.
+ * The shell is generic table chrome, not part of any one renderer: the rendered
+ * 2.5D table mounts its sprite compositor here (`RenderedTable`, view
+ * `rendered`). The 3D view keeps its own scene-only host until 3D-08/3D-09
+ * bring its floating UI layer.
  */
 export function TableStage({
   state,
@@ -52,15 +64,26 @@ export function TableStage({
   menu,
   table,
   popup,
+  hud,
+  menuOpen: controlledMenuOpen,
+  onMenuOpenChange,
 }: TableStageProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [localMenuOpen, setLocalMenuOpen] = useState(false);
+  const menuOpen = controlledMenuOpen ?? localMenuOpen;
+  const setMenuOpen = useCallback(
+    (open: boolean) => {
+      setLocalMenuOpen(open);
+      onMenuOpenChange?.(open);
+    },
+    [onMenuOpenChange],
+  );
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
     menuButtonRef.current?.focus();
-  }, []);
+  }, [setMenuOpen]);
 
   // Move focus into the drawer when it opens, and let Escape close it from
   // anywhere (including the scenario panel inside it).
@@ -87,7 +110,7 @@ export function TableStage({
           ref={menuButtonRef}
           type="button"
           className="table-stage-menu-button"
-          onClick={() => setMenuOpen((open) => !open)}
+          onClick={() => setMenuOpen(!menuOpen)}
           aria-expanded={menuOpen}
           aria-controls={DRAWER_ID}
           aria-label="Table menu"
@@ -142,6 +165,8 @@ export function TableStage({
       )}
 
       {popup}
+
+      {hud && <div className="table-stage-hud">{hud}</div>}
 
       {menuOpen && (
         <div className="table-stage-menu-backdrop" onClick={closeMenu}>

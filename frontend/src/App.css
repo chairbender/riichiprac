@@ -3375,3 +3375,211 @@
     max-height: min(88vh, 44rem);
   }
 }
+
+/* Rendered 2.5D table ------------------------------------------------------ */
+
+/*
+ * The rendered view (user guidance 2026-11-18): a full-window square of felt
+ * whose top and bottom edges touch the browser, with the app chrome floating
+ * over it as a HUD. It is not part of the 680px phone column.
+ */
+.app-shell--stage {
+  width: 100%;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  background-color: #0b1116;
+}
+
+.rendered-table {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: #0b1116;
+}
+
+/*
+ * The felt square, sized from the window height: its top and bottom edges sit
+ * on the browser edges. On a wide screen its left and right edges stay inside
+ * the frame (the scene background shows beside it); on a tall one it is wider
+ * than the window and the sides are cropped, never the top or bottom.
+ */
+.rendered-table-felt {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 1 / 1;
+  transform: translateX(-50%);
+  background-color: #1a5038;
+  background-position: center;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.rendered-table-viewport,
+.rendered-table-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The board is drawn art for now; Phase 5 adds the hit-tested hand. */
+.rendered-table-viewport {
+  pointer-events: none;
+}
+
+/*
+ * The view is named for screen readers and never announced as a visible
+ * heading: the table and the compass carry the information.
+ */
+.rendered-table-heading,
+.rendered-table-summary {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.rendered-table-status {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 36;
+  max-width: min(440px, calc(100% - 24px));
+  margin: 0;
+  padding: 8px 12px;
+  transform: translateX(-50%);
+  border: 1px solid #2a3442;
+  border-radius: 8px;
+  background-color: rgba(9, 14, 19, 0.86);
+  color: #ced4da;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+/* Compass ------------------------------------------------------------------ */
+
+.rendered-compass {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background-color: rgba(8, 14, 18, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.rendered-compass-corner {
+  position: absolute;
+}
+
+.rendered-compass-corner--bottom {
+  bottom: 4%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.rendered-compass-corner--top {
+  top: 4%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.rendered-compass-corner--left {
+  left: 4%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.rendered-compass-corner--right {
+  right: 4%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.rendered-compass-seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2em;
+  line-height: 1;
+}
+
+.rendered-compass-wind {
+  display: block;
+  width: 1.9em;
+  height: 1.9em;
+  filter: brightness(0) invert(1);
+}
+
+.rendered-compass-score {
+  color: #e7ecf3;
+  font-size: 0.95em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.rendered-compass-stick {
+  display: block;
+  width: 2.6em;
+  height: auto;
+}
+
+/* Floating HUD ------------------------------------------------------------- */
+
+/*
+ * The action strip and the hand dock float over the bottom of the table. The
+ * pad takes pointer events on its children only, so a click beside the hand
+ * dock still reaches whatever the table mounts there.
+ */
+.table-stage-hud {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px calc(8px + env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+.table-stage-hud > * {
+  max-width: min(680px, 100%);
+  pointer-events: auto;
+}
+
+.table-stage-hud .action-bar {
+  align-self: center;
+  width: auto;
+  max-width: 100%;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.table-stage-hud .hand-dock {
+  position: static;
+  width: 100%;
+  border: 1px solid #2a3140;
+  border-radius: 14px;
+  box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.5);
+}

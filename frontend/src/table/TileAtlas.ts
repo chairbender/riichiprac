@@ -76,6 +76,16 @@ function defaultBaseUrl(): string {
   return joinUrl(base, 'table');
 }
 
+/** The deployed `table/` directory, with the Vite base path applied. */
+export function tableAssetBaseUrl(): string {
+  return defaultBaseUrl();
+}
+
+/** A URL for one committed table asset, e.g. `tableAssetUrl('felt.png')`. */
+export function tableAssetUrl(relativePath: string): string {
+  return joinUrl(defaultBaseUrl(), relativePath);
+}
+
 function defaultFetchJson(): (url: string) => Promise<unknown> {
   return async (url) => {
     if (typeof fetch !== 'function') throw new Error(`cannot fetch ${url}: no fetch available`);

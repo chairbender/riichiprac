@@ -1,16 +1,11 @@
-import type { ComponentType, CSSProperties, SVGProps } from 'react';
-import {
-  RegularNan,
-  RegularPei,
-  RegularShaa,
-  RegularTon,
-} from 'riichi-mahjong-tiles';
+import type { CSSProperties } from 'react';
 import { SIDE_ROTATION, TABLE_SIDES, tablePlacements } from '../seatOrder';
 import type { SeatPlacement, TableSide } from '../seatOrder';
-import type { GameState, PlayerState, Wind } from '../types/game';
+import type { GameState, PlayerState } from '../types/game';
 import { MeldList } from './MeldList';
 import { RiichiStick } from './RiichiStick';
 import { River } from './River';
+import { WindGlyph } from './WindGlyph';
 
 /** Where each edge of the table sits, as the human reads the screen. */
 const SIDE_LABELS: Record<TableSide, string> = {
@@ -18,19 +13,6 @@ const SIDE_LABELS: Record<TableSide, string> = {
   right: 'right side, shimocha',
   top: 'across, toimen',
   left: 'left side, kamicha',
-};
-
-type WindGlyph = ComponentType<SVGProps<SVGSVGElement>>;
-
-/**
- * The wind symbol for each seat, drawn without a tile body: the compass only
- * needs the glyph, and the symbol is recoloured to read on the dark panel.
- */
-const WIND_GLYPHS: Record<Wind, WindGlyph> = {
-  East: RegularTon,
-  South: RegularNan,
-  West: RegularShaa,
-  North: RegularPei,
 };
 
 interface PhysicalTableProps {
@@ -55,8 +37,6 @@ function CompassSeat({
   player: PlayerState;
   side: TableSide;
 }) {
-  const WindGlyph = WIND_GLYPHS[player.wind];
-
   return (
     /*
      * The corner is a picture of the player's place, not prose: the wind
@@ -77,11 +57,7 @@ function CompassSeat({
        */
       style={{ transform: `rotate(${SIDE_ROTATION[side]}deg)` }}
     >
-      <WindGlyph
-        className="compass-wind"
-        aria-hidden="true"
-        focusable="false"
-      />
+      <WindGlyph wind={player.wind} className="compass-wind" />
       <span className="compass-score">
         {player.score.toLocaleString('en-US')}
       </span>
