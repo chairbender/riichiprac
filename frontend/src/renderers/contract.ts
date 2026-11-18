@@ -144,6 +144,12 @@ export interface TableSnapshot {
 /** Render quality tier. `compat` is the mobile/weak-GPU fallback (no POM). */
 export type QualityTier = 'high' | 'balanced' | 'compat';
 
+/**
+ * Which relief art the scene draws (3D-03): the committed Task 4B atlases, or
+ * the procedural neutral cell when they are missing or off-pin.
+ */
+export type ReliefStatus = 'committed' | 'fallback';
+
 /** Query-selectable debug views of the carved face shader. */
 export type DebugMode =
   | 'albedo'
@@ -184,6 +190,8 @@ export interface RendererStats {
   readonly triangles: number;
   readonly instances: number;
   readonly atlasBytes: number;
+  /** Which relief source the scene draws; absent before assets load (3D-03). */
+  readonly relief?: ReliefStatus;
   readonly frameMsP50: number;
   readonly frameMsP95: number;
 }
@@ -242,6 +250,16 @@ export const TILE_FACE_IDS: readonly TileFaceId[] = [
   '7z',
   'blank',
 ];
+
+/**
+ * The 37 face ids with baked relief art (3D-03): every id above except
+ * `blank`, which has no printed symbol and is never sampled on a face-down
+ * tile. This list is the runtime vocabulary the committed relief manifest must
+ * match exactly, in atlas order.
+ */
+export const BAKED_TILE_FACE_IDS: readonly TileFaceId[] = TILE_FACE_IDS.filter(
+  (face) => face !== 'blank',
+);
 
 const FACE_ID_SET: ReadonlySet<string> = new Set(TILE_FACE_IDS);
 const RED_FIVE_FACES: ReadonlySet<string> = new Set(['5mr', '5pr', '5sr']);
