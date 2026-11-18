@@ -93,6 +93,10 @@ jobs:
       - name: Verify face glyphs and the atlas budget
         run: node tools/render/scripts/check-faces.mjs
 
+      # Task 4B relief atlases: dependency-free (no Blender, no resvg).
+      - name: Verify carved relief maps
+        run: node tools/render/scripts/check-relief.mjs
+
       - name: Install render pipeline dependencies
         working-directory: tools/render
         run: npm ci
