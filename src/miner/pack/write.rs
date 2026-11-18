@@ -153,16 +153,29 @@ pub fn read_manifest_or_default(path: &Path, updated_at: &str) -> Result<PackMan
 
 /// Write the manifest atomically, with a trailing newline for a clean diff.
 pub fn write_manifest_atomic(path: &Path, manifest: &PackManifest) -> Result<(), PackError> {
+    let json = encode_manifest_named(manifest, &path.display().to_string())?;
+    storage::write_atomic(path, &json).map_err(PackError::from)
+}
+
+/// Encode a manifest exactly as [`write_manifest_atomic`] writes it.
+///
+/// The hosting publisher measures the encoded bytes against its ceiling before
+/// writing, so the two must share one encoder.
+pub fn encode_manifest(manifest: &PackManifest) -> Result<Vec<u8>, PackError> {
+    encode_manifest_named(manifest, "<manifest>")
+}
+
+fn encode_manifest_named(manifest: &PackManifest, label: &str) -> Result<Vec<u8>, PackError> {
     validate_manifest(manifest).map_err(|detail| PackError::Manifest {
-        path: path.display().to_string(),
+        path: label.to_string(),
         detail,
     })?;
     let mut json = serde_json::to_vec_pretty(manifest).map_err(|source| PackError::Json {
-        path: path.display().to_string(),
+        path: label.to_string(),
         source,
     })?;
     json.push(b'\n');
-    storage::write_atomic(path, &json).map_err(PackError::from)
+    Ok(json)
 }
 
 fn validate_manifest(manifest: &PackManifest) -> Result<(), String> {

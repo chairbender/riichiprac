@@ -2,11 +2,11 @@
 //!
 //! F1 created the feature boundary and the subcommand surface; L1 implements
 //! `label` on top of the R2 walker and the F1 database, S1 implements `triggers`,
-//! S2 implements `select` and `review`, V2 implements `transform`, and P1a/P1b
-//! implement `pack fixture`, `pack assemble`, `pack report` and `audit`. The
-//! remaining commands are still stubs: running one exits with code 2 and writes
-//! a "not implemented" line to stderr, so a script cannot mistake it for a
-//! completed run.
+//! S2 implements `select` and `review`, V2 implements `transform`, and
+//! P1a/P1b/P2 implement `pack fixture`, `pack assemble`, `pack publish`,
+//! `pack report` and `audit`. The remaining commands are still stubs: running
+//! one exits with code 2 and writes a "not implemented" line to stderr, so a
+//! script cannot mistake it for a completed run.
 //!
 //! Build and run:
 //!
@@ -34,13 +34,14 @@ use riichiprac::miner::variant::{
 };
 use riichiprac::miner::{
     AssemblyLimits, AssemblyOptions, AuditOptions, CLASSIFIER_VERSION, DEFAULT_GENERATOR_COMMIT,
-    DEFAULT_PACK_SIZE, DataRoot, FamilyFilter, GAMES_FILE_NAME, MANIFEST_FILE_NAME, PackAudit,
-    PackAuditContext, PackBudget, PackError, PackFinding, PackFindingCode, PublishProfile,
-    QPointCalibration, ReviewOptions, SelectionConfig, SelectionOptions, TriggerConfig,
-    TriggerFilter, TriggerSampleOptions, TriggerSampleReport, audit_pack_dir, audit_summary,
-    fixture_games, fixture_pack, latest_pack, load_manifest, open_miner_db, pack_report,
-    publish_pack, read_pack, read_queue, render_pack_report, review_queue, run_assembly,
-    run_selection, run_trigger_sample, selection_paths, utc_iso8601, write_games_atomic,
+    DEFAULT_MAX_HOSTED_BYTES, DEFAULT_PACK_SIZE, DataRoot, FamilyFilter, GAMES_FILE_NAME,
+    HostOptions, MANIFEST_FILE_NAME, PackAudit, PackAuditContext, PackBudget, PackError,
+    PackFinding, PackFindingCode, PackId, PublishProfile, QPointCalibration, ReviewOptions,
+    SelectionConfig, SelectionOptions, TriggerConfig, TriggerFilter, TriggerSampleOptions,
+    TriggerSampleReport, audit_pack_dir, audit_summary, fixture_games, fixture_pack, latest_pack,
+    load_manifest, open_miner_db, pack_report, publish_hosted, publish_pack, read_pack, read_queue,
+    render_pack_report, review_queue, run_assembly, run_selection, run_trigger_sample,
+    selection_paths, utc_iso8601, write_games_atomic,
 };
 
 #[derive(Debug, Parser)]
@@ -391,6 +392,46 @@ enum PackAction {
         #[arg(long, value_name = "N")]
         max_bytes: Option<u64>,
 
+        /// Pack timestamp (default: now). A fixed value keeps a committed
+        /// smoke pack reproducible.
+        #[arg(long, value_name = "ISO")]
+        generated_at: Option<String>,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Stage audited packs into the same-origin Pages directory.
+    Publish {
+        /// Audited export directory (default: <data-dir>/packs).
+        #[arg(long, value_name = "DIR")]
+        from: Option<PathBuf>,
+
+        /// Same-origin hosting directory (default: frontend/public/scenarios).
+        #[arg(long, value_name = "DIR", default_value = "frontend/public/scenarios")]
+        to: PathBuf,
+
+        /// Pack ids to host. Default: every entry in the source manifest. A
+        /// non-empty list replaces the hosted set with exactly those packs.
+        #[arg(long, value_name = "LIST", value_delimiter = ',')]
+        packs: Vec<String>,
+
+        /// Total hosted body-byte ceiling (default: 50 MB).
+        #[arg(long, value_name = "N")]
+        max_total_bytes: Option<u64>,
+
+        /// Manifest timestamp (default: now).
+        #[arg(long, value_name = "ISO")]
+        updated_at: Option<String>,
+
+        /// Audit for a commercial redistribution profile.
+        #[arg(long)]
+        commercial: bool,
+
+        /// Report without writing or pruning the destination.
+        #[arg(long)]
+        dry_run: bool,
+
         /// Machine-readable report.
         #[arg(long)]
         json: bool,
@@ -639,7 +680,7 @@ fn main() -> ExitCode {
 
 fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
     let Some(action) = action else {
-        eprintln!("mine_replays pack: choose `assemble`, `fixture` or `report`");
+        eprintln!("mine_replays pack: choose `assemble`, `fixture`, `publish` or `report`");
         return ExitCode::from(2);
     };
     match action {
@@ -678,8 +719,31 @@ fn run_pack_command(root: &DataRoot, action: Option<PackAction>) -> ExitCode {
         PackAction::Fixture {
             out,
             max_bytes,
+            generated_at,
             json,
-        } => run_pack_fixture(root, out, max_bytes, json),
+        } => run_pack_fixture(root, out, max_bytes, generated_at, json),
+        PackAction::Publish {
+            from,
+            to,
+            packs,
+            max_total_bytes,
+            updated_at,
+            commercial,
+            dry_run,
+            json,
+        } => run_pack_publish(
+            root,
+            PublishCommand {
+                from,
+                to,
+                packs,
+                max_total_bytes,
+                updated_at,
+                commercial,
+                dry_run,
+                json,
+            },
+        ),
         PackAction::Report { manifest, json } => run_pack_report(root, manifest, json),
     }
 }
@@ -776,11 +840,12 @@ fn run_pack_fixture(
     root: &DataRoot,
     out: Option<PathBuf>,
     max_bytes: Option<u64>,
+    generated_at: Option<String>,
     json: bool,
 ) -> ExitCode {
     let dir = out.unwrap_or_else(|| root.packs_dir());
     let budget = max_bytes.map_or_else(PackBudget::default, PackBudget::with_max_bytes);
-    let now = utc_iso8601(SystemTime::now());
+    let now = generated_at.unwrap_or_else(|| utc_iso8601(SystemTime::now()));
     let pack = match fixture_pack(&now) {
         Ok(pack) => pack,
         Err(err) => {
@@ -836,6 +901,91 @@ fn run_pack_fixture(
         }
         Err(err) => {
             eprintln!("mine_replays pack fixture: {err}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+struct PublishCommand {
+    from: Option<PathBuf>,
+    to: PathBuf,
+    packs: Vec<String>,
+    max_total_bytes: Option<u64>,
+    updated_at: Option<String>,
+    commercial: bool,
+    dry_run: bool,
+    json: bool,
+}
+
+fn run_pack_publish(root: &DataRoot, command: PublishCommand) -> ExitCode {
+    let mut options = HostOptions::new(
+        command.from.unwrap_or_else(|| root.packs_dir()),
+        command.to,
+        command
+            .updated_at
+            .unwrap_or_else(|| utc_iso8601(SystemTime::now())),
+    );
+    let mut packs = Vec::with_capacity(command.packs.len());
+    for raw in &command.packs {
+        match PackId::parse(raw) {
+            Ok(id) => packs.push(id),
+            Err(err) => {
+                eprintln!("mine_replays pack publish: {err}");
+                return ExitCode::from(2);
+            }
+        }
+    }
+    options.packs = packs;
+    options.profile = if command.commercial {
+        PublishProfile::Commercial
+    } else {
+        PublishProfile::NonCommercial
+    };
+    options.budget.max_total_bytes = command.max_total_bytes.unwrap_or(DEFAULT_MAX_HOSTED_BYTES);
+    options.dry_run = command.dry_run;
+
+    match publish_hosted(&options) {
+        Ok(published) => {
+            if command.json {
+                let payload = serde_json::json!({
+                    "report": published.report,
+                    "manifest": published.manifest_path.display().to_string(),
+                    "bodies": published
+                        .paths
+                        .iter()
+                        .map(|path| path.display().to_string())
+                        .collect::<Vec<_>>(),
+                });
+                match serde_json::to_string_pretty(&payload) {
+                    Ok(text) => println!("{text}"),
+                    Err(err) => {
+                        eprintln!("mine_replays pack publish: cannot serialise the report: {err}");
+                        return ExitCode::from(2);
+                    }
+                }
+            } else {
+                for line in published.report.human_summary() {
+                    println!("{line}");
+                }
+                println!("  manifest: {}", published.manifest_path.display());
+            }
+            ExitCode::SUCCESS
+        }
+        Err(
+            error @ (PackError::HostRefused { .. }
+            | PackError::HostBudgetExceeded { .. }
+            | PackError::HostInvalid { .. }
+            | PackError::AuditFailed(_)
+            | PackError::MissingFile(_)),
+        ) => {
+            eprintln!("mine_replays pack publish: {error}");
+            if let PackError::AuditFailed(audit) = &error {
+                print_pack_findings(audit);
+            }
+            ExitCode::from(1)
+        }
+        Err(err) => {
+            eprintln!("mine_replays pack publish: {err}");
             ExitCode::from(2)
         }
     }
@@ -1490,11 +1640,13 @@ mod tests {
                     Some(PackAction::Fixture {
                         out,
                         max_bytes,
+                        generated_at,
                         json,
                     }),
             } => {
                 assert_eq!(out, Some(PathBuf::from("/tmp/riichiprac-packs")));
                 assert_eq!(max_bytes, Some(1024));
+                assert_eq!(generated_at, None);
                 assert!(json);
             }
             other => panic!("expected pack fixture, got {other:?}"),
@@ -1517,6 +1669,50 @@ mod tests {
                 assert!(json);
             }
             other => panic!("expected pack report, got {other:?}"),
+        }
+
+        let cli = Cli::try_parse_from([
+            "mine_replays",
+            "pack",
+            "publish",
+            "--from",
+            "/tmp/riichiprac-packs",
+            "--to",
+            "frontend/public/scenarios",
+            "--packs",
+            "a.pack,b.pack",
+            "--max-total-bytes",
+            "2048",
+            "--updated-at",
+            "2026-11-17T00:00:00Z",
+            "--dry-run",
+            "--json",
+        ])
+        .expect("pack publish parses");
+        match cli.command {
+            Command::Pack {
+                action:
+                    Some(PackAction::Publish {
+                        from,
+                        to,
+                        packs,
+                        max_total_bytes,
+                        updated_at,
+                        commercial,
+                        dry_run,
+                        json,
+                    }),
+            } => {
+                assert_eq!(from, Some(PathBuf::from("/tmp/riichiprac-packs")));
+                assert_eq!(to, PathBuf::from("frontend/public/scenarios"));
+                assert_eq!(packs, vec!["a.pack".to_string(), "b.pack".to_string()]);
+                assert_eq!(max_total_bytes, Some(2048));
+                assert_eq!(updated_at.as_deref(), Some("2026-11-17T00:00:00Z"));
+                assert!(!commercial);
+                assert!(dry_run);
+                assert!(json);
+            }
+            other => panic!("expected pack publish, got {other:?}"),
         }
 
         let cli = Cli::try_parse_from([

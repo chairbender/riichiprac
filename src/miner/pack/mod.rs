@@ -70,13 +70,16 @@
 //! # CLI
 //!
 //! ```text
-//! mine_replays pack fixture  [--out DIR] [--max-bytes N] [--json]
+//! mine_replays pack fixture  [--out DIR] [--max-bytes N] [--generated-at ISO] [--json]
 //! mine_replays pack assemble [--pack ID] [--queue FILE] [--licence ID]
 //!                           [--attribution TEXT] [--max-bytes N]
 //!                           [--max-scenarios N] [--max-per-base N]
 //!                           [--share F32] [--family-quota book=30,...]
 //!                           [--generated-at ISO] [--commit TEXT]
 //!                           [--dry-run] [--json]
+//! mine_replays pack publish  [--from DIR] [--to DIR] [--packs ID,...]
+//!                           [--max-total-bytes N] [--updated-at ISO]
+//!                           [--commercial] [--dry-run] [--json]
 //! mine_replays pack report   [--manifest FILE] [--json]
 //! mine_replays audit         [--manifest FILE] [--games FILE] [--strict] [--commercial] [--json]
 //! ```
@@ -97,6 +100,7 @@ pub mod audit;
 pub mod check;
 pub mod fixture;
 pub mod gate;
+pub mod host;
 pub mod model;
 pub mod report;
 pub mod write;
@@ -116,6 +120,10 @@ pub use gate::{
     FindingSeverity, PackAudit, PackAuditContext, PackFinding, PackFindingCode, PublishProfile,
     audit_pack, audit_summary,
 };
+pub use host::{
+    DEFAULT_MAX_HOSTED_BYTES, HostBudget, HostOptions, HostReport, HostedEntry, HostedPublish,
+    publish_hosted, verify_hosted_dir,
+};
 pub use model::{
     LabelCheck, LabelCheckKind, MANIFEST_SCHEMA, ManifestEntry, PACK_SCHEMA, PACK_VERSION, Pack,
     PackAgent, PackBook, PackCounterfactual, PackGenerator, PackId, PackInterestingness,
@@ -125,8 +133,8 @@ pub use model::{
 pub use report::{PackReport, pack_report, render_pack_report};
 pub use write::{
     GAMES_FILE_NAME, MANIFEST_FILE_NAME, PackBytes, PublishedPack, decode_pack, encode_games,
-    encode_pack, load_games, load_manifest, merge_games, pack_file_name, publish_pack,
-    read_manifest_or_default, read_pack, upsert_manifest_entry, write_games_atomic,
+    encode_manifest, encode_pack, load_games, load_manifest, merge_games, pack_file_name,
+    publish_pack, read_manifest_or_default, read_pack, upsert_manifest_entry, write_games_atomic,
     write_manifest_atomic,
 };
 
@@ -254,6 +262,30 @@ pub enum PackError {
         /// Queue path.
         path: String,
         /// Why it blocks.
+        detail: String,
+    },
+    /// A same-origin hosting publish refused its source or selection.
+    #[error("pack hosting refused: {detail}")]
+    HostRefused {
+        /// Why the publish stopped.
+        detail: String,
+    },
+    /// A hosted pack set exceeds the same-origin byte budget.
+    #[error("{what} {bytes} exceed the {max} byte hosting budget")]
+    HostBudgetExceeded {
+        /// Which budget was measured.
+        what: &'static str,
+        /// Measured bytes.
+        bytes: u64,
+        /// The ceiling.
+        max: u64,
+    },
+    /// A staged hosting directory is not a valid manifest + body set.
+    #[error("hosting directory `{path}` is invalid: {detail}")]
+    HostInvalid {
+        /// Directory or file involved.
+        path: String,
+        /// Why it was rejected.
         detail: String,
     },
     /// SQLite failed while reading the selection or recording the export.

@@ -1,0 +1,25 @@
+{
+  "schema": "riichiprac.scenario-pack-manifest",
+  "version": 1,
+  "updated_at": "2026-11-17T00:00:00Z",
+  "packs": [
+    {
+      "id": "replay.fixture.2026-11",
+      "path": "replay.fixture.2026-11-8aa259ff85d4.json.gz",
+      "sha256": "8aa259ff85d470e434226beed84acd3d5cbe2d0864ab1e6b46148a802c8a2fcb",
+      "bytes": 3572,
+      "scenario_count": 2,
+      "lesson_ids": [
+        "fold_to_riichi",
+        "ryanmen_protorun"
+      ],
+      "book_sections": [
+        "ch4.1",
+        "ch8.3"
+      ],
+      "licence": "CC-BY-4.0",
+      "requires_model": true,
+      "data_commercial_use": true
+    }
+  ]
+}

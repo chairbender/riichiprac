@@ -23,6 +23,26 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # P2 optional CI copy step: an audited pack export can be published as a
+      # GitHub Release asset. Release assets send no access-control-allow-origin
+      # header (hosting-plan.md), so the browser cannot fetch them from Pages;
+      # CI downloads the manifest and bodies server-side and Pages serves them
+      # same-origin. Set the repository variable PACK_RELEASE_TAG to enable it.
+      # The downloaded set replaces the committed smoke pack in the CI workspace
+      # (never on disk in the repo), so an old body cannot linger unlisted.
+      - name: Fetch published scenario packs (optional)
+        if: vars.PACK_RELEASE_TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACK_RELEASE_TAG: ${{ vars.PACK_RELEASE_TAG }}
+        run: |
+          rm -rf frontend/public/scenarios
+          mkdir -p frontend/public/scenarios
+          gh release download "$PACK_RELEASE_TAG" \
+            --pattern 'manifest.json' --pattern '*.json.gz' \
+            --dir frontend/public/scenarios --clobber
+          ls -l frontend/public/scenarios
+
       - name: Install Rust toolchain (wasm target)
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -75,6 +95,14 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # P2: the staged hosting directory is exactly one same-origin manifest
+      # plus content-addressed gzip bodies within the 50 MB budget. This checks
+      # the manifest/body hashes, byte counts, metadata drift, the ai_selfplay
+      # source, and that no raw replay, database or weights file rides along.
+      # It runs before the build so a broken export never reaches Pages.
+      - name: Verify staged scenario packs
+        run: node scripts/check-pack-hosting.mjs
+
       # `GITHUB_ACTIONS` is set by the runner, so vite.config.ts picks the
       # `/riichiprac/` base path automatically. The 43 MB weights file is NOT
       # needed here: it is gitignored and fetched from an external CDN at
@@ -82,6 +110,21 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+      # Vite copies frontend/public verbatim. Re-run the same check on the
+      # built artifact, which proves Pages will include the packs at
+      # /riichiprac/scenarios/ rather than only that the source exists.
+      - name: Verify the Pages artifact includes the packs
+        run: node scripts/check-pack-hosting.mjs --dir frontend/dist/scenarios
+
+      # Optional R2/HF mirror: the same-origin manifest stays on Pages, and the
+      # loader tries same-origin first. A mirror is only usable by a browser
+      # when it sends CORS headers, so measure them (and, when configured, the
+      # exact audited bytes) rather than trust the provider's docs. Set the
+      # repository variable PACK_MIRROR_BODY_URL to enable this step.
+      - name: Check the external pack mirror's CORS headers (optional)
+        if: vars.PACK_MIRROR_BODY_URL != ''
+        run: node scripts/check-pack-cors.mjs --url "${{ vars.PACK_MIRROR_BODY_URL }}"
 
       # The rendered view's felt raster, the six tile shells (1x + 2x) and
       # shells.json are committed. CI never runs Blender: the dependency-free
