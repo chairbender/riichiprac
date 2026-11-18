@@ -161,5 +161,7 @@
     "pack_scenarios": 550
   },
   "spot_check": "/tmp/opencode/q2-scale-spot-check.md (all 4 defense_stuck_heuristic bases + 56 random shipped bases)",
-  "scale_decision": "shipped 550 real bases; next step is user spot-check, then 1k requires more labelled games and a review tool"
+  "scale_decision": "shipped 550 real bases; next step is user spot-check, then 1k requires more labelled games and a review tool",
+  "spot_check_approved": true,
+  "spot_check_approved_at": "2026-11-18"
 }

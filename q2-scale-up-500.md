@@ -62,7 +62,7 @@ ch8.2 to fill the pack; the report records it.
 (stable book label, legal answer, unique exact/visible state, clean walk). All
 were dispositioned accepted with the note that a user spot-check was requested.
 The user's review mode was **mechanical review + spot-check**, not a full
-per-item review. Ten accepted bases do not ship: seven same-hand duplicates and
+per-item review. **Spot-check approved 2026-11-18** ("looks fine, proceed"). Ten accepted bases do not ship: seven same-hand duplicates and
 three from lessons below the four-base floor.
 
 A 60-row spot-check sheet is at `/tmp/opencode/q2-scale-spot-check.md`: all four
