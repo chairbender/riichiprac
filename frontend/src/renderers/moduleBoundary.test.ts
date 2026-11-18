@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest';
  *
  * - the chain owns its face vocabulary and never imports `frontend/src/table/*`
  *   (the parallel 2.5D pipeline);
- * - `three` is not imported anywhere yet, so no 3D byte can reach the entry
- *   chunk before the lazy host lands in 3D-02; and
+ * - three.js stays behind the lazy `import('./three')` (3D-02), so no 3D byte
+ *   can reach the entry chunk before a user asks for the view; and
  * - the snapshot adapter and the shared contracts carry no DOM and no renderer
  *   types.
  *
@@ -41,12 +41,42 @@ describe('3D renderer module boundaries', () => {
     }
   });
 
-  it('does not import three.js anywhere yet', () => {
+  it('keeps three.js out of the shared contract modules', () => {
     for (const file of FILES) {
       const text = source(file);
       expect(text, file).not.toMatch(/from\s+['"]three(\/|['"])/);
       expect(text, file).not.toMatch(/import\(\s*['"]three/);
       expect(text, file).not.toMatch(/require\(\s*['"]three/);
+    }
+  });
+
+  it('reaches three.js only through the host’s dynamic import', () => {
+    const host = readFileSync(
+      fileURLToPath(new URL('./RendererHost.tsx', import.meta.url)),
+      'utf8',
+    );
+    expect(host).not.toMatch(/from\s+['"]\.\/three['"]/);
+    expect(host).toMatch(/import\(\s*['"]\.\/three['"]\s*\)/);
+
+    // Everything three.js-dependent lives under renderers/three/, which is
+    // reached only from that dynamic import.
+    for (const file of FILES) {
+      expect(source(file), file).not.toMatch(/from\s+['"]\.\/three['"]/);
+    }
+  });
+
+  it('pins three.js to an exact version (decision D1)', () => {
+    const manifest = JSON.parse(
+      readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8'),
+    ) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+    const three = manifest.dependencies?.three;
+    expect(three).toBeDefined();
+    expect(three, 'three must be pinned exactly, with no range').toMatch(/^\d+\.\d+\.\d+$/);
+    const threeTypes = manifest.devDependencies?.['@types/three'];
+    if (threeTypes !== undefined) {
+      expect(threeTypes, '@types/three must match the pin exactly').toMatch(
+        /^\d+\.\d+\.\d+$/,
+      );
     }
   });
 

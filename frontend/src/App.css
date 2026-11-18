@@ -855,6 +855,93 @@
   overflow-x: auto;
 }
 
+/*
+ * The opt-in 3D view (`?renderer=3d`). It is not the default and does not join
+ * the persistent View control until 3D-15 signs it off.
+ *
+ * User guidance (2026-11-18): render the 3D scene alone, full-window, with no
+ * UI above or below it. The planned UI is a floating layer over the scene (Z
+ * order, like a game HUD), not chrome in the document flow; until that lands
+ * (3D-08/3D-09/3D-14) this branch mounts nothing but the stage, and the 2D
+ * views keep the normal document column untouched.
+ */
+.table-3d {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: clamp(420px, 72vh, 900px);
+  padding: 10px;
+}
+
+.app-shell--3d {
+  /* The scene is the window: no phone-width column, no page background. */
+  width: 100%;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  background-color: #0b1116;
+}
+
+/* The 3D stage is the whole viewport, not a row in a column. */
+.app-shell--3d > .table-3d {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  padding: 0;
+}
+
+.app-shell--3d .renderer-3d {
+  border-radius: 0;
+}
+
+/*
+ * The only text this bare view can show is a transient status or a generation
+ * error. Keep it over the scene instead of pushing the canvas down, so the
+ * scene stays exactly full-window.
+ */
+.app-shell--3d .table-3d > .status-msg,
+.app-shell--3d .table-3d > .error-msg {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 2;
+  max-width: min(520px, calc(100% - 24px));
+  margin: 0;
+  padding: 8px 12px;
+  transform: translateX(-50%);
+  border-radius: 8px;
+  background-color: rgba(9, 14, 19, 0.86);
+}
+
+/* Full-screen toggle, shown in the header for the 3D view only. */
+.fullscreen-button {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #a5d8ff;
+  background-color: #1a2a3c;
+  border: 1px solid #34506e;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.fullscreen-button:hover {
+  background-color: #21374f;
+}
+
+.fullscreen-button:focus-visible {
+  outline: 2px solid #74c0fc;
+  outline-offset: 1px;
+}
+
+
 .physical-table {
   /*
    * The plan fills the app column and sizes its tiles from that width, so it

@@ -49,7 +49,10 @@ persistent View control is 3D-15's decision**, not 3D-14's.
 
 - a true real-time 3D table rendered into a `<canvas>` in the browser, as an
   additional opt-in view beside the stacked, top-down and (when it lands) 2.5D
-  rendered views;
+  rendered views. **It takes the whole browser window with no UI in the document
+  flow around it**, and the app's UI is planned as a floating layer over the
+  scene (user guidance, 2026-11-18; §9 decision 7), with an optional full-screen
+  toggle;
 - the same board information the top-down view shows: four seats with concealed
   hands, the human's drawn tile, four discard rivers, open melds, the wall,
   dora indicators, riichi declarations and sticks, wind/score/round compass;
@@ -149,13 +152,36 @@ Four rules make this safe:
 2. **The canvas draws pictures; the DOM carries meaning and input.** The table is
    not a widget in a 3D scene; it is an image with an overlaid, positioned set of
    real buttons.
-3. **The renderer is a child of React, not a peer.** It mounts into a div that
-   `TableStage` already owns, so switching views is a normal unmount and
-   `dispose()` is the only teardown path.
+3. **The renderer is a child of React, not a peer.** It mounts into a div the
+   table slot owns — for 3D, the full-window stage in `App`'s table slot — so
+   switching views is a normal unmount and `dispose()` is the only teardown
+   path.
 4. **On-demand frames.** With no animation running, the renderer draws when the
    snapshot, tier, size or hover changes. Continuous rendering happens only while
    an animation or the perf HUD is active. This is a battery decision, not a
    performance optimisation of last resort.
+
+**The stage is the window; the UI is a floating layer** (user guidance,
+2026-11-18; §9 decision 7). The 3D canvas is a fixed, full-window layer
+(`z-index: 0`) that fills the whole height of the browser: **no UI panel sits
+above or below it in the document flow.** The UI that follows — header controls,
+status cards, the action bar, the hand dock, the projected hand/draw buttons and
+the compass — is positioned *over* the scene, the way a game HUD is, never
+outside it.
+
+**Interim state (as of 3D-02's landing).** While there is no floating layer yet,
+the 3D mount renders **the scene alone**: no header, no cards, no action bar and
+no hand dock are mounted, so nothing occupies Y space around the canvas. The
+2D views keep their existing layout. 3D-14 re-mounts the chrome as the floating
+layer and must remove the shell modifier (and leave full screen) when the user
+switches away.
+
+A full-screen toggle uses the Fullscreen API on the **shell**, not on the
+canvas, so the floating layer travels with the scene; it is rendered only where
+`requestFullscreen` exists, and it reports the browser's own state rather than
+guessing. Browsers that do not support the API simply get the full-window view.
+The component is built and tested in 3D-02 but stays unmounted until the
+floating layer exists (3D-14), because offering a header control is UI.
 
 ### 2.2 Repository and build boundaries
 
@@ -249,7 +275,7 @@ The world-space layout already exists, user-signed-off, in
 
 | Quantity | Committed value | 3D use |
 | --- | --- | --- |
-| Mat | 25 units = 700 mm square, front/back walls at radius 7.0 | felt plane 25 × 25, wall ring |
+| Mat | 25 units = 700 mm square, front/back walls at radius 7.0 | layout reference; the drawn felt is a square sized per frame to reach the top and bottom edges (3D-02), wall ring |
 | Tile | 1 unit = 28 mm; 21 × 28 × 16.5 mm; 0.3 mm gaps | tile mesh + layout pitch |
 | Wall | 4 runs × 17 stacks × 2 tiers, 0.760714 pitch, one missing top tile at slot 16 (draw end) | wall layout |
 | Ponds | 3 rows × 6, nearest row at 4.81, next at 2.7886, 4 overflow anchors on the near row | river layout |
@@ -278,6 +304,20 @@ Two additions the 2.5D reference cannot answer:
   it honestly. The default is 40°, the accepted band is 30–45°, and the gate is
   numeric: the angle between the hand face normal and the camera view ray must
   be ≤ 25° for the human hand at every supported aspect.
+
+**One frame, owned by the layout (reconciliation, 2026-11-18).** Two pure
+solutions to the same problem landed in parallel: 3D-02's `cameraRig.ts` (the
+committed 76-unit rig fitted to a fixed mat+hand subject, which only ever moves
+back) and 3D-06's `boardLayout.frameForAspect` (a distance + lens-nudge solve
+over the actual `layoutBoard` extents, gated by `check-3d-layout.mjs`). They
+agree at 16:9 to within 0.05 units; 3D-06 also lifts the projection 18 px there
+to hold its 2 % safe-area margin, and it moves the camera much closer on taller
+frames (64.4 units at 3:2, 60.9 in portrait). **`frameForAspect` wins: it solves
+against the real board and owns the gate, so it is the only projection source
+from 3D-07 on.** `cameraRig.ts` becomes a thin `PerspectiveCamera` adapter, the
+felt is sized from that frame (`groundHit` against the frame's eye/axes/fov/
+shift, preserving the top/bottom rule), and 3D-08's hit rects use the same
+frame. No view may project through a second camera.
 
 ### 2.5 Assets: reuse Task 4B, do not bake twice
 
@@ -373,6 +413,15 @@ The canvas is an image. Everything a user can do or must hear is DOM:
   interactive. A hidden heading names the view for screen readers.
 - The interaction layer is a pure function of `TableSnapshot` + camera matrices
   (`hitTest.ts`), so it is unit-testable in Node without WebGL.
+- **Chrome over the scene.** The stage is the whole window (§2.1). Once the
+  floating layer lands (3D-14; hand/draw buttons in 3D-08, compass in 3D-09),
+  the app chrome — header controls, status cards, the action bar and the hand
+  dock — is positioned *over* the canvas in Z order, never in the document flow
+  above or below it. Until then the 3D view deliberately shows no chrome at all.
+  No overlay may capture pointer events outside its own controls: clicking the
+  felt (once anything is bound to it) and every chrome control must keep
+  working. Floating panels keep their own backgrounds so they stay readable
+  over the felt.
 
 ### 2.8 Performance budget, stated and justified
 
@@ -482,6 +531,22 @@ in D1 and in `3d_renderer_architecture.md`. Depend on the core entry only; no
 `three/examples/*`, no loaders, no post-processing, no addons. Upgrading is its
 own task that re-runs `check-3d-budget.mjs` and the 3D-05/3D-10 handoffs — a
 silent `npm update` is a bug.
+
+**As built (3D-02, 2026-11-18).** `three@0.187.0` and `@types/three@0.187.0`,
+both exact. Two build-toolchain facts came out of landing the first lazy chunk
+and should not be undone casually:
+
+- `vite.config.ts` spells out `build.minify: 'esbuild'` (Vite's default, written
+  down on purpose): `vite-plugin-top-level-await` reads `build.minify` in its
+  own `config` hook before Vite applies that default, and it rewrites every
+  chunk that contains a dynamic import — now the app's entry chunk. Without the
+  explicit value the rewritten entry ships unminified (+19 KB gzip, measured).
+  The chunk gate in 3D-13 would see that as an entry regression.
+- `@swc/core` is pinned to `1.12.14`, the plugin's declared baseline.
+  `@swc/core@1.16.x` rejects the plugin's generated AST for a chunk that has
+  exports (`missing field type`), which is exactly the shape the first
+  dynamic-import split produces (the entry then exports the symbols its lazy
+  chunk shares). Upgrade the plugin and the swc pin together or not at all.
 
 **Bundle size.** The measured budget is **≤ 200 KB gzip for the lazy 3D chunk**
 (advisory; 3D-13 prints it), and **0 bytes added to the entry chunk**, which
@@ -766,12 +831,24 @@ who does not ask for it.
   registry for every buffer/geometry/material/texture.
 - `cameraRig.ts` (imports `layoutConstants.ts`) with the committed rig and the
   aspect/portrait fit.
-- `felt.ts`: deterministic 512 × 512 procedural felt texture and a 25 × 25 unit
-  plane; a CSS radial vignette overlay.
+- `felt.ts`: deterministic 512 × 512 procedural felt texture and **one square
+  plane, sized per frame** (`feltSizeForPose`, from the frame's top/bottom
+  ground intersection) so it always reaches the top and bottom edges. It is
+  never stretched to the aspect: on a wide window its side edges stay inside the
+  frame and the background shows beside it. The 25-unit mat stays the layout
+  reference; a CSS radial vignette overlay.
 - `package.json`: `three` added with an **exact** version; the version is
   recorded in this plan when it is chosen.
 - Minimal `App.tsx` wiring: `?renderer=3d` mounts the host in place of the
   current table (only when a `GameState` exists); no persistence.
+- **Full-window, scene-only stage** (user guidance 2026-11-18, revised the same
+  day): the shell drops its phone-width column and the 3D stage becomes a fixed
+  layer covering the whole viewport, with **no UI mounted above or below it** in
+  the document flow. The stacked and top-down layouts are untouched.
+- **Full-screen toggle** (`components/FullscreenButton.tsx`): promotes the
+  shell, not the canvas, follows `fullscreenchange`, and renders nothing where
+  the Fullscreen API is absent. Built and tested here, but kept **unmounted**
+  until the floating UI layer exists (3D-14), because a header control is UI.
 
 **Acceptance criteria**
 
@@ -780,14 +857,30 @@ who does not ask for it.
 - With `?renderer=3d`, an empty felt scene mounts at the correct camera framing
   on a 1920 × 1080 viewport; the canvas is `aria-hidden`, is not focusable, and
   has an accessible name on a sibling heading.
+- The 3D stage is the whole window: the shell has no max-width, the stage is a
+  fixed full-viewport layer, and a DOM test asserts that **no** app chrome
+  (header, cards, action bar, hand dock, player rows) is mounted with it. A
+  transient status or generation error floats over the scene without pushing the
+  canvas down.
+- The felt reaches the top and bottom edges: a numeric test projects the frame's
+  centre line onto the ground plane (`groundHit`) at the supported aspects plus
+  9:19.5/9:21 phone portraits and asserts the square's far/near edges are at or
+  beyond them. A second assertion checks that at 16:9 and 21:9 the square is
+  narrower than the frame, so its left/right edges are visible inside it (no
+  black band above the table, and no stretched mat).
+- The full-screen component targets the shell and follows `fullscreenchange`
+  rather than its own guess; it renders nothing without the API (jsdom). It is
+  not mounted by 3D-02 (above), and its tests cover both states.
 - `dispose()` releases every registered resource; mount/unmount ×5 leaves the
   tracked resource count at zero; React StrictMode's double effect does not
   create two renderers.
 - WebGL2 unavailable (jsdom, or a mocked failing `getContext`) → state
-  `unsupported`, a rendered message, and App falls back to the previous view
-  without throwing.
+  `unsupported` and a rendered message over the stage, never a thrown error.
+  While the view is scene-only there is no 2D fallback inside it; the standard
+  views remain reachable by dropping the query parameter (the persistent View
+  control is 3D-14's).
 - `webglcontextlost` is prevented, one restore is attempted, a second loss
-  disposes and reports `failed`; the host then falls back.
+  disposes and reports `failed` with a message over the stage.
 - Precedence is explicit and tested: explicit query param > stored view >
   default (`stacked`).
 - Framing numbers at 16:9 match the reference within 1 px for the mat corners
@@ -796,9 +889,19 @@ who does not ask for it.
 - No console errors/warnings in dev.
 
 **Gate:** frontend gate.
-**Merge note:** touches `App.tsx` (≈ 10 lines). The 2.5D view tasks may touch the
-same file; that is ordinary merge contention, not a dependency — neither chain
-waits for the other. Keep the diff minimal.
+**Merge note:** touches `App.tsx` (shell modifier, snapshot/revision memo, mount
+slot and the full-screen control; ~100 lines with comments) and `App.css`. The
+2.5D view tasks may touch the same files; that is ordinary merge contention, not
+a dependency — neither chain waits for the other. Keep the diff to the mount
+point and the shell modifier.
+
+**Handoff recorded (2026-11-18).** The user reviewed the full-window,
+scene-only mount and the square felt at `?renderer=3d` and said: "Looks good
+now." Accepted as-is: no app chrome mounted, the camera rig and framing, the
+procedural felt (a square sized to the frame's top and bottom edges, sides
+visible on a wide window), and the status/error placement. Not yet built and
+still owned by later units: the board (3D-07), the floating hand/compass UI
+(3D-08/3D-09), the re-mounted chrome plus the full-screen toggle (3D-14).
 
 ---
 
@@ -1009,9 +1112,17 @@ the committed table geometry.
 - `shadows.ts`: one instanced quad draw with a procedural rounded-rect alpha
   texture, scaled per tile, anchored under each grounded tile.
 - `sticks.ts`: one instanced mesh for riichi sticks.
+- **One framing source** (§2.4): the scene's camera is
+  `boardLayout.frameForAspect`, `cameraRig.ts` is reduced to the
+  `PerspectiveCamera` adapter, its duplicate distance/shift solver is deleted,
+  and the felt is re-sized from that frame.
 
 **Acceptance criteria**
 
+- The rendered camera equals the solved frame (eye, pitch, field of view and
+  projection shift) and no second camera solver remains in the renderer; the
+  felt still reaches the top and bottom edges at every supported aspect under
+  the new frame.
 - One tile draw call for the whole board (wall + foreground, ≤ 320 instances);
   `measure()` reports `instances`, `triangles`, `drawCalls` and a test asserts
   `drawCalls ≤ 4` in the default debug-off scene.
@@ -1048,6 +1159,11 @@ keyboard and screen reader.
 
 **Acceptance criteria**
 
+- The overlay is positioned against the **full-window stage** (3D-02, §2.1): the
+  buttons sit on the scene, not inside a card. This unit lands the first part of
+  the floating UI; 3D-14 re-mounts the rest of the chrome (header, action bar,
+  hand dock, cards) as the same kind of layer, and the two must not capture each
+  other's pointer events.
 - Exactly one button per hand tile plus the draw when present; zero when the
   hand is locked (answered), matching `HandDock`.
 - Labels and order are identical to the top-down hand's accessible names for the
@@ -1058,12 +1174,16 @@ keyboard and screen reader.
 - Keyboard: Tab reaches the hand in order, Enter/Space discards, Escape is
   untouched; focus is visible; after answering, focus stays somewhere valid.
 - Resize/orientation change recomputes rects; no stale button survives a
-  snapshot change; a test toggles 9:16 ↔ 16:9 and asserts the rects move.
+  snapshot change; a test toggles 9:16 ↔ 16:9 and asserts the rects move (the
+  3D stage is the window, so the window's own aspect drives this).
 - The canvas stays `aria-hidden`; the table has an accessible name and a
   description that names the current view.
 - Clicking a button calls the same handler the top-down/stacked views call; the
   answer flow has no renderer dependency (answers work with the renderer
   disposed).
+- The buttons land on the tiles: `hitRects()` and the rendered instance
+  transforms both come from `frameForAspect` on the same `BoardLayout` (a drift
+  test projects the hand OBBs through the frame and compares).
 
 **Gate:** frontend gate.
 
@@ -1086,7 +1206,8 @@ accessible marker on that seat.
 - Values and labels match `PhysicalTable`'s compass for the same state, asserted
   by a drift test (wind names, scores, round, `tiles_remaining`, riichi).
 - The overlay is centred on the projected compass well within 2 % of the
-  viewport at every supported aspect, and never covers the human hand's buttons.
+  **window** (the 3D stage is full-window, §2.1), at every supported aspect, and
+  never covers the human hand's buttons or the overlaid chrome.
 - The overlay does not capture pointer events outside its own labels (the canvas
   and hand buttons stay reachable).
 - Riichi sticks: exactly one 3D stick per seat whose `riichi` flag is true,
@@ -1240,12 +1361,28 @@ does not wait for the 2.5D rendered view.
   fourth view.
 - A single `RENDERED3D_EXPOSED` constant keeps the option out of the picker (the
   query flag still works) until 3D-15 flips it.
+- **The full-window stage becomes reversible** (user guidance 2026-11-18): the
+  shell modifier that drops the phone-width column and fixes the 3D backdrop is
+  applied only for the 3D value, and switching away removes it *and* leaves
+  full screen (never leaves the user in a full-screen 2D view).
+- **The floating UI layer** (user guidance, revised 2026-11-18): re-mount the
+  app chrome — header controls, status cards, the action bar and the hand dock —
+  over the scene in Z order instead of in the document flow above/below it, and
+  mount the full-screen toggle (`components/FullscreenButton.tsx`, built in
+  3D-02) in that layer. The scene-only interim (§2.1) ends with this unit.
 
 **Acceptance criteria**
 
 - Switching stacked ↔ topdown ↔ (rendered) ↔ rendered3d keeps the same
   `GameState`, the same selection/answer state, and does not re-deal (a test
   asserts the state object is identical across switches).
+- Switching into and out of 3D adds/removes the shell's 3D modifier exactly
+  once; after leaving, the stacked/top-down layout is byte-for-byte the same
+  structure it had before (the stage is no longer fixed, the column width is
+  back), and `document.fullscreenElement` is null.
+- In 3D, the chrome is mounted *over* the fixed stage (DOM/stacking assertions,
+  no Y-flow siblings of the canvas), every chrome control still works, and the
+  full-screen toggle is present exactly when the API is.
 - The 3D view (once `RENDERED3D_EXPOSED`) persists across reload when selected and
   supported; when it later becomes unavailable the stored value falls back
   **without** rewriting the user's choice (so a temporarily unsupported device
@@ -1286,17 +1423,23 @@ and any conflict is hand-resolved.
 - Stress state renders every zone with the expected tile counts; no NaN, no
   overlap, no missing face; the same state through stacked, top-down and 3D
   yields identical accessible answers and compass values.
-- Five aspect ratios: framing gate green, hand buttons reachable, no overlay
-  collision.
+- Five aspect ratios **at the window's own size** (the 3D stage is the window,
+  §2.1): framing gate green, hand buttons reachable, no overlay collision, and
+  the overlaid chrome (header, action bar, hand dock, compass) never covers a
+  hand/draw hit target.
+- Full screen: the toggle works in a real browser, the scene re-fits to the new
+  window size, the overlay re-projects, and leaving full screen restores the
+  layout without a re-deal.
 - `check-3d-layout.mjs` and `check-3d-budget.mjs` green; the frontend gate green;
   the Rust gates unaffected.
 - Keyboard-only pass: reach the hand, discard, hear the result, reach Next
   Scenario.
 - Screen-reader check: the table announces round, scores, tiles left and the
   hand; no orphan focus stops.
-- **User handoff** on the finished board: full table at 16:9 and 9:16, POM on and
-  off; ask for the accept/reject on spacing, felt, hand recline, compass
-  placement and carving strength, and record it.
+- **User handoff** on the finished board: full-window table at 16:9 and 9:16 and
+  in full screen, POM on and off; ask for the accept/reject on spacing, felt,
+  hand recline, compass placement, chrome-over-scene composition and carving
+  strength, and record it.
 
 **Gate:** all scripts + frontend gate + user verdict recorded.
 
@@ -1420,8 +1563,8 @@ which files it touched.
 | R9 | A new runtime dependency is more than the repo wants | low / medium | lazy chunk, budget gate, exact pin, MIT notice; the renderer interface keeps the choice reversible | 3D-02, 3D-16 |
 | R10 | Both renderers load the relief atlases at once (double GPU memory) if a view ever mounts both | low / medium | only one table is mounted at a time (structural test in 3D-14); dispose drops textures | 3D-14 |
 
-**Decisions recorded with the user (2026-11-18)** — all six are settled; they are
-binding on the units, not open questions.
+**Decisions recorded with the user (2026-11-18)** — all seven are settled; they
+are binding on the units, not open questions.
 
 1. **Exposure: behind the flag.** The 3D view stays reachable only by
    `?renderer=3d` until 3D-15 signs it off; `RENDERED3D_EXPOSED` flips only then,
@@ -1445,6 +1588,18 @@ binding on the units, not open questions.
    rebake would cost ≈176 MB raw / ≈234 MB with mips for no visible gain, and is
    not planned. If it is ever wanted, it is a 3D-owned offline task, not a request
    to the 2.5D chain.
+7. **Full-window stage, no UI around it, floating UI later** (added and revised
+   2026-11-18, while 3D-02 was in progress). The 3D display takes the whole
+   browser window and the full height of the screen. **No UI panel sits above or
+   below the canvas (no Y-flow siblings).** The UI that follows — header
+   controls, status cards, action bar, hand dock, the hand/draw buttons (3D-08)
+   and the compass (3D-09) — is planned as a **floating layer over the scene**
+   (Z order, like a typical game HUD), not as elements outside the canvas.
+   Until that layer exists, 3D-02 mounts **the scene alone**; 3D-14 re-mounts the
+   chrome as the floating layer, mounts the full-screen toggle (Fullscreen API,
+   promoting the shell so the layer travels with the scene) and restores the 2D
+   layout — including leaving full screen — when the user switches away. The
+   stacked and top-down views keep their existing layout throughout.
 
 **Chain independence (recorded).** No 3D unit depends on 2.5D work, and no 2.5D
 unit depends on 3D work. The 3D chain reads the *already committed* relief
@@ -1588,7 +1743,7 @@ it was right and corrected where the repository or the browser facts disagree.
 | Unit | Primary paths |
 | --- | --- |
 | 3D-01 | `frontend/src/renderers/{contract,snapshot,capabilities,layoutConstants}.ts` |
-| 3D-02 | `frontend/src/renderers/{RendererHost.tsx,three/{index,Scene,cameraRig,felt}.ts}`, `frontend/src/App.tsx`, `frontend/package.json` |
+| 3D-02 | `frontend/src/renderers/{RendererHost.tsx,three/{index,Scene,cameraRig,felt}.ts}`, `frontend/src/components/FullscreenButton.tsx`, `frontend/src/App.tsx`, `frontend/src/App.css`, `frontend/package.json` |
 | 3D-03 | `frontend/src/renderers/three/reliefAssets.ts` |
 | 3D-04 | `frontend/src/renderers/three/tileGeometry.ts` |
 | 3D-05 | `frontend/src/renderers/three/{tileMaterial,lighting,probes}.ts`, `.../materials/tile.{vert,frag}.ts` |
