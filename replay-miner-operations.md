@@ -1388,6 +1388,10 @@ that is not in the queue at all is refused as unreviewed.
 - **Global variant ceiling** (`--max-variants N`) keeps at most N variants,
   evenly spaced across the remaining pack order rather than truncating the tail.
   Excess variants are reported as `variant_limit`; the base block is untouched.
+- **Variants disabled** (`--no-variants`) drops every variant with reason
+  `variants_disabled` and ships the reviewed bases only. This is a product
+  decision for a pack that gets its variety from real scenarios; the variant
+  stage and its label-preservation gate stay available for a future design.
 - **Family quotas** (`--family-quota book=30,coverage=15`) are optional explicit
   ceilings counted in **base** scenarios (§4.6: quotas count bases, not
   variants). S2 already balanced the selection, so the default leaves the
@@ -1423,7 +1427,7 @@ with its stable reason, the caps/quotas applied and the review summary.
 cargo run --features miner --bin mine_replays -- pack assemble \
   [--pack ID] [--queue FILE] [--licence ID] [--attribution TEXT] \
   [--max-bytes N] [--max-scenarios N] [--max-per-base N] [--share F32] \
-  [--family-quota book=30,coverage=15] [--max-variants N] \
+  [--family-quota book=30,coverage=15] [--max-variants N] [--no-variants] \
   [--generated-at ISO] [--commit TEXT] \
   [--dry-run] [--json]
 ```
@@ -1747,10 +1751,10 @@ and needs no secrets. It is independent of the Pages deploy workflow.
 
 Status: shipped. The pack is `replay.ch8-defense.2026-11`:
 
-- 125 scenarios = 100 reviewed bases + 25 label-preserving variants (20 %),
-  133,734 body bytes and a 763-byte manifest; the bases come first in the body
-  and the variants are a `rank_mirror`/`suit_perm` mix, none repeating its
-  base's actor hand;
+- 100 reviewed base scenarios, **no variants** (disabled by product decision:
+  the generated variants looked too similar; variety comes from real
+  scenarios), 105,032 body bytes and a 763-byte manifest; bases from 47
+  replays, 0 adjacent same-replay bases;
 - 100 bases selected from 4,112 valid candidates after a ch. 8 scope, a
   stable-book-only rule and a five-family corpus cap (M3 30, M4 30, M5 30,
   M1 10, M2 10); 10 held-out QA items;
@@ -1760,8 +1764,8 @@ Status: shipped. The pack is `replay.ch8-defense.2026-11`:
 - four agents (Akochan, Mortal 298k, `efficiency-safety-v1`,
   `isolated-first-v1`), complete licences/attribution, `data_commercial_use` is
   false because Akochan contributes;
-- clean audit, 41/41 hosting checks, 71/71 ch8-pack checks, the loader smoke
-  and the frontend suite pass.
+- clean audit, 41/41 hosting checks, 23/23 ch8-pack checks
+  (`--allow-no-variants`), the loader smoke and the frontend suite pass.
 
 Q2 also implemented the missing `extract` stage and the selection lesson scope
 (`--section`, `--lesson`, `--corpus-family`, `--corpus-cap`,

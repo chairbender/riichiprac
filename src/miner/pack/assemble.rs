@@ -132,6 +132,14 @@ pub struct AssemblyLimits {
     /// remaining pack order. `None` keeps every variant the per-base cap allows.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_variants: Option<usize>,
+    /// Drop every variant and ship the reviewed bases only. A product decision
+    /// for a pack that gets its variety from real scenarios instead.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub variants_disabled: bool,
+}
+
+const fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 impl Default for AssemblyLimits {
@@ -141,6 +149,7 @@ impl Default for AssemblyLimits {
             max_pack_share: DEFAULT_PACK_SHARE,
             family_quotas: BTreeMap::new(),
             max_variants: None,
+            variants_disabled: false,
         }
     }
 }
@@ -1547,7 +1556,22 @@ fn apply_dedupe_and_caps(
         }
     }
 
-    // 4. Optional global variant ceiling. Keep evenly spaced variants across
+    // 4. Variants can be disabled entirely: the pack then ships only the
+    // reviewed bases. This is a product decision, not a cap.
+    if options.limits.variants_disabled {
+        for group in groups.iter_mut() {
+            for variant in group.variants.drain(..) {
+                drops.push(AssemblyDrop {
+                    scenario_id: variant.scenario.id.to_string(),
+                    reason: "variants_disabled".to_string(),
+                    detail: "this pack ships its reviewed bases only".to_string(),
+                });
+            }
+        }
+        return;
+    }
+
+    // 5. Optional global variant ceiling. Keep evenly spaced variants across
     // the pack order rather than truncating the tail, so the limit does not
     // silently favour whichever lesson sorts first.
     let Some(limit) = options.limits.max_variants else {
@@ -1843,7 +1867,13 @@ fn build_report(
             "family quotas were applied and count base scenarios, not variants (§4.6)".to_string(),
         );
     }
-    if let Some(limit) = options.limits.max_variants {
+    if options.limits.variants_disabled {
+        notes.push(
+            "variants are disabled for this pack: it ships the reviewed bases only, and its \
+             variety comes from real scenarios"
+                .to_string(),
+        );
+    } else if let Some(limit) = options.limits.max_variants {
         notes.push(format!(
             "the pack keeps at most {limit} variant(s), spread evenly across the base order; \
              a variant beyond the ceiling is reported as `variant_limit`"

@@ -3,444 +3,66 @@
   "version": 1,
   "pack_id": "replay.ch8-defense.2026-11",
   "generated_at": "2026-11-18T00:00:00Z",
-  "rows_read": 200,
+  "rows_read": 100,
   "bases": 100,
-  "variants": 25,
-  "scenarios": 125,
+  "variants": 0,
+  "scenarios": 100,
   "families": [
     {
       "family": "book",
       "bases": 41,
-      "variants": 11,
-      "scenarios": 52
+      "variants": 0,
+      "scenarios": 41
     },
     {
       "family": "coverage",
       "bases": 20,
-      "variants": 5,
-      "scenarios": 25
+      "variants": 0,
+      "scenarios": 20
     },
     {
       "family": "close_call",
       "bases": 13,
-      "variants": 3,
-      "scenarios": 16
+      "variants": 0,
+      "scenarios": 13
     },
     {
       "family": "table_read",
       "bases": 11,
-      "variants": 3,
-      "scenarios": 14
+      "variants": 0,
+      "scenarios": 11
     },
     {
       "family": "mistake",
       "bases": 10,
-      "variants": 2,
-      "scenarios": 12
+      "variants": 0,
+      "scenarios": 10
     },
     {
       "family": "placement",
       "bases": 5,
-      "variants": 1,
-      "scenarios": 6
+      "variants": 0,
+      "scenarios": 5
     }
   ],
-  "dropped": [
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-002-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-003-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-004-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-006-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-007-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-008-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-010-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-011-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-012-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-014-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-015-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-016-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-018-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-019-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-020-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-022-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-023-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-024-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-026-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-027-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-028-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-030-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-032-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-033-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-035-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-036-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-037-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-039-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-041-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-042-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-045-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-046-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-047-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-049-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-050-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-051-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-053-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-055-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-056-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-058-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-059-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-060-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-062-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-063-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-065-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-068-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-069-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-070-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-072-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-073-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-074-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-076-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-077-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-078-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-080-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-081-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-082-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-085-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-086-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-087-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-090-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-091-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-092-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-094-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-095-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-096-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-098-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-099-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-100-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-102-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-103-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-104-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-106-v02",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-107-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    },
-    {
-      "scenario_id": "replay.ch8-defense.2026-11-110-v03",
-      "reason": "variant_limit",
-      "detail": "the pack keeps 25 of 100 variant(s)"
-    }
-  ],
-  "drop_counts": {
-    "variant_limit": 75
-  },
-  "variant_share": 0.2,
+  "dropped": [],
+  "drop_counts": {},
+  "variant_share": 0.0,
   "largest_base": {
     "base": "replay.ch8-defense.2026-11-001",
-    "scenarios": 2,
-    "share": 0.016
+    "scenarios": 1,
+    "share": 0.01
   },
   "limits": {
     "max_per_base": 8,
     "max_pack_share": 0.2,
-    "max_variants": 25
+    "variants_disabled": true
   },
-  "bytes": 133734,
+  "bytes": 105032,
   "max_bytes": 50000000,
   "max_scenarios": 2000,
-  "sha256": "f7d5db4ff8746f3a668a52c9cb92ceccf5a1ae93b327d0523b661c15f525875d",
-  "export_path": "packs/replay.ch8-defense.2026-11-f7d5db4ff874.json.gz",
+  "sha256": "481b548929f96de25d2991f9277791be127397411762943aa52a697a767474d0",
+  "export_path": "packs/replay.ch8-defense.2026-11-481b548929f9.json.gz",
   "manifest_path": "packs/manifest.json",
   "licence": "CC-BY-4.0",
   "data_commercial_use": false,
@@ -461,6 +83,6 @@
   "notes": [
     "generated_at is the latest selected row's timestamp, so re-assembling the same rows hashes identically",
     "a base state comes from the walked decision row; a variant re-applies its recorded chain to that state and the lesson classifier must re-derive the stored answer",
-    "the pack keeps at most 25 variant(s), spread evenly across the base order; a variant beyond the ceiling is reported as `variant_limit`"
+    "variants are disabled for this pack: it ships the reviewed bases only, and its variety comes from real scenarios"
   ]
 }

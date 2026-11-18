@@ -3,17 +3,18 @@
 Implementation unit Q2 (`replay-implementation-plan.md` §5.3, phase 8). This is
 the first curated pack: **100 reviewed ch. 8 defense bases** from the C8 smoke
 corpus, labelled with `mortal_298k`, selected with a lesson scope and a
-per-corpus-family mix, expanded into label-preserving variants, audited and
-published to the same-origin Pages directory.
+per-corpus-family mix, audited and published to the same-origin Pages
+directory. **Variants are disabled for this pack by product decision**; the
+variety comes from 100 real reviewed positions, not relabelled copies.
 
 The shipped artifact is `frontend/public/scenarios/`. The raw corpus, SQLite
 database and review queue stay outside git under
 `$RIICHI_DATA_DIR/q2-ch8-defense-2026-11/`; the machine-readable evidence is
 committed under [`testdata/reports/q2/`](../testdata/reports/q2/).
 
-**Pack:** `replay.ch8-defense.2026-11`, 125 scenarios (100 reviewed bases + 25
-label-preserving variants), 133,734 bytes, 6 ch. 8 lessons across ch8.1/ch8.2/
-ch8.3, four agents, non-commercial data flag. Largest base share 1.6 %.
+**Pack:** `replay.ch8-defense.2026-11`, 100 reviewed base scenarios, no
+variants, 105,032 bytes, 6 ch. 8 lessons across ch8.1/ch8.2/ch8.3, four agents,
+non-commercial data flag. Largest base share 1 %.
 
 ## Pipeline
 
@@ -49,26 +50,17 @@ $BIN --data-dir "$RIICHI_DATA_DIR" review --pack replay.ch8-defense.2026-11 \
 $BIN --data-dir "$RIICHI_DATA_DIR" review --pack replay.ch8-defense.2026-11 \
   --reject <10 ids> --note "q2 curation: valid ch8.2 safety-chart candidate, rejected as redundant section crowding to keep the reviewed pack at 100"
 
-# 5. Expand label-preserving variants. Seat/wind relabels are disabled (they
-#    leave the actor's hand unchanged); the policy also forces a rank/suit mix.
-$BIN --data-dir "$RIICHI_DATA_DIR" transform \
-  --queue "$RIICHI_DATA_DIR/reviews/replay.ch8-defense.2026-11/review-queue.jsonl" \
-  --pack-id replay.ch8-defense.2026-11 \
-  --variants 5 --max-per-base 1 --share 0.01 --pack-size 100 --min-yield 0 \
-  --yield-policy testdata/reports/q2/yield-policy.json \
-  --seed q2-ch8-2026-11c --json > testdata/reports/q2/variant-report.json
-
-# 6. Assemble, audit and publish through the same-origin manifest.
+# 5. Assemble the reviewed bases only (variants are disabled), audit, publish.
 $BIN --data-dir "$RIICHI_DATA_DIR" pack assemble \
   --pack replay.ch8-defense.2026-11 \
   --queue "$RIICHI_DATA_DIR/reviews/replay.ch8-defense.2026-11/review-queue.jsonl" \
-  --max-variants 25 --licence CC-BY-4.0 --attribution "<all four agents>" \
+  --no-variants --licence CC-BY-4.0 --attribution "<all four agents>" \
   --generated-at 2026-11-18T00:00:00Z --json > testdata/reports/q2/assembly-report.json
 $BIN --data-dir "$RIICHI_DATA_DIR" audit --json > testdata/reports/q2/audit-report.json
 $BIN --data-dir "$RIICHI_DATA_DIR" pack publish \
   --packs replay.ch8-defense.2026-11 --updated-at 2026-11-18T00:00:00Z
 node scripts/check-pack-hosting.mjs
-node scripts/check-ch8-pack.mjs
+node scripts/check-ch8-pack.mjs --allow-no-variants
 node scripts/check-pack-serving.mjs
 ```
 
@@ -174,71 +166,79 @@ The 10 held-out QA items are not part of the pack and are not dispositioned.
 The human content review is Q2r (a separate task); this unit supplies the 100
 reviewed, mechanically clean candidates and the evidence.
 
-## Variants and pack
+## Variants disabled, and the pack
 
-Machine-readable reports: [`variant-report.json`](../testdata/reports/q2/variant-report.json)
-and [`assembly-report.json`](../testdata/reports/q2/assembly-report.json).
+Machine-readable reports: [`assembly-report.json`](../testdata/reports/q2/assembly-report.json)
+and the measured-but-disabled [`variant-report-disabled.json`](../testdata/reports/q2/variant-report-disabled.json).
 
-The transform stage attempted five families per base (1,028 attempts), preserved
-542 chains, and shipped one per base (per-base cap 1). It withdrew 233 preserved
-chains from reviewer-disabled pairs, dropped 151 by the per-base cap, and
-rejected 58 duplicate states, 412 unreachable transformed states, 46 transform
-rejections, 12 missing lessons, 8 no-ops, 7 changed answers and 1 changed answer
-set. All 100 shipped variants passed the label-preservation gate as `book`
-labels. The reviewer yield policy disables `seat_perm` and `wind_relabel` (they
-leave the actor's hand, river and answer unchanged, so a solo drill cannot tell
-the variant from its base) and disables `suit_perm` for four lessons so the
-shipped set is a rank/suit mix.
+Variants are **not shipped**. The transform stage was built, measured (1,028
+attempts, 542 preserved chains) and then switched off by product decision after
+the first review:
 
-Assembly keeps **25** of the 100 preserved variants (`--max-variants 25`,
-evenly spaced across the base order) and reports the other 75 as
-`variant_limit`. Shipped families are `rank_mirror` (13) and `suit_perm` (12);
-**no variant repeats its base's actor hand**, and the 125 scenarios have 125
-distinct hand strings. The body orders **all 100 bases first, then the 25
-variants**, so the session picker sees every distinct position before any
-relabelled repeat. A deterministic greedy pass also keeps consecutive bases
-from the same replay apart: the pack has **0 adjacent same-replay bases**, even
-though some games contributed several decisions.
+- 41 of the 100 first-pass variants were seat/wind relabels that left the
+  actor's hand, river and answer identical, so they read as the same scenario;
+- the pack body put each base immediately before its own variant, making
+  base → near-identical variant → base the deal sequence;
+- some games contributed several adjacent-turn bases, which looked similar too.
+
+The replacement for variants is **more real scenarios**. The transform stage
+(`--variants`, `--yield-policy`, `pack assemble --max-variants`) and its
+label-preservation gate stay in the codebase for a future refined design; the
+current pack calls `pack assemble --no-variants`, which drops every variant and
+records the product decision in the report. The measure-then-disable runs are
+kept in `testdata/reports/q2/variant-report-disabled.json`.
+
+The 100 shipped bases come from 47 replays. A deterministic greedy pass keeps
+consecutive bases from the same replay apart: the pack has **0 adjacent
+same-replay bases**, and the 100 scenarios have 100 distinct hand strings. The
+only shared structure is the lesson itself (a ch. 8 defense position), which is
+what the pack is teaching.
 
 | Pack measurement | Value |
 | --- | ---: |
-| Scenarios | 125 |
+| Scenarios | 100 |
 | Reviewed bases | 100 |
-| Variants | 25 (20.0 %) |
+| Variants | 0 (disabled) |
 | Distinct lessons | 6 |
 | Book sections | ch8.1, ch8.2, ch8.3 |
-| Body bytes | 133,734 |
+| Body bytes | 105,032 |
 | Manifest bytes | 763 |
-| Largest base | 2 scenarios (1.6 %) |
-| Variant families | `rank_mirror` 13, `suit_perm` 12 |
-| Variants with the base's actor hand | 0 |
+| Distinct replay ids | 47 |
+| Adjacent same-replay bases | 0 |
 | Agents | Akochan, Mortal 298k, `efficiency-safety-v1`, `isolated-first-v1` |
 | Licence | CC-BY-4.0 (data) |
 | `data_commercial_use` | false (Akochan) |
 | `requires_model` | false (all book answers) |
 | Audit | clean, 0 findings |
-| Pack SHA-256 | `f7d5db4ff8746f3a668a52c9cb92ceccf5a1ae93b327d0523b661c15f525875d` |
+| Pack SHA-256 | `481b548929f96de25d2991f9277791be127397411762943aa52a697a767474d0` |
 
-The pack body is 134 KB, far below the 50 MB pack ceiling. `pack publish`
-pruned the earlier fixture/200-scenario bodies and installed this pack plus its
+The pack body is 105 KB, far below the 50 MB pack ceiling. `pack publish`
+pruned every earlier fixture/variant body and installed this pack plus its
 763-byte manifest as the only same-origin pack.
+
+**Delivery note.** `replay-implementation-plan.md` §9 asks for at least 20 % of
+a pack to be variants. The product owner replaced that requirement for this
+pack with "create variety through actual scenarios, not generated variants".
+The scale-up plan below therefore adds real reviewed bases rather than
+variants; a future variant design has to prove that it changes the decision,
+not just the labels.
 
 ## Measurements
 
 | Measurement | Result |
 | --- | --- |
-| Pack body | 133,734 bytes (125 scenarios, ~1,070 B/scenario) |
+| Pack body | 105,032 bytes (100 scenarios, ~1,050 B/scenario) |
 | Manifest | 763 bytes; the only file fetched at startup |
 | Initial load | Unaffected: the loader fetches only `/scenarios/manifest.json` at startup; the body is fetched when a pack lesson is picked (asserted by the App pack test) |
 | Lazy body fetch | Exactly one content-addressed body request for the first pack lesson; no `.json.gz` request while the picker is open |
 | Cache | `Q1_PACK_DIR=frontend/public/scenarios` loader test passes: second load is served from the in-memory cache with no second fetch |
 | Answer accuracy | 100/100 shipped bases are stable book labels (Mortal top-1 agrees with the book answer); 0 contested shipped. 10/10 held-out QA stable and legal |
 | Audit | 0 findings; every answer recomputed and legal; source/licence/provenance complete |
-| Hosting | 41/41 `check-pack-hosting.mjs` checks; 73/73 `check-ch8-pack.mjs` checks |
+| Hosting | 41/41 `check-pack-hosting.mjs` checks; 23/23 `check-ch8-pack.mjs --allow-no-variants` checks |
 | Serving | 8/8 `check-pack-serving.mjs` checks: `application/gzip`, no `Content-Encoding`, exact bytes/SHA-256. `vite.config.ts` serves the bodies raw in dev/preview; Pages already does |
 | Frontend | 320 tests pass, build/lint pass; Q1 loader smoke passes on the ch8 pack |
 | Too easy / too hard | Not collected yet: no learner traffic. Q2r human review and the in-app feedback path are the next measurement |
-| Snapshot | `snapshots/miner-20261118-142000.sqlite`, 304,394,240 bytes, `PRAGMA integrity_check = ok`, 999 replays / 44,683 decisions / 200 selected rows / 125 packed scenarios; every content-addressed replay path exists |
+| Snapshot | `snapshots/miner-20261118-143000.sqlite`, 304,226,304 bytes, `PRAGMA integrity_check = ok`, 999 replays / 44,683 decisions / 100 selected rows / 100 packed scenarios / 0 variants; every content-addressed replay path exists |
 
 The selector walked all 544 replay files in the five scoped family directories
 even though only 84 had extracted decisions; that is why the selection run took
@@ -252,10 +252,11 @@ further.
 
 Reasons:
 
-- The artifact is small: 125 scenarios cost 134 KB, so 1,000 scenarios are
-  ~1.1 MB, well inside the 4 MB initial-load and 50 MB hosting budgets.
+- The artifact is small: 100 scenarios cost 105 KB, so 1,000 scenarios are
+  ~1.05 MB, well inside the 4 MB initial-load and 50 MB hosting budgets.
 - The corpus is not the limit: 84 games produced 4,077 stable ch. 8 candidates,
-  40 per base slot.
+  40 per base slot, so 500 real bases is a selection/review problem, not a
+  corpus problem.
 - Selection is the limit: walking 544 replays and building 110 review reports
   took ~70 minutes. A 500-base pack needs roughly 4–5× the reports; fix the
   "walk only extracted replays" waste and parallelise report building before

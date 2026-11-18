@@ -52,6 +52,7 @@ function parseArgs(argv) {
     maxBytes: DEFAULT_MAX_BYTES,
     minScenarios: DEFAULT_MIN_SCENARIOS,
     minVariantShare: DEFAULT_MIN_VARIANT_SHARE,
+    allowNoVariants: false,
     json: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -73,11 +74,12 @@ function parseArgs(argv) {
     else if (flag === '--max-bytes') parsed.maxBytes = Number(value());
     else if (flag === '--min-scenarios') parsed.minScenarios = Number(value());
     else if (flag === '--min-variant-share') parsed.minVariantShare = Number(value());
+    else if (flag === '--allow-no-variants') parsed.allowNoVariants = true;
     else if (flag === '--json') parsed.json = true;
     else if (flag === '--help' || flag === '-h') {
       console.log(
         'node scripts/check-ch8-pack.mjs [--dir DIR] [--pack ID] [--max-bytes N] ' +
-          '[--min-scenarios N] [--min-variant-share F] [--json]',
+          '[--min-scenarios N] [--min-variant-share F] [--allow-no-variants] [--json]',
       );
       process.exit(0);
     } else {
@@ -189,15 +191,26 @@ check(
   `every scenario carries a ch8.* book section (${missingBook.length} missing)`,
 );
 const variantShare = scenarios.length === 0 ? 0 : variants / scenarios.length;
-check(
-  variantShare >= args.minVariantShare,
-  `variants are at least ${(args.minVariantShare * 100).toFixed(0)} % of the pack ` +
-    `(${variants}/${scenarios.length} = ${(variantShare * 100).toFixed(1)} %)`,
-);
-check(
-  transformFamilies.size >= 2,
-  `variants come from at least two transform families (${[...transformFamilies].sort().join(', ') || 'none'})`,
-);
+if (variants === 0) {
+  check(
+    args.allowNoVariants,
+    'the pack ships variants (pass --allow-no-variants to ship the reviewed bases only)',
+  );
+  check(
+    args.allowNoVariants,
+    'variants are disabled by product decision; variety comes from real scenarios',
+  );
+} else {
+  check(
+    variantShare >= args.minVariantShare,
+    `variants are at least ${(args.minVariantShare * 100).toFixed(0)} % of the pack ` +
+      `(${variants}/${scenarios.length} = ${(variantShare * 100).toFixed(1)} %)`,
+  );
+  check(
+    transformFamilies.size >= 2,
+    `variants come from at least two transform families (${[...transformFamilies].sort().join(', ') || 'none'})`,
+  );
+}
 check(
   scenarios.every((scenario) => Boolean(scenario.correct_action)),
   'every scenario carries its correct action',

@@ -2335,24 +2335,26 @@ review/sign-off. Q2r in §6 is that review task; it produces no code and is not
 counted as an implementation unit.
 
 > **Status (2026-11-18, Q2 branch).** Shipped `replay.ch8-defense.2026-11`:
-> 100 reviewed ch. 8 defense bases + 25 label-preserving variants (125
-> scenarios, 133,734 body bytes, 763-byte manifest), drawn from the C8 smoke
-> corpus's M3/M4/M5 Akochan families and the M1/M2 Mortal families. The base
-> block precedes the variants, and the `rank_mirror`/`suit_perm` variants never
-> repeat their base's actor hand. The pack covers six ch. 8 lessons across
-> ch8.1/ch8.2/ch8.3, has four agents with complete licences/attribution, is
-> non-commercial because Akochan contributes, and passes the P1a/P1b audit, the
-> P2 hosting check, `scripts/check-ch8-pack.mjs` and
+> **100 reviewed ch. 8 defense bases, no variants** (105,032 body bytes,
+> 763-byte manifest), drawn from the C8 smoke corpus's M3/M4/M5 Akochan families
+> and the M1/M2 Mortal families. Variants were built and measured, then disabled
+> by product decision because the relabelled copies read as the same scenario;
+> the pack ships `pack assemble --no-variants` and gets its variety from real
+> positions (47 replays, 0 adjacent same-replay bases, 100 distinct hands). The
+> pack covers six ch. 8 lessons across ch8.1/ch8.2/ch8.3, has four agents with
+> complete licences/attribution, is non-commercial because Akochan contributes,
+> and passes the P1a/P1b audit, the P2 hosting check,
+> `scripts/check-ch8-pack.mjs --allow-no-variants` and
 > `scripts/check-pack-serving.mjs`. Review: 110 selected bases mechanically
 > checked (110 valid), 100 accepted and 10 redundant ch8.2 candidates rejected;
-> 10 held-out QA items. Measurements: 134 KB body, lazy one-body load, cache hit
+> 10 held-out QA items. Measurements: 105 KB body, lazy one-body load, cache hit
 > on the loader test, 100/100 stable book answers, clean audit, DB snapshot
 > restored with `PRAGMA integrity_check = ok`. Scale-up decision: ship this
-> pack and scale to 500 reviewed bases only after Q2r signs off; fix the
+> pack and add real reviewed bases (500 next) only after Q2r signs off; fix the
 > selector's unnecessary walk of unextracted replays first. Q2 also implemented
 > the missing `extract` command, the selection lesson scope / corpus cap, the
-> pack's bases-first order and its global variant ceiling. Details in
-> [`q2-ch8-defense-pack.md`](q2-ch8-defense-pack.md).
+> pack's bases-first order, the `--no-variants` switch and the global variant
+> ceiling. Details in [`q2-ch8-defense-pack.md`](q2-ch8-defense-pack.md).
 
 ### 5.4 Critical path and parallel tracks
 

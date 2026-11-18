@@ -7,9 +7,9 @@
   "packs": [
     {
       "pack_id": "replay.ch8-defense.2026-11",
-      "scenario_count": 125,
-      "bytes": 133734,
-      "sha256": "f7d5db4ff8746f3a668a52c9cb92ceccf5a1ae93b327d0523b661c15f525875d",
+      "scenario_count": 100,
+      "bytes": 105032,
+      "sha256": "481b548929f96de25d2991f9277791be127397411762943aa52a697a767474d0",
       "findings": []
     }
   ]

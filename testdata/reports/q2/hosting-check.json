@@ -3,13 +3,13 @@
   "dir": "/home/kylehipke/workspaces/riichiprac-261115-234326/frontend/public/scenarios",
   "budgetBytes": 50000000,
   "manifestBytes": 763,
-  "totalBytes": 133734,
+  "totalBytes": 105032,
   "packs": [
     {
       "id": "replay.ch8-defense.2026-11",
-      "bytes": 133734,
-      "scenarios": 125,
-      "sha256": "f7d5db4ff8746f3a668a52c9cb92ceccf5a1ae93b327d0523b661c15f525875d",
+      "bytes": 105032,
+      "scenarios": 100,
+      "sha256": "481b548929f96de25d2991f9277791be127397411762943aa52a697a767474d0",
       "lessonIds": [
         "defense_safety_chart",
         "defense_stuck_heuristic",

@@ -377,6 +377,7 @@ fn enforces_family_quotas_on_the_selection() {
                 max_pack_share: 1.0,
                 family_quotas: BTreeMap::from([("book".to_string(), 1)]),
                 max_variants: None,
+                variants_disabled: false,
             },
             ..options()
         },
@@ -1020,4 +1021,37 @@ fn the_pack_interleaves_bases_from_the_same_replay() {
             "adjacent bases share a replay: {replays:?}"
         );
     }
+}
+
+#[test]
+fn disabling_variants_ships_the_reviewed_bases_only() {
+    let options = AssemblyOptions {
+        limits: AssemblyLimits {
+            max_pack_share: 1.0,
+            variants_disabled: true,
+            ..AssemblyLimits::default()
+        },
+        ..AssemblyOptions::default()
+    };
+    let mut groups = vec![
+        synthetic_group("book", "base-a", "state-a", 2),
+        synthetic_group("book", "base-b", "state-b", 3),
+    ];
+    let mut drops = Vec::new();
+    super::apply_dedupe_and_caps(&mut groups, &options, &mut drops);
+    assert_eq!(
+        groups
+            .iter()
+            .map(|group| group.variants.len())
+            .sum::<usize>(),
+        0
+    );
+    assert!(groups.iter().all(|group| group.base.is_some()));
+    assert_eq!(
+        drops
+            .iter()
+            .filter(|drop| drop.reason == "variants_disabled")
+            .count(),
+        5
+    );
 }
