@@ -122,3 +122,20 @@ node scripts/check-pack-cors.mjs --url <body-url> --sha256 <hash> --bytes <n>
 Neither script produces or edits a pack; `mine_replays pack publish` does that
 from the audited export (`replay-miner-operations.md`).
 
+## Q1 end-to-end acceptance harness
+
+`check-pipeline-e2e.sh` builds the miner, runs `mine_replays qa fixture` twice
+into separate data roots with the same pinned timestamp, requires the same pack
+SHA-256, verifies the staged hosting directory, loads the produced pack through
+the frontend loader (`Q1_PACK_DIR`), and runs the failing-gate matrix. It uses
+only committed fixtures: no GPU, network or Mortal checkpoint.
+
+```bash
+bash scripts/check-pipeline-e2e.sh
+Q1_OUT_DIR=/tmp/q1 Q1_GENERATED_AT=2026-11-17T00:00:00Z \
+  bash scripts/check-pipeline-e2e.sh
+```
+
+Real corpus generation stays offline; this is the fixture acceptance harness,
+not a corpus runner.
+

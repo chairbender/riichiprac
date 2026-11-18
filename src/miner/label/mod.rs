@@ -57,6 +57,7 @@
 pub mod agreement;
 pub mod cache;
 pub mod calibration;
+pub mod fixture;
 pub mod run;
 pub mod thresholds;
 

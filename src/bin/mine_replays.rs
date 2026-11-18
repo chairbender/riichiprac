@@ -4,7 +4,8 @@
 //! `label` on top of the R2 walker and the F1 database, S1 implements `triggers`,
 //! S2 implements `select` and `review`, V2 implements `transform`, and
 //! P1a/P1b/P2 implement `pack fixture`, `pack assemble`, `pack publish`,
-//! `pack report` and `audit`. The remaining commands are still stubs: running
+//! `pack report` and `audit`, and Q1 implements `qa fixture`. The remaining
+//! commands are still stubs: running
 //! one exits with code 2 and writes a "not implemented" line to stderr, so a
 //! script cannot mistake it for a completed run.
 //!
@@ -28,6 +29,7 @@ use clap::{Parser, Subcommand};
 use riichiprac::miner::label::Labeler;
 use riichiprac::miner::label::cache::LabelCache;
 use riichiprac::miner::label::run::{LabelRunOptions, LabelRunReport, run_label};
+use riichiprac::miner::qa::{QA_PACK_ID, QA_SELECTION_PACK_ID, QaOptions, run_fixture_pipeline};
 use riichiprac::miner::variant::{
     DEFAULT_MAX_PER_BASE, DEFAULT_MIN_YIELD, DEFAULT_PACK_SHARE, DEFAULT_TRANSFORM_SEED,
     DEFAULT_VARIANTS_PER_BASE, VariantLabeler, VariantRunOptions, YieldPolicy, run_variants,
@@ -243,6 +245,11 @@ enum Command {
         #[arg(long, value_name = "DIR")]
         out: Option<PathBuf>,
 
+        /// Report/pack timestamp. A fixed value keeps a reproducibility run's
+        /// pack hash stable.
+        #[arg(long, value_name = "ISO")]
+        generated_at: Option<String>,
+
         /// Assemble and publish a pack through the P1a gate.
         #[arg(long)]
         pack: bool,
@@ -254,6 +261,11 @@ enum Command {
         /// Machine-readable report.
         #[arg(long)]
         json: bool,
+    },
+    /// Run the end-to-end acceptance harness on fixture data.
+    Qa {
+        #[command(subcommand)]
+        action: Option<QaAction>,
     },
     /// Assemble, audit and export scenario packs.
     Pack {
@@ -449,6 +461,45 @@ enum PackAction {
 }
 
 #[derive(Debug, Subcommand)]
+enum QaAction {
+    /// Run the whole fixture pipeline once: ingest, label, select, review,
+    /// transform, pack, audit, host and storage check.
+    Fixture {
+        /// Fixture corpus directory (`.jsonl` or `.jsonl.gz`).
+        #[arg(long, value_name = "DIR", default_value = "testdata/replays")]
+        corpus: PathBuf,
+
+        /// Pinned timestamp for the packs, manifest and reports.
+        #[arg(long, value_name = "ISO")]
+        generated_at: Option<String>,
+
+        /// Review-queue size requested from the replay branch.
+        #[arg(long, value_name = "N", default_value_t = riichiprac::miner::qa::QA_PACK_SIZE)]
+        pack_size: usize,
+
+        /// Held-out QA share (0 disables).
+        #[arg(long, value_name = "F32", default_value_t = 0.25)]
+        held_out_share: f32,
+
+        /// Generated book bases in the variant branch.
+        #[arg(long, value_name = "N", default_value_t = riichiprac::miner::qa::QA_REHEARSAL_BASES)]
+        rehearsal: usize,
+
+        /// Variants attempted per generated base.
+        #[arg(long, value_name = "N", default_value_t = 2)]
+        variants: usize,
+
+        /// Same-origin staging directory (default: <data-dir>/hosted).
+        #[arg(long, value_name = "DIR")]
+        host: Option<PathBuf>,
+
+        /// Machine-readable report.
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 enum CorpusAction {
     /// Print one row per corpus family: counts, triggers, labels, shortfalls.
     Report,
@@ -463,6 +514,7 @@ impl Command {
             Self::Label { .. } => "label",
             Self::Triggers { .. } => "triggers",
             Self::Transform { .. } => "transform",
+            Self::Qa { .. } => "qa",
             Self::Pack { .. } => "pack",
             Self::Audit { .. } => "audit",
             Self::Select { .. } => "select",
@@ -577,6 +629,7 @@ fn main() -> ExitCode {
             yield_policy,
             weights,
             out,
+            generated_at,
             pack,
             dry_run,
             json,
@@ -605,12 +658,14 @@ fn main() -> ExitCode {
                 pack_id,
                 config,
                 out,
+                generated_at,
                 publish: pack,
                 persist: rehearsal.is_none(),
                 dry_run,
             };
             run_transform_command(&root, &options, weights, json)
         }
+        Command::Qa { action } => run_qa_command(&root, action),
         Command::Pack { action } => run_pack_command(&root, action),
         Command::Audit {
             manifest,
@@ -674,6 +729,88 @@ fn main() -> ExitCode {
                 root.root().display()
             );
             ExitCode::from(2)
+        }
+    }
+}
+
+fn run_qa_command(root: &DataRoot, action: Option<QaAction>) -> ExitCode {
+    let Some(action) = action else {
+        eprintln!("mine_replays qa: choose `fixture`");
+        return ExitCode::from(2);
+    };
+    match action {
+        QaAction::Fixture {
+            corpus,
+            generated_at,
+            pack_size,
+            held_out_share,
+            rehearsal,
+            variants,
+            host,
+            json,
+        } => {
+            let options = QaOptions {
+                corpus,
+                generated_at: generated_at.unwrap_or_else(|| utc_iso8601(SystemTime::now())),
+                selection_pack_id: QA_SELECTION_PACK_ID.to_string(),
+                pack_id: QA_PACK_ID.to_string(),
+                pack_size,
+                held_out_share,
+                rehearsal_bases: rehearsal,
+                variants_per_base: variants,
+                host_dir: host,
+            };
+            match run_fixture_pipeline(root, &options) {
+                Ok(report) => {
+                    if json {
+                        match serde_json::to_string_pretty(&report) {
+                            Ok(text) => println!("{text}"),
+                            Err(err) => {
+                                eprintln!("mine_replays qa fixture: cannot serialise: {err}");
+                                return ExitCode::from(2);
+                            }
+                        }
+                    } else {
+                        println!(
+                            "mine_replays qa fixture: {} replay(s), {} labels, {} selected, {} held out",
+                            report.corpus.replays,
+                            report.labels.decisions_labelled,
+                            report.selection.selected,
+                            report.selection.held_out
+                        );
+                        println!(
+                            "  pack: {} ({} scenarios, {} bytes, sha256 {})",
+                            report.pack.path,
+                            report.pack.scenarios,
+                            report.pack.bytes,
+                            report.pack.sha256
+                        );
+                        println!(
+                            "  variants: {} shipped / {} attempted from {} base(s)",
+                            report.variants.shipped,
+                            report.variants.attempted,
+                            report.variants.bases
+                        );
+                        println!("  hosted: {}", report.hosting.dir);
+                        println!(
+                            "  snapshot: {} ({})",
+                            report.storage.snapshot, report.storage.integrity
+                        );
+                        for (name, ok) in &report.checks {
+                            println!("  {}: {}", if *ok { "PASS" } else { "FAIL" }, name);
+                        }
+                    }
+                    if report.checks.values().all(|ok| *ok) {
+                        ExitCode::SUCCESS
+                    } else {
+                        ExitCode::from(1)
+                    }
+                }
+                Err(err) => {
+                    eprintln!("mine_replays qa fixture: {err}");
+                    ExitCode::from(1)
+                }
+            }
         }
     }
 }
