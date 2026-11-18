@@ -1,0 +1,152 @@
+import { describe, expect, it } from 'vitest';
+import {
+  CAMERA,
+  HAND,
+  LIGHT,
+  POND,
+  SEATS,
+  TABLE,
+  TILE,
+  TILE_MM,
+  UNIT_MM,
+  WALL,
+} from './layoutConstants';
+
+describe('3D layout constants: tile and table', () => {
+  it('uses the committed 28 x 21 x 16.5 mm tile at 1 unit = 28 mm', () => {
+    expect(TILE_MM).toEqual({ height: 28, width: 21, thickness: 16.5 });
+    expect(UNIT_MM).toBe(28);
+    expect(TILE.heightUnits).toBe(1);
+    expect(TILE.widthUnits).toBeCloseTo(21 / 28, 12);
+    expect(TILE.thicknessUnits).toBeCloseTo(16.5 / 28, 12);
+    expect(TILE.thicknessUnits * UNIT_MM).toBeCloseTo(16.5, 12);
+  });
+
+  it('carries the committed shell bevel and carved face plate', () => {
+    expect(TILE.bevelUnits).toBe(0.055);
+    expect(TILE.facePlateWidthUnits).toBeCloseTo(17.92 / 28, 12);
+    expect(TILE.facePlateHeightUnits).toBeCloseTo(24.92 / 28, 12);
+    expect(TILE.facePlateWidthUnits * UNIT_MM).toBeCloseTo(17.92, 12);
+    expect(TILE.facePlateHeightUnits * UNIT_MM).toBeCloseTo(24.92, 12);
+    expect(TILE.gapUnits * UNIT_MM).toBeCloseTo(0.3, 12);
+    // The plate plus two bevel insets stays inside the 21 mm body.
+    expect(TILE.facePlateWidthUnits + 2 * TILE.bevelUnits).toBeLessThanOrEqual(
+      TILE.widthUnits,
+    );
+  });
+
+  it('draws a 700 mm square mat with a 4-unit compass well', () => {
+    expect(TABLE.matSizeUnits * UNIT_MM).toBeCloseTo(700, 9);
+    expect(TABLE.matSizeUnits).toBe(25);
+    expect(TABLE.compassWellUnits).toBe(4);
+  });
+});
+
+describe('3D layout constants: seats', () => {
+  it('turns the four seats in turn order from the human', () => {
+    expect(SEATS.count).toBe(4);
+    expect(SEATS.relativeRotationDeg).toEqual([0, 90, 180, 270]);
+  });
+});
+
+describe('3D layout constants: wall', () => {
+  it('is four runs of 17 stacks, two tiers, on a radius-7 ring', () => {
+    expect(WALL.runs).toBe(4);
+    expect(WALL.stacksPerRun).toBe(17);
+    expect(WALL.tiers).toBe(2);
+    expect(WALL.radiusUnits).toBe(7);
+    expect(WALL.slotsPerRun).toBe(34);
+  });
+
+  it('spaces stacks by the 21 mm tile plus the 0.3 mm groove', () => {
+    expect(WALL.stackPitchUnits).toBeCloseTo(0.75 + 0.3 / 28, 12);
+    expect(WALL.stackPitchUnits).toBeCloseTo(0.7607142857, 9);
+    expect(WALL.tierStepUnits).toBeCloseTo(16.5 / 28 + 0.3 / 28, 12);
+    expect(WALL.tierStepUnits).toBeCloseTo(0.6, 12);
+    expect(WALL.runSpanUnits).toBeCloseTo(12.932142857, 8);
+  });
+
+  it('omits each run\u2019s draw-end top tile', () => {
+    expect(WALL.drawEndSlot).toBe(16);
+    expect(WALL.drawEndTiers).toBe(1);
+    expect(WALL.tileCount).toBe(132);
+    expect(WALL.tileCount).toBe(
+      WALL.runs * (WALL.stacksPerRun * WALL.tiers - 1),
+    );
+  });
+});
+
+describe('3D layout constants: pond', () => {
+  it('is a 3 x 6 pond plus four overflow anchors', () => {
+    expect(POND.columns).toBe(6);
+    expect(POND.rows).toBe(3);
+    expect(POND.overflowColumns).toBe(4);
+    expect(POND.capacity).toBe(22);
+    expect(POND.rowRadiiUnits).toHaveLength(POND.rows);
+  });
+
+  it('uses the committed row/column pitches and radii', () => {
+    expect(POND.columnPitchUnits).toBeCloseTo(0.757142857, 9);
+    expect(POND.rowPitchUnits).toBeCloseTo(1.010714286, 9);
+    expect(POND.columnCentreOffsetUnits).toBeCloseTo(1.892857142, 8);
+    // Row 0 is nearest the player; the rows advance toward the table centre.
+    expect(POND.rowRadiiUnits).toEqual([4.81, 3.799286, 2.788571]);
+    expect(POND.rowRadiiUnits[0]).toBeGreaterThan(POND.rowRadiiUnits[2]);
+  });
+});
+
+describe('3D layout constants: human hand', () => {
+  it('is 13 concealed tiles plus a separated draw slot', () => {
+    expect(HAND.concealedCount).toBe(13);
+    expect(HAND.pitchUnits).toBeCloseTo(0.7607142857, 9);
+    expect(HAND.drawGapUnits).toBe(0.2625);
+    expect(HAND.drawOffsetUnits).toBeCloseTo(5.576785714, 9);
+    expect(HAND.backRadiusUnits).toBe(10.6);
+  });
+
+  it('uses the signed-off 40\u00b0 recline with a numeric readability gate', () => {
+    expect(HAND.reclineDeg).toBe(40);
+    expect(HAND.reclineBandDeg).toEqual([30, 45]);
+    expect(HAND.reclineDeg).toBeGreaterThanOrEqual(HAND.reclineBandDeg[0]);
+    expect(HAND.reclineDeg).toBeLessThanOrEqual(HAND.reclineBandDeg[1]);
+    expect(HAND.maxFaceToViewDeg).toBe(25);
+  });
+});
+
+describe('3D layout constants: camera rig', () => {
+  it('mirrors the committed v13 whole-table rig', () => {
+    expect(CAMERA.mode).toBe('perspective');
+    expect(CAMERA.lensMm).toBe(75);
+    expect(CAMERA.sensorWidthMm).toBe(36);
+    expect(CAMERA.sensorFit).toBe('horizontal');
+    expect(CAMERA.pitchDeg).toBe(50);
+    expect(CAMERA.distanceUnits).toBe(76);
+    expect(CAMERA.targetUnits).toEqual([0, 0.35, 0]);
+    expect(CAMERA.shiftX).toBe(0);
+    expect(CAMERA.shiftY).toBe(-0.02);
+    expect(CAMERA.clipStartUnits).toBe(1);
+    expect(CAMERA.clipEndUnits).toBe(600);
+  });
+
+  it('has a portrait preset and the seven aspects the framing must hold', () => {
+    expect(CAMERA.portraitPitchDeg).toBe(62);
+    expect(CAMERA.portraitPitchDeg).toBeGreaterThan(CAMERA.pitchDeg);
+    expect(CAMERA.supportedAspects).toHaveLength(7);
+    expect(CAMERA.supportedAspects[0]).toBeCloseTo(21 / 9, 12);
+    expect(CAMERA.supportedAspects[1]).toBeCloseTo(16 / 9, 12);
+    expect(CAMERA.supportedAspects[6]).toBeCloseTo(9 / 16, 12);
+  });
+});
+
+describe('3D layout constants: light', () => {
+  it('keeps the authored top-left key direction as a unit vector', () => {
+    const [x, y, z] = LIGHT.keyDirection;
+    expect(Math.hypot(x, y, z)).toBeCloseTo(1, 6);
+    // Up, to the left and toward the human: highlights land top-left.
+    expect(x).toBeLessThan(0);
+    expect(y).toBeGreaterThan(0);
+    expect(z).toBeGreaterThan(0);
+    expect(LIGHT.azimuthDeg).toBe(315);
+    expect(LIGHT.elevationDeg).toBe(55);
+  });
+});
