@@ -45,7 +45,21 @@
  *    The white/blue split is `bake_shells.py`'s shader gate: everything behind
  *    0.3 x thickness is blue backing, so the side wall shows the 4.95 mm white
  *    band and the 11.55 mm blue band the shipped shells show.
- * 4. **Per-instance state (3D-07).** `vFlags` carries the board's bits:
+ * 4. **The light-space self-shadow (3D-10).** The carve's walls occlude the
+ *    key inside the groove. After the depth march resolves `uv`, a short march
+ *    from that point **toward the key** samples the height field: at step `t`
+ *    the ray's normalized depth is `surfaceDepth - t`, and the sampled point
+ *    occludes it when its surface is higher. The reach is the same arithmetic
+ *    as the parallax offset (the carve depth through the key's angle from the
+ *    plate normal), clamped to `SHADOW_MAX_TEXELS`, so a grazing key cannot
+ *    walk off the cell. The term multiplies the **key** irradiance only: the
+ *    fill and ambient are not shadowed, and the ivory's open face (height 1)
+ *    can never self-shadow its own flat surface because the ray starts at
+ *    depth 0.
+ *    `uShadowStrength`/`uShadowBias`/`uShadowSoftness` are the calibration.
+ *    **0 is a first-class step count** (`compat`, `?debug=shadow-off`): the
+ *    whole block is skipped and the plate shades exactly as 3D-05 shipped it.
+ * 5. **Per-instance state (3D-07).** `vFlags` carries the board's bits:
  *    face-up selects the carved plate above (a face-down tile shows the blue
  *    back and samples nothing from the atlases), then a highlighted discard
  *    takes `uHighlightTint` at `uHighlightStrength` and a dimmed tsumogiri tile
@@ -57,15 +71,19 @@
  * first-class value**: the march is skipped entirely, the base height is used
  * and the plate shades exactly as the un-carved geometry with the normal, AO and
  * paint maps. That is the kill switch the tier map and `?debug=pom-off` use.
+ * `SHADOW_MAX_STEPS` is the same bound for the self-shadow march.
  *
- * The debug modes are evaluated after shading, so the same program serves them
- * (3D-10 extends this set):
+ * The debug modes are evaluated after shading, so the same program serves them,
+ * and every branch assigns only `colour` — nothing upstream of it (the UV, the
+ * normal, the geometry) can change, which is the "flood" property the
+ * source-contract test pins:
  *   0 normal, 1 albedo, 2 height (1 - sampled height), 3 normal (tangent),
- *   4 POM steps taken (heat), 5/6 unused codes.
+ *   4 POM steps taken (heat), 5 flags, 6 self-shadow visibility.
  */
 
 export const TILE_FRAGMENT_SHADER = /* glsl */ `
 #define POM_MAX_STEPS 32
+#define SHADOW_MAX_STEPS 8
 
 uniform sampler2D uAlbedo;
 uniform sampler2D uNormalDepth;
@@ -78,6 +96,14 @@ uniform vec2 uPlateUnits;
 uniform vec2 uCellTexels;
 uniform float uMaxParallaxTexels;
 uniform float uDebug;
+
+// 3D-10: the light-space self-shadow's live step count and calibration.
+uniform float uShadowSteps;
+uniform float uShadowDepthUnits;
+uniform float uShadowMaxTexels;
+uniform float uShadowStrength;
+uniform float uShadowBias;
+uniform float uShadowSoftness;
 
 uniform vec3 uBodyIvory;
 uniform vec3 uBodyBlue;
@@ -200,6 +226,11 @@ void main() {
   vec3 V = normalize(cameraPosition - vWorldPosition);
   // The view ray in the plate's tangent space (x = +U, y = +V, z = out).
   vec3 viewTangent = vec3(dot(V, T), dot(V, B), dot(V, N));
+  // The key, in world and in the plate's tangent frame. The tangent-frame copy
+  // is taken with the **geometric** normal (before the carve perturbs N below),
+  // so a groove wall's slope cannot bend the shadow's march direction.
+  vec3 lightDirection = normalize(uKeyDirection);
+  vec3 lightTangent = vec3(dot(lightDirection, T), dot(lightDirection, B), dot(lightDirection, N));
 
   // The per-instance flag bits from boardMesh.INSTANCE_FLAG (1 face-up,
   // 2 highlighted, 4 dimmed). Decoded as float bits: the values are small
@@ -227,6 +258,9 @@ void main() {
   vec4 baseSample = textureGrad(uNormalDepth, vFaceUv, dUvDx, dUvDy);
   float baseHeight = baseSample.a;
   float stepsTaken = 0.0;
+  // 3D-10: the key's visibility at the resolved carve point. 1 everywhere the
+  // shadow march does not run (the body, a face-down tile, steps 0).
+  float shadowVisibility = 1.0;
 
   if (onPlate) {
     vec2 uv = vFaceUv;
@@ -290,13 +324,46 @@ void main() {
     // is a glossy lacquer that reads bright, not a shadow.
     float lipCavity = pow(aoSample.r, uAoPower);
     cavity = mix(lipCavity, aoSample.r, albedoSample.a * uPaintCavityBlend);
+
+    // (4) The light-space self-shadow. The light's direction in the plate's
+    // tangent frame; its lateral part is what walks the height field. The
+    // reach is the same plate/texel conversion as the parallax offset, so the
+    // two bounds are one arithmetic: depth through the ray's tangent angle.
+    if (uShadowSteps > 0.5) {
+      // Only a light above the plate can be occluded by it. A light behind the
+      // plate contributes nothing to the key anyway (wrapped diffuse clamps).
+      if (lightTangent.z > 0.05) {
+        vec2 shadowRay = vec2(
+          uShadowDepthUnits * lightTangent.x / lightTangent.z / uPlateUnits.x,
+          uShadowDepthUnits * lightTangent.y / lightTangent.z / uPlateUnits.y
+        );
+        float shadowTexels = length(shadowRay * uCellTexels);
+        if (shadowTexels > uShadowMaxTexels) {
+          shadowRay *= uShadowMaxTexels / shadowTexels;
+        }
+        // surfaceDepth is normalized (0 open face, 1 groove floor). Marching
+        // toward the key lowers the ray's depth by one full unit over the
+        // reach, so the comparison is exact depth, not a fudge.
+        float surfaceDepth = 1.0 - normalSample.a;
+        float occlusion = 0.0;
+        for (int step = 1; step <= SHADOW_MAX_STEPS; step++) {
+          if (float(step) > uShadowSteps) break;
+          float t = float(step) / uShadowSteps;
+          float sampleDepth = 1.0 - textureGrad(
+            uNormalDepth, uv + shadowRay * t, dUvDx, dUvDy
+          ).a;
+          float gap = (surfaceDepth - t) - sampleDepth - uShadowBias;
+          occlusion = max(occlusion, clamp(gap / max(uShadowSoftness, 1e-4), 0.0, 1.0));
+        }
+        shadowVisibility = 1.0 - uShadowStrength * occlusion;
+      }
+    }
   }
 
   // Wrapped Lambert diffuse (translucent resin) + one GGX key highlight + a
   // hemisphere fill + a weak ambient, exactly as lighting.ts predicts.
-  vec3 lightDirection = normalize(uKeyDirection);
   float wrapDiffuse = clamp((dot(N, lightDirection) + uWrap) / (1.0 + uWrap), 0.0, 1.0);
-  vec3 keyIrradiance = uKeyColor * uKeyIntensity * wrapDiffuse;
+  vec3 keyIrradiance = uKeyColor * uKeyIntensity * wrapDiffuse * shadowVisibility;
   vec3 fillIrradiance = mix(uFillGround, uFillSky, hemisphereWeight(N)) * uFillIntensity;
   vec3 ambientIrradiance = uAmbientColor * uAmbientIntensity;
   vec3 diffuse = albedo * (keyIrradiance + fillIrradiance + ambientIrradiance) / PI * cavity;
@@ -308,6 +375,11 @@ void main() {
   float plateLike = smoothstep(uPlateLikeEdges.x, uPlateLikeEdges.y, abs(vLocalNormalZ));
   float bodyRoughness = mix(uBodySpecularRoughness, roughness, plateLike);
   float bodyCoat = coat * plateLike;
+  // The self-shadow is a **diffuse** occlusion (above). The key's specular is
+  // deliberate: 3D-05 calibrated the broad lip rim against the approved decals,
+  // and shadowing the lobe would darken the light-facing wall that produces it.
+  // The groove's depth reads in the diffuse, which is where the calibration
+  // numbers in 3D-10 were measured.
   vec3 specular = uKeyColor * uKeyIntensity * keySpecular(N, V, bodyRoughness, bodyCoat);
 
   vec3 colour = diffuse + specular;
@@ -339,6 +411,12 @@ void main() {
       // (glintProbe.ts) uses it to attribute a bright pixel to the surface that
       // drew it instead of guessing from geometry.
       colour = vec3(flagFaceUp, blueBody ? 1.0 : 0.0, vFaceZone);
+    } else if (uDebug < 6.5) {
+      // debug=shadow: R the key's visibility after the self-shadow (1 lit,
+      // 0 occluded), G the shadow term after uShadowStrength (0 unshadowed).
+      // Read against the albedo/height views to see which wall did the
+      // occluding; nothing else in the frame changes.
+      colour = vec3(shadowVisibility, uShadowStrength * (1.0 - shadowVisibility), 0.0);
     }
   }
 

@@ -158,7 +158,11 @@ export type DebugMode =
   | 'steps'
   /** The shader's own branch state per pixel: face-up / blue-body / plate zone. */
   | 'flags'
+  /** The light-space self-shadow's key visibility (3D-10). */
+  | 'shadow'
   | 'pom-off'
+  /** The self-shadow march switched off, for a live A/B against `pom-off`. */
+  | 'shadow-off'
   | 'wireframe'
   /** The 3D-05 hero view: the carved tile in four real board attitudes. */
   | 'hero';
@@ -213,6 +217,8 @@ export interface RendererStats {
   readonly reliefVerification?: 'webcrypto' | 'javascript' | null;
   /** The carved face's live depth-march step count (0 = un-carved path, 3D-05). */
   readonly pomSteps?: number;
+  /** The carved face's live self-shadow march step count (0 = off, 3D-10). */
+  readonly shadowSteps?: number;
   readonly frameMsP50: number;
   readonly frameMsP95: number;
 }
@@ -320,6 +326,53 @@ export interface HeroReport {
 /** One exported hero PNG: a PNG data URL plus the pixels it covers. */
 export interface HeroCapture {
   /** `hero-<slot>-pom-<on|off>.png`. */
+  readonly name: string;
+  readonly pngDataUrl: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** One dose-response reading: a carve offset at a view or light angle. */
+export interface CarveReachNumber {
+  /** `parallax` or `shadow`, plus the slot/zone it came from. */
+  readonly id: string;
+  readonly label: string;
+  readonly angleDeg: number;
+  /** The offset/march reach in atlas texels. */
+  readonly texels: number;
+  /** True when the shader's clamp shortened it. */
+  readonly clamped: boolean;
+}
+
+/**
+ * The carve calibration's numbers (3D-10), as the debug HUD prints them.
+ *
+ * All of it is measured from the live material and the live board: the two
+ * step counts (which are the tier table's values and therefore the acceptance
+ * criterion's numbers), the displacement scale and the two clamped worst cases
+ * that the gates bound — the POM parallax and the self-shadow march reach.
+ */
+export interface CarveReport {
+  readonly tier: QualityTier;
+  readonly debug: DebugMode | null;
+  readonly pomSteps: number;
+  readonly shadowSteps: number;
+  readonly shadowStrength: number;
+  readonly shadowBias: number;
+  readonly shadowSoftness: number;
+  readonly carveDepthMm: number;
+  readonly heightScale: number;
+  readonly maxParallaxTexels: number;
+  readonly shadowMaxTexels: number;
+  /** The largest parallax over the face-up tiles (or hero slots). */
+  readonly parallax: CarveReachNumber;
+  /** The largest self-shadow reach over the same tiles. */
+  readonly shadow: CarveReachNumber;
+}
+
+/** One exported carve-calibration sheet (3D-10): a 2 x 2 state matrix. */
+export interface CarveCapture {
+  /** `carve-<view>-states.png`. */
   readonly name: string;
   readonly pngDataUrl: string;
   readonly width: number;
@@ -508,6 +561,17 @@ export interface TableRenderer {
    * unit's user handoff. Debug-only, so it is optional on the interface.
    */
   heroCaptures?(): readonly HeroCapture[];
+  /**
+   * 3D-10's carve calibration numbers: the live step counts, the calibration
+   * uniforms and the worst parallax/self-shadow reach, or null before a view is
+   * mounted. Debug-only, so it is optional.
+   */
+  carveReport?(): CarveReport | null;
+  /**
+   * 3D-10's handoff export: labelled 4K sheets of the live view with the carve
+   * on/off against the self-shadow on/off, for the user's calibration. Debug-only.
+   */
+  carveCaptures?(): readonly CarveCapture[];
   /**
    * 3D-20's seam probe: the measured numbers of four inter-tile grooves, or
    * null outside the board view. Debug-only, so it is optional.

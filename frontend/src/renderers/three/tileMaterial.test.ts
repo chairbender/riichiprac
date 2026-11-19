@@ -36,6 +36,9 @@ import {
   POM_MAX_STEPS,
   POM_MAX_TEXELS,
   POM_STEPS,
+  SHADOW_CALIBRATION,
+  SHADOW_MAX_STEPS,
+  SHADOW_STEPS,
   TileShaderError,
   cellTexelsForTier,
   createTileMaterial,
@@ -43,6 +46,8 @@ import {
   installShaderErrorTrap,
   parallaxTexels,
   pomStepsFor,
+  shadowReachTexels,
+  shadowStepsFor,
 } from './tileMaterial';
 import type { ShaderErrorTrapRenderer } from './tileMaterial';
 
@@ -126,11 +131,31 @@ describe('POM step tiers and the kill switch', () => {
     expect(POM_MAX_STEPS).toBeGreaterThanOrEqual(POM_STEPS.high);
   });
 
+  it('maps the self-shadow tiers to 4 / 2 / 0 steps (3D-10)', () => {
+    expect(SHADOW_STEPS).toEqual({ high: 4, balanced: 2, compat: 0 });
+    expect(SHADOW_MAX_STEPS).toBeGreaterThanOrEqual(SHADOW_STEPS.high);
+    const define = /#define\s+SHADOW_MAX_STEPS\s+(\d+)/.exec(TILE_FRAGMENT_SHADER);
+    expect(define).not.toBeNull();
+    expect(Number(define?.[1])).toBe(SHADOW_MAX_STEPS);
+  });
+
   it('lets ?debug=pom-off override any tier', () => {
     expect(pomStepsFor('high', 'pom-off')).toBe(0);
     expect(pomStepsFor('compat', null)).toBe(0);
     expect(pomStepsFor('balanced', 'albedo')).toBe(8);
     expect(pomStepsFor('high', 'hero')).toBe(12);
+  });
+
+  it('lets ?debug=shadow-off override the tier, and only the shadow', () => {
+    expect(shadowStepsFor('high', 'shadow-off')).toBe(0);
+    expect(shadowStepsFor('compat', null)).toBe(0);
+    expect(shadowStepsFor('balanced', 'shadow')).toBe(2);
+    expect(shadowStepsFor('high', 'hero')).toBe(4);
+    // The two switches are independent: pom-off keeps the shadow march.
+    expect(pomStepsFor('high', 'pom-off')).toBe(0);
+    expect(shadowStepsFor('high', 'pom-off')).toBe(4);
+    expect(shadowStepsFor('high', 'shadow-off')).toBe(0);
+    expect(pomStepsFor('high', 'shadow-off')).toBe(12);
   });
 
   it('treats steps 0 as a clampable, supported uniform value', () => {
@@ -153,7 +178,17 @@ describe('POM step tiers and the kill switch', () => {
 
     handle.setDebug('pom-off');
     expect(handle.pomSteps()).toBe(0);
+    expect(handle.shadowSteps()).toBe(SHADOW_STEPS.high);
     expect(handle.uniforms.uDebug.value).toBe(DEBUG_MODE_CODE.none);
+
+    handle.setDebug('shadow-off');
+    expect(handle.pomSteps()).toBe(POM_STEPS.high);
+    expect(handle.shadowSteps()).toBe(0);
+    expect(handle.uniforms.uDebug.value).toBe(DEBUG_MODE_CODE.none);
+
+    handle.setDebug('shadow');
+    expect(handle.uniforms.uDebug.value).toBe(DEBUG_MODE_CODE.shadow);
+    expect(handle.shadowSteps()).toBe(SHADOW_STEPS.high);
 
     handle.setDebug('wireframe');
     expect(handle.material.wireframe).toBe(true);
@@ -172,7 +207,40 @@ describe('POM step tiers and the kill switch', () => {
     ]);
     handle.setTier('compat');
     expect(handle.pomSteps()).toBe(0);
+    expect(handle.shadowSteps()).toBe(0);
     expect(handle.uniforms.uCellTexels.value).toEqual([128, 170]);
+
+    handle.setTier('balanced');
+    expect(handle.pomSteps()).toBe(8);
+    expect(handle.shadowSteps()).toBe(2);
+    handle.dispose();
+  });
+
+  it('keeps a debug kill switch in force across a tier change', () => {
+    const handle = material('high');
+    handle.setDebug('pom-off');
+    handle.setTier('balanced');
+    expect(handle.pomSteps()).toBe(0);
+    expect(handle.shadowSteps()).toBe(2);
+
+    handle.setDebug('shadow-off');
+    handle.setTier('high');
+    expect(handle.pomSteps()).toBe(12);
+    expect(handle.shadowSteps()).toBe(0);
+    handle.dispose();
+  });
+
+  it('clamps the self-shadow controls to their supported ranges', () => {
+    const handle = material('high');
+    expect(handle.shadowStrength()).toBe(SHADOW_CALIBRATION.strength);
+    handle.setShadowStrength(2);
+    expect(handle.shadowStrength()).toBe(1);
+    handle.setShadowStrength(-1);
+    expect(handle.shadowStrength()).toBe(0);
+    handle.setShadowSteps(99);
+    expect(handle.shadowSteps()).toBe(SHADOW_MAX_STEPS);
+    handle.setShadowSteps(-1);
+    expect(handle.shadowSteps()).toBe(0);
     handle.dispose();
   });
 
@@ -228,6 +296,27 @@ describe('material uniforms', () => {
     expect(handle.uniforms.uDebug.value).toBe(5);
     handle.setDebug(null);
     expect(handle.uniforms.uDebug.value).toBe(0);
+    handle.dispose();
+  });
+
+  it('carries the self-shadow calibration uniforms (3D-10)', () => {
+    const handle = material();
+    expect(handle.uniforms.uShadowSteps.value).toBe(SHADOW_STEPS.high);
+    expect(handle.uniforms.uShadowDepthUnits.value).toBe(SHADOW_CALIBRATION.depthUnits);
+    expect(handle.uniforms.uShadowMaxTexels.value).toBe(SHADOW_CALIBRATION.maxTexels);
+    expect(handle.uniforms.uShadowStrength.value).toBe(SHADOW_CALIBRATION.strength);
+    expect(handle.uniforms.uShadowBias.value).toBe(SHADOW_CALIBRATION.bias);
+    expect(handle.uniforms.uShadowSoftness.value).toBe(SHADOW_CALIBRATION.softness);
+    // The shadow marches the physical groove, not the POM displacement scale.
+    expect(SHADOW_CALIBRATION.depthUnits).toBe(CARVE_DEPTH_UNITS);
+    expect(SHADOW_CALIBRATION.maxTexels).toBeLessThanOrEqual(POM_MAX_TEXELS);
+    expect(TILE_FRAGMENT_SHADER).toContain('uniform float uShadowSteps;');
+    expect(TILE_FRAGMENT_SHADER).toContain('uniform float uShadowDepthUnits;');
+    expect(TILE_FRAGMENT_SHADER).toContain('uniform float uShadowStrength;');
+    // It multiplies the key only; the fill and ambient are not shadowed.
+    expect(TILE_FRAGMENT_SHADER).toContain(
+      'vec3 keyIrradiance = uKeyColor * uKeyIntensity * wrapDiffuse * shadowVisibility;',
+    );
     handle.dispose();
   });
 
@@ -335,6 +424,43 @@ describe('the parallax bound', () => {
 
   it('reports the committed depth in tile units', () => {
     expect(CARVE_DEPTH_UNITS).toBeCloseTo(0.019642857, 9);
+  });
+});
+
+describe('the self-shadow march bound (3D-10)', () => {
+  it('reaches further at a steeper key angle, from the physical depth', () => {
+    expect(shadowReachTexels(0).texels).toBe(0);
+    const lying = shadowReachTexels(35);
+    const hand = shadowReachTexels(27);
+    expect(lying.texels).toBeGreaterThan(hand.texels);
+    // 0.55 mm through tan(35°) is about 5.4 cell texels on the dense U axis.
+    expect(lying.texels).toBeGreaterThan(4.5);
+    expect(lying.texels).toBeLessThan(SHADOW_CALIBRATION.maxTexels);
+    expect(lying.clamped).toBe(false);
+    // The shadow marches the full physical groove, not the 0.25 POM scale.
+    expect(lying.texels).toBeGreaterThan(parallaxTexels(35).texels * 3);
+  });
+
+  it('never exceeds the 8-texel parallax gate, even at a grazing key', () => {
+    // The 6-texel reach clamp takes over at about 37° (0.55 mm x tan(37°)); the
+    // reading prints the pre-clamp figure and flags it, exactly as the parallax
+    // reading does.
+    for (const angle of [0, 10, 20, 35, 50, 70, 85, 89]) {
+      const reach = shadowReachTexels(angle);
+      expect(Math.min(reach.texels, SHADOW_CALIBRATION.maxTexels), `angle ${angle}`).toBeLessThanOrEqual(
+        POM_MAX_TEXELS,
+      );
+      expect(reach.clamped, `angle ${angle}`).toBe(angle > 40);
+    }
+    expect(shadowReachTexels(89).texels).toBeGreaterThan(SHADOW_CALIBRATION.maxTexels);
+  });
+
+  it('halves on the compat atlas upload', () => {
+    const high = shadowReachTexels(35);
+    const compat = shadowReachTexels(35, {
+      cellTexels: [RELIEF_RASTER.cellWidth / 2, RELIEF_RASTER.cellHeight / 2],
+    });
+    expect(compat.texels).toBeCloseTo(high.texels / 2, 6);
   });
 });
 

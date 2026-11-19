@@ -16,7 +16,8 @@
  *   dpr       device pixel ratio handed to `setSize` (default 1)
  *   tier      quality tier (default `high`)
  *   aa        1/0 forces MSAA on/off; absent follows `antiAliasFor(tier)`
- *   debug     a debug view (`albedo`, `height`, `normal`, `steps`, `pom-off`)
+ *   debug     a debug view (`albedo`, `height`, `normal`, `steps`, `shadow`,
+ *             `pom-off`, `shadow-off`, …)
  *   png       1 also returns the frame as a PNG data URL
  *
  * The PNG is taken in the same task as `seamReport()`'s draw, because the

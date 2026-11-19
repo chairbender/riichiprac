@@ -22,7 +22,7 @@
  *
  * `?renderer=3d&debug=hero` still mounts 3D-05's four hero tiles instead of the
  * board (see `hero.ts`); every other debug mode draws the board, so 3D-10's
- * albedo/height/normal/steps views are the real table.
+ * albedo/height/normal/steps/flags/shadow views are the real table.
  *
  * Camera. There is one framing source: 3D-06's `boardLayout.frameForAspect`,
  * solved against the real layout at the current aspect (§2.4). `cameraRig.ts` is
@@ -31,9 +31,12 @@
  *
  * Debug reporting. `heroReport()` re-draws, reads the five probe blocks back with
  * `readPixels` and prints them as numbers; `heroCaptures()` renders the same
- * view with the depth march on and off and returns one PNG per slot. Neither
- * inspects an image or decides whether the tile "looks right" — AGENTS.md §6
- * hands that to the user at `?renderer=3d&debug=hero`.
+ * view with the depth march on and off and returns one PNG per slot. 3D-10 adds
+ * `carveReport()` — the live step counts, the calibration uniforms and the two
+ * clamped worst reaches over the face-up tiles — and `carveCaptures()`, the 4K
+ * 2 x 2 state sheets (depth 0 vs the tier's count, self-shadow off vs its
+ * count). None of them inspects an image or decides whether the tile "looks
+ * right" — AGENTS.md §6 hands that to the user at `?renderer=3d&debug=…`.
  */
 
 import {
@@ -53,6 +56,8 @@ import {
 import type { Object3D } from 'three';
 import { effectiveDevicePixelRatio } from '../capabilities';
 import type {
+  CarveCapture,
+  CarveReport,
   CompassRect,
   DebugMode,
   GlintReport,
@@ -70,7 +75,7 @@ import type {
 } from '../contract';
 import { BOARD_FAILED_EVENT, BOARD_READY_EVENT, HERO_FAILED_EVENT, HERO_READY_EVENT } from '../contract';
 import { CAMERA, LIGHT } from '../layoutConstants';
-import { frameForAspect, layoutBoard } from './boardLayout';
+import { frameForAspect, layoutBoard, poseAxes } from './boardLayout';
 import type { BoardLayout, CameraFrame } from './boardLayout';
 import {
   buildBoardInstances,
@@ -79,11 +84,13 @@ import {
 } from './boardMesh';
 import type { BoardInstance, BoardMeshHandle } from './boardMesh';
 import { applyFrameToCamera, frameVerticalFieldOfViewDeg } from './cameraRig';
+import { carveBounds } from './carveReport';
+import type { CarveSurface } from './carveReport';
 import { createCompassPlate } from './compassPlate';
 import type { CompassPlate } from './compassPlate';
 import { createFelt, feltSizeForFrame } from './felt';
 import type { FeltSurface } from './felt';
-import { heroInstances, heroParallaxAt, probeWorldPoint } from './hero';
+import { HERO_SLOTS, heroInstances, heroParallaxAt, heroVisibleNormal, probeWorldPoint } from './hero';
 import type { HeroInstance, HeroSlot } from './hero';
 import { withHoverLift } from './hover';
 import { compassPlateRect, hitRects as projectHitRects } from './hitTest';
@@ -107,6 +114,8 @@ import {
   POM_HEIGHT_SCALE_SWEEP,
   POM_MAX_TEXELS,
   POM_STEPS,
+  SHADOW_CALIBRATION,
+  SHADOW_STEPS,
   createTileMaterial,
   installShaderErrorTrap,
 } from './tileMaterial';
@@ -171,6 +180,12 @@ const HERO_CAPTURE_FILL = 0.72;
 
 /** The framed extent around a tile in the macro capture, in world units. */
 const HERO_CAPTURE_FRAME_UNITS = 1.15;
+
+/** One panel of a 3D-10 carve state matrix: half of 4K on each axis. */
+const CARVE_CAPTURE_PANEL = { width: 1920, height: 1080 } as const;
+
+/** The framed extent of a pond-row or wall capture, in world units. */
+const CARVE_REGION_FRAME_UNITS = 2.6;
 
 /**
  * The default debug-off scene's draw-call plan (3D-07, §2.8; 3D-09 adds the
@@ -440,6 +455,7 @@ export class TableScene implements TableRenderer {
       relief: view?.assets.status,
       reliefVerification: view?.assets.verification ?? null,
       pomSteps: view?.material.pomSteps(),
+      shadowSteps: view?.material.shadowSteps(),
       frameMsP50: 0,
       frameMsP95: 0,
     };
@@ -658,28 +674,231 @@ export class TableScene implements TableRenderer {
   }
 
   /**
-   * Point the camera down the slot's own incidence ray at macro distance. The
-   * direction from the tile to the committed eye is kept exactly, so the plate's
-   * angle to the view (and therefore the parallax) is the board's.
+   * The carve calibration's numbers (3D-10), for the debug HUD.
+   *
+   * Every field is read from the live material or measured over the face-up
+   * tiles: the two step counts (the tier table's values, which is the
+   * acceptance criterion), the calibration uniforms, and the two clamped worst
+   * cases. Null before a view is mounted.
    */
-  private applyHeroCaptureCamera(slot: HeroSlot): void {
-    // The committed eye, not the camera's current (macro) position: every slot
-    // and both POM states must use the board's own incidence ray.
+  carveReport(): CarveReport | null {
+    const view = this.board ?? this.hero;
+    if (!view || this.disposed) return null;
+    const material = view.material;
+    const surfaces = this.carveSurfaces();
+    const bounds = carveBounds(surfaces, this.frame.eye);
+    return {
+      tier: this.tier,
+      debug: this.debugMode,
+      pomSteps: material.pomSteps(),
+      shadowSteps: material.shadowSteps(),
+      shadowStrength: material.shadowStrength(),
+      shadowBias: SHADOW_CALIBRATION.bias,
+      shadowSoftness: SHADOW_CALIBRATION.softness,
+      carveDepthMm: CARVE_DEPTH_MM,
+      heightScale: material.heightScale(),
+      maxParallaxTexels: POM_MAX_TEXELS,
+      shadowMaxTexels: SHADOW_CALIBRATION.maxTexels,
+      parallax: bounds.parallax,
+      shadow: bounds.shadow,
+    };
+  }
+
+  /**
+   * 3D-10's handoff sheets: each of the named views drawn at 4K as a 2 × 2
+   * state matrix — depth steps 0 vs the tier's count, and the self-shadow off
+   * vs its count. Nothing here is judged; the user compares the four panels.
+   *
+   * The board gets a full-board sheet, plus a pond-row and a full-wall macro
+   * shot on the same incidence ray as the board (the two places the plan's
+   * question is about: ink behind a lit near wall, and small glyphs at
+   * distance). The hero view gets one sheet of its four tiles.
+   */
+  carveCaptures(): readonly CarveCapture[] {
+    const view = this.board ?? this.hero;
+    if (!view || this.disposed) return [];
+    const material = view.material;
+    const targets = this.carveCaptureTargets();
+    if (targets.length === 0) return [];
+
+    const live = {
+      pomSteps: material.pomSteps(),
+      shadowSteps: material.shadowSteps(),
+      heightScale: material.heightScale(),
+    };
+    const cssSize = this.renderer.getSize(new Vector2());
+    const liveRatio = this.renderer.getPixelRatio();
+    const aspect = CARVE_CAPTURE_PANEL.width / CARVE_CAPTURE_PANEL.height;
+    const depthSteps = POM_STEPS[this.tier] || POM_STEPS.high;
+    const shadowSteps = SHADOW_STEPS[this.tier] || SHADOW_STEPS.high;
+    const states = [
+      { pomSteps: 0, shadowSteps: 0, caption: 'depth 0 · self-shadow off' },
+      { pomSteps: depthSteps, shadowSteps: 0, caption: `depth ${depthSteps} · self-shadow off` },
+      { pomSteps: 0, shadowSteps, caption: `depth 0 · self-shadow ${shadowSteps}` },
+      {
+        pomSteps: depthSteps,
+        shadowSteps,
+        caption: `depth ${depthSteps} · self-shadow ${shadowSteps}`,
+      },
+    ];
+
+    const captures: CarveCapture[] = [];
+    // The sheets are lit comparisons: a false-colour debug mode would replace
+    // the carve with its own channels, so the export shades normally and
+    // restores the live mode afterwards.
+    material.setDebug(null);
+    this.renderer.setPixelRatio(1);
+    this.renderer.setSize(CARVE_CAPTURE_PANEL.width, CARVE_CAPTURE_PANEL.height, false);
+    try {
+      for (const target of targets) {
+        if (target.centre) {
+          this.applyMacroCamera(target.centre, target.frameUnits, aspect);
+        } else {
+          applyFrameToCamera(this.camera, frameForAspect(aspect));
+        }
+        const panels: ImageData[] = [];
+        for (const state of states) {
+          material.setPomSteps(state.pomSteps);
+          material.setShadowSteps(state.shadowSteps);
+          this.draw();
+          const image = this.readImageBlock({
+            x: 0,
+            y: 0,
+            width: CARVE_CAPTURE_PANEL.width,
+            height: CARVE_CAPTURE_PANEL.height,
+          });
+          if (!image) break;
+          panels.push(image);
+        }
+        if (panels.length !== states.length) continue;
+        const png = composeStateMatrix(
+          target.label,
+          panels,
+          states.map((state) => state.caption),
+        );
+        if (!png) continue;
+        captures.push({
+          name: `carve-${target.id}-states.png`,
+          pngDataUrl: png.dataUrl,
+          width: png.width,
+          height: png.height,
+        });
+      }
+    } finally {
+      material.setPomSteps(live.pomSteps);
+      material.setShadowSteps(live.shadowSteps);
+      material.setHeightScale(live.heightScale);
+      material.setDebug(this.debugMode);
+      this.renderer.setPixelRatio(liveRatio);
+      this.renderer.setSize(cssSize.x, cssSize.y, false);
+      applyFrameToCamera(this.camera, this.frame);
+      this.draw();
+    }
+    return captures;
+  }
+
+  /** The faces the carve bounds are measured over, and the eye they are seen from. */
+  private carveSurfaces(): readonly CarveSurface[] {
+    if (this.hero) {
+      return HERO_SLOTS.filter((slot) => slot.faceUp).map(
+        (slot): CarveSurface => ({
+          id: `hero:${slot.id}`,
+          label: slot.label,
+          normal: heroVisibleNormal(slot),
+          centre: slot.pose.position,
+        }),
+      );
+    }
+    const tiles = this.layout?.tiles ?? [];
+    return tiles
+      .filter((tile) => tile.faceUp)
+      .map(
+        (tile): CarveSurface => ({
+          id: `board:${tile.id}`,
+          label: `${tile.zone}${tile.seat === null ? '' : ` seat ${tile.seat}`} #${tile.slot}`,
+          normal: poseAxes(tile.pose)[2],
+          centre: tile.pose.position,
+        }),
+      );
+  }
+
+  /**
+   * What {@link carveCaptures} frames: the live view, and (on the board) a pond
+   * row and the far wall, both aimed down the board's own incidence ray.
+   */
+  private carveCaptureTargets(): readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly centre?: readonly [number, number, number];
+    readonly frameUnits: number;
+  }[] {
+    if (this.hero) {
+      return [{ id: 'hero', label: 'hero tiles', frameUnits: CARVE_REGION_FRAME_UNITS }];
+    }
+    const layout = this.layout;
+    if (!layout) return [];
+    const targets: {
+      id: string;
+      label: string;
+      centre?: readonly [number, number, number];
+      frameUnits: number;
+    }[] = [{ id: 'board', label: 'full board', frameUnits: CARVE_REGION_FRAME_UNITS }];
+    const pond = layout.foreground.find(
+      (tile) => tile.zone === 'river' && tile.seat === layout.humanSeat,
+    );
+    if (pond) {
+      targets.push({
+        id: 'pond',
+        label: 'pond row',
+        centre: pond.pose.position,
+        frameUnits: CARVE_REGION_FRAME_UNITS,
+      });
+    }
+    const wall =
+      layout.tiles.find((tile) => tile.zone === 'dora') ?? layout.wall[0];
+    if (wall) {
+      targets.push({
+        id: 'wall',
+        label: 'full wall',
+        centre: wall.pose.position,
+        frameUnits: CARVE_REGION_FRAME_UNITS,
+      });
+    }
+    return targets;
+  }
+
+  /**
+   * Point the camera down the board's own incidence ray at macro distance. The
+   * direction from the target to the committed eye is kept exactly, so the
+   * plate's angle to the view (and therefore the parallax and the shadow's
+   * light geometry) is the board's.
+   */
+  private applyMacroCamera(
+    centrePoint: readonly [number, number, number],
+    frameUnits: number,
+    aspect: number,
+  ): void {
+    // The committed eye, not the camera's current (macro) position: every view
+    // and every state must use the board's own incidence ray.
     const eye = new Vector3(...frameForAspect(this.aspect).eye);
-    const centre = new Vector3(...slot.pose.position);
+    const centre = new Vector3(...centrePoint);
     const direction = eye.sub(centre).normalize();
-    const fovYDeg = frameVerticalFieldOfViewDeg(frameForAspect(1));
+    const fovYDeg = frameVerticalFieldOfViewDeg(frameForAspect(aspect));
     const halfFov = (fovYDeg * Math.PI) / 360;
-    const distance =
-      HERO_CAPTURE_FRAME_UNITS / 2 / (HERO_CAPTURE_FILL * Math.tan(halfFov));
+    const distance = frameUnits / 2 / (HERO_CAPTURE_FILL * Math.tan(halfFov));
     this.camera.fov = fovYDeg;
-    this.camera.aspect = 1;
+    this.camera.aspect = aspect;
     this.camera.near = 0.1;
     this.camera.far = CAMERA.clipEndUnits;
     this.camera.position.copy(centre.clone().addScaledVector(direction, distance));
     this.camera.up.set(0, 1, 0);
     this.camera.lookAt(centre);
     this.camera.updateProjectionMatrix();
+  }
+
+  /** Point the camera down a hero slot's own incidence ray at macro distance. */
+  private applyHeroCaptureCamera(slot: HeroSlot): void {
+    this.applyMacroCamera(slot.pose.position, HERO_CAPTURE_FRAME_UNITS, 1);
   }
 
   /** Cancel the frame, release every registered resource and the renderer. */
@@ -1049,6 +1268,46 @@ function composeDepthSweep(
       index * panelWidth + 12,
       22,
     );
+  });
+  return {
+    dataUrl: canvas.toDataURL('image/png'),
+    width: canvas.width,
+    height: canvas.height,
+  };
+}
+
+/**
+ * Paste a 2 × 2 state matrix into one labelled 4K sheet (3D-10). The labels
+ * state which state each panel is, so the comparison is between named numbers,
+ * never between remembered impressions.
+ */
+function composeStateMatrix(
+  label: string,
+  panels: readonly ImageData[],
+  captions: readonly string[],
+): { readonly dataUrl: string; readonly width: number; readonly height: number } | null {
+  if (typeof document === 'undefined' || panels.length === 0) return null;
+  const panelWidth = panels[0].width;
+  const panelHeight = panels[0].height;
+  const captionHeight = 32;
+  const columns = 2;
+  const rows = Math.ceil(panels.length / columns);
+  const canvas = document.createElement('canvas');
+  canvas.width = panelWidth * columns;
+  canvas.height = (panelHeight + captionHeight) * rows;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+  context.fillStyle = '#0b1116';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.font = '20px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+  panels.forEach((panel, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const x = column * panelWidth;
+    const y = row * (panelHeight + captionHeight);
+    context.putImageData(panel, x, y + captionHeight);
+    context.fillStyle = '#e7ecf3';
+    context.fillText(`${label} · ${captions[index] ?? ''}`, x + 12, y + 22);
   });
   return {
     dataUrl: canvas.toDataURL('image/png'),
