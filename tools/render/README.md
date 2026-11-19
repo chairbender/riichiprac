@@ -584,6 +584,12 @@ stack, and a native-resolution crop of each mask with its alpha profile
 plotted. It also prints, per bucket, how many luma the shadow removes inside its
 own footprint and that it changes nothing outside it.
 
+**Sign-off.** The user reviewed
+`tools/render/build/review/shadows/task4a-contact-sheet.png` (section A body on
+shadow, B the wall-stack band, C the mask gradients) on 2026-11-18 and approved
+the set, including the darker crevice band under each wall stack. The numeric
+gates are `bash tools/render/bake-board-assets.sh --check`: Task 4 reports 1002
+checks, Task 4A reports 575 checks, both 0 failures.
 
 ## Directory layout
 
