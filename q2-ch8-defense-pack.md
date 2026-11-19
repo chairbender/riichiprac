@@ -182,6 +182,12 @@ pack with **1,038 real bases, 0 variants** (six lessons, 1,047,001 bytes); the
 100-base evidence above remains the Q2 acceptance record. Details in
 [`q2-scale-up-1000.md`](q2-scale-up-1000.md).
 
+**2k scale-up (2026-11-19).** The Q2s follow-up replaces the pack with
+**2,211 real bases, 0 variants** (seven lessons, 2,260,809 bytes) after growing
+the corpus and adding the bulk/sampled review flow. The user signed off on the
+251-row sample and the shipped pack. Details in
+[`q2-scale-up-2000.md`](q2-scale-up-2000.md).
+
 ## Variants disabled, and the pack
 
 Machine-readable reports: [`assembly-report.json`](../testdata/reports/q2/assembly-report.json)

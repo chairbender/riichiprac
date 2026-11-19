@@ -174,7 +174,7 @@ cargo run --release --features miner --bin mine_replays -- select \
 
 cargo run --release --features miner --bin mine_replays -- review \
   [--queue FILE | --pack ID] [--held-out] \
-  [--accept ID,...] [--reject ID,...] [--note TEXT] \
+  [--accept ID,...] [--reject ID,...] [--verdicts FILE] [--note TEXT] \
   [--list] [--show QUEUE_ID] [--dry-run] [--json]
 ```
 
@@ -182,7 +182,10 @@ cargo run --release --features miner --bin mine_replays -- review \
 applies the eight gates, ranks the survivors, and writes
 `reviews/<pack-id>/review-queue.jsonl`, `held-out.jsonl`,
 `selection-report.json` and `reviews/LATEST`. `--size` defaults to 100 and
-`--pack-id` defaults to `s2-<UTC stamp>`; `--held-out-share` defaults to 0.10.
+accepts 1–5,000; it is a review-queue size, not a pack body, so a 2.5k queue is
+legitimate while `pack assemble` still owns the final scenario ceiling
+(`--max-scenarios`). `--pack-id` defaults to `s2-<UTC stamp>`;
+`--held-out-share` defaults to 0.10.
 `--dry-run` builds and reports without writing, and exit code 1 means a replay
 failed or a review item could not be built. S2 does not assemble a pack: the
 funnel's `packed` row stays `0`.
@@ -194,7 +197,10 @@ trusts a saved verdict), appends `--accept`/`--reject` verdicts to
 `dispositions.jsonl`, and reports pending/accepted/rejected counts. `--show`
 prints one item's report; `--list` lists every item; `--dry-run` writes no
 dispositions. A queue is never rewritten: the disposition log is append-only and
-the latest verdict per item wins.
+the latest verdict per item wins. `--verdicts FILE` applies a bulk
+`riichiprac.review-verdicts` document in the same run (see "Bulk review and the
+sampled flow (Q2r2)"); per-item `reason` text becomes the disposition note, and
+an unknown id or a repeated id fails the run before anything is written.
 
 ## Parallel execution (Q2p)
 
@@ -1076,6 +1082,34 @@ rationale and the Mortal ranking in the same document the app's importer
 validates. The queue contains the answer and is never published; P1b emits the
 trainee payload from the selected scenarios.
 
+### Bulk review and the sampled flow (Q2r2)
+
+One-at-a-time review does not scale past roughly a thousand candidates. Two
+additions make a ~2,000-candidate queue reviewable:
+
+- **Bulk verdicts.** `scripts/review-q2-queue.py --verdicts-out FILE` applies the
+  mechanical ch. 8 rules to the whole queue and writes one
+  `riichiprac.review-verdicts` v1 document:
+  `{"schema": "riichiprac.review-verdicts", "version": 1, "note": "...",
+  "verdicts": [{"queue_id": "...", "verdict": "accepted"|"rejected",
+  "reason": "..."}]}`. `mine_replays review --verdicts FILE` reads it, checks
+  the schema/version and that no queue id repeats or is missing from the queue,
+  and appends every disposition in one run. The document is append-only in the
+  same way a single verdict is: the latest disposition per item wins, so a
+  later reviewer can override a mechanical rejection.
+- **Sampled review sheet.** `scripts/sample-review-sheet.py` selects a
+  deterministic, stratified sample (seed, per-lesson and per-family guarantees,
+  and every item of a lesson below `--include-all-below`) and prints the
+  answer-bearing fields as a markdown sheet. `--out-json` records the sampled
+  ids and per-lesson/per-family counts, which is what the run report cites as
+  the review evidence.
+
+The mechanical pass is still a gate, not a judgement: it rejects out-of-scope
+sections/lessons, non-book or contested labels, report/lesson mismatches,
+illegal answers, ready hands, duplicate exact/visible states and dirty walks.
+The human sample is the evidence that the remaining positions teach.
+
+
 ### S2 acceptance evidence
 
 - `cargo test --features miner` covers a positive and a near-miss negative for
@@ -1350,7 +1384,7 @@ parse error rather than a gate warning.
 | reachable state | `validate_reachable_state`; the build record says `state_valid`, `answer_recomputed` and `visible_info_only` |
 | no spoiler | title, prompt, pre-answer note, book label, provenance labels and selection tags print no answer or tenpai-wait tile code; a visibly offered call tile is not a wait |
 | variant honesty | a transform chain validates, `provenance.transforms` matches it, and a variant carries `label_check.preserved = true` (V2 emits exactly this record; the audit re-checks it) |
-| budget | encoded gzip body within `max_bytes` (default 50 MB), scenario count within `max_scenarios` (2000), manifest within 512 KiB |
+| budget | encoded gzip body within `max_bytes` (default 50 MB), scenario count within `max_scenarios` (default 5,000; a sanity split bound, not a pack target), manifest within 512 KiB |
 | manifest integrity | entry path is safe and content-addressed, hash/bytes/scenario count match the body, and convenience metadata drift is a strict-mode warning |
 
 A missing corpus row is a hard failure, not a warning, including when the whole
@@ -1890,6 +1924,19 @@ ships **1,038 reviewed bases, 0 variants**, 1,047,001 bytes, six ch. 8 lessons;
 `replay.ch8-defense.2026-11` and passes the same audit/hosting/serving checks.
 Details: [`q2-scale-up-1000.md`](q2-scale-up-1000.md), evidence:
 [`testdata/reports/q2-scale-1k/`](testdata/reports/q2-scale-1k/).
+
+**2k scale-up (2026-11-19).** Two more family runs (500 `mortal_mirror` + 500
+`mortal_sampling_sweep` games) grew the scoped corpus to 1,542 games / 787,052
+decisions / 110,577 book labels (65,744 stable). `select --size 2250
+--max-per-replay 2` returned 2,250 reviewed bases from 53,991 valid candidates
+in 55 minutes on 14 workers; the new Q2r2 flow applied 2,250 mechanical
+dispositions in one `review --verdicts` run and produced a 251-row stratified
+sample. `pack assemble --no-variants --unique-hands --min-bases-per-lesson 4`
+ships **2,211 bases, 0 variants**, 2,260,809 bytes, seven ch. 8 lessons, 1,257
+source replays, 2,211 unique hands and 0 adjacent same-replay bases. Two M2
+replays were `partial` and excluded from the data root (998/1,000 new games
+valid). Details: [`q2-scale-up-2000.md`](q2-scale-up-2000.md), evidence:
+[`testdata/reports/q2-scale-2k/`](testdata/reports/q2-scale-2k/).
 
 ## F1 acceptance evidence
 

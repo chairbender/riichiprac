@@ -57,6 +57,12 @@ pub const DISPOSITION_SCHEMA: &str = "riichiprac.review-disposition";
 /// Version of the disposition schema.
 pub const DISPOSITION_VERSION: u32 = 1;
 
+/// Schema name carried by a bulk verdicts document.
+pub const REVIEW_VERDICTS_SCHEMA: &str = "riichiprac.review-verdicts";
+
+/// Version of the bulk verdicts schema.
+pub const REVIEW_VERDICTS_VERSION: u32 = 1;
+
 /// One queued candidate.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReviewItem {
@@ -258,6 +264,78 @@ impl ReviewDisposition {
         }
         Ok(())
     }
+}
+
+/// One verdict inside a [`ReviewVerdictFile`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReviewVerdict {
+    /// The queue item this verdict applies to.
+    pub queue_id: String,
+    /// Accept or reject.
+    pub verdict: DispositionVerdict,
+    /// Why the verdict was reached (mechanical-review reasons, reviewer note).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+/// A bulk verdicts document for a large review queue (Q2r2).
+///
+/// One-at-a-time review does not scale past roughly a thousand candidates, so a
+/// mechanical pre-review pass writes every verdict into one file and
+/// `mine_replays review --verdicts FILE` applies them in a single run. The
+/// document is deliberately the same shape as the review tooling's
+/// machine-readable output: a reviewer can inspect, sample or edit it before it
+/// becomes the append-only disposition log.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ReviewVerdictFile {
+    /// [`REVIEW_VERDICTS_SCHEMA`].
+    pub schema: String,
+    /// [`REVIEW_VERDICTS_VERSION`].
+    pub version: u32,
+    /// Optional run-wide note applied when a verdict has no reason of its own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    /// One verdict per queue item.
+    pub verdicts: Vec<ReviewVerdict>,
+}
+
+/// Read and validate a bulk verdicts document.
+pub fn read_verdicts(path: &Path) -> Result<ReviewVerdictFile, SelectionError> {
+    let text = std::fs::read_to_string(path).map_err(|source| SelectionError::Io {
+        path: path.display().to_string(),
+        source,
+    })?;
+    let document: ReviewVerdictFile = serde_json::from_str(&text).map_err(|source| {
+        SelectionError::Review(format!(
+            "{}: not a review verdicts document: {source}",
+            path.display()
+        ))
+    })?;
+    if document.schema != REVIEW_VERDICTS_SCHEMA {
+        return Err(SelectionError::Review(format!(
+            "{}: schema `{}` is not `{REVIEW_VERDICTS_SCHEMA}`",
+            path.display(),
+            document.schema
+        )));
+    }
+    if document.version > REVIEW_VERDICTS_VERSION {
+        return Err(SelectionError::Review(format!(
+            "{}: version {} is newer than {REVIEW_VERDICTS_VERSION}",
+            path.display(),
+            document.version
+        )));
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for verdict in &document.verdicts {
+        if !seen.insert(verdict.queue_id.as_str()) {
+            return Err(SelectionError::Review(format!(
+                "{}: `{}` appears more than once",
+                path.display(),
+                verdict.queue_id
+            )));
+        }
+    }
+    Ok(document)
 }
 
 /// A loaded queue.
@@ -503,6 +581,8 @@ pub struct ReviewOptions {
     pub accept: Vec<String>,
     /// Queue ids to reject.
     pub reject: Vec<String>,
+    /// Bulk verdicts document to apply (Q2r2).
+    pub verdicts: Option<PathBuf>,
     /// Note attached to every new disposition in this run.
     pub note: Option<String>,
     /// Do not write the dispositions (a dry run).
@@ -569,6 +649,22 @@ pub fn review_queue(options: &ReviewOptions) -> Result<ReviewReport, SelectionEr
             DispositionVerdict::Rejected,
             options.note.clone(),
         )?);
+    }
+    if let Some(path) = &options.verdicts {
+        let document = read_verdicts(path)?;
+        for verdict in &document.verdicts {
+            let note = verdict
+                .reason
+                .clone()
+                .or_else(|| document.note.clone())
+                .or_else(|| options.note.clone());
+            fresh.push(make_disposition(
+                &known,
+                &verdict.queue_id,
+                verdict.verdict,
+                note,
+            )?);
+        }
     }
     for disposition in &fresh {
         latest.insert(disposition.queue_id.clone(), disposition.clone());
@@ -653,6 +749,103 @@ mod tests {
         let known: BTreeMap<&str, &ReviewItem> = BTreeMap::new();
         let err = make_disposition(&known, "missing", DispositionVerdict::Accepted, None)
             .expect_err("must reject");
+        assert!(format!("{err}").contains("not in this review queue"));
+    }
+
+    #[test]
+    fn a_bulk_verdict_file_applies_every_verdict_in_one_run() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let queue_path = temp.path().join("review-queue.jsonl");
+        let mut first = crate::miner::select::tests::fixture::review_item_fixture();
+        let mut second = first.clone();
+        second.queue_id = "s2-fixture-002".to_string();
+        first.queue_id = "s2-fixture-001".to_string();
+        let lines = format!(
+            "{}\n{}\n",
+            serde_json::to_string(&first).expect("first"),
+            serde_json::to_string(&second).expect("second")
+        );
+        std::fs::write(&queue_path, lines).expect("queue");
+
+        let verdicts_path = temp.path().join("verdicts.json");
+        let document = ReviewVerdictFile {
+            schema: REVIEW_VERDICTS_SCHEMA.to_string(),
+            version: REVIEW_VERDICTS_VERSION,
+            note: Some("mechanical review".to_string()),
+            verdicts: vec![
+                ReviewVerdict {
+                    queue_id: first.queue_id.clone(),
+                    verdict: DispositionVerdict::Accepted,
+                    reason: None,
+                },
+                ReviewVerdict {
+                    queue_id: second.queue_id.clone(),
+                    verdict: DispositionVerdict::Rejected,
+                    reason: Some("duplicate_visible".to_string()),
+                },
+            ],
+        };
+        std::fs::write(
+            &verdicts_path,
+            serde_json::to_string_pretty(&document).expect("json"),
+        )
+        .expect("verdicts");
+
+        let read = read_verdicts(&verdicts_path).expect("verdicts parse");
+        assert_eq!(read.verdicts.len(), 2);
+
+        let report = review_queue(&ReviewOptions {
+            queue: queue_path,
+            accept: Vec::new(),
+            reject: Vec::new(),
+            verdicts: Some(verdicts_path),
+            note: None,
+            dry_run: false,
+        })
+        .expect("bulk review");
+        assert_eq!(report.items, 2);
+        assert_eq!(report.accepted, 1);
+        assert_eq!(report.rejected, 1);
+        assert_eq!(report.pending, 0);
+
+        let dispositions =
+            read_dispositions(&temp.path().join("dispositions.jsonl")).expect("dispositions");
+        assert_eq!(dispositions.len(), 2);
+        assert_eq!(dispositions[0].note.as_deref(), Some("mechanical review"));
+        assert_eq!(dispositions[1].note.as_deref(), Some("duplicate_visible"));
+    }
+
+    #[test]
+    fn a_verdicts_document_rejects_an_unknown_item_and_a_repeat() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let path = temp.path().join("verdicts.json");
+        let write = |verdicts: Vec<ReviewVerdict>| {
+            let document = ReviewVerdictFile {
+                schema: REVIEW_VERDICTS_SCHEMA.to_string(),
+                version: REVIEW_VERDICTS_VERSION,
+                note: None,
+                verdicts,
+            };
+            std::fs::write(&path, serde_json::to_string(&document).expect("json")).expect("write");
+        };
+        write(vec![
+            ReviewVerdict {
+                queue_id: "s2-fixture-001".to_string(),
+                verdict: DispositionVerdict::Accepted,
+                reason: None,
+            },
+            ReviewVerdict {
+                queue_id: "s2-fixture-001".to_string(),
+                verdict: DispositionVerdict::Rejected,
+                reason: None,
+            },
+        ]);
+        let err = read_verdicts(&path).expect_err("a repeat must be rejected");
+        assert!(format!("{err}").contains("more than once"));
+
+        let known: BTreeMap<&str, &ReviewItem> = BTreeMap::new();
+        let err = make_disposition(&known, "missing", DispositionVerdict::Accepted, None)
+            .expect_err("an unknown id must be rejected");
         assert!(format!("{err}").contains("not in this review queue"));
     }
 }

@@ -7,8 +7,14 @@ exits 1 when any candidate must be rejected.
 
 This is not the human review (Q2r). It removes ambiguous, out-of-scope,
 duplicate, spoiling or mechanically broken candidates so the human queue is
-only the 100 positions that can teach.
+only the positions that can teach.
+
+For a large queue (Q2r2), `--verdicts-out FILE` writes one
+`riichiprac.review-verdicts` document that
+`mine_replays review --verdicts FILE` applies in a single run, instead of
+passing thousands of ids on the command line.
 """
+import argparse
 import collections
 import json
 import sys
@@ -26,7 +32,7 @@ CH8_LESSONS = {
 }
 
 
-def main(path):
+def main(path, verdicts_out=None, note=None):
     items = [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
     selected = [item for item in items if not item.get("held_out")]
     held_out = [item for item in items if item.get("held_out")]
@@ -104,11 +110,34 @@ def main(path):
     }
     json.dump(summary, sys.stdout, indent=2)
     sys.stdout.write("\n")
+    if verdicts_out:
+        document = {
+            "schema": "riichiprac.review-verdicts",
+            "version": 1,
+            "note": note or "q2r2 mechanical review: stable ch8 book label, legal answer, unique visible state, clean walk",
+            "verdicts": [
+                {
+                    "queue_id": verdict["queue_id"],
+                    "verdict": "accepted" if verdict["accepted"] else "rejected",
+                    **(
+                        {"reason": ", ".join(verdict["problems"])}
+                        if verdict["problems"]
+                        else {}
+                    ),
+                }
+                for verdict in verdicts
+            ],
+        }
+        with open(verdicts_out, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2, sort_keys=True)
+            handle.write("\n")
     return 0 if summary["rejected"] == 0 else 1
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("usage: review_q2.py <review-queue.jsonl>", file=sys.stderr)
-        sys.exit(2)
-    sys.exit(main(sys.argv[1]))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("queue")
+    parser.add_argument("--verdicts-out", help="write a bulk review-verdicts document")
+    parser.add_argument("--note", default=None, help="run-wide disposition note")
+    args = parser.parse_args()
+    sys.exit(main(args.queue, args.verdicts_out, args.note))

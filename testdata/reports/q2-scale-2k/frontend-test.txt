@@ -1,0 +1,79 @@
+
+> frontend@0.0.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /home/kylehipke/workspaces/riichiprac-261118-202827/frontend
+
+ ✓ src/scenarios.test.ts (35 tests) 20ms
+ ✓ src/renderers/snapshot.test.ts (25 tests) 41ms
+ ✓ src/renderers/three/tileMaterial.test.ts (26 tests) 46ms
+ ✓ src/renderers/three/boardMesh.test.ts (11 tests) 106ms
+ ✓ src/table/zoneLayout.test.ts (41 tests) 220ms
+ ✓ src/renderers/three/tileGeometry.test.ts (18 tests) 297ms
+ ✓ src/renderers/three/shadows.test.ts (16 tests) 226ms
+stdout | src/renderers/three/hero.test.ts > the 8-texel parallax budget at every supported aspect > stays inside the budget at every aspect
+3D-05 hero parallax bound (clamp 8 texels)
+2.333: hand 13.55° → 0.47 texels, pond 37.75° → 1.52 texels, wall 42.87° → 1.82 texels, back 0.00° → 0.00 texels
+1.778: hand 14.71° → 0.52 texels, pond 37.03° → 1.48 texels, wall 43.74° → 1.88 texels, back 0.00° → 0.00 texels
+1.500: hand 15.62° → 0.55 texels, pond 36.47° → 1.45 texels, wall 44.40° → 1.92 texels, back 0.00° → 0.00 texels
+1.333: hand 15.75° → 0.55 texels, pond 36.39° → 1.45 texels, wall 44.49° → 1.93 texels, back 0.00° → 0.00 texels
+1.000: hand 15.75° → 0.55 texels, pond 36.39° → 1.45 texels, wall 44.49° → 1.93 texels, back 0.00° → 0.00 texels
+0.750: hand 28.78° → 1.08 texels, pond 23.76° → 0.86 texels, wall 33.39° → 1.29 texels, back 0.00° → 0.00 texels
+0.563: hand 28.78° → 1.08 texels, pond 23.76° → 0.86 texels, wall 33.39° → 1.29 texels, back 0.00° → 0.00 texels
+
+stdout | src/renderers/three/hero.test.ts > the 8-texel parallax budget at every supported aspect > prints the strict board-wide worst case, the pose the hero set omits
+3D-05 strict board worst (frameForAspect): 1.33 meld-1-2 at 47.96° → 2.18 texels at the live scale (physical 8.71); hero view worst (same frame): 1.93
+
+ ✓ src/renderers/three/hero.test.ts (18 tests) 263ms
+ ✓ src/renderers/layoutConstants.test.ts (21 tests) 32ms
+ ✓ src/scenarioHistory.test.ts (11 tests) 13ms
+ ✓ src/agreement.test.ts (15 tests) 12ms
+ ✓ src/renderers/three/lighting.test.ts (13 tests) 31ms
+ ✓ src/services/mortalClient.test.ts (8 tests) 24ms
+ ✓ src/types/verdict.test.ts (19 tests) 18ms
+ ✓ src/renderers/three/boardLayout.test.ts (35 tests) 1209ms
+   ✓ 3D board layout: camera framing > keeps every tile inside the safe area at every aspect 526ms
+ ✓ src/renderers/three/cameraRig.test.ts (9 tests) 499ms
+ ✓ src/actions.test.ts (10 tests) 14ms
+ ✓ src/renderers/three/probes.test.ts (14 tests) 113ms
+ ✓ src/stateFile.test.ts (7 tests) 19ms
+ ✓ src/renderers/three/sticks.test.ts (4 tests) 104ms
+ ✓ src/services/packLoader.test.ts (72 tests) 1564ms
+   ✓ committed pack > loads, verifies and decodes the real body, then serves it from cache 1328ms
+ ✓ src/renderers/three/felt.test.ts (5 tests) 395ms
+ ✓ src/table/CarvedDecal.test.ts (4 tests) 309ms
+ ✓ src/renderers/three/reliefAssets.test.ts (18 tests) 454ms
+ ✓ src/renderers/moduleBoundary.test.ts (6 tests) 28ms
+ ✓ src/hotseat.test.ts (9 tests) 54ms
+ ✓ src/seatOrder.test.ts (7 tests) 13ms
+ ↓ src/services/packLoader.q1.test.ts (1 test | 1 skipped)
+ ✓ src/callDecision.test.ts (5 tests) 9ms
+ ✓ src/meld.test.ts (8 tests) 21ms
+ ✓ src/store/useSettingsStore.test.ts (5 tests) 209ms
+ ✓ src/renderers/resolveTableMount.test.ts (5 tests) 16ms
+ ✓ src/session.test.ts (6 tests) 18ms
+ ✓ src/renderers/three/drawCalls.test.ts (3 tests) 100ms
+ ✓ src/handHint.test.ts (6 tests) 20ms
+ ✓ src/renderers/contract.test.ts (5 tests) 27ms
+ ✓ src/display.test.ts (4 tests) 12ms
+ ✓ src/table/TileAtlas.test.ts (21 tests) 1089ms
+stdout | src/table/TileAtlas.test.ts > startup tile atlas > reports the atlas budget and never uses WebGL or 3D
+atlas: 18 pages, 684 keys, 7929168 px (31716672 B RGBA, 30.25 MiB), 648 glyph keys, 36 bare keys, build 159 ms
+
+ ✓ src/renderers/three/Scene.test.ts (3 tests) 8ms
+ ✓ src/renderers/capabilities.test.ts (18 tests) 24ms
+ ✓ src/table/contactOverlays.test.ts (14 tests) 3673ms
+   ✓ contact edges > covers every contact in the supported stress matrix 3382ms
+ ✓ src/renderers/RendererHost.test.tsx (13 tests) 268ms
+ ✓ src/components/FullscreenButton.test.tsx (4 tests) 233ms
+ ✓ src/components/ScenarioPicker.test.tsx (12 tests) 711ms
+ ✓ src/App.renderer3d.test.tsx (1 test) 132ms
+ ✓ src/App.pack.test.tsx (1 test) 490ms
+   ✓ App replay-pack loading > starts with the manifest only, then loads one pack body for a replay lesson 489ms
+
+ Test Files  45 passed | 1 skipped (46)
+      Tests  611 passed | 1 skipped (612)
+   Start at  04:30:57
+   Duration  5.63s (transform 3.65s, setup 0ms, collect 15.02s, tests 13.18s, environment 4.36s, prepare 6.46s)
+

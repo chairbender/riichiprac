@@ -146,7 +146,11 @@ pub const DEFAULT_MAX_PACK_BYTES: u64 = 50_000_000;
 pub const DEFAULT_MAX_MANIFEST_BYTES: u64 = 512 * 1024;
 
 /// Default scenario ceiling for one pack.
-pub const DEFAULT_MAX_SCENARIOS: usize = 2_000;
+///
+/// This is a sanity bound, not a curated-pack target: the Q2s ch. 8 pack ships
+/// 2,000+ reviewed bases, and the real size guard is
+/// [`DEFAULT_MAX_PACK_BYTES`]. A pack over this ceiling should be split.
+pub const DEFAULT_MAX_SCENARIOS: usize = 5_000;
 
 /// Fixed gzip level, so the same pack encodes to the same hash everywhere.
 pub(crate) const GZIP_LEVEL: u32 = 6;
