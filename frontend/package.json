@@ -9,17 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "seams:check": "node scripts/check-3d-seams.mjs",
-    "preview": "vite preview",
-    "atlas:review": "vite-node scripts/review-atlas.ts",
-    "atlas:review:carved": "vite-node scripts/review-carved.ts",
-    "layout:review": "vite-node scripts/review-zone-layout.ts",
-    "overlays:export": "vite-node scripts/export-overlays.ts",
-    "overlays:review": "vite-node scripts/review-overlays.ts",
-    "experiment:review": "vite-node scripts/review-contact-shadow-experiment.ts",
-    "lying:samples": "vite-node scripts/export-lying-samples.ts",
-    "lying:review": "vite-node scripts/review-lying-samples.ts",
-    "lying:export": "vite-node scripts/export-lying-catches.ts",
-    "tune:carved": "vite-node scripts/tune-carved.ts"
+    "preview": "vite preview"
   },
   "dependencies": {
     "react": "^18.3.1",

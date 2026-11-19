@@ -19,8 +19,8 @@ interface DecisionPopupProps {
  * through the same store action, so the riichi/dama and push/fold popups can
  * reuse it without a second control.
  *
- * The offline rendered table reuses it with `TableStage` (Task 4); until then
- * the app's two views answer through the action strip, so nothing mounts it.
+ * Nothing mounts it today: the two 2D views answer through the action strip.
+ * It stays as the compact overlay a full-screen table stage can reuse.
  */
 export function DecisionPopup({
   actions,
