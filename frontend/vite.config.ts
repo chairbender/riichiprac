@@ -93,6 +93,30 @@ function basePath(): string {
   return base.endsWith('/') ? base : `${base}/`;
 }
 
+/**
+ * Extra `Host` headers the dev server accepts.
+ *
+ * Vite 5.4.12+ rejects any request whose `Host` is not `localhost`, an IP
+ * literal or a value listed in `server.allowedHosts` — a DNS-rebinding
+ * guard. Reaching the dev server from another device (a phone on the LAN, a
+ * Tailscale peer that uses this machine's name rather than its IP) therefore
+ * fails with "Blocked request" until that name is allowed. Keep the list out of
+ * the repo: set it for one run.
+ *
+ *   VITE_DEV_ALLOWED_HOSTS=cachyos-x8664,box.tail1234.ts.net npm run dev -- --host 100.x.y.z
+ *
+ * Unset means Vite's default (localhost and IP literals only).
+ */
+function devAllowedHosts(): string[] | undefined {
+  const raw = process.env.VITE_DEV_ALLOWED_HOSTS;
+  if (!raw) return undefined;
+  const hosts = raw
+    .split(',')
+    .map((host) => host.trim())
+    .filter((host) => host !== '');
+  return hosts.length > 0 ? hosts : undefined;
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   // Consumers of `import.meta.env.BASE_URL` (the same-origin weights fallback in
@@ -132,6 +156,7 @@ export default defineConfig({
     fs: {
       allow: ['..'],
     },
+    allowedHosts: devAllowedHosts(),
   },
   optimizeDeps: {
     exclude: ['riichiprac'],
