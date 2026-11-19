@@ -1,7 +1,16 @@
 # 3D renderer implementation plan and task sequence
 
-Status: planning, checked in 2026-11-18.
+Status: planning, checked in 2026-11-18; 2.5D references retired 2026-11-19.
 Task: 261118-1340 ("3D renderer: review the plan and break it into tasks").
+
+> **Post-merge note (2026-11-19).** The 2.5D render pipeline the early units ran
+> beside was retired in task 261119-1637. Its docs (`2_5d_*`, `rendered-table-*`),
+> `tools/render/*` bake pipeline and `frontend/src/table/*` runtime are gone from
+> the working tree and live only in git history. References to them below are
+> historical provenance for how the 3D numbers were signed off; the 3D chain now
+> owns them in `frontend/src/renderers/layoutConstants.ts` and bakes its carve
+> with `frontend/tools/relief3d/bake-relief3d.mjs`. `docs/2_5d-removal.md`
+> records the keep/delete decision.
 
 This document turns the starting proposal
 `3d_carved_tile_renderer_implementation_plan.md` (the reviewer's copy lives at
@@ -2547,16 +2556,10 @@ CI gate, so a 2.5D edit cannot turn the 3D gate red.
 ## 10. Related docs
 
 - [`AGENTS.md`](AGENTS.md) — project rules, including §6 (no agent visual
-  sign-off) and §4 (view modes).
-- [`2_5d_mahjong_tile_rendering_architecture.md`](2_5d_mahjong_tile_rendering_architecture.md)
-  — the parallel renderer; §12b is the Task 4B relief bake this plan consumes,
-  §16 is the whole-table calibration rig.
-- [`2_5d_implementation_plan.md`](2_5d_implementation_plan.md) — the task shape
-  this plan mirrors; its non-goals and file ownership apply.
-- [`tools/render/relief-spec.json`](tools/render/relief-spec.json),
-  [`tools/render/table-reference-spec.json`](tools/render/table-reference-spec.json),
-  [`tools/render/shell-spec.json`](tools/render/shell-spec.json) — the committed
-  numbers (read-only for this chain).
+  sign-off), §4 (view modes) and §3b (the 3D chain's own constants).
+- [`docs/2_5d-removal.md`](docs/2_5d-removal.md) — the retired 2.5D pipeline:
+  what was removed, what survived and why. The old `2_5d_*` docs, the
+  `tools/render/*` specs and the reference renders are in git history.
 - [`replay-implementation-plan.md`](replay-implementation-plan.md) — the
   document skeleton, unit table and gate conventions.
 - [`hosting-plan.md`](hosting-plan.md) — the Pages / R2 / Hugging Face pattern

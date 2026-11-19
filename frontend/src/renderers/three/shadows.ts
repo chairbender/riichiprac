@@ -21,17 +21,17 @@
  *    the hands read as standing behind the wall rather than merely darker.
  *
  * The hand group is the **2.5D recipe, copied rather than reinvented**. The
- * user-approved whole-table rig (`tools/render/table-reference-spec.json`, rig
- * variant `v13-shadow-darker`, chosen 2026-11-17) has
+ * user-approved whole-table rig (variant `v13-shadow-darker`, chosen
+ * 2026-11-17; the retired spec is in git history) has
  *
  *     handShadow: { mode: 'blurredFootprint', sigmaUnits: 0.26,
  *                   sigmaXUnits: 0.1, maxAlpha: 1.0, spreadUnits: 0.18,
  *                   offsetYUnits: 0.18, unionGroups: true }
  *
- * which that chain derived from the shipped UI group layer
- * (`shells.json` `shadowShape`: a hard rounded rect, σ 5 px standing / 12 px
- * lying, core alpha 0.6, `#0b1418`) and from `2_5d_mahjong_tile_rendering_
- * architecture.md` §10.12 ("draw every placed shape at alpha 1, blur the union
+ * which that chain derived from the retired UI group layer (`shadowShape`: a
+ * hard rounded rect, σ 5 px standing / 12 px lying, core alpha 0.6, `#0b1418`)
+ * and from the retired 2.5D architecture doc's §10.12 ("draw every placed
+ * shape at alpha 1, blur the union
  * once, then fill it" — so there is no double-darkening where the row and the
  * drawn tile meet, and the tsumogiri gap gets shadow like the rest of the
  * group). The 3D numbers are that variant's, in tile units:

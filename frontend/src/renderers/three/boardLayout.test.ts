@@ -624,7 +624,7 @@ describe('3D board layout: camera framing', () => {
   });
 
   it('projects the unsolved reference frame onto the signed-off pixels', () => {
-    // `tools/render/reference/rig/v1-baseline.json` (the 76-unit whole-table
+    // the retired calibration rig's v1-baseline record (the 76-unit whole-table
     // rig this chain adopts) puts the mat corners here at 1920 x 1080; the
     // committed constant must keep reproducing them.
     const frame = referenceFrame(16 / 9);

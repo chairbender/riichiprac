@@ -52,7 +52,7 @@
  * state: `frameForAspect` solves the committed rig's eye distance per aspect and
  * {@link referenceFrame} exposes the unsolved reference pose. The numbers are
  * gated by `frontend/scripts/check-3d-layout.mjs`, including the reference
- * agreement that `tools/render/reference/rig/v1-baseline.json` records.
+ * agreement recorded by the retired calibration rig (git history).
  */
 
 import type {
@@ -844,8 +844,8 @@ function frameAt(
  * Blender measures Shift Y against the sensor width, and a negative Shift Y
  * moves the image up. In NDC (one frame height = 2) the offset is
  * `-2 * shiftY * aspect`; at 16:9 with the committed -0.02 that is the
- * reference's 38.4 px rise on a 1080-high frame, which
- * `tools/render/reference/rig/v1-baseline.json` confirms exactly.
+ * reference's 38.4 px rise on a 1080-high frame, which the retired calibration
+ * rig confirmed exactly (git history).
  */
 export function committedShiftNdcY(aspect: number): number {
   return -2 * CAMERA.shiftY * aspect;
@@ -995,7 +995,7 @@ export function framingPoints(layout: BoardLayout): Vec3[] {
 /**
  * The committed rig, unsolved: the reference pose for an aspect.
  *
- * This is `tools/render/table-reference-spec.json`'s rig — 75 mm, the preset
+ * This is the retired whole-table calibration rig — 75 mm, the preset
  * pitch, {@link CAMERA.distanceUnits} and the committed Shift Y — with no
  * safe-area nudge. `check-3d-layout.mjs` prints its mat-corner pixels next to
  * the reference's so the lens/pitch agreement stays visible; the shipped frame

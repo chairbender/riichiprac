@@ -47,10 +47,10 @@ const PLATE_HALF_HEIGHT = HALF_HEIGHT - BEVEL;
 /**
  * The silhouette's rounded-corner radius in the face plane.
  *
- * This is the shell baker's own number, not a guess: `bake_shells.py` builds the
+ * This is the retired shell baker's own number, not a guess: it built the
  * tile as a cube bevelled 0.055 units with 6 segments on **every** edge, so the
  * vertical corners are rounded by exactly one bevel (1.54 mm), and the reference
- * table (`bake_table_reference.py`) imports that same `build_tile`. The plateau,
+ * whole-table model from that same `build_tile`. The plateau,
  * inset one bevel, therefore lands on a *sharp* rectangle: offsetting a rounded
  * rectangle inward by its own radius leaves square corners. That is what the
  * shipped shells show.

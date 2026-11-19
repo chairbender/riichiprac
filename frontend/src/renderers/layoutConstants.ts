@@ -2,14 +2,12 @@
  * The 3D chain's committed table and camera constants (3D-01; the board and
  * framing constants are 3D-06's additions to the same module).
  *
- * These mirror the user-signed-off whole-table reference
- * (`tools/render/table-reference-spec.json`, rig v13) and the committed tile
- * proportions (`tools/render/shell-spec.json`), but the 3D chain owns them: it
- * does not import across the `tools/` boundary at build time and never writes
- * there. `frontend/scripts/check-3d-layout.mjs` (3D-06) asserts the internal
- * invariants from these values; comparing them against the reference spec is an
- * optional local `--reference` run, not a CI gate, so a 2.5D edit cannot turn
- * the 3D gate red.
+ * These mirror the user-signed-off whole-table reference (rig v13) and the
+ * committed tile proportions, both measured during the now-retired 2.5D model
+ * work (git history; see docs/2_5d-removal.md). The 3D chain owns them: it does
+ * not import across the `tools/` boundary and never writes there, and
+ * `frontend/scripts/check-3d-layout.mjs` (3D-06) asserts the internal
+ * invariants from these values alone.
  *
  * Everything here is pure data: no three.js, no DOM, no game rules. The
  * consumer is `three/boardLayout.ts`, which turns these numbers into world
@@ -33,8 +31,8 @@ export const UNIT_MM = TILE_MM.height;
 /**
  * The committed tile body, in world units.
  *
- * The body and bevel are `shell-spec.json`'s values, so the 3D tile cannot
- * drift from the shipped 2.5D shell. The face plate is the carved relief's
+ * The body and bevel are the retired 2.5D shell spec's signed-off values (git
+ * history), so the 3D tile keeps the look the user approved. The face plate is the carved relief's
  * 17.92 x 24.92 mm cell (0.64 x 0.89 units), inset by the 0.055-unit bevel.
  *
  * **There is no groove constant.** Every row pitch in this module is derived
