@@ -72,10 +72,13 @@ bash tools/render/bake-table-reference.sh --check # whole-table + rig integrity 
 bash tools/render/bake-table-layout.sh            # Task 3 dry run: print the layout/bucket plan
 bash tools/render/bake-table-layout.sh --bake     # Task 3 export + probe render + 1 px proof + check
 bash tools/render/bake-table-layout.sh --check    # Task 3 layout + probe + overlay gate; no Blender
-bash tools/render/bake-board-assets.sh            # Task 4 dry run: print the bucket/representative plan
-bash tools/render/bake-board-assets.sh --bake     # Task 4 board_bg + 16 blanks + face atlas + gate
+bash tools/render/bake-board-assets.sh            # Task 4/4A dry run: print the bucket/representative plan
+bash tools/render/bake-board-assets.sh --bake     # Task 4 board + blanks + atlas + Task 4A shadows + gates
 bash tools/render/bake-board-assets.sh --atlas    # re-rasterise tile_faces.png/json only (resvg)
-bash tools/render/bake-board-assets.sh --check    # Task 4 asset gate; no Blender
+bash tools/render/bake-board-assets.sh --shadows  # Task 4A mat shadows + stack decals (Blender) + masks + gates
+bash tools/render/bake-board-assets.sh --seams    # re-author the four crevice masks only; no Blender
+bash tools/render/bake-board-assets.sh --review   # compose the Task 4A review sheet; no Blender
+bash tools/render/bake-board-assets.sh --check    # Task 4 + 4A asset gates; no Blender
 ```
 
 The group-shadow lab is a static page; serve the repo root and open it:
@@ -500,6 +503,88 @@ or run `cd frontend && npm run dev`, and compare against
 the 37-face atlas on 2026-11-18 and approved them. The numeric gate is
 `bash tools/render/bake-board-assets.sh --check` (1002 checks, 0 failures).
 
+## Task 4A: decoupled mat shadows and neighbour crevice masks
+
+Task 4A takes the cast shadows and the inter-tile bevel occlusion back out of
+the blank bodies, because a board state changes every move — a river grows one
+tile at a time, a wall breaks open, a hand tile lifts on hover. A shadow baked
+into a body sprite would double-darken where tiles meet and would hide the felt
+that an open edge should show. The runtime draws these sprites from the live
+board state instead (Task 6A).
+
+```bash
+bash tools/render/bake-board-assets.sh --shadows  # mat shadows + stack decals (Blender) + masks + gate
+bash tools/render/bake-board-assets.sh --seams    # re-author the four crevice masks only; no Blender
+bash tools/render/bake-board-assets.sh --review   # compose the review sheet under build/review/shadows/
+bash tools/render/bake-board-assets.sh --check    # Task 4 + Task 4A gates; no Blender
+```
+
+### The committed assets
+
+| File | Size | Purpose |
+| --- | --- | --- |
+| `frontend/public/table/shadows/shadow_mat_<bucket>.png` | 16 sprites at 2× | the shadow one tile of that bucket casts onto the mat |
+| `frontend/public/table/shadows/shadow_wall_stack_<seat>.png` | 4 sprites at 2× | the contact shadow a top-tier wall tile throws onto the tile under it |
+| `frontend/public/table/shadows/ao_seam_{left,right,top,bottom}.png` | 4 × 512 × 512 RGBA | normalized-UV bevel crevice masks |
+| `frontend/public/table/shadows.json` | manifest | bucket → blank, shadow, pivot, anchor, ground drop, measured alpha, hashes |
+| `frontend/public/table/ao_seams.json` | manifest | mask profile, per-axis fade, measured edge alpha, hashes |
+
+**How a shadow is measured, not drawn.** The only other geometry in the render
+is a plain 30-unit plane at the mat's height (`z = 0`); the mat, rim, floor,
+every other tile and the rig's own hand-shadow helper are hidden. The bake then
+renders the *same* frame twice, with one fixed sample count and the scene's
+fixed seed so the two integrators sample identically: once with the tile
+hidden, once with the tile visible to shadow rays but invisible to the camera.
+`alpha = 1 - shadowedLuma / litLuma` is the fraction of the plane's light the
+tile removes. Published as black RGBA, source-over reproduces a multiply, so
+`dest × (1 - alpha)` is the physically measured darkening and there is no
+shadow-catcher pass to interpret. `noiseFloor` 5/255 drops the residual
+two-render difference (bounce light and the denoiser): below 2 % the ratio is
+not shadow, and a 2 % multiplier is invisible on the felt.
+
+**A wall bucket's shadow is grounded.** Three of the five wall buckets
+represent a *top-tier* tile, which sits on the tile below it. Its mat shadow is
+the base shadow of the stack, so the bake drops the same body onto `z = 0`
+(asserting the drop equals the spec's tier step) and records the shadow's
+anchor as the *bottom* tier's anchor. Task 6A draws one mat shadow per stack, at
+layer 0; layer 1's occlusion of the tile under it is the stack decal, not a
+second mat shadow. `check-shadow-assets.mjs` proves both halves: the shadow
+anchor equals the bottom-tier anchor, and it does *not* equal the blank's
+top-tier anchor.
+
+**One stack decal per seat, measured.** The plan named a single
+`shadow_wall_stack.png`. The bake measures the four seats against each other
+(`wallStack.seatAgreement`) and they are not interchangeable — aligning them by
+their frame-space origin still leaves a max alpha difference of 1.0, because a
+wall run's tiles face a different way, so the projected footprint and contact
+band differ. Each seat therefore publishes its own decal, drawn at that stack's
+layer-0 anchor. The gate fails if a future change makes the seats agree (one
+shared decal would be valid then) and it fails if any decal's alpha leaks
+outside the bottom body's silhouette onto the felt.
+
+**The crevice masks are procedural.** `scripts/bake-shadow-seams.mjs` writes
+them with no Blender: a raised cosine from 35 % black at the outer bevel edge to
+0 at the fade width, black ink with the AO in alpha. The fade is authored per
+axis so the *physical* band matches the 1.54 mm bevel on all four edges — 0.10
+of the 21 mm width along u, 0.075 of the 28 mm height along v — and the gate
+checks the 8 %-12 %-of-tile-width acceptance in those terms (it measures 9.6 %
+for all four). 512 × 512 is at least twice the largest `faceQuad` side in
+pixels, so a mask is never upscaled onto a tile, and the check derives that
+bound from `blanks.json` rather than assuming it.
+
+**Gates.** `check-shadow-assets.mjs` cross-references both manifests against
+`table_layout.json` and `blanks.json`: exact bucket coverage, black-ink sprites
+with transparent padding borders, `crop + pivot` landing on the documented
+anchor, a contact core inside the body footprint and a cast penumbra outside it
+on at least two sides, the stack decals masked to their bottom body, and the
+mask peak/fade/monotonicity/edge-constancy. The review sheet
+(`tools/render/build/review/shadows/task4a-contact-sheet.png`, gitignored)
+composites the committed board + shadow + body per bucket, the three-step wall
+stack, and a native-resolution crop of each mask with its alpha profile
+plotted. It also prints, per bucket, how many luma the shadow removes inside its
+own footprint and that it changes nothing outside it.
+
+
 ## Directory layout
 
 | Path | Committed | Purpose |
@@ -553,6 +638,13 @@ the 37-face atlas on 2026-11-18 and approved them. The numeric gate is
 | `../../frontend/public/table/blanks.json` | yes | the Task 4 blank manifest: pivots, crops, anchors, face quads, alpha and hashes |
 | `../../frontend/public/table/tile_faces.png` | yes | the Task 4 37-face flat atlas (1728 × 2688, 6 × 7 cells) |
 | `../../frontend/public/table/tile_faces.json` | yes | the Task 4 atlas region map and stable face order |
+| `bake_shadow_assets.py` | yes | Task 4A Blender baker: per-bucket mat shadows (grounded for wall buckets) and the per-seat wall-stack contact decals, two-pass luma-ratio measurement |
+| `scripts/bake-shadow-seams.mjs` | yes | Task 4A procedural crevice masks + `ao_seams.json` (no Blender) |
+| `scripts/check-shadow-assets.mjs` | yes | dependency-free Task 4A gate (CI): bucket join, anchors, contact/penumbra, stack masking, mask fade |
+| `scripts/review-shadow-assets.mjs` | yes | the Task 4A review sheet and composite-darkening numbers under `build/review/shadows/` |
+| `../../frontend/public/table/shadows/` | yes | the 16 mat shadows, 4 stack decals and 4 crevice masks at 2× / 512² |
+| `../../frontend/public/table/shadows.json` | yes | the Task 4A shadow manifest: bucket → blank, shadow, pivot, anchor, ground drop, alpha, hashes |
+| `../../frontend/public/table/ao_seams.json` | yes | the Task 4A crevice manifest: profile, per-axis fade, measured edge alpha, hashes |
 | `TABLE-REFERENCE.md` | yes | the reference's calibration note: scene, chosen perspective, metrics, how to compare |
 | `scripts/table-camera.mjs` | yes | shared reference pinhole, tile-corner projection, metrics and crop rects |
 | `scripts/table-reference.mjs` | yes | publishes the 1x board, 2x crops, manifest and contact page from the master |
@@ -1611,6 +1703,24 @@ xdg-open tools/render/build/review/shell-candidates-shell_wall_back_slot_16.png
 xdg-open tools/render/build/review/each-4x-shell_flat_upright.png
 ls tools/render/build/review/each-4x-*.png                # the nine base shells at 4x
 ```
+
+To review the Task 4A shadow assets, compose the sheet and open it:
+
+```bash
+bash tools/render/bake-board-assets.sh --review
+xdg-open tools/render/build/review/shadows/task4a-contact-sheet.png
+xdg-open tools/render/build/review/shadows/task4a-numbers.json
+```
+
+The sheet is a real composite of the committed pixels, not an annotated render:
+each cell is the committed `board_bg.png` crop with the bucket's mat shadow
+drawn at its anchor (the manifest's multiply model) and the blank body over it,
+so it previews Task 6A's pass 1; section B adds the three-step wall stack
+(layer 0, decal, layer 1) for every seat; section C shows each crevice mask at
+native resolution over mid grey with its alpha profile plotted beside it. The
+same run prints, per bucket, the mean luma the shadow removes inside its own
+footprint (22-30 for the lying and wall buckets, 13-14 for the standing hand)
+and that the maximum change outside that footprint is 0.00.
 
 The review sheets are throwaway: `build/` is gitignored. They are drawn on the
 felt's base colour (`#1a5038`) so shadow contrast is easy to see, with the
