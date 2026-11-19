@@ -11,12 +11,14 @@ import {
   buildZoneAdjacency,
   planShadows,
   screenSideOf,
+  tileCentre,
   zoneShadowMasks,
 } from './boardShadows';
 import type { ShadowBoard, ShadowContext2D, ShadowImage, ShadowZonePlacement } from './boardShadows';
 import {
   SEAM_BAND_MAX_PX,
   SEAM_BAND_MIN_PX,
+  SEAM_SIDE_FACE_MAX_PX,
   SEAM_MIN_RING_LUMA,
   SEAM_OPACITY,
   SeamOverlayCache,
@@ -24,7 +26,8 @@ import {
   seamBandRect,
 } from './seamOverlays';
 import type { SpriteSide } from './seamOverlays';
-import { parseAoSeamsManifest, parseShadowsManifest } from './shadowManifest';
+import { parseBlanksManifest } from './blankManifest';
+import { referenceToShellScale, parseAoSeamsManifest, parseShadowsManifest } from './shadowManifest';
 import type { AoSeamsManifest, ShadowsManifest } from './shadowManifest';
 import { parseShellsManifest } from './shellManifest';
 import type { ShellsManifest } from './shellManifest';
@@ -51,6 +54,9 @@ const shadows: ShadowsManifest = parseShadowsManifest(
 );
 const seams: AoSeamsManifest = parseAoSeamsManifest(
   JSON.parse(readFileSync(join(tableDir, 'ao_seams.json'), 'utf8')),
+);
+const blanks = parseBlanksManifest(
+  JSON.parse(readFileSync(join(tableDir, 'blanks.json'), 'utf8')),
 );
 
 const createShadowCanvas = (width: number, height: number): AtlasCanvas =>
@@ -80,6 +86,7 @@ const planOf = (board: ShadowBoard, lifted?: { zoneId: string; bodyIndex: number
   planShadows(shells, shadows, board, {
     lifted: lifted ?? null,
     seamBands: (shell, side) => seamOverlays.bandFor(shell, side),
+    blankBucket: (bucket) => blanks.buckets[bucket] ?? null,
   });
 
 function boardOf(zones: LayoutZone[], scale = 1): ShadowBoard {
@@ -143,6 +150,7 @@ function render(
     manifest: shells,
     shadows,
     seamOverlays,
+    blanks,
     imageFor,
     pixelRatio: options.ratio ?? 1,
   });
@@ -248,6 +256,49 @@ describe('adjacency from the live state', () => {
   });
 });
 
+describe('reference-frame scale', () => {
+  it('scales a Task 4A sprite into the shell space the runtime draws in', () => {
+    // The shadow lives in the 1920 x 1080 reference frame; the shells are baked
+    // at a closer camera, so an unscaled sprite sits small and off its tile.
+    const flat = referenceToShellScale(shells.shells.shell_flat_upright, blanks.buckets.flat_center);
+    expect(flat).toBeGreaterThan(1.4);
+    expect(flat).toBeLessThan(1.6);
+    const hand = referenceToShellScale(shells.shells.shell_hand_slot_06, blanks.buckets.hand_center);
+    expect(hand).toBeGreaterThan(1.15);
+    expect(hand).toBeLessThan(1.4);
+    const wall = referenceToShellScale(
+      shells.shells.shell_wall_front_slot_08,
+      blanks.buckets.wall_horiz_center,
+    );
+    expect(wall).toBeGreaterThan(1.4);
+    expect(wall).toBeLessThan(1.65);
+    expect(referenceToShellScale(shells.shells.shell_flat_upright, null)).toBe(1);
+  });
+
+  it('puts the mat shadow’s dense core under the tile, not beside it', () => {
+    const pond = layoutPond(shells, { side: 'bottom', discards: discards(5) });
+    const board = boardOf([pond]);
+    const plan = planOf(board);
+    const tile = pond.bodies[0];
+    const shell = shells.shells[tile.shell];
+    const draw = plan.mat.find((entry) => entry.bodyIndex === 0)!;
+    const centre = tileCentre(tile, shell);
+    const record = shadows.matShadows[draw.bucket];
+    const scale = referenceToShellScale(shell, blanks.buckets[draw.bucket]);
+    // The shadow's pivot lands on the body's centre …
+    expect(draw.x + (record.pivot.x / record.pixelRatio) * scale).toBeCloseTo(
+      board.zones[0].x + centre.x,
+      6,
+    );
+    expect(draw.y + (record.pivot.y / record.pixelRatio) * scale).toBeCloseTo(
+      board.zones[0].y + centre.y,
+      6,
+    );
+    // … and the sprite covers the tile's body, not a corner of it.
+    expect(draw.width).toBeGreaterThan(shell.advanceWidth);
+  });
+});
+
 describe('shadow plan', () => {
   it('draws one mat shadow per occupied slot, not one per tier', () => {
     const wall = layoutWall(shells, { wall: 'front', count: 17 });
@@ -285,8 +336,15 @@ describe('shadow plan', () => {
     const record = shadows.wallStack.seats.south;
     expect(lower).toBeDefined();
     expect(stack.bodyIndex).toBe(0);
-    expect(stack.x).toBeCloseTo(lower!.gridX - record.pivot.x / record.pixelRatio, 6);
-    expect(stack.y).toBeCloseTo(lower!.gridY - record.pivot.y / record.pixelRatio, 6);
+    // The decal is published against the slot's body centre, not the shell's
+    // top-left anchor (which would put it ~36 x 51 px up and left), and it is
+    // scaled out of the reference frame into shell space.
+    const lowerShell = shells.shells[lower!.shell];
+    const centre = tileCentre(lower!, lowerShell);
+    const frame = referenceToShellScale(lowerShell, blanks.buckets[record.bucket]);
+    expect(frame).toBeGreaterThan(1.4);
+    expect(stack.x).toBeCloseTo(centre.x - (record.pivot.x / record.pixelRatio) * frame, 6);
+    expect(stack.y).toBeCloseTo(centre.y - (record.pivot.y / record.pixelRatio) * frame, 6);
   });
 
   it('draws one crevice band per joint, on the lit edge of the pair', () => {
@@ -337,8 +395,9 @@ describe('shadow plan', () => {
     // The shadow keeps the resting anchor: the sprite shrinks toward its pivot,
     // so the pivot point is unmoved while the body rises by HAND_LIFT_PX.
     const record = shadows.matShadows[restingDraw.bucket];
-    const pivotX = record.pivot.x / record.pixelRatio;
-    const pivotY = record.pivot.y / record.pixelRatio;
+    const frame = referenceToShellScale(shells.shells[tile.shell], blanks.buckets[restingDraw.bucket]);
+    const pivotX = (record.pivot.x / record.pixelRatio) * frame;
+    const pivotY = (record.pivot.y / record.pixelRatio) * frame;
     expect(liftedDraw.x + pivotX * LIFTED_SHADOW_SCALE).toBeCloseTo(
       restingDraw.x + pivotX,
       6,
@@ -347,9 +406,11 @@ describe('shadow plan', () => {
       restingDraw.y + pivotY,
       6,
     );
-    // …and that anchor is the tile's own resting grid anchor, not its lift.
-    expect(restingDraw.x + pivotX).toBeCloseTo(tile.gridX, 6);
-    expect(restingDraw.y + pivotY).toBeCloseTo(tile.gridY, 6);
+    // …and that anchor is the body's projected centre, not the shell's
+    // top-left anchor and not its lift.
+    const centre = tileCentre(tile, shells.shells[tile.shell]);
+    expect(restingDraw.x + pivotX).toBeCloseTo(centre.x, 6);
+    expect(restingDraw.y + pivotY).toBeCloseTo(centre.y, 6);
     expect(HAND_LIFT_PX).toBeCloseTo(27, 6);
 
     const seamsOf = (plan: typeof resting, index: number): string =>
@@ -463,9 +524,11 @@ describe('mat shadow compositing', () => {
     const resting = render(board);
     const lifted = render(board, { lifted: { zoneId: 'hand-bottom', bodyIndex: 4 } });
     const tile = hand.bodies[4];
-    // The shadow sits at the resting anchor in both renders: sample its core.
-    const x = board.zones[0].x + tile.gridX;
-    const y = board.zones[0].y + tile.gridY + 40;
+    // The shadow sits at the resting anchor (the body's centre) in both
+    // renders: sample its core, below the plate.
+    const centre = tileCentre(tile, shells.shells[tile.shell]);
+    const x = board.zones[0].x + centre.x;
+    const y = board.zones[0].y + centre.y + 30;
     const before = resting.luma(x, y);
     const after = lifted.luma(x, y);
     expect(before).toBeLessThan(240);
@@ -493,6 +556,7 @@ describe('mat shadow compositing', () => {
       manifest: shells,
       shadows,
       seamOverlays,
+      blanks,
       imageFor,
     });
     renderer.update();
@@ -528,6 +592,7 @@ describe('mat shadow compositing', () => {
       manifest: shells,
       shadows,
       seamOverlays,
+      blanks,
       imageFor,
     });
     fresh.update();
@@ -559,6 +624,7 @@ describe('mat shadow compositing', () => {
       manifest: shells,
       shadows,
       seamOverlays,
+      blanks,
       imageFor,
     });
     renderer.update();
@@ -612,6 +678,21 @@ describe('bevel bands', () => {
     // A side wall seen edge-on has no axis-aligned ring on its long edge, so
     // that side yields no band at all instead of inking the transparent margin.
     expect(seamOverlays.bandFor(shells.shells.shell_wall_side_left, 'left')).toBeNull();
+  });
+
+  it('widens a lying tile’s band over its near face’s lit end', () => {
+    const band = seamOverlays.bandFor(flat, 'left')!;
+    // The plate's chamfer …
+    expect(band.regions[0].width).toBeCloseTo(band.width, 6);
+    expect(band.regions[0].y).toBe(band.y);
+    // … then the near face's lit end, which is wider and does not overlap it.
+    expect(band.regions.length).toBe(2);
+    const [, near] = band.regions;
+    expect(near.width).toBeGreaterThan(band.width);
+    expect(near.width).toBeLessThanOrEqual(SEAM_SIDE_FACE_MAX_PX);
+    expect(near.y).toBeGreaterThanOrEqual(band.regions[0].y + band.regions[0].height);
+    // A hand tile's plate sits low, so it has no near-face rows to widen.
+    expect(seamOverlays.bandFor(shells.shells.shell_hand_slot_06, 'left')!.regions).toHaveLength(1);
   });
 
   it('maps the mask across the band, band outward and fade inward', () => {
@@ -751,11 +832,15 @@ describe('crevice acceptance', () => {
           const tile = row.bodies[draw.bodyIndex];
           const shell = shells.shells[tile.shell];
           const band = seamOverlays.bandFor(shell, draw.side)!;
-          const left = board.zones[0].x + tile.drawX + band.x;
-          const top = board.zones[0].y + tile.drawY + band.y;
-          if (x < left || x >= left + band.width || y < top || y >= top + band.height) continue;
-          inBand = true;
-          break;
+          const hit = band.regions.some((region) => {
+            const left = board.zones[0].x + tile.drawX + region.x;
+            const top = board.zones[0].y + tile.drawY + region.y;
+            return x >= left && x < left + region.width && y >= top && y < top + region.height;
+          });
+          if (hit) {
+            inBand = true;
+            break;
+          }
         }
         if (!inBand) outsideBands += 1;
       }

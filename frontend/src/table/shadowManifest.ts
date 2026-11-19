@@ -28,6 +28,7 @@
  * like `blanks.json`: draw a sprite so its `pivot` lands on the tile's anchor
  * (`gridX/gridY`), so a blank and its mat shadow share one draw position.
  */
+import type { BlankBucket } from './blankManifest';
 import type { ShellStats } from './shellManifest';
 import type { LayoutZone, PlacedTile } from './zoneLayout';
 
@@ -516,4 +517,27 @@ export function wallStackRecordFor(
   const seat = wallSeatOf(zone);
   if (!seat) return null;
   return manifest.wallStack.seats[seat] ?? null;
+}
+
+/**
+ * The scale that maps a Task 4A sprite from the reference frame into the shell
+ * space the runtime draws in.
+ *
+ * `shadows.json` and `blanks.json` are baked against `table_layout.json`'s
+ * 1920 x 1080 reference frame, whose tiles are ~48 x 69 px. The runtime draws
+ * `shells.json`'s per-slot shells at their own @1x size (~72 x 102 px for the
+ * same tile), so a shadow sprite drawn unscaled is both too small and offset —
+ * its dense core pokes out from under the tile. The scale is the ratio of the
+ * two published body boxes (the shell's advance and the bucket's measured
+ * `alphaBBox`), taken as their geometric mean because the two cameras are not
+ * exactly proportional.
+ *
+ * Returns 1 when the bucket is unknown, so a caller without `blanks.json` still
+ * draws something rather than throwing.
+ */
+export function referenceToShellScale(shell: ShellStats, blank: BlankBucket | null): number {
+  if (!blank || blank.bodyWidth <= 0 || blank.bodyHeight <= 0) return 1;
+  return Math.sqrt(
+    (shell.advanceWidth / blank.bodyWidth) * (shell.advanceHeight / blank.bodyHeight),
+  );
 }

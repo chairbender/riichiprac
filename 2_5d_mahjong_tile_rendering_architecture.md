@@ -1810,6 +1810,14 @@ Two crossing 0.55 shadows therefore peak at 0.55 rather than 0.80; the review
 script measures 0.00 luma of extra darkening across an 18-tile river's 181,719
 shadowed pixels.
 
+**Two spaces, one scale.** `shadows.json`/`blanks.json` publish sprites in the
+`table_layout.json` reference frame (a tile body ~48 × 69 px); the runtime draws
+`shells.json`'s shells, which are 1.25–1.6 × larger. The passes therefore scale
+each sprite by the ratio of the two published body boxes and anchor it at the
+tile body's projected centre (`tileCentre`), not at the shell PNG's top-left
+anchor — otherwise the shadow's dense core shows at the tile's top-left corner.
+`blanks.json` is read only for that body box.
+
 **Adjacency is logical; the band is the sprite's own chamfer.** Neighbours come
 from the live cells (`row/column`, `column`, `slot/tier`, hand row slot), so no
 band is drawn on an open edge: the newest discard, the end of a broken wall,

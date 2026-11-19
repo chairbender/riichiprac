@@ -32,6 +32,7 @@ import {
   SEAM_OPACITY,
   SeamOverlayCache,
 } from '../src/table/seamOverlays';
+import { parseBlanksManifest } from '../src/table/blankManifest';
 import { parseAoSeamsManifest, parseShadowsManifest } from '../src/table/shadowManifest';
 import type { ShadowsManifest } from '../src/table/shadowManifest';
 import { parseShellsManifest } from '../src/table/shellManifest';
@@ -55,6 +56,7 @@ const shadows: ShadowsManifest = parseShadowsManifest(
   JSON.parse(readFileSync(join(tableDir, 'shadows.json'), 'utf8')),
 );
 const seams = parseAoSeamsManifest(JSON.parse(readFileSync(join(tableDir, 'ao_seams.json'), 'utf8')));
+const blanks = parseBlanksManifest(JSON.parse(readFileSync(join(tableDir, 'blanks.json'), 'utf8')));
 const feltSpec = JSON.parse(readFileSync(join(renderDir, 'felt-spec.json'), 'utf8'));
 const FELT = `rgb(${feltSpec.baseColor[0]}, ${feltSpec.baseColor[1]}, ${feltSpec.baseColor[2]})`;
 
@@ -106,6 +108,7 @@ const planOfBoard = (board: ShadowBoard, lifted?: { zoneId: string; bodyIndex: n
   planShadows(manifest, shadows, board, {
     lifted: lifted ?? null,
     seamBands: (shell, side) => seamOverlays.bandFor(shell, side),
+    blankBucket: (bucket) => blanks.buckets[bucket] ?? null,
   });
 
 type Panel = {
@@ -182,6 +185,7 @@ async function composePanel(zone: LayoutZone, options: PanelOptions): Promise<Pa
     manifest,
     shadows,
     seamOverlays,
+    blanks,
     imageFor,
     pixelRatio: 1,
   });
@@ -456,7 +460,7 @@ numbers.matMerge = { comparedPixels: compared, worstDarkeningPastSingleLuma: Num
 // band per joint, on the lit edge of the pair.
 const flatSides = (['left', 'right', 'top', 'bottom'] as const).map((side) => {
   const band = seamOverlays.bandFor(manifest.shells.shell_flat_upright, side);
-  return `${side}:${band ? `${band.ringLuma.toFixed(0)}luma/${Math.min(band.width, band.height).toFixed(1)}px` : 'none'}`;
+  return `${side}:${band ? `${band.ringLuma.toFixed(0)}luma/${Math.min(band.width, band.height).toFixed(1)}px${band.regions.length > 1 ? `+near${band.regions[1].width.toFixed(0)}px` : ''}` : 'none'}`;
 });
 const seamShape = {
   total: planOf(panels.river5).seams.length,
@@ -475,14 +479,22 @@ console.log(
   `[seams] flat_upright rings ${flatSides.join(' ')} · 18-tile river bands ${JSON.stringify(seamShape.bySide)}`,
 );
 
-// The open edge of the newest tile stays at felt luma.
+// The newest tile's open edge draws no band: pass 3 on and off must agree on
+// the whole strip beside it (the mat shadow is in both renders).
 const newestTile = river5.bodies[newest];
-const outsideX = PAD + newestTile.drawX + manifest.shells[newestTile.shell].texWidth + 3;
-const outsideY = PAD + newestTile.drawY + 60;
-const outsideLuma = panels.river5.luma(outsideX, outsideY);
-const feltLuma = panels.river5.luma(2, 2);
-console.log(`[river] felt beside the newest tile: ${outsideLuma} vs open felt ${feltLuma}`);
-numbers.openEdge = { outside: outsideLuma, felt: feltLuma };
+const newestShell = manifest.shells[newestTile.shell];
+const openLeft = PAD + newestTile.drawX + newestShell.texWidth - 2;
+const openRight = openLeft + 8;
+let openEdgeDiff = 0;
+for (let y = PAD + newestTile.drawY; y < PAD + newestTile.drawY + newestShell.texHeight; y += 1) {
+  for (let x = openLeft; x < openRight; x += 1) {
+    if (panels.river5.luma(x, y) !== panels.river5NoSeams.luma(x, y)) openEdgeDiff += 1;
+  }
+}
+console.log(
+  `[river] newest tile's right edge: ${openEdgeDiff} px differ with pass 3 on vs off (open edge draws nothing)`,
+);
+numbers.openEdge = { pixelsDifferingBesideNewestTile: openEdgeDiff };
 
 // The wall stack decal and the lifted hand both show up as a pixel difference.
 const decalDiff = comparePanels(panels.wallNoDecal, panels.wallFull);
@@ -509,40 +521,11 @@ console.log(
     `at ${liftDiff.dropAt.join(',')}, brighter by up to ${liftDiff.maxRise.toFixed(1)} ` +
     `(body over felt) at ${liftDiff.riseAt.join(',')}`,
 );
-// The crevice change lives beside the lifted tile, not under it: outside the
-// lifted body's own column band, the only thing that may change is a removed
-// bevel crease.
-const liftedBody = hand.bodies[HAND_LIFTED_INDEX];
-const bodyLeft = PAD + liftedBody.drawX;
-const bodyRight = bodyLeft + manifest.shells[liftedBody.shell].advanceWidth;
-let creviceBrightened = 0;
-let creviceBrightest = 0;
-let creviceAt: [number, number] = [0, 0];
-for (let y = 0; y < panels.handRest.canvas.height; y += 1) {
-  for (let x = 0; x < panels.handRest.canvas.width; x += 1) {
-    if (x >= bodyLeft - 3 && x <= bodyRight + 3) continue;
-    const before = panels.handRest.luma(x, y);
-    const after = panels.handLifted.luma(x, y);
-    const rise = after - before;
-    if (rise <= 0) continue;
-    creviceBrightened += 1;
-    if (rise > creviceBrightest) {
-      creviceBrightest = rise;
-      creviceAt = [x, y];
-    }
-  }
-}
-console.log(
-  `[hand] beside the lifted tile: ${creviceBrightened} px brighten, most by ` +
-    `${creviceBrightest} luma at ${creviceAt.join(',')} (its bevel crease is gone)`,
-);
 numbers.seams = seamShape;
 numbers.handLift = {
   panelChanged: liftDiff.changed,
   darkestExposedLuma: Number(liftDiff.maxDrop.toFixed(2)),
   brightestBodyOverFeltLuma: Number(liftDiff.maxRise.toFixed(2)),
-  neighbourPixelsBrightened: creviceBrightened,
-  neighbourBrightestLuma: creviceBrightest,
   seamsResting: planOf(panels.handRest).seams.length,
   seamsLifted: planOfBoard(panels.handLifted.board, {
     zoneId: 'hand-bottom',
@@ -556,16 +539,16 @@ console.log(
 // What pass 3 alone contributes, and whether it stays on the chamfer.
 const seamDiff = comparePanels(panels.river5NoSeams, panels.river5);
 const boardPx = (panel: Panel): number => panel.canvas.width * panel.canvas.height;
-const bandRects = planOf(panels.river5).seams.map((draw) => {
+const bandRects = planOf(panels.river5).seams.flatMap((draw) => {
   const tile = river5.bodies[draw.bodyIndex];
   const shell = manifest.shells[tile.shell];
   const band = seamOverlays.bandFor(shell, draw.side)!;
-  return {
-    left: panels.river5.board.zones[0].x + tile.drawX + band.x,
-    top: panels.river5.board.zones[0].y + tile.drawY + band.y,
-    right: panels.river5.board.zones[0].x + tile.drawX + band.x + band.width,
-    bottom: panels.river5.board.zones[0].y + tile.drawY + band.y + band.height,
-  };
+  return band.regions.map((region) => ({
+    left: panels.river5.board.zones[0].x + tile.drawX + region.x,
+    top: panels.river5.board.zones[0].y + tile.drawY + region.y,
+    right: panels.river5.board.zones[0].x + tile.drawX + region.x + region.width,
+    bottom: panels.river5.board.zones[0].y + tile.drawY + region.y + region.height,
+  }));
 });
 const changedPixels = (before: Panel, after: Panel): Array<[number, number]> => {
   const width = before.canvas.width;
@@ -618,6 +601,33 @@ console.log(
 );
 numbers.passesDelta = { changed: beforeDiff.changed, maxDarkening: Number(beforeDiff.maxDrop.toFixed(2)) };
 
+// A 3x nearest-neighbour crop of one joint: the front seam and the near face's
+// lit end are the two places pass 3 should touch, and 1:1 is too small to judge.
+function zoomPanel(panel: Panel, x0: number, y0: number, width: number, height: number, zoom: number, label: string, note: string): Panel {
+  const canvas = createShadowCanvas(Math.round(width * zoom), Math.round(height * zoom));
+  const ctx = canvas.getContext('2d') as unknown as ShadowContext2D;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(panel.canvas as never, x0, y0, width, height, 0, 0, canvas.width, canvas.height);
+  return {
+    label,
+    note,
+    canvas,
+    board: panel.board,
+    zone: panel.zone,
+    luma: (x, y) => {
+      const data = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
+      return Math.round((data[0] + data[1] + data[2]) / 3);
+    },
+  };
+}
+const jointTile = river5.bodies.reduce((best, tile) =>
+  (tile.cell?.column ?? 9) < (best.cell?.column ?? 9) ? tile : best,
+  river5.bodies[0]);
+const jointX = Math.max(0, PAD + jointTile.drawX - 10);
+const jointY = Math.max(0, PAD + jointTile.drawY - 2);
+panels.jointBands = zoomPanel(panels.river5, jointX, jointY, 40, 112, 3, 'D1 · one joint at 3x, bands on', 'left neighbour, front seam and the near face’s lit end');
+panels.jointNoBands = zoomPanel(panels.river5NoSeams, jointX, jointY, 40, 112, 3, 'D2 · the same joint, bands off', 'the only difference is pass 3');
+
 // ---------------------------------------------------------------- sheet
 const title = 64;
 const gap = 22;
@@ -627,6 +637,7 @@ const panelsByRow: Panel[][] = [
   [panels.river18],
   [panels.wallFull, panels.wallNoDecal, panels.wallBroken],
   [panels.handRest, panels.handRestNoSeams, panels.handLifted],
+  [panels.jointBands, panels.jointNoBands],
 ];
 const sheetWidth = Math.max(
   ...panelsByRow.map((row) => row.reduce((total, panel) => total + panel.canvas.width + gap, gap)),

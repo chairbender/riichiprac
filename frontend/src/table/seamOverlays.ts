@@ -47,14 +47,25 @@ type SeamContext = CanvasRenderingContext2D;
 /** Which edge of the *sprite* a neighbour sits against. */
 export type SpriteSide = AoSeamSide;
 
-/** The narrow ring a band occupies, in sprite @1x px. */
-export interface SeamBand {
-  readonly side: SpriteSide;
-  /** Sprite-space rectangle: the ring's outer edge is the band's outer edge. */
+/** One strip of a band: the ring, or the widened run over the near side face. */
+export interface SeamRegion {
+  /** Sprite-space rectangle: the strip's outer edge is the sprite edge. */
   readonly x: number;
   readonly y: number;
   readonly width: number;
   readonly height: number;
+}
+
+/** A crevice band: the bevel ring plus, on a lying tile, its near face's lit end. */
+export interface SeamBand {
+  readonly side: SpriteSide;
+  /** The bevel ring: sprite-space rect, outer edge on the silhouette. */
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  /** Every strip the band inks, in draw order (ring first). */
+  readonly regions: readonly SeamRegion[];
   /**
    * Mean luma of the tile's pixels inside the band, alpha weighted. It decides
    * which tile of a joint takes the darkening, and whether it is lit enough to
@@ -95,6 +106,15 @@ export const SEAM_AA_INSET_PX = 1;
  * the side yields no band and its joint uses the other tile's edge.
  */
 export const SEAM_MIN_RING_COVERAGE = 0.25;
+/**
+ * A lying tile's near side face (the thickness face that points at the player's
+ * wall) carries its own lit end on the same side as the plate's chamfer. A tile
+ * standing against that side shades that end too, so the band is widened over
+ * the near-face rows to the measured lit extent, up to this many pixels.
+ */
+export const SEAM_SIDE_FACE_MAX_PX = 12;
+/** A near-face pixel counts as part of the lit end above this luma share of the row's peak. */
+const SEAM_SIDE_FACE_LIT_SHARE = 0.6;
 /** A band darker than this has no highlight to remove; the joint draws nothing. */
 export const SEAM_MIN_RING_LUMA = 45;
 /** The AO masks are drawn at this share of their authored 35 % peak. */
@@ -214,6 +234,19 @@ export function drawMaskInBand(
   ctx.restore();
 }
 
+/** One pixel's luma, or null where the sprite is transparent. */
+function pixelLuma(
+  pixels: { data: Uint8ClampedArray; width: number },
+  shell: ShellStats,
+  x: number,
+  y: number,
+): number | null {
+  if (x < 0 || y < 0 || x >= shell.texWidth || y >= shell.texHeight) return null;
+  const offset = (y * shell.texWidth + x) * 4;
+  if (pixels.data[offset + 3] < 160) return null;
+  return pixels.data[offset] * 0.299 + pixels.data[offset + 1] * 0.587 + pixels.data[offset + 2] * 0.114;
+}
+
 /**
  * Builds and caches one overlay per (shell, side): the AO mask inside the bevel
  * ring, clipped to the sprite's silhouette. Nothing outside the sprite's own
@@ -238,11 +271,102 @@ export class SeamOverlayCache {
     const measured = this.measure(shell, rect);
     const usable =
       measured !== null && measured.luma > 0 && measured.coverage >= SEAM_MIN_RING_COVERAGE;
-    const band: SeamBand | null = usable
-      ? { side, ...rect, ringLuma: measured!.luma, ringCoverage: measured!.coverage }
-      : null;
+    if (!usable) {
+      this.bands.set(key, null);
+      return null;
+    }
+    const near = this.nearFaceRegion(shell, side, rect);
+    // The near face's strip replaces the ring on its rows rather than stacking
+    // with it: two overlapping inked strips would darken the corner twice.
+    const regions = near
+      ? [{ ...rect, height: Math.max(1, near.y - rect.y) }, near]
+      : [rect];
+    const band: SeamBand = {
+      side,
+      ...rect,
+      regions,
+      ringLuma: measured!.luma,
+      ringCoverage: measured!.coverage,
+    };
     this.bands.set(key, band);
     return band;
+  }
+
+  /**
+   * The widened part of a left/right band over the rows below the plate: a lying
+   * tile's near side face is lit at the same end as the chamfer, and a neighbour
+   * shading that chamfer shades that end too. Returns null when the ring already
+   * covers it.
+   */
+  private nearFaceRegion(
+    shell: ShellStats,
+    side: SpriteSide,
+    ring: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+  ): SeamRegion | null {
+    if (side !== 'left' && side !== 'right') return null;
+    const bottom = shell.texHeight - shell.padding.bottom;
+    const plateBottom = Math.max(...shell.faceQuad.map((corner) => corner[1]));
+    const from = Math.ceil(plateBottom) + 1;
+    const to = bottom - 2;
+    if (to - from < 3) return null;
+    const sprite = this.options.imageFor(shell.textureFile);
+    if (!sprite) return null;
+    const pixels = this.pixels(shell, sprite);
+    if (!pixels) return null;
+    const left = shell.padding.left + SEAM_AA_INSET_PX;
+    const scan = 20;
+    let widest = 0;
+    for (let y = from; y <= to; y += 1) {
+      let peak = 0;
+      const row: number[] = [];
+      for (let index = 0; index < scan; index += 1) {
+        const x = side === 'left' ? left + index : shell.texWidth - shell.padding.right - SEAM_AA_INSET_PX - 1 - index;
+        const value = pixelLuma(pixels, shell, x, y);
+        const luma = value ?? 0;
+        row.push(luma);
+        peak = Math.max(peak, luma);
+      }
+      if (peak <= 0) continue;
+      let lit = 0;
+      for (let index = 0; index < row.length; index += 1) {
+        if (row[index] >= peak * SEAM_SIDE_FACE_LIT_SHARE) lit = index + 1;
+      }
+      widest = Math.max(widest, lit);
+    }
+    const width = Math.min(SEAM_SIDE_FACE_MAX_PX, Math.max(ring.width, widest + SEAM_AA_INSET_PX));
+    if (width <= ring.width + 0.5) return null;
+    return {
+      x: side === 'left' ? shell.padding.left + SEAM_AA_INSET_PX : shell.texWidth - shell.padding.right - SEAM_AA_INSET_PX - width,
+      y: from,
+      width,
+      height: to - from + 1,
+    };
+  }
+
+  private readonly pixelCache = new Map<string, { data: Uint8ClampedArray; width: number }>();
+
+  /** The shell sprite's decoded pixels, cached per texture. */
+  private pixels(
+    shell: ShellStats,
+    sprite: SeamImage,
+  ): { data: Uint8ClampedArray; width: number } | null {
+    const key = shell.textureFile;
+    const cached = this.pixelCache.get(key);
+    if (cached) return cached;
+    const canvas = this.options.createCanvas(
+      Math.max(1, shell.texWidth),
+      Math.max(1, shell.texHeight),
+    );
+    const ctx = canvas.getContext('2d') as SeamContext | null;
+    if (!ctx) return null;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(sprite as unknown as CanvasImageSource, 0, 0, shell.texWidth, shell.texHeight);
+    const entry = {
+      data: ctx.getImageData(0, 0, shell.texWidth, shell.texHeight).data,
+      width: shell.texWidth,
+    };
+    this.pixelCache.set(key, entry);
+    return entry;
   }
 
   /** The composed band overlay, ready to blit at the tile's draw position. */
@@ -267,10 +391,12 @@ export class SeamOverlayCache {
       this.overlays.set(key, null);
       return null;
     }
-    // 1. the mask's fade across the band …
+    // 1. the mask's fade across each strip of the band …
     ctx.save();
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    drawMaskInBand(ctx, record, mask, band, side, SEAM_OPACITY);
+    for (const region of band.regions) {
+      drawMaskInBand(ctx, record, mask, region, side, SEAM_OPACITY);
+    }
     ctx.restore();
     // 2. … kept only where the tile's own pixels are, so the band follows the
     // real silhouette of an oblique shell and never spills onto the felt.
@@ -296,28 +422,24 @@ export class SeamOverlayCache {
   ): { luma: number; coverage: number } | null {
     const sprite = this.options.imageFor(shell.textureFile);
     if (!sprite) return null;
-    const canvas = this.options.createCanvas(
-      Math.max(1, shell.texWidth),
-      Math.max(1, shell.texHeight),
-    );
-    const ctx = canvas.getContext('2d') as SeamContext | null;
-    if (!ctx) return null;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(sprite as unknown as CanvasImageSource, 0, 0, shell.texWidth, shell.texHeight);
+    const pixels = this.pixels(shell, sprite);
+    if (!pixels) return null;
     const x0 = Math.max(0, Math.floor(rect.x));
     const y0 = Math.max(0, Math.floor(rect.y));
     const x1 = Math.min(shell.texWidth, Math.ceil(rect.x + rect.width));
     const y1 = Math.min(shell.texHeight, Math.ceil(rect.y + rect.height));
     if (x1 <= x0 || y1 <= y0) return null;
-    const data = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data;
     let sum = 0;
     let solid = 0;
     let total = 0;
-    for (let index = 0; index < data.length; index += 4) {
-      total += 1;
-      if (data[index + 3] < 230) continue;
-      solid += 1;
-      sum += data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+    for (let y = y0; y < y1; y += 1) {
+      for (let x = x0; x < x1; x += 1) {
+        total += 1;
+        const offset = (y * shell.texWidth + x) * 4;
+        if (pixels.data[offset + 3] < 230) continue;
+        solid += 1;
+        sum += pixelLuma(pixels, shell, x, y) ?? 0;
+      }
     }
     if (total === 0 || solid === 0) return null;
     return { luma: sum / solid, coverage: solid / total };

@@ -63,7 +63,8 @@
  */
 import type { ShellsManifest, ShellStats } from './shellManifest';
 import type { AoSeamSide, MatShadowRecord, ShadowsManifest } from './shadowManifest';
-import { AO_SEAM_SIDES, matShadowBucketFor, wallSeatOf } from './shadowManifest';
+import { AO_SEAM_SIDES, matShadowBucketFor, referenceToShellScale, wallSeatOf } from './shadowManifest';
+import type { BlankBucket } from './blankManifest';
 import type { SeamBand, SeamOverlay, SpriteSide } from './seamOverlays';
 import { SEAM_MIN_RING_LUMA } from './seamOverlays';
 import type { AtlasCanvas } from './TileAtlasBuilder';
@@ -309,7 +310,24 @@ function shellOf(manifest: ShellsManifest, tile: PlacedTile): ShellStats {
   return shell;
 }
 
-/** Where a zone-local grid anchor lands on the board, in @1x px. */
+/**
+ * The tile body's projected centre in zone-local @1x px.
+ *
+ * The Task 4A bucket sprites are published against their slot's *body centre*
+ * (`blanks.json`'s `anchor` is the centre of the sprite's body box, and
+ * `shadows.json` shares it), not against the shell PNG's own `anchorX/anchorY`,
+ * which is the sprite's body top-left corner. Placing a mat shadow at the shell
+ * anchor puts it ~36 x 51 px up and to the left of the tile, so its dense core
+ * shows at the tile's top-left corner. Both passes therefore anchor here.
+ */
+export function tileCentre(tile: PlacedTile, shell: ShellStats): { x: number; y: number } {
+  return {
+    x: tile.drawX + shell.padding.left + shell.advanceWidth / 2,
+    y: tile.drawY + shell.padding.top + shell.advanceHeight / 2,
+  };
+}
+
+/** Where a zone-local point lands on the board, in @1x px. */
 function boardPoint(
   placement: ShadowZonePlacement,
   gridX: number,
@@ -339,6 +357,12 @@ export interface ShadowPlanOptions {
    * never on two sprites at once.
    */
   readonly seamBands: (shell: ShellStats, side: SpriteSide) => SeamBand | null;
+  /**
+   * The reference-frame body size of a blank bucket, so a Task 4A sprite can be
+   * scaled from the 1920 x 1080 bake into the shell space the runtime draws in.
+   * Without it every shadow is ~1.5x too small and sits off its tile.
+   */
+  readonly blankBucket?: (bucket: string) => BlankBucket | null;
 }
 
 /**
@@ -409,9 +433,12 @@ export function planShadows(
       const bodyIndex = bodyIndexOf(tile);
       const isLifted = lifted !== null && lifted.zoneIndex === zoneIndex && lifted.bodyIndex === bodyIndex;
       const factor = isLifted ? LIFTED_SHADOW_SCALE : 1;
-      const anchor = boardPoint(placement, tile.gridX, tile.gridY);
-      const pivotX = (record.pivot.x / record.pixelRatio) * scale * factor;
-      const pivotY = (record.pivot.y / record.pixelRatio) * scale * factor;
+      const centre = tileCentre(tile, shell);
+      const anchor = boardPoint(placement, centre.x, centre.y);
+      // Reference-frame sprite -> shell space -> this zone's placement.
+      const frame = referenceToShellScale(shell, options.blankBucket?.(bucket) ?? null) * scale * factor;
+      const pivotX = (record.pivot.x / record.pixelRatio) * frame;
+      const pivotY = (record.pivot.y / record.pixelRatio) * frame;
       mat.push({
         zoneIndex,
         bodyIndex,
@@ -419,8 +446,8 @@ export function planShadows(
         textureFile: record.textureFile,
         x: anchor.x - pivotX,
         y: anchor.y - pivotY,
-        width: (record.width / record.pixelRatio) * scale * factor,
-        height: (record.height / record.pixelRatio) * scale * factor,
+        width: (record.width / record.pixelRatio) * frame,
+        height: (record.height / record.pixelRatio) * frame,
         opacity: isLifted ? LIFTED_SHADOW_OPACITY : 1,
         lifted: isLifted,
       });
@@ -442,16 +469,20 @@ export function planShadows(
           const lowerIndex = lowerBodies.get(tile.cell.slot);
           if (lowerIndex === undefined) return;
           const lower = zone.bodies[lowerIndex];
-          const anchor = boardPoint(placement, lower.gridX, lower.gridY);
+          const lowerShell = shellOf(manifest, lower);
+          const lowerCentre = tileCentre(lower, lowerShell);
+          const anchor = boardPoint(placement, lowerCentre.x, lowerCentre.y);
+          const frame =
+            referenceToShellScale(lowerShell, options.blankBucket?.(record.bucket) ?? null) * scale;
           stacks.push({
             zoneIndex,
             bodyIndex: lowerIndex,
             seat,
             textureFile: record.textureFile,
-            x: anchor.x - (record.pivot.x / record.pixelRatio) * scale,
-            y: anchor.y - (record.pivot.y / record.pixelRatio) * scale,
-            width: (record.width / record.pixelRatio) * scale,
-            height: (record.height / record.pixelRatio) * scale,
+            x: anchor.x - (record.pivot.x / record.pixelRatio) * frame,
+            y: anchor.y - (record.pivot.y / record.pixelRatio) * frame,
+            width: (record.width / record.pixelRatio) * frame,
+            height: (record.height / record.pixelRatio) * frame,
           });
         });
       }
@@ -636,6 +667,8 @@ export interface BoardShadowRendererOptions {
     bandFor(shell: ShellStats, side: SpriteSide): SeamBand | null;
     overlayFor(shell: ShellStats, side: SpriteSide): SeamOverlay | null;
   };
+  /** `blanks.json`'s buckets: the reference-frame body each shadow was baked against. */
+  readonly blanks: { readonly buckets: Readonly<Record<string, BlankBucket>> };
   /** Resolve one manifest-relative sprite path to a decoded image, or null. */
   readonly imageFor: (file: string) => ShadowImage | null;
   /**
@@ -737,6 +770,7 @@ export class BoardShadowRenderer {
     const plan = planShadows(this.options.manifest, this.options.shadows, this.board, {
       ...options,
       seamBands: (shell, side) => this.options.seamOverlays.bandFor(shell, side),
+      blankBucket: (bucket) => this.options.blanks.buckets[bucket] ?? null,
     });
     this.plan = plan;
     const masks = zoneShadowMasks(plan, this.board);

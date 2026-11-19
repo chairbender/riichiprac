@@ -599,8 +599,12 @@ sprite onto white (`b = 1 - alpha`) and merging with `darken`, then composites
 the merged layer once with `multiply` — the manifest's model — so a growing
 river never double-darkens. A crevice mask is *not* mapped onto `faceQuad`: it
 is stretched across the 2-8 px ring between the sprite's silhouette and its
-plate and clipped to the sprite's alpha, and a joint draws exactly one band, on
-the lit edge — no change reaches the painted face or the felt. Proof sheet:
+plate (widened over a lying tile's near face, whose lit end a neighbour also
+shades) and clipped to the sprite's alpha, and a joint draws exactly one band,
+on the lit edge — no change reaches the painted face or the felt. These sprites
+are published in the `table_layout.json` reference frame, so the runtime scales
+them by the ratio of the shell's advance to the bucket's `alphaBBox` body and
+anchors them at the tile body's centre. Proof sheet:
 `cd frontend && npm run shadows:review` →
 `tools/render/build/review/shadows/task6a-dynamic-shadows.png` (gitignored).
 The 4A bakes are unchanged by it: no asset was re-rendered, and
