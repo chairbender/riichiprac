@@ -30,8 +30,10 @@ import {
   buildBoardInstances,
   createBoardMesh,
   instanceFlags,
+  instanceShade,
   packBoardInstances,
 } from './boardMesh';
+import { TILE_SHADE } from './lighting';
 import { createTileMaterial } from './tileMaterial';
 import type { TileMaterialHandle } from './tileMaterial';
 import type { TileFaceId } from '../contract';
@@ -219,6 +221,54 @@ describe('board instances', () => {
     expect(Math.abs(tz)).toBeCloseTo(0, 9);
     expect(Math.abs(uy)).toBeCloseTo(0, 9);
     expect(Math.abs(ty)).toBeCloseTo(0, 9);
+  });
+
+  it('shades only the hands: the player lighter, the three opponents equally (3D-18)', () => {
+    const humanSeat = layout.humanSeat;
+    const byId = new Map(instances.map((instance) => [instance.id, instance]));
+    // Every hand and draw tile is shaded; the human's less than the others.
+    for (const tile of layout.foreground) {
+      const instance = byId.get(tile.id);
+      expect(instance, tile.id).toBeDefined();
+      if (!instance) continue;
+      const expected = instanceShade(tile, humanSeat);
+      expect(instance.shade, tile.id).toBe(expected);
+      if (tile.zone === 'hand' || tile.zone === 'draw') {
+        expect(expected).toBe(
+          tile.seat === humanSeat ? TILE_SHADE.humanHand : TILE_SHADE.opponentHand,
+        );
+        expect(expected).toBeGreaterThan(0);
+      } else {
+        // Ponds, melds, dora, the wall: public and up-facing, fully lit.
+        expect(expected, tile.id).toBe(0);
+      }
+    }
+    // The three opponents take the same amount.
+    const opponentAmounts = new Set(
+      layout.foreground
+        .filter((tile) => (tile.zone === 'hand' || tile.zone === 'draw') && tile.seat !== humanSeat)
+        .map((tile) => instanceShade(tile, humanSeat)),
+    );
+    expect([...opponentAmounts]).toEqual([TILE_SHADE.opponentHand]);
+    expect(TILE_SHADE.opponentHand).toBeGreaterThan(TILE_SHADE.humanHand);
+  });
+
+  it('packs the shade buffer and re-uploads it', () => {
+    const packed = packBoardInstances(instances);
+    expect(packed.shades).toHaveLength(instances.length);
+    instances.forEach((instance, index) => {
+      // Float32 storage, so compare with the precision it keeps.
+      expect(packed.shades[index]).toBeCloseTo(instance.shade, 6);
+    });
+    expect(packed.shades.some((value) => value > 0)).toBe(true);
+
+    const handle = createBoardMesh(instances, material());
+    const attribute = handle.geometry.getAttribute('aShade') as InstancedBufferAttribute;
+    expect(attribute.itemSize).toBe(1);
+    const version = attribute.version;
+    handle.sync(instances.slice(0, 5));
+    expect(attribute.version).toBeGreaterThan(version);
+    handle.dispose();
   });
 
   it('fails loudly on an over-capacity board or a bad matrix', () => {

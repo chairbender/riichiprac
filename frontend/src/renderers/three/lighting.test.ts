@@ -23,6 +23,7 @@ import {
   BODY,
   IRRADIANCE_NEUTRAL_NORMAL,
   LIGHTING,
+  TILE_SHADE,
   diffuseIrradiance,
   hexToBytes,
   hexToLinear,
@@ -30,6 +31,7 @@ import {
   linearToSrgbBytes,
   predictLitColour,
   sceneLightSpecs,
+  shadeAt,
   srgbToLinear,
   wrappedDiffuse,
 } from './lighting';
@@ -127,6 +129,84 @@ describe('light rig calibration', () => {
       roughness: 0.45,
     });
     expect(light[0]).toBeGreaterThan(dark[0] * 2);
+  });
+});
+
+describe('the private-hand shade (3D-18)', () => {
+  it('leaves every up-facing surface on the full key', () => {
+    // The pond, the melds, the dora and the wall's backs are all N.y = 1 and the
+    // five zones carry shade 0, so the effect cannot touch a single top.
+    expect(shadeAt(1, TILE_SHADE.humanHand)).toBe(0);
+    expect(shadeAt(1, TILE_SHADE.opponentHand)).toBe(0);
+    expect(shadeAt(TILE_SHADE.topLitFull, TILE_SHADE.humanHand)).toBe(0);
+    const lit = diffuseIrradiance([0, 1, 0]);
+    const shaded = diffuseIrradiance([0, 1, 0], shadeAt(1, TILE_SHADE.humanHand));
+    expect(shaded).toEqual(lit);
+  });
+
+  it('removes the key from the hand face and keeps the fill', () => {
+    // The reclined hand's face is 40 deg off vertical: N.y = cos(40) ~ 0.64,
+    // well below topLitFrom, so it takes the full zone amount.
+    expect(HAND_NORMAL[1]).toBeLessThan(TILE_SHADE.topLitFrom);
+    const amount = shadeAt(HAND_NORMAL[1], TILE_SHADE.humanHand);
+    expect(amount).toBeCloseTo(TILE_SHADE.humanHand, 12);
+
+    const lit = diffuseIrradiance(HAND_NORMAL);
+    const shaded = diffuseIrradiance(HAND_NORMAL, amount);
+    for (let channel = 0; channel < 3; channel += 1) {
+      // Darker, but not off: the fill and ambient still land.
+      expect(shaded[channel]).toBeGreaterThan(lit[channel] * 0.6);
+      expect(shaded[channel]).toBeLessThan(lit[channel] * 0.85);
+      // Cooler too: the removed term is the warm key.
+      expect(shaded[channel]).toBeGreaterThan(0);
+    }
+    const lift = lit.map((value, index) => value - shaded[index]);
+    expect(lift[0]).toBeGreaterThan(lift[2]);
+  });
+
+  it('blends between the top and the face over the committed band', () => {
+    const mid = (TILE_SHADE.topLitFrom + TILE_SHADE.topLitFull) / 2;
+    // A smoothstep's midpoint is half the shade.
+    expect(shadeAt(mid, TILE_SHADE.humanHand)).toBeCloseTo(TILE_SHADE.humanHand / 2, 6);
+    // Above the band nothing, below it everything.
+    expect(shadeAt(TILE_SHADE.topLitFull, 1)).toBe(0);
+    expect(shadeAt(TILE_SHADE.topLitFrom, 1)).toBeCloseTo(1, 12);
+    expect(shadeAt(0, 1)).toBeCloseTo(1, 12);
+    expect(shadeAt(-1, 1)).toBeCloseTo(1, 12);
+    // No zone shade, no effect.
+    expect(shadeAt(0, 0)).toBe(0);
+  });
+
+  it('is equal for the three opponents and milder for the player', () => {
+    expect(TILE_SHADE.opponentHand).toBeGreaterThan(TILE_SHADE.humanHand);
+    // The player's hand has to stay readable: it keeps most of its brightness.
+    expect(TILE_SHADE.humanHand).toBeGreaterThan(0.25);
+    expect(TILE_SHADE.humanHand).toBeLessThan(0.6);
+    expect(TILE_SHADE.opponentHand).toBeGreaterThan(0.6);
+    expect(TILE_SHADE.opponentHand).toBeLessThan(0.85);
+  });
+
+  it('scales the key specular with the shade, so no highlight survives', () => {
+    const view = [0, 0.766, 0.643] as const;
+    const lit = predictLitColour({
+      albedo: hexToLinear(BODY.ivoryHex) as LinearRgb,
+      normal: HAND_NORMAL,
+      viewDir: view,
+      roughness: 0.16,
+    });
+    const shaded = predictLitColour({
+      albedo: hexToLinear(BODY.ivoryHex) as LinearRgb,
+      normal: HAND_NORMAL,
+      viewDir: view,
+      roughness: 0.16,
+      shade: TILE_SHADE.humanHand,
+    });
+    expect(shaded[0]).toBeLessThan(lit[0]);
+    const litSrgb = linearToSrgbBytes(lit);
+    const shadedSrgb = linearToSrgbBytes(shaded);
+    // The handoff's target: clearly darker, still readable (>= 70 % sRGB).
+    expect(shadedSrgb[0]).toBeGreaterThan(litSrgb[0] * 0.7);
+    expect(shadedSrgb[0]).toBeLessThan(litSrgb[0]);
   });
 });
 

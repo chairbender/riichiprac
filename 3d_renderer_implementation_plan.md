@@ -1879,6 +1879,61 @@ better, that looks great." The carve reads as physically recessed at the hand's
 and the shell body, blue band and Haku's clean face were accepted earlier in the
 same thread. `POM_HEIGHT_SCALE` stays at 0.25; `1p` is the hero face.
 
+### 3D-18 — Private-hand shade (runtime lighting)
+
+**Goal.** A player's hand should read as private and tucked out of the table's
+light, while every surface that faces the ceiling — ponds, melds, dora, the blue
+backs of the wall — stays on the key. The user's picture is a light at the table's
+centre with the wall ring between it and each hand; with no shadow maps, the
+effect is the wall's occlusion applied as a **key-only shade on non-horizontal
+surfaces**.
+
+**Depends on:** 3D-05 (rig), 3D-06 (layout), 3D-07 (the per-instance board).
+
+**Deliverables**
+
+- `lighting.ts`: `TILE_SHADE` (the amounts and the top-lit band), `shadeAt()`, and
+  the shade term inside `diffuseIrradiance`/`predictLitColour` so the effect is a
+  predicted number, not an impression.
+- `boardMesh.ts`: an `aShade` per-instance float (`instanceShade`) — hands and the
+  drawn tile only, the human's milder than the three opponents'.
+- `materials/tile.{vert,frag}.ts`: the key's diffuse **and** specular scale by
+  `(1 − shade)`, masked by the **geometric** normal so a glyph's groove walls do
+  not flicker in and out of the mask.
+
+**Acceptance criteria**
+
+- Every up-facing surface is unchanged: `diffuseIrradiance([0,1,0], shade)` equals
+  `diffuseIrradiance([0,1,0])` bit-for-bit, and every non-hand zone carries
+  `aShade = 0`.
+- Only the key scales; the hemisphere fill and ambient stay, so a shaded face is
+  darker **and** cooler (the fill is `#cfe0ff`) instead of grey.
+- The human's hand stays readable (≥ 70 % of its sRGB luma); the three opponents
+  are equal and darker (user decision 2026-11-18).
+- The hero/debug view stays unshaded, so 3D-05's absolute albedo probes keep
+  their targets; the board is where the shade composes.
+
+**Gate:** frontend gate.
+
+**As built (3D-18, 2026-11-18).** `TILE_SHADE = { humanHand 0.45, opponentHand
+0.7, topLitFrom 0.8, topLitFull 0.95 }`; the band is a smoothstep on the
+geometric normal's Y, so at `N.y ≤ 0.8` the whole amount applies and at
+`N.y ≥ 0.95` none does. Measured with `predictLitColour` at the board's view
+angles:
+
+| surface | lit | shaded |
+| --- | --- | --- |
+| pond / meld / dora face, wall back (`N.y 1`) | `#f5f0ec`, luma 241 | **unchanged** |
+| human hand face (40° recline, `N.y 0.64`) | `#f5eee8`, luma 239 | luma **202** (85 %) |
+| human hand top edge (`N.y 0.9`) | luma 247 | **238** (96 %, still lit) |
+| opponent hand back (`N.y 0`) | luma 33 | **23** (70 %) |
+
+One extra float attribute on the existing instance buffer; no new draw call, no
+new texture, no change to the felt. The hero view is deliberately unshaded (its
+probes assert absolute albedo), so the shade is only ever seen on the board.
+
+---
+
 ## 7. Proposed command-center slicing
 
 One task per unit, all `worktree` on `riichiprac`, created wave by wave (not all
@@ -1903,6 +1958,7 @@ at once). Titles are the proposed task titles.
 | 3D-14 | 3D R14: view switch integration | 3D-08 |
 | 3D-15 | 3D R15: full-board verification and sign-off | 3D-08, 3D-09, 3D-11, 3D-12, 3D-13, 3D-14 |
 | 3D-16 | 3D R16: architecture record and docs | 3D-15 |
+| 3D-18 | 3D R18: private-hand shade (runtime lighting) | 3D-05, 3D-06, 3D-07 |
 
 Creation pattern (one wave at a time):
 
@@ -2167,3 +2223,4 @@ it was right and corrected where the repository or the browser facts disagree.
 | 3D-14 | `frontend/src/store/useSettingsStore.ts`, `frontend/src/components/AppControls.tsx`, `frontend/src/App.tsx`, `AGENTS.md` §4 |
 | 3D-15 | tests + this plan's verification report |
 | 3D-16 | `3d_renderer_architecture.md`, `THIRD_PARTY_NOTICES.md`, `README.md`, `AGENTS.md` §4 |
+| 3D-18 | `frontend/src/renderers/three/{lighting,boardMesh}.ts`, `.../materials/tile.{vert,frag}.ts` |

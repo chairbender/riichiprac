@@ -622,6 +622,9 @@ export class TableScene implements TableRenderer {
     const instances = heroInstances((face) => assets.cellForFace(face));
     // One geometry per mesh: the instanced attributes live on it. The hero view
     // allocates exactly its four slots; the board allocates the full capacity.
+    // The hero view is the unshaded calibration view: its probes assert the
+    // material against the committed albedo (3D-05), so the board's
+    // private-hand shade (3D-18) is deliberately off here.
     const board = createBoardMesh(
       instances.map((instance): BoardInstance => ({
         id: instance.slot.id,
@@ -632,6 +635,7 @@ export class TableScene implements TableRenderer {
           highlighted: false,
           dimmed: false,
         }),
+        shade: 0,
         face: instance.slot.face,
       })),
       material,

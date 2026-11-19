@@ -19,6 +19,9 @@
  *   and dimmed. One float rather than three attributes because the fragment
  *   stage only ever tests bits, and one float keeps the per-vertex footprint
  *   minimal at 320 instances.
+ * - `aShade` (float, 0..1): how much of the key this tile's non-horizontal
+ *   surfaces lose — the private-hand shade (3D-18). Ponds, melds, dora and the
+ *   wall carry 0, so their tops stay on the key; see `lighting.TILE_SHADE`.
  *
  * A per-instance atlas *page* is not needed in v1: the three atlases hold all 37
  * cells, so a tile only needs its rect. If a future bake ever splits the face
@@ -37,7 +40,8 @@ import {
   InstancedMesh,
   Matrix4,
 } from 'three';
-import type { TileFaceId } from '../contract';
+import type { Seat, TileFaceId } from '../contract';
+import { TILE_SHADE } from './lighting';
 import { TABLE } from '../layoutConstants';
 import { poseMatrix } from './boardLayout';
 import type { BoardLayout, BoardTile } from './boardLayout';
@@ -80,6 +84,8 @@ export interface BoardInstance {
   readonly matrix: readonly number[];
   readonly atlasRect: AtlasRect;
   readonly flags: number;
+  /** The private-hand shade for this tile (0 = fully lit); see `TILE_SHADE`. */
+  readonly shade: number;
   /** The face the instance shows, kept for the highlight/atlas probes. */
   readonly face: TileFaceId;
 }
@@ -93,6 +99,8 @@ export interface BoardBuffers {
   readonly atlasRects: Float32Array;
   /** `count` floats. */
   readonly flags: Float32Array;
+  /** `count` floats, the private-hand shade per instance. */
+  readonly shades: Float32Array;
 }
 
 /** The `aFlags` word for one layout tile. */
@@ -109,6 +117,20 @@ export function instanceFlags(tile: {
 }
 
 /**
+ * The private-hand shade for one layout tile (3D-18).
+ *
+ * A hand (and the drawn tile) is the only shaded zone: it sits outside the wall
+ * ring, behind the wall from the table's light, and the human's is a player's
+ * private hand. The human's takes the milder amount so it stays easy to read;
+ * the three opponents take the stronger one. Everything else — ponds, melds,
+ * dora, the wall — is public and up-facing and keeps the key in full.
+ */
+export function instanceShade(tile: BoardTile, humanSeat: Seat): number {
+  if (tile.zone !== 'hand' && tile.zone !== 'draw') return 0;
+  return tile.seat === humanSeat ? TILE_SHADE.humanHand : TILE_SHADE.opponentHand;
+}
+
+/**
  * Build one instance per layout tile, resolving each face-up tile's atlas cell.
  *
  * The order is the layout's own authoring order, which is stable for a snapshot
@@ -119,11 +141,12 @@ export function buildBoardInstances(
   layout: BoardLayout,
   cellForFace: (face: TileFaceId) => { readonly rect: AtlasRect } | null,
 ): readonly BoardInstance[] {
-  return layout.tiles.map((tile) => instanceFor(tile, cellForFace));
+  return layout.tiles.map((tile) => instanceFor(tile, layout.humanSeat, cellForFace));
 }
 
 function instanceFor(
   tile: BoardTile,
+  humanSeat: Seat,
   cellForFace: (face: TileFaceId) => { readonly rect: AtlasRect } | null,
 ): BoardInstance {
   return {
@@ -135,6 +158,7 @@ function instanceFor(
       ? (cellForFace(tile.face)?.rect ?? NEUTRAL_ATLAS_RECT)
       : NEUTRAL_ATLAS_RECT,
     flags: instanceFlags(tile),
+    shade: instanceShade(tile, humanSeat),
     face: tile.face,
   };
 }
@@ -160,6 +184,7 @@ export function packBoardInstances(
   const matrices = new Float32Array(count * 16);
   const atlasRects = new Float32Array(count * 4);
   const flags = new Float32Array(count);
+  const shades = new Float32Array(count);
   instances.forEach((instance, index) => {
     if (instance.matrix.length !== 16) {
       throw new Error(
@@ -174,8 +199,9 @@ export function packBoardInstances(
     matrices.set(instance.matrix, index * 16);
     atlasRects.set(instance.atlasRect, index * 4);
     flags[index] = instance.flags;
+    shades[index] = instance.shade;
   });
-  return { count, matrices, atlasRects, flags };
+  return { count, matrices, atlasRects, flags, shades };
 }
 
 /** The live board mesh and the buffers it re-uploads on a snapshot change. */
@@ -229,10 +255,13 @@ export function createBoardMesh(
 
   const atlasRects = new InstancedBufferAttribute(new Float32Array(capacity * 4), 4);
   const flags = new InstancedBufferAttribute(new Float32Array(capacity), 1);
+  const shades = new InstancedBufferAttribute(new Float32Array(capacity), 1);
   (atlasRects.array as Float32Array).set(buffers.atlasRects);
   (flags.array as Float32Array).set(buffers.flags);
+  (shades.array as Float32Array).set(buffers.shades);
   geometry.setAttribute('aAtlasRect', atlasRects);
   geometry.setAttribute('aFlags', flags);
+  geometry.setAttribute('aShade', shades);
 
   const matrix = new Matrix4();
   for (let index = 0; index < buffers.count; index += 1) {
@@ -254,9 +283,11 @@ export function createBoardMesh(
       target.set(packed.matrices);
       (atlasRects.array as Float32Array).set(packed.atlasRects);
       (flags.array as Float32Array).set(packed.flags);
+      (shades.array as Float32Array).set(packed.shades);
       mesh.instanceMatrix.needsUpdate = true;
       atlasRects.needsUpdate = true;
       flags.needsUpdate = true;
+      shades.needsUpdate = true;
       mesh.count = packed.count;
     },
     dispose() {

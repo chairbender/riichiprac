@@ -108,6 +108,49 @@ export const LIGHTING = {
   wrap: 0.3,
 } as const;
 
+/**
+ * The private-hand shade (3D-18): how much of the **key** a hand's non-horizontal
+ * surfaces lose, because a player's hand sits outside the wall ring, behind the
+ * wall from the table's light.
+ *
+ * Only the key is scaled; the hemisphere fill and ambient stay, so a shaded hand
+ * goes darker **and** cooler (the fill is `#cfe0ff`) instead of grey. A surface
+ * that faces the ceiling (`N.y >= topLitFull`) keeps the key at full strength,
+ * so every top — pond, meld, dora, the blue backs of the wall — is unaffected;
+ * the hand's reclined 40° face (`N.y ~ 0.64`) takes the full shade.
+ *
+ * Amounts: the human's hand keeps ~80 % of its sRGB brightness at 0.45 (dark
+ * enough to read as "mine, not the table" and still easy to pick from); the
+ * three opponents are equal for now at 0.7.
+ */
+export const TILE_SHADE = {
+  /** Key fraction removed from the human hand's face. */
+  humanHand: 0.45,
+  /** Key fraction removed from every opponent hand's face. */
+  opponentHand: 0.7,
+  /** At or below this `N.y` the shade applies in full. */
+  topLitFrom: 0.8,
+  /** At or above this `N.y` the surface keeps the full key. */
+  topLitFull: 0.95,
+} as const;
+
+/**
+ * How much of the key a surface at `normalY` loses for a tile whose zone shade is
+ * `shade`: nothing when the surface faces the ceiling, all of it when it does
+ * not. The fragment shader computes this same smoothstep from the *geometric*
+ * normal (not the carved one), so a glyph's groove walls do not flicker in and
+ * out of the mask.
+ */
+export function shadeAt(normalY: number, shade: number): number {
+  if (!(shade > 0)) return 0;
+  const t = Math.min(
+    1,
+    Math.max(0, (normalY - TILE_SHADE.topLitFrom) / (TILE_SHADE.topLitFull - TILE_SHADE.topLitFrom)),
+  );
+  const upness = t * t * (3 - 2 * t);
+  return shade * (1 - upness);
+}
+
 /** The normal orientation the rig is calibrated neutral for (the felt plane). */
 export const IRRADIANCE_NEUTRAL_NORMAL: Direction3 = [0, 1, 0];
 
@@ -238,12 +281,13 @@ export function wrappedDiffuse(normal: Direction3, light: Direction3, wrap = LIG
  * `key*wrapped + hemisphere fill + ambient` with the `/PI` folded in, exactly
  * as the fragment shader computes it.
  */
-export function diffuseIrradiance(normal: Direction3): LinearRgb {
+export function diffuseIrradiance(normal: Direction3, shade = 0): LinearRgb {
   const wrapped = wrappedDiffuse(normal, LIGHTING.key.direction);
   const up = Math.min(1, Math.max(0, 0.5 + 0.5 * normal[1]));
   const channels = [0, 1, 2] as const;
   const out = channels.map((channel) => {
-    const key = KEY_LINEAR[channel] * LIGHTING.key.intensity * wrapped;
+    // The key is the only term the private-hand shade removes (3D-18).
+    const key = KEY_LINEAR[channel] * LIGHTING.key.intensity * wrapped * (1 - shade);
     const fill =
       (FILL_GROUND_LINEAR[channel] +
         (FILL_SKY_LINEAR[channel] - FILL_GROUND_LINEAR[channel]) * up) *
@@ -270,11 +314,22 @@ export function predictLitColour(options: {
   readonly coat?: number;
   /** Sampled cavity AO, default 1 (an open face). */
   readonly ao?: number;
+  /** The tile's private-hand shade amount (0 = fully lit, 3D-18). */
+  readonly shade?: number;
+  /**
+   * The geometric (pre-carve) normal the shade mask is taken from; defaults to
+   * `normal`. The BRDF keeps using `normal` (the carved one).
+   */
+  readonly geometryNormal?: Direction3;
 }): LinearRgb {
   const { albedo, normal, viewDir, roughness } = options;
   const ao = options.ao ?? 1;
   const coat = options.coat ?? BODY.coatFace;
-  const irradiance = diffuseIrradiance(normal).map((value) => value * ao) as unknown as LinearRgb;
+  const geometry = options.geometryNormal ?? normal;
+  const shade = shadeAt(geometry[1], options.shade ?? 0);
+  const irradiance = diffuseIrradiance(normal, shade).map(
+    (value) => value * ao,
+  ) as unknown as LinearRgb;
 
   const light = LIGHTING.key.direction;
   const ndv = Math.min(1, Math.max(1e-4, dot(normal, viewDir)));
@@ -319,10 +374,14 @@ export function predictLitColour(options: {
     specularScale += sampleLobe(roughness) + coat * sampleLobe(BODY.coatRoughness);
   }
   specularScale /= offsets.length;
+  // The key's specular is shaded with the key's diffuse: a shaded surface has
+  // no key highlight, which is what makes it read as shade rather than a
+  // dimmer tile.
+  const keyScale = (1 - shade) * LIGHTING.key.intensity * specularScale;
   return [
-    albedo[0] * irradiance[0] + KEY_LINEAR[0] * LIGHTING.key.intensity * specularScale,
-    albedo[1] * irradiance[1] + KEY_LINEAR[1] * LIGHTING.key.intensity * specularScale,
-    albedo[2] * irradiance[2] + KEY_LINEAR[2] * LIGHTING.key.intensity * specularScale,
+    albedo[0] * irradiance[0] + KEY_LINEAR[0] * keyScale,
+    albedo[1] * irradiance[1] + KEY_LINEAR[1] * keyScale,
+    albedo[2] * irradiance[2] + KEY_LINEAR[2] * keyScale,
   ];
 }
 
